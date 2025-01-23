@@ -43,7 +43,7 @@
     "prettier": "3.2.5",
     "redux-mock-store": "^1.5.4",
     "regenerator-runtime": "^0.14.1",
-    "webpack": "^5.91.0",
+    "webpack": "^5.97.1",
     "webpack-cli": "^5.1.4"
   },
   "scripts": {
