@@ -66,7 +66,7 @@ const tokenConfig = () => {
   return config;
 };
 
-const throwApiError = (error: AxiosError<unknown, any> | string) => {
+const throwApiError = (error: AxiosError<unknown> | string) => {
   let message = "";
   if (typeof error === "string") {
     message = error;
@@ -77,7 +77,7 @@ const throwApiError = (error: AxiosError<unknown, any> | string) => {
       error.response.data !== null &&
       "detail" in error.response.data
     ) {
-      message = error.response?.data?.detail as string;
+      message = (error.response.data as { detail: string }).detail;
     }
   }
   const apiError: ApiError = {
