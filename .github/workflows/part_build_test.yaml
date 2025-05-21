@@ -19,16 +19,11 @@ jobs:
       mysql:
         image: mysql:9.3
         env:
-          # The MySQL docker container requires these environment variables to be set
-          # so we can create and migrate the test database.
-          # See: https://hub.docker.com/_/mysql
           MYSQL_DATABASE: test_test_db
           MYSQL_USER: user
           MYSQL_PASSWORD: user
           MYSQL_ALLOW_EMPTY_PASSWORD: true
         ports:
-          # Opens port 3306 on service container and host
-          # https://docs.github.com/en/actions/using-containerized-services/about-service-containers
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
@@ -38,18 +33,25 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'
+        cache: 'pip'
       - name: 📦⬇️ Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r test_requirements.txt
-      - name: 🚀🧪 Run Tests
-        run: pytest --junitxml=junit-reports/TEST-all.xml
+          pip install pytest-cov codecov
+      - name: 🚀🧪 Run Tests with Coverage
+        run: pytest --cov=./ --cov-report=xml --cov-report=term --junitxml=junit-reports/TEST-all.xml
         env:
           MYSQL_HOST: 0.0.0.0
           SECRET_KEY: 123456-TEST
           CIRCLECI: 1
+      - name: 📤 Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       - name: 📊✅ Publish Test Report
         uses: mikepenz/action-junit-report@v5
         if: success() || failure() # always run even if the previous step fails
