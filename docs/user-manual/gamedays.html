@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Spieltage verwalten in LeagueSphere">
+    <title>Spieltage verwalten - LeagueSphere Benutzerhandbuch</title>
+
+    <!-- Bootstrap 5 CSS via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+          crossorigin="anonymous">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="assets/css/manual.css">
+</head>
+<body>
+    <!-- Skip to content link for accessibility -->
+    <a href="#main-content" class="skip-to-content visually-hidden-focusable">
+        Zum Hauptinhalt springen
+    </a>
+
+    <!-- Navigation Header -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top" role="navigation" aria-label="Hauptnavigation">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">
+                <span style="font-size: 1.5rem;">&#127944;</span>
+                LeagueSphere Handbuch
+            </a>
+            <button class="navbar-toggler" type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#navbarNav"
+                    aria-controls="navbarNav"
+                    aria-expanded="false"
+                    aria-label="Navigation umschalten">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">Startseite</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="intro.html">Erste Schritte</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://leaguesphere.app" target="_blank" rel="noopener noreferrer">
+                            Zur Anwendung
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar Navigation -->
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse" role="navigation" aria-label="Seitennavigation">
+                <div class="position-sticky pt-3">
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                        <span>Funktionen</span>
+                    </h6>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="intro.html">
+                                Navigation &amp; Erste Schritte
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="gamedays.html">
+                                Spieltage verwalten
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="passcheck.html">
+                                Spielberechtigung prüfen
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="scorecard.html">
+                                Live-Scoring
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="officials.html">
+                                Schiedsrichter verwalten
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="liveticker.html">
+                                Liveticker
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="league-table.html">
+                                Tabellen &amp; Spielpläne
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="teammanager.html">
+                                Teams verwalten
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="accounts.html">
+                                Benutzerkonten
+                            </a>
+                        </li>
+                    </ul>
+
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                        <span>Weitere Ressourcen</span>
+                    </h6>
+                    <ul class="nav flex-column mb-2">
+                        <li class="nav-item">
+                            <a class="nav-link" href="https://github.com/dachrisch/leaguesphere" target="_blank" rel="noopener noreferrer">
+                                GitHub Repository
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="https://leaguesphere.app" target="_blank" rel="noopener noreferrer">
+                                LeagueSphere Anwendung
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content Area -->
+            <main id="main-content" class="col-md-9 ms-sm-auto col-lg-10 px-md-4" role="main">
+                <!-- Breadcrumbs -->
+                <nav aria-label="breadcrumb" class="mt-3">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="index.html">Startseite</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Spieltage verwalten</li>
+                    </ol>
+                </nav>
+
+                <!-- Page Header -->
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Spieltage verwalten</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">
+                                Drucken
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content">
+                    <section id="ueberblick" class="mb-5">
+                        <h2>Übersicht</h2>
+                        <p class="lead">
+                            Die Spieltagsverwaltung ist das Herzstück von LeagueSphere. Hier können Sie Spieltage anlegen,
+                            bearbeiten und verwalten. Sie sehen alle anstehenden Turniere, Spielpläne und Ergebnisse auf einen Blick.
+                        </p>
+                        <p>
+                            Von der Startseite aus navigieren Sie zur Spieltagsübersicht, indem Sie auf einen Spieltag oder
+                            das entsprechende Ligajahr klicken. Die Übersicht zeigt alle Spieltage chronologisch sortiert an.
+                        </p>
+
+                        <figure class="figure">
+                            <img src="screenshots/intro/SC-001-homepage.png"
+                                 class="figure-img img-fluid rounded shadow"
+                                 alt="Startseite mit Spieltagsübersicht">
+                            <figcaption class="figure-caption">Startseite mit chronologischer Spieltagsübersicht</figcaption>
+                        </figure>
+                    </section>
+
+                    <section id="liste" class="mb-5">
+                        <h2>Spieltagsliste</h2>
+                        <p>
+                            Die Spieltagsliste zeigt alle Spieltage für ein ausgewähltes Ligajahr an. Sie können nach
+                            Divisionen filtern, um nur relevante Spieltage anzuzeigen.
+                        </p>
+
+                        <h3 class="h4 mt-4">Nach Division filtern</h3>
+                        <p>
+                            Klicken Sie auf eine Division (z.B. "some_division"), um nur Spieltage dieser Division anzuzeigen.
+                            Dies ist besonders hilfreich bei Ligen mit mehreren Divisionen oder Leistungsklassen.
+                        </p>
+
+                        <figure class="figure">
+                            <img src="screenshots/gamedays/SC-003-gamedays-list.png"
+                                 class="figure-img img-fluid rounded shadow"
+                                 alt="Spieltagsliste mit Jahresübersicht">
+                            <figcaption class="figure-caption">Jahresübersicht 2025 mit allen Spieltagen</figcaption>
+                        </figure>
+
+                        <h3 class="h4 mt-4">Alle Spieltage anzeigen</h3>
+                        <p>
+                            Die vollständige Liste zeigt alle Spieltage mit Datum, Division und Turniername an.
+                            Sie können direkt auf einen Spieltag klicken, um die Detailansicht zu öffnen.
+                        </p>
+
+                        <figure class="figure">
+                            <img src="screenshots/gamedays/SC-005-gameday-detail.png"
+                                 class="figure-img img-fluid rounded shadow"
+                                 alt="Detailansicht eines Spieltags">
+                            <figcaption class="figure-caption">Detailansicht eines Spieltags mit Spielplan</figcaption>
+                        </figure>
+                    </section>
+
+                    <section id="detail" class="mb-5">
+                        <h2>Spieltagsdetails</h2>
+                        <p>
+                            In der Detailansicht sehen Sie alle Informationen zu einem Spieltag: Datum, Turnierbeginn,
+                            Adresse und den kompletten Spielplan. Die Spiele werden mit Startzeit, Feld, Teams, Punktestand
+                            und Status angezeigt.
+                        </p>
+
+                        <h3 class="h4 mt-4">Spielplan und Ergebnisse</h3>
+                        <p>
+                            Der Spielplan zeigt alle Spiele des Tages in chronologischer Reihenfolge. Jedes Spiel wird
+                            mit Heim- und Gastteam, Punktestand, zugewiesenen Schiedsrichtern und Spielstatus angezeigt.
+                            Nach Abschluss der Spiele werden die Endergebnisse direkt im Spielplan dargestellt.
+                        </p>
+
+                        <figure class="figure">
+                            <img src="screenshots/gamedays/SC-022-gameday-detail-with-results.png"
+                                 class="figure-img img-fluid rounded shadow"
+                                 alt="Spieltagsdetails mit Spielplan und Endergebnissen">
+                            <figcaption class="figure-caption">Detailansicht eines Spieltags mit vollständigem Spielplan und Endergebnissen</figcaption>
+                        </figure>
+                    </section>
+
+                    <section id="statistiken" class="mb-5">
+                        <h2>Abschlusstabelle und Statistiken</h2>
+                        <p>
+                            Nach Abschluss eines Spieltags können Sie die Abschlusstabelle und Spieltagsstatistiken einsehen.
+                            Die Tabelle zeigt Punkte, Points For (PF), Points Against (PA) und die Punktedifferenz für jedes Team.
+                        </p>
+
+                        <h3 class="h4 mt-4">Spieltagsstatistiken</h3>
+                        <p>
+                            Die Statistiken zeigen Top-Scorer, Defensive Plays (Interceptions, Safeties) und weitere
+                            wichtige Kennzahlen des Spieltags. Dies hilft bei der Auswertung und Analyse der Teamleistungen.
+                        </p>
+
+                        <figure class="figure">
+                            <img src="screenshots/gamedays/SC-024-gameday-statistics.png"
+                                 class="figure-img img-fluid rounded shadow"
+                                 alt="Spieltagsstatistiken mit Scoring und Defense Plays">
+                            <figcaption class="figure-caption">Spieltagsstatistiken mit Abschlusstabelle, Scoring Plays und Defense Plays</figcaption>
+                        </figure>
+
+                        <div class="alert alert-info mt-4" role="alert">
+                            <h4 class="alert-heading">Tipp: Statistiken exportieren</h4>
+                            <p class="mb-0">
+                                Sie können die Statistiken und Tabellen für weitere Analysen exportieren oder direkt
+                                über die Druckfunktion Ihres Browsers ausdrucken.
+                            </p>
+                        </div>
+                    </section>
+
+                    <section id="erstellen" class="mb-5">
+                        <h2>Spieltag erstellen</h2>
+                        <p>
+                            Über das Orga-Menü können Sie neue Spieltage anlegen. Dabei geben Sie Datum, Turniername,
+                            Division und weitere Details an.
+                        </p>
+                        <div class="alert alert-warning" role="alert">
+                            <strong>Hinweis:</strong> Screenshots für das Erstellen von Spieltagen werden in einer zukünftigen Version ergänzt.
+                        </div>
+                    </section>
+
+                    <section id="bearbeiten" class="mb-5">
+                        <h2>Spieltag bearbeiten</h2>
+                        <p>
+                            In der Detailansicht eines Spieltags finden Sie die Schaltfläche "Spieltag bearbeiten".
+                            Hier können Sie Datum, Turnierbeginn, Adresse und andere Informationen anpassen.
+                        </p>
+                        <div class="alert alert-warning" role="alert">
+                            <strong>Hinweis:</strong> Screenshots für das Bearbeiten von Spieltagen werden in einer zukünftigen Version ergänzt.
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Navigation between pages -->
+                <nav class="mt-5 pt-3 border-top" aria-label="Seitennavigation">
+                    <ul class="pagination justify-content-between">
+                        <li class="page-item">
+                            <a class="page-link" href="intro.html">
+                                &larr; Zurück: Navigation &amp; Erste Schritte
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="passcheck.html">
+                                Weiter: Spielberechtigung prüfen &rarr;
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </main>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer mt-auto py-3 bg-light border-top">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-6">
+                    <span class="text-muted">
+                        LeagueSphere Benutzerhandbuch &copy; 2025
+                    </span>
+                </div>
+                <div class="col-md-6 text-end">
+                    <span class="text-muted">
+                        Version: <span id="version">1.0.0</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+            crossorigin="anonymous"></script>
+
+    <!-- Custom JS -->
+    <script src="assets/js/manual.js"></script>
+</body>
+</html>

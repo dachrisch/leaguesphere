@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Benutzerkonten in LeagueSphere">
+    <title>Benutzerkonten - LeagueSphere Benutzerhandbuch</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="assets/css/manual.css">
+</head>
+<body>
+    <a href="#main-content" class="skip-to-content visually-hidden-focusable">Zum Hauptinhalt springen</a>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top" role="navigation" aria-label="Hauptnavigation">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html"><span style="font-size: 1.5rem;">&#127944;</span> LeagueSphere Handbuch</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Navigation umschalten">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="index.html">Startseite</a></li>
+                    <li class="nav-item"><a class="nav-link" href="intro.html">Erste Schritte</a></li>
+                    <li class="nav-item"><a class="nav-link" href="https://leaguesphere.app" target="_blank" rel="noopener noreferrer">Zur Anwendung</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse" role="navigation" aria-label="Seitennavigation">
+                <div class="position-sticky pt-3">
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted"><span>Funktionen</span></h6>
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link" href="intro.html">Navigation &amp; Erste Schritte</a></li>
+                        <li class="nav-item"><a class="nav-link" href="gamedays.html">Spieltage verwalten</a></li>
+                        <li class="nav-item"><a class="nav-link" href="passcheck.html">Spielberechtigung prüfen</a></li>
+                        <li class="nav-item"><a class="nav-link" href="scorecard.html">Live-Scoring</a></li>
+                        <li class="nav-item"><a class="nav-link" href="officials.html">Schiedsrichter verwalten</a></li>
+                        <li class="nav-item"><a class="nav-link" href="liveticker.html">Liveticker</a></li>
+                        <li class="nav-item"><a class="nav-link" href="league-table.html">Tabellen &amp; Spielpläne</a></li>
+                        <li class="nav-item"><a class="nav-link" href="teammanager.html">Teams verwalten</a></li>
+                        <li class="nav-item"><a class="nav-link" href="accounts.html">Benutzerkonten</a></li>
+                    </ul>
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted"><span>Weitere Ressourcen</span></h6>
+                    <ul class="nav flex-column mb-2">
+                        <li class="nav-item"><a class="nav-link" href="https://github.com/dachrisch/leaguesphere" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
+                        <li class="nav-item"><a class="nav-link" href="https://leaguesphere.app" target="_blank" rel="noopener noreferrer">LeagueSphere Anwendung</a></li>
+                    </ul>
+                </div>
+            </nav>
+            <main id="main-content" class="col-md-9 ms-sm-auto col-lg-10 px-md-4" role="main">
+                <nav aria-label="breadcrumb" class="mt-3">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="index.html">Startseite</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Benutzerkonten</li>
+                    </ol>
+                </nav>
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Benutzerkonten</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2"><button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">Drucken</button></div>
+                    </div>
+                </div>
+                <!-- Einleitung -->
+                <section id="einfuehrung" class="mb-5">
+                    <h2>Einführung</h2>
+                    <p>Die Benutzerkontenverwaltung in LeagueSphere ermöglicht es Administratoren, Benutzerkonten zu erstellen, zu verwalten und Zugriffsrechte zu steuern. Über das Django-Administrations-Backend können Sie Benutzer hinzufügen, deren persönliche Daten bearbeiten, Berechtigungen zuweisen und Passwörter verwalten.</p>
+
+                    <div class="alert alert-info" role="alert">
+                        <strong>Hinweis:</strong> Für den Zugriff auf die Benutzerverwaltung benötigen Sie Administrator-Rechte (Superuser-Status) oder mindestens Mitarbeiter-Status mit entsprechenden Berechtigungen.
+                    </div>
+                </section>
+
+                <!-- Anmeldung -->
+                <section id="anmeldung" class="mb-5">
+                    <h2>Anmeldung</h2>
+                    <p>Um auf LeagueSphere zuzugreifen, müssen Sie sich zunächst mit Ihrem Benutzernamen und Passwort anmelden.</p>
+
+                    <h3>So melden Sie sich an:</h3>
+                    <ol>
+                        <li>Rufen Sie die LeagueSphere-Startseite auf</li>
+                        <li>Klicken Sie auf den Link "Login" in der oberen Navigationsleiste</li>
+                        <li>Geben Sie Ihren Benutzernamen ein</li>
+                        <li>Geben Sie Ihr Passwort ein</li>
+                        <li>Klicken Sie auf "Login"</li>
+                    </ol>
+
+                    <figure class="figure">
+                        <img src="screenshots/intro/SC-018-login-page.png" class="figure-img img-fluid rounded border" alt="Login-Seite mit Anmeldeformular">
+                        <figcaption class="figure-caption">Login-Seite mit Benutzernamen- und Passwortfeldern</figcaption>
+                    </figure>
+
+                    <p>Nach erfolgreicher Anmeldung werden Sie zur Startseite weitergeleitet. In der Navigationsleiste sehen Sie nun zusätzliche Menüoptionen, die Ihren Berechtigungen entsprechen.</p>
+
+                    <figure class="figure">
+                        <img src="screenshots/accounts/SC-025-logged-in-homepage.png" class="figure-img img-fluid rounded border" alt="Startseite nach erfolgreicher Anmeldung">
+                        <figcaption class="figure-caption">Startseite nach erfolgreicher Anmeldung mit erweiterten Menüoptionen</figcaption>
+                    </figure>
+                </section>
+
+                <!-- Admin-Backend -->
+                <section id="admin-backend" class="mb-5">
+                    <h2>Admin-Backend aufrufen</h2>
+                    <p>Das Django-Administrations-Backend ist die zentrale Anlaufstelle für die Verwaltung von Benutzerkonten und anderen Systemeinstellungen.</p>
+
+                    <h3>Zugriff auf das Admin-Backend:</h3>
+                    <ol>
+                        <li>Melden Sie sich mit einem Administrator-Konto an</li>
+                        <li>Klicken Sie in der Navigationsleiste auf "Orga"</li>
+                        <li>Wählen Sie im Dropdown-Menü "Backend" aus</li>
+                    </ol>
+
+                    <p>Sie gelangen zum Admin-Dashboard, das Ihnen einen Überblick über alle verwaltbaren Bereiche des Systems bietet.</p>
+
+                    <figure class="figure">
+                        <img src="screenshots/accounts/SC-026-admin-dashboard.png" class="figure-img img-fluid rounded border" alt="Admin-Dashboard-Übersicht">
+                        <figcaption class="figure-caption">Django-Administrations-Dashboard mit allen verfügbaren Modulen</figcaption>
+                    </figure>
+
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Wichtig:</strong> Im Admin-Backend haben Sie weitreichende Rechte. Seien Sie vorsichtig beim Löschen oder Ändern von Daten, da diese Aktionen nicht rückgängig gemacht werden können.
+                    </div>
+                </section>
+
+                <!-- Benutzerliste -->
+                <section id="benutzerliste" class="mb-5">
+                    <h2>Benutzerliste anzeigen</h2>
+                    <p>Die Benutzerliste zeigt Ihnen alle registrierten Benutzer des Systems mit ihren wichtigsten Eigenschaften.</p>
+
+                    <h3>So öffnen Sie die Benutzerliste:</h3>
+                    <ol>
+                        <li>Öffnen Sie das Admin-Backend (siehe oben)</li>
+                        <li>Suchen Sie den Bereich "Authentifizierung und Autorisierung"</li>
+                        <li>Klicken Sie auf "Ändern" neben "Benutzer"</li>
+                    </ol>
+
+                    <figure class="figure">
+                        <img src="screenshots/accounts/SC-027-user-list.png" class="figure-img img-fluid rounded border" alt="Benutzerliste im Admin-Backend">
+                        <figcaption class="figure-caption">Übersicht aller Benutzerkonten mit Benutzernamen, E-Mail und Status</figcaption>
+                    </figure>
+
+                    <h3>Informationen in der Benutzerliste:</h3>
+                    <ul>
+                        <li><strong>Benutzername:</strong> Eindeutiger Anmeldename des Benutzers</li>
+                        <li><strong>E-Mail-Adresse:</strong> Kontakt-E-Mail des Benutzers</li>
+                        <li><strong>Vorname:</strong> Vorname des Benutzers</li>
+                        <li><strong>Nachname:</strong> Nachname des Benutzers</li>
+                        <li><strong>Mitarbeiter-Status:</strong> Zeigt an, ob der Benutzer auf das Admin-Backend zugreifen darf</li>
+                    </ul>
+
+                    <h3>Benutzerliste filtern:</h3>
+                    <p>Über die Filteroptionen auf der rechten Seite können Sie die Anzeige einschränken:</p>
+                    <ul>
+                        <li><strong>Nach Mitarbeiter-Status:</strong> Nur Mitarbeiter oder Nicht-Mitarbeiter anzeigen</li>
+                        <li><strong>Nach Administrator-Status:</strong> Nur Administratoren oder normale Benutzer anzeigen</li>
+                        <li><strong>Nach Aktiv:</strong> Nur aktive oder deaktivierte Konten anzeigen</li>
+                    </ul>
+
+                    <div class="alert alert-info" role="alert">
+                        <strong>Tipp:</strong> Verwenden Sie die Suchfunktion oben, um schnell nach einem bestimmten Benutzernamen oder einer E-Mail-Adresse zu suchen.
+                    </div>
+                </section>
+
+                <!-- Benutzer bearbeiten -->
+                <section id="benutzer-bearbeiten" class="mb-5">
+                    <h2>Benutzer bearbeiten</h2>
+                    <p>Durch Klicken auf einen Benutzernamen in der Liste gelangen Sie zur Detailansicht, wo Sie alle Eigenschaften des Kontos bearbeiten können.</p>
+
+                    <figure class="figure">
+                        <img src="screenshots/accounts/SC-028-user-edit-form.png" class="figure-img img-fluid rounded border" alt="Benutzer-Bearbeitungsformular">
+                        <figcaption class="figure-caption">Detailansicht eines Benutzerkontos mit allen bearbeitbaren Feldern</figcaption>
+                    </figure>
+
+                    <h3>Persönliche Informationen:</h3>
+                    <ul>
+                        <li><strong>Benutzername:</strong> Eindeutiger Anmeldename (maximal 150 Zeichen, nur Buchstaben, Ziffern und @/./+/-/_)</li>
+                        <li><strong>Vorname:</strong> Vorname des Benutzers</li>
+                        <li><strong>Nachname:</strong> Nachname des Benutzers</li>
+                        <li><strong>E-Mail-Adresse:</strong> Kontakt-E-Mail-Adresse</li>
+                    </ul>
+
+                    <h3>Berechtigungen:</h3>
+                    <ul>
+                        <li><strong>Aktiv:</strong> Legt fest, ob der Benutzer sich anmelden kann. Deaktivieren Sie diese Option anstatt das Konto zu löschen, wenn ein Benutzer vorübergehend keinen Zugriff haben soll</li>
+                        <li><strong>Mitarbeiter-Status:</strong> Erlaubt dem Benutzer den Zugriff auf das Admin-Backend</li>
+                        <li><strong>Administrator-Status:</strong> Gibt dem Benutzer alle Berechtigungen ohne diese einzeln zuweisen zu müssen</li>
+                    </ul>
+
+                    <h3>Gruppen und spezifische Berechtigungen:</h3>
+                    <p>Sie können Benutzer zu Gruppen hinzufügen oder ihnen spezifische Berechtigungen zuweisen:</p>
+                    <ul>
+                        <li><strong>Gruppen:</strong> Weisen Sie den Benutzer zu einer oder mehreren Gruppen zu. Der Benutzer erhält automatisch alle Berechtigungen dieser Gruppen</li>
+                        <li><strong>Berechtigungen:</strong> Weisen Sie spezifische Berechtigungen für einzelne Funktionen zu (z.B. "Can add gameday", "Can change team")</li>
+                    </ul>
+
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Sicherheitshinweis:</strong> Seien Sie vorsichtig beim Vergeben von Administrator-Rechten. Administratoren haben uneingeschränkten Zugriff auf alle Funktionen und Daten des Systems.
+                    </div>
+
+                    <h3>Änderungen speichern:</h3>
+                    <p>Nach der Bearbeitung haben Sie folgende Optionen:</p>
+                    <ul>
+                        <li><strong>Sichern:</strong> Speichert die Änderungen und kehrt zur Benutzerliste zurück</li>
+                        <li><strong>Sichern und neu hinzufügen:</strong> Speichert die Änderungen und öffnet ein leeres Formular für einen neuen Benutzer</li>
+                        <li><strong>Sichern und weiter bearbeiten:</strong> Speichert die Änderungen und bleibt im Bearbeitungsmodus</li>
+                        <li><strong>Löschen:</strong> Löscht das Benutzerkonto unwiderruflich (verwenden Sie stattdessen bevorzugt die "Aktiv"-Option zum Deaktivieren)</li>
+                    </ul>
+                </section>
+
+                <!-- Passwort verwalten -->
+                <section id="passwort-verwalten" class="mb-5">
+                    <h2>Passwort verwalten</h2>
+                    <p>LeagueSphere bietet verschiedene Möglichkeiten zur Passwortverwaltung für Administratoren und Benutzer.</p>
+
+                    <h3>Eigenes Passwort ändern:</h3>
+                    <p>Als angemeldeter Benutzer können Sie Ihr eigenes Passwort jederzeit ändern:</p>
+                    <ol>
+                        <li>Öffnen Sie das Admin-Backend</li>
+                        <li>Klicken Sie in der oberen rechten Ecke auf "Passwort ändern"</li>
+                        <li>Geben Sie Ihr aktuelles Passwort ein</li>
+                        <li>Geben Sie zweimal das neue Passwort ein</li>
+                        <li>Klicken Sie auf "Mein Passwort ändern"</li>
+                    </ol>
+
+                    <figure class="figure">
+                        <img src="screenshots/accounts/SC-029-password-change-form.png" class="figure-img img-fluid rounded border" alt="Passwort-Änderungsformular">
+                        <figcaption class="figure-caption">Formular zum Ändern des eigenen Passworts</figcaption>
+                    </figure>
+
+                    <h3>Passwortanforderungen:</h3>
+                    <p>Aus Sicherheitsgründen müssen Passwörter folgende Anforderungen erfüllen:</p>
+                    <ul>
+                        <li>Mindestens 8 Zeichen lang</li>
+                        <li>Darf nicht zu ähnlich zu anderen persönlichen Informationen sein</li>
+                        <li>Darf nicht allgemein üblich sein (z.B. "password123")</li>
+                        <li>Darf nicht komplett aus Ziffern bestehen</li>
+                    </ul>
+
+                    <h3>Passwort für anderen Benutzer setzen (Administratoren):</h3>
+                    <p>Als Administrator können Sie Passwörter für andere Benutzer zurücksetzen:</p>
+                    <ol>
+                        <li>Öffnen Sie die Benutzerdetails des gewünschten Benutzers</li>
+                        <li>Klicken Sie neben dem Passwortfeld auf "Passwort setzen"</li>
+                        <li>Geben Sie zweimal das neue Passwort ein</li>
+                        <li>Klicken Sie auf "Passwort ändern"</li>
+                    </ol>
+
+                    <div class="alert alert-info" role="alert">
+                        <strong>Hinweis:</strong> Aus Sicherheitsgründen werden Passwörter verschlüsselt gespeichert und können nicht angezeigt werden. Sie können nur neue Passwörter setzen.
+                    </div>
+                </section>
+
+                <!-- Neuen Benutzer anlegen -->
+                <section id="benutzer-anlegen" class="mb-5">
+                    <h2>Neuen Benutzer anlegen</h2>
+                    <p>Als Administrator können Sie neue Benutzerkonten für Ihr Team erstellen.</p>
+
+                    <h3>So legen Sie einen neuen Benutzer an:</h3>
+                    <ol>
+                        <li>Öffnen Sie die Benutzerliste im Admin-Backend</li>
+                        <li>Klicken Sie rechts oben auf "Benutzer hinzufügen"</li>
+                        <li>Geben Sie einen eindeutigen Benutzernamen ein</li>
+                        <li>Legen Sie ein Passwort fest (zweimal zur Bestätigung)</li>
+                        <li>Klicken Sie auf "Sichern und weiter bearbeiten"</li>
+                        <li>Füllen Sie die persönlichen Informationen aus (Vorname, Nachname, E-Mail)</li>
+                        <li>Legen Sie die Berechtigungen fest (Aktiv, Mitarbeiter-Status, etc.)</li>
+                        <li>Weisen Sie bei Bedarf Gruppen oder spezifische Berechtigungen zu</li>
+                        <li>Klicken Sie auf "Sichern"</li>
+                    </ol>
+
+                    <div class="alert alert-success" role="alert">
+                        <strong>Best Practice:</strong> Erstellen Sie Benutzerkonten mit minimalen Berechtigungen und erweitern Sie diese bei Bedarf. Dies folgt dem Prinzip der geringsten Privilegien und erhöht die Sicherheit.
+                    </div>
+                </section>
+
+                <!-- Tipps und Best Practices -->
+                <section id="tipps" class="mb-5">
+                    <h2>Tipps und Best Practices</h2>
+
+                    <h3>Sicherheit:</h3>
+                    <ul>
+                        <li>Vergeben Sie Administrator-Rechte nur an vertrauenswürdige Personen</li>
+                        <li>Verwenden Sie starke Passwörter mit einer Kombination aus Buchstaben, Zahlen und Sonderzeichen</li>
+                        <li>Deaktivieren Sie Konten, die nicht mehr benötigt werden, anstatt sie zu löschen</li>
+                        <li>Überprüfen Sie regelmäßig die Liste der aktiven Benutzer und deren Berechtigungen</li>
+                        <li>Verwenden Sie Gruppen für die Rechtevergabe, um die Verwaltung zu vereinfachen</li>
+                    </ul>
+
+                    <h3>Verwaltung:</h3>
+                    <ul>
+                        <li>Nutzen Sie aussagekräftige Benutzernamen (z.B. vorname.nachname)</li>
+                        <li>Pflegen Sie die E-Mail-Adressen, um Benutzer bei Bedarf kontaktieren zu können</li>
+                        <li>Dokumentieren Sie, welche Berechtigungen für welche Rollen benötigt werden</li>
+                        <li>Erstellen Sie Benutzergruppen für häufig verwendete Berechtigungssätze (z.B. "Spieltagsverwalter", "Schiedsrichter")</li>
+                    </ul>
+
+                    <h3>Fehlerbehebung:</h3>
+                    <ul>
+                        <li><strong>Benutzer kann sich nicht anmelden:</strong> Prüfen Sie, ob das Konto aktiv ist</li>
+                        <li><strong>Benutzer sieht keine Menüoptionen:</strong> Überprüfen Sie die Berechtigungen und den Mitarbeiter-Status</li>
+                        <li><strong>Passwort wird nicht akzeptiert:</strong> Stellen Sie sicher, dass alle Passwortanforderungen erfüllt sind</li>
+                        <li><strong>Benutzer kann Backend nicht öffnen:</strong> Aktivieren Sie den Mitarbeiter-Status für diesen Benutzer</li>
+                    </ul>
+                </section>
+                <nav class="mt-5 pt-3 border-top" aria-label="Seitennavigation">
+                    <ul class="pagination justify-content-between">
+                        <li class="page-item"><a class="page-link" href="teammanager.html">&larr; Zurück</a></li>
+                        <li class="page-item"><a class="page-link" href="index.html">Zur Startseite &rarr;</a></li>
+                    </ul>
+                </nav>
+            </main>
+        </div>
+    </div>
+    <footer class="footer mt-auto py-3 bg-light border-top">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-6"><span class="text-muted">LeagueSphere Benutzerhandbuch &copy; 2025</span></div>
+                <div class="col-md-6 text-end"><span class="text-muted">Version: <span id="version">1.0.0</span></span></div>
+            </div>
+        </div>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script src="assets/js/manual.js"></script>
+</body>
+</html>

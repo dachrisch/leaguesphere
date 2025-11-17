@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="LeagueSphere Benutzerhandbuch - Vollständige Anleitung zur Verwaltung von Flag-Football-Ligen">
+    <title>LeagueSphere Benutzerhandbuch</title>
+
+    <!-- Bootstrap 5 CSS via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+          crossorigin="anonymous">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="assets/css/manual.css">
+</head>
+<body>
+    <!-- Skip to content link for accessibility -->
+    <a href="#main-content" class="skip-to-content visually-hidden-focusable">
+        Zum Hauptinhalt springen
+    </a>
+
+    <!-- Navigation Header -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top" role="navigation" aria-label="Hauptnavigation">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">
+                <span style="font-size: 1.5rem;">&#127944;</span>
+                LeagueSphere Handbuch
+            </a>
+            <button class="navbar-toggler" type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#navbarNav"
+                    aria-controls="navbarNav"
+                    aria-expanded="false"
+                    aria-label="Navigation umschalten">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="index.html">Startseite</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="intro.html">Erste Schritte</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://leaguesphere.app" target="_blank" rel="noopener noreferrer">
+                            Zur Anwendung
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar Navigation -->
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse" role="navigation" aria-label="Seitennavigation">
+                <div class="position-sticky pt-3">
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                        <span>Funktionen</span>
+                    </h6>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="intro.html">
+                                Navigation &amp; Erste Schritte
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="gamedays.html">
+                                Spieltage verwalten
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="passcheck.html">
+                                Spielberechtigung prüfen
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="scorecard.html">
+                                Live-Scoring
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="officials.html">
+                                Schiedsrichter verwalten
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="liveticker.html">
+                                Liveticker
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="league-table.html">
+                                Tabellen &amp; Spielpläne
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="teammanager.html">
+                                Teams verwalten
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="accounts.html">
+                                Benutzerkonten
+                            </a>
+                        </li>
+                    </ul>
+
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                        <span>Weitere Ressourcen</span>
+                    </h6>
+                    <ul class="nav flex-column mb-2">
+                        <li class="nav-item">
+                            <a class="nav-link" href="https://github.com/dachrisch/leaguesphere" target="_blank" rel="noopener noreferrer">
+                                GitHub Repository
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="https://leaguesphere.app" target="_blank" rel="noopener noreferrer">
+                                LeagueSphere Anwendung
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content Area -->
+            <main id="main-content" class="col-md-9 ms-sm-auto col-lg-10 px-md-4" role="main">
+                <!-- Hero Section -->
+                <div class="bg-light p-5 rounded mt-3 mb-4">
+                    <h1 class="display-4">LeagueSphere Benutzerhandbuch</h1>
+                    <p class="lead">
+                        Willkommen zum Benutzerhandbuch von LeagueSphere, Ihrer Plattform
+                        für Flag-Football-Ligaverwaltung.
+                    </p>
+                    <hr class="my-4">
+                    <p>
+                        Dieses Handbuch führt Sie durch alle Funktionen der Anwendung.
+                        Von der Spieltagsverwaltung über Live-Scoring bis zur Spielberechtigungsprüfung
+                        finden Sie hier alle Informationen, die Sie benötigen.
+                    </p>
+                    <a class="btn btn-primary btn-lg" href="intro.html" role="button">
+                        Erste Schritte
+                    </a>
+                </div>
+
+                <!-- Feature Cards Grid -->
+                <h2 class="mb-4">Funktionen im Überblick</h2>
+                <div class="row g-4 mb-5">
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 feature-card">
+                            <div class="card-body">
+                                <h3 class="card-title h5">Navigation &amp; Erste Schritte</h3>
+                                <p class="card-text">
+                                    Lernen Sie die Benutzeroberfläche kennen und machen Sie Ihre ersten Schritte
+                                    in LeagueSphere.
+                                </p>
+                                <a href="intro.html" class="btn btn-outline-primary">
+                                    Mehr erfahren
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 feature-card">
+                            <div class="card-body">
+                                <h3 class="card-title h5">Spieltage verwalten</h3>
+                                <p class="card-text">
+                                    Erstellen und verwalten Sie Spieltage, planen Sie Spiele
+                                    und verwalten Sie den Spielbetrieb.
+                                </p>
+                                <a href="gamedays.html" class="btn btn-outline-primary">
+                                    Mehr erfahren
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 feature-card">
+                            <div class="card-body">
+                                <h3 class="card-title h5">Spielberechtigung prüfen</h3>
+                                <p class="card-text">
+                                    Überprüfen Sie schnell und einfach die Spielberechtigung von Spielern
+                                    vor dem Spiel.
+                                </p>
+                                <a href="passcheck.html" class="btn btn-outline-primary">
+                                    Mehr erfahren
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 feature-card">
+                            <div class="card-body">
+                                <h3 class="card-title h5">Live-Scoring</h3>
+                                <p class="card-text">
+                                    Erfassen Sie Spielstände live während des Spiels und verfolgen Sie
+                                    Touchdowns, Extra Points und mehr.
+                                </p>
+                                <a href="scorecard.html" class="btn btn-outline-primary">
+                                    Mehr erfahren
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 feature-card">
+                            <div class="card-body">
+                                <h3 class="card-title h5">Schiedsrichter verwalten</h3>
+                                <p class="card-text">
+                                    Verwalten Sie Schiedsrichter und weisen Sie diese den Spielen zu.
+                                </p>
+                                <a href="officials.html" class="btn btn-outline-primary">
+                                    Mehr erfahren
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 feature-card">
+                            <div class="card-body">
+                                <h3 class="card-title h5">Liveticker</h3>
+                                <p class="card-text">
+                                    Verfolgen Sie alle Spiele in Echtzeit mit dem integrierten Liveticker.
+                                </p>
+                                <a href="liveticker.html" class="btn btn-outline-primary">
+                                    Mehr erfahren
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 feature-card">
+                            <div class="card-body">
+                                <h3 class="card-title h5">Tabellen &amp; Spielpläne</h3>
+                                <p class="card-text">
+                                    Sehen Sie Ligatabellen, Spielpläne und Statistiken auf einen Blick.
+                                </p>
+                                <a href="league-table.html" class="btn btn-outline-primary">
+                                    Mehr erfahren
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 feature-card">
+                            <div class="card-body">
+                                <h3 class="card-title h5">Teams verwalten</h3>
+                                <p class="card-text">
+                                    Verwalten Sie Teams, Kader und Spielerinformationen zentral.
+                                </p>
+                                <a href="teammanager.html" class="btn btn-outline-primary">
+                                    Mehr erfahren
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 feature-card">
+                            <div class="card-body">
+                                <h3 class="card-title h5">Benutzerkonten</h3>
+                                <p class="card-text">
+                                    Verwalten Sie Ihr Benutzerkonto, Ihr Profil und Ihre Zugangsdaten.
+                                </p>
+                                <a href="accounts.html" class="btn btn-outline-primary">
+                                    Mehr erfahren
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Links Section -->
+                <div class="row mt-5">
+                    <div class="col-md-6 mb-4">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h2 class="h5 mb-0">Schnellstart</h2>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">
+                                        <a href="intro.html#anmelden">Anmelden</a>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <a href="intro.html#navigation">Navigation</a>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <a href="intro.html#dashboard">Dashboard-Übersicht</a>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <a href="intro.html#benutzerrollen">Benutzerrollen</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-4">
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                <h2 class="h5 mb-0">Häufige Aufgaben</h2>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">
+                                        <a href="gamedays.html#erstellen">Spieltag erstellen</a>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <a href="scorecard.html#scoring">Spiel bewerten</a>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <a href="passcheck.html#pruefen">Spielberechtigung prüfen</a>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <a href="officials.html#zuweisen">Schiedsrichter zuweisen</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Getting Help Section -->
+                <div class="alert alert-info mt-5" role="alert">
+                    <h4 class="alert-heading">Benötigen Sie Hilfe?</h4>
+                    <p>
+                        Falls Sie Fragen haben oder Unterstützung benötigen, können Sie:
+                    </p>
+                    <ul class="mb-0">
+                        <li>Das <a href="https://github.com/dachrisch/leaguesphere" target="_blank" rel="noopener noreferrer" class="alert-link">GitHub Repository</a> besuchen</li>
+                        <li>Die <a href="intro.html" class="alert-link">Erste Schritte Anleitung</a> durchlesen</li>
+                        <li>Die einzelnen Funktionsseiten für detaillierte Anleitungen nutzen</li>
+                    </ul>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer mt-auto py-3 bg-light border-top">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-6">
+                    <span class="text-muted">
+                        LeagueSphere Benutzerhandbuch &copy; 2025
+                    </span>
+                </div>
+                <div class="col-md-6 text-end">
+                    <span class="text-muted">
+                        Version: <span id="version">1.0.0</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+            crossorigin="anonymous"></script>
+
+    <!-- Custom JS -->
+    <script src="assets/js/manual.js"></script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+/* ========================================
+   LeagueSphere User Manual Styles
+   ======================================== */
+
+/* --- Global Styles --- */
+:root {
+    --ls-primary: #0d6efd;
+    --ls-dark: #212529;
+    --ls-light: #f8f9fa;
+    --ls-border: #dee2e6;
+    --sidebar-width: 260px;
+}
+
+body {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #333;
+    padding-bottom: 60px; /* Space for footer */
+}
+
+/* --- Navigation --- */
+.navbar-brand img {
+    margin-right: 0.5rem;
+}
+
+/* --- Sidebar --- */
+.sidebar {
+    position: fixed;
+    top: 56px; /* Height of navbar */
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    padding: 0;
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.sidebar .nav-link {
+    font-weight: 500;
+    color: #333;
+    padding: 0.5rem 1rem;
+}
+
+.sidebar .nav-link:hover {
+    color: var(--ls-primary);
+    background-color: rgba(0, 0, 0, .05);
+}
+
+.sidebar .nav-link.active {
+    color: var(--ls-primary);
+    border-left: 3px solid var(--ls-primary);
+    background-color: rgba(13, 110, 253, .1);
+}
+
+.sidebar-heading {
+    font-size: .75rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+/* --- Main Content --- */
+main {
+    padding-top: 1rem;
+    min-height: calc(100vh - 120px);
+}
+
+@media (min-width: 768px) {
+    main {
+        margin-left: var(--sidebar-width);
+    }
+}
+
+/* --- Typography --- */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+h1 {
+    font-size: 2rem;
+}
+
+h2 {
+    font-size: 1.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--ls-border);
+}
+
+h3 {
+    font-size: 1.5rem;
+}
+
+.lead {
+    font-size: 1.15rem;
+    color: #6c757d;
+}
+
+/* --- Screenshots & Images --- */
+.figure {
+    margin: 1.5rem 0;
+}
+
+.figure-img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--ls-border);
+}
+
+.figure-caption {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-style: italic;
+    margin-top: 0.5rem;
+}
+
+/* --- Cards --- */
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+/* --- Alerts --- */
+.alert {
+    border-left: 4px solid;
+}
+
+.alert-info {
+    border-left-color: #0dcaf0;
+}
+
+.alert-warning {
+    border-left-color: #ffc107;
+}
+
+.alert-danger {
+    border-left-color: #dc3545;
+}
+
+.alert-success {
+    border-left-color: #198754;
+}
+
+/* --- Code & Keyboard Shortcuts --- */
+kbd {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.875rem;
+    color: #212529;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.1);
+}
+
+code {
+    color: #d63384;
+    background-color: #f8f9fa;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+}
+
+/* --- Tables --- */
+.table {
+    margin-bottom: 1rem;
+}
+
+.table thead th {
+    border-bottom: 2px solid var(--ls-border);
+    font-weight: 600;
+}
+
+/* --- Footer --- */
+.footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background-color: var(--ls-light);
+    border-top: 1px solid var(--ls-border);
+    z-index: 1000;
+}
+
+/* --- Print Styles --- */
+@media print {
+    .navbar,
+    .sidebar,
+    .footer,
+    .btn-toolbar {
+        display: none !important;
+    }
+
+    main {
+        margin-left: 0 !important;
+        padding: 0 !important;
+    }
+
+    .figure-img {
+        max-width: 100%;
+        page-break-inside: avoid;
+    }
+
+    h2, h3 {
+        page-break-after: avoid;
+    }
+}
+
+/* --- Responsive Design --- */
+@media (max-width: 767.98px) {
+    .sidebar {
+        position: static;
+        height: auto;
+        box-shadow: none;
+    }
+
+    main {
+        margin-left: 0;
+    }
+
+    .footer {
+        position: static;
+    }
+
+    body {
+        padding-bottom: 0;
+    }
+}
+
+/* --- Smooth Scrolling --- */
+html {
+    scroll-behavior: smooth;
+}
+
+/* --- Active Navigation Highlighting --- */
+.nav-link:focus,
+.nav-link:hover {
+    outline: none;
+}
+
+/* --- Back to Top Button --- */
+.back-to-top {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    z-index: 999;
+    display: none;
+}
+
+.back-to-top.show {
+    display: block;
+}
+
+/* --- Skip to Content Link --- */
+.skip-to-content {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--ls-primary);
+    color: white;
+    padding: 8px;
+    text-decoration: none;
+    z-index: 10000;
+}
+
+.skip-to-content:focus {
+    top: 0;
+}
+
+/* --- Feature Card Hover Effects --- */
+.feature-card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}

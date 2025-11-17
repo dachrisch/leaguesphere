@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Spielberechtigung prüfen in LeagueSphere">
+    <title>Spielberechtigung prüfen - LeagueSphere Benutzerhandbuch</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="assets/css/manual.css">
+</head>
+<body>
+    <a href="#main-content" class="skip-to-content visually-hidden-focusable">Zum Hauptinhalt springen</a>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top" role="navigation" aria-label="Hauptnavigation">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html"><span style="font-size: 1.5rem;">&#127944;</span> LeagueSphere Handbuch</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Navigation umschalten">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="index.html">Startseite</a></li>
+                    <li class="nav-item"><a class="nav-link" href="intro.html">Erste Schritte</a></li>
+                    <li class="nav-item"><a class="nav-link" href="https://leaguesphere.app" target="_blank" rel="noopener noreferrer">Zur Anwendung</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse" role="navigation" aria-label="Seitennavigation">
+                <div class="position-sticky pt-3">
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted"><span>Funktionen</span></h6>
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link" href="intro.html">Navigation &amp; Erste Schritte</a></li>
+                        <li class="nav-item"><a class="nav-link" href="gamedays.html">Spieltage verwalten</a></li>
+                        <li class="nav-item"><a class="nav-link" href="passcheck.html">Spielberechtigung prüfen</a></li>
+                        <li class="nav-item"><a class="nav-link" href="scorecard.html">Live-Scoring</a></li>
+                        <li class="nav-item"><a class="nav-link" href="officials.html">Schiedsrichter verwalten</a></li>
+                        <li class="nav-item"><a class="nav-link" href="liveticker.html">Liveticker</a></li>
+                        <li class="nav-item"><a class="nav-link" href="league-table.html">Tabellen &amp; Spielpläne</a></li>
+                        <li class="nav-item"><a class="nav-link" href="teammanager.html">Teams verwalten</a></li>
+                        <li class="nav-item"><a class="nav-link" href="accounts.html">Benutzerkonten</a></li>
+                    </ul>
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted"><span>Weitere Ressourcen</span></h6>
+                    <ul class="nav flex-column mb-2">
+                        <li class="nav-item"><a class="nav-link" href="https://github.com/dachrisch/leaguesphere" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
+                        <li class="nav-item"><a class="nav-link" href="https://leaguesphere.app" target="_blank" rel="noopener noreferrer">LeagueSphere Anwendung</a></li>
+                    </ul>
+                </div>
+            </nav>
+            <main id="main-content" class="col-md-9 ms-sm-auto col-lg-10 px-md-4" role="main">
+                <nav aria-label="breadcrumb" class="mt-3">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="index.html">Startseite</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Spielberechtigung prüfen</li>
+                    </ol>
+                </nav>
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Spielberechtigung prüfen</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2"><button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">Drucken</button></div>
+                    </div>
+                </div>
+                <!-- Übersicht -->
+                <section id="ueberblick" class="mb-5">
+                    <h2>Übersicht</h2>
+                    <p class="lead">Der Passcheck ermöglicht es, vor Spielbeginn die Spielberechtigung einzelner Spieler zu überprüfen. Dies stellt sicher, dass nur berechtigte Spieler am Spiel teilnehmen und alle Regelungen eingehalten werden.</p>
+
+                    <p>Mit dem Passcheck können Sie:</p>
+                    <ul>
+                        <li>Spielberechtigung einzelner Spieler für ein spezifisches Spiel prüfen</li>
+                        <li>Spielerpässe verifizieren und dokumentieren</li>
+                        <li>Transferstatus und Teamzugehörigkeit überprüfen</li>
+                        <li>Verstöße gegen Berechtigungsregeln erkennen</li>
+                        <li>Moodle-Integration für erweiterte Spielerinformationen nutzen</li>
+                    </ul>
+
+                    <div class="alert alert-info" role="alert">
+                        <strong>Hinweis:</strong> Der Passcheck ist eine TypeScript/React-Anwendung, die im Browser läuft und mit dem LeagueSphere-Backend kommuniziert.
+                    </div>
+                </section>
+
+                <!-- Passcheck aufrufen -->
+                <section id="aufrufen" class="mb-5">
+                    <h2>Passcheck aufrufen</h2>
+                    <p>Um den Passcheck zu verwenden, navigieren Sie zur Passcheck-Funktion in LeagueSphere.</p>
+
+                    <h3>So öffnen Sie den Passcheck:</h3>
+                    <ol>
+                        <li>Melden Sie sich bei LeagueSphere an</li>
+                        <li>Navigieren Sie zu einem Spieltag</li>
+                        <li>Wählen Sie das Spiel aus, für das Sie Spieler prüfen möchten</li>
+                        <li>Klicken Sie auf "Passcheck" oder rufen Sie die Passcheck-URL direkt auf</li>
+                    </ol>
+
+                    <figure class="figure">
+                        <img src="screenshots/passcheck/SC-010-game-selection.png" class="figure-img img-fluid rounded border" alt="Passcheck-Spielauswahl">
+                        <figcaption class="figure-caption">Passcheck-Oberfläche ohne verfügbare Spiele (Leer-Zustand)</figcaption>
+                    </figure>
+
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Wichtig:</strong> Für den Passcheck müssen Spieltage mit Spielen und Teams mit Spielerkadern angelegt sein. Wenn keine Spiele verfügbar sind, wird eine entsprechende Meldung angezeigt.
+                    </div>
+                </section>
+
+                <!-- Spiel auswählen -->
+                <section id="spiel-auswaehlen" class="mb-5">
+                    <h2>Spiel auswählen</h2>
+                    <p>Bevor Sie die Spielberechtigung prüfen können, müssen Sie das entsprechende Spiel auswählen.</p>
+
+                    <h3>Spielauswahl:</h3>
+                    <ul>
+                        <li><strong>Spieltagsauswahl:</strong> Wählen Sie zunächst den Spieltag aus, an dem das Spiel stattfindet</li>
+                        <li><strong>Spielauswahl:</strong> Wählen Sie das spezifische Spiel zwischen zwei Teams aus</li>
+                        <li><strong>Teamauswahl:</strong> Der Passcheck zeigt die beiden beteiligten Teams an</li>
+                    </ul>
+
+                    <p>Nach der Spielauswahl öffnet sich die Passcheck-Oberfläche für dieses spezifische Spiel.</p>
+                </section>
+
+                <!-- Spieler prüfen -->
+                <section id="spieler-pruefen" class="mb-5">
+                    <h2>Spielberechtigung prüfen</h2>
+                    <p>Im Passcheck-Interface können Sie die Spielberechtigung einzelner Spieler überprüfen.</p>
+
+                    <h3>Prüfprozess:</h3>
+                    <ol>
+                        <li><strong>Spieler identifizieren:</strong> Suchen Sie den Spieler anhand des Namens oder der Passnummer</li>
+                        <li><strong>Pass scannen/eingeben:</strong> Geben Sie die Passnummer ein oder scannen Sie den Spielerpass</li>
+                        <li><strong>Berechtigung prüfen:</strong> Das System prüft automatisch:
+                            <ul>
+                                <li>Ist der Spieler im Kader des richtigen Teams?</li>
+                                <li>Liegt ein gültiger Spielerpass vor?</li>
+                                <li>Gibt es Transferrestriktionen?</li>
+                                <li>Sind Berechtigungsregeln für diese Liga erfüllt?</li>
+                            </ul>
+                        </li>
+                        <li><strong>Ergebnis dokumentieren:</strong> Das System speichert die Prüfung automatisch</li>
+                    </ol>
+
+                    <h3>Berechtigungsstatus:</h3>
+                    <p>Nach der Prüfung zeigt das System einen der folgenden Status an:</p>
+                    <ul>
+                        <li><strong class="text-success">Berechtigt:</strong> Spieler darf am Spiel teilnehmen</li>
+                        <li><strong class="text-danger">Nicht berechtigt:</strong> Spieler darf nicht spielen (Grund wird angezeigt)</li>
+                        <li><strong class="text-warning">Warnung:</strong> Spieler kann spielen, es gibt aber Hinweise (z.B. fehlende Daten)</li>
+                    </ul>
+                </section>
+
+                <!-- Statusanzeige -->
+                <section id="status" class="mb-5">
+                    <h2>Statusanzeige und Informationen</h2>
+                    <p>Der Passcheck zeigt verschiedene Informationen zur Spielberechtigung an.</p>
+
+                    <h3>Angezeigte Informationen:</h3>
+                    <ul>
+                        <li><strong>Spielerdaten:</strong> Name, Passnummer, Team</li>
+                        <li><strong>Teamzugehörigkeit:</strong> Aktuelles Team und Historie</li>
+                        <li><strong>Transferstatus:</strong> Aktive Transfers oder Wechsel</li>
+                        <li><strong>Berechtigungsregeln:</strong> Welche Regeln gelten für dieses Spiel</li>
+                        <li><strong>Prüfhistorie:</strong> Frühere Prüfungen für diesen Spieler</li>
+                    </ul>
+
+                    <h3>Gründe für Nicht-Berechtigung:</h3>
+                    <p>Mögliche Gründe, warum ein Spieler nicht spielberechtigt sein könnte:</p>
+                    <ul>
+                        <li>Spieler ist nicht im Kader des Teams registriert</li>
+                        <li>Kein gültiger Spielerpass vorhanden</li>
+                        <li>Spieler hat die Maximale Anzahl an Spielen erreicht (je nach Liga-Regeln)</li>
+                        <li>Aktiver Transfer zu einem anderen Team</li>
+                        <li>Spieler ist gesperrt oder nicht aktiv</li>
+                        <li>Mindest- oder Höchstalter nicht erfüllt (falls Altersklassenbeschränkungen gelten)</li>
+                    </ul>
+
+                    <div class="alert alert-info" role="alert">
+                        <strong>Tipp:</strong> Bei unklaren Fällen können Sie im Admin-Backend die detaillier​ten Spielerinformationen und Berechtigungsregeln einsehen.
+                    </div>
+                </section>
+
+                <!-- Spielerliste verwalten -->
+                <section id="spielerliste" class="mb-5">
+                    <h2>Spielerliste und Roster</h2>
+                    <p>Die Grundlage für den Passcheck ist die Spielerliste (Roster) jedes Teams.</p>
+
+                    <h3>Spielerliste im Admin-Backend verwalten:</h3>
+                    <ol>
+                        <li>Öffnen Sie das Admin-Backend</li>
+                        <li>Navigieren Sie zu "Passcheck" → "Playerlists"</li>
+                        <li>Fügen Sie Spieler zu den Teams hinzu</li>
+                        <li>Pflegen Sie Passnummern und persönliche Daten</li>
+                        <li>Verwalten Sie Transfers zwischen Teams</li>
+                    </ol>
+
+                    <h3>Wichtige Felder:</h3>
+                    <ul>
+                        <li><strong>Pass-Nummer:</strong> Eindeutige Identifikation des Spielers</li>
+                        <li><strong>Team:</strong> Aktuelle Teamzugehörigkeit</li>
+                        <li><strong>Trikot-Nummer:</strong> Rückennummer des Spielers</li>
+                        <li><strong>Joined On / Left On:</strong> Zeitraum der Teamzugehörigkeit</li>
+                        <li><strong>Person:</strong> Verknüpfung zu Personenstammdaten</li>
+                    </ul>
+                </section>
+
+                <!-- Moodle-Integration -->
+                <section id="moodle" class="mb-5">
+                    <h2>Integration mit Moodle</h2>
+                    <p>LeagueSphere kann optional mit Moodle integriert werden, um zusätzliche Spielerinformationen abzurufen.</p>
+
+                    <h3>Funktionen der Moodle-Integration:</h3>
+                    <ul>
+                        <li>Automatischer Abruf von Spielerprofilen aus Moodle</li>
+                        <li>Synchronisation von Spielerdaten</li>
+                        <li>Zusätzliche Verifizierung über Moodle-Accounts</li>
+                        <li>Erweiterte Spielerinformationen (z.B. Lizenzen, Zertifikate)</li>
+                    </ul>
+
+                    <h3>Konfiguration:</h3>
+                    <p>Die Moodle-Integration wird über Umgebungsvariablen konfiguriert:</p>
+                    <ul>
+                        <li><code>MOODLE_URL</code>: URL der Moodle-Instanz</li>
+                        <li><code>MOODLE_WSTOKEN</code>: Web-Service-Token für die API-Authentifizierung</li>
+                    </ul>
+
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Hinweis:</strong> Die Moodle-Integration ist optional. LeagueSphere funktioniert auch ohne Moodle-Anbindung. Ohne Konfiguration werden entsprechende API-Aufrufe fehlschlagen, was aber die Grundfunktionalität nicht beeinträchtigt.
+                    </div>
+                </section>
+
+                <!-- Berechtigungsregeln -->
+                <section id="regeln" class="mb-5">
+                    <h2>Berechtigungsregeln konfigurieren</h2>
+                    <p>Im Admin-Backend können Administratoren Berechtigungsregeln für verschiedene Ligen und Wettbewerbe definieren.</p>
+
+                    <h3>Regeltypen:</h3>
+                    <ul>
+                        <li><strong>Mindest-/Maximalanzahl Spieler:</strong> Wie viele Spieler dürfen/müssen spielen</li>
+                        <li><strong>Altersbeschränkungen:</strong> Altersklassen-spezifische Regeln</li>
+                        <li><strong>Spielstärke-Regeln:</strong> Begrenzungen basierend auf Spielererfahrung</li>
+                        <li><strong>Transfer-Regeln:</strong> Wann dürfen Spieler nach einem Wechsel spielen</li>
+                        <li><strong>Ligaspezifische Regeln:</strong> Sonderregeln für bestimmte Wettbewerbe</li>
+                    </ul>
+
+                    <h3>Regeln verwalten:</h3>
+                    <ol>
+                        <li>Öffnen Sie das Admin-Backend</li>
+                        <li>Navigieren Sie zu "Passcheck" → "Eligibility rules"</li>
+                        <li>Erstellen oder bearbeiten Sie Berechtigungsregeln</li>
+                        <li>Weisen Sie Regeln den entsprechenden Ligen/Wettbewerben zu</li>
+                    </ol>
+                </section>
+
+                <!-- Tipps und Best Practices -->
+                <section id="tipps" class="mb-5">
+                    <h2>Tipps und Best Practices</h2>
+
+                    <h3>Vor dem Spieltag:</h3>
+                    <ul>
+                        <li>Stellen Sie sicher, dass alle Spielerlisten aktuell sind</li>
+                        <li>Überprüfen Sie, ob alle Passnummern korrekt hinterlegt sind</li>
+                        <li>Testen Sie den Passcheck mit einigen Beispielspielern</li>
+                        <li>Klären Sie offene Transfers und Teamwechsel</li>
+                    </ul>
+
+                    <h3>Am Spieltag:</h3>
+                    <ul>
+                        <li>Prüfen Sie Spieler vor Spielbeginn, nicht während des Spiels</li>
+                        <li>Dokumentieren Sie alle Prüfungen im System</li>
+                        <li>Bei Unklarheiten: Lieber doppelt prüfen als einen Fehler riskieren</li>
+                        <li>Kommunizieren Sie Nicht-Berechtigungen klar an die Teams</li>
+                    </ul>
+
+                    <h3>Fehlerbehebung:</h3>
+                    <ul>
+                        <li><strong>Kein Spiel verfügbar:</strong> Prüfen Sie, ob der Spieltag und die Spiele angelegt sind</li>
+                        <li><strong>Spieler nicht gefunden:</strong> Überprüfen Sie, ob der Spieler im Team-Roster eingetragen ist</li>
+                        <li><strong>Falsche Berechtigung:</strong> Prüfen Sie die Berechtigungsregeln im Admin-Backend</li>
+                        <li><strong>Moodle-Fehler:</strong> Kontrollieren Sie die Moodle-Konfiguration oder deaktivieren Sie die Integration temporär</li>
+                    </ul>
+
+                    <div class="alert alert-success" role="alert">
+                        <strong>Best Practice:</strong> Führen Sie regelmäßige Schulungen für Personen durch, die den Passcheck bedienen. Eine korrekte Handhabung verhindert Spielunterbrechungen und Regelkonflikte.
+                    </div>
+                </section>
+                <nav class="mt-5 pt-3 border-top" aria-label="Seitennavigation">
+                    <ul class="pagination justify-content-between">
+                        <li class="page-item"><a class="page-link" href="gamedays.html">&larr; Zurück: Spieltage verwalten</a></li>
+                        <li class="page-item"><a class="page-link" href="scorecard.html">Weiter: Live-Scoring &rarr;</a></li>
+                    </ul>
+                </nav>
+            </main>
+        </div>
+    </div>
+    <footer class="footer mt-auto py-3 bg-light border-top">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-6"><span class="text-muted">LeagueSphere Benutzerhandbuch &copy; 2025</span></div>
+                <div class="col-md-6 text-end"><span class="text-muted">Version: <span id="version">1.0.0</span></span></div>
+            </div>
+        </div>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script src="assets/js/manual.js"></script>
+</body>
+</html>

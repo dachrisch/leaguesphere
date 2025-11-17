@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Liveticker in LeagueSphere">
+    <title>Liveticker - LeagueSphere Benutzerhandbuch</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="assets/css/manual.css">
+</head>
+<body>
+    <a href="#main-content" class="skip-to-content visually-hidden-focusable">Zum Hauptinhalt springen</a>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top" role="navigation" aria-label="Hauptnavigation">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html"><span style="font-size: 1.5rem;">&#127944;</span> LeagueSphere Handbuch</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Navigation umschalten">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="index.html">Startseite</a></li>
+                    <li class="nav-item"><a class="nav-link" href="intro.html">Erste Schritte</a></li>
+                    <li class="nav-item"><a class="nav-link" href="https://leaguesphere.app" target="_blank" rel="noopener noreferrer">Zur Anwendung</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse" role="navigation" aria-label="Seitennavigation">
+                <div class="position-sticky pt-3">
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted"><span>Funktionen</span></h6>
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link" href="intro.html">Navigation &amp; Erste Schritte</a></li>
+                        <li class="nav-item"><a class="nav-link" href="gamedays.html">Spieltage verwalten</a></li>
+                        <li class="nav-item"><a class="nav-link" href="passcheck.html">Spielberechtigung prüfen</a></li>
+                        <li class="nav-item"><a class="nav-link" href="scorecard.html">Live-Scoring</a></li>
+                        <li class="nav-item"><a class="nav-link" href="officials.html">Schiedsrichter verwalten</a></li>
+                        <li class="nav-item"><a class="nav-link" href="liveticker.html">Liveticker</a></li>
+                        <li class="nav-item"><a class="nav-link" href="league-table.html">Tabellen &amp; Spielpläne</a></li>
+                        <li class="nav-item"><a class="nav-link" href="teammanager.html">Teams verwalten</a></li>
+                        <li class="nav-item"><a class="nav-link" href="accounts.html">Benutzerkonten</a></li>
+                    </ul>
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted"><span>Weitere Ressourcen</span></h6>
+                    <ul class="nav flex-column mb-2">
+                        <li class="nav-item"><a class="nav-link" href="https://github.com/dachrisch/leaguesphere" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
+                        <li class="nav-item"><a class="nav-link" href="https://leaguesphere.app" target="_blank" rel="noopener noreferrer">LeagueSphere Anwendung</a></li>
+                    </ul>
+                </div>
+            </nav>
+            <main id="main-content" class="col-md-9 ms-sm-auto col-lg-10 px-md-4" role="main">
+                <nav aria-label="breadcrumb" class="mt-3">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="index.html">Startseite</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Liveticker</li>
+                    </ol>
+                </nav>
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Liveticker</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2"><button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">Drucken</button></div>
+                    </div>
+                </div>
+                <section id="overview" class="mb-5">
+                    <h2>Überblick</h2>
+                    <p>Der <strong>Liveticker</strong> ist eine Echtzeit-Anzeige für aktuelle Spielereignisse an einem Spieltag. Er ermöglicht es Zuschauern, Trainern und Organisatoren, den Verlauf mehrerer Spiele gleichzeitig zu verfolgen, ohne physisch vor Ort sein zu müssen.</p>
+                    <p>Der Liveticker ist als React-Anwendung mit Redux State Management implementiert und aktualisiert sich automatisch, sobald neue Ereignisse aus der Scorecard eingetragen werden. Er bietet eine übersichtliche Chronologie aller Spielaktionen in Echtzeit.</p>
+
+                    <div class="alert alert-info" role="alert">
+                        <strong>Hinweis:</strong> Der Liveticker ist eine reine Anzeigekomponente. Die eigentlichen Spielereignisse werden über die <a href="scorecard.html">Scorecard</a> eingetragen. Der Liveticker zeigt diese dann automatisch an.
+                    </div>
+                </section>
+
+                <section id="zugriff" class="mb-5">
+                    <h2>Liveticker aufrufen</h2>
+                    <p>Sie erreichen den Liveticker über das <strong>Hauptmenü</strong> auf der Homepage:</p>
+                    <ol>
+                        <li>Öffnen Sie die LeagueSphere-Startseite</li>
+                        <li>Klicken Sie im Navigationsmenü auf <strong>"Liveticker"</strong></li>
+                        <li>Der Liveticker öffnet sich und zeigt alle aktiven Spiele des aktuellen Spieltags</li>
+                    </ol>
+
+                    <figure class="figure">
+                        <img src="screenshots/liveticker/SC-011-liveticker-no-active-games.png"
+                             class="figure-img img-fluid rounded"
+                             alt="Liveticker ohne aktive Spiele">
+                        <figcaption class="figure-caption">Screenshot: Liveticker-Ansicht wenn keine aktiven Spiele laufen (Leerzustand)</figcaption>
+                    </figure>
+
+                    <p>Wenn aktuell keine Spiele laufen oder noch keine Ereignisse eingetragen wurden, zeigt der Liveticker eine entsprechende Meldung an.</p>
+                </section>
+
+                <section id="funktionsweise" class="mb-5">
+                    <h2>Funktionsweise</h2>
+
+                    <h3>Automatische Aktualisierung</h3>
+                    <p>Der Liveticker aktualisiert sich automatisch in regelmäßigen Intervallen (typischerweise alle 30-60 Sekunden), um neue Ereignisse anzuzeigen. Sie müssen die Seite nicht manuell neu laden.</p>
+
+                    <h3>Angezeigte Ereignisse</h3>
+                    <p>Der Liveticker zeigt folgende Spielereignisse in chronologischer Reihenfolge an:</p>
+                    <ul>
+                        <li><strong>Touchdowns:</strong> Anzeige des Punktestands nach einem erfolgreichen Touchdown (6 Punkte)</li>
+                        <li><strong>Extra Points:</strong> Zusätzliche Punkte nach Touchdowns (1 oder 2 Punkte)</li>
+                        <li><strong>Safety:</strong> 2 Punkte für die verteidigende Mannschaft</li>
+                        <li><strong>Spielbeginn:</strong> Start des Spiels mit Anstoßzeit</li>
+                        <li><strong>Halbzeit:</strong> Beginn der Halbzeitpause</li>
+                        <li><strong>Spielende:</strong> Abschluss des Spiels mit Endergebnis</li>
+                    </ul>
+
+                    <h3>Ereignisformat</h3>
+                    <p>Jedes Ereignis wird mit folgenden Informationen angezeigt:</p>
+                    <ul>
+                        <li><strong>Zeitstempel:</strong> Wann das Ereignis eingetreten ist (z.B. "14:35 Uhr")</li>
+                        <li><strong>Spielzeit:</strong> Aktuelle Spielzeit (z.B. "Q2 08:45" für 2. Quarter, 8:45 verbleibend)</li>
+                        <li><strong>Teams:</strong> Beteiligte Mannschaften</li>
+                        <li><strong>Ereignisbeschreibung:</strong> Details zum Spielzug</li>
+                        <li><strong>Aktueller Spielstand:</strong> Punktestand nach dem Ereignis</li>
+                    </ul>
+                </section>
+
+                <section id="ansichtsoptionen" class="mb-5">
+                    <h2>Ansichtsoptionen</h2>
+
+                    <h3>Mehrere Spiele gleichzeitig</h3>
+                    <p>Wenn mehrere Spiele gleichzeitig stattfinden, zeigt der Liveticker alle aktiven Spiele in einer gemeinsamen Chronologie an. Neueste Ereignisse erscheinen oben in der Liste.</p>
+
+                    <h3>Spielfilterung</h3>
+                    <p>In einigen Ansichten können Sie den Liveticker auf ein einzelnes Spiel filtern:</p>
+                    <ul>
+                        <li>Klicken Sie auf einen Spielnamen in der Übersicht</li>
+                        <li>Der Liveticker zeigt nun nur Ereignisse dieses Spiels</li>
+                        <li>Über "Alle Spiele anzeigen" kehren Sie zur Gesamtansicht zurück</li>
+                    </ul>
+
+                    <h3>Historische Ansicht</h3>
+                    <p>Der Liveticker zeigt standardmäßig nur Ereignisse des aktuellen Spieltags. Ältere Ereignisse werden nicht angezeigt, können aber über die <a href="gamedays.html">Spieltagsdetails</a> eingesehen werden.</p>
+                </section>
+
+                <section id="anwendungsfaelle" class="mb-5">
+                    <h2>Anwendungsfälle</h2>
+
+                    <h3>Für Zuschauer</h3>
+                    <p>Zuschauer können den Liveticker nutzen, um:</p>
+                    <ul>
+                        <li>Den Verlauf von Spielen zu verfolgen, bei denen sie nicht physisch anwesend sind</li>
+                        <li>Parallel mehrere Spiele auf verschiedenen Feldern im Blick zu behalten</li>
+                        <li>Spielergebnisse in Echtzeit zu erfahren</li>
+                        <li>Wichtige Spielmomente nachzuvollziehen</li>
+                    </ul>
+
+                    <h3>Für Trainer und Teams</h3>
+                    <p>Trainer können den Liveticker nutzen, um:</p>
+                    <ul>
+                        <li>Ergebnisse von Konkurrenzspielen zu verfolgen</li>
+                        <li>Die Tabellenposition während des Spieltags zu beobachten</li>
+                        <li>Spielverläufe zu analysieren</li>
+                    </ul>
+
+                    <h3>Für Organisatoren</h3>
+                    <p>Ligaorganisatoren nutzen den Liveticker für:</p>
+                    <ul>
+                        <li>Überwachung aller laufenden Spiele an einem Spieltag</li>
+                        <li>Schnelle Erkennung von Auffälligkeiten oder Problemen</li>
+                        <li>Koordination zwischen verschiedenen Spielfeldern</li>
+                        <li>Öffentliche Kommunikation von Spielständen</li>
+                    </ul>
+                </section>
+
+                <section id="technische-details" class="mb-5">
+                    <h2>Technische Details</h2>
+
+                    <h3>Architektur</h3>
+                    <p>Der Liveticker ist als eigenständige React-Anwendung implementiert:</p>
+                    <ul>
+                        <li><strong>Frontend:</strong> React mit Redux State Management</li>
+                        <li><strong>Backend:</strong> Django REST Framework API unter <code>/api/liveticker/</code></li>
+                        <li><strong>Aktualisierung:</strong> Polling-Mechanismus (regelmäßige API-Abfragen)</li>
+                        <li><strong>Datenquelle:</strong> Ereignisse aus der Scorecard-Anwendung</li>
+                    </ul>
+
+                    <h3>API-Endpoints</h3>
+                    <p>Der Liveticker kommuniziert mit folgenden Backend-Endpoints:</p>
+                    <ul>
+                        <li><code>GET /api/liveticker/events/</code> - Abruf aller aktuellen Ereignisse</li>
+                        <li><code>GET /api/liveticker/games/</code> - Liste aktiver Spiele</li>
+                    </ul>
+
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Hinweis für Entwickler:</strong> Die Liveticker-Anwendung wird mit webpack gebaut und in <code>liveticker/static/liveticker/js/liveticker.js</code> ausgegeben. Nach Änderungen am Frontend-Code muss <code>npm --prefix liveticker/ run build</code> ausgeführt werden.
+                    </div>
+                </section>
+
+                <section id="best-practices" class="mb-5">
+                    <h2>Best Practices</h2>
+
+                    <h3>Als Zuschauer</h3>
+                    <ul>
+                        <li><strong>Automatische Aktualisierung:</strong> Lassen Sie die Seite einfach geöffnet - sie aktualisiert sich automatisch</li>
+                        <li><strong>Mobile Nutzung:</strong> Der Liveticker ist responsive und funktioniert gut auf Smartphones</li>
+                        <li><strong>Netzwerkverbindung:</strong> Stellen Sie sicher, dass Sie eine stabile Internetverbindung haben</li>
+                        <li><strong>Browser-Tabs:</strong> Sie können mehrere Liveticker-Tabs öffnen für verschiedene Ligen oder Spieltage</li>
+                    </ul>
+
+                    <h3>Als Organisator</h3>
+                    <ul>
+                        <li><strong>Öffentliche Anzeige:</strong> Projizieren Sie den Liveticker auf eine Leinwand für Zuschauer vor Ort</li>
+                        <li><strong>Social Media:</strong> Teilen Sie den Liveticker-Link für Live-Updates während des Spieltags</li>
+                        <li><strong>Qualitätskontrolle:</strong> Überprüfen Sie den Liveticker, um sicherzustellen, dass alle Spiele korrekt erfasst werden</li>
+                        <li><strong>Backup-Anzeige:</strong> Nutzen Sie den Liveticker als Backup, falls die Hauptanzeige ausfällt</li>
+                    </ul>
+                </section>
+
+                <section id="troubleshooting" class="mb-5">
+                    <h2>Fehlerbehebung</h2>
+
+                    <h3>Keine Ereignisse werden angezeigt</h3>
+                    <p><strong>Mögliche Ursachen und Lösungen:</strong></p>
+                    <ul>
+                        <li><strong>Keine aktiven Spiele:</strong> Überprüfen Sie, ob aktuell Spiele laufen und ob in der Scorecard Ereignisse eingetragen werden</li>
+                        <li><strong>Netzwerkproblem:</strong> Prüfen Sie Ihre Internetverbindung und laden Sie die Seite neu</li>
+                        <li><strong>Browser-Cache:</strong> Löschen Sie den Browser-Cache und laden Sie die Seite erneut (Strg+F5)</li>
+                        <li><strong>Falscher Spieltag:</strong> Stellen Sie sicher, dass Sie den aktuellen Spieltag ausgewählt haben</li>
+                    </ul>
+
+                    <h3>Ereignisse erscheinen nicht in Echtzeit</h3>
+                    <p><strong>Mögliche Ursachen:</strong></p>
+                    <ul>
+                        <li>Das Aktualisierungsintervall liegt bei 30-60 Sekunden - es kann eine kurze Verzögerung geben</li>
+                        <li>Bei mobilen Geräten kann das Polling pausieren, wenn der Browser in den Hintergrund wechselt</li>
+                        <li>Netzwerklatenz kann zu Verzögerungen führen</li>
+                    </ul>
+                    <p><strong>Lösung:</strong> Laden Sie die Seite manuell neu, um sofort die neuesten Ereignisse zu sehen.</p>
+
+                    <h3>Falsche oder veraltete Informationen</h3>
+                    <p>Wenn der Liveticker falsche Informationen anzeigt:</p>
+                    <ol>
+                        <li>Laden Sie die Seite neu (F5)</li>
+                        <li>Überprüfen Sie die <a href="gamedays.html">Spieltagsdetails</a> für die korrekten Informationen</li>
+                        <li>Kontaktieren Sie den Spieltag-Organisator, falls Korrekturen nötig sind</li>
+                        <li>Korrekturen werden über die <a href="scorecard.html">Scorecard</a> vorgenommen</li>
+                    </ol>
+
+                    <h3>Darstellungsprobleme</h3>
+                    <p>Bei Layout- oder Darstellungsproblemen:</p>
+                    <ul>
+                        <li>Nutzen Sie einen modernen Browser (Chrome, Firefox, Safari, Edge)</li>
+                        <li>Stellen Sie sicher, dass JavaScript aktiviert ist</li>
+                        <li>Deaktivieren Sie Browser-Erweiterungen, die Inhalte blockieren könnten</li>
+                        <li>Versuchen Sie es mit einem anderen Gerät oder Browser</li>
+                    </ul>
+                </section>
+
+                <section id="zusammenfassung" class="mb-5">
+                    <h2>Zusammenfassung</h2>
+                    <p>Der Liveticker ist ein leistungsstarkes Werkzeug für Echtzeit-Updates während eines Spieltags:</p>
+                    <ul>
+                        <li>Automatische Aktualisierung aller Spielereignisse</li>
+                        <li>Übersichtliche Chronologie mit Zeitstempeln und Spielständen</li>
+                        <li>Unterstützung für mehrere gleichzeitige Spiele</li>
+                        <li>Responsive Design für Desktop und Mobile</li>
+                        <li>Keine Anmeldung erforderlich (öffentlich zugänglich)</li>
+                    </ul>
+
+                    <div class="alert alert-success" role="alert">
+                        <strong>Tipp:</strong> Kombinieren Sie den Liveticker mit der <a href="league-table.html">Ligatabelle</a>, um sowohl aktuelle Spielereignisse als auch den Gesamtstand der Liga im Blick zu behalten.
+                    </div>
+                </section>
+                <nav class="mt-5 pt-3 border-top" aria-label="Seitennavigation">
+                    <ul class="pagination justify-content-between">
+                        <li class="page-item"><a class="page-link" href="officials.html">&larr; Zurück</a></li>
+                        <li class="page-item"><a class="page-link" href="league-table.html">Weiter &rarr;</a></li>
+                    </ul>
+                </nav>
+            </main>
+        </div>
+    </div>
+    <footer class="footer mt-auto py-3 bg-light border-top">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-6"><span class="text-muted">LeagueSphere Benutzerhandbuch &copy; 2025</span></div>
+                <div class="col-md-6 text-end"><span class="text-muted">Version: <span id="version">1.0.0</span></span></div>
+            </div>
+        </div>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script src="assets/js/manual.js"></script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Tabellen &amp; Spielpläne in LeagueSphere">
+    <title>Tabellen &amp; Spielpläne - LeagueSphere Benutzerhandbuch</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="assets/css/manual.css">
+</head>
+<body>
+    <a href="#main-content" class="skip-to-content visually-hidden-focusable">Zum Hauptinhalt springen</a>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top" role="navigation" aria-label="Hauptnavigation">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html"><span style="font-size: 1.5rem;">&#127944;</span> LeagueSphere Handbuch</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Navigation umschalten">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="index.html">Startseite</a></li>
+                    <li class="nav-item"><a class="nav-link" href="intro.html">Erste Schritte</a></li>
+                    <li class="nav-item"><a class="nav-link" href="https://leaguesphere.app" target="_blank" rel="noopener noreferrer">Zur Anwendung</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse" role="navigation" aria-label="Seitennavigation">
+                <div class="position-sticky pt-3">
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted"><span>Funktionen</span></h6>
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link" href="intro.html">Navigation &amp; Erste Schritte</a></li>
+                        <li class="nav-item"><a class="nav-link" href="gamedays.html">Spieltage verwalten</a></li>
+                        <li class="nav-item"><a class="nav-link" href="passcheck.html">Spielberechtigung prüfen</a></li>
+                        <li class="nav-item"><a class="nav-link" href="scorecard.html">Live-Scoring</a></li>
+                        <li class="nav-item"><a class="nav-link" href="officials.html">Schiedsrichter verwalten</a></li>
+                        <li class="nav-item"><a class="nav-link" href="liveticker.html">Liveticker</a></li>
+                        <li class="nav-item"><a class="nav-link" href="league-table.html">Tabellen &amp; Spielpläne</a></li>
+                        <li class="nav-item"><a class="nav-link" href="teammanager.html">Teams verwalten</a></li>
+                        <li class="nav-item"><a class="nav-link" href="accounts.html">Benutzerkonten</a></li>
+                    </ul>
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted"><span>Weitere Ressourcen</span></h6>
+                    <ul class="nav flex-column mb-2">
+                        <li class="nav-item"><a class="nav-link" href="https://github.com/dachrisch/leaguesphere" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
+                        <li class="nav-item"><a class="nav-link" href="https://leaguesphere.app" target="_blank" rel="noopener noreferrer">LeagueSphere Anwendung</a></li>
+                    </ul>
+                </div>
+            </nav>
+            <main id="main-content" class="col-md-9 ms-sm-auto col-lg-10 px-md-4" role="main">
+                <nav aria-label="breadcrumb" class="mt-3">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="index.html">Startseite</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Tabellen &amp; Spielpläne</li>
+                    </ol>
+                </nav>
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Tabellen &amp; Spielpläne</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2"><button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">Drucken</button></div>
+                    </div>
+                </div>
+                <div class="content">
+                    <section id="ueberblick" class="mb-5">
+                        <h2>Übersicht</h2>
+                        <p class="lead">
+                            LeagueSphere bietet umfassende Tabellen und Statistiken für Ihre Liga. Sie können Spieltagstabellen,
+                            Gesamttabellen und detaillierte Statistiken einsehen.
+                        </p>
+                    </section>
+
+                    <section id="spieltagstabelle" class="mb-5">
+                        <h2>Spieltagstabelle</h2>
+                        <p>
+                            Nach Abschluss eines Spieltags wird automatisch eine Abschlusstabelle generiert. Diese zeigt
+                            die Platzierung der Teams basierend auf den Ergebnissen dieses Spieltags.
+                        </p>
+
+                        <h3 class="h4 mt-4">Tabellenansicht</h3>
+                        <p>
+                            Die Tabelle zeigt für jedes Team folgende Informationen:
+                        </p>
+                        <ul>
+                            <li><strong>Punkte:</strong> Gewonnene Ligapunkte (2 Punkte für Sieg, 1 Punkt für Unentschieden)</li>
+                            <li><strong>PF (Points For):</strong> Erzielte Punkte im Spiel</li>
+                            <li><strong>PA (Points Against):</strong> Kassierte Punkte im Spiel</li>
+                            <li><strong>+/-:</strong> Punktedifferenz (PF minus PA)</li>
+                        </ul>
+
+                        <figure class="figure">
+                            <img src="screenshots/league_table/SC-023-gameday-standings-table.png"
+                                 class="figure-img img-fluid rounded shadow"
+                                 alt="Spieltagstabelle mit Punkteständen und Statistiken">
+                            <figcaption class="figure-caption">
+                                Abschlusstabelle eines Spieltags mit detaillierten Statistiken
+                            </figcaption>
+                        </figure>
+
+                        <div class="alert alert-info mt-4" role="alert">
+                            <h4 class="alert-heading">Tipp: Tabelle aufrufen</h4>
+                            <p class="mb-0">
+                                Öffnen Sie einen Spieltag in der Detailansicht und klicken Sie auf die Schaltfläche
+                                "Abschlusstabelle", um die Tabelle anzuzeigen. Die Tabelle wird automatisch aus den
+                                Spielergebnissen berechnet.
+                            </p>
+                        </div>
+                    </section>
+
+                    <section id="gesamttabelle" class="mb-5">
+                        <h2>Gesamttabelle</h2>
+                        <p>
+                            Die Gesamttabelle über alle Spieltage hinweg zeigt die aktuelle Platzierung aller Teams
+                            in der Liga an.
+                        </p>
+                        <div class="alert alert-warning" role="alert">
+                            <strong>Hinweis:</strong> Screenshots für die Gesamttabelle werden in einer zukünftigen Version ergänzt.
+                        </div>
+                    </section>
+
+                    <section id="spielplaene" class="mb-5">
+                        <h2>Spielpläne</h2>
+                        <p>
+                            Spielpläne für einzelne Spieltage finden Sie in der Spieltagsdetailansicht. Dort sehen Sie
+                            alle Spiele mit Zeiten, Feldern, Teams und aktuellen Ergebnissen.
+                        </p>
+                        <p>
+                            Weitere Informationen zu Spielplänen finden Sie im Kapitel
+                            <a href="gamedays.html#detail">Spieltage verwalten</a>.
+                        </p>
+                    </section>
+                </div>
+                <nav class="mt-5 pt-3 border-top" aria-label="Seitennavigation">
+                    <ul class="pagination justify-content-between">
+                        <li class="page-item"><a class="page-link" href="liveticker.html">&larr; Zurück</a></li>
+                        <li class="page-item"><a class="page-link" href="teammanager.html">Weiter &rarr;</a></li>
+                    </ul>
+                </nav>
+            </main>
+        </div>
+    </div>
+    <footer class="footer mt-auto py-3 bg-light border-top">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-6"><span class="text-muted">LeagueSphere Benutzerhandbuch &copy; 2025</span></div>
+                <div class="col-md-6 text-end"><span class="text-muted">Version: <span id="version">1.0.0</span></span></div>
+            </div>
+        </div>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script src="assets/js/manual.js"></script>
+</body>
+</html>

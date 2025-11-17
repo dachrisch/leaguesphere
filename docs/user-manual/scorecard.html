@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Live-Scoring in LeagueSphere">
+    <title>Live-Scoring - LeagueSphere Benutzerhandbuch</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="assets/css/manual.css">
+</head>
+<body>
+    <a href="#main-content" class="skip-to-content visually-hidden-focusable">Zum Hauptinhalt springen</a>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top" role="navigation" aria-label="Hauptnavigation">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html"><span style="font-size: 1.5rem;">&#127944;</span> LeagueSphere Handbuch</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Navigation umschalten">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="index.html">Startseite</a></li>
+                    <li class="nav-item"><a class="nav-link" href="intro.html">Erste Schritte</a></li>
+                    <li class="nav-item"><a class="nav-link" href="https://leaguesphere.app" target="_blank" rel="noopener noreferrer">Zur Anwendung</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse" role="navigation" aria-label="Seitennavigation">
+                <div class="position-sticky pt-3">
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted"><span>Funktionen</span></h6>
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link" href="intro.html">Navigation &amp; Erste Schritte</a></li>
+                        <li class="nav-item"><a class="nav-link" href="gamedays.html">Spieltage verwalten</a></li>
+                        <li class="nav-item"><a class="nav-link" href="passcheck.html">Spielberechtigung prüfen</a></li>
+                        <li class="nav-item"><a class="nav-link" href="scorecard.html">Live-Scoring</a></li>
+                        <li class="nav-item"><a class="nav-link" href="officials.html">Schiedsrichter verwalten</a></li>
+                        <li class="nav-item"><a class="nav-link" href="liveticker.html">Liveticker</a></li>
+                        <li class="nav-item"><a class="nav-link" href="league-table.html">Tabellen &amp; Spielpläne</a></li>
+                        <li class="nav-item"><a class="nav-link" href="teammanager.html">Teams verwalten</a></li>
+                        <li class="nav-item"><a class="nav-link" href="accounts.html">Benutzerkonten</a></li>
+                    </ul>
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted"><span>Weitere Ressourcen</span></h6>
+                    <ul class="nav flex-column mb-2">
+                        <li class="nav-item"><a class="nav-link" href="https://github.com/dachrisch/leaguesphere" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
+                        <li class="nav-item"><a class="nav-link" href="https://leaguesphere.app" target="_blank" rel="noopener noreferrer">LeagueSphere Anwendung</a></li>
+                    </ul>
+                </div>
+            </nav>
+            <main id="main-content" class="col-md-9 ms-sm-auto col-lg-10 px-md-4" role="main">
+                <nav aria-label="breadcrumb" class="mt-3">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="index.html">Startseite</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Live-Scoring</li>
+                    </ol>
+                </nav>
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Live-Scoring</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2"><button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.print()">Drucken</button></div>
+                    </div>
+                </div>
+                <!-- Übersicht -->
+                <section id="ueberblick" class="mb-5">
+                    <h2>Übersicht</h2>
+                    <p class="lead">Die Scorecard-Funktion ermöglicht das Live-Scoring während laufender Flag-Football-Spiele. Mit der React-basierten Anwendung können Punktestände, Spielzüge und Statistiken in Echtzeit erfasst und verfolgt werden.</p>
+
+                    <p>Mit der Scorecard können Sie:</p>
+                    <ul>
+                        <li>Spielstände live während des Spiels erfassen</li>
+                        <li>Touchdowns, Field Goals, Conversions und Safety-Punkte eintragen</li>
+                        <li>Ballbesitz und Spielzeit verfolgen</li>
+                        <li>Spielzüge und Statistiken dokumentieren</li>
+                        <li>Ergebnisse automatisch speichern und veröffentlichen</li>
+                    </ul>
+
+                    <div class="alert alert-info" role="alert">
+                        <strong>Hinweis:</strong> Die Scorecard ist eine JavaScript/React-Anwendung mit Redux-State-Management, die für die Verwendung auf Tablets und Smartphones optimiert ist.
+                    </div>
+                </section>
+
+                <!-- Scorecard aufrufen -->
+                <section id="aufrufen" class="mb-5">
+                    <h2>Scorecard aufrufen</h2>
+                    <p>Um die Scorecard zu verwenden, müssen Sie zunächst ein aktives Spiel auswählen.</p>
+
+                    <h3>So öffnen Sie die Scorecard:</h3>
+                    <ol>
+                        <li>Melden Sie sich bei LeagueSphere an</li>
+                        <li>Navigieren Sie zur Scorecard-Funktion</li>
+                        <li>Wählen Sie den Spieltag aus der Liste</li>
+                        <li>Wählen Sie das Spiel, das Sie erfassen möchten</li>
+                    </ol>
+
+                    <figure class="figure">
+                        <img src="screenshots/scorecard/SC-030-gameday-selection.png" class="figure-img img-fluid rounded border" alt="Spieltagsauswahl im Scorecard">
+                        <figcaption class="figure-caption">Screenshot: Spieltagsauswahl mit verfügbarem Spieltag</figcaption>
+                    </figure>
+
+                    <p>Nach Auswahl des Spieltags sehen Sie eine Liste aller Spiele. Aktivieren Sie "Zeige alle Spiele", um auch Spiele anzuzeigen, die Ihnen nicht als Schiedsrichter zugewiesen sind.</p>
+
+                    <figure class="figure">
+                        <img src="screenshots/scorecard/SC-031-game-selection-with-games.png" class="figure-img img-fluid rounded border" alt="Spielauswahl mit verfügbaren Spielen">
+                        <figcaption class="figure-caption">Screenshot: Spielauswahl mit 4 verfügbaren Spielen</figcaption>
+                    </figure>
+
+                    <figure class="figure">
+                        <img src="screenshots/scorecard/SC-009-main-menu.png" class="figure-img img-fluid rounded border" alt="Scorecard Hauptmenü">
+                        <figcaption class="figure-caption">Scorecard Hauptmenü mit Auswahloptionen</figcaption>
+                    </figure>
+
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Wichtig:</strong> Die Scorecard kann nur für Spiele verwendet werden, die im System angelegt sind. Wenn keine Spieltage verfügbar sind, wird eine entsprechende Meldung angezeigt.
+                    </div>
+                </section>
+
+                <!-- Spiel starten -->
+                <section id="spiel-starten" class="mb-5">
+                    <h2>Spiel starten und vorbereiten</h2>
+                    <p>Vor Spielbeginn müssen einige grundlegende Einstellungen vorgenommen werden.</p>
+
+                    <h3>Spielvorbereitung:</h3>
+                    <p>Nach Auswahl eines Spiels gelangen Sie zur Schiedsrichter-Zuweisungsseite:</p>
+
+                    <figure class="figure">
+                        <img src="screenshots/scorecard/SC-032-officials-assignment.png" class="figure-img img-fluid rounded border" alt="Schiedsrichter-Zuweisung">
+                        <figcaption class="figure-caption">Screenshot: Schiedsrichter-Zuweisungsformular mit Spieleinstellungen</figcaption>
+                    </figure>
+
+                    <ol>
+                        <li><strong>Schiedsrichter eintragen:</strong> Erfassen Sie die Namen aller Spieloffiziellen (Referee, Scorecard Judge, Down Judge, Field Judge, Side Judge)</li>
+                        <li><strong>Münzwurf:</strong> Wählen Sie aus, welches Team die Münzwahl gewonnen hat</li>
+                        <li><strong>Ballbesitz 1. Halbzeit:</strong> Legen Sie fest, welches Team zuerst Ballbesitz hat</li>
+                        <li><strong>Spielrichtung:</strong> Bestimmen Sie die Spielrichtung aus Sicht des Scorecard Judges</li>
+                        <li><strong>Spiel starten:</strong> Klicken Sie auf "Spiel starten" um zum Live-Scoring zu gelangen</li>
+                    </ol>
+
+                    <figure class="figure">
+                        <img src="screenshots/scorecard/SC-033-game-setup-complete.png" class="figure-img img-fluid rounded border" alt="Ausgefülltes Spieleinstellungsformular">
+                        <figcaption class="figure-caption">Screenshot: Vollständig ausgefülltes Spieleinstellungsformular</figcaption>
+                    </figure>
+
+                    <div class="alert alert-info" role="alert">
+                        <strong>Tipp:</strong> Die Schiedsrichterdaten können vorab im System hinterlegt werden, sodass sie automatisch ausgefüllt werden.
+                    </div>
+                </section>
+
+                <!-- Punkte eintragen -->
+                <section id="punkte-eintragen" class="mb-5">
+                    <h2>Punkte eintragen</h2>
+                    <p>Nach dem Spielstart gelangen Sie zur Live-Scoring-Oberfläche, wo Sie alle Spielereignisse in Echtzeit erfassen können.</p>
+
+                    <figure class="figure">
+                        <img src="screenshots/scorecard/SC-034-live-scoring-interface.png" class="figure-img img-fluid rounded border" alt="Live-Scoring-Interface">
+                        <figcaption class="figure-caption">Screenshot: Live-Scoring-Interface zu Spielbeginn (0:0)</figcaption>
+                    </figure>
+
+                    <p>Während des Spiels können verschiedene Punktearten schnell und einfach eingetragen werden.</p>
+
+                    <h3>Scoring-Optionen im Flag Football:</h3>
+                    <ul>
+                        <li><strong>Touchdown (6 Punkte):</strong> Wenn ein Team die Endzone erreicht</li>
+                        <li><strong>Extra Point (1 oder 2 Punkte):</strong> Conversion-Versuch nach einem Touchdown
+                            <ul>
+                                <li>1 Punkt: Conversion von der 5-Yard-Linie</li>
+                                <li>2 Punkte: Conversion von der 10-Yard-Linie</li>
+                            </ul>
+                        </li>
+                        <li><strong>Safety (2 Punkte):</strong> Wenn das angreifende Team in der eigenen Endzone gestoppt wird</li>
+                    </ul>
+
+                    <h3>Touchdown erfassen - Schritt für Schritt:</h3>
+
+                    <figure class="figure">
+                        <img src="screenshots/scorecard/SC-035-touchdown-entry-form.png" class="figure-img img-fluid rounded border" alt="Touchdown-Eingabeformular">
+                        <figcaption class="figure-caption">Screenshot: Touchdown-Eingabeformular (Team ist bereits ausgewählt)</figcaption>
+                    </figure>
+
+                    <ol>
+                        <li><strong>Team auswählen:</strong> Klicken Sie auf das Team, das gepunktet hat (oben im Interface)</li>
+                        <li><strong>Touchdown wählen:</strong> Wählen Sie die Option "Touchdown"</li>
+                        <li><strong>Spielernummer eintragen:</strong> Geben Sie die Nummer des Spielers ein, der den Touchdown erzielt hat (#TD)</li>
+                        <li><strong>Extra Point eintragen:</strong> Geben Sie die Nummer des Spielers für den Conversion-Versuch ein (#PAT)</li>
+                        <li><strong>Conversion-Punkte wählen:</strong> Wählen Sie 1 Punkt (5-Yard-Linie) oder 2 Punkte (10-Yard-Linie)</li>
+                        <li><strong>Speichern:</strong> Klicken Sie auf "Eintrag speichern"</li>
+                    </ol>
+
+                    <figure class="figure">
+                        <img src="screenshots/scorecard/SC-036-touchdown-filled.png" class="figure-img img-fluid rounded border" alt="Ausgefülltes Touchdown-Formular">
+                        <figcaption class="figure-caption">Screenshot: Ausgefülltes Touchdown-Formular (Spieler #7 Touchdown, Spieler #12 Extra Point für 1 Punkt)</figcaption>
+                    </figure>
+
+                    <figure class="figure">
+                        <img src="screenshots/scorecard/SC-037-score-updated-7-0.png" class="figure-img img-fluid rounded border" alt="Aktualisierter Spielstand">
+                        <figcaption class="figure-caption">Screenshot: Spielstand nach Touchdown - Berlin Adler führt 7:0</figcaption>
+                    </figure>
+
+                    <p>Nach dem Speichern aktualisiert sich der Spielstand automatisch. Der Ballbesitz wechselt zum anderen Team, und Sie können das nächste Spielereignis erfassen.</p>
+
+                    <figure class="figure">
+                        <img src="screenshots/scorecard/SC-038-scoreboard-active-game.png" class="figure-img img-fluid rounded border" alt="Aktives Spiel mit Spielstand">
+                        <figcaption class="figure-caption">Screenshot: Aktives Spiel - Ballbesitz hat automatisch gewechselt</figcaption>
+                    </figure>
+
+                    <div class="alert alert-success" role="alert">
+                        <strong>Tipp:</strong> Die Scorecard verfügt über große, gut sichtbare Buttons für schnelle Eingaben während des Spiels. Dies ermöglicht eine einfache Bedienung auch bei schnellem Spielverlauf.
+                    </div>
+                </section>
+
+                <!-- Spielverlauf verfolgen -->
+                <section id="spielverlauf" class="mb-5">
+                    <h2>Spielverlauf verfolgen</h2>
+                    <p>Die Scorecard zeigt neben dem Punktestand auch weitere wichtige Spielinformationen an.</p>
+
+                    <h3>Angezeigte Informationen:</h3>
+                    <ul>
+                        <li><strong>Aktueller Spielstand:</strong> Punktezahl beider Teams in Echtzeit</li>
+                        <li><strong>Spielzeit:</strong> Verbleibende Zeit in der aktuellen Halbzeit</li>
+                        <li><strong>Ballbesitz:</strong> Welches Team gerade im Angriff ist</li>
+                        <li><strong>Halbzeit:</strong> Erste oder zweite Spielhälfte</li>
+                        <li><strong>Spielzüge:</strong> Historie der erfassten Punkte und Aktionen</li>
+                    </ul>
+
+                    <h3>Ballbesitz wechseln:</h3>
+                    <p>Nach jedem Punktgewinn oder bei Turnover können Sie den Ballbesitz manuell wechseln:</p>
+                    <ol>
+                        <li>Klicken Sie auf den Button "Ballbesitz wechseln"</li>
+                        <li>Das System markiert das andere Team als im Ballbesitz</li>
+                        <li>Die Anzeige wird entsprechend aktualisiert</li>
+                    </ol>
+                </section>
+
+                <!-- Spielzeit verwalten -->
+                <section id="spielzeit" class="mb-5">
+                    <h2>Spielzeit verwalten</h2>
+                    <p>Die Scorecard verfügt über eine integrierte Spieluhr zur Zeitverwaltung.</p>
+
+                    <h3>Zeitsteuerung:</h3>
+                    <ul>
+                        <li><strong>Start:</strong> Spieluhr starten</li>
+                        <li><strong>Stopp:</strong> Spieluhr anhalten (bei Unterbrechungen, Time-outs)</li>
+                        <li><strong>Halbzeit:</strong> Automatischer Übergang zur zweiten Halbzeit</li>
+                        <li><strong>Spielende:</strong> Automatische Markierung wenn die Zeit abgelaufen ist</li>
+                    </ul>
+
+                    <h3>Time-outs:</h3>
+                    <p>Beide Teams haben pro Halbzeit eine begrenzte Anzahl an Time-outs:</p>
+                    <ul>
+                        <li>Erfassen Sie Time-outs über die entsprechenden Team-Buttons</li>
+                        <li>Das System zählt automatisch die verbleibenden Time-outs</li>
+                        <li>Bei überschrittener Anzahl erscheint eine Warnung</li>
+                    </ul>
+                </section>
+
+                <!-- Korrekturen vornehmen -->
+                <section id="korrekturen" class="mb-5">
+                    <h2>Korrekturen und Anpassungen</h2>
+                    <p>Fehlerhafte Eingaben können während des Spiels korrigiert werden.</p>
+
+                    <h3>Punkte korrigieren:</h3>
+                    <ol>
+                        <li>Öffnen Sie die Spielzug-Historie</li>
+                        <li>Wählen Sie den fehlerhaften Eintrag aus</li>
+                        <li>Wählen Sie "Korrigieren" oder "Löschen"</li>
+                        <li>Das System aktualisiert automatisch den Gesamtstand</li>
+                    </ol>
+
+                    <h3>Spielstand manuell anpassen:</h3>
+                    <p>In besonderen Fällen kann der Spielstand auch manuell angepasst werden:</p>
+                    <ul>
+                        <li>Verwenden Sie diese Funktion nur bei technischen Problemen</li>
+                        <li>Dokumentieren Sie manuelle Anpassungen im Notizfeld</li>
+                        <li>Manuelle Änderungen werden in der Spielhistorie markiert</li>
+                    </ul>
+
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Wichtig:</strong> Korrekturen sollten zeitnah vorgenommen werden. Nach Spielende sind Änderungen nur noch durch Administratoren möglich.
+                    </div>
+                </section>
+
+                <!-- Spiel beenden -->
+                <section id="spiel-beenden" class="mb-5">
+                    <h2>Spiel beenden und Ergebnis speichern</h2>
+                    <p>Nach Spielende muss das Ergebnis finalisiert und gespeichert werden.</p>
+
+                    <h3>Spielabschluss:</h3>
+                    <ol>
+                        <li>Überprüfen Sie den Endstand auf Korrektheit</li>
+                        <li>Bestätigen Sie beide Team-Punktzahlen</li>
+                        <li>Klicken Sie auf "Spiel beenden"</li>
+                        <li>Das System speichert das Ergebnis automatisch</li>
+                    </ol>
+
+                    <h3>Automatische Aktionen nach Spielende:</h3>
+                    <ul>
+                        <li>Ergebnis wird im Spieltagsplan aktualisiert</li>
+                        <li>Tabellenplatzierungen werden neu berechnet</li>
+                        <li>Spielstatistiken werden gespeichert</li>
+                        <li>Liveticker wird aktualisiert (wenn aktiv)</li>
+                    </ul>
+
+                    <h3>Overtime (Verlängerung):</h3>
+                    <p>Bei Gleichstand nach regulärer Spielzeit:</p>
+                    <ol>
+                        <li>Das System bietet automatisch Overtime an</li>
+                        <li>Wählen Sie die Overtime-Regeln aus (z.B. "First Score Wins")</li>
+                        <li>Starten Sie die Verlängerung</li>
+                        <li>Erfassen Sie die Punkte wie gewohnt</li>
+                        <li>Beenden Sie das Spiel nach Entscheidung</li>
+                    </ol>
+                </section>
+
+                <!-- Statistiken -->
+                <section id="statistiken" class="mb-5">
+                    <h2>Spielstatistiken</h2>
+                    <p>Die Scorecard erfasst automatisch verschiedene Statistiken während des Spiels.</p>
+
+                    <h3>Erfasste Statistiken:</h3>
+                    <ul>
+                        <li><strong>Team-Statistiken:</strong>
+                            <ul>
+                                <li>Gesamtpunkte nach Halbzeit</li>
+                                <li>Anzahl Touchdowns, Field Goals, Conversions</li>
+                                <li>Ballbesitzzeit</li>
+                                <li>Anzahl Time-outs verwendet</li>
+                            </ul>
+                        </li>
+                        <li><strong>Spielstatistiken:</strong>
+                            <ul>
+                                <li>Gesamtspieldauer</li>
+                                <li>Punkteverlauf über die Zeit</li>
+                                <li>Spielzusammenfassung</li>
+                            </ul>
+                        </li>
+                    </ul>
+
+                    <p>Nach Spielende können diese Statistiken im Spieltagsdetail eingesehen werden (siehe <a href="gamedays.html">Spieltage verwalten</a>).</p>
+                </section>
+
+                <!-- Tipps und Best Practices -->
+                <section id="tipps" class="mb-5">
+                    <h2>Tipps und Best Practices</h2>
+
+                    <h3>Vor dem Spiel:</h3>
+                    <ul>
+                        <li>Testen Sie die Scorecard-Funktion vor dem ersten Einsatz</li>
+                        <li>Stellen Sie sicher, dass das Spiel im System korrekt angelegt ist</li>
+                        <li>Prüfen Sie die Internetverbindung (für automatisches Speichern)</li>
+                        <li>Laden Sie das Gerät vollständig auf oder schließen Sie es an Strom an</li>
+                    </ul>
+
+                    <h3>Während des Spiels:</h3>
+                    <ul>
+                        <li>Erfassen Sie Punkte sofort nach dem Scoring</li>
+                        <li>Bestätigen Sie kritische Punkte mit dem anderen Schiedsrichter</li>
+                        <li>Nutzen Sie die Pause-Funktion bei längeren Unterbrechungen</li>
+                        <li>Behalten Sie die Spieluhr im Auge</li>
+                    </ul>
+
+                    <h3>Geräteempfehlungen:</h3>
+                    <ul>
+                        <li><strong>Tablet:</strong> Ideal für Sideline-Nutzung (große Buttons, gute Sichtbarkeit)</li>
+                        <li><strong>Smartphone:</strong> Kompakt, aber funktional für Backup</li>
+                        <li><strong>Bildschirmschutz:</strong> Verwenden Sie ein Gerät mit gutem Display für Außeneinsatz</li>
+                        <li><strong>Schutz:</strong> Schutzhülle empfohlen für Outdoor-Verwendung</li>
+                    </ul>
+
+                    <h3>Fehlerbehebung:</h3>
+                    <ul>
+                        <li><strong>Verbindung verloren:</strong> Die Scorecard speichert Daten lokal und synchronisiert automatisch</li>
+                        <li><strong>Falscher Punktestand:</strong> Nutzen Sie die Korrektur-Funktion zeitnah</li>
+                        <li><strong>App reagiert nicht:</strong> Aktualisieren Sie die Seite (Daten bleiben erhalten)</li>
+                        <li><strong>Spiel kann nicht gestartet werden:</strong> Prüfen Sie, ob das Spiel im Backend angelegt ist</li>
+                    </ul>
+
+                    <div class="alert alert-success" role="alert">
+                        <strong>Best Practice:</strong> Verwenden Sie wenn möglich zwei Geräte - eines für Live-Scoring und eines als Backup. Dies stellt sicher, dass bei technischen Problemen keine Daten verloren gehen.
+                    </div>
+                </section>
+                <nav class="mt-5 pt-3 border-top" aria-label="Seitennavigation">
+                    <ul class="pagination justify-content-between">
+                        <li class="page-item"><a class="page-link" href="passcheck.html">&larr; Zurück</a></li>
+                        <li class="page-item"><a class="page-link" href="officials.html">Weiter &rarr;</a></li>
+                    </ul>
+                </nav>
+            </main>
+        </div>
+    </div>
+    <footer class="footer mt-auto py-3 bg-light border-top">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-6"><span class="text-muted">LeagueSphere Benutzerhandbuch &copy; 2025</span></div>
+                <div class="col-md-6 text-end"><span class="text-muted">Version: <span id="version">1.0.0</span></span></div>
+            </div>
+        </div>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script src="assets/js/manual.js"></script>
+</body>
+</html>

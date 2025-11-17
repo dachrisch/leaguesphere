@@ -339,3 +339,139 @@ Environment variables for external services:
 - `GOOGLE_CLIENT_ID` - Google OAuth
 - `MOODLE_URL`, `MOODLE_WSTOKEN` - Moodle integration
 - `EQUIPMENT_APPROVAL_ENDPOINT`, `EQUIPMENT_APPROVAL_TOKEN` - Equipment approval service
+
+## User Manual Documentation
+
+A standalone HTML user manual is located in `docs/user-manual/`. This manual is designed to work offline (file:// protocol) and provides comprehensive documentation for all LeagueSphere features.
+
+### Manual Structure
+
+```
+docs/user-manual/
+├── index.html                 # Landing page with feature overview
+├── intro.html                 # Navigation & getting started
+├── gamedays.html              # Gameday management (✅ documented)
+├── passcheck.html             # Player eligibility checking
+├── scorecard.html             # Live scoring interface
+├── officials.html             # Officials management
+├── liveticker.html            # Real-time game ticker
+├── league-table.html          # Standings & statistics (✅ documented)
+├── teammanager.html           # Team and roster management
+├── accounts.html              # User account management
+├── PROGRESS.md                # Current progress and status
+├── LESSONS_LEARNED.md         # Best practices and insights
+├── assets/
+│   ├── css/manual.css         # Custom styles (planned)
+│   └── js/manual.js           # Interactive features (planned)
+└── screenshots/
+    ├── intro/                 # 6 screenshots
+    ├── gamedays/              # 6 screenshots
+    ├── passcheck/             # 2 screenshots
+    ├── scorecard/             # 2 screenshots
+    ├── liveticker/            # 1 screenshot
+    ├── officials/             # 3 screenshots
+    ├── teammanager/           # 3 screenshots
+    └── league_table/          # 1 screenshot
+```
+
+### Working with the Manual
+
+**Viewing Locally:**
+```bash
+# Open in browser (works offline)
+firefox docs/user-manual/index.html
+# or
+google-chrome docs/user-manual/index.html
+```
+
+**Screenshot Capture Workflow:**
+1. Start test environment (see Test Infrastructure above)
+2. Populate test data: `python scripts/populate_manager_test_data.py`
+3. Use Chrome MCP for automated screenshot capture
+4. Follow user journey scenarios in `docs/user-manual/user-journeys.md`
+5. Naming convention: `SC-###-description.png` (SC = Screenshot)
+6. Organize by feature subdirectory
+
+**Common Chrome MCP Patterns:**
+```python
+# Always take snapshot before clicking to avoid stale UIDs
+take_snapshot()
+click(uid)
+
+# Handle dialogs that may appear
+handle_dialog(action='accept')
+
+# Capture screenshot with descriptive name
+take_screenshot(filePath='/path/to/screenshots/feature/SC-###-description.png')
+```
+
+**Documentation Guidelines:**
+- Language: German with formal "Sie" form
+- Technical terms: Keep English where standard (Scorecard, Liveticker, Passcheck)
+- UI elements: Translate to German (Spieltag, Schiedsrichter, Tabelle)
+- Use Bootstrap 5 components: figures, alerts, breadcrumbs
+- Include alt text for all images
+- Add helpful tips in alert boxes
+- Cross-reference related sections
+
+**Current Status (as of Nov 2025):**
+- 24 screenshots captured (target: 40-60)
+- 2 pages fully documented (gamedays, league-table)
+- 7 pages awaiting documentation
+- Manual works offline with Bootstrap 5 CDN
+- Responsive design functional
+
+**Key Files:**
+- `PROGRESS.md` - Current status, metrics, next steps
+- `LESSONS_LEARNED.md` - Best practices, patterns, solutions
+- `user-journeys.md` - User scenarios for screenshot capture (large file)
+
+### Test Data for Screenshots
+
+**Required Test Data:**
+```bash
+# LXC and MySQL setup
+lxc start servyy-test
+cd container && ./spinup_test_db.sh
+
+# Django dev server
+MYSQL_HOST=10.185.182.207 \
+MYSQL_DB_NAME=test_db \
+MYSQL_USER=user \
+MYSQL_PWD=user \
+SECRET_KEY=test-secret-key \
+python manage.py runserver 0.0.0.0:8000
+
+# Populate comprehensive test data
+python scripts/populate_manager_test_data.py
+```
+
+**Test Data Includes:**
+- 27 teams across multiple divisions
+- 18 gamedays with varied formats
+- Completed games with scores and statistics
+- Official assignments
+- User accounts (admin/admin123)
+
+**Known Limitations:**
+- Player rosters are empty in test data
+- Limited liveticker data
+- No active scorecard sessions
+
+### Future Enhancements
+
+**Planned Features:**
+- Custom CSS for branded styling
+- JavaScript search functionality
+- PDF export capability
+- Lightbox for enlarged screenshots
+- Print-specific stylesheets
+- English translation (i18n)
+
+**Integration:**
+- Manual is standalone (not integrated with Django app)
+- Can be distributed independently
+- Works with file:// protocol (no server needed)
+- CDN dependencies: Bootstrap 5.3.2
+
+For detailed lessons learned and best practices, see `docs/user-manual/LESSONS_LEARNED.md`.
