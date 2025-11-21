@@ -368,8 +368,8 @@ def create_past_gamedays_for_standings(teams):
                 home_team = teams[game_num * 2]
                 away_team = teams[game_num * 2 + 1]
 
-                # Create game directly
-                gameinfo = Gameinfo.objects.create(
+                # Use factory to create game with results (avoids signal issues)
+                gameinfo = GameinfoFactory(
                     gameday=gameday,
                     officials=officials_team,
                     stage='Vorrunde',
