@@ -5,12 +5,12 @@ Following TDD principles - these tests define the expected behavior
 before implementation.
 """
 
+from datetime import timedelta
+
 import pytest
-from django.test import TestCase, Client
-from django.urls import reverse
 from django.contrib.sites.models import Site
+from django.test import TestCase, Client
 from django.utils import timezone
-from datetime import datetime, timedelta
 
 from gamedays.models import Gameday, Season, League, Team
 from league_manager.sitemaps import (
@@ -223,43 +223,40 @@ class TestSitemapXMLEndpoint(TestCase):
         self.client = Client()
         # Ensure site exists for sitemap framework
         Site.objects.get_or_create(
-            pk=1, defaults={"domain": "example.com", "name": "example.com"}
+            pk=1,
+            defaults={"domain": "example.com", "name": "example.com"},
         )
 
     def test_sitemap_xml_is_accessible(self):
-        """Test /sitemap.xml endpoint is accessible."""
         response = self.client.get("/sitemap.xml")
-        assert response.status_code == 200
+        self.assertEqual(response.status_code, 200)
 
     def test_sitemap_xml_returns_xml_content_type(self):
-        """Test sitemap.xml returns XML content type."""
         response = self.client.get("/sitemap.xml")
-        assert "xml" in response["Content-Type"]
+        self.assertIn("xml", response["Content-Type"])
 
-    def test_sitemap_xml_contains_urlset(self):
-        """Test sitemap.xml contains valid urlset element."""
+    def test_sitemap_xml_contains_urlset_tag(self):
         response = self.client.get("/sitemap.xml")
-        content = response.content.decode("utf-8")
-        assert "<urlset" in content
-        assert 'xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"' in content
+        self.assertContains(response, "<urlset")
+
+    def test_sitemap_xml_contains_valid_namespace(self):
+        response = self.client.get("/sitemap.xml")
+        self.assertContains(
+            response,
+            'xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'
+        )
 
     def test_sitemap_xml_contains_home_page(self):
-        """Test sitemap.xml includes home page."""
         response = self.client.get("/sitemap.xml")
-        content = response.content.decode("utf-8")
-        assert "<loc>http://example.com/</loc>" in content
+        self.assertContains(response, "<loc>http://example.com/</loc>")
 
-    def test_sitemap_xml_contains_priority_tags(self):
-        """Test sitemap.xml includes priority tags."""
+    def test_sitemap_xml_contains_priority(self):
         response = self.client.get("/sitemap.xml")
-        content = response.content.decode("utf-8")
-        assert "<priority>" in content
+        self.assertContains(response, "<priority>")
 
-    def test_sitemap_xml_contains_changefreq_tags(self):
-        """Test sitemap.xml includes changefreq tags."""
+    def test_sitemap_xml_contains_changefreq(self):
         response = self.client.get("/sitemap.xml")
-        content = response.content.decode("utf-8")
-        assert "<changefreq>" in content
+        self.assertContains(response, "<changefreq>")
 
 
 class TestRobotsTxtEndpoint(TestCase):
@@ -269,44 +266,45 @@ class TestRobotsTxtEndpoint(TestCase):
         self.client = Client()
 
     def test_robots_txt_is_accessible(self):
-        """Test /robots.txt endpoint is accessible."""
         response = self.client.get("/robots.txt")
-        assert response.status_code == 200
+        self.assertEqual(response.status_code, 200)
 
     def test_robots_txt_returns_text_content_type(self):
-        """Test robots.txt returns text/plain content type."""
         response = self.client.get("/robots.txt")
-        assert response["Content-Type"] == "text/plain"
+        self.assertEqual(response["Content-Type"], "text/plain")
 
     def test_robots_txt_contains_user_agent(self):
-        """Test robots.txt contains User-agent directive."""
         response = self.client.get("/robots.txt")
-        # FileResponse uses streaming_content instead of content
-        content = b"".join(response.streaming_content).decode("utf-8")
-        assert "User-agent: *" in content
+        self.assertContains(response, "User-agent: *")
 
-    def test_robots_txt_contains_sitemap_location(self):
-        """Test robots.txt contains sitemap location."""
+    def test_robots_txt_contains_sitemap_location_directive(self):
         response = self.client.get("/robots.txt")
-        # FileResponse uses streaming_content instead of content
-        content = b"".join(response.streaming_content).decode("utf-8")
-        assert "Sitemap:" in content
-        assert "sitemap.xml" in content
+        self.assertContains(response, "Sitemap:")
 
-    def test_robots_txt_disallows_write_operations(self):
-        """Test robots.txt disallows create/update/delete paths."""
+    def test_robots_txt_contains_sitemap_filename(self):
         response = self.client.get("/robots.txt")
-        # FileResponse uses streaming_content instead of content
-        content = b"".join(response.streaming_content).decode("utf-8")
-        assert "Disallow: /*/create/" in content
-        assert "Disallow: /*/update/" in content
-        assert "Disallow: /*/delete/" in content
+        self.assertContains(response, "sitemap.xml")
 
-    def test_robots_txt_allows_public_sections(self):
-        """Test robots.txt allows public read-only sections."""
+    def test_robots_txt_disallows_create(self):
         response = self.client.get("/robots.txt")
-        # FileResponse uses streaming_content instead of content
-        content = b"".join(response.streaming_content).decode("utf-8")
-        assert "Allow: /leaguetable/" in content
-        assert "Allow: /liveticker/" in content
-        assert "Allow: /scorecard/" in content
+        self.assertContains(response, "Disallow: /*/create/")
+
+    def test_robots_txt_disallows_update(self):
+        response = self.client.get("/robots.txt")
+        self.assertContains(response, "Disallow: /*/update/")
+
+    def test_robots_txt_disallows_delete(self):
+        response = self.client.get("/robots.txt")
+        self.assertContains(response, "Disallow: /*/delete/")
+
+    def test_robots_txt_allows_leaguetable(self):
+        response = self.client.get("/robots.txt")
+        self.assertContains(response, "Allow: /leaguetable/")
+
+    def test_robots_txt_allows_liveticker(self):
+        response = self.client.get("/robots.txt")
+        self.assertContains(response, "Allow: /liveticker/")
+
+    def test_robots_txt_allows_scorecard(self):
+        response = self.client.get("/robots.txt")
+        self.assertContains(response, "Allow: /scorecard/")
