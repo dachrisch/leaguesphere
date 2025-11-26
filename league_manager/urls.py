@@ -17,16 +17,37 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth import views as auth_view
+from django.contrib.sitemaps.views import sitemap
 from django.urls import path, include
 from django.views.generic import TemplateView
+from django.views.static import serve
 
 from league_manager.views import homeview, ClearCacheView
+from league_manager.sitemaps import (
+    StaticViewSitemap,
+    LeaguetableSitemap,
+    GamedaySitemap,
+    PasscheckTeamSitemap,
+    OfficialsSitemap,
+)
 
 ADMIN_ALL_URLS = 'admin-all-urls'
 CLEAR_CACHE = 'clear-cache'
 
 LEAGUE_MANAGER_MAINTENANCE = 'maintenance'
+
+# Sitemap configuration
+sitemaps = {
+    'static': StaticViewSitemap,
+    'leaguetable': LeaguetableSitemap,
+    'gamedays': GamedaySitemap,
+    'passcheck': PasscheckTeamSitemap,
+    'officials': OfficialsSitemap,
+}
+
 urlpatterns = [
+                  path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
+                  path('robots.txt', serve, {'path': 'robots.txt', 'document_root': settings.STATIC_ROOT}, name='robots-txt'),
                   path('maintenance/', TemplateView.as_view(template_name='league_manager/maintenance.html'),
                        name=LEAGUE_MANAGER_MAINTENANCE),
                   path('clear-cache/', ClearCacheView.as_view(), name=CLEAR_CACHE),
