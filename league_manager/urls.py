@@ -20,9 +20,8 @@ from django.contrib.auth import views as auth_view
 from django.contrib.sitemaps.views import sitemap
 from django.urls import path, include
 from django.views.generic import TemplateView
-from django.views.static import serve
 
-from league_manager.views import homeview, ClearCacheView
+from league_manager.views import homeview, ClearCacheView, robots_txt_view
 from league_manager.sitemaps import (
     StaticViewSitemap,
     LeaguetableSitemap,
@@ -47,7 +46,7 @@ sitemaps = {
 
 urlpatterns = [
                   path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
-                  path('robots.txt', serve, {'path': 'robots.txt', 'document_root': settings.STATIC_ROOT}, name='robots-txt'),
+                  path('robots.txt', robots_txt_view, name='robots-txt'),
                   path('maintenance/', TemplateView.as_view(template_name='league_manager/maintenance.html'),
                        name=LEAGUE_MANAGER_MAINTENANCE),
                   path('clear-cache/', ClearCacheView.as_view(), name=CLEAR_CACHE),
