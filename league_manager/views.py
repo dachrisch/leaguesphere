@@ -1,9 +1,5 @@
-import os
-
-from django.conf import settings
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.core.cache import cache
-from django.http import HttpResponse, HttpResponseNotFound
 from django.shortcuts import render, redirect
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
@@ -19,16 +15,10 @@ def robots_txt_view(request):
     """
     Serve robots.txt file.
 
-    This view reads and serves the robots.txt file from STATIC_ROOT.
-    Works in all environments (dev, test, production) without requiring DEBUG=True.
+    Uses Django template rendering to serve robots.txt.
+    Works in all environments without requiring collectstatic.
     """
-    robots_path = os.path.join(settings.STATIC_ROOT, 'robots.txt')
-    try:
-        with open(robots_path, 'r') as f:
-            content = f.read()
-        return HttpResponse(content, content_type='text/plain')
-    except FileNotFoundError:
-        return HttpResponseNotFound('robots.txt not found')
+    return render(request, 'robots.txt', content_type='text/plain')
 
 
 class ClearCacheView(UserPassesTestMixin, View):
