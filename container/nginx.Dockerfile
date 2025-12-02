@@ -6,16 +6,14 @@ ARG APP_DIR="/app"
 WORKDIR ${APP_DIR}
 
 # install build requirements
-RUN apt -y update
-RUN apt -y install pkg-config
-RUN apt -y install python3-dev
-RUN apt -y install build-essential
-RUN apt -y install default-libmysqlclient-dev
+RUN apt -y update && \
+    apt -y install pkg-config python3-dev build-essential default-libmysqlclient-dev curl && \
+    curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    source ~/.cargo/env
 
 # install environment
-COPY ../requirements.txt ${APP_DIR}
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+COPY ../pyproject.toml ${APP_DIR}
+RUN uv pip install --system -e .
 
 COPY ../ ${APP_DIR}
 

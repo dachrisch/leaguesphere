@@ -3,7 +3,7 @@ source ../.virtualenvs/venv/bin/activate
 echo "checkout git"
 git pull
 echo "installing requirements"
-pip install -r requirements.txt
+uv pip install -e .
 echo "migrating django"
 python manage.py migrate
 echo "collecting django static files"

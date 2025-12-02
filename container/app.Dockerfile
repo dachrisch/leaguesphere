@@ -1,17 +1,13 @@
 FROM python:3.14-slim AS app-builder
 
-RUN apt -y update
-RUN apt -y install pkg-config
-RUN apt -y install python3-dev
-RUN apt -y install build-essential
-RUN apt -y install default-libmysqlclient-dev   # to build the mysql client
-RUN apt -y install git                          # for development dependency in requirements.txt
+RUN apt -y update && \
+    apt -y install pkg-config python3-dev build-essential default-libmysqlclient-dev git curl && \
+    curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    source ~/.cargo/env
 
-COPY ../requirements.txt .
+COPY ../pyproject.toml .
 
-RUN pip install --upgrade pip
-RUN pip install --target=/py-install -r requirements.txt
-RUN pip install --target=/py-install django-debug-toolbar
+RUN uv pip install --system --target=/py-install -e .[prod]
 
 FROM python:3.14-slim AS app
 
@@ -24,7 +20,6 @@ RUN apt -y update
 RUN apt -y install curl                          # install curl for healthcheck
 RUN apt -y install jq                            # install jq for healthcheck
 RUN apt -y install default-libmysqlclient-dev    # to run the mysql client
-RUN pip install gunicorn
 
 # add user
 RUN adduser --disabled-password --home ${APP_DIR} ${APP_USER}
