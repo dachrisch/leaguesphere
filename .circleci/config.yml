@@ -31,7 +31,7 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            uv pip install -e .[test]
+            uv sync --extra test
       - save_cache:
           paths:
             - ~/.pyenv

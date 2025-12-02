@@ -42,7 +42,7 @@ jobs:
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           export PATH="$HOME/.local/bin:$PATH"
-          uv pip install --system -e .[test]
+          uv sync --extra test
       - name: 🚀🧪 Run Tests
         run: pytest --cov --junitxml=junit.xml -o junit_family=legacy
         env:

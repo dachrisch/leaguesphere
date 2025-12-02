@@ -2,7 +2,7 @@
 
 **Date:** 2025-12-02
 
-**Status:** In Progress
+**Status:** Completed
 
 **Context:** The LeagueSphere project is migrating from traditional pip-based dependency management (requirements.txt and test_requirements.txt) to the modern uv package manager with pyproject.toml-based configuration.
 
@@ -67,7 +67,7 @@ The following changes have already been made (uncommitted):
 ### What Changes
 
 1. **Developer Workflow:**
-   - Install dependencies: `uv pip install -e .[test]` instead of `pip install -r requirements.txt -r test_requirements.txt`
+   - Install dependencies: `uv sync --extra test` (uses native uv lockfile-based install)
    - Add dependency: Update `pyproject.toml` then run `uv lock`
    - Lock file must be committed with dependency changes
 

@@ -10,7 +10,7 @@
 This project uses [uv](https://docs.astral.sh/uv/) for package management.
 
 ```bash
-uv pip install -e .[test]  # Install with test dependencies
+uv sync --extra test  # Install with test dependencies
 ```
 
 ## Dev Documentation
