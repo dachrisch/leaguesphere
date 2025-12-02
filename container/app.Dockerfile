@@ -6,9 +6,11 @@ RUN apt -y update && \
 
 ENV PATH="/root/.local/bin:$PATH"
 
-COPY pyproject.toml .
+COPY pyproject.toml uv.lock .
 
-RUN uv pip install --system --target=/py-install .[prod]
+# Export dependencies to requirements.txt (excludes local package), then install
+RUN uv export --no-hashes --extra prod -o requirements.txt && \
+    uv pip install --system --target=/py-install -r requirements.txt
 
 FROM python:3.14-slim AS app
 
