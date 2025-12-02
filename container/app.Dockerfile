@@ -12,8 +12,9 @@ COPY pyproject.toml uv.lock .
 # Export dependencies to requirements.txt (excludes local package), then install
 # Use cache mount for faster rebuilds and --compile-bytecode for production
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv export --no-hashes --extra prod -o requirements.txt && \
-    uv pip install --system --compile-bytecode --target=/py-install -r requirements.txt
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-install-project --no-editable
 
 FROM python:3.14-slim AS app
 
