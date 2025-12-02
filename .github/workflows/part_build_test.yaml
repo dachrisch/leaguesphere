@@ -44,7 +44,7 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           uv sync --extra test
       - name: 🚀🧪 Run Tests
-        run: pytest --cov --junitxml=junit.xml -o junit_family=legacy
+        run: uv run pytest --cov --junitxml=junit.xml -o junit_family=legacy
         env:
           MYSQL_HOST: 0.0.0.0
           SECRET_KEY: 123456-TEST
