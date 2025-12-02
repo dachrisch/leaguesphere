@@ -8,7 +8,7 @@ ENV PATH="/root/.local/bin:$PATH"
 
 COPY pyproject.toml .
 
-RUN uv pip install --system --target=/py-install -e .[prod]
+RUN uv pip install --system --target=/py-install .[prod]
 
 FROM python:3.14-slim AS app
 
