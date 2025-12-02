@@ -8,14 +8,15 @@ WORKDIR ${APP_DIR}
 # install build requirements
 RUN apt -y update && \
     apt -y install pkg-config python3-dev build-essential default-libmysqlclient-dev curl && \
-    curl -LsSf https://astral.sh/uv/install.sh | sh && \
-    source ~/.cargo/env
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+
+ENV PATH="/root/.local/bin:$PATH"
 
 # install environment
-COPY ../pyproject.toml ${APP_DIR}
+COPY pyproject.toml ${APP_DIR}
 RUN uv pip install --system -e .
 
-COPY ../ ${APP_DIR}
+COPY . ${APP_DIR}
 
 # remove existing js files (will be packed below)
 RUN rm -rf liveticker/static/liveticker/js
@@ -29,7 +30,7 @@ FROM node:24-slim AS node-builder
 ARG APP_DIR="/liveticker-app"
 WORKDIR ${APP_DIR}
 
-COPY ../liveticker ${APP_DIR}
+COPY liveticker ${APP_DIR}
 RUN rm -rf static/liveticker/js
 
 RUN npm ci
@@ -38,7 +39,7 @@ RUN npm run build
 ARG APP_DIR="/scorecard-app"
 WORKDIR ${APP_DIR}
 
-COPY ../scorecard ${APP_DIR}
+COPY scorecard ${APP_DIR}
 RUN rm -rf static/scorecard/js
 
 RUN npm ci
@@ -47,7 +48,7 @@ RUN npm run build
 ARG APP_DIR="/passcheck-app"
 WORKDIR ${APP_DIR}
 
-COPY ../passcheck ${APP_DIR}
+COPY passcheck ${APP_DIR}
 RUN rm -rf static/passcheck/js
 
 RUN npm ci
