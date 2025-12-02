@@ -38,12 +38,11 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'uv'
       - name: 📦⬇️ Install Dependencies
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
-          source ~/.cargo/env
-          uv pip install -e .[test]
+          export PATH="$HOME/.local/bin:$PATH"
+          uv pip install --system -e .[test]
       - name: 🚀🧪 Run Tests
         run: pytest --cov --junitxml=junit.xml -o junit_family=legacy
         env:
