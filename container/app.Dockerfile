@@ -1,16 +1,19 @@
 FROM python:3.14-slim AS app-builder
 
+# Install build dependencies
 RUN apt -y update && \
-    apt -y install pkg-config python3-dev build-essential default-libmysqlclient-dev git curl && \
-    curl -LsSf https://astral.sh/uv/install.sh | sh
+    apt -y install pkg-config python3-dev build-essential default-libmysqlclient-dev
 
-ENV PATH="/root/.local/bin:$PATH"
+# Copy uv from official image (faster and more reliable than curl install)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 COPY pyproject.toml uv.lock .
 
 # Export dependencies to requirements.txt (excludes local package), then install
-RUN uv export --no-hashes --extra prod -o requirements.txt && \
-    uv pip install --system --target=/py-install -r requirements.txt
+# Use cache mount for faster rebuilds and --compile-bytecode for production
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv export --no-hashes --extra prod -o requirements.txt && \
+    uv pip install --system --compile-bytecode --target=/py-install -r requirements.txt
 
 FROM python:3.14-slim AS app
 

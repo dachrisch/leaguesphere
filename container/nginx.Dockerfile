@@ -5,16 +5,17 @@ ARG APP_DIR="/app"
 
 WORKDIR ${APP_DIR}
 
-# install build requirements
+# Install build dependencies
 RUN apt -y update && \
-    apt -y install pkg-config python3-dev build-essential default-libmysqlclient-dev curl && \
-    curl -LsSf https://astral.sh/uv/install.sh | sh
+    apt -y install pkg-config python3-dev build-essential default-libmysqlclient-dev
 
-ENV PATH="/root/.local/bin:$PATH"
+# Copy uv from official image (faster and more reliable than curl install)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# install environment
-COPY pyproject.toml ${APP_DIR}
-RUN uv pip install --system -e .
+# Install environment using cache mount for faster rebuilds
+COPY pyproject.toml uv.lock ${APP_DIR}/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system --compile-bytecode -e .
 
 COPY . ${APP_DIR}
 
