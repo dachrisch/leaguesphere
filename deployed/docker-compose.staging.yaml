@@ -23,7 +23,7 @@ services:
       - traefik.enable=false
 
   www:
-    image: leaguesphere/frontend:latest  # TODO: Change to :staging when images exist
+    image: leaguesphere/frontend:staging
     container_name: ${COMPOSE_PROJECT_NAME}.www
     labels:
       # HTTP -> HTTPS redirect
@@ -57,7 +57,7 @@ services:
     restart: unless-stopped
 
   app:
-    image: leaguesphere/backend:latest  # TODO: Change to :staging when images exist
+    image: leaguesphere/backend:staging
     container_name: ${COMPOSE_PROJECT_NAME}.app
     command: gunicorn -b 0.0.0.0:8000 league_manager.wsgi
     labels:
