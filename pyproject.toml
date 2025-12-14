@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "leaguesphere"
 version = "2.12.14"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "Django==6.0",
     "django-crispy-forms==2.5",
