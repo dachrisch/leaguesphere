@@ -44,17 +44,27 @@ function checkIncompleteInputs(
   for (const node of gameNodes) {
     const data = node.data as GameNodeData;
 
-    // Find edges targeting this game's inputs
+    // Check if home slot is filled:
+    // - Either via edge (dynamic reference from another game)
+    // - Or via direct team assignment (homeTeamId)
+    // - Or via synced dynamic reference (homeTeamDynamic)
     const homeEdge = edges.find(
       (e) => e.target === node.id && e.targetHandle === 'home'
     );
+    const hasHomeTeam = Boolean(homeEdge || data.homeTeamId || data.homeTeamDynamic);
+
+    // Check if away slot is filled:
+    // - Either via edge (dynamic reference from another game)
+    // - Or via direct team assignment (awayTeamId)
+    // - Or via synced dynamic reference (awayTeamDynamic)
     const awayEdge = edges.find(
       (e) => e.target === node.id && e.targetHandle === 'away'
     );
+    const hasAwayTeam = Boolean(awayEdge || data.awayTeamId || data.awayTeamDynamic);
 
     const missingPorts: string[] = [];
-    if (!homeEdge) missingPorts.push('home');
-    if (!awayEdge) missingPorts.push('away');
+    if (!hasHomeTeam) missingPorts.push('home');
+    if (!hasAwayTeam) missingPorts.push('away');
 
     if (missingPorts.length > 0) {
       errors.push({
