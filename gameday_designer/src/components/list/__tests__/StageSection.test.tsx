@@ -10,6 +10,27 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import StageSection from '../StageSection';
 import type { StageNode, GameNode, TeamNode } from '../../../types/flowchart';
+import type { StageSectionProps } from '../StageSection';
+
+// Helper function to create default props
+const createDefaultProps = (overrides: Partial<StageSectionProps> = {}): StageSectionProps => ({
+  stage: {} as StageNode,
+  allNodes: [],
+  edges: [],
+  globalTeams: [],
+  onUpdate: vi.fn(),
+  onDelete: vi.fn(),
+  onSelectNode: vi.fn(),
+  selectedNodeId: null,
+  onAssignTeam: vi.fn(),
+  onAddGame: vi.fn(),
+  highlightedSourceGameId: null,
+  onDynamicReferenceClick: vi.fn(),
+  onAddGameToGameEdge: vi.fn(),
+  onRemoveGameToGameEdge: vi.fn(),
+  isExpanded: true,
+  ...overrides,
+});
 
 describe('StageSection', () => {
   // Sample stage node
@@ -58,13 +79,10 @@ describe('StageSection', () => {
   it('renders stage with name and type badge', () => {
     render(
       <StageSection
-        stage={sampleStage}
-        allNodes={[sampleStage, sampleGame, sampleTeam]}
-        edges={[]}
-        onUpdate={vi.fn()}
-        onDelete={vi.fn()}
-        onSelectNode={vi.fn()}
-        selectedNodeId={null}
+        {...createDefaultProps({
+          stage: sampleStage,
+          allNodes: [sampleStage, sampleGame, sampleTeam],
+        })}
       />
     );
 

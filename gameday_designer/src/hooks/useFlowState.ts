@@ -36,6 +36,7 @@ import {
   createFieldNode,
   createStageNode,
   createGameNodeInStage,
+  createGameToGameEdge,
   isTeamNode,
   isGameNode,
   isFieldNode,
@@ -102,6 +103,8 @@ export interface UseFlowStateReturn {
   // Edge actions
   setEdges: (edges: FlowEdge[]) => void;
   deleteEdge: (edgeId: string) => void;
+  addGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => string;
+  removeGameToGameEdge: (targetGameId: string, targetSlot: 'home' | 'away') => void;
 
   // Field actions (legacy, kept for compatibility)
   addField: (name: string) => FlowField;
@@ -844,6 +847,55 @@ export function useFlowState(initialState?: Partial<FlowState>): UseFlowStateRet
   // ============================================================================
 
   /**
+   * Add a GameToGameEdge from source game to target game.
+   * Creates a dynamic team reference (winner/loser) connection.
+   *
+   * @param sourceGameId - ID of the source game providing the team
+   * @param outputType - Whether to use the winner or loser of the source game
+   * @param targetGameId - ID of the target game receiving the team
+   * @param targetSlot - Which slot on the target game ('home' or 'away')
+   * @returns The ID of the created edge
+   */
+  const addGameToGameEdge = useCallback(
+    (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away'): string => {
+      const edgeId = `edge-${uuidv4()}`;
+      const newEdge = createGameToGameEdge(
+        edgeId,
+        sourceGameId,
+        outputType,
+        targetGameId,
+        targetSlot
+      );
+
+      setEdges((eds) => [...eds, newEdge]);
+
+      // Clear static team assignment for this slot
+      updateNode(targetGameId, {
+        [targetSlot === 'home' ? 'homeTeamId' : 'awayTeamId']: null,
+      });
+
+      return edgeId;
+    },
+    [setEdges, updateNode]
+  );
+
+  /**
+   * Remove a GameToGameEdge targeting a specific game slot.
+   * Clears the dynamic team reference for the specified slot.
+   *
+   * @param targetGameId - ID of the target game
+   * @param targetSlot - Which slot to clear ('home' or 'away')
+   */
+  const removeGameToGameEdge = useCallback(
+    (targetGameId: string, targetSlot: 'home' | 'away'): void => {
+      setEdges((eds) => eds.filter((e) =>
+        !(e.target === targetGameId && e.targetHandle === targetSlot)
+      ));
+    },
+    [setEdges]
+  );
+
+  /**
    * Delete an edge.
    */
   const deleteEdge = useCallback(
@@ -1281,6 +1333,8 @@ export function useFlowState(initialState?: Partial<FlowState>): UseFlowStateRet
     // Edge actions
     setEdges,
     deleteEdge,
+    addGameToGameEdge,
+    removeGameToGameEdge,
 
     // Field actions (legacy)
     addField,

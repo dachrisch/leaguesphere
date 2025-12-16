@@ -8,7 +8,7 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { Container, Row, Col } from 'react-bootstrap';
+import { Container, Row, Col, OverlayTrigger, Popover, ListGroup } from 'react-bootstrap';
 
 import ListCanvas from './ListCanvas';
 import FlowToolbar from './FlowToolbar';
@@ -71,6 +71,8 @@ const ListDesignerApp: React.FC = () => {
     reorderGlobalTeamGroup,
     getTeamUsage,
     assignTeamToGame,
+    addGameToGameEdge,
+    removeGameToGameEdge,
   } = useFlowState();
 
   // Validate the current flowchart
@@ -100,9 +102,13 @@ const ListDesignerApp: React.FC = () => {
   /**
    * Handle click on a dynamic reference badge in a game table.
    * Scrolls to the source game and highlights it.
+   *
+   * @param sourceGameId - ID of the source game to scroll to
+   * @param targetGameId - ID of the target game (not used, but kept for compatibility)
+   * @param targetSlot - Slot on the target game (not used, but kept for compatibility)
    */
   const handleDynamicReferenceClick = useCallback(
-    async (sourceGameId: string) => {
+    async (sourceGameId: string, targetGameId?: string, targetSlot?: 'home' | 'away') => {
       // Set highlight state
       setHighlightedSourceGameId(sourceGameId);
 
@@ -407,6 +413,8 @@ const ListDesignerApp: React.FC = () => {
             onAddGame={addGameNodeInStage}
             highlightedSourceGameId={highlightedSourceGameId}
             onDynamicReferenceClick={handleDynamicReferenceClick}
+            onAddGameToGameEdge={addGameToGameEdge}
+            onRemoveGameToGameEdge={removeGameToGameEdge}
             expandedFieldIds={expandedFieldIds}
             expandedStageIds={expandedStageIds}
           />
@@ -441,16 +449,56 @@ const ListDesignerApp: React.FC = () => {
             ) : (
               <>
                 {validation.errors.length > 0 && (
-                  <span className="text-danger">
-                    <i className="bi bi-x-circle-fill me-1"></i>
-                    {validation.errors.length} error{validation.errors.length !== 1 ? 's' : ''}
-                  </span>
+                  <OverlayTrigger
+                    placement="top"
+                    overlay={
+                      <Popover id="errors-popover">
+                        <Popover.Header as="h3">
+                          {validation.errors.length} Error{validation.errors.length !== 1 ? 's' : ''}
+                        </Popover.Header>
+                        <Popover.Body className="p-0">
+                          <ListGroup variant="flush">
+                            {validation.errors.map((error) => (
+                              <ListGroup.Item key={error.id} variant="danger" className="small">
+                                {error.message}
+                              </ListGroup.Item>
+                            ))}
+                          </ListGroup>
+                        </Popover.Body>
+                      </Popover>
+                    }
+                  >
+                    <span className="text-danger" style={{ cursor: 'help' }}>
+                      <i className="bi bi-x-circle-fill me-1"></i>
+                      {validation.errors.length} error{validation.errors.length !== 1 ? 's' : ''}
+                    </span>
+                  </OverlayTrigger>
                 )}
                 {validation.warnings.length > 0 && (
-                  <span className="text-warning">
-                    <i className="bi bi-exclamation-triangle-fill me-1"></i>
-                    {validation.warnings.length} warning{validation.warnings.length !== 1 ? 's' : ''}
-                  </span>
+                  <OverlayTrigger
+                    placement="top"
+                    overlay={
+                      <Popover id="warnings-popover">
+                        <Popover.Header as="h3">
+                          {validation.warnings.length} Warning{validation.warnings.length !== 1 ? 's' : ''}
+                        </Popover.Header>
+                        <Popover.Body className="p-0">
+                          <ListGroup variant="flush">
+                            {validation.warnings.map((warning) => (
+                              <ListGroup.Item key={warning.id} variant="warning" className="small">
+                                {warning.message}
+                              </ListGroup.Item>
+                            ))}
+                          </ListGroup>
+                        </Popover.Body>
+                      </Popover>
+                    }
+                  >
+                    <span className="text-warning" style={{ cursor: 'help' }}>
+                      <i className="bi bi-exclamation-triangle-fill me-1"></i>
+                      {validation.warnings.length} warning{validation.warnings.length !== 1 ? 's' : ''}
+                    </span>
+                  </OverlayTrigger>
                 )}
               </>
             )}
