@@ -53,7 +53,13 @@ export interface FieldSectionProps {
   highlightedSourceGameId: string | null;
 
   /** Callback when a dynamic reference badge is clicked */
-  onDynamicReferenceClick: (sourceGameId: string) => void;
+  onDynamicReferenceClick: (sourceGameId: string, targetGameId: string, targetSlot: 'home' | 'away') => void;
+
+  /** Callback to add a GameToGameEdge */
+  onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
+
+  /** Callback to remove a GameToGameEdge */
+  onRemoveGameToGameEdge: (targetGameId: string, targetSlot: 'home' | 'away') => void;
 
   /** Whether this field is expanded (controlled) */
   isExpanded: boolean;
@@ -87,6 +93,8 @@ const FieldSection: React.FC<FieldSectionProps> = ({
   onAddGame,
   highlightedSourceGameId,
   onDynamicReferenceClick,
+  onAddGameToGameEdge,
+  onRemoveGameToGameEdge,
   isExpanded: isExpandedProp,
   expandedStageIds,
 }) => {
@@ -281,6 +289,8 @@ const FieldSection: React.FC<FieldSectionProps> = ({
                 onAddGame={onAddGame}
                 highlightedSourceGameId={highlightedSourceGameId}
                 onDynamicReferenceClick={onDynamicReferenceClick}
+                onAddGameToGameEdge={onAddGameToGameEdge}
+                onRemoveGameToGameEdge={onRemoveGameToGameEdge}
                 isExpanded={expandedStageIds.has(stage.id)}
               />
             ))

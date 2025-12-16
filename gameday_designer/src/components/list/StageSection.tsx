@@ -47,7 +47,13 @@ export interface StageSectionProps {
   highlightedSourceGameId: string | null;
 
   /** Callback when a dynamic reference badge is clicked */
-  onDynamicReferenceClick: (sourceGameId: string) => void;
+  onDynamicReferenceClick: (sourceGameId: string, targetGameId: string, targetSlot: 'home' | 'away') => void;
+
+  /** Callback to add a GameToGameEdge */
+  onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
+
+  /** Callback to remove a GameToGameEdge */
+  onRemoveGameToGameEdge: (targetGameId: string, targetSlot: 'home' | 'away') => void;
 
   /** Whether this stage is expanded (controlled) */
   isExpanded: boolean;
@@ -76,6 +82,8 @@ const StageSection: React.FC<StageSectionProps> = ({
   onAddGame,
   highlightedSourceGameId,
   onDynamicReferenceClick,
+  onAddGameToGameEdge,
+  onRemoveGameToGameEdge,
   isExpanded: isExpandedProp,
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
@@ -266,6 +274,8 @@ const StageSection: React.FC<StageSectionProps> = ({
               onAssignTeam={onAssignTeam}
               highlightedSourceGameId={highlightedSourceGameId}
               onDynamicReferenceClick={onDynamicReferenceClick}
+              onAddGameToGameEdge={onAddGameToGameEdge}
+              onRemoveGameToGameEdge={onRemoveGameToGameEdge}
             />
           </div>
         </Card.Body>

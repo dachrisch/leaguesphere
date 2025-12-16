@@ -79,7 +79,13 @@ export interface ListCanvasProps {
   highlightedSourceGameId: string | null;
 
   /** Callback when a dynamic reference badge is clicked */
-  onDynamicReferenceClick: (sourceGameId: string) => void;
+  onDynamicReferenceClick: (sourceGameId: string, targetGameId: string, targetSlot: 'home' | 'away') => void;
+
+  /** Callback to add a GameToGameEdge */
+  onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
+
+  /** Callback to remove a GameToGameEdge */
+  onRemoveGameToGameEdge: (targetGameId: string, targetSlot: 'home' | 'away') => void;
 
   /** Set of expanded field IDs (controlled) */
   expandedFieldIds: Set<string>;
@@ -117,6 +123,8 @@ const ListCanvas: React.FC<ListCanvasProps> = ({
   onAddGame,
   highlightedSourceGameId,
   onDynamicReferenceClick,
+  onAddGameToGameEdge,
+  onRemoveGameToGameEdge,
   expandedFieldIds,
   expandedStageIds,
 }) => {
@@ -195,6 +203,8 @@ const ListCanvas: React.FC<ListCanvasProps> = ({
                 onAddGame={onAddGame}
                 highlightedSourceGameId={highlightedSourceGameId}
                 onDynamicReferenceClick={onDynamicReferenceClick}
+                onAddGameToGameEdge={onAddGameToGameEdge}
+                onRemoveGameToGameEdge={onRemoveGameToGameEdge}
                 isExpanded={expandedFieldIds.has(field.id)}
                 expandedStageIds={expandedStageIds}
               />
