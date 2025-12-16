@@ -110,8 +110,6 @@ const StageSection: React.FC<StageSectionProps> = ({
     [allNodes, stage.id]
   );
 
-  const isSelected = selectedNodeId === stage.id;
-
   /**
    * Toggle stage expansion.
    */
@@ -175,13 +173,6 @@ const StageSection: React.FC<StageSectionProps> = ({
   );
 
   /**
-   * Select this stage.
-   */
-  const handleSelectStage = useCallback(() => {
-    onSelectNode(stage.id);
-  }, [stage.id, onSelectNode]);
-
-  /**
    * Handle Add Game button click.
    */
   const handleAddGame = useCallback(
@@ -194,8 +185,7 @@ const StageSection: React.FC<StageSectionProps> = ({
 
   return (
     <Card
-      className={`stage-section mb-2 ${isSelected ? 'selected' : ''}`}
-      onClick={handleSelectStage}
+      className={`stage-section mb-2`}
     >
       <Card.Header
         className="stage-section__header d-flex align-items-center"

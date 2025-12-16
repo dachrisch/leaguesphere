@@ -3,10 +3,10 @@
  *
  * Displays games in a stage as a table.
  * Shows team assignments via dropdown selectors or dynamic refs from edges.
- * Clicking a row selects the game for editing in the properties panel.
+ * Features inline editing for standing and breakAfter fields.
  */
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { Table, Form, Badge, Button } from 'react-bootstrap';
 import type { GameNode, FlowEdge, FlowNode, GlobalTeam, GameNodeData } from '../../types/flowchart';
 import { isGameNode } from '../../types/flowchart';
@@ -39,11 +39,17 @@ const GameTable: React.FC<GameTableProps> = ({
   onSelectNode,
   selectedNodeId,
   onAssignTeam,
+  onUpdate,
   highlightedSourceGameId,
   onDynamicReferenceClick,
   onAddGameToGameEdge,
   onRemoveGameToGameEdge,
 }) => {
+  // State for inline editing
+  const [editingGameId, setEditingGameId] = useState<string | null>(null);
+  const [editingField, setEditingField] = useState<'standing' | 'breakAfter' | null>(null);
+  const [editedValue, setEditedValue] = useState<string>('');
+
   if (games.length === 0) {
     return (
       <div className="text-muted text-center py-2">
@@ -64,6 +70,64 @@ const GameTable: React.FC<GameTableProps> = ({
       onDelete(gameId);
     }
   };
+
+  /**
+   * Start editing a field.
+   */
+  const handleStartEdit = useCallback(
+    (e: React.MouseEvent, game: GameNode, field: 'standing' | 'breakAfter') => {
+      e.stopPropagation();
+      setEditingGameId(game.id);
+      setEditingField(field);
+      setEditedValue(
+        field === 'standing' ? game.data.standing : String(game.data.breakAfter || 0)
+      );
+    },
+    []
+  );
+
+  /**
+   * Save edited value.
+   */
+  const handleSaveEdit = useCallback(
+    (gameId: string, field: 'standing' | 'breakAfter') => {
+      if (editedValue.trim() !== '') {
+        if (field === 'standing') {
+          onUpdate(gameId, { standing: editedValue.trim() });
+        } else {
+          const numValue = parseInt(editedValue, 10);
+          if (!isNaN(numValue) && numValue >= 0) {
+            onUpdate(gameId, { breakAfter: numValue });
+          }
+        }
+      }
+      setEditingGameId(null);
+      setEditingField(null);
+    },
+    [editedValue, onUpdate]
+  );
+
+  /**
+   * Cancel editing.
+   */
+  const handleCancelEdit = useCallback(() => {
+    setEditingGameId(null);
+    setEditingField(null);
+  }, []);
+
+  /**
+   * Handle key press during editing.
+   */
+  const handleKeyPress = useCallback(
+    (e: React.KeyboardEvent, gameId: string, field: 'standing' | 'breakAfter') => {
+      if (e.key === 'Enter') {
+        handleSaveEdit(gameId, field);
+      } else if (e.key === 'Escape') {
+        handleCancelEdit();
+      }
+    },
+    [handleSaveEdit, handleCancelEdit]
+  );
 
   /**
    * Get eligible source games for dynamic references.
@@ -114,10 +178,84 @@ const GameTable: React.FC<GameTableProps> = ({
     }
   };
 
-  // Get official team display
-  const getOfficialDisplay = (game: GameNode): string => {
-    if (!game.data.official) return '-';
-    return formatTeamReference(game.data.official);
+  /**
+   * Handle official selection change.
+   */
+  const handleOfficialChange = useCallback(
+    (gameId: string, value: string) => {
+      if (!value) {
+        // Clear official
+        onUpdate(gameId, { official: undefined });
+        return;
+      }
+
+      // Update official with the selected value (static team or dynamic reference)
+      onUpdate(gameId, { official: value });
+    },
+    [onUpdate]
+  );
+
+  /**
+   * Render official selector (checkbox + dropdown).
+   */
+  const renderOfficialCell = (game: GameNode) => {
+    const official = game.data.official;
+    const hasOfficial = !!official;
+    const eligibleGames = getEligibleSourceGames(game);
+
+    return (
+      <div className="d-flex align-items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        {/* Checkbox to enable/disable official */}
+        <Form.Check
+          type="checkbox"
+          checked={hasOfficial}
+          onChange={(e) => {
+            if (!e.target.checked) {
+              // Disable official
+              handleOfficialChange(game.id, '');
+            } else {
+              // Enable with first team if available
+              if (globalTeams.length > 0) {
+                handleOfficialChange(game.id, globalTeams[0].id);
+              }
+            }
+          }}
+          style={{ margin: 0 }}
+        />
+
+        {/* Dropdown selector (only shown when enabled) */}
+        {hasOfficial && (
+          <Form.Select
+            size="sm"
+            value={official}
+            onChange={(e) => handleOfficialChange(game.id, e.target.value)}
+            style={{ fontSize: '0.875rem', minWidth: '150px' }}
+          >
+            {/* Static teams */}
+            {globalTeams.map((team) => (
+              <option key={team.id} value={team.id}>
+                {team.label}
+              </option>
+            ))}
+
+            {/* Separator if there are eligible source games */}
+            {eligibleGames.length > 0 && <option disabled>---</option>}
+
+            {/* Dynamic references - only show games from earlier stages */}
+            {eligibleGames.map((sourceGame) => (
+              <React.Fragment key={sourceGame.id}>
+                <option value={`winner:${sourceGame.id}`}>
+                  ⚡ Winner of {sourceGame.data.standing}
+                </option>
+                <option value={`loser:${sourceGame.id}`}>
+                  💔 Loser of {sourceGame.data.standing}
+                </option>
+              </React.Fragment>
+            ))}
+          </Form.Select>
+        )}
+      </div>
+    );
   };
 
   // Render team cell (either dropdown or dynamic ref badge)
@@ -219,6 +357,8 @@ const GameTable: React.FC<GameTableProps> = ({
         {games.map((game) => {
           const isSelected = selectedNodeId === game.id;
           const isHighlighted = highlightedSourceGameId === game.id;
+          const isEditingStanding = editingGameId === game.id && editingField === 'standing';
+          const isEditingBreakAfter = editingGameId === game.id && editingField === 'breakAfter';
 
           return (
             <tr
@@ -237,11 +377,65 @@ const GameTable: React.FC<GameTableProps> = ({
                 transition: 'background-color 0.3s ease, box-shadow 0.3s ease',
               }}
             >
-              <td>{game.data.standing}</td>
+              {/* Standing column - inline editable */}
+              <td onClick={(e) => e.stopPropagation()}>
+                {isEditingStanding ? (
+                  <Form.Control
+                    type="text"
+                    size="sm"
+                    value={editedValue}
+                    onChange={(e) => setEditedValue(e.target.value)}
+                    onBlur={() => handleSaveEdit(game.id, 'standing')}
+                    onKeyDown={(e) => handleKeyPress(e, game.id, 'standing')}
+                    autoFocus
+                    style={{ fontSize: '0.875rem' }}
+                  />
+                ) : (
+                  <span
+                    onClick={(e) => handleStartEdit(e, game, 'standing')}
+                    style={{ cursor: 'text' }}
+                    title="Click to edit"
+                  >
+                    {game.data.standing}
+                  </span>
+                )}
+              </td>
+
+              {/* Home team column */}
               <td>{renderTeamCell(game, 'home')}</td>
+
+              {/* Away team column */}
               <td>{renderTeamCell(game, 'away')}</td>
-              <td className="text-muted small">{getOfficialDisplay(game)}</td>
-              <td>{game.data.breakAfter || 0}</td>
+
+              {/* Official column */}
+              <td>{renderOfficialCell(game)}</td>
+
+              {/* Break After column - inline editable */}
+              <td onClick={(e) => e.stopPropagation()}>
+                {isEditingBreakAfter ? (
+                  <Form.Control
+                    type="number"
+                    size="sm"
+                    value={editedValue}
+                    onChange={(e) => setEditedValue(e.target.value)}
+                    onBlur={() => handleSaveEdit(game.id, 'breakAfter')}
+                    onKeyDown={(e) => handleKeyPress(e, game.id, 'breakAfter')}
+                    autoFocus
+                    min="0"
+                    style={{ fontSize: '0.875rem', width: '80px' }}
+                  />
+                ) : (
+                  <span
+                    onClick={(e) => handleStartEdit(e, game, 'breakAfter')}
+                    style={{ cursor: 'text' }}
+                    title="Click to edit"
+                  >
+                    {game.data.breakAfter || 0}
+                  </span>
+                )}
+              </td>
+
+              {/* Actions column */}
               <td>
                 <button
                   className="btn btn-sm btn-outline-danger"
