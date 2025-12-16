@@ -1,0 +1,56 @@
+/**
+ * ListCanvas Component Styles
+ */
+
+.list-canvas {
+  height: 100%;
+  overflow-y: auto;
+  padding: 1rem;
+  background-color: #f8f9fa;
+}
+
+.list-canvas__content {
+  max-width: none;
+  margin: 0 auto;
+}
+
+.list-canvas--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.list-canvas .empty-state {
+  text-align: center;
+  padding: 3rem;
+}
+
+/**
+ * Horizontal field layout with responsive CSS Grid
+ */
+.fields-container {
+  display: grid;
+  gap: 1rem;
+  grid-auto-rows: 1fr;
+}
+
+/* Responsive breakpoints for field columns */
+@media (min-width: 1024px) {
+  /* Large screens: 2 columns maximum */
+  .fields-container {
+    grid-template-columns: repeat(2, minmax(400px, 1fr));
+  }
+}
+
+@media (max-width: 1023px) {
+  /* Small screens: 1 column */
+  .fields-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Alternative: Use auto-fill for automatic column fitting */
+.fields-container.auto-fill {
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+}

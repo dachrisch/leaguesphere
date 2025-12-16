@@ -1,0 +1,294 @@
+/**
+ * FieldSection Component
+ *
+ * Displays a collapsible field container with nested stage sections.
+ * Part of the list-based UI for the Gameday Designer.
+ */
+
+import React, { useState, useCallback } from 'react';
+import { Card, Button, Badge } from 'react-bootstrap';
+import StageSection from './StageSection';
+import type { FieldNode, StageNode, FlowNode, FlowEdge, GlobalTeam } from '../../types/flowchart';
+import { isGameNode } from '../../types/flowchart';
+import './FieldSection.css';
+
+export interface FieldSectionProps {
+  /** The field node to display */
+  field: FieldNode;
+
+  /** Stages belonging to this field */
+  stages: StageNode[];
+
+  /** All nodes in the flowchart (for counting games, etc.) */
+  allNodes: FlowNode[];
+
+  /** All edges in the flowchart */
+  edges: FlowEdge[];
+
+  /** Global team pool */
+  globalTeams: GlobalTeam[];
+
+  /** Callback when field data is updated */
+  onUpdate: (nodeId: string, data: Partial<FieldNode['data']>) => void;
+
+  /** Callback when field is deleted */
+  onDelete: (nodeId: string) => void;
+
+  /** Callback when a new stage is added to this field */
+  onAddStage: (fieldId: string) => void;
+
+  /** Callback when a node is selected */
+  onSelectNode: (nodeId: string | null) => void;
+
+  /** Currently selected node ID */
+  selectedNodeId: string | null;
+
+  /** Callback to assign a team to a game */
+  onAssignTeam: (gameId: string, teamId: string, slot: 'home' | 'away') => void;
+
+  /** Callback to add a game to a stage */
+  onAddGame: (stageId: string) => void;
+
+  /** ID of the source game that is currently highlighted */
+  highlightedSourceGameId: string | null;
+
+  /** Callback when a dynamic reference badge is clicked */
+  onDynamicReferenceClick: (sourceGameId: string) => void;
+
+  /** Whether this field is expanded (controlled) */
+  isExpanded: boolean;
+
+  /** Set of expanded stage IDs (controlled) */
+  expandedStageIds: Set<string>;
+}
+
+/**
+ * FieldSection component.
+ *
+ * Renders a field as a collapsible card with:
+ * - Field name (inline editable)
+ * - Metadata (stage count, game count)
+ * - Add Stage button
+ * - Delete Field button
+ * - Nested StageSection components
+ */
+const FieldSection: React.FC<FieldSectionProps> = ({
+  field,
+  stages,
+  allNodes,
+  edges,
+  globalTeams,
+  onUpdate,
+  onDelete,
+  onAddStage,
+  onSelectNode,
+  selectedNodeId,
+  onAssignTeam,
+  onAddGame,
+  highlightedSourceGameId,
+  onDynamicReferenceClick,
+  isExpanded: isExpandedProp,
+  expandedStageIds,
+}) => {
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(field.data.name);
+
+  // Use local state but sync with prop when it changes (for programmatic expansion)
+  const [localExpanded, setLocalExpanded] = useState(true);
+  const isExpanded = isExpandedProp || localExpanded;
+
+  // Sync with prop changes (when expanded programmatically)
+  React.useEffect(() => {
+    if (isExpandedProp) {
+      setLocalExpanded(true);
+    }
+  }, [isExpandedProp]);
+
+  // Sort stages by order
+  const sortedStages = [...stages].sort((a, b) => a.data.order - b.data.order);
+
+  // Count total games in this field
+  const gameCount = allNodes.filter(
+    (node) =>
+      isGameNode(node) &&
+      stages.some((stage) => stage.id === node.parentId)
+  ).length;
+
+  const isSelected = selectedNodeId === field.id;
+
+  /**
+   * Toggle field expansion.
+   */
+  const handleToggleExpand = useCallback(() => {
+    setLocalExpanded((prev) => !prev);
+  }, []);
+
+  /**
+   * Handle Add Stage button click.
+   */
+  const handleAddStage = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onAddStage(field.id);
+    },
+    [field.id, onAddStage]
+  );
+
+  /**
+   * Handle Delete Field button click.
+   */
+  const handleDelete = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const confirmed = window.confirm(
+        `Delete field "${field.data.name}" and all its stages?`
+      );
+      if (confirmed) {
+        onDelete(field.id);
+      }
+    },
+    [field.id, field.data.name, onDelete]
+  );
+
+  /**
+   * Start editing field name.
+   */
+  const handleStartEdit = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditingName(true);
+    setEditedName(field.data.name);
+  }, [field.data.name]);
+
+  /**
+   * Save edited field name.
+   */
+  const handleSaveName = useCallback(() => {
+    setIsEditingName(false);
+    if (editedName.trim() !== '' && editedName !== field.data.name) {
+      onUpdate(field.id, { name: editedName.trim() });
+    } else {
+      setEditedName(field.data.name);
+    }
+  }, [editedName, field.id, field.data.name, onUpdate]);
+
+  /**
+   * Handle name input key press.
+   */
+  const handleNameKeyPress = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        handleSaveName();
+      } else if (e.key === 'Escape') {
+        setIsEditingName(false);
+        setEditedName(field.data.name);
+      }
+    },
+    [handleSaveName, field.data.name]
+  );
+
+  /**
+   * Select this field.
+   */
+  const handleSelectField = useCallback(() => {
+    onSelectNode(field.id);
+  }, [field.id, onSelectNode]);
+
+  return (
+    <Card
+      className={`field-section mb-3 ${isSelected ? 'selected' : ''}`}
+      onClick={handleSelectField}
+    >
+      <Card.Header
+        className="field-section__header d-flex align-items-center"
+        onClick={handleToggleExpand}
+        style={{ cursor: 'pointer' }}
+      >
+        <i
+          className={`bi bi-chevron-${isExpanded ? 'down' : 'right'} me-2`}
+        ></i>
+
+        {isEditingName ? (
+          <input
+            type="text"
+            className="form-control form-control-sm me-2"
+            value={editedName}
+            onChange={(e) => setEditedName(e.target.value)}
+            onBlur={handleSaveName}
+            onKeyDown={handleNameKeyPress}
+            onClick={(e) => e.stopPropagation()}
+            autoFocus
+            style={{ maxWidth: '200px' }}
+          />
+        ) : (
+          <strong
+            className="me-2"
+            onDoubleClick={handleStartEdit}
+            style={{ cursor: 'text' }}
+          >
+            {field.data.name}
+          </strong>
+        )}
+
+        <Badge bg="secondary" className="me-2">
+          {stages.length} stage{stages.length !== 1 ? 's' : ''}
+        </Badge>
+
+        <Badge bg="info" className="me-auto">
+          {gameCount} game{gameCount !== 1 ? 's' : ''}
+        </Badge>
+
+        <Button
+          variant="outline-primary"
+          size="sm"
+          className="me-2"
+          onClick={handleAddStage}
+          aria-label="Add Stage"
+        >
+          <i className="bi bi-plus-circle me-1"></i>
+          Add Stage
+        </Button>
+
+        <Button
+          variant="outline-danger"
+          size="sm"
+          onClick={handleDelete}
+          aria-label="Delete Field"
+        >
+          <i className="bi bi-trash"></i>
+        </Button>
+      </Card.Header>
+
+      {isExpanded && (
+        <Card.Body className="field-section__body">
+          {sortedStages.length === 0 ? (
+            <div className="text-muted text-center py-3">
+              <i className="bi bi-inbox me-2"></i>
+              No stages in this field. Click "Add Stage" to create one.
+            </div>
+          ) : (
+            sortedStages.map((stage) => (
+              <StageSection
+                key={stage.id}
+                stage={stage}
+                allNodes={allNodes}
+                edges={edges}
+                globalTeams={globalTeams}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+                onSelectNode={onSelectNode}
+                selectedNodeId={selectedNodeId}
+                onAssignTeam={onAssignTeam}
+                onAddGame={onAddGame}
+                highlightedSourceGameId={highlightedSourceGameId}
+                onDynamicReferenceClick={onDynamicReferenceClick}
+                isExpanded={expandedStageIds.has(stage.id)}
+              />
+            ))
+          )}
+        </Card.Body>
+      )}
+    </Card>
+  );
+};
+
+export default FieldSection;
