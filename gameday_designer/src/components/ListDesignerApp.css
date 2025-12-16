@@ -24,16 +24,19 @@
 
 .list-designer-app__content {
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
   margin: 0;
-}
-
-.list-designer-app__canvas-container {
-  height: 100%;
-  overflow: hidden;
+  background-color: #f8f9fa;
 }
 
 .list-designer-app__footer {
   flex-shrink: 0;
   background-color: #f8f9fa;
+}
+
+/* Card wrapper styling */
+.designer-card {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
 }

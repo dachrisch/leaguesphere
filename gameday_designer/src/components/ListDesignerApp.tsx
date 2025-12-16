@@ -8,11 +8,10 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { Container, Row, Col, OverlayTrigger, Popover, ListGroup } from 'react-bootstrap';
+import { Container, Row, Col, OverlayTrigger, Popover, ListGroup, Card } from 'react-bootstrap';
 
 import ListCanvas from './ListCanvas';
 import FlowToolbar from './FlowToolbar';
-import FlowPropertiesPanel from './FlowPropertiesPanel';
 import { useFlowState } from '../hooks/useFlowState';
 import { useFlowValidation } from '../hooks/useFlowValidation';
 import { downloadFlowchartAsJson, validateForExport } from '../utils/flowchartExport';
@@ -315,42 +314,6 @@ const ListDesignerApp: React.FC = () => {
     return parentField?.data.name ?? null;
   }, [targetStage, nodes]);
 
-  // Get parent stage and field for the selected node (for properties panel)
-  const selectedNodeParentStage = useMemo(() => {
-    if (!selectedNode) return null;
-    if (selectedNode.type === 'game') {
-      return getGameStage(selectedNode.id);
-    }
-    return null;
-  }, [selectedNode, getGameStage]);
-
-  const selectedNodeParentField = useMemo(() => {
-    if (!selectedNode) return null;
-    if (selectedNode.type === 'game') {
-      return getGameField(selectedNode.id);
-    }
-    // For stages, return their parent field directly
-    if (selectedNode.type === 'stage' && selectedNode.parentId) {
-      const parentField = nodes.find((n) => n.id === selectedNode.parentId && isFieldNode(n)) as
-        | FieldNode
-        | undefined;
-      return parentField ?? null;
-    }
-    return null;
-  }, [selectedNode, getGameField, nodes]);
-
-  // Get all available stages for move dropdown
-  const availableStages = useMemo(() => {
-    return nodes.filter(isStageNode) as StageNode[];
-  }, [nodes]);
-
-  // Handle move to stage
-  const handleMoveToStage = useCallback(
-    (nodeId: string, stageId: string) => {
-      moveNodeToStage(nodeId, stageId);
-    },
-    [moveNodeToStage]
-  );
 
   return (
     <Container fluid className="list-designer-app">
@@ -386,54 +349,41 @@ const ListDesignerApp: React.FC = () => {
         </Col>
       </Row>
 
-      {/* Main content */}
+      {/* Main content - wrapped in Card */}
       <Row className="list-designer-app__content">
-        {/* Canvas */}
-        <Col className="p-0 list-designer-app__canvas-container">
-          <ListCanvas
-            nodes={nodes}
-            edges={edges}
-            globalTeams={globalTeams}
-            globalTeamGroups={globalTeamGroups}
-            onUpdateNode={handleUpdateNode}
-            onDeleteNode={handleDeleteNode}
-            onAddStage={handleAddStage}
-            onSelectNode={handleSelectNode}
-            selectedNodeId={selectedNode?.id ?? null}
-            onAddGlobalTeam={handleAddGlobalTeam}
-            onUpdateGlobalTeam={handleUpdateGlobalTeam}
-            onDeleteGlobalTeam={handleDeleteGlobalTeam}
-            onReorderGlobalTeam={handleReorderGlobalTeam}
-            onAddGlobalTeamGroup={handleAddGlobalTeamGroup}
-            onUpdateGlobalTeamGroup={updateGlobalTeamGroup}
-            onDeleteGlobalTeamGroup={deleteGlobalTeamGroup}
-            onReorderGlobalTeamGroup={reorderGlobalTeamGroup}
-            getTeamUsage={getTeamUsage}
-            onAssignTeam={handleAssignTeam}
-            onAddGame={addGameNodeInStage}
-            highlightedSourceGameId={highlightedSourceGameId}
-            onDynamicReferenceClick={handleDynamicReferenceClick}
-            onAddGameToGameEdge={addGameToGameEdge}
-            onRemoveGameToGameEdge={removeGameToGameEdge}
-            expandedFieldIds={expandedFieldIds}
-            expandedStageIds={expandedStageIds}
-          />
-        </Col>
-
-        {/* Properties panel */}
-        <Col xs="auto" className="p-0">
-          <FlowPropertiesPanel
-            selectedNode={selectedNode}
-            fields={fields}
-            matchNames={matchNames}
-            groupNames={groupNames}
-            onUpdateNode={handleUpdateNode}
-            onDeleteNode={handleDeleteNode}
-            parentStage={selectedNodeParentStage}
-            parentField={selectedNodeParentField}
-            availableStages={availableStages}
-            onMoveToStage={handleMoveToStage}
-          />
+        <Col className="p-0">
+          <Card className="designer-card m-3 shadow-sm" style={{ border: 'none', borderRadius: '8px' }}>
+            <Card.Body className="p-0">
+              <ListCanvas
+                nodes={nodes}
+                edges={edges}
+                globalTeams={globalTeams}
+                globalTeamGroups={globalTeamGroups}
+                onUpdateNode={handleUpdateNode}
+                onDeleteNode={handleDeleteNode}
+                onAddStage={handleAddStage}
+                onSelectNode={handleSelectNode}
+                selectedNodeId={selectedNode?.id ?? null}
+                onAddGlobalTeam={handleAddGlobalTeam}
+                onUpdateGlobalTeam={handleUpdateGlobalTeam}
+                onDeleteGlobalTeam={handleDeleteGlobalTeam}
+                onReorderGlobalTeam={handleReorderGlobalTeam}
+                onAddGlobalTeamGroup={handleAddGlobalTeamGroup}
+                onUpdateGlobalTeamGroup={updateGlobalTeamGroup}
+                onDeleteGlobalTeamGroup={deleteGlobalTeamGroup}
+                onReorderGlobalTeamGroup={reorderGlobalTeamGroup}
+                getTeamUsage={getTeamUsage}
+                onAssignTeam={handleAssignTeam}
+                onAddGame={addGameNodeInStage}
+                highlightedSourceGameId={highlightedSourceGameId}
+                onDynamicReferenceClick={handleDynamicReferenceClick}
+                onAddGameToGameEdge={addGameToGameEdge}
+                onRemoveGameToGameEdge={removeGameToGameEdge}
+                expandedFieldIds={expandedFieldIds}
+                expandedStageIds={expandedStageIds}
+              />
+            </Card.Body>
+          </Card>
         </Col>
       </Row>
 

@@ -3,6 +3,7 @@
  *
  * Displays and manages the global team pool organized into collapsible groups.
  * Features:
+ * - CSS Grid layout for responsive display (max 4 columns)
  * - Collapsible group cards
  * - Inline group name editing (double-click)
  * - Team reordering within groups
@@ -15,6 +16,8 @@ import React, { useState, useCallback } from 'react';
 import { Card, Button, Dropdown, DropdownButton } from 'react-bootstrap';
 import type { GlobalTeam, GlobalTeamGroup, FlowNode } from '../../types/flowchart';
 import { isGameNode } from '../../types/flowchart';
+import TeamGroupCard from './TeamGroupCard';
+import './GlobalTeamTable.css';
 
 export interface GlobalTeamTableProps {
   /** All global teams */
@@ -190,203 +193,132 @@ const GlobalTeamTable: React.FC<GlobalTeamTableProps> = ({
     teamsByGroup.set(team.groupId, list);
   }
 
-  /**
-   * Render a single team row.
-   */
-  const renderTeam = (team: GlobalTeam, index: number, teamsInGroup: GlobalTeam[]) => {
-    const isEditing = editingTeamId === team.id;
-    const usages = getTeamUsage(team.id);
 
-    return (
-      <div
-        key={team.id}
-        className="d-flex align-items-center justify-content-between py-2 px-3 border-bottom"
-        style={{ backgroundColor: '#fff' }}
-      >
-        {/* Team label */}
-        <div className="flex-grow-1">
-          {isEditing ? (
-            <input
-              type="text"
-              className="form-control form-control-sm"
-              value={editedTeamLabel}
-              onChange={(e) => setEditedTeamLabel(e.target.value)}
-              onBlur={() => handleSaveTeamLabel(team.id)}
-              onKeyDown={(e) => handleTeamKeyPress(e, team.id)}
-              autoFocus
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <span
-              onDoubleClick={() => handleStartEditTeam(team)}
-              style={{ cursor: 'text' }}
-              title="Double-click to edit"
-            >
-              {team.label}
-            </span>
-          )}
-        </div>
-
-        {/* Usage count */}
-        <div className="mx-3">
-          <small className="text-muted">
-            Used: <strong>{usages.length}</strong>
-          </small>
-        </div>
-
-        {/* Actions */}
-        <div className="d-flex gap-1">
-          {/* Reorder up */}
-          <button
-            className="btn btn-sm btn-outline-secondary"
-            onClick={() => onReorder(team.id, 'up')}
-            disabled={index === 0}
-            title="Move up"
-          >
-            <i className="bi bi-arrow-up"></i>
-          </button>
-
-          {/* Reorder down */}
-          <button
-            className="btn btn-sm btn-outline-secondary"
-            onClick={() => onReorder(team.id, 'down')}
-            disabled={index === teamsInGroup.length - 1}
-            title="Move down"
-          >
-            <i className="bi bi-arrow-down"></i>
-          </button>
-
-          {/* Move to group dropdown */}
-          <DropdownButton
-            id={`move-team-${team.id}`}
-            title={<i className="bi bi-folder"></i>}
-            size="sm"
-            variant="outline-primary"
-          >
-            <Dropdown.Item onClick={() => handleMoveToGroup(team.id, null)}>
-              Ungrouped
-            </Dropdown.Item>
-            <Dropdown.Divider />
-            {sortedGroups.map((group) => (
-              <Dropdown.Item
-                key={group.id}
-                onClick={() => handleMoveToGroup(team.id, group.id)}
-                active={team.groupId === group.id}
-              >
-                {group.name}
-              </Dropdown.Item>
-            ))}
-          </DropdownButton>
-
-          {/* Delete */}
-          <button
-            className="btn btn-sm btn-outline-danger"
-            onClick={() => onDelete(team.id)}
-            title="Delete team"
-          >
-            <i className="bi bi-trash"></i>
-          </button>
-        </div>
-      </div>
-    );
-  };
+  // Ungrouped teams
+  const ungroupedTeams = teamsByGroup.get(null) || [];
 
   /**
-   * Render a group card.
+   * Render ungrouped teams in the same card style as groups.
    */
-  const renderGroup = (group: GlobalTeamGroup, index: number) => {
-    const teamsInGroup = teamsByGroup.get(group.id) || [];
-    const isExpanded = expandedGroupIds.has(group.id);
-    const isEditing = editingGroupId === group.id;
+  const renderUngroupedTeamsCard = () => {
+    const [isExpanded, setIsExpanded] = useState(true);
 
     return (
-      <Card key={group.id} className="mb-2">
+      <Card className="team-group-card h-100">
         <Card.Header
           className="d-flex align-items-center"
-          style={{ cursor: 'pointer', backgroundColor: '#e9ecef' }}
-          onClick={() => !isEditing && handleToggleGroup(group.id)}
+          style={{ cursor: 'pointer', backgroundColor: '#f8f9fa' }}
+          onClick={() => setIsExpanded((prev) => !prev)}
         >
-          {/* Expand/collapse icon */}
           <i
             className={`bi bi-chevron-${isExpanded ? 'down' : 'right'} me-2`}
             style={{ fontSize: '0.9rem' }}
           ></i>
-
-          {/* Group name */}
-          <div className="flex-grow-1" onClick={(e) => e.stopPropagation()}>
-            {isEditing ? (
-              <input
-                type="text"
-                className="form-control form-control-sm"
-                value={editedGroupName}
-                onChange={(e) => setEditedGroupName(e.target.value)}
-                onBlur={() => handleSaveGroupName(group.id)}
-                onKeyDown={(e) => handleGroupKeyPress(e, group.id)}
-                autoFocus
-              />
-            ) : (
-              <strong
-                onDoubleClick={(e) => {
-                  e.stopPropagation();
-                  handleStartEditGroup(group);
-                }}
-                style={{ cursor: 'text' }}
-                title="Double-click to edit"
-              >
-                {group.name}
-              </strong>
-            )}
-          </div>
-
-          {/* Team count badge */}
-          <span className="badge bg-secondary me-2">{teamsInGroup.length} teams</span>
-
-          {/* Group actions */}
-          <div className="d-flex gap-1" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="btn btn-sm btn-outline-secondary"
-              onClick={() => onReorderGroup(group.id, 'up')}
-              disabled={index === 0}
-              title="Move group up"
-            >
-              <i className="bi bi-arrow-up"></i>
-            </button>
-            <button
-              className="btn btn-sm btn-outline-secondary"
-              onClick={() => onReorderGroup(group.id, 'down')}
-              disabled={index === sortedGroups.length - 1}
-              title="Move group down"
-            >
-              <i className="bi bi-arrow-down"></i>
-            </button>
-            <button
-              className="btn btn-sm btn-outline-danger"
-              onClick={() => onDeleteGroup(group.id)}
-              title="Delete group"
-            >
-              <i className="bi bi-trash"></i>
-            </button>
-          </div>
+          <strong className="flex-grow-1">Ungrouped Teams</strong>
+          <span className="badge bg-secondary">{ungroupedTeams.length}</span>
         </Card.Header>
-
-        {/* Group body (teams) */}
         {isExpanded && (
           <Card.Body className="p-0">
-            {teamsInGroup.length > 0 ? (
-              teamsInGroup.map((team, idx) => renderTeam(team, idx, teamsInGroup))
-            ) : (
-              <div className="text-center text-muted py-3">
-                <small>No teams in this group</small>
-              </div>
-            )}
+            {ungroupedTeams.map((team, idx) => {
+              const isEditing = editingTeamId === team.id;
+              const usages = getTeamUsage(team.id);
+
+              return (
+                <div
+                  key={team.id}
+                  className="d-flex align-items-center justify-content-between py-2 px-2 border-bottom"
+                  style={{ backgroundColor: '#fff', fontSize: '0.875rem' }}
+                >
+                  {/* Team label */}
+                  <div className="flex-grow-1 me-2" style={{ minWidth: 0 }}>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        value={editedTeamLabel}
+                        onChange={(e) => setEditedTeamLabel(e.target.value)}
+                        onBlur={() => handleSaveTeamLabel(team.id)}
+                        onKeyDown={(e) => handleTeamKeyPress(e, team.id)}
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <span
+                        onDoubleClick={() => handleStartEditTeam(team)}
+                        style={{ cursor: 'text' }}
+                        title="Double-click to edit"
+                        className="text-truncate d-block"
+                      >
+                        {team.label}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Usage count */}
+                  <div className="me-2 flex-shrink-0">
+                    <small className="text-muted">
+                      <strong>{usages.length}</strong>
+                    </small>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="d-flex gap-1 flex-shrink-0">
+                    <button
+                      className="btn btn-sm btn-outline-secondary p-1"
+                      onClick={() => onReorder(team.id, 'up')}
+                      disabled={idx === 0}
+                      title="Move up"
+                      style={{ fontSize: '0.75rem', lineHeight: 1 }}
+                    >
+                      <i className="bi bi-arrow-up"></i>
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline-secondary p-1"
+                      onClick={() => onReorder(team.id, 'down')}
+                      disabled={idx === ungroupedTeams.length - 1}
+                      title="Move down"
+                      style={{ fontSize: '0.75rem', lineHeight: 1 }}
+                    >
+                      <i className="bi bi-arrow-down"></i>
+                    </button>
+                    <DropdownButton
+                      id={`move-team-${team.id}`}
+                      title={<i className="bi bi-folder"></i>}
+                      size="sm"
+                      variant="outline-primary"
+                      className="p-0"
+                    >
+                      <Dropdown.Item onClick={() => handleMoveToGroup(team.id, null)}>
+                        Ungrouped
+                      </Dropdown.Item>
+                      <Dropdown.Divider />
+                      {sortedGroups.map((g) => (
+                        <Dropdown.Item
+                          key={g.id}
+                          onClick={() => handleMoveToGroup(team.id, g.id)}
+                          active={team.groupId === g.id}
+                        >
+                          {g.name}
+                        </Dropdown.Item>
+                      ))}
+                    </DropdownButton>
+                    <button
+                      className="btn btn-sm btn-outline-danger p-1"
+                      onClick={() => onDelete(team.id)}
+                      title="Delete team"
+                      style={{ fontSize: '0.75rem', lineHeight: 1 }}
+                    >
+                      <i className="bi bi-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </Card.Body>
         )}
       </Card>
     );
   };
-
-  // Ungrouped teams
-  const ungroupedTeams = teamsByGroup.get(null) || [];
 
   return (
     <div>
@@ -398,33 +330,46 @@ const GlobalTeamTable: React.FC<GlobalTeamTableProps> = ({
         </Button>
       </div>
 
-      {/* Groups */}
-      {sortedGroups.length > 0 ? (
-        sortedGroups.map((group, index) => renderGroup(group, index))
-      ) : (
-        <div className="text-center text-muted py-3 mb-3">
-          <small>No groups yet. Click "Add Group" to organize your teams.</small>
-        </div>
-      )}
+      {/* CSS Grid layout for groups */}
+      <div className="team-groups-grid">
+        {/* Render group cards */}
+        {sortedGroups.map((group, index) => {
+          const teamsInGroup = teamsByGroup.get(group.id) || [];
+          return (
+            <TeamGroupCard
+              key={group.id}
+              group={group}
+              teams={teamsInGroup}
+              allGroups={sortedGroups}
+              onUpdateGroup={onUpdateGroup}
+              onDeleteGroup={onDeleteGroup}
+              onReorderGroup={onReorderGroup}
+              onUpdateTeam={onUpdate}
+              onDeleteTeam={onDelete}
+              onReorderTeam={onReorder}
+              getTeamUsage={getTeamUsage}
+              index={index}
+              totalGroups={sortedGroups.length}
+            />
+          );
+        })}
 
-      {/* Ungrouped teams section */}
-      {ungroupedTeams.length > 0 && (
-        <Card className="mb-2">
-          <Card.Header style={{ backgroundColor: '#f8f9fa' }}>
-            <strong>Ungrouped Teams</strong>
-            <span className="badge bg-secondary ms-2">{ungroupedTeams.length} teams</span>
-          </Card.Header>
-          <Card.Body className="p-0">
-            {ungroupedTeams.map((team, idx) => renderTeam(team, idx, ungroupedTeams))}
-          </Card.Body>
-        </Card>
-      )}
+        {/* Ungrouped teams card */}
+        {ungroupedTeams.length > 0 && renderUngroupedTeamsCard()}
+      </div>
 
       {/* Empty state */}
-      {teams.length === 0 && (
+      {teams.length === 0 && sortedGroups.length === 0 && (
         <div className="text-center text-muted py-4">
           <i className="bi bi-people me-2"></i>
           No teams yet. Click "Add Team" to create your first team.
+        </div>
+      )}
+
+      {/* No groups message */}
+      {sortedGroups.length === 0 && teams.length > 0 && (
+        <div className="text-center text-muted py-3 mb-3">
+          <small>No groups yet. Click "Add Group" to organize your teams.</small>
         </div>
       )}
     </div>
