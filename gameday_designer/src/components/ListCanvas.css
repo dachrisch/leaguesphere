@@ -27,30 +27,26 @@
 }
 
 /**
- * Horizontal field layout with responsive CSS Grid
+ * Fields Section Card Wrapper
  */
-.fields-container {
+.fields-section {
+  border: none;
+  border-radius: 8px;
+}
+
+/**
+ * Fields Grid Layout with Responsive CSS Grid
+ * Includes inline Add Field card
+ */
+.fields-grid {
   display: grid;
   gap: 1rem;
-  grid-auto-rows: 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
 }
 
-/* Responsive breakpoints for field columns */
-@media (min-width: 1024px) {
-  /* Large screens: 2 columns maximum */
-  .fields-container {
-    grid-template-columns: repeat(2, minmax(400px, 1fr));
-  }
-}
-
-@media (max-width: 1023px) {
-  /* Small screens: 1 column */
-  .fields-container {
+/* Responsive breakpoints for field grid */
+@media (max-width: 1024px) {
+  .fields-grid {
     grid-template-columns: 1fr;
   }
-}
-
-/* Alternative: Use auto-fill for automatic column fitting */
-.fields-container.auto-fill {
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
 }

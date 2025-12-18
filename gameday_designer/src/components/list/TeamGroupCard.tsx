@@ -32,6 +32,8 @@ export interface TeamGroupCardProps {
   onDeleteTeam: (teamId: string) => void;
   /** Callback to reorder team */
   onReorderTeam: (teamId: string, direction: 'up' | 'down') => void;
+  /** Callback to add a team to this group */
+  onAddTeam: (groupId: string) => void;
   /** Function to get which games use a team */
   getTeamUsage: (teamId: string) => { gameId: string; slot: 'home' | 'away' }[];
   /** Index in sorted groups list (for reorder controls) */
@@ -53,6 +55,7 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
   onUpdateTeam,
   onDeleteTeam,
   onReorderTeam,
+  onAddTeam,
   getTeamUsage,
   index,
   totalGroups,
@@ -190,10 +193,22 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
         </div>
 
         {/* Team count badge */}
-        <span className="badge bg-secondary me-2 ms-2">{teams.length}</span>
+        <span className="badge bg-secondary me-auto ms-2">{teams.length}</span>
 
         {/* Group actions */}
         <div className="d-flex gap-1" onClick={(e) => e.stopPropagation()}>
+          {teams.length > 0 && (
+            <button
+              className="btn btn-sm btn-outline-primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddTeam(group.id);
+              }}
+              title="Add team to this group"
+            >
+              <i className="bi bi-plus-circle"></i>
+            </button>
+          )}
           <button
             className="btn btn-sm btn-outline-secondary"
             onClick={() => onReorderGroup(group.id, 'up')}
@@ -222,9 +237,23 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
 
       {/* Group body (teams) */}
       {isExpanded && (
-        <Card.Body className="p-0">
-          {teams.length > 0 ? (
-            teams.map((team, idx) => {
+        <Card.Body className="p-2">
+          {teams.length === 0 ? (
+            <div className="text-center py-3">
+              <i className="bi bi-person me-2"></i>
+              <p className="text-muted mb-3">No teams yet</p>
+              <button
+                className="btn btn-outline-primary"
+                onClick={() => onAddTeam(group.id)}
+                title="Add team to this group"
+              >
+                <i className="bi bi-plus-circle me-1"></i>
+                Add Team
+              </button>
+            </div>
+          ) : (
+            <>
+              {teams.map((team, idx) => {
               const isEditing = editingTeamId === team.id;
               const usages = getTeamUsage(team.id);
 
@@ -298,10 +327,6 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                       variant="outline-primary"
                       className="p-0"
                     >
-                      <Dropdown.Item onClick={() => handleMoveTeam(team.id, null)}>
-                        Ungrouped
-                      </Dropdown.Item>
-                      <Dropdown.Divider />
                       {allGroups.map((g) => (
                         <Dropdown.Item
                           key={g.id}
@@ -325,11 +350,8 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                   </div>
                 </div>
               );
-            })
-          ) : (
-            <div className="text-center text-muted py-3">
-              <small>No teams in this group</small>
-            </div>
+            })}
+            </>
           )}
         </Card.Body>
       )}

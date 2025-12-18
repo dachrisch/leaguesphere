@@ -43,12 +43,6 @@ export interface StageSectionProps {
   /** Callback to add a game to this stage */
   onAddGame: (stageId: string) => void;
 
-  /** ID of the source game that is currently highlighted */
-  highlightedSourceGameId: string | null;
-
-  /** Callback when a dynamic reference badge is clicked */
-  onDynamicReferenceClick: (sourceGameId: string, targetGameId: string, targetSlot: 'home' | 'away') => void;
-
   /** Callback to add a GameToGameEdge */
   onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
 
@@ -80,8 +74,6 @@ const StageSection: React.FC<StageSectionProps> = ({
   selectedNodeId,
   onAssignTeam,
   onAddGame,
-  highlightedSourceGameId,
-  onDynamicReferenceClick,
   onAddGameToGameEdge,
   onRemoveGameToGameEdge,
   isExpanded: isExpandedProp,
@@ -123,14 +115,9 @@ const StageSection: React.FC<StageSectionProps> = ({
   const handleDelete = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      const confirmed = window.confirm(
-        `Delete stage "${stage.data.name}" and all its games?`
-      );
-      if (confirmed) {
-        onDelete(stage.id);
-      }
+      onDelete(stage.id);
     },
-    [stage.id, stage.data.name, onDelete]
+    [stage.id, onDelete]
   );
 
   /**
@@ -226,22 +213,24 @@ const StageSection: React.FC<StageSectionProps> = ({
           {games.length} game{games.length !== 1 ? 's' : ''}
         </Badge>
 
-        <Button
-          variant="outline-primary"
-          size="sm"
-          onClick={handleAddGame}
-          className="me-2"
-          aria-label="Add Game"
-        >
-          <i className="bi bi-plus-circle me-1"></i>
-          Add Game
-        </Button>
+        {games.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline-primary"
+            onClick={handleAddGame}
+            aria-label="Add Game"
+          >
+            <i className="bi bi-plus-circle me-1"></i>
+            Add Game
+          </Button>
+        )}
 
         <Button
           variant="outline-danger"
           size="sm"
           onClick={handleDelete}
           aria-label="Delete Stage"
+          className="ms-2"
         >
           <i className="bi bi-trash"></i>
         </Button>
@@ -251,22 +240,36 @@ const StageSection: React.FC<StageSectionProps> = ({
         <Card.Body className="stage-section__body">
           {/* Games Section */}
           <div>
-            <h6 className="text-muted">Games</h6>
-            <GameTable
-              games={games}
-              edges={edges}
-              allNodes={allNodes}
-              globalTeams={globalTeams}
-              onUpdate={onUpdate}
-              onDelete={onDelete}
-              onSelectNode={onSelectNode}
-              selectedNodeId={selectedNodeId}
-              onAssignTeam={onAssignTeam}
-              highlightedSourceGameId={highlightedSourceGameId}
-              onDynamicReferenceClick={onDynamicReferenceClick}
-              onAddGameToGameEdge={onAddGameToGameEdge}
-              onRemoveGameToGameEdge={onRemoveGameToGameEdge}
-            />
+            <h6 className="text-uppercase text-muted mb-2">Games</h6>
+
+            {games.length === 0 ? (
+              <div className="text-center py-3">
+                <i className="bi bi-trophy me-2"></i>
+                <p className="text-muted mb-3">No games in this stage</p>
+                <Button
+                  variant="outline-primary"
+                  onClick={handleAddGame}
+                  aria-label="Add Game"
+                >
+                  <i className="bi bi-plus-circle me-1"></i>
+                  Add Game
+                </Button>
+              </div>
+            ) : (
+              <GameTable
+                games={games}
+                edges={edges}
+                allNodes={allNodes}
+                globalTeams={globalTeams}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+                onSelectNode={onSelectNode}
+                selectedNodeId={selectedNodeId}
+                onAssignTeam={onAssignTeam}
+                onAddGameToGameEdge={onAddGameToGameEdge}
+                onRemoveGameToGameEdge={onRemoveGameToGameEdge}
+              />
+            )}
           </div>
         </Card.Body>
       )}

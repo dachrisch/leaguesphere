@@ -65,11 +65,20 @@ describe('FieldSection', () => {
         stages={[sampleStage]}
         allNodes={[sampleField, sampleStage, sampleGame]}
         edges={[]}
+        globalTeams={[]}
         onUpdate={mockOnUpdate}
         onDelete={mockOnDelete}
         onAddStage={mockOnAddStage}
         onSelectNode={vi.fn()}
         selectedNodeId={null}
+        onAssignTeam={vi.fn()}
+        onAddGame={vi.fn()}
+        highlightedSourceGameId={null}
+        onDynamicReferenceClick={vi.fn()}
+        onAddGameToGameEdge={vi.fn()}
+        onRemoveGameToGameEdge={vi.fn()}
+        isExpanded={true}
+        expandedStageIds={new Set()}
       />
     );
 
@@ -84,36 +93,69 @@ describe('FieldSection', () => {
     expect(gameBadges.length).toBeGreaterThan(0);
   });
 
-  it('toggles expansion when header is clicked', () => {
+  it('shows stages when expanded', () => {
     render(
       <FieldSection
         field={sampleField}
         stages={[sampleStage]}
         allNodes={[sampleField, sampleStage, sampleGame]}
         edges={[]}
+        globalTeams={[]}
         onUpdate={vi.fn()}
         onDelete={vi.fn()}
         onAddStage={vi.fn()}
         onSelectNode={vi.fn()}
         selectedNodeId={null}
+        onAssignTeam={vi.fn()}
+        onAddGame={vi.fn()}
+        highlightedSourceGameId={null}
+        onDynamicReferenceClick={vi.fn()}
+        onAddGameToGameEdge={vi.fn()}
+        onRemoveGameToGameEdge={vi.fn()}
+        isExpanded={true}
+        expandedStageIds={new Set()}
       />
     );
 
-    // Should be expanded by default
+    // Should be expanded - stage name visible
     expect(screen.getByText('Vorrunde')).toBeInTheDocument();
+    // And "Add Stage" button should be visible
+    expect(screen.getByRole('button', { name: /add stage/i })).toBeInTheDocument();
+  });
 
-    // Click to collapse
-    const header = screen.getByText('Feld 1');
-    fireEvent.click(header);
+  it('Add Stage button is in body footer, NOT in header', () => {
+    const { container } = render(
+      <FieldSection
+        field={sampleField}
+        stages={[]}
+        allNodes={[sampleField]}
+        edges={[]}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        onAddStage={vi.fn()}
+        onSelectNode={vi.fn()}
+        selectedNodeId={null}
+        onAssignTeam={vi.fn()}
+        onAddGame={vi.fn()}
+        highlightedSourceGameId={null}
+        onDynamicReferenceClick={vi.fn()}
+        onAddGameToGameEdge={vi.fn()}
+        onRemoveGameToGameEdge={vi.fn()}
+        isExpanded={true}
+        expandedStageIds={new Set()}
+      />
+    );
 
-    // Stage should be hidden
-    expect(screen.queryByText('Vorrunde')).not.toBeInTheDocument();
+    const header = container.querySelector('.field-section__header');
+    const body = container.querySelector('.field-section__body');
 
-    // Click to expand
-    fireEvent.click(header);
+    // Header should NOT contain Add Stage button
+    const addButtonInHeader = header?.querySelector('button[aria-label*="Add Stage"]');
+    expect(addButtonInHeader).toBeNull();
 
-    // Stage should be visible again
-    expect(screen.getByText('Vorrunde')).toBeInTheDocument();
+    // Body should contain Add Stage button
+    const addButtonInBody = body?.querySelector('button[aria-label*="Add Stage"]');
+    expect(addButtonInBody).toBeInTheDocument();
   });
 
   it('calls onAddStage when Add Stage button is clicked', () => {
@@ -130,6 +172,14 @@ describe('FieldSection', () => {
         onAddStage={mockOnAddStage}
         onSelectNode={vi.fn()}
         selectedNodeId={null}
+        onAssignTeam={vi.fn()}
+        onAddGame={vi.fn()}
+        highlightedSourceGameId={null}
+        onDynamicReferenceClick={vi.fn()}
+        onAddGameToGameEdge={vi.fn()}
+        onRemoveGameToGameEdge={vi.fn()}
+        isExpanded={true}
+        expandedStageIds={new Set()}
       />
     );
 
@@ -139,34 +189,67 @@ describe('FieldSection', () => {
     expect(mockOnAddStage).toHaveBeenCalledWith('field-1');
   });
 
-  it('calls onDelete when delete button is clicked with confirmation', () => {
-    const mockOnDelete = vi.fn();
-    window.confirm = vi.fn(() => true);
-
+  it('Add Stage button appears at bottom when stages exist', () => {
     render(
       <FieldSection
         field={sampleField}
-        stages={[]}
-        allNodes={[sampleField]}
+        stages={[sampleStage]}
+        allNodes={[sampleField, sampleStage]}
         edges={[]}
         onUpdate={vi.fn()}
-        onDelete={mockOnDelete}
+        onDelete={vi.fn()}
         onAddStage={vi.fn()}
         onSelectNode={vi.fn()}
         selectedNodeId={null}
+        onAssignTeam={vi.fn()}
+        onAddGame={vi.fn()}
+        highlightedSourceGameId={null}
+        onDynamicReferenceClick={vi.fn()}
+        onAddGameToGameEdge={vi.fn()}
+        onRemoveGameToGameEdge={vi.fn()}
+        isExpanded={true}
+        expandedStageIds={new Set()}
       />
     );
 
-    const deleteButton = screen.getByRole('button', { name: /delete field/i });
-    fireEvent.click(deleteButton);
+    // Should find Add Stage button even when stages exist
+    const addButton = screen.getByRole('button', { name: /add stage/i });
+    expect(addButton).toBeInTheDocument();
 
-    expect(window.confirm).toHaveBeenCalled();
-    expect(mockOnDelete).toHaveBeenCalledWith('field-1');
+    // Button should be small size and outline-secondary
+    expect(addButton).toHaveClass('btn-sm');
+    expect(addButton).toHaveClass('btn-outline-secondary');
   });
 
-  it('does not call onDelete when confirmation is cancelled', () => {
+  it('Add Stage button is full width in body footer', () => {
+    render(
+      <FieldSection
+        field={sampleField}
+        stages={[sampleStage]}
+        allNodes={[sampleField, sampleStage]}
+        edges={[]}
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        onAddStage={vi.fn()}
+        onSelectNode={vi.fn()}
+        selectedNodeId={null}
+        onAssignTeam={vi.fn()}
+        onAddGame={vi.fn()}
+        highlightedSourceGameId={null}
+        onDynamicReferenceClick={vi.fn()}
+        onAddGameToGameEdge={vi.fn()}
+        onRemoveGameToGameEdge={vi.fn()}
+        isExpanded={true}
+        expandedStageIds={new Set()}
+      />
+    );
+
+    const addButton = screen.getByRole('button', { name: /add stage/i });
+    expect(addButton).toHaveClass('w-100');
+  });
+
+  it('calls onDelete when delete button is clicked', () => {
     const mockOnDelete = vi.fn();
-    window.confirm = vi.fn(() => false);
 
     render(
       <FieldSection
@@ -179,14 +262,21 @@ describe('FieldSection', () => {
         onAddStage={vi.fn()}
         onSelectNode={vi.fn()}
         selectedNodeId={null}
+        onAssignTeam={vi.fn()}
+        onAddGame={vi.fn()}
+        highlightedSourceGameId={null}
+        onDynamicReferenceClick={vi.fn()}
+        onAddGameToGameEdge={vi.fn()}
+        onRemoveGameToGameEdge={vi.fn()}
+        isExpanded={true}
+        expandedStageIds={new Set()}
       />
     );
 
     const deleteButton = screen.getByRole('button', { name: /delete field/i });
     fireEvent.click(deleteButton);
 
-    expect(window.confirm).toHaveBeenCalled();
-    expect(mockOnDelete).not.toHaveBeenCalled();
+    expect(mockOnDelete).toHaveBeenCalledWith('field-1');
   });
 
   it('renders nested stages in correct order', () => {
@@ -215,6 +305,14 @@ describe('FieldSection', () => {
         onAddStage={vi.fn()}
         onSelectNode={vi.fn()}
         selectedNodeId={null}
+        onAssignTeam={vi.fn()}
+        onAddGame={vi.fn()}
+        highlightedSourceGameId={null}
+        onDynamicReferenceClick={vi.fn()}
+        onAddGameToGameEdge={vi.fn()}
+        onRemoveGameToGameEdge={vi.fn()}
+        isExpanded={true}
+        expandedStageIds={new Set()}
       />
     );
 

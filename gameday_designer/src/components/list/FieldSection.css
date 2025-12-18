@@ -56,3 +56,9 @@
 .field-section__body::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* Add button container at bottom of field body */
+.field-section__body .mt-2 {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}

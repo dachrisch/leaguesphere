@@ -2,10 +2,12 @@
  * FlowToolbar Component
  *
  * Toolbar for the flowchart designer with controls for:
- * - Adding game nodes and containers
  * - Import/Export JSON
  * - Clear all
  * - Undo/Redo (future)
+ *
+ * Note: Add buttons have been moved inline to where elements are created
+ * (Fields section, Field body, Stage body) for better spatial mapping.
  */
 
 import React, { useRef } from 'react';
@@ -17,12 +19,6 @@ import './FlowToolbar.css';
  * Props for the FlowToolbar component.
  */
 export interface FlowToolbarProps {
-  /** Callback to add a new game node */
-  onAddGame: () => void;
-  /** Callback to add a new field container */
-  onAddField: () => void;
-  /** Callback to add a new stage container (inside selected field) */
-  onAddStage: () => void;
   /** Callback to import from JSON file */
   onImport: (json: unknown) => void;
   /** Callback to export to JSON */
@@ -41,27 +37,15 @@ export interface FlowToolbarProps {
   hasNodes?: boolean;
   /** Whether export is available (has valid data) */
   canExport?: boolean;
-  /** Whether a field is selected (to allow adding stage) */
-  canAddStage?: boolean;
-  /** Name of the target stage where new nodes will be added */
-  targetStageName?: string | null;
-  /** Name of the target field (derived from stage) */
-  targetFieldName?: string | null;
-  /** Whether a field is selected (for context) */
-  hasSelectedField?: boolean;
-  /** Whether to show the target stage badge */
-  showTargetBadge?: boolean;
 }
 
 /**
  * FlowToolbar component.
  *
- * Provides actions for the flowchart designer.
+ * Provides global actions for the flowchart designer.
+ * Add buttons have been moved inline for better UX.
  */
 const FlowToolbar: React.FC<FlowToolbarProps> = ({
-  onAddGame,
-  onAddField,
-  onAddStage,
   onImport,
   onExport,
   onClearAll,
@@ -71,26 +55,8 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
   canRedo = false,
   hasNodes = false,
   canExport = false,
-  canAddStage = false,
-  targetStageName = null,
-  targetFieldName = null,
-  hasSelectedField = false,
-  showTargetBadge = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  /**
-   * Generate tooltip for Add Game button based on target stage.
-   */
-  const getAddGameTitle = () => {
-    if (targetStageName) {
-      return `Add Game Node to "${targetStageName}" (Ctrl+G)`;
-    }
-    if (hasSelectedField && targetFieldName) {
-      return `Add Game Node to new stage in "${targetFieldName}" (Ctrl+G)`;
-    }
-    return 'Add Game Node (will create new Field + Stage) (Ctrl+G)';
-  };
 
   /**
    * Handle file input change for import.
@@ -142,69 +108,6 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
   return (
     <div className="flow-toolbar" data-testid="flow-toolbar">
       <ButtonToolbar>
-        {/* Container creation buttons */}
-        <ButtonGroup className="me-2">
-          <Button
-            variant="info"
-            onClick={onAddField}
-            title="Add Field Container"
-            data-testid="add-field-button"
-          >
-            <i className="bi bi-grid-fill me-1"></i>
-            Add Field
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={onAddStage}
-            disabled={!canAddStage}
-            title={
-              canAddStage
-                ? 'Add Stage Container (inside selected field)'
-                : 'Select a field to add a stage'
-            }
-            data-testid="add-stage-button"
-          >
-            <i className="bi bi-collection me-1"></i>
-            Add Stage
-          </Button>
-        </ButtonGroup>
-
-        {/* Node creation buttons */}
-        <ButtonGroup className="me-2">
-          <Button
-            variant="primary"
-            onClick={onAddGame}
-            title={getAddGameTitle()}
-            data-testid="add-game-button"
-          >
-            <i className="bi bi-trophy-fill me-1"></i>
-            Add Game
-          </Button>
-        </ButtonGroup>
-
-        {/* Target stage indicator */}
-        {showTargetBadge && (
-          <div className="d-flex align-items-center me-2">
-            {targetStageName ? (
-              <span
-                className="badge bg-info text-dark"
-                data-testid="target-stage-badge"
-              >
-                <i className="bi bi-bullseye me-1"></i>
-                {targetStageName}
-              </span>
-            ) : (
-              <span
-                className="badge bg-warning text-dark"
-                data-testid="auto-create-indicator"
-              >
-                <i className="bi bi-plus-circle me-1"></i>
-                Auto-create
-              </span>
-            )}
-          </div>
-        )}
-
         {/* Import/Export buttons */}
         <ButtonGroup className="me-2">
           <Button

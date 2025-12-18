@@ -1018,7 +1018,7 @@ export function useFlowState(initialState?: Partial<FlowState>): UseFlowStateRet
 
   /**
    * Delete a global team from the pool.
-   * Shows confirmation if team is assigned to games.
+   * Automatically unassigns the team from any games it's assigned to.
    */
   const deleteGlobalTeam = useCallback(
     (teamId: string) => {
@@ -1031,18 +1031,6 @@ export function useFlowState(initialState?: Partial<FlowState>): UseFlowStateRet
       });
 
       if (usages.length > 0) {
-        const gameList = usages
-          .map((u) => {
-            const game = nodes.find((n) => n.id === u.gameId && isGameNode(n));
-            return game ? (game.data as GameNodeData).standing : u.gameId;
-          })
-          .join(', ');
-
-        const confirmed = window.confirm(
-          `Team is assigned to ${usages.length} game(s): ${gameList}\n\nDelete anyway?`
-        );
-        if (!confirmed) return;
-
         // Unassign from all games
         setNodes((nds) =>
           nds.map((n) => {
@@ -1126,22 +1114,34 @@ export function useFlowState(initialState?: Partial<FlowState>): UseFlowStateRet
 
   /**
    * Delete a global team group.
-   * If the group contains teams, prompts for confirmation and ungroups them.
+   * All teams in the group will be deleted (cascading delete).
    */
   const deleteGlobalTeamGroup = useCallback(
     (groupId: string) => {
       const teamsInGroup = globalTeams.filter((t) => t.groupId === groupId);
 
       if (teamsInGroup.length > 0) {
-        const confirmed = window.confirm(
-          `This group contains ${teamsInGroup.length} team(s). Delete anyway? Teams will become ungrouped.`
-        );
-        if (!confirmed) return;
+        // Delete all teams in this group
+        const teamIdsToDelete = new Set(teamsInGroup.map(t => t.id));
 
-        // Ungroup all teams in this group
-        setGlobalTeams((teams) =>
-          teams.map((t) => (t.groupId === groupId ? { ...t, groupId: null } : t))
+        // Unassign teams from games
+        setNodes((nds) =>
+          nds.map((n) => {
+            if (!isGameNode(n)) return n;
+            const data = n.data as GameNodeData;
+            return {
+              ...n,
+              data: {
+                ...data,
+                homeTeamId: data.homeTeamId && teamIdsToDelete.has(data.homeTeamId) ? null : data.homeTeamId,
+                awayTeamId: data.awayTeamId && teamIdsToDelete.has(data.awayTeamId) ? null : data.awayTeamId,
+              },
+            };
+          })
         );
+
+        // Remove teams from global teams
+        setGlobalTeams((teams) => teams.filter((t) => !teamIdsToDelete.has(t.id)));
       }
 
       setGlobalTeamGroups((groups) => groups.filter((g) => g.id !== groupId));

@@ -33,6 +33,9 @@ export interface ListCanvasProps {
   /** Callback when a node is deleted */
   onDeleteNode: (nodeId: string) => void;
 
+  /** Callback when a new field is added */
+  onAddField: () => void;
+
   /** Callback when a new stage is added to a field */
   onAddStage: (fieldId: string) => void;
 
@@ -42,8 +45,8 @@ export interface ListCanvasProps {
   /** Currently selected node ID */
   selectedNodeId: string | null;
 
-  /** Callback to add a new global team */
-  onAddGlobalTeam: () => void;
+  /** Callback to add a new global team to a specific group */
+  onAddGlobalTeam: (groupId: string) => void;
 
   /** Callback to update a global team */
   onUpdateGlobalTeam: (teamId: string, data: Partial<Omit<GlobalTeam, 'id'>>) => void;
@@ -75,12 +78,6 @@ export interface ListCanvasProps {
   /** Callback to add a game to a stage */
   onAddGame: (stageId: string) => void;
 
-  /** ID of the source game that is currently highlighted */
-  highlightedSourceGameId: string | null;
-
-  /** Callback when a dynamic reference badge is clicked */
-  onDynamicReferenceClick: (sourceGameId: string, targetGameId: string, targetSlot: 'home' | 'away') => void;
-
   /** Callback to add a GameToGameEdge */
   onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
 
@@ -107,6 +104,7 @@ const ListCanvas: React.FC<ListCanvasProps> = ({
   globalTeamGroups,
   onUpdateNode,
   onDeleteNode,
+  onAddField,
   onAddStage,
   onSelectNode,
   selectedNodeId,
@@ -121,8 +119,6 @@ const ListCanvas: React.FC<ListCanvasProps> = ({
   getTeamUsage,
   onAssignTeam,
   onAddGame,
-  highlightedSourceGameId,
-  onDynamicReferenceClick,
   onAddGameToGameEdge,
   onRemoveGameToGameEdge,
   expandedFieldIds,
@@ -148,15 +144,17 @@ const ListCanvas: React.FC<ListCanvasProps> = ({
           <Card.Header className="d-flex align-items-center">
             <i className="bi bi-people-fill me-2"></i>
             <strong>Global Team Pool</strong>
-            <Button
-              size="sm"
-              variant="primary"
-              className="ms-auto"
-              onClick={onAddGlobalTeam}
-            >
-              <i className="bi bi-plus-circle me-1"></i>
-              Add Team
-            </Button>
+            {globalTeamGroups.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline-primary"
+                onClick={onAddGlobalTeamGroup}
+                className="ms-auto"
+              >
+                <i className="bi bi-plus-circle me-1"></i>
+                Add Group
+              </Button>
+            )}
           </Card.Header>
           <Card.Body>
             <GlobalTeamTable
@@ -166,6 +164,7 @@ const ListCanvas: React.FC<ListCanvasProps> = ({
               onUpdateGroup={onUpdateGlobalTeamGroup}
               onDeleteGroup={onDeleteGlobalTeamGroup}
               onReorderGroup={onReorderGlobalTeamGroup}
+              onAddTeam={onAddGlobalTeam}
               onUpdate={onUpdateGlobalTeam}
               onDelete={onDeleteGlobalTeam}
               onReorder={onReorderGlobalTeam}
@@ -175,42 +174,64 @@ const ListCanvas: React.FC<ListCanvasProps> = ({
           </Card.Body>
         </Card>
 
-        {/* Field Sections or Empty State */}
-        {fields.length === 0 ? (
-          <div className="empty-state">
-            <i className="bi bi-inbox" style={{ fontSize: '4rem', opacity: 0.3 }}></i>
-            <h3 className="mt-3 text-muted">No fields yet</h3>
-            <p className="text-muted">
-              Click "Add Field" in the toolbar to create your first field.
-            </p>
-          </div>
-        ) : (
-          <div className="fields-container">
-            {fields.map((field) => (
-              <FieldSection
-                key={field.id}
-                field={field}
-                stages={getFieldStages(field.id)}
-                allNodes={nodes}
-                edges={edges}
-                globalTeams={globalTeams}
-                onUpdate={onUpdateNode}
-                onDelete={onDeleteNode}
-                onAddStage={onAddStage}
-                onSelectNode={onSelectNode}
-                selectedNodeId={selectedNodeId}
-                onAssignTeam={onAssignTeam}
-                onAddGame={onAddGame}
-                highlightedSourceGameId={highlightedSourceGameId}
-                onDynamicReferenceClick={onDynamicReferenceClick}
-                onAddGameToGameEdge={onAddGameToGameEdge}
-                onRemoveGameToGameEdge={onRemoveGameToGameEdge}
-                isExpanded={expandedFieldIds.has(field.id)}
-                expandedStageIds={expandedStageIds}
-              />
-            ))}
-          </div>
-        )}
+        {/* Fields Section - Card wrapper with inline Add Field button */}
+        <Card className="mb-4 fields-section">
+          <Card.Header className="d-flex align-items-center">
+            <i className="bi bi-geo-alt-fill me-2"></i>
+            <strong>Fields</strong>
+            {fields.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline-primary"
+                onClick={onAddField}
+                className="ms-auto"
+              >
+                <i className="bi bi-plus-circle me-1"></i>
+                Add Field
+              </Button>
+            )}
+          </Card.Header>
+          <Card.Body>
+            {fields.length === 0 ? (
+              <div className="text-center py-5">
+                <i className="bi bi-geo-alt" style={{ fontSize: '4rem', opacity: 0.3 }}></i>
+                <h3 className="mt-3">No fields yet</h3>
+                <p className="text-muted mb-3">Create your first field to organize games</p>
+                <Button
+                  variant="outline-primary"
+                  onClick={onAddField}
+                >
+                  <i className="bi bi-plus-circle me-1"></i>
+                  Add Field
+                </Button>
+              </div>
+            ) : (
+              <div className="fields-grid">
+                {fields.map((field) => (
+                  <FieldSection
+                    key={field.id}
+                    field={field}
+                    stages={getFieldStages(field.id)}
+                    allNodes={nodes}
+                    edges={edges}
+                    globalTeams={globalTeams}
+                    onUpdate={onUpdateNode}
+                    onDelete={onDeleteNode}
+                    onAddStage={onAddStage}
+                    onSelectNode={onSelectNode}
+                    selectedNodeId={selectedNodeId}
+                    onAssignTeam={onAssignTeam}
+                    onAddGame={onAddGame}
+                    onAddGameToGameEdge={onAddGameToGameEdge}
+                    onRemoveGameToGameEdge={onRemoveGameToGameEdge}
+                    isExpanded={expandedFieldIds.has(field.id)}
+                    expandedStageIds={expandedStageIds}
+                  />
+                ))}
+              </div>
+            )}
+          </Card.Body>
+        </Card>
       </div>
     </Container>
   );
