@@ -7,10 +7,9 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Table, Form, Badge, Button } from 'react-bootstrap';
+import { Table, Form } from 'react-bootstrap';
 import type { GameNode, FlowEdge, FlowNode, GlobalTeam, GameNodeData } from '../../types/flowchart';
 import { isGameNode } from '../../types/flowchart';
-import { formatTeamReference } from '../../utils/teamReference';
 import { findSourceGameForReference, getGamePath } from '../../utils/edgeAnalysis';
 import './GameTable.css';
 
@@ -24,8 +23,6 @@ export interface GameTableProps {
   onSelectNode: (nodeId: string | null) => void;
   selectedNodeId: string | null;
   onAssignTeam: (gameId: string, teamId: string, slot: 'home' | 'away') => void;
-  highlightedSourceGameId: string | null;
-  onDynamicReferenceClick: (sourceGameId: string, targetGameId: string, targetSlot: 'home' | 'away') => void;
   onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
   onRemoveGameToGameEdge: (targetGameId: string, targetSlot: 'home' | 'away') => void;
 }
@@ -40,8 +37,6 @@ const GameTable: React.FC<GameTableProps> = ({
   selectedNodeId,
   onAssignTeam,
   onUpdate,
-  highlightedSourceGameId,
-  onDynamicReferenceClick,
   onAddGameToGameEdge,
   onRemoveGameToGameEdge,
 }) => {
@@ -50,15 +45,6 @@ const GameTable: React.FC<GameTableProps> = ({
   const [editingField, setEditingField] = useState<'standing' | 'breakAfter' | null>(null);
   const [editedValue, setEditedValue] = useState<string>('');
 
-  if (games.length === 0) {
-    return (
-      <div className="text-muted text-center py-2">
-        <i className="bi bi-trophy me-2"></i>
-        No games in this stage.
-      </div>
-    );
-  }
-
   const handleRowClick = (e: React.MouseEvent, gameId: string) => {
     e.stopPropagation(); // Prevent bubbling to parent containers
     onSelectNode(gameId);
@@ -66,9 +52,7 @@ const GameTable: React.FC<GameTableProps> = ({
 
   const handleDelete = (e: React.MouseEvent, gameId: string) => {
     e.stopPropagation(); // Prevent row selection
-    if (window.confirm('Delete this game?')) {
-      onDelete(gameId);
-    }
+    onDelete(gameId);
   };
 
   /**
@@ -242,71 +226,51 @@ const GameTable: React.FC<GameTableProps> = ({
             {eligibleGames.length > 0 && <option disabled>---</option>}
 
             {/* Dynamic references - only show games from earlier stages */}
-            {eligibleGames.map((sourceGame) => (
-              <React.Fragment key={sourceGame.id}>
-                <option value={`winner:${sourceGame.id}`}>
-                  ⚡ Winner of {sourceGame.data.standing}
-                </option>
-                <option value={`loser:${sourceGame.id}`}>
-                  💔 Loser of {sourceGame.data.standing}
-                </option>
-              </React.Fragment>
-            ))}
+            {eligibleGames.map((sourceGame) => {
+              const sourcePath = getGamePath(sourceGame.id, allNodes);
+              const stageName = sourcePath?.stage.data.name || '';
+              return (
+                <React.Fragment key={sourceGame.id}>
+                  <option value={`winner:${sourceGame.id}`}>
+                    ⚡ Winner of [{stageName}] - {sourceGame.data.standing}
+                  </option>
+                  <option value={`loser:${sourceGame.id}`}>
+                    💔 Loser of [{stageName}] - {sourceGame.data.standing}
+                  </option>
+                </React.Fragment>
+              );
+            })}
           </Form.Select>
         )}
       </div>
     );
   };
 
-  // Render team cell (either dropdown or dynamic ref badge)
+  // Render team cell as a simple dropdown (like officials)
   const renderTeamCell = (game: GameNode, slot: 'home' | 'away') => {
     const data = game.data as GameNodeData;
     const dynamicRef = slot === 'home' ? data.homeTeamDynamic : data.awayTeamDynamic;
     const teamId = slot === 'home' ? data.homeTeamId : data.awayTeamId;
-
-    // Priority 1: Show dynamic reference badge (if exists)
-    if (dynamicRef) {
-      const sourceGame = findSourceGameForReference(game.id, slot, edges, allNodes);
-
-      return (
-        <div className="d-flex align-items-center gap-2">
-          <Badge
-            bg="success"
-            className="dynamic-reference-badge"
-            style={{ cursor: sourceGame ? 'pointer' : 'default' }}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (sourceGame) {
-                onDynamicReferenceClick(sourceGame.id, game.id, slot);
-              }
-            }}
-            title={sourceGame ? `Click to jump to ${sourceGame.data.standing}` : undefined}
-          >
-            {sourceGame && <i className="bi bi-link-45deg me-1"></i>}
-            {formatTeamReference(dynamicRef)}
-          </Badge>
-          <Button
-            variant="outline-secondary"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemoveGameToGameEdge(game.id, slot);
-            }}
-            title="Remove dynamic reference"
-          >
-            <i className="bi bi-x"></i>
-          </Button>
-        </div>
-      );
-    }
-
-    // Priority 2: Show team/reference selector
     const eligibleGames = getEligibleSourceGames(game);
+
+    // Determine current value
+    let currentValue = '';
+    if (dynamicRef) {
+      // Find the source game to get the output type
+      const sourceGame = findSourceGameForReference(game.id, slot, edges, allNodes);
+      if (sourceGame) {
+        // Extract output type from dynamicRef
+        const outputType = dynamicRef.outputType || 'winner';
+        currentValue = `${outputType}:${sourceGame.id}`;
+      }
+    } else if (teamId) {
+      currentValue = teamId;
+    }
 
     return (
       <Form.Select
         size="sm"
-        value={teamId || ''}
+        value={currentValue}
         onChange={(e) => {
           e.stopPropagation();
           handleTeamChange(game.id, slot, e.target.value);
@@ -327,19 +291,32 @@ const GameTable: React.FC<GameTableProps> = ({
         {eligibleGames.length > 0 && <option disabled>---</option>}
 
         {/* Dynamic references - only show games from earlier stages */}
-        {eligibleGames.map((sourceGame) => (
-          <React.Fragment key={sourceGame.id}>
-            <option value={`winner:${sourceGame.id}`}>
-              ⚡ Winner of {sourceGame.data.standing}
-            </option>
-            <option value={`loser:${sourceGame.id}`}>
-              💔 Loser of {sourceGame.data.standing}
-            </option>
-          </React.Fragment>
-        ))}
+        {eligibleGames.map((sourceGame) => {
+          const sourcePath = getGamePath(sourceGame.id, allNodes);
+          const stageName = sourcePath?.stage.data.name || '';
+          return (
+            <React.Fragment key={sourceGame.id}>
+              <option value={`winner:${sourceGame.id}`}>
+                ⚡ Winner of [{stageName}] - {sourceGame.data.standing}
+              </option>
+              <option value={`loser:${sourceGame.id}`}>
+                💔 Loser of [{stageName}] - {sourceGame.data.standing}
+              </option>
+            </React.Fragment>
+          );
+        })}
       </Form.Select>
     );
   };
+
+  if (games.length === 0) {
+    return (
+      <div className="text-muted text-center py-2">
+        <i className="bi bi-trophy me-2"></i>
+        No games in this stage.
+      </div>
+    );
+  }
 
   return (
     <Table striped bordered hover size="sm">
@@ -356,7 +333,6 @@ const GameTable: React.FC<GameTableProps> = ({
       <tbody>
         {games.map((game) => {
           const isSelected = selectedNodeId === game.id;
-          const isHighlighted = highlightedSourceGameId === game.id;
           const isEditingStanding = editingGameId === game.id && editingField === 'standing';
           const isEditingBreakAfter = editingGameId === game.id && editingField === 'breakAfter';
 
@@ -365,16 +341,9 @@ const GameTable: React.FC<GameTableProps> = ({
               key={game.id}
               id={`game-${game.id}`}
               onClick={(e) => handleRowClick(e, game.id)}
-              className={isHighlighted ? 'source-game-highlighted' : ''}
               style={{
                 cursor: 'pointer',
-                backgroundColor: isSelected
-                  ? '#e7f3ff'
-                  : isHighlighted
-                  ? '#fff3cd'
-                  : undefined,
-                boxShadow: isHighlighted ? '0 0 8px rgba(255, 193, 7, 0.6)' : undefined,
-                transition: 'background-color 0.3s ease, box-shadow 0.3s ease',
+                backgroundColor: isSelected ? '#e7f3ff' : undefined,
               }}
             >
               {/* Standing column - inline editable */}

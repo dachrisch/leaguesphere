@@ -49,12 +49,6 @@ export interface FieldSectionProps {
   /** Callback to add a game to a stage */
   onAddGame: (stageId: string) => void;
 
-  /** ID of the source game that is currently highlighted */
-  highlightedSourceGameId: string | null;
-
-  /** Callback when a dynamic reference badge is clicked */
-  onDynamicReferenceClick: (sourceGameId: string, targetGameId: string, targetSlot: 'home' | 'away') => void;
-
   /** Callback to add a GameToGameEdge */
   onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
 
@@ -91,8 +85,6 @@ const FieldSection: React.FC<FieldSectionProps> = ({
   selectedNodeId,
   onAssignTeam,
   onAddGame,
-  highlightedSourceGameId,
-  onDynamicReferenceClick,
   onAddGameToGameEdge,
   onRemoveGameToGameEdge,
   isExpanded: isExpandedProp,
@@ -148,14 +140,9 @@ const FieldSection: React.FC<FieldSectionProps> = ({
   const handleDelete = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      const confirmed = window.confirm(
-        `Delete field "${field.data.name}" and all its stages?`
-      );
-      if (confirmed) {
-        onDelete(field.id);
-      }
+      onDelete(field.id);
     },
-    [field.id, field.data.name, onDelete]
+    [field.id, onDelete]
   );
 
   /**
@@ -245,22 +232,24 @@ const FieldSection: React.FC<FieldSectionProps> = ({
           {gameCount} game{gameCount !== 1 ? 's' : ''}
         </Badge>
 
-        <Button
-          variant="outline-primary"
-          size="sm"
-          className="me-2"
-          onClick={handleAddStage}
-          aria-label="Add Stage"
-        >
-          <i className="bi bi-plus-circle me-1"></i>
-          Add Stage
-        </Button>
+        {sortedStages.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline-primary"
+            onClick={handleAddStage}
+            aria-label="Add Stage"
+          >
+            <i className="bi bi-plus-circle me-1"></i>
+            Add Stage
+          </Button>
+        )}
 
         <Button
           variant="outline-danger"
           size="sm"
           onClick={handleDelete}
           aria-label="Delete Field"
+          className="ms-2"
         >
           <i className="bi bi-trash"></i>
         </Button>
@@ -269,31 +258,39 @@ const FieldSection: React.FC<FieldSectionProps> = ({
       {isExpanded && (
         <Card.Body className="field-section__body">
           {sortedStages.length === 0 ? (
-            <div className="text-muted text-center py-3">
-              <i className="bi bi-inbox me-2"></i>
-              No stages in this field. Click "Add Stage" to create one.
+            <div className="text-center py-4">
+              <i className="bi bi-layers me-2"></i>
+              <p className="text-muted mb-3">No stages yet</p>
+              <Button
+                variant="outline-primary"
+                onClick={handleAddStage}
+                aria-label="Add Stage"
+              >
+                <i className="bi bi-plus-circle me-1"></i>
+                Add Stage
+              </Button>
             </div>
           ) : (
-            sortedStages.map((stage) => (
-              <StageSection
-                key={stage.id}
-                stage={stage}
-                allNodes={allNodes}
-                edges={edges}
-                globalTeams={globalTeams}
-                onUpdate={onUpdate}
-                onDelete={onDelete}
-                onSelectNode={onSelectNode}
-                selectedNodeId={selectedNodeId}
-                onAssignTeam={onAssignTeam}
-                onAddGame={onAddGame}
-                highlightedSourceGameId={highlightedSourceGameId}
-                onDynamicReferenceClick={onDynamicReferenceClick}
-                onAddGameToGameEdge={onAddGameToGameEdge}
-                onRemoveGameToGameEdge={onRemoveGameToGameEdge}
-                isExpanded={expandedStageIds.has(stage.id)}
-              />
-            ))
+            <>
+              {sortedStages.map((stage) => (
+                <StageSection
+                  key={stage.id}
+                  stage={stage}
+                  allNodes={allNodes}
+                  edges={edges}
+                  globalTeams={globalTeams}
+                  onUpdate={onUpdate}
+                  onDelete={onDelete}
+                  onSelectNode={onSelectNode}
+                  selectedNodeId={selectedNodeId}
+                  onAssignTeam={onAssignTeam}
+                  onAddGame={onAddGame}
+                  onAddGameToGameEdge={onAddGameToGameEdge}
+                  onRemoveGameToGameEdge={onRemoveGameToGameEdge}
+                  isExpanded={expandedStageIds.has(stage.id)}
+                />
+              ))}
+            </>
           )}
         </Card.Body>
       )}

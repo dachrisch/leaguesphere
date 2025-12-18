@@ -123,10 +123,10 @@ const ListDesignerApp: React.FC = () => {
   );
 
   /**
-   * Handle adding a new global team.
+   * Handle adding a new global team to a specific group.
    */
-  const handleAddGlobalTeam = useCallback(() => {
-    addGlobalTeam();
+  const handleAddGlobalTeam = useCallback((groupId: string) => {
+    addGlobalTeam(undefined, groupId);
   }, [addGlobalTeam]);
 
   /**
@@ -137,26 +137,16 @@ const ListDesignerApp: React.FC = () => {
   }, [addGlobalTeamGroup]);
 
   /**
-   * Handle adding a new game node.
-   * Uses container hierarchy - adds game to target stage.
-   */
-  const handleAddGame = useCallback(() => {
-    // Get target stage (will auto-create hierarchy if needed)
-    const targetStage = getTargetStage();
-    const stageId = targetStage?.id;
-
-    addGameNodeInStage(stageId);
-  }, [addGameNodeInStage, getTargetStage]);
-
-  /**
    * Handle adding a new field container.
+   * Called from ListCanvas inline Add Field button.
    */
   const handleAddFieldContainer = useCallback(() => {
     addFieldNode({}, true); // Include default stage
   }, [addFieldNode]);
 
   /**
-   * Handle adding a new stage container inside selected field.
+   * Handle adding a new stage container inside a field.
+   * Called from FieldSection inline Add Stage button.
    */
   const handleAddStage = useCallback(
     (fieldId: string) => {
@@ -217,10 +207,7 @@ const ListDesignerApp: React.FC = () => {
    * Handle clear all.
    */
   const handleClearAll = useCallback(() => {
-    const confirmed = window.confirm('Clear all fields, stages, teams, and games?');
-    if (confirmed) {
-      clearAll();
-    }
+    clearAll();
   }, [clearAll]);
 
   /**
@@ -301,19 +288,6 @@ const ListDesignerApp: React.FC = () => {
   // Check if there are any nodes
   const hasNodes = nodes.length > 0;
 
-  // Get target stage info for toolbar
-  const targetStage = useMemo(() => getTargetStage(), [getTargetStage, nodes, selectedNode]);
-  const targetStageName = targetStage?.data.name ?? null;
-
-  // Get target field name (from target stage's parent)
-  const targetFieldName = useMemo(() => {
-    if (!targetStage?.parentId) return null;
-    const parentField = nodes.find((n) => n.id === targetStage.parentId && isFieldNode(n)) as
-      | FieldNode
-      | undefined;
-    return parentField?.data.name ?? null;
-  }, [targetStage, nodes]);
-
 
   return (
     <Container fluid className="list-designer-app">
@@ -328,23 +302,11 @@ const ListDesignerApp: React.FC = () => {
       <Row className="list-designer-app__toolbar">
         <Col>
           <FlowToolbar
-            onAddGame={handleAddGame}
-            onAddField={handleAddFieldContainer}
-            onAddStage={() => {
-              if (selectedContainerField) {
-                handleAddStage(selectedContainerField.id);
-              }
-            }}
             onImport={handleImport}
             onExport={handleExport}
             onClearAll={handleClearAll}
             hasNodes={hasNodes}
             canExport={canExport}
-            canAddStage={!!selectedContainerField}
-            targetStageName={targetStageName}
-            targetFieldName={targetFieldName}
-            hasSelectedField={!!selectedContainerField}
-            showTargetBadge={false} // Don't show target badge in list view
           />
         </Col>
       </Row>
@@ -361,6 +323,7 @@ const ListDesignerApp: React.FC = () => {
                 globalTeamGroups={globalTeamGroups}
                 onUpdateNode={handleUpdateNode}
                 onDeleteNode={handleDeleteNode}
+                onAddField={handleAddFieldContainer}
                 onAddStage={handleAddStage}
                 onSelectNode={handleSelectNode}
                 selectedNodeId={selectedNode?.id ?? null}

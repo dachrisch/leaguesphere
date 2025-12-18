@@ -37,6 +37,7 @@ describe('GlobalTeamTable', () => {
   let mockOnUpdateGroup: ReturnType<typeof vi.fn>;
   let mockOnDeleteGroup: ReturnType<typeof vi.fn>;
   let mockOnReorderGroup: ReturnType<typeof vi.fn>;
+  let mockOnAddTeam: ReturnType<typeof vi.fn>;
   let mockOnUpdate: ReturnType<typeof vi.fn>;
   let mockOnDelete: ReturnType<typeof vi.fn>;
   let mockOnReorder: ReturnType<typeof vi.fn>;
@@ -47,13 +48,14 @@ describe('GlobalTeamTable', () => {
     mockOnUpdateGroup = vi.fn();
     mockOnDeleteGroup = vi.fn();
     mockOnReorderGroup = vi.fn();
+    mockOnAddTeam = vi.fn();
     mockOnUpdate = vi.fn();
     mockOnDelete = vi.fn();
     mockOnReorder = vi.fn();
     mockGetTeamUsage = vi.fn(() => []);
   });
 
-  it('renders empty state when no teams exist', () => {
+  it('renders empty state when no groups exist', () => {
     render(
       <GlobalTeamTable
         teams={[]}
@@ -62,6 +64,7 @@ describe('GlobalTeamTable', () => {
         onUpdateGroup={mockOnUpdateGroup}
         onDeleteGroup={mockOnDeleteGroup}
         onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
         onUpdate={mockOnUpdate}
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
@@ -70,7 +73,7 @@ describe('GlobalTeamTable', () => {
       />
     );
 
-    expect(screen.getByText(/No teams yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/No groups yet/i)).toBeInTheDocument();
   });
 
   it('renders "Add Group" button', () => {
@@ -82,6 +85,7 @@ describe('GlobalTeamTable', () => {
         onUpdateGroup={mockOnUpdateGroup}
         onDeleteGroup={mockOnDeleteGroup}
         onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
         onUpdate={mockOnUpdate}
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
@@ -97,7 +101,7 @@ describe('GlobalTeamTable', () => {
     expect(mockOnAddGroup).toHaveBeenCalledTimes(1);
   });
 
-  it('renders groups with team count', () => {
+  it('renders groups with team count badge', () => {
     render(
       <GlobalTeamTable
         teams={mockTeams}
@@ -106,6 +110,7 @@ describe('GlobalTeamTable', () => {
         onUpdateGroup={mockOnUpdateGroup}
         onDeleteGroup={mockOnDeleteGroup}
         onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
         onUpdate={mockOnUpdate}
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
@@ -115,32 +120,14 @@ describe('GlobalTeamTable', () => {
     );
 
     expect(screen.getByText('Group A')).toBeInTheDocument();
-    expect(screen.getByText('2 teams')).toBeInTheDocument();
     expect(screen.getByText('Group B')).toBeInTheDocument();
 
-    // "1 teams" appears twice (Group B and Ungrouped Teams)
-    const oneTeamBadges = screen.getAllByText('1 teams');
-    expect(oneTeamBadges).toHaveLength(2);
-  });
+    // Team count badges - Group A has 2 teams, Group B has 1 team
+    const groupAHeader = screen.getByText('Group A').closest('.card-header');
+    const groupBHeader = screen.getByText('Group B').closest('.card-header');
 
-  it('renders ungrouped teams section', () => {
-    render(
-      <GlobalTeamTable
-        teams={mockTeams}
-        groups={mockGroups}
-        onAddGroup={mockOnAddGroup}
-        onUpdateGroup={mockOnUpdateGroup}
-        onDeleteGroup={mockOnDeleteGroup}
-        onReorderGroup={mockOnReorderGroup}
-        onUpdate={mockOnUpdate}
-        onDelete={mockOnDelete}
-        onReorder={mockOnReorder}
-        getTeamUsage={mockGetTeamUsage}
-        allNodes={mockNodes}
-      />
-    );
-
-    expect(screen.getByText('Ungrouped Teams')).toBeInTheDocument();
+    expect(within(groupAHeader!).getByText('2')).toBeInTheDocument();
+    expect(within(groupBHeader!).getByText('1')).toBeInTheDocument();
   });
 
   it('expands and collapses groups on click', async () => {
@@ -154,6 +141,7 @@ describe('GlobalTeamTable', () => {
         onUpdateGroup={mockOnUpdateGroup}
         onDeleteGroup={mockOnDeleteGroup}
         onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
         onUpdate={mockOnUpdate}
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
@@ -162,18 +150,19 @@ describe('GlobalTeamTable', () => {
       />
     );
 
-    // Initially collapsed - teams should not be visible
-    expect(screen.queryByText('Team 1')).not.toBeInTheDocument();
+    // Initially expanded - teams should be visible
+    expect(screen.getByText('Team 1')).toBeInTheDocument();
+    expect(screen.getByText('Team 2')).toBeInTheDocument();
 
-    // Find and click Group A header
+    // Find and click Group A header to collapse
     const groupAHeader = screen.getByText('Group A').closest('.card-header');
     expect(groupAHeader).toBeInTheDocument();
 
     await user.click(groupAHeader!);
 
-    // Teams should now be visible
-    expect(screen.getByText('Team 1')).toBeInTheDocument();
-    expect(screen.getByText('Team 2')).toBeInTheDocument();
+    // Teams should now be hidden
+    expect(screen.queryByText('Team 1')).not.toBeInTheDocument();
+    expect(screen.queryByText('Team 2')).not.toBeInTheDocument();
   });
 
   it('allows editing group name via double-click', async () => {
@@ -187,6 +176,7 @@ describe('GlobalTeamTable', () => {
         onUpdateGroup={mockOnUpdateGroup}
         onDeleteGroup={mockOnDeleteGroup}
         onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
         onUpdate={mockOnUpdate}
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
@@ -223,6 +213,7 @@ describe('GlobalTeamTable', () => {
         onUpdateGroup={mockOnUpdateGroup}
         onDeleteGroup={mockOnDeleteGroup}
         onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
         onUpdate={mockOnUpdate}
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
@@ -231,10 +222,7 @@ describe('GlobalTeamTable', () => {
       />
     );
 
-    // Expand group first
-    const groupAHeader = screen.getByText('Group A').closest('.card-header');
-    await user.click(groupAHeader!);
-
+    // Groups are expanded by default, so teams are visible
     const teamLabel = screen.getByText('Team 1');
     await user.dblClick(teamLabel);
 
@@ -271,6 +259,7 @@ describe('GlobalTeamTable', () => {
         onUpdateGroup={mockOnUpdateGroup}
         onDeleteGroup={mockOnDeleteGroup}
         onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
         onUpdate={mockOnUpdate}
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
@@ -279,12 +268,10 @@ describe('GlobalTeamTable', () => {
       />
     );
 
-    // Expand group
-    const groupAHeader = screen.getByText('Group A').closest('.card-header');
-    fireEvent.click(groupAHeader!);
-
-    // Should show usage count
-    expect(screen.getByText('2')).toBeInTheDocument();
+    // Groups are expanded by default, so team usage is visible
+    // Find Team 1 row and check usage count
+    const team1Row = screen.getByText('Team 1').closest('div[class*="d-flex"]');
+    expect(within(team1Row!).getByText('2')).toBeInTheDocument();
   });
 
   it('calls onReorder when reorder buttons are clicked', async () => {
@@ -298,6 +285,7 @@ describe('GlobalTeamTable', () => {
         onUpdateGroup={mockOnUpdateGroup}
         onDeleteGroup={mockOnDeleteGroup}
         onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
         onUpdate={mockOnUpdate}
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
@@ -306,10 +294,7 @@ describe('GlobalTeamTable', () => {
       />
     );
 
-    // Expand group
-    const groupAHeader = screen.getByText('Group A').closest('.card-header');
-    await user.click(groupAHeader!);
-
+    // Groups are expanded by default
     // Find Team 2 row
     const team2Row = screen.getByText('Team 2').closest('div[class*="d-flex"]');
     expect(team2Row).toBeInTheDocument();
@@ -332,6 +317,7 @@ describe('GlobalTeamTable', () => {
         onUpdateGroup={mockOnUpdateGroup}
         onDeleteGroup={mockOnDeleteGroup}
         onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
         onUpdate={mockOnUpdate}
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
@@ -340,10 +326,7 @@ describe('GlobalTeamTable', () => {
       />
     );
 
-    // Expand group
-    const groupAHeader = screen.getByText('Group A').closest('.card-header');
-    await user.click(groupAHeader!);
-
+    // Groups are expanded by default
     // Find Team 1 row
     const team1Row = screen.getByText('Team 1').closest('div[class*="d-flex"]');
 
@@ -365,6 +348,7 @@ describe('GlobalTeamTable', () => {
         onUpdateGroup={mockOnUpdateGroup}
         onDeleteGroup={mockOnDeleteGroup}
         onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
         onUpdate={mockOnUpdate}
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
@@ -394,6 +378,7 @@ describe('GlobalTeamTable', () => {
         onUpdateGroup={mockOnUpdateGroup}
         onDeleteGroup={mockOnDeleteGroup}
         onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
         onUpdate={mockOnUpdate}
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
@@ -421,6 +406,7 @@ describe('GlobalTeamTable', () => {
         onUpdateGroup={mockOnUpdateGroup}
         onDeleteGroup={mockOnDeleteGroup}
         onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
         onUpdate={mockOnUpdate}
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
@@ -449,6 +435,7 @@ describe('GlobalTeamTable', () => {
         onUpdateGroup={mockOnUpdateGroup}
         onDeleteGroup={mockOnDeleteGroup}
         onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
         onUpdate={mockOnUpdate}
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
@@ -458,6 +445,86 @@ describe('GlobalTeamTable', () => {
     );
 
     expect(screen.getByText(/No groups yet/i)).toBeInTheDocument();
+  });
+
+  // NEW TESTS FOR REFACTORED BEHAVIOR
+  describe('Refactored behavior - teams must be in groups', () => {
+    it('does not render "Ungrouped Teams" section', () => {
+      const teamsWithoutUngrouped = mockTeams.filter(t => t.groupId !== null);
+
+      render(
+        <GlobalTeamTable
+          teams={teamsWithoutUngrouped}
+          groups={mockGroups}
+          onAddGroup={mockOnAddGroup}
+          onUpdateGroup={mockOnUpdateGroup}
+          onDeleteGroup={mockOnDeleteGroup}
+          onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
+          onUpdate={mockOnUpdate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+          getTeamUsage={mockGetTeamUsage}
+          allNodes={mockNodes}
+        />
+      );
+
+      expect(screen.queryByText('Ungrouped Teams')).not.toBeInTheDocument();
+    });
+
+    it('shows correct empty state message when no groups exist', () => {
+      render(
+        <GlobalTeamTable
+          teams={[]}
+          groups={[]}
+          onAddGroup={mockOnAddGroup}
+          onUpdateGroup={mockOnUpdateGroup}
+          onDeleteGroup={mockOnDeleteGroup}
+          onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
+          onUpdate={mockOnUpdate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+          getTeamUsage={mockGetTeamUsage}
+          allNodes={mockNodes}
+        />
+      );
+
+      expect(screen.getByText(/No groups yet\. Click 'Add Group' to create your first team group\./i)).toBeInTheDocument();
+    });
+
+    it('does not show move to "Ungrouped" option in team dropdown', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <GlobalTeamTable
+          teams={mockTeams}
+          groups={mockGroups}
+          onAddGroup={mockOnAddGroup}
+          onUpdateGroup={mockOnUpdateGroup}
+          onDeleteGroup={mockOnDeleteGroup}
+          onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
+          onUpdate={mockOnUpdate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+          getTeamUsage={mockGetTeamUsage}
+          allNodes={mockNodes}
+        />
+      );
+
+      // Groups are expanded by default
+      // Find Team 1 row and open the move dropdown (the folder icon button)
+      const team1Row = screen.getByText('Team 1').closest('div[class*="d-flex"]');
+      const dropdownButtons = within(team1Row!).getAllByRole('button');
+      // The dropdown button should be the one with the folder icon (4th button: up, down, folder, delete)
+      const dropdownToggle = dropdownButtons.find(btn => btn.querySelector('.bi-folder'));
+      expect(dropdownToggle).toBeDefined();
+      await user.click(dropdownToggle!);
+
+      // "Ungrouped" option should not exist
+      expect(screen.queryByText('Ungrouped')).not.toBeInTheDocument();
+    });
   });
 
   it('handles Enter key to save group name edit', async () => {
@@ -471,6 +538,7 @@ describe('GlobalTeamTable', () => {
         onUpdateGroup={mockOnUpdateGroup}
         onDeleteGroup={mockOnDeleteGroup}
         onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
         onUpdate={mockOnUpdate}
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
@@ -500,6 +568,7 @@ describe('GlobalTeamTable', () => {
         onUpdateGroup={mockOnUpdateGroup}
         onDeleteGroup={mockOnDeleteGroup}
         onReorderGroup={mockOnReorderGroup}
+        onAddTeam={mockOnAddTeam}
         onUpdate={mockOnUpdate}
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}

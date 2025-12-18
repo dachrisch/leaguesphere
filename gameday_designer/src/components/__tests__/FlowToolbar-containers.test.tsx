@@ -1,103 +1,94 @@
 /**
- * Tests for FlowToolbar Component - Container Support
+ * Tests for FlowToolbar Component - Inline Add Button Pattern
  *
- * TDD RED Phase: Tests for adding Field and Stage buttons.
+ * TDD RED Phase: Tests verifying that Add Field, Add Stage, and Add Game buttons
+ * have been REMOVED from the toolbar as part of the inline add-button pattern.
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import FlowToolbar, { type FlowToolbarProps } from '../FlowToolbar';
 
 const defaultProps: FlowToolbarProps = {
-  onAddTeam: vi.fn(),
-  onAddGame: vi.fn(),
-  onAddField: vi.fn(),
-  onAddStage: vi.fn(),
   onImport: vi.fn(),
   onExport: vi.fn(),
   onClearAll: vi.fn(),
   hasNodes: false,
   canExport: false,
-  canAddStage: false,
 };
 
-describe('FlowToolbar - Container Support', () => {
-  describe('Add Field button', () => {
-    it('renders Add Field button', () => {
+describe('FlowToolbar - Inline Add Button Pattern', () => {
+  describe('Removed buttons (inline pattern)', () => {
+    it('does NOT render Add Field button (moved inline to Fields section)', () => {
       render(<FlowToolbar {...defaultProps} />);
 
-      expect(screen.getByTestId('add-field-button')).toBeInTheDocument();
-      expect(screen.getByText('Add Field')).toBeInTheDocument();
+      expect(screen.queryByTestId('add-field-button')).not.toBeInTheDocument();
+      expect(screen.queryByText('Add Field')).not.toBeInTheDocument();
     });
 
-    it('calls onAddField when clicked', () => {
-      const onAddField = vi.fn();
-      render(<FlowToolbar {...defaultProps} onAddField={onAddField} />);
-
-      fireEvent.click(screen.getByTestId('add-field-button'));
-
-      expect(onAddField).toHaveBeenCalledTimes(1);
-    });
-
-    it('has appropriate title for accessibility', () => {
+    it('does NOT render Add Stage button (moved inline to Field body)', () => {
       render(<FlowToolbar {...defaultProps} />);
 
-      const button = screen.getByTestId('add-field-button');
-      expect(button).toHaveAttribute('title', expect.stringContaining('Field'));
+      expect(screen.queryByTestId('add-stage-button')).not.toBeInTheDocument();
+      expect(screen.queryByText('Add Stage')).not.toBeInTheDocument();
+    });
+
+    it('does NOT render Add Game button (moved inline to Stage body)', () => {
+      render(<FlowToolbar {...defaultProps} />);
+
+      expect(screen.queryByTestId('add-game-button')).not.toBeInTheDocument();
+      expect(screen.queryByText('Add Game')).not.toBeInTheDocument();
     });
   });
 
-  describe('Add Stage button', () => {
-    it('renders Add Stage button', () => {
+  describe('Remaining toolbar buttons', () => {
+    it('renders Import button', () => {
       render(<FlowToolbar {...defaultProps} />);
 
-      expect(screen.getByTestId('add-stage-button')).toBeInTheDocument();
-      expect(screen.getByText('Add Stage')).toBeInTheDocument();
+      expect(screen.getByTestId('import-button')).toBeInTheDocument();
+      expect(screen.getByText('Import')).toBeInTheDocument();
     });
 
-    it('calls onAddStage when clicked', () => {
-      const onAddStage = vi.fn();
-      render(<FlowToolbar {...defaultProps} canAddStage onAddStage={onAddStage} />);
-
-      fireEvent.click(screen.getByTestId('add-stage-button'));
-
-      expect(onAddStage).toHaveBeenCalledTimes(1);
-    });
-
-    it('is disabled when no field is selected (canAddStage=false)', () => {
-      render(<FlowToolbar {...defaultProps} canAddStage={false} />);
-
-      const button = screen.getByTestId('add-stage-button');
-      expect(button).toBeDisabled();
-    });
-
-    it('is enabled when a field is selected (canAddStage=true)', () => {
-      render(<FlowToolbar {...defaultProps} canAddStage={true} />);
-
-      const button = screen.getByTestId('add-stage-button');
-      expect(button).not.toBeDisabled();
-    });
-
-    it('has appropriate title indicating field selection requirement', () => {
-      render(<FlowToolbar {...defaultProps} canAddStage={false} />);
-
-      const button = screen.getByTestId('add-stage-button');
-      expect(button).toHaveAttribute('title', expect.stringContaining('field'));
-    });
-  });
-
-  describe('Container button grouping', () => {
-    it('groups container buttons together', () => {
+    it('renders Export button', () => {
       render(<FlowToolbar {...defaultProps} />);
 
-      const fieldButton = screen.getByTestId('add-field-button');
-      const stageButton = screen.getByTestId('add-stage-button');
+      expect(screen.getByTestId('export-button')).toBeInTheDocument();
+      expect(screen.getByText('Export')).toBeInTheDocument();
+    });
 
-      // Both buttons should be in the same button group
-      const fieldParent = fieldButton.parentElement;
-      const stageParent = stageButton.parentElement;
+    it('renders Clear All button', () => {
+      render(<FlowToolbar {...defaultProps} />);
 
-      expect(fieldParent).toBe(stageParent);
+      expect(screen.getByTestId('clear-all-button')).toBeInTheDocument();
+      expect(screen.getByText('Clear All')).toBeInTheDocument();
+    });
+
+    it('disables Export when canExport is false', () => {
+      render(<FlowToolbar {...defaultProps} canExport={false} />);
+
+      const exportButton = screen.getByTestId('export-button');
+      expect(exportButton).toBeDisabled();
+    });
+
+    it('enables Export when canExport is true', () => {
+      render(<FlowToolbar {...defaultProps} canExport={true} />);
+
+      const exportButton = screen.getByTestId('export-button');
+      expect(exportButton).not.toBeDisabled();
+    });
+
+    it('disables Clear All when hasNodes is false', () => {
+      render(<FlowToolbar {...defaultProps} hasNodes={false} />);
+
+      const clearButton = screen.getByTestId('clear-all-button');
+      expect(clearButton).toBeDisabled();
+    });
+
+    it('enables Clear All when hasNodes is true', () => {
+      render(<FlowToolbar {...defaultProps} hasNodes={true} />);
+
+      const clearButton = screen.getByTestId('clear-all-button');
+      expect(clearButton).not.toBeDisabled();
     });
   });
 });
