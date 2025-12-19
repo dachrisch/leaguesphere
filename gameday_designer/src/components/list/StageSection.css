@@ -16,15 +16,16 @@
 }
 
 .stage-section__header {
-  background-color: #f8f9fa;
+  background-color: #e7f3ff; /* Light blue */
   border-bottom: 1px solid #dee2e6;
+  border-left: 3px solid #0d6efd; /* Bootstrap primary blue */
   user-select: none;
   font-size: 0.9rem;
   padding: 0.5rem 0.75rem;
 }
 
 .stage-section__header:hover {
-  background-color: #e9ecef;
+  background-color: #d4e9ff; /* Slightly darker on hover */
 }
 
 .stage-section__body {

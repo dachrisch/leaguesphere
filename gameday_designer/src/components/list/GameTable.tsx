@@ -8,10 +8,123 @@
 
 import React, { useState, useCallback } from 'react';
 import { Table, Form } from 'react-bootstrap';
+import Select, { components, StylesConfig, GroupBase } from 'react-select';
 import type { GameNode, FlowEdge, FlowNode, GlobalTeam, GameNodeData } from '../../types/flowchart';
 import { isGameNode } from '../../types/flowchart';
 import { findSourceGameForReference, getGamePath } from '../../utils/edgeAnalysis';
 import './GameTable.css';
+
+// Type for select options
+interface TeamOption {
+  value: string;
+  label: string;
+  color?: string;
+  isTeam?: boolean;
+  isStageHeader?: boolean;
+  isDisabled?: boolean;
+}
+
+// Custom Option component with colored dot for teams and stage headers
+const CustomOption = (props: any) => {
+  const { data } = props;
+
+  // Stage header - disabled separator with colored border
+  if (data.isStageHeader) {
+    return (
+      <components.Option {...props} isDisabled={true}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontWeight: 'bold',
+            fontSize: '0.8rem',
+            textTransform: 'uppercase',
+            color: '#6c757d',
+            borderLeft: `3px solid ${data.color || '#dee2e6'}`,
+            paddingLeft: '8px',
+            marginLeft: '-12px',
+            paddingTop: '4px',
+            paddingBottom: '4px',
+            backgroundColor: '#f8f9fa'
+          }}
+        >
+          <span>{data.label}</span>
+        </div>
+      </components.Option>
+    );
+  }
+
+  // Regular option (team or dynamic reference)
+  return (
+    <components.Option {...props}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {data.color && (
+          <div
+            style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              backgroundColor: data.color,
+              flexShrink: 0
+            }}
+          />
+        )}
+        <span>{data.label}</span>
+      </div>
+    </components.Option>
+  );
+};
+
+// Custom SingleValue component with colored dot for selected value
+const CustomSingleValue = (props: any) => {
+  const { data } = props;
+  return (
+    <components.SingleValue {...props}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {data.color && (
+          <div
+            style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              backgroundColor: data.color,
+              flexShrink: 0
+            }}
+          />
+        )}
+        <span>{data.label}</span>
+      </div>
+    </components.SingleValue>
+  );
+};
+
+// Custom styles for react-select to match Bootstrap form controls
+const customSelectStyles: StylesConfig<TeamOption, false, GroupBase<TeamOption>> = {
+  control: (provided) => ({
+    ...provided,
+    minHeight: '31px',
+    fontSize: '0.875rem',
+    borderColor: '#dee2e6'
+  }),
+  option: (provided) => ({
+    ...provided,
+    fontSize: '0.875rem',
+    padding: '6px 12px'
+  }),
+  singleValue: (provided) => ({
+    ...provided,
+    fontSize: '0.875rem'
+  }),
+  menu: (provided) => ({
+    ...provided,
+    zIndex: 9999
+  }),
+  menuPortal: (provided) => ({
+    ...provided,
+    zIndex: 9999
+  })
+};
 
 export interface GameTableProps {
   games: GameNode[];
@@ -187,6 +300,64 @@ const GameTable: React.FC<GameTableProps> = ({
     const hasOfficial = !!official;
     const eligibleGames = getEligibleSourceGames(game);
 
+    // Group eligible games by stage
+    const gamesByStage = new Map<string, { name: string; games: GameNode[] }>();
+    eligibleGames.forEach((sourceGame) => {
+      const sourcePath = getGamePath(sourceGame.id, allNodes);
+      const stageId = sourcePath?.stage.id || '';
+      const stageName = sourcePath?.stage.data.name || '';
+      if (!gamesByStage.has(stageId)) {
+        gamesByStage.set(stageId, { name: stageName, games: [] });
+      }
+      gamesByStage.get(stageId)!.games.push(sourceGame);
+    });
+
+    // Build options array
+    const options: TeamOption[] = [];
+
+    // Add static teams with colors
+    globalTeams.forEach((team) => {
+      options.push({
+        value: team.id,
+        label: team.label,
+        color: team.color || '#6c757d',
+        isTeam: true
+      });
+    });
+
+    // Add dynamic references grouped by stage
+    Array.from(gamesByStage.entries()).forEach(([stageId, stageData]) => {
+      // Find stage node to get color
+      const stageNode = allNodes.find(n => n.id === stageId);
+      const stageColor = stageNode && 'color' in stageNode.data ? stageNode.data.color : '#0d6efd';
+
+      // Add stage header separator
+      options.push({
+        value: `stage-header-${stageId}`,
+        label: stageData.name,
+        color: stageColor,
+        isStageHeader: true,
+        isDisabled: true
+      });
+
+      // Add winner/loser options for games in this stage
+      stageData.games.forEach((sourceGame) => {
+        options.push({
+          value: `winner:${sourceGame.id}`,
+          label: `⚡ Winner of ${sourceGame.data.standing}`,
+          isTeam: false
+        });
+        options.push({
+          value: `loser:${sourceGame.id}`,
+          label: `💔 Loser of ${sourceGame.data.standing}`,
+          isTeam: false
+        });
+      });
+    });
+
+    // Find selected option
+    const selectedOption = options.find(opt => opt.value === official) || null;
+
     return (
       <div className="d-flex align-items-center gap-2" onClick={(e) => e.stopPropagation()}>
         {/* Checkbox to enable/disable official */}
@@ -209,38 +380,34 @@ const GameTable: React.FC<GameTableProps> = ({
 
         {/* Dropdown selector (only shown when enabled) */}
         {hasOfficial && (
-          <Form.Select
-            size="sm"
-            value={official}
-            onChange={(e) => handleOfficialChange(game.id, e.target.value)}
-            style={{ fontSize: '0.875rem', minWidth: '150px' }}
-          >
-            {/* Static teams */}
-            {globalTeams.map((team) => (
-              <option key={team.id} value={team.id}>
-                {team.label}
-              </option>
-            ))}
-
-            {/* Separator if there are eligible source games */}
-            {eligibleGames.length > 0 && <option disabled>---</option>}
-
-            {/* Dynamic references - only show games from earlier stages */}
-            {eligibleGames.map((sourceGame) => {
-              const sourcePath = getGamePath(sourceGame.id, allNodes);
-              const stageName = sourcePath?.stage.data.name || '';
-              return (
-                <React.Fragment key={sourceGame.id}>
-                  <option value={`winner:${sourceGame.id}`}>
-                    ⚡ Winner of [{stageName}] - {sourceGame.data.standing}
-                  </option>
-                  <option value={`loser:${sourceGame.id}`}>
-                    💔 Loser of [{stageName}] - {sourceGame.data.standing}
-                  </option>
-                </React.Fragment>
-              );
-            })}
-          </Form.Select>
+          <Select<TeamOption>
+            value={selectedOption}
+            options={options}
+            onChange={(newValue) => {
+              if (newValue) {
+                handleOfficialChange(game.id, newValue.value);
+              }
+            }}
+            components={{
+              Option: CustomOption,
+              SingleValue: CustomSingleValue
+            }}
+            isOptionDisabled={(option) => option.isDisabled || false}
+            menuPortalTarget={document.body}
+            menuPosition="fixed"
+            styles={{
+              ...customSelectStyles,
+              control: (provided) => ({
+                ...provided,
+                minHeight: '31px',
+                fontSize: '0.875rem',
+                borderColor: '#dee2e6',
+                minWidth: '150px'
+              })
+            }}
+            isClearable={false}
+            isSearchable={false}
+          />
         )}
       </div>
     );
@@ -259,53 +426,97 @@ const GameTable: React.FC<GameTableProps> = ({
       // Find the source game to get the output type
       const sourceGame = findSourceGameForReference(game.id, slot, edges, allNodes);
       if (sourceGame) {
-        // Extract output type from dynamicRef
-        const outputType = dynamicRef.outputType || 'winner';
+        // Extract output type from dynamicRef.type (winner or loser)
+        const outputType = dynamicRef.type === 'loser' ? 'loser' : 'winner';
         currentValue = `${outputType}:${sourceGame.id}`;
       }
     } else if (teamId) {
       currentValue = teamId;
     }
 
+    // Group eligible games by stage
+    const gamesByStage = new Map<string, { name: string; games: GameNode[] }>();
+    eligibleGames.forEach((sourceGame) => {
+      const sourcePath = getGamePath(sourceGame.id, allNodes);
+      const stageId = sourcePath?.stage.id || '';
+      const stageName = sourcePath?.stage.data.name || '';
+      if (!gamesByStage.has(stageId)) {
+        gamesByStage.set(stageId, { name: stageName, games: [] });
+      }
+      gamesByStage.get(stageId)!.games.push(sourceGame);
+    });
+
+    // Build options array
+    const options: TeamOption[] = [];
+
+    // Add placeholder
+    options.push({ value: '', label: '-- Select Team --' });
+
+    // Add static teams with colors
+    globalTeams.forEach((team) => {
+      options.push({
+        value: team.id,
+        label: team.label,
+        color: team.color || '#6c757d',
+        isTeam: true
+      });
+    });
+
+    // Add dynamic references grouped by stage
+    Array.from(gamesByStage.entries()).forEach(([stageId, stageData]) => {
+      // Find stage node to get color
+      const stageNode = allNodes.find(n => n.id === stageId);
+      const stageColor = stageNode && 'color' in stageNode.data ? stageNode.data.color : '#0d6efd';
+
+      // Add stage header separator
+      options.push({
+        value: `stage-header-${stageId}`,
+        label: stageData.name,
+        color: stageColor,
+        isStageHeader: true,
+        isDisabled: true
+      });
+
+      // Add winner/loser options for games in this stage
+      stageData.games.forEach((sourceGame) => {
+        options.push({
+          value: `winner:${sourceGame.id}`,
+          label: `⚡ Winner of ${sourceGame.data.standing}`,
+          isTeam: false
+        });
+        options.push({
+          value: `loser:${sourceGame.id}`,
+          label: `💔 Loser of ${sourceGame.data.standing}`,
+          isTeam: false
+        });
+      });
+    });
+
+    // Find selected option
+    const selectedOption = options.find(opt => opt.value === currentValue) || options[0];
+
     return (
-      <Form.Select
-        size="sm"
-        value={currentValue}
-        onChange={(e) => {
-          e.stopPropagation();
-          handleTeamChange(game.id, slot, e.target.value);
-        }}
-        onClick={(e) => e.stopPropagation()}
-        style={{ fontSize: '0.875rem' }}
-      >
-        <option value="">-- Select Team --</option>
-
-        {/* Static teams */}
-        {globalTeams.map((team) => (
-          <option key={team.id} value={team.id}>
-            {team.label}
-          </option>
-        ))}
-
-        {/* Separator if there are eligible source games */}
-        {eligibleGames.length > 0 && <option disabled>---</option>}
-
-        {/* Dynamic references - only show games from earlier stages */}
-        {eligibleGames.map((sourceGame) => {
-          const sourcePath = getGamePath(sourceGame.id, allNodes);
-          const stageName = sourcePath?.stage.data.name || '';
-          return (
-            <React.Fragment key={sourceGame.id}>
-              <option value={`winner:${sourceGame.id}`}>
-                ⚡ Winner of [{stageName}] - {sourceGame.data.standing}
-              </option>
-              <option value={`loser:${sourceGame.id}`}>
-                💔 Loser of [{stageName}] - {sourceGame.data.standing}
-              </option>
-            </React.Fragment>
-          );
-        })}
-      </Form.Select>
+      <div onClick={(e) => e.stopPropagation()}>
+        <Select<TeamOption>
+          value={selectedOption}
+          options={options}
+          onChange={(newValue) => {
+            if (newValue) {
+              handleTeamChange(game.id, slot, newValue.value);
+            }
+          }}
+          components={{
+            Option: CustomOption,
+            SingleValue: CustomSingleValue
+          }}
+          isOptionDisabled={(option) => option.isDisabled || false}
+          menuPortalTarget={document.body}
+          menuPosition="fixed"
+          styles={customSelectStyles}
+          isClearable={false}
+          isSearchable={false}
+        />
+      </div>
     );
   };
 
@@ -343,7 +554,7 @@ const GameTable: React.FC<GameTableProps> = ({
               onClick={(e) => handleRowClick(e, game.id)}
               style={{
                 cursor: 'pointer',
-                backgroundColor: isSelected ? '#e7f3ff' : undefined,
+                backgroundColor: isSelected ? '#fff3cd' : undefined,
               }}
             >
               {/* Standing column - inline editable */}

@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Card, Button, Badge } from 'react-bootstrap';
+import { Card, Button } from 'react-bootstrap';
 import StageSection from './StageSection';
 import type { FieldNode, StageNode, FlowNode, FlowEdge, GlobalTeam } from '../../types/flowchart';
 import { isGameNode } from '../../types/flowchart';
@@ -196,11 +196,34 @@ const FieldSection: React.FC<FieldSectionProps> = ({
       <Card.Header
         className="field-section__header d-flex align-items-center"
         onClick={handleToggleExpand}
-        style={{ cursor: 'pointer' }}
+        style={{
+          cursor: 'pointer',
+          borderLeft: `4px solid ${field.data.color || '#0dcaf0'}`,
+        }}
       >
         <i
           className={`bi bi-chevron-${isExpanded ? 'down' : 'right'} me-2`}
         ></i>
+
+        {/* Field color picker */}
+        <input
+          type="color"
+          value={field.data.color || '#d1ecf1'}
+          onChange={(e) => {
+            e.stopPropagation();
+            onUpdate(field.id, { color: e.target.value });
+          }}
+          onClick={(e) => e.stopPropagation()}
+          title="Field color"
+          className="me-2"
+          style={{
+            width: '28px',
+            height: '28px',
+            border: 'none',
+            borderRadius: '50%',
+            cursor: 'pointer'
+          }}
+        />
 
         {isEditingName ? (
           <input
@@ -216,7 +239,7 @@ const FieldSection: React.FC<FieldSectionProps> = ({
           />
         ) : (
           <strong
-            className="me-2"
+            className="me-auto"
             onDoubleClick={handleStartEdit}
             style={{ cursor: 'text' }}
           >
@@ -224,20 +247,13 @@ const FieldSection: React.FC<FieldSectionProps> = ({
           </strong>
         )}
 
-        <Badge bg="secondary" className="me-2">
-          {stages.length} stage{stages.length !== 1 ? 's' : ''}
-        </Badge>
-
-        <Badge bg="info" className="me-auto">
-          {gameCount} game{gameCount !== 1 ? 's' : ''}
-        </Badge>
-
         {sortedStages.length > 0 && (
           <Button
             size="sm"
             variant="outline-primary"
             onClick={handleAddStage}
             aria-label="Add Stage"
+            className="me-2"
           >
             <i className="bi bi-plus-circle me-1"></i>
             Add Stage
@@ -249,7 +265,6 @@ const FieldSection: React.FC<FieldSectionProps> = ({
           size="sm"
           onClick={handleDelete}
           aria-label="Delete Field"
-          className="ms-2"
         >
           <i className="bi bi-trash"></i>
         </Button>

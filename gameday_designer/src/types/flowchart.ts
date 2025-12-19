@@ -25,6 +25,8 @@ export interface GlobalTeam {
   groupId: string | null;
   /** Order for display in global list (user-managed) */
   order: number;
+  /** Optional color for visual coding */
+  color?: string;
 }
 
 /**
@@ -156,6 +158,8 @@ export interface StageNodeData {
   stageType: StageType;
   /** Order within parent field */
   order: number;
+  /** Optional color for visual coding */
+  color?: string;
 }
 
 // ============================================================================

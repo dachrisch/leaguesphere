@@ -1239,12 +1239,13 @@ export function useFlowState(initialState?: Partial<FlowState>): UseFlowStateRet
   // ============================================================================
 
   /**
-   * Clear all nodes, edges, and optionally fields.
+   * Clear all nodes, edges, teams, groups, and optionally fields.
    */
   const clearAll = useCallback(() => {
     setNodes([]);
     setEdges([]);
     setGlobalTeams([]);
+    setGlobalTeamGroups([]);
     setSelection({ nodeIds: [], edgeIds: [] });
     // Keep fields by default
   }, [setNodes, setEdges]);

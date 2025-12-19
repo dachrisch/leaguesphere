@@ -159,7 +159,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
           <Modal.Title>Clear All</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          Are you sure you want to clear all fields and games? This action cannot be
+          Are you sure you want to clear all fields, stages, games, teams, and groups? This action cannot be
           undone.
         </Modal.Body>
         <Modal.Footer>

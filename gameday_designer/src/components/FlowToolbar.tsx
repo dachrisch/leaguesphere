@@ -95,7 +95,7 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
   const handleClearAll = () => {
     if (hasNodes) {
       const confirmed = window.confirm(
-        'Are you sure you want to clear all nodes and edges? This action cannot be undone.'
+        'Are you sure you want to clear all fields, stages, games, teams, and groups? This action cannot be undone.'
       );
       if (confirmed) {
         onClearAll();

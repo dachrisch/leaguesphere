@@ -18,14 +18,15 @@
 }
 
 .field-section__header {
-  background-color: #e9ecef;
+  background-color: #d1ecf1; /* Light cyan - Bootstrap info variant */
   border-bottom: 1px solid #dee2e6;
+  border-left: 4px solid #0dcaf0; /* Bright cyan accent */
   user-select: none;
   flex-shrink: 0;
 }
 
 .field-section__header:hover {
-  background-color: #dee2e6;
+  background-color: #b8e4ea; /* Slightly darker on hover */
 }
 
 .field-section__body {
