@@ -192,11 +192,8 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
           )}
         </div>
 
-        {/* Team count badge */}
-        <span className="badge bg-secondary me-auto ms-2">{teams.length}</span>
-
         {/* Group actions */}
-        <div className="d-flex gap-1" onClick={(e) => e.stopPropagation()}>
+        <div className="d-flex gap-1 ms-auto" onClick={(e) => e.stopPropagation()}>
           {teams.length > 0 && (
             <button
               className="btn btn-sm btn-outline-primary"
@@ -263,6 +260,23 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                   className="d-flex align-items-center justify-content-between py-2 px-2 border-bottom"
                   style={{ backgroundColor: '#fff', fontSize: '0.875rem' }}
                 >
+                  {/* Team color */}
+                  <div className="me-2 flex-shrink-0">
+                    <input
+                      type="color"
+                      value={team.color || '#6c757d'}
+                      onChange={(e) => onUpdateTeam(team.id, { color: e.target.value })}
+                      title="Team color"
+                      style={{
+                        width: '24px',
+                        height: '24px',
+                        border: 'none',
+                        borderRadius: '50%',
+                        cursor: 'pointer'
+                      }}
+                    />
+                  </div>
+
                   {/* Team label */}
                   <div className="flex-grow-1 me-2" style={{ minWidth: 0 }}>
                     {isEditing ? (
