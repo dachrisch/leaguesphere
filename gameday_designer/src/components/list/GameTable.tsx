@@ -265,7 +265,8 @@ const GameTable: React.FC<GameTableProps> = ({
     }
 
     if (value.startsWith('winner:') || value.startsWith('loser:')) {
-      // Dynamic reference selected
+      // Dynamic reference selected - remove old edge first, then add new one
+      onRemoveGameToGameEdge(gameId, slot);
       const [outputType, sourceGameId] = value.split(':');
       onAddGameToGameEdge(sourceGameId, outputType as 'winner' | 'loser', gameId, slot);
     } else {
