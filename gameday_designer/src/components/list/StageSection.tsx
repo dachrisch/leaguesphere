@@ -215,13 +215,19 @@ const StageSection: React.FC<StageSectionProps> = ({
             style={{ maxWidth: '200px' }}
           />
         ) : (
-          <strong
-            className="me-auto"
-            onDoubleClick={handleStartEdit}
-            style={{ cursor: 'text' }}
-          >
-            {stage.data.name}
-          </strong>
+          <>
+            <strong className="me-2">{stage.data.name}</strong>
+            <Button
+              size="sm"
+              variant="link"
+              onClick={handleStartEdit}
+              aria-label="Edit stage name"
+              className="p-0 me-auto"
+              style={{ fontSize: '0.875rem' }}
+            >
+              <i className="bi bi-pencil"></i>
+            </Button>
+          </>
         )}
 
         {games.length > 0 && (
