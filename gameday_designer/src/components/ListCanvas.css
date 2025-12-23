@@ -1,0 +1,52 @@
+/**
+ * ListCanvas Component Styles
+ */
+
+.list-canvas {
+  height: 100%;
+  overflow-y: auto;
+  padding: 1rem;
+  background-color: #f8f9fa;
+}
+
+.list-canvas__content {
+  max-width: none;
+  margin: 0 auto;
+}
+
+.list-canvas--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.list-canvas .empty-state {
+  text-align: center;
+  padding: 3rem;
+}
+
+/**
+ * Fields Section Card Wrapper
+ */
+.fields-section {
+  border: none;
+  border-radius: 8px;
+}
+
+/**
+ * Fields Grid Layout with Responsive CSS Grid
+ * Includes inline Add Field card
+ */
+.fields-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+}
+
+/* Responsive breakpoints for field grid */
+@media (max-width: 1024px) {
+  .fields-grid {
+    grid-template-columns: 1fr;
+  }
+}

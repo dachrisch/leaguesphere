@@ -1,0 +1,51 @@
+/**
+ * GlobalTeamTable Component Styles
+ *
+ * CSS Grid layout for team groups with responsive breakpoints
+ */
+
+.team-groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Responsive breakpoints */
+
+/* Large screens: max 4 columns */
+@media (min-width: 1400px) {
+  .team-groups-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Medium-large screens: max 3 columns */
+@media (min-width: 992px) and (max-width: 1399px) {
+  .team-groups-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Medium screens: max 2 columns */
+@media (min-width: 768px) and (max-width: 991px) {
+  .team-groups-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Small screens: 1 column */
+@media (max-width: 767px) {
+  .team-groups-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Team group card styles */
+.team-group-card {
+  transition: box-shadow 0.2s ease;
+}
+
+.team-group-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
