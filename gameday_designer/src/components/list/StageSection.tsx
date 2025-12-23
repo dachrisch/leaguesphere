@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { Card, Button } from 'react-bootstrap';
+import { Card, Button, Form } from 'react-bootstrap';
 import GameTable from './GameTable';
 import type { StageNode, FlowNode, FlowEdge, GameNode, GlobalTeam } from '../../types/flowchart';
 import { isGameNode } from '../../types/flowchart';
@@ -186,25 +186,21 @@ const StageSection: React.FC<StageSectionProps> = ({
           className={`bi bi-chevron-${isExpanded ? 'down' : 'right'} me-2`}
         ></i>
 
-        {/* Stage color picker */}
-        <input
-          type="color"
-          value={stage.data.color || '#e7f3ff'}
-          onChange={(e) => {
-            e.stopPropagation();
-            onUpdate(stage.id, { color: e.target.value });
-          }}
-          onClick={(e) => e.stopPropagation()}
-          title="Stage color"
-          className="me-2"
-          style={{
-            width: '28px',
-            height: '28px',
-            border: 'none',
-            borderRadius: '50%',
-            cursor: 'pointer'
-          }}
-        />
+        {/* Start Time Input */}
+        <div className="d-flex align-items-center gap-2 me-2">
+          <Form.Label className="mb-0 text-muted small">Start:</Form.Label>
+          <Form.Control
+            type="time"
+            size="sm"
+            value={stage.data.startTime || ''}
+            onChange={(e) => {
+              e.stopPropagation();
+              onUpdate(stage.id, { startTime: e.target.value || undefined });
+            }}
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '110px' }}
+          />
+        </div>
 
         {isEditingName ? (
           <input
@@ -240,6 +236,26 @@ const StageSection: React.FC<StageSectionProps> = ({
             Add Game
           </Button>
         )}
+
+        {/* Stage color picker */}
+        <input
+          type="color"
+          value={stage.data.color || '#e7f3ff'}
+          onChange={(e) => {
+            e.stopPropagation();
+            onUpdate(stage.id, { color: e.target.value });
+          }}
+          onClick={(e) => e.stopPropagation()}
+          title="Stage color"
+          className="me-2"
+          style={{
+            width: '28px',
+            height: '28px',
+            border: 'none',
+            borderRadius: '50%',
+            cursor: 'pointer'
+          }}
+        />
 
         <Button
           variant="outline-danger"

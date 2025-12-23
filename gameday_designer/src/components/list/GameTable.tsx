@@ -12,6 +12,7 @@ import Select, { components, StylesConfig, GroupBase } from 'react-select';
 import type { GameNode, FlowEdge, FlowNode, GlobalTeam, GameNodeData } from '../../types/flowchart';
 import { isGameNode } from '../../types/flowchart';
 import { findSourceGameForReference, getGamePath } from '../../utils/edgeAnalysis';
+import { isValidTimeFormat } from '../../utils/timeCalculation';
 import './GameTable.css';
 
 // Type for select options
@@ -155,7 +156,7 @@ const GameTable: React.FC<GameTableProps> = ({
 }) => {
   // State for inline editing
   const [editingGameId, setEditingGameId] = useState<string | null>(null);
-  const [editingField, setEditingField] = useState<'standing' | 'breakAfter' | null>(null);
+  const [editingField, setEditingField] = useState<'standing' | 'breakAfter' | 'time' | null>(null);
   const [editedValue, setEditedValue] = useState<string>('');
 
   const handleRowClick = (e: React.MouseEvent, gameId: string) => {
@@ -172,13 +173,17 @@ const GameTable: React.FC<GameTableProps> = ({
    * Start editing a field.
    */
   const handleStartEdit = useCallback(
-    (e: React.MouseEvent, game: GameNode, field: 'standing' | 'breakAfter') => {
+    (e: React.MouseEvent, game: GameNode, field: 'standing' | 'breakAfter' | 'time') => {
       e.stopPropagation();
       setEditingGameId(game.id);
       setEditingField(field);
-      setEditedValue(
-        field === 'standing' ? game.data.standing : String(game.data.breakAfter || 0)
-      );
+      if (field === 'standing') {
+        setEditedValue(game.data.standing);
+      } else if (field === 'breakAfter') {
+        setEditedValue(String(game.data.breakAfter || 0));
+      } else if (field === 'time') {
+        setEditedValue(game.data.startTime || '');
+      }
     },
     []
   );
@@ -187,15 +192,32 @@ const GameTable: React.FC<GameTableProps> = ({
    * Save edited value.
    */
   const handleSaveEdit = useCallback(
-    (gameId: string, field: 'standing' | 'breakAfter') => {
-      if (editedValue.trim() !== '') {
-        if (field === 'standing') {
+    (gameId: string, field: 'standing' | 'breakAfter' | 'time') => {
+      if (field === 'standing') {
+        if (editedValue.trim() !== '') {
           onUpdate(gameId, { standing: editedValue.trim() });
-        } else {
+        }
+      } else if (field === 'breakAfter') {
+        if (editedValue.trim() !== '') {
           const numValue = parseInt(editedValue, 10);
           if (!isNaN(numValue) && numValue >= 0) {
             onUpdate(gameId, { breakAfter: numValue });
           }
+        }
+      } else if (field === 'time') {
+        if (editedValue.trim() !== '') {
+          if (isValidTimeFormat(editedValue.trim())) {
+            onUpdate(gameId, {
+              startTime: editedValue.trim(),
+              manualTime: true
+            });
+          } else {
+            alert('Invalid time format. Use HH:MM (24-hour)');
+            return; // Don't close edit mode on invalid input
+          }
+        } else {
+          // Clear manual override
+          onUpdate(gameId, { startTime: undefined, manualTime: false });
         }
       }
       setEditingGameId(null);
@@ -216,7 +238,7 @@ const GameTable: React.FC<GameTableProps> = ({
    * Handle key press during editing.
    */
   const handleKeyPress = useCallback(
-    (e: React.KeyboardEvent, gameId: string, field: 'standing' | 'breakAfter') => {
+    (e: React.KeyboardEvent, gameId: string, field: 'standing' | 'breakAfter' | 'time') => {
       if (e.key === 'Enter') {
         handleSaveEdit(gameId, field);
       } else if (e.key === 'Escape') {
@@ -235,6 +257,10 @@ const GameTable: React.FC<GameTableProps> = ({
     if (!targetPath) return [];
 
     const targetStageOrder = targetPath.stage.data.order;
+    const targetStageId = targetPath.stage.id;
+
+    // Get index of target game in allNodes array
+    const targetNodeIndex = allNodes.findIndex(n => n.id === targetGame.id);
 
     return allNodes
       .filter((node): node is GameNode => {
@@ -244,8 +270,16 @@ const GameTable: React.FC<GameTableProps> = ({
         const path = getGamePath(node.id, allNodes);
         if (!path) return false;
 
-        // Only show games from earlier stages (lower order)
-        return path.stage.data.order < targetStageOrder;
+        // Show games from earlier stages OR games from the same stage that come before this one in the array
+        if (path.stage.data.order < targetStageOrder) {
+          return true;
+        } else if (path.stage.id === targetStageId) {
+          // Same stage: only include if it appears before the target game in the nodes array
+          // (games created earlier can feed into games created later)
+          const sourceNodeIndex = allNodes.findIndex(n => n.id === node.id);
+          return sourceNodeIndex >= 0 && sourceNodeIndex < targetNodeIndex;
+        }
+        return false;
       })
       .sort((a, b) => {
         const pathA = getGamePath(a.id, allNodes)!;
@@ -292,6 +326,52 @@ const GameTable: React.FC<GameTableProps> = ({
     },
     [onUpdate]
   );
+
+  /**
+   * Render time cell with inline editing and manual override indicator.
+   */
+  const renderTimeCell = (game: GameNode) => {
+    const isEditingTime = editingGameId === game.id && editingField === 'time';
+    const timeValue = game.data.startTime || '';
+    const isManual = game.data.manualTime;
+
+    return (
+      <td
+        style={{ backgroundColor: isManual ? '#fff3cd' : undefined }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {isEditingTime ? (
+          <Form.Control
+            type="time"
+            size="sm"
+            value={timeValue}
+            onChange={(e) => setEditedValue(e.target.value)}
+            onBlur={() => handleSaveEdit(game.id, 'time')}
+            onKeyDown={(e) => handleKeyPress(e, game.id, 'time')}
+            autoFocus
+            style={{ fontSize: '0.875rem', width: '110px' }}
+          />
+        ) : (
+          <div className="d-flex align-items-center gap-1">
+            <span
+              onClick={(e) => handleStartEdit(e, game, 'time')}
+              style={{ cursor: 'text' }}
+              title={isManual ? 'Manually set - click to edit' : 'Auto-calculated - click to override'}
+            >
+              {timeValue || '--:--'}
+            </span>
+            {isManual && (
+              <i
+                className="bi bi-pencil-fill text-warning"
+                style={{ fontSize: '0.7rem' }}
+                title="Manual override"
+              />
+            )}
+          </div>
+        )}
+      </td>
+    );
+  };
 
   /**
    * Render official selector (checkbox + dropdown).
@@ -535,6 +615,7 @@ const GameTable: React.FC<GameTableProps> = ({
       <thead>
         <tr>
           <th>Standing</th>
+          <th>Time</th>
           <th>Home</th>
           <th>Away</th>
           <th>Official</th>
@@ -581,6 +662,9 @@ const GameTable: React.FC<GameTableProps> = ({
                   </span>
                 )}
               </td>
+
+              {/* Time column - inline editable */}
+              {renderTimeCell(game)}
 
               {/* Home team column */}
               <td>{renderTeamCell(game, 'home')}</td>

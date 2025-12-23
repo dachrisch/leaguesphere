@@ -119,6 +119,14 @@ export interface GameNodeData {
   homeTeamDynamic: TeamReference | null;
   /** Dynamic away team reference from GameToGameEdge (overrides awayTeamId) */
   awayTeamDynamic: TeamReference | null;
+
+  // Time scheduling (Phase 1)
+  /** Calculated start time (HH:MM, 24-hour). Auto-calculated or manual. */
+  startTime?: string;
+  /** Game duration in minutes (default 50) */
+  duration?: number;
+  /** Flag: true if startTime was manually set (prevents auto-recalc) */
+  manualTime?: boolean;
 }
 
 // ============================================================================
@@ -129,6 +137,51 @@ export interface GameNodeData {
  * Stage type enumeration for ordering stages within a field.
  */
 export type StageType = 'vorrunde' | 'finalrunde' | 'platzierung' | 'custom';
+
+/**
+ * Progression mode for game generation templates (Phase 2).
+ * - manual: No templates (default) - all games added manually
+ * - round_robin: Group stage with round robin matchups
+ * - placement: Placement rounds (e.g., 1st-4th place)
+ */
+export type ProgressionMode =
+  | 'manual'         // No templates (default)
+  | 'round_robin'    // Group stage
+  | 'placement';     // Placement rounds
+
+/**
+ * Configuration for Round Robin progression mode.
+ */
+export interface RoundRobinConfig {
+  mode: 'round_robin';
+  /** Number of teams in the round robin */
+  teamCount: number;
+  /** Whether to play double round robin (home and away) */
+  doubleRound: boolean;
+}
+
+/**
+ * Configuration for Placement progression mode.
+ */
+export interface PlacementConfig {
+  mode: 'placement';
+  /** Number of positions to determine (e.g., 4 for 1st-4th place) */
+  positions: number;
+  /** Format for placement games */
+  format: 'single_elimination' | 'crossover';
+}
+
+/**
+ * Configuration for Manual progression mode (no templates).
+ */
+export interface ManualConfig {
+  mode: 'manual';
+}
+
+/**
+ * Union type for all progression configurations.
+ */
+export type ProgressionConfig = ManualConfig | RoundRobinConfig | PlacementConfig;
 
 /**
  * Data for a field container node - represents a playing field.
@@ -160,6 +213,18 @@ export interface StageNodeData {
   order: number;
   /** Optional color for visual coding */
   color?: string;
+
+  // Time scheduling (Phase 1)
+  /** Start time for first game in stage (HH:MM, 24-hour) */
+  startTime?: string;
+  /** Default game duration for stage in minutes (default 50) */
+  defaultGameDuration?: number;
+
+  // Progression types (Phase 2)
+  /** Progression mode for game generation */
+  progressionMode?: ProgressionMode;
+  /** Configuration for progression mode */
+  progressionConfig?: ProgressionConfig;
 }
 
 // ============================================================================
@@ -481,6 +546,10 @@ export function createGameNode(
       awayTeamId: options.awayTeamId ?? null,
       homeTeamDynamic: options.homeTeamDynamic ?? null,
       awayTeamDynamic: options.awayTeamDynamic ?? null,
+      // Time scheduling fields (Phase 1)
+      duration: options.duration ?? 50,
+      startTime: options.startTime,
+      manualTime: options.manualTime ?? false,
     },
   };
 }
@@ -541,6 +610,13 @@ export function createStageNode(
       name: options?.name ?? 'Vorrunde',
       stageType: options?.stageType ?? 'vorrunde',
       order: options?.order ?? 0,
+      color: options?.color,
+      // Time scheduling fields (Phase 1)
+      startTime: options?.startTime,
+      defaultGameDuration: options?.defaultGameDuration ?? 50,
+      // Progression fields (Phase 2)
+      progressionMode: options?.progressionMode ?? 'manual',
+      progressionConfig: options?.progressionConfig ?? { mode: 'manual' },
     },
     style: { width: 300, height: 150 },
     extent: 'parent',
@@ -581,6 +657,10 @@ export function createGameNodeInStage(
       awayTeamId: options?.awayTeamId ?? null,
       homeTeamDynamic: options?.homeTeamDynamic ?? null,
       awayTeamDynamic: options?.awayTeamDynamic ?? null,
+      // Time scheduling fields (Phase 1)
+      duration: options?.duration ?? 50,
+      startTime: options?.startTime,
+      manualTime: options?.manualTime ?? false,
     },
     extent: 'parent',
     expandParent: true,

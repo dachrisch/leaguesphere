@@ -89,6 +89,9 @@ export interface ListCanvasProps {
 
   /** Set of expanded stage IDs (controlled) */
   expandedStageIds: Set<string>;
+
+  /** Callback to open tournament generator modal */
+  onGenerateTournament: () => void;
 }
 
 /**
@@ -123,6 +126,7 @@ const ListCanvas: React.FC<ListCanvasProps> = ({
   onRemoveGameToGameEdge,
   expandedFieldIds,
   expandedStageIds,
+  onGenerateTournament,
 }) => {
   // Filter and sort fields
   const fields = nodes
@@ -144,6 +148,15 @@ const ListCanvas: React.FC<ListCanvasProps> = ({
           <Card.Header className="d-flex align-items-center">
             <i className="bi bi-people-fill me-2"></i>
             <strong>Global Team Pool</strong>
+            <Button
+              size="sm"
+              variant="success"
+              onClick={onGenerateTournament}
+              className="ms-2"
+            >
+              <i className="bi bi-trophy me-1"></i>
+              Generate Tournament
+            </Button>
             {globalTeamGroups.length > 0 && (
               <Button
                 size="sm"
