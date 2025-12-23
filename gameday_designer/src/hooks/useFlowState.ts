@@ -43,6 +43,8 @@ import {
   isStageNode,
 } from '../types/flowchart';
 import type { TeamReference } from '../types/designer';
+import { recalculateStageGameTimes } from '../utils/timeCalculation';
+import type { TournamentStructure } from '../utils/tournamentGenerator';
 
 /**
  * Options for adding a field node.
@@ -84,6 +86,8 @@ export interface UseFlowStateReturn {
   addFieldNode: (options?: AddFieldOptions, includeStage?: boolean) => FieldNode;
   addStageNode: (fieldId: string, options?: AddStageOptions) => StageNode | null;
   addGameNodeInStage: (stageId?: string, options?: Partial<Omit<GameNodeData, 'type'>>) => GameNode;
+  addBulkGames: (games: GameNode[]) => void;
+  addBulkTournament: (structure: TournamentStructure) => void;
 
   // Container hierarchy helpers (v2)
   getTargetStage: () => StageNode | null;
@@ -104,6 +108,12 @@ export interface UseFlowStateReturn {
   setEdges: (edges: FlowEdge[]) => void;
   deleteEdge: (edgeId: string) => void;
   addGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => string;
+  addBulkGameToGameEdges: (edgesToAdd: Array<{
+    sourceGameId: string;
+    outputType: 'winner' | 'loser';
+    targetGameId: string;
+    targetSlot: 'home' | 'away';
+  }>) => string[];
   removeGameToGameEdge: (targetGameId: string, targetSlot: 'home' | 'away') => void;
 
   // Field actions (legacy, kept for compatibility)
@@ -207,6 +217,7 @@ export function useFlowState(initialState?: Partial<FlowState>): UseFlowStateRet
    * Updates homeTeamDynamic/awayTeamDynamic fields on game nodes.
    */
   useEffect(() => {
+    console.log('[useEffect edges sync] Running with', edges.length, 'edges');
     setNodes((nds) =>
       nds.map((n) => {
         if (!isGameNode(n)) return n;
@@ -219,9 +230,24 @@ export function useFlowState(initialState?: Partial<FlowState>): UseFlowStateRet
           (e) => e.type === 'gameToGame' && e.target === n.id && e.targetHandle === 'away'
         );
 
+        if (homeEdge || awayEdge) {
+          console.log('[useEffect edges sync] Processing game:', (n.data as GameNodeData).standing, {
+            hasHomeEdge: !!homeEdge,
+            hasAwayEdge: !!awayEdge,
+            gameId: n.id
+          });
+        }
+
         // Derive dynamic team references from edges
         const homeTeamDynamic = homeEdge ? deriveDynamicRef(homeEdge, nds) : null;
         const awayTeamDynamic = awayEdge ? deriveDynamicRef(awayEdge, nds) : null;
+
+        if (homeTeamDynamic || awayTeamDynamic) {
+          console.log('[useEffect edges sync] Derived refs for', (n.data as GameNodeData).standing, {
+            homeTeamDynamic,
+            awayTeamDynamic
+          });
+        }
 
         // Only update if dynamic refs changed
         const data = n.data as GameNodeData;
@@ -330,9 +356,10 @@ export function useFlowState(initialState?: Partial<FlowState>): UseFlowStateRet
    * Update a node's data.
    */
   const updateNode = useCallback(
-    (nodeId: string, data: Partial<TeamNodeData | GameNodeData>) => {
-      setNodes((nds) =>
-        nds.map((node) => {
+    (nodeId: string, data: Partial<TeamNodeData | GameNodeData | FieldNodeData | StageNodeData>) => {
+      setNodes((prevNodes) => {
+        // First, apply the update
+        const updatedNodes = prevNodes.map((node) => {
           if (node.id === nodeId) {
             return {
               ...node,
@@ -340,10 +367,80 @@ export function useFlowState(initialState?: Partial<FlowState>): UseFlowStateRet
             };
           }
           return node;
-        })
-      );
+        });
+
+        // Check if we need to recalculate game times
+        const updatedNode = updatedNodes.find((n) => n.id === nodeId);
+
+        // Case 1: Stage start time changed - recalculate all games in this stage
+        if (updatedNode && isStageNode(updatedNode) && 'startTime' in data) {
+          const stage = updatedNode;
+          const games = updatedNodes.filter(
+            (n): n is GameNode => isGameNode(n) && n.parentId === stage.id
+          ).sort((a, b) => {
+            // Sort by standing to ensure correct order
+            const aStanding = parseInt(a.data.standing) || 0;
+            const bStanding = parseInt(b.data.standing) || 0;
+            return aStanding - bStanding;
+          });
+
+          if (games.length > 0) {
+            const timeUpdates = recalculateStageGameTimes(stage, games);
+
+            // Apply time updates to games (respecting manual overrides)
+            return updatedNodes.map((node) => {
+              const update = timeUpdates.find((u) => u.gameId === node.id);
+              if (update && isGameNode(node) && !node.data.manualTime) {
+                return {
+                  ...node,
+                  data: { ...node.data, startTime: update.startTime },
+                };
+              }
+              return node;
+            });
+          }
+        }
+
+        // Case 2: Game break or duration changed - recalculate subsequent games in the same stage
+        if (updatedNode && isGameNode(updatedNode) && ('breakAfter' in data || 'duration' in data)) {
+          const game = updatedNode;
+          const stageId = game.parentId;
+
+          if (stageId) {
+            const stage = updatedNodes.find((n): n is StageNode => n.id === stageId && isStageNode(n));
+
+            if (stage && stage.data.startTime) {
+              const games = updatedNodes.filter(
+                (n): n is GameNode => isGameNode(n) && n.parentId === stageId
+              ).sort((a, b) => {
+                const aStanding = parseInt(a.data.standing) || 0;
+                const bStanding = parseInt(b.data.standing) || 0;
+                return aStanding - bStanding;
+              });
+
+              if (games.length > 0) {
+                const timeUpdates = recalculateStageGameTimes(stage, games);
+
+                // Apply time updates to games (respecting manual overrides)
+                return updatedNodes.map((node) => {
+                  const update = timeUpdates.find((u) => u.gameId === node.id);
+                  if (update && isGameNode(node) && !node.data.manualTime) {
+                    return {
+                      ...node,
+                      data: { ...node.data, startTime: update.startTime },
+                    };
+                  }
+                  return node;
+                });
+              }
+            }
+          }
+        }
+
+        return updatedNodes;
+      });
     },
-    [setNodes]
+    []
   );
 
   /**
@@ -548,6 +645,80 @@ export function useFlowState(initialState?: Partial<FlowState>): UseFlowStateRet
       return newGame;
     },
     [nodes, setNodes]
+  );
+
+  /**
+   * Add multiple games at once (bulk operation).
+   * Games are sorted by standing before adding.
+   * Triggers time recalculation for affected stages.
+   */
+  const addBulkGames = useCallback(
+    (games: GameNode[]): void => {
+      if (games.length === 0) return;
+
+      // Sort games by standing to maintain consistent order
+      const sortedGames = [...games].sort((a, b) => {
+        const aStanding = a.data.standing || '';
+        const bStanding = b.data.standing || '';
+        return aStanding.localeCompare(bStanding);
+      });
+
+      // Add all games at once
+      setNodes((prevNodes) => {
+        const newNodes = [...prevNodes, ...sortedGames];
+
+        // Recalculate times for all affected stages
+        const affectedStageIds = new Set(sortedGames.map(g => g.parentId).filter(Boolean));
+
+        if (affectedStageIds.size === 0) return newNodes;
+
+        // For each affected stage, recalculate game times
+        const updatedNodes = newNodes.map((node) => {
+          // If this is a game in an affected stage and doesn't have manual time, recalculate
+          if (isGameNode(node) && node.parentId && affectedStageIds.has(node.parentId) && !node.data.manualTime) {
+            const stage = newNodes.find((n): n is StageNode => n.id === node.parentId && isStageNode(n));
+            if (!stage || !stage.data.startTime) return node;
+
+            // Get all games in this stage
+            const stageGames = newNodes.filter(
+              (n): n is GameNode => isGameNode(n) && n.parentId === stage.id
+            );
+
+            // Recalculate times for this stage
+            const timeUpdates = recalculateStageGameTimes(stage, stageGames);
+            const timeUpdate = timeUpdates.find(u => u.gameId === node.id);
+
+            if (timeUpdate) {
+              return {
+                ...node,
+                data: { ...node.data, startTime: timeUpdate.startTime }
+              };
+            }
+          }
+          return node;
+        });
+
+        return updatedNodes;
+      });
+    },
+    [setNodes]
+  );
+
+  /**
+   * Add a complete tournament structure (fields, stages, games, edges).
+   * Used by the tournament generator to create tournaments atomically.
+   */
+  const addBulkTournament = useCallback(
+    (structure: TournamentStructure): void => {
+      setNodes((prevNodes) => [
+        ...prevNodes,
+        ...structure.fields,
+        ...structure.stages,
+        ...structure.games,
+      ]);
+      setEdges((prevEdges) => [...prevEdges, ...structure.edges]);
+    },
+    [setNodes, setEdges]
   );
 
   // ============================================================================
@@ -847,6 +1018,59 @@ export function useFlowState(initialState?: Partial<FlowState>): UseFlowStateRet
   // ============================================================================
 
   /**
+   * Add multiple GameToGameEdges at once (bulk operation).
+   * More efficient than individual addGameToGameEdge calls when creating many edges.
+   * Ensures all edges are added in a single state update, preventing React batching issues.
+   *
+   * @param edgesToAdd - Array of edge specifications
+   * @returns Array of created edge IDs
+   */
+  const addBulkGameToGameEdges = useCallback(
+    (edgesToAdd: Array<{
+      sourceGameId: string;
+      outputType: 'winner' | 'loser';
+      targetGameId: string;
+      targetSlot: 'home' | 'away';
+    }>): string[] => {
+      if (edgesToAdd.length === 0) return [];
+
+      const newEdges = edgesToAdd.map(({ sourceGameId, outputType, targetGameId, targetSlot }) => {
+        const edgeId = `edge-${uuidv4()}`;
+        return createGameToGameEdge(edgeId, sourceGameId, outputType, targetGameId, targetSlot);
+      });
+
+      console.log('[addBulkGameToGameEdges] Creating', newEdges.length, 'edges in bulk');
+
+      // Add all edges in a single state update
+      setEdges((eds) => {
+        console.log('[addBulkGameToGameEdges] Current edges count:', eds.length);
+        const updatedEdges = [...eds, ...newEdges];
+        console.log('[addBulkGameToGameEdges] New edges count:', updatedEdges.length);
+        return updatedEdges;
+      });
+
+      // Clear static team assignments for all affected slots
+      const teamClearUpdates = new Map<string, Partial<GameNodeData>>();
+      edgesToAdd.forEach(({ targetGameId, targetSlot }) => {
+        const existing = teamClearUpdates.get(targetGameId) || {};
+        teamClearUpdates.set(targetGameId, {
+          ...existing,
+          [targetSlot === 'home' ? 'homeTeamId' : 'awayTeamId']: null,
+        });
+      });
+
+      // Apply all team clear updates
+      teamClearUpdates.forEach((updates, gameId) => {
+        console.log('[addBulkGameToGameEdges] Clearing static teams for', gameId, updates);
+        updateNode(gameId, updates);
+      });
+
+      return newEdges.map(e => e.id);
+    },
+    [setEdges, updateNode]
+  );
+
+  /**
    * Add a GameToGameEdge from source game to target game.
    * Creates a dynamic team reference (winner/loser) connection.
    *
@@ -867,9 +1091,16 @@ export function useFlowState(initialState?: Partial<FlowState>): UseFlowStateRet
         targetSlot
       );
 
-      setEdges((eds) => [...eds, newEdge]);
+      console.log('[addGameToGameEdge] Creating edge:', { edgeId, sourceGameId, outputType, targetGameId, targetSlot });
+      setEdges((eds) => {
+        console.log('[addGameToGameEdge] Current edges count:', eds.length);
+        const newEdges = [...eds, newEdge];
+        console.log('[addGameToGameEdge] New edges count:', newEdges.length);
+        return newEdges;
+      });
 
       // Clear static team assignment for this slot
+      console.log('[addGameToGameEdge] Clearing static team assignment for', targetGameId, targetSlot);
       updateNode(targetGameId, {
         [targetSlot === 'home' ? 'homeTeamId' : 'awayTeamId']: null,
       });
@@ -1315,6 +1546,8 @@ export function useFlowState(initialState?: Partial<FlowState>): UseFlowStateRet
     addFieldNode,
     addStageNode,
     addGameNodeInStage: addGameNodeInStageAction,
+    addBulkGames,
+    addBulkTournament,
 
     // Container hierarchy helpers (v2)
     getTargetStage,
@@ -1335,6 +1568,7 @@ export function useFlowState(initialState?: Partial<FlowState>): UseFlowStateRet
     setEdges,
     deleteEdge,
     addGameToGameEdge,
+    addBulkGameToGameEdges,
     removeGameToGameEdge,
 
     // Field actions (legacy)
