@@ -205,6 +205,47 @@ const FieldSection: React.FC<FieldSectionProps> = ({
           className={`bi bi-chevron-${isExpanded ? 'down' : 'right'} me-2`}
         ></i>
 
+        {isEditingName ? (
+          <input
+            type="text"
+            className="form-control form-control-sm me-2"
+            value={editedName}
+            onChange={(e) => setEditedName(e.target.value)}
+            onBlur={handleSaveName}
+            onKeyDown={handleNameKeyPress}
+            onClick={(e) => e.stopPropagation()}
+            autoFocus
+            style={{ maxWidth: '200px' }}
+          />
+        ) : (
+          <>
+            <strong className="me-2">{field.data.name}</strong>
+            <Button
+              size="sm"
+              variant="link"
+              onClick={handleStartEdit}
+              aria-label="Edit field name"
+              className="p-0 me-auto"
+              style={{ fontSize: '0.875rem' }}
+            >
+              <i className="bi bi-pencil"></i>
+            </Button>
+          </>
+        )}
+
+        {sortedStages.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline-primary"
+            onClick={handleAddStage}
+            aria-label="Add Stage"
+            className="me-2"
+          >
+            <i className="bi bi-plus-circle me-1"></i>
+            Add Stage
+          </Button>
+        )}
+
         {/* Field color picker */}
         <input
           type="color"
@@ -224,41 +265,6 @@ const FieldSection: React.FC<FieldSectionProps> = ({
             cursor: 'pointer'
           }}
         />
-
-        {isEditingName ? (
-          <input
-            type="text"
-            className="form-control form-control-sm me-2"
-            value={editedName}
-            onChange={(e) => setEditedName(e.target.value)}
-            onBlur={handleSaveName}
-            onKeyDown={handleNameKeyPress}
-            onClick={(e) => e.stopPropagation()}
-            autoFocus
-            style={{ maxWidth: '200px' }}
-          />
-        ) : (
-          <strong
-            className="me-auto"
-            onDoubleClick={handleStartEdit}
-            style={{ cursor: 'text' }}
-          >
-            {field.data.name}
-          </strong>
-        )}
-
-        {sortedStages.length > 0 && (
-          <Button
-            size="sm"
-            variant="outline-primary"
-            onClick={handleAddStage}
-            aria-label="Add Stage"
-            className="me-2"
-          >
-            <i className="bi bi-plus-circle me-1"></i>
-            Add Stage
-          </Button>
-        )}
 
         <Button
           variant="outline-danger"
