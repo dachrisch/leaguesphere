@@ -8,7 +8,7 @@ from league_manager.base_menu import BaseMenu, MenuItem
 from gamedays.menu import GamedaysMenuAdmin
 
 
-class GamedayDesignerMenuOrgaEntry(BaseMenu):
+class Gameday_designerMenuOrgaEntry(BaseMenu):
     """
     Add Gameday Designer entry to the Orga menu.
 
@@ -36,7 +36,7 @@ class GamedayDesignerMenuOrgaEntry(BaseMenu):
 
         return [
             MenuItem.create(
-                name='Spieltag designen',
-                url='gameday_designer_app:index',  # Reverses to /designer/
+                name='<span class="badge bg-warning text-dark me-1" style="font-size: 0.65em; vertical-align: middle;">BETA</span> Spieltag designen',
+                url='gameday_designer_app:index',  # Reverses to /gamedays/gameday/design/
             ),
         ]

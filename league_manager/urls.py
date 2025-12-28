@@ -57,7 +57,7 @@ urlpatterns = [
                   path('api/liveticker/', include('liveticker.api.urls')),
                   path('api/officials/', include('officials.api.urls')),
                   path('api/passcheck/', include('passcheck.api.urls')),
-                  path('designer/', include('gameday_designer.app_urls')),
+                  path('gamedays/gameday/design/', include('gameday_designer.app_urls')),
                   path('officials/', include('officials.urls')),
                   path('teammanager/', include('teammanager.urls')),
                   path('scorecard/', include('scorecard.urls')),
