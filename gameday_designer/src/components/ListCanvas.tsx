@@ -6,7 +6,7 @@
  * Replaces the ReactFlow canvas with a hierarchical list view.
  */
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { Container, Card, Button } from 'react-bootstrap';
 import GlobalTeamTable from './list/GlobalTeamTable';
 import FieldSection from './list/FieldSection';
@@ -128,6 +128,14 @@ const ListCanvas: React.FC<ListCanvasProps> = ({
   expandedStageIds,
   onGenerateTournament,
 }) => {
+  // State for team pool expansion
+  const [isTeamPoolExpanded, setIsTeamPoolExpanded] = useState(true);
+
+  // Toggle handler for team pool accordion
+  const handleToggleTeamPool = useCallback(() => {
+    setIsTeamPoolExpanded((prev) => !prev);
+  }, []);
+
   // Filter and sort fields
   const fields = nodes
     .filter((node): node is FieldNode => isFieldNode(node))
@@ -143,15 +151,27 @@ const ListCanvas: React.FC<ListCanvasProps> = ({
   return (
     <Container fluid className="list-canvas">
       <div className="list-canvas__content">
-        {/* Global Team Pool Section - ALWAYS VISIBLE */}
+        {/* Global Team Pool Section */}
         <Card className="mb-4 global-team-pool">
-          <Card.Header className="d-flex align-items-center">
+          <Card.Header
+            className="d-flex align-items-center"
+            onClick={handleToggleTeamPool}
+            style={{ cursor: 'pointer' }}
+          >
+            {/* Chevron toggle icon */}
+            <i
+              className={`bi bi-chevron-${isTeamPoolExpanded ? 'down' : 'right'} me-2`}
+            ></i>
+
             <i className="bi bi-people-fill me-2"></i>
             <strong>Global Team Pool</strong>
             <Button
               size="sm"
               variant="success"
-              onClick={onGenerateTournament}
+              onClick={(e) => {
+                e.stopPropagation();
+                onGenerateTournament();
+              }}
               className="ms-2"
             >
               <i className="bi bi-trophy me-1"></i>
@@ -161,7 +181,10 @@ const ListCanvas: React.FC<ListCanvasProps> = ({
               <Button
                 size="sm"
                 variant="outline-primary"
-                onClick={onAddGlobalTeamGroup}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddGlobalTeamGroup();
+                }}
                 className="ms-auto"
               >
                 <i className="bi bi-plus-circle me-1"></i>
@@ -169,22 +192,24 @@ const ListCanvas: React.FC<ListCanvasProps> = ({
               </Button>
             )}
           </Card.Header>
-          <Card.Body>
-            <GlobalTeamTable
-              teams={globalTeams}
-              groups={globalTeamGroups}
-              onAddGroup={onAddGlobalTeamGroup}
-              onUpdateGroup={onUpdateGlobalTeamGroup}
-              onDeleteGroup={onDeleteGlobalTeamGroup}
-              onReorderGroup={onReorderGlobalTeamGroup}
-              onAddTeam={onAddGlobalTeam}
-              onUpdate={onUpdateGlobalTeam}
-              onDelete={onDeleteGlobalTeam}
-              onReorder={onReorderGlobalTeam}
-              getTeamUsage={getTeamUsage}
-              allNodes={nodes}
-            />
-          </Card.Body>
+          {isTeamPoolExpanded && (
+            <Card.Body>
+              <GlobalTeamTable
+                teams={globalTeams}
+                groups={globalTeamGroups}
+                onAddGroup={onAddGlobalTeamGroup}
+                onUpdateGroup={onUpdateGlobalTeamGroup}
+                onDeleteGroup={onDeleteGlobalTeamGroup}
+                onReorderGroup={onReorderGlobalTeamGroup}
+                onAddTeam={onAddGlobalTeam}
+                onUpdate={onUpdateGlobalTeam}
+                onDelete={onDeleteGlobalTeam}
+                onReorder={onReorderGlobalTeam}
+                getTeamUsage={getTeamUsage}
+                allNodes={nodes}
+              />
+            </Card.Body>
+          )}
         </Card>
 
         {/* Fields Section - Card wrapper with inline Add Field button */}

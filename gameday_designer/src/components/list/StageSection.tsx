@@ -205,7 +205,7 @@ const StageSection: React.FC<StageSectionProps> = ({
         {isEditingName ? (
           <input
             type="text"
-            className="form-control form-control-sm me-2"
+            className="form-control form-control-sm me-2 me-auto"
             value={editedName}
             onChange={(e) => setEditedName(e.target.value)}
             onBlur={handleSaveName}
