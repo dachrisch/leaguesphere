@@ -37,21 +37,20 @@ case "$1" in
         echo "Current version: $CURRENT_VERSION"
 
         # Determine bump strategy
-        if [[ $CURRENT_VERSION =~ -rc\. ]]; then
+        if [[ $CURRENT_VERSION =~ -rc\.([0-9]+)$ ]]; then
             # Already on RC version, increment RC build number
             echo "Incrementing RC build number..."
             bump-my-version bump rc_build
         else
-            # Stable version - bump patch and create first RC
+            # Stable version - bump patch and create RC
             echo "Bumping patch version and creating RC..."
-            # Extract version parts
-            MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1)
-            MINOR=$(echo $CURRENT_VERSION | cut -d. -f2)
-            PATCH=$(echo $CURRENT_VERSION | cut -d. -f3)
-            # Increment patch and set to rc.1
-            NEW_PATCH=$((PATCH + 1))
-            NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}-rc.1"
-            echo "Creating version: $NEW_VERSION"
+            # Parse current version
+            IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+            # Increment patch
+            new_patch=$((patch + 1))
+            NEW_VERSION="${major}.${minor}.${new_patch}-rc.1"
+            echo "Setting version to: $NEW_VERSION"
+            # Use --new-version to set exact version
             bump-my-version bump --new-version "$NEW_VERSION" patch
         fi
 
