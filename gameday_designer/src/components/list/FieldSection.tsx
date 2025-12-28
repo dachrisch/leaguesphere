@@ -8,7 +8,7 @@
 import React, { useState, useCallback } from 'react';
 import { Card, Button } from 'react-bootstrap';
 import StageSection from './StageSection';
-import type { FieldNode, StageNode, FlowNode, FlowEdge, GlobalTeam } from '../../types/flowchart';
+import type { FieldNode, StageNode, FlowNode, FlowEdge, GlobalTeam, GlobalTeamGroup } from '../../types/flowchart';
 import { isGameNode } from '../../types/flowchart';
 import './FieldSection.css';
 
@@ -27,6 +27,9 @@ export interface FieldSectionProps {
 
   /** Global team pool */
   globalTeams: GlobalTeam[];
+
+  /** Global team groups */
+  globalTeamGroups: GlobalTeamGroup[];
 
   /** Callback when field data is updated */
   onUpdate: (nodeId: string, data: Partial<FieldNode['data']>) => void;
@@ -78,6 +81,7 @@ const FieldSection: React.FC<FieldSectionProps> = ({
   allNodes,
   edges,
   globalTeams,
+  globalTeamGroups,
   onUpdate,
   onDelete,
   onAddStage,
@@ -300,6 +304,7 @@ const FieldSection: React.FC<FieldSectionProps> = ({
                   allNodes={allNodes}
                   edges={edges}
                   globalTeams={globalTeams}
+                  globalTeamGroups={globalTeamGroups}
                   onUpdate={onUpdate}
                   onDelete={onDelete}
                   onSelectNode={onSelectNode}

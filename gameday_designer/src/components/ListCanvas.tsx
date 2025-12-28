@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Container, Card, Button } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import GlobalTeamTable from './list/GlobalTeamTable';
 import FieldSection from './list/FieldSection';
 import type { FlowNode, FlowEdge, FieldNode, StageNode, GlobalTeam, GlobalTeamGroup } from '../types/flowchart';
@@ -89,9 +89,6 @@ export interface ListCanvasProps {
 
   /** Set of expanded stage IDs (controlled) */
   expandedStageIds: Set<string>;
-
-  /** Callback to open tournament generator modal */
-  onGenerateTournament: () => void;
 }
 
 /**
@@ -126,7 +123,6 @@ const ListCanvas: React.FC<ListCanvasProps> = ({
   onRemoveGameToGameEdge,
   expandedFieldIds,
   expandedStageIds,
-  onGenerateTournament,
 }) => {
   // State for team pool expansion
   const [isTeamPoolExpanded, setIsTeamPoolExpanded] = useState(true);
@@ -149,128 +145,119 @@ const ListCanvas: React.FC<ListCanvasProps> = ({
   };
 
   return (
-    <Container fluid className="list-canvas">
-      <div className="list-canvas__content">
-        {/* Global Team Pool Section */}
-        <Card className="mb-4 global-team-pool">
-          <Card.Header
-            className="d-flex align-items-center"
-            onClick={handleToggleTeamPool}
-            style={{ cursor: 'pointer' }}
-          >
-            {/* Chevron toggle icon */}
-            <i
-              className={`bi bi-chevron-${isTeamPoolExpanded ? 'down' : 'right'} me-2`}
-            ></i>
-
-            <i className="bi bi-people-fill me-2"></i>
-            <strong>Global Team Pool</strong>
-            <Button
-              size="sm"
-              variant="success"
-              onClick={(e) => {
-                e.stopPropagation();
-                onGenerateTournament();
-              }}
-              className="ms-2"
+    <Container fluid className="list-canvas h-100">
+      <Row className="list-canvas__content h-100 g-3">
+        {/* Left Column: Team Pool Card */}
+        <Col md={3} className="teams-column">
+          <Card className="team-pool-card">
+            <Card.Header
+              className="d-flex align-items-center"
+              onClick={handleToggleTeamPool}
+              style={{ cursor: 'pointer' }}
             >
-              <i className="bi bi-trophy me-1"></i>
-              Generate Tournament
-            </Button>
-            {globalTeamGroups.length > 0 && (
-              <Button
-                size="sm"
-                variant="outline-primary"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAddGlobalTeamGroup();
-                }}
-                className="ms-auto"
-              >
-                <i className="bi bi-plus-circle me-1"></i>
-                Add Group
-              </Button>
-            )}
-          </Card.Header>
-          {isTeamPoolExpanded && (
-            <Card.Body>
-              <GlobalTeamTable
-                teams={globalTeams}
-                groups={globalTeamGroups}
-                onAddGroup={onAddGlobalTeamGroup}
-                onUpdateGroup={onUpdateGlobalTeamGroup}
-                onDeleteGroup={onDeleteGlobalTeamGroup}
-                onReorderGroup={onReorderGlobalTeamGroup}
-                onAddTeam={onAddGlobalTeam}
-                onUpdate={onUpdateGlobalTeam}
-                onDelete={onDeleteGlobalTeam}
-                onReorder={onReorderGlobalTeam}
-                getTeamUsage={getTeamUsage}
-                allNodes={nodes}
-              />
-            </Card.Body>
-          )}
-        </Card>
-
-        {/* Fields Section - Card wrapper with inline Add Field button */}
-        <Card className="mb-4 fields-section">
-          <Card.Header className="d-flex align-items-center">
-            <i className="bi bi-geo-alt-fill me-2"></i>
-            <strong>Fields</strong>
-            {fields.length > 0 && (
-              <Button
-                size="sm"
-                variant="outline-primary"
-                onClick={onAddField}
-                className="ms-auto"
-              >
-                <i className="bi bi-plus-circle me-1"></i>
-                Add Field
-              </Button>
-            )}
-          </Card.Header>
-          <Card.Body>
-            {fields.length === 0 ? (
-              <div className="text-center py-5">
-                <i className="bi bi-geo-alt" style={{ fontSize: '4rem', opacity: 0.3 }}></i>
-                <h3 className="mt-3">No fields yet</h3>
-                <p className="text-muted mb-3">Create your first field to organize games</p>
+              <i
+                className={`bi bi-chevron-${isTeamPoolExpanded ? 'down' : 'right'} me-2`}
+              ></i>
+              <i className="bi bi-people-fill me-2"></i>
+              <strong>Team Pool</strong>
+              {globalTeamGroups.length > 0 && (
                 <Button
+                  size="sm"
+                  variant="outline-primary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddGlobalTeamGroup();
+                  }}
+                  className="ms-auto"
+                >
+                  <i className="bi bi-plus-circle me-1"></i>
+                  Add Group
+                </Button>
+              )}
+            </Card.Header>
+            {isTeamPoolExpanded && (
+              <Card.Body>
+                <GlobalTeamTable
+                  teams={globalTeams}
+                  groups={globalTeamGroups}
+                  onAddGroup={onAddGlobalTeamGroup}
+                  onUpdateGroup={onUpdateGlobalTeamGroup}
+                  onDeleteGroup={onDeleteGlobalTeamGroup}
+                  onReorderGroup={onReorderGlobalTeamGroup}
+                  onAddTeam={onAddGlobalTeam}
+                  onUpdate={onUpdateGlobalTeam}
+                  onDelete={onDeleteGlobalTeam}
+                  onReorder={onReorderGlobalTeam}
+                  getTeamUsage={getTeamUsage}
+                  allNodes={nodes}
+                />
+              </Card.Body>
+            )}
+          </Card>
+        </Col>
+
+        {/* Right Column: Fields Card */}
+        <Col md={9} className="fields-column">
+          <Card className="fields-card">
+            <Card.Header className="d-flex align-items-center">
+              <i className="bi bi-geo-alt-fill me-2"></i>
+              <strong>Fields</strong>
+              {fields.length > 0 && (
+                <Button
+                  size="sm"
                   variant="outline-primary"
                   onClick={onAddField}
+                  className="ms-auto"
                 >
                   <i className="bi bi-plus-circle me-1"></i>
                   Add Field
                 </Button>
-              </div>
-            ) : (
-              <div className="fields-grid">
-                {fields.map((field) => (
-                  <FieldSection
-                    key={field.id}
-                    field={field}
-                    stages={getFieldStages(field.id)}
-                    allNodes={nodes}
-                    edges={edges}
-                    globalTeams={globalTeams}
-                    onUpdate={onUpdateNode}
-                    onDelete={onDeleteNode}
-                    onAddStage={onAddStage}
-                    onSelectNode={onSelectNode}
-                    selectedNodeId={selectedNodeId}
-                    onAssignTeam={onAssignTeam}
-                    onAddGame={onAddGame}
-                    onAddGameToGameEdge={onAddGameToGameEdge}
-                    onRemoveGameToGameEdge={onRemoveGameToGameEdge}
-                    isExpanded={expandedFieldIds.has(field.id)}
-                    expandedStageIds={expandedStageIds}
-                  />
-                ))}
-              </div>
-            )}
-          </Card.Body>
-        </Card>
-      </div>
+              )}
+            </Card.Header>
+            <Card.Body>
+              {fields.length === 0 ? (
+                <div className="text-center py-5">
+                  <i className="bi bi-geo-alt" style={{ fontSize: '4rem', opacity: 0.3 }}></i>
+                  <h3 className="mt-3">No fields yet</h3>
+                  <p className="text-muted mb-3">Create your first field to organize games</p>
+                  <Button
+                    variant="outline-primary"
+                    onClick={onAddField}
+                  >
+                    <i className="bi bi-plus-circle me-1"></i>
+                    Add Field
+                  </Button>
+                </div>
+              ) : (
+                <div className="fields-grid">
+                  {fields.map((field) => (
+                    <FieldSection
+                      key={field.id}
+                      field={field}
+                      stages={getFieldStages(field.id)}
+                      allNodes={nodes}
+                      edges={edges}
+                      globalTeams={globalTeams}
+                      globalTeamGroups={globalTeamGroups}
+                      onUpdate={onUpdateNode}
+                      onDelete={onDeleteNode}
+                      onAddStage={onAddStage}
+                      onSelectNode={onSelectNode}
+                      selectedNodeId={selectedNodeId}
+                      onAssignTeam={onAssignTeam}
+                      onAddGame={onAddGame}
+                      onAddGameToGameEdge={onAddGameToGameEdge}
+                      onRemoveGameToGameEdge={onRemoveGameToGameEdge}
+                      isExpanded={expandedFieldIds.has(field.id)}
+                      expandedStageIds={expandedStageIds}
+                    />
+                  ))}
+                </div>
+              )}
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
     </Container>
   );
 };

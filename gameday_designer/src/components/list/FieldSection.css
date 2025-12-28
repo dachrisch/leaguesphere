@@ -8,8 +8,6 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   display: flex;
   flex-direction: column;
-  min-height: 500px;
-  height: 100%;
 }
 
 .field-section.selected {

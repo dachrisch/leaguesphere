@@ -8,7 +8,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Card, Button, Form } from 'react-bootstrap';
 import GameTable from './GameTable';
-import type { StageNode, FlowNode, FlowEdge, GameNode, GlobalTeam } from '../../types/flowchart';
+import type { StageNode, FlowNode, FlowEdge, GameNode, GlobalTeam, GlobalTeamGroup } from '../../types/flowchart';
 import { isGameNode } from '../../types/flowchart';
 import './StageSection.css';
 
@@ -24,6 +24,9 @@ export interface StageSectionProps {
 
   /** Global team pool */
   globalTeams: GlobalTeam[];
+
+  /** Global team groups */
+  globalTeamGroups: GlobalTeamGroup[];
 
   /** Callback when stage data is updated */
   onUpdate: (nodeId: string, data: Partial<StageNode['data']>) => void;
@@ -68,6 +71,7 @@ const StageSection: React.FC<StageSectionProps> = ({
   allNodes,
   edges,
   globalTeams,
+  globalTeamGroups,
   onUpdate,
   onDelete,
   onSelectNode,
@@ -298,6 +302,7 @@ const StageSection: React.FC<StageSectionProps> = ({
                 edges={edges}
                 allNodes={allNodes}
                 globalTeams={globalTeams}
+                globalTeamGroups={globalTeamGroups}
                 onUpdate={onUpdate}
                 onDelete={onDelete}
                 onSelectNode={onSelectNode}
