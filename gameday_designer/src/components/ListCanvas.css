@@ -4,14 +4,66 @@
 
 .list-canvas {
   height: 100%;
-  overflow-y: auto;
   padding: 1rem;
-  background-color: #f8f9fa;
+  background-color: transparent;
+  overflow: hidden;
 }
 
 .list-canvas__content {
-  max-width: none;
-  margin: 0 auto;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Teams column */
+.teams-column {
+  min-height: 300px;
+  max-height: calc(100vh - 250px); /* Leave room for header and status bar */
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Fields column */
+.fields-column {
+  min-height: 300px;
+  max-height: calc(100vh - 250px); /* Leave room for header and status bar */
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Team Pool Card */
+.team-pool-card {
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+  max-height: 100%;
+}
+
+.team-pool-card .card-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0; /* Allow flex child to shrink */
+}
+
+/* Fields Card */
+.fields-card {
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+  max-height: 100%;
+}
+
+.fields-card .card-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0; /* Allow flex child to shrink */
 }
 
 .list-canvas--empty {
@@ -26,13 +78,6 @@
   padding: 3rem;
 }
 
-/**
- * Fields Section Card Wrapper
- */
-.fields-section {
-  border: none;
-  border-radius: 8px;
-}
 
 /**
  * Fields Grid Layout with Responsive CSS Grid
@@ -48,5 +93,18 @@
 @media (max-width: 1024px) {
   .fields-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Responsive: Stack columns on small screens */
+@media (max-width: 767px) {
+  .list-canvas__content {
+    flex-direction: column;
+  }
+
+  .teams-column,
+  .fields-column {
+    height: auto;
+    max-height: 50vh; /* Limit height when stacked */
   }
 }

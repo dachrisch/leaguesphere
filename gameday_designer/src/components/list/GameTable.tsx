@@ -9,7 +9,7 @@
 import React, { useState, useCallback } from 'react';
 import { Table, Form } from 'react-bootstrap';
 import Select, { components, StylesConfig, GroupBase } from 'react-select';
-import type { GameNode, FlowEdge, FlowNode, GlobalTeam, GameNodeData } from '../../types/flowchart';
+import type { GameNode, FlowEdge, FlowNode, GlobalTeam, GlobalTeamGroup, GameNodeData } from '../../types/flowchart';
 import { isGameNode } from '../../types/flowchart';
 import { findSourceGameForReference, getGamePath } from '../../utils/edgeAnalysis';
 import { isValidTimeFormat } from '../../utils/timeCalculation';
@@ -100,6 +100,75 @@ const CustomSingleValue = (props: any) => {
   );
 };
 
+/**
+ * Helper function to build team options grouped by team groups.
+ * Teams without a group are added at the end under "Ungrouped".
+ */
+function buildGroupedTeamOptions(
+  teams: GlobalTeam[],
+  groups: GlobalTeamGroup[]
+): TeamOption[] {
+  const options: TeamOption[] = [];
+
+  // Sort groups by order
+  const sortedGroups = [...groups].sort((a, b) => a.order - b.order);
+
+  // Add teams grouped by their groups
+  sortedGroups.forEach(group => {
+    const groupTeams = teams
+      .filter(team => team.groupId === group.id)
+      .sort((a, b) => a.order - b.order);
+
+    if (groupTeams.length > 0) {
+      // Add group header
+      options.push({
+        value: `group-header-${group.id}`,
+        label: group.name,
+        color: group.color || '#6c757d',
+        isStageHeader: true,
+        isDisabled: true
+      });
+
+      // Add teams in this group
+      groupTeams.forEach(team => {
+        options.push({
+          value: team.id,
+          label: team.label,
+          color: team.color || '#6c757d',
+          isTeam: true
+        });
+      });
+    }
+  });
+
+  // Add ungrouped teams
+  const ungroupedTeams = teams
+    .filter(team => team.groupId === null)
+    .sort((a, b) => a.order - b.order);
+
+  if (ungroupedTeams.length > 0) {
+    // Add "Ungrouped" header only if there are ungrouped teams
+    options.push({
+      value: 'group-header-ungrouped',
+      label: 'Ungrouped',
+      color: '#adb5bd',
+      isStageHeader: true,
+      isDisabled: true
+    });
+
+    ungroupedTeams.forEach(team => {
+      options.push({
+        value: team.id,
+        label: team.label,
+        color: team.color || '#6c757d',
+        isTeam: true
+      });
+    });
+  }
+
+  return options;
+}
+
 // Custom styles for react-select to match Bootstrap form controls
 const customSelectStyles: StylesConfig<TeamOption, false, GroupBase<TeamOption>> = {
   control: (provided) => ({
@@ -132,6 +201,7 @@ export interface GameTableProps {
   edges: FlowEdge[];
   allNodes: FlowNode[];
   globalTeams: GlobalTeam[];
+  globalTeamGroups: GlobalTeamGroup[];
   onUpdate: (nodeId: string, data: Partial<GameNode['data']>) => void;
   onDelete: (nodeId: string) => void;
   onSelectNode: (nodeId: string | null) => void;
@@ -146,6 +216,7 @@ const GameTable: React.FC<GameTableProps> = ({
   edges,
   allNodes,
   globalTeams,
+  globalTeamGroups,
   onDelete,
   onSelectNode,
   selectedNodeId,
@@ -396,15 +467,9 @@ const GameTable: React.FC<GameTableProps> = ({
     // Build options array
     const options: TeamOption[] = [];
 
-    // Add static teams with colors
-    globalTeams.forEach((team) => {
-      options.push({
-        value: team.id,
-        label: team.label,
-        color: team.color || '#6c757d',
-        isTeam: true
-      });
-    });
+    // Add static teams grouped by team groups
+    const groupedTeamOptions = buildGroupedTeamOptions(globalTeams, globalTeamGroups);
+    options.push(...groupedTeamOptions);
 
     // Add dynamic references grouped by stage
     Array.from(gamesByStage.entries()).forEach(([stageId, stageData]) => {
@@ -533,15 +598,9 @@ const GameTable: React.FC<GameTableProps> = ({
     // Add placeholder
     options.push({ value: '', label: '-- Select Team --' });
 
-    // Add static teams with colors
-    globalTeams.forEach((team) => {
-      options.push({
-        value: team.id,
-        label: team.label,
-        color: team.color || '#6c757d',
-        isTeam: true
-      });
-    });
+    // Add static teams grouped by team groups
+    const groupedTeamOptions = buildGroupedTeamOptions(globalTeams, globalTeamGroups);
+    options.push(...groupedTeamOptions);
 
     // Add dynamic references grouped by stage
     Array.from(gamesByStage.entries()).forEach(([stageId, stageData]) => {

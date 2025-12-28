@@ -3,7 +3,8 @@
  */
 
 .list-designer-app {
-  height: 100vh;
+  height: 100%;
+  max-height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -24,19 +25,12 @@
 
 .list-designer-app__content {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
   margin: 0;
-  background-color: #f8f9fa;
+  min-height: 0; /* Critical for flexbox overflow handling */
 }
 
-.list-designer-app__footer {
+.list-designer-app__status-bar {
   flex-shrink: 0;
   background-color: #f8f9fa;
-}
-
-/* Card wrapper styling */
-.designer-card {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  overflow: hidden;
 }
