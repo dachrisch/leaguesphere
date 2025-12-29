@@ -17,7 +17,7 @@
 /* Teams column */
 .teams-column {
   min-height: 300px;
-  max-height: calc(100vh - 250px); /* Leave room for header and status bar */
+  max-height: calc(100vh - 306px); /* Leave room for navbar, header, status bar, and footer */
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -25,7 +25,7 @@
 /* Fields column */
 .fields-column {
   min-height: 300px;
-  max-height: calc(100vh - 250px); /* Leave room for header and status bar */
+  max-height: calc(100vh - 306px); /* Leave room for navbar, header, status bar, and footer */
   overflow-y: auto;
   overflow-x: hidden;
 }
