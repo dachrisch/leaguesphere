@@ -76,6 +76,9 @@ case "$1" in
         sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
         sed -i "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
 
+        # Regenerate uv.lock to match new version in pyproject.toml
+        uv lock
+
         # Commit and tag
         git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json pyproject.toml uv.lock
         git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
