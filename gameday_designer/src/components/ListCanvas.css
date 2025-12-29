@@ -12,12 +12,13 @@
 .list-canvas__content {
   height: 100%;
   overflow: hidden;
+  align-items: start; /* Prevent columns from stretching to equal heights */
 }
 
 /* Teams column */
 .teams-column {
   min-height: 300px;
-  height: 100%; /* Dynamic - fills available space from Bootstrap Row */
+  max-height: 100%; /* Dynamic - constrained by Bootstrap Row */
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -25,7 +26,7 @@
 /* Fields column */
 .fields-column {
   min-height: 300px;
-  height: 100%; /* Dynamic - fills available space from Bootstrap Row */
+  max-height: 100%; /* Dynamic - constrained by Bootstrap Row */
   overflow-y: auto;
   overflow-x: hidden;
 }
