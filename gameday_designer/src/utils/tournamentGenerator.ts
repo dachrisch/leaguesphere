@@ -101,12 +101,25 @@ export function generateTournament(
  * @returns Array of field nodes
  */
 function createFields(count: number): FieldNode[] {
+  const fieldColors = [
+    '#d1ecf1', // Light Blue (default)
+    '#fff3cd', // Light Yellow
+    '#d4edda', // Light Green
+    '#f8d7da', // Light Red/Pink
+    '#e2e3e5', // Light Gray
+    '#d1d3e2', // Light Purple
+  ];
+
   const fields: FieldNode[] = [];
   for (let i = 0; i < count; i++) {
     const fieldId = `field-${uuidv4()}`;
     const field = createFieldNode(
       fieldId,
-      { name: `Feld ${i + 1}`, order: i },
+      {
+        name: `Feld ${i + 1}`,
+        order: i,
+        color: fieldColors[i % fieldColors.length],
+      },
       { x: 50 + i * 400, y: 50 }
     );
     fields.push(field);
