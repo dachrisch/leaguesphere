@@ -25,6 +25,44 @@ import type { TournamentGenerationConfig } from '../types/tournament';
 import './ListDesignerApp.css';
 
 /**
+ * Generate a distinct color for a team based on index.
+ * Uses a palette of visually distinct colors.
+ */
+const getTeamColor = (index: number): string => {
+  const colors = [
+    '#3498db', // Blue
+    '#e74c3c', // Red
+    '#2ecc71', // Green
+    '#f39c12', // Orange
+    '#9b59b6', // Purple
+    '#1abc9c', // Turquoise
+    '#e67e22', // Dark Orange
+    '#34495e', // Dark Gray Blue
+    '#16a085', // Dark Turquoise
+    '#c0392b', // Dark Red
+    '#27ae60', // Dark Green
+    '#8e44ad', // Dark Purple
+  ];
+  return colors[index % colors.length];
+};
+
+/**
+ * Generate a distinct color for a field based on index.
+ * Uses lighter pastel colors for fields.
+ */
+const getFieldColor = (index: number): string => {
+  const colors = [
+    '#d1ecf1', // Light Blue (default)
+    '#fff3cd', // Light Yellow
+    '#d4edda', // Light Green
+    '#f8d7da', // Light Red/Pink
+    '#e2e3e5', // Light Gray
+    '#d1d3e2', // Light Purple
+  ];
+  return colors[index % colors.length];
+};
+
+/**
  * ListDesignerApp component.
  *
  * Main application layout with:
@@ -622,7 +660,9 @@ const ListDesignerApp: React.FC = () => {
           const newTeams: GlobalTeam[] = [];
           for (let i = 0; i < teamCount; i++) {
             const team = addGlobalTeam(`Team ${i + 1}`, groupId);
-            newTeams.push(team);
+            // Assign a distinct color to each team
+            updateGlobalTeam(team.id, { color: getTeamColor(i) });
+            newTeams.push({ ...team, color: getTeamColor(i) });
           }
 
           // Use the newly created teams
