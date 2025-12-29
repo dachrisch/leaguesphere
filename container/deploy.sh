@@ -38,9 +38,28 @@ case "$1" in
 
         # Determine bump strategy
         if [[ $CURRENT_VERSION =~ -rc\.([0-9]+)$ ]]; then
-            # Already on RC version, increment RC build number
+            # Already on RC version, find next available RC number
             echo "Incrementing RC build number..."
-            bump-my-version bump rc_build
+            # Parse current version
+            if [[ $CURRENT_VERSION =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)-rc\.([0-9]+)$ ]]; then
+                MAJOR="${BASH_REMATCH[1]}"
+                MINOR="${BASH_REMATCH[2]}"
+                PATCH="${BASH_REMATCH[3]}"
+                RC_NUM="${BASH_REMATCH[4]}"
+
+                # Find next available RC number
+                NEXT_RC=$((RC_NUM + 1))
+                while git rev-parse "v${MAJOR}.${MINOR}.${PATCH}-rc.${NEXT_RC}" >/dev/null 2>&1; do
+                    echo "Tag v${MAJOR}.${MINOR}.${PATCH}-rc.${NEXT_RC} already exists, trying next..."
+                    NEXT_RC=$((NEXT_RC + 1))
+                done
+
+                NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}-rc.${NEXT_RC}"
+                echo "Creating version: $NEW_VERSION"
+                bump-my-version bump --new-version "$NEW_VERSION" patch
+            else
+                bump-my-version bump rc_build
+            fi
         else
             # Stable version - bump patch and create RC
             echo "Bumping patch version and creating RC..."
