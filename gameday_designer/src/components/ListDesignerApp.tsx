@@ -686,10 +686,10 @@ const ListDesignerApp: React.FC = () => {
             <p className="text-muted small mb-0">List-based editor for tournament schedules</p>
           </div>
           <Button
-            size="sm"
-            variant="success"
-            onClick={handleGenerateTournament}
+            variant="outline-primary"
+            onClick={() => setShowTournamentModal(true)}
             className="me-2"
+            title="Generate tournament structure"
           >
             <i className="bi bi-trophy me-1"></i>
             Generate Tournament
