@@ -15,3 +15,6 @@ SITEMAP_DOMAIN = 'stage.leaguesphere.app'
 
 # Trust X-Forwarded-Proto header from nginx proxy
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Trust X-Forwarded-Host header from reverse proxy chain (Traefik -> nginx)
+USE_X_FORWARDED_HOST = True
