@@ -12,3 +12,6 @@ CSRF_TRUSTED_ORIGINS = ['https://stage.leaguesphere.app',
 
 # Sitemap domain for staging
 SITEMAP_DOMAIN = 'stage.leaguesphere.app'
+
+# Trust X-Forwarded-Proto header from nginx proxy
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

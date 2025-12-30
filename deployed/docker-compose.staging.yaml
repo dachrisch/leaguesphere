@@ -21,6 +21,8 @@ services:
       start_period: 90s
     labels:
       - traefik.enable=false
+      # portainer team
+      - io.portainer.accesscontrol.teams=leaguesphere
 
   www:
     image: leaguesphere/frontend:staging
@@ -62,7 +64,8 @@ services:
     command: gunicorn -b 0.0.0.0:8000 league_manager.wsgi
     labels:
       - traefik.enable=false
-      - io.portainer.accesscontrol.teams=${SERVICE_NAME}
+      # portainer team
+      - io.portainer.accesscontrol.teams=leaguesphere
     env_file: ls.env.staging
     environment:
       DJANGO_SETTINGS_MODULE: league_manager.settings.stage
