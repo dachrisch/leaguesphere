@@ -147,57 +147,79 @@ const ListCanvas: React.FC<ListCanvasProps> = ({
   return (
     <Container fluid className="list-canvas h-100">
       <Row className="list-canvas__content h-100 g-3">
-        {/* Left Column: Team Pool Card */}
-        <Col md={3} className="teams-column">
-          <Card className="team-pool-card">
-            <Card.Header
-              className="d-flex align-items-center"
-              onClick={handleToggleTeamPool}
-              style={{ cursor: 'pointer' }}
-            >
-              <i
-                className={`bi bi-chevron-${isTeamPoolExpanded ? 'down' : 'right'} me-2`}
-              ></i>
-              <i className="bi bi-people-fill me-2"></i>
-              <strong>Team Pool</strong>
-              {globalTeamGroups.length > 0 && (
-                <Button
-                  size="sm"
-                  variant="outline-primary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAddGlobalTeamGroup();
-                  }}
-                  className="ms-auto"
+        {/* Left Column: Team Pool - Dynamic width based on expansion */}
+        <Col
+          md={isTeamPoolExpanded ? 3 : 'auto'}
+          className={`teams-column ${!isTeamPoolExpanded ? 'teams-column--collapsed' : ''}`}
+        >
+          <Card
+            className={`team-pool-card ${!isTeamPoolExpanded ? 'team-pool-card--collapsed' : ''}`}
+            onClick={!isTeamPoolExpanded ? handleToggleTeamPool : undefined}
+            style={{ cursor: !isTeamPoolExpanded ? 'pointer' : 'default' }}
+          >
+            {isTeamPoolExpanded ? (
+              <>
+                <Card.Header
+                  className="d-flex align-items-center"
+                  onClick={handleToggleTeamPool}
+                  style={{ cursor: 'pointer' }}
                 >
-                  <i className="bi bi-plus-circle me-1"></i>
-                  Add Group
-                </Button>
-              )}
-            </Card.Header>
-            {isTeamPoolExpanded && (
-              <Card.Body>
-                <GlobalTeamTable
-                  teams={globalTeams}
-                  groups={globalTeamGroups}
-                  onAddGroup={onAddGlobalTeamGroup}
-                  onUpdateGroup={onUpdateGlobalTeamGroup}
-                  onDeleteGroup={onDeleteGlobalTeamGroup}
-                  onReorderGroup={onReorderGlobalTeamGroup}
-                  onAddTeam={onAddGlobalTeam}
-                  onUpdate={onUpdateGlobalTeam}
-                  onDelete={onDeleteGlobalTeam}
-                  onReorder={onReorderGlobalTeam}
-                  getTeamUsage={getTeamUsage}
-                  allNodes={nodes}
-                />
-              </Card.Body>
+                  <i className="bi bi-chevron-left me-2"></i>
+                  <i className="bi bi-people-fill me-2"></i>
+                  <strong>Team Pool</strong>
+                  {globalTeamGroups.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline-primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAddGlobalTeamGroup();
+                      }}
+                      className="ms-auto"
+                    >
+                      <i className="bi bi-plus-circle me-1"></i>
+                      Add Group
+                    </Button>
+                  )}
+                </Card.Header>
+                <Card.Body>
+                  <GlobalTeamTable
+                    teams={globalTeams}
+                    groups={globalTeamGroups}
+                    onAddGroup={onAddGlobalTeamGroup}
+                    onUpdateGroup={onUpdateGlobalTeamGroup}
+                    onDeleteGroup={onDeleteGlobalTeamGroup}
+                    onReorderGroup={onReorderGlobalTeamGroup}
+                    onAddTeam={onAddGlobalTeam}
+                    onUpdate={onUpdateGlobalTeam}
+                    onDelete={onDeleteGlobalTeam}
+                    onReorder={onReorderGlobalTeam}
+                    getTeamUsage={getTeamUsage}
+                    allNodes={nodes}
+                  />
+                </Card.Body>
+              </>
+            ) : (
+              <div className="team-pool-sidebar">
+                <i className="bi bi-people-fill mb-2"></i>
+                {globalTeamGroups.length > 0 && (
+                  <div className="team-pool-sidebar__indicators">
+                    <span className="badge bg-primary" title={`${globalTeamGroups.length} team groups`}>
+                      {globalTeamGroups.length}
+                    </span>
+                    <span className="badge bg-secondary" title={`${globalTeams.length} teams`}>
+                      {globalTeams.length}
+                    </span>
+                  </div>
+                )}
+                <div className="team-pool-sidebar__title">Team Pool</div>
+              </div>
             )}
           </Card>
         </Col>
 
-        {/* Right Column: Fields Card */}
-        <Col md={9} className="fields-column">
+        {/* Right Column: Fields - Dynamic width based on team pool expansion */}
+        <Col md={isTeamPoolExpanded ? 9 : true} className="fields-column">
           <Card className="fields-card">
             <Card.Header className="d-flex align-items-center">
               <i className="bi bi-geo-alt-fill me-2"></i>
