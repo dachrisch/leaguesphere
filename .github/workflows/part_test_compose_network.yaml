@@ -78,11 +78,13 @@ jobs:
             sed -e 's/env_file: ls.env.staging/env_file: ls.env.ci/g' \
                 -e 's|image: leaguesphere/backend:staging|image: backend:latest|g' \
                 -e 's|image: leaguesphere/frontend:staging|image: frontend:latest|g' \
+                -e 's|external: true|external: false|g' \
                 ${{ inputs.compose_file }} > docker-compose.ci.yaml
           else
             sed -e 's/env_file: ls.env/env_file: ls.env.ci/g' \
                 -e 's|image: leaguesphere/backend:latest|image: backend:latest|g' \
                 -e 's|image: leaguesphere/frontend:latest|image: frontend:latest|g' \
+                -e 's|external: true|external: false|g' \
                 ${{ inputs.compose_file }} > docker-compose.ci.yaml
           fi
 
