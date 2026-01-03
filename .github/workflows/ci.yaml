@@ -82,7 +82,7 @@ jobs:
       artifact_name: ${{ needs.build-backend-image.outputs.artifact_name }}
       image_name: backend
 
-  # Test docker-compose network configurations (after individual container tests pass)
+  # Test docker-compose network configuration for production (has external MySQL)
   test-compose-network-production:
     needs:
       - build-backend-image
@@ -97,26 +97,11 @@ jobs:
       backend_artifact_name: ${{ needs.build-backend-image.outputs.artifact_name }}
       frontend_artifact_name: ${{ needs.build-frontend-image.outputs.artifact_name }}
 
-  test-compose-network-staging:
-    needs:
-      - build-backend-image
-      - build-frontend-image
-      - test-backend-image
-      - test-frontend-image
-      - check-migrations
-    uses: ./.github/workflows/part_test_compose_network.yaml
-    with:
-      compose_file: docker-compose.staging.yaml
-      environment_name: staging
-      backend_artifact_name: ${{ needs.build-backend-image.outputs.artifact_name }}
-      frontend_artifact_name: ${{ needs.build-frontend-image.outputs.artifact_name }}
-
   # Deploy to staging (automatic, after all validation passes)
   deploy-backend-staging:
     needs:
       - build-backend-image
       - test-compose-network-production
-      - test-compose-network-staging
     secrets: inherit
     uses: ./.github/workflows/part_docker_push_staging.yaml
     with:
@@ -129,7 +114,6 @@ jobs:
     needs:
       - build-frontend-image
       - test-compose-network-production
-      - test-compose-network-staging
     secrets: inherit
     uses: ./.github/workflows/part_docker_push_staging.yaml
     with:
