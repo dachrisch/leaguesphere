@@ -82,11 +82,12 @@ jobs:
       artifact_name: ${{ needs.build-backend-image.outputs.artifact_name }}
       image_name: backend
 
-  # Test docker-compose network configurations
+  # Test docker-compose network configurations (after individual container tests pass)
   test-compose-network-production:
     needs:
-      - build-backend-image
-      - build-frontend-image
+      - test-backend-image
+      - test-frontend-image
+      - check-migrations
     uses: ./.github/workflows/part_test_compose_network.yaml
     with:
       compose_file: docker-compose.yaml
@@ -94,19 +95,18 @@ jobs:
 
   test-compose-network-staging:
     needs:
-      - build-backend-image
-      - build-frontend-image
+      - test-backend-image
+      - test-frontend-image
+      - check-migrations
     uses: ./.github/workflows/part_test_compose_network.yaml
     with:
       compose_file: docker-compose.staging.yaml
       environment_name: staging
 
-  # Deploy to staging (automatic, after validation passes)
+  # Deploy to staging (automatic, after all validation passes)
   deploy-backend-staging:
     needs:
       - build-backend-image
-      - test-backend-image
-      - check-migrations
       - test-compose-network-production
       - test-compose-network-staging
     secrets: inherit
@@ -120,8 +120,6 @@ jobs:
   deploy-frontend-staging:
     needs:
       - build-frontend-image
-      - test-frontend-image
-      - check-migrations
       - test-compose-network-production
       - test-compose-network-staging
     secrets: inherit
