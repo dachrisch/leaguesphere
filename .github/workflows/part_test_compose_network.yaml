@@ -11,6 +11,14 @@ on:
         required: true
         description: Environment name for logging (e.g., production, staging)
         type: string
+      backend_artifact_name:
+        required: true
+        description: The name of the backend Docker image artifact
+        type: string
+      frontend_artifact_name:
+        required: true
+        description: The name of the frontend Docker image artifact
+        type: string
 
 permissions:
   contents: read
@@ -22,13 +30,40 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
+      - name: 📥 Download backend Docker image artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: ${{ inputs.backend_artifact_name }}
+          path: /tmp
+
+      - name: 📥 Download frontend Docker image artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: ${{ inputs.frontend_artifact_name }}
+          path: /tmp
+
+      - name: 🐳 Load Docker images
+        run: |
+          docker load --input /tmp/backend.tar
+          docker load --input /tmp/frontend.tar
+          docker image ls -a
+
       - name: 🐳 Start docker-compose stack and test connectivity
         run: |
           cd deployed
 
           echo "Testing docker-compose network configuration: ${{ inputs.compose_file }} (${{ inputs.environment_name }})"
 
-          # Create mock environment file
+          # Create .env file for Docker Compose (SERVICE_NAME, COMPOSE_PROJECT_NAME, etc.)
+          cat > .env <<EOF
+          SERVICE_NAME=leaguesphere
+          COMPOSE_PROJECT_NAME=leaguesphere
+          SERVICE_HOST=localhost
+          LOCAL_HOSTNAME=localhost
+          RUN_MIGRATIONS=false
+          EOF
+
+          # Create mock ls.env.ci file for application secrets
           cat > ls.env.ci <<EOF
           SECRET_KEY=ci-test-secret-key-not-for-production
           MYSQL_HOST=mysql-mock.example.com
@@ -38,11 +73,17 @@ jobs:
           DEBUG=False
           EOF
 
-          # Create CI compose file with mock env
+          # Create CI compose file with mock env and use locally built images
           if [ "${{ inputs.environment_name }}" = "staging" ]; then
-            sed 's/env_file: ls.env.staging/env_file: ls.env.ci/g' ${{ inputs.compose_file }} > docker-compose.ci.yaml
+            sed -e 's/env_file: ls.env.staging/env_file: ls.env.ci/g' \
+                -e 's|image: leaguesphere/backend:staging|image: backend:latest|g' \
+                -e 's|image: leaguesphere/frontend:staging|image: frontend:latest|g' \
+                ${{ inputs.compose_file }} > docker-compose.ci.yaml
           else
-            sed 's/env_file: ls.env/env_file: ls.env.ci/g' ${{ inputs.compose_file }} > docker-compose.ci.yaml
+            sed -e 's/env_file: ls.env/env_file: ls.env.ci/g' \
+                -e 's|image: leaguesphere/backend:latest|image: backend:latest|g' \
+                -e 's|image: leaguesphere/frontend:latest|image: frontend:latest|g' \
+                ${{ inputs.compose_file }} > docker-compose.ci.yaml
           fi
 
           # Show the configuration we're testing
@@ -139,4 +180,4 @@ jobs:
         run: |
           cd deployed
           docker compose -f docker-compose.ci.yaml down -v || true
-          rm -f docker-compose.ci.yaml ls.env.ci
+          rm -f docker-compose.ci.yaml ls.env.ci .env

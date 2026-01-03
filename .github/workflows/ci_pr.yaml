@@ -83,6 +83,8 @@ jobs:
   # Test docker-compose network configurations (after individual container tests pass)
   test-compose-network-production:
     needs:
+      - build-backend-image
+      - build-frontend-image
       - test-backend-image
       - test-frontend-image
       - check-migrations
@@ -90,9 +92,13 @@ jobs:
     with:
       compose_file: docker-compose.yaml
       environment_name: production
+      backend_artifact_name: ${{ needs.build-backend-image.outputs.artifact_name }}
+      frontend_artifact_name: ${{ needs.build-frontend-image.outputs.artifact_name }}
 
   test-compose-network-staging:
     needs:
+      - build-backend-image
+      - build-frontend-image
       - test-backend-image
       - test-frontend-image
       - check-migrations
@@ -100,3 +106,5 @@ jobs:
     with:
       compose_file: docker-compose.staging.yaml
       environment_name: staging
+      backend_artifact_name: ${{ needs.build-backend-image.outputs.artifact_name }}
+      frontend_artifact_name: ${{ needs.build-frontend-image.outputs.artifact_name }}
