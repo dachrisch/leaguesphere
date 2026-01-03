@@ -41,35 +41,28 @@ fi
 
 echo "Testing connectivity from app container: $APP_CONTAINER"
 
-# Test DNS
+# Test DNS + HTTPS connectivity (curl will fail if DNS doesn't resolve)
 echo ""
-echo "Test 1: DNS Resolution"
-if docker exec $APP_CONTAINER nslookup google.com > /dev/null 2>&1; then
-  echo "✅ DNS resolution successful"
-else
-  echo "❌ DNS resolution FAILED"
-  docker compose -f docker-compose.ci.yaml down -v
-  exit 1
-fi
-
-# Test HTTPS
-echo ""
-echo "Test 2: Internet Connectivity (HTTPS)"
+echo "Test 1: DNS Resolution + HTTPS Connectivity"
 if docker exec $APP_CONTAINER sh -c 'curl -f --max-time 10 https://www.google.com > /dev/null 2>&1'; then
-  echo "✅ Internet connectivity successful"
+  echo "✅ DNS resolution and HTTPS connectivity successful"
 else
-  echo "❌ Internet connectivity FAILED"
+  echo "❌ External connectivity FAILED (DNS or network issue)"
+  echo "This usually means:"
+  echo "  - App container has no external network access (internal: true)"
+  echo "  - DNS resolution is blocked"
+  echo "  - HTTPS traffic is blocked"
   docker compose -f docker-compose.ci.yaml down -v
   exit 1
 fi
 
-# Test ping (non-critical)
+# Test HTTP connectivity (additional verification)
 echo ""
-echo "Test 3: External IP Connectivity (ICMP)"
-if docker exec $APP_CONTAINER sh -c 'ping -c 3 -W 2 8.8.8.8 > /dev/null 2>&1'; then
-  echo "✅ Ping successful"
+echo "Test 2: HTTP Connectivity"
+if docker exec $APP_CONTAINER sh -c 'curl -f --max-time 10 http://www.google.com > /dev/null 2>&1'; then
+  echo "✅ HTTP connectivity successful"
 else
-  echo "⚠️  Ping failed (not critical)"
+  echo "⚠️  HTTP connectivity failed (HTTPS worked, so this is likely just a redirect issue)"
 fi
 
 echo ""
