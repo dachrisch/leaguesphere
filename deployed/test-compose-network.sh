@@ -25,17 +25,17 @@ fi
 
 # Start stack
 echo "Starting docker-compose stack..."
-docker-compose -f docker-compose.ci.yaml up -d
+docker compose -f docker-compose.ci.yaml up -d
 
 # Wait for services
 sleep 10
 
 # Get app container
-APP_CONTAINER=$(docker-compose -f docker-compose.ci.yaml ps -q app)
+APP_CONTAINER=$(docker compose -f docker-compose.ci.yaml ps -q app)
 
 if [ -z "$APP_CONTAINER" ]; then
   echo "❌ Failed to get app container"
-  docker-compose -f docker-compose.ci.yaml down -v
+  docker compose -f docker-compose.ci.yaml down -v
   exit 1
 fi
 
@@ -48,7 +48,7 @@ if docker exec $APP_CONTAINER nslookup google.com > /dev/null 2>&1; then
   echo "✅ DNS resolution successful"
 else
   echo "❌ DNS resolution FAILED"
-  docker-compose -f docker-compose.ci.yaml down -v
+  docker compose -f docker-compose.ci.yaml down -v
   exit 1
 fi
 
@@ -59,7 +59,7 @@ if docker exec $APP_CONTAINER sh -c 'curl -f --max-time 10 https://www.google.co
   echo "✅ Internet connectivity successful"
 else
   echo "❌ Internet connectivity FAILED"
-  docker-compose -f docker-compose.ci.yaml down -v
+  docker compose -f docker-compose.ci.yaml down -v
   exit 1
 fi
 
@@ -76,7 +76,7 @@ echo ""
 echo "✅ All connectivity tests passed!"
 
 # Cleanup
-docker-compose -f docker-compose.ci.yaml down -v
+docker compose -f docker-compose.ci.yaml down -v
 rm -f docker-compose.ci.yaml ls.env.ci
 
 exit 0
