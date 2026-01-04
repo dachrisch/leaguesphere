@@ -299,20 +299,32 @@ const StageSection: React.FC<StageSectionProps> = ({
                 </Button>
               </div>
             ) : (
-              <GameTable
-                games={games}
-                edges={edges}
-                allNodes={allNodes}
-                globalTeams={globalTeams}
-                globalTeamGroups={globalTeamGroups}
-                onUpdate={onUpdate}
-                onDelete={onDelete}
-                onSelectNode={onSelectNode}
-                selectedNodeId={selectedNodeId}
-                onAssignTeam={onAssignTeam}
-                onAddGameToGameEdge={onAddGameToGameEdge}
-                onRemoveGameToGameEdge={onRemoveGameToGameEdge}
-              />
+              <>
+                <GameTable
+                  games={games}
+                  edges={edges}
+                  allNodes={allNodes}
+                  globalTeams={globalTeams}
+                  globalTeamGroups={globalTeamGroups}
+                  onUpdate={onUpdate}
+                  onDelete={onDelete}
+                  onSelectNode={onSelectNode}
+                  selectedNodeId={selectedNodeId}
+                  onAssignTeam={onAssignTeam}
+                  onAddGameToGameEdge={onAddGameToGameEdge}
+                  onRemoveGameToGameEdge={onRemoveGameToGameEdge}
+                />
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  className="w-100 mt-2"
+                  onClick={handleAddGame}
+                  aria-label={t('ui:button.addGame')}
+                >
+                  <i className="bi bi-plus-circle me-1"></i>
+                  {t('ui:button.addGame')}
+                </Button>
+              </>
             )}
           </div>
         </Card.Body>

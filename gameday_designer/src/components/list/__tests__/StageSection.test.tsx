@@ -18,6 +18,7 @@ const createDefaultProps = (overrides: Partial<StageSectionProps> = {}): StageSe
   allNodes: [],
   edges: [],
   globalTeams: [],
+  globalTeamGroups: [],
   onUpdate: vi.fn(),
   onDelete: vi.fn(),
   onSelectNode: vi.fn(),
@@ -89,11 +90,8 @@ describe('StageSection', () => {
     // Stage name should be visible
     expect(screen.getByText('Vorrunde')).toBeInTheDocument();
 
-    // Stage type badge should be visible
-    expect(screen.getByText('vorrunde')).toBeInTheDocument();
-
-    // Game count should be visible
-    expect(screen.getByText(/1 game/i)).toBeInTheDocument();
+    // Stage type badge has been removed from design
+    // Game count in header has been removed from design
   });
 
   it('shows games when expanded', () => {
@@ -106,8 +104,8 @@ describe('StageSection', () => {
       />
     );
 
-    // Should be expanded - look for "Add Game" button
-    expect(screen.getByRole('button', { name: /add game/i })).toBeInTheDocument();
+    // Should be expanded - look for translated "Add Game" button text
+    expect(screen.getByText('Add Game')).toBeInTheDocument();
   });
 
   it('calls onDelete when delete button is clicked', () => {
@@ -153,7 +151,8 @@ describe('StageSection', () => {
       />
     );
 
-    expect(screen.getByText('finalrunde')).toBeInTheDocument();
+    // Stage type badge has been removed from design - just verify stage name is shown
+    expect(screen.getByText('Finalrunde')).toBeInTheDocument();
   });
 
   it('allows inline editing of stage name', () => {
@@ -169,8 +168,9 @@ describe('StageSection', () => {
       />
     );
 
-    const nameElement = screen.getByText('Vorrunde');
-    fireEvent.doubleClick(nameElement);
+    // Click the edit button (pencil icon)
+    const editButton = screen.getByRole('button', { name: /edit stage name/i });
+    fireEvent.click(editButton);
 
     const input = screen.getByDisplayValue('Vorrunde');
     fireEvent.change(input, { target: { value: 'Neue Vorrunde' } });
@@ -226,8 +226,9 @@ describe('StageSection', () => {
       />
     );
 
-    // Should count only this stage's games
-    expect(screen.getByText(/1 game/i)).toBeInTheDocument();
+    // Game count display in header has been removed
+    // Just verify that we're rendering the correct game (from this stage only)
+    expect(screen.getByText('Game 1')).toBeInTheDocument();
   });
 
   describe('Inline Add Game button pattern', () => {

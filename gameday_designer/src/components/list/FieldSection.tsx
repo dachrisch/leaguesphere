@@ -318,6 +318,16 @@ const FieldSection: React.FC<FieldSectionProps> = ({
                   isExpanded={expandedStageIds.has(stage.id)}
                 />
               ))}
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                className="w-100 mt-2"
+                onClick={handleAddStage}
+                aria-label={t('ui:button.addStage')}
+              >
+                <i className="bi bi-plus-circle me-1"></i>
+                {t('ui:button.addStage')}
+              </Button>
             </>
           )}
         </Card.Body>

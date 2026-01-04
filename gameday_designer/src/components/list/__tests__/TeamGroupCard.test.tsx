@@ -73,7 +73,10 @@ describe('TeamGroupCard', () => {
     );
 
     expect(screen.getByText('Group A')).toBeInTheDocument();
-    expect(screen.getByText('2')).toBeInTheDocument(); // Team count badge
+    // Team count badge has been removed from the design
+    // Just verify the teams are rendered
+    expect(screen.getByText('Team 1')).toBeInTheDocument();
+    expect(screen.getByText('Team 2')).toBeInTheDocument();
   });
 
   it('renders Add Team button in group header', () => {
