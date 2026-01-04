@@ -10,10 +10,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import GameTable from '../GameTable';
-import type { GameNode, StageNode, FieldNode, FlowEdge, GlobalTeam, GameNodeData } from '../../../types/flowchart';
+import type { GameNode, StageNode, FieldNode, GlobalTeam } from '../../../types/flowchart';
 import { createFieldNode, createStageNode, createGameNodeInStage, createGameToGameEdge } from '../../../types/flowchart';
 
 describe('GameTable - Dynamic Reference Dropdown', () => {
@@ -61,7 +61,7 @@ describe('GameTable - Dynamic Reference Dropdown', () => {
 
   describe('Team slot rendering', () => {
     it('shows dropdown with static teams when no assignment exists', () => {
-      const { container } = render(
+      render(
         <GameTable
           games={[game3]}
           edges={[]}
@@ -88,7 +88,7 @@ describe('GameTable - Dynamic Reference Dropdown', () => {
     });
 
     it('shows dropdown with dynamic reference options from earlier stages', () => {
-      const { container } = render(
+      render(
         <GameTable
           games={[game3]}
           edges={[]}
@@ -115,7 +115,7 @@ describe('GameTable - Dynamic Reference Dropdown', () => {
     });
 
     it('does not show games from same or later stages as dynamic options', () => {
-      const { container } = render(
+      render(
         <GameTable
           games={[game1]}
           edges={[]}

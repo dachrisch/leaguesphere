@@ -29,7 +29,7 @@ export interface ListCanvasProps {
   globalTeamGroups: GlobalTeamGroup[];
 
   /** Callback when a node is updated */
-  onUpdateNode: (nodeId: string, data: any) => void;
+  onUpdateNode: (nodeId: string, data: Record<string, unknown>) => void;
 
   /** Callback when a node is deleted */
   onDeleteNode: (nodeId: string) => void;

@@ -12,7 +12,7 @@
 import React, { useState, useCallback } from 'react';
 import { Card, Dropdown, DropdownButton } from 'react-bootstrap';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
-import type { GlobalTeam, GlobalTeamGroup, FlowNode } from '../../types/flowchart';
+import type { GlobalTeam, GlobalTeamGroup } from '../../types/flowchart';
 
 export interface TeamGroupCardProps {
   /** The group to display */

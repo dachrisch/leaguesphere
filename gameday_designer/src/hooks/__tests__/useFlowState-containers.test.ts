@@ -16,9 +16,6 @@ import {
   isFieldNode,
   isStageNode,
   isGameNode,
-  createFieldNode,
-  createStageNode,
-  createGameNodeInStage,
 } from '../../types/flowchart';
 
 describe('useFlowState - Container Operations', () => {

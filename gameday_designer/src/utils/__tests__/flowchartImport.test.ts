@@ -33,7 +33,7 @@ describe('Flowchart Import Utility', () => {
       expect(result.state).toBeDefined();
       expect(result.warnings).toHaveLength(0);
 
-      const { nodes, edges, fields, globalTeams } = result.state!;
+      const { nodes, fields, globalTeams } = result.state!;
 
       // Should have 1 field
       expect(fields).toHaveLength(1);

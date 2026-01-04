@@ -9,7 +9,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import StageSection from '../StageSection';
-import type { StageNode, GameNode, TeamNode } from '../../../types/flowchart';
+import type { StageNode, GameNode } from '../../../types/flowchart';
 import type { StageSectionProps } from '../StageSection';
 
 // Helper function to create default props
@@ -64,18 +64,18 @@ describe('StageSection', () => {
     },
   };
 
-  // Sample team node
-  const sampleTeam: TeamNode = {
-    id: 'team-1',
-    type: 'team',
-    parentId: 'stage-1',
-    position: { x: 0, y: 0 },
-    data: {
-      type: 'team',
-      reference: { type: 'groupTeam', group: 1, team: 1 },
-      label: '1_1',
-    },
-  };
+  // Sample team node - commented out as not currently used
+  // const sampleTeam: TeamNode = {
+  //   id: 'team-1',
+  //   type: 'team',
+  //   parentId: 'stage-1',
+  //   position: { x: 0, y: 0 },
+  //   data: {
+  //     type: 'team',
+  //     reference: { type: 'groupTeam', group: 1, team: 1 },
+  //     label: '1_1',
+  //   },
+  // };
 
   it('renders stage with name and type badge', () => {
     render(

@@ -9,7 +9,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ListCanvas from '../ListCanvas';
 import type { ListCanvasProps } from '../ListCanvas';
-import type { FieldNode, StageNode, GlobalTeam, GlobalTeamGroup } from '../../types/flowchart';
+import type { FieldNode } from '../../types/flowchart';
 
 // Helper function to create default props
 const createDefaultProps = (overrides: Partial<ListCanvasProps> = {}): ListCanvasProps => ({
@@ -53,7 +53,7 @@ describe('ListCanvas - Inline Add Field Button Pattern', () => {
     });
 
     it('Fields header has icon', () => {
-      const { container } = render(<ListCanvas {...createDefaultProps()} />);
+      render(<ListCanvas {...createDefaultProps()} />);
 
       const fieldsHeader = screen.getByText('Fields').closest('.card-header');
       expect(fieldsHeader).toBeInTheDocument();

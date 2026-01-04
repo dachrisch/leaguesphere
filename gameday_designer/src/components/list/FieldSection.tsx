@@ -10,7 +10,6 @@ import { Card, Button } from 'react-bootstrap';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import StageSection from './StageSection';
 import type { FieldNode, StageNode, FlowNode, FlowEdge, GlobalTeam, GlobalTeamGroup } from '../../types/flowchart';
-import { isGameNode } from '../../types/flowchart';
 import './FieldSection.css';
 
 export interface FieldSectionProps {
@@ -112,13 +111,6 @@ const FieldSection: React.FC<FieldSectionProps> = ({
 
   // Sort stages by order
   const sortedStages = [...stages].sort((a, b) => a.data.order - b.data.order);
-
-  // Count total games in this field
-  const gameCount = allNodes.filter(
-    (node) =>
-      isGameNode(node) &&
-      stages.some((stage) => stage.id === node.parentId)
-  ).length;
 
   const isSelected = selectedNodeId === field.id;
 

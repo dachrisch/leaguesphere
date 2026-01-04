@@ -9,7 +9,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import FieldSection from '../FieldSection';
-import type { FieldNode, StageNode, GameNode, TeamNode } from '../../../types/flowchart';
+import type { FieldNode, StageNode, GameNode } from '../../../types/flowchart';
 
 describe('FieldSection', () => {
   // Sample field node

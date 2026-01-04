@@ -38,7 +38,7 @@ export interface TournamentGeneratorModalProps {
 const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
   show,
   onHide,
-  teams,
+  // teams - unused for now but kept in props for potential future use
   onGenerate,
 }) => {
   const { t } = useTypedTranslation(['ui', 'modal', 'domain']);
@@ -51,17 +51,21 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
   );
 
   // Configuration state
-  const [fieldCount, setFieldCount] = useState<number>(1);
+  const [fieldCount, setFieldCount] = useState<number>(
+    availableTemplates[0]?.fieldOptions[0] || 1
+  );
   const [startTime, setStartTime] = useState<string>('09:00');
   const [generateTeams, setGenerateTeams] = useState<boolean>(false);
   const [autoAssignTeams, setAutoAssignTeams] = useState<boolean>(true);
 
-  // Update field count when template changes
+  // Update field count when template changes (derived from selectedTemplate on first render)
   useEffect(() => {
-    if (selectedTemplate && selectedTemplate.fieldOptions.length > 0) {
+    if (selectedTemplate && selectedTemplate.fieldOptions.length > 0 && fieldCount === 1) {
+      // Only update if still at default value
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFieldCount(selectedTemplate.fieldOptions[0]);
     }
-  }, [selectedTemplate]);
+  }, [selectedTemplate, fieldCount]);
 
   /**
    * Handle generate button click

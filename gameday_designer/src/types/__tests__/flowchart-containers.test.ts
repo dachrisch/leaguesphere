@@ -111,7 +111,7 @@ describe('Container Types - Field and Stage', () => {
           official: null,
           breakAfter: 0,
         };
-        expect(isFieldNodeData(data as any)).toBe(false);
+        expect(isFieldNodeData(data as unknown as FieldNodeData)).toBe(false);
       });
     });
 
@@ -141,7 +141,7 @@ describe('Container Types - Field and Stage', () => {
           reference: { type: 'static', name: 'Team A' },
           label: 'Team A',
         };
-        expect(isStageNodeData(data as any)).toBe(false);
+        expect(isStageNodeData(data as unknown as StageNodeData)).toBe(false);
       });
     });
 
