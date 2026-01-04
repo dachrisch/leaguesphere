@@ -1,0 +1,1 @@
+const n="{{count}} error",o="{{count}} errors",r="{{count}} warning",t="{{count}} warnings",e="Schedule is valid",c={errorCount_one:n,errorCount_other:o,warningCount_one:r,warningCount_other:t,scheduleValid:e};export{c as default,n as errorCount_one,o as errorCount_other,e as scheduleValid,r as warningCount_one,t as warningCount_other};

@@ -1,0 +1,34 @@
+{
+  "button": {
+    "addField": "Add Field",
+    "import": "Import",
+    "export": "Export",
+    "clearAll": "Clear All",
+    "add": "Add",
+    "remove": "Remove",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "generate": "Generate",
+    "generateTournament": "Generate Tournament"
+  },
+  "label": {
+    "language": "Language",
+    "german": "German",
+    "english": "English",
+    "stage": "Stage",
+    "standing": "Standing",
+    "home": "Home",
+    "away": "Away",
+    "official": "Official",
+    "breakAfter": "Break After (minutes)",
+    "validation": "Validation",
+    "tournamentFormat": "Tournament Format",
+    "numberOfFields": "Number of Fields",
+    "startTime": "Start Time",
+    "preview": "Preview"
+  },
+  "placeholder": {
+    "standing": "e.g., Group 1, HF1, P1"
+  }
+}

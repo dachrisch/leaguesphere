@@ -1,0 +1,34 @@
+{
+  "button": {
+    "addField": "Feld hinzufügen",
+    "import": "Importieren",
+    "export": "Exportieren",
+    "clearAll": "Alles löschen",
+    "add": "Hinzufügen",
+    "remove": "Entfernen",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen",
+    "generate": "Generieren",
+    "generateTournament": "Turnier generieren"
+  },
+  "label": {
+    "language": "Sprache",
+    "german": "Deutsch",
+    "english": "English",
+    "stage": "Etappe",
+    "standing": "Platzierung",
+    "home": "Heim",
+    "away": "Gast",
+    "official": "Schiedsrichter",
+    "breakAfter": "Pause danach (Minuten)",
+    "validation": "Validierung",
+    "tournamentFormat": "Turnierformat",
+    "numberOfFields": "Anzahl der Felder",
+    "startTime": "Startzeit",
+    "preview": "Vorschau"
+  },
+  "placeholder": {
+    "standing": "z.B. Gruppe 1, HF1, P1"
+  }
+}

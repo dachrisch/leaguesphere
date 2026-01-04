@@ -12,6 +12,8 @@ import React, { useRef, useState } from 'react';
 import { Button, ButtonGroup, Modal, Alert } from 'react-bootstrap';
 import type { ScheduleJson } from '../types/designer';
 import { validateScheduleJson } from '../utils/jsonExport';
+import { useTypedTranslation } from '../i18n/useTypedTranslation';
+import LanguageSelector from './LanguageSelector';
 
 export interface ToolbarProps {
   /** Callback when Add Field button is clicked */
@@ -33,6 +35,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onExport,
   onClearAll,
 }) => {
+  const { t } = useTypedTranslation(['ui', 'modal', 'error']);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -54,19 +57,21 @@ const Toolbar: React.FC<ToolbarProps> = ({
         // Validate the JSON structure
         const validation = validateScheduleJson(parsed);
         if (!validation.valid) {
-          setImportError(`Invalid schedule format: ${validation.errors.join(', ')}`);
+          setImportError(t('error:invalidScheduleFormat', {
+            errors: validation.errors.join(', ')
+          }));
           return;
         }
 
         setImportError(null);
         onImport(parsed as ScheduleJson[]);
       } catch {
-        setImportError('Invalid JSON file. Please select a valid schedule JSON file.');
+        setImportError(t('error:invalidJson'));
       }
     };
 
     reader.onerror = () => {
-      setImportError('Error reading file. Please try again.');
+      setImportError(t('error:fileReadError'));
     };
 
     reader.readAsText(file);
@@ -115,25 +120,26 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   return (
     <>
-      <div className="toolbar mb-3">
+      <div className="toolbar mb-3 d-flex justify-content-between">
         <ButtonGroup>
           <Button variant="primary" onClick={onAddField}>
             <i className="bi bi-plus-lg me-1"></i>
-            Add Field
+            {t('ui:button.addField')}
           </Button>
           <Button variant="secondary" onClick={handleImportClick}>
             <i className="bi bi-upload me-1"></i>
-            Import
+            {t('ui:button.import')}
           </Button>
           <Button variant="secondary" onClick={onExport}>
             <i className="bi bi-download me-1"></i>
-            Export
+            {t('ui:button.export')}
           </Button>
           <Button variant="danger" onClick={handleClearClick}>
             <i className="bi bi-trash me-1"></i>
-            Clear All
+            {t('ui:button.clearAll')}
           </Button>
         </ButtonGroup>
+        <LanguageSelector />
 
         {/* Hidden file input for importing */}
         <input
@@ -156,18 +162,17 @@ const Toolbar: React.FC<ToolbarProps> = ({
       {/* Clear all confirmation modal */}
       <Modal show={showClearConfirm} onHide={handleClearCancel} centered>
         <Modal.Header closeButton>
-          <Modal.Title>Clear All</Modal.Title>
+          <Modal.Title>{t('modal:clearAll.title')}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          Are you sure you want to clear all fields, stages, games, teams, and groups? This action cannot be
-          undone.
+          {t('modal:clearAll.message')}
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handleClearCancel}>
-            Cancel
+            {t('ui:button.cancel')}
           </Button>
           <Button variant="danger" onClick={handleClearConfirm}>
-            Confirm
+            {t('ui:button.confirm')}
           </Button>
         </Modal.Footer>
       </Modal>

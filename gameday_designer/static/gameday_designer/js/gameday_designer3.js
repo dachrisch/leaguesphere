@@ -1,0 +1,1 @@
+const e="Ungültiges Zeitplanformat: {{errors}}",t="Ungültige JSON-Datei. Bitte wählen Sie eine gültige Zeitplan-JSON-Datei.",i="Fehler beim Lesen der Datei. Bitte versuchen Sie es erneut.",n={invalidScheduleFormat:e,invalidJson:t,fileReadError:i};export{n as default,i as fileReadError,t as invalidJson,e as invalidScheduleFormat};

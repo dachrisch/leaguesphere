@@ -10,6 +10,7 @@ import { Modal, Button, Form, Card, Row, Col, Alert } from 'react-bootstrap';
 import { TournamentTemplate, TournamentGenerationConfig } from '../../types/tournament';
 import { getAllTemplates } from '../../utils/tournamentTemplates';
 import { GlobalTeam } from '../../types/flowchart';
+import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 
 export interface TournamentGeneratorModalProps {
   /** Whether the modal is visible */
@@ -40,6 +41,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
   teams,
   onGenerate,
 }) => {
+  const { t } = useTypedTranslation(['ui', 'modal', 'domain']);
   // Get all available templates
   const availableTemplates = useMemo(() => getAllTemplates(), []);
 
@@ -83,7 +85,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
       <Modal.Header closeButton>
         <Modal.Title>
           <i className="bi bi-trophy me-2"></i>
-          Generate Tournament
+          {t('modal:tournamentGenerator.title')}
         </Modal.Title>
       </Modal.Header>
 
@@ -91,14 +93,14 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
         {availableTemplates.length === 0 ? (
           <Alert variant="info">
             <i className="bi bi-info-circle me-2"></i>
-            No tournament templates available.
+            {t('modal:tournamentGenerator.noTemplates')}
           </Alert>
         ) : (
           <>
             {/* Template selection cards */}
             <Form.Group className="mb-3">
               <Form.Label>
-                <strong>Tournament Format</strong>
+                <strong>{t('ui:label.tournamentFormat')}</strong>
               </Form.Label>
               {availableTemplates.map((template) => (
                 <Card
@@ -118,7 +120,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                         <>
                           <strong>{template.name}</strong>
                           <div className="text-muted small mt-1">
-                            {template.stages.length} stages |{' '}
+                            {t('modal:tournamentGenerator.previewStages', { count: template.stages.length })} |{' '}
                             {template.stages.map((s) => s.name).join(' → ')}
                           </div>
                         </>
@@ -137,14 +139,14 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                 <Row>
                   <Col md={6}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Number of Fields</Form.Label>
+                      <Form.Label>{t('ui:label.numberOfFields')}</Form.Label>
                       <Form.Select
                         value={fieldCount}
                         onChange={(e) => setFieldCount(parseInt(e.target.value))}
                       >
                         {selectedTemplate.fieldOptions.map((count) => (
                           <option key={count} value={count}>
-                            {count} Field{count !== 1 ? 's' : ''}
+                            {t('modal:tournamentGenerator.previewFields', { count })}
                           </option>
                         ))}
                       </Form.Select>
@@ -152,7 +154,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                   </Col>
                   <Col md={6}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Start Time</Form.Label>
+                      <Form.Label>{t('ui:label.startTime')}</Form.Label>
                       <Form.Control
                         type="time"
                         value={startTime}
@@ -167,14 +169,16 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                   <Form.Check
                     type="checkbox"
                     id="generate-teams"
-                    label={`Generate ${selectedTemplate.teamCount.exact || selectedTemplate.teamCount.min} teams automatically`}
+                    label={t('modal:tournamentGenerator.generateTeams', {
+                      count: selectedTemplate.teamCount.exact || selectedTemplate.teamCount.min
+                    })}
                     checked={generateTeams}
                     onChange={(e) => setGenerateTeams(e.target.checked)}
                   />
                   <Form.Check
                     type="checkbox"
                     id="auto-assign-teams"
-                    label="Auto-assign teams to games"
+                    label={t('modal:tournamentGenerator.autoAssignTeams')}
                     checked={autoAssignTeams}
                     onChange={(e) => setAutoAssignTeams(e.target.checked)}
                     className="mt-2"
@@ -188,17 +192,18 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
               <Alert variant="light" className="mb-0">
                 <strong>
                   <i className="bi bi-eye me-2"></i>
-                  Preview:
+                  {t('modal:tournamentGenerator.previewTitle')}
                 </strong>
                 <ul className="mb-0 mt-2">
                   <li>
-                    {fieldCount} field{fieldCount !== 1 ? 's' : ''}
+                    {t('modal:tournamentGenerator.previewFields', { count: fieldCount })}
                   </li>
-                  <li>{selectedTemplate.stages.length} stages</li>
-                  <li>First game at {startTime}</li>
+                  <li>{t('modal:tournamentGenerator.previewStages', { count: selectedTemplate.stages.length })}</li>
+                  <li>{t('modal:tournamentGenerator.previewFirstGame', { time: startTime })}</li>
                   <li>
-                    Default game duration: {selectedTemplate.timing.defaultGameDuration}{' '}
-                    minutes
+                    {t('modal:tournamentGenerator.previewGameDuration', {
+                      duration: selectedTemplate.timing.defaultGameDuration
+                    })}
                   </li>
                 </ul>
               </Alert>
@@ -209,7 +214,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
 
       <Modal.Footer>
         <Button variant="secondary" onClick={onHide}>
-          Cancel
+          {t('ui:button.cancel')}
         </Button>
         <Button
           variant="primary"
@@ -217,7 +222,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
           disabled={!selectedTemplate}
         >
           <i className="bi bi-lightning-fill me-1"></i>
-          Generate Tournament
+          {t('ui:button.generateTournament')}
         </Button>
       </Modal.Footer>
     </Modal>
