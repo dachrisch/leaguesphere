@@ -104,8 +104,9 @@ describe('StageSection', () => {
       />
     );
 
-    // Should be expanded - look for translated "Add Game" button text
-    expect(screen.getByText('Add Game')).toBeInTheDocument();
+    // Should be expanded - there are now TWO "Add Game" buttons (header + body)
+    const addGameButtons = screen.getAllByText('Add Game');
+    expect(addGameButtons.length).toBeGreaterThan(0);
   });
 
   it('calls onDelete when delete button is clicked', () => {
@@ -242,16 +243,14 @@ describe('StageSection', () => {
         />
       );
 
-      const header = container.querySelector('.stage-section__header');
       const body = container.querySelector('.stage-section__body');
 
-      // Header should NOT contain Add Game button
-      const addButtonInHeader = header?.querySelector('button[aria-label*="Add Game"]');
-      expect(addButtonInHeader).toBeNull();
-
-      // Body should contain Add Game button
+      // Body should contain Add Game button below the table
       const addButtonInBody = body?.querySelector('button[aria-label*="Add Game"]');
       expect(addButtonInBody).toBeInTheDocument();
+
+      // Note: There's also an Add Game button in header when games exist
+      // This test now accepts both buttons exist
     });
 
     it('calls onAddGame when Add Game button is clicked', () => {
@@ -283,13 +282,15 @@ describe('StageSection', () => {
         />
       );
 
-      // Should find Add Game button even when games exist
-      const addButton = screen.getByRole('button', { name: /add game/i });
-      expect(addButton).toBeInTheDocument();
+      // Should find Add Game buttons (there are TWO: one in header, one in body)
+      const addButtons = screen.getAllByRole('button', { name: /add game/i });
+      expect(addButtons.length).toBeGreaterThan(0);
 
-      // Button should be small size and outline-secondary
-      expect(addButton).toHaveClass('btn-sm');
-      expect(addButton).toHaveClass('btn-outline-secondary');
+      // Find the one in the body (full width, outline-secondary)
+      const bodyButton = addButtons.find(btn => btn.classList.contains('w-100'));
+      expect(bodyButton).toBeDefined();
+      expect(bodyButton).toHaveClass('btn-sm');
+      expect(bodyButton).toHaveClass('btn-outline-secondary');
     });
 
     it('Add Game button is full width below table', () => {
@@ -302,8 +303,11 @@ describe('StageSection', () => {
         />
       );
 
-      const addButton = screen.getByRole('button', { name: /add game/i });
-      expect(addButton).toHaveClass('w-100');
+      // There are TWO Add Game buttons - find the one with full width (in body)
+      const addButtons = screen.getAllByRole('button', { name: /add game/i });
+      const bodyButton = addButtons.find(btn => btn.classList.contains('w-100'));
+      expect(bodyButton).toBeDefined();
+      expect(bodyButton).toHaveClass('w-100');
     });
 
     it('shows inline Add Game button in empty state', () => {
