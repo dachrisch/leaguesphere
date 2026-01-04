@@ -19,13 +19,7 @@ jobs:
     uses: ./.github/workflows/part_node_test_matrix.yaml
     secrets: inherit
     with:
-      projects: '["scorecard", "liveticker", "gameday_designer"]'
-
-  build-passcheck:
-    uses: ./.github/workflows/part_node_build.yaml
-    secrets: inherit
-    with:
-      project: passcheck
+      projects: '["scorecard", "liveticker", "gameday_designer", "passcheck"]'
 
   # Build Docker images once (after tests pass)
   build-backend-image:
@@ -39,7 +33,6 @@ jobs:
   build-frontend-image:
     needs:
       - build-test-frontend
-      - build-passcheck
     uses: ./.github/workflows/part_docker_build.yaml
     with:
       dockerfile: container/nginx.Dockerfile
