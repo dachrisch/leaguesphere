@@ -13,6 +13,7 @@
 import React, { useRef } from 'react';
 import { Button, ButtonGroup, ButtonToolbar } from 'react-bootstrap';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
+import LanguageSelector from './LanguageSelector';
 
 import './FlowToolbar.css';
 
@@ -161,6 +162,9 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
             {t('ui:button.clearAll')}
           </Button>
         </ButtonGroup>
+
+        {/* Language selector */}
+        <LanguageSelector />
       </ButtonToolbar>
 
       {/* Hidden file input for import */}
