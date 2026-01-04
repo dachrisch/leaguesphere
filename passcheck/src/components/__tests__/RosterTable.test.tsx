@@ -10,15 +10,15 @@ interface MockPlayerModalProps {
 }
 
 // Mock the PlayerModal component
-vi.mock('../PlayerModal', () => {
-  return function MockPlayerModal(props: MockPlayerModalProps) {
+vi.mock('../PlayerModal', () => ({
+  default: function MockPlayerModal(props: MockPlayerModalProps) {
     return (
       <div data-testid="player-modal" data-visible={props.modalVisible}>
         Mock Player Modal
       </div>
     );
-  };
-});
+  }
+}));
 
 describe('RosterTable', () => {
   const mockTeam: Team = {
