@@ -150,7 +150,7 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
         )}
 
         {/* Clear all button */}
-        <ButtonGroup>
+        <ButtonGroup className="me-2">
           <Button
             variant="outline-danger"
             onClick={handleClearAll}
@@ -164,7 +164,9 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
         </ButtonGroup>
 
         {/* Language selector */}
-        <LanguageSelector />
+        <ButtonGroup>
+          <LanguageSelector />
+        </ButtonGroup>
       </ButtonToolbar>
 
       {/* Hidden file input for import */}
