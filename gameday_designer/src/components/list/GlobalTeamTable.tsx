@@ -14,6 +14,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { Card, Button, Dropdown, DropdownButton } from 'react-bootstrap';
+import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import type { GlobalTeam, GlobalTeamGroup, FlowNode } from '../../types/flowchart';
 import { isGameNode } from '../../types/flowchart';
 import TeamGroupCard from './TeamGroupCard';
@@ -63,6 +64,7 @@ const GlobalTeamTable: React.FC<GlobalTeamTableProps> = ({
   getTeamUsage,
   allNodes,
 }) => {
+  const { t } = useTypedTranslation(['ui']);
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(new Set());
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editedGroupName, setEditedGroupName] = useState('');
@@ -204,14 +206,14 @@ const GlobalTeamTable: React.FC<GlobalTeamTableProps> = ({
         /* Empty state - icon, message, and button */
         <div className="text-center py-5">
           <i className="bi bi-people" style={{ fontSize: '4rem', opacity: 0.3 }}></i>
-          <h3 className="mt-3">No groups yet</h3>
-          <p className="text-muted mb-3">Create your first team group to organize teams</p>
+          <h3 className="mt-3">{t('ui:message.noGroupsYet')}</h3>
+          <p className="text-muted mb-3">{t('ui:message.createFirstGroup')}</p>
           <Button
             variant="outline-primary"
             onClick={onAddGroup}
           >
             <i className="bi bi-plus-circle me-1"></i>
-            Add Group
+            {t('ui:button.addGroup')}
           </Button>
         </div>
       ) : (

@@ -7,6 +7,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { Card, Button } from 'react-bootstrap';
+import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import StageSection from './StageSection';
 import type { FieldNode, StageNode, FlowNode, FlowEdge, GlobalTeam, GlobalTeamGroup } from '../../types/flowchart';
 import { isGameNode } from '../../types/flowchart';
@@ -94,6 +95,7 @@ const FieldSection: React.FC<FieldSectionProps> = ({
   isExpanded: isExpandedProp,
   expandedStageIds,
 }) => {
+  const { t } = useTypedTranslation(['ui']);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(field.data.name);
 
@@ -228,7 +230,7 @@ const FieldSection: React.FC<FieldSectionProps> = ({
               size="sm"
               variant="link"
               onClick={handleStartEdit}
-              aria-label="Edit field name"
+              aria-label={t('ui:tooltip.editFieldName')}
               className="p-0 me-auto"
               style={{ fontSize: '0.875rem' }}
             >
@@ -242,11 +244,11 @@ const FieldSection: React.FC<FieldSectionProps> = ({
             size="sm"
             variant="outline-primary"
             onClick={handleAddStage}
-            aria-label="Add Stage"
+            aria-label={t('ui:button.addStage')}
             className="me-2"
           >
             <i className="bi bi-plus-circle me-1"></i>
-            Add Stage
+            {t('ui:button.addStage')}
           </Button>
         )}
 
@@ -259,7 +261,7 @@ const FieldSection: React.FC<FieldSectionProps> = ({
             onUpdate(field.id, { color: e.target.value });
           }}
           onClick={(e) => e.stopPropagation()}
-          title="Field color"
+          title={t('ui:tooltip.fieldColor')}
           className="me-2"
           style={{
             width: '28px',
@@ -274,7 +276,7 @@ const FieldSection: React.FC<FieldSectionProps> = ({
           variant="outline-danger"
           size="sm"
           onClick={handleDelete}
-          aria-label="Delete Field"
+          aria-label={t('ui:tooltip.deleteField')}
         >
           <i className="bi bi-trash"></i>
         </Button>
@@ -285,14 +287,14 @@ const FieldSection: React.FC<FieldSectionProps> = ({
           {sortedStages.length === 0 ? (
             <div className="text-center py-4">
               <i className="bi bi-layers me-2"></i>
-              <p className="text-muted mb-3">No stages yet</p>
+              <p className="text-muted mb-3">{t('ui:message.noStagesYet')}</p>
               <Button
                 variant="outline-primary"
                 onClick={handleAddStage}
-                aria-label="Add Stage"
+                aria-label={t('ui:button.addStage')}
               >
                 <i className="bi bi-plus-circle me-1"></i>
-                Add Stage
+                {t('ui:button.addStage')}
               </Button>
             </div>
           ) : (

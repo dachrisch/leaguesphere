@@ -33,7 +33,8 @@ i18n
         error: errorEN,
       },
     },
-    fallbackLng: 'de',
+    lng: 'en', // Set language explicitly for tests
+    fallbackLng: 'en', // Use English for tests
     defaultNS: 'ui',
     ns: ['ui', 'domain', 'validation', 'modal', 'error'],
     interpolation: {
