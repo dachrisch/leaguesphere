@@ -32,26 +32,25 @@ describe('PlayerModal', () => {
   };
 
   let mockValidator: MockValidator;
-  
-  beforeEach(() => {
-    mockValidator = {
-      validateAndGetErrors: mockValidateAndGetErrors,
-      validateAndUpdate: mockValidateAndUpdate
-    };
-  });
-
-  const defaultProps = {
-    modalVisible: true,
-    handleClose: vi.fn(),
-    nextPlayer: vi.fn(),
-    player: mockPlayer,
-    validator: mockValidator
-  };
+  let defaultProps: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockValidateAndGetErrors.mockReturnValue([]);
     vi.useFakeTimers();
+
+    mockValidator = {
+      validateAndGetErrors: mockValidateAndGetErrors,
+      validateAndUpdate: mockValidateAndUpdate
+    };
+
+    defaultProps = {
+      modalVisible: true,
+      handleClose: vi.fn(),
+      nextPlayer: vi.fn(),
+      player: mockPlayer,
+      validator: mockValidator
+    };
   });
 
   afterEach(() => {
