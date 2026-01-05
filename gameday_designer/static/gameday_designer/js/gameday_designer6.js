@@ -1,1 +1,0 @@
-const n="{{count}} Fehler",o="{{count}} Fehler",t="{{count}} Warnung",e="{{count}} Warnungen",r="Zeitplan ist gültig",u={errorCount_one:n,errorCount_other:o,warningCount_one:t,warningCount_other:e,scheduleValid:r};export{u as default,n as errorCount_one,o as errorCount_other,r as scheduleValid,t as warningCount_one,e as warningCount_other};
