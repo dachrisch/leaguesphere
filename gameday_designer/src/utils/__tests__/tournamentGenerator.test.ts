@@ -25,8 +25,8 @@ vi.mock('../timeCalculation', () => ({
 
 // Mock the game generators module
 vi.mock('../gameGenerators', () => ({
-  generateRoundRobinGames: vi.fn((stageId, config) => []),
-  generatePlacementGames: vi.fn((stageId, config) => []),
+  generateRoundRobinGames: vi.fn(() => []),
+  generatePlacementGames: vi.fn(() => []),
 }));
 
 describe('tournamentGenerator', () => {

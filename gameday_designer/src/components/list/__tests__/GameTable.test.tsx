@@ -641,7 +641,7 @@ describe('GameTable', () => {
     });
 
     it('highlights cell with yellow background for manual time', () => {
-      const { container } = render(
+      render(
         <GameTable
           games={[game2]}
           edges={[]}

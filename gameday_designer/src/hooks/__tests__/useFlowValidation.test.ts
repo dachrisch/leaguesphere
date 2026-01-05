@@ -14,7 +14,7 @@
  * - Dynamic reference validation
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useFlowValidation } from '../useFlowValidation';
 import type { FlowNode, FlowEdge, GameToGameEdge, TeamToGameEdge } from '../../types/flowchart';

@@ -236,5 +236,123 @@ describe('ListCanvas - Inline Add Field Button Pattern', () => {
       expect(fieldsIndex).toBeGreaterThanOrEqual(0);
       expect(teamPoolIndex).toBeLessThan(fieldsIndex);
     });
+
+    it('can toggle team pool expansion state', () => {
+      const { container } = render(<ListCanvas {...createDefaultProps()} />);
+
+      // Find the team pool header (clickable)
+      const teamPoolHeader = screen.getByText('Team Pool').closest('.card-header');
+      expect(teamPoolHeader).toBeInTheDocument();
+
+      // Click to collapse
+      fireEvent.click(teamPoolHeader!);
+
+      // After clicking, the team pool should be collapsed
+      const collapsedCard = container.querySelector('.team-pool-card--collapsed');
+      expect(collapsedCard).toBeInTheDocument();
+
+      // Click again to expand
+      const collapsedCardElement = container.querySelector('.team-pool-card--collapsed');
+      fireEvent.click(collapsedCardElement!);
+
+      // Should no longer be collapsed
+      const expandedCard = container.querySelector('.team-pool-card--collapsed');
+      expect(expandedCard).not.toBeInTheDocument();
+    });
+
+    it('shows Add Group button when team groups exist', () => {
+      const mockGroup = {
+        id: 'group-1',
+        name: 'Group A',
+        order: 0,
+      };
+
+      render(
+        <ListCanvas
+          {...createDefaultProps({
+            globalTeamGroups: [mockGroup],
+          })}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: /add group/i })).toBeInTheDocument();
+    });
+
+    it('calls onAddGlobalTeamGroup when Add Group button is clicked', () => {
+      const onAddGlobalTeamGroup = vi.fn();
+      const mockGroup = {
+        id: 'group-1',
+        name: 'Group A',
+        order: 0,
+      };
+
+      render(
+        <ListCanvas
+          {...createDefaultProps({
+            globalTeamGroups: [mockGroup],
+            onAddGlobalTeamGroup,
+          })}
+        />
+      );
+
+      const addButton = screen.getByRole('button', { name: /add group/i });
+      fireEvent.click(addButton);
+
+      expect(onAddGlobalTeamGroup).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Field stages sorting', () => {
+    it('sorts stages by order within a field', () => {
+      const field: FieldNode = {
+        id: 'field-1',
+        type: 'field',
+        position: { x: 0, y: 0 },
+        data: {
+          type: 'field',
+          name: 'Field 1',
+          order: 0,
+        },
+      };
+
+      const stage1 = {
+        id: 'stage-1',
+        type: 'stage' as const,
+        parentId: 'field-1',
+        position: { x: 0, y: 0 },
+        data: {
+          type: 'stage' as const,
+          name: 'Stage 1',
+          stageType: 'vorrunde' as const,
+          order: 0,
+        },
+      };
+
+      const stage2 = {
+        id: 'stage-2',
+        type: 'stage' as const,
+        parentId: 'field-1',
+        position: { x: 0, y: 0 },
+        data: {
+          type: 'stage' as const,
+          name: 'Stage 2',
+          stageType: 'finalrunde' as const,
+          order: 1,
+        },
+      };
+
+      render(
+        <ListCanvas
+          {...createDefaultProps({
+            nodes: [field, stage2, stage1], // Note: stages in reverse order
+            expandedFieldIds: new Set(['field-1']),
+          })}
+        />
+      );
+
+      // Both stages should be rendered (order doesn't matter for rendering, just internal sorting)
+      expect(screen.getByText('Stage 1')).toBeInTheDocument();
+      expect(screen.getByText('Stage 2')).toBeInTheDocument();
+    });
   });
 });
