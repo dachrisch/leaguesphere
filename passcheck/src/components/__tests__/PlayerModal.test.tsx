@@ -21,6 +21,14 @@ interface MockValidator {
   validateAndUpdate: typeof mockValidateAndUpdate;
 }
 
+interface PlayerModalProps {
+  modalVisible: boolean;
+  handleClose: () => void;
+  nextPlayer: (value: number | null) => void;
+  player: Player;
+  validator: MockValidator;
+}
+
 describe('PlayerModal', () => {
   const mockPlayer: Player = {
     id: 1,
@@ -32,7 +40,7 @@ describe('PlayerModal', () => {
   };
 
   let mockValidator: MockValidator;
-  let defaultProps: any;
+  let defaultProps: PlayerModalProps;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -121,7 +129,7 @@ describe('PlayerModal', () => {
   });
 
   it('validates jersey number on input change', () => {
-    const { container } = render(<PlayerModal {...defaultProps} />);
+    render(<PlayerModal {...defaultProps} />);
 
     const jerseyInput = screen.getByPlaceholderText('Trikotnummer') as HTMLInputElement;
     fireEvent.change(jerseyInput, { target: { value: '99' } });

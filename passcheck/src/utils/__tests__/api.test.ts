@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import axios, { AxiosError } from 'axios';
-import { apiGet, apiPut, ApiError } from '../api';
+import { apiGet, apiPut } from '../api';
 
 vi.mock('axios');
 
@@ -8,8 +8,8 @@ describe('api utilities', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    delete (window as any).location;
-    (window as any).location = { href: '' };
+    delete (window as Window & typeof globalThis & { location: unknown }).location;
+    (window as Window & typeof globalThis & { location: { href: string } }).location = { href: '' };
     vi.spyOn(window, 'alert').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
   });
