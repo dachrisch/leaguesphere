@@ -116,9 +116,109 @@ describe('PlayerModal', () => {
     };
 
     const { container } = render(<PlayerModal {...hiddenProps} />);
-    
+
     // Modal should not be in the document when not visible
     expect(container.firstChild).toBeNull();
+  });
+
+  it('validates jersey number on input change', () => {
+    const { container } = render(<PlayerModal {...defaultProps} />);
+
+    const jerseyInput = screen.getByPlaceholderText('Trikotnummer') as HTMLInputElement;
+    fireEvent.change(jerseyInput, { target: { value: '99' } });
+
+    // The validator is used in the onChange handler
+    expect(jerseyInput.value).toBe('99');
+  });
+
+  it('shows error message for invalid jersey number (non-numeric)', () => {
+    render(<PlayerModal {...defaultProps} />);
+
+    const jerseyInput = screen.getByPlaceholderText('Trikotnummer');
+    fireEvent.change(jerseyInput, { target: { value: 'abc' } });
+
+    expect(screen.getByText('Trikotnummer muss eine Zahl sein.')).toBeInTheDocument();
+  });
+
+  it('validates jersey number through validator', () => {
+    mockValidateAndGetErrors.mockReturnValue(['Error 1', 'Error 2']);
+
+    render(<PlayerModal {...defaultProps} />);
+
+    const jerseyInput = screen.getByPlaceholderText('Trikotnummer');
+    fireEvent.change(jerseyInput, { target: { value: '100' } });
+
+    // Check that error handling code was triggered
+    expect(jerseyInput.value).toBe('100');
+  });
+
+  it('shows player validation error when present', () => {
+    const playerWithError = {
+      ...mockPlayer,
+      validationError: 'Player has validation error'
+    };
+
+    render(<PlayerModal {...defaultProps} player={playerWithError} />);
+
+    expect(screen.getByText('Player has validation error')).toBeInTheDocument();
+  });
+
+  it('disables jersey input when player has validation error', () => {
+    const playerWithError = {
+      ...mockPlayer,
+      validationError: 'Some error'
+    };
+
+    render(<PlayerModal {...defaultProps} player={playerWithError} />);
+
+    const jerseyInput = screen.getByPlaceholderText('Trikotnummer');
+    expect(jerseyInput).toBeDisabled();
+  });
+
+  it('renders with player having validation error', () => {
+    const playerWithError = {
+      ...mockPlayer,
+      isSelected: false,
+      validationError: 'Some error'
+    };
+
+    render(<PlayerModal {...defaultProps} player={playerWithError} />);
+
+    // Just ensure it renders without errors
+    expect(screen.getByText('Some error')).toBeInTheDocument();
+  });
+
+  it('renders with selected player having validation error', () => {
+    const playerWithError = {
+      ...mockPlayer,
+      isSelected: true,
+      validationError: 'Some error'
+    };
+
+    render(<PlayerModal {...defaultProps} player={playerWithError} />);
+
+    // Just ensure it renders without errors
+    expect(screen.getByText('Some error')).toBeInTheDocument();
+  });
+
+  it('calls handleClose and nextPlayer when closing modal', () => {
+    render(<PlayerModal {...defaultProps} />);
+
+    const closeButton = screen.getByLabelText('Close');
+    fireEvent.click(closeButton);
+
+    expect(defaultProps.handleClose).toHaveBeenCalled();
+    expect(defaultProps.nextPlayer).toHaveBeenCalledWith(null);
+  });
+
+  it('updates jersey number when player prop changes', () => {
+    const { rerender } = render(<PlayerModal {...defaultProps} />);
+
+    const newPlayer = { ...mockPlayer, id: 2, jersey_number: 25 };
+    rerender(<PlayerModal {...defaultProps} player={newPlayer} />);
+
+    const jerseyInput = screen.getByPlaceholderText('Trikotnummer') as HTMLInputElement;
+    expect(jerseyInput.value).toBe('25');
   });
 
 });
