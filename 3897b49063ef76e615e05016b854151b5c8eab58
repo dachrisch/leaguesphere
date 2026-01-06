@@ -1,0 +1,9 @@
+Task: Hook Decomposition (SRP)
+Summary: Refactored the monolithic useFlowState.ts hook (~1000 lines) into specialized sub-hooks to adhere to the Single Responsibility Principle.
+Created:
+- useNodesState.ts: Manages node CRUD and container hierarchy.
+- useEdgesState.ts: Manages edge connections and dynamic reference derivation.
+- useTeamPoolState.ts: Manages global team pool and groups.
+Refactored useFlowState.ts to orchestrate these specialized hooks while maintaining backward compatibility for existing tests and the UI.
+Includes comprehensive unit tests for all new hooks.
+Why: Improved maintainability, testability, and clarity by decoupling distinct state domains.
