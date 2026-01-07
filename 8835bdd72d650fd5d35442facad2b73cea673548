@@ -1,0 +1,8 @@
+Task: Audit and optimize re-renders in ListCanvas and its child sections.
+Summary: Applied React performance best practices to the main list-based UI components to ensure smooth interactions even with large tournament schedules.
+Changes:
+- Wrapped ListCanvas, FieldSection, StageSection, and GameTable in React.memo to prevent unnecessary re-renders when parent state changes but relevant props don't.
+- Converted all inline handlers to useCallback to maintain stable references across renders.
+- Optimized data derivation (filtering/sorting nodes) using useMemo.
+- Restored essential accessibility attributes (aria-label, title) that were accidentally removed during initial refactoring.
+Verified: All vitest suites passed, and manual verification confirmed correct behavior.
