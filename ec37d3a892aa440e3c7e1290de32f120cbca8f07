@@ -1,0 +1,8 @@
+Task: Create TemplateValidationService in Python to mirror useFlowValidation.ts.
+Summary: Ported the flowchart validation logic from frontend to backend to ensure data integrity during template creation and application.
+Features:
+- check_incomplete_inputs: Identifies games with missing home/away definitions.
+- check_circular_dependencies: Detects cycles in winner/loser progressions using DFS.
+- check_official_playing: Ensures the assigned official team is not one of the participants.
+- check_duplicate_standings: Issues warnings for non-unique game labels.
+Verified: Comprehensive unit tests in gameday_designer/tests/test_template_validation_service.py passed.
