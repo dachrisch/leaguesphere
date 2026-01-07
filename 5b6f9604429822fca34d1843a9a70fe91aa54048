@@ -1,0 +1,8 @@
+Task: Align frontend timeCalculation.ts with backend TemplateApplicationService logic.
+Summary: Harmonized the game time calculation logic to ensure consistency across the stack.
+Changes:
+- Created gameday_designer/service/time_service.py: Centralized Python service for time arithmetic and slot scheduling.
+- Refactored gameday_designer/service/template_application_service.py: Replaced local logic with TimeService.
+- Updated gameday_designer/src/utils/timeCalculation.ts: Aligned sequential scheduling logic with the backend implementation while preserving frontend-specific parallel field support.
+- Added gameday_designer/tests/test_time_service.py: Unit tests for the new backend service.
+Verified: All frontend vitest and backend pytest suites passed.
