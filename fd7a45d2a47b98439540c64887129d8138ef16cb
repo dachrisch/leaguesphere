@@ -1,0 +1,7 @@
+Task: Implement atomic bulk updates for edges to eliminate useEffect sync race conditions.
+Summary: Refactored edge management to perform synchronous, atomic updates of both edges and nodes, ensuring data consistency without relying on unstable useEffect synchronization.
+Changes:
+- useEdgesState.ts: Updated CRUD methods (add, remove, delete) to accept setNodes and perform functional updates on both state domains simultaneously.
+- useFlowState.ts: Removed the fragile useEffect sync logic and delegated atomic operations to edgesManager.
+- Logic: When an edge is added/removed, the target node's dynamic reference (homeTeamDynamic/awayTeamDynamic) is updated in the same transaction.
+Verified: All vitest suites for edge management passed.
