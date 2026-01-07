@@ -1,0 +1,6 @@
+Task: Refactor ListDesignerApp.tsx to move event handlers into a dedicated controller hook.
+Summary: Extracted UI-specific logic, event handlers, and orchestration from the main application component into a specialized controller hook.
+Changes:
+- Created useDesignerController.ts: Manages UI state (expansions, highlights, modal visibility) and complex workflows (tournament generation, import/export).
+- Refactored ListDesignerApp.tsx: Simplified the component to a pure View that delegates logic to the controller hook.
+Benefit: Improved readability, better separation of concerns (Presentation vs. Logic), and easier testing of UI workflows.
