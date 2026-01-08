@@ -1,0 +1,13 @@
+Task 2: Fix 'Generate Tournament' button not clearing input (#668)
+
+Summary:
+Implemented state reset logic in TournamentGeneratorModal to ensure that the form is cleared and restored to default values whenever the modal is hidden.
+
+Changes:
+- Added resetForm function to TournamentGeneratorModal.tsx.
+- Added useEffect to trigger resetForm when show prop changes to false.
+- Created TournamentGeneratorModal-reset.test.tsx to verify reset behavior.
+- Cleaned up unused eslint-disable directives.
+
+Why:
+Ensures a consistent and predictable user experience by providing a fresh form every time the tournament generator is opened.
