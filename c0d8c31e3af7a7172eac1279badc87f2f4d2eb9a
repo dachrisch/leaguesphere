@@ -1,0 +1,14 @@
+Tournament Generation and Time Editing Fixes
+
+Summary:
+Resolved three major bugs related to tournament generation validation, default timing, and individual game time editing.
+
+Changes:
+- **Task 6**: Implemented team count validation in TournamentGeneratorModal. Added a warning alert and disabled the Generate button if team requirements (min teams per template) are not met and auto-generation is disabled.
+- **Task 7**: Eliminated hardcoded 50-minute durations in game generators. Round-robin and placement game generators now correctly use the duration from the stage configuration.
+- **Task 8**: Enhanced useNodesState to trigger a cascade of time recalculations when a game's start time is manually updated. Ensured that manual overrides (manualTime: true) are respected and not overwritten by subsequent calculations.
+
+Verification:
+- Created TournamentGeneratorModal-validation.test.tsx to verify UI validation logic.
+- Created useNodesState-manual-time.test.ts to verify manual override and cascade logic.
+- Manual verification on localhost confirmed that 70-minute durations are now correctly applied during generation.
