@@ -1,0 +1,14 @@
+Break Duration and Input Propagation Fixes
+
+Summary:
+Resolved user confusion regarding game timing by providing explicit control over break durations and ensuring all user inputs are correctly propagated and applied to all generated games.
+
+Changes:
+- **UI**: Added a 'Break Duration' input to TournamentGeneratorModal, allowing users to specify the pause between games.
+- **Propagation**: Fixed handleGenerate to pass gameDuration and breakDuration at the top level of the configuration object.
+- **Generator**: Updated generateTournament to use the nullish coalescing operator (??), correctly allowing 0-minute values.
+- **Logic**: Updated gameGenerators.ts to apply the provided breakDuration to the 'breakAfter' property of every generated game (Round Robin and Placement).
+- **Architecture**: Enhanced createStageNode and StageNodeData to persist defaultBreakBetweenGames, ensuring it's available for subsequent calculations.
+
+Why:
+These changes ensure that the generated schedule precisely matches user expectations, specifically regarding the interval between games.
