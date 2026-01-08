@@ -1,0 +1,15 @@
+Break Duration and Input Propagation Fixes
+
+Summary:
+Resolved user confusion regarding game timing by providing explicit control over break durations and ensuring all user inputs are correctly propagated to the tournament generator.
+
+Changes:
+- **UI**: Added a 'Break Duration' input to TournamentGeneratorModal, allowing users to specify the pause between games (defaulting to 10m).
+- **UI**: Updated the generator preview to show both game duration and break duration.
+- **Propagation**: Fixed handleGenerate to pass gameDuration and breakDuration at the top level of the configuration object, ensuring they are seen by the generateTournament function.
+- **Generator**: Updated generateTournament to use the nullish coalescing operator (??), which correctly allows 0-minute breaks or durations instead of falling back to template defaults.
+- **I18n**: Added German translation for the new break duration label.
+
+Verification:
+- Created tournamentGenerator-timing.test.ts to verify that 0-minute values are respected during generation.
+- Confirmed that selecting 60m duration and 0m break now correctly schedules the second game 60m after the first (e.g., 10:00 -> 11:00).
