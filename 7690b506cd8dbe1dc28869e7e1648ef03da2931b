@@ -1,0 +1,14 @@
+Task 3: Fix time selection bug (#670)
+
+Summary:
+Improved the robustness of time parsing by supporting the HH:MM:SS format and enhanced the stability of time input fields in the UI.
+
+Changes:
+- Updated parseTime in timeCalculation.ts to handle HH:MM:SS format (ignoring seconds).
+- Updated isValidTimeFormat regex to support optional seconds.
+- Fixed GameTable.tsx to use editedValue during time editing to ensure visible feedback.
+- Ensured StageSection.tsx correctly handles empty time values.
+- Created format verification tests in timeCalculation.format.test.ts.
+
+Why:
+Prevents application crashes and ensures that user time selections are correctly displayed and propagated throughout the designer.
