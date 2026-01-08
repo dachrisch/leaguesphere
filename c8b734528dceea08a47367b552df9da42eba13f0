@@ -1,0 +1,12 @@
+Task: Create Failing Unit Tests & Implement Color Rotation Logic
+
+Summary:
+Implemented automatic color assignment for teams added manually to the team pool, ensuring visual variety and consistency.
+
+Changes:
+- Updated addGlobalTeam in useTeamPoolState.ts to calculate a default color using the TEAM_COLORS palette based on the current number of teams (modulo rotation).
+- Created useFlowState-manual-colors.test.ts with comprehensive TDD tests for rotation and wrap-around behavior.
+- Verified that manual color overrides are preserved and do not interfere with subsequent auto-assignments.
+
+Why:
+Ensures a professional and informative UI experience where manually added teams are immediately distinguishable by color, matching the behavior of auto-generated tournaments.
