@@ -1,0 +1,11 @@
+Progression Mapping and Color Generation
+
+Summary:
+Enhanced tournament generation flexibility with custom progression mappings and improved team visual coding.
+
+Changes:
+- **Task 4**: Introduced 'progressionMapping' in TournamentTemplate and StageNodeData. This allows templates to explicitly define how games from round-robin stages flow into placement brackets, replacing previous hardcoded logic in bracketEdgeGenerator.ts.
+- **Task 5**: Expanded the TEAM_COLORS palette with more professional, high-contrast options. Verified that auto-generated teams correctly receive these distinct colors during tournament generation.
+
+Why:
+These changes provide the flexibility needed for complex tournament formats while maintaining a polished and informative user interface.
