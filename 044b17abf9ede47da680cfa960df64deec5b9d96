@@ -1,0 +1,12 @@
+Task 3: Fix time selection bug (#670)
+
+Summary:
+Improved the robustness of time parsing by supporting the HH:MM:SS format, which is often returned by HTML5 time inputs in certain browsers.
+
+Changes:
+- Updated parseTime in timeCalculation.ts to handle strings with three components (ignoring seconds).
+- Updated isValidTimeFormat in timeCalculation.ts to accept optional seconds component via regex.
+- Created timeCalculation.format.test.ts to verify support for various time formats.
+
+Why:
+Prevents application crashes when a browser returns a time string with seconds, ensuring the gameday designer remains stable during time selection.
