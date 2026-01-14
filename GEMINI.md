@@ -25,9 +25,12 @@ We strictly follow the TDD cycle:
 2.  **GREEN**: Implement the minimum code necessary to make the test pass.
 3.  **REFACTOR**: Clean up the code while ensuring the tests remain GREEN.
 
+Targeted modifications can be verified using isolated test runs (e.g., only the test file corresponding to the changed code). More complex tasks or significant changes require running the full test suite to prevent regressions.
+
 ### 2. Branching & Pull Requests
 - **NO Commits to Master**: Direct commits to the `master` branch are strictly forbidden.
 - **Feature Branches**: All work must be performed on a dedicated branch created for the specific task or feature.
+- **Mandatory Local QA**: Before pushing anything to remote, all QA checks must pass locally (Tests, Lint, and Security).
 - **Pull Requests**: Every change must receive a Pull Request (PR).
 - **Merging**: Branches are only merged into `master` after explicit user approval.
 
@@ -35,16 +38,13 @@ We strictly follow the TDD cycle:
 - **`feature-dev/` Directory**: Progress documentation for all features must be maintained in this directory.
 - **Tracking**: All features (excluding minor bugs and quick fixes) must track their progress here.
 - **History Entry**: Once a feature is finished, it must contain a history entry summarizing the implementation.
+- **Coverage Requirements**: Patch coverage for each PR must be at least **90%** to maintain an overall project coverage of above **80%**.
 
 ---
 
 ## Testing Strategy
 
-### 1. Execution
-- **Targeted Runs**: For targeted modifications, tests can be run in isolation (e.g., only the test file corresponding to the changed code) to ensure fast feedback.
-- **Full Suite**: Complex tasks or significant changes require running the full test suite to prevent regressions.
-
-### 2. Backend Testing (pytest)
+### 1. Backend Testing (pytest)
 Backend tests require a MariaDB instance. The project infrastructure uses an LXC container (`servyy-test`) running a Docker MariaDB.
 
 **Mandatory Environment Variables:**
@@ -65,7 +65,7 @@ export SECRET_KEY=test-secret-key
 pytest
 ```
 
-### 3. Frontend Testing (vitest)
+### 2. Frontend Testing (vitest)
 All modern frontend apps use Vitest.
 ```bash
 npm --prefix gameday_designer/ run test:run
