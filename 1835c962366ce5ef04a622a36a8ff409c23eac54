@@ -1,0 +1,3 @@
+Task: Fix button expansion on hover (#680)
+Summary: Removed 'btn-adaptive' class and labels from group and team reorder buttons in TeamGroupCard.tsx. These buttons now remain icon-only on hover, preventing disruptive layout shifts and ensuring stable interaction within the group headers and team lists.
+Files: gameday_designer/src/components/list/TeamGroupCard.tsx
