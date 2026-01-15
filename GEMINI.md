@@ -76,6 +76,8 @@ All modern frontend apps use Vitest.
 npm --prefix gameday_designer/ run test:run
 ```
 
+Development server for Gameday Designer: `http://localhost:3001` (when running `npm run start` in `gameday_designer/`)
+
 ---
 
 ## Deployment & Staging
