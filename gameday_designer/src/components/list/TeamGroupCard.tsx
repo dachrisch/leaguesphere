@@ -212,7 +212,7 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
             <span className="btn-label-adaptive">{t('ui:button.addTeam')}</span>
           </button>
           <button
-            className="btn btn-sm btn-outline-secondary btn-adaptive"
+            className="btn btn-sm btn-outline-secondary"
             onClick={(e) => {
               e.stopPropagation();
               onReorderGroup(group.id, 'up');
@@ -220,11 +220,10 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
             disabled={index === 0}
             title={t('ui:tooltip.moveGroupUp')}
           >
-            <i className={`bi ${ICONS.REORDER_UP} me-2`}></i>
-            <span className="btn-label-adaptive">{t('ui:button.up')}</span>
+            <i className={`bi ${ICONS.REORDER_UP}`}></i>
           </button>
           <button
-            className="btn btn-sm btn-outline-secondary btn-adaptive"
+            className="btn btn-sm btn-outline-secondary"
             onClick={(e) => {
               e.stopPropagation();
               onReorderGroup(group.id, 'down');
@@ -232,8 +231,7 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
             disabled={index === totalGroups - 1}
             title={t('ui:tooltip.moveGroupDown')}
           >
-            <i className={`bi ${ICONS.REORDER_DOWN} me-2`}></i>
-            <span className="btn-label-adaptive">{t('ui:button.down')}</span>
+            <i className={`bi ${ICONS.REORDER_DOWN}`}></i>
           </button>
           <button
             className="btn btn-sm btn-outline-danger btn-adaptive"
@@ -331,7 +329,7 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                   <div className="d-flex gap-1 flex-shrink-0">
                     {/* Reorder up */}
                     <button
-                      className="btn btn-sm btn-outline-secondary p-1 btn-adaptive"
+                      className="btn btn-sm btn-outline-secondary p-1"
                       onClick={(e) => {
                         e.stopPropagation();
                         onReorderTeam(team.id, 'up');
@@ -340,13 +338,12 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                       title={t('ui:tooltip.moveTeamUp')}
                       style={{ fontSize: '0.75rem', lineHeight: 1 }}
                     >
-                      <i className={`bi ${ICONS.REORDER_UP} me-2`}></i>
-                      <span className="btn-label-adaptive">{t('ui:button.up')}</span>
+                      <i className={`bi ${ICONS.REORDER_UP}`}></i>
                     </button>
 
                     {/* Reorder down */}
                     <button
-                      className="btn btn-sm btn-outline-secondary p-1 btn-adaptive"
+                      className="btn btn-sm btn-outline-secondary p-1"
                       onClick={(e) => {
                         e.stopPropagation();
                         onReorderTeam(team.id, 'down');
@@ -355,8 +352,7 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                       title={t('ui:tooltip.moveTeamDown')}
                       style={{ fontSize: '0.75rem', lineHeight: 1 }}
                     >
-                      <i className={`bi ${ICONS.REORDER_DOWN} me-2`}></i>
-                      <span className="btn-label-adaptive">{t('ui:button.down')}</span>
+                      <i className={`bi ${ICONS.REORDER_DOWN}`}></i>
                     </button>
 
                     {/* Move to group dropdown */}
