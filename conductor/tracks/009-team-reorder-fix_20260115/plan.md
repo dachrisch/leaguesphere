@@ -8,7 +8,7 @@
   - Add `e.stopPropagation()` to their `onClick` handlers to prevent the event from reaching the header toggle zone.
 - [x] Task: Conductor - User Manual Verification 'TDD Fix Implementation' (Protocol in workflow.md) 1835c96
 
-## Phase 2: QA & Regression Testing
+## Phase 2: QA & Regression Testing [checkpoint: c5f8cbc]
 - [x] **Task 1: Audit other action buttons** 1835c96
   - Verify if "Edit Team" or "Delete Team" buttons within the same card suffer from the same bubbling issue and fix them if necessary. (Confirmed: protected via stopPropagation on containers or buttons).
 - [x] **Task 2: Fix button expansion on hover** 1835c96
