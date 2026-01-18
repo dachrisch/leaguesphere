@@ -7,17 +7,28 @@
  * Replaces FlowDesignerApp with a table/list-based UI instead of flowchart.
  */
 
-import React from 'react';
-import { Container, Row, Col, Button, OverlayTrigger, Popover, ListGroup } from 'react-bootstrap';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Container, Row, Col, Button, OverlayTrigger, Popover, ListGroup, Spinner } from 'react-bootstrap';
+import { useParams, useNavigate } from 'react-router-dom';
 
 import ListCanvas from './ListCanvas';
 import FlowToolbar from './FlowToolbar';
 import TournamentGeneratorModal from './modals/TournamentGeneratorModal';
+import PublishConfirmationModal from './modals/PublishConfirmationModal';
+import GameResultModal from './modals/GameResultModal';
 import NotificationToast from './NotificationToast';
+import GamedayMetadataAccordion from './GamedayMetadataAccordion';
+import { useFlowState } from '../hooks/useFlowState';
 import { useDesignerController } from '../hooks/useDesignerController';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import { ICONS } from '../utils/iconConstants';
-import type { ValidationError, ValidationWarning } from '../types/designer';
+import { gamedayApi } from '../api/gamedayApi';
+import type { 
+  FlowValidationError as ValidationError, 
+  FlowValidationWarning as ValidationWarning,
+  HighlightedElement,
+  GamedayMetadata
+} from '../types/flowchart';
 
 import './ListDesignerApp.css';
 
@@ -27,9 +38,18 @@ import './ListDesignerApp.css';
  */
 const ListDesignerApp: React.FC = () => {
   const { t } = useTypedTranslation(['ui', 'validation']);
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+
+  const flowState = useFlowState();
+  const controller = useDesignerController(flowState);
+
   const {
+    metadata,
     nodes,
     edges,
+    fields,
     globalTeams,
     globalTeamGroups,
     selectedNode,
@@ -45,30 +65,10 @@ const ListDesignerApp: React.FC = () => {
     addStageToGameEdge,
     removeEdgeFromSlot,
     addGameNodeInStage,
-    addNotification,
-  } = useDesignerController();
-
-  /**
-   * Helper to translate error/warning message.
-   */
-  const getMessage = (item: ValidationError | ValidationWarning) => {
-    if (item.messageKey) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return t(`validation:${item.messageKey}` as any, item.messageParams);
-    }
-    return item.message;
-  };
-
-  /**
-   * Helper to determine highlight type from error type.
-   */
-  const getHighlightType = (errorType: string): HighlightedElement['type'] => {
-    if (errorType === 'field_overlap' || errorType === 'team_overlap') return 'game';
-    if (errorType.includes('stage')) return 'stage';
-    if (errorType.includes('field')) return 'field';
-    if (errorType.includes('team')) return 'team';
-    return 'game';
-  };
+    importState,
+    updateMetadata,
+    exportState,
+  } = controller;
 
   const {
     highlightedElement,
@@ -76,7 +76,7 @@ const ListDesignerApp: React.FC = () => {
     expandedStageIds,
     showTournamentModal,
     canExport,
-    hasNodes,
+    hasData,
   } = ui;
 
   const {
@@ -99,21 +99,488 @@ const ListDesignerApp: React.FC = () => {
     handleGenerateTournament,
     setShowTournamentModal,
     dismissNotification,
+    addNotification,
   } = handlers;
+
+    // Only lock if we have a valid status explicitly NOT DRAFT
+
+    const isLocked = Boolean(metadata?.status && metadata.status !== 'DRAFT');
+
+  
+
+    const [showResultModal, setShowResultModal] = useState(false);
+
+    const [showPublishModal, setShowPublishModal] = useState(false);
+
+    const [activeGameId, setActiveGameId] = useState<string | null>(null);
+
+  
+
+    useEffect(() => {
+
+      if (selectedNode?.type === 'game' && isLocked) {
+
+        setActiveGameId(selectedNode.id);
+
+        setShowResultModal(true);
+
+      }
+
+    }, [selectedNode, isLocked]);
+
+  
+
+    const activeGame = activeGameId ? nodes.find(n => n.id === activeGameId && n.type === 'game') : null;
+
+  
+
+    const handleSaveResult = async (resultData: { halftime_score: { home: number; away: number }; final_score: { home: number; away: number } }) => {
+
+      if (!activeGameId) return;
+
+      try {
+
+        const updatedGame = await gamedayApi.updateGameResult(parseInt(activeGameId.replace('game-', '')), resultData);
+
+        // Update local node state
+
+              handleUpdateNode(activeGameId, {
+
+                halftime_score: updatedGame.halftime_score,
+
+                final_score: updatedGame.final_score,
+
+                status: updatedGame.status,
+
+              });
+
+              addNotification(t('ui:notification.gameResultSaved'), 'success', t('ui:notification.title.success'));
+
+              // If gameday status changed, we should reload metadata
+
+              if (metadata && metadata.id) {
+
+                const updatedGameday = await gamedayApi.getGameday(metadata.id);
+
+                updateMetadata(updatedGameday);
+
+              }
+
+            } catch (error) {
+
+              console.error('Failed to save game result', error);
+
+              addNotification(t('ui:notification.saveResultFailed'), 'danger', t('ui:notification.title.error'));
+
+            }
+
+          };
+
+        
+
+          const lastSavedStateRef = useRef<string>('');
+
+          const initialLoadRef = useRef<boolean>(true);
+
+          const [isTransitioning, setIsTransitioning] = useState(false);
+
+          const pauseAutoSaveUntilRef = useRef<number>(0);
+
+        
+
+          useEffect(() => {
+
+            // Definitive block for auto-save during any transition or loading
+
+            if (loading) return;
+
+            if (isTransitioning) return;
+
+        
+
+            // Temporal lock to allow React state to settle after manual actions
+
+            const now = Date.now();
+
+            if (now < pauseAutoSaveUntilRef.current) return;
+
+            
+
+            // Skip initial load to prevent unnecessary save
+
+            if (initialLoadRef.current) {
+
+              if (metadata && metadata.id) {
+
+                const initialState = exportState();
+
+                lastSavedStateRef.current = JSON.stringify(initialState);
+
+                initialLoadRef.current = false;
+
+              }
+
+              return;
+
+            }
+
+        
+
+            const currentState = exportState();
+
+            const currentStateStr = JSON.stringify(currentState);
+
+            if (currentStateStr === lastSavedStateRef.current) return;
+
+        
+
+            const timer = setTimeout(async () => {
+
+              // Execute the auto-save ONLY if we are still not transitioning and not locked
+
+              if (metadata?.id && !isTransitioning && Date.now() >= pauseAutoSaveUntilRef.current) {
+
+                try {
+
+                  await gamedayApi.patchGameday(metadata.id, {
+
+                    ...metadata,
+
+                    designer_data: {
+
+                      ...metadata.designer_data,
+
+                      nodes,
+
+                      edges,
+
+                      fields,
+
+                      globalTeams,
+
+                      globalTeamGroups
+
+                    }
+
+                  });
+
+                  lastSavedStateRef.current = currentStateStr;
+
+                } catch (error) {
+
+                  console.error('Auto-save failed', error);
+
+                  addNotification(t('ui:notification.autoSaveFailed'), 'warning', t('ui:notification.title.autoSave'));
+
+                }
+
+              }
+
+            }, 1000); // Debounce for 1 second
+
+        
+
+            return () => clearTimeout(timer);
+
+          }, [metadata, nodes, edges, fields, globalTeams, globalTeamGroups, loading, isTransitioning, addNotification, exportState, t]);
+
+        
+
+          const handleUpdateMetadataWrapped = useCallback((data: Partial<GamedayMetadata>) => {
+
+            updateMetadata(data);
+
+            // Pause auto-save briefly to let this metadata update settle
+
+            pauseAutoSaveUntilRef.current = Date.now() + 1500;
+
+          }, [updateMetadata]);
+
+        
+
+          const loadGameday = useCallback(async (gamedayId: number) => {
+
+            setLoading(true);
+
+            setIsTransitioning(true);
+
+            try {
+
+              const updatedGameday = await gamedayApi.getGameday(gamedayId);
+
+              if (updatedGameday.designer_data?.nodes) {
+
+                // Load full state if available
+
+                importState({
+
+                  metadata: updatedGameday,
+
+                  nodes: updatedGameday.designer_data.nodes || [],
+
+                  edges: updatedGameday.designer_data.edges || [],
+
+                  fields: updatedGameday.designer_data.fields || [],
+
+                  globalTeams: updatedGameday.designer_data.globalTeams || [],
+
+                  globalTeamGroups: updatedGameday.designer_data.globalTeamGroups || []
+
+                });
+
+              } else if (updatedGameday.designer_data?.fields) {
+
+                // Legacy load (only fields)
+
+                importState({
+
+                  metadata: updatedGameday,
+
+                  nodes: [], 
+
+                  edges: [],
+
+                  fields: updatedGameday.designer_data.fields.map((f) => ({ id: f.id, name: f.name, order: f.order })),
+
+                  globalTeams: [],
+
+                  globalTeamGroups: []
+
+                });
+
+              } else {
+
+                // Just set metadata for new gameday
+
+                updateMetadata(updatedGameday);
+
+              }
+
+              // Critical: mark this state as already saved and pause auto-save
+
+              pauseAutoSaveUntilRef.current = Date.now() + 2000;
+
+              setTimeout(() => {
+
+                lastSavedStateRef.current = JSON.stringify(exportState());
+
+              }, 500);
+
+            } catch (error) {
+
+              console.error('Failed to load gameday', error);
+
+              addNotification(t('ui:notification.loadGamedayFailed'), 'danger', t('ui:notification.title.error'));
+
+              navigate('/');
+
+            } finally {
+
+              setLoading(false);
+
+              setIsTransitioning(false);
+
+            }
+
+          }, [importState, updateMetadata, addNotification, navigate, exportState, t]);
+
+        
+
+          const hasLoadedRef = useRef(false);
+
+          useEffect(() => {
+
+            if (id && !hasLoadedRef.current) {
+
+              hasLoadedRef.current = true;
+
+              loadGameday(parseInt(id));
+
+            }
+
+          }, [id, loadGameday]);
+
+        
+
+          const handlePublishWrapped = useCallback(async () => {
+
+            setShowPublishModal(true);
+
+          }, []);
+
+        
+
+          const handleConfirmPublish = useCallback(async () => {
+
+            setShowPublishModal(false);
+
+            setIsTransitioning(true);
+
+            pauseAutoSaveUntilRef.current = Date.now() + 5000; // Extra long pause for publish
+
+            try {
+
+              const updated = await gamedayApi.publish(metadata.id);
+
+              
+
+              // Update local state. 
+
+              // First import nodes/edges/etc.
+
+              if (updated.designer_data) {
+
+                importState(updated.designer_data);
+
+              }
+
+              // Then explicitly update metadata from the top-level response
+
+              // This ensures status is always correct and not shadowed by designer_data
+
+              updateMetadata(updated);
+
+              
+
+              addNotification(t('ui:notification.publishSuccess'), 'success', t('ui:notification.title.success'));
+
+              
+
+              // Update the reference after a short delay to ensure we capture the new state
+
+              setTimeout(() => {
+
+                lastSavedStateRef.current = JSON.stringify(exportState());
+
+              }, 1000);
+
+            } catch (error) {
+
+              console.error('Failed to publish gameday:', error);
+
+              addNotification(t('ui:notification.publishFailed'), 'danger', t('ui:notification.title.error'));
+
+            } finally {
+
+              setIsTransitioning(false);
+
+            }
+
+          }, [metadata.id, updateMetadata, importState, addNotification, exportState, t]);
+
+        
+
+          const handleUnlockWrapped = useCallback(async () => {
+
+            setIsTransitioning(true);
+
+            pauseAutoSaveUntilRef.current = Date.now() + 5000; // Extra long pause for unlock
+
+            try {
+
+              const updated = await gamedayApi.patchGameday(metadata.id, { status: 'DRAFT' });
+
+              
+
+              // Update local state.
+
+              if (updated.designer_data) {
+
+                importState(updated.designer_data);
+
+              }
+
+              updateMetadata(updated);
+
+              
+
+              addNotification(t('ui:notification.unlockSuccess'), 'warning', t('ui:notification.title.success'));
+
+              
+
+              // Update the reference after a short delay to ensure we capture the new state
+
+              setTimeout(() => {
+
+                lastSavedStateRef.current = JSON.stringify(exportState());
+
+              }, 1000);
+
+            } catch (error) {
+
+              console.error('Failed to unlock gameday:', error);
+
+              addNotification(t('ui:notification.unlockFailed'), 'danger', t('ui:notification.title.error'));
+
+            } finally {
+
+              setIsTransitioning(false);
+
+            }
+
+          }, [metadata.id, updateMetadata, importState, addNotification, exportState, t]);
+
+  /**
+   * Helper to translate error/warning message.
+   */
+  const getMessage = (item: ValidationError | ValidationWarning) => {
+    if (item.messageKey) {
+      return t(`validation:${item.messageKey}` as const, item.messageParams);
+    }
+    return item.message;
+  };
+
+  /**
+   * Helper to determine highlight type from error type.
+   */
+  const getHighlightType = (errorType: string): HighlightedElement['type'] => {
+    if (errorType === 'field_overlap' || errorType === 'team_overlap' || errorType === 'no_games' || errorType === 'broken_progression') return 'game';
+    if (errorType.includes('stage')) return 'stage';
+    if (errorType.includes('field')) return 'field';
+    if (errorType.includes('team')) return 'team';
+    return 'game';
+  };
+
+  const handleDeleteGameday = async () => {
+    if (metadata?.id) {
+      // Redirect to dashboard with pending delete state
+      // The dashboard will handle the 10s undo logic
+      navigate('/', { state: { pendingDeleteId: metadata.id } });
+    }
+  };
+
+  if (loading) {
+    return (
+      <Container className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
+        <Spinner animation="border" variant="primary" />
+      </Container>
+    );
+  }
 
   return (
     <Container fluid className="list-designer-app">
       {/* Combined Header and Toolbar */}
       <Row className="list-designer-app__header align-items-center mb-3">
         <Col className="d-flex align-items-center">
+          <Button 
+            variant="link" 
+            onClick={() => navigate('/')} 
+            className="p-0 me-3 text-dark"
+            title={t('ui:button.backToDashboard')}
+          >
+            <i className="bi bi-arrow-left fs-4"></i>
+          </Button>
           <div className="me-auto">
-            <h1 className="h4 mb-0">Gameday Designer</h1>
-            <p className="text-muted small mb-0">List-based editor for tournament schedules</p>
+            <h1 className="h4 mb-0">{t('ui:button.gamedayDesigner')}</h1>
+            <p className="text-muted small mb-0">
+              {metadata?.name || t('ui:placeholder.gamedayName')} - {metadata?.date}
+            </p>
           </div>
           <Button
             variant="outline-primary"
             onClick={() => setShowTournamentModal(true)}
             className="me-2 btn-adaptive"
+            disabled={isLocked}
             title={t('ui:tooltip.generateTournament')}
           >
             <i className={`bi ${ICONS.TOURNAMENT} me-2`}></i>
@@ -122,112 +589,25 @@ const ListDesignerApp: React.FC = () => {
           <FlowToolbar
             onImport={handleImport}
             onExport={handleExport}
-            onClearAll={handleClearAll}
+            gamedayStatus={metadata?.status}
             onNotify={addNotification}
-            hasNodes={hasNodes}
             canExport={canExport}
           />
         </Col>
       </Row>
 
-      {/* Status Bar - Validation summary */}
-      <Row className="list-designer-app__status-bar">
-        <Col>
-          <div className="d-flex align-items-center gap-3 py-2 px-3 bg-light border-top border-bottom">
-            {validation.isValid && validation.warnings.length === 0 ? (
-              <span className="text-success">
-                <i className="bi bi-check-circle-fill me-2"></i>
-                {t('validation:scheduleValid')}
-              </span>
-            ) : (
-              <>
-                {validation.errors.length > 0 && (
-                  <OverlayTrigger
-                    trigger="click"
-                    rootClose
-                    placement="bottom"
-                    overlay={
-                      <Popover id="errors-popover">
-                        <Popover.Header as="h3">
-                          {t('validation:errorCount', { count: validation.errors.length })}
-                        </Popover.Header>
-                        <Popover.Body className="p-0">
-                          <ListGroup variant="flush">
-                            {validation.errors.map((error) => (
-                              <ListGroup.Item 
-                                key={error.id} 
-                                variant="danger" 
-                                action
-                                onClick={() => {
-                                  // @ts-expect-error error type mapping
-                                  const nodeId = error.affectedNodes?.[0] || error.affectedSlots?.[0];
-                                  if (nodeId) handleHighlightElement(nodeId, getHighlightType(error.type));
-                                }}
-                                className="small"
-                              >
-                                {getMessage(error)}
-                              </ListGroup.Item>
-                            ))}
-                          </ListGroup>
-                        </Popover.Body>
-                      </Popover>
-                    }
-                  >
-                    <span className="text-danger" style={{ cursor: 'pointer' }}>
-                      <i className="bi bi-x-circle-fill me-1"></i>
-                      {t('validation:errorCount', { count: validation.errors.length })}
-                    </span>
-                  </OverlayTrigger>
-                )}
-                {validation.warnings.length > 0 && (
-                  <OverlayTrigger
-                    trigger="click"
-                    rootClose
-                    placement="bottom"
-                    overlay={
-                      <Popover id="warnings-popover">
-                        <Popover.Header as="h3">
-                          {t('validation:warningCount', { count: validation.warnings.length })}
-                        </Popover.Header>
-                        <Popover.Body className="p-0">
-                          <ListGroup variant="flush">
-                            {validation.warnings.map((warning) => (
-                              <ListGroup.Item 
-                                key={warning.id} 
-                                variant="warning" 
-                                action
-                                onClick={() => {
-                                  // @ts-expect-error error type mapping
-                                  const nodeId = warning.affectedNodes?.[0] || warning.affectedSlots?.[0];
-                                  if (nodeId) handleHighlightElement(nodeId, getHighlightType(warning.type));
-                                }}
-                                className="small"
-                              >
-                                {getMessage(warning)}
-                              </ListGroup.Item>
-                            ))}
-                          </ListGroup>
-                        </Popover.Body>
-                      </Popover>
-                    }
-                  >
-                    <span className="text-warning" style={{ cursor: 'pointer' }}>
-                      <i className="bi bi-exclamation-triangle-fill me-1"></i>
-                      {t('validation:warningCount', { count: validation.warnings.length })}
-                    </span>
-                  </OverlayTrigger>
-                )}
-              </>
-            )}
-            <span className="text-muted small ms-auto">
-              {nodes.filter((n) => n.type === 'field').length} {t('ui:label.fields')} |{' '}
-              {nodes.filter((n) => n.type === 'stage').length} {t('ui:label.stages')} |{' '}
-              {globalTeams.length} {t('ui:label.teams')} |{' '}
-              {nodes.filter((n) => n.type === 'game').length} {t('ui:label.games')}
-            </span>
-          </div>
-        </Col>
-      </Row>
+      {/* Gameday Metadata Accordion */}
+      <GamedayMetadataAccordion 
+        metadata={metadata} 
+        onUpdate={handleUpdateMetadataWrapped} 
+        onPublish={handlePublishWrapped}
+        onUnlock={handleUnlockWrapped}
+        onClearAll={handleClearAll}
+        onDelete={handleDeleteGameday}
+        hasData={hasData}
+        defaultActiveKey={!hasData ? '0' : undefined}
+        readOnly={isLocked}
+      />
 
       {/* Main content */}
       <div className="list-designer-app__content">
@@ -260,8 +640,107 @@ const ListDesignerApp: React.FC = () => {
           onRemoveEdgeFromSlot={removeEdgeFromSlot}
           expandedFieldIds={expandedFieldIds}
           expandedStageIds={expandedStageIds}
+          onNotify={addNotification}
+          readOnly={isLocked}
         />
       </div>
+
+      {/* Status Bar - Validation summary (Footer) */}
+      <Row className="list-designer-app__status-bar">
+        <Col>
+          <div className="d-flex align-items-center gap-3 py-2 px-3 bg-light border-top shadow-sm">
+            {validation.isValid && validation.warnings.length === 0 ? (
+              <span className="text-success">
+                <i className="bi bi-check-circle-fill me-2"></i>
+                {t('validation:scheduleValid')}
+              </span>
+            ) : (
+              <>
+                {validation.errors.length > 0 && (
+                  <OverlayTrigger
+                    trigger="click"
+                    rootClose
+                    placement="top"
+                    overlay={
+                      <Popover id="errors-popover">
+                        <Popover.Header as="h3">
+                          {t('validation:errorCount', { count: validation.errors.length })}
+                        </Popover.Header>
+                        <Popover.Body className="p-0">
+                          <ListGroup variant="flush">
+                            {validation.errors.map((error) => (
+                              <ListGroup.Item 
+                                key={error.id} 
+                                variant="danger" 
+                                action
+                                onClick={() => {
+                                  const nodeId = error.affectedNodes?.[0];
+                                  if (nodeId) handleHighlightElement(nodeId, getHighlightType(error.type));
+                                }}
+                                className="small"
+                              >
+                                {getMessage(error)}
+                              </ListGroup.Item>
+                            ))}
+                          </ListGroup>
+                        </Popover.Body>
+                      </Popover>
+                    }
+                  >
+                    <span className="text-danger" style={{ cursor: 'pointer' }}>
+                      <i className="bi bi-x-circle-fill me-1"></i>
+                      {t('validation:errorCount', { count: validation.errors.length })}
+                    </span>
+                  </OverlayTrigger>
+                )}
+                {validation.warnings.length > 0 && (
+                  <OverlayTrigger
+                    trigger="click"
+                    rootClose
+                    placement="top"
+                    overlay={
+                      <Popover id="warnings-popover">
+                        <Popover.Header as="h3">
+                          {t('validation:warningCount', { count: validation.warnings.length })}
+                        </Popover.Header>
+                        <Popover.Body className="p-0">
+                          <ListGroup variant="flush">
+                            {validation.warnings.map((warning) => (
+                              <ListGroup.Item 
+                                key={warning.id} 
+                                variant="warning" 
+                                action
+                                onClick={() => {
+                                  const nodeId = warning.affectedNodes?.[0];
+                                  if (nodeId) handleHighlightElement(nodeId, getHighlightType(warning.type));
+                                }}
+                                className="small"
+                              >
+                                {getMessage(warning)}
+                              </ListGroup.Item>
+                            ))}
+                          </ListGroup>
+                        </Popover.Body>
+                      </Popover>
+                    }
+                  >
+                    <span className="text-warning" style={{ cursor: 'pointer' }}>
+                      <i className="bi bi-exclamation-triangle-fill me-1"></i>
+                      {t('validation:warningCount', { count: validation.warnings.length })}
+                    </span>
+                  </OverlayTrigger>
+                )}
+              </>
+            )}
+            <span className="text-muted small ms-auto">
+              {nodes.filter((n) => n.type === 'field').length} {t('ui:label.fields')} |{' '}
+              {nodes.filter((n) => n.type === 'stage').length} {t('ui:label.stages')} |{' '}
+              {globalTeams.length} {t('ui:label.teams')} |{' '}
+              {nodes.filter((n) => n.type === 'game').length} {t('ui:label.games')}
+            </span>
+          </div>
+        </Col>
+      </Row>
 
       {/* Tournament Generator Modal */}
       <TournamentGeneratorModal
@@ -271,10 +750,33 @@ const ListDesignerApp: React.FC = () => {
         onGenerate={handleGenerateTournament}
       />
 
+      {/* Publish Confirmation Modal */}
+      <PublishConfirmationModal
+        show={showPublishModal}
+        onHide={() => setShowPublishModal(false)}
+        onConfirm={handleConfirmPublish}
+        validation={validation}
+        onHighlight={handleHighlightElement}
+      />
+
       {/* Global Notifications */}
       <NotificationToast 
         notifications={notifications} 
         onClose={dismissNotification} 
+      />
+
+      {/* Game Result Modal */}
+      <GameResultModal
+        show={showResultModal}
+        onHide={() => {
+          setShowResultModal(false);
+          setActiveGameId(null);
+          handleSelectNode(null);
+        }}
+        onSave={handleSaveResult}
+        game={activeGame as any}
+        homeTeamName={activeGame ? (activeGame.data.homeTeamId ? globalTeams.find(t => t.id === activeGame.data.homeTeamId)?.label || 'Home' : 'Home') : 'Home'}
+        awayTeamName={activeGame ? (activeGame.data.awayTeamId ? globalTeams.find(t => t.id === activeGame.data.awayTeamId)?.label || 'Away' : 'Away') : 'Away'}
       />
     </Container>
   );

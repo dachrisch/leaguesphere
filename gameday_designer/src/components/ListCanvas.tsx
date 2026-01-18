@@ -45,39 +45,45 @@ export interface ListCanvasProps {
   highlightedElement?: HighlightedElement | null;
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
+  onNotify?: (message: string, type: import('../types/designer').NotificationType, title?: string) => void;
+  readOnly?: boolean;
 }
 
-const ListCanvas: React.FC<ListCanvasProps> = memo(({
-  nodes,
-  edges,
-  globalTeams,
-  globalTeamGroups,
-  onUpdateNode,
-  onDeleteNode,
-  onAddField,
-  onAddStage,
-  onSelectNode,
-  selectedNodeId,
-  onAddGlobalTeam,
-  onUpdateGlobalTeam,
-  onDeleteGlobalTeam,
-  onReorderGlobalTeam,
-  onAddGlobalTeamGroup,
-  onUpdateGlobalTeamGroup,
-  onDeleteGlobalTeamGroup,
-  onReorderGlobalTeamGroup,
-  getTeamUsage,
-  onAssignTeam,
-  onAddGame,
-  onAddGameToGameEdge,
-  onAddStageToGameEdge,
-  onRemoveEdgeFromSlot,
-  expandedFieldIds,
-  expandedStageIds,
-  highlightedElement,
-  highlightedSourceGameId,
-  onDynamicReferenceClick,
-}) => {
+const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
+  const {
+    nodes,
+    edges,
+    globalTeams,
+    globalTeamGroups,
+    onUpdateNode,
+    onDeleteNode,
+    onAddField,
+    onAddStage,
+    onSelectNode,
+    selectedNodeId,
+    onAddGlobalTeam,
+    onUpdateGlobalTeam,
+    onDeleteGlobalTeam,
+    onReorderGlobalTeam,
+    onAddGlobalTeamGroup,
+    onUpdateGlobalTeamGroup,
+    onDeleteGlobalTeamGroup,
+    onReorderGlobalTeamGroup,
+    getTeamUsage,
+    onAssignTeam,
+    onAddGame,
+    onAddGameToGameEdge,
+    onAddStageToGameEdge,
+    onRemoveEdgeFromSlot,
+    expandedFieldIds,
+    expandedStageIds,
+    highlightedElement,
+    highlightedSourceGameId,
+    onDynamicReferenceClick,
+    onNotify,
+    readOnly = false,
+  } = props;
+
   const { t } = useTypedTranslation(['ui']);
   const [isTeamPoolExpanded, setIsTeamPoolExpanded] = useState(true);
 
@@ -124,16 +130,18 @@ const ListCanvas: React.FC<ListCanvasProps> = memo(({
                   <i className={`bi ${ICONS.COLLAPSED} me-2`} />
                   <i className={`bi ${ICONS.TEAM} me-2`} />
                   <strong>{t('ui:label.teamPool')}</strong>
-                  <Button 
-                    size="sm" 
-                    variant="outline-primary" 
-                    onClick={handleAddGroupHeader} 
-                    className="ms-auto btn-adaptive"
-                    title={t('ui:tooltip.addGroup')}
-                  >
-                    <i className={`bi ${ICONS.ADD} me-2`} />
-                    <span className="btn-label-adaptive">{t('ui:button.addGroup')}</span>
-                  </Button>
+                  {!readOnly && (
+                    <Button 
+                      size="sm" 
+                      variant="outline-primary" 
+                      onClick={handleAddGroupHeader} 
+                      className="ms-auto btn-adaptive"
+                      title={t('ui:tooltip.addGroup')}
+                    >
+                      <i className={`bi ${ICONS.ADD} me-2`} />
+                      <span className="btn-label-adaptive">{t('ui:button.addGroup')}</span>
+                    </Button>
+                  )}
                 </Card.Header>
                 <Card.Body>
                   <GlobalTeamTable
@@ -150,6 +158,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo(({
                     onReorder={onReorderGlobalTeam}
                     getTeamUsage={getTeamUsage}
                     allNodes={nodes}
+                    readOnly={readOnly}
                   />
                 </Card.Body>
               </>
@@ -173,16 +182,18 @@ const ListCanvas: React.FC<ListCanvasProps> = memo(({
             <Card.Header className="d-flex align-items-center">
               <i className={`bi ${ICONS.FIELD} me-2`} />
               <strong>{t('ui:label.fields')}</strong>
-              <Button 
-                size="sm" 
-                variant="outline-primary" 
-                onClick={onAddField} 
-                className="ms-auto btn-adaptive"
-                title={t('ui:tooltip.addField')}
-              >
-                <i className={`bi ${ICONS.ADD} me-2`} />
-                <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
-              </Button>
+              {!readOnly && (
+                <Button 
+                  size="sm" 
+                  variant="outline-primary" 
+                  onClick={onAddField} 
+                  className="ms-auto btn-adaptive"
+                  title={t('ui:tooltip.addField')}
+                >
+                  <i className={`bi ${ICONS.ADD} me-2`} />
+                  <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
+                </Button>
+              )}
             </Card.Header>
             <Card.Body>
               {fields.length === 0 ? (
@@ -190,15 +201,17 @@ const ListCanvas: React.FC<ListCanvasProps> = memo(({
                   <i className={`bi ${ICONS.FIELD}`} style={{ fontSize: '4rem', opacity: 0.3 }} />
                   <h3 className="mt-3">{t('ui:message.noFieldsYet')}</h3>
                   <p className="text-muted mb-3">{t('ui:message.createFirstField')}</p>
-                  <Button 
-                    variant="outline-primary" 
-                    onClick={onAddField} 
-                    className="btn-adaptive"
-                    title={t('ui:tooltip.addField')}
-                  >
-                    <i className={`bi ${ICONS.ADD} me-2`} />
-                    <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
-                  </Button>
+                  {!readOnly && (
+                    <Button 
+                      variant="outline-primary" 
+                      onClick={onAddField} 
+                      className="btn-adaptive"
+                      title={t('ui:tooltip.addField')}
+                    >
+                      <i className={`bi ${ICONS.ADD} me-2`} />
+                      <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="fields-grid compact-actions">
@@ -226,6 +239,8 @@ const ListCanvas: React.FC<ListCanvasProps> = memo(({
                       highlightedElement={highlightedElement}
                       highlightedSourceGameId={highlightedSourceGameId}
                       onDynamicReferenceClick={onDynamicReferenceClick}
+                      onNotify={onNotify}
+                      readOnly={readOnly}
                     />
                   ))}
                 </div>

@@ -193,6 +193,10 @@ export interface Notification {
   show: boolean;
   /** Optional title for the notification */
   title?: string;
+  /** Optional callback to undo the action */
+  undoAction?: () => void;
+  /** Optional duration in milliseconds (defaults to 5000) */
+  duration?: number;
 }
 
 /**
