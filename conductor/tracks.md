@@ -38,5 +38,25 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Initialize Gameday Designer Tracks from Issue #665**
+- [x] **Track: Initialize Gameday Designer Tracks from Issue #665**
 *Link: [./tracks/init-designer-tracks-665_20260121/](./tracks/init-designer-tracks-665_20260121/)*
+
+---
+
+- [ ] **Track: Critical UI & Navigation Fixes**
+*Link: [./tracks/critical-ui-fixes-665_20260121/](./tracks/critical-ui-fixes-665_20260121/)*
+
+---
+
+- [ ] **Track: Generation & Data Integrity Fixes**
+*Link: [./tracks/data-integrity-fixes-665_20260121/](./tracks/data-integrity-fixes-665_20260121/)*
+
+---
+
+- [ ] **Track: Feature Completeness**
+*Link: [./tracks/feature-completeness-665_20260121/](./tracks/feature-completeness-665_20260121/)*
+
+---
+
+- [ ] **Track: UI & Tooling Enhancements**
+*Link: [./tracks/ui-tooling-enhancements-665_20260121/](./tracks/ui-tooling-enhancements-665_20260121/)*
