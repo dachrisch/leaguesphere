@@ -58,7 +58,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [x] **Track: Upgrade pandas dependency to v3 (PR #769)**
+- [x] **Track: Upgrade pandas dependency to v3 (PR #769)** [merged]
 *Link: [./tracks/pandas-v3-upgrade_20260122/](./tracks/pandas-v3-upgrade_20260122/)*
 
 ---
