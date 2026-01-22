@@ -380,6 +380,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                   variant="outline-danger" 
                   size="sm"
                   onClick={onDelete}
+                  disabled={metadata.status !== 'DRAFT'}
                   className="px-3"
                 >
                   <i className={`bi ${ICONS.TRASH} me-2`}></i>

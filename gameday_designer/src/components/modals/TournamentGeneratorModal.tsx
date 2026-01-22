@@ -119,9 +119,9 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
 
     onGenerate({
       template: {
-        ...selectedTemplate,
+        ...selectedTemplate!,
         timing: {
-          ...selectedTemplate.timing,
+          ...selectedTemplate!.timing,
           defaultGameDuration: gameDuration,
           defaultBreakBetweenGames: breakDuration,
         },
@@ -325,6 +325,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
           variant="primary"
           onClick={handleGenerate}
           disabled={!canGenerate}
+          data-testid="confirm-generate-button"
         >
           <i className="bi bi-lightning-fill me-1"></i>
           {t('ui:button.generateTournament')}

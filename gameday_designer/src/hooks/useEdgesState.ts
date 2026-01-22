@@ -133,24 +133,46 @@ export function useEdgesState(
       outputType: GameOutputHandle;
       targetGameId: string;
       targetSlot: GameInputHandle;
-    }>): string[] => {
-      if (edgesToAdd.length === 0) return [];
+    }>, clearExisting: boolean = false): string[] => {
+      if (edgesToAdd.length === 0) {
+        if (clearExisting) setEdges([]);
+        return [];
+      }
 
       const newEdges = edgesToAdd.map(({ sourceGameId, outputType, targetGameId, targetSlot }) => {
         const edgeId = `edge-${uuidv4()}`;
         return createGameToGameEdge(edgeId, sourceGameId, outputType, targetGameId, targetSlot);
       });
 
-      setEdges(eds => [...eds, ...newEdges]);
+      setEdges(eds => {
+        const base = clearExisting ? [] : eds;
+        return [...base, ...newEdges];
+      });
 
       // Perform atomic sync for all affected nodes
       setNodes(nds => nds.map(node => {
         if (!isGameNode(node)) return node;
         
         const relevantNewEdges = newEdges.filter(e => e.target === node.id);
-        if (relevantNewEdges.length === 0) return node;
+        if (relevantNewEdges.length === 0) {
+          if (clearExisting) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                homeTeamDynamic: null,
+                awayTeamDynamic: null,
+              }
+            };
+          }
+          return node;
+        }
 
         const newData = { ...node.data };
+        if (clearExisting) {
+          newData.homeTeamDynamic = null;
+          newData.awayTeamDynamic = null;
+        }
         relevantNewEdges.forEach(edge => {
           const dynamicRef = deriveDynamicRef(edge, nds);
           if (edge.targetHandle === 'home') {

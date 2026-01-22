@@ -61,7 +61,7 @@ export function generateTournament(
   const finalGameDuration = gameDuration ?? template.timing.defaultGameDuration;
   const finalBreakDuration = breakDuration ?? template.timing.defaultBreakBetweenGames;
   
-  let stages = createStages(template, fields, startTime, finalGameDuration, finalBreakDuration);
+  let stages = createStages(template, fields, startTime, finalGameDuration, finalBreakDuration, teams);
 
   // 3. Generate games for each stage
   let games = generateGamesForStages(stages);
@@ -200,7 +200,8 @@ function createStages(
   fields: FieldNode[],
   startTime: string,
   gameDuration: number,
-  breakDuration: number
+  breakDuration: number,
+  teams: GlobalTeam[]
 ): StageNode[] {
   const stages: StageNode[] = [];
   let stageOrderCounter = 0;
@@ -232,10 +233,10 @@ function createStages(
       
       // Calculate groupCount if not explicitly provided
       if (groupCount === undefined && stageTemplate.progressionMode === 'round_robin') {
-        const totalTeams = template.teamCount.exact || template.teamCount.min;
+        const actualTeamCount = teams.length;
         const teamsPerGroup = (stageTemplate.config as RoundRobinConfig).teamCount;
         if (teamsPerGroup > 0) {
-          groupCount = Math.floor(totalTeams / teamsPerGroup);
+          groupCount = Math.floor(actualTeamCount / teamsPerGroup);
         }
       }
       

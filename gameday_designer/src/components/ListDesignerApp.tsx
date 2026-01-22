@@ -226,6 +226,20 @@ const ListDesignerApp: React.FC = () => {
 
     const timer = setTimeout(async () => {
       if (metadata?.id && !isTransitioning && Date.now() >= pauseAutoSaveUntilRef.current) {
+        // Check for specific mandatory metadata errors before saving
+        const mandatoryErrors = validation.errors.filter(e => 
+          ['metadata_name_missing', 'metadata_date_missing', 'metadata_start_missing'].includes(e.id)
+        );
+
+        if (mandatoryErrors.length > 0) {
+          addNotification(
+            `${t('ui:notification.autoSaveFailed')}: ${mandatoryErrors.map(e => e.message).join(', ')}`,
+            'warning',
+            t('ui:notification.title.autoSave')
+          );
+          return;
+        }
+
         try {
           // Only send fields that exist in the backend model to avoid validation errors
           const { 
@@ -252,7 +266,7 @@ const ListDesignerApp: React.FC = () => {
     }, 1500); // 1.5s debounce
 
     return () => clearTimeout(timer);
-  }, [metadata, nodes, edges, fields, globalTeams, globalTeamGroups, loading, isTransitioning, addNotification, exportState, t, saveTrigger]);
+  }, [metadata, nodes, edges, fields, globalTeams, globalTeamGroups, validation.errors, loading, isTransitioning, addNotification, exportState, t, saveTrigger]);
 
   useEffect(() => {
     if (selectedNode?.type === 'game' && isLocked) {

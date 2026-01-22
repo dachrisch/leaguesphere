@@ -164,6 +164,14 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     onStateChange?.();
   }, [onStateChange]);
 
+  const clearSchedule = useCallback(() => {
+    setNodes([]);
+    setEdges([]);
+    setFields([]);
+    setSelection({ nodeIds: [], edgeIds: [] });
+    onStateChange?.();
+  }, [onStateChange]);
+
   const importState = useCallback((state: FlowState) => {
     if (state.metadata) {
       setMetadata(prev => ({
@@ -312,6 +320,7 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     updateMetadata,
     setSelection,
     clearAll,
+    clearSchedule,
     importState,
     exportState,
     getTargetStage,
@@ -329,6 +338,13 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     groupNames: useMemo(() => ['Gruppe 1', 'Gruppe 2', 'Gruppe A', 'Gruppe B'], []),
     addBulkGames: (games) => {
       setNodes((nds) => [...nds, ...games]);
+      onStateChange?.();
+    },
+    addBulkFields: (newFields: FlowField[], clearExisting: boolean = false) => {
+      setFields((prev) => {
+        const base = clearExisting ? [] : prev;
+        return [...base, ...newFields];
+      });
       onStateChange?.();
     },
     moveNodeToStage: () => {}, // Placeholder

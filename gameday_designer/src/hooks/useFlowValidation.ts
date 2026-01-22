@@ -24,6 +24,7 @@ import type {
   FlowField,
   GlobalTeam,
   GlobalTeamGroup,
+  GamedayMetadata,
 } from '../types/flowchart';
 import {
   isGameNode,
@@ -1231,6 +1232,46 @@ function checkBrokenDynamicProgressions(nodes: FlowNode[]): FlowValidationWarnin
 }
 
 /**
+ * Check for mandatory metadata (Name, Date, Start Time).
+ */
+function checkMandatoryMetadata(metadata?: GamedayMetadata): FlowValidationError[] {
+  const errors: FlowValidationError[] = [];
+  if (!metadata) return [];
+
+  if (!metadata.name || !metadata.name.trim()) {
+    errors.push({
+      id: 'metadata_name_missing',
+      type: 'incomplete_game_inputs',
+      message: 'Gameday Name is mandatory',
+      messageKey: 'metadata_name_missing',
+      affectedNodes: [],
+    });
+  }
+
+  if (!metadata.date) {
+    errors.push({
+      id: 'metadata_date_missing',
+      type: 'incomplete_game_inputs',
+      message: 'Gameday Date is mandatory',
+      messageKey: 'metadata_date_missing',
+      affectedNodes: [],
+    });
+  }
+
+  if (!metadata.start) {
+    errors.push({
+      id: 'metadata_start_missing',
+      type: 'incomplete_game_inputs',
+      message: 'Gameday Start Time is mandatory',
+      messageKey: 'metadata_start_missing',
+      affectedNodes: [],
+    });
+  }
+
+  return errors;
+}
+
+/**
  * useFlowValidation hook.
  *
  * Validates the flowchart and returns errors and warnings.
@@ -1240,6 +1281,7 @@ function checkBrokenDynamicProgressions(nodes: FlowNode[]): FlowValidationWarnin
  * @param fields - All fields in the tournament
  * @param globalTeams - Global team pool
  * @param globalTeamGroups - Team groups
+ * @param metadata - Gameday metadata
  * @returns Validation result with errors and warnings
  */
 export function useFlowValidation(
@@ -1247,10 +1289,12 @@ export function useFlowValidation(
   edges: FlowEdge[],
   fields: FlowField[] = [],
   globalTeams: GlobalTeam[] = [],
-  globalTeamGroups: GlobalTeamGroup[] = []
+  globalTeamGroups: GlobalTeamGroup[] = [],
+  metadata?: GamedayMetadata
 ): FlowValidationResult {
   return useMemo(() => {
     const errors: FlowValidationError[] = [
+      ...checkMandatoryMetadata(metadata),
       ...checkIncompleteInputs(nodes, edges),
       ...checkCircularDependencies(nodes, edges),
       ...checkOfficialPlaying(nodes, edges, globalTeams),
@@ -1282,5 +1326,5 @@ export function useFlowValidation(
       errors,
       warnings,
     };
-  }, [nodes, edges, fields, globalTeams, globalTeamGroups]);
+  }, [nodes, edges, fields, globalTeams, globalTeamGroups, metadata]);
 }

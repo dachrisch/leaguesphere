@@ -26,6 +26,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export function useDesignerController(flowState: UseFlowStateReturn) {
   const {
+    metadata,
     nodes,
     edges,
     fields,
@@ -39,6 +40,7 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
     selectNode,
     updateMetadata,
     clearAll,
+    clearSchedule,
     importState,
     exportState,
     addGlobalTeam,
@@ -48,10 +50,11 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
     addGlobalTeamGroup,
     assignTeamToGame,
     addBulkGameToGameEdges,
+    addBulkFields,
   } = flowState;
 
   // Validate the current flowchart
-  const validation = useFlowValidation(nodes, edges, fields, globalTeams, globalTeamGroups);
+  const validation = useFlowValidation(nodes, edges, fields, globalTeams, globalTeamGroups, metadata);
 
   // --- UI State ---
   const [highlightedElement, setHighlightedElement] = useState<HighlightedElement | null>(null);
@@ -139,13 +142,13 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
   }, [exportState, addNotification]);
 
   const assignTeamsToTournament = useCallback(
-    (structure: TournamentStructure, teams: GlobalTeam[]) => {
+    (structure: TournamentStructure, teams: GlobalTeam[], clearExisting: boolean = false) => {
       const operations = assignTeamsToTournamentGames(structure, teams);
       operations.forEach((op) => {
         if (op.type === 'assign_team') {
           assignTeamToGame(op.gameId, op.teamId, op.slot);
         } else if (op.type === 'add_edges') {
-          addBulkGameToGameEdges(op.edges);
+          addBulkGameToGameEdges(op.edges, clearExisting);
         }
       });
     },
@@ -155,7 +158,14 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
   const handleGenerateTournament = useCallback(
     async (config: TournamentGenerationConfig & { generateTeams: boolean; autoAssignTeams: boolean }) => {
       try {
+        // Auto-clear existing structure before generating new one
         let teamsToUse = globalTeams;
+        if (config.generateTeams) {
+          clearAll();
+          teamsToUse = []; // Start fresh if generating new teams
+        } else {
+          clearSchedule();
+        }
 
         if (config.generateTeams) {
           const teamCount = config.template.teamCount.exact || config.template.teamCount.min;
@@ -179,11 +189,12 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
         }
 
         const structure = generateTournament(teamsToUse, config);
-        addBulkTournament(structure);
+        addBulkTournament(structure, true);
+        addBulkFields(structure.fields.map(f => ({ id: f.id, name: f.data.name, order: f.data.order, color: f.data.color })), true);
 
         if (config.autoAssignTeams && teamsToUse.length > 0) {
           setTimeout(() => {
-            assignTeamsToTournament(structure, teamsToUse);
+            assignTeamsToTournament(structure, teamsToUse, true);
           }, TOURNAMENT_GENERATION_STATE_DELAY);
         }
         
@@ -194,7 +205,7 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
         addNotification('Failed to generate tournament. See console for details.', 'danger', 'Generation Error');
       }
     },
-    [globalTeams, globalTeamGroups, addBulkTournament, addGlobalTeam, addGlobalTeamGroup, updateGlobalTeam, assignTeamsToTournament, addNotification]
+    [globalTeams, globalTeamGroups, clearAll, clearSchedule, addBulkTournament, addBulkFields, addGlobalTeam, addGlobalTeamGroup, updateGlobalTeam, assignTeamsToTournament, addNotification]
   );
 
   const canExport = useMemo(() => {
