@@ -58,12 +58,12 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [x] **Track: Upgrade pandas dependency to v3 (PR #769)**
+- [x] **Track: Upgrade pandas dependency to v3 (PR #769)** [merged]
 *Link: [./tracks/pandas-v3-upgrade_20260122/](./tracks/pandas-v3-upgrade_20260122/)*
 
 ---
 
-- [~] **Track: Upgrade jquery dependency to v4 (PR #759)**
+- [x] **Track: Upgrade jquery dependency to v4 (PR #759)**
 *Link: [./tracks/jquery-v4-upgrade_20260122/](./tracks/jquery-v4-upgrade_20260122/)*
 
 ---

@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import Timeout from './Timeout';
 import { FaArrowLeft, FaArrowRight, FaCheck, FaTimes } from 'react-icons/fa';
 import Timer from '../layout/Timer';
-import $ from 'jquery/src/jquery';
+import $ from 'jquery';
 import { getGameSetup } from '../../actions/gamesetup';
 import { createLogEntry } from '../../actions/games';
 import { connect } from 'react-redux';
