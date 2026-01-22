@@ -68,5 +68,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Upgrade django dependency to v6 (PR #660)**
+- [~] **Track: Upgrade django dependency to v6 (PR #660)**
 *Link: [./tracks/django-v6-upgrade_20260122/](./tracks/django-v6-upgrade_20260122/)*
