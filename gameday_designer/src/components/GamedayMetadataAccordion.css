@@ -35,3 +35,20 @@
   box-shadow: none;
   border-color: rgba(0,0,0,.125);
 }
+
+.gameday-metadata-accordion .header-container {
+  display: flex;
+  width: 100%;
+  align-items: center;
+}
+
+.gameday-metadata-accordion .publish-button-container {
+  position: absolute;
+  right: 3.5rem; /* Space for the accordion arrow */
+  z-index: 5;
+}
+
+/* Ensure the accordion button doesn't respond to clicks on the publish button */
+.gameday-metadata-accordion .accordion-header {
+  position: relative;
+}

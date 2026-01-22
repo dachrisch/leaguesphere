@@ -43,7 +43,7 @@ describe('Final Coverage Polish', () => {
     );
 
     // Expand accordion to see fields
-    fireEvent.click(screen.getByTestId('gameday-metadata-header').querySelector('button')!);
+    fireEvent.click(screen.getByTestId('gameday-metadata-header').querySelector('.accordion-button')!);
 
     // Change Name
     fireEvent.change(screen.getByLabelText(/Name/i), { target: { value: 'New Name' } });
@@ -110,6 +110,49 @@ describe('Final Coverage Polish', () => {
         }));
         expect(gamedayApi.getGameday).toHaveBeenCalledWith(1);
         expect(mockController.updateMetadata).toHaveBeenCalled();
+    });
+  });
+
+  it('ListDesignerApp: handleSaveResult failure path', async () => {
+    const mockGame = { id: 'game-123', type: 'game', data: {} };
+    const mockController = {
+        metadata: { ...defaultMetadata, status: 'PUBLISHED' },
+        nodes: [mockGame],
+        edges: [],
+        fields: [],
+        globalTeams: [],
+        globalTeamGroups: [],
+        selectedNode: mockGame,
+        validation: { isValid: true, errors: [], warnings: [] },
+        notifications: [],
+        ui: { hasData: true },
+        handlers: mockHandlers,
+        updateMetadata: vi.fn(),
+        exportState: vi.fn().mockReturnValue({}),
+    };
+    vi.mocked(useDesignerController).mockReturnValue(mockController as unknown as ReturnType<typeof useDesignerController>);
+    vi.mocked(gamedayApi.updateGameResult).mockRejectedValue(new Error('Save Error'));
+
+    render(
+      <MemoryRouter initialEntries={['/designer/1']}>
+        <GamedayProvider>
+          <Routes>
+            <Route path="/designer/:id" element={<ListDesignerApp />} />
+          </Routes>
+        </GamedayProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+        expect(mockHandlers.addNotification).toHaveBeenCalledWith(
+            expect.stringContaining('Failed to save game result'),
+            'danger',
+            'Error'
+        );
     });
   });
 });

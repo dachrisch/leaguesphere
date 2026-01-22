@@ -194,7 +194,7 @@ describe('ListDesignerApp', () => {
       const { user } = await renderApp();
       
       const metadataHeader = screen.getByTestId('gameday-metadata-header');
-      const accordionBtn = within(metadataHeader).getByRole('button');
+      const accordionBtn = metadataHeader.querySelector('.accordion-button') as HTMLElement;
       await user.click(accordionBtn);
       
       const clearBtn = await screen.findByRole('button', { name: /clear schedule/i });

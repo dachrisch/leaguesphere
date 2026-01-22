@@ -30,27 +30,27 @@ describe('GamedayMetadataAccordion', () => {
     expect(screen.getByText('Test Gameday')).toBeInTheDocument();
     expect(screen.getByText('01.05.2026')).toBeInTheDocument();
     
-    const button = screen.getByRole('button', { name: /Test Gameday/ });
+    const button = document.querySelector('.accordion-button');
     expect(button).toHaveClass('collapsed');
   });
 
   it('expands to show form fields and action buttons', () => {
     render(<GamedayMetadataAccordion metadata={mockMetadata} onUpdate={mockOnUpdate} />);
     
-    fireEvent.click(screen.getByRole('button', { name: /Test Gameday/ }));
+    fireEvent.click(document.querySelector('.accordion-button')!);
     
     expect(screen.getByLabelText('Name')).toBeVisible();
     expect(screen.getByLabelText('Date')).toBeVisible();
     
     // Action buttons should now be in the body
-    expect(screen.getByText('Publish Schedule')).toBeInTheDocument();
+    expect(screen.getByTestId('publish-schedule-button')).toBeInTheDocument();
     expect(screen.getByText('Clear Schedule')).toBeInTheDocument();
     expect(screen.getByText('Delete Gameday')).toBeInTheDocument();
   });
 
   it('calls onUpdate when fields change', () => {
     render(<GamedayMetadataAccordion metadata={mockMetadata} onUpdate={mockOnUpdate} />);
-    fireEvent.click(screen.getByRole('button', { name: /Test Gameday/ }));
+    fireEvent.click(document.querySelector('.accordion-button')!);
 
     const nameInput = screen.getByLabelText('Name');
     fireEvent.change(nameInput, { target: { value: 'Updated Name' } });
