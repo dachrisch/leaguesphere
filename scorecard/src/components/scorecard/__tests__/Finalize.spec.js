@@ -9,11 +9,11 @@ import {apiPut} from '../../../actions/utils/api';
 import {GAME_LOG_COMPLETE_GAME} from '../../../__tests__/testdata/gameLogData';
 import Finalize from '../Finalize';
 import {DETAILS_URL, FINALIZE_URL} from '../../common/urls';
-import $ from 'jquery/src/jquery';
+import $ from 'jquery';
 import { vi } from 'vitest';
 
 const modalMock = vi.fn();
-vi.mock('jquery/src/jquery', () => ({ default: vi.fn() }));
+vi.mock('jquery', () => ({ default: vi.fn() }));
 $.mockImplementation(() => {
   return {modal: modalMock};
 });

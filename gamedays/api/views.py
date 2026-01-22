@@ -46,13 +46,19 @@ class GamedayViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         if instance.status != Gameday.STATUS_DRAFT:
             return Response(
-                {"detail": "Published gamedays cannot be deleted. Please unlock the gameday first."},
+                {
+                    "detail": "Published gamedays cannot be deleted. Please unlock the gameday first."
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
         return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = Gameday.objects.all().select_related("season", "league", "author").order_by("-date")
+        queryset = (
+            Gameday.objects.all()
+            .select_related("season", "league", "author")
+            .order_by("-date")
+        )
         search = self.request.query_params.get("search", "")
         if search:
             if ":" in search:
@@ -217,4 +223,3 @@ class GameResultUpdateAPIView(APIView):
             gameday.save()
 
         return Response(GameinfoSerializer(game).data, status=status.HTTP_200_OK)
-

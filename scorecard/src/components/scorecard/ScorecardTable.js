@@ -1,7 +1,7 @@
 
 import React, {useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
-import $ from 'jquery/src/jquery';
+import $ from 'jquery';
 import {connect} from 'react-redux';
 
 const ScorecardTable = (props) => {
