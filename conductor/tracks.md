@@ -55,3 +55,18 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [ ] **Track: UI & Tooling Enhancements**
 *Link: [./tracks/ui-tooling-enhancements-665_20260121/](./tracks/ui-tooling-enhancements-665_20260121/)*
+
+---
+
+- [x] **Track: Upgrade pandas dependency to v3 (PR #769)**
+*Link: [./tracks/pandas-v3-upgrade_20260122/](./tracks/pandas-v3-upgrade_20260122/)*
+
+---
+
+- [~] **Track: Upgrade jquery dependency to v4 (PR #759)**
+*Link: [./tracks/jquery-v4-upgrade_20260122/](./tracks/jquery-v4-upgrade_20260122/)*
+
+---
+
+- [ ] **Track: Upgrade django dependency to v6 (PR #660)**
+*Link: [./tracks/django-v6-upgrade_20260122/](./tracks/django-v6-upgrade_20260122/)*
