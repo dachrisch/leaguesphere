@@ -5,6 +5,10 @@ body.designer-active {
   overflow: hidden !important;
 }
 
+.navbar {
+  z-index: 1050; /* Above regular content but below modals */
+}
+
 .list-designer-app {
   height: 100% !important;
   max-height: 100% !important;
@@ -154,6 +158,5 @@ body.designer-active {
 }
 
 .delete-button-grow:hover {
-  transform: scale(1.2);
   color: #dc3545 !important;
 }
