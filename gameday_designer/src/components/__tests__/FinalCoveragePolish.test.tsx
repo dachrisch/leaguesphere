@@ -43,7 +43,7 @@ describe('Final Coverage Polish', () => {
     );
 
     // Expand accordion to see fields
-    fireEvent.click(screen.getByTestId('gameday-metadata-header').querySelector('button')!);
+    fireEvent.click(screen.getByTestId('gameday-metadata-header').querySelector('.accordion-button')!);
 
     // Change Name
     fireEvent.change(screen.getByLabelText(/Name/i), { target: { value: 'New Name' } });

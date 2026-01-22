@@ -219,7 +219,7 @@ describe('ListDesignerApp Coverage', () => {
 
     await renderApp();
 
-    fireEvent.click(screen.getByTestId('gameday-metadata-header').querySelector('button')!);
+    fireEvent.click(screen.getByTestId('gameday-metadata-header').querySelector('.accordion-button')!);
     
     const unlockBtn = screen.getByRole('button', { name: /unlock schedule/i });
     fireEvent.click(unlockBtn);
