@@ -3,7 +3,7 @@ import React, {useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {FaCheck, FaStopwatch, FaTimes} from 'react-icons/fa';
 import Timer from '../layout/Timer';
-import $ from 'jquery/src/jquery';
+import $ from 'jquery';
 
 const Timeout = (props) => {
   const {teamName = 'TeamName', modId, isSecondHalf, onSubmit: updateParent} = props;
