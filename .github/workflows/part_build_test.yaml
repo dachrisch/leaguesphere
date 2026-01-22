@@ -17,7 +17,7 @@ jobs:
         python-version: [ '3.12', '3.13', '3.14' ]
     services:
       mysql:
-        image: mysql:9.5
+        image: mysql:9.6
         env:
           # The MySQL docker container requires these environment variables to be set
           # so we can create and migrate the test database.
@@ -60,7 +60,7 @@ jobs:
         # secrets not directly accessible https://stackoverflow.com/questions/72925899/github-actions-detect-if-secret-exists
         env:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
-        if: ${{ env.codecov_token != '' }}
+        if: env.codecov_token != ''
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -68,7 +68,8 @@ jobs:
         # secrets not directly accessible https://stackoverflow.com/questions/72925899/github-actions-detect-if-secret-exists
         env:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
-        if: success() || failure() && ${{ env.codecov_token != '' }} # always run even if the previous step fails
-        uses: codecov/test-results-action@v1
+        if: (success() || failure()) && env.codecov_token != '' # always run even if the previous step fails
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results

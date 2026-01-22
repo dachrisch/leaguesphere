@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "accounts",
     "knox",
     "passcheck",
+    "gameday_designer",
     "health_check",
     "health_check.contrib.db_heartbeat",
 ]
@@ -148,7 +149,10 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
     ),
-    "DEFAULT_AUTHENTICATION_CLASSES": ("knox.auth.TokenAuthentication",),
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "knox.auth.TokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ),
 }
 
 DATABASES = {

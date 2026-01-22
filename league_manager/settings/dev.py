@@ -18,9 +18,14 @@ ALLOWED_HOSTS = [
     "lm.servyy-test.lxd",
     "lm.servyy-test",
     "lm.lehel.xyz",
+    "stage.leaguesphere.servyy-test.lxd",
 ]
 
-CSRF_TRUSTED_ORIGINS = ["https://lm.lehel.xyz", "https://lm.servyy-test.lxd"]
+CSRF_TRUSTED_ORIGINS = [
+    "https://lm.lehel.xyz",
+    "https://lm.servyy-test.lxd",
+    "https://stage.leaguesphere.servyy-test.lxd",
+]
 
 # Sitemap domain for development
 SITEMAP_DOMAIN = "localhost:8000"
