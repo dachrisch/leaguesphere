@@ -190,6 +190,51 @@ describe('ListDesignerApp Coverage', () => {
     }));
   });
 
+  it('handles publish success', async () => {
+    (gamedayApi.publish as Mock).mockResolvedValue({ ...defaultMockReturn.metadata, status: 'PUBLISHED' });
+    
+    await renderApp();
+
+    const publishBtn = screen.getByTestId('publish-schedule-button');
+    fireEvent.click(publishBtn);
+
+    const confirmBtn = screen.getByRole('button', { name: /publish now/i });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+        expect(gamedayApi.publish).toHaveBeenCalledWith(1);
+        expect(mockHandlers.addNotification).toHaveBeenCalledWith(
+            expect.stringContaining('published and locked'),
+            'success',
+            'Success'
+        );
+    });
+  });
+
+  it('handles unlock success', async () => {
+    (useDesignerController as Mock).mockReturnValue({
+        ...defaultMockReturn,
+        metadata: { ...defaultMockReturn.metadata, status: 'PUBLISHED' }
+    });
+    (gamedayApi.patchGameday as Mock).mockResolvedValue({ ...defaultMockReturn.metadata, status: 'DRAFT' });
+
+    await renderApp();
+
+    fireEvent.click(screen.getByTestId('gameday-metadata-header').querySelector('.accordion-button')!);
+    
+    const unlockBtn = screen.getByRole('button', { name: /unlock schedule/i });
+    fireEvent.click(unlockBtn);
+
+    await waitFor(() => {
+        expect(gamedayApi.patchGameday).toHaveBeenCalledWith(1, { status: 'DRAFT' });
+        expect(mockHandlers.addNotification).toHaveBeenCalledWith(
+            expect.stringContaining('unlocked for editing'),
+            'warning',
+            'Success'
+        );
+    });
+  });
+
   it('handles publish failure', async () => {
     (gamedayApi.publish as Mock).mockRejectedValue(new Error('Publish Error'));
     
