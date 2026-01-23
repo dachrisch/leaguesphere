@@ -137,7 +137,6 @@ export interface ApiError {
 export interface Season {
   id: number;
   name: string;
-  year: number;
 }
 
 /**
@@ -146,7 +145,6 @@ export interface Season {
 export interface League {
   id: number;
   name: string;
-  description: string;
 }
 
 /**

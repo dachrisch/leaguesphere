@@ -228,7 +228,7 @@ class GameResultUpdateAPIView(APIView):
 
 
 class SeasonViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Season.objects.all().order_by("-year")
+    queryset = Season.objects.all().order_by("-name")
     serializer_class = SeasonSerializer
     pagination_class = None
 

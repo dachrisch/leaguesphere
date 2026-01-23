@@ -7,13 +7,13 @@ from gamedays.models import Gameday, Gameinfo, GameOfficial, GameSetup, Season, 
 class SeasonSerializer(ModelSerializer):
     class Meta:
         model = Season
-        fields = ["id", "name", "year"]
+        fields = ["id", "name"]
 
 
 class LeagueSerializer(ModelSerializer):
     class Meta:
         model = League
-        fields = ["id", "name", "description"]
+        fields = ["id", "name"]
 
 
 class GamedaySerializer(ModelSerializer):

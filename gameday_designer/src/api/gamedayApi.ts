@@ -153,8 +153,8 @@ class GamedayApi {
    */
   async listSeasons(): Promise<Season[]> {
     if (this.isDev && !this.forceClient) return [
-      { id: 1, name: '2026 Season', year: 2026 },
-      { id: 2, name: '2025 Season', year: 2025 }
+      { id: 1, name: '2026 Season' },
+      { id: 2, name: '2025 Season' }
     ];
     const response = await this.client.get<Season[]>('/seasons/');
     return response.data;
@@ -165,8 +165,8 @@ class GamedayApi {
    */
   async listLeagues(): Promise<League[]> {
     if (this.isDev && !this.forceClient) return [
-      { id: 1, name: 'DFFL', description: 'Deutsche Flag Football Liga' },
-      { id: 2, name: 'DFFL2', description: '2. Deutsche Flag Football Liga' }
+      { id: 1, name: 'DFFL' },
+      { id: 2, name: 'DFFL2' }
     ];
     const response = await this.client.get<League[]>('/leagues/');
     return response.data;
