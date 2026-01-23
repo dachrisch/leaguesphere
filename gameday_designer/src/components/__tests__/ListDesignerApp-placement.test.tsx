@@ -41,6 +41,8 @@ vi.mock('../../api/gamedayApi', () => ({
       season: 1,
       league: 1,
     }),
+    listSeasons: vi.fn().mockResolvedValue([]),
+    listLeagues: vi.fn().mockResolvedValue([]),
   },
 }));
 

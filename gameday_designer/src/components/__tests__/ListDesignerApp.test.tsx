@@ -44,6 +44,8 @@ vi.mock('../../api/gamedayApi', () => ({
       status: 'DRAFT',
     }),
     patchGameday: vi.fn().mockResolvedValue({}),
+    listSeasons: vi.fn().mockResolvedValue([]),
+    listLeagues: vi.fn().mockResolvedValue([]),
   },
 }));
 
