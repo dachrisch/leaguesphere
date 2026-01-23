@@ -1,7 +1,19 @@
 from rest_framework.fields import SerializerMethodField, IntegerField, JSONField
 from rest_framework.serializers import ModelSerializer, Serializer
 
-from gamedays.models import Gameday, Gameinfo, GameOfficial, GameSetup
+from gamedays.models import Gameday, Gameinfo, GameOfficial, GameSetup, Season, League
+
+
+class SeasonSerializer(ModelSerializer):
+    class Meta:
+        model = Season
+        fields = ["id", "name", "year"]
+
+
+class LeagueSerializer(ModelSerializer):
+    class Meta:
+        model = League
+        fields = ["id", "name", "description"]
 
 
 class GamedaySerializer(ModelSerializer):

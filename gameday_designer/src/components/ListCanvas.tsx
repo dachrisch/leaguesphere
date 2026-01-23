@@ -36,9 +36,10 @@ export interface ListCanvasProps {
   onReorderGlobalTeamGroup: (groupId: string, direction: 'up' | 'down') => void;
   getTeamUsage: (teamId: string) => { gameId: string; slot: 'home' | 'away' }[];
   onAssignTeam: (gameId: string, teamId: string, slot: 'home' | 'away') => void;
+  onSwapTeams: (gameId: string) => void;
   onAddGame: (stageId: string) => void;
   onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
-  onAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away') => void;
+  onAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away', sourceGroup?: string) => void;
   onRemoveEdgeFromSlot: (targetGameId: string, targetSlot: 'home' | 'away') => void;
   expandedFieldIds: Set<string>;
   expandedStageIds: Set<string>;
@@ -71,6 +72,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
     onReorderGlobalTeamGroup,
     getTeamUsage,
     onAssignTeam,
+    onSwapTeams,
     onAddGame,
     onAddGameToGameEdge,
     onAddStageToGameEdge,
@@ -230,6 +232,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                       onSelectNode={onSelectNode}
                       selectedNodeId={selectedNodeId}
                       onAssignTeam={onAssignTeam}
+                      onSwapTeams={onSwapTeams}
                       onAddGame={onAddGame}
                       onAddGameToGameEdge={onAddGameToGameEdge}
                       onAddStageToGameEdge={onAddStageToGameEdge}

@@ -33,9 +33,10 @@ export interface StageSectionProps {
   onSelectNode: (nodeId: string | null) => void;
   selectedNodeId: string | null;
   onAssignTeam: (gameId: string, teamId: string, slot: 'home' | 'away') => void;
+  onSwapTeams: (gameId: string) => void;
   onAddGame: (stageId: string) => void;
   onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
-  onAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away') => void;
+  onAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away', sourceGroup?: string) => void;
   onRemoveEdgeFromSlot: (targetGameId: string, targetSlot: 'home' | 'away') => void;
   isExpanded: boolean;
   highlightedSourceGameId?: string | null;
@@ -56,6 +57,7 @@ const StageSection: React.FC<StageSectionProps> = memo(({
   onSelectNode,
   selectedNodeId,
   onAssignTeam,
+  onSwapTeams,
   onAddGame,
   onAddGameToGameEdge,
   onAddStageToGameEdge,
@@ -352,6 +354,7 @@ const StageSection: React.FC<StageSectionProps> = memo(({
                   onSelectNode={onSelectNode}
                   selectedNodeId={selectedNodeId}
                   onAssignTeam={onAssignTeam}
+                  onSwapTeams={onSwapTeams}
                   onAddGameToGameEdge={onAddGameToGameEdge}
                   onAddStageToGameEdge={onAddStageToGameEdge}
                   onRemoveEdgeFromSlot={onRemoveEdgeFromSlot}

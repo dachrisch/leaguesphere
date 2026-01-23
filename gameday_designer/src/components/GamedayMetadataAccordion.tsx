@@ -2,6 +2,7 @@ import React, { useState, useRef, useContext } from 'react';
 import { Accordion, Form, Row, Col, Button, Overlay, Popover, ListGroup, useAccordionButton, AccordionContext } from 'react-bootstrap';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import type { GamedayMetadata, FlowValidationError as ValidationError, FlowValidationWarning as ValidationWarning, HighlightedElement } from '../types/flowchart';
+import type { Season, League } from '../types/api';
 import { ICONS } from '../utils/iconConstants';
 
 import './GamedayMetadataAccordion.css';
@@ -13,6 +14,8 @@ interface GamedayMetadataAccordionProps {
   onUnlock?: () => void;
   onClearAll?: () => void;
   onDelete?: () => void;
+  seasons?: Season[];
+  leagues?: League[];
   hasData?: boolean;
   activeKey?: string | null;
   onSelect?: (key: string | null) => void;
@@ -198,6 +201,8 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
   onUnlock,
   onClearAll,
   onDelete,
+  seasons = [],
+  leagues = [],
   hasData = false,
   activeKey,
   onSelect,
@@ -225,7 +230,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
     }, 300);
   };
 
-  const handleChange = (field: keyof GamedayMetadata, value: string) => {
+  const handleChange = (field: keyof GamedayMetadata, value: string | number) => {
     if (readOnly) return;
     onUpdate({ [field]: value });
   };
@@ -334,7 +339,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                   </Form.Group>
                 </Col>
               </Row>
-              <Row className="mb-4">
+              <Row className="mb-3">
                 <Col md={12}>
                   <Form.Group controlId="gamedayVenue">
                     <Form.Label>{t('ui:label.venue', 'Venue')}</Form.Label>
@@ -344,6 +349,39 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                       onChange={(e) => handleChange('address', e.target.value)}
                       disabled={readOnly}
                     />
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              <Row className="mb-4">
+                <Col md={6}>
+                  <Form.Group controlId="gamedaySeason">
+                    <Form.Label>{t('ui:label.season', 'Season')}</Form.Label>
+                    <Form.Select
+                      value={metadata.season}
+                      onChange={(e) => handleChange('season', parseInt(e.target.value, 10))}
+                      disabled={readOnly}
+                    >
+                      <option value="0">--- {t('ui:placeholder.selectSeason', 'Select Season')} ---</option>
+                      {seasons.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group controlId="gamedayLeague">
+                    <Form.Label>{t('ui:label.league', 'League')}</Form.Label>
+                    <Form.Select
+                      value={metadata.league}
+                      onChange={(e) => handleChange('league', parseInt(e.target.value, 10))}
+                      disabled={readOnly}
+                    >
+                      <option value="0">--- {t('ui:placeholder.selectLeague', 'Select League')} ---</option>
+                      {leagues.map((l) => (
+                        <option key={l.id} value={l.id}>{l.name}</option>
+                      ))}
+                    </Form.Select>
                   </Form.Group>
                 </Col>
               </Row>

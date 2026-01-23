@@ -10,6 +10,8 @@ import type {
   Gameday,
   GamedayListEntry,
   PaginatedResponse,
+  Season,
+  League,
 } from '../types';
 import { mockGamedayService } from './mockGamedayApi';
 
@@ -143,6 +145,30 @@ class GamedayApi {
       `/${id}/`,
       data
     );
+    return response.data;
+  }
+
+  /**
+   * List all available seasons.
+   */
+  async listSeasons(): Promise<Season[]> {
+    if (this.isDev && !this.forceClient) return [
+      { id: 1, name: '2026 Season', year: 2026 },
+      { id: 2, name: '2025 Season', year: 2025 }
+    ];
+    const response = await this.client.get<Season[]>('/seasons/');
+    return response.data;
+  }
+
+  /**
+   * List all available leagues.
+   */
+  async listLeagues(): Promise<League[]> {
+    if (this.isDev && !this.forceClient) return [
+      { id: 1, name: 'DFFL', description: 'Deutsche Flag Football Liga' },
+      { id: 2, name: 'DFFL2', description: '2. Deutsche Flag Football Liga' }
+    ];
+    const response = await this.client.get<League[]>('/leagues/');
     return response.data;
   }
 

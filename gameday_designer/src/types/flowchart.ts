@@ -327,6 +327,8 @@ export interface GameToGameEdgeData {
 export interface StageToGameEdgeData {
   /** Source rank on the source stage node (1-indexed) */
   sourceRank: number;
+  /** Optional source group name within the stage */
+  sourceGroup?: string;
   /** Target port on the target game node */
   targetPort: GameInputHandle;
 }
@@ -815,17 +817,19 @@ export function createStageToGameEdge(
   sourceStageId: string,
   sourceRank: number,
   targetGameId: string,
-  targetPort: GameInputHandle
+  targetPort: GameInputHandle,
+  sourceGroup?: string
 ): StageToGameEdge {
   return {
     id,
     type: 'stageToGame',
     source: sourceStageId,
     target: targetGameId,
-    sourceHandle: `rank-${sourceRank}`,
+    sourceHandle: sourceGroup ? `rank-${sourceGroup}-${sourceRank}` : `rank-${sourceRank}`,
     targetHandle: targetPort,
     data: {
       sourceRank,
+      sourceGroup,
       targetPort,
     },
   };

@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useCallback, memo, useMemo } from 'react';
-import { Table, Form } from 'react-bootstrap';
+import { Table, Form, Button } from 'react-bootstrap';
 import Select, { components, StylesConfig, GroupBase } from 'react-select';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import type { 
@@ -20,7 +20,7 @@ import type {
 import { isGameNode, isStageNode } from '../../types/flowchart';
 import { isRankReference } from '../../types/designer';
 import { findSourceGameForReference, findSourceStageForReference, getGamePath } from '../../utils/edgeAnalysis';
-import { getStageParticipants } from '../../utils/rankingEngine';
+import { getStageParticipants, getStageGroups, getGroupParticipants } from '../../utils/rankingEngine';
 import { isValidTimeFormat } from '../../utils/timeCalculation';
 import { ICONS } from '../../utils/iconConstants';
 import './GameTable.css';
@@ -190,8 +190,9 @@ export interface GameTableProps {
   onSelectNode: (nodeId: string | null) => void;
   selectedNodeId: string | null;
   onAssignTeam: (gameId: string, teamId: string, slot: 'home' | 'away') => void;
+  onSwapTeams: (gameId: string) => void;
   onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
-  onAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away') => void;
+  onAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away', sourceGroup?: string) => void;
   onRemoveEdgeFromSlot: (targetGameId: string, targetSlot: 'home' | 'away') => void;
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
@@ -210,6 +211,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
   onSelectNode,
   selectedNodeId,
   onAssignTeam,
+  onSwapTeams,
   onUpdate,
   onAddGameToGameEdge,
   onAddStageToGameEdge,
@@ -330,8 +332,16 @@ const GameTable: React.FC<GameTableProps> = memo(({
       const [outputType, sourceGameId] = value.split(':');
       onAddGameToGameEdge(sourceGameId, outputType as 'winner' | 'loser', gameId, slot);
     } else if (value.startsWith('rank:')) {
-      const [, sourceStageId, place] = value.split(':');
-      onAddStageToGameEdge(sourceStageId, parseInt(place, 10), gameId, slot);
+      const parts = value.split(':');
+      if (parts.length === 5 && parts[1] === 'group') {
+        // Format: rank:group:stageId:groupName:place
+        const [, , sourceStageId, groupName, place] = parts;
+        onAddStageToGameEdge(sourceStageId, parseInt(place, 10), gameId, slot, groupName);
+      } else {
+        // Format: rank:stageId:place
+        const [, sourceStageId, place] = parts;
+        onAddStageToGameEdge(sourceStageId, parseInt(place, 10), gameId, slot);
+      }
     } else {
       onAssignTeam(gameId, value, slot);
     }
@@ -370,13 +380,27 @@ const GameTable: React.FC<GameTableProps> = memo(({
       const stageGames = allNodes.filter(n => isGameNode(n) && n.parentId === stage.id) as GameNode[];
       const participants = getStageParticipants(stageGames);
       
-      // For each participant, add a rank option
+      // For each participant, add a rank option (Overall)
       participants.forEach((_, index) => {
         const place = index + 1;
         options.push({
           value: `rank:${stage.id}:${place}`,
           label: `🏆 ${t('ui:message.placeFrom', { place, stage: stage.data.name })}`,
           isTeam: false
+        });
+      });
+
+      // Add Group-based ranks
+      const groups = getStageGroups(stageGames);
+      groups.forEach(groupName => {
+        const groupParticipants = getGroupParticipants(stageGames, groupName);
+        groupParticipants.forEach((_, index) => {
+          const place = index + 1;
+          options.push({
+            value: `rank:group:${stage.id}:${groupName}:${place}`,
+            label: `🎖️ ${t('ui:message.placeInGroup', { place, group: groupName, stage: stage.data.name })}`,
+            isTeam: false
+          });
         });
       });
     });
@@ -592,6 +616,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
           <th>{t('ui:label.standing')}</th>
           <th>{t('ui:label.time')}</th>
           <th>{t('ui:label.home')}</th>
+          {!readOnly && <th style={{ width: '40px' }}></th>}
           <th>{t('ui:label.away')}</th>
           {readOnly && <th>{t('ui:label.score')}</th>}
           <th>{t('ui:label.official')}</th>
@@ -631,6 +656,22 @@ const GameTable: React.FC<GameTableProps> = memo(({
               </td>
               {renderTimeCell(game)}
               <td>{renderTeamCell(game, 'home')}</td>
+              {!readOnly && (
+                <td className="text-center align-middle px-0">
+                  <Button 
+                    variant="link" 
+                    size="sm" 
+                    className="p-0 text-muted"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSwapTeams(game.id);
+                    }}
+                    title={t('ui:tooltip.swapTeams', 'Swap Home/Away')}
+                  >
+                    <i className="bi bi-arrow-left-right" />
+                  </Button>
+                </td>
+              )}
               <td>{renderTeamCell(game, 'away')}</td>
               {readOnly && (
                 <td className="text-center fw-bold">

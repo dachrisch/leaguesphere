@@ -19,6 +19,8 @@ from gamedays.api.views import (
     GamedayPublishAPIView,
     GameResultUpdateAPIView,
     GamedayViewSet,
+    SeasonViewSet,
+    LeagueViewSet,
 )
 from gamedays.constants import (
     API_GAMEDAY_WHISTLEGAMES,
@@ -34,6 +36,8 @@ from gamedays.constants import (
 
 router = DefaultRouter()
 router.register(r"gamedays", GamedayViewSet, basename="gameday")
+router.register(r"seasons", SeasonViewSet, basename="season")
+router.register(r"leagues", LeagueViewSet, basename="league")
 
 urlpatterns = [
     path("", include(router.urls)),

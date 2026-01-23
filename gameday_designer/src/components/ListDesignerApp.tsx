@@ -22,6 +22,7 @@ import { useFlowState } from '../hooks/useFlowState';
 import { useDesignerController } from '../hooks/useDesignerController';
 import { useGamedayContext } from '../context/GamedayContext';
 import type { GameNode } from '../types/flowchart';
+import type { Season, League } from '../types/api';
 
 import './ListDesignerApp.css';
 
@@ -52,6 +53,8 @@ const ListDesignerApp: React.FC = () => {
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const [metadataActiveKey, setMetadataActiveKey] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [seasons, setSeasons] = useState<Season[]>([]);
+  const [leagues, setLeagues] = useState<League[]>([]);
 
   const lastSavedStateRef = useRef<string>('');
   const initialLoadRef = useRef<boolean>(true);
@@ -107,6 +110,7 @@ const ListDesignerApp: React.FC = () => {
     handleReorderGlobalTeam,
     handleAddGlobalTeamGroup,
     handleAssignTeam,
+    handleSwapTeams,
     handleGenerateTournament,
     setShowTournamentModal,
     dismissNotification,
@@ -196,6 +200,23 @@ const ListDesignerApp: React.FC = () => {
       setMetadataActiveKey('0');
     }
   }, [hasData, loading]);
+
+  // Load metadata options (seasons, leagues)
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        const [s, l] = await Promise.all([
+          gamedayApi.listSeasons(),
+          gamedayApi.listLeagues()
+        ]);
+        setSeasons(s);
+        setLeagues(l);
+      } catch (error) {
+        console.error('Failed to fetch metadata options', error);
+      }
+    };
+    fetchOptions();
+  }, []);
 
   // Handle scroll to collapse metadata
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -417,6 +438,8 @@ const ListDesignerApp: React.FC = () => {
         onUnlock={handleUnlockWrapped}
         onClearAll={handleClearAll}
         onDelete={handleDeleteGameday}
+        seasons={seasons}
+        leagues={leagues}
         hasData={hasData}
         activeKey={metadataActiveKey}
         onSelect={setMetadataActiveKey}
@@ -448,6 +471,7 @@ const ListDesignerApp: React.FC = () => {
           onReorderGlobalTeamGroup={reorderGlobalTeamGroup}
           getTeamUsage={getTeamUsage}
           onAssignTeam={handleAssignTeam}
+          onSwapTeams={handleSwapTeams}
           onAddGame={addGameNodeInStage}
           highlightedElement={highlightedElement}
           onDynamicReferenceClick={handleDynamicReferenceClick}

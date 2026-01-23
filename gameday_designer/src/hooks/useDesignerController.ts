@@ -156,7 +156,11 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
   );
 
   const handleGenerateTournament = useCallback(
-    async (config: TournamentGenerationConfig & { generateTeams: boolean; autoAssignTeams: boolean }) => {
+    async (config: TournamentGenerationConfig & { 
+      generateTeams: boolean; 
+      autoAssignTeams: boolean;
+      selectedTeamIds?: string[];
+    }) => {
       try {
         // Auto-clear existing structure before generating new one
         let teamsToUse = globalTeams;
@@ -165,6 +169,10 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
           teamsToUse = []; // Start fresh if generating new teams
         } else {
           clearSchedule();
+          // If we have selected teams, filter the pool
+          if (config.selectedTeamIds && config.selectedTeamIds.length > 0) {
+            teamsToUse = globalTeams.filter(t => config.selectedTeamIds!.includes(t.id));
+          }
         }
 
         if (config.generateTeams) {
@@ -208,6 +216,22 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
     [globalTeams, globalTeamGroups, clearAll, clearSchedule, addBulkTournament, addBulkFields, addGlobalTeam, addGlobalTeamGroup, updateGlobalTeam, assignTeamsToTournament, addNotification]
   );
 
+  const handleSwapTeams = useCallback(
+    (gameId: string) => {
+      const game = nodes.find((n) => n.id === gameId);
+      if (!game || game.type !== 'game') return;
+
+      const { homeTeamId, awayTeamId, homeTeamDynamic, awayTeamDynamic } = game.data;
+      updateNode(gameId, {
+        homeTeamId: awayTeamId,
+        awayTeamId: homeTeamId,
+        homeTeamDynamic: awayTeamDynamic,
+        awayTeamDynamic: homeTeamDynamic,
+      });
+    },
+    [nodes, updateNode]
+  );
+
   const canExport = useMemo(() => {
     return nodes.some((n) => n.type === 'game') && fields.length > 0;
   }, [nodes, fields]);
@@ -240,6 +264,7 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
       handleDeleteGlobalTeam: deleteGlobalTeam,
       handleReorderGlobalTeam: reorderGlobalTeam,
       handleAssignTeam: assignTeamToGame,
+      handleSwapTeams,
       handleDeleteNode: deleteNode,
       handleSelectNode: selectNode,
       handleGenerateTournament,

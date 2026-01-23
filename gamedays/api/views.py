@@ -18,8 +18,10 @@ from gamedays.api.serializers import (
     GamedayListSerializer,
     GameinfoSerializer,
     GameOfficialSerializer,
+    SeasonSerializer,
+    LeagueSerializer,
 )
-from gamedays.models import Gameday, Gameinfo, GameOfficial
+from gamedays.models import Gameday, Gameinfo, GameOfficial, Season, League
 from gamedays.service.gameday_service import GamedayService
 
 
@@ -223,3 +225,15 @@ class GameResultUpdateAPIView(APIView):
             gameday.save()
 
         return Response(GameinfoSerializer(game).data, status=status.HTTP_200_OK)
+
+
+class SeasonViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Season.objects.all().order_by("-year")
+    serializer_class = SeasonSerializer
+    pagination_class = None
+
+
+class LeagueViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = League.objects.all().order_by("name")
+    serializer_class = LeagueSerializer
+    pagination_class = None

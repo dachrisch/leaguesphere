@@ -49,8 +49,19 @@ export function useEdgesState(
     } else if (edge.type === 'stageToGame' && isStageNode(sourceNode)) {
       const sourceStage = sourceNode as StageNode;
       const stageName = sourceStage.data.name;
-      const place = (edge.data as StageToGameEdgeData).sourceRank;
-      return { type: 'rank', place, stageId: sourceNode.id, stageName };
+      const { sourceRank, sourceGroup } = edge.data as StageToGameEdgeData;
+      
+      if (sourceGroup) {
+        return { 
+          type: 'groupRank', 
+          place: sourceRank, 
+          groupName: sourceGroup, 
+          stageId: sourceNode.id, 
+          stageName 
+        };
+      }
+      
+      return { type: 'rank', place: sourceRank, stageId: sourceNode.id, stageName };
     }
 
     return null;
@@ -196,9 +207,9 @@ export function useEdgesState(
    * Add a StageToGameEdge from source stage (Ranking) to target game.
    */
   const addStageToGameEdge = useCallback(
-    (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: GameInputHandle): string => {
+    (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: GameInputHandle, sourceGroup?: string): string => {
       const edgeId = `edge-${uuidv4()}`;
-      const newEdge = createStageToGameEdge(edgeId, sourceStageId, sourceRank, targetGameId, targetSlot);
+      const newEdge = createStageToGameEdge(edgeId, sourceStageId, sourceRank, targetGameId, targetSlot, sourceGroup);
 
       setEdges(eds => [...eds, newEdge]);
       
