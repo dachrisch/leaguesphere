@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { generateTournament } from '../tournamentGenerator';
 import { assignTeamsToTournamentGames, generateTeamsForTournament } from '../teamAssignment';
 import type { TournamentTemplate, TournamentGenerationConfig } from '../../types/tournament';
@@ -35,9 +35,6 @@ describe('Tournament Generation with Empty Initial Pool (#697)', () => {
   };
 
   it('TDD RED: should correctly group teams in split stages when pool was initially empty', () => {
-    // Simulate empty initial pool
-    const initialPool: GlobalTeam[] = [];
-    
     // Simulate generated teams (what useDesignerController does)
     const teamCount = 6;
     const teamData = generateTeamsForTournament(teamCount);
@@ -73,11 +70,11 @@ describe('Tournament Generation with Empty Initial Pool (#697)', () => {
 
     const teamIdsInA = new Set(operations
         .filter(op => op.type === 'assign_team' && stageAGames.some(g => g.id === op.gameId))
-        .map(op => (op as any).teamId));
+        .map(op => (op as { teamId: string }).teamId));
     
     const teamIdsInB = new Set(operations
         .filter(op => op.type === 'assign_team' && stageBGames.some(g => g.id === op.gameId))
-        .map(op => (op as any).teamId));
+        .map(op => (op as { teamId: string }).teamId));
 
     // Group A should have teams t1, t2, t3
     expect(teamIdsInA).toContain('t1');

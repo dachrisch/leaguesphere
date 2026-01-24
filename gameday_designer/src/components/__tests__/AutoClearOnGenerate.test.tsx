@@ -66,7 +66,7 @@ describe('Auto-Clear on Generate Integration', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('en');
     vi.clearAllMocks();
-    vi.mocked(gamedayApi.getGameday).mockResolvedValue(mockGameday as any);
+    vi.mocked(gamedayApi.getGameday).mockResolvedValue(mockGameday as unknown as Awaited<ReturnType<typeof gamedayApi.getGameday>>);
   });
 
   const renderApp = async () => {

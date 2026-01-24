@@ -1289,8 +1289,8 @@ describe('useFlowValidation', () => {
 
   describe('Mandatory Metadata', () => {
     it('should error when name is missing', () => {
-      const metadata = { name: '', date: '2026-01-01', start: '10:00' } as any;
-      const { result } = renderHook(() => useFlowValidation([], [], [], [], [], metadata));
+      const metadata = { name: '', date: '2026-01-01', start: '10:00' } as Partial<GamedayMetadata>;
+      const { result } = renderHook(() => useFlowValidation([], [], [], [], [], metadata as GamedayMetadata));
       
       const error = result.current.errors.find(e => e.id === 'metadata_name_missing');
       expect(error).toBeDefined();
@@ -1298,8 +1298,8 @@ describe('useFlowValidation', () => {
     });
 
     it('should error when date is missing', () => {
-      const metadata = { name: 'Test', date: '', start: '10:00' } as any;
-      const { result } = renderHook(() => useFlowValidation([], [], [], [], [], metadata));
+      const metadata = { name: 'Test', date: '', start: '10:00' } as Partial<GamedayMetadata>;
+      const { result } = renderHook(() => useFlowValidation([], [], [], [], [], metadata as GamedayMetadata));
       
       const error = result.current.errors.find(e => e.id === 'metadata_date_missing');
       expect(error).toBeDefined();
@@ -1307,8 +1307,8 @@ describe('useFlowValidation', () => {
     });
 
     it('should error when start time is missing', () => {
-      const metadata = { name: 'Test', date: '2026-01-01', start: '' } as any;
-      const { result } = renderHook(() => useFlowValidation([], [], [], [], [], metadata));
+      const metadata = { name: 'Test', date: '2026-01-01', start: '' } as Partial<GamedayMetadata>;
+      const { result } = renderHook(() => useFlowValidation([], [], [], [], [], metadata as GamedayMetadata));
       
       const error = result.current.errors.find(e => e.id === 'metadata_start_missing');
       expect(error).toBeDefined();
@@ -1316,8 +1316,8 @@ describe('useFlowValidation', () => {
     });
 
     it('should return valid when all mandatory metadata is present', () => {
-      const metadata = { name: 'Test', date: '2026-01-01', start: '10:00' } as any;
-      const { result } = renderHook(() => useFlowValidation([], [], [], [], [], metadata));
+      const metadata = { name: 'Test', date: '2026-01-01', start: '10:00' } as Partial<GamedayMetadata>;
+      const { result } = renderHook(() => useFlowValidation([], [], [], [], [], metadata as GamedayMetadata));
       
       const errors = result.current.errors.filter(e => e.id.startsWith('metadata_'));
       expect(errors).toHaveLength(0);
