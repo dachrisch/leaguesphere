@@ -12,7 +12,11 @@ body.designer-active {
 }
 
 .navbar {
-  z-index: 1050; /* Above regular content but below modals */
+  z-index: 1060 !important; /* Ensure main navbar is above everything else including sticky metadata */
+}
+
+.metadata-container-wrapper {
+  z-index: 1020 !important;
 }
 
 .list-designer-app {

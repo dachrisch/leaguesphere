@@ -423,7 +423,7 @@ const ListDesignerApp: React.FC = () => {
         className="list-designer-content flex-grow-1 overflow-auto"
         onScroll={handleScroll}
       >
-        <div className="metadata-container-wrapper sticky-top bg-white border-bottom shadow-sm" style={{ top: '0px', zIndex: 1010 }}>
+        <div className="metadata-container-wrapper sticky-top bg-white border-bottom shadow-sm" style={{ top: '0px', zIndex: 1020 }}>
           <div className="container-xl px-0">
             <Accordion 
               activeKey={metadataActiveKey} 
