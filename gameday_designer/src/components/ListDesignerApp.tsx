@@ -12,6 +12,7 @@ import { useGamedayContext } from '../context/GamedayContext';
 import { useDesignerController } from '../hooks/useDesignerController';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import { GamedayMetadata, GameNode } from '../types';
+import { FlowState } from '../types/flowchart';
 import './ListDesignerApp.css';
 
 import { useFlowState } from '../hooks/useFlowState';
@@ -110,7 +111,7 @@ const ListDesignerApp: React.FC = () => {
   const pendingSaveRef = useRef<{ timer: NodeJS.Timeout | null; data: unknown }>({ timer: null, data: null });
   
   // Ref to always hold the LATEST state for the async saveData function to access
-  const latestStateRef = useRef<any>(null);
+  const latestStateRef = useRef<FlowState | null>(null);
   useEffect(() => {
     latestStateRef.current = exportState();
   }, [exportState]);
@@ -296,7 +297,7 @@ const ListDesignerApp: React.FC = () => {
       setLoading(false);
       setIsTransitioning(false);
     }
-  }, [importState, updateMetadata, addNotification, navigate, exportState, t]);
+  }, [importState, updateMetadata, addNotification, navigate, t]);
 
   const hasLoadedRef = useRef(false);
   useEffect(() => {
