@@ -1,4 +1,4 @@
-import React, { useState, useRef, useContext, useCallback } from 'react';
+import React, { useState, useRef, useContext } from 'react';
 import { Accordion, Form, Row, Col, Button, Overlay, Popover, useAccordionButton, AccordionContext } from 'react-bootstrap';
 import { GamedayMetadata, FlowValidationResult, ValidationError, ValidationWarning, HighlightedElement } from '../types/flowchart';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
@@ -17,7 +17,7 @@ const CustomAccordionHeader: React.FC<{
   onPublish?: () => void;
   readOnly: boolean;
   validation: FlowValidationResult;
-  t: any;
+  t: (key: string, params?: unknown) => string;
   formatDate: (d: string) => string;
   getStatusBadge: (s?: string) => React.ReactNode;
   onHighlight: (id: string, type: HighlightedElement['type']) => void;

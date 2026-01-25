@@ -606,7 +606,7 @@ function checkTimeOverlaps(
     try {
       const startMinutes = parseTime(startTimeStr);
       const duration = data.duration || DEFAULT_GAME_DURATION;
-      let endMinutes = startMinutes + duration;
+      const endMinutes = startMinutes + duration;
 
       // Basic linear time heuristic for validation (since validation doesn't know absolute day)
       // If a game in a higher-order stage appears to start 'before' an earlier stage,
@@ -621,7 +621,7 @@ function checkTimeOverlaps(
         start: startMinutes,
         end: endMinutes,
         standing: data.standing || node.id,
-        order: (node.data as any).order ?? 0 // Use order if available
+        order: (node.data as { order?: number }).order ?? 0 // Use order if available
       });
     } catch {
       // Ignore invalid time formats

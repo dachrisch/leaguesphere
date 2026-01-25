@@ -212,13 +212,14 @@ const GamedayDashboard: React.FC = () => {
 
   useEffect(() => {
     loadGamedays();
+    const currentTimeouts = timeoutRefs.current;
     return () => {
       // CRITICAL: When navigating away, we must immediately execute any pending deletions
       // instead of just clearing them, otherwise they never happen.
-      const pendingIds = Object.keys(timeoutRefs.current).map(Number);
+      const pendingIds = Object.keys(currentTimeouts).map(Number);
       pendingIds.forEach(id => {
-        clearTimeout(timeoutRefs.current[id]);
-        delete timeoutRefs.current[id];
+        clearTimeout(currentTimeouts[id]);
+        delete currentTimeouts[id];
         // Fire and forget deletion
         gamedayApi.deleteGameday(id).catch(err => 
           console.error(`Cleanup: Failed to delete gameday ${id}`, err)

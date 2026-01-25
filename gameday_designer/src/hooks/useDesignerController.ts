@@ -25,58 +25,33 @@ import type { TournamentGenerationConfig } from '../types/tournament';
 import { v4 as uuidv4 } from 'uuid';
 
 export function useDesignerController(flowState: UseFlowStateReturn) {
-  if (!flowState) {
-    // Return dummy structure if flowState is missing to prevent crash during initial load/error
-    return {
-      metadata: {} as GamedayMetadata,
-      nodes: [],
-      edges: [],
-      fields: [],
-      globalTeams: [],
-      globalTeamGroups: [],
-      selectedNode: null,
-      validation: { errors: [], warnings: [] },
-      notifications: [],
-      updateMetadata: () => {},
-      ui: { 
-        highlightedElement: null, 
-        expandedFieldIds: new Set<string>(), 
-        expandedStageIds: new Set<string>(), 
-        showTournamentModal: false, 
-        canExport: false,
-        hasData: false 
-      },
-      handlers: {} as any
-    } as any;
-  }
-
   const {
-    metadata,
-    nodes,
-    edges,
-    fields,
-    globalTeams,
-    globalTeamGroups,
-    addFieldNode,
-    addStageNode,
-    addBulkTournament,
-    updateNode,
-    deleteNode,
-    selectNode,
-    updateMetadata,
-    clearAll,
-    clearSchedule,
-    importState,
-    exportState,
-    addGlobalTeam,
-    updateGlobalTeam,
-    deleteGlobalTeam,
-    reorderGlobalTeam,
-    addGlobalTeamGroup,
-    assignTeamToGame,
-    addBulkGameToGameEdges,
-    addBulkFields,
-  } = flowState;
+    metadata = {} as GamedayMetadata,
+    nodes = [],
+    edges = [],
+    fields = [],
+    globalTeams = [],
+    globalTeamGroups = [],
+    addFieldNode = () => ({} as FlowNode),
+    addStageNode = () => {},
+    addBulkTournament = () => {},
+    updateNode = () => {},
+    deleteNode = () => {},
+    selectNode = () => {},
+    updateMetadata = () => {},
+    clearAll = () => {},
+    clearSchedule = () => {},
+    importState = () => {},
+    exportState = () => ({} as FlowState),
+    addGlobalTeam = () => ({} as GlobalTeam),
+    updateGlobalTeam = () => {},
+    deleteGlobalTeam = () => {},
+    reorderGlobalTeam = () => {},
+    addGlobalTeamGroup = () => ({} as GlobalTeamGroup),
+    assignTeamToGame = () => {},
+    addBulkGameToGameEdges = () => {},
+    addBulkFields = () => {},
+  } = flowState || {};
 
   // Validate the current flowchart
   const validation = useFlowValidation(nodes, edges, fields, globalTeams, globalTeamGroups, metadata);

@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Container, Button, Accordion, Row, Col } from 'react-bootstrap';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Container, Accordion } from 'react-bootstrap';
 import ListCanvas from './ListCanvas';
-import FlowToolbar from './FlowToolbar';
 import GamedayMetadataAccordion from './GamedayMetadataAccordion';
 import TournamentGeneratorModal from './modals/TournamentGeneratorModal';
 import PublishConfirmationModal from './modals/PublishConfirmationModal';
@@ -12,8 +11,7 @@ import { gamedayApi } from '../api/gamedayApi';
 import { useGamedayContext } from '../context/GamedayContext';
 import { useDesignerController } from '../hooks/useDesignerController';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
-import { GamedayMetadata, GlobalTeam, GameNode } from '../types';
-import { ICONS } from '../utils/iconConstants';
+import { GamedayMetadata, GameNode } from '../types';
 import './ListDesignerApp.css';
 
 import { useFlowState } from '../hooks/useFlowState';
@@ -21,7 +19,6 @@ import { useFlowState } from '../hooks/useFlowState';
 const ListDesignerApp: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const { t } = useTypedTranslation(['ui', 'domain', 'modal', 'validation', 'error']);
   
   const [loading, setLoading] = useState(true);
@@ -109,9 +106,14 @@ const ListDesignerApp: React.FC = () => {
 
   const lastSavedStateRef = useRef<string>('');
   const initialLoadRef = useRef(true);
-  const pauseAutoSaveUntilRef = useRef<number>(0);
-  const pendingSaveRef = useRef<{ timer: NodeJS.Timeout | null; data: any }>({ timer: null, data: null });
   const isSavingRef = useRef(false);
+  const pendingSaveRef = useRef<{ timer: NodeJS.Timeout | null; data: unknown }>({ timer: null, data: null });
+  
+  // Ref to always hold the LATEST state for the async saveData function to access
+  const latestStateRef = useRef<any>(null);
+  useEffect(() => {
+    latestStateRef.current = exportState();
+  }, [exportState]);
 
   // Handle scroll to collapse metadata
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -124,16 +126,16 @@ const ListDesignerApp: React.FC = () => {
   // Auto-save logic
   useEffect(() => {
     if (loading || isTransitioning) return;
-    if (Date.now() < pauseAutoSaveUntilRef.current) return;
 
     const currentState = exportState();
     const currentStateStr = JSON.stringify(currentState);
     
-    // Skip initial load
+    // Skip initial load - establish baseline
     if (initialLoadRef.current) {
-      if (metadata && metadata.id) {
+      if (metadata && metadata.id && metadata.id !== 0) {
         lastSavedStateRef.current = currentStateStr;
         initialLoadRef.current = false;
+        console.log('[AutoSave] Baseline established for gameday', metadata.id);
       }
       return;
     }
@@ -147,16 +149,18 @@ const ListDesignerApp: React.FC = () => {
 
     const saveData = async () => {
       if (isSavingRef.current) {
-        // If already saving, reschedule
+        // If already saving, reschedule to try again shortly
         pendingSaveRef.current.timer = setTimeout(saveData, 500);
         return;
       }
 
-      // Re-calculate inside timer to get LATEST state
-      const latestState = exportState();
+      // Access the ABSOLUTE LATEST state from the ref, not the closure
+      const latestState = latestStateRef.current;
+      if (!latestState) return;
+      
       const latestStateStr = JSON.stringify(latestState);
       
-      if (!metadata?.id || isTransitioning || Date.now() < pauseAutoSaveUntilRef.current) return;
+      if (!metadata?.id || metadata.id === 0 || isTransitioning) return;
       if (latestStateStr === lastSavedStateRef.current) return;
 
       try {
@@ -165,9 +169,8 @@ const ListDesignerApp: React.FC = () => {
           name, date, start, format, address, season, league, status 
         } = latestState.metadata;
 
-        // Construct patch data dynamically - only include non-empty mandatory fields
-        // to avoid backend validation errors, while allowing partial updates.
-        const patchData: any = {
+        // Construct patch data dynamically
+        const patchData: Partial<GamedayMetadata> & { designer_data: Record<string, unknown> } = {
           designer_data: {
             ...latestState.metadata.designer_data,
             nodes: latestState.nodes,
@@ -191,10 +194,9 @@ const ListDesignerApp: React.FC = () => {
         console.log('[AutoSave] Success: Gameday', metadata.id, 'persisted with data:', patchData);
         addNotification(t('ui:notification.autoSaveSuccess'), 'success', t('ui:notification.title.autoSave'));
         
-        // CRITICAL: Update lastSavedStateRef with the string we actually SENT
+        // Update baseline with what we actually saved
         lastSavedStateRef.current = latestStateStr;
         pendingSaveRef.current.timer = null;
-        pendingSaveRef.current.data = null;
       } catch (error) {
         console.error('Auto-save failed', error);
         addNotification(t('ui:notification.autoSaveFailed'), 'warning', t('ui:notification.title.autoSave'));
@@ -203,23 +205,23 @@ const ListDesignerApp: React.FC = () => {
       }
     };
 
-    pendingSaveRef.current.data = { stateStr: currentStateStr, stateObj: currentState };
-    pendingSaveRef.current.timer = setTimeout(() => {
-      saveData();
-    }, 1500); // 1.5s debounce
+    pendingSaveRef.current.timer = setTimeout(saveData, 1500); // 1.5s debounce
 
+    const currentTimer = pendingSaveRef.current.timer;
     return () => {
-      if (pendingSaveRef.current.timer) {
-        clearTimeout(pendingSaveRef.current.timer);
+      if (currentTimer) {
+        clearTimeout(currentTimer);
       }
     };
   }, [metadata, nodes, edges, fields, globalTeams, globalTeamGroups, validation?.errors, loading, isTransitioning, addNotification, exportState, t, saveTrigger]);
 
+
   // CRITICAL: Handle immediate save on unmount
   useEffect(() => {
+    const currentPendingSave = pendingSaveRef.current;
     return () => {
-      if (pendingSaveRef.current.data) {
-        const { stateObj } = pendingSaveRef.current.data;
+      if (currentPendingSave.data) {
+        const { stateObj } = currentPendingSave.data;
         
         // Re-calculate one last time to be ABSOLUTELY sure we have latest
         // although we update .data on every render that triggers auto-save effect.
@@ -286,11 +288,6 @@ const ListDesignerApp: React.FC = () => {
         // Just set metadata for new gameday
         updateMetadata(updatedGameday);
       }
-      // Critical: mark this state as already saved and pause auto-save
-      pauseAutoSaveUntilRef.current = Date.now() + 2000;
-      setTimeout(() => {
-        lastSavedStateRef.current = JSON.stringify(exportState());
-      }, 500);
     } catch (error) {
       console.error('Failed to load gameday', error);
       addNotification(t('ui:notification.loadGamedayFailed'), 'danger', t('ui:notification.title.error'));
@@ -316,7 +313,6 @@ const ListDesignerApp: React.FC = () => {
   const handleConfirmPublish = useCallback(async () => {
     setShowPublishModal(false);
     setIsTransitioning(true);
-    pauseAutoSaveUntilRef.current = Date.now() + 5000; // Extra long pause for publish
     try {
       const updated = await gamedayApi.publish(metadata.id);
       
@@ -347,7 +343,6 @@ const ListDesignerApp: React.FC = () => {
 
   const handleUnlockWrapped = useCallback(async () => {
     setIsTransitioning(true);
-    pauseAutoSaveUntilRef.current = Date.now() + 5000; // Extra long pause for unlock
     try {
       const updated = await gamedayApi.patchGameday(metadata.id, { status: 'DRAFT' });
       
@@ -407,6 +402,19 @@ const ListDesignerApp: React.FC = () => {
   };
 
   const activeGame = nodes.find(n => n.id === activeGameId);
+
+  if (loading) {
+    return (
+      <Container className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
+        <div className="text-center">
+          <div className="spinner-border text-primary mb-3" role="status">
+            <span className="visually-hidden">{t('ui:message.loading', 'Loading...')}</span>
+          </div>
+          <p className="text-muted">{t('ui:message.loadingGameday', 'Loading gameday data...')}</p>
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container fluid className="list-designer-app h-100 d-flex flex-column p-0">

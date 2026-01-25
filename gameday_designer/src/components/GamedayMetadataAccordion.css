@@ -52,3 +52,28 @@
 .gameday-metadata-accordion .accordion-header {
   position: relative;
 }
+
+/**
+ * Mobile-specific fixes for native date/time pickers.
+ * Sometimes pickers are offset when inside a sticky container.
+ */
+@media (max-width: 768px) {
+  .gameday-metadata-accordion .form-control[type="date"],
+  .gameday-metadata-accordion .form-control[type="time"] {
+    position: relative;
+    /* Reset any weird padding that might affect picker icon placement */
+    padding-inline-end: 0.5rem;
+  }
+
+  /* Target Chrome/Android native picker behavior */
+  .gameday-metadata-accordion .form-control[type="date"]::-webkit-calendar-picker-indicator,
+  .gameday-metadata-accordion .form-control[type="time"]::-webkit-calendar-picker-indicator {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+}
