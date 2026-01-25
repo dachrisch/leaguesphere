@@ -326,7 +326,6 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     type="date"
                     value={metadata.date || ''}
                     onChange={(e) => handleChange('date', e.target.value)}
-                    onBlur={(e) => handleChange('date', e.target.value)}
                     disabled={readOnly}
                   />
                 </Form.Group>

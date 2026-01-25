@@ -111,6 +111,7 @@ const ListDesignerApp: React.FC = () => {
   const initialLoadRef = useRef(true);
   const pauseAutoSaveUntilRef = useRef<number>(0);
   const pendingSaveRef = useRef<{ timer: NodeJS.Timeout | null; data: any }>({ timer: null, data: null });
+  const isSavingRef = useRef(false);
 
   // Handle scroll to collapse metadata
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -145,6 +146,12 @@ const ListDesignerApp: React.FC = () => {
     }
 
     const saveData = async () => {
+      if (isSavingRef.current) {
+        // If already saving, reschedule
+        pendingSaveRef.current.timer = setTimeout(saveData, 500);
+        return;
+      }
+
       // Re-calculate inside timer to get LATEST state
       const latestState = exportState();
       const latestStateStr = JSON.stringify(latestState);
@@ -152,22 +159,15 @@ const ListDesignerApp: React.FC = () => {
       if (!metadata?.id || isTransitioning || Date.now() < pauseAutoSaveUntilRef.current) return;
       if (latestStateStr === lastSavedStateRef.current) return;
 
-      // Check for specific mandatory metadata errors before saving
-      const mandatoryErrors = (validation?.errors || []).filter(e => 
-        ['metadata_name_missing', 'metadata_date_missing', 'metadata_start_missing', 'metadata_season_missing', 'metadata_league_missing',
-         'metadataNameMissing', 'metadataDateMissing', 'metadataStartMissing', 'metadataSeasonMissing', 'metadataLeagueMissing'].includes(e.id) ||
-        ['metadataNameMissing', 'metadataDateMissing', 'metadataStartMissing', 'metadataSeasonMissing', 'metadataLeagueMissing'].includes(e.messageKey || '')
-      );
-
-      if (mandatoryErrors.length > 0) return;
-
       try {
+        isSavingRef.current = true;
         const { 
           name, date, start, format, address, season, league, status 
         } = latestState.metadata;
 
-        await gamedayApi.patchGameday(metadata.id, {
-          name, date, start, format, address, season, league, status,
+        // Construct patch data dynamically - only include non-empty mandatory fields
+        // to avoid backend validation errors, while allowing partial updates.
+        const patchData: any = {
           designer_data: {
             ...latestState.metadata.designer_data,
             nodes: latestState.nodes,
@@ -176,13 +176,30 @@ const ListDesignerApp: React.FC = () => {
             globalTeams: latestState.globalTeams,
             globalTeamGroups: latestState.globalTeamGroups
           }
-        });
+        };
+
+        if (name && name.trim() !== '') patchData.name = name;
+        if (date && date !== '') patchData.date = date;
+        if (start && start !== '') patchData.start = start;
+        if (format) patchData.format = format;
+        if (address !== undefined) patchData.address = address;
+        if (season && season !== 0) patchData.season = season;
+        if (league && league !== 0) patchData.league = league;
+        if (status) patchData.status = status;
+
+        await gamedayApi.patchGameday(metadata.id, patchData);
+        console.log('[AutoSave] Success: Gameday', metadata.id, 'persisted with data:', patchData);
+        addNotification(t('ui:notification.autoSaveSuccess'), 'success', t('ui:notification.title.autoSave'));
+        
+        // CRITICAL: Update lastSavedStateRef with the string we actually SENT
         lastSavedStateRef.current = latestStateStr;
         pendingSaveRef.current.timer = null;
         pendingSaveRef.current.data = null;
       } catch (error) {
         console.error('Auto-save failed', error);
         addNotification(t('ui:notification.autoSaveFailed'), 'warning', t('ui:notification.title.autoSave'));
+      } finally {
+        isSavingRef.current = false;
       }
     };
 
