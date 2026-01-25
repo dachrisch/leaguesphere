@@ -429,7 +429,7 @@ const ListDesignerApp: React.FC = () => {
   }
 
   return (
-    <div className="list-designer-app pt-2 h-100 overflow-hidden d-flex flex-column container-fluid">
+    <div className="list-designer-app pt-2 h-100 overflow-hidden d-flex flex-column" style={{ height: '100vh', maxHeight: '100vh' }}>
       {/* Gameday Metadata Accordion */}
       <GamedayMetadataAccordion 
         metadata={metadata} 
@@ -449,7 +449,7 @@ const ListDesignerApp: React.FC = () => {
       />
 
       {/* Main content */}
-      <div className="list-designer-app__content" onScroll={handleScroll}>
+      <div className="list-designer-app__content flex-grow-1 overflow-hidden min-height-0 px-3">
         <ListCanvas
           nodes={nodes}
           edges={edges}

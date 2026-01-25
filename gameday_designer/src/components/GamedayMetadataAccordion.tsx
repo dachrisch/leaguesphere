@@ -107,6 +107,24 @@ const CustomAccordionHeader: React.FC<{
           <span className="text-muted small">
             {formatDate(metadata.date)}
           </span>
+          
+          {/* Integrated Publish button inside the toggle area */}
+          {metadata.status === 'DRAFT' && !readOnly && (
+            <Button 
+              variant="success" 
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPublish?.();
+              }}
+              className="rounded-pill py-0 px-3 border-0 shadow-sm fw-bold d-flex align-items-center ms-3"
+              style={{ fontSize: '0.7rem', height: '22px' }}
+              data-testid="publish-schedule-button"
+            >
+              <i className="bi bi-send-fill me-1"></i>
+              {t('ui:button.publishSchedule')}
+            </Button>
+          )}
         </div>
       </button>
 
@@ -166,29 +184,6 @@ const CustomAccordionHeader: React.FC<{
             </Popover>
           )}
         </Overlay>
-      )}
-      
-      {/* Integrated Publish button - absolute positioned within h2, sibling to trigger button */}
-      {metadata.status === 'DRAFT' && !readOnly && (
-        <div 
-          className="publish-button-container"
-          onClick={(e) => e.stopPropagation()} // Prevent accordion toggle
-        >
-          <Button 
-            variant="success" 
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onPublish?.();
-            }}
-            className="rounded-pill py-0 px-3 border-0 shadow-sm fw-bold d-flex align-items-center"
-            style={{ fontSize: '0.7rem', height: '22px' }}
-            data-testid="publish-schedule-button"
-          >
-            <i className="bi bi-send-fill me-1"></i>
-            {t('ui:button.publishSchedule')}
-          </Button>
-        </div>
       )}
     </h2>
   );

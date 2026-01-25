@@ -1,6 +1,12 @@
 /**
- * Global body lock when designer is active
+ * Global body lock and height when designer is active
  */
+html, body, #gameday-designer {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 body.designer-active {
   overflow: hidden !important;
 }
@@ -26,9 +32,14 @@ body.designer-active {
 
 .list-designer-app__content {
   flex: 1;
-  min-height: 200px;
-  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   margin: 0;
+}
+
+.min-height-0 {
+  min-height: 0 !important;
 }
 
 .list-designer-app__status-bar {
