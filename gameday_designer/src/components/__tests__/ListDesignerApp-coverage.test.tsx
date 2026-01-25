@@ -74,8 +74,11 @@ describe('ListDesignerApp Coverage', () => {
     nodes: [] as FlowNode[],
     edges: [] as FlowEdge[],
     fields: [] as FieldNode[],
-    globalTeams: [] as GlobalTeam[],
-    globalTeamGroups: [] as GlobalTeamGroup[],
+    globalTeams: [
+        { id: 'team-1', label: 'Team A', color: '#3498db', groupId: 'group-1', order: 0 },
+        { id: 'team-2', label: 'Team B', color: '#e74c3c', groupId: 'group-1', order: 1 }
+    ] as GlobalTeam[],
+    globalTeamGroups: [{ id: 'group-1', label: 'Group 1', order: 0 }] as GlobalTeamGroup[],
     selectedNode: null,
     validation: { isValid: true, errors: [], warnings: [] },
     notifications: [],
@@ -231,7 +234,7 @@ describe('ListDesignerApp Coverage', () => {
         expect(gamedayApi.patchGameday).toHaveBeenCalledWith(1, { status: 'DRAFT' });
         expect(mockHandlers.addNotification).toHaveBeenCalledWith(
             expect.stringContaining('unlocked for editing'),
-            'warning',
+            'success',
             'Success'
         );
     });
@@ -284,11 +287,11 @@ describe('ListDesignerApp Coverage', () => {
     const mockGame = {
         id: 'game-1',
         type: 'game',
-        data: { homeTeamId: 10, awayTeamId: 20 }
+        data: { homeTeamId: 'team-10', awayTeamId: 'team-20', standing: 'Game 1' }
     };
     const mockTeams = [
-        { id: 10, label: 'Team A' },
-        { id: 20, label: 'Team B' }
+        { id: 'team-10', label: 'Team A', color: '#3498db', groupId: 'group-1', order: 0 },
+        { id: 'team-20', label: 'Team B', color: '#e74c3c', groupId: 'group-1', order: 1 }
     ];
 
     (useDesignerController as Mock).mockReturnValue({

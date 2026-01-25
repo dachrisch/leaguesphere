@@ -27,22 +27,30 @@ class GamedaySerializer(ModelSerializer):
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        from gamedays.service.gameday_service import GamedayService
-
-        ret["designer_data"] = GamedayService.create(
-            instance.pk
-        ).get_resolved_designer_data(instance.pk)
+        try:
+            from gamedays.service.gameday_service import GamedayService
+            ret["designer_data"] = GamedayService.create(
+                instance.pk
+            ).get_resolved_designer_data(instance.pk)
+        except Exception:
+            # Fallback to raw designer_data if resolution fails
+            pass
         return ret
 
 
 class GamedayListSerializer(ModelSerializer):
+    season_display = SerializerMethodField()
+    league_display = SerializerMethodField()
+
     class Meta:
         model = Gameday
         fields = [
             "id",
             "name",
             "season",
+            "season_display",
             "league",
+            "league_display",
             "date",
             "start",
             "format",
@@ -52,6 +60,12 @@ class GamedayListSerializer(ModelSerializer):
         ]
         read_only_fields = ["author"]
         extra_kwargs = {"start": {"format": "%H:%M"}}
+
+    def get_season_display(self, obj):
+        return obj.season.name if obj.season else ""
+
+    def get_league_display(self, obj):
+        return obj.league.name if obj.league else ""
 
 
 class GamedayInfoSerializer(Serializer):

@@ -103,7 +103,7 @@ describe('ListDesignerApp - E2E CRUD Flow', () => {
     const { user } = await renderApp();
 
     // --- 1. FIELD MANAGEMENT (Create/Update) ---
-    const addFieldBtn = (await screen.findAllByRole('button', { name: /add field/i }))[0];
+    const addFieldBtn = await screen.findByTestId('add-field-button');
     await user.click(addFieldBtn);
 
     await waitFor(() => expect(screen.getByText(/Feld 1/i)).toBeInTheDocument());
@@ -276,7 +276,7 @@ describe('ListDesignerApp - E2E CRUD Flow', () => {
     const { user } = await renderApp();
     
     // Add a field to enable publish button (needs some data)
-    const addFieldBtn = (await screen.findAllByRole('button', { name: /add field/i }))[0];
+    const addFieldBtn = await screen.findByTestId('add-field-button');
     await user.click(addFieldBtn);
 
     // Mock validation errors

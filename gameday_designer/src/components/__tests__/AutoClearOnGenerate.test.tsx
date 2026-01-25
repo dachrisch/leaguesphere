@@ -93,7 +93,7 @@ describe('Auto-Clear on Generate Integration', () => {
     expect(screen.getByText('Old Game')).toBeInTheDocument();
 
     // 1. Open Modal
-    const generateBtn = (await screen.findAllByRole('button', { name: /generate tournament/i }))[0];
+    const generateBtn = await screen.findByTestId('generate-tournament-button');
     await user.click(generateBtn);
 
     // 2. Select Template

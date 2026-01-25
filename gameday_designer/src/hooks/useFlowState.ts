@@ -64,10 +64,20 @@ export function useFlowState(initialState?: Partial<FlowState>, onStateChange?: 
 
 function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?: () => void) {
   // --- Core State ---
-  const [metadata, setMetadata] = useState<GamedayMetadata>(initialState?.metadata ?? {
+  const [saveTrigger, setSaveTrigger] = useState(0);
+  
+  const handleStateChange = useCallback(() => {
+    setSaveTrigger(prev => prev + 1);
+    onStateChange?.();
+  }, [onStateChange]);
+
+  const [metadata, setMetadata] = useState<GamedayMetadata>(initialState?.metadata ? {
+    ...initialState.metadata,
+    date: initialState.metadata.date || ''
+  } : {
     id: 0,
     name: '',
-    date: new Date().toISOString().split('T')[0],
+    date: '',
     start: '10:00',
     format: '6_2',
     author: 0,
@@ -76,6 +86,7 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     league: 0,
     status: 'DRAFT',
   });
+
   const [nodes, setNodes] = useState<FlowNode[]>(initialState?.nodes ?? []);
   const [edges, setEdges] = useState<FlowEdge[]>(initialState?.edges ?? []);
   const [fields, setFields] = useState<FlowField[]>(initialState?.fields ?? []);
@@ -86,22 +97,22 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
   // --- Specialized Hooks ---
   const nodesManager = useNodesState(nodes, (newNodes) => {
     setNodes(newNodes);
-    onStateChange?.();
+    handleStateChange();
   });
   const edgesManager = useEdgesState(edges, (newEdges) => {
     setEdges(newEdges);
-    onStateChange?.();
+    handleStateChange();
   }, setNodes);
   const teamPoolManager = useTeamPoolState(
     globalTeams,
     (newTeams) => {
       setGlobalTeams(newTeams);
-      onStateChange?.();
+      handleStateChange();
     },
     globalTeamGroups,
     (newGroups) => {
       setGlobalTeamGroups(newGroups);
-      onStateChange?.();
+      handleStateChange();
     },
     nodes,
     setNodes
@@ -118,8 +129,8 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
 
   const updateMetadata = useCallback((data: Partial<GamedayMetadata>) => {
     setMetadata((prev) => ({ ...prev, ...data }));
-    onStateChange?.();
-  }, [onStateChange]);
+    handleStateChange();
+  }, [handleStateChange]);
 
   const onNodesChange = useCallback(() => {}, []);
   const onEdgesChange = useCallback(() => {}, []);
@@ -132,14 +143,14 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     const id = `field-${uuidv4()}`;
     const newField = createFlowField(id, name, fields.length);
     setFields((flds) => [...flds, newField]);
-    onStateChange?.();
+    handleStateChange();
     return newField;
-  }, [fields, onStateChange]);
+  }, [fields, handleStateChange]);
 
   const updateField = useCallback((fieldId: string, name: string) => {
     setFields((flds) => flds.map((f) => (f.id === fieldId ? { ...f, name } : f)));
-    onStateChange?.();
-  }, [onStateChange]);
+    handleStateChange();
+  }, [handleStateChange]);
 
   const deleteField = useCallback((fieldId: string) => {
     setFields((flds) => flds.filter((f) => f.id !== fieldId));
@@ -151,8 +162,8 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
         return node;
       })
     );
-    onStateChange?.();
-  }, [onStateChange]);
+    handleStateChange();
+  }, [handleStateChange]);
 
   const clearAll = useCallback(() => {
     setNodes([]);
@@ -161,21 +172,22 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     setGlobalTeams([]);
     setGlobalTeamGroups([]);
     setSelection({ nodeIds: [], edgeIds: [] });
-    onStateChange?.();
-  }, [onStateChange]);
+    handleStateChange();
+  }, [handleStateChange]);
 
   const clearSchedule = useCallback(() => {
     setNodes([]);
     setEdges([]);
     setFields([]);
     setSelection({ nodeIds: [], edgeIds: [] });
-    onStateChange?.();
-  }, [onStateChange]);
+    handleStateChange();
+  }, [handleStateChange]);
 
   const importState = useCallback((state: FlowState) => {
     if (state.metadata) {
       setMetadata(prev => ({
         ...state.metadata,
+        date: state.metadata.date || '',
         status: state.metadata.status || prev.status || 'DRAFT'
       }));
     }
@@ -191,17 +203,19 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     setGlobalTeams(migratedTeams);
     setGlobalTeamGroups(state.globalTeamGroups || []);
     setSelection({ nodeIds: [], edgeIds: [] });
-    onStateChange?.();
-  }, [onStateChange]);
+    handleStateChange();
+  }, [handleStateChange]);
 
-  const exportState = useCallback((): FlowState => ({
-    metadata,
-    nodes,
-    edges,
-    fields,
-    globalTeams,
-    globalTeamGroups,
-  }), [metadata, nodes, edges, fields, globalTeams, globalTeamGroups]);
+  const exportState = useCallback((): FlowState => {
+    return {
+      metadata,
+      nodes,
+      edges,
+      fields,
+      globalTeams,
+      globalTeamGroups,
+    };
+  }, [metadata, nodes, edges, fields, globalTeams, globalTeamGroups]);
 
   /**
    * Legacy addGameNode that doesn't enforce hierarchy.
@@ -301,6 +315,7 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     fields,
     globalTeams,
     globalTeamGroups,
+    saveTrigger,
     selectedNode: nodes.find((n) => n.id === selection.nodeIds[0]) || null,
     selection,
     onNodesChange,
@@ -348,5 +363,16 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
       onStateChange?.();
     },
     moveNodeToStage: () => {}, // Placeholder
+    // Explicitly export these from managers
+    addFieldNode: nodesManager.addFieldNode,
+    addStageNode: nodesManager.addStageNode,
+    addBulkTournament: nodesManager.addBulkTournament,
+    addGlobalTeam: teamPoolManager.addGlobalTeam,
+    updateGlobalTeam: teamPoolManager.updateGlobalTeam,
+    deleteGlobalTeam: teamPoolManager.deleteGlobalTeam,
+    reorderGlobalTeam: teamPoolManager.reorderGlobalTeam,
+    addGlobalTeamGroup: teamPoolManager.addGlobalTeamGroup,
+    assignTeamToGame: teamPoolManager.assignTeamToGame,
+    updateNode: nodesManager.updateNode,
   };
 }

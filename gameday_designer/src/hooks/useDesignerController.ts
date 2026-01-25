@@ -25,6 +25,31 @@ import type { TournamentGenerationConfig } from '../types/tournament';
 import { v4 as uuidv4 } from 'uuid';
 
 export function useDesignerController(flowState: UseFlowStateReturn) {
+  if (!flowState) {
+    // Return dummy structure if flowState is missing to prevent crash during initial load/error
+    return {
+      metadata: {} as GamedayMetadata,
+      nodes: [],
+      edges: [],
+      fields: [],
+      globalTeams: [],
+      globalTeamGroups: [],
+      selectedNode: null,
+      validation: { errors: [], warnings: [] },
+      notifications: [],
+      updateMetadata: () => {},
+      ui: { 
+        highlightedElement: null, 
+        expandedFieldIds: new Set<string>(), 
+        expandedStageIds: new Set<string>(), 
+        showTournamentModal: false, 
+        canExport: false,
+        hasData: false 
+      },
+      handlers: {} as any
+    } as any;
+  }
+
   const {
     metadata,
     nodes,
@@ -236,7 +261,7 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
     return nodes.some((n) => n.type === 'game') && fields.length > 0;
   }, [nodes, fields]);
 
-  return {
+  return useMemo(() => ({
     // State
     ...flowState,
     validation,
@@ -249,7 +274,20 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
       showTournamentModal,
       canExport,
       hasData: nodes.length > 0 || globalTeams.length > 0 || fields.length > 0,
+      saveTrigger: flowState.saveTrigger, // Ensure saveTrigger is passed through if it exists
     },
+    // Explicitly expose these from flowState if not already in ...flowState
+    updateGlobalTeamGroup: flowState.updateGlobalTeamGroup,
+    deleteGlobalTeamGroup: flowState.deleteGlobalTeamGroup,
+    reorderGlobalTeamGroup: flowState.reorderGlobalTeamGroup,
+    getTeamUsage: flowState.getTeamUsage,
+    addGameToGameEdge: flowState.addGameToGameEdge,
+    addStageToGameEdge: flowState.addStageToGameEdge,
+    removeEdgeFromSlot: flowState.removeEdgeFromSlot,
+    addGameNodeInStage: flowState.addGameNodeInStage,
+    importState: flowState.importState,
+    exportState: flowState.exportState,
+    
     // Handlers
     handlers: {
       expandField,
@@ -276,5 +314,15 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
       dismissNotification,
       addNotification,
     }
-  };
+  }), [
+    flowState, validation, notifications, updateMetadata, highlightedElement, 
+    expandedFieldIds, expandedStageIds, showTournamentModal, canExport, 
+    nodes.length, globalTeams.length, fields.length,
+    expandField, expandStage, handleHighlightElement, handleDynamicReferenceClick,
+    handleImport, handleExport, clearAll, updateNode, updateGlobalTeam, 
+    deleteGlobalTeam, reorderGlobalTeam, assignTeamToGame, handleSwapTeams, 
+    deleteNode, selectNode, handleGenerateTournament, addGlobalTeam, 
+    addGlobalTeamGroup, addFieldNode, addStageNode, dismissNotification, 
+    addNotification
+  ]);
 }

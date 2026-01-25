@@ -200,4 +200,30 @@ describe('GamedayDashboard Coverage', () => {
     });
     expect(progressBar).toHaveAttribute('aria-valuenow', '0');
   });
+
+  it('triggers immediate deletion on unmount for pending items', async () => {
+    const { unmount } = render(
+      <MemoryRouter>
+        <GamedayProvider>
+          <GamedayDashboard />
+        </GamedayProvider>
+      </MemoryRouter>
+    );
+    await waitFor(() => expect(screen.getByText('Gameday 2')).toBeInTheDocument());
+
+    vi.useFakeTimers();
+    const deleteBtn = screen.getByTitle(/delete gameday/i);
+    fireEvent.click(deleteBtn);
+
+    // Placeholder shown, but timeout NOT yet reached
+    expect(screen.queryByText('Gameday 2')).not.toBeInTheDocument();
+    expect(gamedayApi.deleteGameday).not.toHaveBeenCalled();
+
+    // UNMOUNT - should trigger immediate deleteGameday
+    act(() => {
+      unmount();
+    });
+
+    expect(gamedayApi.deleteGameday).toHaveBeenCalledWith(2);
+  });
 });

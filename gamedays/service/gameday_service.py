@@ -142,8 +142,11 @@ class EmptyGamedayService:
 
     @staticmethod
     def get_resolved_designer_data(gameday_pk):
-        gameday = Gameday.objects.get(pk=gameday_pk)
-        return gameday.designer_data or {"nodes": [], "edges": []}
+        try:
+            gameday = Gameday.objects.get(pk=gameday_pk)
+            return gameday.designer_data or {"nodes": [], "edges": []}
+        except Gameday.DoesNotExist:
+            return {"nodes": [], "edges": []}
 
 
 class GamedayService:

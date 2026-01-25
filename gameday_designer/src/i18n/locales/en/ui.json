@@ -38,7 +38,10 @@
     "games": "Games",
     "german": "Deutsch",
     "english": "English",
-    "undo": "Undo"
+    "undo": "Undo",
+    "gamedayName": "Gameday Name",
+    "gamedayDate": "Gameday Date",
+    "gamedayStartTime": "Start Time"
   },
   "title": {
     "enterGameResult": "Enter Game Result"

@@ -5,6 +5,7 @@ from datetime import datetime
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status
+from rest_framework.permissions import AllowAny
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, CreateAPIView
@@ -35,6 +36,7 @@ class GamedayViewSet(viewsets.ModelViewSet):
     serializer_class = GamedaySerializer
     pagination_class = StandardResultsSetPagination
     queryset = Gameday.objects.all()
+    permission_classes = [AllowAny]
 
     def get_serializer_class(self):
         if self.action == "list":

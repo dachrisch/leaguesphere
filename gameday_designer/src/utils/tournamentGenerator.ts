@@ -264,22 +264,21 @@ function createStages(
       stageOrderCounter++;
     } else if (typeof stageTemplate.fieldAssignment === 'number') {
       // Assign to specific field index
-      const fieldIndex = stageTemplate.fieldAssignment;
-      if (fieldIndex < fields.length) {
-        const stageId = `stage-${uuidv4()}`;
-        const stage = createStageNode(stageId, fields[fieldIndex].id, {
-          name: stageTemplate.name,
-          stageType: stageTemplate.stageType,
-          order: stageOrderCounter,
-          progressionMode: stageTemplate.progressionMode,
-          progressionConfig: stageTemplate.config,
-          startTime: startTime,
-          defaultGameDuration: gameDuration,
-          defaultBreakBetweenGames: breakDuration,
-          progressionMapping: stageTemplate.progressionMapping,
-        });
-        stages.push(stage);
-      }
+      // If fieldCount is less than the requested index, wrap around using modulo
+      const fieldIndex = stageTemplate.fieldAssignment % fields.length;
+      const stageId = `stage-${uuidv4()}`;
+      const stage = createStageNode(stageId, fields[fieldIndex].id, {
+        name: stageTemplate.name,
+        stageType: stageTemplate.stageType,
+        order: stageOrderCounter,
+        progressionMode: stageTemplate.progressionMode,
+        progressionConfig: stageTemplate.config,
+        startTime: startTime,
+        defaultGameDuration: gameDuration,
+        defaultBreakBetweenGames: breakDuration,
+        progressionMapping: stageTemplate.progressionMapping,
+      });
+      stages.push(stage);
       stageOrderCounter++;
     }
   }
@@ -319,11 +318,19 @@ function generateGamesForStages(
         namePrefix
       );
     } else if (stageData.progressionMode === 'placement') {
+      let namePrefix: string | undefined;
+      // Extract prefix from stage name (e.g. "3rd/5th Place" -> "3rd/5th")
+      const prefixMatch = stageData.name.match(/^(.*?)\sPlace$/);
+      if (prefixMatch) {
+        namePrefix = prefixMatch[1];
+      }
+
       games = generatePlacementGames(
         stage.id,
         stageData.progressionConfig as PlacementConfig,
         stageData.defaultGameDuration,
-        stageData.defaultBreakBetweenGames
+        stageData.defaultBreakBetweenGames,
+        namePrefix
       );
     }
     // 'manual' mode generates no games automatically

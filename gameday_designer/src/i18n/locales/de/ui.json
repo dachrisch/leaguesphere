@@ -69,7 +69,10 @@
     "winner": "Sieger",
     "loser": "Verlierer",
     "tbd": "TBD",
-    "selectTeam": "-- Team wählen --"
+    "selectTeam": "-- Team wählen --",
+    "gamedayName": "Spieltagsname",
+    "gamedayDate": "Spieltagsdatum",
+    "gamedayStartTime": "Startzeit"
   },
   "placeholder": {
     "standing": "z.B. Gruppe 1, HF1, P1",
@@ -90,7 +93,7 @@
     "doubleClickToEditTeam": "Doppelklick zum Bearbeiten des Teamnamens",
     "gameday": "Spieltag",
     "dashboardSubtitle": "Erstellen und verwalten Sie Ihre Flag-Football-Turnierpläne",
-    "filteringTip": "Tipp: Verwenden Sie season:2026 oder status:draft für präzises Filtern.",
+    "filteringTip": "Tipp: Verwenden Sie season:2026 oder status:draft for präzises Filtern.",
     "noGamedaysFound": "Keine Spieltage gefunden",
     "getStartedMessage": "Beginnen Sie, indem Sie Ihren ersten Spieltag erstellen.",
     "winnerOf": "Sieger von {{match}}",

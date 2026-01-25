@@ -8,6 +8,8 @@ import { describe, it, expect, vi } from 'vitest';
 import GamedayMetadataAccordion from '../GamedayMetadataAccordion';
 import type { GamedayMetadata } from '../../types';
 
+import { Accordion } from 'react-bootstrap';
+
 describe('GamedayMetadataAccordion', () => {
   const mockMetadata: GamedayMetadata = {
     id: 1,
@@ -25,7 +27,11 @@ describe('GamedayMetadataAccordion', () => {
   const mockOnUpdate = vi.fn();
 
   it('renders accordion collapsed by default', () => {
-    render(<GamedayMetadataAccordion metadata={mockMetadata} onUpdate={mockOnUpdate} />);
+    render(
+      <Accordion>
+        <GamedayMetadataAccordion metadata={mockMetadata} onUpdate={mockOnUpdate} />
+      </Accordion>
+    );
     
     expect(screen.getByText('Test Gameday')).toBeInTheDocument();
     expect(screen.getByText('01.05.2026')).toBeInTheDocument();
@@ -35,12 +41,16 @@ describe('GamedayMetadataAccordion', () => {
   });
 
   it('expands to show form fields and action buttons', () => {
-    render(<GamedayMetadataAccordion metadata={mockMetadata} onUpdate={mockOnUpdate} />);
+    render(
+      <Accordion>
+        <GamedayMetadataAccordion metadata={mockMetadata} onUpdate={mockOnUpdate} />
+      </Accordion>
+    );
     
     fireEvent.click(document.querySelector('.accordion-button')!);
     
-    expect(screen.getByLabelText('Name')).toBeVisible();
-    expect(screen.getByLabelText('Date')).toBeVisible();
+    expect(screen.getByLabelText('Gameday Name')).toBeVisible();
+    expect(screen.getByLabelText('Gameday Date')).toBeVisible();
     
     // Action buttons should now be in the body
     expect(screen.getByTestId('publish-schedule-button')).toBeInTheDocument();
@@ -49,10 +59,14 @@ describe('GamedayMetadataAccordion', () => {
   });
 
   it('calls onUpdate when fields change', () => {
-    render(<GamedayMetadataAccordion metadata={mockMetadata} onUpdate={mockOnUpdate} />);
+    render(
+      <Accordion>
+        <GamedayMetadataAccordion metadata={mockMetadata} onUpdate={mockOnUpdate} />
+      </Accordion>
+    );
     fireEvent.click(document.querySelector('.accordion-button')!);
 
-    const nameInput = screen.getByLabelText('Name');
+    const nameInput = screen.getByLabelText('Gameday Name');
     fireEvent.change(nameInput, { target: { value: 'Updated Name' } });
 
     expect(mockOnUpdate).toHaveBeenCalledWith({ name: 'Updated Name' });

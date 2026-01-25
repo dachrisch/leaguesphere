@@ -1316,7 +1316,7 @@ describe('useFlowValidation', () => {
     });
 
     it('should return valid when all mandatory metadata is present', () => {
-      const metadata = { name: 'Test', date: '2026-01-01', start: '10:00' } as Partial<GamedayMetadata>;
+      const metadata = { name: 'Test', date: '2026-01-01', start: '10:00', season: 1, league: 1 } as Partial<GamedayMetadata>;
       const { result } = renderHook(() => useFlowValidation([], [], [], [], [], metadata as GamedayMetadata));
       
       const errors = result.current.errors.filter(e => e.id.startsWith('metadata_'));
