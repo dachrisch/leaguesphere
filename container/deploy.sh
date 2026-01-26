@@ -50,6 +50,8 @@ case "$1" in
             # Already on RC version - bump rc_build (e.g., 2.13.1-rc.1 → 2.13.1-rc.2)
             # Uses bump-my-version which automatically runs post-commit hooks for uv.lock
             echo "Incrementing RC build number..."
+            # Ensure uv.lock is updated and staged if the hook is used, 
+            # or handle it here for robustness
             bump-my-version bump rc_build
         else
             # Stable version - bump patch and create RC.1 (e.g., 2.13.0 → 2.13.1-rc.1)
