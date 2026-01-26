@@ -29,6 +29,7 @@ class GamedaySerializer(ModelSerializer):
         ret = super().to_representation(instance)
         try:
             from gamedays.service.gameday_service import GamedayService
+
             ret["designer_data"] = GamedayService.create(
                 instance.pk
             ).get_resolved_designer_data(instance.pk)
