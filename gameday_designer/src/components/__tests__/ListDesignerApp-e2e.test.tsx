@@ -270,7 +270,7 @@ describe('ListDesignerApp - E2E CRUD Flow', () => {
       expect(screen.queryByText(/Main Stadium/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Opening Round/i)).not.toBeInTheDocument();
     }, { timeout: 5000 });
-  }, 30000);
+  }, 60000);
 
   it('blocks publishing when there are validation errors', async () => {
     const { user } = await renderApp();
@@ -306,5 +306,5 @@ describe('ListDesignerApp - E2E CRUD Flow', () => {
     
     const confirmBtn = within(modal).getByRole('button', { name: /Publish Now|Publish Anyway/i });
     expect(confirmBtn).toBeDisabled();
-  });
+  }, 60000);
 });

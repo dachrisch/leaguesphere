@@ -120,4 +120,62 @@ describe('useNodesState', () => {
       expect(getNodes()).toHaveLength(0);
     });
   });
+
+  describe('ensureContainerHierarchy', () => {
+    it('creates field and stage when empty', () => {
+      const { result, getNodes } = setupHook();
+      let ids: { fieldId: string; stageId: string } | null = null;
+      
+      act(() => {
+        ids = result.current.ensureContainerHierarchy(null);
+      });
+
+      expect(ids).not.toBeNull();
+      expect(getNodes().find(n => n.id === ids?.fieldId)).toBeDefined();
+      expect(getNodes().find(n => n.id === ids?.stageId)).toBeDefined();
+    });
+
+    it('adds stage to existing field if missing', () => {
+      const { result, getNodes, rerender } = setupHook();
+      let fieldId: string = '';
+      
+      act(() => {
+        fieldId = result.current.addFieldNode().id;
+      });
+      
+      rerender({ nodes: getNodes() });
+      expect(getNodes()).toHaveLength(1);
+
+      let ids: { fieldId: string; stageId: string } | null = null;
+      act(() => {
+        ids = result.current.ensureContainerHierarchy(fieldId);
+      });
+
+      expect(ids?.fieldId).toBe(fieldId);
+      expect(getNodes()).toHaveLength(2); // Field + new Stage
+    });
+
+    it('returns existing IDs if hierarchy already exists', () => {
+      const { result, getNodes, rerender } = setupHook();
+      let fieldId: string = '';
+      let stageId: string = '';
+      
+      act(() => {
+        const field = result.current.addFieldNode(undefined, true);
+        fieldId = field.id;
+      });
+      
+      rerender({ nodes: getNodes() });
+      stageId = getNodes().find(n => n.type === 'stage')!.id;
+
+      let ids: { fieldId: string; stageId: string } | null = null;
+      act(() => {
+        ids = result.current.ensureContainerHierarchy(stageId);
+      });
+
+      expect(ids?.fieldId).toBe(fieldId);
+      expect(ids?.stageId).toBe(stageId);
+      expect(getNodes()).toHaveLength(2);
+    });
+  });
 });

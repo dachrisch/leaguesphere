@@ -3,12 +3,17 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import GamedayMetadataAccordion from '../GamedayMetadataAccordion';
 import type { GamedayMetadata } from '../../types';
+import { gamedayApi } from '../../api/gamedayApi';
+import '../../i18n/testConfig';
 
 import { Accordion } from 'react-bootstrap';
+
+vi.mock('../../api/gamedayApi');
 
 describe('GamedayMetadataAccordion', () => {
   const mockMetadata: GamedayMetadata = {
@@ -70,5 +75,29 @@ describe('GamedayMetadataAccordion', () => {
     fireEvent.change(nameInput, { target: { value: 'Updated Name' } });
 
     expect(mockOnUpdate).toHaveBeenCalledWith({ name: 'Updated Name' });
+  });
+
+  it('triggers unlock schedule when button is clicked', async () => {
+    const user = userEvent.setup();
+    const publishedMetadata = { ...mockMetadata, status: 'PUBLISHED' };
+    const mockOnUnlock = vi.fn();
+    
+    vi.mocked(gamedayApi.listSeasons).mockResolvedValue([]);
+    vi.mocked(gamedayApi.listLeagues).mockResolvedValue([]);
+
+    render(
+      <Accordion defaultActiveKey="0">
+        <GamedayMetadataAccordion 
+          metadata={publishedMetadata} 
+          onUpdate={mockOnUpdate}
+          onUnlock={mockOnUnlock}
+        />
+      </Accordion>
+    );
+
+    const unlockBtn = await screen.findByRole('button', { name: /Unlock Schedule/i });
+    await user.click(unlockBtn);
+
+    expect(mockOnUnlock).toHaveBeenCalled();
   });
 });
