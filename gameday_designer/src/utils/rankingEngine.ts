@@ -30,9 +30,8 @@ export function getStageGroups(games: GameNode[]): string[] {
   const groups = new Set<string>();
   
   games.forEach(game => {
-    if (game.data.standing) {
-      // Typically standing name includes group, e.g. "Group A"
-      groups.add(game.data.standing);
+    if (game.data.group) {
+      groups.add(game.data.group);
     }
   });
   
@@ -45,7 +44,7 @@ export function getStageGroups(games: GameNode[]): string[] {
 export function getGroupParticipants(games: GameNode[], groupName: string): string[] {
   const participants = new Set<string>();
   
-  games.filter(g => g.data.standing === groupName).forEach(game => {
+  games.filter(g => g.data.group === groupName).forEach(game => {
     if (game.data.homeTeamId) participants.add(game.data.homeTeamId);
     if (game.data.awayTeamId) participants.add(game.data.awayTeamId);
   });

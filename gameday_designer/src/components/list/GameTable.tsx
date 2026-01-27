@@ -416,16 +416,35 @@ const GameTable: React.FC<GameTableProps> = memo(({
     return (
       <td style={{ backgroundColor: isManual ? '#fff3cd' : undefined }} onClick={(e) => e.stopPropagation()}>
         {isEditingTime ? (
-          <Form.Control
-            type="time"
-            size="sm"
-            value={editedValue}
-            onChange={(e) => setEditedValue(e.target.value)}
-            onBlur={() => handleSaveEdit(game.id, 'time')}
-            onKeyDown={(e) => handleKeyPress(e, game.id, 'time')}
-            autoFocus
-            style={{ fontSize: '0.875rem', width: '110px' }}
-          />
+          <div className="d-flex align-items-center gap-1">
+            <Form.Control
+              type="time"
+              size="sm"
+              value={editedValue}
+              onChange={(e) => setEditedValue(e.target.value)}
+              onKeyDown={(e) => handleKeyPress(e, game.id, 'time')}
+              autoFocus
+              style={{ fontSize: '0.875rem', width: '110px' }}
+            />
+            <Button 
+              variant="success" 
+              size="sm" 
+              className="p-0 px-1" 
+              onClick={() => handleSaveEdit(game.id, 'time')}
+              title={t('ui:button.save')}
+            >
+              <i className="bi bi-check-lg" />
+            </Button>
+            <Button 
+              variant="outline-secondary" 
+              size="sm" 
+              className="p-0 px-1" 
+              onClick={handleCancelEdit}
+              title={t('ui:button.cancel')}
+            >
+              <i className="bi bi-x-lg" />
+            </Button>
+          </div>
         ) : (
           <div className="d-flex align-items-center gap-1">
             <span 
@@ -435,7 +454,14 @@ const GameTable: React.FC<GameTableProps> = memo(({
             >
               {timeValue || '--:--'}
             </span>
-            {isManual && <i className="bi bi-pencil-fill text-warning" style={{ fontSize: '0.7rem' }} />}
+            {!readOnly && (
+              <i 
+                className={`bi bi-pencil-fill ${isManual ? 'text-warning' : 'text-muted'}`} 
+                style={{ fontSize: '0.7rem', cursor: 'pointer' }} 
+                onClick={(e) => handleStartEdit(e, game, 'time')}
+                title={t('ui:tooltip.clickToEdit')}
+              />
+            )}
           </div>
         )}
       </td>

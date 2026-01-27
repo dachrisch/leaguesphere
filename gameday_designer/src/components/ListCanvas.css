@@ -181,7 +181,7 @@
 
 /**
  * Fields Grid Layout with Responsive CSS Grid
- * Enforce exactly 2 columns (50% each) on wide screens.
+ * Enforce vertical layout by default, max 2 columns on very large screens.
  */
 .fields-grid {
   display: grid;
@@ -189,7 +189,7 @@
   grid-template-columns: 1fr;
 }
 
-@media (min-width: 2800px) {
+@media (min-width: 2500px) {
   .fields-grid {
     grid-template-columns: 1fr 1fr;
   }

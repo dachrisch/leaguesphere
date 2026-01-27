@@ -133,33 +133,37 @@ describe('GameTable', () => {
       expect(mockOnUpdate).toHaveBeenCalledWith('game-2', { breakAfter: 15 });
     });
 
-    it('saves time on blur', async () => {
+    it('saves time on Save click', async () => {
+      const user = userEvent.setup();
       const { container } = renderTable({ games: [game1], allNodes: [field1, stage1, stage2, game1, game2] });
-      fireEvent.click(screen.getByText('Quali 1'));
-      const timeCell = screen.getByText('--:--');
-      fireEvent.click(timeCell);
+      await user.click(screen.getByText('--:--'));
       const input = container.querySelector('input[type="time"]') as HTMLInputElement;
-      fireEvent.change(input, { target: { value: '14:00' } });
-      fireEvent.blur(input);
+      await user.type(input, '14:00');
+      const saveBtn = screen.getByTitle('Save');
+      await user.click(saveBtn);
       expect(mockOnUpdate).toHaveBeenCalledWith('game-1', { startTime: '14:00', manualTime: true });
     });
 
-    it('clears time when empty', async () => {
+    it('clears time when empty and saved', async () => {
+      const user = userEvent.setup();
       const { container } = renderTable({ games: [game2] });
-      fireEvent.click(screen.getByText('10:00'));
+      await user.click(screen.getByText('10:00'));
       const input = container.querySelector('input[type="time"]') as HTMLInputElement;
-      fireEvent.change(input, { target: { value: '' } });
-      fireEvent.blur(input);
+      await user.clear(input);
+      const saveBtn = screen.getByTitle('Save');
+      await user.click(saveBtn);
       expect(mockOnUpdate).toHaveBeenCalledWith('game-2', { startTime: undefined, manualTime: false });
     });
 
-    it('shows error notification for invalid time format', async () => {
+    it('shows error notification for invalid time format on save', async () => {
+      const user = userEvent.setup();
       vi.mocked(timeUtils.isValidTimeFormat).mockReturnValue(false);
       const { container } = renderTable({ games: [game2], onNotify: mockOnNotify });
-      fireEvent.click(screen.getByText('10:00'));
+      await user.click(screen.getByText('10:00'));
       const input = container.querySelector('input[type="time"]') as HTMLInputElement;
-      fireEvent.change(input, { target: { value: '10:00' } });
-      fireEvent.blur(input);
+      await user.type(input, 'invalid');
+      const saveBtn = screen.getByTitle('Save');
+      await user.click(saveBtn);
       expect(mockOnNotify).toHaveBeenCalled();
     });
   });
