@@ -200,7 +200,8 @@ describe('useDesignerController', () => {
       vi.mocked(flowchartImport.validateScheduleJson).mockReturnValue([]);
       vi.mocked(flowchartImport.importFromScheduleJson).mockReturnValue({ 
         success: true, 
-        state: mockState as any 
+        // @ts-expect-error - partial state for testing
+        state: mockState as unknown as FlowState 
       });
       const { result } = renderHook(() => {
         const flowState = useFlowState();
@@ -302,7 +303,8 @@ describe('useDesignerController', () => {
       vi.mocked(teamAssignment.generateTeamsForTournament).mockReturnValue(mockTeams as unknown as Array<{ label: string; color: string }>);
       vi.mocked(teamAssignment.assignTeamsToTournamentGames).mockReturnValueOnce([
         { type: 'assign_team', gameId: 'g1', teamId: 't1', slot: 'home' },
-        { type: 'add_edges', edges: [{ id: 'e1' } as any] }
+        // @ts-expect-error - partial edge for testing
+        { type: 'add_edges', edges: [{ id: 'e1' } as unknown as FlowEdge] }
       ]);
       
       await act(async () => {

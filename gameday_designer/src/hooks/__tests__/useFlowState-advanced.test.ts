@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useFlowState } from '../useFlowState';
-import type { FlowState, GlobalTeam } from '../../types/flowchart';
+import type { FlowState, GameNode } from '../../types/flowchart';
 
 describe('useFlowState advanced', () => {
   it('migrates legacy teams during importState', () => {
@@ -125,13 +125,13 @@ describe('useFlowState advanced', () => {
     expect(result.current.fields).toHaveLength(0);
   });
 
-  it('addBulkGames adds nodes to the state', () => {
-    const { result } = renderHook(() => useFlowState());
-    
-    act(() => {
-      result.current.addBulkGames([{ id: 'g1', type: 'game', data: {} } as any]);
-    });
-
-    expect(result.current.nodes).toHaveLength(1);
-  });
-});
+      it('addBulkGames adds nodes to the state', () => {
+        const { result } = renderHook(() => useFlowState());
+        
+        act(() => {
+          // @ts-expect-error - testing bulk add with partial objects
+          result.current.addBulkGames([{ id: 'g1', type: 'game', data: {} } as unknown as GameNode]);
+        });
+  
+        expect(result.current.nodes).toHaveLength(1);
+      });});

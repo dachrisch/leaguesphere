@@ -8,7 +8,6 @@ import { useNodesState } from '../useNodesState';
 import {
   isFieldNode,
   isStageNode,
-  isGameNode,
 } from '../../types/flowchart';
 import type { FlowNode, GameNode } from '../../types/flowchart';
 
@@ -264,7 +263,7 @@ describe('useNodesState', () => {
 
   describe('addGameNodeInStage', () => {
     it('creates hierarchy if stageId is missing', () => {
-      const { result, getNodes, rerender } = setupHook();
+      const { result, getNodes } = setupHook();
       act(() => { result.current.addGameNodeInStage(); });
       expect(getNodes()).toHaveLength(3); // field, stage, game
     });
@@ -274,9 +273,12 @@ describe('useNodesState', () => {
     it('adds multiple nodes at once', () => {
       const { result, getNodes } = setupHook();
       const structure = {
-        fields: [{ id: 'f1', type: 'field', data: { name: 'F1' } } as any],
-        stages: [{ id: 's1', type: 'stage', data: { name: 'S1' } } as any],
-        games: [{ id: 'g1', type: 'game', data: { standing: 'G1' } } as any],
+        // @ts-expect-error - testing bulk add with partial objects
+        fields: [{ id: 'f1', type: 'field', data: { name: 'F1' } } as unknown as FieldNode],
+        // @ts-expect-error - testing bulk add with partial objects
+        stages: [{ id: 's1', type: 'stage', data: { name: 'S1' } } as unknown as StageNode],
+        // @ts-expect-error - testing bulk add with partial objects
+        games: [{ id: 'g1', type: 'game', data: { standing: 'G1' } } as unknown as GameNode],
       };
       act(() => { result.current.addBulkTournament(structure); });
       expect(getNodes()).toHaveLength(3);

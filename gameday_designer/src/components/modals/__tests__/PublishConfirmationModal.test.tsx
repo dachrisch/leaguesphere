@@ -6,7 +6,7 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import PublishConfirmationModal from '../PublishConfirmationModal';
-import type { FlowValidationResult } from '../../../types/flowchart';
+import type { FlowValidationResult, FlowValidationError } from '../../../types/flowchart';
 import '../../../i18n/testConfig';
 
 describe('PublishConfirmationModal', () => {
@@ -152,7 +152,8 @@ describe('PublishConfirmationModal', () => {
       errors: [{ 
         id: 'e1', 
         type: 'overlap', 
-        messageKey: 'field_overlap' as any, 
+        // @ts-expect-error - testing specific message key
+        messageKey: 'field_overlap' as unknown as string, 
         messageParams: { game1: 'G1', game2: 'G2', field: 'F1' } 
       }],
       warnings: []
@@ -175,7 +176,8 @@ describe('PublishConfirmationModal', () => {
       mockOnHighlight.mockClear();
       const validation = {
         isValid: false,
-        errors: [{ ...item, message: `Error ${item.id}` } as any],
+        // @ts-expect-error - testing various error types
+        errors: [{ ...item, message: `Error ${item.id}` } as unknown as FlowValidationError],
         warnings: []
       };
       
