@@ -247,23 +247,23 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
       expandedFieldIds,
       expandedStageIds,
       showTournamentModal,
-      canExport,
-      hasData: nodes.length > 0 || globalTeams.length > 0 || fields.length > 0,
-      saveTrigger: flowState.saveTrigger, // Ensure saveTrigger is passed through if it exists
-    },
-    // Explicitly expose these from flowState if not already in ...flowState
-    updateGlobalTeamGroup: flowState.updateGlobalTeamGroup,
-    deleteGlobalTeamGroup: flowState.deleteGlobalTeamGroup,
-    reorderGlobalTeamGroup: flowState.reorderGlobalTeamGroup,
-    getTeamUsage: flowState.getTeamUsage,
-    addGameToGameEdge: flowState.addGameToGameEdge,
-    addStageToGameEdge: flowState.addStageToGameEdge,
-    removeEdgeFromSlot: flowState.removeEdgeFromSlot,
-    addGameNodeInStage: flowState.addGameNodeInStage,
-    importState: flowState.importState,
-    exportState: flowState.exportState,
-    
-    // Handlers
+              canExport,
+              hasData: nodes.length > 0 || globalTeams.length > 0 || fields.length > 0,
+                      saveTrigger: flowState?.saveTrigger, // Ensure saveTrigger is passed through if it exists
+                    },
+                    // Explicitly expose these from flowState if not already in ...flowState
+                    updateGlobalTeamGroup: flowState?.updateGlobalTeamGroup,
+                    deleteGlobalTeamGroup: flowState?.deleteGlobalTeamGroup,
+                    reorderGlobalTeamGroup: flowState?.reorderGlobalTeamGroup,
+                    getTeamUsage: flowState?.getTeamUsage,
+                    addGameToGameEdge: flowState?.addGameToGameEdge,
+                    addStageToGameEdge: flowState?.addStageToGameEdge,
+                    removeEdgeFromSlot: flowState?.removeEdgeFromSlot,
+                    addGameNodeInStage: flowState?.addGameNodeInStage,
+                    importState: flowState?.importState,
+                    exportState: flowState?.exportState,
+                    
+                    // Handlers
     handlers: {
       expandField,
       expandStage,
