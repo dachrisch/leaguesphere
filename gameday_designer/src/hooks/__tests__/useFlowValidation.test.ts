@@ -1315,6 +1315,24 @@ describe('useFlowValidation', () => {
       expect(error?.message).toContain('Start Time is mandatory');
     });
 
+    it('should error when season is missing', () => {
+      const metadata = { name: 'Test', date: '2026-01-01', start: '10:00', season: 0 } as Partial<GamedayMetadata>;
+      const { result } = renderHook(() => useFlowValidation([], [], [], [], [], metadata as GamedayMetadata));
+      
+      const error = result.current.errors.find(e => e.id === 'metadata_season_missing');
+      expect(error).toBeDefined();
+      expect(error?.message).toContain('Season is mandatory');
+    });
+
+    it('should error when league is missing', () => {
+      const metadata = { name: 'Test', date: '2026-01-01', start: '10:00', league: 0 } as Partial<GamedayMetadata>;
+      const { result } = renderHook(() => useFlowValidation([], [], [], [], [], metadata as GamedayMetadata));
+      
+      const error = result.current.errors.find(e => e.id === 'metadata_league_missing');
+      expect(error).toBeDefined();
+      expect(error?.message).toContain('League is mandatory');
+    });
+
     it('should return valid when all mandatory metadata is present', () => {
       const metadata = { name: 'Test', date: '2026-01-01', start: '10:00', season: 1, league: 1 } as Partial<GamedayMetadata>;
       const { result } = renderHook(() => useFlowValidation([], [], [], [], [], metadata as GamedayMetadata));

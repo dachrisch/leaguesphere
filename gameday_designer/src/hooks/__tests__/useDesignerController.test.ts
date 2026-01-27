@@ -272,4 +272,39 @@ describe('useDesignerController', () => {
       expect(consoleSpy).toHaveBeenCalledWith('Failed to generate tournament:', expect.any(Error));
     });
   });
+
+  describe('handleSwapTeams', () => {
+    it('swaps home and away teams in a game', async () => {
+      const TestComponent = () => {
+        const flowState = useFlowState();
+        const controller = useDesignerController(flowState);
+        return { flowState, controller };
+      };
+
+      const { result } = renderHook(() => TestComponent());
+      
+      let gameId: string;
+      act(() => {
+        const game = result.current.flowState.addGameNode({
+          homeTeamId: 'team-1',
+          awayTeamId: 'team-2',
+          homeTeamDynamic: 'Winner 1',
+          awayTeamDynamic: 'Loser 1'
+        });
+        gameId = game.id;
+      });
+
+      act(() => {
+        result.current.controller.handlers.handleSwapTeams(gameId);
+      });
+
+      const updatedGame = result.current.flowState.nodes.find(n => n.id === gameId);
+      expect(updatedGame?.data).toMatchObject({
+        homeTeamId: 'team-2',
+        awayTeamId: 'team-1',
+        homeTeamDynamic: 'Loser 1',
+        awayTeamDynamic: 'Winner 1'
+      });
+    });
+  });
 });
