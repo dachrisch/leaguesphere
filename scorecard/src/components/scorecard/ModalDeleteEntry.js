@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import {FaTimes, FaTrash} from 'react-icons/fa';
 import {connect} from 'react-redux';
 import {deleteLogEntry} from '../../actions/games';
-import $ from 'jquery/src/jquery';
+import $ from 'jquery';
 
 const ModalDeleteEntry = (props) => {
   const handleSubmit = (ev) => {

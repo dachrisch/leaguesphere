@@ -6,6 +6,8 @@ Reposition and rebrand the generation action.
 - [ ] Task: Rebrand and Move Generation Button (#691)
     - [ ] Update translation keys in `ui.json`.
     - [ ] Relocate button from `FlowToolbar.tsx` or `GamedayDashboard.tsx` to the preferred layout position (next to "Create Gameday").
+- [ ] Task: Filter Gameday Display (#706)
+    - [ ] Filter gameday list to show only future designer-created gamedays.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Action Polish' (Protocol in workflow.md)
 
 ## Phase 2: Template Tooling (TDD)

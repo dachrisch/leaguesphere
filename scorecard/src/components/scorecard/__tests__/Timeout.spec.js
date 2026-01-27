@@ -3,11 +3,11 @@ import React from 'react';
 import {render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Timeout from '../Timeout';
-import $ from 'jquery/src/jquery';
+import $ from 'jquery';
 import { vi } from 'vitest';
 
 const modalMock = vi.fn();
-vi.mock('jquery/src/jquery', () => ({ default: vi.fn() }));
+vi.mock('jquery', () => ({ default: vi.fn() }));
 $.mockImplementation(() => {
   return {modal: modalMock};
 });
