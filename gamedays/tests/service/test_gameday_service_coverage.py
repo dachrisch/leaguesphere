@@ -35,17 +35,18 @@ class TestGamedayServiceCoverage:
     @pytest.mark.django_db
     def test_resolve_team_edge_cases(self):
         gameday = GamedayFactory()
+        official_team = Team.objects.create(name='Officials', description='Officials Team')
         # Need at least one gameinfo for GamedayModelWrapper to not raise DoesNotExist
-        Gameinfo.objects.create(gameday=gameday, scheduled='10:00', field=1, standing='DUMMY', status='Geplant')
+        Gameinfo.objects.create(gameday=gameday, scheduled='10:00', field=1, standing='DUMMY', status='Geplant', officials=official_team)
         service = GamedayService(gameday.pk)
         
         # Line 255: invalid ref
         assert service.get_resolved_designer_data()["nodes"] == []
         
         # Setup for resolve_team
-        team1 = Team.objects.create(name='Team 1')
-        team2 = Team.objects.create(name='Team 2')
-        game = Gameinfo.objects.create(gameday=gameday, scheduled='11:00', field=1, standing='G1', status='Geplant')
+        team1 = Team.objects.create(name='Team 1', description='Team 1 Desc')
+        team2 = Team.objects.create(name='Team 2', description='Team 2 Desc')
+        game = Gameinfo.objects.create(gameday=gameday, scheduled='11:00', field=1, standing='G1', status='Geplant', officials=official_team)
         
         # Line 261: target game not completed
         data = {
