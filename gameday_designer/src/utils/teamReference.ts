@@ -39,6 +39,8 @@ export function formatTeamReference(ref: TeamReference): string {
       return `Verlierer ${ref.matchName}`;
     case 'rank':
       return `Rank ${ref.place} ${ref.stageName}`;
+    case 'groupRank':
+      return `Rank ${ref.place} in ${ref.groupName} of ${ref.stageName}`;
     case 'static':
       return ref.name;
   }
@@ -50,6 +52,7 @@ const STANDING_PATTERN = /^P(\d+)\s+(.+)$/;
 const WINNER_PATTERN = /^Gewinner\s+(.+)$/;
 const LOSER_PATTERN = /^Verlierer\s+(.+)$/;
 const RANK_PATTERN = /^Rank\s+(\d+)\s+(.+)$/;
+const GROUP_RANK_PATTERN = /^Rank\s+(\d+)\s+in\s+(.+)\s+of\s+(.+)$/;
 
 /**
  * Parses a team reference string into a TeamReference object.
@@ -115,6 +118,18 @@ export function parseTeamReference(str: string): TeamReference {
   // Try rank format: "Rank 1 Preliminary", etc.
   const rankMatch = str.match(RANK_PATTERN);
   if (rankMatch) {
+    // Try group-rank first as it is more specific
+    const groupRankMatch = str.match(GROUP_RANK_PATTERN);
+    if (groupRankMatch) {
+      return {
+        type: 'groupRank',
+        place: parseInt(groupRankMatch[1], 10),
+        groupName: groupRankMatch[2],
+        stageName: groupRankMatch[3],
+        stageId: '',
+      };
+    }
+
     return {
       type: 'rank',
       place: parseInt(rankMatch[1], 10),

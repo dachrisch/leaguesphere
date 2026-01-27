@@ -15,19 +15,24 @@
   flex: 1;
   display: flex;
   min-height: 0;
-  align-items: start; /* Prevent columns from stretching to equal heights */
+  align-items: stretch; /* Ensure columns stretch to fill the height */
+  height: 100%;
 }
 
 /* Teams column */
 .teams-column {
+  flex: 1;
   height: 100%;
+  max-height: 100%;
   min-height: 0;
   overflow-y: auto;
 }
 
 /* Fields column */
 .fields-column {
+  flex: 1;
   height: 100%;
+  max-height: 100%;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -176,7 +181,7 @@
 
 /**
  * Fields Grid Layout with Responsive CSS Grid
- * Enforce exactly 2 columns (50% each) on wide screens.
+ * Enforce vertical layout by default, max 2 columns on very large screens.
  */
 .fields-grid {
   display: grid;
@@ -184,7 +189,7 @@
   grid-template-columns: 1fr;
 }
 
-@media (min-width: 2800px) {
+@media (min-width: 2500px) {
   .fields-grid {
     grid-template-columns: 1fr 1fr;
   }

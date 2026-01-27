@@ -36,10 +36,12 @@ export interface ListCanvasProps {
   onReorderGlobalTeamGroup: (groupId: string, direction: 'up' | 'down') => void;
   getTeamUsage: (teamId: string) => { gameId: string; slot: 'home' | 'away' }[];
   onAssignTeam: (gameId: string, teamId: string, slot: 'home' | 'away') => void;
+  onSwapTeams: (gameId: string) => void;
   onAddGame: (stageId: string) => void;
   onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
-  onAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away') => void;
+  onAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away', sourceGroup?: string) => void;
   onRemoveEdgeFromSlot: (targetGameId: string, targetSlot: 'home' | 'away') => void;
+  onGenerateTournament?: () => void;
   expandedFieldIds: Set<string>;
   expandedStageIds: Set<string>;
   highlightedElement?: HighlightedElement | null;
@@ -71,10 +73,12 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
     onReorderGlobalTeamGroup,
     getTeamUsage,
     onAssignTeam,
+    onSwapTeams,
     onAddGame,
     onAddGameToGameEdge,
     onAddStageToGameEdge,
     onRemoveEdgeFromSlot,
+    onGenerateTournament,
     expandedFieldIds,
     expandedStageIds,
     highlightedElement,
@@ -183,16 +187,30 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
               <i className={`bi ${ICONS.FIELD} me-2`} />
               <strong>{t('ui:label.fields')}</strong>
               {!readOnly && (
-                <Button 
-                  size="sm" 
-                  variant="outline-primary" 
-                  onClick={onAddField} 
-                  className="ms-auto btn-adaptive"
-                  title={t('ui:tooltip.addField')}
-                >
-                  <i className={`bi ${ICONS.ADD} me-2`} />
-                  <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
-                </Button>
+                <div className="ms-auto d-flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline-success" 
+                    onClick={() => onGenerateTournament?.()} 
+                    className="btn-adaptive"
+                    title={t('ui:tooltip.generateTournament')}
+                    data-testid="generate-tournament-button"
+                  >
+                    <i className={`bi bi-magic me-2`} />
+                    <span className="btn-label-adaptive">{t('ui:button.generateTournament')}</span>
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline-primary" 
+                    onClick={onAddField} 
+                    className="btn-adaptive"
+                    title={t('ui:tooltip.addField')}
+                    data-testid="add-field-button"
+                  >
+                    <i className={`bi ${ICONS.ADD} me-2`} />
+                    <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
+                  </Button>
+                </div>
               )}
             </Card.Header>
             <Card.Body>
@@ -202,15 +220,26 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                   <h3 className="mt-3">{t('ui:message.noFieldsYet')}</h3>
                   <p className="text-muted mb-3">{t('ui:message.createFirstField')}</p>
                   {!readOnly && (
-                    <Button 
-                      variant="outline-primary" 
-                      onClick={onAddField} 
-                      className="btn-adaptive"
-                      title={t('ui:tooltip.addField')}
-                    >
-                      <i className={`bi ${ICONS.ADD} me-2`} />
-                      <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
-                    </Button>
+                    <div className="d-flex justify-content-center gap-3">
+                      <Button 
+                        variant="outline-success" 
+                        onClick={() => onGenerateTournament?.()} 
+                        className="btn-adaptive"
+                        title={t('ui:tooltip.generateTournament')}
+                      >
+                        <i className={`bi bi-magic me-2`} />
+                        <span className="btn-label-adaptive">{t('ui:button.generateTournament')}</span>
+                      </Button>
+                      <Button 
+                        variant="outline-primary" 
+                        onClick={onAddField} 
+                        className="btn-adaptive"
+                        title={t('ui:tooltip.addField')}
+                      >
+                        <i className={`bi ${ICONS.ADD} me-2`} />
+                        <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
+                      </Button>
+                    </div>
                   )}
                 </div>
               ) : (
@@ -230,6 +259,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                       onSelectNode={onSelectNode}
                       selectedNodeId={selectedNodeId}
                       onAssignTeam={onAssignTeam}
+                      onSwapTeams={onSwapTeams}
                       onAddGame={onAddGame}
                       onAddGameToGameEdge={onAddGameToGameEdge}
                       onAddStageToGameEdge={onAddStageToGameEdge}

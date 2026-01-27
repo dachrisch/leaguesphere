@@ -81,6 +81,8 @@ describe('Final Coverage Polish', () => {
     };
     vi.mocked(useDesignerController).mockReturnValue(mockController as unknown as ReturnType<typeof useDesignerController>);
     vi.mocked(gamedayApi.getGameday).mockResolvedValue({ ...defaultMetadata, status: 'IN_PROGRESS' } as unknown as Awaited<ReturnType<typeof gamedayApi.getGameday>>);
+    vi.mocked(gamedayApi.listSeasons).mockResolvedValue([]);
+    vi.mocked(gamedayApi.listLeagues).mockResolvedValue([]);
     vi.mocked(gamedayApi.updateGameResult).mockResolvedValue({ 
         halftime_score: { home: 1, away: 0 },
         final_score: { home: 2, away: 1 },
@@ -131,6 +133,8 @@ describe('Final Coverage Polish', () => {
         exportState: vi.fn().mockReturnValue({}),
     };
     vi.mocked(useDesignerController).mockReturnValue(mockController as unknown as ReturnType<typeof useDesignerController>);
+    vi.mocked(gamedayApi.listSeasons).mockResolvedValue([]);
+    vi.mocked(gamedayApi.listLeagues).mockResolvedValue([]);
     vi.mocked(gamedayApi.updateGameResult).mockRejectedValue(new Error('Save Error'));
 
     render(

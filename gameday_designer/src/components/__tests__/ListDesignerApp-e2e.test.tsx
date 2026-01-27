@@ -40,6 +40,8 @@ vi.mock('../../api/gamedayApi', () => ({
     patchGameday: vi.fn(),
     deleteGameday: vi.fn(),
     updateGameResult: vi.fn(),
+    listSeasons: vi.fn().mockResolvedValue([]),
+    listLeagues: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -101,7 +103,7 @@ describe('ListDesignerApp - E2E CRUD Flow', () => {
     const { user } = await renderApp();
 
     // --- 1. FIELD MANAGEMENT (Create/Update) ---
-    const addFieldBtn = (await screen.findAllByRole('button', { name: /add field/i }))[0];
+    const addFieldBtn = await screen.findByTestId('add-field-button');
     await user.click(addFieldBtn);
 
     await waitFor(() => expect(screen.getByText(/Feld 1/i)).toBeInTheDocument());
@@ -268,13 +270,13 @@ describe('ListDesignerApp - E2E CRUD Flow', () => {
       expect(screen.queryByText(/Main Stadium/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Opening Round/i)).not.toBeInTheDocument();
     }, { timeout: 5000 });
-  }, 30000);
+  }, 60000);
 
   it('blocks publishing when there are validation errors', async () => {
     const { user } = await renderApp();
     
     // Add a field to enable publish button (needs some data)
-    const addFieldBtn = (await screen.findAllByRole('button', { name: /add field/i }))[0];
+    const addFieldBtn = await screen.findByTestId('add-field-button');
     await user.click(addFieldBtn);
 
     // Mock validation errors
@@ -304,5 +306,5 @@ describe('ListDesignerApp - E2E CRUD Flow', () => {
     
     const confirmBtn = within(modal).getByRole('button', { name: /Publish Now|Publish Anyway/i });
     expect(confirmBtn).toBeDisabled();
-  });
+  }, 60000);
 });

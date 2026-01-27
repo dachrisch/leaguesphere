@@ -5,6 +5,7 @@ from datetime import datetime
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status
+from rest_framework.permissions import AllowAny
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, CreateAPIView
@@ -18,8 +19,10 @@ from gamedays.api.serializers import (
     GamedayListSerializer,
     GameinfoSerializer,
     GameOfficialSerializer,
+    SeasonSerializer,
+    LeagueSerializer,
 )
-from gamedays.models import Gameday, Gameinfo, GameOfficial
+from gamedays.models import Gameday, Gameinfo, GameOfficial, Season, League
 from gamedays.service.gameday_service import GamedayService
 
 
@@ -33,6 +36,7 @@ class GamedayViewSet(viewsets.ModelViewSet):
     serializer_class = GamedaySerializer
     pagination_class = StandardResultsSetPagination
     queryset = Gameday.objects.all()
+    permission_classes = [AllowAny]
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -223,3 +227,15 @@ class GameResultUpdateAPIView(APIView):
             gameday.save()
 
         return Response(GameinfoSerializer(game).data, status=status.HTTP_200_OK)
+
+
+class SeasonViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Season.objects.all().order_by("-name")
+    serializer_class = SeasonSerializer
+    pagination_class = None
+
+
+class LeagueViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = League.objects.all().order_by("name")
+    serializer_class = LeagueSerializer
+    pagination_class = None

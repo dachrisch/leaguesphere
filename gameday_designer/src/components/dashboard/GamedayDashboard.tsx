@@ -214,8 +214,17 @@ const GamedayDashboard: React.FC = () => {
     loadGamedays();
     const currentTimeouts = timeoutRefs.current;
     return () => {
-      // Cleanup timers on unmount
-      Object.values(currentTimeouts).forEach(timer => clearTimeout(timer));
+      // CRITICAL: When navigating away, we must immediately execute any pending deletions
+      // instead of just clearing them, otherwise they never happen.
+      const pendingIds = Object.keys(currentTimeouts).map(Number);
+      pendingIds.forEach(id => {
+        clearTimeout(currentTimeouts[id]);
+        delete currentTimeouts[id];
+        // Fire and forget deletion
+        gamedayApi.deleteGameday(id).catch(err => 
+          console.error(`Cleanup: Failed to delete gameday ${id}`, err)
+        );
+      });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);

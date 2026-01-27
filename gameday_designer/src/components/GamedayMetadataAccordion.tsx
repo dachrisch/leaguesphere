@@ -1,32 +1,14 @@
 import React, { useState, useRef, useContext } from 'react';
-import { Accordion, Form, Row, Col, Button, Overlay, Popover, ListGroup, useAccordionButton, AccordionContext } from 'react-bootstrap';
+import { Accordion, Form, Row, Col, Button, Overlay, Popover, useAccordionButton, AccordionContext } from 'react-bootstrap';
+import { GamedayMetadata, FlowValidationResult, ValidationError, ValidationWarning, HighlightedElement } from '../types/flowchart';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
-import type { GamedayMetadata, FlowValidationError as ValidationError, FlowValidationWarning as ValidationWarning, HighlightedElement } from '../types/flowchart';
 import { ICONS } from '../utils/iconConstants';
-
+import { gamedayApi } from '../api/gamedayApi';
 import './GamedayMetadataAccordion.css';
 
-interface GamedayMetadataAccordionProps {
-  metadata: GamedayMetadata;
-  onUpdate: (data: Partial<GamedayMetadata>) => void;
-  onPublish?: () => void;
-  onUnlock?: () => void;
-  onClearAll?: () => void;
-  onDelete?: () => void;
-  hasData?: boolean;
-  activeKey?: string | null;
-  onSelect?: (key: string | null) => void;
-  readOnly?: boolean;
-  validation?: {
-    isValid: boolean;
-    errors: ValidationError[];
-    warnings: ValidationWarning[];
-  };
-  onHighlight?: (id: string, type: HighlightedElement['type']) => void;
-}
-
 /**
- * Custom Header component to avoid nested buttons
+ * Custom Accordion Header to prevent invalid HTML nesting (button inside button).
+ * Uses useAccordionButton to trigger the toggle manually.
  */
 const CustomAccordionHeader: React.FC<{
   eventKey: string;
@@ -34,16 +16,16 @@ const CustomAccordionHeader: React.FC<{
   statusColor: string;
   onPublish?: () => void;
   readOnly: boolean;
-  validation?: GamedayMetadataAccordionProps['validation'];
-  t: ReturnType<typeof useTypedTranslation>;
+  validation: FlowValidationResult;
+  t: (key: string, params?: unknown) => string;
   formatDate: (d: string) => string;
   getStatusBadge: (s?: string) => React.ReactNode;
-  onHighlight?: GamedayMetadataAccordionProps['onHighlight'];
+  onHighlight: (id: string, type: HighlightedElement['type']) => void;
   handleMouseEnter: () => void;
   handleMouseLeave: () => void;
-  validationBadgeRef: React.RefObject<HTMLDivElement | null>;
+  validationBadgeRef: React.RefObject<HTMLDivElement>;
   showValidationPopover: boolean;
-  getHighlightType: (t: string) => HighlightedElement['type'];
+  getHighlightType: (type: string) => HighlightedElement['type'];
   getMessage: (item: ValidationError | ValidationWarning) => string;
 }> = ({ 
   eventKey, metadata, statusColor, onPublish, readOnly, validation, t, formatDate, getStatusBadge, onHighlight,
@@ -79,19 +61,19 @@ const CustomAccordionHeader: React.FC<{
               onMouseLeave={handleMouseLeave}
               onClick={(e) => e.stopPropagation()}
             >
-              {validation.errors.length > 0 && (
+              {validation.errors && validation.errors.length > 0 && (
                 <span className="badge bg-danger">
                   <i className="bi bi-x-circle-fill me-1"></i>
                   {validation.errors.length}
                 </span>
               )}
-              {validation.warnings.length > 0 && (
+              {validation.warnings && validation.warnings.length > 0 && (
                 <span className="badge bg-warning text-dark">
                   <i className="bi bi-exclamation-triangle-fill me-1"></i>
                   {validation.warnings.length}
                 </span>
               )}
-              {validation.isValid && validation.warnings.length === 0 && (
+              {validation.isValid && (!validation.warnings || validation.warnings.length === 0) && (
                 <span className="badge bg-success">
                   <i className="bi bi-check-circle-fill"></i>
                 </span>
@@ -107,69 +89,18 @@ const CustomAccordionHeader: React.FC<{
         </div>
       </button>
 
-      {/* Validation Popover */}
-      {validation && (
-        <Overlay
-          show={showValidationPopover && (validation.errors.length > 0 || validation.warnings.length > 0)}
-          target={validationBadgeRef}
-          placement="bottom"
-        >
-          {(props) => (
-            <Popover 
-              {...props} 
-              id="validation-popover" 
-              style={{ ...props.style, pointerEvents: 'auto', zIndex: 1060, maxWidth: '400px' }}
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-            >
-              <Popover.Header as="h3" className="d-flex justify-content-between align-items-center py-2">
-                <span className="small fw-bold">{t('ui:label.validation', 'Validation')}</span>
-              </Popover.Header>
-              <Popover.Body className="p-0" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                <ListGroup variant="flush">
-                  {/* Errors Section */}
-                  {validation.errors.map((error, idx) => (
-                    <ListGroup.Item 
-                      key={`err-${idx}`} 
-                      action 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onHighlight?.(error.affectedNodes?.[0], getHighlightType(error.type));
-                      }}
-                      className="d-flex align-items-start border-0 py-2"
-                    >
-                      <i className="bi bi-exclamation-circle-fill text-danger me-2 mt-1"></i>
-                      <div className="small">{getMessage(error)}</div>
-                    </ListGroup.Item>
-                  ))}
-                  
-                  {/* Warnings Section */}
-                  {validation.warnings.map((warning, idx) => (
-                    <ListGroup.Item 
-                      key={`warn-${idx}`} 
-                      action 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onHighlight?.(warning.affectedNodes?.[0], getHighlightType(warning.type));
-                      }}
-                      className="d-flex align-items-start border-0 py-2"
-                    >
-                      <i className="bi bi-exclamation-triangle-fill text-warning me-2 mt-1"></i>
-                      <div className="small">{getMessage(warning)}</div>
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
-              </Popover.Body>
-            </Popover>
-          )}
-        </Overlay>
-      )}
-      
-      {/* Integrated Publish button - absolute positioned within h2, sibling to trigger button */}
+      {/* Integrated Publish button outside the toggle area but inside the header container */}
       {metadata.status === 'DRAFT' && !readOnly && (
         <div 
           className="publish-button-container"
-          onClick={(e) => e.stopPropagation()} // Prevent accordion toggle
+          style={{ 
+            position: 'absolute', 
+            right: '60px', 
+            top: '50%', 
+            transform: 'translateY(-50%)', 
+            zIndex: 10 
+          }}
+          onClick={(e) => e.stopPropagation()}
         >
           <Button 
             variant="success" 
@@ -187,25 +118,108 @@ const CustomAccordionHeader: React.FC<{
           </Button>
         </div>
       )}
+
+      {/* Validation Popover */}
+      {validation && (
+        <Overlay
+          show={showValidationPopover && ((validation.errors?.length || 0) > 0 || (validation.warnings?.length || 0) > 0)}
+          target={validationBadgeRef}
+          placement="bottom"
+        >
+          {(props) => (
+            <Popover id="validation-popover" {...props} className="shadow border-danger" style={{ ...props.style, maxWidth: '400px', zIndex: 1060 }}>
+              <Popover.Header as="h3" className="bg-danger text-white py-2 small">
+                {t('ui:label.validation', 'Validation')}
+              </Popover.Header>
+              <Popover.Body className="p-0">
+                <div className="list-group list-group-flush small overflow-auto" style={{ maxHeight: '300px' }}>
+                  {validation.errors?.map((error, idx) => (
+                    <div 
+                      key={`error-${idx}`} 
+                      className="list-group-item list-group-item-action list-group-item-danger border-0 d-flex align-items-start py-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onHighlight(error.affectedNodes[0], getHighlightType(error.type));
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <i className={`bi ${ICONS.ERROR} me-2 mt-1`}></i>
+                      <div>{getMessage(error)}</div>
+                    </div>
+                  ))}
+                  {validation.warnings?.map((warning, idx) => (
+                    <div 
+                      key={`warning-${idx}`} 
+                      className="list-group-item list-group-item-action list-group-item-warning border-0 d-flex align-items-start py-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onHighlight(warning.affectedNodes[0], getHighlightType(warning.type));
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <i className={`bi ${ICONS.WARNING} me-2 mt-1`}></i>
+                      <div>{getMessage(warning)}</div>
+                    </div>
+                  ))}
+                </div>
+              </Popover.Body>
+            </Popover>
+          )}
+        </Overlay>
+      )}
     </h2>
   );
 };
 
+interface GamedayMetadataAccordionProps {
+  metadata: GamedayMetadata;
+  onUpdate: (data: Partial<GamedayMetadata>) => void;
+  onClearAll: () => void;
+  onDelete: () => void;
+  onPublish: () => void;
+  onUnlock: () => void;
+  onHighlight: (id: string, type: HighlightedElement['type']) => void;
+  validation: FlowValidationResult;
+  readOnly: boolean;
+  hasData: boolean;
+}
+
 const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
   metadata,
   onUpdate,
-  onPublish,
-  onUnlock,
   onClearAll,
   onDelete,
-  hasData = false,
-  activeKey,
-  onSelect,
-  readOnly = false,
+  onPublish,
+  onUnlock,
+  onHighlight,
   validation,
-  onHighlight
+  readOnly,
+  hasData,
 }) => {
   const { t } = useTypedTranslation(['ui', 'domain', 'validation']);
+  const [seasons, setSeasons] = useState<{ id: number; name: string }[]>([]);
+  const [leagues, setLeagues] = useState<{ id: number; name: string }[]>([]);
+
+  console.log('[MetadataAccordion] metadata:', metadata.name, metadata.date);
+
+  React.useEffect(() => {
+    const fetchMetadata = async () => {
+      // Safety check for tests where gamedayApi might be mocked as undefined
+      if (!gamedayApi) return;
+      
+      try {
+        const [s, l] = await Promise.all([
+          gamedayApi.listSeasons(),
+          gamedayApi.listLeagues(),
+        ]);
+        setSeasons(s);
+        setLeagues(l);
+      } catch (error) {
+        console.error('Failed to fetch metadata options', error);
+      }
+    };
+    fetchMetadata();
+  }, []);
 
   const [showValidationPopover, setShowValidationPopover] = useState(false);
   const validationBadgeRef = useRef<HTMLDivElement>(null);
@@ -225,8 +239,9 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
     }, 300);
   };
 
-  const handleChange = (field: keyof GamedayMetadata, value: string) => {
+  const handleChange = (field: keyof GamedayMetadata, value: string | number) => {
     if (readOnly) return;
+    console.log('[MetadataAccordion] handleChange:', field, value);
     onUpdate({ [field]: value });
   };
 
@@ -269,127 +284,153 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
     return 'game';
   };
 
-  const statusColor = getStatusColor(metadata.status);
-
   return (
-    <div style={{ maxWidth: '1000px', width: '100%' }} className="gameday-metadata-accordion mx-auto">
-      <Accordion 
-        activeKey={activeKey} 
-        onSelect={(key) => onSelect?.(key as string | null)}
-        className="mb-3"
-      >
-        <Accordion.Item eventKey="0" className="border-0 shadow-sm">
-          <CustomAccordionHeader 
-            eventKey="0"
-            metadata={metadata}
-            statusColor={statusColor}
-            onPublish={onPublish}
-            readOnly={readOnly}
-            validation={validation}
-            t={t}
-            formatDate={formatDate}
-            getStatusBadge={getStatusBadge}
-            onHighlight={onHighlight}
-            handleMouseEnter={handleMouseEnter}
-            handleMouseLeave={handleMouseLeave}
-            validationBadgeRef={validationBadgeRef}
-            showValidationPopover={showValidationPopover}
-            getHighlightType={getHighlightType}
-            getMessage={getMessage}
-          />
-          <Accordion.Body>
-            <Form>
-              <Row className="mb-3">
-                <Col md={6}>
-                  <Form.Group controlId="gamedayName">
-                    <Form.Label>{t('ui:label.name', 'Name')}</Form.Label>
-                    <Form.Control
-                      type="text"
-                      value={metadata.name}
-                      onChange={(e) => handleChange('name', e.target.value)}
-                      disabled={readOnly}
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={3}>
-                  <Form.Group controlId="gamedayDate">
-                    <Form.Label>{t('ui:label.date', 'Date')}</Form.Label>
-                    <Form.Control
-                      type="date"
-                      value={metadata.date}
-                      onChange={(e) => handleChange('date', e.target.value)}
-                      disabled={readOnly}
-                    />
-                  </Form.Group>
-                </Col>
-                <Col md={3}>
-                  <Form.Group controlId="gamedayStart">
-                    <Form.Label>{t('ui:label.startTime', 'Start Time')}</Form.Label>
-                    <Form.Control
-                      type="time"
-                      value={metadata.start}
-                      onChange={(e) => handleChange('start', e.target.value)}
-                      disabled={readOnly}
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
-              <Row className="mb-4">
-                <Col md={12}>
-                  <Form.Group controlId="gamedayVenue">
-                    <Form.Label>{t('ui:label.venue', 'Venue')}</Form.Label>
-                    <Form.Control
-                      type="text"
-                      value={metadata.address}
-                      onChange={(e) => handleChange('address', e.target.value)}
-                      disabled={readOnly}
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
+    <div className="gameday-metadata-accordion-container">
+      <Accordion.Item eventKey="0">
+        <CustomAccordionHeader 
+          eventKey="0" 
+          metadata={metadata} 
+          statusColor={getStatusColor(metadata.status)} 
+          onPublish={onPublish}
+          readOnly={readOnly}
+          validation={validation}
+          t={t}
+          formatDate={formatDate}
+          getStatusBadge={getStatusBadge}
+          onHighlight={onHighlight}
+          handleMouseEnter={handleMouseEnter}
+          handleMouseLeave={handleMouseLeave}
+          validationBadgeRef={validationBadgeRef}
+          showValidationPopover={showValidationPopover}
+          getHighlightType={getHighlightType}
+          getMessage={getMessage}
+        />
+        <Accordion.Body>
+          <Form>
+            <Row className="mb-3">
+              <Col md={6}>
+                <Form.Group controlId="gamedayName">
+                  <Form.Label>{t('ui:label.gamedayName', 'Gameday Name')}</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={metadata.name}
+                    onChange={(e) => handleChange('name', e.target.value)}
+                    disabled={readOnly}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={3}>
+                <Form.Group controlId="gamedayDate">
+                  <Form.Label>{t('ui:label.gamedayDate', 'Gameday Date')}</Form.Label>
+                  <Form.Control
+                    type="date"
+                    value={metadata.date || ''}
+                    onChange={(e) => handleChange('date', e.target.value)}
+                    disabled={readOnly}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={3}>
+                <Form.Group controlId="gamedayStart">
+                  <Form.Label>{t('ui:label.gamedayStartTime', 'Start Time')}</Form.Label>
+                  <Form.Control
+                    type="time"
+                    value={metadata.start}
+                    onChange={(e) => handleChange('start', e.target.value)}
+                    disabled={readOnly}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row className="mb-3">
+              <Col md={12}>
+                <Form.Group controlId="gamedayVenue">
+                  <Form.Label>{t('ui:label.venue', 'Venue')}</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={metadata.address}
+                    onChange={(e) => handleChange('address', e.target.value)}
+                    disabled={readOnly}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
 
-              <hr />
+            <Row className="mb-4">
+              <Col md={6}>
+                <Form.Group controlId="gamedaySeason">
+                  <Form.Label>{t('ui:label.season', 'Season')}</Form.Label>
+                  <Form.Select
+                    value={metadata.season}
+                    onChange={(e) => handleChange('season', parseInt(e.target.value, 10))}
+                    disabled={readOnly}
+                  >
+                    <option value="0">--- {t('ui:placeholder.selectSeason', 'Select Season')} ---</option>
+                    {seasons.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group controlId="gamedayLeague">
+                  <Form.Label>{t('ui:label.league', 'League')}</Form.Label>
+                  <Form.Select
+                    value={metadata.league}
+                    onChange={(e) => handleChange('league', parseInt(e.target.value, 10))}
+                    disabled={readOnly}
+                  >
+                    <option value="0">--- {t('ui:placeholder.selectLeague', 'Select League')} ---</option>
+                    {leagues.map((l) => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
 
-              <div className="d-flex justify-content-between align-items-center mt-3">
-                <div className="d-flex gap-2">
-                  {metadata.status !== 'DRAFT' && (
-                    <Button 
-                      variant="warning" 
-                      size="sm"
-                      onClick={onUnlock}
-                      className="px-3"
-                    >
-                      <i className="bi bi-unlock-fill me-2"></i>
-                      {t('ui:button.unlockSchedule')}
-                    </Button>
-                  )}
-                  
+            <hr />
+
+            <div className="d-flex justify-content-between align-items-center mt-3">
+              <div className="d-flex gap-2">
+                {metadata.status !== 'DRAFT' && (
                   <Button 
                     variant="outline-warning" 
                     size="sm"
-                    onClick={onClearAll}
-                    disabled={!hasData || metadata.status !== 'DRAFT'}
+                    onClick={onUnlock}
                     className="px-3"
                   >
-                    <i className={`bi ${ICONS.CLEAR} me-2`}></i>
-                    {t('ui:button.clearSchedule')}
+                    <i className={`bi ${ICONS.UNLOCK} me-2`}></i>
+                    {t('ui:button.unlockSchedule')}
                   </Button>
-                </div>
-
+                )}
+                
                 <Button 
-                  variant="outline-danger" 
+                  variant="outline-secondary" 
                   size="sm"
-                  onClick={onDelete}
+                  onClick={onClearAll}
+                  disabled={!hasData || metadata.status !== 'DRAFT'}
                   className="px-3"
                 >
-                  <i className={`bi ${ICONS.TRASH} me-2`}></i>
-                  {t('ui:button.deleteGameday')}
+                  <i className={`bi ${ICONS.CLEAR} me-2`}></i>
+                  {t('ui:button.clearSchedule')}
                 </Button>
               </div>
-            </Form>
-          </Accordion.Body>
-        </Accordion.Item>
-      </Accordion>
+
+              <Button 
+                variant="outline-danger" 
+                size="sm"
+                onClick={onDelete}
+                disabled={metadata.status !== 'DRAFT'}
+                className="px-3"
+              >
+                <i className={`bi ${ICONS.TRASH} me-2`}></i>
+                {t('ui:button.deleteGameday')}
+              </Button>
+            </div>
+          </Form>
+        </Accordion.Body>
+      </Accordion.Item>
     </div>
   );
 };

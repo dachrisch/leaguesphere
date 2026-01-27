@@ -332,7 +332,7 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                   {/* Usage count */}
                   <div className="me-2 flex-shrink-0">
                     <small className="text-muted" title={t('ui:message.assignedGamesCount')}>
-                      <strong>{usages.length}</strong>
+                      <strong>{usages?.length || 0}</strong>
                     </small>
                   </div>
 

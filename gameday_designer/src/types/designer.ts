@@ -58,6 +58,18 @@ export interface RankReference {
 }
 
 /**
+ * Team reference for a specific rank in a specific group within a stage.
+ * Example: { type: 'groupRank', place: 1, groupName: 'Group A', stageId: 'stage-123' }
+ */
+export interface GroupRankReference {
+  type: 'groupRank';
+  place: number;
+  groupName: string;
+  stageId: string;
+  stageName: string;
+}
+
+/**
  * Static team reference using a direct name.
  * Example: { type: 'static', name: 'Team Officials' }
  */
@@ -76,6 +88,7 @@ export type TeamReference =
   | WinnerReference
   | LoserReference
   | RankReference
+  | GroupRankReference
   | StaticReference;
 
 /**
@@ -280,6 +293,15 @@ export function isLoserReference(ref: TeamReference): ref is LoserReference {
  */
 export function isRankReference(ref: TeamReference): ref is RankReference {
   return ref.type === 'rank';
+}
+
+/**
+ * Type guard to check if a team reference is a GroupRankReference
+ */
+export function isGroupRankReference(
+  ref: TeamReference
+): ref is GroupRankReference {
+  return ref.type === 'groupRank';
 }
 
 /**

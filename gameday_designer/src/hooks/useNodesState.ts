@@ -335,8 +335,11 @@ export function useNodesState(
    * Add a complete tournament structure.
    */
   const addBulkTournament = useCallback(
-    (structure: TournamentStructure): void => {
-      setNodes((prevNodes) => [...prevNodes, ...structure.fields, ...structure.stages, ...structure.games]);
+    (structure: TournamentStructure, clearExisting: boolean = false): void => {
+      setNodes((prevNodes) => {
+        const base = clearExisting ? [] : prevNodes;
+        return [...base, ...structure.fields, ...structure.stages, ...structure.games];
+      });
     },
     [setNodes]
   );

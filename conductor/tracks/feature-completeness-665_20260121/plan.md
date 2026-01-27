@@ -23,6 +23,8 @@ Implement advanced assignment logic.
     - [ ] Expand officials selection pool in `GameTable.tsx`.
 - [ ] Task: Generation UI Polish (#678)
     - [ ] Refactor `TournamentGeneratorModal.tsx` to allow team selection.
+- [ ] Task: Connect Existing Teams (#705)
+    - [ ] Implement team lookup and selection from the database pool.
 - [ ] Task: Final Quality Gate
     - [ ] Run all tests and ensure >80% coverage for new logic.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Selection and Seeding' (Protocol in workflow.md)

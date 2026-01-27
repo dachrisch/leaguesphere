@@ -24,7 +24,11 @@ export interface TournamentGeneratorModalProps {
   teams: GlobalTeam[];
 
   /** Callback when user confirms tournament generation */
-  onGenerate: (config: TournamentGenerationConfig & { generateTeams: boolean; autoAssignTeams: boolean }) => void;
+  onGenerate: (config: TournamentGenerationConfig & { 
+    generateTeams: boolean; 
+    autoAssignTeams: boolean;
+    selectedTeamIds?: string[];
+  }) => void;
 }
 
 /**
@@ -60,6 +64,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
   const [breakDuration, setBreakDuration] = useState<number>(10);
   const [generateTeams, setGenerateTeams] = useState<boolean>(false);
   const [autoAssignTeams, setAutoAssignTeams] = useState<boolean>(true);
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
 
   const hasTeams = teams.length > 0;
 
@@ -74,6 +79,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
     setBreakDuration(10);
     setGenerateTeams(false);
     setAutoAssignTeams(true);
+    setSelectedTeamIds([]);
   };
   
     // Reset form when modal is closed
@@ -84,6 +90,17 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
       // We only want to reset when 'show' changes to false
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [show]);
+
+    // Auto-select teams when template changes or teams list changes
+    useEffect(() => {
+      if (!generateTeams && selectedTemplate && teams.length > 0) {
+        // If we don't have enough teams selected, or none selected, select the first N teams
+        if (selectedTeamIds.length === 0) {
+          const count = selectedTemplate.teamCount.exact || selectedTemplate.teamCount.min;
+          setSelectedTeamIds(teams.slice(0, count).map(t => t.id));
+        }
+      }
+    }, [selectedTemplate, teams, generateTeams, selectedTeamIds.length]);
 
     // Ensure generateTeams is false if pool has teams
     useEffect(() => {
@@ -97,8 +114,9 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
       const isTeamCountValid = useMemo(() => {
         if (!selectedTemplate) return false;
         if (generateTeams) return true;
-        return teams.length >= selectedTemplate.teamCount.min;
-      }, [selectedTemplate, generateTeams, teams.length]);
+        const required = selectedTemplate.teamCount.exact || selectedTemplate.teamCount.min;
+        return selectedTeamIds.length === required;
+      }, [selectedTemplate, generateTeams, selectedTeamIds.length]);
     
       const canGenerate = selectedTemplate && isDurationValid && isTeamCountValid;
     
@@ -111,6 +129,20 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
     }
   }, [selectedTemplate, fieldCount]);
 
+  const handleToggleTeam = (teamId: string) => {
+    setSelectedTeamIds(prev => {
+      if (prev.includes(teamId)) {
+        return prev.filter(id => id !== teamId);
+      } else {
+        // Don't allow selecting more than max
+        if (selectedTemplate && prev.length >= (selectedTemplate.teamCount.exact || selectedTemplate.teamCount.max)) {
+          return prev;
+        }
+        return [...prev, teamId];
+      }
+    });
+  };
+
   /**
    * Handle generate button click
    */
@@ -119,9 +151,9 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
 
     onGenerate({
       template: {
-        ...selectedTemplate,
+        ...selectedTemplate!,
         timing: {
-          ...selectedTemplate.timing,
+          ...selectedTemplate!.timing,
           defaultGameDuration: gameDuration,
           defaultBreakBetweenGames: breakDuration,
         },
@@ -132,6 +164,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
       breakDuration,
       generateTeams,
       autoAssignTeams,
+      selectedTeamIds: generateTeams ? undefined : selectedTeamIds,
     });
 
     onHide();
@@ -280,6 +313,34 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                   />
                 </Form.Group>
 
+                {/* Manual Team Selection */}
+                {!generateTeams && teams.length > 0 && (
+                  <div className="mb-3">
+                    <Form.Label>
+                      <strong>{t('modal:tournamentGenerator.selectTeamsTitle', 'Select Teams')}</strong>
+                      <span className="ms-2 small text-muted">
+                        ({selectedTeamIds.length} / {selectedTemplate.teamCount.exact || selectedTemplate.teamCount.min})
+                      </span>
+                    </Form.Label>
+                    <div 
+                      className="border rounded p-2" 
+                      style={{ maxHeight: '200px', overflowY: 'auto', backgroundColor: '#f8f9fa' }}
+                    >
+                      {teams.map(team => (
+                        <Form.Check 
+                          key={team.id}
+                          type="checkbox"
+                          id={`select-team-${team.id}`}
+                          label={team.label}
+                          checked={selectedTeamIds.includes(team.id)}
+                          onChange={() => handleToggleTeam(team.id)}
+                          className="mb-1"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {selectedTemplate && !isTeamCountValid && (
                   <Alert variant="warning" className="mb-3">
                     <i className="bi bi-exclamation-triangle me-2"></i>
@@ -325,6 +386,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
           variant="primary"
           onClick={handleGenerate}
           disabled={!canGenerate}
+          data-testid="confirm-generate-button"
         >
           <i className="bi bi-lightning-fill me-1"></i>
           {t('ui:button.generateTournament')}

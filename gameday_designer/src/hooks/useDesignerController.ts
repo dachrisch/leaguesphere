@@ -26,32 +26,35 @@ import { v4 as uuidv4 } from 'uuid';
 
 export function useDesignerController(flowState: UseFlowStateReturn) {
   const {
-    nodes,
-    edges,
-    fields,
-    globalTeams,
-    globalTeamGroups,
-    addFieldNode,
-    addStageNode,
-    addBulkTournament,
-    updateNode,
-    deleteNode,
-    selectNode,
-    updateMetadata,
-    clearAll,
-    importState,
-    exportState,
-    addGlobalTeam,
-    updateGlobalTeam,
-    deleteGlobalTeam,
-    reorderGlobalTeam,
-    addGlobalTeamGroup,
-    assignTeamToGame,
-    addBulkGameToGameEdges,
-  } = flowState;
+    metadata = {} as GamedayMetadata,
+    nodes = [],
+    edges = [],
+    fields = [],
+    globalTeams = [],
+    globalTeamGroups = [],
+    addFieldNode = () => ({} as FlowNode),
+    addStageNode = () => {},
+    addBulkTournament = () => {},
+    updateNode = () => {},
+    deleteNode = () => {},
+    selectNode = () => {},
+    updateMetadata = () => {},
+    clearAll = () => {},
+    clearSchedule = () => {},
+    importState = () => {},
+    exportState = () => ({} as FlowState),
+    addGlobalTeam = () => ({} as GlobalTeam),
+    updateGlobalTeam = () => {},
+    deleteGlobalTeam = () => {},
+    reorderGlobalTeam = () => {},
+    addGlobalTeamGroup = () => ({} as GlobalTeamGroup),
+    assignTeamToGame = () => {},
+    addBulkGameToGameEdges = () => {},
+    addBulkFields = () => {},
+  } = flowState || {};
 
   // Validate the current flowchart
-  const validation = useFlowValidation(nodes, edges, fields, globalTeams, globalTeamGroups);
+  const validation = useFlowValidation(nodes, edges, fields, globalTeams, globalTeamGroups, metadata);
 
   // --- UI State ---
   const [highlightedElement, setHighlightedElement] = useState<HighlightedElement | null>(null);
@@ -139,13 +142,13 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
   }, [exportState, addNotification]);
 
   const assignTeamsToTournament = useCallback(
-    (structure: TournamentStructure, teams: GlobalTeam[]) => {
+    (structure: TournamentStructure, teams: GlobalTeam[], clearExisting: boolean = false) => {
       const operations = assignTeamsToTournamentGames(structure, teams);
       operations.forEach((op) => {
         if (op.type === 'assign_team') {
           assignTeamToGame(op.gameId, op.teamId, op.slot);
         } else if (op.type === 'add_edges') {
-          addBulkGameToGameEdges(op.edges);
+          addBulkGameToGameEdges(op.edges, clearExisting);
         }
       });
     },
@@ -153,9 +156,24 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
   );
 
   const handleGenerateTournament = useCallback(
-    async (config: TournamentGenerationConfig & { generateTeams: boolean; autoAssignTeams: boolean }) => {
+    async (config: TournamentGenerationConfig & { 
+      generateTeams: boolean; 
+      autoAssignTeams: boolean;
+      selectedTeamIds?: string[];
+    }) => {
       try {
+        // Auto-clear existing structure before generating new one
         let teamsToUse = globalTeams;
+        if (config.generateTeams) {
+          clearAll();
+          teamsToUse = []; // Start fresh if generating new teams
+        } else {
+          clearSchedule();
+          // If we have selected teams, filter the pool
+          if (config.selectedTeamIds && config.selectedTeamIds.length > 0) {
+            teamsToUse = globalTeams.filter(t => config.selectedTeamIds!.includes(t.id));
+          }
+        }
 
         if (config.generateTeams) {
           const teamCount = config.template.teamCount.exact || config.template.teamCount.min;
@@ -179,11 +197,12 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
         }
 
         const structure = generateTournament(teamsToUse, config);
-        addBulkTournament(structure);
+        addBulkTournament(structure, true);
+        addBulkFields(structure.fields.map(f => ({ id: f.id, name: f.data.name, order: f.data.order, color: f.data.color })), true);
 
         if (config.autoAssignTeams && teamsToUse.length > 0) {
           setTimeout(() => {
-            assignTeamsToTournament(structure, teamsToUse);
+            assignTeamsToTournament(structure, teamsToUse, true);
           }, TOURNAMENT_GENERATION_STATE_DELAY);
         }
         
@@ -194,14 +213,30 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
         addNotification('Failed to generate tournament. See console for details.', 'danger', 'Generation Error');
       }
     },
-    [globalTeams, globalTeamGroups, addBulkTournament, addGlobalTeam, addGlobalTeamGroup, updateGlobalTeam, assignTeamsToTournament, addNotification]
+    [globalTeams, globalTeamGroups, clearAll, clearSchedule, addBulkTournament, addBulkFields, addGlobalTeam, addGlobalTeamGroup, updateGlobalTeam, assignTeamsToTournament, addNotification]
+  );
+
+  const handleSwapTeams = useCallback(
+    (gameId: string) => {
+      const game = nodes.find((n) => n.id === gameId);
+      if (!game || game.type !== 'game') return;
+
+      const { homeTeamId, awayTeamId, homeTeamDynamic, awayTeamDynamic } = game.data;
+      updateNode(gameId, {
+        homeTeamId: awayTeamId,
+        awayTeamId: homeTeamId,
+        homeTeamDynamic: awayTeamDynamic,
+        awayTeamDynamic: homeTeamDynamic,
+      });
+    },
+    [nodes, updateNode]
   );
 
   const canExport = useMemo(() => {
     return nodes.some((n) => n.type === 'game') && fields.length > 0;
   }, [nodes, fields]);
 
-  return {
+  return useMemo(() => ({
     // State
     ...flowState,
     validation,
@@ -212,10 +247,23 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
       expandedFieldIds,
       expandedStageIds,
       showTournamentModal,
-      canExport,
-      hasData: nodes.length > 0 || globalTeams.length > 0 || fields.length > 0,
-    },
-    // Handlers
+              canExport,
+              hasData: nodes.length > 0 || globalTeams.length > 0 || fields.length > 0,
+                      saveTrigger: flowState?.saveTrigger, // Ensure saveTrigger is passed through if it exists
+                    },
+                    // Explicitly expose these from flowState if not already in ...flowState
+                    updateGlobalTeamGroup: flowState?.updateGlobalTeamGroup,
+                    deleteGlobalTeamGroup: flowState?.deleteGlobalTeamGroup,
+                    reorderGlobalTeamGroup: flowState?.reorderGlobalTeamGroup,
+                    getTeamUsage: flowState?.getTeamUsage,
+                    addGameToGameEdge: flowState?.addGameToGameEdge,
+                    addStageToGameEdge: flowState?.addStageToGameEdge,
+                    removeEdgeFromSlot: flowState?.removeEdgeFromSlot,
+                    addGameNodeInStage: flowState?.addGameNodeInStage,
+                    importState: flowState?.importState,
+                    exportState: flowState?.exportState,
+                    
+                    // Handlers
     handlers: {
       expandField,
       expandStage,
@@ -229,6 +277,7 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
       handleDeleteGlobalTeam: deleteGlobalTeam,
       handleReorderGlobalTeam: reorderGlobalTeam,
       handleAssignTeam: assignTeamToGame,
+      handleSwapTeams,
       handleDeleteNode: deleteNode,
       handleSelectNode: selectNode,
       handleGenerateTournament,
@@ -240,5 +289,15 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
       dismissNotification,
       addNotification,
     }
-  };
+  }), [
+    flowState, validation, notifications, updateMetadata, highlightedElement, 
+    expandedFieldIds, expandedStageIds, showTournamentModal, canExport, 
+    nodes.length, globalTeams.length, fields.length,
+    expandField, expandStage, handleHighlightElement, handleDynamicReferenceClick,
+    handleImport, handleExport, clearAll, updateNode, updateGlobalTeam, 
+    deleteGlobalTeam, reorderGlobalTeam, assignTeamToGame, handleSwapTeams, 
+    deleteNode, selectNode, handleGenerateTournament, addGlobalTeam, 
+    addGlobalTeamGroup, addFieldNode, addStageNode, dismissNotification, 
+    addNotification
+  ]);
 }

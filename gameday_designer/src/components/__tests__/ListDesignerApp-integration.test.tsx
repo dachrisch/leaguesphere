@@ -41,9 +41,10 @@ vi.mock('../../api/gamedayApi', () => ({
       address: 'Test Field',
       season: 1,
       league: 1,
-      status: 'DRAFT',
     }),
     patchGameday: vi.fn().mockResolvedValue({}),
+    listSeasons: vi.fn().mockResolvedValue([{ id: 1, name: 'Season 1' }]),
+    listLeagues: vi.fn().mockResolvedValue([{ id: 1, name: 'League 1' }]),
   },
 }));
 
@@ -65,6 +66,7 @@ describe('ListDesignerApp - Integration Tests', () => {
     handleReorderGlobalTeam: vi.fn(),
     handleAddGlobalTeamGroup: vi.fn(),
     handleAssignTeam: vi.fn(),
+    handleSwapTeams: vi.fn(),
     handleGenerateTournament: vi.fn(),
     setShowTournamentModal: vi.fn(),
     dismissNotification: vi.fn(),

@@ -31,10 +31,10 @@ vi.mock('../../api/gamedayApi', () => ({
   },
 }));
 
-describe('Tournament Progression Integration', () => {
+describe('Auto-Clear on Generate Integration', () => {
   const mockGameday = {
     id: 1,
-    name: 'Progression Test',
+    name: 'Auto-Clear Test',
     date: '2026-06-01',
     start: '10:00',
     format: '6_2',
@@ -44,9 +44,13 @@ describe('Tournament Progression Integration', () => {
     league: 1,
     status: 'DRAFT',
     designer_data: {
-      nodes: [],
+      nodes: [
+        { id: 'game-old', type: 'game', parentId: 'stage-old', data: { standing: 'Old Game', order: 0 }, position: { x: 0, y: 0 } },
+        { id: 'stage-old', type: 'stage', parentId: 'field-old', data: { name: 'Old Stage', order: 0 }, position: { x: 0, y: 0 } },
+        { id: 'field-old', type: 'field', data: { name: 'Old Field', order: 0 }, position: { x: 0, y: 0 } }
+      ],
       edges: [],
-      fields: [],
+      fields: [{ id: 'field-old', name: 'Old Field', order: 0 }],
       globalTeams: [
         { id: 't1', label: 'Team 1', color: '#000', order: 0, groupId: 'g1' },
         { id: 't2', label: 'Team 2', color: '#000', order: 1, groupId: 'g1' },
@@ -62,8 +66,7 @@ describe('Tournament Progression Integration', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('en');
     vi.clearAllMocks();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(gamedayApi.getGameday).mockResolvedValue(mockGameday as unknown as Parameters<typeof gamedayApi.getGameday>[0] extends number ? any : any); // Keep it simple but fix lint
+    vi.mocked(gamedayApi.getGameday).mockResolvedValue(mockGameday as unknown as Awaited<ReturnType<typeof gamedayApi.getGameday>>);
   });
 
   const renderApp = async () => {
@@ -78,33 +81,38 @@ describe('Tournament Progression Integration', () => {
         </GamedayProvider>
       </MemoryRouter>
     );
-    // Wait for initial load - spinner gone
     await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument(), { timeout: 15000 });
     return { user };
   };
 
-  it('should trigger edge creation when tournament is generated', async () => {
+  it('RED: should clear existing structure when tournament is generated', async () => {
     const { user } = await renderApp();
+
+    // Verify old structure exists
+    expect(screen.getByText('Old Field')).toBeInTheDocument();
+    expect(screen.getByText('Old Game')).toBeInTheDocument();
 
     // 1. Open Modal
     const generateBtn = await screen.findByTestId('generate-tournament-button');
     await user.click(generateBtn);
 
-    // 2. Select Template (F6-2-2 is default)
+    // 2. Select Template
     const modal = await screen.findByRole('dialog');
     
     // 3. Generate
-    const confirmBtn = within(modal).getByRole('button', { name: /generate tournament/i });
+    const confirmBtn = within(modal).getByTestId('confirm-generate-button');
     await user.click(confirmBtn);
 
-    // 4. Verify games were created in the UI
+    // 4. Verify old structure is GONE and new structure is present
     await waitFor(() => {
-      // 6 team template creates many games (e.g. Group Stage, Final, etc)
-      // Check for presence of game rows in the canvas
+      // Check for presence of some game rows (e.g. from default F6-2-2)
+      // Actually F3-RR creates games like "Team 1 vs Team 2" etc.
       const gameRows = document.querySelectorAll('tr[id^="game-"]');
       expect(gameRows.length).toBeGreaterThan(0);
+      
+      // OLD STRUCTURE SHOULD BE GONE
+      expect(screen.queryByText('Old Field')).toBeNull();
+      expect(screen.queryByText('Old Game')).toBeNull();
     }, { timeout: 10000 });
   }, 30000);
-
-  
 });

@@ -38,7 +38,10 @@
     "games": "Games",
     "german": "Deutsch",
     "english": "English",
-    "undo": "Undo"
+    "undo": "Undo",
+    "gamedayName": "Gameday Name",
+    "gamedayDate": "Gameday Date",
+    "gamedayStartTime": "Start Time"
   },
   "title": {
     "enterGameResult": "Enter Game Result"
@@ -107,6 +110,7 @@
   "notification": {
     "gameResultSaved": "Game result saved",
     "saveResultFailed": "Failed to save game result",
+    "autoSaveSuccess": "Changes saved automatically",
     "autoSaveFailed": "Failed to auto-save changes",
     "loadGamedayFailed": "Failed to load gameday",
     "loadGamedaysFailed": "Failed to load gamedays",
