@@ -1335,7 +1335,11 @@ function checkMetadataWarnings(metadata?: GamedayMetadata): FlowValidationWarnin
   if (metadata.date) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const gamedayDate = new Date(metadata.date);
+    
+    // Ensure we parse 'YYYY-MM-DD' correctly without timezone shifts
+    const [year, month, day] = metadata.date.split('-').map(Number);
+    const gamedayDate = new Date(year, month - 1, day);
+    
     if (gamedayDate < today) {
       warnings.push({
         id: 'metadata_date_in_past',

@@ -125,13 +125,14 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     if (hasInitializedOfficials.current) return;
     if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') return;
 
-    // Only auto-create for a completely fresh gameday (no initialState AND no nodes/groups)
-    const isEmpty = globalTeamGroups.length === 0 && nodes.length === 0;
-    if (!initialState && isEmpty) {
-       teamPoolManager.ensureOfficialsGroup(i18n.t('ui:externalOfficials'));
+    // Only auto-create if group doesn't exist yet
+    // Fresh gamedays (no initialState) OR existing gamedays where the group was never created/migrated
+    const hasOfficialsGroup = globalTeamGroups.some(g => g.id === 'group-officials');
+    if (!hasOfficialsGroup) {
+       teamPoolManager.ensureOfficialsGroup(i18n.t('ui:label.externalOfficials'));
        hasInitializedOfficials.current = true;
     }
-  }, [teamPoolManager, initialState, globalTeamGroups.length, nodes.length]);
+  }, [teamPoolManager, globalTeamGroups]);
 
   const {
     addBulkGameToGameEdges,

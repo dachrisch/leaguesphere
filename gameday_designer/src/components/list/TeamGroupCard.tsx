@@ -222,7 +222,7 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                 <span className="btn-label-adaptive">{t('ui:button.addTeam')}</span>
               </button>
               <button
-                className="btn btn-sm btn-outline-info btn-adaptive"
+                className="btn btn-sm btn-outline-secondary btn-adaptive"
                 onClick={(e) => {
                   e.stopPropagation();
                   onShowTeamSelection(group.id);
