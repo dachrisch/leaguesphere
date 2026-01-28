@@ -390,7 +390,7 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                           size="sm"
                           variant="outline-primary"
                           className="p-0 btn-adaptive"
-                          popperConfig={{ strategy: 'fixed' }}
+                          flip={false}
                         >
                           {allGroups.map((g) => (
                             <Dropdown.Item

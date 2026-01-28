@@ -9,6 +9,8 @@
   "tournamentGenerator": {
     "title": "Generate Tournament",
     "noTemplates": "No tournament templates available.",
+    "warningTitle": "Attention: Auto-Clear",
+    "warningMessage": "Generating a new tournament will PERMANENTLY delete your current schedule and fields. This action cannot be undone.",
     "generateTeams": "Generate {{count}} teams automatically",
     "autoAssignTeams": "Auto-assign teams to games",
     "previewTitle": "Preview:",

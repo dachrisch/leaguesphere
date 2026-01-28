@@ -180,6 +180,17 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
       </Modal.Header>
 
       <Modal.Body>
+        {/* Auto-Clear Warning */}
+        <Alert variant="danger" className="mb-4 shadow-sm border-2">
+          <div className="d-flex align-items-center">
+            <i className="bi bi-exclamation-octagon-fill fs-4 me-3"></i>
+            <div>
+              <h5 className="mb-1 fw-bold">{t('modal:tournamentGenerator.warningTitle', 'Auto-Clear Warning')}</h5>
+              <p className="mb-0">{t('modal:tournamentGenerator.warningMessage', 'Generating a new tournament will PERMANENTLY delete your current schedule and fields. This action cannot be undone.')}</p>
+            </div>
+          </div>
+        </Alert>
+
         {availableTemplates.length === 0 ? (
           <Alert variant="info">
             <i className="bi bi-info-circle me-2"></i>

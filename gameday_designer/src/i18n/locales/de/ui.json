@@ -111,7 +111,10 @@
     "ranking": "Ranking",
     "rank": "Platz",
     "in": "in",
-    "of": "von"
+    "of": "von",
+    "fields": "Felder",
+    "games": "Spiele",
+    "teams": "Teams"
   },
   "tooltip": {
     "addTeamToGroup": "Ein neues Team zu dieser Gruppe hinzufügen",

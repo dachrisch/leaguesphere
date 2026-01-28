@@ -38,6 +38,12 @@ export interface FlowToolbarProps {
   canRedo?: boolean;
   /** Whether export is available (has valid data) */
   canExport?: boolean;
+  /** Current stats for display */
+  stats?: {
+    fieldCount: number;
+    gameCount: number;
+    teamCount: number;
+  };
 }
 
 /**
@@ -55,6 +61,7 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
   canUndo = false,
   canRedo = false,
   canExport = false,
+  stats,
 }) => {
   const { t } = useTypedTranslation(['ui']);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -141,6 +148,24 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
               <span className="btn-label-adaptive">{t('ui:button.redo')}</span>
             </Button>
           </ButtonGroup>
+        )}
+
+        {/* Stats Summary */}
+        {stats && (
+          <div className="d-flex align-items-center gap-3 ms-2 px-3 border-start text-muted small stats-summary">
+            <div className="d-flex align-items-center" title={t('ui:label.fields')}>
+              <i className={`bi ${ICONS.FIELD} me-1`}></i>
+              <span className="fw-bold">{stats.fieldCount}</span>
+            </div>
+            <div className="d-flex align-items-center" title={t('ui:label.games')}>
+              <i className={`bi ${ICONS.GAME} me-1`}></i>
+              <span className="fw-bold">{stats.gameCount}</span>
+            </div>
+            <div className="d-flex align-items-center" title={t('ui:label.teams')}>
+              <i className={`bi ${ICONS.TEAM} me-1`}></i>
+              <span className="fw-bold">{stats.teamCount}</span>
+            </div>
+          </div>
         )}
       </ButtonToolbar>
 

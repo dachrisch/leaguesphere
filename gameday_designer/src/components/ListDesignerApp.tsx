@@ -59,6 +59,11 @@ const ListDesignerApp: React.FC = () => {
     importState,
     updateMetadata,
     exportState,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    stats,
   } = controller;
 
   const { 
@@ -105,9 +110,14 @@ const ListDesignerApp: React.FC = () => {
       onExport: handleExport,
       gamedayStatus: metadata?.status,
       canExport: ui?.canExport ?? false,
-      onNotify: addNotification
+      onNotify: addNotification,
+      onUndo: undo,
+      onRedo: redo,
+      canUndo,
+      canRedo,
+      stats,
     });
-  }, [metadata?.name, metadata?.status, isLocked, ui?.canExport, setGamedayName, setContextLocked, setOnGenerateTournament, setToolbarProps, handleImport, handleExport, addNotification]);
+  }, [metadata?.name, metadata?.status, isLocked, ui?.canExport, setGamedayName, setContextLocked, setOnGenerateTournament, setToolbarProps, handleImport, handleExport, addNotification, undo, redo, canUndo, canRedo, stats]);
 
   const lastSavedStateRef = useRef<string>('');
   const initialLoadRef = useRef(true);

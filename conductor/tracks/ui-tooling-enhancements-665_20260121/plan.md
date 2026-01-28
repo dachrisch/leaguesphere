@@ -3,18 +3,21 @@
 ## Phase 0: Critical Bugfixes
 Address issues found during Phase 1 & 2 manual validation.
 
-- [x] Task: Fix Disappearing Validation Popover [1a051b0e]
+- [x] Task: Fix Disappearing Validation Popover [647a978b]
     - [x] Ensure the popover stays open when hovered and allows interaction (clicking items).
-- [x] Task: Restore Metadata Warnings UI [1a051b0e]
+    - [x] Added 10px offset to bridge gaps and prevent flickering.
+- [x] Task: Restore Metadata Warnings UI [647a978b]
     - [x] Investigate why 'Venue missing' and 'Date in past' warnings don't trigger the warning badge.
-- [x] Task: Verify Localization of Metadata Placeholders [1a051b0e]
+- [x] Task: Verify Localization of Metadata Placeholders [647a978b]
     - [x] Ensure 'Season' and 'League' select placeholders use translated strings.
-- [x] Task: Fix Localization of Dynamic Team References [1a051b0e]
+- [x] Task: Fix Localization of Dynamic Team References [647a978b]
     - [x] Resolve raw keys `label.ranking` and `message.placeingroup` showing in Game Table.
-- [x] Task: Fix Officials Group Auto-Creation [1a051b0e]
+- [x] Task: Fix Officials Group Auto-Creation [647a978b]
     - [x] Ensure "External Officials" group is created even when an initial state exists (but group is missing).
-- [x] Task: Fix Database Team Connection UI [1a051b0e]
+    - [x] Fixed visibility in sidebar even when group is empty.
+- [x] Task: Fix Database Team Connection UI [647a978b]
     - [x] Investigate why the Link icon is missing from team group headers.
+    - [x] Improved button visibility (outline-secondary).
 
 ## Phase 1: Action Polish
 Reposition and rebrand the generation action.

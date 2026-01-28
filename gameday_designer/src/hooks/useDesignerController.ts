@@ -262,6 +262,11 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
                     addGameNodeInStage: flowState?.addGameNodeInStage,
                     importState: flowState?.importState,
                     exportState: flowState?.exportState,
+                    undo: flowState?.undo,
+                    redo: flowState?.redo,
+                    canUndo: flowState?.canUndo,
+                    canRedo: flowState?.canRedo,
+                    stats: flowState?.stats,
                     
                     // Handlers
     handlers: {

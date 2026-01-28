@@ -84,7 +84,10 @@
     "ranking": "Ranking",
     "rank": "Rank",
     "in": "in",
-    "of": "of"
+    "of": "of",
+    "fields": "Fields",
+    "games": "Games",
+    "teams": "Teams"
   },
   "tooltip": {
     "addTeamToGroup": "Add a new team to this group",
