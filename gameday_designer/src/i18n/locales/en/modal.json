@@ -32,5 +32,11 @@
     "ready": "The schedule is valid and ready to be published.",
     "confirmWithWarnings": "Publish Anyway",
     "confirm": "Publish Now"
+  },
+  "teamSelection": {
+    "title": "Connect Existing Team",
+    "placeholder": "Search by team name...",
+    "noResults": "No teams found matching your search.",
+    "hint": "Enter at least 2 characters to search."
   }
 }

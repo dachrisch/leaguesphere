@@ -4,6 +4,7 @@
     "addStage": "Phase hinzufügen",
     "addGame": "Spiel hinzufügen",
     "addTeam": "Team hinzufügen",
+    "connectTeam": "Team verbinden",
     "addGroup": "Gruppe hinzufügen",
     "import": "Importieren",
     "export": "Exportieren",
@@ -110,6 +111,7 @@
   },
   "tooltip": {
     "addTeamToGroup": "Ein neues Team zu dieser Gruppe hinzufügen",
+    "connectTeam": "Ein existierendes Team aus der Datenbank verbinden",
     "addFirstTeamToGroup": "Erstes Team zu dieser Gruppe hinzufügen",
     "moveGroupUp": "Diese Teamgruppe um eine Position nach oben verschieben",
     "moveGroupDown": "Diese Teamgruppe um eine Position nach unten verschieben",

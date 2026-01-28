@@ -34,6 +34,7 @@ export interface ListCanvasProps {
   onUpdateGlobalTeamGroup: (groupId: string, data: Partial<Omit<GlobalTeamGroup, 'id'>>) => void;
   onDeleteGlobalTeamGroup: (groupId: string) => void;
   onReorderGlobalTeamGroup: (groupId: string, direction: 'up' | 'down') => void;
+  onShowTeamSelection: (groupId: string) => void;
   getTeamUsage: (teamId: string) => { gameId: string; slot: 'home' | 'away' }[];
   onAssignTeam: (gameId: string, teamId: string, slot: 'home' | 'away') => void;
   onSwapTeams: (gameId: string) => void;
@@ -71,6 +72,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
     onUpdateGlobalTeamGroup,
     onDeleteGlobalTeamGroup,
     onReorderGlobalTeamGroup,
+    onShowTeamSelection,
     getTeamUsage,
     onAssignTeam,
     onSwapTeams,
@@ -161,6 +163,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                     onUpdate={onUpdateGlobalTeam}
                     onDelete={onDeleteGlobalTeam}
                     onReorder={onReorderGlobalTeam}
+                    onShowTeamSelection={onShowTeamSelection}
                     getTeamUsage={getTeamUsage}
                     allNodes={nodes}
                     readOnly={readOnly}

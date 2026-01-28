@@ -7,6 +7,7 @@ import TournamentGeneratorModal from './modals/TournamentGeneratorModal';
 import PublishConfirmationModal from './modals/PublishConfirmationModal';
 import NotificationToast from './NotificationToast';
 import GameResultModal from './modals/GameResultModal';
+import TeamSelectionModal from './modals/TeamSelectionModal';
 import { gamedayApi } from '../api/gamedayApi';
 import { useGamedayContext } from '../context/GamedayContext';
 import { useDesignerController } from '../hooks/useDesignerController';
@@ -28,6 +29,8 @@ const ListDesignerApp: React.FC = () => {
   const [showTournamentModal, setShowTournamentModal] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
+  const [showTeamSelectionModal, setShowTeamSelectionModal] = useState(false);
+  const [activeTeamGroupId, setActiveTeamGroupId] = useState<string | null>(null);
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
 
   const flowState = useFlowState();
@@ -76,6 +79,7 @@ const ListDesignerApp: React.FC = () => {
     handleDeleteGlobalTeam,
     handleReorderGlobalTeam,
     handleAssignTeam,
+    handleConnectTeam,
     handleSwapTeams,
     handleDeleteNode,
     handleSelectNode,
@@ -465,9 +469,14 @@ const ListDesignerApp: React.FC = () => {
             onAddGlobalTeamGroup={handleAddGlobalTeamGroup}
             onUpdateGlobalTeamGroup={updateGlobalTeamGroup}
             onDeleteGlobalTeamGroup={deleteGlobalTeamGroup}
-            onReorderGlobalTeamGroup={reorderGlobalTeamGroup}
-            getTeamUsage={getTeamUsage}
-            onAssignTeam={handleAssignTeam}
+                    onReorderGlobalTeamGroup={reorderGlobalTeamGroup}
+                    getTeamUsage={getTeamUsage}
+                    onShowTeamSelection={(groupId) => {
+                      setActiveTeamGroupId(groupId);
+                      setShowTeamSelectionModal(true);
+                    }}
+                    onAssignTeam={handleAssignTeam}
+            
             onSwapTeams={handleSwapTeams}
             onAddGame={addGameNodeInStage}
             onAddGameToGameEdge={addGameToGameEdge}
@@ -519,6 +528,21 @@ const ListDesignerApp: React.FC = () => {
         homeTeamName={globalTeams.find(t => t.id === activeGame?.data.homeTeamId)?.label || activeGame?.data.homeTeamDynamic || 'Home'}
         awayTeamName={globalTeams.find(t => t.id === activeGame?.data.awayTeamId)?.label || activeGame?.data.awayTeamDynamic || 'Away'}
         onSave={(data) => activeGame && handleSaveResult(activeGame.id, data.halftime_score, data.final_score)}
+      />
+
+      {/* Team Selection Modal */}
+      <TeamSelectionModal
+        show={showTeamSelectionModal}
+        onHide={() => {
+          setShowTeamSelectionModal(false);
+          setActiveTeamGroupId(null);
+        }}
+        groupId={activeTeamGroupId || ''}
+        onSelect={(team) => {
+          if (activeTeamGroupId) {
+            handleConnectTeam(team, activeTeamGroupId);
+          }
+        }}
       />
     </Container>
   );

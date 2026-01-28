@@ -17,15 +17,15 @@ Implement new fields and strict validation rules.
 ## Phase 2: Selection and Seeding (TDD)
 Implement advanced assignment logic.
 
-- [~] Task: Group-based Seeding (#671)
-    - [ ] Update `teamReference.ts` to support rank-by-group references.
-    - [ ] Update `TeamSelector.tsx` to display these options for playoff games.
-- [ ] Task: Team Swapping and Officials (#679)
-    - [ ] Implement team swapping logic in `useDesignerController.ts`.
-    - [ ] Expand officials selection pool in `GameTable.tsx`.
-- [ ] Task: Generation UI Polish (#678)
-    - [ ] Refactor `TournamentGeneratorModal.tsx` to allow team selection.
-- [ ] Task: Connect Existing Teams (#705)
+- [x] Task: Group-based Seeding (#671) [39164a87]
+    - [x] Update `teamReference.ts` to support rank-by-group references.
+    - [x] Update `TeamSelector.tsx` to display these options for playoff games.
+- [x] Task: Team Swapping and Officials (#679) [39164a87]
+    - [x] Implement team swapping logic in `useDesignerController.ts`.
+    - [x] Expand officials selection pool in `GameTable.tsx`.
+- [x] Task: Generation UI Polish (#678) [39164a87]
+    - [x] Refactor `TournamentGeneratorModal.tsx` to allow team selection.
+- [~] Task: Connect Existing Teams (#705)
     - [ ] Implement team lookup and selection from the database pool.
 - [ ] Task: Final Quality Gate
     - [ ] Run all tests and ensure >80% coverage for new logic.

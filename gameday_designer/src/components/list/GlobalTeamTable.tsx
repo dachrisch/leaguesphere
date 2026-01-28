@@ -43,6 +43,8 @@ export interface GlobalTeamTableProps {
   onDelete: (teamId: string) => void;
   /** Callback to reorder a team */
   onReorder: (teamId: string, direction: 'up' | 'down') => void;
+  /** Callback to show team selection modal */
+  onShowTeamSelection: (groupId: string) => void;
   /** Function to get which games use a team */
   getTeamUsage: (teamId: string) => { gameId: string; slot: 'home' | 'away' }[];
   /** All nodes (for resolving game names) */
@@ -66,6 +68,7 @@ const GlobalTeamTable: React.FC<GlobalTeamTableProps> = ({
   onUpdate,
   onDelete,
   onReorder,
+  onShowTeamSelection,
   getTeamUsage,
   readOnly = false,
   // allNodes - unused for now but kept in props for future use
@@ -255,6 +258,7 @@ const GlobalTeamTable: React.FC<GlobalTeamTableProps> = ({
                 onUpdateTeam={onUpdate}
                 onDeleteTeam={onDelete}
                 onReorderTeam={onReorder}
+                onShowTeamSelection={onShowTeamSelection}
                 onAddTeam={onAddTeam}
                 getTeamUsage={getTeamUsage}
                 index={index}

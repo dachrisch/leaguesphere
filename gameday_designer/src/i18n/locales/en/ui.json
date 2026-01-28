@@ -4,6 +4,7 @@
     "addStage": "Add Stage",
     "addGame": "Add Game",
     "addTeam": "Add Team",
+    "connectTeam": "Connect Team",
     "addGroup": "Add Group",
     "import": "Import",
     "export": "Export",
@@ -83,6 +84,7 @@
   },
   "tooltip": {
     "addTeamToGroup": "Add a new team to this group",
+    "connectTeam": "Connect an existing team from the database pool",
     "addFirstTeamToGroup": "Add your first team to this group",
     "moveGroupUp": "Move this team group one position up",
     "moveGroupDown": "Move this team group one position down",

@@ -32,5 +32,11 @@
     "ready": "Der Spielplan ist gültig und bereit zur Veröffentlichung.",
     "confirmWithWarnings": "Trotzdem veröffentlichen",
     "confirm": "Jetzt veröffentlichen"
+  },
+  "teamSelection": {
+    "title": "Existierendes Team verbinden",
+    "placeholder": "Nach Teamname suchen...",
+    "noResults": "Keine passenden Teams gefunden.",
+    "hint": "Geben Sie mindestens 2 Zeichen ein, um zu suchen."
   }
 }

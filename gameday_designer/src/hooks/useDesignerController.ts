@@ -277,6 +277,9 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
       handleDeleteGlobalTeam: deleteGlobalTeam,
       handleReorderGlobalTeam: reorderGlobalTeam,
       handleAssignTeam: assignTeamToGame,
+      handleConnectTeam: (team: { id: number; text: string }, groupId: string) => {
+        addGlobalTeam(team.text, groupId, team.id);
+      },
       handleSwapTeams,
       handleDeleteNode: deleteNode,
       handleSelectNode: selectNode,

@@ -36,6 +36,8 @@ export interface TeamGroupCardProps {
   onDeleteTeam: (teamId: string) => void;
   /** Callback to reorder team */
   onReorderTeam: (teamId: string, direction: 'up' | 'down') => void;
+  /** Callback to show team selection modal */
+  onShowTeamSelection: (groupId: string) => void;
   /** Callback to add a team to this group */
   onAddTeam: (groupId: string) => void;
   /** Function to get which games use a team */
@@ -60,10 +62,12 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
   onDeleteGroup,
   onReorderGroup,
   onUpdateTeam,
-  onDeleteTeam,
-  onReorderTeam,
-  onAddTeam,
-  getTeamUsage,
+      onDeleteTeam,
+      onReorderTeam,
+      onShowTeamSelection,
+      onAddTeam,
+      getTeamUsage,
+  
   index,
   totalGroups,
   readOnly = false,
@@ -216,6 +220,17 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
               >
                 <i className={`bi ${ICONS.ADD} me-2`}></i>
                 <span className="btn-label-adaptive">{t('ui:button.addTeam')}</span>
+              </button>
+              <button
+                className="btn btn-sm btn-outline-info btn-adaptive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShowTeamSelection(group.id);
+                }}
+                title={t('ui:tooltip.connectTeam')}
+              >
+                <i className={`bi ${ICONS.LINK} me-2`}></i>
+                <span className="btn-label-adaptive">{t('ui:button.connectTeam')}</span>
               </button>
               <button
                 className="btn btn-sm btn-outline-secondary"
