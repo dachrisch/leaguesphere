@@ -3,14 +3,16 @@
 ## Phase 1: Metadata and Validation (TDD)
 Implement new fields and strict validation rules.
 
-- [ ] Task: Expand Metadata Fields (#694, #666)
-    - [ ] Update `types.ts` and `metadata.json` schema.
-    - [ ] Update `GamedayMetadataAccordion.tsx` to include Season and League selectors.
-    - [ ] Implement default value logic in `ListDesignerApp.tsx` for new gamedays.
-- [ ] Task: Implement Mandatory and Date Validation (#694)
-    - [ ] Add validation rules to `useFlowValidation.ts`.
-    - [ ] Verify that empty mandatory fields and past dates trigger validation errors.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Metadata and Validation' (Protocol in workflow.md)
+- [x] Task: Expand Metadata Fields (#694, #666) [f649194c]
+    - [x] Update `types.ts` and `metadata.json` schema.
+    - [x] Update `GamedayMetadataAccordion.tsx` to include Season and League selectors.
+    - [x] Ensure proper translation for all labels (including group and game names).
+    - [x] Implement default value logic in `ListDesignerApp.tsx` for new gamedays.
+- [x] Task: Implement Mandatory and Date Validation (#694) [43d799bd]
+    - [x] Add validation rules to `useFlowValidation.ts`.
+    - [x] Verify: Date must be set (**ERROR**), Date in future (**WARNING** if past), Venue not empty (**WARNING**).
+    - [x] Recheck #694 coverage after #666 fixes.
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Metadata and Validation' (Protocol in workflow.md)
 
 ## Phase 2: Selection and Seeding (TDD)
 Implement advanced assignment logic.
