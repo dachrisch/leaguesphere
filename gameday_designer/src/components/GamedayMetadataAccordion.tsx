@@ -50,7 +50,9 @@ const CustomAccordionHeader: React.FC<{
           {validation && (
             <OverlayTrigger
               trigger={['hover', 'focus']}
+              rootClose
               placement="bottom"
+              offset={[0, 10]}
               overlay={
                 ((validation.errors?.length || 0) > 0 || (validation.warnings?.length || 0) > 0) ? (
                   <Popover 

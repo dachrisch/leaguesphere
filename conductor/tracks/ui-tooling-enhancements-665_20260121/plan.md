@@ -3,18 +3,18 @@
 ## Phase 0: Critical Bugfixes
 Address issues found during Phase 1 & 2 manual validation.
 
-- [ ] Task: Fix Disappearing Validation Popover
-    - [ ] Ensure the popover stays open when hovered and allows interaction (clicking items).
-- [ ] Task: Restore Metadata Warnings UI
-    - [ ] Investigate why 'Venue missing' and 'Date in past' warnings don't trigger the warning badge.
-- [ ] Task: Verify Localization of Metadata Placeholders
-    - [ ] Ensure 'Season' and 'League' select placeholders use translated strings.
-- [ ] Task: Fix Localization of Dynamic Team References
-    - [ ] Resolve raw keys `label.ranking` and `message.placeingroup` showing in Game Table.
-- [ ] Task: Fix Officials Group Auto-Creation
-    - [ ] Ensure "External Officials" group is created even when an initial state exists (but group is missing).
-- [ ] Task: Fix Database Team Connection UI
-    - [ ] Investigate why the Link icon is missing from team group headers.
+- [x] Task: Fix Disappearing Validation Popover [1a051b0e]
+    - [x] Ensure the popover stays open when hovered and allows interaction (clicking items).
+- [x] Task: Restore Metadata Warnings UI [1a051b0e]
+    - [x] Investigate why 'Venue missing' and 'Date in past' warnings don't trigger the warning badge.
+- [x] Task: Verify Localization of Metadata Placeholders [1a051b0e]
+    - [x] Ensure 'Season' and 'League' select placeholders use translated strings.
+- [x] Task: Fix Localization of Dynamic Team References [1a051b0e]
+    - [x] Resolve raw keys `label.ranking` and `message.placeingroup` showing in Game Table.
+- [x] Task: Fix Officials Group Auto-Creation [1a051b0e]
+    - [x] Ensure "External Officials" group is created even when an initial state exists (but group is missing).
+- [x] Task: Fix Database Team Connection UI [1a051b0e]
+    - [x] Investigate why the Link icon is missing from team group headers.
 
 ## Phase 1: Action Polish
 Reposition and rebrand the generation action.

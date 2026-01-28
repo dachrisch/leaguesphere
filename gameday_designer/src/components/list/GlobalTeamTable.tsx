@@ -245,6 +245,13 @@ const GlobalTeamTable: React.FC<GlobalTeamTableProps> = ({
           {/* Render group cards */}
           {sortedGroups.map((group, index) => {
             const teamsInGroup = teamsByGroup.get(group.id) || [];
+            
+            // Heuristic: only skip empty groups if they are NOT the system officials group
+            if (teamsInGroup.length === 0 && group.id !== 'group-officials' && teams.length > 0) {
+              // We could skip here if we wanted to hide empty regular groups, 
+              // but currently the Designer UI prefers showing them for manual team addition.
+            }
+
             return (
               <TeamGroupCard
                 key={group.id}
