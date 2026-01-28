@@ -72,12 +72,17 @@
     "selectTeam": "-- Team wählen --",
     "gamedayName": "Spieltagsname",
     "gamedayDate": "Spieltagsdatum",
-    "gamedayStartTime": "Startzeit"
+    "gamedayStartTime": "Startzeit",
+    "season": "Saison",
+    "league": "Liga",
+    "venue": "Austragungsort"
   },
   "placeholder": {
     "standing": "z.B. Gruppe 1, HF1, P1",
     "gamedayName": "Neuer Spieltag",
-    "searchGamedays": "Spieltage suchen..."
+    "searchGamedays": "Spieltage suchen...",
+    "selectSeason": "Saison wählen",
+    "selectLeague": "Liga wählen"
   },
   "message": {
     "noTeamsYet": "Noch keine Teams",

@@ -858,11 +858,11 @@ export function createEmptyFlowState(): FlowState {
     metadata: {
       id: 0,
       name: '',
-      date: new Date().toISOString().split('T')[0],
+      date: '', // Force user input
       start: '10:00',
       format: '6_2',
       author: 0,
-      address: '',
+      address: '', // Force user input
       season: 0,
       league: 0,
       status: 'DRAFT',

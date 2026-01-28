@@ -41,7 +41,10 @@
     "undo": "Undo",
     "gamedayName": "Gameday Name",
     "gamedayDate": "Gameday Date",
-    "gamedayStartTime": "Start Time"
+    "gamedayStartTime": "Start Time",
+    "season": "Season",
+    "league": "League",
+    "venue": "Venue"
   },
   "title": {
     "enterGameResult": "Enter Game Result"
@@ -49,7 +52,9 @@
   "placeholder": {
     "standing": "e.g., Group 1, HF1, P1",
     "gamedayName": "New Gameday",
-    "searchGamedays": "Search gamedays..."
+    "searchGamedays": "Search gamedays...",
+    "selectSeason": "Select Season",
+    "selectLeague": "Select League"
   },
   "message": {
     "noTeamsYet": "No teams yet",
