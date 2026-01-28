@@ -63,6 +63,8 @@ describe('GamedayDashboard Coverage', () => {
     vi.useRealTimers();
     (gamedayApi.listGamedays as ReturnType<typeof vi.fn>).mockResolvedValue(mockResponse);
     (gamedayApi.deleteGameday as ReturnType<typeof vi.fn>).mockResolvedValue({});
+    (gamedayApi.listSeasons as ReturnType<typeof vi.fn>).mockResolvedValue([{ id: 1, name: '2026' }]);
+    (gamedayApi.listLeagues as ReturnType<typeof vi.fn>).mockResolvedValue([{ id: 1, name: 'DFFL' }]);
     mockLocation.state = null;
   });
 
@@ -105,6 +107,20 @@ describe('GamedayDashboard Coverage', () => {
     
     await waitFor(() => {
       expect(screen.getByText(/failed to create gameday/i)).toBeInTheDocument();
+    });
+  });
+
+  it('handles create gameday when prerequisites are missing', async () => {
+    (gamedayApi.listSeasons as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (gamedayApi.listLeagues as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    
+    await renderDashboard();
+    
+    const createBtn = screen.getByRole('button', { name: /Create Gameday/i });
+    fireEvent.click(createBtn);
+    
+    await waitFor(() => {
+      expect(screen.getByText(/Please ensure at least one Season and one League exist/i)).toBeInTheDocument();
     });
   });
 

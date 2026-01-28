@@ -72,6 +72,8 @@ describe('GamedayDashboard', () => {
     await i18n.changeLanguage('en');
     vi.clearAllMocks();
     (gamedayApi.listGamedays as ReturnType<typeof vi.fn>).mockResolvedValue(mockResponse);
+    (gamedayApi.listSeasons as ReturnType<typeof vi.fn>).mockResolvedValue([{ id: 1, name: '2026' }]);
+    (gamedayApi.listLeagues as ReturnType<typeof vi.fn>).mockResolvedValue([{ id: 1, name: 'DFFL' }]);
   });
 
   const renderDashboard = async (initialEntries = ['/']) => {

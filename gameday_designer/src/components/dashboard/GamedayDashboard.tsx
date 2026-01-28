@@ -117,6 +117,21 @@ const GamedayDashboard: React.FC = () => {
 
   const handleCreateGameday = async () => {
     try {
+      // Fetch available seasons and leagues first to get valid defaults
+      const [seasons, leagues] = await Promise.all([
+        gamedayApi.listSeasons(),
+        gamedayApi.listLeagues()
+      ]);
+
+      if (seasons.length === 0 || leagues.length === 0) {
+        addNotification(
+          'Please ensure at least one Season and one League exist in the database before creating a gameday.', 
+          'warning', 
+          'Prerequisites missing'
+        );
+        return;
+      }
+
       const newGameday = await gamedayApi.createGameday({
         name: t('ui:placeholder.gamedayName'),
         date: new Date().toISOString().split('T')[0],
@@ -124,8 +139,8 @@ const GamedayDashboard: React.FC = () => {
         format: '6_2',
         author: 1, // TODO: Use actual user ID
         address: '',
-        season: 1, // TODO: Use actual season ID
-        league: 1, // TODO: Use actual league ID
+        season: seasons[0].id,
+        league: leagues[0].id,
       });
       navigate(`/designer/${newGameday.id}`);
     } catch (error) {

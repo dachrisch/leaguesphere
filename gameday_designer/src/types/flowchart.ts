@@ -858,7 +858,7 @@ export function createEmptyFlowState(): FlowState {
     metadata: {
       id: 0,
       name: '',
-      date: '', // Force user input
+      date: new Date().toISOString().split('T')[0],
       start: '10:00',
       format: '6_2',
       author: 0,
