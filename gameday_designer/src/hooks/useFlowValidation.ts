@@ -1333,14 +1333,14 @@ function checkMetadataWarnings(metadata?: GamedayMetadata): FlowValidationWarnin
   }
 
   if (metadata.date) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    // Manually construct YYYY-MM-DD in LOCAL time to match user input
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
     
-    // Ensure we parse 'YYYY-MM-DD' correctly without timezone shifts
-    const [year, month, day] = metadata.date.split('-').map(Number);
-    const gamedayDate = new Date(year, month - 1, day);
-    
-    if (gamedayDate < today) {
+    if (metadata.date < todayStr) {
       warnings.push({
         id: 'metadata_date_in_past',
         type: 'stage_time_conflict',

@@ -22,9 +22,16 @@ Address issues found during Phase 1 & 2 manual validation.
 ## Phase 1: Action Polish
 Reposition and rebrand the generation action.
 
-- [ ] Task: Rebrand and Move Generation Button (#691)
-    - [ ] Update translation keys in `ui.json`.
-    - [ ] Relocate button from `FlowToolbar.tsx` or `GamedayDashboard.tsx` to the preferred layout position (next to "Create Gameday").
+- [x] Task: Rebrand and Move Generation Button (#691) [d06f76ed]
+    - [x] Moved button to AppHeader for high visibility.
+    - [x] Rebranded to "Turnier generieren" with Magic icon.
+    - [x] Added "Auto-Clear" safety warning to the generation modal.
+- [x] Task: Implement Undo/Redo System [d06f76ed]
+    - [x] Added robust history management to `useFlowState`.
+    - [x] Enabled Undo/Redo buttons in FlowToolbar.
+- [x] Task: Enhanced Visibility [d06f76ed]
+    - [x] Added tournament statistics summary (Fields/Games/Teams) to FlowToolbar.
+    - [x] Improved "Connect Team" button visibility.
 - [ ] Task: Filter Gameday Display (#706)
     - [ ] Filter gameday list to show only future designer-created gamedays.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Action Polish' (Protocol in workflow.md)

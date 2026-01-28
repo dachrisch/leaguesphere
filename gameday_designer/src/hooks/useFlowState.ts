@@ -209,15 +209,13 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
 
   // --- Initialization ---
   useEffect(() => {
-    if (hasInitializedOfficials.current) return;
     if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') return;
 
     // Only auto-create if group doesn't exist yet
-    // Fresh gamedays (no initialState) OR existing gamedays where the group was never created/migrated
+    // This ensures visibility even for existing gamedays where the group was never created
     const hasOfficialsGroup = globalTeamGroups.some(g => g.id === 'group-officials');
     if (!hasOfficialsGroup) {
        teamPoolManager.ensureOfficialsGroup(i18n.t('ui:label.externalOfficials'));
-       hasInitializedOfficials.current = true;
     }
   }, [teamPoolManager, globalTeamGroups]);
 

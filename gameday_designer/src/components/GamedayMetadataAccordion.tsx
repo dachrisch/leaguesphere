@@ -1,5 +1,5 @@
-import React, { useState, useContext } from 'react';
-import { Accordion, Form, Row, Col, Button, OverlayTrigger, Popover, useAccordionButton, AccordionContext } from 'react-bootstrap';
+import React, { useState, useRef, useContext } from 'react';
+import { Accordion, Form, Row, Col, Button, Overlay, Popover, useAccordionButton, AccordionContext } from 'react-bootstrap';
 import { GamedayMetadata, FlowValidationResult, ValidationError, ValidationWarning, HighlightedElement } from '../types/flowchart';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import { ICONS } from '../utils/iconConstants';
@@ -21,11 +21,15 @@ const CustomAccordionHeader: React.FC<{
   formatDate: (d: string) => string;
   getStatusBadge: (s?: string) => React.ReactNode;
   onHighlight: (id: string, type: HighlightedElement['type']) => void;
+  handleMouseEnter: () => void;
+  handleMouseLeave: () => void;
+  validationBadgeRef: React.RefObject<HTMLDivElement>;
+  showValidationPopover: boolean;
   getHighlightType: (type: string) => HighlightedElement['type'];
   getMessage: (item: ValidationError | ValidationWarning) => string;
 }> = ({ 
   eventKey, metadata, statusColor, onPublish, readOnly, validation, t, formatDate, getStatusBadge, onHighlight,
-  getHighlightType, getMessage
+  handleMouseEnter, handleMouseLeave, validationBadgeRef, showValidationPopover, getHighlightType, getMessage
 }) => {
   const { activeEventKey } = useContext(AccordionContext);
   const decoratedOnClick = useAccordionButton(eventKey);
@@ -48,82 +52,33 @@ const CustomAccordionHeader: React.FC<{
           
           {/* Validation Badges - Always Visible */}
           {validation && (
-            <OverlayTrigger
-              trigger={['hover', 'focus']}
-              rootClose
-              placement="bottom"
-              offset={[0, 10]}
-              overlay={
-                ((validation.errors?.length || 0) > 0 || (validation.warnings?.length || 0) > 0) ? (
-                  <Popover 
-                    id="validation-popover" 
-                    className="shadow border-danger" 
-                    style={{ maxWidth: '400px', zIndex: 1060 }}
-                  >
-                    <Popover.Header as="h3" className="bg-danger text-white py-2 small">
-                      {t('ui:label.validation', 'Validation')}
-                    </Popover.Header>
-                    <Popover.Body className="p-0">
-                      <div className="list-group list-group-flush small overflow-auto" style={{ maxHeight: '300px' }}>
-                        {validation.errors?.map((error, idx) => (
-                          <div 
-                            key={`error-${idx}`} 
-                            className="list-group-item list-group-item-action list-group-item-danger border-0 d-flex align-items-start py-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onHighlight(error.affectedNodes[0], getHighlightType(error.type));
-                            }}
-                            style={{ cursor: 'pointer' }}
-                          >
-                            <i className={`bi ${ICONS.ERROR} me-2 mt-1`}></i>
-                            <div>{getMessage(error)}</div>
-                          </div>
-                        ))}
-                        {validation.warnings?.map((warning, idx) => (
-                          <div 
-                            key={`warning-${idx}`} 
-                            className="list-group-item list-group-item-action list-group-item-warning border-0 d-flex align-items-start py-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onHighlight(warning.affectedNodes[0], getHighlightType(warning.type));
-                            }}
-                            style={{ cursor: 'pointer' }}
-                          >
-                            <i className={`bi ${ICONS.WARNING} me-2 mt-1`}></i>
-                            <div>{getMessage(warning)}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </Popover.Body>
-                  </Popover>
-                ) : <div style={{ display: 'none' }} />
-              }
+            <div 
+              ref={validationBadgeRef}
+              className="d-flex gap-1 ms-2" 
+              data-testid="validation-badges"
+              style={{ cursor: 'pointer' }}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+              onClick={(e) => e.stopPropagation()}
             >
-              <div 
-                className="d-flex gap-1 ms-2" 
-                data-testid="validation-badges"
-                style={{ cursor: 'pointer' }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {validation.errors && validation.errors.length > 0 && (
-                  <span className="badge bg-danger">
-                    <i className="bi bi-x-circle-fill me-1"></i>
-                    {validation.errors.length}
-                  </span>
-                )}
-                {validation.warnings && validation.warnings.length > 0 && (
-                  <span className="badge bg-warning text-dark">
-                    <i className="bi bi-exclamation-triangle-fill me-1"></i>
-                    {validation.warnings.length}
-                  </span>
-                )}
-                {validation.isValid && (!validation.warnings || validation.warnings.length === 0) && (
-                  <span className="badge bg-success">
-                    <i className="bi bi-check-circle-fill"></i>
-                  </span>
-                )}
-              </div>
-            </OverlayTrigger>
+              {validation.errors && validation.errors.length > 0 && (
+                <span className="badge bg-danger">
+                  <i className="bi bi-x-circle-fill me-1"></i>
+                  {validation.errors.length}
+                </span>
+              )}
+              {validation.warnings && validation.warnings.length > 0 && (
+                <span className="badge bg-warning text-dark">
+                  <i className="bi bi-exclamation-triangle-fill me-1"></i>
+                  {validation.warnings.length}
+                </span>
+              )}
+              {validation.isValid && (!validation.warnings || validation.warnings.length === 0) && (
+                <span className="badge bg-success">
+                  <i className="bi bi-check-circle-fill"></i>
+                </span>
+              )}
+            </div>
           )}
         </div>
 
@@ -162,6 +117,63 @@ const CustomAccordionHeader: React.FC<{
             {t('ui:button.publishSchedule')}
           </Button>
         </div>
+      )}
+
+      {/* Validation Popover */}
+      {validation && (
+        <Overlay
+          show={showValidationPopover && ((validation.errors?.length || 0) > 0 || (validation.warnings?.length || 0) > 0)}
+          target={validationBadgeRef}
+          placement="bottom"
+          offset={[0, 10]}
+        >
+          {(props) => (
+            <Popover 
+              id="validation-popover" 
+              {...props} 
+              className="shadow border-danger" 
+              style={{ ...props.style, maxWidth: '400px', zIndex: 1060 }}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              <Popover.Header as="h3" className="bg-danger text-white py-2 small">
+                {t('ui:label.validation', 'Validation')}
+              </Popover.Header>
+              <Popover.Body className="p-0">
+                <div className="list-group list-group-flush small overflow-auto" style={{ maxHeight: '300px' }}>
+                  {validation.errors?.map((error, idx) => (
+                    <div 
+                      key={`error-${idx}`} 
+                      className="list-group-item list-group-item-action list-group-item-danger border-0 d-flex align-items-start py-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onHighlight(error.affectedNodes[0], getHighlightType(error.type));
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <i className={`bi ${ICONS.ERROR} me-2 mt-1`}></i>
+                      <div>{getMessage(error)}</div>
+                    </div>
+                  ))}
+                  {validation.warnings?.map((warning, idx) => (
+                    <div 
+                      key={`warning-${idx}`} 
+                      className="list-group-item list-group-item-action list-group-item-warning border-0 d-flex align-items-start py-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onHighlight(warning.affectedNodes[0], getHighlightType(warning.type));
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <i className={`bi ${ICONS.WARNING} me-2 mt-1`}></i>
+                      <div>{getMessage(warning)}</div>
+                    </div>
+                  ))}
+                </div>
+              </Popover.Body>
+            </Popover>
+          )}
+        </Overlay>
       )}
     </h2>
   );
@@ -216,6 +228,24 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
     };
     fetchMetadata();
   }, []);
+
+  const [showValidationPopover, setShowValidationPopover] = useState(false);
+  const validationBadgeRef = useRef<HTMLDivElement>(null);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseEnter = () => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+    setShowValidationPopover(true);
+  };
+
+  const handleMouseLeave = () => {
+    hideTimeoutRef.current = setTimeout(() => {
+      setShowValidationPopover(false);
+    }, 300);
+  };
 
   const handleChange = (field: keyof GamedayMetadata, value: string | number) => {
     if (readOnly) return;
@@ -276,6 +306,10 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
           formatDate={formatDate}
           getStatusBadge={getStatusBadge}
           onHighlight={onHighlight}
+          handleMouseEnter={handleMouseEnter}
+          handleMouseLeave={handleMouseLeave}
+          validationBadgeRef={validationBadgeRef}
+          showValidationPopover={showValidationPopover}
           getHighlightType={getHighlightType}
           getMessage={getMessage}
         />

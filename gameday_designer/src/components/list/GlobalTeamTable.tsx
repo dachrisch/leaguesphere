@@ -231,11 +231,9 @@ const GlobalTeamTable: React.FC<GlobalTeamTableProps> = ({
             <Button
               variant="outline-primary"
               onClick={onAddGroup}
-              className="btn-adaptive"
               title={t('ui:tooltip.addGroup')}
             >
               <i className={`bi ${ICONS.ADD}`}></i>
-              <span className="btn-label-adaptive">{t('ui:button.addGroup')}</span>
             </Button>
           )}
         </div>

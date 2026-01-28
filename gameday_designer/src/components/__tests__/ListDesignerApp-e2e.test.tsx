@@ -121,7 +121,7 @@ describe('ListDesignerApp - E2E CRUD Flow', () => {
 
     // --- 2. STAGE MANAGEMENT (Create/Update) ---
     const updatedFieldSection = screen.getByText('Main Stadium').closest('.field-section')!;
-    const addStageBtn = within(updatedFieldSection).getByRole('button', { name: /add stage/i });
+    const addStageBtn = within(updatedFieldSection).getByTitle(/add a new tournament phase/i);
     await user.click(addStageBtn);
     
     await waitFor(() => expect(screen.getByText(/Preliminary/i)).toBeInTheDocument());
@@ -139,13 +139,13 @@ describe('ListDesignerApp - E2E CRUD Flow', () => {
 
     // --- 3. TEAM MANAGEMENT (Create/Update) ---
     const teamPoolCard = screen.getByTestId('team-pool-card');
-    const addGroupBtn = within(teamPoolCard).getAllByRole('button', { name: /add group/i })[0];
+    const addGroupBtn = within(teamPoolCard).getAllByTitle(/create a new team group/i)[0];
     await user.click(addGroupBtn);
     
     await waitFor(() => expect(screen.getByText(/Group 1/i)).toBeInTheDocument());
     
     const groupCard = screen.getByText(/Group 1/i).closest('.card')!;
-    const addTeamBtn = within(groupCard).getAllByRole('button', { name: /add team/i })[0];
+    const addTeamBtn = within(groupCard).getAllByTitle(/add a new team/i)[0];
     await user.click(addTeamBtn);
     
     await waitFor(() => expect(screen.getByText(/Team 1/i)).toBeInTheDocument());
@@ -156,7 +156,7 @@ describe('ListDesignerApp - E2E CRUD Flow', () => {
 
     // --- 4. GAME MANAGEMENT (Create/Update/Assign) ---
     const updatedStageSection = screen.getByText('Opening Round').closest('.stage-section')!;
-    const addGameBtn = within(updatedStageSection).getAllByRole('button', { name: /add game/i })[0];
+    const addGameBtn = within(updatedStageSection).getAllByTitle(/add a new game/i)[0];
     await user.click(addGameBtn);
     
     await waitFor(() => expect(screen.getByText(/Game 1/i)).toBeInTheDocument());
@@ -226,7 +226,7 @@ describe('ListDesignerApp - E2E CRUD Flow', () => {
     
     // Verify locking: Add Field button should be gone (from header)
     const fieldsCard = screen.getByText('Fields').closest('.card')!;
-    expect(within(fieldsCard).queryByRole('button', { name: /add field/i })).not.toBeInTheDocument();
+    expect(within(fieldsCard).queryByTitle(/add a new playing field/i)).not.toBeInTheDocument();
     
     // --- 6. RESULT ENTRY (In Published State) ---
     const resultBtn = (await screen.findAllByRole('button', { name: /result/i }))[0];
@@ -293,7 +293,7 @@ describe('ListDesignerApp - E2E CRUD Flow', () => {
 
     // We can't easily mock the useFlowValidation return directly here because it's a real hook,
     // but we can trigger a state that causes errors (e.g. game with no teams)
-    const addGameBtn = (await screen.findAllByRole('button', { name: /add game/i }))[0];
+    const addGameBtn = (await screen.findAllByTitle(/add a new game/i))[0];
     await user.click(addGameBtn);
 
     // Click publish

@@ -47,7 +47,11 @@
     "gamedayStartTime": "Start Time",
     "season": "Season",
     "league": "League",
-    "venue": "Venue"
+    "venue": "Venue",
+    "ranking": "Ranking",
+    "rank": "Rank",
+    "in": "in",
+    "of": "of"
   },
   "title": {
     "enterGameResult": "Enter Game Result"
@@ -80,14 +84,7 @@
     "loserOf": "Loser of {{match}}",
     "placeFrom": "{{place}}. Place from {{stage}}",
     "ungrouped": "Ungrouped",
-    "assignedGamesCount": "Number of games this team is assigned to",
-    "ranking": "Ranking",
-    "rank": "Rank",
-    "in": "in",
-    "of": "of",
-    "fields": "Fields",
-    "games": "Games",
-    "teams": "Teams"
+    "assignedGamesCount": "Number of games this team is assigned to"
   },
   "tooltip": {
     "addTeamToGroup": "Add a new team to this group",

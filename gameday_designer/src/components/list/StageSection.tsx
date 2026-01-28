@@ -268,12 +268,11 @@ const StageSection: React.FC<StageSectionProps> = memo(({
                 variant="link" 
                 onClick={handleStartEdit} 
                 aria-label={t('ui:tooltip.editStageName')} 
-                className="p-0 me-auto btn-adaptive" 
+                className="p-0 me-auto" 
                 style={{ fontSize: '0.875rem' }}
                 title={t('ui:tooltip.editStageName')}
               >
                 <i className={`bi ${ICONS.PENCIL_SMALL}`}></i>
-                <span className="btn-label-adaptive">{t('ui:button.edit')}</span>
               </Button>
             )}
             {readOnly && <span className="me-auto" />}
@@ -286,11 +285,10 @@ const StageSection: React.FC<StageSectionProps> = memo(({
             variant="outline-primary" 
             onClick={handleAddGame} 
             aria-label={t('ui:button.addGame')} 
-            className="me-2 btn-adaptive"
+            className="me-2"
             title={t('ui:tooltip.addGame')}
           >
-            <i className={`bi ${ICONS.ADD} me-2`}></i>
-            <span className="btn-label-adaptive">{t('ui:button.addGame')}</span>
+            <i className={`bi ${ICONS.ADD}`}></i>
           </Button>
         )}
 
@@ -311,7 +309,6 @@ const StageSection: React.FC<StageSectionProps> = memo(({
             size="sm" 
             onClick={handleDelete} 
             aria-label={t('ui:tooltip.deleteStage')}
-            className="btn-adaptive"
             title={t('ui:tooltip.deleteStage')}
           >
             <i className={`bi ${ICONS.DELETE}`}></i>
@@ -332,11 +329,9 @@ const StageSection: React.FC<StageSectionProps> = memo(({
                     variant="outline-primary" 
                     onClick={handleAddGame} 
                     aria-label={t('ui:button.addGame')} 
-                    className="btn-adaptive"
                     title={t('ui:tooltip.addGame')}
                   >
-                    <i className={`bi ${ICONS.ADD} me-2`} />
-                    <span className="btn-label-adaptive">{t('ui:button.addGame')}</span>
+                    <i className={`bi ${ICONS.ADD}`} />
                   </Button>
                 )}
               </div>

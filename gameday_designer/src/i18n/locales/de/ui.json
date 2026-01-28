@@ -77,7 +77,14 @@
     "gamedayStartTime": "Startzeit",
     "season": "Saison",
     "league": "Liga",
-    "venue": "Austragungsort"
+    "venue": "Austragungsort",
+    "ranking": "Ranking",
+    "rank": "Platz",
+    "in": "in",
+    "of": "von",
+    "fields": "Felder",
+    "games": "Spiele",
+    "teams": "Teams"
   },
   "placeholder": {
     "standing": "z.B. Gruppe 1, HF1, P1",
@@ -107,14 +114,7 @@
     "loserOf": "Verlierer von {{match}}",
     "placeFrom": "{{place}}. Platz aus {{stage}}",
     "ungrouped": "Ungruppiert",
-    "assignedGamesCount": "Anzahl der Spiele, denen dieses Team zugewiesen ist",
-    "ranking": "Ranking",
-    "rank": "Platz",
-    "in": "in",
-    "of": "von",
-    "fields": "Felder",
-    "games": "Spiele",
-    "teams": "Teams"
+    "assignedGamesCount": "Anzahl der Spiele, denen dieses Team zugewiesen ist"
   },
   "tooltip": {
     "addTeamToGroup": "Ein neues Team zu dieser Gruppe hinzufügen",

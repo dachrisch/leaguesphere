@@ -67,6 +67,7 @@ const AppHeader: React.FC = () => {
                 className="btn-adaptive fw-bold shadow-sm"
                 disabled={isLocked}
                 title={t('ui:tooltip.generateTournament')}
+                data-testid="generate-tournament-button"
               >
                 <i className={`bi bi-magic me-2`}></i>
                 <span className="btn-label-adaptive">{t('ui:button.generateTournament')}</span>

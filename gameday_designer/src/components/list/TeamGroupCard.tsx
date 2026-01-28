@@ -211,26 +211,24 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
           {!readOnly && (
             <>
               <button
-                className="btn btn-sm btn-outline-primary btn-adaptive"
+                className="btn btn-sm btn-outline-primary"
                 onClick={(e) => {
                   e.stopPropagation();
                   onAddTeam(group.id);
                 }}
                 title={t('ui:tooltip.addTeamToGroup')}
               >
-                <i className={`bi ${ICONS.ADD} me-2`}></i>
-                <span className="btn-label-adaptive">{t('ui:button.addTeam')}</span>
+                <i className={`bi ${ICONS.ADD}`}></i>
               </button>
               <button
-                className="btn btn-sm btn-outline-secondary btn-adaptive"
+                className="btn btn-sm btn-outline-info"
                 onClick={(e) => {
                   e.stopPropagation();
                   onShowTeamSelection(group.id);
                 }}
                 title={t('ui:tooltip.connectTeam')}
               >
-                <i className={`bi ${ICONS.LINK} me-2`}></i>
-                <span className="btn-label-adaptive">{t('ui:button.connectTeam')}</span>
+                <i className={`bi ${ICONS.LINK}`}></i>
               </button>
               <button
                 className="btn btn-sm btn-outline-secondary"
@@ -255,7 +253,7 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                 <i className={`bi ${ICONS.REORDER_DOWN}`}></i>
               </button>
               <button
-                className="btn btn-sm btn-outline-danger btn-adaptive"
+                className="btn btn-sm btn-outline-danger"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDeleteGroup(group.id);
@@ -278,12 +276,11 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
               <p className="text-muted mb-3">{t('ui:message.noTeamsInGroup')}</p>
               {!readOnly && (
                 <button
-                  className="btn btn-outline-primary btn-adaptive"
+                  className="btn btn-outline-primary"
                   onClick={() => onAddTeam(group.id)}
                   title={t('ui:tooltip.addFirstTeamToGroup')}
                 >
                   <i className={`bi ${ICONS.ADD}`}></i>
-                  <span className="btn-label-adaptive">{t('ui:button.addTeam')}</span>
                 </button>
               )}
             </div>

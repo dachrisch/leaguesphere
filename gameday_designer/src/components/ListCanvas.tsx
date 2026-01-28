@@ -142,11 +142,10 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                       size="sm" 
                       variant="outline-primary" 
                       onClick={handleAddGroupHeader} 
-                      className="ms-auto btn-adaptive"
+                      className="ms-auto"
                       title={t('ui:tooltip.addGroup')}
                     >
-                      <i className={`bi ${ICONS.ADD} me-2`} />
-                      <span className="btn-label-adaptive">{t('ui:button.addGroup')}</span>
+                      <i className={`bi ${ICONS.ADD}`} />
                     </Button>
                   )}
                 </Card.Header>
@@ -194,25 +193,12 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                 <div className="ms-auto d-flex gap-2">
                   <Button 
                     size="sm" 
-                    variant="outline-success" 
-                    onClick={() => onGenerateTournament?.()} 
-                    className="btn-adaptive"
-                    title={t('ui:tooltip.generateTournament')}
-                    data-testid="generate-tournament-button"
-                  >
-                    <i className={`bi bi-magic me-2`} />
-                    <span className="btn-label-adaptive">{t('ui:button.generateTournament')}</span>
-                  </Button>
-                  <Button 
-                    size="sm" 
                     variant="outline-primary" 
                     onClick={onAddField} 
-                    className="btn-adaptive"
                     title={t('ui:tooltip.addField')}
                     data-testid="add-field-button"
                   >
-                    <i className={`bi ${ICONS.ADD} me-2`} />
-                    <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
+                    <i className={`bi ${ICONS.ADD}`} />
                   </Button>
                 </div>
               )}
@@ -228,20 +214,16 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                       <Button 
                         variant="outline-success" 
                         onClick={() => onGenerateTournament?.()} 
-                        className="btn-adaptive"
                         title={t('ui:tooltip.generateTournament')}
                       >
-                        <i className={`bi bi-magic me-2`} />
-                        <span className="btn-label-adaptive">{t('ui:button.generateTournament')}</span>
+                        <i className={`bi bi-magic`} />
                       </Button>
                       <Button 
                         variant="outline-primary" 
                         onClick={onAddField} 
-                        className="btn-adaptive"
                         title={t('ui:tooltip.addField')}
                       >
-                        <i className={`bi ${ICONS.ADD} me-2`} />
-                        <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
+                        <i className={`bi ${ICONS.ADD}`} />
                       </Button>
                     </div>
                   )}

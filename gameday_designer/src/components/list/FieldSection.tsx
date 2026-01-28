@@ -200,11 +200,10 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
             variant="outline-primary"
             onClick={handleAddStage}
             aria-label={t('ui:button.addStage')}
-            className="me-2 btn-adaptive"
+            className="me-2"
             title={t('ui:tooltip.addStage')}
           >
             <i className={`bi ${ICONS.ADD}`}></i>
-            <span className="btn-label-adaptive">{t('ui:button.addStage')}</span>
           </Button>
         )}
 
@@ -244,11 +243,9 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
                   variant="outline-primary" 
                   onClick={handleAddStage} 
                   aria-label={t('ui:button.addStage')} 
-                  className="btn-adaptive"
                   title={t('ui:tooltip.addStage')}
                 >
                   <i className={`bi ${ICONS.ADD}`}></i>
-                  <span className="btn-label-adaptive">{t('ui:button.addStage')}</span>
                 </Button>
               )}
             </div>
