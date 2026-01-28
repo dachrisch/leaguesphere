@@ -61,6 +61,19 @@ describe('useFlowValidation - Metadata', () => {
     expect(warningIds).toContain('metadata_date_in_past');
   });
 
+  it('should be valid for today\'s date', () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayMetadata: GamedayMetadata = {
+      ...validMetadata,
+      date: todayStr,
+    };
+
+    const result = validateFlowchart([], [], [], [], [], todayMetadata);
+    
+    const warningIds = result.warnings.map(w => w.id);
+    expect(warningIds).not.toContain('metadata_date_in_past');
+  });
+
   it('should be valid with complete metadata and future date', () => {
     const result = validateFlowchart([], [], [], [], [], validMetadata);
     

@@ -351,6 +351,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     value={metadata.address}
                     onChange={(e) => handleChange('address', e.target.value)}
                     disabled={readOnly}
+                    placeholder={t('ui:label.venue')}
                   />
                 </Form.Group>
               </Col>
