@@ -138,7 +138,7 @@ describe('ListDesignerApp - E2E CRUD Flow', () => {
     await waitFor(() => expect(screen.getByText('Opening Round')).toBeInTheDocument());
 
     // --- 3. TEAM MANAGEMENT (Create/Update) ---
-    const teamPoolCard = screen.getByText('label.teamPool').closest('.card')!;
+    const teamPoolCard = screen.getByTestId('team-pool-card');
     const addGroupBtn = within(teamPoolCard).getAllByRole('button', { name: /add group/i })[0];
     await user.click(addGroupBtn);
     
@@ -233,7 +233,7 @@ describe('ListDesignerApp - E2E CRUD Flow', () => {
     await user.click(resultBtn);
     
     const modal = await screen.findByRole('dialog');
-    expect(within(modal).getAllByText(/Score/i)[0]).toBeInTheDocument();
+    expect(within(modal).getAllByText(/Halbzeitstand/i)[0]).toBeInTheDocument();
     
     // Find input by its id which is halftimeHome in GameResultModal
     const halftimeHomeInput = (await within(modal).findAllByLabelText(/Home/))[0];

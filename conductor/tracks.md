@@ -48,7 +48,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Feature Completeness**
+- [~] **Track: Feature Completeness**
 *Link: [./tracks/feature-completeness-665_20260121/](./tracks/feature-completeness-665_20260121/)*
 
 ---
@@ -68,5 +68,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: Upgrade django dependency to v6 (PR #660)**
-*Link: [./tracks/django-v6-upgrade_20260122/](./tracks/django-v6-upgrade_20260122/)*
+- [x] **Track: Upgrade django dependency to v6 (PR #660)** [merged]
+*Link: [./archive/django-v6-upgrade_20260122/](./archive/django-v6-upgrade_20260122/)*

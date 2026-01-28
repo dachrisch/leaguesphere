@@ -98,7 +98,7 @@ describe('GameSlotEditor', () => {
 
     it('displays official team selector', () => {
       renderEditor();
-      expect(screen.getByText(/label.official/i)).toBeInTheDocument();
+      expect(screen.getByText('Official')).toBeInTheDocument();
     });
 
     it('displays break time input', () => {

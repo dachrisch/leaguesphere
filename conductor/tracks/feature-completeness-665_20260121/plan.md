@@ -17,7 +17,7 @@ Implement new fields and strict validation rules.
 ## Phase 2: Selection and Seeding (TDD)
 Implement advanced assignment logic.
 
-- [ ] Task: Group-based Seeding (#671)
+- [~] Task: Group-based Seeding (#671)
     - [ ] Update `teamReference.ts` to support rank-by-group references.
     - [ ] Update `TeamSelector.tsx` to display these options for playoff games.
 - [ ] Task: Team Swapping and Officials (#679)

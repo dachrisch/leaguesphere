@@ -1,5 +1,6 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import i18n from '../i18n/config';
 import type {
   FlowNode,
   FlowEdge,
@@ -93,6 +94,7 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
   const [globalTeams, setGlobalTeams] = useState<GlobalTeam[]>(initialState?.globalTeams ?? []);
   const [globalTeamGroups, setGlobalTeamGroups] = useState<GlobalTeamGroup[]>(initialState?.globalTeamGroups ?? []);
   const [selection, setSelection] = useState<SelectionState>({ nodeIds: [], edgeIds: [] });
+  const hasInitializedOfficials = useRef(false);
 
   // --- Specialized Hooks ---
   const nodesManager = useNodesState(nodes, (newNodes) => {
@@ -117,6 +119,19 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     nodes,
     setNodes
   );
+
+  // --- Initialization ---
+  useEffect(() => {
+    if (hasInitializedOfficials.current) return;
+    if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') return;
+
+    // Only auto-create for a completely fresh gameday (no initialState AND no nodes/groups)
+    const isEmpty = globalTeamGroups.length === 0 && nodes.length === 0;
+    if (!initialState && isEmpty) {
+       teamPoolManager.ensureOfficialsGroup(i18n.t('ui:externalOfficials'));
+       hasInitializedOfficials.current = true;
+    }
+  }, [teamPoolManager, initialState, globalTeamGroups.length, nodes.length]);
 
   const {
     addBulkGameToGameEdges,
@@ -172,13 +187,14 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     setGlobalTeams([]);
     setGlobalTeamGroups([]);
     setSelection({ nodeIds: [], edgeIds: [] });
+    // When clearing everything, we should also allow re-initialization of officials group if needed
+    hasInitializedOfficials.current = false;
     handleStateChange();
   }, [handleStateChange]);
 
   const clearSchedule = useCallback(() => {
     setNodes([]);
     setEdges([]);
-    setFields([]);
     setSelection({ nodeIds: [], edgeIds: [] });
     handleStateChange();
   }, [handleStateChange]);
@@ -367,12 +383,14 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     addFieldNode: nodesManager.addFieldNode,
     addStageNode: nodesManager.addStageNode,
     addBulkTournament: nodesManager.addBulkTournament,
-    addGlobalTeam: teamPoolManager.addGlobalTeam,
-    updateGlobalTeam: teamPoolManager.updateGlobalTeam,
-    deleteGlobalTeam: teamPoolManager.deleteGlobalTeam,
-    reorderGlobalTeam: teamPoolManager.reorderGlobalTeam,
-    addGlobalTeamGroup: teamPoolManager.addGlobalTeamGroup,
-    assignTeamToGame: teamPoolManager.assignTeamToGame,
-    updateNode: nodesManager.updateNode,
-  };
-}
+        addGlobalTeam: teamPoolManager.addGlobalTeam,
+        updateGlobalTeam: teamPoolManager.updateGlobalTeam,
+        deleteGlobalTeam: teamPoolManager.deleteGlobalTeam,
+        reorderGlobalTeam: teamPoolManager.reorderGlobalTeam,
+        addGlobalTeamGroup: teamPoolManager.addGlobalTeamGroup,
+        assignTeamToGame: teamPoolManager.assignTeamToGame,
+        ensureOfficialsGroup: teamPoolManager.ensureOfficialsGroup,
+        updateNode: nodesManager.updateNode,
+      };
+    }
+    

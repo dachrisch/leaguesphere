@@ -128,6 +128,27 @@ export function useTeamPoolState(
   );
 
   /**
+   * Ensure the External Officials group exists.
+   */
+  const ensureOfficialsGroup = useCallback(
+    (name: string): string => {
+      const existing = globalTeamGroups.find(g => g.id === 'group-officials');
+      if (existing) return existing.id;
+
+      const newGroup: GlobalTeamGroup = {
+        id: 'group-officials',
+        name,
+        order: -1, // Keep it at the top or handle via sorting
+        color: '#6c757d'
+      };
+
+      setGlobalTeamGroups((groups) => [newGroup, ...groups]);
+      return newGroup.id;
+    },
+    [globalTeamGroups, setGlobalTeamGroups]
+  );
+
+  /**
    * Update a global team group.
    */
   const updateGlobalTeamGroup = useCallback(
@@ -142,6 +163,9 @@ export function useTeamPoolState(
    */
   const deleteGlobalTeamGroup = useCallback(
     (groupId: string) => {
+      // Protection: Don't allow deleting the system officials group
+      if (groupId === 'group-officials') return;
+
       const teamIdsToDelete = new Set(globalTeams.filter((t) => t.groupId === groupId).map((t) => t.id));
 
       setNodes((nds) =>
@@ -258,5 +282,6 @@ export function useTeamPoolState(
     assignTeamToGame,
     unassignTeamFromGame,
     getTeamUsage,
+    ensureOfficialsGroup,
   };
 }

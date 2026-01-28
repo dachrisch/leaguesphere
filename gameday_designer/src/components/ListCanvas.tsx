@@ -127,6 +127,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
             className={`team-pool-card ${!isTeamPoolExpanded ? 'team-pool-card--collapsed' : ''}`}
             onClick={!isTeamPoolExpanded ? handleToggleTeamPool : undefined}
             style={{ cursor: !isTeamPoolExpanded ? 'pointer' : 'default' }}
+            data-testid="team-pool-card"
           >
             {isTeamPoolExpanded ? (
               <>

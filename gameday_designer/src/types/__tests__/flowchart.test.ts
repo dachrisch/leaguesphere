@@ -213,7 +213,7 @@ describe('Flowchart Types', () => {
           metadata: {
             id: 0,
             name: '',
-            date: new Date().toISOString().split('T')[0],
+            date: '',
             start: '10:00',
             format: '6_2',
             author: 0,

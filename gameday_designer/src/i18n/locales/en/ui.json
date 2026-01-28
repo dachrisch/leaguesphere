@@ -36,6 +36,8 @@
     "stages": "Stages",
     "teams": "Teams",
     "games": "Games",
+    "official": "Official",
+    "externalOfficials": "External Officials",
     "german": "Deutsch",
     "english": "English",
     "undo": "Undo",
