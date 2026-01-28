@@ -366,7 +366,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     onChange={(e) => handleChange('season', parseInt(e.target.value, 10))}
                     disabled={readOnly}
                   >
-                    <option value="0">--- {t('ui:placeholder.selectSeason', 'Select Season')} ---</option>
+                    <option value="0">--- {t('ui:placeholder.selectSeason')} ---</option>
                     {seasons.map((s) => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
@@ -381,7 +381,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     onChange={(e) => handleChange('league', parseInt(e.target.value, 10))}
                     disabled={readOnly}
                   >
-                    <option value="0">--- {t('ui:placeholder.selectLeague', 'Select League')} ---</option>
+                    <option value="0">--- {t('ui:placeholder.selectLeague')} ---</option>
                     {leagues.map((l) => (
                       <option key={l.id} value={l.id}>{l.name}</option>
                     ))}

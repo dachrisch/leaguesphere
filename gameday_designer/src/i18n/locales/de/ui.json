@@ -107,7 +107,10 @@
     "loserOf": "Verlierer von {{match}}",
     "placeFrom": "{{place}}. Platz aus {{stage}}",
     "ungrouped": "Ungruppiert",
-    "assignedGamesCount": "Anzahl der Spiele, denen dieses Team zugewiesen ist"
+    "assignedGamesCount": "Anzahl der Spiele, denen dieses Team zugewiesen ist",
+    "rank": "Platz",
+    "in": "in",
+    "of": "von"
   },
   "tooltip": {
     "addTeamToGroup": "Ein neues Team zu dieser Gruppe hinzufügen",
