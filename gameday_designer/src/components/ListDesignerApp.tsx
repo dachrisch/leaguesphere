@@ -493,6 +493,7 @@ const ListDesignerApp: React.FC = () => {
                 onUnlock={handleUnlockWrapped}
                 onHighlight={handleHighlightElement}
                 validation={validation}
+                highlightedElement={ui?.highlightedElement}
                 readOnly={isLocked}
                 hasData={ui?.hasData ?? false}
               />

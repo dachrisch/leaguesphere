@@ -27,9 +27,11 @@ const CustomAccordionHeader: React.FC<{
   showValidationPopover: boolean;
   getHighlightType: (type: string) => HighlightedElement['type'];
   getMessage: (item: ValidationError | ValidationWarning) => string;
+  isHighlighted: boolean;
 }> = ({ 
   eventKey, metadata, statusColor, onPublish, readOnly, validation, t, formatDate, getStatusBadge, onHighlight,
-  handleMouseEnter, handleMouseLeave, validationBadgeRef, showValidationPopover, getHighlightType, getMessage
+  handleMouseEnter, handleMouseLeave, validationBadgeRef, showValidationPopover, getHighlightType, getMessage,
+  isHighlighted
 }) => {
   const { activeEventKey } = useContext(AccordionContext);
   const decoratedOnClick = useAccordionButton(eventKey);
@@ -38,7 +40,7 @@ const CustomAccordionHeader: React.FC<{
 
   return (
     <h2 
-      className={`accordion-header header-status-${statusColor.toLowerCase()} position-relative`}
+      className={`accordion-header header-status-${statusColor.toLowerCase()} position-relative ${isHighlighted ? 'header-highlighted' : ''}`}
       data-testid="gameday-metadata-header"
     >
       <button 
@@ -188,6 +190,7 @@ interface GamedayMetadataAccordionProps {
   onUnlock: () => void;
   onHighlight: (id: string, type: HighlightedElement['type']) => void;
   validation: FlowValidationResult;
+  highlightedElement?: HighlightedElement | null;
   readOnly: boolean;
   hasData: boolean;
 }
@@ -201,6 +204,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
   onUnlock,
   onHighlight,
   validation,
+  highlightedElement,
   readOnly,
   hasData,
 }) => {
@@ -302,8 +306,10 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
     return 'game';
   };
 
+  const isHighlighted = highlightedElement?.type === 'metadata';
+
   return (
-    <div className="gameday-metadata-accordion-container" id="gameday-metadata" data-testid="gameday-metadata-accordion">
+    <div className={`gameday-metadata-accordion-container ${isHighlighted ? 'is-highlighted' : ''}`} id="gameday-metadata" data-testid="gameday-metadata-accordion">
       <Accordion.Item eventKey="0">
         <CustomAccordionHeader 
           eventKey="0" 
@@ -322,6 +328,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
           showValidationPopover={showValidationPopover}
           getHighlightType={getHighlightType}
           getMessage={getMessage}
+          isHighlighted={isHighlighted}
         />
         <Accordion.Body>
           <Form>
