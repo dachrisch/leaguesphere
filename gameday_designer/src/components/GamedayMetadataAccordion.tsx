@@ -308,6 +308,10 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
 
   const isHighlighted = highlightedElement?.type === 'metadata';
 
+  const isFieldHighlighted = (fieldName: string) => {
+    return highlightedElement?.id === `metadata-${fieldName}`;
+  };
+
   return (
     <div className={`gameday-metadata-accordion-container ${isHighlighted ? 'is-highlighted' : ''}`} id="gameday-metadata" data-testid="gameday-metadata-accordion">
       <Accordion.Item eventKey="0">
@@ -341,6 +345,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     value={metadata.name}
                     onChange={(e) => handleChange('name', e.target.value)}
                     disabled={readOnly}
+                    className={isFieldHighlighted('name') ? 'is-highlighted' : ''}
                   />
                 </Form.Group>
               </Col>
@@ -352,6 +357,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     value={metadata.date || ''}
                     onChange={(e) => handleChange('date', e.target.value)}
                     disabled={readOnly}
+                    className={isFieldHighlighted('date') ? 'is-highlighted' : ''}
                   />
                 </Form.Group>
               </Col>
@@ -363,6 +369,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     value={metadata.start}
                     onChange={(e) => handleChange('start', e.target.value)}
                     disabled={readOnly}
+                    className={isFieldHighlighted('start') ? 'is-highlighted' : ''}
                   />
                 </Form.Group>
               </Col>
@@ -377,6 +384,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     onChange={(e) => handleChange('address', e.target.value)}
                     disabled={readOnly}
                     placeholder={t('ui:label.venue')}
+                    className={isFieldHighlighted('venue') ? 'is-highlighted' : ''}
                   />
                 </Form.Group>
               </Col>
@@ -390,6 +398,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     value={metadata.season}
                     onChange={(e) => handleChange('season', parseInt(e.target.value, 10))}
                     disabled={readOnly}
+                    className={isFieldHighlighted('season') ? 'is-highlighted' : ''}
                   >
                     <option value="0">--- {t('ui:placeholder.selectSeason')} ---</option>
                     {seasons.map((s) => (
@@ -405,6 +414,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     value={metadata.league}
                     onChange={(e) => handleChange('league', parseInt(e.target.value, 10))}
                     disabled={readOnly}
+                    className={isFieldHighlighted('league') ? 'is-highlighted' : ''}
                   >
                     <option value="0">--- {t('ui:placeholder.selectLeague')} ---</option>
                     {leagues.map((l) => (
