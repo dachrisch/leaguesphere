@@ -17,6 +17,7 @@ import { FlowState } from '../types/flowchart';
 import './ListDesignerApp.css';
 
 import { useFlowState } from '../hooks/useFlowState';
+import { exportToStructuredTemplate } from '../utils/flowchartExport';
 
 const ListDesignerApp: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -97,6 +98,25 @@ const ListDesignerApp: React.FC = () => {
     addNotification,
   } = handlers;
 
+  const handleExportTemplate = useCallback(() => {
+    const template = exportToStructuredTemplate(flowState);
+    const jsonString = JSON.stringify(template, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const filename = `template_${metadata?.name?.replace(/\s+/g, '_') || 'tournament'}.json`;
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    addNotification(t('ui:notification.autoSaveSuccess'), 'success', 'Template Exported');
+  }, [flowState, metadata?.name, addNotification, t]);
+
   const { saveTrigger } = ui || {};
   const isLocked = metadata?.status ? metadata.status !== 'DRAFT' : true;
 
@@ -108,6 +128,7 @@ const ListDesignerApp: React.FC = () => {
     setToolbarProps({
       onImport: handleImport,
       onExport: handleExport,
+      onExportTemplate: handleExportTemplate,
       gamedayStatus: metadata?.status,
       canExport: ui?.canExport ?? false,
       onNotify: addNotification,
@@ -117,7 +138,7 @@ const ListDesignerApp: React.FC = () => {
       canRedo,
       stats,
     });
-  }, [metadata?.name, metadata?.status, isLocked, ui?.canExport, setGamedayName, setContextLocked, setOnGenerateTournament, setToolbarProps, handleImport, handleExport, addNotification, undo, redo, canUndo, canRedo, stats]);
+  }, [metadata?.name, metadata?.status, isLocked, ui?.canExport, setGamedayName, setContextLocked, setOnGenerateTournament, setToolbarProps, handleImport, handleExport, handleExportTemplate, addNotification, undo, redo, canUndo, canRedo, stats]);
 
   const lastSavedStateRef = useRef<string>('');
   const initialLoadRef = useRef(true);

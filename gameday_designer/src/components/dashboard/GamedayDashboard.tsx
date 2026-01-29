@@ -106,7 +106,12 @@ const GamedayDashboard: React.FC = () => {
     setLoading(true);
     try {
       const response = await gamedayApi.listGamedays({ search: searchTerm });
-      setGamedays(response.results);
+      // Filter: only show gamedays that have designer_data (created via Designer)
+      // We allow null/empty object for NEW gamedays, but exclude ones without the property entirely
+      const designerGamedays = response.results.filter(g => 
+        g.designer_data !== undefined
+      );
+      setGamedays(designerGamedays);
     } catch (error) {
       console.error('Failed to load gamedays', error);
       addNotification(t('ui:notification.loadGamedaysFailed'), 'danger', t('ui:notification.title.error'));

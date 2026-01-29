@@ -47,6 +47,7 @@ describe('GamedayDashboard Coverage', () => {
       season: 1,
       league: 1,
       status: 'DRAFT',
+      designer_data: {},
     },
   ];
 
