@@ -1,6 +1,6 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import ListDesignerApp from '../ListDesignerApp';
@@ -8,6 +8,7 @@ import AppHeader from '../layout/AppHeader';
 import { GamedayProvider } from '../../context/GamedayContext';
 import i18n from '../../i18n/testConfig';
 import { gamedayApi } from '../../api/gamedayApi';
+import { GamedayMetadata } from '../../types';
 
 // Mock gamedayApi
 vi.mock('../../api/gamedayApi', () => ({
@@ -47,7 +48,7 @@ describe('Feature Refinements Coverage', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('en');
     vi.clearAllMocks();
-    vi.mocked(gamedayApi.getGameday).mockResolvedValue(mockGameday as any);
+    vi.mocked(gamedayApi.getGameday).mockResolvedValue(mockGameday as unknown as GamedayMetadata);
   });
 
   afterEach(() => {
@@ -93,7 +94,7 @@ describe('Feature Refinements Coverage', () => {
             nodes: [{ id: 'game-1', type: 'game', data: { standing: 'Game 1' }, position: { x: 0, y: 0 } }]
         }
     };
-    vi.mocked(gamedayApi.getGameday).mockResolvedValue(gamedayWithData as any);
+    vi.mocked(gamedayApi.getGameday).mockResolvedValue(gamedayWithData as unknown as GamedayMetadata);
 
     const { user } = await renderApp();
 
@@ -159,7 +160,7 @@ describe('Feature Refinements Coverage', () => {
             fields: [{ id: 'f1', name: 'Field 1', order: 0 }]
         }
     };
-    vi.mocked(gamedayApi.getGameday).mockResolvedValue(gamedayWithData as any);
+    vi.mocked(gamedayApi.getGameday).mockResolvedValue(gamedayWithData as unknown as GamedayMetadata);
     
     const { user } = await renderApp();
     
