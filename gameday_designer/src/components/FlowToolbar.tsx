@@ -121,7 +121,13 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
               <i className={`bi ${ICONS.EXPORT}`}></i>
             </Button>
 
-            <Dropdown.Toggle split variant="outline-secondary" id="export-dropdown" disabled={!canExport} />
+            <Dropdown.Toggle 
+              split 
+              variant="outline-secondary" 
+              id="export-dropdown" 
+              disabled={!canExport} 
+              data-testid="export-dropdown-toggle"
+            />
 
             <Dropdown.Menu>
               <Dropdown.Item onClick={onExport}>
