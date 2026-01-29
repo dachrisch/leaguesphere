@@ -65,6 +65,7 @@ const ListDesignerApp: React.FC = () => {
     canUndo,
     canRedo,
     stats,
+    addOfficialsGroup,
   } = controller;
 
   const { 
@@ -134,7 +135,8 @@ const ListDesignerApp: React.FC = () => {
     canUndo,
     canRedo,
     stats,
-  }), [handleImport, handleExport, handleExportTemplate, metadata?.status, ui?.canExport, addNotification, undo, redo, canUndo, canRedo, stats]);
+    onAddOfficials: addOfficialsGroup,
+  }), [handleImport, handleExport, handleExportTemplate, metadata?.status, ui?.canExport, addNotification, undo, redo, canUndo, canRedo, stats, addOfficialsGroup]);
 
   // Sync with context for AppHeader
   useEffect(() => {
@@ -547,6 +549,7 @@ const ListDesignerApp: React.FC = () => {
         show={showTournamentModal}
         onHide={() => setShowTournamentModal(false)}
         teams={globalTeams}
+        hasData={ui?.hasData ?? false}
         onGenerate={handleGenerateTournament}
       />
 

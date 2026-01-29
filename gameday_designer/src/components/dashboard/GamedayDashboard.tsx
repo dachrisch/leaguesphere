@@ -108,8 +108,9 @@ const GamedayDashboard: React.FC = () => {
       const response = await gamedayApi.listGamedays({ search: searchTerm });
       // Filter: only show gamedays that have designer_data (created via Designer)
       // We allow null/empty object for NEW gamedays, but exclude ones without the property entirely
+      // Use 'in' check to see if property exists even if it's null
       const designerGamedays = response.results.filter(g => 
-        g.designer_data !== undefined
+        'designer_data' in g
       );
       setGamedays(designerGamedays);
     } catch (error) {

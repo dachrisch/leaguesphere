@@ -140,6 +140,7 @@
     "exportTemplateToJson": "Die logische Turnierstruktur als portable Vorlage exportieren",
     "undo": "Die letzte Aktion rückgängig machen",
     "redo": "Die zuvor rückgängig gemachte Aktion wiederholen",
+    "addExternalOfficials": "Externe Schiedsrichter-Gruppe hinzufügen",
     "clearAllNodesAndEdges": "Alle Felder, Phasen, Spiele und Teams dauerhaft löschen",
     "moveTeamToGroup": "Dieses Team in eine andere Gruppe verschieben",
     "addField": "Ein neues Spielfeld zum Turnier hinzufügen",

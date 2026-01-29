@@ -142,10 +142,11 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                       size="sm" 
                       variant="outline-primary" 
                       onClick={handleAddGroupHeader} 
-                      className="ms-auto"
+                      className="ms-auto btn-adaptive"
                       title={t('ui:tooltip.addGroup')}
                     >
-                      <i className={`bi ${ICONS.ADD}`} />
+                      <i className={`bi ${ICONS.ADD} me-2`} />
+                      <span className="btn-label-adaptive">{t('ui:button.addGroup')}</span>
                     </Button>
                   )}
                 </Card.Header>
@@ -195,10 +196,12 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                     size="sm" 
                     variant="outline-primary" 
                     onClick={onAddField} 
+                    className="btn-adaptive"
                     title={t('ui:tooltip.addField')}
                     data-testid="add-field-button"
                   >
-                    <i className={`bi ${ICONS.ADD}`} />
+                    <i className={`bi ${ICONS.ADD} me-2`} />
+                    <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
                   </Button>
                 </div>
               )}
@@ -214,16 +217,20 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                       <Button 
                         variant="outline-success" 
                         onClick={() => onGenerateTournament?.()} 
+                        className="btn-adaptive px-4"
                         title={t('ui:tooltip.generateTournament')}
                       >
-                        <i className={`bi bi-magic`} />
+                        <i className={`bi bi-magic me-2`} />
+                        <span className="btn-label-adaptive">{t('ui:button.generateTournament')}</span>
                       </Button>
                       <Button 
                         variant="outline-primary" 
                         onClick={onAddField} 
+                        className="btn-adaptive px-4"
                         title={t('ui:tooltip.addField')}
                       >
-                        <i className={`bi ${ICONS.ADD}`} />
+                        <i className={`bi ${ICONS.ADD} me-2`} />
+                        <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
                       </Button>
                     </div>
                   )}

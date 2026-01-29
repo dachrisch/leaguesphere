@@ -280,16 +280,15 @@ const StageSection: React.FC<StageSectionProps> = memo(({
         )}
 
         {!readOnly && (
-          <Button 
-            size="sm" 
-            variant="outline-primary" 
+          <button 
+            className="btn btn-sm btn-outline-primary btn-adaptive me-2"
             onClick={handleAddGame} 
             aria-label={t('ui:button.addGame')} 
-            className="me-2"
             title={t('ui:tooltip.addGame')}
           >
-            <i className={`bi ${ICONS.ADD}`}></i>
-          </Button>
+            <i className={`bi ${ICONS.ADD} me-2`}></i>
+            <span className="btn-label-adaptive">{t('ui:button.addGame')}</span>
+          </button>
         )}
 
         <input
@@ -325,14 +324,15 @@ const StageSection: React.FC<StageSectionProps> = memo(({
                 <i className={`bi ${ICONS.TOURNAMENT} me-2`} style={{ fontSize: '2rem', opacity: 0.3 }}></i>
                 <p className="text-muted mb-3">{t('ui:message.noGamesInStage')}</p>
                 {!readOnly && (
-                  <Button 
-                    variant="outline-primary" 
+                  <button 
+                    className="btn btn-outline-primary btn-adaptive px-4"
                     onClick={handleAddGame} 
                     aria-label={t('ui:button.addGame')} 
                     title={t('ui:tooltip.addGame')}
                   >
-                    <i className={`bi ${ICONS.ADD}`} />
-                  </Button>
+                    <i className={`bi ${ICONS.ADD} me-2`} />
+                    <span className="btn-label-adaptive">{t('ui:button.addGame')}</span>
+                  </button>
                 )}
               </div>
             ) : (

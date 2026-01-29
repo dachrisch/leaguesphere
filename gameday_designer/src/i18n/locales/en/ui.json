@@ -110,6 +110,7 @@
     "exportTemplateToJson": "Export the logical tournament structure as a portable template",
     "undo": "Undo the last action",
     "redo": "Redo the previously undone action",
+    "addExternalOfficials": "Add external officials group",
     "clearAllNodesAndEdges": "Permanently clear all fields, stages, games, and teams",
     "moveTeamToGroup": "Move this team to a different group",
     "addField": "Add a new playing field to the tournament",

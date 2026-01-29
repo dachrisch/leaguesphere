@@ -163,9 +163,6 @@ export function useTeamPoolState(
    */
   const deleteGlobalTeamGroup = useCallback(
     (groupId: string) => {
-      // Protection: Don't allow deleting the system officials group
-      if (groupId === 'group-officials') return;
-
       const teamIdsToDelete = new Set(globalTeams.filter((t) => t.groupId === groupId).map((t) => t.id));
 
       setNodes((nds) =>

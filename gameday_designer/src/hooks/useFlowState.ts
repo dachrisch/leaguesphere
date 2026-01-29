@@ -208,16 +208,6 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
   );
 
   // --- Initialization ---
-  useEffect(() => {
-    if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') return;
-
-    // Only auto-create if group doesn't exist yet
-    // This ensures visibility even for existing gamedays where the group was never created
-    const hasOfficialsGroup = globalTeamGroups.some(g => g.id === 'group-officials');
-    if (!hasOfficialsGroup) {
-       teamPoolManager.ensureOfficialsGroup(i18n.t('ui:label.externalOfficials'));
-    }
-  }, [teamPoolManager, globalTeamGroups]);
 
   const {
     addBulkGameToGameEdges,
@@ -452,6 +442,10 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     removeEdgeFromSlot(targetNodeId, targetHandle);
   }, [removeEdgeFromSlot]);
 
+  const addOfficialsGroup = useCallback(() => {
+    teamPoolManager.ensureOfficialsGroup(i18n.t('ui:label.externalOfficials'));
+  }, [teamPoolManager]);
+
   return useMemo(() => ({
     metadata,
     nodes,
@@ -475,6 +469,7 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     addBulkGameToGameEdges: addBulkGamesToGameEdgesCb,
     addStageToGameEdge: addStageToGameEdgeCb,
     removeEdgeFromSlot: removeEdgeFromSlotCb,
+    addOfficialsGroup,
     addGameNode, // Overrides nodesManager.addGameNode (v1 behavior)
     deleteNode, // Overrides managers
     addField,
@@ -519,7 +514,7 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     metadata, nodes, edges, fields, globalTeams, globalTeamGroups, saveTrigger,
     undo, redo, canUndo, canRedo, stats, selection, onNodesChange, onEdgesChange,
     nodesManager, edgesManagerProps, teamPoolManager, addBulkGamesToGameEdgesCb,
-    addStageToGameEdgeCb, removeEdgeFromSlotCb, addGameNode, deleteNode, 
+    addStageToGameEdgeCb, removeEdgeFromSlotCb, addOfficialsGroup, addGameNode, deleteNode, 
     addField, updateField, deleteField, selectNode, updateMetadata, 
     setSelection, clearAll, clearSchedule, importState, exportState, 
     getTargetStage, ensureContainerHierarchy, getGameField, getGameStage, 
