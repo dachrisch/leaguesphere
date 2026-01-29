@@ -159,12 +159,10 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                             e.stopPropagation();
                             onAddOfficials();
                           }} 
-                          className="btn-adaptive"
                           title={t('ui:tooltip.addExternalOfficials')}
                           data-testid="add-officials-button"
                         >
-                          <i className="bi bi-person-badge me-2" />
-                          <span className="btn-label-adaptive">{t('ui:label.externalOfficials')}</span>
+                          <i className="bi bi-person-badge" />
                         </Button>
                       )}
                     </div>
