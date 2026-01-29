@@ -135,8 +135,7 @@ const ListDesignerApp: React.FC = () => {
     canUndo,
     canRedo,
     stats,
-    onAddOfficials: addOfficialsGroup,
-  }), [handleImport, handleExport, handleExportTemplate, metadata?.status, ui?.canExport, addNotification, undo, redo, canUndo, canRedo, stats, addOfficialsGroup]);
+  }), [handleImport, handleExport, handleExportTemplate, metadata?.status, ui?.canExport, addNotification, undo, redo, canUndo, canRedo, stats]);
 
   // Sync with context for AppHeader
   useEffect(() => {
@@ -539,6 +538,7 @@ const ListDesignerApp: React.FC = () => {
             highlightedElement={ui?.highlightedElement}
             onDynamicReferenceClick={handleDynamicReferenceClick}
             onNotify={addNotification}
+            onAddOfficials={addOfficialsGroup}
             readOnly={isLocked}
           />
         </div>

@@ -49,6 +49,7 @@ export interface ListCanvasProps {
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
   onNotify?: (message: string, type: import('../types/designer').NotificationType, title?: string) => void;
+  onAddOfficials?: () => void;
   readOnly?: boolean;
 }
 
@@ -87,6 +88,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
     highlightedSourceGameId,
     onDynamicReferenceClick,
     onNotify,
+    onAddOfficials,
     readOnly = false,
   } = props;
 
@@ -138,16 +140,34 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                   <i className={`bi ${ICONS.TEAM} me-2`} />
                   <strong>{t('ui:label.teamPool')}</strong>
                   {!readOnly && (
-                    <Button 
-                      size="sm" 
-                      variant="outline-primary" 
-                      onClick={handleAddGroupHeader} 
-                      className="ms-auto btn-adaptive"
-                      title={t('ui:tooltip.addGroup')}
-                    >
-                      <i className={`bi ${ICONS.ADD} me-2`} />
-                      <span className="btn-label-adaptive">{t('ui:button.addGroup')}</span>
-                    </Button>
+                    <div className="ms-auto d-flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline-primary" 
+                        onClick={handleAddGroupHeader} 
+                        className="btn-adaptive"
+                        title={t('ui:tooltip.addGroup')}
+                      >
+                        <i className={`bi ${ICONS.ADD} me-2`} />
+                        <span className="btn-label-adaptive">{t('ui:button.addGroup')}</span>
+                      </Button>
+                      {onAddOfficials && (
+                        <Button 
+                          size="sm" 
+                          variant="outline-secondary" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAddOfficials();
+                          }} 
+                          className="btn-adaptive"
+                          title={t('ui:tooltip.addExternalOfficials')}
+                          data-testid="add-officials-button"
+                        >
+                          <i className="bi bi-person-badge me-2" />
+                          <span className="btn-label-adaptive">{t('ui:label.externalOfficials')}</span>
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </Card.Header>
                 <Card.Body>

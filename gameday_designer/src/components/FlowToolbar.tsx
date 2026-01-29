@@ -40,8 +40,6 @@ export interface FlowToolbarProps {
   canRedo?: boolean;
   /** Whether export is available (has valid data) */
   canExport?: boolean;
-  /** Callback to add external officials group */
-  onAddOfficials?: () => void;
 }
 
 /**
@@ -60,7 +58,6 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
   canUndo = false,
   canRedo = false,
   canExport = false,
-  onAddOfficials,
 }) => {
   const { t } = useTypedTranslation(['ui']);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -168,21 +165,6 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
               data-testid="redo-button"
             >
               <i className="bi bi-arrow-clockwise"></i>
-            </Button>
-          </ButtonGroup>
-        )}
-
-        {/* Special Actions */}
-        {onAddOfficials && (
-          <ButtonGroup className="me-2">
-            <Button
-              variant="outline-secondary"
-              onClick={onAddOfficials}
-              disabled={gamedayStatus !== 'DRAFT'}
-              title={t('ui:tooltip.addExternalOfficials')}
-              data-testid="add-officials-button"
-            >
-              <i className={`bi bi-person-badge`}></i>
             </Button>
           </ButtonGroup>
         )}
