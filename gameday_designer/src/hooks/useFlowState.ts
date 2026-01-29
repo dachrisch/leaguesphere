@@ -1,5 +1,6 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import i18n from '../i18n/config';
 import type {
   FlowNode,
   FlowEdge,
@@ -65,11 +66,6 @@ export function useFlowState(initialState?: Partial<FlowState>, onStateChange?: 
 function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?: () => void) {
   // --- Core State ---
   const [saveTrigger, setSaveTrigger] = useState(0);
-  
-  const handleStateChange = useCallback(() => {
-    setSaveTrigger(prev => prev + 1);
-    onStateChange?.();
-  }, [onStateChange]);
 
   const [metadata, setMetadata] = useState<GamedayMetadata>(initialState?.metadata ? {
     ...initialState.metadata,
@@ -93,6 +89,99 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
   const [globalTeams, setGlobalTeams] = useState<GlobalTeam[]>(initialState?.globalTeams ?? []);
   const [globalTeamGroups, setGlobalTeamGroups] = useState<GlobalTeamGroup[]>(initialState?.globalTeamGroups ?? []);
   const [selection, setSelection] = useState<SelectionState>({ nodeIds: [], edgeIds: [] });
+  const hasInitializedOfficials = useRef(false);
+
+  // --- History Management ---
+  const historyRef = useRef<FlowState[]>([]);
+  const currentIndexRef = useRef(-1);
+  const isInternalUpdateRef = useRef(false);
+  
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  const captureHistory = useCallback((state: FlowState) => {
+    if (isInternalUpdateRef.current) return;
+
+    const lastState = historyRef.current[currentIndexRef.current];
+    if (lastState && JSON.stringify(lastState) === JSON.stringify(state)) return;
+
+    // Truncate future if we are in the middle of history
+    const newHistory = historyRef.current.slice(0, currentIndexRef.current + 1);
+    newHistory.push(JSON.parse(JSON.stringify(state)));
+
+    // Limit history size
+    if (newHistory.length > 50) newHistory.shift();
+
+    historyRef.current = newHistory;
+    currentIndexRef.current = newHistory.length - 1;
+    
+    setCanUndo(currentIndexRef.current > 0);
+    setCanRedo(false);
+  }, []);
+
+  // Initialize history
+  useEffect(() => {
+    if (historyRef.current.length === 0) {
+      captureHistory({ metadata, nodes, edges, fields, globalTeams, globalTeamGroups });
+    }
+  }, [metadata, nodes, edges, fields, globalTeams, globalTeamGroups, captureHistory]);
+
+  const handleStateChange = useCallback(() => {
+    setSaveTrigger(prev => prev + 1);
+    onStateChange?.();
+    
+    // Auto-capture history on every external change
+    if (!isInternalUpdateRef.current) {
+      captureHistory({ metadata, nodes, edges, fields, globalTeams, globalTeamGroups });
+    }
+  }, [onStateChange, captureHistory, metadata, nodes, edges, fields, globalTeams, globalTeamGroups]);
+
+  const undo = useCallback(() => {
+    if (currentIndexRef.current <= 0) return;
+
+    isInternalUpdateRef.current = true;
+    currentIndexRef.current--;
+    const prevState = historyRef.current[currentIndexRef.current];
+
+    setMetadata(prevState.metadata);
+    setNodes(prevState.nodes);
+    setEdges(prevState.edges);
+    setFields(prevState.fields);
+    setGlobalTeams(prevState.globalTeams);
+    setGlobalTeamGroups(prevState.globalTeamGroups);
+    
+    setSaveTrigger(prev => prev + 1);
+    onStateChange?.();
+    
+    setCanUndo(currentIndexRef.current > 0);
+    setCanRedo(currentIndexRef.current < historyRef.current.length - 1);
+    
+    // Release lock after state updates are scheduled
+    setTimeout(() => { isInternalUpdateRef.current = false; }, 0);
+  }, [onStateChange]);
+
+  const redo = useCallback(() => {
+    if (currentIndexRef.current >= historyRef.current.length - 1) return;
+
+    isInternalUpdateRef.current = true;
+    currentIndexRef.current++;
+    const nextState = historyRef.current[currentIndexRef.current];
+
+    setMetadata(nextState.metadata);
+    setNodes(nextState.nodes);
+    setEdges(nextState.edges);
+    setFields(nextState.fields);
+    setGlobalTeams(nextState.globalTeams);
+    setGlobalTeamGroups(nextState.globalTeamGroups);
+    
+    setSaveTrigger(prev => prev + 1);
+    onStateChange?.();
+
+    setCanUndo(currentIndexRef.current > 0);
+    setCanRedo(currentIndexRef.current < historyRef.current.length - 1);
+
+    setTimeout(() => { isInternalUpdateRef.current = false; }, 0);
+  }, [onStateChange]);
 
   // --- Specialized Hooks ---
   const nodesManager = useNodesState(nodes, (newNodes) => {
@@ -117,6 +206,18 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     nodes,
     setNodes
   );
+
+  // --- Initialization ---
+  useEffect(() => {
+    if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') return;
+
+    // Only auto-create if group doesn't exist yet
+    // This ensures visibility even for existing gamedays where the group was never created
+    const hasOfficialsGroup = globalTeamGroups.some(g => g.id === 'group-officials');
+    if (!hasOfficialsGroup) {
+       teamPoolManager.ensureOfficialsGroup(i18n.t('ui:label.externalOfficials'));
+    }
+  }, [teamPoolManager, globalTeamGroups]);
 
   const {
     addBulkGameToGameEdges,
@@ -172,13 +273,14 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     setGlobalTeams([]);
     setGlobalTeamGroups([]);
     setSelection({ nodeIds: [], edgeIds: [] });
+    // When clearing everything, we should also allow re-initialization of officials group if needed
+    hasInitializedOfficials.current = false;
     handleStateChange();
   }, [handleStateChange]);
 
   const clearSchedule = useCallback(() => {
     setNodes([]);
     setEdges([]);
-    setFields([]);
     setSelection({ nodeIds: [], edgeIds: [] });
     handleStateChange();
   }, [handleStateChange]);
@@ -308,6 +410,12 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     return nodes.find((n) => n.id === game.parentId && isStageNode(n)) as StageNode || null;
   }, [nodes]);
 
+  const stats = useMemo(() => ({
+    fieldCount: fields.length,
+    gameCount: nodes.filter(isGameNode).length,
+    teamCount: globalTeams.filter(t => t.groupId !== 'group-officials').length,
+  }), [fields.length, nodes, globalTeams]);
+
   return {
     metadata,
     nodes,
@@ -316,6 +424,11 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     globalTeams,
     globalTeamGroups,
     saveTrigger,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    stats,
     selectedNode: nodes.find((n) => n.id === selection.nodeIds[0]) || null,
     selection,
     onNodesChange,
@@ -367,12 +480,14 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     addFieldNode: nodesManager.addFieldNode,
     addStageNode: nodesManager.addStageNode,
     addBulkTournament: nodesManager.addBulkTournament,
-    addGlobalTeam: teamPoolManager.addGlobalTeam,
-    updateGlobalTeam: teamPoolManager.updateGlobalTeam,
-    deleteGlobalTeam: teamPoolManager.deleteGlobalTeam,
-    reorderGlobalTeam: teamPoolManager.reorderGlobalTeam,
-    addGlobalTeamGroup: teamPoolManager.addGlobalTeamGroup,
-    assignTeamToGame: teamPoolManager.assignTeamToGame,
-    updateNode: nodesManager.updateNode,
-  };
-}
+        addGlobalTeam: teamPoolManager.addGlobalTeam,
+        updateGlobalTeam: teamPoolManager.updateGlobalTeam,
+        deleteGlobalTeam: teamPoolManager.deleteGlobalTeam,
+        reorderGlobalTeam: teamPoolManager.reorderGlobalTeam,
+        addGlobalTeamGroup: teamPoolManager.addGlobalTeamGroup,
+        assignTeamToGame: teamPoolManager.assignTeamToGame,
+        ensureOfficialsGroup: teamPoolManager.ensureOfficialsGroup,
+        updateNode: nodesManager.updateNode,
+      };
+    }
+    

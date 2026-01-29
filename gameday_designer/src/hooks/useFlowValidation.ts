@@ -1316,6 +1316,45 @@ function checkMandatoryMetadata(metadata?: GamedayMetadata): FlowValidationError
 }
 
 /**
+ * Check for additional metadata warnings (Venue, Past Date).
+ */
+function checkMetadataWarnings(metadata?: GamedayMetadata): FlowValidationWarning[] {
+  const warnings: FlowValidationWarning[] = [];
+  if (!metadata) return [];
+
+  if (!metadata.address || !metadata.address.trim()) {
+    warnings.push({
+      id: 'metadata_venue_missing',
+      type: 'unassigned_field',
+      message: 'Gameday Venue is missing',
+      messageKey: 'metadataVenueMissing',
+      affectedNodes: [],
+    });
+  }
+
+  if (metadata.date) {
+    const now = new Date();
+    // Manually construct YYYY-MM-DD in LOCAL time to match user input
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+    
+    if (metadata.date < todayStr) {
+      warnings.push({
+        id: 'metadata_date_in_past',
+        type: 'stage_time_conflict',
+        message: 'Gameday date is in the past',
+        messageKey: 'metadataDateInPast',
+        affectedNodes: [],
+      });
+    }
+  }
+
+  return warnings;
+}
+
+/**
  * Pure function to validate the flowchart structure.
  * Can be used in unit tests outside of React components.
  */
@@ -1343,6 +1382,7 @@ export function validateFlowchart(
   ];
 
   const warnings: FlowValidationWarning[] = [
+    ...checkMetadataWarnings(metadata),
     ...checkDuplicateStandings(nodes),
     ...checkOrphanedTeams(nodes, edges),
     ...checkUnassignedFields(nodes),

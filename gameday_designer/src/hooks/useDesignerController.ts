@@ -262,6 +262,11 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
                     addGameNodeInStage: flowState?.addGameNodeInStage,
                     importState: flowState?.importState,
                     exportState: flowState?.exportState,
+                    undo: flowState?.undo,
+                    redo: flowState?.redo,
+                    canUndo: flowState?.canUndo,
+                    canRedo: flowState?.canRedo,
+                    stats: flowState?.stats,
                     
                     // Handlers
     handlers: {
@@ -277,6 +282,9 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
       handleDeleteGlobalTeam: deleteGlobalTeam,
       handleReorderGlobalTeam: reorderGlobalTeam,
       handleAssignTeam: assignTeamToGame,
+      handleConnectTeam: (team: { id: number; text: string }, groupId: string) => {
+        addGlobalTeam(team.text, groupId, team.id);
+      },
       handleSwapTeams,
       handleDeleteNode: deleteNode,
       handleSelectNode: selectNode,

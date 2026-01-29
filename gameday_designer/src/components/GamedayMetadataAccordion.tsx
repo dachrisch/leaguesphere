@@ -125,9 +125,17 @@ const CustomAccordionHeader: React.FC<{
           show={showValidationPopover && ((validation.errors?.length || 0) > 0 || (validation.warnings?.length || 0) > 0)}
           target={validationBadgeRef}
           placement="bottom"
+          offset={[0, 10]}
         >
           {(props) => (
-            <Popover id="validation-popover" {...props} className="shadow border-danger" style={{ ...props.style, maxWidth: '400px', zIndex: 1060 }}>
+            <Popover 
+              id="validation-popover" 
+              {...props} 
+              className="shadow border-danger" 
+              style={{ ...props.style, maxWidth: '400px', zIndex: 1060 }}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
               <Popover.Header as="h3" className="bg-danger text-white py-2 small">
                 {t('ui:label.validation', 'Validation')}
               </Popover.Header>
@@ -351,6 +359,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     value={metadata.address}
                     onChange={(e) => handleChange('address', e.target.value)}
                     disabled={readOnly}
+                    placeholder={t('ui:label.venue')}
                   />
                 </Form.Group>
               </Col>
@@ -365,7 +374,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     onChange={(e) => handleChange('season', parseInt(e.target.value, 10))}
                     disabled={readOnly}
                   >
-                    <option value="0">--- {t('ui:placeholder.selectSeason', 'Select Season')} ---</option>
+                    <option value="0">--- {t('ui:placeholder.selectSeason')} ---</option>
                     {seasons.map((s) => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
@@ -380,7 +389,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     onChange={(e) => handleChange('league', parseInt(e.target.value, 10))}
                     disabled={readOnly}
                   >
-                    <option value="0">--- {t('ui:placeholder.selectLeague', 'Select League')} ---</option>
+                    <option value="0">--- {t('ui:placeholder.selectLeague')} ---</option>
                     {leagues.map((l) => (
                       <option key={l.id} value={l.id}>{l.name}</option>
                     ))}

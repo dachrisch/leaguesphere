@@ -36,6 +36,8 @@ export interface TeamGroupCardProps {
   onDeleteTeam: (teamId: string) => void;
   /** Callback to reorder team */
   onReorderTeam: (teamId: string, direction: 'up' | 'down') => void;
+  /** Callback to show team selection modal */
+  onShowTeamSelection: (groupId: string) => void;
   /** Callback to add a team to this group */
   onAddTeam: (groupId: string) => void;
   /** Function to get which games use a team */
@@ -60,10 +62,12 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
   onDeleteGroup,
   onReorderGroup,
   onUpdateTeam,
-  onDeleteTeam,
-  onReorderTeam,
-  onAddTeam,
-  getTeamUsage,
+      onDeleteTeam,
+      onReorderTeam,
+      onShowTeamSelection,
+      onAddTeam,
+      getTeamUsage,
+  
   index,
   totalGroups,
   readOnly = false,
@@ -207,15 +211,24 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
           {!readOnly && (
             <>
               <button
-                className="btn btn-sm btn-outline-primary btn-adaptive"
+                className="btn btn-sm btn-outline-primary"
                 onClick={(e) => {
                   e.stopPropagation();
                   onAddTeam(group.id);
                 }}
                 title={t('ui:tooltip.addTeamToGroup')}
               >
-                <i className={`bi ${ICONS.ADD} me-2`}></i>
-                <span className="btn-label-adaptive">{t('ui:button.addTeam')}</span>
+                <i className={`bi ${ICONS.ADD}`}></i>
+              </button>
+              <button
+                className="btn btn-sm btn-outline-info"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShowTeamSelection(group.id);
+                }}
+                title={t('ui:tooltip.connectTeam')}
+              >
+                <i className={`bi ${ICONS.LINK}`}></i>
               </button>
               <button
                 className="btn btn-sm btn-outline-secondary"
@@ -240,7 +253,7 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                 <i className={`bi ${ICONS.REORDER_DOWN}`}></i>
               </button>
               <button
-                className="btn btn-sm btn-outline-danger btn-adaptive"
+                className="btn btn-sm btn-outline-danger"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDeleteGroup(group.id);
@@ -263,12 +276,11 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
               <p className="text-muted mb-3">{t('ui:message.noTeamsInGroup')}</p>
               {!readOnly && (
                 <button
-                  className="btn btn-outline-primary btn-adaptive"
+                  className="btn btn-outline-primary"
                   onClick={() => onAddTeam(group.id)}
                   title={t('ui:tooltip.addFirstTeamToGroup')}
                 >
                   <i className={`bi ${ICONS.ADD}`}></i>
-                  <span className="btn-label-adaptive">{t('ui:button.addTeam')}</span>
                 </button>
               )}
             </div>
@@ -375,7 +387,7 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                           size="sm"
                           variant="outline-primary"
                           className="p-0 btn-adaptive"
-                          popperConfig={{ strategy: 'fixed' }}
+                          flip={false}
                         >
                           {allGroups.map((g) => (
                             <Dropdown.Item

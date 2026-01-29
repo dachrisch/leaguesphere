@@ -88,8 +88,9 @@ describe('TeamGroupCard Interaction Fix (#680)', () => {
     const user = userEvent.setup();
     render(<TeamGroupCard {...defaultProps} teams={[]} />);
 
-    // There are two "Add Team" buttons (one in header, one in empty body)
-    const addBtns = screen.getAllByText(/Add Team/i);
+    // There are two "Add Team" buttons (header + empty body)
+    // Both now search by title as they are icon-only
+    const addBtns = screen.getAllByTitle(/add (a new|your first) team/i);
     await user.click(addBtns[1]); // Click the one in the body
 
     expect(mockOnAddTeam).toHaveBeenCalledWith('group-1');

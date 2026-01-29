@@ -32,7 +32,9 @@
     "broken_progression": "Game \"{{game}}\" references non-existent standing \"{{target}}\" for {{slot}}",
     "metadataNameMissing": "Gameday Name is mandatory",
     "metadataDateMissing": "Gameday Date is mandatory",
-      "metadataStartMissing": "Gameday Start Time is mandatory",
+    "metadataDateInPast": "Gameday date is in the past",
+    "metadataVenueMissing": "Gameday venue is missing",
+    "metadataStartMissing": "Gameday Start Time is mandatory",
       "metadataSeasonMissing": "Season selection is mandatory",
       "metadataLeagueMissing": "League selection is mandatory"
     }  

@@ -7,6 +7,7 @@ import TournamentGeneratorModal from './modals/TournamentGeneratorModal';
 import PublishConfirmationModal from './modals/PublishConfirmationModal';
 import NotificationToast from './NotificationToast';
 import GameResultModal from './modals/GameResultModal';
+import TeamSelectionModal from './modals/TeamSelectionModal';
 import { gamedayApi } from '../api/gamedayApi';
 import { useGamedayContext } from '../context/GamedayContext';
 import { useDesignerController } from '../hooks/useDesignerController';
@@ -16,6 +17,7 @@ import { FlowState } from '../types/flowchart';
 import './ListDesignerApp.css';
 
 import { useFlowState } from '../hooks/useFlowState';
+import { exportToStructuredTemplate } from '../utils/flowchartExport';
 
 const ListDesignerApp: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +30,8 @@ const ListDesignerApp: React.FC = () => {
   const [showTournamentModal, setShowTournamentModal] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
+  const [showTeamSelectionModal, setShowTeamSelectionModal] = useState(false);
+  const [activeTeamGroupId, setActiveTeamGroupId] = useState<string | null>(null);
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
 
   const flowState = useFlowState();
@@ -56,6 +60,11 @@ const ListDesignerApp: React.FC = () => {
     importState,
     updateMetadata,
     exportState,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    stats,
   } = controller;
 
   const { 
@@ -76,6 +85,7 @@ const ListDesignerApp: React.FC = () => {
     handleDeleteGlobalTeam,
     handleReorderGlobalTeam,
     handleAssignTeam,
+    handleConnectTeam,
     handleSwapTeams,
     handleDeleteNode,
     handleSelectNode,
@@ -88,6 +98,25 @@ const ListDesignerApp: React.FC = () => {
     addNotification,
   } = handlers;
 
+  const handleExportTemplate = useCallback(() => {
+    const template = exportToStructuredTemplate(flowState);
+    const jsonString = JSON.stringify(template, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const filename = `template_${metadata?.name?.replace(/\s+/g, '_') || 'tournament'}.json`;
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    addNotification(t('ui:notification.autoSaveSuccess'), 'success', 'Template Exported');
+  }, [flowState, metadata?.name, addNotification, t]);
+
   const { saveTrigger } = ui || {};
   const isLocked = metadata?.status ? metadata.status !== 'DRAFT' : true;
 
@@ -99,11 +128,17 @@ const ListDesignerApp: React.FC = () => {
     setToolbarProps({
       onImport: handleImport,
       onExport: handleExport,
+      onExportTemplate: handleExportTemplate,
       gamedayStatus: metadata?.status,
       canExport: ui?.canExport ?? false,
-      onNotify: addNotification
+      onNotify: addNotification,
+      onUndo: undo,
+      onRedo: redo,
+      canUndo,
+      canRedo,
+      stats,
     });
-  }, [metadata?.name, metadata?.status, isLocked, ui?.canExport, setGamedayName, setContextLocked, setOnGenerateTournament, setToolbarProps, handleImport, handleExport, addNotification]);
+  }, [metadata?.name, metadata?.status, isLocked, ui?.canExport, setGamedayName, setContextLocked, setOnGenerateTournament, setToolbarProps, handleImport, handleExport, handleExportTemplate, addNotification, undo, redo, canUndo, canRedo, stats]);
 
   const lastSavedStateRef = useRef<string>('');
   const initialLoadRef = useRef(true);
@@ -465,9 +500,14 @@ const ListDesignerApp: React.FC = () => {
             onAddGlobalTeamGroup={handleAddGlobalTeamGroup}
             onUpdateGlobalTeamGroup={updateGlobalTeamGroup}
             onDeleteGlobalTeamGroup={deleteGlobalTeamGroup}
-            onReorderGlobalTeamGroup={reorderGlobalTeamGroup}
-            getTeamUsage={getTeamUsage}
-            onAssignTeam={handleAssignTeam}
+                    onReorderGlobalTeamGroup={reorderGlobalTeamGroup}
+                    getTeamUsage={getTeamUsage}
+                    onShowTeamSelection={(groupId) => {
+                      setActiveTeamGroupId(groupId);
+                      setShowTeamSelectionModal(true);
+                    }}
+                    onAssignTeam={handleAssignTeam}
+            
             onSwapTeams={handleSwapTeams}
             onAddGame={addGameNodeInStage}
             onAddGameToGameEdge={addGameToGameEdge}
@@ -519,6 +559,21 @@ const ListDesignerApp: React.FC = () => {
         homeTeamName={globalTeams.find(t => t.id === activeGame?.data.homeTeamId)?.label || activeGame?.data.homeTeamDynamic || 'Home'}
         awayTeamName={globalTeams.find(t => t.id === activeGame?.data.awayTeamId)?.label || activeGame?.data.awayTeamDynamic || 'Away'}
         onSave={(data) => activeGame && handleSaveResult(activeGame.id, data.halftime_score, data.final_score)}
+      />
+
+      {/* Team Selection Modal */}
+      <TeamSelectionModal
+        show={showTeamSelectionModal}
+        onHide={() => {
+          setShowTeamSelectionModal(false);
+          setActiveTeamGroupId(null);
+        }}
+        groupId={activeTeamGroupId || ''}
+        onSelect={(team) => {
+          if (activeTeamGroupId) {
+            handleConnectTeam(team, activeTeamGroupId);
+          }
+        }}
       />
     </Container>
   );

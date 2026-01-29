@@ -862,7 +862,7 @@ export function createEmptyFlowState(): FlowState {
       start: '10:00',
       format: '6_2',
       author: 0,
-      address: '',
+      address: '', // Force user input
       season: 0,
       league: 0,
       status: 'DRAFT',
