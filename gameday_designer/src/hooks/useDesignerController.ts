@@ -24,7 +24,10 @@ import type { GlobalTeam, HighlightedElement, Notification, NotificationType } f
 import type { TournamentGenerationConfig } from '../types/tournament';
 import { v4 as uuidv4 } from 'uuid';
 
-export function useDesignerController(flowState: UseFlowStateReturn) {
+export function useDesignerController(
+  flowState: UseFlowStateReturn,
+  onMetadataHighlight?: () => void
+) {
   const {
     metadata = {} as GamedayMetadata,
     nodes = [],
@@ -91,13 +94,16 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
 
   const handleHighlightElement = useCallback(
     async (id: string, type: HighlightedElement['type']) => {
+      if (type === 'metadata' && onMetadataHighlight) {
+        onMetadataHighlight();
+      }
       setHighlightedElement({ id, type });
       await scrollToElementWithExpansion(id, type, nodes, expandField, expandStage, true);
       setTimeout(() => {
         setHighlightedElement(null);
       }, HIGHLIGHT_AUTO_CLEAR_DELAY);
     },
-    [nodes, expandField, expandStage]
+    [nodes, expandField, expandStage, onMetadataHighlight]
   );
 
   const handleDynamicReferenceClick = useCallback(
@@ -273,13 +279,14 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
     handleAddStage: (fieldId: string) => addStageNode(fieldId),
     dismissNotification,
     addNotification,
+    onMetadataHighlight,
   }), [
     expandField, expandStage, handleHighlightElement, handleDynamicReferenceClick,
     handleImport, handleExport, clearAll, updateNode, updateGlobalTeam, 
     deleteGlobalTeam, reorderGlobalTeam, assignTeamToGame, handleSwapTeams, 
     deleteNode, selectNode, handleGenerateTournament, addGlobalTeam, 
     addGlobalTeamGroup, addFieldNode, addStageNode, dismissNotification, 
-    addNotification
+    addNotification, onMetadataHighlight
   ]);
 
   return useMemo(() => ({
@@ -305,10 +312,11 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
     canUndo: flowState?.canUndo,
     canRedo: flowState?.canRedo,
     stats: flowState?.stats,
+    onMetadataHighlight,
     
     // Handlers
     handlers: handlersInternal
   }), [
-    flowState, validation, notifications, updateMetadata, uiInternal, handlersInternal
+    flowState, validation, notifications, updateMetadata, uiInternal, handlersInternal, onMetadataHighlight
   ]);
 }

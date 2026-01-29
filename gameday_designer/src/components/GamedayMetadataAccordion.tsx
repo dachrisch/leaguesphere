@@ -147,7 +147,7 @@ const CustomAccordionHeader: React.FC<{
                       className="list-group-item list-group-item-action list-group-item-danger border-0 d-flex align-items-start py-2"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onHighlight(error.affectedNodes[0], getHighlightType(error.type));
+                        onHighlight(error.affectedNodes[0], getHighlightType(error));
                       }}
                       style={{ cursor: 'pointer' }}
                     >
@@ -161,7 +161,7 @@ const CustomAccordionHeader: React.FC<{
                       className="list-group-item list-group-item-action list-group-item-warning border-0 d-flex align-items-start py-2"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onHighlight(warning.affectedNodes[0], getHighlightType(warning.type));
+                        onHighlight(warning.affectedNodes[0], getHighlightType(warning));
                       }}
                       style={{ cursor: 'pointer' }}
                     >
@@ -292,7 +292,9 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
     return item.message;
   };
 
-  const getHighlightType = (errorType: string): HighlightedElement['type'] => {
+  const getHighlightType = (item: ValidationError | ValidationWarning): HighlightedElement['type'] => {
+    if (item.affectedNodes[0] === 'metadata') return 'metadata' as any;
+    const errorType = item.type;
     if (errorType === 'field_overlap' || errorType === 'team_overlap' || errorType === 'no_games' || errorType === 'broken_progression') return 'game';
     if (errorType.includes('stage')) return 'stage';
     if (errorType.includes('field')) return 'field';
@@ -301,7 +303,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
   };
 
   return (
-    <div className="gameday-metadata-accordion-container">
+    <div className="gameday-metadata-accordion-container" id="gameday-metadata" data-testid="gameday-metadata-accordion">
       <Accordion.Item eventKey="0">
         <CustomAccordionHeader 
           eventKey="0" 

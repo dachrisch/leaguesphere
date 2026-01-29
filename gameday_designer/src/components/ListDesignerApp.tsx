@@ -35,7 +35,7 @@ const ListDesignerApp: React.FC = () => {
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
 
   const flowState = useFlowState();
-  const controller = useDesignerController(flowState);
+  const controller = useDesignerController(flowState, () => setMetadataActiveKey('0'));
   
   const {
     metadata,

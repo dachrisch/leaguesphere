@@ -1268,7 +1268,7 @@ function checkMandatoryMetadata(metadata?: GamedayMetadata): FlowValidationError
       type: 'incomplete_game_inputs',
       message: 'Gameday Name is mandatory',
       messageKey: 'metadataNameMissing',
-      affectedNodes: [],
+      affectedNodes: ['metadata'],
     });
   }
 
@@ -1278,7 +1278,7 @@ function checkMandatoryMetadata(metadata?: GamedayMetadata): FlowValidationError
       type: 'incomplete_game_inputs',
       message: 'Gameday Date is mandatory',
       messageKey: 'metadataDateMissing',
-      affectedNodes: [],
+      affectedNodes: ['metadata'],
     });
   }
 
@@ -1288,7 +1288,7 @@ function checkMandatoryMetadata(metadata?: GamedayMetadata): FlowValidationError
       type: 'incomplete_game_inputs',
       message: 'Gameday Start Time is mandatory',
       messageKey: 'metadataStartMissing',
-      affectedNodes: [],
+      affectedNodes: ['metadata'],
     });
   }
 
@@ -1298,7 +1298,7 @@ function checkMandatoryMetadata(metadata?: GamedayMetadata): FlowValidationError
       type: 'incomplete_game_inputs',
       message: 'Season is mandatory',
       messageKey: 'metadataSeasonMissing',
-      affectedNodes: [],
+      affectedNodes: ['metadata'],
     });
   }
 
@@ -1308,7 +1308,7 @@ function checkMandatoryMetadata(metadata?: GamedayMetadata): FlowValidationError
       type: 'incomplete_game_inputs',
       message: 'League is mandatory',
       messageKey: 'metadataLeagueMissing',
-      affectedNodes: [],
+      affectedNodes: ['metadata'],
     });
   }
 
@@ -1328,7 +1328,7 @@ function checkMetadataWarnings(metadata?: GamedayMetadata): FlowValidationWarnin
       type: 'unassigned_field',
       message: 'Gameday Venue is missing',
       messageKey: 'metadataVenueMissing',
-      affectedNodes: [],
+      affectedNodes: ['metadata'],
     });
   }
 
@@ -1346,7 +1346,7 @@ function checkMetadataWarnings(metadata?: GamedayMetadata): FlowValidationWarnin
         type: 'stage_time_conflict',
         message: 'Gameday date is in the past',
         messageKey: 'metadataDateInPast',
-        affectedNodes: [],
+        affectedNodes: ['metadata'],
       });
     }
   }
