@@ -416,7 +416,43 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     teamCount: globalTeams.filter(t => t.groupId !== 'group-officials').length,
   }), [fields.length, nodes, globalTeams]);
 
-  return {
+  const getFieldStages = useCallback((fieldId: string) => 
+    nodes.filter((n) => isStageNode(n) && n.parentId === fieldId) as StageNode[], 
+  [nodes]);
+
+  const getStageGames = useCallback((stageId: string) => 
+    nodes.filter((n) => isGameNode(n) && n.parentId === stageId) as GameNode[], 
+  [nodes]);
+
+  const matchNames = useMemo(() => nodes.filter(isGameNode).map((n) => n.data.standing).filter(Boolean), [nodes]);
+  const groupNames = useMemo(() => ['Gruppe 1', 'Gruppe 2', 'Gruppe A', 'Gruppe B'], []);
+
+  const addBulkGames = useCallback((games: FlowNode[]) => {
+    setNodes((nds) => [...nds, ...games]);
+    onStateChange?.();
+  }, [onStateChange]);
+
+  const addBulkFields = useCallback((newFields: FlowField[], clearExisting: boolean = false) => {
+    setFields((prev) => {
+      const base = clearExisting ? [] : prev;
+      return [...base, ...newFields];
+    });
+    onStateChange?.();
+  }, [onStateChange]);
+
+  const addBulkGamesToGameEdgesCb = useCallback((newEdges: GameToGameEdge[], clearExisting?: boolean) => {
+    addBulkGameToGameEdges(newEdges, clearExisting);
+  }, [addBulkGameToGameEdges]);
+
+  const addStageToGameEdgeCb = useCallback((sourceStageId: string, sourceRank: number, targetGameId: string, targetPort: 'home' | 'away', sourceGroup?: string) => {
+    addStageToGameEdge(sourceStageId, sourceRank, targetGameId, targetPort, sourceGroup);
+  }, [addStageToGameEdge]);
+
+  const removeEdgeFromSlotCb = useCallback((targetNodeId: string, targetHandle: 'home' | 'away') => {
+    removeEdgeFromSlot(targetNodeId, targetHandle);
+  }, [removeEdgeFromSlot]);
+
+  return useMemo(() => ({
     metadata,
     nodes,
     edges,
@@ -436,9 +472,9 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     ...nodesManager,
     ...edgesManagerProps,
     ...teamPoolManager,
-    addBulkGameToGameEdges,
-    addStageToGameEdge,
-    removeEdgeFromSlot,
+    addBulkGameToGameEdges: addBulkGamesToGameEdgesCb,
+    addStageToGameEdge: addStageToGameEdgeCb,
+    removeEdgeFromSlot: removeEdgeFromSlotCb,
     addGameNode, // Overrides nodesManager.addGameNode (v1 behavior)
     deleteNode, // Overrides managers
     addField,
@@ -457,37 +493,37 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     getGameStage,
     getTeamField: () => null, // Placeholder
     getTeamStage: () => null, // Placeholder
-    getFieldStages: (fieldId) => nodes.filter((n) => isStageNode(n) && n.parentId === fieldId) as StageNode[],
-    getStageGames: (stageId) => nodes.filter((n) => isGameNode(n) && n.parentId === stageId) as GameNode[],
+    getFieldStages,
+    getStageGames,
     selectedContainerField: nodes.find((n) => n.id === selection.nodeIds[0] && isFieldNode(n)) as FieldNode || null,
     selectedContainerStage: nodes.find((n) => n.id === selection.nodeIds[0] && isStageNode(n)) as StageNode || null,
     setEdges,
-    matchNames: useMemo(() => nodes.filter(isGameNode).map((n) => n.data.standing).filter(Boolean), [nodes]),
-    groupNames: useMemo(() => ['Gruppe 1', 'Gruppe 2', 'Gruppe A', 'Gruppe B'], []),
-    addBulkGames: (games) => {
-      setNodes((nds) => [...nds, ...games]);
-      onStateChange?.();
-    },
-    addBulkFields: (newFields: FlowField[], clearExisting: boolean = false) => {
-      setFields((prev) => {
-        const base = clearExisting ? [] : prev;
-        return [...base, ...newFields];
-      });
-      onStateChange?.();
-    },
+    matchNames,
+    groupNames,
+    addBulkGames,
+    addBulkFields,
     moveNodeToStage: () => {}, // Placeholder
     // Explicitly export these from managers
     addFieldNode: nodesManager.addFieldNode,
     addStageNode: nodesManager.addStageNode,
     addBulkTournament: nodesManager.addBulkTournament,
-        addGlobalTeam: teamPoolManager.addGlobalTeam,
-        updateGlobalTeam: teamPoolManager.updateGlobalTeam,
-        deleteGlobalTeam: teamPoolManager.deleteGlobalTeam,
-        reorderGlobalTeam: teamPoolManager.reorderGlobalTeam,
-        addGlobalTeamGroup: teamPoolManager.addGlobalTeamGroup,
-        assignTeamToGame: teamPoolManager.assignTeamToGame,
-        ensureOfficialsGroup: teamPoolManager.ensureOfficialsGroup,
-        updateNode: nodesManager.updateNode,
-      };
-    }
+    addGlobalTeam: teamPoolManager.addGlobalTeam,
+    updateGlobalTeam: teamPoolManager.updateGlobalTeam,
+    deleteGlobalTeam: teamPoolManager.deleteGlobalTeam,
+    reorderGlobalTeam: teamPoolManager.reorderGlobalTeam,
+    addGlobalTeamGroup: teamPoolManager.addGlobalTeamGroup,
+    assignTeamToGame: teamPoolManager.assignTeamToGame,
+    ensureOfficialsGroup: teamPoolManager.ensureOfficialsGroup,
+    updateNode: nodesManager.updateNode,
+  }), [
+    metadata, nodes, edges, fields, globalTeams, globalTeamGroups, saveTrigger,
+    undo, redo, canUndo, canRedo, stats, selection, onNodesChange, onEdgesChange,
+    nodesManager, edgesManagerProps, teamPoolManager, addBulkGamesToGameEdgesCb,
+    addStageToGameEdgeCb, removeEdgeFromSlotCb, addGameNode, deleteNode, 
+    addField, updateField, deleteField, selectNode, updateMetadata, 
+    setSelection, clearAll, clearSchedule, importState, exportState, 
+    getTargetStage, ensureContainerHierarchy, getGameField, getGameStage, 
+    getFieldStages, getStageGames, matchNames, groupNames, addBulkGames, addBulkFields
+  ]);
+}
     

@@ -7,7 +7,7 @@
  * - Team assignment tracking (usage)
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import type {
   FlowNode,
@@ -270,7 +270,7 @@ export function useTeamPoolState(
     [nodes]
   );
 
-  return {
+  return useMemo(() => ({
     addGlobalTeam,
     updateGlobalTeam,
     deleteGlobalTeam,
@@ -283,5 +283,10 @@ export function useTeamPoolState(
     unassignTeamFromGame,
     getTeamUsage,
     ensureOfficialsGroup,
-  };
+  }), [
+    addGlobalTeam, updateGlobalTeam, deleteGlobalTeam, reorderGlobalTeam,
+    addGlobalTeamGroup, updateGlobalTeamGroup, deleteGlobalTeamGroup,
+    reorderGlobalTeamGroup, assignTeamToGame, unassignTeamFromGame,
+    getTeamUsage, ensureOfficialsGroup
+  ]);
 }

@@ -7,7 +7,7 @@
  * - Dynamic reference derivation
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import type {
   FlowNode,
@@ -321,7 +321,7 @@ export function useEdgesState(
     [setEdges, setNodes]
   );
 
-  return {
+  return useMemo(() => ({
     deriveDynamicRef,
     syncNodesWithEdges,
     addGameToGameEdge,
@@ -330,5 +330,5 @@ export function useEdgesState(
     removeEdgeFromSlot,
     deleteEdge,
     deleteEdgesByNodes,
-  };
+  }), [deriveDynamicRef, syncNodesWithEdges, addGameToGameEdge, addBulkGameToGameEdges, addStageToGameEdge, removeEdgeFromSlot, deleteEdge, deleteEdgesByNodes]);
 }

@@ -236,76 +236,79 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
     return nodes.some((n) => n.type === 'game') && fields.length > 0;
   }, [nodes, fields]);
 
-  return useMemo(() => ({
-    // State
-    ...flowState,
-    validation,
-    notifications,
-    updateMetadata,
-    ui: {
-      highlightedElement,
-      expandedFieldIds,
-      expandedStageIds,
-      showTournamentModal,
-              canExport,
-              hasData: nodes.length > 0 || globalTeams.length > 0 || fields.length > 0,
-                      saveTrigger: flowState?.saveTrigger, // Ensure saveTrigger is passed through if it exists
-                    },
-                    // Explicitly expose these from flowState if not already in ...flowState
-                    updateGlobalTeamGroup: flowState?.updateGlobalTeamGroup,
-                    deleteGlobalTeamGroup: flowState?.deleteGlobalTeamGroup,
-                    reorderGlobalTeamGroup: flowState?.reorderGlobalTeamGroup,
-                    getTeamUsage: flowState?.getTeamUsage,
-                    addGameToGameEdge: flowState?.addGameToGameEdge,
-                    addStageToGameEdge: flowState?.addStageToGameEdge,
-                    removeEdgeFromSlot: flowState?.removeEdgeFromSlot,
-                    addGameNodeInStage: flowState?.addGameNodeInStage,
-                    importState: flowState?.importState,
-                    exportState: flowState?.exportState,
-                    undo: flowState?.undo,
-                    redo: flowState?.redo,
-                    canUndo: flowState?.canUndo,
-                    canRedo: flowState?.canRedo,
-                    stats: flowState?.stats,
-                    
-                    // Handlers
-    handlers: {
-      expandField,
-      expandStage,
-      handleHighlightElement,
-      handleDynamicReferenceClick,
-      handleImport,
-      handleExport,
-      handleClearAll: clearAll,
-      handleUpdateNode: updateNode,
-      handleUpdateGlobalTeam: updateGlobalTeam,
-      handleDeleteGlobalTeam: deleteGlobalTeam,
-      handleReorderGlobalTeam: reorderGlobalTeam,
-      handleAssignTeam: assignTeamToGame,
-      handleConnectTeam: (team: { id: number; text: string }, groupId: string) => {
-        addGlobalTeam(team.text, groupId, team.id);
-      },
-      handleSwapTeams,
-      handleDeleteNode: deleteNode,
-      handleSelectNode: selectNode,
-      handleGenerateTournament,
-      setShowTournamentModal,
-      handleAddGlobalTeam: (groupId: string) => addGlobalTeam(undefined, groupId),
-      handleAddGlobalTeamGroup: () => addGlobalTeamGroup(),
-      handleAddFieldContainer: () => addFieldNode({}, true),
-      handleAddStage: (fieldId: string) => addStageNode(fieldId),
-      dismissNotification,
-      addNotification,
-    }
+  const uiInternal = useMemo(() => ({
+    highlightedElement,
+    expandedFieldIds,
+    expandedStageIds,
+    showTournamentModal,
+    canExport,
+    hasData: nodes.length > 0 || globalTeams.length > 0 || fields.length > 0,
+    saveTrigger: flowState?.saveTrigger,
+  }), [highlightedElement, expandedFieldIds, expandedStageIds, showTournamentModal, canExport, nodes.length, globalTeams.length, fields.length, flowState?.saveTrigger]);
+
+  const handlersInternal = useMemo(() => ({
+    expandField,
+    expandStage,
+    handleHighlightElement,
+    handleDynamicReferenceClick,
+    handleImport,
+    handleExport,
+    handleClearAll: clearAll,
+    handleUpdateNode: updateNode,
+    handleUpdateGlobalTeam: updateGlobalTeam,
+    handleDeleteGlobalTeam: deleteGlobalTeam,
+    handleReorderGlobalTeam: reorderGlobalTeam,
+    handleAssignTeam: assignTeamToGame,
+    handleConnectTeam: (team: { id: number; text: string }, groupId: string) => {
+      addGlobalTeam(team.text, groupId, team.id);
+    },
+    handleSwapTeams,
+    handleDeleteNode: deleteNode,
+    handleSelectNode: selectNode,
+    handleGenerateTournament,
+    setShowTournamentModal,
+    handleAddGlobalTeam: (groupId: string) => addGlobalTeam(undefined, groupId),
+    handleAddGlobalTeamGroup: () => addGlobalTeamGroup(),
+    handleAddFieldContainer: () => addFieldNode({}, true),
+    handleAddStage: (fieldId: string) => addStageNode(fieldId),
+    dismissNotification,
+    addNotification,
   }), [
-    flowState, validation, notifications, updateMetadata, highlightedElement, 
-    expandedFieldIds, expandedStageIds, showTournamentModal, canExport, 
-    nodes.length, globalTeams.length, fields.length,
     expandField, expandStage, handleHighlightElement, handleDynamicReferenceClick,
     handleImport, handleExport, clearAll, updateNode, updateGlobalTeam, 
     deleteGlobalTeam, reorderGlobalTeam, assignTeamToGame, handleSwapTeams, 
     deleteNode, selectNode, handleGenerateTournament, addGlobalTeam, 
     addGlobalTeamGroup, addFieldNode, addStageNode, dismissNotification, 
     addNotification
+  ]);
+
+  return useMemo(() => ({
+    // State
+    ...flowState,
+    validation,
+    notifications,
+    updateMetadata,
+    ui: uiInternal,
+    // Explicitly expose these from flowState if not already in ...flowState
+    updateGlobalTeamGroup: flowState?.updateGlobalTeamGroup,
+    deleteGlobalTeamGroup: flowState?.deleteGlobalTeamGroup,
+    reorderGlobalTeamGroup: flowState?.reorderGlobalTeamGroup,
+    getTeamUsage: flowState?.getTeamUsage,
+    addGameToGameEdge: flowState?.addGameToGameEdge,
+    addStageToGameEdge: flowState?.addStageToGameEdge,
+    removeEdgeFromSlot: flowState?.removeEdgeFromSlot,
+    addGameNodeInStage: flowState?.addGameNodeInStage,
+    importState: flowState?.importState,
+    exportState: flowState?.exportState,
+    undo: flowState?.undo,
+    redo: flowState?.redo,
+    canUndo: flowState?.canUndo,
+    canRedo: flowState?.canRedo,
+    stats: flowState?.stats,
+    
+    // Handlers
+    handlers: handlersInternal
+  }), [
+    flowState, validation, notifications, updateMetadata, uiInternal, handlersInternal
   ]);
 }
