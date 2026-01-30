@@ -32,9 +32,8 @@ Reposition and rebrand the generation action.
 - [x] Task: Enhanced Visibility [d06f76ed] (CLOSED)
     - [x] Added tournament statistics summary (Fields/Games/Teams) to FlowToolbar.
     - [x] Improved "Connect Team" button visibility.
-- [x] Task: Filter Gameday Display (#706) [3848e6d7] (DEFERRED)
+- [x] Task: Filter Gameday Display (#706) [3848e6d7] (CLOSED)
     - [x] Filter gameday list to show only designer-created gamedays (checks for `designer_data`).
-    - *Comment: Deferred per user request (cannot test currently).*
 - [x] Task: Multi-Group Generation Fix (#697) [f61c1eac] (CLOSED)
     - [x] Implemented logic to split generated teams into separate groups (Gruppe A, B, etc.).
 - [x] Task: Precise Validation Highlights (#696) [e8d64ff3] (CLOSED)
