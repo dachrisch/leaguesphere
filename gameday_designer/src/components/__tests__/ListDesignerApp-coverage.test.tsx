@@ -121,6 +121,7 @@ describe('ListDesignerApp Coverage', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllEnvs();
   });
 
   const renderApp = async () => {
@@ -316,6 +317,7 @@ describe('ListDesignerApp Coverage', () => {
   });
 
   it('handles auto-save failure', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-21T10:00:00Z'));
     

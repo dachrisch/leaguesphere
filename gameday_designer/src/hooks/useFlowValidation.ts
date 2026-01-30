@@ -1030,7 +1030,7 @@ function checkUnevenGames(
           minGames,
           maxGames
         },
-        affectedNodes: [], // Groups don't have nodes directly
+        affectedNodes: [groupId], // Use groupId as target
       });
     }
   }
@@ -1102,7 +1102,7 @@ function checkNoTeams(globalTeams: GlobalTeam[]): FlowValidationWarning[] {
         message: 'No teams have been added to the team pool',
         messageKey: 'no_teams',
         messageParams: {},
-        affectedNodes: [],
+        affectedNodes: ['team-pool'],
       },
     ];
   }
@@ -1122,7 +1122,7 @@ function checkNoGames(nodes: FlowNode[]): FlowValidationWarning[] {
         message: 'No games have been added to the schedule',
         messageKey: 'no_games',
         messageParams: {},
-        affectedNodes: [],
+        affectedNodes: ['fields-card'],
       },
     ];
   }
@@ -1268,7 +1268,7 @@ function checkMandatoryMetadata(metadata?: GamedayMetadata): FlowValidationError
       type: 'incomplete_game_inputs',
       message: 'Gameday Name is mandatory',
       messageKey: 'metadataNameMissing',
-      affectedNodes: [],
+      affectedNodes: ['metadata-gamedayName'],
     });
   }
 
@@ -1278,7 +1278,7 @@ function checkMandatoryMetadata(metadata?: GamedayMetadata): FlowValidationError
       type: 'incomplete_game_inputs',
       message: 'Gameday Date is mandatory',
       messageKey: 'metadataDateMissing',
-      affectedNodes: [],
+      affectedNodes: ['metadata-gamedayDate'],
     });
   }
 
@@ -1288,7 +1288,7 @@ function checkMandatoryMetadata(metadata?: GamedayMetadata): FlowValidationError
       type: 'incomplete_game_inputs',
       message: 'Gameday Start Time is mandatory',
       messageKey: 'metadataStartMissing',
-      affectedNodes: [],
+      affectedNodes: ['metadata-gamedayStart'],
     });
   }
 
@@ -1298,7 +1298,7 @@ function checkMandatoryMetadata(metadata?: GamedayMetadata): FlowValidationError
       type: 'incomplete_game_inputs',
       message: 'Season is mandatory',
       messageKey: 'metadataSeasonMissing',
-      affectedNodes: [],
+      affectedNodes: ['metadata-gamedaySeason'],
     });
   }
 
@@ -1308,11 +1308,50 @@ function checkMandatoryMetadata(metadata?: GamedayMetadata): FlowValidationError
       type: 'incomplete_game_inputs',
       message: 'League is mandatory',
       messageKey: 'metadataLeagueMissing',
-      affectedNodes: [],
+      affectedNodes: ['metadata-gamedayLeague'],
     });
   }
 
   return errors;
+}
+
+/**
+ * Check for additional metadata warnings (Venue, Past Date).
+ */
+function checkMetadataWarnings(metadata?: GamedayMetadata): FlowValidationWarning[] {
+  const warnings: FlowValidationWarning[] = [];
+  if (!metadata) return [];
+
+  if (!metadata.address || !metadata.address.trim()) {
+    warnings.push({
+      id: 'metadata_venue_missing',
+      type: 'unassigned_field',
+      message: 'Gameday Venue is missing',
+      messageKey: 'metadataVenueMissing',
+      affectedNodes: ['metadata-gamedayVenue'],
+    });
+  }
+
+  if (metadata.date) {
+    const now = new Date();
+    // Manually construct YYYY-MM-DD in LOCAL time to match user input
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+    
+    if (metadata.date < todayStr) {
+      warnings.push({
+        id: 'metadata_date_in_past',
+        type: 'stage_time_conflict',
+        message: 'Gameday date is in the past',
+        messageKey: 'metadataDateInPast',
+        affectedNodes: ['metadata-gamedayDate'],
+      });
+    }
+  }
+
+  return warnings;
 }
 
 /**
@@ -1343,6 +1382,7 @@ export function validateFlowchart(
   ];
 
   const warnings: FlowValidationWarning[] = [
+    ...checkMetadataWarnings(metadata),
     ...checkDuplicateStandings(nodes),
     ...checkOrphanedTeams(nodes, edges),
     ...checkUnassignedFields(nodes),

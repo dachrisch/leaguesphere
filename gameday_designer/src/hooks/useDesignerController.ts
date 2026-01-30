@@ -24,7 +24,10 @@ import type { GlobalTeam, HighlightedElement, Notification, NotificationType } f
 import type { TournamentGenerationConfig } from '../types/tournament';
 import { v4 as uuidv4 } from 'uuid';
 
-export function useDesignerController(flowState: UseFlowStateReturn) {
+export function useDesignerController(
+  flowState: UseFlowStateReturn,
+  onMetadataHighlight?: () => void
+) {
   const {
     metadata = {} as GamedayMetadata,
     nodes = [],
@@ -91,13 +94,16 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
 
   const handleHighlightElement = useCallback(
     async (id: string, type: HighlightedElement['type']) => {
+      if (type === 'metadata' && onMetadataHighlight) {
+        onMetadataHighlight();
+      }
       setHighlightedElement({ id, type });
       await scrollToElementWithExpansion(id, type, nodes, expandField, expandStage, true);
       setTimeout(() => {
         setHighlightedElement(null);
       }, HIGHLIGHT_AUTO_CLEAR_DELAY);
     },
-    [nodes, expandField, expandStage]
+    [nodes, expandField, expandStage, onMetadataHighlight]
   );
 
   const handleDynamicReferenceClick = useCallback(
@@ -177,18 +183,35 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
 
         if (config.generateTeams) {
           const teamCount = config.template.teamCount.exact || config.template.teamCount.min;
-          let groupId: string | null = null;
           
-          if (globalTeamGroups.length === 0) {
-            const newGroup = addGlobalTeamGroup(DEFAULT_TOURNAMENT_GROUP_NAME);
-            groupId = newGroup.id;
-          } else {
-            groupId = globalTeamGroups[0].id;
+          // Determine group count from template
+          const firstStage = config.template.stages?.[0];
+          let groupCount = 1;
+          if (firstStage && firstStage.fieldAssignment === 'split') {
+            groupCount = firstStage.splitCount || config.fieldCount;
+            // Round robin calculation fallback
+            if (firstStage.splitCount === undefined && firstStage.progressionMode === 'round_robin') {
+              const teamsPerGroup = (firstStage.config as RoundRobinConfig).teamCount;
+              if (teamsPerGroup > 0) {
+                groupCount = Math.floor(teamCount / teamsPerGroup);
+              }
+            }
+          }
+
+          // Create groups if they don't exist
+          const groupIds: string[] = [];
+          for (let i = 0; i < groupCount; i++) {
+            const groupName = groupCount > 1 ? `Gruppe ${String.fromCharCode(65 + i)}` : DEFAULT_TOURNAMENT_GROUP_NAME;
+            const newGroup = addGlobalTeamGroup(groupName);
+            groupIds.push(newGroup.id);
           }
 
           const teamData = generateTeamsForTournament(teamCount);
-          const newTeams: GlobalTeam[] = teamData.map((data) => {
-            const team = addGlobalTeam(data.label, groupId!);
+          const teamsPerGroupCount = Math.ceil(teamCount / groupCount);
+          
+          const newTeams: GlobalTeam[] = teamData.map((data, index) => {
+            const groupIndex = Math.min(Math.floor(index / teamsPerGroupCount), groupIds.length - 1);
+            const team = addGlobalTeam(data.label, groupIds[groupIndex]);
             updateGlobalTeam(team.id, { color: data.color });
             return { ...team, color: data.color };
           });
@@ -213,7 +236,7 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
         addNotification('Failed to generate tournament. See console for details.', 'danger', 'Generation Error');
       }
     },
-    [globalTeams, globalTeamGroups, clearAll, clearSchedule, addBulkTournament, addBulkFields, addGlobalTeam, addGlobalTeamGroup, updateGlobalTeam, assignTeamsToTournament, addNotification]
+    [globalTeams, clearAll, clearSchedule, addBulkTournament, addBulkFields, addGlobalTeam, addGlobalTeamGroup, updateGlobalTeam, assignTeamsToTournament, addNotification]
   );
 
   const handleSwapTeams = useCallback(
@@ -236,68 +259,81 @@ export function useDesignerController(flowState: UseFlowStateReturn) {
     return nodes.some((n) => n.type === 'game') && fields.length > 0;
   }, [nodes, fields]);
 
+  const uiInternal = useMemo(() => ({
+    highlightedElement,
+    expandedFieldIds,
+    expandedStageIds,
+    showTournamentModal,
+    canExport,
+    hasData: nodes.length > 0 || globalTeams.length > 0 || fields.length > 0,
+    saveTrigger: flowState?.saveTrigger,
+  }), [highlightedElement, expandedFieldIds, expandedStageIds, showTournamentModal, canExport, nodes.length, globalTeams.length, fields.length, flowState?.saveTrigger]);
+
+  const handlersInternal = useMemo(() => ({
+    expandField,
+    expandStage,
+    handleHighlightElement,
+    handleDynamicReferenceClick,
+    handleImport,
+    handleExport,
+    handleClearAll: clearAll,
+    handleUpdateNode: updateNode,
+    handleUpdateGlobalTeam: updateGlobalTeam,
+    handleDeleteGlobalTeam: deleteGlobalTeam,
+    handleReorderGlobalTeam: reorderGlobalTeam,
+    handleAssignTeam: assignTeamToGame,
+    handleConnectTeam: (team: { id: number; text: string }, groupId: string) => {
+      addGlobalTeam(team.text, groupId, team.id);
+    },
+    handleSwapTeams,
+    handleDeleteNode: deleteNode,
+    handleSelectNode: selectNode,
+    handleGenerateTournament,
+    setShowTournamentModal,
+    handleAddGlobalTeam: (groupId: string) => addGlobalTeam(undefined, groupId),
+    handleAddGlobalTeamGroup: () => addGlobalTeamGroup(),
+    handleAddFieldContainer: () => addFieldNode({}, true),
+    handleAddStage: (fieldId: string) => addStageNode(fieldId),
+    dismissNotification,
+    addNotification,
+    onMetadataHighlight,
+  }), [
+    expandField, expandStage, handleHighlightElement, handleDynamicReferenceClick,
+    handleImport, handleExport, clearAll, updateNode, updateGlobalTeam, 
+    deleteGlobalTeam, reorderGlobalTeam, assignTeamToGame, handleSwapTeams, 
+    deleteNode, selectNode, handleGenerateTournament, addGlobalTeam, 
+    addGlobalTeamGroup, addFieldNode, addStageNode, dismissNotification, 
+    addNotification, onMetadataHighlight
+  ]);
+
   return useMemo(() => ({
     // State
     ...flowState,
     validation,
     notifications,
     updateMetadata,
-    ui: {
-      highlightedElement,
-      expandedFieldIds,
-      expandedStageIds,
-      showTournamentModal,
-              canExport,
-              hasData: nodes.length > 0 || globalTeams.length > 0 || fields.length > 0,
-                      saveTrigger: flowState?.saveTrigger, // Ensure saveTrigger is passed through if it exists
-                    },
-                    // Explicitly expose these from flowState if not already in ...flowState
-                    updateGlobalTeamGroup: flowState?.updateGlobalTeamGroup,
-                    deleteGlobalTeamGroup: flowState?.deleteGlobalTeamGroup,
-                    reorderGlobalTeamGroup: flowState?.reorderGlobalTeamGroup,
-                    getTeamUsage: flowState?.getTeamUsage,
-                    addGameToGameEdge: flowState?.addGameToGameEdge,
-                    addStageToGameEdge: flowState?.addStageToGameEdge,
-                    removeEdgeFromSlot: flowState?.removeEdgeFromSlot,
-                    addGameNodeInStage: flowState?.addGameNodeInStage,
-                    importState: flowState?.importState,
-                    exportState: flowState?.exportState,
-                    
-                    // Handlers
-    handlers: {
-      expandField,
-      expandStage,
-      handleHighlightElement,
-      handleDynamicReferenceClick,
-      handleImport,
-      handleExport,
-      handleClearAll: clearAll,
-      handleUpdateNode: updateNode,
-      handleUpdateGlobalTeam: updateGlobalTeam,
-      handleDeleteGlobalTeam: deleteGlobalTeam,
-      handleReorderGlobalTeam: reorderGlobalTeam,
-      handleAssignTeam: assignTeamToGame,
-      handleSwapTeams,
-      handleDeleteNode: deleteNode,
-      handleSelectNode: selectNode,
-      handleGenerateTournament,
-      setShowTournamentModal,
-      handleAddGlobalTeam: (groupId: string) => addGlobalTeam(undefined, groupId),
-      handleAddGlobalTeamGroup: () => addGlobalTeamGroup(),
-      handleAddFieldContainer: () => addFieldNode({}, true),
-      handleAddStage: (fieldId: string) => addStageNode(fieldId),
-      dismissNotification,
-      addNotification,
-    }
+    ui: uiInternal,
+    // Explicitly expose these from flowState if not already in ...flowState
+    updateGlobalTeamGroup: flowState?.updateGlobalTeamGroup,
+    deleteGlobalTeamGroup: flowState?.deleteGlobalTeamGroup,
+    reorderGlobalTeamGroup: flowState?.reorderGlobalTeamGroup,
+    getTeamUsage: flowState?.getTeamUsage,
+    addGameToGameEdge: flowState?.addGameToGameEdge,
+    addStageToGameEdge: flowState?.addStageToGameEdge,
+    removeEdgeFromSlot: flowState?.removeEdgeFromSlot,
+    addGameNodeInStage: flowState?.addGameNodeInStage,
+    importState: flowState?.importState,
+    exportState: flowState?.exportState,
+    undo: flowState?.undo,
+    redo: flowState?.redo,
+    canUndo: flowState?.canUndo,
+    canRedo: flowState?.canRedo,
+    stats: flowState?.stats,
+    onMetadataHighlight,
+    
+    // Handlers
+    handlers: handlersInternal
   }), [
-    flowState, validation, notifications, updateMetadata, highlightedElement, 
-    expandedFieldIds, expandedStageIds, showTournamentModal, canExport, 
-    nodes.length, globalTeams.length, fields.length,
-    expandField, expandStage, handleHighlightElement, handleDynamicReferenceClick,
-    handleImport, handleExport, clearAll, updateNode, updateGlobalTeam, 
-    deleteGlobalTeam, reorderGlobalTeam, assignTeamToGame, handleSwapTeams, 
-    deleteNode, selectNode, handleGenerateTournament, addGlobalTeam, 
-    addGlobalTeamGroup, addFieldNode, addStageNode, dismissNotification, 
-    addNotification
+    flowState, validation, notifications, updateMetadata, uiInternal, handlersInternal, onMetadataHighlight
   ]);
 }

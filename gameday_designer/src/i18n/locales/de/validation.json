@@ -30,6 +30,8 @@
     "broken_progression": "Spiel \"{{game}}\" referenziert nicht existierende Platzierung \"{{target}}\" für {{slot}}",
     "metadataNameMissing": "Spieltagsname ist erforderlich",
     "metadataDateMissing": "Spieltagsdatum ist erforderlich",
+    "metadataDateInPast": "Spieltagsdatum liegt in der Vergangenheit",
+    "metadataVenueMissing": "Spieltagsort (Venue) fehlt",
     "metadataStartMissing": "Startzeit ist erforderlich",
     "metadataSeasonMissing": "Saison-Auswahl ist erforderlich",
     "metadataLeagueMissing": "Liga-Auswahl ist erforderlich"

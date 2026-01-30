@@ -117,7 +117,38 @@ function buildGroupedTeamOptions(
   t: (key: string) => string
 ): TeamOption[] {
   const options: TeamOption[] = [];
-  const sortedGroups = [...groups].sort((a, b) => a.order - b.order);
+  
+  // 1. Prioritize officials group if it exists
+  const officialsGroup = groups.find(g => g.id === 'group-officials');
+  if (officialsGroup) {
+    const groupTeams = teams
+      .filter(team => team.groupId === officialsGroup.id)
+      .sort((a, b) => a.order - b.order);
+
+    if (groupTeams.length > 0) {
+      options.push({
+        value: `group-header-${officialsGroup.id}`,
+        label: officialsGroup.name,
+        color: officialsGroup.color || '#6c757d',
+        isStageHeader: true,
+        isDisabled: true
+      });
+
+      groupTeams.forEach(team => {
+        options.push({
+          value: team.id,
+          label: team.label,
+          color: team.color || '#6c757d',
+          isTeam: true
+        });
+      });
+    }
+  }
+
+  // 2. Regular groups (excluding officials)
+  const sortedGroups = [...groups]
+    .filter(g => g.id !== 'group-officials')
+    .sort((a, b) => a.order - b.order);
 
   sortedGroups.forEach(group => {
     const groupTeams = teams
@@ -473,6 +504,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const hasOfficial = !!official;
     const eligibleGames = getEligibleSourceGames(game);
     
+    // Include all global teams (grouped) and dynamic references
     const options = [
       ...teamOptions,
       ...rankingStageOptions

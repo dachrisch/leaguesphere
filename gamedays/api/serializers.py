@@ -42,6 +42,7 @@ class GamedaySerializer(ModelSerializer):
 class GamedayListSerializer(ModelSerializer):
     season_display = SerializerMethodField()
     league_display = SerializerMethodField()
+    designer_data = JSONField(required=False)
 
     class Meta:
         model = Gameday
@@ -58,6 +59,7 @@ class GamedayListSerializer(ModelSerializer):
             "author",
             "address",
             "status",
+            "designer_data",
         ]
         read_only_fields = ["author"]
         extra_kwargs = {"start": {"format": "%H:%M"}}

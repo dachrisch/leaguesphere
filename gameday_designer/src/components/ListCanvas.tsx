@@ -34,6 +34,7 @@ export interface ListCanvasProps {
   onUpdateGlobalTeamGroup: (groupId: string, data: Partial<Omit<GlobalTeamGroup, 'id'>>) => void;
   onDeleteGlobalTeamGroup: (groupId: string) => void;
   onReorderGlobalTeamGroup: (groupId: string, direction: 'up' | 'down') => void;
+  onShowTeamSelection: (groupId: string) => void;
   getTeamUsage: (teamId: string) => { gameId: string; slot: 'home' | 'away' }[];
   onAssignTeam: (gameId: string, teamId: string, slot: 'home' | 'away') => void;
   onSwapTeams: (gameId: string) => void;
@@ -48,6 +49,7 @@ export interface ListCanvasProps {
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
   onNotify?: (message: string, type: import('../types/designer').NotificationType, title?: string) => void;
+  onAddOfficials?: () => void;
   readOnly?: boolean;
 }
 
@@ -71,6 +73,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
     onUpdateGlobalTeamGroup,
     onDeleteGlobalTeamGroup,
     onReorderGlobalTeamGroup,
+    onShowTeamSelection,
     getTeamUsage,
     onAssignTeam,
     onSwapTeams,
@@ -85,6 +88,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
     highlightedSourceGameId,
     onDynamicReferenceClick,
     onNotify,
+    onAddOfficials,
     readOnly = false,
   } = props;
 
@@ -124,9 +128,11 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
       <Row className="list-canvas__content g-3">
         <Col md={isTeamPoolExpanded ? 3 : 'auto'} className={`teams-column ${!isTeamPoolExpanded ? 'teams-column--collapsed' : ''}`}>
           <Card
-            className={`team-pool-card ${!isTeamPoolExpanded ? 'team-pool-card--collapsed' : ''}`}
+            id="team-team-pool"
+            className={`team-pool-card ${!isTeamPoolExpanded ? 'team-pool-card--collapsed' : ''} ${highlightedElement?.id === 'team-pool' ? 'is-highlighted' : ''}`}
             onClick={!isTeamPoolExpanded ? handleToggleTeamPool : undefined}
             style={{ cursor: !isTeamPoolExpanded ? 'pointer' : 'default' }}
+            data-testid="team-pool-card"
           >
             {isTeamPoolExpanded ? (
               <>
@@ -135,16 +141,32 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                   <i className={`bi ${ICONS.TEAM} me-2`} />
                   <strong>{t('ui:label.teamPool')}</strong>
                   {!readOnly && (
-                    <Button 
-                      size="sm" 
-                      variant="outline-primary" 
-                      onClick={handleAddGroupHeader} 
-                      className="ms-auto btn-adaptive"
-                      title={t('ui:tooltip.addGroup')}
-                    >
-                      <i className={`bi ${ICONS.ADD} me-2`} />
-                      <span className="btn-label-adaptive">{t('ui:button.addGroup')}</span>
-                    </Button>
+                    <div className="ms-auto d-flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline-primary" 
+                        onClick={handleAddGroupHeader} 
+                        className="btn-adaptive"
+                        title={t('ui:tooltip.addGroup')}
+                      >
+                        <i className={`bi ${ICONS.ADD} me-2`} />
+                        <span className="btn-label-adaptive">{t('ui:button.addGroup')}</span>
+                      </Button>
+                      {onAddOfficials && (
+                        <Button 
+                          size="sm" 
+                          variant="outline-secondary" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAddOfficials();
+                          }} 
+                          title={t('ui:tooltip.addExternalOfficials')}
+                          data-testid="add-officials-button"
+                        >
+                          <i className="bi bi-person-badge" />
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </Card.Header>
                 <Card.Body>
@@ -160,6 +182,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                     onUpdate={onUpdateGlobalTeam}
                     onDelete={onDeleteGlobalTeam}
                     onReorder={onReorderGlobalTeam}
+                    onShowTeamSelection={onShowTeamSelection}
                     getTeamUsage={getTeamUsage}
                     allNodes={nodes}
                     readOnly={readOnly}
@@ -182,23 +205,15 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
         </Col>
 
         <Col md={isTeamPoolExpanded ? 9 : true} className="fields-column">
-          <Card className="fields-card">
+          <Card 
+            id="field-fields-card"
+            className={`fields-card ${highlightedElement?.id === 'fields-card' ? 'is-highlighted' : ''}`}
+          >
             <Card.Header className="d-flex align-items-center">
               <i className={`bi ${ICONS.FIELD} me-2`} />
               <strong>{t('ui:label.fields')}</strong>
               {!readOnly && (
                 <div className="ms-auto d-flex gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline-success" 
-                    onClick={() => onGenerateTournament?.()} 
-                    className="btn-adaptive"
-                    title={t('ui:tooltip.generateTournament')}
-                    data-testid="generate-tournament-button"
-                  >
-                    <i className={`bi bi-magic me-2`} />
-                    <span className="btn-label-adaptive">{t('ui:button.generateTournament')}</span>
-                  </Button>
                   <Button 
                     size="sm" 
                     variant="outline-primary" 
@@ -224,7 +239,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                       <Button 
                         variant="outline-success" 
                         onClick={() => onGenerateTournament?.()} 
-                        className="btn-adaptive"
+                        className="btn-adaptive px-4"
                         title={t('ui:tooltip.generateTournament')}
                       >
                         <i className={`bi bi-magic me-2`} />
@@ -233,7 +248,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                       <Button 
                         variant="outline-primary" 
                         onClick={onAddField} 
-                        className="btn-adaptive"
+                        className="btn-adaptive px-4"
                         title={t('ui:tooltip.addField')}
                       >
                         <i className={`bi ${ICONS.ADD} me-2`} />

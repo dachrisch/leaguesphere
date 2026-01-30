@@ -202,6 +202,27 @@ class GamedayApi {
     const response = await this.client.patch(`/gamedays/gameinfo/${gameId}/result/`, data);
     return response.data;
   }
+
+  /**
+   * Search for teams in the database pool using DAL endpoint.
+   */
+  async searchTeams(query: string): Promise<{ id: number; text: string }[]> {
+    if (this.isDev && !this.forceClient) {
+      const mockTeams = [
+        { id: 101, text: 'Augsburg Lions' },
+        { id: 102, text: 'Munich Cowboys' },
+        { id: 103, text: 'Berlin Adler' },
+        { id: 104, text: 'Hamburg Sea Devils' },
+        { id: 105, text: 'Frankfurt Galaxy' },
+      ];
+      return mockTeams.filter(t => t.text.toLowerCase().includes(query.toLowerCase()));
+    }
+    const response = await this.client.get<{ results: { id: number; text: string }[] }>(
+      '/dal/team/',
+      { params: { q: query }, baseURL: '' } // Clear baseURL to use absolute path from root
+    );
+    return response.data.results;
+  }
 }
 
 /**

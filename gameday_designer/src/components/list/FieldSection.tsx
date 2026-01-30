@@ -195,17 +195,15 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
         )}
 
         {!readOnly && (
-          <Button
-            size="sm"
-            variant="outline-primary"
+          <button
+            className="btn btn-sm btn-outline-primary btn-adaptive me-2"
             onClick={handleAddStage}
             aria-label={t('ui:button.addStage')}
-            className="me-2 btn-adaptive"
             title={t('ui:tooltip.addStage')}
           >
-            <i className={`bi ${ICONS.ADD}`}></i>
+            <i className={`bi ${ICONS.ADD} me-2`}></i>
             <span className="btn-label-adaptive">{t('ui:button.addStage')}</span>
-          </Button>
+          </button>
         )}
 
         <input
@@ -240,16 +238,15 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
               <i className={`bi ${ICONS.STAGE} me-2`} style={{ fontSize: '2rem', opacity: 0.3 }}></i>
               <p className="text-muted mb-3">{t('ui:message.noStagesYet')}</p>
               {!readOnly && (
-                <Button 
-                  variant="outline-primary" 
+                <button 
+                  className="btn btn-outline-primary btn-adaptive px-4"
                   onClick={handleAddStage} 
                   aria-label={t('ui:button.addStage')} 
-                  className="btn-adaptive"
                   title={t('ui:tooltip.addStage')}
                 >
-                  <i className={`bi ${ICONS.ADD}`}></i>
+                  <i className={`bi ${ICONS.ADD} me-2`}></i>
                   <span className="btn-label-adaptive">{t('ui:button.addStage')}</span>
-                </Button>
+                </button>
               )}
             </div>
           ) : (

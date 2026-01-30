@@ -1,4 +1,4 @@
-import React, { useState, useRef, useContext } from 'react';
+import React, { useState, useRef, useContext, useEffect } from 'react';
 import { Accordion, Form, Row, Col, Button, Overlay, Popover, useAccordionButton, AccordionContext } from 'react-bootstrap';
 import { GamedayMetadata, FlowValidationResult, ValidationError, ValidationWarning, HighlightedElement } from '../types/flowchart';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
@@ -27,9 +27,11 @@ const CustomAccordionHeader: React.FC<{
   showValidationPopover: boolean;
   getHighlightType: (type: string) => HighlightedElement['type'];
   getMessage: (item: ValidationError | ValidationWarning) => string;
+  isHighlighted: boolean;
 }> = ({ 
   eventKey, metadata, statusColor, onPublish, readOnly, validation, t, formatDate, getStatusBadge, onHighlight,
-  handleMouseEnter, handleMouseLeave, validationBadgeRef, showValidationPopover, getHighlightType, getMessage
+  handleMouseEnter, handleMouseLeave, validationBadgeRef, showValidationPopover, getHighlightType, getMessage,
+  isHighlighted
 }) => {
   const { activeEventKey } = useContext(AccordionContext);
   const decoratedOnClick = useAccordionButton(eventKey);
@@ -38,7 +40,7 @@ const CustomAccordionHeader: React.FC<{
 
   return (
     <h2 
-      className={`accordion-header header-status-${statusColor.toLowerCase()} position-relative`}
+      className={`accordion-header header-status-${statusColor.toLowerCase()} position-relative ${isHighlighted ? 'header-highlighted' : ''}`}
       data-testid="gameday-metadata-header"
     >
       <button 
@@ -125,9 +127,17 @@ const CustomAccordionHeader: React.FC<{
           show={showValidationPopover && ((validation.errors?.length || 0) > 0 || (validation.warnings?.length || 0) > 0)}
           target={validationBadgeRef}
           placement="bottom"
+          offset={[0, 10]}
         >
           {(props) => (
-            <Popover id="validation-popover" {...props} className="shadow border-danger" style={{ ...props.style, maxWidth: '400px', zIndex: 1060 }}>
+            <Popover 
+              id="validation-popover" 
+              {...props} 
+              className="shadow border-danger" 
+              style={{ ...props.style, maxWidth: '400px', zIndex: 1060 }}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
               <Popover.Header as="h3" className="bg-danger text-white py-2 small">
                 {t('ui:label.validation', 'Validation')}
               </Popover.Header>
@@ -139,7 +149,7 @@ const CustomAccordionHeader: React.FC<{
                       className="list-group-item list-group-item-action list-group-item-danger border-0 d-flex align-items-start py-2"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onHighlight(error.affectedNodes[0], getHighlightType(error.type));
+                        onHighlight(error.affectedNodes[0], getHighlightType(error));
                       }}
                       style={{ cursor: 'pointer' }}
                     >
@@ -153,7 +163,7 @@ const CustomAccordionHeader: React.FC<{
                       className="list-group-item list-group-item-action list-group-item-warning border-0 d-flex align-items-start py-2"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onHighlight(warning.affectedNodes[0], getHighlightType(warning.type));
+                        onHighlight(warning.affectedNodes[0], getHighlightType(warning));
                       }}
                       style={{ cursor: 'pointer' }}
                     >
@@ -180,6 +190,7 @@ interface GamedayMetadataAccordionProps {
   onUnlock: () => void;
   onHighlight: (id: string, type: HighlightedElement['type']) => void;
   validation: FlowValidationResult;
+  highlightedElement?: HighlightedElement | null;
   readOnly: boolean;
   hasData: boolean;
 }
@@ -193,6 +204,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
   onUnlock,
   onHighlight,
   validation,
+  highlightedElement,
   readOnly,
   hasData,
 }) => {
@@ -224,6 +236,14 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
   const [showValidationPopover, setShowValidationPopover] = useState(false);
   const validationBadgeRef = useRef<HTMLDivElement>(null);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleMouseEnter = () => {
     if (hideTimeoutRef.current) {
@@ -276,16 +296,32 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
     return item.message;
   };
 
-  const getHighlightType = (errorType: string): HighlightedElement['type'] => {
-    if (errorType === 'field_overlap' || errorType === 'team_overlap' || errorType === 'no_games' || errorType === 'broken_progression') return 'game';
+  const getHighlightType = (item: ValidationError | ValidationWarning): HighlightedElement['type'] => {
+    const node0 = item.affectedNodes[0] || '';
+    if (node0 === 'metadata' || node0.startsWith('metadata-')) return 'metadata' as HighlightedElement['type'];
+    if (node0 === 'team-pool') return 'team';
+    if (node0 === 'fields-card') return 'field';
+    
+    const errorType = item.type;
+    if (errorType === 'field_overlap' || errorType === 'team_overlap' || errorType === 'no_games' || errorType === 'broken_progression' || errorType === 'uneven_game_distribution') return 'game';
     if (errorType.includes('stage')) return 'stage';
     if (errorType.includes('field')) return 'field';
     if (errorType.includes('team')) return 'team';
     return 'game';
   };
 
+  const isHighlighted = highlightedElement?.type === 'metadata';
+
+  const isFieldHighlighted = (fieldName: string) => {
+    // fieldName is 'name', 'date', 'start', etc.
+    // controlId is 'gamedayName', 'gamedayDate', etc.
+    const capitalizedFieldName = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+    const controlId = `gameday${capitalizedFieldName}`;
+    return highlightedElement?.id === `metadata-${controlId}`;
+  };
+
   return (
-    <div className="gameday-metadata-accordion-container">
+    <div className={`gameday-metadata-accordion-container ${isHighlighted ? 'is-highlighted' : ''}`} id="gameday-metadata" data-testid="gameday-metadata-accordion">
       <Accordion.Item eventKey="0">
         <CustomAccordionHeader 
           eventKey="0" 
@@ -304,6 +340,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
           showValidationPopover={showValidationPopover}
           getHighlightType={getHighlightType}
           getMessage={getMessage}
+          isHighlighted={isHighlighted}
         />
         <Accordion.Body>
           <Form>
@@ -312,10 +349,12 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                 <Form.Group controlId="gamedayName">
                   <Form.Label>{t('ui:label.gamedayName', 'Gameday Name')}</Form.Label>
                   <Form.Control
+                    id="gamedayName"
                     type="text"
                     value={metadata.name}
                     onChange={(e) => handleChange('name', e.target.value)}
                     disabled={readOnly}
+                    className={isFieldHighlighted('name') ? 'is-highlighted' : ''}
                   />
                 </Form.Group>
               </Col>
@@ -323,10 +362,12 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                 <Form.Group controlId="gamedayDate">
                   <Form.Label>{t('ui:label.gamedayDate', 'Gameday Date')}</Form.Label>
                   <Form.Control
+                    id="gamedayDate"
                     type="date"
                     value={metadata.date || ''}
                     onChange={(e) => handleChange('date', e.target.value)}
                     disabled={readOnly}
+                    className={isFieldHighlighted('date') ? 'is-highlighted' : ''}
                   />
                 </Form.Group>
               </Col>
@@ -334,10 +375,12 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                 <Form.Group controlId="gamedayStart">
                   <Form.Label>{t('ui:label.gamedayStartTime', 'Start Time')}</Form.Label>
                   <Form.Control
+                    id="gamedayStart"
                     type="time"
                     value={metadata.start}
                     onChange={(e) => handleChange('start', e.target.value)}
                     disabled={readOnly}
+                    className={isFieldHighlighted('start') ? 'is-highlighted' : ''}
                   />
                 </Form.Group>
               </Col>
@@ -347,10 +390,13 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                 <Form.Group controlId="gamedayVenue">
                   <Form.Label>{t('ui:label.venue', 'Venue')}</Form.Label>
                   <Form.Control
+                    id="gamedayVenue"
                     type="text"
                     value={metadata.address}
                     onChange={(e) => handleChange('address', e.target.value)}
                     disabled={readOnly}
+                    placeholder={t('ui:label.venue')}
+                    className={isFieldHighlighted('venue') ? 'is-highlighted' : ''}
                   />
                 </Form.Group>
               </Col>
@@ -361,11 +407,13 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                 <Form.Group controlId="gamedaySeason">
                   <Form.Label>{t('ui:label.season', 'Season')}</Form.Label>
                   <Form.Select
+                    id="gamedaySeason"
                     value={metadata.season}
                     onChange={(e) => handleChange('season', parseInt(e.target.value, 10))}
                     disabled={readOnly}
+                    className={isFieldHighlighted('season') ? 'is-highlighted' : ''}
                   >
-                    <option value="0">--- {t('ui:placeholder.selectSeason', 'Select Season')} ---</option>
+                    <option value="0">--- {t('ui:placeholder.selectSeason')} ---</option>
                     {seasons.map((s) => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
@@ -376,11 +424,13 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                 <Form.Group controlId="gamedayLeague">
                   <Form.Label>{t('ui:label.league', 'League')}</Form.Label>
                   <Form.Select
+                    id="gamedayLeague"
                     value={metadata.league}
                     onChange={(e) => handleChange('league', parseInt(e.target.value, 10))}
                     disabled={readOnly}
+                    className={isFieldHighlighted('league') ? 'is-highlighted' : ''}
                   >
-                    <option value="0">--- {t('ui:placeholder.selectLeague', 'Select League')} ---</option>
+                    <option value="0">--- {t('ui:placeholder.selectLeague')} ---</option>
                     {leagues.map((l) => (
                       <option key={l.id} value={l.id}>{l.name}</option>
                     ))}
