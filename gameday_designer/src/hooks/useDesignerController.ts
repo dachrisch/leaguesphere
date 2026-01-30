@@ -183,18 +183,35 @@ export function useDesignerController(
 
         if (config.generateTeams) {
           const teamCount = config.template.teamCount.exact || config.template.teamCount.min;
-          let groupId: string | null = null;
           
-          if (globalTeamGroups.length === 0) {
-            const newGroup = addGlobalTeamGroup(DEFAULT_TOURNAMENT_GROUP_NAME);
-            groupId = newGroup.id;
-          } else {
-            groupId = globalTeamGroups[0].id;
+          // Determine group count from template
+          const firstStage = config.template.stages[0];
+          let groupCount = 1;
+          if (firstStage.fieldAssignment === 'split') {
+            groupCount = firstStage.splitCount || config.fieldCount;
+            // Round robin calculation fallback
+            if (firstStage.splitCount === undefined && firstStage.progressionMode === 'round_robin') {
+              const teamsPerGroup = (firstStage.config as RoundRobinConfig).teamCount;
+              if (teamsPerGroup > 0) {
+                groupCount = Math.floor(teamCount / teamsPerGroup);
+              }
+            }
+          }
+
+          // Create groups if they don't exist
+          const groupIds: string[] = [];
+          for (let i = 0; i < groupCount; i++) {
+            const groupName = groupCount > 1 ? `Gruppe ${String.fromCharCode(65 + i)}` : DEFAULT_TOURNAMENT_GROUP_NAME;
+            const newGroup = addGlobalTeamGroup(groupName);
+            groupIds.push(newGroup.id);
           }
 
           const teamData = generateTeamsForTournament(teamCount);
-          const newTeams: GlobalTeam[] = teamData.map((data) => {
-            const team = addGlobalTeam(data.label, groupId!);
+          const teamsPerGroupCount = Math.ceil(teamCount / groupCount);
+          
+          const newTeams: GlobalTeam[] = teamData.map((data, index) => {
+            const groupIndex = Math.min(Math.floor(index / teamsPerGroupCount), groupIds.length - 1);
+            const team = addGlobalTeam(data.label, groupIds[groupIndex]);
             updateGlobalTeam(team.id, { color: data.color });
             return { ...team, color: data.color };
           });
