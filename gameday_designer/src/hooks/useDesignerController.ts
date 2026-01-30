@@ -236,7 +236,7 @@ export function useDesignerController(
         addNotification('Failed to generate tournament. See console for details.', 'danger', 'Generation Error');
       }
     },
-    [globalTeams, globalTeamGroups, clearAll, clearSchedule, addBulkTournament, addBulkFields, addGlobalTeam, addGlobalTeamGroup, updateGlobalTeam, assignTeamsToTournament, addNotification]
+    [globalTeams, clearAll, clearSchedule, addBulkTournament, addBulkFields, addGlobalTeam, addGlobalTeamGroup, updateGlobalTeam, assignTeamsToTournament, addNotification]
   );
 
   const handleSwapTeams = useCallback(

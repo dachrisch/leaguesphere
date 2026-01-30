@@ -298,7 +298,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
 
   const getHighlightType = (item: ValidationError | ValidationWarning): HighlightedElement['type'] => {
     const node0 = item.affectedNodes[0] || '';
-    if (node0 === 'metadata' || node0.startsWith('metadata-')) return 'metadata' as any;
+    if (node0 === 'metadata' || node0.startsWith('metadata-')) return 'metadata' as HighlightedElement['type'];
     if (node0 === 'team-pool') return 'team';
     if (node0 === 'fields-card') return 'field';
     
