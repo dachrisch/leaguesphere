@@ -34,6 +34,10 @@ Reposition and rebrand the generation action.
     - [x] Improved "Connect Team" button visibility.
 - [x] Task: Filter Gameday Display (#706) [3848e6d7]
     - [x] Filter gameday list to show only designer-created gamedays (checks for `designer_data`).
+- [x] Task: Multi-Group Generation Fix (#697) [f61c1eac]
+    - [x] Implemented logic to split generated teams into separate groups (Gruppe A, B, etc.).
+- [x] Task: Precise Validation Highlights (#696) [e8d64ff3]
+    - [x] Added pulsing highlights for individual metadata fields and section cards.
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Action Polish' (Protocol in workflow.md)
 
 ## Phase 2: Template Tooling (TDD)
