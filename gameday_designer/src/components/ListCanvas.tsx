@@ -128,6 +128,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
       <Row className="list-canvas__content g-3">
         <Col md={isTeamPoolExpanded ? 3 : 'auto'} className={`teams-column ${!isTeamPoolExpanded ? 'teams-column--collapsed' : ''}`}>
           <Card
+            id="team-team-pool"
             className={`team-pool-card ${!isTeamPoolExpanded ? 'team-pool-card--collapsed' : ''} ${highlightedElement?.id === 'team-pool' ? 'is-highlighted' : ''}`}
             onClick={!isTeamPoolExpanded ? handleToggleTeamPool : undefined}
             style={{ cursor: !isTeamPoolExpanded ? 'pointer' : 'default' }}
@@ -204,7 +205,10 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
         </Col>
 
         <Col md={isTeamPoolExpanded ? 9 : true} className="fields-column">
-          <Card className={`fields-card ${highlightedElement?.id === 'fields-card' ? 'is-highlighted' : ''}`}>
+          <Card 
+            id="field-fields-card"
+            className={`fields-card ${highlightedElement?.id === 'fields-card' ? 'is-highlighted' : ''}`}
+          >
             <Card.Header className="d-flex align-items-center">
               <i className={`bi ${ICONS.FIELD} me-2`} />
               <strong>{t('ui:label.fields')}</strong>
