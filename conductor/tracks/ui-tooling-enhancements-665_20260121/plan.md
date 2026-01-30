@@ -29,26 +29,26 @@ Reposition and rebrand the generation action.
 - [x] Task: Implement Undo/Redo System [d06f76ed]
     - [x] Added robust history management to `useFlowState`.
     - [x] Enabled Undo/Redo buttons in FlowToolbar.
-- [x] Task: Enhanced Visibility [d06f76ed]
+- [x] Task: Enhanced Visibility [d06f76ed] (CLOSED)
     - [x] Added tournament statistics summary (Fields/Games/Teams) to FlowToolbar.
     - [x] Improved "Connect Team" button visibility.
-- [x] Task: Filter Gameday Display (#706) [3848e6d7]
+- [x] Task: Filter Gameday Display (#706) [3848e6d7] (DEFERRED)
     - [x] Filter gameday list to show only designer-created gamedays (checks for `designer_data`).
-- [x] Task: Multi-Group Generation Fix (#697) [f61c1eac]
+- [x] Task: Multi-Group Generation Fix (#697) [f61c1eac] (CLOSED)
     - [x] Implemented logic to split generated teams into separate groups (Gruppe A, B, etc.).
-- [x] Task: Precise Validation Highlights (#696) [e8d64ff3]
+- [x] Task: Precise Validation Highlights (#696) [e8d64ff3] (CLOSED)
     - [x] Added pulsing highlights for individual metadata fields and section cards.
-- [x] Task: Conductor - User Manual Verification 'Phase 1: Action Polish' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Action Polish' (Protocol in workflow.md) (CLOSED)
 
 ## Phase 2: Template Tooling (TDD)
 Implement the structured export feature.
 
-- [x] Task: Implement Structure Export (#674) [3848e6d7]
+- [x] Task: Implement Structure Export (#674) [3848e6d7] (DEFERRED)
     - [x] Created `exportToStructuredTemplate` utility preserving logic without specific IDs/dates.
     - [x] Added split-dropdown trigger to FlowToolbar.
     - [x] Wrote unit tests verifying portable JSON format.
-- [x] Task: Final Quality Gate [736f3327]
+- [x] Task: Final Quality Gate [736f3327] (CLOSED)
     - [x] Run full test suite (1157 passing).
     - [x] Achieved 90.4% code coverage for gameday_designer.
     - [x] Fixed test deadlocks and infinite re-render loops.
-- [x] Task: Conductor - User Manual Verification 'Phase 2: Template Tooling' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Template Tooling' (Protocol in workflow.md) (CLOSED)
