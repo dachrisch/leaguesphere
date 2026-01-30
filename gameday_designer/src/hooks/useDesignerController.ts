@@ -185,9 +185,9 @@ export function useDesignerController(
           const teamCount = config.template.teamCount.exact || config.template.teamCount.min;
           
           // Determine group count from template
-          const firstStage = config.template.stages[0];
+          const firstStage = config.template.stages?.[0];
           let groupCount = 1;
-          if (firstStage.fieldAssignment === 'split') {
+          if (firstStage && firstStage.fieldAssignment === 'split') {
             groupCount = firstStage.splitCount || config.fieldCount;
             // Round robin calculation fallback
             if (firstStage.splitCount === undefined && firstStage.progressionMode === 'round_robin') {

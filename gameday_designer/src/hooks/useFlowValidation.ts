@@ -1268,7 +1268,7 @@ function checkMandatoryMetadata(metadata?: GamedayMetadata): FlowValidationError
       type: 'incomplete_game_inputs',
       message: 'Gameday Name is mandatory',
       messageKey: 'metadataNameMissing',
-      affectedNodes: ['metadata-name'],
+      affectedNodes: ['metadata-gamedayName'],
     });
   }
 
@@ -1278,7 +1278,7 @@ function checkMandatoryMetadata(metadata?: GamedayMetadata): FlowValidationError
       type: 'incomplete_game_inputs',
       message: 'Gameday Date is mandatory',
       messageKey: 'metadataDateMissing',
-      affectedNodes: ['metadata-date'],
+      affectedNodes: ['metadata-gamedayDate'],
     });
   }
 
@@ -1288,7 +1288,7 @@ function checkMandatoryMetadata(metadata?: GamedayMetadata): FlowValidationError
       type: 'incomplete_game_inputs',
       message: 'Gameday Start Time is mandatory',
       messageKey: 'metadataStartMissing',
-      affectedNodes: ['metadata-start'],
+      affectedNodes: ['metadata-gamedayStart'],
     });
   }
 
@@ -1298,7 +1298,7 @@ function checkMandatoryMetadata(metadata?: GamedayMetadata): FlowValidationError
       type: 'incomplete_game_inputs',
       message: 'Season is mandatory',
       messageKey: 'metadataSeasonMissing',
-      affectedNodes: ['metadata-season'],
+      affectedNodes: ['metadata-gamedaySeason'],
     });
   }
 
@@ -1308,7 +1308,7 @@ function checkMandatoryMetadata(metadata?: GamedayMetadata): FlowValidationError
       type: 'incomplete_game_inputs',
       message: 'League is mandatory',
       messageKey: 'metadataLeagueMissing',
-      affectedNodes: ['metadata-league'],
+      affectedNodes: ['metadata-gamedayLeague'],
     });
   }
 
@@ -1328,7 +1328,7 @@ function checkMetadataWarnings(metadata?: GamedayMetadata): FlowValidationWarnin
       type: 'unassigned_field',
       message: 'Gameday Venue is missing',
       messageKey: 'metadataVenueMissing',
-      affectedNodes: ['metadata-venue'],
+      affectedNodes: ['metadata-gamedayVenue'],
     });
   }
 
@@ -1346,7 +1346,7 @@ function checkMetadataWarnings(metadata?: GamedayMetadata): FlowValidationWarnin
         type: 'stage_time_conflict',
         message: 'Gameday date is in the past',
         messageKey: 'metadataDateInPast',
-        affectedNodes: ['metadata-date'],
+        affectedNodes: ['metadata-gamedayDate'],
       });
     }
   }
