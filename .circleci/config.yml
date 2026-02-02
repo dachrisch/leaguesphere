@@ -37,6 +37,7 @@ commands:
       - run:
           name: Build Docker image << parameters.image_name >>
           command: |
+            export DOCKER_BUILDKIT=1
             docker build -t << parameters.image_name >>:latest -f << parameters.dockerfile >> .
             mkdir -p /tmp/docker-images
             docker save -o /tmp/docker-images/<< parameters.image_name >>.tar << parameters.image_name >>:latest
@@ -292,6 +293,8 @@ jobs:
       - run:
           name: Test Docker Compose Network
           command: |
+            export DOCKER_BUILDKIT=1
+            export COMPOSE_DOCKER_CLI_BUILD=1
             docker load -i /tmp/docker-images/backend.tar
             docker load -i /tmp/docker-images/frontend.tar
             cd deployed
