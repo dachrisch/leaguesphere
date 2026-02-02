@@ -274,11 +274,22 @@ jobs:
             docker load -i /tmp/docker-images/frontend.tar
             docker network create test_network
             # Frontend healthcheck DOES need a backend (or mock) at http://app:8000
-            docker run --network test_network -d -p 80:8000 --name app mockserver/mockserver -serverPort 8000
-            sleep 5
+            docker run --network test_network -d -p 8000:8000 --name app mockserver/mockserver -serverPort 8000
+            
+            # Wait for mockserver to be ready
+            echo "Waiting for mockserver to be ready..."
+            for i in {1..15}; do
+              if curl -s http://localhost:8000/mockserver/status > /dev/null; then
+                echo "Mockserver is ready!"
+                break
+              fi
+              echo "Mockserver not ready yet (attempt $i), waiting..."
+              sleep 2
+            done
+
             # Setup mock expectations for frontend healthcheck
-            curl -X PUT --data '{"httpRequest": {"method": "GET", "path": "/login/"}, "httpResponse": {"statusCode": 200, "headers": {"Set-Cookie": ["csrftoken=mocktoken123"]}}}' http://localhost:80/mockserver/expectation
-            curl -X PUT --data '{"httpRequest": {"method": "POST", "path": "/login/"}, "httpResponse": {"statusCode": 200}}' http://localhost:80/mockserver/expectation
+            curl -X PUT --data '{"httpRequest": {"method": "GET", "path": "/login/"}, "httpResponse": {"statusCode": 200, "headers": {"Set-Cookie": ["csrftoken=mocktoken123"]}}}' http://localhost:8000/mockserver/expectation
+            curl -X PUT --data '{"httpRequest": {"method": "POST", "path": "/login/"}, "httpResponse": {"statusCode": 200}}' http://localhost:8000/mockserver/expectation
             
             docker run --rm --detach --network test_network --name test_container frontend:latest
             sleep 3
