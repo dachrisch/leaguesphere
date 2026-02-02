@@ -243,10 +243,10 @@ jobs:
           command: |
             docker load -i /tmp/docker-images/backend.tar
             docker network create test_network
-            # Start mock server for health check dependencies if needed
+            # Backend healthcheck doesn't strictly need mockserver unless it calls external services, 
+            # but we follow the GHA pattern.
             docker run --network test_network -d -p 8000:8000 --name app mockserver/mockserver -serverPort 8000
             sleep 5
-            # Test health status
             docker run --rm --detach --network test_network --name test_container backend:latest gunicorn -b 0.0.0.0:8000 league_manager.wsgi
             sleep 3
             for i in {1..10}; do
@@ -257,6 +257,40 @@ jobs:
             done
             if [ "$status" != "healthy" ]; then
               echo "Container did not become healthy"
+              exit 1
+            fi
+
+  test_frontend_image:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - setup_remote_docker:
+          version: 20.10.24
+      - attach_workspace:
+          at: /tmp
+      - run:
+          name: Test Frontend Image Health
+          command: |
+            docker load -i /tmp/docker-images/frontend.tar
+            docker network create test_network
+            # Frontend healthcheck DOES need a backend (or mock) at http://app:8000
+            docker run --network test_network -d -p 80:8000 --name app mockserver/mockserver -serverPort 8000
+            sleep 5
+            # Setup mock expectations for frontend healthcheck
+            curl -X PUT --data '{"httpRequest": {"method": "GET", "path": "/login/"}, "httpResponse": {"statusCode": 200, "headers": {"Set-Cookie": ["csrftoken=mocktoken123"]}}}' http://localhost:80/mockserver/expectation
+            curl -X PUT --data '{"httpRequest": {"method": "POST", "path": "/login/"}, "httpResponse": {"statusCode": 200}}' http://localhost:80/mockserver/expectation
+            
+            docker run --rm --detach --network test_network --name test_container frontend:latest
+            sleep 3
+            for i in {1..10}; do
+              status=$(docker inspect --format='{{.State.Health.Status}}' test_container)
+              echo "Health status: $status"
+              if [ "$status" = "healthy" ]; then break; fi
+              sleep 6
+            done
+            if [ "$status" != "healthy" ]; then
+              echo "Container did not become healthy"
+              docker logs test_container
               exit 1
             fi
 
@@ -416,6 +450,12 @@ workflows:
           filters:
             tags:
               only: /.*/
+      - test_frontend_image:
+          requires:
+            - build_frontend
+          filters:
+            tags:
+              only: /.*/
       - check_migrations:
           context: staging
           requires:
@@ -428,6 +468,7 @@ workflows:
             - build_backend
             - build_frontend
             - test_backend_image
+            - test_frontend_image
             - check_migrations
           filters:
             tags:
