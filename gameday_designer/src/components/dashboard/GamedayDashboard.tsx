@@ -300,7 +300,9 @@ const GamedayDashboard: React.FC = () => {
       <div className="flex-grow-1 overflow-auto">
         {loading ? (
           <div className="d-flex justify-content-center py-5">
-            <Spinner animation="border" variant="primary" />
+            <Spinner animation="border" variant="primary" role="status">
+              <span className="visually-hidden">{t('ui:message.loading')}</span>
+            </Spinner>
           </div>
         ) : (
           <Row className="mx-0">

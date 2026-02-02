@@ -79,7 +79,9 @@ class GamedayModelWrapper:
             .values(*([f.name for f in Gameresult._meta.local_fields] + [TEAM_NAME]))
         )
         if gameresult.empty:
-            gameresult = pd.DataFrame(columns=[f.name for f in Gameresult._meta.local_fields] + [TEAM_NAME])
+            gameresult = pd.DataFrame(
+                columns=[f.name for f in Gameresult._meta.local_fields] + [TEAM_NAME]
+            )
 
         games_with_result = pd.merge(
             self._gameinfo, gameresult, left_on="id", right_on=GAMEINFO_ID, how="left"

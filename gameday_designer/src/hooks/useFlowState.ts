@@ -119,9 +119,9 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     setCanRedo(false);
   }, []);
 
-  // Initialize history
+  // Capture history whenever state changes externally
   useEffect(() => {
-    if (historyRef.current.length === 0) {
+    if (!isInternalUpdateRef.current) {
       captureHistory({ metadata, nodes, edges, fields, globalTeams, globalTeamGroups });
     }
   }, [metadata, nodes, edges, fields, globalTeams, globalTeamGroups, captureHistory]);
@@ -129,12 +129,7 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
   const handleStateChange = useCallback(() => {
     setSaveTrigger(prev => prev + 1);
     onStateChange?.();
-    
-    // Auto-capture history on every external change
-    if (!isInternalUpdateRef.current) {
-      captureHistory({ metadata, nodes, edges, fields, globalTeams, globalTeamGroups });
-    }
-  }, [onStateChange, captureHistory, metadata, nodes, edges, fields, globalTeams, globalTeamGroups]);
+  }, [onStateChange]);
 
   const undo = useCallback(() => {
     if (currentIndexRef.current <= 0) return;
