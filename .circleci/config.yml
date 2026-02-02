@@ -10,7 +10,7 @@ commands:
           name: install uv
           command: |
             curl -LsSf https://astral.sh/uv/install.sh | sh
-            source ~/.cargo/env
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> $BASH_ENV
       - restore_cache:
           keys:
             - v2-dependencies-{{ checksum "pyproject.toml" }}
@@ -18,11 +18,10 @@ commands:
       - run:
           name: install dependencies
           command: |
-            source ~/.cargo/env
             uv sync --extra test
       - save_cache:
           paths:
-            - ~/.pyenv
+            - .venv
           key: v2-dependencies-{{ checksum "pyproject.toml" }}
 
   build_docker_image:
@@ -114,7 +113,6 @@ jobs:
           environment:
             SECRET_KEY: 123456-TEST
           command: |
-            source ~/.cargo/env
             uv run pytest --junitxml=test-reports/test-results.xml --cov=. --cov-report=xml --cov-report=html
       - store_test_results:
           path: test-reports
@@ -122,7 +120,7 @@ jobs:
   scorecard_js:
     executor:
       name: node/default
-      tag: "20.11"
+      tag: "24.0"
     working_directory: ~/repo
     steps:
       - checkout
@@ -145,7 +143,7 @@ jobs:
   liveticker_js:
     executor:
       name: node/default
-      tag: "20.11"
+      tag: "24.0"
     working_directory: ~/repo
     steps:
       - checkout
@@ -168,7 +166,7 @@ jobs:
   passcheck_js:
     executor:
       name: node/default
-      tag: "20.11"
+      tag: "24.0"
     working_directory: ~/repo
     steps:
       - checkout
@@ -191,7 +189,7 @@ jobs:
   gameday_designer_js:
     executor:
       name: node/default
-      tag: "20.11"
+      tag: "24.0"
     working_directory: ~/repo
     steps:
       - checkout
