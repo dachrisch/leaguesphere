@@ -130,7 +130,7 @@ describe('Officials component', () => {
     expect(apiPut.mock.calls[1][0]).toBe(`/api/game/${selectedGame.id}/officials`);
     expect(apiGet.mock.calls[0][0]).toBe(`/api/gamelog/${selectedGame.id}`);
     expect(screen.getByText('Some Text')).toBeInTheDocument();
-  }, 10000);
+  });
   it('checks if buttons are checked when clicked', async () => {
     const user = userEvent.setup();
     setup(true);
