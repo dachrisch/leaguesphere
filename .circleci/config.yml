@@ -38,7 +38,11 @@ commands:
           name: Build Docker image << parameters.image_name >>
           command: |
             export DOCKER_BUILDKIT=1
-            docker build -t << parameters.image_name >>:latest -f << parameters.dockerfile >> .
+            docker build \
+              --cache-from=leaguesphere/<< parameters.image_name >>:latest \
+              --build-arg BUILDKIT_INLINE_CACHE=1 \
+              -t << parameters.image_name >>:latest \
+              -f << parameters.dockerfile >> .
             mkdir -p /tmp/docker-images
             docker save -o /tmp/docker-images/<< parameters.image_name >>.tar << parameters.image_name >>:latest
       - persist_to_workspace:
