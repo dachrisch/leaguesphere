@@ -443,7 +443,7 @@ export interface HighlightedElement {
   /** ID of the element to highlight */
   id: string;
   /** Type of the element (for context-aware styling) */
-  type: 'game' | 'stage' | 'field' | 'team';
+  type: 'game' | 'stage' | 'field' | 'team' | 'metadata';
 }
 
 /**
@@ -862,7 +862,7 @@ export function createEmptyFlowState(): FlowState {
       start: '10:00',
       format: '6_2',
       author: 0,
-      address: '',
+      address: '', // Force user input
       season: 0,
       league: 0,
       status: 'DRAFT',

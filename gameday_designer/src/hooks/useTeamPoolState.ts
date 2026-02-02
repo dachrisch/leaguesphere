@@ -7,7 +7,7 @@
  * - Team assignment tracking (usage)
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import type {
   FlowNode,
@@ -123,6 +123,27 @@ export function useTeamPoolState(
 
       setGlobalTeamGroups((groups) => [...groups, newGroup]);
       return newGroup;
+    },
+    [globalTeamGroups, setGlobalTeamGroups]
+  );
+
+  /**
+   * Ensure the External Officials group exists.
+   */
+  const ensureOfficialsGroup = useCallback(
+    (name: string): string => {
+      const existing = globalTeamGroups.find(g => g.id === 'group-officials');
+      if (existing) return existing.id;
+
+      const newGroup: GlobalTeamGroup = {
+        id: 'group-officials',
+        name,
+        order: -1, // Keep it at the top or handle via sorting
+        color: '#6c757d'
+      };
+
+      setGlobalTeamGroups((groups) => [newGroup, ...groups]);
+      return newGroup.id;
     },
     [globalTeamGroups, setGlobalTeamGroups]
   );
@@ -246,7 +267,7 @@ export function useTeamPoolState(
     [nodes]
   );
 
-  return {
+  return useMemo(() => ({
     addGlobalTeam,
     updateGlobalTeam,
     deleteGlobalTeam,
@@ -258,5 +279,11 @@ export function useTeamPoolState(
     assignTeamToGame,
     unassignTeamFromGame,
     getTeamUsage,
-  };
+    ensureOfficialsGroup,
+  }), [
+    addGlobalTeam, updateGlobalTeam, deleteGlobalTeam, reorderGlobalTeam,
+    addGlobalTeamGroup, updateGlobalTeamGroup, deleteGlobalTeamGroup,
+    reorderGlobalTeamGroup, assignTeamToGame, unassignTeamFromGame,
+    getTeamUsage, ensureOfficialsGroup
+  ]);
 }

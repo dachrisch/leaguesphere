@@ -23,6 +23,9 @@ export interface TournamentGeneratorModalProps {
   /** Global team pool */
   teams: GlobalTeam[];
 
+  /** Whether the current schedule has data that would be cleared */
+  hasData?: boolean;
+
   /** Callback when user confirms tournament generation */
   onGenerate: (config: TournamentGenerationConfig & { 
     generateTeams: boolean; 
@@ -44,6 +47,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
   show,
   onHide,
   teams,
+  hasData = false,
   onGenerate,
 }) => {
   const { t } = useTypedTranslation(['ui', 'modal', 'domain']);
@@ -180,6 +184,19 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
       </Modal.Header>
 
       <Modal.Body>
+        {/* Auto-Clear Warning - Only shown if there is existing data */}
+        {hasData && (
+          <Alert variant="warning" className="mb-4 shadow-sm border-2">
+            <div className="d-flex align-items-center">
+              <i className="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+              <div>
+                <h5 className="mb-1 fw-bold">{t('modal:tournamentGenerator.warningTitle', 'Auto-Clear Warning')}</h5>
+                <p className="mb-0">{t('modal:tournamentGenerator.warningMessage', 'Generating a new tournament will PERMANENTLY delete your current schedule and fields. This action cannot be undone.')}</p>
+              </div>
+            </div>
+          </Alert>
+        )}
+
         {availableTemplates.length === 0 ? (
           <Alert variant="info">
             <i className="bi bi-info-circle me-2"></i>

@@ -268,12 +268,11 @@ const StageSection: React.FC<StageSectionProps> = memo(({
                 variant="link" 
                 onClick={handleStartEdit} 
                 aria-label={t('ui:tooltip.editStageName')} 
-                className="p-0 me-auto btn-adaptive" 
+                className="p-0 me-auto" 
                 style={{ fontSize: '0.875rem' }}
                 title={t('ui:tooltip.editStageName')}
               >
                 <i className={`bi ${ICONS.PENCIL_SMALL}`}></i>
-                <span className="btn-label-adaptive">{t('ui:button.edit')}</span>
               </Button>
             )}
             {readOnly && <span className="me-auto" />}
@@ -281,17 +280,15 @@ const StageSection: React.FC<StageSectionProps> = memo(({
         )}
 
         {!readOnly && (
-          <Button 
-            size="sm" 
-            variant="outline-primary" 
+          <button 
+            className="btn btn-sm btn-outline-primary btn-adaptive me-2"
             onClick={handleAddGame} 
             aria-label={t('ui:button.addGame')} 
-            className="me-2 btn-adaptive"
             title={t('ui:tooltip.addGame')}
           >
             <i className={`bi ${ICONS.ADD} me-2`}></i>
             <span className="btn-label-adaptive">{t('ui:button.addGame')}</span>
-          </Button>
+          </button>
         )}
 
         <input
@@ -311,7 +308,6 @@ const StageSection: React.FC<StageSectionProps> = memo(({
             size="sm" 
             onClick={handleDelete} 
             aria-label={t('ui:tooltip.deleteStage')}
-            className="btn-adaptive"
             title={t('ui:tooltip.deleteStage')}
           >
             <i className={`bi ${ICONS.DELETE}`}></i>
@@ -328,16 +324,15 @@ const StageSection: React.FC<StageSectionProps> = memo(({
                 <i className={`bi ${ICONS.TOURNAMENT} me-2`} style={{ fontSize: '2rem', opacity: 0.3 }}></i>
                 <p className="text-muted mb-3">{t('ui:message.noGamesInStage')}</p>
                 {!readOnly && (
-                  <Button 
-                    variant="outline-primary" 
+                  <button 
+                    className="btn btn-outline-primary btn-adaptive px-4"
                     onClick={handleAddGame} 
                     aria-label={t('ui:button.addGame')} 
-                    className="btn-adaptive"
                     title={t('ui:tooltip.addGame')}
                   >
                     <i className={`bi ${ICONS.ADD} me-2`} />
                     <span className="btn-label-adaptive">{t('ui:button.addGame')}</span>
-                  </Button>
+                  </button>
                 )}
               </div>
             ) : (
