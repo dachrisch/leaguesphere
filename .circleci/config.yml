@@ -503,18 +503,10 @@ workflows:
               only: /.*/
             branches:
               ignore: /.*/
-      - run_migrations_staging:
-          context: staging
-          requires:
-            - deploy_staging
-          filters:
-            tags:
-              only: /.*/
-
       - hold_production:
           type: approval
           requires:
-            - run_migrations_staging
+            - deploy_staging
           filters:
             tags:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+$/
