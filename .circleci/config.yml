@@ -400,8 +400,16 @@ jobs:
     docker:
       - image: cimg/base:stable
     steps:
+      - checkout
       - setup_remote_docker:
           version: 20.10.24
+      - run:
+          name: Plan a deploy
+          command: |
+            circleci run release plan \
+              --environment-name="stage" \
+              --component-name="leaguesphere" \
+              --target-version="${CIRCLE_TAG}"
       - push_docker_image:
           image_name: backend
           registry_image_name: leaguesphere/backend
@@ -412,6 +420,14 @@ jobs:
           registry_image_name: leaguesphere/frontend
           tag: staging
           extra_tag: $CIRCLE_TAG
+      - run:
+          name: Update a deploy to SUCCESS
+          command: circleci run release update --status=SUCCESS 
+          when: on_success 
+      - run:
+          name: Update planned deploy to FAILED
+          command: circleci run release update --status=FAILED 
+          when: on_fail
 
   run_migrations_staging:
     docker:
@@ -424,8 +440,16 @@ jobs:
     docker:
       - image: cimg/base:stable
     steps:
+      - checkout
       - setup_remote_docker:
           version: 20.10.24
+      - run:
+          name: Plan a deploy
+          command: |
+            circleci run release plan \
+              --environment-name="prod" \
+              --component-name="leaguesphere" \
+              --target-version="${CIRCLE_TAG}"
       - push_docker_image:
           image_name: backend
           registry_image_name: leaguesphere/backend
@@ -436,6 +460,14 @@ jobs:
           registry_image_name: leaguesphere/frontend
           tag: latest
           extra_tag: $CIRCLE_TAG
+      - run:
+          name: Update a deploy to SUCCESS
+          command: circleci run release update --status=SUCCESS 
+          when: on_success 
+      - run:
+          name: Update planned deploy to FAILED
+          command: circleci run release update --status=FAILED 
+          when: on_fail
 
   run_migrations_production:
     docker:
