@@ -52,6 +52,7 @@ export function useDesignerController(
     reorderGlobalTeam = () => {},
     addGlobalTeamGroup = () => ({} as GlobalTeamGroup),
     assignTeamToGame = () => {},
+    replaceGlobalTeam = () => {},
     addBulkGameToGameEdges = () => {},
     addBulkFields = () => {},
   } = flowState || {};
@@ -280,6 +281,7 @@ export function useDesignerController(
     handleUpdateNode: updateNode,
     handleUpdateGlobalTeam: updateGlobalTeam,
     handleDeleteGlobalTeam: deleteGlobalTeam,
+    handleReplaceGlobalTeam: replaceGlobalTeam,
     handleReorderGlobalTeam: reorderGlobalTeam,
     handleAssignTeam: assignTeamToGame,
     handleConnectTeam: (team: { id: number; text: string }, groupId: string) => {
@@ -297,14 +299,16 @@ export function useDesignerController(
     dismissNotification,
     addNotification,
     onMetadataHighlight,
+    replaceGlobalTeam
   }), [
     expandField, expandStage, handleHighlightElement, handleDynamicReferenceClick,
     handleImport, handleExport, clearAll, updateNode, updateGlobalTeam, 
     deleteGlobalTeam, reorderGlobalTeam, assignTeamToGame, handleSwapTeams, 
     deleteNode, selectNode, handleGenerateTournament, addGlobalTeam, 
     addGlobalTeamGroup, addFieldNode, addStageNode, dismissNotification, 
-    addNotification, onMetadataHighlight
+    addNotification, onMetadataHighlight, replaceGlobalTeam
   ]);
+
 
   return useMemo(() => ({
     // State
@@ -317,6 +321,7 @@ export function useDesignerController(
     updateGlobalTeamGroup: flowState?.updateGlobalTeamGroup,
     deleteGlobalTeamGroup: flowState?.deleteGlobalTeamGroup,
     reorderGlobalTeamGroup: flowState?.reorderGlobalTeamGroup,
+    replaceGlobalTeam: flowState?.replaceGlobalTeam,
     getTeamUsage: flowState?.getTeamUsage,
     addGameToGameEdge: flowState?.addGameToGameEdge,
     addStageToGameEdge: flowState?.addStageToGameEdge,

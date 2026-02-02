@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Card, Dropdown, DropdownButton } from 'react-bootstrap';
+import { Card, Dropdown, Button } from 'react-bootstrap';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import type { GlobalTeam, GlobalTeamGroup, HighlightedElement } from '../../types/flowchart';
 import { ICONS } from '../../utils/iconConstants';
@@ -37,7 +37,7 @@ export interface TeamGroupCardProps {
   /** Callback to reorder team */
   onReorderTeam: (teamId: string, direction: 'up' | 'down') => void;
   /** Callback to show team selection modal */
-  onShowTeamSelection: (groupId: string) => void;
+  onShowTeamSelection: (id: string, mode?: 'group' | 'replace') => void;
   /** Callback to add a team to this group */
   onAddTeam: (groupId: string) => void;
   /** Function to get which games use a team */
@@ -62,9 +62,10 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
   onDeleteGroup,
   onReorderGroup,
   onUpdateTeam,
-      onDeleteTeam,
-      onReorderTeam,
-      onShowTeamSelection,
+  onDeleteTeam,
+  onReorderTeam,
+  onShowTeamSelection,
+
       onAddTeam,
       getTeamUsage,
   
@@ -384,15 +385,37 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                       </button>
 
                       {/* Move to group dropdown */}
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <DropdownButton
+                      <Dropdown onClick={(e) => e.stopPropagation()} drop="end" align="end" className="mx-1">
+                        <Dropdown.Toggle 
+                          as={Button} 
+                          size="sm" 
+                          variant="outline-primary" 
+                          className="p-1 btn-adaptive no-caret"
                           id={`move-team-${team.id}`}
-                          title={<i className={`bi ${ICONS.FOLDER}`} title={t('ui:tooltip.moveTeamToGroup')}></i>}
-                          size="sm"
-                          variant="outline-primary"
-                          className="p-0 btn-adaptive"
-                          flip={false}
                         >
+                          <i className={`bi ${ICONS.FOLDER}`} title={t('ui:tooltip.moveTeamToGroup')}></i>
+                        </Dropdown.Toggle>
+
+                        <Dropdown.Menu 
+                          popperConfig={{ 
+                            strategy: 'fixed',
+                            modifiers: [
+                              {
+                                name: 'preventOverflow',
+                                options: {
+                                  boundary: 'viewport',
+                                },
+                              },
+                              {
+                                name: 'flip',
+                                options: {
+                                  boundary: 'viewport',
+                                },
+                              },
+                            ],
+                          }}
+                        >
+                          <Dropdown.Header>{t('ui:tooltip.moveTeamToGroup')}</Dropdown.Header>
                           {allGroups.map((g) => (
                             <Dropdown.Item
                               key={g.id}
@@ -402,8 +425,16 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                               {g.name}
                             </Dropdown.Item>
                           ))}
-                        </DropdownButton>
-                      </div>
+                          <Dropdown.Divider />
+                          <Dropdown.Item
+                            onClick={() => onShowTeamSelection(team.id, 'replace')}
+                            className="text-primary"
+                          >
+                            <i className={`bi ${ICONS.REPLACE} me-2`}></i>
+                            {t('ui:button.replaceTeam')}
+                          </Dropdown.Item>
+                        </Dropdown.Menu>
+                      </Dropdown>
 
                       {/* Delete */}
                       <button
