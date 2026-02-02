@@ -93,7 +93,7 @@ commands:
               -e MYSQL_USER="$MYSQL_USER" \
               -e MYSQL_PWD="$MYSQL_PWD" \
               << parameters.image_name >>:latest \
-              bash -c "python manage.py migrate --noinput"
+              bash -c "set -e && python manage.py migrate --noinput"
 
 jobs:
   python:
@@ -330,7 +330,7 @@ jobs:
               -e MYSQL_USER="$MYSQL_USER" \
               -e MYSQL_PWD="$MYSQL_PWD" \
               backend:latest \
-              bash -c "python manage.py check && python manage.py makemigrations --check --dry-run"
+              bash -c "set -e && python manage.py check && python manage.py makemigrations --check --dry-run && python manage.py migrate --plan"
 
   test_compose_network:
     docker:
