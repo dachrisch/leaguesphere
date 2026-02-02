@@ -9,12 +9,14 @@ export interface TeamSelectionModalProps {
   onHide: () => void;
   onSelect: (team: { id: number; text: string }) => void;
   groupId: string;
+  title?: string;
 }
 
 const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
   show,
   onHide,
   onSelect,
+  title,
 }) => {
   const { t } = useTypedTranslation(['modal', 'ui']);
   const [query, setQuery] = useState('');
@@ -57,7 +59,7 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
   return (
     <Modal show={show} onHide={onHide} centered>
       <Modal.Header closeButton>
-        <Modal.Title>{t('modal:teamSelection.title', 'Connect Existing Team')}</Modal.Title>
+        <Modal.Title>{title || t('modal:teamSelection.title', 'Connect Existing Team')}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <Form.Group className="mb-3">

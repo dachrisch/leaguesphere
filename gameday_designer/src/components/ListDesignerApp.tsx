@@ -32,7 +32,7 @@ const ListDesignerApp: React.FC = () => {
   const [showResultModal, setShowResultModal] = useState(false);
   const [showTeamSelectionModal, setShowTeamSelectionModal] = useState(false);
   const [activeTeamGroupId, setActiveTeamGroupId] = useState<string | null>(null);
-  const [activeGameId, setActiveGameId] = useState<string | null>(null);
+  const [activeReplaceTeamId, setActiveReplaceTeamId] = useState<string | null>(null);
 
   const flowState = useFlowState();
   const controller = useDesignerController(flowState, () => setMetadataActiveKey('0'));
@@ -84,6 +84,7 @@ const ListDesignerApp: React.FC = () => {
     handleUpdateNode,
     handleUpdateGlobalTeam,
     handleDeleteGlobalTeam,
+    handleReplaceGlobalTeam,
     handleReorderGlobalTeam,
     handleAssignTeam,
     handleConnectTeam,
@@ -303,9 +304,10 @@ const ListDesignerApp: React.FC = () => {
     };
   }, []);
 
+  const [activeGameIdForResult, setActiveGameIdForResult] = useState<string | null>(null);
   useEffect(() => {
     if (selectedNode?.type === 'game' && isLocked) {
-      setActiveGameId(selectedNode.id);
+      setActiveGameIdForResult(selectedNode.id);
       setShowResultModal(true);
     }
   }, [selectedNode, isLocked]);
@@ -456,7 +458,7 @@ const ListDesignerApp: React.FC = () => {
     }
   };
 
-  const activeGame = nodes.find(n => n.id === activeGameId);
+  const activeGame = nodes.find(n => n.id === activeGameIdForResult);
 
   if (loading) {
     return (
@@ -515,15 +517,23 @@ const ListDesignerApp: React.FC = () => {
             selectedNodeId={selectedNode?.id || null}
             onAddGlobalTeam={handleAddGlobalTeam}
             onUpdateGlobalTeam={handleUpdateGlobalTeam}
-            onDeleteGlobalTeam={handleDeleteGlobalTeam}
-            onReorderGlobalTeam={handleReorderGlobalTeam}
+                    onDeleteGlobalTeam={handleDeleteGlobalTeam}
+                    onReplaceGlobalTeam={handleReplaceGlobalTeam}
+                    onReorderGlobalTeam={handleReorderGlobalTeam}
+
             onAddGlobalTeamGroup={handleAddGlobalTeamGroup}
             onUpdateGlobalTeamGroup={updateGlobalTeamGroup}
             onDeleteGlobalTeamGroup={deleteGlobalTeamGroup}
                     onReorderGlobalTeamGroup={reorderGlobalTeamGroup}
                     getTeamUsage={getTeamUsage}
-                    onShowTeamSelection={(groupId) => {
-                      setActiveTeamGroupId(groupId);
+                    onShowTeamSelection={(id, mode) => {
+                      if (mode === 'replace') {
+                        setActiveReplaceTeamId(id);
+                        setActiveTeamGroupId(null);
+                      } else {
+                        setActiveTeamGroupId(id);
+                        setActiveReplaceTeamId(null);
+                      }
                       setShowTeamSelectionModal(true);
                     }}
                     onAssignTeam={handleAssignTeam}
@@ -574,7 +584,7 @@ const ListDesignerApp: React.FC = () => {
         show={showResultModal}
         onHide={() => {
           setShowResultModal(false);
-          setActiveGameId(null);
+          setActiveGameIdForResult(null);
           handleSelectNode(null);
         }}
         game={activeGame as GameNode}
@@ -589,10 +599,18 @@ const ListDesignerApp: React.FC = () => {
         onHide={() => {
           setShowTeamSelectionModal(false);
           setActiveTeamGroupId(null);
+          setActiveReplaceTeamId(null);
         }}
         groupId={activeTeamGroupId || ''}
+        title={
+          activeReplaceTeamId 
+            ? t('ui:button.replaceTeam') 
+            : undefined
+        }
         onSelect={(team) => {
-          if (activeTeamGroupId) {
+          if (activeReplaceTeamId) {
+            handleReplaceGlobalTeam(activeReplaceTeamId, team);
+          } else if (activeTeamGroupId) {
             handleConnectTeam(team, activeTeamGroupId);
           }
         }}
