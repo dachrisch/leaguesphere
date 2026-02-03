@@ -367,15 +367,15 @@ wheels = [
 
 [[package]]
 name = "django-health-check"
-version = "3.21.0"
+version = "3.22.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
     { name = "psutil" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9a/83/67e1723bd00184065e6665d3b69dcb63633cf29a3555e49d7afd58bfe03e/django_health_check-3.21.0.tar.gz", hash = "sha256:fdf8b1cda2c8a1baf41147d258b69fb449b7ca10af800c745debc7f6eecdd172", size = 20222, upload-time = "2026-01-30T13:50:02.817Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d5/bd/f8b7d0a7db31362d38025c335bd1ed9937b4b695067766ca10376657c579/django_health_check-3.22.0.tar.gz", hash = "sha256:b93897c09d47fcc990fff480f28e72e676aee331808c14f0bdcfb8d64de623b1", size = 20571, upload-time = "2026-02-02T11:46:06.634Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/26/08/cf41f201197e2df2e28342e795a5401fde6c2125e479bc9590ecd02b0061/django_health_check-3.21.0-py3-none-any.whl", hash = "sha256:ebd17e2fdab13ae3eea9a2dfd23522108dfb1f50f321de9e3e90593c228448b0", size = 37290, upload-time = "2026-01-30T13:50:01.663Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/02/5bc93651c7f3a93584702804670a42bdad5b02f2e778919f2356e948d2b9/django_health_check-3.22.0-py3-none-any.whl", hash = "sha256:242a17ef30212eda941296ed3ed1577cd5817f0c40ed46a67703c940de8f4706", size = 37562, upload-time = "2026-02-02T11:46:05.087Z" },
 ]
 
 [[package]]
@@ -534,7 +534,7 @@ requires-dist = [
     { name = "django-crispy-forms", specifier = "==2.5" },
     { name = "django-debug-toolbar", marker = "extra == 'test'", specifier = "==6.2.0" },
     { name = "django-formtools", specifier = "==2.5.1" },
-    { name = "django-health-check", specifier = "==3.21.0" },
+    { name = "django-health-check", specifier = "==3.22.0" },
     { name = "django-pandas", specifier = "==0.6.7" },
     { name = "django-rest-knox", specifier = "==5.0.2" },
     { name = "django-webtest", marker = "extra == 'test'", specifier = "==1.9.14" },
