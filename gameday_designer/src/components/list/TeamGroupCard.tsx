@@ -384,7 +384,7 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                       </button>
 
                       {/* Move to group dropdown */}
-                      <Dropdown onClick={(e) => e.stopPropagation()} drop="end" align="end" className="mx-1">
+                      <Dropdown onClick={(e) => e.stopPropagation()} drop="down" align="end" className="mx-1">
                         <Dropdown.Toggle 
                           as={Button} 
                           size="sm" 
@@ -397,18 +397,11 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
 
                         <Dropdown.Menu 
                           popperConfig={{ 
-                            strategy: 'fixed',
                             modifiers: [
                               {
                                 name: 'preventOverflow',
                                 options: {
-                                  boundary: 'viewport',
-                                },
-                              },
-                              {
-                                name: 'flip',
-                                options: {
-                                  boundary: 'viewport',
+                                  padding: 8,
                                 },
                               },
                             ],
