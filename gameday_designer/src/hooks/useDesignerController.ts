@@ -308,8 +308,6 @@ export function useDesignerController(
     addGlobalTeamGroup, addFieldNode, addStageNode, dismissNotification, 
     addNotification, onMetadataHighlight, replaceGlobalTeam
   ]);
-
-
   return useMemo(() => ({
     // State
     ...flowState,

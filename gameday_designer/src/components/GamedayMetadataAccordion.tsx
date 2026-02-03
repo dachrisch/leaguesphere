@@ -349,6 +349,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                 <Form.Group controlId="gamedayName">
                   <Form.Label>{t('ui:label.gamedayName', 'Gameday Name')}</Form.Label>
                   <Form.Control
+                    id="gamedayName"
                     type="text"
                     value={metadata.name}
                     onChange={(e) => handleChange('name', e.target.value)}
@@ -361,6 +362,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                 <Form.Group controlId="gamedayDate">
                   <Form.Label>{t('ui:label.gamedayDate', 'Gameday Date')}</Form.Label>
                   <Form.Control
+                    id="gamedayDate"
                     type="date"
                     value={metadata.date || ''}
                     onChange={(e) => handleChange('date', e.target.value)}
@@ -373,6 +375,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                 <Form.Group controlId="gamedayStart">
                   <Form.Label>{t('ui:label.gamedayStartTime', 'Start Time')}</Form.Label>
                   <Form.Control
+                    id="gamedayStart"
                     type="time"
                     value={metadata.start}
                     onChange={(e) => handleChange('start', e.target.value)}
@@ -387,6 +390,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                 <Form.Group controlId="gamedayVenue">
                   <Form.Label>{t('ui:label.venue', 'Venue')}</Form.Label>
                   <Form.Control
+                    id="gamedayVenue"
                     type="text"
                     value={metadata.address}
                     onChange={(e) => handleChange('address', e.target.value)}
@@ -403,6 +407,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                 <Form.Group controlId="gamedaySeason">
                   <Form.Label>{t('ui:label.season', 'Season')}</Form.Label>
                   <Form.Select
+                    id="gamedaySeason"
                     value={metadata.season}
                     onChange={(e) => handleChange('season', parseInt(e.target.value, 10))}
                     disabled={readOnly}
@@ -419,6 +424,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                 <Form.Group controlId="gamedayLeague">
                   <Form.Label>{t('ui:label.league', 'League')}</Form.Label>
                   <Form.Select
+                    id="gamedayLeague"
                     value={metadata.league}
                     onChange={(e) => handleChange('league', parseInt(e.target.value, 10))}
                     disabled={readOnly}
