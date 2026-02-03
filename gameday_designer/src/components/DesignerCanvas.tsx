@@ -5,12 +5,15 @@
  * - Shows all fields in responsive columns
  * - Renders FieldColumn for each field
  * - Shows empty state message when no fields
+ * - Can switch to results entry mode
  */
 
 import React from 'react';
-import { Row, Col, Alert } from 'react-bootstrap';
+import { Row, Col, Alert, Button } from 'react-bootstrap';
 import type { Field } from '../types/designer';
 import FieldColumn from './FieldColumn';
+import { GameResultsTable } from './GameResultsTable';
+import { useGamedayContext } from '../context/GamedayContext';
 
 export interface DesignerCanvasProps {
   /** All fields to display */
@@ -34,6 +37,7 @@ export interface DesignerCanvasProps {
 /**
  * DesignerCanvas component.
  * Main container that displays all fields in a responsive column layout.
+ * Can switch to results entry mode to display GameResultsTable.
  */
 const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
   fields,
@@ -45,6 +49,45 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
   onDeleteGameSlot,
   onDuplicateGameSlot,
 }) => {
+  const { resultsMode, setResultsMode, gameResults } = useGamedayContext();
+
+  const handleToggleResultsMode = () => {
+    if (resultsMode) {
+      setResultsMode(false);
+    } else {
+      // Load game results before switching
+      loadGameResults();
+      setResultsMode(true);
+    }
+  };
+
+  const loadGameResults = () => {
+    // Fetch games from API
+    // const response = await fetch(`/api/gamedays/${gamedayId}/games/`);
+    // setGameResults(await response.json());
+    // For now, stub that logs to console
+    console.log('Loading game results...');
+  };
+
+  const handleSaveResults = async (results: Record<string, unknown>) => {
+    // Stub implementation that logs to console
+    console.log('Saving game results:', results);
+  };
+
+  // Show results entry mode
+  if (resultsMode) {
+    return (
+      <div className="results-mode-container">
+        <div className="mb-3">
+          <Button onClick={handleToggleResultsMode} variant="secondary">
+            Back to Designer
+          </Button>
+        </div>
+        <GameResultsTable games={gameResults} onSave={handleSaveResults} />
+      </div>
+    );
+  }
+
   // Show empty state when no fields
   if (fields.length === 0) {
     return (
@@ -59,28 +102,35 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
   const sortedFields = [...fields].sort((a, b) => a.order - b.order);
 
   return (
-    <Row className="g-3">
-      {sortedFields.map((field) => (
-        <Col
-          key={field.id}
-          xs={12}
-          md={6}
-          lg={fields.length <= 2 ? 6 : 4}
-          xl={fields.length <= 3 ? 4 : 3}
-        >
-          <FieldColumn
-            field={field}
-            selectedGameSlotId={selectedGameSlotId}
-            onUpdateFieldName={onUpdateFieldName}
-            onRemoveField={onRemoveField}
-            onAddGameSlot={onAddGameSlot}
-            onSelectGameSlot={onSelectGameSlot}
-            onDeleteGameSlot={onDeleteGameSlot}
-            onDuplicateGameSlot={onDuplicateGameSlot}
-          />
-        </Col>
-      ))}
-    </Row>
+    <div>
+      <div className="mb-3">
+        <Button onClick={handleToggleResultsMode} variant="success">
+          Enter Results
+        </Button>
+      </div>
+      <Row className="g-3">
+        {sortedFields.map((field) => (
+          <Col
+            key={field.id}
+            xs={12}
+            md={6}
+            lg={fields.length <= 2 ? 6 : 4}
+            xl={fields.length <= 3 ? 4 : 3}
+          >
+            <FieldColumn
+              field={field}
+              selectedGameSlotId={selectedGameSlotId}
+              onUpdateFieldName={onUpdateFieldName}
+              onRemoveField={onRemoveField}
+              onAddGameSlot={onAddGameSlot}
+              onSelectGameSlot={onSelectGameSlot}
+              onDeleteGameSlot={onDeleteGameSlot}
+              onDuplicateGameSlot={onDuplicateGameSlot}
+            />
+          </Col>
+        ))}
+      </Row>
+    </div>
   );
 };
 
