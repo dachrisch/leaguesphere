@@ -84,7 +84,7 @@ class TestBracketResolutionService:
 
         # Resolve bracket references for game 2
         resolved_team = service.resolve_winner_reference(
-            game_id=1, gameday=self.gameday
+            game_id=self.game1.id, gameday=self.gameday
         )
 
         assert resolved_team == self.team_a
@@ -95,7 +95,9 @@ class TestBracketResolutionService:
 
         # Try to resolve without entering game 1 result
         with pytest.raises(ValueError, match="Cannot resolve"):
-            service.resolve_winner_reference(game_id=1, gameday=self.gameday)
+            service.resolve_winner_reference(
+                game_id=self.game1.id, gameday=self.gameday
+            )
 
     def test_get_unresolved_bracket_references(self):
         """Test identifying which games have unresolved bracket references"""
