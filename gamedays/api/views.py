@@ -22,8 +22,12 @@ from gamedays.api.serializers import (
     SeasonSerializer,
     LeagueSerializer,
 )
-from gamedays.models import Gameday, Gameinfo, GameOfficial, Season, League
+from gamedays.models import Gameday, Gameinfo, GameOfficial, Season, League, Gameresult
 from gamedays.service.gameday_service import GamedayService
+from gamedays.serializers.game_results import (
+    GameInfoSerializer,
+    GameResultsUpdateSerializer,
+)
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -149,7 +153,6 @@ class GameOfficialCreateOrUpdateView(RetrieveUpdateAPIView):
 
 
 class GamedayScheduleView(APIView):
-
     # noinspection PyMethodMayBeStatic
     def get(self, request: Request, *args, **kwargs):
         gs = GamedayService.create(kwargs["pk"])
@@ -239,3 +242,44 @@ class LeagueViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = League.objects.all().order_by("name")
     serializer_class = LeagueSerializer
     pagination_class = None
+
+
+class GameResultsListView(APIView):
+    """Get all games for a gameday"""
+
+    def get(self, request, gameday_pk=None):
+        """GET /api/gamedays/{gameday_id}/games/"""
+        try:
+            gameday = Gameday.objects.get(pk=gameday_pk)
+        except Gameday.DoesNotExist:
+            return Response(
+                {"error": "Gameday not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        games = Gameinfo.objects.filter(gameday=gameday)
+        serializer = GameInfoSerializer(games, many=True)
+        return Response(serializer.data)
+
+
+class GameResultsUpdateView(APIView):
+    """Update game results for a specific game"""
+
+    def post(self, request, gameday_pk=None, game_pk=None):
+        """POST /api/gamedays/{gameday_id}/games/{game_id}/results/"""
+        try:
+            game = Gameinfo.objects.get(pk=game_pk, gameday_id=gameday_pk)
+        except Gameinfo.DoesNotExist:
+            return Response(
+                {"error": "Game not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        if game.is_locked:
+            return Response(
+                {"error": "Game is locked"}, status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = GameResultsUpdateSerializer(game, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
