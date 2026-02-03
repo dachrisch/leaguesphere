@@ -65,7 +65,6 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
   onDeleteTeam,
   onReorderTeam,
   onShowTeamSelection,
-
       onAddTeam,
       getTeamUsage,
   
