@@ -51,27 +51,87 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
 }) => {
   const { resultsMode, setResultsMode, gameResults } = useGamedayContext();
 
-  const handleToggleResultsMode = () => {
+  const handleToggleResultsMode = async () => {
     if (resultsMode) {
       setResultsMode(false);
     } else {
       // Load game results before switching
-      loadGameResults();
+      await loadGameResults();
       setResultsMode(true);
     }
   };
 
-  const loadGameResults = () => {
-    // Fetch games from API
-    // const response = await fetch(`/api/gamedays/${gamedayId}/games/`);
-    // setGameResults(await response.json());
-    // For now, stub that logs to console
-    console.log('Loading game results...');
+  const loadGameResults = async () => {
+    try {
+      console.log('Loading game results...');
+      // Extract gamedayId from URL or props
+      const gamedayId = window.location.pathname.split('/').pop();
+      if (!gamedayId) return;
+      
+      const response = await fetch(`/api/gamedays/${gamedayId}/games/`);
+      if (response.ok) {
+        const data = await response.json();
+        setGameResults(data);
+      }
+    } catch (error) {
+      console.error('Failed to load game results', error);
+    }
   };
 
-  const handleSaveResults = async (results: Record<string, unknown>) => {
-    // Stub implementation that logs to console
+  const handleSaveResults = async (results: Record<string, any>) => {
     console.log('Saving game results:', results);
+    
+    // Group results by gameId
+    const gamesToUpdate: Record<number, { halftime_score: { home: number; away: number }; final_score: { home: number; away: number } }> = {};
+    
+    // First, initialize structures for all games in the edits
+    Object.keys(results).forEach(key => {
+      const gameId = parseInt(key.split('-')[0]);
+      if (!gamesToUpdate[gameId]) {
+        // Find existing game data to preserve other half if only one was edited (though validation should prevent this)
+        const game = gameResults.find(g => g.id === gameId);
+        if (game) {
+          const homeResult = game.results.find(r => r.isHome);
+          const awayResult = game.results.find(r => !r.isHome);
+          gamesToUpdate[gameId] = {
+            halftime_score: { 
+              home: homeResult?.fh ?? 0, 
+              away: awayResult?.fh ?? 0 
+            },
+            final_score: { 
+              home: (homeResult?.fh ?? 0) + (homeResult?.sh ?? 0), 
+              away: (awayResult?.fh ?? 0) + (awayResult?.sh ?? 0) 
+            }
+          };
+        }
+      }
+    });
+
+    // Then, apply the edits
+    Object.entries(results).forEach(([key, edit]) => {
+      const gameId = parseInt(key.split('-')[0]);
+      const update = gamesToUpdate[gameId];
+      if (edit.isHome) {
+        update.halftime_score.home = edit.fh;
+        update.final_score.home = edit.fh + edit.sh;
+      } else {
+        update.halftime_score.away = edit.fh;
+        update.final_score.away = edit.fh + edit.sh;
+      }
+    });
+
+    try {
+      const promises = Object.entries(gamesToUpdate).map(([gameId, data]) => 
+        gamedayApi.updateGameResult(parseInt(gameId), data)
+      );
+      await Promise.all(promises);
+      console.log('Successfully saved all game results');
+      // Reload to show updated data
+      await loadGameResults();
+    } catch (error) {
+      console.error('Failed to save some game results', error);
+      throw error; // Re-throw to show error in UI
+    }
   };
 
   // Show results entry mode

@@ -427,14 +427,33 @@ const ListDesignerApp: React.FC = () => {
   }, [metadata.id, importState, updateMetadata, addNotification, exportState, t]);
 
   const handleSaveResult = async (gameId: string | number, halftime: { home: number; away: number }, final: { home: number; away: number }) => {
-    let numericId: number;
+    let numericId: number | null = null;
     if (typeof gameId === 'string') {
-      numericId = parseInt(gameId.includes('-') ? gameId.split('-')[1] : gameId);
+      const parts = gameId.split('-');
+      // Last part is the numeric ID if it follows game-ID format
+      const lastPart = parts[parts.length - 1];
+      const parsed = parseInt(lastPart);
+      if (!isNaN(parsed) && lastPart === parsed.toString()) {
+        numericId = parsed;
+      }
     } else {
       numericId = gameId;
     }
     
-    if (isNaN(numericId)) return;
+    // Update local state immediately regardless of backend ID
+    const stringId = typeof gameId === 'string' ? gameId : `game-${gameId}`;
+    handleUpdateNode(stringId, {
+      halftime_score: halftime,
+      final_score: final,
+      status: 'COMPLETED'
+    });
+
+    if (numericId === null) {
+      console.log(`[GameResult] Game ${gameId} has no backend ID, saved to local state only.`);
+      setShowResultModal(false);
+      addNotification(t('ui:notification.gameResultSaved'), 'success', t('ui:notification.title.success'));
+      return;
+    }
 
     try {
       await gamedayApi.updateGameResult(numericId, {
@@ -442,18 +461,10 @@ const ListDesignerApp: React.FC = () => {
         final_score: final
       });
       
-      // Update local state to show result immediately
-      const stringId = typeof gameId === 'string' ? gameId : `game-${gameId}`;
-      handleUpdateNode(stringId, {
-        halftime_score: halftime,
-        final_score: final,
-        status: 'COMPLETED'
-      });
-      
       setShowResultModal(false);
       addNotification(t('ui:notification.gameResultSaved'), 'success', t('ui:notification.title.success'));
     } catch (error) {
-      console.error('Failed to save result', error);
+      console.error('Failed to save result to backend', error);
       addNotification(t('ui:notification.saveResultFailed'), 'danger', t('ui:notification.title.error'));
     }
   };

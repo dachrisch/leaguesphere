@@ -5,6 +5,7 @@ import { GameResultsDisplay } from '../types/designer';
 interface ScoreEdit {
   fh?: number | null;
   sh?: number | null;
+  isHome?: boolean;
 }
 
 interface GameResultsTableProps {
@@ -20,13 +21,14 @@ export const GameResultsTable: React.FC<GameResultsTableProps> = ({
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const handleScoreChange = (gameId: number, resultId: number, field: 'fh' | 'sh', value: string) => {
+  const handleScoreChange = (gameId: number, resultId: number, isHome: boolean, field: 'fh' | 'sh', value: string) => {
     const key = `${gameId}-${resultId}`;
     setEdits({
       ...edits,
       [key]: {
         ...edits[key],
         [field]: value ? parseInt(value) : null,
+        isHome, // Preserve isHome in the edit object
       },
     });
   };
@@ -107,7 +109,7 @@ export const GameResultsTable: React.FC<GameResultsTableProps> = ({
                         type="number"
                         value={fh ?? ''}
                         onChange={(e) =>
-                          handleScoreChange(game.id, result.id, 'fh', e.target.value)
+                          handleScoreChange(game.id, result.id, result.isHome, 'fh', e.target.value)
                         }
                         disabled={loading}
                       />
@@ -117,7 +119,7 @@ export const GameResultsTable: React.FC<GameResultsTableProps> = ({
                         type="number"
                         value={sh ?? ''}
                         onChange={(e) =>
-                          handleScoreChange(game.id, result.id, 'sh', e.target.value)
+                          handleScoreChange(game.id, result.id, result.isHome, 'sh', e.target.value)
                         }
                         disabled={loading}
                       />

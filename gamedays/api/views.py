@@ -210,10 +210,33 @@ class GameResultUpdateAPIView(APIView):
             game.halftime_score = halftime_score
             if game.status == Gameinfo.STATUS_PUBLISHED or game.status == "Geplant":
                 game.status = Gameinfo.STATUS_IN_PROGRESS
+            # Sync to Gameresult records
+            from gamedays.models import Gameresult
+
+            Gameresult.objects.filter(gameinfo=game, isHome=True).update(
+                fh=halftime_score.get("home")
+            )
+            Gameresult.objects.filter(gameinfo=game, isHome=False).update(
+                fh=halftime_score.get("away")
+            )
 
         if final_score is not None:
             game.final_score = final_score
             game.status = Gameinfo.STATUS_COMPLETED
+            # Sync to Gameresult records
+            from gamedays.models import Gameresult
+
+            # Final score in JSON is total, in Gameresult it's sh (since fh is already set)
+            # Or we can just store the total in fh and 0 in sh, but usually fh+sh=total
+            # Let's assume sh = final - fh
+            home_fh = halftime_score.get("home", 0) if halftime_score else 0
+            away_fh = halftime_score.get("away", 0) if halftime_score else 0
+            Gameresult.objects.filter(gameinfo=game, isHome=True).update(
+                fh=home_fh, sh=final_score.get("home", 0) - home_fh
+            )
+            Gameresult.objects.filter(gameinfo=game, isHome=False).update(
+                fh=away_fh, sh=final_score.get("away", 0) - away_fh
+            )
 
         game.save()
 
