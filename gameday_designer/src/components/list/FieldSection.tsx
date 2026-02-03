@@ -64,9 +64,10 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
   onSwapTeams,
   onAddGame,
   onAddGameToGameEdge,
-  onAddStageToGameEdge,
-  onRemoveEdgeFromSlot,
-  isExpanded: isExpandedProp,
+    onAddStageToGameEdge,
+    onRemoveEdgeFromSlot,
+    isExpanded: isExpandedProp,
+
   expandedStageIds,
   highlightedSourceGameId,
   onDynamicReferenceClick,
@@ -268,9 +269,10 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
                   onSwapTeams={onSwapTeams}
                   onAddGame={onAddGame}
                   onAddGameToGameEdge={onAddGameToGameEdge}
-                  onAddStageToGameEdge={onAddStageToGameEdge}
-                  onRemoveEdgeFromSlot={onRemoveEdgeFromSlot}
-                  isExpanded={expandedStageIds.has(stage.id)}
+                onAddStageToGameEdge={onAddStageToGameEdge}
+                onRemoveEdgeFromSlot={onRemoveEdgeFromSlot}
+                isExpanded={expandedStageIds.has(stage.id)}
+
                   highlightedSourceGameId={highlightedSourceGameId}
                   onDynamicReferenceClick={onDynamicReferenceClick}
                   onNotify={onNotify}

@@ -41,10 +41,12 @@ export interface GlobalTeamTableProps {
   onUpdate: (teamId: string, data: Partial<Omit<GlobalTeam, 'id'>>) => void;
   /** Callback to delete a team */
   onDelete: (teamId: string) => void;
+  /** Callback to replace a team with another from database */
+  onReplace: (teamId: string, newTeam: { id: number; text: string }) => void;
   /** Callback to reorder a team */
   onReorder: (teamId: string, direction: 'up' | 'down') => void;
   /** Callback to show team selection modal */
-  onShowTeamSelection: (groupId: string) => void;
+  onShowTeamSelection: (id: string, mode?: 'group' | 'replace') => void;
   /** Function to get which games use a team */
   getTeamUsage: (teamId: string) => { gameId: string; slot: 'home' | 'away' }[];
   /** All nodes (for resolving game names) */
@@ -67,6 +69,7 @@ const GlobalTeamTable: React.FC<GlobalTeamTableProps> = ({
   onAddTeam,
   onUpdate,
   onDelete,
+  onReplace,
   onReorder,
   onShowTeamSelection,
   getTeamUsage,
@@ -264,6 +267,7 @@ const GlobalTeamTable: React.FC<GlobalTeamTableProps> = ({
                 onReorderGroup={onReorderGroup}
                 onUpdateTeam={onUpdate}
                 onDeleteTeam={onDelete}
+                onReplaceTeam={onReplace}
                 onReorderTeam={onReorder}
                 onShowTeamSelection={onShowTeamSelection}
                 onAddTeam={onAddTeam}

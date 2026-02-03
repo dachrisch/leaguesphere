@@ -30,8 +30,8 @@ export function useTeamPoolState(
    * Add a new global team to the pool.
    */
   const addGlobalTeam = useCallback(
-    (label?: string, groupId?: string | null): GlobalTeam => {
-      const id = `team-${uuidv4()}`;
+    (label?: string, groupId?: string | null, databaseId?: number): GlobalTeam => {
+      const id = databaseId ? `team-${databaseId}` : `team-${uuidv4()}`;
       const order = globalTeams.length;
       const color = TEAM_COLORS[order % TEAM_COLORS.length];
 
@@ -43,10 +43,57 @@ export function useTeamPoolState(
         color,
       };
 
-      setGlobalTeams((teams) => [...teams, newTeam]);
+      setGlobalTeams((teams) => {
+        // If team with this ID already exists, don't add it again
+        if (teams.some(t => t.id === id)) return teams;
+        return [...teams, newTeam];
+      });
       return newTeam;
     },
     [globalTeams, setGlobalTeams]
+  );
+
+  /**
+   * Replace a global team with a new one from the database, updating all game assignments.
+   */
+  const replaceGlobalTeam = useCallback(
+    (oldTeamId: string, newTeamData: { id: number; text: string }) => {
+      const newId = `team-${newTeamData.id}`;
+      
+      setGlobalTeams((teams) => teams.map((t) => {
+        if (t.id === oldTeamId) {
+          return {
+            ...t,
+            id: newId,
+            label: newTeamData.text,
+          };
+        }
+        return t;
+      }));
+
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (!isGameNode(n)) return n;
+          const data = n.data as GameNodeData;
+          const updates: Partial<GameNodeData> = {};
+          
+          if (data.homeTeamId === oldTeamId) updates.homeTeamId = newId;
+          if (data.awayTeamId === oldTeamId) updates.awayTeamId = newId;
+          if (data.official === oldTeamId) updates.official = newId;
+          
+          if (Object.keys(updates).length === 0) return n;
+          
+          return {
+            ...n,
+            data: {
+              ...data,
+              ...updates,
+            },
+          };
+        })
+      );
+    },
+    [setGlobalTeams, setNodes]
   );
 
   /**
@@ -278,12 +325,13 @@ export function useTeamPoolState(
     reorderGlobalTeamGroup,
     assignTeamToGame,
     unassignTeamFromGame,
+    replaceGlobalTeam,
     getTeamUsage,
     ensureOfficialsGroup,
   }), [
     addGlobalTeam, updateGlobalTeam, deleteGlobalTeam, reorderGlobalTeam,
     addGlobalTeamGroup, updateGlobalTeamGroup, deleteGlobalTeamGroup,
     reorderGlobalTeamGroup, assignTeamToGame, unassignTeamFromGame,
-    getTeamUsage, ensureOfficialsGroup
+    replaceGlobalTeam, getTeamUsage, ensureOfficialsGroup
   ]);
 }

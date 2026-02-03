@@ -29,12 +29,13 @@ export interface ListCanvasProps {
   onAddGlobalTeam: (groupId: string) => void;
   onUpdateGlobalTeam: (teamId: string, data: Partial<Omit<GlobalTeam, 'id'>>) => void;
   onDeleteGlobalTeam: (teamId: string) => void;
+  onReplaceGlobalTeam: (teamId: string, newTeam: { id: number; text: string }) => void;
   onReorderGlobalTeam: (teamId: string, direction: 'up' | 'down') => void;
   onAddGlobalTeamGroup: () => void;
   onUpdateGlobalTeamGroup: (groupId: string, data: Partial<Omit<GlobalTeamGroup, 'id'>>) => void;
   onDeleteGlobalTeamGroup: (groupId: string) => void;
   onReorderGlobalTeamGroup: (groupId: string, direction: 'up' | 'down') => void;
-  onShowTeamSelection: (groupId: string) => void;
+  onShowTeamSelection: (id: string, mode?: 'group' | 'replace' | 'official') => void;
   getTeamUsage: (teamId: string) => { gameId: string; slot: 'home' | 'away' }[];
   onAssignTeam: (gameId: string, teamId: string, slot: 'home' | 'away') => void;
   onSwapTeams: (gameId: string) => void;
@@ -68,6 +69,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
     onAddGlobalTeam,
     onUpdateGlobalTeam,
     onDeleteGlobalTeam,
+    onReplaceGlobalTeam,
     onReorderGlobalTeam,
     onAddGlobalTeamGroup,
     onUpdateGlobalTeamGroup,
@@ -181,6 +183,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                     onAddTeam={onAddGlobalTeam}
                     onUpdate={onUpdateGlobalTeam}
                     onDelete={onDeleteGlobalTeam}
+                    onReplace={onReplaceGlobalTeam}
                     onReorder={onReorderGlobalTeam}
                     onShowTeamSelection={onShowTeamSelection}
                     getTeamUsage={getTeamUsage}
@@ -277,9 +280,10 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                       onSwapTeams={onSwapTeams}
                       onAddGame={onAddGame}
                       onAddGameToGameEdge={onAddGameToGameEdge}
-                      onAddStageToGameEdge={onAddStageToGameEdge}
-                      onRemoveEdgeFromSlot={onRemoveEdgeFromSlot}
-                      isExpanded={expandedFieldIds.has(field.id)}
+            onAddStageToGameEdge={onAddStageToGameEdge}
+            onRemoveEdgeFromSlot={onRemoveEdgeFromSlot}
+            isExpanded={expandedFieldIds.has(field.id)}
+
                       expandedStageIds={expandedStageIds}
                       highlightedElement={highlightedElement}
                       highlightedSourceGameId={highlightedSourceGameId}

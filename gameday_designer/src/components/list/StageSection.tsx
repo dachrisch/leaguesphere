@@ -60,9 +60,10 @@ const StageSection: React.FC<StageSectionProps> = memo(({
   onSwapTeams,
   onAddGame,
   onAddGameToGameEdge,
-  onAddStageToGameEdge,
-  onRemoveEdgeFromSlot,
-  isExpanded: isExpandedProp,
+    onAddStageToGameEdge,
+    onRemoveEdgeFromSlot,
+    isExpanded: isExpandedProp,
+
   highlightedSourceGameId,
   onDynamicReferenceClick,
   onNotify,
@@ -351,9 +352,10 @@ const StageSection: React.FC<StageSectionProps> = memo(({
                   onAssignTeam={onAssignTeam}
                   onSwapTeams={onSwapTeams}
                   onAddGameToGameEdge={onAddGameToGameEdge}
-                  onAddStageToGameEdge={onAddStageToGameEdge}
-                  onRemoveEdgeFromSlot={onRemoveEdgeFromSlot}
-                  highlightedSourceGameId={highlightedSourceGameId}
+                   onAddStageToGameEdge={onAddStageToGameEdge}
+                   onRemoveEdgeFromSlot={onRemoveEdgeFromSlot}
+                   highlightedSourceGameId={highlightedSourceGameId}
+
                   onDynamicReferenceClick={onDynamicReferenceClick}
                   onNotify={onNotify}
                   readOnly={readOnly}
