@@ -206,7 +206,7 @@ class Gameinfo(models.Model):
 
 class Gameresult(models.Model):
     gameinfo: Gameinfo = models.ForeignKey(Gameinfo, on_delete=models.CASCADE)
-    team = models.ForeignKey(Team, on_delete=models.PROTECT, blank=True)
+    team = models.ForeignKey(Team, on_delete=models.PROTECT, blank=True, null=True)
     fh = models.SmallIntegerField(null=True)
     sh = models.SmallIntegerField(null=True)
     pa = models.PositiveSmallIntegerField(null=True)
@@ -290,11 +290,11 @@ class TeamLog(models.Model):
         if self.cop:
             return (
                 f"{self.gameinfo.pk}__{self.team}#{self.sequence} {self.event} - Half: {self.half}"
-                f'{" [DELETED]" if self.isDeleted else ""}'
+                f"{' [DELETED]' if self.isDeleted else ''}"
             )
         return (
             f"{self.gameinfo.pk}__{self.team}#{self.sequence} {self.event} Player: {self.player} "
-            f'Value: {self.value} - Half: {self.half}{" [DELETED]" if self.isDeleted else ""}'
+            f"Value: {self.value} - Half: {self.half}{' [DELETED]' if self.isDeleted else ''}"
         )
 
 
