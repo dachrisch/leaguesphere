@@ -755,7 +755,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
               <td>
                 {readOnly ? (
                   <button 
-                    className="btn btn-sm btn-outline-success btn-adaptive"
+                    className="btn btn-sm btn-outline-success"
                     onClick={(e) => {
                       e.stopPropagation();
                       // We'll handle this in ListDesignerApp
@@ -764,7 +764,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
                     title={t('ui:tooltip.enterResult')}
                   >
                     <i className="bi bi-pencil-square me-2" />
-                    <span className="btn-label-adaptive">{t('ui:button.result')}</span>
+                    <span>{t('ui:button.result')}</span>
                   </button>
                 ) : (
                   <button 

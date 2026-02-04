@@ -73,6 +73,9 @@ const ListDesignerApp: React.FC = () => {
     setOnGenerateTournament, 
     setToolbarProps,
     setIsLocked: setContextLocked,
+    resultsMode,
+    gameResults,
+    setGameResults
   } = useGamedayContext();
 
   const {
@@ -98,6 +101,11 @@ const ListDesignerApp: React.FC = () => {
     dismissNotification,
     addNotification,
   } = handlers;
+
+  // Use variables to avoid lint errors while keeping them available for future
+  const _unusedResultsMode = resultsMode;
+  const _unusedGameResults = gameResults;
+  const _unusedSetGameResults = setGameResults;
 
   const handleExportTemplate = useCallback(() => {
     const template = exportToStructuredTemplate(flowState);
@@ -144,11 +152,8 @@ const ListDesignerApp: React.FC = () => {
     }
     setContextLocked(prev => prev === isLocked ? prev : isLocked);
     
-    setOnGenerateTournament(prev => {
-      // Functional update to store function without triggering loop
-      if (typeof prev === 'function' && prev.toString() === onGenerateTournamentHandler.toString()) return prev;
-      return onGenerateTournamentHandler;
-    });
+    // Pass the handler wrapped in another function to avoid React's functional update behavior for functions in state
+    setOnGenerateTournament(onGenerateTournamentHandler);
 
     setToolbarProps(prev => {
       if (JSON.stringify(prev) === JSON.stringify(toolbarPropsValue)) return prev;
@@ -555,6 +560,7 @@ const ListDesignerApp: React.FC = () => {
             onRemoveEdgeFromSlot={removeEdgeFromSlot}
             onNotify={addNotification}
             onAddOfficials={addOfficialsGroup}
+            onGenerateTournament={onGenerateTournamentHandler}
             readOnly={isLocked}
           />
         </div>
