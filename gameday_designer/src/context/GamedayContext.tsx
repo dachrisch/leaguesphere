@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
-import { NotificationType, GameResultsDisplay } from '../types/designer';
+import { NotificationType } from '../types/designer';
 
 interface GamedayContextType {
   gamedayName: string;

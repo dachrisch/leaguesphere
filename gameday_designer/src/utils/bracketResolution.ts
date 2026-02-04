@@ -86,5 +86,5 @@ export function resolveBracketReferences(nodes: FlowNode[], teams: GlobalTeam[])
   return updatedNodes;
 }
 
-(window as any).resolveBracketReferences = resolveBracketReferences;
+(window as unknown as { resolveBracketReferences: typeof resolveBracketReferences }).resolveBracketReferences = resolveBracketReferences;
 

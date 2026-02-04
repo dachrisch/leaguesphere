@@ -139,6 +139,7 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     const resolvedNodes = resolveBracketReferences(nodes, globalTeams);
     if (JSON.stringify(resolvedNodes) !== JSON.stringify(nodes)) {
       isInternalUpdateRef.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNodes(resolvedNodes);
       setTimeout(() => { isInternalUpdateRef.current = false; }, 0);
     }

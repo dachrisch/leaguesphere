@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Accordion, Button } from 'react-bootstrap';
+import { Container, Accordion } from 'react-bootstrap';
 import ListCanvas from './ListCanvas';
 import GamedayMetadataAccordion from './GamedayMetadataAccordion';
 import TournamentGeneratorModal from './modals/TournamentGeneratorModal';
@@ -8,7 +8,6 @@ import PublishConfirmationModal from './modals/PublishConfirmationModal';
 import NotificationToast from './NotificationToast';
 import GameResultModal from './modals/GameResultModal';
 import TeamSelectionModal from './modals/TeamSelectionModal';
-import { GameResultsTable } from './GameResultsTable';
 import { gamedayApi } from '../api/gamedayApi';
 import { useGamedayContext } from '../context/GamedayContext';
 import { useDesignerController } from '../hooks/useDesignerController';
@@ -66,7 +65,6 @@ const ListDesignerApp: React.FC = () => {
     canUndo,
     canRedo,
     stats,
-    addOfficialsGroup,
   } = controller;
 
   const { 
@@ -78,7 +76,6 @@ const ListDesignerApp: React.FC = () => {
 
   const {
     handleHighlightElement,
-    handleDynamicReferenceClick,
     handleImport,
     handleExport,
     handleClearAll,
@@ -471,10 +468,10 @@ const ListDesignerApp: React.FC = () => {
   };
 
   const { 
-    resultsMode, 
-    setResultsMode, 
-    gameResults, 
-    setGameResults 
+    setGamedayName, 
+    setOnGenerateTournament, 
+    setToolbarProps,
+    setIsLocked: setContextLocked
   } = useGamedayContext();
 
   const loadGameResults = useCallback(async () => {
@@ -492,7 +489,7 @@ const ListDesignerApp: React.FC = () => {
     }
   }, [id, setGameResults]);
 
-  const handleSaveResults = async (results: Record<string, any>) => {
+  const handleSaveResults = async (results: Record<string, { fh: number; sh: number; isHome: boolean }>) => {
     console.log('[BulkSave] Saving game results:', results);
     
     const gamesToUpdate: Record<number, { halftime_score: { home: number; away: number }; final_score: { home: number; away: number } }> = {};
@@ -610,68 +607,48 @@ const ListDesignerApp: React.FC = () => {
         </div>
 
         <div className="pt-3 pb-5">
-          <div className="container-xl mb-3 d-flex justify-content-end">
-            <Button 
-              onClick={handleToggleResultsMode} 
-              variant={resultsMode ? "outline-primary" : "success"}
-              className="d-flex align-items-center gap-2"
-            >
-              <i className={`bi ${resultsMode ? 'bi-layout-text-sidebar' : 'bi-table'}`}></i>
-              {resultsMode ? t('ui:button.showDesigner', 'Show Designer') : t('ui:button.enterResults', 'Enter Results')}
-            </Button>
-          </div>
+          <ListCanvas 
+            nodes={nodes}
+            edges={edges}
+            globalTeams={globalTeams}
+            globalTeamGroups={globalTeamGroups}
+            onUpdateNode={handleUpdateNode}
+            onDeleteNode={handleDeleteNode}
+            onAddField={handleAddFieldContainer}
+            onAddStage={handleAddStage}
+            onSelectNode={handleSelectNode}
+            selectedNodeId={selectedNode?.id || null}
+            onAddGlobalTeam={handleAddGlobalTeam}
+            onUpdateGlobalTeam={handleUpdateGlobalTeam}
+                    onDeleteGlobalTeam={handleDeleteGlobalTeam}
+                    onReplaceGlobalTeam={handleReplaceGlobalTeam}
+                    onReorderGlobalTeam={handleReorderGlobalTeam}
 
-          {resultsMode ? (
-            <div className="container-xl">
-              <GameResultsTable 
-                games={gameResults} 
-                onSave={handleSaveResults} 
-              />
-            </div>
-          ) : (
-            <ListCanvas 
-              nodes={nodes}
-              edges={edges}
-              globalTeams={globalTeams}
-              globalTeamGroups={globalTeamGroups}
-              onUpdateNode={handleUpdateNode}
-              onDeleteNode={handleDeleteNode}
-              onAddField={handleAddFieldContainer}
-              onAddStage={handleAddStage}
-              onSelectNode={handleSelectNode}
-              selectedNodeId={selectedNode?.id || null}
-              onAddGlobalTeam={handleAddGlobalTeam}
-              onUpdateGlobalTeam={handleUpdateGlobalTeam}
-                      onDeleteGlobalTeam={handleDeleteGlobalTeam}
-                      onReplaceGlobalTeam={handleReplaceGlobalTeam}
-                      onReorderGlobalTeam={handleReorderGlobalTeam}
-
-              onAddGlobalTeamGroup={handleAddGlobalTeamGroup}
-              onUpdateGlobalTeamGroup={updateGlobalTeamGroup}
-              onDeleteGlobalTeamGroup={deleteGlobalTeamGroup}
-                      onReorderGlobalTeamGroup={reorderGlobalTeamGroup}
-                      getTeamUsage={getTeamUsage}
-                      onShowTeamSelection={(id, mode) => {
-                        if (mode === 'replace') {
-                          setActiveReplaceTeamId(id);
-                          setActiveTeamGroupId(null);
-                        } else {
-                          setActiveTeamGroupId(id);
-                          setActiveReplaceTeamId(null);
-                        }
-                        setShowTeamSelectionModal(true);
-                      }}
-                      onAssignTeam={handleAssignTeam}
-              
-              onSwapTeams={handleSwapTeams}
-              onAddGame={addGameNodeInStage}
-              onAddGameToGameEdge={addGameToGameEdge}
-              onAddStageToGameEdge={addStageToGameEdge}
-              onRemoveEdgeFromSlot={removeEdgeFromSlot}
-              onNotify={addNotification}
-              readOnly={isLocked}
-            />
-          )}
+            onAddGlobalTeamGroup={handleAddGlobalTeamGroup}
+            onUpdateGlobalTeamGroup={updateGlobalTeamGroup}
+            onDeleteGlobalTeamGroup={deleteGlobalTeamGroup}
+                    onReorderGlobalTeamGroup={reorderGlobalTeamGroup}
+                    getTeamUsage={getTeamUsage}
+                    onShowTeamSelection={(id, mode) => {
+                      if (mode === 'replace') {
+                        setActiveReplaceTeamId(id);
+                        setActiveTeamGroupId(null);
+                      } else {
+                        setActiveTeamGroupId(id);
+                        setActiveReplaceTeamId(null);
+                      }
+                      setShowTeamSelectionModal(true);
+                    }}
+                    onAssignTeam={handleAssignTeam}
+            
+            onSwapTeams={handleSwapTeams}
+            onAddGame={addGameNodeInStage}
+            onAddGameToGameEdge={addGameToGameEdge}
+            onAddStageToGameEdge={addStageToGameEdge}
+            onRemoveEdgeFromSlot={removeEdgeFromSlot}
+            onNotify={addNotification}
+            readOnly={isLocked}
+          />
         </div>
       </div>
 
