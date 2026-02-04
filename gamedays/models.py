@@ -159,6 +159,7 @@ class Gameday(models.Model):
 
 
 class Gameinfo(models.Model):
+    STATUS_DRAFT = "DRAFT"
     STATUS_PUBLISHED = "Geplant"
     STATUS_IN_PROGRESS = "Gestartet"
     STATUS_COMPLETED = "Beendet"

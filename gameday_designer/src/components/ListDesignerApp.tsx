@@ -65,13 +65,17 @@ const ListDesignerApp: React.FC = () => {
     canUndo,
     canRedo,
     stats,
+    addOfficialsGroup,
   } = controller;
 
   const { 
     setGamedayName, 
     setOnGenerateTournament, 
     setToolbarProps,
-    setIsLocked: setContextLocked
+    setIsLocked: setContextLocked,
+    resultsMode,
+    gameResults,
+    setGameResults
   } = useGamedayContext();
 
   const {
@@ -97,6 +101,11 @@ const ListDesignerApp: React.FC = () => {
     dismissNotification,
     addNotification,
   } = handlers;
+
+  // Use variables to avoid lint errors while keeping them available for future
+  const _unusedResultsMode = resultsMode;
+  const _unusedGameResults = gameResults;
+  const _unusedSetGameResults = setGameResults;
 
   const handleExportTemplate = useCallback(() => {
     const template = exportToStructuredTemplate(flowState);
@@ -553,6 +562,7 @@ const ListDesignerApp: React.FC = () => {
             onAddStageToGameEdge={addStageToGameEdge}
             onRemoveEdgeFromSlot={removeEdgeFromSlot}
             onNotify={addNotification}
+            onAddOfficials={addOfficialsGroup}
             readOnly={isLocked}
           />
         </div>

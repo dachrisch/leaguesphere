@@ -117,7 +117,7 @@ def resolve_designer_data(data, gameday=None):
     Resolves winner/loser references in designer_data nodes.
     """
     if not isinstance(data, dict):
-        return data
+        return {"nodes": [], "edges": []}
 
     nodes = data.get("nodes") or []
     global_teams = data.get("globalTeams") or []
@@ -263,15 +263,19 @@ def resolve_designer_data(data, gameday=None):
                 a_ref = n_data.get("awayTeamDynamic")
 
                 if h_ref:
-                    old = n_data.get("resolvedHomeTeam")
                     new = resolve_team(h_ref)
-                    if new and new != old:
+                    if (
+                        new != n_data.get("resolvedHomeTeam")
+                        or "resolvedHomeTeam" not in n_data
+                    ):
                         n_data["resolvedHomeTeam"] = new
                         changed = True
                 if a_ref:
-                    old = n_data.get("resolvedAwayTeam")
                     new = resolve_team(a_ref)
-                    if new and new != old:
+                    if (
+                        new != n_data.get("resolvedAwayTeam")
+                        or "resolvedAwayTeam" not in n_data
+                    ):
                         n_data["resolvedAwayTeam"] = new
                         changed = True
         if not changed:
