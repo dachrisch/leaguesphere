@@ -73,9 +73,6 @@ const ListDesignerApp: React.FC = () => {
     setOnGenerateTournament, 
     setToolbarProps,
     setIsLocked: setContextLocked,
-    resultsMode,
-    gameResults,
-    setGameResults
   } = useGamedayContext();
 
   const {
@@ -101,11 +98,6 @@ const ListDesignerApp: React.FC = () => {
     dismissNotification,
     addNotification,
   } = handlers;
-
-  // Use variables to avoid lint errors while keeping them available for future
-  const _unusedResultsMode = resultsMode;
-  const _unusedGameResults = gameResults;
-  const _unusedSetGameResults = setGameResults;
 
   const handleExportTemplate = useCallback(() => {
     const template = exportToStructuredTemplate(flowState);
