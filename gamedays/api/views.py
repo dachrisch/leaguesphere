@@ -91,15 +91,112 @@ class GamedayViewSet(viewsets.ModelViewSet):
             )
 
         from django.utils import timezone
+        from gamedays.models import Team
 
         gameday.status = Gameday.STATUS_PUBLISHED
         gameday.published_at = timezone.now()
         gameday.save()
 
-        # Update all associated games
-        Gameinfo.objects.filter(gameday=gameday).update(
-            status=Gameinfo.STATUS_PUBLISHED
-        )
+        # Sync designer data to Gameinfo and Gameresult models
+        designer_data = gameday.designer_data or {}
+        nodes = designer_data.get("nodes", [])
+        global_teams = designer_data.get("globalTeams", [])
+
+        # 1. Map Designer UUIDs to Database Team IDs
+        team_uuid_to_id = {}
+        for team_data in global_teams:
+            label = team_data.get("label")
+            uuid = team_data.get("id")
+            if not label or not uuid:
+                continue
+            team, _ = Team.objects.get_or_create(name=label)
+            team_uuid_to_id[uuid] = team.id
+
+        # 2. Create/Update Gameinfo objects from designer nodes
+        for node in nodes:
+            if node.get("type") == "game":
+                node_id = node.get("id")
+                node_data = node.get("data", {})
+
+                db_id = None
+                if isinstance(node_id, str) and "-" in node_id:
+                    parts = node_id.split("-")
+                    last_part = parts[-1]
+                    if last_part.isdigit():
+                        db_id = int(last_part)
+
+                official_team = None
+                official_id = node_data.get("official")
+                if official_id:
+                    real_id = team_uuid_to_id.get(official_id, official_id)
+                    try:
+                        official_team = Team.objects.get(pk=real_id)
+                    except (Team.DoesNotExist, ValueError):
+                        pass
+
+                gameinfo_defaults = {
+                    "scheduled": node_data.get("startTime", "10:00"),
+                    "field": 1,
+                    "stage": node_data.get("stageName", "Standard"),
+                    "standing": node_data.get("standing", "Game"),
+                    "officials": official_team,
+                    "status": Gameinfo.STATUS_PUBLISHED,
+                    "halftime_score": node_data.get("halftime_score"),
+                    "final_score": node_data.get("final_score"),
+                }
+
+                gameinfo = None
+                if db_id:
+                    gameinfo = Gameinfo.objects.filter(
+                        pk=db_id, gameday=gameday
+                    ).first()
+
+                if gameinfo:
+                    for key, value in gameinfo_defaults.items():
+                        setattr(gameinfo, key, value)
+                    gameinfo.save()
+                else:
+                    gameinfo = Gameinfo.objects.create(
+                        gameday=gameday, **gameinfo_defaults
+                    )
+                    node["id"] = f"game-{gameinfo.pk}"
+
+                for is_home in [True, False]:
+                    node_team_id = node_data.get(
+                        "homeTeamId" if is_home else "awayTeamId"
+                    )
+                    team = None
+                    if node_team_id:
+                        real_id = team_uuid_to_id.get(node_team_id, node_team_id)
+                        try:
+                            team = Team.objects.get(pk=real_id)
+                        except (Team.DoesNotExist, ValueError):
+                            pass
+
+                    res_defaults = {"team": team}
+                    scores = node_data.get("halftime_score")
+                    final = node_data.get("final_score")
+                    if scores:
+                        res_defaults["fh"] = scores.get("home" if is_home else "away")
+                    if final:
+                        fh = (
+                            (
+                                res_defaults.get("fh")
+                                or scores.get("home" if is_home else "away")
+                                or 0
+                            )
+                            if scores
+                            else 0
+                        )
+                        final_val = final.get("home" if is_home else "away", 0)
+                        res_defaults["sh"] = final_val - fh
+
+                    Gameresult.objects.update_or_create(
+                        gameinfo=gameinfo, isHome=is_home, defaults=res_defaults
+                    )
+
+        gameday.designer_data = designer_data
+        gameday.save()
 
         return Response(GamedaySerializer(gameday).data, status=status.HTTP_200_OK)
 
@@ -181,15 +278,112 @@ class GamedayPublishAPIView(APIView):
             )
 
         from django.utils import timezone
+        from gamedays.models import Team
 
         gameday.status = Gameday.STATUS_PUBLISHED
         gameday.published_at = timezone.now()
         gameday.save()
 
-        # Update all associated games
-        Gameinfo.objects.filter(gameday=gameday).update(
-            status=Gameinfo.STATUS_PUBLISHED
-        )
+        # Sync designer data to Gameinfo and Gameresult models
+        designer_data = gameday.designer_data or {}
+        nodes = designer_data.get("nodes", [])
+        global_teams = designer_data.get("globalTeams", [])
+
+        # 1. Map Designer UUIDs to Database Team IDs
+        team_uuid_to_id = {}
+        for team_data in global_teams:
+            label = team_data.get("label")
+            uuid = team_data.get("id")
+            if not label or not uuid:
+                continue
+            team, _ = Team.objects.get_or_create(name=label)
+            team_uuid_to_id[uuid] = team.id
+
+        # 2. Create/Update Gameinfo objects from designer nodes
+        for node in nodes:
+            if node.get("type") == "game":
+                node_id = node.get("id")
+                node_data = node.get("data", {})
+
+                db_id = None
+                if isinstance(node_id, str) and "-" in node_id:
+                    parts = node_id.split("-")
+                    last_part = parts[-1]
+                    if last_part.isdigit():
+                        db_id = int(last_part)
+
+                official_team = None
+                official_id = node_data.get("official")
+                if official_id:
+                    real_id = team_uuid_to_id.get(official_id, official_id)
+                    try:
+                        official_team = Team.objects.get(pk=real_id)
+                    except (Team.DoesNotExist, ValueError):
+                        pass
+
+                gameinfo_defaults = {
+                    "scheduled": node_data.get("startTime", "10:00"),
+                    "field": 1,
+                    "stage": node_data.get("stageName", "Standard"),
+                    "standing": node_data.get("standing", "Game"),
+                    "officials": official_team,
+                    "status": Gameinfo.STATUS_PUBLISHED,
+                    "halftime_score": node_data.get("halftime_score"),
+                    "final_score": node_data.get("final_score"),
+                }
+
+                gameinfo = None
+                if db_id:
+                    gameinfo = Gameinfo.objects.filter(
+                        pk=db_id, gameday=gameday
+                    ).first()
+
+                if gameinfo:
+                    for key, value in gameinfo_defaults.items():
+                        setattr(gameinfo, key, value)
+                    gameinfo.save()
+                else:
+                    gameinfo = Gameinfo.objects.create(
+                        gameday=gameday, **gameinfo_defaults
+                    )
+                    node["id"] = f"game-{gameinfo.pk}"
+
+                for is_home in [True, False]:
+                    node_team_id = node_data.get(
+                        "homeTeamId" if is_home else "awayTeamId"
+                    )
+                    team = None
+                    if node_team_id:
+                        real_id = team_uuid_to_id.get(node_team_id, node_team_id)
+                        try:
+                            team = Team.objects.get(pk=real_id)
+                        except (Team.DoesNotExist, ValueError):
+                            pass
+
+                    res_defaults = {"team": team}
+                    scores = node_data.get("halftime_score")
+                    final = node_data.get("final_score")
+                    if scores:
+                        res_defaults["fh"] = scores.get("home" if is_home else "away")
+                    if final:
+                        fh = (
+                            (
+                                res_defaults.get("fh")
+                                or scores.get("home" if is_home else "away")
+                                or 0
+                            )
+                            if scores
+                            else 0
+                        )
+                        final_val = final.get("home" if is_home else "away", 0)
+                        res_defaults["sh"] = final_val - fh
+
+                    Gameresult.objects.update_or_create(
+                        gameinfo=gameinfo, isHome=is_home, defaults=res_defaults
+                    )
+
+        gameday.designer_data = designer_data
+        gameday.save()
 
         return Response(GamedaySerializer(gameday).data, status=status.HTTP_200_OK)
 
