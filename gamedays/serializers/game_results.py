@@ -15,6 +15,12 @@ class GameResultsUpdateSerializer(serializers.Serializer):
 
     def update(self, instance, validated_data):
         results_data = validated_data.get("results", [])
+
+        home_fh = 0
+        home_sh = 0
+        away_fh = 0
+        away_sh = 0
+
         for result_data in results_data:
             try:
                 result = Gameresult.objects.get(
@@ -24,8 +30,22 @@ class GameResultsUpdateSerializer(serializers.Serializer):
                 result.sh = result_data.get("sh", result.sh)
                 result.pa = result_data.get("pa", result.pa)
                 result.save()
+
+                if result.isHome:
+                    home_fh = result.fh or 0
+                    home_sh = result.sh or 0
+                else:
+                    away_fh = result.fh or 0
+                    away_sh = result.sh or 0
             except Gameresult.DoesNotExist:
                 pass
+
+        # Sync back to Gameinfo JSON fields for the designer
+        instance.halftime_score = {"home": home_fh, "away": away_fh}
+        instance.final_score = {"home": home_fh + home_sh, "away": away_fh + away_sh}
+        instance.status = Gameinfo.STATUS_COMPLETED
+        instance.save()
+
         return instance
 
 

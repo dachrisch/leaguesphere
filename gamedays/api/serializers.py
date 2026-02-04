@@ -76,7 +76,7 @@ class GamedayInfoSerializer(Serializer):
     name = SerializerMethodField()
 
     def get_name(self, obj: dict):
-        return f'{obj["name"]} ({obj["league__name"]})'
+        return f"{obj['name']} ({obj['league__name']})"
 
 
 class GameOfficialSerializer(ModelSerializer):

@@ -282,7 +282,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                       onAddGameToGameEdge={onAddGameToGameEdge}
             onAddStageToGameEdge={onAddStageToGameEdge}
             onRemoveEdgeFromSlot={onRemoveEdgeFromSlot}
-            isExpanded={expandedFieldIds.has(field.id)}
+            isExpanded={expandedFieldIds?.has?.(field.id)}
 
                       expandedStageIds={expandedStageIds}
                       highlightedElement={highlightedElement}

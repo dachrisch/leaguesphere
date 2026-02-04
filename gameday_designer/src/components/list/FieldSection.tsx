@@ -271,7 +271,7 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
                   onAddGameToGameEdge={onAddGameToGameEdge}
                 onAddStageToGameEdge={onAddStageToGameEdge}
                 onRemoveEdgeFromSlot={onRemoveEdgeFromSlot}
-                isExpanded={expandedStageIds.has(stage.id)}
+                isExpanded={expandedStageIds?.has?.(stage.id)}
 
                   highlightedSourceGameId={highlightedSourceGameId}
                   onDynamicReferenceClick={onDynamicReferenceClick}

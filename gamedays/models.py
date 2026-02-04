@@ -159,10 +159,9 @@ class Gameday(models.Model):
 
 
 class Gameinfo(models.Model):
-    STATUS_DRAFT = "DRAFT"
-    STATUS_PUBLISHED = "PUBLISHED"
-    STATUS_IN_PROGRESS = "IN_PROGRESS"
-    STATUS_COMPLETED = "COMPLETED"
+    STATUS_PUBLISHED = "Geplant"
+    STATUS_IN_PROGRESS = "Gestartet"
+    STATUS_COMPLETED = "Beendet"
 
     # Retaining existing "Geplant" for backward compatibility if needed,
     # but strictly defining new flow constants.

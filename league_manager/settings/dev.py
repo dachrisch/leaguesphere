@@ -19,6 +19,7 @@ ALLOWED_HOSTS = [
     "lm.servyy-test",
     "lm.lehel.xyz",
     "stage.leaguesphere.servyy-test.lxd",
+    "testserver",
 ]
 
 CSRF_TRUSTED_ORIGINS = [

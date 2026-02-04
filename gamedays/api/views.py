@@ -22,12 +22,8 @@ from gamedays.api.serializers import (
     SeasonSerializer,
     LeagueSerializer,
 )
-from gamedays.models import Gameday, Gameinfo, GameOfficial, Season, League, Gameresult
+from gamedays.models import Gameday, Gameinfo, GameOfficial, Season, League
 from gamedays.service.gameday_service import GamedayService
-from gamedays.serializers.game_results import (
-    GameInfoSerializer,
-    GameResultsUpdateSerializer,
-)
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -101,21 +97,12 @@ class GamedayViewSet(viewsets.ModelViewSet):
             status=Gameinfo.STATUS_PUBLISHED
         )
 
-        return Response(self.get_serializer(gameday).data)
+        return Response(GamedaySerializer(gameday).data, status=status.HTTP_200_OK)
 
 
 class GamedayListAPIView(ListAPIView):
     serializer_class = GamedaySerializer
-
-    def get_queryset(self):
-        if settings.DEBUG:
-            return Gameday.objects.filter(date=settings.DEBUG_DATE)
-        return Gameday.objects.filter(date=datetime.today())
-
-
-class GameinfoUpdateAPIView(RetrieveUpdateAPIView):
-    serializer_class = GameinfoSerializer
-    queryset = Gameinfo.objects.all()
+    queryset = Gameday.objects.all()
 
 
 class GamedayRetrieveUpdate(RetrieveUpdateAPIView):
@@ -173,31 +160,6 @@ class GamedayCreateView(CreateAPIView):
     serializer_class = GamedaySerializer
 
 
-class GamedayPublishAPIView(APIView):
-    def post(self, request, *args, **kwargs):
-        pk = kwargs.get("pk")
-        gameday = get_object_or_404(Gameday, pk=pk)
-
-        if gameday.status != Gameday.STATUS_DRAFT:
-            return Response(
-                {"detail": "Gameday is already published or completed."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        from django.utils import timezone
-
-        gameday.status = Gameday.STATUS_PUBLISHED
-        gameday.published_at = timezone.now()
-        gameday.save()
-
-        # Update all associated games
-        Gameinfo.objects.filter(gameday=gameday).update(
-            status=Gameinfo.STATUS_PUBLISHED
-        )
-
-        return Response(GamedaySerializer(gameday).data, status=status.HTTP_200_OK)
-
-
 class GameResultUpdateAPIView(APIView):
     def patch(self, request, *args, **kwargs):
         pk = kwargs.get("pk")
@@ -208,35 +170,12 @@ class GameResultUpdateAPIView(APIView):
 
         if halftime_score is not None:
             game.halftime_score = halftime_score
-            if game.status == Gameinfo.STATUS_PUBLISHED or game.status == "Geplant":
-                game.status = Gameinfo.STATUS_IN_PROGRESS
-            # Sync to Gameresult records
-            from gamedays.models import Gameresult
-
-            Gameresult.objects.filter(gameinfo=game, isHome=True).update(
-                fh=halftime_score.get("home")
-            )
-            Gameresult.objects.filter(gameinfo=game, isHome=False).update(
-                fh=halftime_score.get("away")
-            )
+            if game.status == "Geplant":
+                game.status = "Gestartet"
 
         if final_score is not None:
             game.final_score = final_score
-            game.status = Gameinfo.STATUS_COMPLETED
-            # Sync to Gameresult records
-            from gamedays.models import Gameresult
-
-            # Final score in JSON is total, in Gameresult it's sh (since fh is already set)
-            # Or we can just store the total in fh and 0 in sh, but usually fh+sh=total
-            # Let's assume sh = final - fh
-            home_fh = halftime_score.get("home", 0) if halftime_score else 0
-            away_fh = halftime_score.get("away", 0) if halftime_score else 0
-            Gameresult.objects.filter(gameinfo=game, isHome=True).update(
-                fh=home_fh, sh=final_score.get("home", 0) - home_fh
-            )
-            Gameresult.objects.filter(gameinfo=game, isHome=False).update(
-                fh=away_fh, sh=final_score.get("away", 0) - away_fh
-            )
+            game.status = "Beendet"
 
         game.save()
 
@@ -248,7 +187,7 @@ class GameResultUpdateAPIView(APIView):
 
         # Check if all games are completed
         all_games = Gameinfo.objects.filter(gameday=gameday)
-        if all(g.status == Gameinfo.STATUS_COMPLETED for g in all_games):
+        if all(g.status == "Beendet" for g in all_games):
             gameday.status = Gameday.STATUS_COMPLETED
             gameday.save()
 
@@ -265,44 +204,3 @@ class LeagueViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = League.objects.all().order_by("name")
     serializer_class = LeagueSerializer
     pagination_class = None
-
-
-class GameResultsListView(APIView):
-    """Get all games for a gameday"""
-
-    def get(self, request, gameday_pk=None):
-        """GET /api/gamedays/{gameday_id}/games/"""
-        try:
-            gameday = Gameday.objects.get(pk=gameday_pk)
-        except Gameday.DoesNotExist:
-            return Response(
-                {"error": "Gameday not found"}, status=status.HTTP_404_NOT_FOUND
-            )
-
-        games = Gameinfo.objects.filter(gameday=gameday)
-        serializer = GameInfoSerializer(games, many=True)
-        return Response(serializer.data)
-
-
-class GameResultsUpdateView(APIView):
-    """Update game results for a specific game"""
-
-    def post(self, request, gameday_pk=None, game_pk=None):
-        """POST /api/gamedays/{gameday_id}/games/{game_id}/results/"""
-        try:
-            game = Gameinfo.objects.get(pk=game_pk, gameday_id=gameday_pk)
-        except Gameinfo.DoesNotExist:
-            return Response(
-                {"error": "Game not found"}, status=status.HTTP_404_NOT_FOUND
-            )
-
-        if game.is_locked:
-            return Response(
-                {"error": "Game is locked"}, status=status.HTTP_403_FORBIDDEN
-            )
-
-        serializer = GameResultsUpdateSerializer(game, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
