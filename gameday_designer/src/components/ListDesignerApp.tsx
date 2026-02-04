@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Accordion } from 'react-bootstrap';
+import { Container, Accordion, Button } from 'react-bootstrap';
 import ListCanvas from './ListCanvas';
 import GamedayMetadataAccordion from './GamedayMetadataAccordion';
 import TournamentGeneratorModal from './modals/TournamentGeneratorModal';
@@ -8,6 +8,7 @@ import PublishConfirmationModal from './modals/PublishConfirmationModal';
 import NotificationToast from './NotificationToast';
 import GameResultModal from './modals/GameResultModal';
 import TeamSelectionModal from './modals/TeamSelectionModal';
+import { GameResultsTable } from './GameResultsTable';
 import { gamedayApi } from '../api/gamedayApi';
 import { useGamedayContext } from '../context/GamedayContext';
 import { useDesignerController } from '../hooks/useDesignerController';
@@ -469,6 +470,100 @@ const ListDesignerApp: React.FC = () => {
     }
   };
 
+  const { 
+    resultsMode, 
+    setResultsMode, 
+    gameResults, 
+    setGameResults 
+  } = useGamedayContext();
+
+  const loadGameResults = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/gamedays/${id}/games/`);
+      if (response.ok) {
+        const data = await response.json();
+        setGameResults(data);
+      }
+    } catch (error) {
+      console.error('Failed to load game results', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [id, setGameResults]);
+
+  const handleSaveResults = async (results: Record<string, any>) => {
+    console.log('[BulkSave] Saving game results:', results);
+    
+    const gamesToUpdate: Record<number, { halftime_score: { home: number; away: number }; final_score: { home: number; away: number } }> = {};
+    
+    Object.keys(results).forEach(key => {
+      const gameId = parseInt(key.split('-')[0]);
+      if (!gamesToUpdate[gameId]) {
+        const game = gameResults.find(g => g.id === gameId);
+        if (game) {
+          const homeResult = game.results.find(r => r.isHome);
+          const awayResult = game.results.find(r => !r.isHome);
+          gamesToUpdate[gameId] = {
+            halftime_score: { 
+              home: homeResult?.fh ?? 0, 
+              away: awayResult?.fh ?? 0 
+            },
+            final_score: { 
+              home: (homeResult?.fh ?? 0) + (homeResult?.sh ?? 0), 
+              away: (awayResult?.fh ?? 0) + (awayResult?.sh ?? 0) 
+            }
+          };
+        }
+      }
+    });
+
+    Object.entries(results).forEach(([key, edit]) => {
+      const gameId = parseInt(key.split('-')[0]);
+      const update = gamesToUpdate[gameId];
+      if (edit.isHome) {
+        update.halftime_score.home = edit.fh;
+        update.final_score.home = edit.fh + edit.sh;
+      } else {
+        update.halftime_score.away = edit.fh;
+        update.final_score.away = edit.fh + edit.sh;
+      }
+    });
+
+    try {
+      const promises = Object.entries(gamesToUpdate).map(([gameId, data]) => 
+        gamedayApi.updateGameResult(parseInt(gameId), data)
+      );
+      await Promise.all(promises);
+      
+      // Update local nodes to sync visual layout
+      Object.entries(gamesToUpdate).forEach(([gameId, data]) => {
+        const stringId = `game-${gameId}`;
+        handleUpdateNode(stringId, {
+          halftime_score: data.halftime_score,
+          final_score: data.final_score,
+          status: 'COMPLETED'
+        });
+      });
+
+      addNotification(t('ui:notification.resultsSaved'), 'success', t('ui:notification.title.success'));
+      await loadGameResults();
+    } catch (error) {
+      console.error('Failed to save some game results', error);
+      addNotification(t('ui:notification.saveResultsFailed'), 'danger', t('ui:notification.title.error'));
+      throw error;
+    }
+  };
+
+  const handleToggleResultsMode = async () => {
+    if (resultsMode) {
+      setResultsMode(false);
+    } else {
+      await loadGameResults();
+      setResultsMode(true);
+    }
+  };
+
   const activeGame = nodes.find(n => n.id === activeGameIdForResult);
 
   if (loading) {
@@ -515,54 +610,68 @@ const ListDesignerApp: React.FC = () => {
         </div>
 
         <div className="pt-3 pb-5">
-          <ListCanvas 
-            nodes={nodes}
-            edges={edges}
-            globalTeams={globalTeams}
-            globalTeamGroups={globalTeamGroups}
-            onUpdateNode={handleUpdateNode}
-            onDeleteNode={handleDeleteNode}
-            onAddField={handleAddFieldContainer}
-            onAddStage={handleAddStage}
-            onSelectNode={handleSelectNode}
-            selectedNodeId={selectedNode?.id || null}
-            onAddGlobalTeam={handleAddGlobalTeam}
-            onUpdateGlobalTeam={handleUpdateGlobalTeam}
-                    onDeleteGlobalTeam={handleDeleteGlobalTeam}
-                    onReplaceGlobalTeam={handleReplaceGlobalTeam}
-                    onReorderGlobalTeam={handleReorderGlobalTeam}
+          <div className="container-xl mb-3 d-flex justify-content-end">
+            <Button 
+              onClick={handleToggleResultsMode} 
+              variant={resultsMode ? "outline-primary" : "success"}
+              className="d-flex align-items-center gap-2"
+            >
+              <i className={`bi ${resultsMode ? 'bi-layout-text-sidebar' : 'bi-table'}`}></i>
+              {resultsMode ? t('ui:button.showDesigner', 'Show Designer') : t('ui:button.enterResults', 'Enter Results')}
+            </Button>
+          </div>
 
-            onAddGlobalTeamGroup={handleAddGlobalTeamGroup}
-            onUpdateGlobalTeamGroup={updateGlobalTeamGroup}
-            onDeleteGlobalTeamGroup={deleteGlobalTeamGroup}
-                    onReorderGlobalTeamGroup={reorderGlobalTeamGroup}
-                    getTeamUsage={getTeamUsage}
-                    onShowTeamSelection={(id, mode) => {
-                      if (mode === 'replace') {
-                        setActiveReplaceTeamId(id);
-                        setActiveTeamGroupId(null);
-                      } else {
-                        setActiveTeamGroupId(id);
-                        setActiveReplaceTeamId(null);
-                      }
-                      setShowTeamSelectionModal(true);
-                    }}
-                    onAssignTeam={handleAssignTeam}
-            
-            onSwapTeams={handleSwapTeams}
-            onAddGame={addGameNodeInStage}
-            onAddGameToGameEdge={addGameToGameEdge}
-            onAddStageToGameEdge={addStageToGameEdge}
-            onRemoveEdgeFromSlot={removeEdgeFromSlot}
-            onGenerateTournament={() => setShowTournamentModal(true)}
-            expandedFieldIds={ui?.expandedFieldIds || new Set()}
-            expandedStageIds={ui?.expandedStageIds || new Set()}
-            highlightedElement={ui?.highlightedElement}
-            onDynamicReferenceClick={handleDynamicReferenceClick}
-            onNotify={addNotification}
-            onAddOfficials={addOfficialsGroup}
-            readOnly={isLocked}
-          />
+          {resultsMode ? (
+            <div className="container-xl">
+              <GameResultsTable 
+                games={gameResults} 
+                onSave={handleSaveResults} 
+              />
+            </div>
+          ) : (
+            <ListCanvas 
+              nodes={nodes}
+              edges={edges}
+              globalTeams={globalTeams}
+              globalTeamGroups={globalTeamGroups}
+              onUpdateNode={handleUpdateNode}
+              onDeleteNode={handleDeleteNode}
+              onAddField={handleAddFieldContainer}
+              onAddStage={handleAddStage}
+              onSelectNode={handleSelectNode}
+              selectedNodeId={selectedNode?.id || null}
+              onAddGlobalTeam={handleAddGlobalTeam}
+              onUpdateGlobalTeam={handleUpdateGlobalTeam}
+                      onDeleteGlobalTeam={handleDeleteGlobalTeam}
+                      onReplaceGlobalTeam={handleReplaceGlobalTeam}
+                      onReorderGlobalTeam={handleReorderGlobalTeam}
+
+              onAddGlobalTeamGroup={handleAddGlobalTeamGroup}
+              onUpdateGlobalTeamGroup={updateGlobalTeamGroup}
+              onDeleteGlobalTeamGroup={deleteGlobalTeamGroup}
+                      onReorderGlobalTeamGroup={reorderGlobalTeamGroup}
+                      getTeamUsage={getTeamUsage}
+                      onShowTeamSelection={(id, mode) => {
+                        if (mode === 'replace') {
+                          setActiveReplaceTeamId(id);
+                          setActiveTeamGroupId(null);
+                        } else {
+                          setActiveTeamGroupId(id);
+                          setActiveReplaceTeamId(null);
+                        }
+                        setShowTeamSelectionModal(true);
+                      }}
+                      onAssignTeam={handleAssignTeam}
+              
+              onSwapTeams={handleSwapTeams}
+              onAddGame={addGameNodeInStage}
+              onAddGameToGameEdge={addGameToGameEdge}
+              onAddStageToGameEdge={addStageToGameEdge}
+              onRemoveEdgeFromSlot={removeEdgeFromSlot}
+              onNotify={addNotification}
+              readOnly={isLocked}
+            />
+          )}
         </div>
       </div>
 

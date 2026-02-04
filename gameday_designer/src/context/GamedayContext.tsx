@@ -26,10 +26,6 @@ interface GamedayContextType {
   setToolbarProps: (props: GamedayContextType['toolbarProps']) => void;
   isLocked: boolean;
   setIsLocked: (isLocked: boolean) => void;
-  resultsMode: boolean;
-  setResultsMode: (mode: boolean) => void;
-  gameResults: GameResultsDisplay[];
-  setGameResults: (results: GameResultsDisplay[]) => void;
 }
 
 const GamedayContext = createContext<GamedayContextType | undefined>(undefined);
@@ -39,17 +35,11 @@ export const GamedayProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [onGenerateTournament, setOnGenerateTournamentInternal] = useState<(() => void) | null>(null);
   const [toolbarProps, setToolbarPropsInternal] = useState<GamedayContextType['toolbarProps']>(null);
   const [isLocked, setIsLocked] = useState(false);
-  const [resultsMode, setResultsMode] = useState(false);
-  const [gameResults, setGameResultsInternal] = useState<GameResultsDisplay[]>([]);
 
   const setGamedayNameCb = useCallback((name: string) => setGamedayName(name), []);
   const setOnGenerateTournament = useCallback((handler: (() => void) | null) => setOnGenerateTournamentInternal(handler), []);
   const setToolbarProps = useCallback((props: GamedayContextType['toolbarProps']) => setToolbarPropsInternal(props), []);
   const setIsLockedCb = useCallback((locked: boolean) => setIsLocked(locked), []);
-  const setGameResults = useCallback(
-    (results: GameResultsDisplay[]) => setGameResultsInternal(results),
-    []
-  );
 
   const value = useMemo(() => ({ 
     gamedayName, 
@@ -60,11 +50,7 @@ export const GamedayProvider: React.FC<{ children: ReactNode }> = ({ children })
     setToolbarProps,
     isLocked,
     setIsLocked: setIsLockedCb,
-    resultsMode,
-    setResultsMode,
-    gameResults,
-    setGameResults
-  }), [gamedayName, setGamedayNameCb, onGenerateTournament, setOnGenerateTournament, toolbarProps, setToolbarProps, isLocked, setIsLockedCb, resultsMode, gameResults, setGameResults]);
+  }), [gamedayName, setGamedayNameCb, onGenerateTournament, setOnGenerateTournament, toolbarProps, setToolbarProps, isLocked, setIsLockedCb]);
 
   return (
     <GamedayContext.Provider value={value}>

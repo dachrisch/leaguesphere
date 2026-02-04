@@ -125,7 +125,21 @@ const DesignerCanvas: React.FC<DesignerCanvasProps> = ({
         gamedayApi.updateGameResult(parseInt(gameId), data)
       );
       await Promise.all(promises);
-      console.log('Successfully saved all game results');
+      
+      // Update local nodes in context to keep visual layout in sync
+      Object.entries(gamesToUpdate).forEach(([gameId, data]) => {
+        const stringId = `game-${gameId}`;
+        const node = nodes.find(n => n.id === stringId);
+        if (node) {
+          onUpdateNode?.(stringId, {
+            halftime_score: data.halftime_score,
+            final_score: data.final_score,
+            status: 'COMPLETED'
+          });
+        }
+      });
+
+      console.log('Successfully saved all game results and synced nodes');
       // Reload to show updated data
       await loadGameResults();
     } catch (error) {
