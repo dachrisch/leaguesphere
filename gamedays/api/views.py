@@ -24,10 +24,6 @@ from gamedays.api.serializers import (
 )
 from gamedays.models import Gameday, Gameinfo, GameOfficial, Season, League, Gameresult
 from gamedays.service.gameday_service import GamedayService
-from gamedays.serializers.game_results import (
-    GameInfoSerializer,
-    GameResultsUpdateSerializer,
-)
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -109,8 +105,57 @@ class GamedayViewSet(viewsets.ModelViewSet):
             uuid = team_data.get("id")
             if not label or not uuid:
                 continue
-            team, _ = Team.objects.get_or_create(name=label)
+            team, _ = Team.objects.get_or_create(
+                name=label, defaults={"description": label}
+            )
             team_uuid_to_id[uuid] = team.id
+
+        # Pre-map stages and fields for quick resolution
+        stage_map = {n.get("id"): n for n in nodes if n.get("type") == "stage"}
+        field_map = {n.get("id"): n for n in nodes if n.get("type") == "field"}
+
+        def resolve_team(team_ref):
+            if not team_ref:
+                return None
+
+            # Handle TeamReference object (dict)
+            if isinstance(team_ref, dict):
+                ref_type = team_ref.get("type")
+                name = (
+                    team_ref.get("name")
+                    or team_ref.get("matchName")
+                    or team_ref.get("stageName")
+                )
+                if not name:
+                    return None
+
+                # Check if name is a UUID in our map
+                real_id = team_uuid_to_id.get(str(name), None)
+                if real_id:
+                    try:
+                        return Team.objects.get(pk=real_id)
+                    except Team.DoesNotExist:
+                        pass
+
+                # If it's a static reference or we have a name, try finding by name or create
+                team, _ = Team.objects.get_or_create(
+                    name=str(name), defaults={"description": str(name)}
+                )
+                return team
+
+            # Handle string (UUID or Name)
+            if isinstance(team_ref, str):
+                real_id = team_uuid_to_id.get(team_ref, team_ref)
+                try:
+                    return Team.objects.get(pk=real_id)
+                except (Team.DoesNotExist, ValueError):
+                    # Try by name or create
+                    team, _ = Team.objects.get_or_create(
+                        name=team_ref, defaults={"description": team_ref}
+                    )
+                    return team
+
+            return None
 
         # 2. Create/Update Gameinfo objects from designer nodes
         for node in nodes:
@@ -125,19 +170,50 @@ class GamedayViewSet(viewsets.ModelViewSet):
                     if last_part.isdigit():
                         db_id = int(last_part)
 
-                official_team = None
-                official_id = node_data.get("official")
-                if official_id:
-                    real_id = team_uuid_to_id.get(official_id, official_id)
-                    try:
-                        official_team = Team.objects.get(pk=real_id)
-                    except (Team.DoesNotExist, ValueError):
-                        pass
+                official_team = resolve_team(node_data.get("official"))
+
+                # Fallback for officials if still None (DB requires NOT NULL)
+                if official_team is None:
+                    official_team, _ = Team.objects.get_or_create(
+                        name="Team Officials",
+                        defaults={"description": "Default Officials Team"},
+                    )
+
+                # Resolve Field and Stage from hierarchy or legacy fieldId
+                field_number = 1
+                stage_name = (
+                    node_data.get("stageName") or node_data.get("stage") or "Standard"
+                )
+
+                # 1. Try legacy fieldId first
+                target_field_id = node_data.get("fieldId")
+
+                # 2. Try hierarchy if legacy fieldId is missing
+                if not target_field_id:
+                    parent_id = node.get("parentId")
+                    if parent_id in stage_map:
+                        stage_node = stage_map[parent_id]
+                        stage_data = stage_node.get("data", {})
+                        stage_name = stage_data.get("name") or stage_name
+                        target_field_id = stage_node.get("parentId")
+
+                # 3. Resolve field number from field_id
+                if target_field_id in field_map:
+                    field_node = field_map[target_field_id]
+                    field_data = field_node.get("data", {})
+                    # Try to get field number from order or name
+                    field_number = field_data.get("order", 0) + 1
+                    name = field_data.get("name", "")
+                    if "Feld" in name:
+                        try:
+                            field_number = int(name.split(" ")[-1])
+                        except (ValueError, IndexError):
+                            pass
 
                 gameinfo_defaults = {
                     "scheduled": node_data.get("startTime", "10:00"),
-                    "field": 1,
-                    "stage": node_data.get("stageName", "Standard"),
+                    "field": field_number,
+                    "stage": stage_name,
                     "standing": node_data.get("standing", "Game"),
                     "officials": official_team,
                     "status": Gameinfo.STATUS_PUBLISHED,
@@ -204,6 +280,11 @@ class GamedayViewSet(viewsets.ModelViewSet):
 class GamedayListAPIView(ListAPIView):
     serializer_class = GamedaySerializer
     queryset = Gameday.objects.all()
+
+    def get_queryset(self):
+        if settings.DEBUG:
+            return Gameday.objects.filter(date=settings.DEBUG_DATE)
+        return Gameday.objects.filter(date=datetime.today())
 
 
 class GameinfoUpdateAPIView(RetrieveUpdateAPIView):
@@ -296,8 +377,57 @@ class GamedayPublishAPIView(APIView):
             uuid = team_data.get("id")
             if not label or not uuid:
                 continue
-            team, _ = Team.objects.get_or_create(name=label)
+            team, _ = Team.objects.get_or_create(
+                name=label, defaults={"description": label}
+            )
             team_uuid_to_id[uuid] = team.id
+
+        # Pre-map stages and fields for quick resolution
+        stage_map = {n.get("id"): n for n in nodes if n.get("type") == "stage"}
+        field_map = {n.get("id"): n for n in nodes if n.get("type") == "field"}
+
+        def resolve_team(team_ref):
+            if not team_ref:
+                return None
+
+            # Handle TeamReference object (dict)
+            if isinstance(team_ref, dict):
+                ref_type = team_ref.get("type")
+                name = (
+                    team_ref.get("name")
+                    or team_ref.get("matchName")
+                    or team_ref.get("stageName")
+                )
+                if not name:
+                    return None
+
+                # Check if name is a UUID in our map
+                real_id = team_uuid_to_id.get(str(name), None)
+                if real_id:
+                    try:
+                        return Team.objects.get(pk=real_id)
+                    except Team.DoesNotExist:
+                        pass
+
+                # If it's a static reference or we have a name, try finding by name or create
+                team, _ = Team.objects.get_or_create(
+                    name=str(name), defaults={"description": str(name)}
+                )
+                return team
+
+            # Handle string (UUID or Name)
+            if isinstance(team_ref, str):
+                real_id = team_uuid_to_id.get(team_ref, team_ref)
+                try:
+                    return Team.objects.get(pk=real_id)
+                except (Team.DoesNotExist, ValueError):
+                    # Try by name or create
+                    team, _ = Team.objects.get_or_create(
+                        name=team_ref, defaults={"description": team_ref}
+                    )
+                    return team
+
+            return None
 
         # 2. Create/Update Gameinfo objects from designer nodes
         for node in nodes:
@@ -312,19 +442,50 @@ class GamedayPublishAPIView(APIView):
                     if last_part.isdigit():
                         db_id = int(last_part)
 
-                official_team = None
-                official_id = node_data.get("official")
-                if official_id:
-                    real_id = team_uuid_to_id.get(official_id, official_id)
-                    try:
-                        official_team = Team.objects.get(pk=real_id)
-                    except (Team.DoesNotExist, ValueError):
-                        pass
+                official_team = resolve_team(node_data.get("official"))
+
+                # Fallback for officials if still None (DB requires NOT NULL)
+                if official_team is None:
+                    official_team, _ = Team.objects.get_or_create(
+                        name="Team Officials",
+                        defaults={"description": "Default Officials Team"},
+                    )
+
+                # Resolve Field and Stage from hierarchy or legacy fieldId
+                field_number = 1
+                stage_name = (
+                    node_data.get("stageName") or node_data.get("stage") or "Standard"
+                )
+
+                # 1. Try legacy fieldId first
+                target_field_id = node_data.get("fieldId")
+
+                # 2. Try hierarchy if legacy fieldId is missing
+                if not target_field_id:
+                    parent_id = node.get("parentId")
+                    if parent_id in stage_map:
+                        stage_node = stage_map[parent_id]
+                        stage_data = stage_node.get("data", {})
+                        stage_name = stage_data.get("name") or stage_name
+                        target_field_id = stage_node.get("parentId")
+
+                # 3. Resolve field number from field_id
+                if target_field_id in field_map:
+                    field_node = field_map[target_field_id]
+                    field_data = field_node.get("data", {})
+                    # Try to get field number from order or name
+                    field_number = field_data.get("order", 0) + 1
+                    name = field_data.get("name", "")
+                    if "Feld" in name:
+                        try:
+                            field_number = int(name.split(" ")[-1])
+                        except (ValueError, IndexError):
+                            pass
 
                 gameinfo_defaults = {
                     "scheduled": node_data.get("startTime", "10:00"),
-                    "field": 1,
-                    "stage": node_data.get("stageName", "Standard"),
+                    "field": field_number,
+                    "stage": stage_name,
                     "standing": node_data.get("standing", "Game"),
                     "officials": official_team,
                     "status": Gameinfo.STATUS_PUBLISHED,
@@ -438,47 +599,6 @@ class GameResultUpdateAPIView(APIView):
             gameday.save()
 
         return Response(GameinfoSerializer(game).data, status=status.HTTP_200_OK)
-
-
-class GameResultsListView(APIView):
-    """Get all games for a gameday"""
-
-    def get(self, request, gameday_pk=None):
-        """GET /api/gamedays/{gameday_id}/games/"""
-        try:
-            gameday = Gameday.objects.get(pk=gameday_pk)
-        except Gameday.DoesNotExist:
-            return Response(
-                {"error": "Gameday not found"}, status=status.HTTP_404_NOT_FOUND
-            )
-
-        games = Gameinfo.objects.filter(gameday=gameday)
-        serializer = GameInfoSerializer(games, many=True)
-        return Response(serializer.data)
-
-
-class GameResultsUpdateView(APIView):
-    """Update game results for a specific game"""
-
-    def post(self, request, gameday_pk=None, game_pk=None):
-        """POST /api/gamedays/{gameday_id}/games/{game_id}/results/"""
-        try:
-            game = Gameinfo.objects.get(pk=game_pk, gameday_id=gameday_pk)
-        except Gameinfo.DoesNotExist:
-            return Response(
-                {"error": "Game not found"}, status=status.HTTP_404_NOT_FOUND
-            )
-
-        if game.is_locked:
-            return Response(
-                {"error": "Game is locked"}, status=status.HTTP_403_FORBIDDEN
-            )
-
-        serializer = GameResultsUpdateSerializer(game, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class SeasonViewSet(viewsets.ReadOnlyModelViewSet):

@@ -21,10 +21,17 @@ echo "✅ Found IP: $CONTAINER_IP"
 
 # 3. Export environment variables
 export league_manager=dev
+export SECRET_KEY='django-insecure-default-key-for-dev'
 export MYSQL_HOST="$CONTAINER_IP"
 export MYSQL_DB_NAME=test_db
 export MYSQL_USER=user
 export MYSQL_PWD=user
+
+# 3.5 Activate virtual environment
+if [ -f "./.venv/bin/activate" ]; then
+    echo "🐍 Activating virtual environment..."
+    source ./.venv/bin/activate
+fi
 
 # 4. Run migrations
 echo "🔄 Running database migrations..."
@@ -34,6 +41,10 @@ python manage.py migrate --no-input
 echo "👤 Creating default admin user..."
 echo "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', 'admin@example.com', 'admin')" | python manage.py shell
 
-# 6. Start dev server
+# 6. Create default Season and League
+echo "📅 Creating default Season and League..."
+echo "from gamedays.models import Season, League; Season.objects.get_or_create(name='2025'); League.objects.get_or_create(name='Test League')" | python manage.py shell
+
+# 7. Start dev server
 echo "🌐 Starting development server at http://localhost:8000 (DB at $MYSQL_HOST)"
 python manage.py runserver 0.0.0.0:8000 --insecure

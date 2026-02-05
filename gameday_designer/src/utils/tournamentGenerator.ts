@@ -315,7 +315,8 @@ function generateGamesForStages(
         stageData.progressionConfig as RoundRobinConfig,
         stageData.defaultGameDuration,
         stageData.defaultBreakBetweenGames,
-        namePrefix
+        namePrefix,
+        stage.parentId // Pass fieldId
       );
     } else if (stageData.progressionMode === 'placement') {
       let namePrefix: string | undefined;
@@ -330,7 +331,8 @@ function generateGamesForStages(
         stageData.progressionConfig as PlacementConfig,
         stageData.defaultGameDuration,
         stageData.defaultBreakBetweenGames,
-        namePrefix
+        namePrefix,
+        stage.parentId // Pass fieldId
       );
     }
     // 'manual' mode generates no games automatically
@@ -340,3 +342,4 @@ function generateGamesForStages(
 
   return allGames;
 }
+
