@@ -574,6 +574,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
   };
 
 
+
   const renderTeamCell = (game: GameNode, slot: 'home' | 'away') => {
     const data = game.data as GameNodeData;
     const dynamicRef = slot === 'home' ? data.homeTeamDynamic : data.awayTeamDynamic;

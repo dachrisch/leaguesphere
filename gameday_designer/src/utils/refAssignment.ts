@@ -9,7 +9,6 @@
 
 import type { GameNode, StageNode, GlobalTeam } from '../types/flowchart';
 import type { TeamReference } from '../types/designer';
-import { formatTeamReference } from './teamReference';
 
 /**
  * Assign referees to games using smart round-robin algorithm
@@ -39,49 +38,35 @@ export function assignRefereesToGames(
 
   // Initialize ref counts
   teams.forEach((team) => {
-    refCount.set(team.name, 0);
+    refCount.set(team.id, 0);
   });
 
-  // Get team names from all teams
-  const teamNames = new Set(teams.map((t) => t.name));
+  // Get team IDs from all teams
+  const teamIds = teams.map((t) => t.id);
 
   // Process each game and assign referee
   return games.map((game) => {
-    // Get home and away team names
-    let homeName: string | null = null;
-    let awayName: string | null = null;
-
-    if (game.data.homeTeam) {
-      homeName = game.data.homeTeam;
-    } else if (homeTeamRef) {
-      homeName = homeTeamRef(game.data.homeTeamDynamic, game.id);
-    }
-
-    if (game.data.awayTeam) {
-      awayName = game.data.awayTeam;
-    } else if (awayTeamRef) {
-      awayName = awayTeamRef(game.data.awayTeamDynamic, game.id);
-    }
-
     // Find teams NOT playing in this game
-    const playingTeams = new Set<string>();
-    if (homeName) playingTeams.add(homeName);
-    if (awayName) playingTeams.add(awayName);
+    const playingTeamIds = new Set<string>();
+    if (game.data.homeTeamId) playingTeamIds.add(game.data.homeTeamId);
+    if (game.data.awayTeamId) playingTeamIds.add(game.data.awayTeamId);
 
     // Filter to available teams (not playing) and sort by ref count (ascending = least refs first)
-    const availableRefs = Array.from(teamNames)
-      .filter((teamName) => !playingTeams.has(teamName))
+    const availableRefs = teamIds
+      .filter((teamId) => !playingTeamIds.has(teamId))
       .sort((a, b) => (refCount.get(a) ?? 0) - (refCount.get(b) ?? 0));
 
     // Assign the team with least refs
     if (availableRefs.length > 0) {
-      const assignedRef = availableRefs[0];
-      refCount.set(assignedRef, (refCount.get(assignedRef) ?? 0) + 1);
+      const assignedRefId = availableRefs[0];
+      refCount.set(assignedRefId, (refCount.get(assignedRefId) ?? 0) + 1);
 
       // Create static team reference for the assigned referee
+      // We use the team ID as the name to ensure it matches the Select options in the UI
+      // and can be resolved back to a real team during export/publish.
       const officialRef: TeamReference = {
         type: 'static',
-        name: assignedRef,
+        name: assignedRefId,
       };
 
       return {
