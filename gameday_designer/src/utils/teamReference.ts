@@ -28,7 +28,13 @@ import i18n from '../i18n/config';
  * formatTeamReference({ type: 'loser', matchName: 'Spiel 3' }); // "Verlierer Spiel 3"
  * formatTeamReference({ type: 'static', name: 'Team Officials' }); // "Team Officials"
  */
-export function formatTeamReference(ref: TeamReference): string {
+export function formatTeamReference(ref: TeamReference | string): string {
+  if (typeof ref === 'string') {
+    return ref;
+  }
+  if (!ref) {
+    return '';
+  }
   switch (ref.type) {
     case 'groupTeam':
       return `${ref.group}_${ref.team}`;
@@ -44,8 +50,11 @@ export function formatTeamReference(ref: TeamReference): string {
       return `Rank ${ref.place} in ${ref.groupName} of ${ref.stageName}`;
     case 'static':
       return ref.name;
+    default:
+      return '';
   }
 }
+
 
 // Regex patterns for parsing team reference strings
 const GROUP_TEAM_PATTERN = /^(\d+)_(\d+)$/;

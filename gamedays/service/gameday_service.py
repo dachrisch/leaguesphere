@@ -1,10 +1,8 @@
 import pandas as pd
-from collections import OrderedDict
-import json
+from django.db.models.fields import return_None
+
 from gamedays.forms import SCHEDULE_CUSTOM_CHOICE_C, GamedayGaminfoFieldsAndGroupsForm
-from gamedays.models import Gameinfo, Gameday, Gameresult, Team
-from gamedays.service.gamelog import TeamLog
-from gamedays.service.model_wrapper import GamedayModelWrapper
+from gamedays.models import Gameinfo, Gameday
 from gamedays.service.gameday_settings import (
     ID_AWAY,
     SCHEDULED,
@@ -34,6 +32,8 @@ from gamedays.service.gameday_settings import (
     OVERTIME,
     GAME_END,
 )
+from gamedays.service.gamelog import TeamLog, Gameresult
+from gamedays.service.model_wrapper import GamedayModelWrapper
 
 EMPTY_DATA = "[]"
 
@@ -112,178 +112,6 @@ class EmptyDefenseStatisticTable:
         return EMPTY_DATA
 
 
-def resolve_designer_data(data, gameday=None):
-    """
-    Resolves winner/loser references in designer_data nodes.
-    """
-    if not isinstance(data, dict):
-        return {"nodes": [], "edges": []}
-
-    nodes = data.get("nodes") or []
-    global_teams = data.get("globalTeams") or []
-
-    # Team name mapping for UUIDs from designer_data
-    team_name_map = {}
-    for team in global_teams:
-        if isinstance(team, dict):
-            t_id = team.get("id")
-            t_label = team.get("label")
-            if t_id:
-                team_name_map[t_id] = t_label
-
-    # If gameday is provided, fetch relevant DB records
-    db_results = None
-    db_games = None
-    if gameday:
-        try:
-            db_results = Gameresult.objects.filter(gameinfo__gameday=gameday)
-            db_games = Gameinfo.objects.filter(gameday=gameday)
-        except Exception:
-            pass
-
-    def resolve_team(ref):
-        try:
-            if not isinstance(ref, dict):
-                return None
-            target_match = ref.get("matchName")
-            if not target_match:
-                return None
-            ref_type = ref.get("type")  # 'winner' or 'loser'
-
-            # 1. Try to resolve using designer_data nodes directly (Step 1)
-            target_node = None
-            for node in nodes:
-                if isinstance(node, dict):
-                    node_data = node.get("data", {})
-                    if node_data.get("standing") == target_match:
-                        target_node = node
-                        break
-
-            if target_node:
-                node_data = target_node.get("data", {})
-                score = node_data.get("final_score")
-                if isinstance(score, dict):
-                    home_total = score.get("home", 0)
-                    away_total = score.get("away", 0)
-
-                    if home_total == away_total:
-                        # Handle draw case locally for UI feedback
-                        if node_data.get("status") != "COMPLETED":
-                            return None
-                        return "Tie"
-
-                    is_home_winner = home_total > away_total
-                    if ref_type == "winner":
-                        # Recursive resolution check
-                        if is_home_winner and node_data.get("resolvedHomeTeam"):
-                            return node_data.get("resolvedHomeTeam")
-                        if not is_home_winner and node_data.get("resolvedAwayTeam"):
-                            return node_data.get("resolvedAwayTeam")
-
-                        winner_id = (
-                            node_data.get("homeTeamId")
-                            if is_home_winner
-                            else node_data.get("awayTeamId")
-                        )
-                        return team_name_map.get(winner_id, winner_id) or "TBD"
-                    else:
-                        if is_home_winner and node_data.get("resolvedAwayTeam"):
-                            return node_data.get("resolvedAwayTeam")
-                        if not is_home_winner and node_data.get("resolvedHomeTeam"):
-                            return node_data.get("resolvedHomeTeam")
-
-                        loser_id = (
-                            node_data.get("awayTeamId")
-                            if is_home_winner
-                            else node_data.get("homeTeamId")
-                        )
-                        return team_name_map.get(loser_id, loser_id) or "TBD"
-
-            # 2. Fallback to database resolution (Step 2)
-            if db_games:
-                target_game = db_games.filter(standing=target_match).first()
-                if not target_game:
-                    target_game = db_games.filter(standing__iexact=target_match).first()
-
-                if target_game:
-                    is_completed = (
-                        target_game.status in [Gameinfo.STATUS_COMPLETED, "COMPLETED"]
-                        or target_game.final_score is not None
-                    )
-
-                    if is_completed and db_results:
-                        home_res = db_results.filter(
-                            gameinfo=target_game, isHome=True
-                        ).first()
-                        away_res = db_results.filter(
-                            gameinfo=target_game, isHome=False
-                        ).first()
-
-                        if home_res and away_res:
-                            h_total = (home_res.fh or 0) + (home_res.sh or 0)
-                            a_total = (away_res.fh or 0) + (away_res.sh or 0)
-
-                            if (
-                                h_total == 0
-                                and a_total == 0
-                                and target_game.final_score
-                            ):
-                                h_total = target_game.final_score.get("home", 0)
-                                a_total = target_game.final_score.get("away", 0)
-
-                            if h_total == a_total:
-                                return "Tie"
-
-                            win_res = home_res if h_total > a_total else away_res
-                            los_res = away_res if h_total > a_total else home_res
-
-                            res_res = win_res if ref_type == "winner" else los_res
-                            if res_res and res_res.team:
-                                return res_res.team.name
-
-                            # Final fallback to node resolution if records are partially missing
-                            if target_node:
-                                key = (
-                                    "resolvedHomeTeam"
-                                    if res_res.isHome
-                                    else "resolvedAwayTeam"
-                                )
-                                return target_node.get("data", {}).get(key) or "TBD"
-        except Exception:
-            pass
-        return None
-
-    # Perform resolution for all games in the data (multi-pass for nested dependencies)
-    for _ in range(3):
-        changed = False
-        for node in nodes:
-            if isinstance(node, dict) and node.get("type") == "game":
-                n_data = node.get("data", {})
-                h_ref = n_data.get("homeTeamDynamic")
-                a_ref = n_data.get("awayTeamDynamic")
-
-                if h_ref:
-                    new = resolve_team(h_ref)
-                    if (
-                        new != n_data.get("resolvedHomeTeam")
-                        or "resolvedHomeTeam" not in n_data
-                    ):
-                        n_data["resolvedHomeTeam"] = new
-                        changed = True
-                if a_ref:
-                    new = resolve_team(a_ref)
-                    if (
-                        new != n_data.get("resolvedAwayTeam")
-                        or "resolvedAwayTeam" not in n_data
-                    ):
-                        n_data["resolvedAwayTeam"] = new
-                        changed = True
-        if not changed:
-            break
-
-    return data
-
-
 class EmptyGamedayService:
     @staticmethod
     def get_schedule(*args, **kwargs):
@@ -313,8 +141,8 @@ class EmptyGamedayService:
     def get_resolved_designer_data(gameday_pk):
         try:
             gameday = Gameday.objects.get(pk=gameday_pk)
-            return resolve_designer_data(gameday.designer_data, gameday)
-        except Exception:
+            return gameday.designer_data or {"nodes": [], "edges": []}
+        except Gameday.DoesNotExist:
             return {"nodes": [], "edges": []}
 
 
@@ -323,7 +151,7 @@ class GamedayService:
     def create(cls, gameday_pk):
         try:
             return cls(gameday_pk)
-        except (Gameinfo.DoesNotExist, Gameday.DoesNotExist):
+        except Gameinfo.DoesNotExist:
             return EmptyGamedayService
 
     def __init__(self, pk):
@@ -360,13 +188,6 @@ class GamedayService:
         )
         schedule = schedule.rename(columns=SCHEDULE_TABLE_HEADERS)
         return schedule
-
-    def get_resolved_designer_data(self, gameday_pk=None):
-        try:
-            gameday = Gameday.objects.get(pk=self.gameday_pk)
-            return resolve_designer_data(gameday.designer_data, gameday)
-        except Exception:
-            return {"nodes": [], "edges": []}
 
     def get_qualify_table(self):
         qualify_table = self.gmw.get_qualify_table()
@@ -415,6 +236,85 @@ class GamedayService:
 
     def get_defense_player_statistic_table(self):
         return self.gmw.get_defense_statistic_table()
+
+    def get_resolved_designer_data(self, gameday_pk=None):
+        try:
+            gameday = Gameday.objects.get(pk=self.gameday_pk)
+            data = gameday.designer_data or {"nodes": [], "edges": []}
+
+            # Cache results for this gameday to avoid repeated queries
+            from gamedays.models import Gameresult
+
+            results = Gameresult.objects.filter(gameinfo__gameday=gameday)
+            games = Gameinfo.objects.filter(gameday=gameday)
+
+            def resolve_team(ref):
+                try:
+                    if not ref or not isinstance(ref, dict):
+                        return None
+                    target_match = ref.get("matchName")
+                    ref_type = ref.get("type")  # 'winner' or 'loser'
+
+                    target_game = games.filter(standing=target_match).first()
+                    if (
+                        not target_game
+                        or target_game.status != Gameinfo.STATUS_COMPLETED
+                    ):
+                        return None
+
+                    game_results = results.filter(gameinfo=target_game).order_by(
+                        "isHome"
+                    )
+                    if len(game_results) < 2:
+                        return None
+
+                    home = game_results.filter(isHome=True).first()
+                    away = game_results.filter(isHome=False).first()
+
+                    if not home or not away:
+                        return None
+
+                    home_score = (
+                        target_game.final_score.get("home", 0)
+                        if target_game.final_score
+                        else 0
+                    )
+                    away_score = (
+                        target_game.final_score.get("away", 0)
+                        if target_game.final_score
+                        else 0
+                    )
+
+                    winner = home if home_score > away_score else away
+                    loser = away if home_score > away_score else home
+
+                    if home_score == away_score:
+                        return "Tie"
+
+                    resolved_team = winner if ref_type == "winner" else loser
+                    return resolved_team.team.name if resolved_team.team else None
+                except Exception:
+                    return None
+
+            for node in data.get("nodes", []):
+                try:
+                    if node.get("type") == "game":
+                        node_data = node.get("data", {})
+                        home_ref = node_data.get("homeTeamDynamic")
+                        away_ref = node_data.get("awayTeamDynamic")
+
+                        if home_ref:
+                            node_data["resolvedHomeTeam"] = resolve_team(home_ref)
+                        if away_ref:
+                            node_data["resolvedAwayTeam"] = resolve_team(away_ref)
+                except Exception:
+                    # Skip this node if resolution fails
+                    continue
+
+            return data
+        except Exception:
+            # If all else fails, return empty designer data
+            return {"nodes": [], "edges": []}
 
     @staticmethod
     def update_format(gameday, data):

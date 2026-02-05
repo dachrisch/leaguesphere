@@ -15,6 +15,7 @@ import {
   generateTeamsForTournament,
   assignTeamsToTournamentGames,
 } from '../utils/teamAssignment';
+import { assignRefereesToGames } from '../utils/refAssignment';
 import {
   HIGHLIGHT_AUTO_CLEAR_DELAY,
   TOURNAMENT_GENERATION_STATE_DELAY,
@@ -221,12 +222,20 @@ export function useDesignerController(
         }
 
         const structure = generateTournament(teamsToUse, config);
-        addBulkTournament(structure, true);
-        addBulkFields(structure.fields.map(f => ({ id: f.id, name: f.data.name, order: f.data.order, color: f.data.color })), true);
+        
+        // Assign referees to all games using smart round-robin
+        const gamesWithRefs = assignRefereesToGames(structure.games, structure.stages, teamsToUse);
+        const structureWithRefs = {
+          ...structure,
+          games: gamesWithRefs,
+        };
+        
+        addBulkTournament(structureWithRefs, true);
+        addBulkFields(structureWithRefs.fields.map(f => ({ id: f.id, name: f.data.name, order: f.data.order, color: f.data.color })), true);
 
         if (config.autoAssignTeams && teamsToUse.length > 0) {
           setTimeout(() => {
-            assignTeamsToTournament(structure, teamsToUse, true);
+            assignTeamsToTournament(structureWithRefs, teamsToUse, true);
           }, TOURNAMENT_GENERATION_STATE_DELAY);
         }
         

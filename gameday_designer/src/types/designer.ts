@@ -132,7 +132,8 @@ export interface Field {
 export type ValidationErrorType =
   | 'official_playing'
   | 'invalid_reference'
-  | 'circular_dependency';
+  | 'circular_dependency'
+  | 'missing_official';
 
 /**
  * Validation warning types

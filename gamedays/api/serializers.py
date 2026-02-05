@@ -1,7 +1,11 @@
+import logging
+
 from rest_framework.fields import SerializerMethodField, IntegerField, JSONField
 from rest_framework.serializers import ModelSerializer, Serializer
 
 from gamedays.models import Gameday, Gameinfo, GameOfficial, GameSetup, Season, League
+
+logger = logging.getLogger(__name__)
 
 
 class SeasonSerializer(ModelSerializer):
@@ -33,9 +37,15 @@ class GamedaySerializer(ModelSerializer):
             ret["designer_data"] = GamedayService.create(
                 instance.pk
             ).get_resolved_designer_data(instance.pk)
-        except Exception:
+        except Exception as e:
             # Fallback to raw designer_data if resolution fails
-            pass
+            logger.warning(
+                f"Failed to resolve designer data for gameday {instance.pk}: {str(e)}",
+                exc_info=True,
+            )
+            # Use raw designer_data if available
+            if instance.designer_data:
+                ret["designer_data"] = instance.designer_data
         return ret
 
 

@@ -380,10 +380,23 @@ const GameTable: React.FC<GameTableProps> = memo(({
 
   const handleOfficialChange = useCallback(
     (gameId: string, value: string) => {
-      onUpdate(gameId, { official: value || undefined });
+      if (!value) {
+        onUpdate(gameId, { official: undefined });
+        return;
+      }
+      
+      // If the value looks like a dynamic reference (winner:..., loser:..., rank:...)
+      // we should ideally parse it back to a TeamReference object.
+      // But for simplicity and backward compatibility, we can wrap it in a static ref
+      // or handle it as a string if we've updated the types.
+      // Given the backend changes, wrapping in a static reference is safe.
+      onUpdate(gameId, { 
+        official: { type: 'static', name: value } as TeamReference 
+      });
     },
     [onUpdate]
   );
+
 
   const teamOptions = useMemo(() => buildGroupedTeamOptions(globalTeams, globalTeamGroups, t), [globalTeams, globalTeamGroups, t]);
 
@@ -501,7 +514,6 @@ const GameTable: React.FC<GameTableProps> = memo(({
 
   const renderOfficialCell = (game: GameNode) => {
     const official = game.data.official;
-    const hasOfficial = !!official;
     const eligibleGames = getEligibleSourceGames(game);
     
     // Include all global teams (grouped) and dynamic references
@@ -530,30 +542,19 @@ const GameTable: React.FC<GameTableProps> = memo(({
 
     return (
       <div className="d-flex align-items-center gap-2" onClick={(e) => e.stopPropagation()}>
-        <Form.Check
-          type="checkbox"
-          checked={hasOfficial}
-          disabled={readOnly}
-          onChange={(e) => {
-            if (!e.target.checked) handleOfficialChange(game.id, '');
-            else if (globalTeams.length > 0) handleOfficialChange(game.id, globalTeams[0].id);
-          }}
+        <Select<TeamOption>
+          value={options.find(opt => opt.value === official) || null}
+          options={options}
+          onChange={(newValue) => newValue && handleOfficialChange(game.id, newValue.value)}
+          components={{ Option: CustomOption, SingleValue: CustomSingleValue }}
+          isOptionDisabled={(option) => option.isDisabled || false}
+          menuPortalTarget={document.body}
+          menuPosition="fixed"
+          styles={{ ...customSelectStyles, control: (provided) => ({ ...provided, minHeight: '31px', fontSize: '0.875rem', borderColor: '#dee2e6', minWidth: '150px' }) }}
+          isClearable={false}
+          isSearchable={false}
+          isDisabled={readOnly}
         />
-        {hasOfficial && (
-          <Select<TeamOption>
-            value={options.find(opt => opt.value === official) || null}
-            options={options}
-            onChange={(newValue) => newValue && handleOfficialChange(game.id, newValue.value)}
-            components={{ Option: CustomOption, SingleValue: CustomSingleValue }}
-            isOptionDisabled={(option) => option.isDisabled || false}
-            menuPortalTarget={document.body}
-            menuPosition="fixed"
-            styles={{ ...customSelectStyles, control: (provided) => ({ ...provided, minHeight: '31px', fontSize: '0.875rem', borderColor: '#dee2e6', minWidth: '150px' }) }}
-            isClearable={false}
-            isSearchable={false}
-            isDisabled={readOnly}
-          />
-        )}
       </div>
     );
   };

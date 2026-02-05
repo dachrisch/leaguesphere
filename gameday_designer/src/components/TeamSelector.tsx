@@ -27,6 +27,8 @@ export interface TeamSelectorProps {
   groupNames: string[];
   /** Available stages for rank references */
   availableStages?: Array<{ id: string; name: string }>;
+  /** Whether this selector is required (for visual indicator) */
+  isRequired?: boolean;
 }
 
 /**
@@ -82,6 +84,7 @@ const TeamSelector: React.FC<TeamSelectorProps> = ({
   matchNames,
   groupNames,
   availableStages = [],
+  isRequired = false,
 }) => {
   /**
    * Handle type change.
@@ -336,10 +339,12 @@ const TeamSelector: React.FC<TeamSelectorProps> = ({
     }
   };
 
-  return (
-    <div className="team-selector mb-3">
-      <Form.Label className="fw-bold">{label}</Form.Label>
-      <Form.Group controlId={`${label}-type`} className="mb-2">
+   return (
+     <div className="team-selector mb-3">
+       <Form.Label className={`fw-bold ${isRequired ? 'text-danger' : ''}`}>
+         {label}
+       </Form.Label>
+       <Form.Group controlId={`${label}-type`} className="mb-2">
         <Form.Label className="small mb-1">Type</Form.Label>
         <Form.Select
           value={value.type}
