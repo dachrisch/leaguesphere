@@ -516,6 +516,20 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const official = game.data.official;
     const eligibleGames = getEligibleSourceGames(game);
     
+    let currentValue = '';
+    if (typeof official === 'string') {
+      currentValue = official;
+    } else if (official) {
+      if (official.type === 'static') {
+        currentValue = official.name;
+      } else if (official.type === 'winner' || official.type === 'loser') {
+        const sourceGame = findSourceGameForReference(game.id, 'official' as any, edges, allNodes);
+        if (sourceGame) {
+          currentValue = `${official.type}:${sourceGame.id}`;
+        }
+      }
+    }
+
     // Include all global teams (grouped) and dynamic references
     const options = [
       ...teamOptions,
@@ -541,16 +555,16 @@ const GameTable: React.FC<GameTableProps> = memo(({
     });
 
     return (
-      <div className="d-flex align-items-center gap-2" onClick={(e) => e.stopPropagation()}>
+      <div onClick={(e) => e.stopPropagation()}>
         <Select<TeamOption>
-          value={options.find(opt => opt.value === official) || null}
+          value={options.find(opt => opt.value === currentValue) || null}
           options={options}
           onChange={(newValue) => newValue && handleOfficialChange(game.id, newValue.value)}
           components={{ Option: CustomOption, SingleValue: CustomSingleValue }}
           isOptionDisabled={(option) => option.isDisabled || false}
           menuPortalTarget={document.body}
           menuPosition="fixed"
-          styles={{ ...customSelectStyles, control: (provided) => ({ ...provided, minHeight: '31px', fontSize: '0.875rem', borderColor: '#dee2e6', minWidth: '150px' }) }}
+          styles={customSelectStyles}
           isClearable={false}
           isSearchable={false}
           isDisabled={readOnly}
@@ -558,6 +572,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
       </div>
     );
   };
+
 
   const renderTeamCell = (game: GameNode, slot: 'home' | 'away') => {
     const data = game.data as GameNodeData;
