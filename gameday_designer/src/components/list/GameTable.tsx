@@ -223,6 +223,7 @@ export interface GameTableProps {
   onUpdate: (nodeId: string, data: Partial<GameNode['data']>) => void;
   onDelete: (nodeId: string) => void;
   onSelectNode: (nodeId: string | null) => void;
+  onHighlightElement: (id: string, type: HighlightedElement['type']) => void;
   selectedNodeId: string | null;
   onAssignTeam: (gameId: string, teamId: string, slot: 'home' | 'away') => void;
   onSwapTeams: (gameId: string) => void;
@@ -252,9 +253,11 @@ const GameTable: React.FC<GameTableProps> = memo(({
   onAddGameToGameEdge,
   onAddStageToGameEdge,
   onRemoveEdgeFromSlot,
+  onOpenResultModal,
   highlightedSourceGameId,
   onDynamicReferenceClick,
   onNotify,
+  onHighlightElement,
   readOnly = false,
 }) => {
   const { t } = useTypedTranslation(['ui', 'domain', 'error']);
@@ -262,18 +265,30 @@ const GameTable: React.FC<GameTableProps> = memo(({
   const [editingField, setEditingField] = useState<'standing' | 'breakAfter' | 'time' | null>(null);
   const [editedValue, setEditedValue] = useState<string>('');
 
-  const upstreamSourceIds = useMemo(() => {
-    if (!selectedNodeId) return new Set<string>();
-    return new Set(
-      edges
-        .filter(e => e.target === selectedNodeId)
-        .map(e => e.source)
-    );
-  }, [selectedNodeId, edges]);
+  const upstreamSourceMatchNames = useMemo(() => {
+    if (!highlightedElement || highlightedElement.type !== 'game') return new Set<string>();
+    
+    const highlightedGame = allNodes.find(n => n.id === highlightedElement.id) as GameNode | undefined;
+    if (!highlightedGame) return new Set<string>();
+    
+    const sources = new Set<string>();
+    const data = highlightedGame.data as GameNodeData;
+    
+    if (data.homeTeamDynamic && !isRankReference(data.homeTeamDynamic)) sources.add(data.homeTeamDynamic.matchName);
+    if (data.awayTeamDynamic && !isRankReference(data.awayTeamDynamic)) sources.add(data.awayTeamDynamic.matchName);
+    
+    const official = data.official;
+    if (official && typeof official !== 'string' && (official.type === 'winner' || official.type === 'loser')) {
+      sources.add(official.matchName);
+    }
+    
+    return sources;
+  }, [highlightedElement, allNodes]);
 
   const handleRowClick = useCallback((gameId: string) => {
     onSelectNode(gameId);
-  }, [onSelectNode]);
+    onHighlightElement(gameId, 'game');
+  }, [onSelectNode, onHighlightElement]);
 
   const handleDelete = useCallback((e: React.MouseEvent, gameId: string) => {
     e.stopPropagation();
@@ -472,7 +487,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const isManual = game.data.manualTime;
 
     return (
-      <td style={{ backgroundColor: isManual ? '#fff3cd' : undefined }}>
+      <td style={{ backgroundColor: isManual ? '#fff3cd' : undefined }} onClick={(e) => { e.stopPropagation(); onSelectNode(game.id); onHighlightElement(game.id, 'game'); }}>
         {isEditingTime ? (
           <div className="d-flex align-items-center gap-1">
             <Form.Control
@@ -533,8 +548,8 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const selectedGame = allNodes.find(n => n.id === selectedNodeId) as GameNode | undefined;
     const selectedMatchName = selectedGame?.data.standing;
 
-    // Highlight if this specific slot in the SELECTED game is dynamic
-    const isReferencingUpstream = game.id === selectedNodeId && !!official && typeof official !== 'string' && (official.type === 'winner' || official.type === 'loser');
+    // Highlight if this specific slot in the HIGHLIGHTED game is dynamic
+    const isReferencingUpstream = highlightedElement?.id === game.id && highlightedElement?.type === 'game' && !!official && typeof official !== 'string' && (official.type === 'winner' || official.type === 'loser');
 
     let currentValue = '';
     if (typeof official === 'string') {
@@ -580,6 +595,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
         onClick={(e) => {
           e.stopPropagation();
           onSelectNode(game.id);
+          onHighlightElement(game.id, 'game');
         }}
       >
         <Select<TeamOption>
@@ -615,7 +631,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const selectedGame = allNodes.find(n => n.id === selectedNodeId) as GameNode | undefined;
     const selectedMatchName = selectedGame?.data.standing;
 
-    const isReferencingUpstream = game.id === selectedNodeId && !!dynamicRef;
+    const isReferencingUpstream = highlightedElement?.id === game.id && highlightedElement?.type === 'game' && !!dynamicRef;
 
     let currentValue = '';
     if (dynamicRef) {
@@ -659,6 +675,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
           onClick={(e) => {
             e.stopPropagation();
             onSelectNode(game.id);
+            onHighlightElement(game.id, 'game');
             if (onDynamicReferenceClick) {
               if (isRankReference(dynamicRef)) {
                 const source = findSourceStageForReference(game.id, slot, edges, allNodes);
@@ -693,6 +710,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
         onClick={(e) => {
           e.stopPropagation();
           onSelectNode(game.id);
+          onHighlightElement(game.id, 'game');
           if (dynamicRef && onDynamicReferenceClick) {
             if (isRankReference(dynamicRef)) {
               const source = findSourceStageForReference(game.id, slot, edges, allNodes);
@@ -755,13 +773,13 @@ const GameTable: React.FC<GameTableProps> = memo(({
               key={game.id} 
               id={`game-${game.id}`} 
               onClick={() => handleRowClick(game.id)} 
-              className={`${isHighlighted ? 'element-highlighted' : ''} ${isSourceHighlighted ? 'source-highlighted' : ''} ${upstreamSourceIds.has(game.id) ? 'element-highlighted' : ''}`}
+              className={`${isHighlighted ? 'element-highlighted' : ''} ${isSourceHighlighted ? 'source-highlighted' : ''} ${upstreamSourceMatchNames.has(game.data.standing) ? 'element-highlighted' : ''}`}
               style={{ 
                 cursor: 'pointer', 
                 backgroundColor: selectedNodeId === game.id ? '#fff3cd' : undefined 
               }}
             >
-              <td>
+              <td onClick={(e) => { e.stopPropagation(); onSelectNode(game.id); onHighlightElement(game.id, 'game'); }}>
                 {editingGameId === game.id && editingField === 'standing' ? (
                   <Form.Control type="text" size="sm" value={editedValue} onChange={(e) => setEditedValue(e.target.value)} onBlur={() => handleSaveEdit(game.id, 'standing')} onKeyDown={(e) => handleKeyPress(e, game.id, 'standing')} autoFocus style={{ fontSize: '0.875rem' }} />
                 ) : (
