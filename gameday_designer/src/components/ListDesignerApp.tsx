@@ -18,6 +18,7 @@ import './ListDesignerApp.css';
 
 import { useFlowState } from '../hooks/useFlowState';
 import { exportToStructuredTemplate } from '../utils/flowchartExport';
+import { formatTeamReference } from '../utils/teamReference';
 
 const ListDesignerApp: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -602,8 +603,8 @@ const ListDesignerApp: React.FC = () => {
           handleSelectNode(null);
         }}
         game={activeGame as GameNode}
-        homeTeamName={globalTeams.find(t => t.id === activeGame?.data.homeTeamId)?.label || activeGame?.data.homeTeamDynamic || 'Home'}
-        awayTeamName={globalTeams.find(t => t.id === activeGame?.data.awayTeamId)?.label || activeGame?.data.awayTeamDynamic || 'Away'}
+        homeTeamName={globalTeams.find(t => t.id === activeGame?.data.homeTeamId)?.label || (activeGame?.data.homeTeamDynamic ? formatTeamReference(activeGame.data.homeTeamDynamic) : 'Home')}
+        awayTeamName={globalTeams.find(t => t.id === activeGame?.data.awayTeamId)?.label || (activeGame?.data.awayTeamDynamic ? formatTeamReference(activeGame.data.awayTeamDynamic) : 'Away')}
         onSave={(data) => activeGame && handleSaveResult(activeGame.id, data.halftime_score, data.final_score)}
       />
 
