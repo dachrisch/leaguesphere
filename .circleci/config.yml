@@ -95,7 +95,7 @@ commands:
 jobs:
   python:
     docker:
-      - image: cimg/python:3.14.2
+      - image: cimg/python:3.14.3
       - image: cimg/mysql:9.6
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
