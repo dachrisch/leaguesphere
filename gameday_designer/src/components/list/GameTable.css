@@ -94,19 +94,12 @@ tr:focus-visible {
   outline-offset: -2px;
 }
 
-/* Highlighting for team columns that reference the currently selected game */
+/* Highlighting for team columns that reference an upstream source game */
 .referencing-highlight {
-  background-color: rgba(255, 193, 7, 0.15) !important;
-  outline: 2px solid #ffc107 !important;
+  background-color: rgba(0, 123, 255, 0.1) !important;
+  outline: 2px solid rgba(0, 123, 255, 0.5) !important;
   outline-offset: -2px;
   border-radius: 4px;
-  animation: referencingPulse 2s infinite ease-in-out;
   z-index: 10;
   position: relative;
-}
-
-@keyframes referencingPulse {
-  0% { box-shadow: 0 0 0 rgba(255, 193, 7, 0); }
-  50% { box-shadow: 0 0 15px rgba(255, 193, 7, 0.6); }
-  100% { box-shadow: 0 0 0 rgba(255, 193, 7, 0); }
 }

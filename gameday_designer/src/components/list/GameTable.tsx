@@ -262,6 +262,15 @@ const GameTable: React.FC<GameTableProps> = memo(({
   const [editingField, setEditingField] = useState<'standing' | 'breakAfter' | 'time' | null>(null);
   const [editedValue, setEditedValue] = useState<string>('');
 
+  const upstreamSourceIds = useMemo(() => {
+    if (!selectedNodeId) return new Set<string>();
+    return new Set(
+      edges
+        .filter(e => e.target === selectedNodeId)
+        .map(e => e.source)
+    );
+  }, [selectedNodeId, edges]);
+
   const handleRowClick = useCallback((gameId: string) => {
     onSelectNode(gameId);
   }, [onSelectNode]);
@@ -524,10 +533,8 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const selectedGame = allNodes.find(n => n.id === selectedNodeId) as GameNode | undefined;
     const selectedMatchName = selectedGame?.data.standing;
 
-    const isReferencingSelectedGame = !!(selectedMatchName && (
-      (official && typeof official !== 'string' && (official.type === 'winner' || official.type === 'loser') && official.matchName === selectedMatchName) ||
-      edges.some((e) => e.source === selectedNodeId && e.target === game.id && e.targetHandle === 'official')
-    ));
+    // Highlight if this specific slot in the SELECTED game is dynamic
+    const isReferencingUpstream = game.id === selectedNodeId && !!official && typeof official !== 'string' && (official.type === 'winner' || official.type === 'loser');
 
     let currentValue = '';
     if (typeof official === 'string') {
@@ -569,7 +576,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
 
     return (
       <div 
-        className={isReferencingSelectedGame ? 'referencing-highlight' : ''}
+        className={isReferencingUpstream ? 'referencing-highlight' : ''}
         onClick={(e) => {
           e.stopPropagation();
           onSelectNode(game.id);
@@ -608,10 +615,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const selectedGame = allNodes.find(n => n.id === selectedNodeId) as GameNode | undefined;
     const selectedMatchName = selectedGame?.data.standing;
 
-    const isReferencingSelectedGame = !!(selectedMatchName && (
-      (dynamicRef && !isRankReference(dynamicRef) && dynamicRef.matchName === selectedMatchName) ||
-      edges.some((e) => e.source === selectedNodeId && e.target === game.id && e.targetHandle === slot)
-    ));
+    const isReferencingUpstream = game.id === selectedNodeId && !!dynamicRef;
 
     let currentValue = '';
     if (dynamicRef) {
@@ -666,7 +670,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
             }
           }}
           style={{ cursor: 'pointer' }}
-          className={`d-flex flex-column ${isReferencingSelectedGame ? 'referencing-highlight' : ''}`}
+          className={`d-flex flex-column ${isReferencingUpstream ? 'referencing-highlight' : ''}`}
         >
           <span className="small text-muted mb-1">
             {dynamicRef.type === 'winner' ? t('ui:label.winner') : t('ui:label.loser')} {dynamicRef.matchName}
@@ -685,7 +689,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
 
     return (
       <div 
-        className={isReferencingSelectedGame ? 'referencing-highlight' : ''}
+        className={isReferencingUpstream ? 'referencing-highlight' : ''}
         onClick={(e) => {
           e.stopPropagation();
           onSelectNode(game.id);
@@ -751,7 +755,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
               key={game.id} 
               id={`game-${game.id}`} 
               onClick={() => handleRowClick(game.id)} 
-              className={`${isHighlighted ? 'element-highlighted' : ''} ${isSourceHighlighted ? 'source-highlighted' : ''}`}
+              className={`${isHighlighted ? 'element-highlighted' : ''} ${isSourceHighlighted ? 'source-highlighted' : ''} ${upstreamSourceIds.has(game.id) ? 'element-highlighted' : ''}`}
               style={{ 
                 cursor: 'pointer', 
                 backgroundColor: selectedNodeId === game.id ? '#fff3cd' : undefined 
