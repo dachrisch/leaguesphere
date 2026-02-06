@@ -207,7 +207,6 @@ describe('GameTable', () => {
     });
 
     it('allows selecting official from dropdown', async () => {
-      const user = userEvent.setup();
       renderTable();
       // Official selector is always visible, can be interacted with directly
       const table = screen.getByRole('table');

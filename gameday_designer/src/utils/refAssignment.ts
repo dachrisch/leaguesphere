@@ -29,9 +29,7 @@ import type { TeamReference } from '../types/designer';
 export function assignRefereesToGames(
   games: GameNode[],
   stages: StageNode[],
-  teams: GlobalTeam[],
-  homeTeamRef?: (ref: TeamReference | null, gameId: string) => string | null,
-  awayTeamRef?: (ref: TeamReference | null, gameId: string) => string | null
+  teams: GlobalTeam[]
 ): GameNode[] {
   // Track how many times each team has been assigned as a referee
   const refCount = new Map<string, number>();

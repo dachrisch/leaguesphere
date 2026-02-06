@@ -523,7 +523,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
       if (official.type === 'static') {
         currentValue = official.name;
       } else if (official.type === 'winner' || official.type === 'loser') {
-        const sourceGame = findSourceGameForReference(game.id, 'official' as any, edges, allNodes);
+         const sourceGame = findSourceGameForReference(game.id, 'official', edges, allNodes);
         if (sourceGame) {
           currentValue = `${official.type}:${sourceGame.id}`;
         }

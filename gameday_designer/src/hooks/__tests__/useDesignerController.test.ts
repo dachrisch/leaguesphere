@@ -301,11 +301,11 @@ describe('useDesignerController', () => {
       
       vi.mocked(tournamentGenerator.generateTournament).mockReturnValue(mockStructure);
       vi.mocked(teamAssignment.generateTeamsForTournament).mockReturnValue(mockTeams as unknown as Array<{ label: string; color: string }>);
-      vi.mocked(teamAssignment.assignTeamsToTournamentGames).mockReturnValueOnce([
-        { type: 'assign_team', gameId: 'g1', teamId: 't1', slot: 'home' },
-        // @ts-expect-error - partial edge for testing
-        { type: 'add_edges', edges: [{ id: 'e1' } as unknown as FlowEdge] }
-      ]);
+       vi.mocked(teamAssignment.assignTeamsToTournamentGames).mockReturnValue([
+         { type: 'assign_team', gameId: 'g1', teamId: 't1', slot: 'home' },
+         // @ts-expect-error - partial edge for testing
+         { type: 'add_edges', edges: [{ id: 'e1' } as unknown as FlowEdge] }
+       ]);
       
       await act(async () => {
         await result.current.handlers.handleGenerateTournament({
@@ -318,7 +318,7 @@ describe('useDesignerController', () => {
       expect(teamAssignment.generateTeamsForTournament).toHaveBeenCalled();
       
       await act(async () => {
-        vi.advanceTimersByTime(1000);
+        vi.advanceTimersByTime(1500);
       });
       
       expect(teamAssignment.assignTeamsToTournamentGames).toHaveBeenCalled();
