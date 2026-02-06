@@ -93,3 +93,21 @@ tr:focus-visible {
   outline: 2px solid rgba(13, 110, 253, 0.5);
   outline-offset: -2px;
 }
+
+/* Highlighting for team columns that reference the currently selected game */
+.referencing-highlight {
+  background-color: rgba(13, 110, 253, 0.1) !important;
+  border: 2px solid rgba(13, 110, 253, 0.5) !important;
+  border-radius: 4px;
+  animation: referencingPulse 1.5s infinite ease-in-out;
+  padding: 2px;
+  margin: -2px;
+  z-index: 2;
+  position: relative;
+}
+
+@keyframes referencingPulse {
+  0% { box-shadow: 0 0 0 rgba(13, 110, 253, 0); }
+  50% { box-shadow: 0 0 8px rgba(13, 110, 253, 0.4); }
+  100% { box-shadow: 0 0 0 rgba(13, 110, 253, 0); }
+}

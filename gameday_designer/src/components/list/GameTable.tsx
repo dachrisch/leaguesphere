@@ -520,6 +520,10 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const official = game.data.official;
     const eligibleGames = getEligibleSourceGames(game);
     
+    const isReferencingSelectedGame = !!(selectedNodeId && edges.some(
+      (e) => e.source === selectedNodeId && e.target === game.id && e.targetHandle === 'official'
+    ));
+
     let currentValue = '';
     if (typeof official === 'string') {
       currentValue = official;
@@ -559,7 +563,10 @@ const GameTable: React.FC<GameTableProps> = memo(({
     });
 
     return (
-      <div onClick={(e) => e.stopPropagation()}>
+      <div 
+        className={isReferencingSelectedGame ? 'referencing-highlight' : ''}
+        onClick={(e) => e.stopPropagation()}
+      >
         <Select<TeamOption>
           value={options.find(opt => opt.value === currentValue) || null}
           options={options}
@@ -588,6 +595,10 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const isWinner = !!(data.final_score && (
       (slot === 'home' && data.final_score.home > data.final_score.away) ||
       (slot === 'away' && data.final_score.away > data.final_score.home)
+    ));
+
+    const isReferencingSelectedGame = !!(selectedNodeId && edges.some(
+      (e) => e.source === selectedNodeId && e.target === game.id && e.targetHandle === slot
     ));
 
     let currentValue = '';
@@ -642,7 +653,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
             }
           }}
           style={{ cursor: 'pointer' }}
-          className="d-flex flex-column"
+          className={`d-flex flex-column ${isReferencingSelectedGame ? 'referencing-highlight' : ''}`}
         >
           <span className="small text-muted mb-1">
             {dynamicRef.type === 'winner' ? t('ui:label.winner') : t('ui:label.loser')} {dynamicRef.matchName}
@@ -661,6 +672,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
 
     return (
       <div 
+        className={isReferencingSelectedGame ? 'referencing-highlight' : ''}
         onClick={(e) => {
           e.stopPropagation();
           if (dynamicRef && onDynamicReferenceClick) {
