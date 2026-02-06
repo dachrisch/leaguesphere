@@ -25,6 +25,7 @@ import {
 import { useNodesState } from './useNodesState';
 import { useEdgesState } from './useEdgesState';
 import { useTeamPoolState } from './useTeamPoolState';
+import { resolveBracketReferences } from '../utils/bracketResolution';
 
 /**
  * Calculate a position for a new node.
@@ -130,6 +131,19 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     setSaveTrigger(prev => prev + 1);
     onStateChange?.();
   }, [onStateChange]);
+
+  // --- Bracket Resolution ---
+  useEffect(() => {
+    if (isInternalUpdateRef.current) return;
+
+    const resolvedNodes = resolveBracketReferences(nodes, globalTeams);
+    if (JSON.stringify(resolvedNodes) !== JSON.stringify(nodes)) {
+      isInternalUpdateRef.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setNodes(resolvedNodes);
+      setTimeout(() => { isInternalUpdateRef.current = false; }, 0);
+    }
+  }, [nodes, globalTeams]);
 
   const undo = useCallback(() => {
     if (currentIndexRef.current <= 0) return;
@@ -516,4 +530,3 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     getFieldStages, getStageGames, matchNames, groupNames, addBulkGames, addBulkFields
   ]);
 }
-    

@@ -21,6 +21,8 @@ from gamedays.api.views import (
     GamedayViewSet,
     SeasonViewSet,
     LeagueViewSet,
+    GameResultsListView,
+    GameResultsUpdateView,
 )
 from gamedays.constants import (
     API_GAMEDAY_WHISTLEGAMES,
@@ -64,6 +66,16 @@ urlpatterns = [
                     "<int:pk>/details",
                     GamedayScheduleView.as_view(),
                     name="api-gamedays-schedule",
+                ),
+                path(
+                    "<int:gameday_pk>/games/",
+                    GameResultsListView.as_view(),
+                    name="api-gameday-games",
+                ),
+                path(
+                    "<int:gameday_pk>/games/<int:game_pk>/results/",
+                    GameResultsUpdateView.as_view(),
+                    name="api-gameday-game-results",
                 ),
             ]
         ),

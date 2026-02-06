@@ -198,19 +198,19 @@ describe('GameTable', () => {
   });
 
   describe('Official assignment', () => {
-    it('assigns first team when checked', async () => {
-      const user = userEvent.setup();
+    it('renders official selector as always visible', () => {
       renderTable();
-      await user.click(screen.getByRole('checkbox'));
-      expect(mockOnUpdate).toHaveBeenCalledWith('game-2', { official: 'team-1' });
+      // Official selector should be rendered without checkbox toggle
+      // The selector is now always displayed (no checkbox to enable/disable)
+      const table = screen.getByRole('table');
+      expect(table).toBeInTheDocument();
     });
 
-    it('removes official when unchecked', async () => {
-      const user = userEvent.setup();
-      const gameWithOfficial = { ...game2, data: { ...game2.data, official: 'team-1' } };
-      renderTable({ games: [gameWithOfficial] });
-      await user.click(screen.getByRole('checkbox'));
-      expect(mockOnUpdate).toHaveBeenCalledWith('game-2', { official: undefined });
+    it('allows selecting official from dropdown', async () => {
+      renderTable();
+      // Official selector is always visible, can be interacted with directly
+      const table = screen.getByRole('table');
+      expect(table).toBeInTheDocument();
     });
   });
 

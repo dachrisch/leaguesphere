@@ -135,6 +135,14 @@ export interface GameNodeData {
   duration?: number;
   /** Flag: true if startTime was manually set (prevents auto-recalc) */
   manualTime?: boolean;
+
+  // Game Results
+  /** Game status: "Geplant", "Gestartet", "Beendet" (backend) or "DRAFT", "PUBLISHED", "COMPLETED" (frontend) */
+  status?: string;
+  /** Halftime scores */
+  halftime_score?: { home: number; away: number } | null;
+  /** Final scores */
+  final_score?: { home: number; away: number } | null;
 }
 
 // ============================================================================
