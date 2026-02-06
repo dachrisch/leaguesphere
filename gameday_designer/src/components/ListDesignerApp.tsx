@@ -313,12 +313,10 @@ const ListDesignerApp: React.FC = () => {
   }, []);
 
   const [activeGameIdForResult, setActiveGameIdForResult] = useState<string | null>(null);
-  useEffect(() => {
-    if (selectedNode?.type === 'game' && isLocked) {
-      setActiveGameIdForResult(selectedNode.id);
-      setShowResultModal(true);
-    }
-  }, [selectedNode, isLocked]);
+  const handleOpenResultModal = useCallback((gameId: string) => {
+    setActiveGameIdForResult(gameId);
+    setShowResultModal(true);
+  }, []);
 
   const handleUpdateMetadataWrapped = useCallback((data: Partial<GamedayMetadata>) => {
     updateMetadata(data);
@@ -562,6 +560,7 @@ const ListDesignerApp: React.FC = () => {
             onAddGameToGameEdge={addGameToGameEdge}
             onAddStageToGameEdge={addStageToGameEdge}
             onRemoveEdgeFromSlot={removeEdgeFromSlot}
+            onOpenResultModal={handleOpenResultModal}
             onNotify={addNotification}
             onAddOfficials={addOfficialsGroup}
             onGenerateTournament={onGenerateTournamentHandler}

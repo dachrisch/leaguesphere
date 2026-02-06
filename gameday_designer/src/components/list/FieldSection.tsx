@@ -39,6 +39,7 @@ export interface FieldSectionProps {
   onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
   onAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away', sourceGroup?: string) => void;
   onRemoveEdgeFromSlot: (targetGameId: string, targetSlot: 'home' | 'away') => void;
+  onOpenResultModal: (gameId: string) => void;
   isExpanded: boolean;
   expandedStageIds: Set<string>;
   highlightedSourceGameId?: string | null;
@@ -66,6 +67,7 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
   onAddGameToGameEdge,
     onAddStageToGameEdge,
     onRemoveEdgeFromSlot,
+    onOpenResultModal,
     isExpanded: isExpandedProp,
 
   expandedStageIds,
@@ -271,6 +273,7 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
                   onAddGameToGameEdge={onAddGameToGameEdge}
                 onAddStageToGameEdge={onAddStageToGameEdge}
                 onRemoveEdgeFromSlot={onRemoveEdgeFromSlot}
+                onOpenResultModal={onOpenResultModal}
                 isExpanded={expandedStageIds?.has?.(stage.id)}
 
                   highlightedSourceGameId={highlightedSourceGameId}

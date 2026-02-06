@@ -43,6 +43,7 @@ export interface ListCanvasProps {
   onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
   onAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away', sourceGroup?: string) => void;
   onRemoveEdgeFromSlot: (targetGameId: string, targetSlot: 'home' | 'away') => void;
+  onOpenResultModal: (gameId: string) => void;
   onGenerateTournament?: () => void;
   expandedFieldIds: Set<string>;
   expandedStageIds: Set<string>;
@@ -83,6 +84,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
     onAddGameToGameEdge,
     onAddStageToGameEdge,
     onRemoveEdgeFromSlot,
+    onOpenResultModal,
     onGenerateTournament,
     expandedFieldIds,
     expandedStageIds,
@@ -282,6 +284,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                       onAddGameToGameEdge={onAddGameToGameEdge}
             onAddStageToGameEdge={onAddStageToGameEdge}
             onRemoveEdgeFromSlot={onRemoveEdgeFromSlot}
+            onOpenResultModal={onOpenResultModal}
             isExpanded={expandedFieldIds?.has?.(field.id)}
 
                       expandedStageIds={expandedStageIds}
