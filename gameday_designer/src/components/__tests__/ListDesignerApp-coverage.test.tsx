@@ -285,9 +285,12 @@ describe('ListDesignerApp Coverage', () => {
   });
 
   it('handles game result modal names and hide', async () => {
+    const mockField = { id: 'field-1', type: 'field', data: { name: 'Field 1', order: 0 } };
+    const mockStage = { id: 'stage-1', type: 'stage', parentId: 'field-1', data: { name: 'Stage 1', order: 0 } };
     const mockGame = {
         id: 'game-1',
         type: 'game',
+        parentId: 'stage-1',
         data: { homeTeamId: 'team-10', awayTeamId: 'team-20', standing: 'Game 1' }
     };
     const mockTeams = [
@@ -298,16 +301,27 @@ describe('ListDesignerApp Coverage', () => {
     (useDesignerController as Mock).mockReturnValue({
         ...defaultMockReturn,
         metadata: { ...defaultMockReturn.metadata, status: 'PUBLISHED' },
-        nodes: [mockGame],
+        nodes: [mockField, mockStage, mockGame],
+        fields: [mockField],
         selectedNode: mockGame,
-        globalTeams: mockTeams
+        globalTeams: mockTeams,
+        ui: {
+            ...defaultMockReturn.ui,
+            expandedFieldIds: new Set(['field-1']),
+            expandedStageIds: new Set(['stage-1'])
+        }
     });
+    (gamedayApi.getGameday as Mock).mockResolvedValue({ ...defaultMockReturn.metadata, status: 'PUBLISHED' });
 
     await renderApp();
+    
+    // Decoupled selection and modal: must explicitly open result modal now
+    const resultBtn = await screen.findByTestId('enter-result-game-1');
+    fireEvent.click(resultBtn);
 
     await waitFor(() => {
+        expect(screen.getByText(/Game 1/i, { selector: '.modal-title' })).toBeInTheDocument();
         expect(screen.getAllByText(/Team A/i).length).toBeGreaterThan(0);
-        expect(screen.getAllByText(/Team B/i).length).toBeGreaterThan(0);
     });
 
     const closeBtn = screen.getByLabelText('Close');

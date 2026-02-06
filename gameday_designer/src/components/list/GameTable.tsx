@@ -246,6 +246,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
   highlightedElement,
   onDelete,
   onSelectNode,
+  onHighlightElement,
   selectedNodeId,
   onAssignTeam,
   onSwapTeams,
@@ -257,7 +258,6 @@ const GameTable: React.FC<GameTableProps> = memo(({
   highlightedSourceGameId,
   onDynamicReferenceClick,
   onNotify,
-  onHighlightElement,
   readOnly = false,
 }) => {
   const { t } = useTypedTranslation(['ui', 'domain', 'error']);
@@ -842,6 +842,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
                       onOpenResultModal(game.id);
                     }}
                     title={t('ui:tooltip.enterResult')}
+                    data-testid={`enter-result-${game.id}`}
                   >
                     <i className="bi bi-pencil-square me-2" />
                     <span>{t('ui:button.result')}</span>
