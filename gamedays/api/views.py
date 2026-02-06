@@ -223,6 +223,7 @@ class GamedayViewSet(viewsets.ModelViewSet):
                     "status": Gameinfo.STATUS_PUBLISHED,
                     "halftime_score": node_data.get("halftime_score"),
                     "final_score": node_data.get("final_score"),
+                    "is_locked": True,
                 }
 
                 gameinfo = None
@@ -557,6 +558,11 @@ class GameResultUpdateAPIView(APIView):
     def patch(self, request, *args, **kwargs):
         pk = kwargs.get("pk")
         game = get_object_or_404(Gameinfo, pk=pk)
+
+        if game.is_locked:
+            return Response(
+                {"error": "Game is locked"}, status=status.HTTP_403_FORBIDDEN
+            )
 
         halftime_score = request.data.get("halftime_score")
         final_score = request.data.get("final_score")
