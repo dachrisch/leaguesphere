@@ -545,9 +545,6 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const official = game.data.official;
     const eligibleGames = getEligibleSourceGames(game);
     
-    const selectedGame = allNodes.find(n => n.id === selectedNodeId) as GameNode | undefined;
-    const selectedMatchName = selectedGame?.data.standing;
-
     // Highlight if this specific slot in the HIGHLIGHTED game is dynamic
     const isReferencingUpstream = highlightedElement?.id === game.id && highlightedElement?.type === 'game' && !!official && typeof official !== 'string' && (official.type === 'winner' || official.type === 'loser');
 
@@ -627,9 +624,6 @@ const GameTable: React.FC<GameTableProps> = memo(({
       (slot === 'home' && data.final_score.home > data.final_score.away) ||
       (slot === 'away' && data.final_score.away > data.final_score.home)
     ));
-
-    const selectedGame = allNodes.find(n => n.id === selectedNodeId) as GameNode | undefined;
-    const selectedMatchName = selectedGame?.data.standing;
 
     const isReferencingUpstream = highlightedElement?.id === game.id && highlightedElement?.type === 'game' && !!dynamicRef;
 
