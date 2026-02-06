@@ -78,6 +78,7 @@ describe('Final Coverage Polish', () => {
         notifications: [],
         ui: { 
             hasData: true,
+            highlightedElement: null,
             expandedFieldIds: new Set(['field-1']),
             expandedStageIds: new Set(['stage-1'])
         },
@@ -142,6 +143,7 @@ describe('Final Coverage Polish', () => {
         notifications: [],
         ui: { 
             hasData: true,
+            highlightedElement: null,
             expandedFieldIds: new Set(['field-1']),
             expandedStageIds: new Set(['stage-1'])
         },
