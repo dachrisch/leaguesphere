@@ -32,6 +32,7 @@ export interface FieldSectionProps {
   onDelete: (nodeId: string) => void;
   onAddStage: (fieldId: string) => void;
   onSelectNode: (nodeId: string | null) => void;
+  onHighlightElement: (id: string, type: import('../../types/flowchart').HighlightedElement['type']) => void;
   selectedNodeId: string | null;
   onAssignTeam: (gameId: string, teamId: string, slot: 'home' | 'away') => void;
   onSwapTeams: (gameId: string) => void;
@@ -59,8 +60,9 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
   onUpdate,
   onDelete,
   onAddStage,
-  onSelectNode,
-  selectedNodeId,
+    onSelectNode,
+    onHighlightElement,
+    selectedNodeId,
   onAssignTeam,
   onSwapTeams,
   onAddGame,
@@ -265,8 +267,9 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
                   highlightedElement={highlightedElement}
                   onUpdate={onUpdate}
                   onDelete={onDelete}
-                  onSelectNode={onSelectNode}
-                  selectedNodeId={selectedNodeId}
+                onSelectNode={onSelectNode}
+                onHighlightElement={onHighlightElement}
+                selectedNodeId={selectedNodeId}
                   onAssignTeam={onAssignTeam}
                   onSwapTeams={onSwapTeams}
                   onAddGame={onAddGame}

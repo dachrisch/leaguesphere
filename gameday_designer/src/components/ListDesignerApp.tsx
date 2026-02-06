@@ -531,7 +531,11 @@ const ListDesignerApp: React.FC = () => {
             onAddField={handleAddFieldContainer}
             onAddStage={handleAddStage}
             onSelectNode={handleSelectNode}
+            onHighlightElement={handleHighlightElement}
             selectedNodeId={selectedNode?.id || null}
+            highlightedElement={ui?.highlightedElement}
+            expandedFieldIds={ui?.expandedFieldIds || new Set()}
+            expandedStageIds={ui?.expandedStageIds || new Set()}
             onAddGlobalTeam={handleAddGlobalTeam}
             onUpdateGlobalTeam={handleUpdateGlobalTeam}
                     onDeleteGlobalTeam={handleDeleteGlobalTeam}
