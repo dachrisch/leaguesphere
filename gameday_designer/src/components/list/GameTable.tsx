@@ -33,6 +33,7 @@ interface TeamOption {
   isTeam?: boolean;
   isStageHeader?: boolean;
   isDisabled?: boolean;
+  isWinner?: boolean;
 }
 
 // Custom Option component with colored dot for teams and stage headers
@@ -102,7 +103,10 @@ const CustomSingleValue = memo((props: { data: TeamOption; children?: React.Reac
             }}
           />
         )}
-        <span>{data.label}</span>
+        <span className={data.isWinner ? 'fw-bold text-success' : ''}>
+          {data.label}
+          {data.isWinner && <i className="bi bi-trophy-fill text-warning ms-2" title="Winner" />}
+        </span>
       </div>
     </components.SingleValue>
   );
@@ -581,6 +585,11 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const teamId = slot === 'home' ? data.homeTeamId : data.awayTeamId;
     const resolvedName = slot === 'home' ? data.resolvedHomeTeam : data.resolvedAwayTeam;
     
+    const isWinner = !!(data.final_score && (
+      (slot === 'home' && data.final_score.home > data.final_score.away) ||
+      (slot === 'away' && data.final_score.away > data.final_score.home)
+    ));
+
     let currentValue = '';
     if (dynamicRef) {
       if (isRankReference(dynamicRef)) {
@@ -639,7 +648,10 @@ const GameTable: React.FC<GameTableProps> = memo(({
             {dynamicRef.type === 'winner' ? t('ui:label.winner') : t('ui:label.loser')} {dynamicRef.matchName}
           </span>
           {resolvedName ? (
-            <strong className="text-primary">{resolvedName}</strong>
+            <div className={isWinner ? 'text-success d-flex align-items-center' : 'text-primary'}>
+              <strong className={isWinner ? 'fw-bold' : ''}>{resolvedName}</strong>
+              {isWinner && <i className="bi bi-trophy-fill text-warning ms-2" title="Winner" />}
+            </div>
           ) : (
             <span className="text-muted italic">{t('ui:label.tbd')}</span>
           )}
@@ -664,7 +676,10 @@ const GameTable: React.FC<GameTableProps> = memo(({
         style={{ cursor: dynamicRef ? 'pointer' : 'default' }}
       >
         <Select<TeamOption>
-          value={options.find(opt => opt.value === currentValue) || options[0]}
+          value={(() => {
+            const opt = options.find(opt => opt.value === currentValue) || options[0];
+            return isWinner ? { ...opt, isWinner: true } : opt;
+          })()}
           options={options}
           onChange={(newValue) => newValue && handleTeamChange(game.id, slot, newValue.value)}
           components={{ Option: CustomOption, SingleValue: CustomSingleValue }}
