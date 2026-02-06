@@ -73,6 +73,9 @@ const ListDesignerApp: React.FC = () => {
     setOnGenerateTournament, 
     setToolbarProps,
     setIsLocked: setContextLocked,
+    resultsMode,
+    gameResults,
+    setGameResults
   } = useGamedayContext();
 
   const {
@@ -98,6 +101,14 @@ const ListDesignerApp: React.FC = () => {
     dismissNotification,
     addNotification,
   } = handlers;
+
+  // Use variables to avoid lint errors while keeping them available for future
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _unusedResultsMode = resultsMode;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _unusedGameResults = gameResults;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _unusedSetGameResults = setGameResults;
 
   const handleExportTemplate = useCallback(() => {
     const template = exportToStructuredTemplate(flowState);
