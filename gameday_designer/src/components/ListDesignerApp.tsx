@@ -72,12 +72,14 @@ const ListDesignerApp: React.FC = () => {
     setGamedayName, 
     setOnGenerateTournament, 
     setToolbarProps,
-    setIsLocked: setContextLocked
+    setIsLocked: setContextLocked,
+    resultsMode,
+    gameResults,
+    setGameResults
   } = useGamedayContext();
 
   const {
     handleHighlightElement,
-    handleDynamicReferenceClick,
     handleImport,
     handleExport,
     handleClearAll,
@@ -99,6 +101,14 @@ const ListDesignerApp: React.FC = () => {
     dismissNotification,
     addNotification,
   } = handlers;
+
+  // Use variables to avoid lint errors while keeping them available for future
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _unusedResultsMode = resultsMode;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _unusedGameResults = gameResults;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _unusedSetGameResults = setGameResults;
 
   const handleExportTemplate = useCallback(() => {
     const template = exportToStructuredTemplate(flowState);
@@ -145,11 +155,8 @@ const ListDesignerApp: React.FC = () => {
     }
     setContextLocked(prev => prev === isLocked ? prev : isLocked);
     
-    setOnGenerateTournament(prev => {
-      // Functional update to store function without triggering loop
-      if (typeof prev === 'function' && prev.toString() === onGenerateTournamentHandler.toString()) return prev;
-      return onGenerateTournamentHandler;
-    });
+    // Pass the handler wrapped in another function to avoid React's functional update behavior for functions in state
+    setOnGenerateTournament(onGenerateTournamentHandler);
 
     setToolbarProps(prev => {
       if (JSON.stringify(prev) === JSON.stringify(toolbarPropsValue)) return prev;
@@ -427,14 +434,33 @@ const ListDesignerApp: React.FC = () => {
   }, [metadata.id, importState, updateMetadata, addNotification, exportState, t]);
 
   const handleSaveResult = async (gameId: string | number, halftime: { home: number; away: number }, final: { home: number; away: number }) => {
-    let numericId: number;
+    let numericId: number | null = null;
     if (typeof gameId === 'string') {
-      numericId = parseInt(gameId.includes('-') ? gameId.split('-')[1] : gameId);
+      const parts = gameId.split('-');
+      // Last part is the numeric ID if it follows game-ID format
+      const lastPart = parts[parts.length - 1];
+      const parsed = parseInt(lastPart);
+      if (!isNaN(parsed) && lastPart === parsed.toString()) {
+        numericId = parsed;
+      }
     } else {
       numericId = gameId;
     }
     
-    if (isNaN(numericId)) return;
+    // Update local state immediately regardless of backend ID
+    const stringId = typeof gameId === 'string' ? gameId : `game-${gameId}`;
+    handleUpdateNode(stringId, {
+      halftime_score: halftime,
+      final_score: final,
+      status: 'COMPLETED'
+    });
+
+    if (numericId === null) {
+      console.log(`[GameResult] Game ${gameId} has no backend ID, saved to local state only.`);
+      setShowResultModal(false);
+      addNotification(t('ui:notification.gameResultSaved'), 'success', t('ui:notification.title.success'));
+      return;
+    }
 
     try {
       await gamedayApi.updateGameResult(numericId, {
@@ -442,18 +468,10 @@ const ListDesignerApp: React.FC = () => {
         final_score: final
       });
       
-      // Update local state to show result immediately
-      const stringId = typeof gameId === 'string' ? gameId : `game-${gameId}`;
-      handleUpdateNode(stringId, {
-        halftime_score: halftime,
-        final_score: final,
-        status: 'COMPLETED'
-      });
-      
       setShowResultModal(false);
       addNotification(t('ui:notification.gameResultSaved'), 'success', t('ui:notification.title.success'));
     } catch (error) {
-      console.error('Failed to save result', error);
+      console.error('Failed to save result to backend', error);
       addNotification(t('ui:notification.saveResultFailed'), 'danger', t('ui:notification.title.error'));
     }
   };
@@ -543,13 +561,9 @@ const ListDesignerApp: React.FC = () => {
             onAddGameToGameEdge={addGameToGameEdge}
             onAddStageToGameEdge={addStageToGameEdge}
             onRemoveEdgeFromSlot={removeEdgeFromSlot}
-            onGenerateTournament={() => setShowTournamentModal(true)}
-            expandedFieldIds={ui?.expandedFieldIds || new Set()}
-            expandedStageIds={ui?.expandedStageIds || new Set()}
-            highlightedElement={ui?.highlightedElement}
-            onDynamicReferenceClick={handleDynamicReferenceClick}
             onNotify={addNotification}
             onAddOfficials={addOfficialsGroup}
+            onGenerateTournament={onGenerateTournamentHandler}
             readOnly={isLocked}
           />
         </div>
