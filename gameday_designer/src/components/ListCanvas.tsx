@@ -25,6 +25,7 @@ export interface ListCanvasProps {
   onAddField: () => void;
   onAddStage: (fieldId: string) => void;
   onSelectNode: (nodeId: string | null) => void;
+  onHighlightElement: (id: string, type: import('../types/flowchart').HighlightedElement['type']) => void;
   selectedNodeId: string | null;
   onAddGlobalTeam: (groupId: string) => void;
   onUpdateGlobalTeam: (teamId: string, data: Partial<Omit<GlobalTeam, 'id'>>) => void;
@@ -66,6 +67,7 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
     onAddField,
     onAddStage,
     onSelectNode,
+    onHighlightElement,
     selectedNodeId,
     onAddGlobalTeam,
     onUpdateGlobalTeam,
@@ -276,8 +278,9 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
                       onUpdate={onUpdateNode}
                       onDelete={onDeleteNode}
                       onAddStage={onAddStage}
-                      onSelectNode={onSelectNode}
-                      selectedNodeId={selectedNodeId}
+                    onSelectNode={onSelectNode}
+                    onHighlightElement={onHighlightElement}
+                    selectedNodeId={selectedNodeId}
                       onAssignTeam={onAssignTeam}
                       onSwapTeams={onSwapTeams}
                       onAddGame={onAddGame}
