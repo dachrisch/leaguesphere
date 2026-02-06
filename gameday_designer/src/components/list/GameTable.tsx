@@ -229,6 +229,7 @@ export interface GameTableProps {
   onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
   onAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away', sourceGroup?: string) => void;
   onRemoveEdgeFromSlot: (targetGameId: string, targetSlot: 'home' | 'away') => void;
+  onOpenResultModal: (gameId: string) => void;
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
   onNotify?: (message: string, type: import('../../types/designer').NotificationType, title?: string) => void;
@@ -462,7 +463,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const isManual = game.data.manualTime;
 
     return (
-      <td style={{ backgroundColor: isManual ? '#fff3cd' : undefined }} onClick={(e) => { e.stopPropagation(); onSelectNode(game.id); }}>
+      <td style={{ backgroundColor: isManual ? '#fff3cd' : undefined }}>
         {isEditingTime ? (
           <div className="d-flex align-items-center gap-1">
             <Form.Control
@@ -520,8 +521,12 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const official = game.data.official;
     const eligibleGames = getEligibleSourceGames(game);
     
-    const isReferencingSelectedGame = !!(selectedNodeId && edges.some(
-      (e) => e.source === selectedNodeId && e.target === game.id && e.targetHandle === 'official'
+    const selectedGame = allNodes.find(n => n.id === selectedNodeId) as GameNode | undefined;
+    const selectedMatchName = selectedGame?.data.standing;
+
+    const isReferencingSelectedGame = !!(selectedMatchName && (
+      (official && typeof official !== 'string' && (official.type === 'winner' || official.type === 'loser') && official.matchName === selectedMatchName) ||
+      edges.some((e) => e.source === selectedNodeId && e.target === game.id && e.targetHandle === 'official')
     ));
 
     let currentValue = '';
@@ -600,8 +605,12 @@ const GameTable: React.FC<GameTableProps> = memo(({
       (slot === 'away' && data.final_score.away > data.final_score.home)
     ));
 
-    const isReferencingSelectedGame = !!(selectedNodeId && edges.some(
-      (e) => e.source === selectedNodeId && e.target === game.id && e.targetHandle === slot
+    const selectedGame = allNodes.find(n => n.id === selectedNodeId) as GameNode | undefined;
+    const selectedMatchName = selectedGame?.data.standing;
+
+    const isReferencingSelectedGame = !!(selectedMatchName && (
+      (dynamicRef && !isRankReference(dynamicRef) && dynamicRef.matchName === selectedMatchName) ||
+      edges.some((e) => e.source === selectedNodeId && e.target === game.id && e.targetHandle === slot)
     ));
 
     let currentValue = '';
@@ -748,7 +757,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
                 backgroundColor: selectedNodeId === game.id ? '#fff3cd' : undefined 
               }}
             >
-              <td onClick={(e) => { e.stopPropagation(); onSelectNode(game.id); }}>
+              <td>
                 {editingGameId === game.id && editingField === 'standing' ? (
                   <Form.Control type="text" size="sm" value={editedValue} onChange={(e) => setEditedValue(e.target.value)} onBlur={() => handleSaveEdit(game.id, 'standing')} onKeyDown={(e) => handleKeyPress(e, game.id, 'standing')} autoFocus style={{ fontSize: '0.875rem' }} />
                 ) : (
@@ -788,7 +797,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
                 </td>
               )}
               <td>{renderOfficialCell(game)}</td>
-              <td onClick={(e) => e.stopPropagation()}>
+              <td>
                 {editingGameId === game.id && editingField === 'breakAfter' ? (
                   <Form.Control type="number" size="sm" value={editedValue} onChange={(e) => setEditedValue(e.target.value)} onBlur={() => handleSaveEdit(game.id, 'breakAfter')} onKeyDown={(e) => handleKeyPress(e, game.id, 'breakAfter')} autoFocus min="0" style={{ fontSize: '0.875rem', width: '80px' }} />
                 ) : (
@@ -807,8 +816,8 @@ const GameTable: React.FC<GameTableProps> = memo(({
                     className="btn btn-sm btn-outline-success"
                     onClick={(e) => {
                       e.stopPropagation();
-                      // We'll handle this in ListDesignerApp
                       onSelectNode(game.id);
+                      onOpenResultModal(game.id);
                     }}
                     title={t('ui:tooltip.enterResult')}
                   >

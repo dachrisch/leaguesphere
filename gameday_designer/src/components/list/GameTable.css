@@ -96,19 +96,17 @@ tr:focus-visible {
 
 /* Highlighting for team columns that reference the currently selected game */
 .referencing-highlight {
-  background-color: #fff3cd !important; /* Same yellow as selection for consistency? No, maybe orange. */
-  border: 2px solid #ffc107 !important;
+  background-color: rgba(255, 193, 7, 0.15) !important;
+  outline: 2px solid #ffc107 !important;
+  outline-offset: -2px;
   border-radius: 4px;
-  animation: referencingPulse 1.5s infinite ease-in-out;
-  padding: 4px;
-  margin: -4px;
+  animation: referencingPulse 2s infinite ease-in-out;
   z-index: 10;
   position: relative;
-  box-shadow: 0 0 15px rgba(255, 193, 7, 0.6);
 }
 
 @keyframes referencingPulse {
-  0% { transform: scale(1); box-shadow: 0 0 5px rgba(255, 193, 7, 0.4); }
-  50% { transform: scale(1.02); box-shadow: 0 0 20px rgba(255, 193, 7, 0.8); }
-  100% { transform: scale(1); box-shadow: 0 0 5px rgba(255, 193, 7, 0.4); }
+  0% { box-shadow: 0 0 0 rgba(255, 193, 7, 0); }
+  50% { box-shadow: 0 0 15px rgba(255, 193, 7, 0.6); }
+  100% { box-shadow: 0 0 0 rgba(255, 193, 7, 0); }
 }

@@ -38,6 +38,7 @@ export interface StageSectionProps {
   onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
   onAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away', sourceGroup?: string) => void;
   onRemoveEdgeFromSlot: (targetGameId: string, targetSlot: 'home' | 'away') => void;
+  onOpenResultModal: (gameId: string) => void;
   isExpanded: boolean;
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
