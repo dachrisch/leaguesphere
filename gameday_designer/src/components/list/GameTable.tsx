@@ -462,7 +462,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const isManual = game.data.manualTime;
 
     return (
-      <td style={{ backgroundColor: isManual ? '#fff3cd' : undefined }} onClick={(e) => e.stopPropagation()}>
+      <td style={{ backgroundColor: isManual ? '#fff3cd' : undefined }} onClick={(e) => { e.stopPropagation(); onSelectNode(game.id); }}>
         {isEditingTime ? (
           <div className="d-flex align-items-center gap-1">
             <Form.Control
@@ -565,7 +565,10 @@ const GameTable: React.FC<GameTableProps> = memo(({
     return (
       <div 
         className={isReferencingSelectedGame ? 'referencing-highlight' : ''}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelectNode(game.id);
+        }}
       >
         <Select<TeamOption>
           value={options.find(opt => opt.value === currentValue) || null}
@@ -642,6 +645,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
         <div 
           onClick={(e) => {
             e.stopPropagation();
+            onSelectNode(game.id);
             if (onDynamicReferenceClick) {
               if (isRankReference(dynamicRef)) {
                 const source = findSourceStageForReference(game.id, slot, edges, allNodes);
@@ -675,6 +679,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
         className={isReferencingSelectedGame ? 'referencing-highlight' : ''}
         onClick={(e) => {
           e.stopPropagation();
+          onSelectNode(game.id);
           if (dynamicRef && onDynamicReferenceClick) {
             if (isRankReference(dynamicRef)) {
               const source = findSourceStageForReference(game.id, slot, edges, allNodes);
@@ -743,7 +748,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
                 backgroundColor: selectedNodeId === game.id ? '#fff3cd' : undefined 
               }}
             >
-              <td onClick={(e) => e.stopPropagation()}>
+              <td onClick={(e) => { e.stopPropagation(); onSelectNode(game.id); }}>
                 {editingGameId === game.id && editingField === 'standing' ? (
                   <Form.Control type="text" size="sm" value={editedValue} onChange={(e) => setEditedValue(e.target.value)} onBlur={() => handleSaveEdit(game.id, 'standing')} onKeyDown={(e) => handleKeyPress(e, game.id, 'standing')} autoFocus style={{ fontSize: '0.875rem' }} />
                 ) : (
