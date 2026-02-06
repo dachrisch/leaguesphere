@@ -1,5 +1,5 @@
 /**
- * Final coverage polish tests
+ * Final coverage polish tests - Triggering CI
  */
 
 import React from 'react';
