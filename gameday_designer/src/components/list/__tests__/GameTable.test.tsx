@@ -34,6 +34,7 @@ describe('GameTable', () => {
   let mockOnDelete: ReturnType<typeof vi.fn>;
   let mockOnSelectNode: ReturnType<typeof vi.fn>;
   let mockOnHighlightElement: ReturnType<typeof vi.fn>;
+  let mockOnOpenResultModal: ReturnType<typeof vi.fn>;
   let mockOnAssignTeam: ReturnType<typeof vi.fn>;
   let mockOnAddGameToGameEdge: ReturnType<typeof vi.fn>;
   let mockOnAddStageToGameEdge: ReturnType<typeof vi.fn>;
@@ -67,6 +68,7 @@ describe('GameTable', () => {
     mockOnDelete = vi.fn();
     mockOnSelectNode = vi.fn();
     mockOnHighlightElement = vi.fn();
+    mockOnOpenResultModal = vi.fn();
     mockOnAssignTeam = vi.fn();
     mockOnAddGameToGameEdge = vi.fn();
     mockOnAddStageToGameEdge = vi.fn();
@@ -95,6 +97,7 @@ describe('GameTable', () => {
           onAddGameToGameEdge={mockOnAddGameToGameEdge}
           onAddStageToGameEdge={mockOnAddStageToGameEdge}
           onRemoveEdgeFromSlot={mockOnRemoveEdgeFromSlot}
+          onOpenResultModal={mockOnOpenResultModal}
           onDynamicReferenceClick={mockOnDynamicReferenceClick}
           onNotify={mockOnNotify}
           {...props}
