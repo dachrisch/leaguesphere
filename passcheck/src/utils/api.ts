@@ -67,7 +67,7 @@ const tokenConfig = () => {
 };
 
 const throwApiError = (error: AxiosError<unknown, any> | string) => {
-  let message = "";
+  let message;
   if (typeof error === "string") {
     message = error;
   } else {
