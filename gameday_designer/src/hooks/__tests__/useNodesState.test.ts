@@ -244,13 +244,12 @@ describe('useNodesState', () => {
     it('returns first stage if invalid ID is passed but hierarchy exists', () => {
       const { result, getNodes, rerender } = setupHook();
       let fieldId = '';
-      let stageId = '';
       act(() => {
         const f = result.current.addFieldNode(undefined, true);
         fieldId = f.id;
       });
       rerender({ nodes: getNodes() });
-      stageId = getNodes().find(n => n.parentId === fieldId && isStageNode(n))!.id;
+      const stageId = getNodes().find(n => n.parentId === fieldId && isStageNode(n))!.id;
 
       let ids: { fieldId: string; stageId: string } | null = null;
       act(() => {

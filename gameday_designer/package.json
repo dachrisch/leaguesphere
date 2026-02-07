@@ -28,7 +28,13 @@
     "serialize-javascript": "7.0.2",
     "debug": "4.4.3",
     "xml2js": "0.6.2",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "typescript-eslint": {
+      "eslint": "^10.0.0"
+    },
+    "eslint-plugin-react-hooks": {
+      "eslint": "^10.0.0"
+    }
   },
   "scripts": {
     "start": "vite",
@@ -45,12 +51,6 @@
     "dev": "vite build",
     "i18n:types": "i18next-resources-for-ts toc -i ./src/i18n/locales/de -o ./src/i18n/types.d.ts",
     "prebuild": "npm run i18n:types"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
   },
   "browserslist": {
     "production": [

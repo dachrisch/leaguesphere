@@ -25,7 +25,13 @@
     "serialize-javascript": "^7.0.0",
     "debug": "^4.4.0",
     "xml2js": "^0.6.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": {
+      "eslint": "^10.0.0"
+    },
+    "eslint-plugin-react-hooks": {
+      "eslint": "^10.0.0"
+    }
   },
   "scripts": {
     "start": "vite",
@@ -39,12 +45,6 @@
     "eslint:junit": "eslint ./src --format junit -o /tmp/eslint/js-lint-results-passcheck.xml",
     "eslint:json": "eslint ./src --format json -o js-lint-results-passcheck.json",
     "dev": "vite build"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
   },
   "browserslist": {
     "production": [

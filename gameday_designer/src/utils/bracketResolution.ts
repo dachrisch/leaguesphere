@@ -42,7 +42,7 @@ export function resolveBracketReferences(nodes: FlowNode[], teams: GlobalTeam[])
 
     const isHomeWinner = hTotal > aTotal;
     const wantWinner = ref.type === 'winner';
-    let result: string | null = null;
+    let result: string | null;
 
     if (wantWinner) {
       result = isHomeWinner ? 
