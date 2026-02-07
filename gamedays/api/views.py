@@ -162,6 +162,7 @@ class GamedayViewSet(viewsets.ModelViewSet):
             return None
 
         # 2. Create/Update Gameinfo objects from designer nodes
+        id_mapping = {}
         for node in nodes:
             if node.get("type") == "game":
                 node_id = node.get("id")
@@ -239,7 +240,11 @@ class GamedayViewSet(viewsets.ModelViewSet):
                     gameinfo = Gameinfo.objects.create(
                         gameday=gameday, **gameinfo_defaults
                     )
-                    node["id"] = f"game-{gameinfo.pk}"
+                    old_id = node.get("id")
+                    new_id = f"game-{gameinfo.pk}"
+                    node["id"] = new_id
+                    if old_id:
+                        id_mapping[old_id] = new_id
 
                 for is_home in [True, False]:
                     node_team_id = node_data.get(
@@ -274,6 +279,19 @@ class GamedayViewSet(viewsets.ModelViewSet):
                     Gameresult.objects.update_or_create(
                         gameinfo=gameinfo, isHome=is_home, defaults=res_defaults
                     )
+
+        # Update edges and parent IDs with mapped IDs to maintain integrity
+        if id_mapping:
+            edges = designer_data.get("edges", [])
+            for edge in edges:
+                if edge.get("source") in id_mapping:
+                    edge["source"] = id_mapping[edge["source"]]
+                if edge.get("target") in id_mapping:
+                    edge["target"] = id_mapping[edge["target"]]
+
+            for node in nodes:
+                if node.get("parentId") in id_mapping:
+                    node["parentId"] = id_mapping[node["parentId"]]
 
         gameday.designer_data = designer_data
         gameday.save()

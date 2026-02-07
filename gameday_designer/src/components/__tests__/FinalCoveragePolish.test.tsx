@@ -1,5 +1,5 @@
 /**
- * Final coverage polish tests
+ * Final coverage polish tests - Triggering CI
  */
 
 import React from 'react';
@@ -63,18 +63,25 @@ describe('Final Coverage Polish', () => {
   });
 
   it('ListDesignerApp: handleSaveResult success path', async () => {
-    const mockGame = { id: 'game-123', type: 'game', data: {} };
+    const mockField = { id: 'field-1', type: 'field', data: { name: 'Field 1', order: 0 } };
+    const mockStage = { id: 'stage-1', type: 'stage', parentId: 'field-1', data: { name: 'Stage 1', order: 0 } };
+    const mockGame = { id: 'game-123', type: 'game', parentId: 'stage-1', data: { standing: 'Game 123' } };
     const mockController = {
         metadata: { ...defaultMetadata, status: 'PUBLISHED' },
-        nodes: [mockGame],
+        nodes: [mockField, mockStage, mockGame],
         edges: [],
-        fields: [],
+        fields: [mockField],
+        selectedNode: mockGame,
         globalTeams: [],
         globalTeamGroups: [],
-        selectedNode: mockGame,
         validation: { isValid: true, errors: [], warnings: [] },
         notifications: [],
-        ui: { hasData: true },
+        ui: { 
+            hasData: true,
+            highlightedElement: null,
+            expandedFieldIds: new Set(['field-1']),
+            expandedStageIds: new Set(['stage-1'])
+        },
         handlers: mockHandlers,
         updateMetadata: vi.fn(),
         exportState: vi.fn().mockReturnValue({}),
@@ -102,8 +109,13 @@ describe('Final Coverage Polish', () => {
     // Wait for load
     await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
 
+    // Decoupled selection and modal: must explicitly open result modal now
+    const resultBtn = await screen.findByTestId('enter-result-game-123');
+    fireEvent.click(resultBtn);
+
     // Save result
-    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    const saveBtn = await screen.findByRole('button', { name: /save/i });
+    fireEvent.click(saveBtn);
 
     await waitFor(() => {
         expect(gamedayApi.updateGameResult).toHaveBeenCalled();
@@ -116,23 +128,31 @@ describe('Final Coverage Polish', () => {
   });
 
   it('ListDesignerApp: handleSaveResult failure path', async () => {
-    const mockGame = { id: 'game-123', type: 'game', data: {} };
+    const mockField = { id: 'field-1', type: 'field', data: { name: 'Field 1', order: 0 } };
+    const mockStage = { id: 'stage-1', type: 'stage', parentId: 'field-1', data: { name: 'Stage 1', order: 0 } };
+    const mockGame = { id: 'game-123', type: 'game', parentId: 'stage-1', data: { standing: 'Game 123' } };
     const mockController = {
         metadata: { ...defaultMetadata, status: 'PUBLISHED' },
-        nodes: [mockGame],
+        nodes: [mockField, mockStage, mockGame],
         edges: [],
-        fields: [],
+        fields: [mockField],
+        selectedNode: mockGame,
         globalTeams: [],
         globalTeamGroups: [],
-        selectedNode: mockGame,
         validation: { isValid: true, errors: [], warnings: [] },
         notifications: [],
-        ui: { hasData: true },
+        ui: { 
+            hasData: true,
+            highlightedElement: null,
+            expandedFieldIds: new Set(['field-1']),
+            expandedStageIds: new Set(['stage-1'])
+        },
         handlers: mockHandlers,
         updateMetadata: vi.fn(),
         exportState: vi.fn().mockReturnValue({}),
     };
     vi.mocked(useDesignerController).mockReturnValue(mockController as unknown as ReturnType<typeof useDesignerController>);
+    vi.mocked(gamedayApi.getGameday).mockResolvedValue({ ...defaultMetadata, status: 'IN_PROGRESS' } as unknown as Awaited<ReturnType<typeof gamedayApi.getGameday>>);
     vi.mocked(gamedayApi.listSeasons).mockResolvedValue([]);
     vi.mocked(gamedayApi.listLeagues).mockResolvedValue([]);
     vi.mocked(gamedayApi.updateGameResult).mockRejectedValue(new Error('Save Error'));
@@ -149,7 +169,12 @@ describe('Final Coverage Polish', () => {
 
     await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    // Decoupled selection and modal: must explicitly open result modal now
+    const resultBtn = await screen.findByTestId('enter-result-game-123');
+    fireEvent.click(resultBtn);
+
+    const saveBtn = await screen.findByRole('button', { name: /save/i });
+    fireEvent.click(saveBtn);
 
     await waitFor(() => {
         expect(mockHandlers.addNotification).toHaveBeenCalledWith(

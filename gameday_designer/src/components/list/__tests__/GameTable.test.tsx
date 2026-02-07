@@ -33,6 +33,8 @@ describe('GameTable', () => {
   let mockOnUpdate: ReturnType<typeof vi.fn>;
   let mockOnDelete: ReturnType<typeof vi.fn>;
   let mockOnSelectNode: ReturnType<typeof vi.fn>;
+  let mockOnHighlightElement: ReturnType<typeof vi.fn>;
+  let mockOnOpenResultModal: ReturnType<typeof vi.fn>;
   let mockOnAssignTeam: ReturnType<typeof vi.fn>;
   let mockOnAddGameToGameEdge: ReturnType<typeof vi.fn>;
   let mockOnAddStageToGameEdge: ReturnType<typeof vi.fn>;
@@ -65,6 +67,8 @@ describe('GameTable', () => {
     mockOnUpdate = vi.fn();
     mockOnDelete = vi.fn();
     mockOnSelectNode = vi.fn();
+    mockOnHighlightElement = vi.fn();
+    mockOnOpenResultModal = vi.fn();
     mockOnAssignTeam = vi.fn();
     mockOnAddGameToGameEdge = vi.fn();
     mockOnAddStageToGameEdge = vi.fn();
@@ -86,12 +90,14 @@ describe('GameTable', () => {
           onUpdate={mockOnUpdate}
           onDelete={mockOnDelete}
           onSelectNode={mockOnSelectNode}
+          onHighlightElement={mockOnHighlightElement}
           selectedNodeId={null}
           onAssignTeam={mockOnAssignTeam}
           onSwapTeams={mockOnSwapTeams}
           onAddGameToGameEdge={mockOnAddGameToGameEdge}
           onAddStageToGameEdge={mockOnAddStageToGameEdge}
           onRemoveEdgeFromSlot={mockOnRemoveEdgeFromSlot}
+          onOpenResultModal={mockOnOpenResultModal}
           onDynamicReferenceClick={mockOnDynamicReferenceClick}
           onNotify={mockOnNotify}
           {...props}

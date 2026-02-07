@@ -33,6 +33,7 @@ interface TeamOption {
   isTeam?: boolean;
   isStageHeader?: boolean;
   isDisabled?: boolean;
+  isWinner?: boolean;
 }
 
 // Custom Option component with colored dot for teams and stage headers
@@ -102,7 +103,10 @@ const CustomSingleValue = memo((props: { data: TeamOption; children?: React.Reac
             }}
           />
         )}
-        <span>{data.label}</span>
+        <span className={data.isWinner ? 'fw-bold text-success' : ''}>
+          {data.label}
+          {data.isWinner && <i className="bi bi-trophy-fill text-warning ms-2" title="Winner" />}
+        </span>
       </div>
     </components.SingleValue>
   );
@@ -219,12 +223,14 @@ export interface GameTableProps {
   onUpdate: (nodeId: string, data: Partial<GameNode['data']>) => void;
   onDelete: (nodeId: string) => void;
   onSelectNode: (nodeId: string | null) => void;
+  onHighlightElement: (id: string, type: HighlightedElement['type']) => void;
   selectedNodeId: string | null;
   onAssignTeam: (gameId: string, teamId: string, slot: 'home' | 'away') => void;
   onSwapTeams: (gameId: string) => void;
   onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
   onAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away', sourceGroup?: string) => void;
   onRemoveEdgeFromSlot: (targetGameId: string, targetSlot: 'home' | 'away') => void;
+  onOpenResultModal: (gameId: string) => void;
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
   onNotify?: (message: string, type: import('../../types/designer').NotificationType, title?: string) => void;
@@ -240,6 +246,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
   highlightedElement,
   onDelete,
   onSelectNode,
+  onHighlightElement,
   selectedNodeId,
   onAssignTeam,
   onSwapTeams,
@@ -247,6 +254,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
   onAddGameToGameEdge,
   onAddStageToGameEdge,
   onRemoveEdgeFromSlot,
+  onOpenResultModal,
   highlightedSourceGameId,
   onDynamicReferenceClick,
   onNotify,
@@ -257,9 +265,30 @@ const GameTable: React.FC<GameTableProps> = memo(({
   const [editingField, setEditingField] = useState<'standing' | 'breakAfter' | 'time' | null>(null);
   const [editedValue, setEditedValue] = useState<string>('');
 
+  const upstreamSourceMatchNames = useMemo(() => {
+    if (!highlightedElement || highlightedElement.type !== 'game') return new Set<string>();
+    
+    const highlightedGame = allNodes.find(n => n.id === highlightedElement.id) as GameNode | undefined;
+    if (!highlightedGame) return new Set<string>();
+    
+    const sources = new Set<string>();
+    const data = highlightedGame.data as GameNodeData;
+    
+    if (data.homeTeamDynamic && !isRankReference(data.homeTeamDynamic)) sources.add(data.homeTeamDynamic.matchName);
+    if (data.awayTeamDynamic && !isRankReference(data.awayTeamDynamic)) sources.add(data.awayTeamDynamic.matchName);
+    
+    const official = data.official;
+    if (official && typeof official !== 'string' && (official.type === 'winner' || official.type === 'loser')) {
+      sources.add(official.matchName);
+    }
+    
+    return sources;
+  }, [highlightedElement, allNodes]);
+
   const handleRowClick = useCallback((gameId: string) => {
     onSelectNode(gameId);
-  }, [onSelectNode]);
+    onHighlightElement(gameId, 'game');
+  }, [onSelectNode, onHighlightElement]);
 
   const handleDelete = useCallback((e: React.MouseEvent, gameId: string) => {
     e.stopPropagation();
@@ -458,7 +487,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const isManual = game.data.manualTime;
 
     return (
-      <td style={{ backgroundColor: isManual ? '#fff3cd' : undefined }} onClick={(e) => e.stopPropagation()}>
+      <td style={{ backgroundColor: isManual ? '#fff3cd' : undefined }} onClick={(e) => { e.stopPropagation(); onSelectNode(game.id); onHighlightElement(game.id, 'game'); }}>
         {isEditingTime ? (
           <div className="d-flex align-items-center gap-1">
             <Form.Control
@@ -516,6 +545,9 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const official = game.data.official;
     const eligibleGames = getEligibleSourceGames(game);
     
+    // Highlight if this specific slot in the HIGHLIGHTED game is dynamic
+    const isReferencingUpstream = highlightedElement?.id === game.id && highlightedElement?.type === 'game' && !!official && typeof official !== 'string' && (official.type === 'winner' || official.type === 'loser');
+
     let currentValue = '';
     if (typeof official === 'string') {
       currentValue = official;
@@ -555,7 +587,14 @@ const GameTable: React.FC<GameTableProps> = memo(({
     });
 
     return (
-      <div onClick={(e) => e.stopPropagation()}>
+      <div 
+        className={isReferencingUpstream ? 'referencing-highlight' : ''}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelectNode(game.id);
+          onHighlightElement(game.id, 'game');
+        }}
+      >
         <Select<TeamOption>
           value={options.find(opt => opt.value === currentValue) || null}
           options={options}
@@ -581,6 +620,13 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const teamId = slot === 'home' ? data.homeTeamId : data.awayTeamId;
     const resolvedName = slot === 'home' ? data.resolvedHomeTeam : data.resolvedAwayTeam;
     
+    const isWinner = !!(data.final_score && (
+      (slot === 'home' && data.final_score.home > data.final_score.away) ||
+      (slot === 'away' && data.final_score.away > data.final_score.home)
+    ));
+
+    const isReferencingUpstream = highlightedElement?.id === game.id && highlightedElement?.type === 'game' && !!dynamicRef;
+
     let currentValue = '';
     if (dynamicRef) {
       if (isRankReference(dynamicRef)) {
@@ -622,6 +668,8 @@ const GameTable: React.FC<GameTableProps> = memo(({
         <div 
           onClick={(e) => {
             e.stopPropagation();
+            onSelectNode(game.id);
+            onHighlightElement(game.id, 'game');
             if (onDynamicReferenceClick) {
               if (isRankReference(dynamicRef)) {
                 const source = findSourceStageForReference(game.id, slot, edges, allNodes);
@@ -633,13 +681,16 @@ const GameTable: React.FC<GameTableProps> = memo(({
             }
           }}
           style={{ cursor: 'pointer' }}
-          className="d-flex flex-column"
+          className={`d-flex flex-column ${isReferencingUpstream ? 'referencing-highlight' : ''}`}
         >
           <span className="small text-muted mb-1">
             {dynamicRef.type === 'winner' ? t('ui:label.winner') : t('ui:label.loser')} {dynamicRef.matchName}
           </span>
           {resolvedName ? (
-            <strong className="text-primary">{resolvedName}</strong>
+            <div className={isWinner ? 'text-success d-flex align-items-center' : 'text-primary'}>
+              <strong className={isWinner ? 'fw-bold' : ''}>{resolvedName}</strong>
+              {isWinner && <i className="bi bi-trophy-fill text-warning ms-2" title="Winner" />}
+            </div>
           ) : (
             <span className="text-muted italic">{t('ui:label.tbd')}</span>
           )}
@@ -649,8 +700,11 @@ const GameTable: React.FC<GameTableProps> = memo(({
 
     return (
       <div 
+        className={isReferencingUpstream ? 'referencing-highlight' : ''}
         onClick={(e) => {
           e.stopPropagation();
+          onSelectNode(game.id);
+          onHighlightElement(game.id, 'game');
           if (dynamicRef && onDynamicReferenceClick) {
             if (isRankReference(dynamicRef)) {
               const source = findSourceStageForReference(game.id, slot, edges, allNodes);
@@ -664,7 +718,10 @@ const GameTable: React.FC<GameTableProps> = memo(({
         style={{ cursor: dynamicRef ? 'pointer' : 'default' }}
       >
         <Select<TeamOption>
-          value={options.find(opt => opt.value === currentValue) || options[0]}
+          value={(() => {
+            const opt = options.find(opt => opt.value === currentValue) || options[0];
+            return isWinner ? { ...opt, isWinner: true } : opt;
+          })()}
           options={options}
           onChange={(newValue) => newValue && handleTeamChange(game.id, slot, newValue.value)}
           components={{ Option: CustomOption, SingleValue: CustomSingleValue }}
@@ -710,13 +767,13 @@ const GameTable: React.FC<GameTableProps> = memo(({
               key={game.id} 
               id={`game-${game.id}`} 
               onClick={() => handleRowClick(game.id)} 
-              className={`${isHighlighted ? 'element-highlighted' : ''} ${isSourceHighlighted ? 'source-highlighted' : ''}`}
+              className={`${isHighlighted ? 'element-highlighted' : ''} ${isSourceHighlighted ? 'source-highlighted' : ''} ${upstreamSourceMatchNames.has(game.data.standing) ? 'element-highlighted' : ''}`}
               style={{ 
                 cursor: 'pointer', 
                 backgroundColor: selectedNodeId === game.id ? '#fff3cd' : undefined 
               }}
             >
-              <td onClick={(e) => e.stopPropagation()}>
+              <td onClick={(e) => { e.stopPropagation(); onSelectNode(game.id); onHighlightElement(game.id, 'game'); }}>
                 {editingGameId === game.id && editingField === 'standing' ? (
                   <Form.Control type="text" size="sm" value={editedValue} onChange={(e) => setEditedValue(e.target.value)} onBlur={() => handleSaveEdit(game.id, 'standing')} onKeyDown={(e) => handleKeyPress(e, game.id, 'standing')} autoFocus style={{ fontSize: '0.875rem' }} />
                 ) : (
@@ -756,7 +813,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
                 </td>
               )}
               <td>{renderOfficialCell(game)}</td>
-              <td onClick={(e) => e.stopPropagation()}>
+              <td>
                 {editingGameId === game.id && editingField === 'breakAfter' ? (
                   <Form.Control type="number" size="sm" value={editedValue} onChange={(e) => setEditedValue(e.target.value)} onBlur={() => handleSaveEdit(game.id, 'breakAfter')} onKeyDown={(e) => handleKeyPress(e, game.id, 'breakAfter')} autoFocus min="0" style={{ fontSize: '0.875rem', width: '80px' }} />
                 ) : (
@@ -775,10 +832,11 @@ const GameTable: React.FC<GameTableProps> = memo(({
                     className="btn btn-sm btn-outline-success"
                     onClick={(e) => {
                       e.stopPropagation();
-                      // We'll handle this in ListDesignerApp
                       onSelectNode(game.id);
+                      onOpenResultModal(game.id);
                     }}
                     title={t('ui:tooltip.enterResult')}
+                    data-testid={`enter-result-${game.id}`}
                   >
                     <i className="bi bi-pencil-square me-2" />
                     <span>{t('ui:button.result')}</span>

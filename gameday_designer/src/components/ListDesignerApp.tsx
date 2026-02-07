@@ -18,6 +18,7 @@ import './ListDesignerApp.css';
 
 import { useFlowState } from '../hooks/useFlowState';
 import { exportToStructuredTemplate } from '../utils/flowchartExport';
+import { formatTeamReference } from '../utils/teamReference';
 
 const ListDesignerApp: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -312,12 +313,10 @@ const ListDesignerApp: React.FC = () => {
   }, []);
 
   const [activeGameIdForResult, setActiveGameIdForResult] = useState<string | null>(null);
-  useEffect(() => {
-    if (selectedNode?.type === 'game' && isLocked) {
-      setActiveGameIdForResult(selectedNode.id);
-      setShowResultModal(true);
-    }
-  }, [selectedNode, isLocked]);
+  const handleOpenResultModal = useCallback((gameId: string) => {
+    setActiveGameIdForResult(gameId);
+    setShowResultModal(true);
+  }, []);
 
   const handleUpdateMetadataWrapped = useCallback((data: Partial<GamedayMetadata>) => {
     updateMetadata(data);
@@ -532,7 +531,11 @@ const ListDesignerApp: React.FC = () => {
             onAddField={handleAddFieldContainer}
             onAddStage={handleAddStage}
             onSelectNode={handleSelectNode}
+            onHighlightElement={handleHighlightElement}
             selectedNodeId={selectedNode?.id || null}
+            highlightedElement={ui?.highlightedElement}
+            expandedFieldIds={ui?.expandedFieldIds || new Set()}
+            expandedStageIds={ui?.expandedStageIds || new Set()}
             onAddGlobalTeam={handleAddGlobalTeam}
             onUpdateGlobalTeam={handleUpdateGlobalTeam}
                     onDeleteGlobalTeam={handleDeleteGlobalTeam}
@@ -561,6 +564,7 @@ const ListDesignerApp: React.FC = () => {
             onAddGameToGameEdge={addGameToGameEdge}
             onAddStageToGameEdge={addStageToGameEdge}
             onRemoveEdgeFromSlot={removeEdgeFromSlot}
+            onOpenResultModal={handleOpenResultModal}
             onNotify={addNotification}
             onAddOfficials={addOfficialsGroup}
             onGenerateTournament={onGenerateTournamentHandler}
@@ -602,8 +606,8 @@ const ListDesignerApp: React.FC = () => {
           handleSelectNode(null);
         }}
         game={activeGame as GameNode}
-        homeTeamName={globalTeams.find(t => t.id === activeGame?.data.homeTeamId)?.label || activeGame?.data.homeTeamDynamic || 'Home'}
-        awayTeamName={globalTeams.find(t => t.id === activeGame?.data.awayTeamId)?.label || activeGame?.data.awayTeamDynamic || 'Away'}
+        homeTeamName={globalTeams.find(t => t.id === activeGame?.data.homeTeamId)?.label || (activeGame?.data.homeTeamDynamic ? formatTeamReference(activeGame.data.homeTeamDynamic) : 'Home')}
+        awayTeamName={globalTeams.find(t => t.id === activeGame?.data.awayTeamId)?.label || (activeGame?.data.awayTeamDynamic ? formatTeamReference(activeGame.data.awayTeamDynamic) : 'Away')}
         onSave={(data) => activeGame && handleSaveResult(activeGame.id, data.halftime_score, data.final_score)}
       />
 

@@ -31,6 +31,7 @@ export interface StageSectionProps {
   onUpdate: (nodeId: string, data: Partial<StageNode['data']>) => void;
   onDelete: (nodeId: string) => void;
   onSelectNode: (nodeId: string | null) => void;
+  onHighlightElement: (id: string, type: import('../../types/flowchart').HighlightedElement['type']) => void;
   selectedNodeId: string | null;
   onAssignTeam: (gameId: string, teamId: string, slot: 'home' | 'away') => void;
   onSwapTeams: (gameId: string) => void;
@@ -38,6 +39,7 @@ export interface StageSectionProps {
   onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
   onAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away', sourceGroup?: string) => void;
   onRemoveEdgeFromSlot: (targetGameId: string, targetSlot: 'home' | 'away') => void;
+  onOpenResultModal: (gameId: string) => void;
   isExpanded: boolean;
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
@@ -54,14 +56,16 @@ const StageSection: React.FC<StageSectionProps> = memo(({
   highlightedElement,
   onUpdate,
   onDelete,
-  onSelectNode,
-  selectedNodeId,
+    onSelectNode,
+    onHighlightElement,
+    selectedNodeId,
   onAssignTeam,
   onSwapTeams,
   onAddGame,
-  onAddGameToGameEdge,
+    onAddGameToGameEdge,
     onAddStageToGameEdge,
     onRemoveEdgeFromSlot,
+    onOpenResultModal,
     isExpanded: isExpandedProp,
 
   highlightedSourceGameId,
@@ -348,13 +352,15 @@ const StageSection: React.FC<StageSectionProps> = memo(({
                   onUpdate={onUpdate}
                   onDelete={onDelete}
                   onSelectNode={onSelectNode}
+                  onHighlightElement={onHighlightElement}
                   selectedNodeId={selectedNodeId}
                   onAssignTeam={onAssignTeam}
                   onSwapTeams={onSwapTeams}
                   onAddGameToGameEdge={onAddGameToGameEdge}
                    onAddStageToGameEdge={onAddStageToGameEdge}
-                   onRemoveEdgeFromSlot={onRemoveEdgeFromSlot}
-                   highlightedSourceGameId={highlightedSourceGameId}
+                  onRemoveEdgeFromSlot={onRemoveEdgeFromSlot}
+                  onOpenResultModal={onOpenResultModal}
+                  highlightedSourceGameId={highlightedSourceGameId}
 
                   onDynamicReferenceClick={onDynamicReferenceClick}
                   onNotify={onNotify}
