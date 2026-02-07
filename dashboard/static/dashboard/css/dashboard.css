@@ -1,0 +1,13 @@
+/* Dashboard specific styles */
+
+body {
+  background-color: #f8f9fa;
+}
+
+.stat-card {
+  transition: transform 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+}
