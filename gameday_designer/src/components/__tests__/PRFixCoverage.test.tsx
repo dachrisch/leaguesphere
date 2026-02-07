@@ -71,9 +71,15 @@ describe('Coverage Expansion - ListDesignerApp & useFlowState', () => {
       </MemoryRouter>
     );
 
+    // Wait for error notification to appear, which indicates error handling has executed
+    await waitFor(() => {
+      expect(screen.getByText('Failed to load gameday')).toBeInTheDocument();
+    }, { timeout: 5000 });
+    
+    // Verify navigation to dashboard occurred
     await waitFor(() => {
       expect(screen.getByTestId('dashboard')).toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
   });
 
 /*
