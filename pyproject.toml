@@ -107,6 +107,9 @@ filename = "scorecard/package.json"
 filename = "gameday_designer/package.json"
 
 [[tool.bumpversion.files]]
+filename = "dashboard/package.json"
+
+[[tool.bumpversion.files]]
 filename = "pyproject.toml"
 search = 'version = "{current_version}"'
 replace = 'version = "{new_version}"'

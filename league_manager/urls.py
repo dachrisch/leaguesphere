@@ -67,6 +67,7 @@ urlpatterns = [
     path("api/liveticker/", include("liveticker.api.urls")),
     path("api/officials/", include("officials.api.urls")),
     path("api/passcheck/", include("passcheck.api.urls")),
+    path("api/dashboard/", include("dashboard.api.urls")),
     path("gamedays/gameday/design/", include("gameday_designer.app_urls")),
     path("officials/", include("officials.urls")),
     path("teammanager/", include("teammanager.urls")),
@@ -75,6 +76,7 @@ urlpatterns = [
     path("leaguetable/", include("league_table.urls")),
     path("gamedays/", include("gamedays.urls")),
     path("passcheck/", include("passcheck.urls")),
+    path("dashboard/", include("dashboard.urls")),
     path("dal/", include("league_manager.dal.urls")),
     path("", homeview),
     path(
