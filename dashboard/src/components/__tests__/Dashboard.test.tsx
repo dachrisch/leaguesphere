@@ -6,17 +6,38 @@ import { dashboardApi } from '../../utils/api';
 // Mock the API
 vi.mock('../../utils/api', () => ({
   dashboardApi: {
-    getSummary: vi.fn(),
-    getLiveGames: vi.fn(),
+    getPlatformHealth: vi.fn(),
+    getRecentActivity: vi.fn(),
+    getOnlineUsers: vi.fn(),
+    getContentCreation: vi.fn(),
+    getFeatureUsage: vi.fn(),
+    getUserSegments: vi.fn(),
+    getProblemAlerts: vi.fn(),
   },
 }));
 
 describe('Dashboard', () => {
   it('renders loading state initially', () => {
-    vi.mocked(dashboardApi.getSummary).mockImplementation(() =>
+    // Mock all API methods to never resolve (showing loading state)
+    vi.mocked(dashboardApi.getPlatformHealth).mockImplementation(() =>
       new Promise(() => {}) // Never resolves
     );
-    vi.mocked(dashboardApi.getLiveGames).mockImplementation(() =>
+    vi.mocked(dashboardApi.getRecentActivity).mockImplementation(() =>
+      new Promise(() => {})
+    );
+    vi.mocked(dashboardApi.getOnlineUsers).mockImplementation(() =>
+      new Promise(() => {})
+    );
+    vi.mocked(dashboardApi.getContentCreation).mockImplementation(() =>
+      new Promise(() => {})
+    );
+    vi.mocked(dashboardApi.getFeatureUsage).mockImplementation(() =>
+      new Promise(() => {})
+    );
+    vi.mocked(dashboardApi.getUserSegments).mockImplementation(() =>
+      new Promise(() => {})
+    );
+    vi.mocked(dashboardApi.getProblemAlerts).mockImplementation(() =>
       new Promise(() => {})
     );
 

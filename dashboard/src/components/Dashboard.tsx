@@ -1,26 +1,67 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Row, Col, Card, Button, Spinner, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Button, Spinner, Alert } from 'react-bootstrap';
 import { dashboardApi } from '../utils/api';
-import type { DashboardSummary, LiveGame } from '../types/dashboard';
-import StatCard from './StatCard';
-import LiveGamesTable from './LiveGamesTable';
+import type {
+  PlatformHealth,
+  RecentAction,
+  OnlineUser,
+  ContentCreation,
+  FeatureUsage,
+  UserSegments,
+  ProblemAlerts,
+} from '../types/dashboard';
+
+// Import all new section components
+import PlatformHealthCards from './PlatformHealthCards';
+import RecentActivityFeed from './RecentActivityFeed';
+import ContentCreationSection from './ContentCreationSection';
+import FeatureUsageSection from './FeatureUsageSection';
+import UserSegmentsSection from './UserSegmentsSection';
+import ProblemAlertsSection from './ProblemAlertsSection';
 
 const Dashboard: React.FC = () => {
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [liveGames, setLiveGames] = useState<LiveGame[]>([]);
+  // State for all sections
+  const [platformHealth, setPlatformHealth] = useState<PlatformHealth | null>(null);
+  const [recentActivity, setRecentActivity] = useState<RecentAction[]>([]);
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [contentCreation, setContentCreation] = useState<ContentCreation | null>(null);
+  const [featureUsage, setFeatureUsage] = useState<FeatureUsage | null>(null);
+  const [userSegments, setUserSegments] = useState<UserSegments | null>(null);
+  const [problemAlerts, setProblemAlerts] = useState<ProblemAlerts | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchDashboardData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [summaryData, gamesData] = await Promise.all([
-        dashboardApi.getSummary(),
-        dashboardApi.getLiveGames(),
+      // Fetch all dashboard data in parallel
+      const [
+        healthData,
+        activityData,
+        onlineData,
+        creationData,
+        usageData,
+        segmentsData,
+        alertsData,
+      ] = await Promise.all([
+        dashboardApi.getPlatformHealth(),
+        dashboardApi.getRecentActivity(24, 20),
+        dashboardApi.getOnlineUsers(15),
+        dashboardApi.getContentCreation(30),
+        dashboardApi.getFeatureUsage(30),
+        dashboardApi.getUserSegments(),
+        dashboardApi.getProblemAlerts(),
       ]);
-      setSummary(summaryData);
-      setLiveGames(gamesData);
+
+      setPlatformHealth(healthData);
+      setRecentActivity(activityData);
+      setOnlineUsers(onlineData);
+      setContentCreation(creationData);
+      setFeatureUsage(usageData);
+      setUserSegments(segmentsData);
+      setProblemAlerts(alertsData);
     } catch (err) {
       setError('Failed to load dashboard data. Please try again.');
       console.error('Dashboard error:', err);
@@ -30,7 +71,7 @@ const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData();
+    fetchDashboardData();
   }, []);
 
   if (loading) {
@@ -49,7 +90,7 @@ const Dashboard: React.FC = () => {
         <Alert variant="danger">
           <i className="bi bi-exclamation-triangle me-2"></i>
           {error}
-          <Button variant="outline-danger" size="sm" className="ms-3" onClick={fetchData}>
+          <Button variant="outline-danger" size="sm" className="ms-3" onClick={fetchDashboardData}>
             Retry
           </Button>
         </Alert>
@@ -59,11 +100,12 @@ const Dashboard: React.FC = () => {
 
   return (
     <Container fluid>
+      {/* Header */}
       <Row className="mb-4">
         <Col>
           <div className="d-flex justify-content-between align-items-center">
-            <h2>Dashboard Overview</h2>
-            <Button variant="outline-primary" onClick={fetchData}>
+            <h1>Admin Dashboard</h1>
+            <Button variant="outline-primary" onClick={fetchDashboardData}>
               <i className="bi bi-arrow-clockwise me-2"></i>
               Refresh
             </Button>
@@ -71,81 +113,27 @@ const Dashboard: React.FC = () => {
         </Col>
       </Row>
 
-      {summary && (
-        <Row className="g-4 mb-4">
-          <Col md={6} lg={3}>
-            <StatCard
-              icon="bi-controller"
-              title="Total Games"
-              value={summary.total_games}
-            />
-          </Col>
-          <Col md={6} lg={3}>
-            <StatCard
-              icon="bi-broadcast"
-              title="Live Games"
-              value={summary.live_games}
-              subtitle={summary.live_games > 0 ? "Currently in progress" : "None active"}
-            />
-          </Col>
-          <Col md={6} lg={3}>
-            <StatCard
-              icon="bi-people"
-              title="Total Teams"
-              value={summary.total_teams}
-            />
-          </Col>
-          <Col md={6} lg={3}>
-            <StatCard
-              icon="bi-person-check"
-              title="Active Players"
-              value={summary.total_players}
-            />
-          </Col>
-        </Row>
-      )}
+      {/* Section 1: Platform Health */}
+      <PlatformHealthCards data={platformHealth} loading={false} />
 
-      <Row className="mb-4">
-        <Col>
-          <Card>
-            <Card.Header className="bg-primary text-white">
-              <h5 className="mb-0">
-                <i className="bi bi-broadcast-pin me-2"></i>
-                Live Games
-              </h5>
-            </Card.Header>
-            <Card.Body>
-              <LiveGamesTable games={liveGames} />
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+      {/* Section 2: User Activity Timeline */}
+      <RecentActivityFeed
+        recentActivity={recentActivity}
+        onlineUsers={onlineUsers}
+        loading={false}
+      />
 
-      {summary && (
-        <Row>
-          <Col>
-            <Card>
-              <Card.Header>
-                <h5 className="mb-0">
-                  <i className="bi bi-graph-up me-2"></i>
-                  Statistics
-                </h5>
-              </Card.Header>
-              <Card.Body>
-                <p>
-                  <strong>Completion Rate:</strong>{' '}
-                  <Badge bg={summary.completion_rate > 80 ? 'success' : 'warning'}>
-                    {summary.completion_rate.toFixed(2)}%
-                  </Badge>
-                </p>
-                <p className="text-muted mb-0">
-                  Percentage of games with recorded results
-                </p>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-      )}
+      {/* Section 3: Content Creation */}
+      <ContentCreationSection data={contentCreation} loading={false} />
+
+      {/* Section 4: Feature Usage */}
+      <FeatureUsageSection data={featureUsage} loading={false} />
+
+      {/* Section 5: User Segments */}
+      <UserSegmentsSection data={userSegments} loading={false} />
+
+      {/* Section 6: Problems & Alerts */}
+      <ProblemAlertsSection data={problemAlerts} loading={false} />
     </Container>
   );
 };

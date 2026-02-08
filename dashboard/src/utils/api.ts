@@ -1,5 +1,18 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import type { DashboardSummary, LiveGame, LeagueStats, SeasonStats, AssociationStats } from '../types/dashboard';
+import type {
+  DashboardSummary,
+  LiveGame,
+  LeagueStats,
+  SeasonStats,
+  AssociationStats,
+  PlatformHealth,
+  RecentAction,
+  OnlineUser,
+  ContentCreation,
+  FeatureUsage,
+  UserSegments,
+  ProblemAlerts,
+} from '../types/dashboard';
 
 class DashboardApi {
   private client: AxiosInstance;
@@ -51,6 +64,51 @@ class DashboardApi {
 
   async getAssociationStats(associationId: number): Promise<AssociationStats> {
     const response = await this.client.get<AssociationStats>(`/association/${associationId}/stats/`);
+    return response.data;
+  }
+
+  // SaaS Admin Dashboard API methods
+
+  async getPlatformHealth(): Promise<PlatformHealth> {
+    const response = await this.client.get<PlatformHealth>('/platform-health/');
+    return response.data;
+  }
+
+  async getRecentActivity(hours: number = 24, limit: number = 20): Promise<RecentAction[]> {
+    const response = await this.client.get<RecentAction[]>('/recent-activity/', {
+      params: { hours, limit },
+    });
+    return response.data;
+  }
+
+  async getOnlineUsers(minutes: number = 15): Promise<OnlineUser[]> {
+    const response = await this.client.get<OnlineUser[]>('/online-users/', {
+      params: { minutes },
+    });
+    return response.data;
+  }
+
+  async getContentCreation(days: number = 30): Promise<ContentCreation> {
+    const response = await this.client.get<ContentCreation>('/content-creation/', {
+      params: { days },
+    });
+    return response.data;
+  }
+
+  async getFeatureUsage(days: number = 30): Promise<FeatureUsage> {
+    const response = await this.client.get<FeatureUsage>('/feature-usage/', {
+      params: { days },
+    });
+    return response.data;
+  }
+
+  async getUserSegments(): Promise<UserSegments> {
+    const response = await this.client.get<UserSegments>('/user-segments/');
+    return response.data;
+  }
+
+  async getProblemAlerts(): Promise<ProblemAlerts> {
+    const response = await this.client.get<ProblemAlerts>('/problem-alerts/');
     return response.data;
   }
 }
