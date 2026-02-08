@@ -1,47 +1,72 @@
-import { render, screen } from '@testing-library/react';
-import Dashboard from '../Dashboard';
-import { describe, it, expect, vi } from 'vitest';
-import { dashboardApi } from '../../utils/api';
+import { render, screen, waitFor } from '@testing-library/react'
+import Dashboard from '../Dashboard'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock the API
-vi.mock('../../utils/api', () => ({
-  dashboardApi: {
-    getPlatformHealth: vi.fn(),
-    getRecentActivity: vi.fn(),
-    getOnlineUsers: vi.fn(),
-    getContentCreation: vi.fn(),
-    getFeatureUsage: vi.fn(),
-    getUserSegments: vi.fn(),
-    getProblemAlerts: vi.fn(),
-  },
-}));
+// Create mock functions before mocking the module
+const mockGetAdminStats = vi.fn()
+const mockGetSpieleProLiga = vi.fn()
+const mockGetTeamsProLiga = vi.fn()
+const mockGetTeamsProLandesverband = vi.fn()
+const mockGetSchiedsrichterProTeam = vi.fn()
+
+// Mock the DashboardApi class
+vi.mock('../../utils/api', () => {
+  class MockDashboardApi {
+    getAdminStats = mockGetAdminStats
+    getSpieleProLiga = mockGetSpieleProLiga
+    getTeamsProLiga = mockGetTeamsProLiga
+    getTeamsProLandesverband = mockGetTeamsProLandesverband
+    getSchiedsrichterProTeam = mockGetSchiedsrichterProTeam
+  }
+
+  return {
+    DashboardApi: MockDashboardApi,
+    dashboardApi: {},
+  }
+})
 
 describe('Dashboard', () => {
-  it('renders loading state initially', () => {
-    // Mock all API methods to never resolve (showing loading state)
-    vi.mocked(dashboardApi.getPlatformHealth).mockImplementation(() =>
-      new Promise(() => {}) // Never resolves
-    );
-    vi.mocked(dashboardApi.getRecentActivity).mockImplementation(() =>
-      new Promise(() => {})
-    );
-    vi.mocked(dashboardApi.getOnlineUsers).mockImplementation(() =>
-      new Promise(() => {})
-    );
-    vi.mocked(dashboardApi.getContentCreation).mockImplementation(() =>
-      new Promise(() => {})
-    );
-    vi.mocked(dashboardApi.getFeatureUsage).mockImplementation(() =>
-      new Promise(() => {})
-    );
-    vi.mocked(dashboardApi.getUserSegments).mockImplementation(() =>
-      new Promise(() => {})
-    );
-    vi.mocked(dashboardApi.getProblemAlerts).mockImplementation(() =>
-      new Promise(() => {})
-    );
+  beforeEach(() => {
+    vi.clearAllMocks()
+    // Setup successful API responses by default
+    mockGetAdminStats.mockResolvedValue({
+      stats: null,
+    })
+    mockGetSpieleProLiga.mockResolvedValue([])
+    mockGetTeamsProLiga.mockResolvedValue([])
+    mockGetTeamsProLandesverband.mockResolvedValue([])
+    mockGetSchiedsrichterProTeam.mockResolvedValue([])
+  })
 
-    render(<Dashboard />);
-    expect(screen.getByText(/Loading.../i)).toBeInTheDocument();
-  });
-});
+  it('renders the dashboard header and calls API on mount', async () => {
+    render(<Dashboard />)
+
+    // Check that the header is rendered
+    expect(screen.getByText('Admin Dashboard')).toBeInTheDocument()
+
+    // Verify API methods were called
+    await waitFor(() => {
+      expect(mockGetAdminStats).toHaveBeenCalled()
+      expect(mockGetSpieleProLiga).toHaveBeenCalled()
+      expect(mockGetTeamsProLiga).toHaveBeenCalled()
+      expect(mockGetTeamsProLandesverband).toHaveBeenCalled()
+      expect(mockGetSchiedsrichterProTeam).toHaveBeenCalled()
+    })
+  })
+
+  it('renders the refresh button and enables it after loading', async () => {
+    render(<Dashboard />)
+
+    // While loading, button should show "Aktualisierung..." and be disabled
+    expect(screen.getByRole('button', { name: /aktualisierung/i })).toBeDisabled()
+
+    // Wait for API calls to complete
+    await waitFor(() => {
+      expect(mockGetAdminStats).toHaveBeenCalled()
+    })
+
+    // After loading, button should show "Aktualisieren" and be enabled
+    const button = screen.getByRole('button', { name: /aktualisieren/i })
+    expect(button).not.toBeDisabled()
+  })
+})

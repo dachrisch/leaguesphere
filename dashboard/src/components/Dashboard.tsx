@@ -1,154 +1,124 @@
-import React, { useEffect, useState } from 'react';
-import { Container, Row, Col, Button, Spinner, Alert } from 'react-bootstrap';
-import { dashboardApi } from '../utils/api';
-import type {
-  PlatformHealth,
-  RecentAction,
-  OnlineUser,
-  ContentCreation,
-  FeatureUsage,
-  UserSegments,
-  ProblemAlerts,
-  UsersPerTeam,
-} from '../types/dashboard';
-
-// Import all new section components
-import PlatformHealthCards from './PlatformHealthCards';
-import RecentActivityFeed from './RecentActivityFeed';
-import ContentCreationSection from './ContentCreationSection';
-import FeatureUsageSection from './FeatureUsageSection';
-import UserSegmentsSection from './UserSegmentsSection';
-import ProblemAlertsSection from './ProblemAlertsSection';
-import UsersPerTeamCard from './UsersPerTeamCard';
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { Container, Row, Col, Alert, Button } from 'react-bootstrap'
+import { DashboardApi } from '../utils/api'
+import {
+  AdminStats,
+  SpieleProLiga,
+  TeamsProLiga,
+  SchiedsrichterProTeam,
+  TeamsProLandesverband,
+} from '../types/dashboard'
+import AdminStatsCard from './AdminStatsCard'
+import SpieleProLigaCard from './SpieleProLigaCard'
+import TeamsProLigaCard from './TeamsProLigaCard'
+import TeamsProLandesverbandCard from './TeamsProLandesverbandCard'
+import SchiedsrichterProTeamCard from './SchiedsrichterProTeamCard'
 
 const Dashboard: React.FC = () => {
-  // State for all sections
-  const [platformHealth, setPlatformHealth] = useState<PlatformHealth | null>(null);
-  const [recentActivity, setRecentActivity] = useState<RecentAction[]>([]);
-  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
-  const [contentCreation, setContentCreation] = useState<ContentCreation | null>(null);
-  const [featureUsage, setFeatureUsage] = useState<FeatureUsage | null>(null);
-  const [userSegments, setUserSegments] = useState<UserSegments | null>(null);
-  const [problemAlerts, setProblemAlerts] = useState<ProblemAlerts | null>(null);
-  const [usersPerTeam, setUsersPerTeam] = useState<UsersPerTeam | null>(null);
+  const [adminStats, setAdminStats] = useState<AdminStats | null>(null)
+  const [spieleProLiga, setSpieleProLiga] = useState<SpieleProLiga[]>([])
+  const [teamsProLiga, setTeamsProLiga] = useState<TeamsProLiga[]>([])
+  const [teamsProLandesverband, setTeamsProLandesverband] = useState<
+    TeamsProLandesverband[]
+  >([])
+  const [schiedsrichterProTeam, setSchiedsrichterProTeam] = useState<
+    SchiedsrichterProTeam[]
+  >([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const api = useMemo(() => new DashboardApi(), [])
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    setError(null);
+  const fetchAdminData = useCallback(async () => {
     try {
-      // Fetch all dashboard data in parallel
-      const [
-        healthData,
-        activityData,
-        onlineData,
-        creationData,
-        usageData,
-        segmentsData,
-        alertsData,
-        usersPerTeamData,
-      ] = await Promise.all([
-        dashboardApi.getPlatformHealth(),
-        dashboardApi.getRecentActivity(24, 20),
-        dashboardApi.getOnlineUsers(15),
-        dashboardApi.getContentCreation(30),
-        dashboardApi.getFeatureUsage(30),
-        dashboardApi.getUserSegments(),
-        dashboardApi.getProblemAlerts(),
-        dashboardApi.getUsersPerTeam(),
-      ]);
+      setLoading(true)
+      setError(null)
 
-      setPlatformHealth(healthData);
-      setRecentActivity(activityData);
-      setOnlineUsers(onlineData);
-      setContentCreation(creationData);
-      setFeatureUsage(usageData);
-      setUserSegments(segmentsData);
-      setProblemAlerts(alertsData);
-      setUsersPerTeam(usersPerTeamData);
+      // Fetch all admin data in parallel
+      const [stats, spiele, teams, landesverband, schiedsrichter] =
+        await Promise.all([
+          api.getAdminStats(),
+          api.getSpieleProLiga(),
+          api.getTeamsProLiga(),
+          api.getTeamsProLandesverband(),
+          api.getSchiedsrichterProTeam(),
+        ])
+
+      setAdminStats(stats.stats)
+      setSpieleProLiga(spiele)
+      setTeamsProLiga(teams)
+      setTeamsProLandesverband(landesverband)
+      setSchiedsrichterProTeam(schiedsrichter)
     } catch (err) {
-      setError('Failed to load dashboard data. Please try again.');
-      console.error('Dashboard error:', err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Fehler beim Laden der Dashboard-Daten'
+      )
+      console.error('Dashboard error:', err)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }, [api])
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  if (loading) {
-    return (
-      <Container className="text-center py-5">
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </Spinner>
-      </Container>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container>
-        <Alert variant="danger">
-          <i className="bi bi-exclamation-triangle me-2"></i>
-          {error}
-          <Button variant="outline-danger" size="sm" className="ms-3" onClick={fetchDashboardData}>
-            Retry
-          </Button>
-        </Alert>
-      </Container>
-    );
-  }
+    fetchAdminData()
+  }, [fetchAdminData])
 
   return (
-    <Container fluid>
-      {/* Header */}
+    <Container fluid className="py-4">
+      <div className="mb-4 d-flex justify-content-between align-items-center">
+        <h1 className="mb-0">Admin Dashboard</h1>
+        <Button
+          variant="outline-primary"
+          size="sm"
+          onClick={fetchAdminData}
+          disabled={loading}
+        >
+          {loading ? 'Aktualisierung...' : 'Aktualisieren'}
+        </Button>
+      </div>
+
+      {error && (
+        <Alert variant="danger" dismissible onClose={() => setError(null)}>
+          <strong>Fehler:</strong> {error}
+        </Alert>
+      )}
+
+      {/* Admin Stats Cards */}
+      <AdminStatsCard data={adminStats} loading={loading} />
+
+      {/* Two-Column Layout */}
       <Row className="mb-4">
-        <Col>
-          <div className="d-flex justify-content-between align-items-center">
-            <h1>Admin Dashboard</h1>
-            <Button variant="outline-primary" onClick={fetchDashboardData}>
-              <i className="bi bi-arrow-clockwise me-2"></i>
-              Refresh
-            </Button>
-          </div>
+        <Col lg={6} className="mb-3">
+          <SpieleProLigaCard data={spieleProLiga} loading={loading} />
+        </Col>
+        <Col lg={6} className="mb-3">
+          <TeamsProLigaCard data={teamsProLiga} loading={loading} />
         </Col>
       </Row>
 
-      {/* Section 1: Platform Health */}
-      <PlatformHealthCards data={platformHealth} loading={false} />
-
-      {/* Section 2: User Activity Timeline */}
-      <RecentActivityFeed
-        recentActivity={recentActivity}
-        onlineUsers={onlineUsers}
-        loading={false}
-      />
-
-      {/* Section 3: Content Creation */}
-      <ContentCreationSection data={contentCreation} loading={false} />
-
-      {/* Section 4: Feature Usage */}
-      <FeatureUsageSection data={featureUsage} loading={false} />
-
-      {/* Section 5: User Segments */}
-      <UserSegmentsSection data={userSegments} loading={false} />
-
-      {/* Section 5b: Users per Team */}
+      {/* Full-Width Cards */}
       <Row className="mb-4">
-        <Col md={12}>
-          <UsersPerTeamCard data={usersPerTeam} loading={false} />
+        <Col lg={6} className="mb-3">
+          <SchiedsrichterProTeamCard
+            data={schiedsrichterProTeam}
+            loading={loading}
+          />
+        </Col>
+        <Col lg={6} className="mb-3">
+          <TeamsProLandesverbandCard
+            data={teamsProLandesverband}
+            loading={loading}
+          />
         </Col>
       </Row>
 
-      {/* Section 6: Problems & Alerts */}
-      <ProblemAlertsSection data={problemAlerts} loading={false} />
+      <div className="text-center text-muted small mt-4">
+        <p>Dashboard aktualisiert: {new Date().toLocaleString('de-DE')}</p>
+      </div>
     </Container>
-  );
-};
+  )
+}
 
-export default Dashboard;
+export default Dashboard
