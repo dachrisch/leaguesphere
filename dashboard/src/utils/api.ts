@@ -13,6 +13,11 @@ import type {
   UserSegments,
   ProblemAlerts,
   UsersPerTeam,
+  AdminDashboardData,
+  SpieleProLiga,
+  TeamsProLiga,
+  SchiedsrichterProTeam,
+  TeamsProLandesverband,
 } from '../types/dashboard';
 
 class DashboardApi {
@@ -117,6 +122,32 @@ class DashboardApi {
     const response = await this.client.get<UsersPerTeam>('/users-per-team/');
     return response.data;
   }
+
+  async getAdminStats(): Promise<AdminDashboardData> {
+    const response = await this.client.get<AdminDashboardData>('/admin-stats/')
+    return response.data
+  }
+
+  async getSpieleProLiga(): Promise<SpieleProLiga[]> {
+    const response = await this.client.get<SpieleProLiga[]>('/spiele-pro-liga/')
+    return response.data
+  }
+
+  async getTeamsProLiga(): Promise<TeamsProLiga[]> {
+    const response = await this.client.get<TeamsProLiga[]>('/teams-pro-liga/')
+    return response.data
+  }
+
+  async getTeamsProLandesverband(): Promise<TeamsProLandesverband[]> {
+    const response = await this.client.get<TeamsProLandesverband[]>('/teams-pro-landesverband/')
+    return response.data
+  }
+
+  async getSchiedsrichterProTeam(): Promise<SchiedsrichterProTeam[]> {
+    const response = await this.client.get<SchiedsrichterProTeam[]>('/schiedsrichter-pro-team/')
+    return response.data
+  }
 }
 
 export const dashboardApi = new DashboardApi();
+export { DashboardApi };
