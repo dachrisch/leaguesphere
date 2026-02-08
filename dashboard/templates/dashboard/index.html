@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link href='{% static "dashboard/css/dashboard.css" %}' rel="stylesheet"/>
+{% endblock %}
+
+{% block content %}
+<div id="admin-dashboard"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src='{% static "dashboard/js/dashboard.js" %}'></script>
+{% endblock %}
