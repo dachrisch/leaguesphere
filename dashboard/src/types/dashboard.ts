@@ -163,3 +163,47 @@ export interface UsersPerTeam {
   total_users_with_teams: number;
   users_without_team: number;
 }
+
+// Admin Dashboard - Core Statistics
+export interface AdminStats {
+  spieltage: number
+  teams: number
+  spiele: number
+}
+
+// Admin Dashboard - Spielende (Games) per League
+export interface SpieleProLiga {
+  liga_name: string
+  liga_id?: number
+  count: number
+}
+
+// Admin Dashboard - Teams per League
+export interface TeamsProLiga {
+  liga_name: string
+  liga_id?: number
+  count: number
+}
+
+// Admin Dashboard - Referees per Team
+export interface SchiedsrichterProTeam {
+  team_name: string
+  team_id: number
+  count: number
+}
+
+// Admin Dashboard - Teams per State Association (Landesverband)
+export interface TeamsProLandesverband {
+  landesverband_name: string
+  landesverband_id?: number
+  count: number
+}
+
+// Admin Dashboard - Full admin stats response
+export interface AdminDashboardData {
+  stats: AdminStats
+  spiele_pro_liga: SpieleProLiga[]
+  teams_pro_liga: TeamsProLiga[]
+  schiedsrichter_pro_team: SchiedsrichterProTeam[]
+  teams_pro_landesverband: TeamsProLandesverband[]
+}
