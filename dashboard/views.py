@@ -6,4 +6,4 @@ class DashboardView(LoginRequiredMixin, TemplateView):
     """Main dashboard view."""
 
     template_name = "dashboard/index.html"
-    login_url = "/accounts/login/"
+    login_url = "/login/"
