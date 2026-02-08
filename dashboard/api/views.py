@@ -18,6 +18,7 @@ from dashboard.api.serializers import (
     FeatureUsageSerializer,
     UserSegmentsSerializer,
     ProblemAlertsSerializer,
+    UsersPerTeamSerializer,
 )
 
 
@@ -201,4 +202,17 @@ class ProblemAlertsAPIView(APIView):
         """Get problem alerts."""
         data = DashboardService.get_problem_alerts()
         serializer = ProblemAlertsSerializer(data)
+        return Response(serializer.data)
+
+
+class UsersPerTeamAPIView(APIView):
+    """API view for users per team statistics."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @method_decorator(cache_page(60))  # Cache for 60 seconds
+    def get(self, request):
+        """Get users per team data."""
+        data = DashboardService.get_users_per_team()
+        serializer = UsersPerTeamSerializer(data)
         return Response(serializer.data)

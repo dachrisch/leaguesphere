@@ -9,6 +9,7 @@ import type {
   FeatureUsage,
   UserSegments,
   ProblemAlerts,
+  UsersPerTeam,
 } from '../types/dashboard';
 
 // Import all new section components
@@ -18,6 +19,7 @@ import ContentCreationSection from './ContentCreationSection';
 import FeatureUsageSection from './FeatureUsageSection';
 import UserSegmentsSection from './UserSegmentsSection';
 import ProblemAlertsSection from './ProblemAlertsSection';
+import UsersPerTeamCard from './UsersPerTeamCard';
 
 const Dashboard: React.FC = () => {
   // State for all sections
@@ -28,6 +30,7 @@ const Dashboard: React.FC = () => {
   const [featureUsage, setFeatureUsage] = useState<FeatureUsage | null>(null);
   const [userSegments, setUserSegments] = useState<UserSegments | null>(null);
   const [problemAlerts, setProblemAlerts] = useState<ProblemAlerts | null>(null);
+  const [usersPerTeam, setUsersPerTeam] = useState<UsersPerTeam | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +48,7 @@ const Dashboard: React.FC = () => {
         usageData,
         segmentsData,
         alertsData,
+        usersPerTeamData,
       ] = await Promise.all([
         dashboardApi.getPlatformHealth(),
         dashboardApi.getRecentActivity(24, 20),
@@ -53,6 +57,7 @@ const Dashboard: React.FC = () => {
         dashboardApi.getFeatureUsage(30),
         dashboardApi.getUserSegments(),
         dashboardApi.getProblemAlerts(),
+        dashboardApi.getUsersPerTeam(),
       ]);
 
       setPlatformHealth(healthData);
@@ -62,6 +67,7 @@ const Dashboard: React.FC = () => {
       setFeatureUsage(usageData);
       setUserSegments(segmentsData);
       setProblemAlerts(alertsData);
+      setUsersPerTeam(usersPerTeamData);
     } catch (err) {
       setError('Failed to load dashboard data. Please try again.');
       console.error('Dashboard error:', err);
@@ -131,6 +137,13 @@ const Dashboard: React.FC = () => {
 
       {/* Section 5: User Segments */}
       <UserSegmentsSection data={userSegments} loading={false} />
+
+      {/* Section 5b: Users per Team */}
+      <Row className="mb-4">
+        <Col md={12}>
+          <UsersPerTeamCard data={usersPerTeam} loading={false} />
+        </Col>
+      </Row>
 
       {/* Section 6: Problems & Alerts */}
       <ProblemAlertsSection data={problemAlerts} loading={false} />

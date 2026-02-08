@@ -591,6 +591,41 @@ class DashboardService:
         }
 
     @staticmethod
+    def get_users_per_team():
+        """
+        Get user count per team, sorted by user count descending.
+        """
+        # Count users with UserProfile per team
+        teams_with_users = Team.objects.annotate(
+            user_count=Count('userprofile', filter=Q(userprofile__user__is_active=True))
+        ).filter(user_count__gt=0).order_by('-user_count')
+
+        teams_list = [
+            {
+                'team_name': team.name,
+                'user_count': team.user_count,
+                'association': team.association.name if team.association else 'No Association',
+            }
+            for team in teams_with_users
+        ]
+
+        total_users_with_teams = sum(team['user_count'] for team in teams_list)
+        total_teams_with_users = len(teams_list)
+
+        # Users without teams
+        users_without_team = UserProfile.objects.filter(
+            team__isnull=True,
+            user__is_active=True
+        ).count()
+
+        return {
+            'teams': teams_list,
+            'total_teams_with_users': total_teams_with_users,
+            'total_users_with_teams': total_users_with_teams,
+            'users_without_team': users_without_team,
+        }
+
+    @staticmethod
     def get_problem_alerts():
         """
         Identify problems: inactive users, teams without activity, unused accounts.

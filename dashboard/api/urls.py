@@ -12,6 +12,7 @@ from dashboard.api.views import (
     FeatureUsageAPIView,
     UserSegmentsAPIView,
     ProblemAlertsAPIView,
+    UsersPerTeamAPIView,
 )
 
 urlpatterns = [
@@ -30,4 +31,5 @@ urlpatterns = [
     path("feature-usage/", FeatureUsageAPIView.as_view(), name="feature-usage"),
     path("user-segments/", UserSegmentsAPIView.as_view(), name="user-segments"),
     path("problem-alerts/", ProblemAlertsAPIView.as_view(), name="problem-alerts"),
+    path("users-per-team/", UsersPerTeamAPIView.as_view(), name="users-per-team"),
 ]
