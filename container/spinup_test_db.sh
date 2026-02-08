@@ -27,8 +27,6 @@ if [[ "$FRESH_START" == true ]]; then
     sleep 20
     echo "setup test db"
     ssh servyy-test.lxd "docker exec -i mysql mariadb -puser -uroot "< test_user.sql
-    echo "importing test data from dump"
-    ssh servyy-test.lxd "docker exec -i mysql mariadb -uuser -puser test_db" < test_db_dump.sql
 else
     # Check if container exists
     if ssh servyy-test.lxd "docker ps -a --format '{{.Names}}' | grep -q '^mysql$'"; then

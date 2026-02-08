@@ -18,13 +18,15 @@ See `DBSetup.create_playoff_placeholder_teams()` in
 
 ## Setup Process
 
-Run: `./container/spinup_test_db.sh`
+Run: `./container/start_dev_server.sh`
 
-- **Default**: Reuses existing database, restarts container
-- **Fresh Start**: `./container/spinup_test_db.sh --fresh` 
-  - Removes old database
-  - Creates new MariaDB instance
-  - Imports `test_db_dump.sql` with all required data
+- **Default**: Reuses existing database, restarts container, builds apps.
+- **Fresh Start**: `./container/start_dev_server.sh --fresh` 
+  - Removes old database.
+  - Creates new MariaDB instance.
+  - Runs Django migrations.
+  - Imports `test_db_dump.sql` with all required data.
+  - Builds React apps and collects static files.
 
 ## What's in test_db_dump.sql
 

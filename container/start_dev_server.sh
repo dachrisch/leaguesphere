@@ -3,7 +3,7 @@ set -e
 
 # 1. Setup container and database
 echo "📦 Initializing test container and database..."
-SCRIPT_DIR="$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 ./spinup_test_db.sh "$@"
 cd ..
@@ -49,6 +49,15 @@ python manage.py collectstatic --noinput
 # 4. Run migrations
 echo "🔄 Running database migrations..."
 python manage.py migrate --no-input
+
+# 4.1 Import test data if --fresh was passed
+for arg in "$@"; do
+    if [[ "$arg" == "--fresh" ]]; then
+        echo "📥 Importing test data from dump..."
+        ssh servyy-test.lxd "docker exec -i mysql mariadb -uuser -puser test_db" < "$SCRIPT_DIR/test_db_dump.sql"
+        break
+    fi
+done
 
 # 5. Create default user (admin/admin)
 echo "👤 Creating default admin user..."
