@@ -2,7 +2,7 @@
 
 # Usage: ./spinup_test_db.sh [--fresh]
 # By default, preserves existing database and restarts the container if it exists
-# Use --fresh flag to completely reset the database
+# Use --fresh flag to completely reset the database and import test data from test_db_dump.sql
 
 FRESH_START=false
 
@@ -27,6 +27,8 @@ if [[ "$FRESH_START" == true ]]; then
     sleep 20
     echo "setup test db"
     ssh servyy-test.lxd "docker exec -i mysql mariadb -puser -uroot "< test_user.sql
+    echo "importing test data from dump"
+    ssh servyy-test.lxd "docker exec -i mysql mariadb -uuser -puser test_db" < test_db_dump.sql
 else
     # Check if container exists
     if ssh servyy-test.lxd "docker ps -a --format '{{.Names}}' | grep -q '^mysql$'"; then
