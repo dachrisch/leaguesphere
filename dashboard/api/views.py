@@ -19,6 +19,12 @@ from dashboard.api.serializers import (
     UserSegmentsSerializer,
     ProblemAlertsSerializer,
     UsersPerTeamSerializer,
+    AdminStatsSerializer,
+    SpieleProLigaSerializer,
+    TeamsProLigaSerializer,
+    TeamsProLandesverbandSerializer,
+    SchiedsrichterProTeamSerializer,
+    AdminDashboardSerializer,
 )
 
 
@@ -58,10 +64,7 @@ class LeagueStatsAPIView(APIView):
         """Get statistics for a specific league."""
         stats = DashboardService.get_stats_by_league(league_id)
         if stats is None:
-            return Response(
-                {"error": "League not found"},
-                status=404
-            )
+            return Response({"error": "League not found"}, status=404)
         serializer = LeagueStatsSerializer(stats)
         return Response(serializer.data)
 
@@ -76,10 +79,7 @@ class SeasonStatsAPIView(APIView):
         """Get statistics for a specific season."""
         stats = DashboardService.get_stats_by_season(season_id)
         if stats is None:
-            return Response(
-                {"error": "Season not found"},
-                status=404
-            )
+            return Response({"error": "Season not found"}, status=404)
         serializer = SeasonStatsSerializer(stats)
         return Response(serializer.data)
 
@@ -94,10 +94,7 @@ class AssociationStatsAPIView(APIView):
         """Get statistics for a specific association."""
         stats = DashboardService.get_stats_by_association(association_id)
         if stats is None:
-            return Response(
-                {"error": "Association not found"},
-                status=404
-            )
+            return Response({"error": "Association not found"}, status=404)
         serializer = AssociationStatsSerializer(stats)
         return Response(serializer.data)
 
@@ -126,8 +123,8 @@ class RecentActivityAPIView(APIView):
     @method_decorator(cache_page(30))  # Cache for 30 seconds
     def get(self, request):
         """Get recent activity feed."""
-        hours = int(request.query_params.get('hours', 24))
-        limit = int(request.query_params.get('limit', 20))
+        hours = int(request.query_params.get("hours", 24))
+        limit = int(request.query_params.get("limit", 20))
 
         data = DashboardService.get_recent_activity(hours=hours, limit=limit)
         serializer = RecentActionSerializer(data, many=True)
@@ -139,10 +136,12 @@ class OnlineUsersAPIView(APIView):
 
     permission_classes = [permissions.IsAuthenticated]
 
-    @method_decorator(cache_page(15))  # Cache for 15 seconds (short cache for real-time feel)
+    @method_decorator(
+        cache_page(15)
+    )  # Cache for 15 seconds (short cache for real-time feel)
     def get(self, request):
         """Get list of online users."""
-        minutes = int(request.query_params.get('minutes', 15))
+        minutes = int(request.query_params.get("minutes", 15))
 
         data = DashboardService.get_online_users(minutes=minutes)
         serializer = OnlineUserSerializer(data, many=True)
@@ -157,7 +156,7 @@ class ContentCreationAPIView(APIView):
     @method_decorator(cache_page(60))  # Cache for 60 seconds
     def get(self, request):
         """Get content creation metrics."""
-        days = int(request.query_params.get('days', 30))
+        days = int(request.query_params.get("days", 30))
 
         data = DashboardService.get_content_creation_stats(days=days)
         serializer = ContentCreationSerializer(data)
@@ -172,7 +171,7 @@ class FeatureUsageAPIView(APIView):
     @method_decorator(cache_page(60))  # Cache for 60 seconds
     def get(self, request):
         """Get feature adoption statistics."""
-        days = int(request.query_params.get('days', 30))
+        days = int(request.query_params.get("days", 30))
 
         data = DashboardService.get_feature_usage_stats(days=days)
         serializer = FeatureUsageSerializer(data)
@@ -215,4 +214,78 @@ class UsersPerTeamAPIView(APIView):
         """Get users per team data."""
         data = DashboardService.get_users_per_team()
         serializer = UsersPerTeamSerializer(data)
+        return Response(serializer.data)
+
+
+# Admin Dashboard API Views
+
+
+class AdminStatsAPIView(APIView):
+    """Combined admin dashboard stats endpoint"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @method_decorator(cache_page(60))
+    def get(self, request):
+        """Get all admin statistics"""
+        data = {
+            "stats": DashboardService.get_admin_stats(),
+            "spiele_pro_liga": DashboardService.get_spiele_pro_liga(),
+            "teams_pro_liga": DashboardService.get_teams_pro_liga(),
+            "teams_pro_landesverband": DashboardService.get_teams_pro_landesverband(),
+            "schiedsrichter_pro_team": DashboardService.get_schiedsrichter_pro_team(),
+        }
+        serializer = AdminDashboardSerializer(data)
+        return Response(serializer.data)
+
+
+class SpieleProLigaAPIView(APIView):
+    """Games per league endpoint"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @method_decorator(cache_page(60))
+    def get(self, request):
+        """Get game counts per league"""
+        data = DashboardService.get_spiele_pro_liga()
+        serializer = SpieleProLigaSerializer(data, many=True)
+        return Response(serializer.data)
+
+
+class TeamsProLigaAPIView(APIView):
+    """Teams per league endpoint"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @method_decorator(cache_page(60))
+    def get(self, request):
+        """Get team counts per league"""
+        data = DashboardService.get_teams_pro_liga()
+        serializer = TeamsProLigaSerializer(data, many=True)
+        return Response(serializer.data)
+
+
+class TeamsProLandesverbandAPIView(APIView):
+    """Teams per state association endpoint"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @method_decorator(cache_page(60))
+    def get(self, request):
+        """Get team counts per state association"""
+        data = DashboardService.get_teams_pro_landesverband()
+        serializer = TeamsProLandesverbandSerializer(data, many=True)
+        return Response(serializer.data)
+
+
+class SchiedsrichterProTeamAPIView(APIView):
+    """Referees per team endpoint"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @method_decorator(cache_page(60))
+    def get(self, request):
+        """Get referee counts per team"""
+        data = DashboardService.get_schiedsrichter_pro_team()
+        serializer = SchiedsrichterProTeamSerializer(data, many=True)
         return Response(serializer.data)
