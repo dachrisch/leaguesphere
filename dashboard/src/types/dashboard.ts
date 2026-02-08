@@ -150,3 +150,16 @@ export interface ProblemAlerts {
   inactive_teams: InactiveTeams;
   unused_accounts: number;
 }
+
+export interface TeamUserCount {
+  team_name: string;
+  user_count: number;
+  association: string;
+}
+
+export interface UsersPerTeam {
+  teams: TeamUserCount[];
+  total_teams_with_users: number;
+  total_users_with_teams: number;
+  users_without_team: number;
+}

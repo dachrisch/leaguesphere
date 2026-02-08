@@ -12,6 +12,7 @@ import type {
   FeatureUsage,
   UserSegments,
   ProblemAlerts,
+  UsersPerTeam,
 } from '../types/dashboard';
 
 class DashboardApi {
@@ -109,6 +110,11 @@ class DashboardApi {
 
   async getProblemAlerts(): Promise<ProblemAlerts> {
     const response = await this.client.get<ProblemAlerts>('/problem-alerts/');
+    return response.data;
+  }
+
+  async getUsersPerTeam(): Promise<UsersPerTeam> {
+    const response = await this.client.get<UsersPerTeam>('/users-per-team/');
     return response.data;
   }
 }

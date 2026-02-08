@@ -190,3 +190,20 @@ class ProblemAlertsSerializer(serializers.Serializer):
     inactive_team_managers = InactiveTeamManagersSerializer()
     inactive_teams = InactiveTeamsSerializer()
     unused_accounts = serializers.IntegerField()
+
+
+class TeamUserCountSerializer(serializers.Serializer):
+    """Team with user count."""
+
+    team_name = serializers.CharField()
+    user_count = serializers.IntegerField()
+    association = serializers.CharField()
+
+
+class UsersPerTeamSerializer(serializers.Serializer):
+    """Users per team data."""
+
+    teams = TeamUserCountSerializer(many=True)
+    total_teams_with_users = serializers.IntegerField()
+    total_users_with_teams = serializers.IntegerField()
+    users_without_team = serializers.IntegerField()

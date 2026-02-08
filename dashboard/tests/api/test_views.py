@@ -181,3 +181,17 @@ class TestSaaSAdminDashboardAPI:
         assert "inactive_team_managers" in response.data
         assert "inactive_teams" in response.data
         assert "unused_accounts" in response.data
+
+    def test_users_per_team_requires_authentication(self, api_client):
+        """Test that users per team endpoint requires authentication."""
+        response = api_client.get("/api/dashboard/users-per-team/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_users_per_team_with_authentication(self, authenticated_client):
+        """Test that authenticated users can access users per team data."""
+        response = authenticated_client.get("/api/dashboard/users-per-team/")
+        assert response.status_code == status.HTTP_200_OK
+        assert "teams" in response.data
+        assert "total_teams_with_users" in response.data
+        assert "total_users_with_teams" in response.data
+        assert "users_without_team" in response.data
