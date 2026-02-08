@@ -1,4 +1,3 @@
-import React from 'react';
 import Dashboard from './components/Dashboard';
 import { Container } from 'react-bootstrap';
 
