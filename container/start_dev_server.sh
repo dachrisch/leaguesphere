@@ -63,10 +63,6 @@ done
 echo "👤 Creating default admin user..."
 echo "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', 'admin@example.com', 'admin')" | python manage.py shell
 
-# 6. Create default Season and League
-echo "📅 Creating default Season and League..."
-echo "from gamedays.models import Season, League; Season.objects.get_or_create(name='2025'); League.objects.get_or_create(name='Test League')" | python manage.py shell
-
 # 7. Start dev server
 echo "🌐 Starting development server at http://localhost:8000 (DB at $MYSQL_HOST)"
 python manage.py runserver 0.0.0.0:8000 --insecure
