@@ -5,7 +5,7 @@ set -e
 echo "📦 Initializing test container and database..."
 SCRIPT_DIR="$(dirname "$0")"
 cd "$SCRIPT_DIR"
-./spinup_test_db.sh
+./spinup_test_db.sh "$@"
 cd ..
 
 # 2. Get the actual IP of servyy-test
@@ -32,6 +32,19 @@ if [ -f "./.venv/bin/activate" ]; then
     echo "🐍 Activating virtual environment..."
     source ./.venv/bin/activate
 fi
+
+# 3.6 Build React apps and collect static files
+echo "🏗️ Building React apps..."
+for app in passcheck liveticker scorecard gameday_designer; do
+    if [ -d "$app" ]; then
+        echo "  Building $app..."
+        npm --prefix "$app/" install
+        npm --prefix "$app/" run build
+    fi
+done
+
+echo "📦 Collecting static files..."
+python manage.py collectstatic --noinput
 
 # 4. Run migrations
 echo "🔄 Running database migrations..."

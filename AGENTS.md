@@ -126,6 +126,7 @@ Each app is located in its own directory: `passcheck/`, `liveticker/`, `scorecar
 - Backend tests require a MySQL/MariaDB instance. 
 - Local development uses LXC container `servyy-test` at `10.185.182.207`.
 - Run `container/spinup_test_db.sh` to ensure the test database is ready.
+  See `container/SPINUP_GUIDE.md` for initialization details and placeholder team requirements.
 - Moodle API tests are expected to fail in local dev without credentials.
 
 Refer to `CLAUDE.md` for detailed agent workflow and deployment safety rules.
