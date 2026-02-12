@@ -9,10 +9,18 @@ import { TextEncoder } from 'util';
 
 global.TextEncoder = TextEncoder;
 
-const modalMock = vi.fn();
+const modalMock = {
+  hide: vi.fn(),
+  show: vi.fn(),
+};
+
+global.bootstrap = {
+  Modal: vi.fn().mockImplementation(() => modalMock),
+};
+global.bootstrap.Modal.getInstance = vi.fn().mockImplementation(() => modalMock);
 
 vi.mock('jquery', () => ({ default: vi.fn() }));
 $.mockImplementation(() => {
-  return { modal: modalMock };
+  return { modal: vi.fn() };
 });
 

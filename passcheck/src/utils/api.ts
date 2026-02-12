@@ -2,6 +2,9 @@
 import axios, { AxiosError } from "axios";
 import { SCORECARD_URL } from "../common/routes";
 
+axios.defaults.xsrfCookieName = 'csrftoken';
+axios.defaults.xsrfHeaderName = 'X-CSRFToken';
+
 export type ApiError = {
   message: string;
 };
