@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "knox",
     "passcheck",
     "gameday_designer",
+    "dashboard",
     "health_check",
     "health_check.contrib.db_heartbeat",
 ]
