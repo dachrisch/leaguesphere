@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { GameResultsTable } from '../GameResultsTable';
 import { GameResultsDisplay } from '../../types/designer';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 describe('GameResultsTable', () => {
   const mockGames: GameResultsDisplay[] = [{

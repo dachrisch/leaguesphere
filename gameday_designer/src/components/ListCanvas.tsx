@@ -56,7 +56,7 @@ export interface ListCanvasProps {
   onAddOfficials?: () => void;
   resultsMode?: boolean;
   gameResults?: import('../types/designer').GameResultsDisplay[];
-  onSaveBulkResults?: (results: any) => Promise<void>;
+  onSaveBulkResults?: (results: Record<string, unknown>) => Promise<void>;
   readOnly?: boolean;
 }
 

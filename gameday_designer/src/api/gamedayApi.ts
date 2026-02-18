@@ -217,11 +217,11 @@ class GamedayApi {
   /**
    * Update bulk game results for a gameday.
    */
-  async updateBulkGameResults(gamedayId: number, gameId: number, results: any): Promise<void> {
+  async updateBulkGameResults(gamedayId: number, gameId: number, results: unknown[]): Promise<void> {
     if (this.isDev && !this.forceClient) return;
     await this.client.post(
       `/gamedays/${gamedayId}/games/${gameId}/results/`,
-      { results: Object.entries(results).map(([_, val]: [string, any]) => val) }
+      { results }
     );
   }
 

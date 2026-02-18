@@ -179,18 +179,18 @@ const ListDesignerApp: React.FC = () => {
       };
 
       if (JSON.stringify(prev) === JSON.stringify(newProps)) return prev;
-      return newProps as any;
+      return newProps as typeof toolbarPropsValue;
     });
   }, [metadata?.name, isLocked, onGenerateTournamentHandler, toolbarPropsValue, setGamedayName, setContextLocked, setOnGenerateTournament, setToolbarProps, id, resultsMode, setResultsMode, setGameResults]);
 
-  const handleSaveBulkResults = async (results: any) => {
+  const handleSaveBulkResults = async (results: Record<string, unknown>) => {
     if (!id) return;
     const gamedayId = parseInt(id);
     
     try {
       // Group by gameId
-      const groupedResults: Record<number, any> = {};
-      Object.entries(results).forEach(([key, val]: [string, any]) => {
+      const groupedResults: Record<number, unknown[]> = {};
+      Object.entries(results).forEach(([key, val]) => {
         const gameId = parseInt(key.split('-')[0]);
         if (!groupedResults[gameId]) groupedResults[gameId] = [];
         groupedResults[gameId].push(val);
