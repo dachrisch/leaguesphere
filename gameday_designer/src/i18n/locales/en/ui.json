@@ -31,10 +31,13 @@
     "gamedayManagement": "Gameday Management",
     "gamedayDesigner": "Gameday Designer",
     "result": "Result",
+    "enterResults": "Enter Results",
+    "exitResults": "Designer View",
     "backToDashboard": "Back to Dashboard"
   },
   "label": {
     "dashboard": "Dashboard",
+    "gameResults": "Game Results",
     "back": "Back",
     "fields": "Fields",
     "stages": "Stages",

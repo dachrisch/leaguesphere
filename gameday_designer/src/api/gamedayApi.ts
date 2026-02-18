@@ -204,6 +204,28 @@ class GamedayApi {
   }
 
   /**
+   * Get all games for a gameday.
+   */
+  async getGamedayGames(gamedayId: number): Promise<import('../types/designer').GameResultsDisplay[]> {
+    if (this.isDev && !this.forceClient) return [];
+    const response = await this.client.get<import('../types/designer').GameResultsDisplay[]>(
+      `/gamedays/${gamedayId}/games/`
+    );
+    return response.data;
+  }
+
+  /**
+   * Update bulk game results for a gameday.
+   */
+  async updateBulkGameResults(gamedayId: number, gameId: number, results: any): Promise<void> {
+    if (this.isDev && !this.forceClient) return;
+    await this.client.post(
+      `/gamedays/${gamedayId}/games/${gameId}/results/`,
+      { results: Object.entries(results).map(([_, val]: [string, any]) => val) }
+    );
+  }
+
+  /**
    * Search for teams in the database pool using DAL endpoint.
    */
   async searchTeams(query: string): Promise<{ id: number; text: string }[]> {

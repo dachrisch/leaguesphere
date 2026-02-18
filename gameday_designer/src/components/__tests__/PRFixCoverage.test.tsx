@@ -20,6 +20,8 @@ vi.mock('../../api/gamedayApi', () => ({
     patchGameday: vi.fn(),
     deleteGameday: vi.fn(),
     updateGameResult: vi.fn(),
+    getGamedayGames: vi.fn().mockResolvedValue([]),
+    updateBulkGameResults: vi.fn().mockResolvedValue({}),
     listSeasons: vi.fn().mockResolvedValue([{ id: 1, name: '2026' }]),
     listLeagues: vi.fn().mockResolvedValue([{ id: 1, name: 'DFFL' }]),
     searchTeams: vi.fn().mockResolvedValue([]),
