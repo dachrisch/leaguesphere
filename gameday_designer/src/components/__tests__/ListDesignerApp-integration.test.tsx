@@ -172,7 +172,7 @@ describe('ListDesignerApp - Integration Tests', () => {
       const input = screen.getByTestId('import-file-input');
 
       await user.upload(input, file);
-      expect(mockHandlers.handleImport).toHaveBeenCalled();
+      await waitFor(() => expect(mockHandlers.handleImport).toHaveBeenCalled());
     });
   });
 
