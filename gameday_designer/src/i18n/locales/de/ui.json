@@ -31,10 +31,13 @@
     "gamedayManagement": "Spieltags-Management",
     "gamedayDesigner": "Spieltags-Designer",
     "result": "Ergebnis",
+    "enterResults": "Ergebnisse eintragen",
+    "exitResults": "Designer-Ansicht",
     "backToDashboard": "Zurück zum Dashboard"
   },
   "label": {
     "dashboard": "Dashboard",
+    "gameResults": "Spielergebnisse",
     "back": "Zurück",
     "language": "Sprache",
     "german": "Deutsch",

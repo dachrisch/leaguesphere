@@ -442,7 +442,7 @@ wheels = [
 
 [[package]]
 name = "leaguesphere"
-version = "2.17.3rc87"
+version = "2.17.3rc88"
 source = { editable = "." }
 dependencies = [
     { name = "crispy-bootstrap5" },
