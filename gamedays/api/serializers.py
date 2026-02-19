@@ -21,7 +21,7 @@ class LeagueSerializer(ModelSerializer):
 
 
 class GamedaySerializer(ModelSerializer):
-    designer_data = JSONField(required=False)
+    designer_data = SerializerMethodField()
 
     class Meta:
         model = Gameday
@@ -29,24 +29,11 @@ class GamedaySerializer(ModelSerializer):
         read_only_fields = ["author"]
         extra_kwargs = {"start": {"format": "%H:%M"}}
 
-    def to_representation(self, instance):
-        ret = super().to_representation(instance)
-        try:
-            from gamedays.service.gameday_service import GamedayService
-
-            ret["designer_data"] = GamedayService.create(
-                instance.pk
-            ).get_resolved_designer_data(instance.pk)
-        except Exception as e:
-            # Fallback to raw designer_data if resolution fails
-            logger.warning(
-                f"Failed to resolve designer data for gameday {instance.pk}: {str(e)}",
-                exc_info=True,
-            )
-            # Use raw designer_data if available
-            if instance.designer_data:
-                ret["designer_data"] = instance.designer_data
-        return ret
+    def get_designer_data(self, instance):
+        """Read from new GamedayDesignerState model."""
+        if hasattr(instance, 'designer_state'):
+            return instance.designer_state.state_data
+        return None
 
 
 class GamedayListSerializer(ModelSerializer):

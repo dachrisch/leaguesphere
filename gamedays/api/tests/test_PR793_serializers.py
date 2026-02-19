@@ -1,5 +1,6 @@
 import pytest
 from gamedays.api.serializers import GamedayListSerializer, GamedaySerializer
+from gamedays.models import GamedayDesignerState
 from gamedays.tests.setup_factories.db_setup import DBSetup
 
 
@@ -15,21 +16,23 @@ class TestGamedaySerializers:
         assert serializer.data["designer_data"] == {"test": "data"}
 
     def test_gameday_serializer_to_representation(self):
+        """Test GamedaySerializer reads from GamedayDesignerState model."""
         gameday = DBSetup().create_empty_gameday()
-        gameday.designer_data = {"nodes": [], "edges": []}
-        gameday.save()
+
+        # Create designer state in new model
+        GamedayDesignerState.objects.create(
+            gameday=gameday,
+            state_data={"nodes": [], "edges": []}
+        )
 
         serializer = GamedaySerializer(instance=gameday)
-        # Should call to_representation and resolve data
         assert "designer_data" in serializer.data
         assert "nodes" in serializer.data["designer_data"]
 
     def test_gameday_serializer_to_representation_fallback(self):
+        """Test GamedaySerializer returns None when no designer state exists."""
         gameday = DBSetup().create_empty_gameday()
-        gameday.designer_data = {"test": "raw"}
-        gameday.save()
 
-        # We don't easily mock GamedayService.create failure here,
-        # but we can verify it doesn't crash.
         serializer = GamedaySerializer(instance=gameday)
         assert "designer_data" in serializer.data
+        assert serializer.data["designer_data"] is None
