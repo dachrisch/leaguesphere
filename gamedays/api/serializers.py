@@ -12,6 +12,7 @@ from gamedays.models import (
     Season,
     League,
     GamedayDesignerState,
+    Gameresult,
 )
 
 logger = logging.getLogger(__name__)
@@ -125,6 +126,9 @@ class GameOfficialSerializer(ModelSerializer):
 
 
 class GameinfoSerializer(ModelSerializer):
+    halftime_score = SerializerMethodField()
+    final_score = SerializerMethodField()
+
     class Meta:
         model = Gameinfo
         fields = [
@@ -134,12 +138,31 @@ class GameinfoSerializer(ModelSerializer):
             "gameFinished",
             "halftime_score",
             "final_score",
-            "is_locked",
         ]
         extra_kwargs = {
             "gameStarted": {"format": "%H:%M"},
             "gameHalftime": {"format": "%H:%M"},
             "gameFinished": {"format": "%H:%M"},
+        }
+
+    def _get_scores(self, obj):
+        results = Gameresult.objects.filter(gameinfo=obj)
+        scores = {"home_fh": 0, "home_sh": 0, "away_fh": 0, "away_sh": 0}
+        for r in results:
+            prefix = "home" if r.isHome else "away"
+            scores[f"{prefix}_fh"] = r.fh or 0
+            scores[f"{prefix}_sh"] = r.sh or 0
+        return scores
+
+    def get_halftime_score(self, obj):
+        scores = self._get_scores(obj)
+        return {"home": scores["home_fh"], "away": scores["away_fh"]}
+
+    def get_final_score(self, obj):
+        scores = self._get_scores(obj)
+        return {
+            "home": scores["home_fh"] + scores["home_sh"],
+            "away": scores["away_fh"] + scores["away_sh"],
         }
 
 

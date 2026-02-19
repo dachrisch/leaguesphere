@@ -40,9 +40,7 @@ class GameResultsUpdateSerializer(serializers.Serializer):
             except Gameresult.DoesNotExist:
                 pass
 
-        # Sync back to Gameinfo JSON fields for the designer
-        instance.halftime_score = {"home": home_fh, "away": away_fh}
-        instance.final_score = {"home": home_fh + home_sh, "away": away_fh + away_sh}
+        # Update status
         instance.status = Gameinfo.STATUS_COMPLETED
         instance.save()
 
@@ -53,6 +51,8 @@ class GameInfoSerializer(serializers.ModelSerializer):
     """Serializer for displaying game info with results"""
 
     results = serializers.SerializerMethodField()
+    halftime_score = serializers.SerializerMethodField()
+    final_score = serializers.SerializerMethodField()
 
     class Meta:
         model = Gameinfo
@@ -65,16 +65,39 @@ class GameInfoSerializer(serializers.ModelSerializer):
             "stage",
             "standing",
             "status",
-            "is_locked",
             "results",
+            "halftime_score",
+            "final_score",
         ]
         read_only_fields = [
             "id",
             "gameday",
             "results",
+            "halftime_score",
+            "final_score",
         ]
 
     def get_results(self, obj):
         """Get all results for this game"""
         results = Gameresult.objects.filter(gameinfo=obj)
         return GameResultSerializer(results, many=True).data
+
+    def _get_scores(self, obj):
+        results = Gameresult.objects.filter(gameinfo=obj)
+        scores = {"home_fh": 0, "home_sh": 0, "away_fh": 0, "away_sh": 0}
+        for r in results:
+            prefix = "home" if r.isHome else "away"
+            scores[f"{prefix}_fh"] = r.fh or 0
+            scores[f"{prefix}_sh"] = r.sh or 0
+        return scores
+
+    def get_halftime_score(self, obj):
+        scores = self._get_scores(obj)
+        return {"home": scores["home_fh"], "away": scores["away_fh"]}
+
+    def get_final_score(self, obj):
+        scores = self._get_scores(obj)
+        return {
+            "home": scores["home_fh"] + scores["home_sh"],
+            "away": scores["away_fh"] + scores["away_sh"],
+        }

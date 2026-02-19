@@ -212,11 +212,6 @@ class Gameinfo(models.Model):
         max_length=100, blank=True, null=True, default=None
     )
 
-    # Result tracking
-    halftime_score = models.JSONField(null=True, blank=True)
-    final_score = models.JSONField(null=True, blank=True)
-    is_locked = models.BooleanField(default=False)
-
     objects: QuerySet["Gameinfo"] = models.Manager()
 
     class Meta:
