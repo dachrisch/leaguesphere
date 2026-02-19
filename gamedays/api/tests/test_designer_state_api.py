@@ -5,6 +5,7 @@ Tests the reading of designer_data from the new GamedayDesignerState model
 through the GamedaySerializer API.
 """
 
+from django.contrib.auth.models import User
 from django_webtest import WebTest
 from http import HTTPStatus
 
@@ -53,3 +54,75 @@ class GamedayDesignerStateAPITests(WebTest):
         # Assert
         assert response.status_code == HTTPStatus.OK
         assert response.json["designer_data"] is None
+
+    def test_update_designer_data_creates_new_model(self):
+        """Test PATCH creates GamedayDesignerState when it doesn't exist."""
+        # Arrange
+        gameday = GamedayFactory.create()
+        user = User.objects.first()  # Get the user created by the factory
+        state_data = {
+            "nodes": [{"id": "3", "type": "field"}],
+            "edges": [],
+            "globalTeams": [{"id": "t2", "name": "Team B"}],
+        }
+
+        # Act
+        url = f"/api/gamedays/{gameday.pk}/"
+        response = self.app.patch_json(
+            url, {"designer_data": state_data}, headers=self.db_setup.get_token_header()
+        )
+
+        # Assert
+        assert response.status_code == HTTPStatus.OK
+
+        # Verify new model was created
+        gameday.refresh_from_db()
+        assert hasattr(gameday, "designer_state")
+        assert gameday.designer_state.state_data == state_data
+        assert gameday.designer_state.last_modified_by == user
+
+    def test_update_designer_data_updates_existing_model(self):
+        """Test PATCH updates existing GamedayDesignerState."""
+        # Arrange
+        gameday = GamedayFactory.create()
+        user = User.objects.first()  # Get the user created by the factory
+        initial_data = {"nodes": [{"id": "4"}], "edges": [], "globalTeams": []}
+        updated_data = {"nodes": [{"id": "5"}], "edges": [], "globalTeams": []}
+
+        # Create initial state
+        GamedayDesignerState.objects.create(gameday=gameday, state_data=initial_data)
+
+        # Act
+        url = f"/api/gamedays/{gameday.pk}/"
+        response = self.app.patch_json(
+            url,
+            {"designer_data": updated_data},
+            headers=self.db_setup.get_token_header(),
+        )
+
+        # Assert
+        assert response.status_code == HTTPStatus.OK
+
+        # Verify model was updated
+        gameday.refresh_from_db()
+        gameday.designer_state.refresh_from_db()
+        assert gameday.designer_state.state_data == updated_data
+        assert gameday.designer_state.last_modified_by == user
+
+    def test_update_designer_data_with_none_does_nothing(self):
+        """Test PATCH without designer_data doesn't create model."""
+        # Arrange
+        gameday = GamedayFactory.create()
+
+        # Act
+        url = f"/api/gamedays/{gameday.pk}/"
+        response = self.app.patch_json(
+            url, {"name": "Updated Name"}, headers=self.db_setup.get_token_header()
+        )
+
+        # Assert
+        assert response.status_code == HTTPStatus.OK
+
+        # Verify no model was created
+        gameday.refresh_from_db()
+        assert not hasattr(gameday, "designer_state")

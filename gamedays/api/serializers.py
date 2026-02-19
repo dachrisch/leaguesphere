@@ -3,7 +3,15 @@ import logging
 from rest_framework.fields import SerializerMethodField, IntegerField, JSONField
 from rest_framework.serializers import ModelSerializer, Serializer
 
-from gamedays.models import Gameday, Gameinfo, GameOfficial, GameSetup, Season, League
+from gamedays.models import (
+    Gameday,
+    Gameinfo,
+    GameOfficial,
+    GameSetup,
+    Season,
+    League,
+    GamedayDesignerState,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +42,29 @@ class GamedaySerializer(ModelSerializer):
         if hasattr(instance, "designer_state"):
             return instance.designer_state.state_data
         return None
+
+    def update(self, instance, validated_data):
+        """Update gameday and create/update designer state."""
+        # Check if designer_data is in the request (use initial_data, not validated_data)
+        designer_data = self.initial_data.get("designer_data")
+
+        if designer_data is not None:
+            # Create or update GamedayDesignerState
+            if hasattr(instance, "designer_state"):
+                # Update existing
+                state = instance.designer_state
+                state.state_data = designer_data
+                state.last_modified_by = self.context["request"].user
+                state.save()
+            else:
+                # Create new
+                GamedayDesignerState.objects.create(
+                    gameday=instance,
+                    state_data=designer_data,
+                    last_modified_by=self.context["request"].user,
+                )
+
+        return super().update(instance, validated_data)
 
 
 class GamedayListSerializer(ModelSerializer):
