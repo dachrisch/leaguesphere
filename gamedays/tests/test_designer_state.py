@@ -1,5 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
+from django.db import IntegrityError
 from gamedays.models import Gameday, GamedayDesignerState, Season, League
 
 
@@ -71,3 +72,20 @@ class GamedayDesignerStateModelTests(TestCase):
         self.assertFalse(
             GamedayDesignerState.objects.filter(gameday_id=gameday_id).exists()
         )
+
+    def test_one_to_one_constraint_enforcement(self):
+        """Test that only one designer state can exist per gameday."""
+        state_data = {"nodes": [], "edges": [], "globalTeams": []}
+
+        # Create first designer state
+        GamedayDesignerState.objects.create(
+            gameday=self.gameday,
+            state_data=state_data
+        )
+
+        # Attempt to create second designer state for same gameday
+        with self.assertRaises(IntegrityError):
+            GamedayDesignerState.objects.create(
+                gameday=self.gameday,
+                state_data={"nodes": [{"id": "2"}]}
+            )
