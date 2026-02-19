@@ -77,7 +77,6 @@ class TestReferenceResolution(TestCase):
         Gameresult.objects.create(gameinfo=self.gi1, team=self.team_b, fh=0, sh=7)
 
         self.gi1.status = Gameinfo.STATUS_COMPLETED
-        self.gi1.final_score = {"home": 21, "away": 7}
         self.gi1.save()
 
         # Resolve references

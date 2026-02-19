@@ -222,8 +222,6 @@ class GamedayViewSet(viewsets.ModelViewSet):
                     "standing": node_data.get("standing", "Game"),
                     "officials": official_team,
                     "status": Gameinfo.STATUS_PUBLISHED,
-                    "halftime_score": node_data.get("halftime_score"),
-                    "final_score": node_data.get("final_score"),
                 }
 
                 gameinfo = None
@@ -511,8 +509,6 @@ class GamedayPublishAPIView(APIView):
                     "standing": node_data.get("standing", "Game"),
                     "officials": official_team,
                     "status": Gameinfo.STATUS_PUBLISHED,
-                    "halftime_score": node_data.get("halftime_score"),
-                    "final_score": node_data.get("final_score"),
                 }
 
                 gameinfo = None
@@ -580,7 +576,6 @@ class GameResultUpdateAPIView(APIView):
         final_score = request.data.get("final_score")
 
         if halftime_score is not None:
-            game.halftime_score = halftime_score
             if game.status == Gameinfo.STATUS_PUBLISHED or game.status == "Geplant":
                 game.status = Gameinfo.STATUS_IN_PROGRESS
             # Sync to Gameresult records
@@ -592,11 +587,9 @@ class GameResultUpdateAPIView(APIView):
             )
 
         if final_score is not None:
-            game.final_score = final_score
             game.status = Gameinfo.STATUS_COMPLETED
             # Sync to Gameresult records
             # Final score in JSON is total, in Gameresult it's sh (since fh is already set)
-            # Let's assume sh = final - fh
             home_fh = halftime_score.get("home", 0) if halftime_score else 0
             away_fh = halftime_score.get("away", 0) if halftime_score else 0
             Gameresult.objects.filter(gameinfo=game, isHome=True).update(
@@ -662,11 +655,6 @@ class GameResultsUpdateView(APIView):
         except Gameinfo.DoesNotExist:
             return Response(
                 {"error": "Game not found"}, status=status.HTTP_404_NOT_FOUND
-            )
-
-        if game.is_locked:
-            return Response(
-                {"error": "Game is locked"}, status=status.HTTP_403_FORBIDDEN
             )
 
         serializer = GameResultsUpdateSerializer(game, data=request.data)

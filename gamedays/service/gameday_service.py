@@ -268,25 +268,14 @@ class GamedayService:
                     if len(game_results) < 2:
                         return None
 
-                    home = game_results.filter(isHome=True).first()
-                    away = game_results.filter(isHome=False).first()
+                    home_res = results.filter(gameinfo=target_game, isHome=True).first()
+                    away_res = results.filter(gameinfo=target_game, isHome=False).first()
 
-                    if not home or not away:
-                        return None
+                    home_score = (home_res.fh or 0) + (home_res.sh or 0) if home_res else 0
+                    away_score = (away_res.fh or 0) + (away_res.sh or 0) if away_res else 0
 
-                    home_score = (
-                        target_game.final_score.get("home", 0)
-                        if target_game.final_score
-                        else 0
-                    )
-                    away_score = (
-                        target_game.final_score.get("away", 0)
-                        if target_game.final_score
-                        else 0
-                    )
-
-                    winner = home if home_score > away_score else away
-                    loser = away if home_score > away_score else home
+                    winner = home_res if home_score > away_score else away_res
+                    loser = away_res if home_score > away_score else home_res
 
                     if home_score == away_score:
                         return "Tie"

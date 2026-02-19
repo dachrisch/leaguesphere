@@ -95,7 +95,9 @@ class TestGamedayServiceCoverage:
 
         # Line 280: Tie case
         Gameresult.objects.create(gameinfo=game, team=team2, isHome=False)
-        game.final_score = {"home": 10, "away": 10}
+        Gameresult.objects.filter(gameinfo=game, isHome=True).update(fh=10, sh=0)
+        Gameresult.objects.filter(gameinfo=game, isHome=False).update(fh=10, sh=0)
+        game.status = Gameinfo.STATUS_COMPLETED
         game.save()
         resolved = service.get_resolved_designer_data()
         assert resolved["nodes"][0]["data"]["resolvedHomeTeam"] == "Tie"
@@ -110,7 +112,9 @@ class TestGamedayServiceCoverage:
             ]
         }
         gameday.save()
-        game.final_score = {"home": 20, "away": 10}
+        Gameresult.objects.filter(gameinfo=game, isHome=True).update(fh=20, sh=0)
+        Gameresult.objects.filter(gameinfo=game, isHome=False).update(fh=10, sh=0)
+        game.status = Gameinfo.STATUS_COMPLETED
         game.save()
         resolved = service.get_resolved_designer_data()
         # Team 1 (home) wins, Team 2 (away) loses
