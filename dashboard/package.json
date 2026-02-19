@@ -1,6 +1,6 @@
 {
   "name": "dashboard",
-  "version": "2.17.3-rc.85",
+  "version": "2.17.3-rc.88",
   "private": true,
   "type": "module",
   "dependencies": {
