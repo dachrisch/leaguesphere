@@ -3,7 +3,15 @@ import logging
 from rest_framework.fields import SerializerMethodField, IntegerField, JSONField
 from rest_framework.serializers import ModelSerializer, Serializer
 
-from gamedays.models import Gameday, Gameinfo, GameOfficial, GameSetup, Season, League
+from gamedays.models import (
+    Gameday,
+    Gameinfo,
+    GameOfficial,
+    GameSetup,
+    Season,
+    League,
+    Gameresult,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -116,8 +124,6 @@ class GameinfoSerializer(ModelSerializer):
         }
 
     def _get_scores(self, obj):
-        from gamedays.models import Gameresult
-
         results = Gameresult.objects.filter(gameinfo=obj)
         scores = {"home_fh": 0, "home_sh": 0, "away_fh": 0, "away_sh": 0}
         for r in results:
