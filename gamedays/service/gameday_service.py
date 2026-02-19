@@ -302,7 +302,9 @@ class GamedayService:
                         return "Tie"
 
                     resolved_team = winner if ref_type == "winner" else loser
-                    return resolved_team.team.name if resolved_team.team else None
+                    if not resolved_team or not resolved_team.team:
+                        return None
+                    return resolved_team.team.name
                 except Exception:
                     return None
 

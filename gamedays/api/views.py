@@ -600,13 +600,17 @@ class GameResultUpdateAPIView(APIView):
             game.status = Gameinfo.STATUS_COMPLETED
             # Sync to Gameresult records
             # Final score in JSON is total, in Gameresult it's sh (since fh is already set)
-            home_fh = halftime_score.get("home", 0) if halftime_score else 0
-            away_fh = halftime_score.get("away", 0) if halftime_score else 0
+            home_res = Gameresult.objects.filter(gameinfo=game, isHome=True).first()
+            away_res = Gameresult.objects.filter(gameinfo=game, isHome=False).first()
+
+            home_fh = halftime_score.get("home") if halftime_score else (home_res.fh if home_res else 0)
+            away_fh = halftime_score.get("away") if halftime_score else (away_res.fh if away_res else 0)
+
             Gameresult.objects.filter(gameinfo=game, isHome=True).update(
-                fh=home_fh, sh=final_score.get("home", 0) - home_fh
+                fh=home_fh, sh=final_score.get("home", 0) - (home_fh or 0)
             )
             Gameresult.objects.filter(gameinfo=game, isHome=False).update(
-                fh=away_fh, sh=final_score.get("away", 0) - away_fh
+                fh=away_fh, sh=final_score.get("away", 0) - (away_fh or 0)
             )
 
         game.save()
