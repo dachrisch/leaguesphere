@@ -2,6 +2,7 @@
 - [x] Scorecard solve errors
 - Scorecard must update Gameinfo -> Signals.py rewrite to new format, check gameday.format if we can use it as backward brigde
 - 0024_gameday_published_at_gameday_status_and_more.py
+- [x] 0025_gameday_designer_data.py 
 - Export/Import json & toml - must be exported as template, not with actual teams so it can be used when generating. also move the import to tournament generation
 - Analyze usage of templates in main db
 - put most used templates into gamday_designer

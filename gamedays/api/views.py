@@ -64,7 +64,7 @@ class GamedayViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = (
             Gameday.objects.all()
-            .select_related("season", "league", "author")
+            .select_related("season", "league", "author", "designer_state")
             .order_by("-date")
         )
         search = self.request.query_params.get("search", "")
@@ -90,6 +90,11 @@ class GamedayViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Read from new model (allow empty if no designer state exists)
+        designer_data = {}
+        if hasattr(gameday, "designer_state"):
+            designer_data = gameday.designer_state.state_data or {}
+
         from django.utils import timezone
         from gamedays.models import Team
 
@@ -98,7 +103,6 @@ class GamedayViewSet(viewsets.ModelViewSet):
         gameday.save()
 
         # Sync designer data to Gameinfo and Gameresult models
-        designer_data = gameday.designer_data or {}
         nodes = designer_data.get("nodes", [])
         global_teams = designer_data.get("globalTeams", [])
 
@@ -293,8 +297,10 @@ class GamedayViewSet(viewsets.ModelViewSet):
                 if node.get("parentId") in id_mapping:
                     node["parentId"] = id_mapping[node["parentId"]]
 
-        gameday.designer_data = designer_data
-        gameday.save()
+        # Save updated designer_data back to the new model (if it exists)
+        if hasattr(gameday, "designer_state"):
+            gameday.designer_state.state_data = designer_data
+            gameday.designer_state.save()
 
         return Response(GamedaySerializer(gameday).data, status=status.HTTP_200_OK)
 
@@ -388,7 +394,9 @@ class GamedayPublishAPIView(APIView):
         gameday.save()
 
         # Sync designer data to Gameinfo and Gameresult models
-        designer_data = gameday.designer_data or {}
+        designer_data = {}
+        if hasattr(gameday, "designer_state"):
+            designer_data = gameday.designer_state.state_data or {}
         nodes = designer_data.get("nodes", [])
         global_teams = designer_data.get("globalTeams", [])
 
@@ -565,8 +573,10 @@ class GamedayPublishAPIView(APIView):
                         gameinfo=gameinfo, isHome=is_home, defaults=res_defaults
                     )
 
-        gameday.designer_data = designer_data
-        gameday.save()
+        # Save updated designer_data back to the new model
+        if hasattr(gameday, "designer_state"):
+            gameday.designer_state.state_data = designer_data
+            gameday.designer_state.save()
 
         return Response(GamedaySerializer(gameday).data, status=status.HTTP_200_OK)
 
