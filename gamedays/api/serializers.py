@@ -75,7 +75,7 @@ class GamedaySerializer(ModelSerializer):
 class GamedayListSerializer(ModelSerializer):
     season_display = SerializerMethodField()
     league_display = SerializerMethodField()
-    designer_data = JSONField(required=False)
+    designer_data = SerializerMethodField()
 
     class Meta:
         model = Gameday
@@ -102,6 +102,12 @@ class GamedayListSerializer(ModelSerializer):
 
     def get_league_display(self, obj):
         return obj.league.name if obj.league else ""
+
+    def get_designer_data(self, instance):
+        """Read from new GamedayDesignerState model."""
+        if hasattr(instance, "designer_state"):
+            return instance.designer_state.state_data
+        return None
 
 
 class GamedayInfoSerializer(Serializer):
