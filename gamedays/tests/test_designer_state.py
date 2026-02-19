@@ -1,0 +1,56 @@
+from django.test import TestCase
+from django.contrib.auth.models import User
+from gamedays.models import Gameday, GamedayDesignerState, Season, League
+
+
+class GamedayDesignerStateModelTests(TestCase):
+    def setUp(self):
+        # Create required foreign key objects
+        season = Season.objects.create(name="2026")
+        league = League.objects.create(name="Test League")
+
+        # Create default author user (ID 1 is required by Gameday default)
+        author = User.objects.create_user(username="author", id=1)
+
+        self.gameday = Gameday.objects.create(
+            name="Test Gameday",
+            date="2026-03-01",
+            season=season,
+            league=league,
+            start="10:00:00",
+            author=author
+        )
+        self.user = User.objects.create_user(username="testuser")
+
+    def test_create_designer_state(self):
+        """Test creating a designer state for a gameday."""
+        state_data = {
+            "nodes": [{"id": "1", "type": "game"}],
+            "edges": [],
+            "globalTeams": []
+        }
+
+        designer_state = GamedayDesignerState.objects.create(
+            gameday=self.gameday,
+            state_data=state_data,
+            last_modified_by=self.user
+        )
+
+        self.assertEqual(designer_state.gameday, self.gameday)
+        self.assertEqual(designer_state.state_data, state_data)
+        self.assertEqual(designer_state.last_modified_by, self.user)
+        self.assertIsNotNone(designer_state.created_at)
+        self.assertIsNotNone(designer_state.updated_at)
+
+    def test_one_to_one_relationship(self):
+        """Test that gameday has one-to-one relationship with designer state."""
+        state_data = {"nodes": [], "edges": [], "globalTeams": []}
+
+        GamedayDesignerState.objects.create(
+            gameday=self.gameday,
+            state_data=state_data
+        )
+
+        # Access via related_name
+        self.assertTrue(hasattr(self.gameday, 'designer_state'))
+        self.assertEqual(self.gameday.designer_state.state_data, state_data)
