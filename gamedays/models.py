@@ -159,28 +159,24 @@ class GamedayDesignerState(models.Model):
     gameday = models.OneToOneField(
         Gameday,
         on_delete=models.CASCADE,
-        related_name='designer_state',
-        primary_key=True
+        related_name="designer_state",
+        primary_key=True,
     )
 
     state_data = models.JSONField(
-        default=dict,
-        help_text="React Flow designer state (nodes, edges, teams)"
+        default=dict, help_text="React Flow designer state (nodes, edges, teams)"
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     last_modified_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
+        User, on_delete=models.SET_NULL, null=True, blank=True
     )
 
     objects: QuerySet["GamedayDesignerState"] = models.Manager()
 
     class Meta:
-        db_table = 'gamedays_designer_state'
+        db_table = "gamedays_designer_state"
 
     def __str__(self):
         return f"Designer state for {self.gameday}"
