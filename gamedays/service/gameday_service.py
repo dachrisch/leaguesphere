@@ -2,7 +2,7 @@ import pandas as pd
 from django.db.models.fields import return_None
 
 from gamedays.forms import SCHEDULE_CUSTOM_CHOICE_C, GamedayGaminfoFieldsAndGroupsForm
-from gamedays.models import Gameinfo, Gameday
+from gamedays.models import Gameinfo, Gameday, GamedayDesignerState
 from gamedays.service.gameday_settings import (
     ID_AWAY,
     SCHEDULED,
@@ -141,7 +141,17 @@ class EmptyGamedayService:
     def get_resolved_designer_data(gameday_pk):
         try:
             gameday = Gameday.objects.get(pk=gameday_pk)
-            return gameday.designer_data or {"nodes": [], "edges": []}
+
+            # Read from new model
+            try:
+                data = gameday.designer_state.state_data
+            except GamedayDesignerState.DoesNotExist:
+                return {"nodes": [], "edges": []}
+
+            if not data:
+                return {"nodes": [], "edges": []}
+
+            return data
         except Gameday.DoesNotExist:
             return {"nodes": [], "edges": []}
 
@@ -239,8 +249,19 @@ class GamedayService:
 
     def get_resolved_designer_data(self, gameday_pk=None):
         try:
-            gameday = Gameday.objects.get(pk=self.gameday_pk)
-            data = gameday.designer_data or {"nodes": [], "edges": []}
+            # Always reload from database to get fresh designer_state relation
+            gameday = Gameday.objects.get(
+                pk=gameday_pk if gameday_pk else self.gameday_pk
+            )
+
+            # Read from new model
+            try:
+                data = gameday.designer_state.state_data
+            except GamedayDesignerState.DoesNotExist:
+                return {"nodes": [], "edges": []}
+
+            if not data:
+                return {"nodes": [], "edges": []}
 
             # Cache results for this gameday to avoid repeated queries
             from gamedays.models import Gameresult
