@@ -1,6 +1,6 @@
 import pandas as pd
 import pytest
-from gamedays.models import Gameday, Gameinfo, Gameresult, Team
+from gamedays.models import Gameday, Gameinfo, Gameresult, Team, GamedayDesignerState
 from gamedays.tests.setup_factories.factories import GamedayFactory
 from gamedays.service.gameday_service import (
     EmptyOffenseStatisticTable,
@@ -77,8 +77,7 @@ class TestGamedayServiceCoverage:
                 }
             ]
         }
-        gameday.designer_data = data
-        gameday.save()
+        GamedayDesignerState.objects.create(gameday=gameday, state_data=data)
         resolved = service.get_resolved_designer_data()
         assert resolved["nodes"][0]["data"]["resolvedHomeTeam"] is None
 
@@ -103,7 +102,7 @@ class TestGamedayServiceCoverage:
         assert resolved["nodes"][0]["data"]["resolvedHomeTeam"] == "Tie"
 
         # Line 294: away_ref logic
-        gameday.designer_data = {
+        gameday.designer_state.state_data = {
             "nodes": [
                 {
                     "type": "game",
@@ -111,7 +110,7 @@ class TestGamedayServiceCoverage:
                 }
             ]
         }
-        gameday.save()
+        gameday.designer_state.save()
         Gameresult.objects.filter(gameinfo=game, isHome=True).update(fh=20, sh=0)
         Gameresult.objects.filter(gameinfo=game, isHome=False).update(fh=10, sh=0)
         game.status = Gameinfo.STATUS_COMPLETED

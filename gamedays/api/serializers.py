@@ -1,5 +1,6 @@
 import logging
 
+from django.db import transaction
 from rest_framework.fields import SerializerMethodField, IntegerField, JSONField
 from rest_framework.serializers import ModelSerializer, Serializer
 
@@ -10,6 +11,7 @@ from gamedays.models import (
     GameSetup,
     Season,
     League,
+    GamedayDesignerState,
     Gameresult,
 )
 
@@ -29,7 +31,7 @@ class LeagueSerializer(ModelSerializer):
 
 
 class GamedaySerializer(ModelSerializer):
-    designer_data = JSONField(required=False)
+    designer_data = SerializerMethodField()
 
     class Meta:
         model = Gameday
@@ -37,30 +39,44 @@ class GamedaySerializer(ModelSerializer):
         read_only_fields = ["author"]
         extra_kwargs = {"start": {"format": "%H:%M"}}
 
-    def to_representation(self, instance):
-        ret = super().to_representation(instance)
-        try:
-            from gamedays.service.gameday_service import GamedayService
+    def get_designer_data(self, instance):
+        """Read from new GamedayDesignerState model."""
+        if hasattr(instance, "designer_state"):
+            return instance.designer_state.state_data
+        return None
 
-            ret["designer_data"] = GamedayService.create(
-                instance.pk
-            ).get_resolved_designer_data(instance.pk)
-        except Exception as e:
-            # Fallback to raw designer_data if resolution fails
-            logger.warning(
-                f"Failed to resolve designer data for gameday {instance.pk}: {str(e)}",
-                exc_info=True,
-            )
-            # Use raw designer_data if available
-            if instance.designer_data:
-                ret["designer_data"] = instance.designer_data
-        return ret
+    def update(self, instance, validated_data):
+        """Update gameday and create/update designer state."""
+        with transaction.atomic():
+            designer_data = self.initial_data.get("designer_data")
+
+            if designer_data is not None:
+                # Get user from request context (defensive)
+                request = self.context.get("request")
+                user = request.user if request else None
+
+                # Create or update GamedayDesignerState
+                if hasattr(instance, "designer_state"):
+                    # Update existing
+                    state = instance.designer_state
+                    state.state_data = designer_data
+                    state.last_modified_by = user
+                    state.save()
+                else:
+                    # Create new
+                    GamedayDesignerState.objects.create(
+                        gameday=instance,
+                        state_data=designer_data,
+                        last_modified_by=user,
+                    )
+
+            return super().update(instance, validated_data)
 
 
 class GamedayListSerializer(ModelSerializer):
     season_display = SerializerMethodField()
     league_display = SerializerMethodField()
-    designer_data = JSONField(required=False)
+    designer_data = SerializerMethodField()
 
     class Meta:
         model = Gameday
@@ -87,6 +103,12 @@ class GamedayListSerializer(ModelSerializer):
 
     def get_league_display(self, obj):
         return obj.league.name if obj.league else ""
+
+    def get_designer_data(self, instance):
+        """Read from new GamedayDesignerState model."""
+        if hasattr(instance, "designer_state"):
+            return instance.designer_state.state_data
+        return None
 
 
 class GamedayInfoSerializer(Serializer):

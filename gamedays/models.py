@@ -144,7 +144,6 @@ class Gameday(models.Model):
         max_length=20, choices=STATUS_CHOICES, default=STATUS_DRAFT
     )
     published_at = models.DateTimeField(null=True, blank=True)
-    designer_data = models.JSONField(null=True, blank=True)
 
     objects: QuerySet["Gameday"] = models.Manager()
 
@@ -156,6 +155,35 @@ class Gameday(models.Model):
 
     def __str__(self):
         return f"{self.pk}__{self.date} {self.name}"
+
+
+class GamedayDesignerState(models.Model):
+    """Visual designer state for draft gamedays."""
+
+    gameday = models.OneToOneField(
+        Gameday,
+        on_delete=models.CASCADE,
+        related_name="designer_state",
+        primary_key=True,
+    )
+
+    state_data = models.JSONField(
+        default=dict, help_text="React Flow designer state (nodes, edges, teams)"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_modified_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True
+    )
+
+    objects: QuerySet["GamedayDesignerState"] = models.Manager()
+
+    class Meta:
+        db_table = "gamedays_designer_state"
+
+    def __str__(self):
+        return f"Designer state for {self.gameday}"
 
 
 class Gameinfo(models.Model):
