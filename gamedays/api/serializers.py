@@ -31,7 +31,7 @@ class GamedaySerializer(ModelSerializer):
 
     def get_designer_data(self, instance):
         """Read from new GamedayDesignerState model."""
-        if hasattr(instance, 'designer_state'):
+        if hasattr(instance, "designer_state"):
             return instance.designer_state.state_data
         return None
 

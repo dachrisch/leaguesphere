@@ -21,8 +21,7 @@ class TestGamedaySerializers:
 
         # Create designer state in new model
         GamedayDesignerState.objects.create(
-            gameday=gameday,
-            state_data={"nodes": [], "edges": []}
+            gameday=gameday, state_data={"nodes": [], "edges": []}
         )
 
         serializer = GamedaySerializer(instance=gameday)

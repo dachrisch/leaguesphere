@@ -64,7 +64,7 @@ class GamedayViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = (
             Gameday.objects.all()
-            .select_related("season", "league", "author")
+            .select_related("season", "league", "author", "designer_state")
             .order_by("-date")
         )
         search = self.request.query_params.get("search", "")

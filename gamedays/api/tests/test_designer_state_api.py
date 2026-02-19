@@ -28,21 +28,18 @@ class GamedayDesignerStateAPITests(WebTest):
         state_data = {
             "nodes": [{"id": "1", "type": "game"}],
             "edges": [{"id": "e1", "source": "1", "target": "2"}],
-            "globalTeams": [{"id": "t1", "name": "Team A"}]
+            "globalTeams": [{"id": "t1", "name": "Team A"}],
         }
 
-        GamedayDesignerState.objects.create(
-            gameday=gameday,
-            state_data=state_data
-        )
+        GamedayDesignerState.objects.create(gameday=gameday, state_data=state_data)
 
         # Act
-        url = f'/api/gamedays/{gameday.pk}/'
+        url = f"/api/gamedays/{gameday.pk}/"
         response = self.app.get(url, headers=self.db_setup.get_token_header())
 
         # Assert
         assert response.status_code == HTTPStatus.OK
-        assert response.json['designer_data'] == state_data
+        assert response.json["designer_data"] == state_data
 
     def test_read_designer_data_when_none_exists(self):
         """Test reading designer_data returns None when no state exists."""
@@ -50,9 +47,9 @@ class GamedayDesignerStateAPITests(WebTest):
         gameday = GamedayFactory.create()
 
         # Act
-        url = f'/api/gamedays/{gameday.pk}/'
+        url = f"/api/gamedays/{gameday.pk}/"
         response = self.app.get(url, headers=self.db_setup.get_token_header())
 
         # Assert
         assert response.status_code == HTTPStatus.OK
-        assert response.json['designer_data'] is None
+        assert response.json["designer_data"] is None
