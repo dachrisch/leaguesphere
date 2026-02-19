@@ -274,6 +274,222 @@ class GamedayModelWrapper:
             logger.warning(f"Error resolving team reference {ref}: {str(e)}")
             return None
 
+    def _resolve_schedule_placeholders(self, schedule_df):
+        """
+        Resolve null HOME/AWAY team names in schedule DataFrame.
+        Uses two-tier strategy:
+        1. Designer data resolution (dynamic, based on game results) - NEW system
+        2. Template slot resolution (static references) - OLD system
+        3. "TBD" fallback
+        """
+        if schedule_df.empty:
+            return schedule_df
+
+        # Check if we have any null team names to resolve
+        has_null_home = schedule_df[HOME].isna().any()
+        has_null_away = schedule_df[AWAY].isna().any()
+
+        if not has_null_home and not has_null_away:
+            return schedule_df
+
+        # Try designer-based resolution first (for gamedays with designer_data)
+        gameday_id = self._gameinfo['gameday'].iloc[0]
+        from gamedays.models import Gameday
+        gameday = Gameday.objects.filter(pk=gameday_id).first()
+
+        designer_resolved = {}  # Map: gameinfo_id -> {'home': name, 'away': name}
+
+        if gameday and gameday.designer_data:
+            designer_resolved = self._resolve_from_designer_data(gameday)
+
+        # Apply resolutions to DataFrame
+        for idx, row in schedule_df.iterrows():
+            gameinfo_id = row['id']
+
+            # Resolve HOME team
+            if pd.isna(row[HOME]):
+                if gameinfo_id in designer_resolved and designer_resolved[gameinfo_id].get('home'):
+                    schedule_df.at[idx, HOME] = designer_resolved[gameinfo_id]['home']
+                else:
+                    # Fallback to template slot resolution
+                    from gamedays.service.schedule_resolution_service import GamedayScheduleResolutionService
+                    placeholder = GamedayScheduleResolutionService.get_game_placeholder(gameinfo_id, is_home=True)
+                    schedule_df.at[idx, HOME] = placeholder
+
+            # Resolve AWAY team
+            if pd.isna(row[AWAY]):
+                if gameinfo_id in designer_resolved and designer_resolved[gameinfo_id].get('away'):
+                    schedule_df.at[idx, AWAY] = designer_resolved[gameinfo_id]['away']
+                else:
+                    # Fallback to template slot resolution
+                    from gamedays.service.schedule_resolution_service import GamedayScheduleResolutionService
+                    placeholder = GamedayScheduleResolutionService.get_game_placeholder(gameinfo_id, is_home=False)
+                    schedule_df.at[idx, AWAY] = placeholder
+
+        return schedule_df
+
+    def _resolve_from_designer_data(self, gameday):
+        """
+        Resolve team names from designer_data dynamic references.
+        Extracts from gameday.designer_data and resolves winner/loser references.
+
+        For completed games: Returns actual team name (e.g., "Team 1")
+        For incomplete games: Returns formatted reference (e.g., "Winner of A Game 1")
+
+        Returns: dict mapping gameinfo_id -> {'home': team_name, 'away': team_name}
+        """
+        resolved = {}
+
+        try:
+            data = gameday.designer_data or {}
+            nodes = data.get("nodes", [])
+
+            # Build map of standing -> gameinfo_id for quick lookup
+            standing_to_gameinfo = {}
+            for _, gi_row in self._gameinfo.iterrows():
+                standing_to_gameinfo[gi_row['standing']] = gi_row['id']
+
+            # Resolve each game node with dynamic references
+            for node in nodes:
+                if node.get("type") != "game":
+                    continue
+
+                node_data = node.get("data", {})
+                standing = node_data.get("standing")
+
+                if not standing or standing not in standing_to_gameinfo:
+                    continue
+
+                gameinfo_id = standing_to_gameinfo[standing]
+                resolved[gameinfo_id] = {}
+
+                # Resolve home team (static or dynamic)
+                home_team_id = node_data.get("homeTeamId")
+                home_ref = node_data.get("homeTeamDynamic")
+
+                if home_team_id:
+                    # Static team assignment (already resolved)
+                    pass
+                elif home_ref:
+                    # Dynamic reference (winner/loser of another game)
+                    home_team = self._resolve_team_reference(home_ref, gameday)
+                    if home_team:
+                        # Game is completed - use actual team name
+                        resolved[gameinfo_id]['home'] = home_team
+                    else:
+                        # Game not completed - format the reference for display
+                        resolved[gameinfo_id]['home'] = self._format_team_reference(home_ref)
+
+                # Resolve away team (static or dynamic)
+                away_team_id = node_data.get("awayTeamId")
+                away_ref = node_data.get("awayTeamDynamic")
+
+                if away_team_id:
+                    # Static team assignment (already resolved)
+                    pass
+                elif away_ref:
+                    # Dynamic reference (winner/loser of another game)
+                    away_team = self._resolve_team_reference(away_ref, gameday)
+                    if away_team:
+                        # Game is completed - use actual team name
+                        resolved[gameinfo_id]['away'] = away_team
+                    else:
+                        # Game not completed - format the reference for display
+                        resolved[gameinfo_id]['away'] = self._format_team_reference(away_ref)
+
+            return resolved
+        except Exception as e:
+            # Log error but don't crash - graceful degradation
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Error resolving designer data: {str(e)}")
+            return {}
+
+    def _format_team_reference(self, ref):
+        """
+        Format a dynamic team reference for display when the game is not yet completed.
+
+        Args:
+            ref: dict with 'matchName' and 'type' ('winner' or 'loser')
+
+        Returns: formatted string like "Winner of A Game 1" or "Loser of B Game 2"
+        """
+        if not ref or not isinstance(ref, dict):
+            return "TBD"
+
+        match_name = ref.get("matchName", "")
+        ref_type = ref.get("type", "")
+
+        if not match_name or not ref_type:
+            return "TBD"
+
+        if ref_type == "winner":
+            return f"Winner of {match_name}"
+        elif ref_type == "loser":
+            return f"Loser of {match_name}"
+        else:
+            return "TBD"
+
+    def _resolve_team_reference(self, ref, gameday):
+        """
+        Resolve a dynamic team reference (winner/loser) to actual team name.
+
+        Args:
+            ref: dict with 'matchName' and 'type' ('winner' or 'loser')
+            gameday: Gameday instance
+
+        Returns: team name string or None if unresolved
+        """
+        try:
+            if not ref or not isinstance(ref, dict):
+                return None
+
+            target_match = ref.get("matchName")  # e.g., "A Game 1"
+            ref_type = ref.get("type")  # 'winner' or 'loser'
+
+            if not target_match or not ref_type:
+                return None
+
+            # Find the target game by standing
+            target_game = Gameinfo.objects.filter(
+                gameday=gameday,
+                standing=target_match
+            ).first()
+
+            # Can only resolve if game is completed
+            if not target_game or target_game.status != Gameinfo.STATUS_COMPLETED:
+                return None
+
+            # Get both teams' results
+            home_res = Gameresult.objects.filter(gameinfo=target_game, isHome=True).first()
+            away_res = Gameresult.objects.filter(gameinfo=target_game, isHome=False).first()
+
+            if not home_res or not away_res:
+                return None
+
+            # Calculate scores
+            home_score = (home_res.fh or 0) + (home_res.sh or 0)
+            away_score = (away_res.fh or 0) + (away_res.sh or 0)
+
+            # Handle tie
+            if home_score == away_score:
+                return "Tie"
+
+            # Determine winner/loser
+            winner = home_res if home_score > away_score else away_res
+            loser = away_res if home_score > away_score else home_res
+
+            resolved_team = winner if ref_type == "winner" else loser
+
+            # Return team name (or None if team is also a placeholder)
+            if not resolved_team or not resolved_team.team:
+                return None
+
+            return resolved_team.team.name
+        except Exception as e:
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Error resolving team reference {ref}: {str(e)}")
+            return None
+
     def has_finalround(self):
         return QUALIIFY_ROUND in self._gameinfo[STAGE].values
 
