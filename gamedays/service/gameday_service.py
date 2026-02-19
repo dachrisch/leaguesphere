@@ -263,9 +263,6 @@ class GamedayService:
             if not data:
                 return {"nodes": [], "edges": []}
 
-            # Cache results for this gameday to avoid repeated queries
-            from gamedays.models import Gameresult
-
             results = Gameresult.objects.filter(gameinfo__gameday=gameday)
             games = Gameinfo.objects.filter(gameday=gameday)
 
