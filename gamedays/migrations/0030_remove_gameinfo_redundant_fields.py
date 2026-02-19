@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("gamedays", "0027_alter_gameresult_team"),
+        ("gamedays", "0029_remove_designer_data"),
     ]
 
     operations = [
