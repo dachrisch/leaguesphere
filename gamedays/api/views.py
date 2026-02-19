@@ -197,13 +197,13 @@ class GamedayViewSet(viewsets.ModelViewSet):
                 # 1. Try legacy fieldId first
                 target_field_id = node_data.get("fieldId")
 
-                # 2. Try hierarchy if legacy fieldId is missing
-                if not target_field_id:
-                    parent_id = node.get("parentId")
-                    if parent_id in stage_map:
-                        stage_node = stage_map[parent_id]
-                        stage_data = stage_node.get("data", {})
-                        stage_name = stage_data.get("name") or stage_name
+                # 2. Try hierarchy for stage name and field resolution
+                parent_id = node.get("parentId")
+                if parent_id in stage_map:
+                    stage_node = stage_map[parent_id]
+                    stage_data = stage_node.get("data", {})
+                    stage_name = stage_data.get("name") or stage_name
+                    if not target_field_id:
                         target_field_id = stage_node.get("parentId")
 
                 # 3. Resolve field number from field_id
@@ -488,13 +488,13 @@ class GamedayPublishAPIView(APIView):
                 # 1. Try legacy fieldId first
                 target_field_id = node_data.get("fieldId")
 
-                # 2. Try hierarchy if legacy fieldId is missing
-                if not target_field_id:
-                    parent_id = node.get("parentId")
-                    if parent_id in stage_map:
-                        stage_node = stage_map[parent_id]
-                        stage_data = stage_node.get("data", {})
-                        stage_name = stage_data.get("name") or stage_name
+                # 2. Try hierarchy for stage name and field resolution
+                parent_id = node.get("parentId")
+                if parent_id in stage_map:
+                    stage_node = stage_map[parent_id]
+                    stage_data = stage_node.get("data", {})
+                    stage_name = stage_data.get("name") or stage_name
+                    if not target_field_id:
                         target_field_id = stage_node.get("parentId")
 
                 # 3. Resolve field number from field_id
