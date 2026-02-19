@@ -126,3 +126,46 @@ class GamedayDesignerStateAPITests(WebTest):
         # Verify no model was created
         gameday.refresh_from_db()
         assert not hasattr(gameday, "designer_state")
+
+    def test_publish_reads_from_new_model(self):
+        """Test publish action reads designer_data from new model."""
+        # Arrange
+        from gamedays.models import Gameday
+
+        gameday = GamedayFactory.create(status=Gameday.STATUS_DRAFT)
+
+        # Ensure old field is None/empty to prove we're reading from new model
+        gameday.designer_data = None
+        gameday.save()
+
+        state_data = {
+            "nodes": [{"id": "game1", "type": "game", "data": {"label": "Game 1"}}],
+            "edges": [],
+            "globalTeams": [],
+        }
+
+        GamedayDesignerState.objects.create(gameday=gameday, state_data=state_data)
+
+        # Act
+        url = f"/api/gamedays/{gameday.pk}/publish/"
+        response = self.app.post(url, headers=self.db_setup.get_token_header())
+
+        # Assert - Should succeed (not 400 error about missing designer state)
+        assert response.status_code in [HTTPStatus.OK, HTTPStatus.CREATED]
+
+    def test_publish_fails_when_no_designer_data(self):
+        """Test publish action fails when no designer_data exists."""
+        # Arrange
+        from gamedays.models import Gameday
+
+        gameday = GamedayFactory.create(status=Gameday.STATUS_DRAFT)
+
+        # Act
+        url = f"/api/gamedays/{gameday.pk}/publish/"
+        response = self.app.post(
+            url, headers=self.db_setup.get_token_header(), expect_errors=True
+        )
+
+        # Assert
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert "No designer state found" in response.json["detail"]

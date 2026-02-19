@@ -90,6 +90,21 @@ class GamedayViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Read from new model
+        if not hasattr(gameday, "designer_state"):
+            return Response(
+                {"detail": "No designer state found for this gameday."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        designer_data = gameday.designer_state.state_data
+
+        if not designer_data:
+            return Response(
+                {"detail": "No designer state found for this gameday."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         from django.utils import timezone
         from gamedays.models import Team
 
@@ -98,7 +113,6 @@ class GamedayViewSet(viewsets.ModelViewSet):
         gameday.save()
 
         # Sync designer data to Gameinfo and Gameresult models
-        designer_data = gameday.designer_data or {}
         nodes = designer_data.get("nodes", [])
         global_teams = designer_data.get("globalTeams", [])
 
@@ -293,8 +307,9 @@ class GamedayViewSet(viewsets.ModelViewSet):
                 if node.get("parentId") in id_mapping:
                     node["parentId"] = id_mapping[node["parentId"]]
 
-        gameday.designer_data = designer_data
-        gameday.save()
+        # Save updated designer_data back to the new model
+        gameday.designer_state.state_data = designer_data
+        gameday.designer_state.save()
 
         return Response(GamedaySerializer(gameday).data, status=status.HTTP_200_OK)
 
