@@ -8,8 +8,11 @@ from gamedays.tests.setup_factories.db_setup import DBSetup
 class TestGamedaySerializers:
     def test_list_serializer_includes_designer_data(self):
         gameday = DBSetup().create_empty_gameday()
-        gameday.designer_data = {"test": "data"}
-        gameday.save()
+
+        # Create designer state in new model
+        GamedayDesignerState.objects.create(
+            gameday=gameday, state_data={"test": "data"}
+        )
 
         serializer = GamedayListSerializer(instance=gameday)
         assert "designer_data" in serializer.data

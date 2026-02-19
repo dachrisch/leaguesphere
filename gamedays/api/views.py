@@ -403,7 +403,9 @@ class GamedayPublishAPIView(APIView):
         gameday.save()
 
         # Sync designer data to Gameinfo and Gameresult models
-        designer_data = gameday.designer_data or {}
+        designer_data = {}
+        if hasattr(gameday, "designer_state"):
+            designer_data = gameday.designer_state.state_data or {}
         nodes = designer_data.get("nodes", [])
         global_teams = designer_data.get("globalTeams", [])
 
@@ -580,8 +582,10 @@ class GamedayPublishAPIView(APIView):
                         gameinfo=gameinfo, isHome=is_home, defaults=res_defaults
                     )
 
-        gameday.designer_data = designer_data
-        gameday.save()
+        # Save updated designer_data back to the new model
+        if hasattr(gameday, "designer_state"):
+            gameday.designer_state.state_data = designer_data
+            gameday.designer_state.save()
 
         return Response(GamedaySerializer(gameday).data, status=status.HTTP_200_OK)
 
