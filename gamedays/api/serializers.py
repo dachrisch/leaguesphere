@@ -1,5 +1,6 @@
 import logging
 
+from django.db import transaction
 from rest_framework.fields import SerializerMethodField, IntegerField, JSONField
 from rest_framework.serializers import ModelSerializer, Serializer
 
@@ -45,26 +46,30 @@ class GamedaySerializer(ModelSerializer):
 
     def update(self, instance, validated_data):
         """Update gameday and create/update designer state."""
-        # Check if designer_data is in the request (use initial_data, not validated_data)
-        designer_data = self.initial_data.get("designer_data")
+        with transaction.atomic():
+            designer_data = self.initial_data.get("designer_data")
 
-        if designer_data is not None:
-            # Create or update GamedayDesignerState
-            if hasattr(instance, "designer_state"):
-                # Update existing
-                state = instance.designer_state
-                state.state_data = designer_data
-                state.last_modified_by = self.context["request"].user
-                state.save()
-            else:
-                # Create new
-                GamedayDesignerState.objects.create(
-                    gameday=instance,
-                    state_data=designer_data,
-                    last_modified_by=self.context["request"].user,
-                )
+            if designer_data is not None:
+                # Get user from request context (defensive)
+                request = self.context.get("request")
+                user = request.user if request else None
 
-        return super().update(instance, validated_data)
+                # Create or update GamedayDesignerState
+                if hasattr(instance, "designer_state"):
+                    # Update existing
+                    state = instance.designer_state
+                    state.state_data = designer_data
+                    state.last_modified_by = user
+                    state.save()
+                else:
+                    # Create new
+                    GamedayDesignerState.objects.create(
+                        gameday=instance,
+                        state_data=designer_data,
+                        last_modified_by=user,
+                    )
+
+            return super().update(instance, validated_data)
 
 
 class GamedayListSerializer(ModelSerializer):
