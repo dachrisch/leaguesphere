@@ -54,3 +54,20 @@ class GamedayDesignerStateModelTests(TestCase):
         # Access via related_name
         self.assertTrue(hasattr(self.gameday, 'designer_state'))
         self.assertEqual(self.gameday.designer_state.state_data, state_data)
+
+    def test_cascade_delete_when_gameday_deleted(self):
+        """Test that designer state is deleted when gameday is deleted."""
+        state_data = {"nodes": [], "edges": [], "globalTeams": []}
+
+        GamedayDesignerState.objects.create(
+            gameday=self.gameday,
+            state_data=state_data
+        )
+
+        gameday_id = self.gameday.pk
+        self.gameday.delete()
+
+        # Designer state should be deleted via CASCADE
+        self.assertFalse(
+            GamedayDesignerState.objects.filter(gameday_id=gameday_id).exists()
+        )
