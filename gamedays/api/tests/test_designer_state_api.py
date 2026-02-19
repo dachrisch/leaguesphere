@@ -153,8 +153,8 @@ class GamedayDesignerStateAPITests(WebTest):
         # Assert - Should succeed (not 400 error about missing designer state)
         assert response.status_code in [HTTPStatus.OK, HTTPStatus.CREATED]
 
-    def test_publish_fails_when_no_designer_data(self):
-        """Test publish action fails when no designer_data exists."""
+    def test_publish_succeeds_without_designer_data(self):
+        """Test publish action succeeds when no designer_data exists (empty gameday)."""
         # Arrange
         from gamedays.models import Gameday
 
@@ -162,10 +162,9 @@ class GamedayDesignerStateAPITests(WebTest):
 
         # Act
         url = f"/api/gamedays/{gameday.pk}/publish/"
-        response = self.app.post(
-            url, headers=self.db_setup.get_token_header(), expect_errors=True
-        )
+        response = self.app.post(url, headers=self.db_setup.get_token_header())
 
-        # Assert
-        assert response.status_code == HTTPStatus.BAD_REQUEST
-        assert "No designer state found" in response.json["detail"]
+        # Assert - Publishing without designer data is allowed (creates empty published gameday)
+        assert response.status_code == HTTPStatus.OK
+        gameday.refresh_from_db()
+        assert gameday.status == Gameday.STATUS_PUBLISHED
