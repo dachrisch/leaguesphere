@@ -43,7 +43,7 @@ export const GameResultsTable: React.FC<GameResultsTableProps> = ({
 
         if (edit && (edit.fh !== undefined || edit.sh !== undefined)) {
           // If one half is entered, both must be entered
-          const teamName = result.team?.name || (result as any).team_name || 'TBD';
+          const teamName = result.team?.name || result.team_name || 'TBD';
           if ((edit.fh ?? result.fh) === null || (edit.sh ?? result.sh) === null) {
             newErrors.push(`Game ${game.id}: Enter both halves for ${teamName}`);
           }
@@ -104,7 +104,7 @@ export const GameResultsTable: React.FC<GameResultsTableProps> = ({
                   <tr key={key}>
                     <td>{game.field}</td>
                     <td>{game.scheduled}</td>
-                    <td>{result.team?.name || (result as any).team_name || 'TBD'}</td>
+                    <td>{result.team?.name || result.team_name || 'TBD'}</td>
                     <td>
                       <Form.Control
                         type="number"

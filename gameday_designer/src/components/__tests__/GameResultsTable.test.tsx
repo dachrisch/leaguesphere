@@ -26,7 +26,7 @@ describe('GameResultsTable', () => {
       ...mockGames[0],
       results: [
         { id: 1, team: undefined, fh: null, sh: null, isHome: true },
-        { id: 2, team_name: 'Team B', fh: null, sh: null, isHome: false } as any
+        { id: 2, team_name: 'Team B', fh: null, sh: null, isHome: false }
       ]
     }];
     render(<GameResultsTable games={gamesWithMissingTeam} onSave={async () => {}} />);
