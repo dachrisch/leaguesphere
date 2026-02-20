@@ -20,4 +20,17 @@ describe('GameResultsTable', () => {
     expect(screen.getByText('Team A')).toBeInTheDocument();
     expect(screen.getByText('Team B')).toBeInTheDocument();
   });
+
+  it('renders "TBD" when team is missing', () => {
+    const gamesWithMissingTeam: GameResultsDisplay[] = [{
+      ...mockGames[0],
+      results: [
+        { id: 1, team: undefined, fh: null, sh: null, isHome: true },
+        { id: 2, team_name: 'Team B', fh: null, sh: null, isHome: false } as any
+      ]
+    }];
+    render(<GameResultsTable games={gamesWithMissingTeam} onSave={async () => {}} />);
+    expect(screen.getByText('TBD')).toBeInTheDocument();
+    expect(screen.getByText('Team B')).toBeInTheDocument();
+  });
 });
