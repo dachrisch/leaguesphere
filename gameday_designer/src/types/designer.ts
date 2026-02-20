@@ -373,7 +373,8 @@ export function createDefaultField(id: string, order: number): Field {
  */
 export interface GameResultInput {
   id: number;
-  team: { id: number; name: string };
+  team?: { id: number; name: string };
+  team_name?: string;
   fh: number | null;
   sh: number | null;
   isHome: boolean;
