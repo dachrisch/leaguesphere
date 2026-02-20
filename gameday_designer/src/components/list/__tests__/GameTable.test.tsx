@@ -108,9 +108,9 @@ describe('GameTable', () => {
 
   it('renders table headers', () => {
     renderTable();
-    expect(screen.getByText(/label.standing/i)).toBeInTheDocument();
-    expect(screen.getByText(/label.home/i)).toBeInTheDocument();
-    expect(screen.getByText(/label.away/i)).toBeInTheDocument();
+    expect(screen.getByText(/Standing/i)).toBeInTheDocument();
+    expect(screen.getByText(/Home/i)).toBeInTheDocument();
+    expect(screen.getByText(/Away/i)).toBeInTheDocument();
   });
 
   it('renders empty message when no games provided', () => {
@@ -189,7 +189,7 @@ describe('GameTable', () => {
     it('calls onSwapTeams when swap button is clicked', async () => {
       const user = userEvent.setup();
       renderTable();
-      const swapBtn = screen.getByTitle(/Swap Home\/Away/i);
+      const swapBtn = screen.getByTitle(/Swap home and away teams/i);
       await user.click(swapBtn);
       expect(mockOnSwapTeams).toHaveBeenCalledWith('game-2');
     });
@@ -306,7 +306,7 @@ describe('GameTable', () => {
         data: { ...game2.data, homeTeamDynamic: { type: 'winner', matchName: 'Quali 1' } }
       } as GameNode;
       renderTable({ games: [gameWithWinner], readOnly: true });
-      expect(screen.getByText(/label.tbd/i)).toBeInTheDocument();
+      expect(screen.getByText(/TBD/i)).toBeInTheDocument();
     });
   });
 
