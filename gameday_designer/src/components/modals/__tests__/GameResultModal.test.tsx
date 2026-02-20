@@ -6,7 +6,7 @@ import type { GameNode } from '../../../types/flowchart';
 // Mock translation hook
 vi.mock('../../../i18n/useTypedTranslation', () => ({
   useTypedTranslation: () => ({
-    t: (key: string, params?: Record<string, any>) => {
+    t: (key: string, params?: Record<string, string>) => {
       if (params && params.team) {
         // Handle team label interpolation
         if (key === 'ui:label.homeTeam') return `Home: ${params.team}`;
