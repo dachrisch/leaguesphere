@@ -20,15 +20,17 @@ from dashboard.api.serializers import (
     ProblemAlertsSerializer,
     UsersPerTeamSerializer,
     AdminStatsSerializer,
-    SpieleProLigaSerializer,
-    TeamsProLigaSerializer,
-    TeamsProLandesverbandSerializer,
-    SchiedsrichterProTeamSerializer,
+    GamesPerLeagueSerializer,
+    TeamsPerLeagueSerializer,
+    TeamsPerAssociationSerializer,
+    RefereesPerTeamSerializer,
+    LeagueHierarchySerializer,
     AdminDashboardSerializer,
 )
 
 
 class DashboardSummaryAPIView(APIView):
+
     """API view for overall dashboard statistics."""
 
     permission_classes = [permissions.IsAuthenticated]
@@ -230,16 +232,30 @@ class AdminStatsAPIView(APIView):
         """Get all admin statistics"""
         data = {
             "stats": DashboardService.get_admin_stats(),
-            "spiele_pro_liga": DashboardService.get_spiele_pro_liga(),
-            "teams_pro_liga": DashboardService.get_teams_pro_liga(),
-            "teams_pro_landesverband": DashboardService.get_teams_pro_landesverband(),
-            "schiedsrichter_pro_team": DashboardService.get_schiedsrichter_pro_team(),
+            "games_per_league": DashboardService.get_games_per_league(),
+            "teams_per_league": DashboardService.get_teams_per_league(),
+            "teams_per_association": DashboardService.get_teams_per_association(),
+            "referees_per_team": DashboardService.get_referees_per_team(),
+            "league_hierarchy": DashboardService.get_league_hierarchy_stats(),
         }
         serializer = AdminDashboardSerializer(data)
         return Response(serializer.data)
 
 
-class SpieleProLigaAPIView(APIView):
+class LeagueHierarchyAPIView(APIView):
+    """League hierarchy stats endpoint"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @method_decorator(cache_page(60))
+    def get(self, request):
+        """Get hierarchical league statistics"""
+        data = DashboardService.get_league_hierarchy_stats()
+        serializer = LeagueHierarchySerializer(data, many=True)
+        return Response(serializer.data)
+
+
+class GamesPerLeagueAPIView(APIView):
     """Games per league endpoint"""
 
     permission_classes = [permissions.IsAuthenticated]
@@ -247,12 +263,12 @@ class SpieleProLigaAPIView(APIView):
     @method_decorator(cache_page(60))
     def get(self, request):
         """Get game counts per league"""
-        data = DashboardService.get_spiele_pro_liga()
-        serializer = SpieleProLigaSerializer(data, many=True)
+        data = DashboardService.get_games_per_league()
+        serializer = GamesPerLeagueSerializer(data, many=True)
         return Response(serializer.data)
 
 
-class TeamsProLigaAPIView(APIView):
+class TeamsPerLeagueAPIView(APIView):
     """Teams per league endpoint"""
 
     permission_classes = [permissions.IsAuthenticated]
@@ -260,12 +276,12 @@ class TeamsProLigaAPIView(APIView):
     @method_decorator(cache_page(60))
     def get(self, request):
         """Get team counts per league"""
-        data = DashboardService.get_teams_pro_liga()
-        serializer = TeamsProLigaSerializer(data, many=True)
+        data = DashboardService.get_teams_per_league()
+        serializer = TeamsPerLeagueSerializer(data, many=True)
         return Response(serializer.data)
 
 
-class TeamsProLandesverbandAPIView(APIView):
+class TeamsPerAssociationAPIView(APIView):
     """Teams per state association endpoint"""
 
     permission_classes = [permissions.IsAuthenticated]
@@ -273,12 +289,12 @@ class TeamsProLandesverbandAPIView(APIView):
     @method_decorator(cache_page(60))
     def get(self, request):
         """Get team counts per state association"""
-        data = DashboardService.get_teams_pro_landesverband()
-        serializer = TeamsProLandesverbandSerializer(data, many=True)
+        data = DashboardService.get_teams_per_association()
+        serializer = TeamsPerAssociationSerializer(data, many=True)
         return Response(serializer.data)
 
 
-class SchiedsrichterProTeamAPIView(APIView):
+class RefereesPerTeamAPIView(APIView):
     """Referees per team endpoint"""
 
     permission_classes = [permissions.IsAuthenticated]
@@ -286,6 +302,6 @@ class SchiedsrichterProTeamAPIView(APIView):
     @method_decorator(cache_page(60))
     def get(self, request):
         """Get referee counts per team"""
-        data = DashboardService.get_schiedsrichter_pro_team()
-        serializer = SchiedsrichterProTeamSerializer(data, many=True)
+        data = DashboardService.get_referees_per_team()
+        serializer = RefereesPerTeamSerializer(data, many=True)
         return Response(serializer.data)

@@ -1,13 +1,13 @@
 import React from 'react'
 import { Card, Spinner, ListGroup } from 'react-bootstrap'
-import { SchiedsrichterProTeam } from '../types/dashboard'
+import { RefereesPerTeam } from '../types/dashboard'
 
 interface Props {
-  data: SchiedsrichterProTeam[]
+  data: RefereesPerTeam[]
   loading: boolean
 }
 
-const SchiedsrichterProTeamCard: React.FC<Props> = ({ data, loading }) => {
+const RefereesPerTeamCard: React.FC<Props> = ({ data, loading }) => {
   if (loading) {
     return <Spinner animation="border" role="status" />
   }
@@ -17,11 +17,11 @@ const SchiedsrichterProTeamCard: React.FC<Props> = ({ data, loading }) => {
   return (
     <Card className="h-100">
       <Card.Header className="bg-info text-white">
-        <Card.Title className="mb-0">SCHIEDSRICHTER PRO TEAM</Card.Title>
+        <Card.Title className="mb-0">REFEREES PER TEAM</Card.Title>
       </Card.Header>
       <Card.Body style={{ maxHeight: '400px', overflowY: 'auto' }}>
         {sortedData.length === 0 ? (
-          <p className="text-muted mb-0">Keine Daten verfügbar</p>
+          <p className="text-muted mb-0">No data available</p>
         ) : (
           <ListGroup variant="flush">
             {sortedData.map(item => (
@@ -45,4 +45,4 @@ const SchiedsrichterProTeamCard: React.FC<Props> = ({ data, loading }) => {
   )
 }
 
-export default SchiedsrichterProTeamCard
+export default RefereesPerTeamCard

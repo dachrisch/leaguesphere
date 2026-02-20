@@ -4,19 +4,21 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Create mock functions before mocking the module
 const mockGetAdminStats = vi.fn()
-const mockGetSpieleProLiga = vi.fn()
-const mockGetTeamsProLiga = vi.fn()
-const mockGetTeamsProLandesverband = vi.fn()
-const mockGetSchiedsrichterProTeam = vi.fn()
+const mockGetGamesPerLeague = vi.fn()
+const mockGetTeamsPerLeague = vi.fn()
+const mockGetTeamsPerAssociation = vi.fn()
+const mockGetRefereesPerTeam = vi.fn()
+const mockGetLeagueHierarchy = vi.fn()
 
 // Mock the DashboardApi class
 vi.mock('../../utils/api', () => {
   class MockDashboardApi {
     getAdminStats = mockGetAdminStats
-    getSpieleProLiga = mockGetSpieleProLiga
-    getTeamsProLiga = mockGetTeamsProLiga
-    getTeamsProLandesverband = mockGetTeamsProLandesverband
-    getSchiedsrichterProTeam = mockGetSchiedsrichterProTeam
+    getGamesPerLeague = mockGetGamesPerLeague
+    getTeamsPerLeague = mockGetTeamsPerLeague
+    getTeamsPerAssociation = mockGetTeamsPerAssociation
+    getRefereesPerTeam = mockGetRefereesPerTeam
+    getLeagueHierarchy = mockGetLeagueHierarchy
   }
 
   return {
@@ -32,10 +34,11 @@ describe('Dashboard', () => {
     mockGetAdminStats.mockResolvedValue({
       stats: null,
     })
-    mockGetSpieleProLiga.mockResolvedValue([])
-    mockGetTeamsProLiga.mockResolvedValue([])
-    mockGetTeamsProLandesverband.mockResolvedValue([])
-    mockGetSchiedsrichterProTeam.mockResolvedValue([])
+    mockGetGamesPerLeague.mockResolvedValue([])
+    mockGetTeamsPerLeague.mockResolvedValue([])
+    mockGetTeamsPerAssociation.mockResolvedValue([])
+    mockGetRefereesPerTeam.mockResolvedValue([])
+    mockGetLeagueHierarchy.mockResolvedValue([])
   })
 
   it('renders the dashboard header and calls API on mount', async () => {
@@ -47,26 +50,27 @@ describe('Dashboard', () => {
     // Verify API methods were called
     await waitFor(() => {
       expect(mockGetAdminStats).toHaveBeenCalled()
-      expect(mockGetSpieleProLiga).toHaveBeenCalled()
-      expect(mockGetTeamsProLiga).toHaveBeenCalled()
-      expect(mockGetTeamsProLandesverband).toHaveBeenCalled()
-      expect(mockGetSchiedsrichterProTeam).toHaveBeenCalled()
+      expect(mockGetGamesPerLeague).toHaveBeenCalled()
+      expect(mockGetTeamsPerLeague).toHaveBeenCalled()
+      expect(mockGetTeamsPerAssociation).toHaveBeenCalled()
+      expect(mockGetRefereesPerTeam).toHaveBeenCalled()
+      expect(mockGetLeagueHierarchy).toHaveBeenCalled()
     })
   })
 
   it('renders the refresh button and enables it after loading', async () => {
     render(<Dashboard />)
 
-    // While loading, button should show "Aktualisierung..." and be disabled
-    expect(screen.getByRole('button', { name: /aktualisierung/i })).toBeDisabled()
+    // While loading, button should show "Refreshing..." and be disabled
+    expect(screen.getByRole('button', { name: /refreshing/i })).toBeDisabled()
 
     // Wait for API calls to complete
     await waitFor(() => {
       expect(mockGetAdminStats).toHaveBeenCalled()
     })
 
-    // After loading, button should show "Aktualisieren" and be enabled
-    const button = screen.getByRole('button', { name: /aktualisieren/i })
+    // After loading, button should show "Refresh" and be enabled
+    const button = screen.getByRole('button', { name: /refresh/i })
     expect(button).not.toBeDisabled()
   })
 })

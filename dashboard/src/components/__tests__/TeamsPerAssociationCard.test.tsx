@@ -1,20 +1,20 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import TeamsProLandesverbandCard from '../TeamsProLandesverbandCard'
+import TeamsPerAssociationCard from '../TeamsPerAssociationCard'
 
-describe('TeamsProLandesverbandCard', () => {
+describe('TeamsPerAssociationCard', () => {
   const mockData = [
-    { landesverband_name: 'Bayern', landesverband_id: 1, count: 24 },
-    { landesverband_name: 'NRW', landesverband_id: 2, count: 28 },
+    { association_name: 'Bayern', association_id: 1, count: 24 },
+    { association_name: 'NRW', association_id: 2, count: 28 },
   ]
 
   it('should render card with title', () => {
-    render(<TeamsProLandesverbandCard data={mockData} loading={false} />)
-    expect(screen.getByText('TEAMS PRO LANDESVERBAND')).toBeInTheDocument()
+    render(<TeamsPerAssociationCard data={mockData} loading={false} />)
+    expect(screen.getByText('TEAMS PER ASSOCIATION')).toBeInTheDocument()
   })
 
   it('should render association names and team counts', () => {
-    render(<TeamsProLandesverbandCard data={mockData} loading={false} />)
+    render(<TeamsPerAssociationCard data={mockData} loading={false} />)
     
     expect(screen.getByText('Bayern')).toBeInTheDocument()
     expect(screen.getByText('24')).toBeInTheDocument()
@@ -24,7 +24,7 @@ describe('TeamsProLandesverbandCard', () => {
   })
 
   it('should render loading spinner when loading', () => {
-    render(<TeamsProLandesverbandCard data={[]} loading={true} />)
+    render(<TeamsPerAssociationCard data={[]} loading={true} />)
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 })

@@ -166,44 +166,62 @@ export interface UsersPerTeam {
 
 // Admin Dashboard - Core Statistics
 export interface AdminStats {
-  spieltage: number
+  gamedays: number
   teams: number
-  spiele: number
+  games: number
 }
 
-// Admin Dashboard - Spielende (Games) per League
-export interface SpieleProLiga {
-  liga_name: string
-  liga_id?: number
+// Admin Dashboard - Games per League
+export interface GamesPerLeague {
+  league_name: string
+  league_id?: number
   count: number
 }
 
 // Admin Dashboard - Teams per League
-export interface TeamsProLiga {
-  liga_name: string
-  liga_id?: number
+export interface TeamsPerLeague {
+  league_name: string
+  league_id?: number
   count: number
 }
 
 // Admin Dashboard - Referees per Team
-export interface SchiedsrichterProTeam {
+export interface RefereesPerTeam {
   team_name: string
   team_id: number
   count: number
 }
 
-// Admin Dashboard - Teams per State Association (Landesverband)
-export interface TeamsProLandesverband {
-  landesverband_name: string
-  landesverband_id?: number
+// Admin Dashboard - Teams per State Association
+export interface TeamsPerAssociation {
+  association_name: string
+  association_id?: number
   count: number
+}
+
+// Admin Dashboard - League Hierarchy
+export interface LeagueSeasonStats {
+  season_id: number
+  season_name: string
+  gamedays_count: number
+  avg_teams_per_gameday: number
+  avg_games_per_gameday: number
+}
+
+export interface LeagueHierarchy {
+  league_id: number
+  league_name: string
+  seasons_count: number
+  total_gamedays: number
+  seasons: LeagueSeasonStats[]
 }
 
 // Admin Dashboard - Full admin stats response
 export interface AdminDashboardData {
   stats: AdminStats
-  spiele_pro_liga: SpieleProLiga[]
-  teams_pro_liga: TeamsProLiga[]
-  schiedsrichter_pro_team: SchiedsrichterProTeam[]
-  teams_pro_landesverband: TeamsProLandesverband[]
+  games_per_league: GamesPerLeague[]
+  teams_per_league: TeamsPerLeague[]
+  referees_per_team: RefereesPerTeam[]
+  teams_per_association: TeamsPerAssociation[]
+  league_hierarchy: LeagueHierarchy[]
 }

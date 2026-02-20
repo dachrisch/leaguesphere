@@ -1,13 +1,13 @@
 import React from 'react'
 import { Card, Spinner } from 'react-bootstrap'
-import { TeamsProLandesverband } from '../types/dashboard'
+import { GamesPerLeague } from '../types/dashboard'
 
 interface Props {
-  data: TeamsProLandesverband[]
+  data: GamesPerLeague[]
   loading: boolean
 }
 
-const TeamsProLandesverbandCard: React.FC<Props> = ({ data, loading }) => {
+const GamesPerLeagueCard: React.FC<Props> = ({ data, loading }) => {
   if (loading) {
     return <Spinner animation="border" role="status" />
   }
@@ -16,29 +16,29 @@ const TeamsProLandesverbandCard: React.FC<Props> = ({ data, loading }) => {
 
   return (
     <Card className="h-100">
-      <Card.Header className="bg-warning text-dark">
-        <Card.Title className="mb-0">TEAMS PRO LANDESVERBAND</Card.Title>
+      <Card.Header className="bg-primary text-white">
+        <Card.Title className="mb-0">GAMES PER LEAGUE</Card.Title>
       </Card.Header>
-      <Card.Body style={{ maxHeight: '400px', overflowY: 'auto' }}>
+      <Card.Body>
         {data.length === 0 ? (
-          <p className="text-muted mb-0">Keine Daten verfügbar</p>
+          <p className="text-muted mb-0">No data available</p>
         ) : (
           data.map(item => (
-            <div key={item.landesverband_id || item.landesverband_name} className="mb-2">
-              <div className="d-flex justify-content-between mb-1" style={{ fontSize: '0.9rem' }}>
-                <span className="text-secondary">{item.landesverband_name}</span>
+            <div key={item.league_id || item.league_name} className="mb-3">
+              <div className="d-flex justify-content-between mb-1">
+                <span className="text-secondary">{item.league_name}</span>
                 <span className="fw-bold">{item.count}</span>
               </div>
               <div
                 className="bg-light rounded"
                 style={{
-                  height: '6px',
+                  height: '8px',
                   width: '100%',
                   overflow: 'hidden',
                 }}
               >
                 <div
-                  className="bg-warning"
+                  className="bg-primary"
                   style={{
                     height: '100%',
                     width: `${(item.count / maxCount) * 100}%`,
@@ -54,4 +54,4 @@ const TeamsProLandesverbandCard: React.FC<Props> = ({ data, loading }) => {
   )
 }
 
-export default TeamsProLandesverbandCard
+export default GamesPerLeagueCard

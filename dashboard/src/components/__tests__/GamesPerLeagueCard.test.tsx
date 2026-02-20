@@ -1,20 +1,20 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import SpieleProLigaCard from '../SpieleProLigaCard'
+import GamesPerLeagueCard from '../GamesPerLeagueCard'
 
-describe('SpieleProLigaCard', () => {
+describe('GamesPerLeagueCard', () => {
   const mockData = [
-    { liga_name: 'Bundesliga', liga_id: 1, count: 287 },
-    { liga_name: 'Regionalliga', liga_id: 2, count: 156 },
+    { league_name: 'Bundesliga', league_id: 1, count: 287 },
+    { league_name: 'Regionalliga', league_id: 2, count: 156 },
   ]
 
   it('should render card with title', () => {
-    render(<SpieleProLigaCard data={mockData} loading={false} />)
-    expect(screen.getByText('SPIELENDE PRO LIGA')).toBeInTheDocument()
+    render(<GamesPerLeagueCard data={mockData} loading={false} />)
+    expect(screen.getByText('GAMES PER LEAGUE')).toBeInTheDocument()
   })
 
   it('should render league names and counts', () => {
-    render(<SpieleProLigaCard data={mockData} loading={false} />)
+    render(<GamesPerLeagueCard data={mockData} loading={false} />)
     
     expect(screen.getByText('Bundesliga')).toBeInTheDocument()
     expect(screen.getByText('287')).toBeInTheDocument()
@@ -24,7 +24,7 @@ describe('SpieleProLigaCard', () => {
   })
 
   it('should render loading spinner when loading', () => {
-    render(<SpieleProLigaCard data={[]} loading={true} />)
+    render(<GamesPerLeagueCard data={[]} loading={true} />)
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 })

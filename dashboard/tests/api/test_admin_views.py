@@ -41,72 +41,73 @@ class TestAdminStatsAPIView:
 
         data = response.json()
         assert "stats" in data
-        assert "spiele_pro_liga" in data
-        assert "teams_pro_liga" in data
-        assert "teams_pro_landesverband" in data
-        assert "schiedsrichter_pro_team" in data
+        assert "games_per_league" in data
+        assert "teams_per_league" in data
+        assert "teams_per_association" in data
+        assert "referees_per_team" in data
+        assert "league_hierarchy" in data
 
         # Verify stats structure
-        assert "spieltage" in data["stats"]
+        assert "gamedays" in data["stats"]
         assert "teams" in data["stats"]
-        assert "spiele" in data["stats"]
+        assert "games" in data["stats"]
 
-    def test_spiele_pro_liga_endpoint_requires_auth(self, api_client):
-        """Test spiele-pro-liga endpoint requires authentication."""
-        response = api_client.get("/api/dashboard/spiele-pro-liga/")
+    def test_games_per_league_endpoint_requires_auth(self, api_client):
+        """Test games-per-league endpoint requires authentication."""
+        response = api_client.get("/api/dashboard/games-per-league/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_spiele_pro_liga_endpoint(self, authenticated_client):
-        """Test spiele-pro-liga endpoint returns data."""
-        response = authenticated_client.get("/api/dashboard/spiele-pro-liga/")
+    def test_games_per_league_endpoint(self, authenticated_client):
+        """Test games-per-league endpoint returns data."""
+        response = authenticated_client.get("/api/dashboard/games-per-league/")
         assert response.status_code == status.HTTP_200_OK
 
         data = response.json()
         assert isinstance(data, list)
         if data:
-            assert "liga_name" in data[0]
+            assert "league_name" in data[0]
             assert "count" in data[0]
 
-    def test_teams_pro_liga_endpoint_requires_auth(self, api_client):
-        """Test teams-pro-liga endpoint requires authentication."""
-        response = api_client.get("/api/dashboard/teams-pro-liga/")
+    def test_teams_per_league_endpoint_requires_auth(self, api_client):
+        """Test teams-per-league endpoint requires authentication."""
+        response = api_client.get("/api/dashboard/teams-per-league/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_teams_pro_liga_endpoint(self, authenticated_client):
-        """Test teams-pro-liga endpoint returns data."""
-        response = authenticated_client.get("/api/dashboard/teams-pro-liga/")
+    def test_teams_per_league_endpoint(self, authenticated_client):
+        """Test teams-per-league endpoint returns data."""
+        response = authenticated_client.get("/api/dashboard/teams-per-league/")
         assert response.status_code == status.HTTP_200_OK
 
         data = response.json()
         assert isinstance(data, list)
         if data:
-            assert "liga_name" in data[0]
+            assert "league_name" in data[0]
             assert "count" in data[0]
 
-    def test_teams_pro_landesverband_endpoint_requires_auth(self, api_client):
-        """Test teams-pro-landesverband endpoint requires authentication."""
-        response = api_client.get("/api/dashboard/teams-pro-landesverband/")
+    def test_teams_per_association_endpoint_requires_auth(self, api_client):
+        """Test teams-per-association endpoint requires authentication."""
+        response = api_client.get("/api/dashboard/teams-per-association/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_teams_pro_landesverband_endpoint(self, authenticated_client):
-        """Test teams-pro-landesverband endpoint returns data."""
-        response = authenticated_client.get("/api/dashboard/teams-pro-landesverband/")
+    def test_teams_per_association_endpoint(self, authenticated_client):
+        """Test teams-per-association endpoint returns data."""
+        response = authenticated_client.get("/api/dashboard/teams-per-association/")
         assert response.status_code == status.HTTP_200_OK
 
         data = response.json()
         assert isinstance(data, list)
         if data:
-            assert "landesverband_name" in data[0]
+            assert "association_name" in data[0]
             assert "count" in data[0]
 
-    def test_schiedsrichter_pro_team_endpoint_requires_auth(self, api_client):
-        """Test schiedsrichter-pro-team endpoint requires authentication."""
-        response = api_client.get("/api/dashboard/schiedsrichter-pro-team/")
+    def test_referees_per_team_endpoint_requires_auth(self, api_client):
+        """Test referees-per-team endpoint requires authentication."""
+        response = api_client.get("/api/dashboard/referees-per-team/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_schiedsrichter_pro_team_endpoint(self, authenticated_client):
-        """Test schiedsrichter-pro-team endpoint returns data."""
-        response = authenticated_client.get("/api/dashboard/schiedsrichter-pro-team/")
+    def test_referees_per_team_endpoint(self, authenticated_client):
+        """Test referees-per-team endpoint returns data."""
+        response = authenticated_client.get("/api/dashboard/referees-per-team/")
         assert response.status_code == status.HTTP_200_OK
 
         data = response.json()
@@ -115,3 +116,15 @@ class TestAdminStatsAPIView:
             assert "team_id" in data[0]
             assert "team_name" in data[0]
             assert "count" in data[0]
+
+    def test_league_hierarchy_endpoint(self, authenticated_client):
+        """Test league-hierarchy endpoint returns data."""
+        response = authenticated_client.get("/api/dashboard/league-hierarchy/")
+        assert response.status_code == status.HTTP_200_OK
+
+        data = response.json()
+        assert isinstance(data, list)
+        if data:
+            assert "league_name" in data[0]
+            assert "seasons" in data[0]
+            assert isinstance(data[0]["seasons"], list)

@@ -4,9 +4,9 @@ import AdminStatsCard from '../AdminStatsCard'
 
 describe('AdminStatsCard', () => {
   const mockStats = {
-    spieltage: 24,
+    gamedays: 24,
     teams: 156,
-    spiele: 1234,
+    games: 1234,
   }
 
   it('should render loading spinner when loading', () => {
@@ -17,13 +17,13 @@ describe('AdminStatsCard', () => {
   it('should render stats cards when data is loaded', () => {
     render(<AdminStatsCard data={mockStats} loading={false} />)
     
-    expect(screen.getByText('Spieltage')).toBeInTheDocument()
+    expect(screen.getByText('Gamedays')).toBeInTheDocument()
     expect(screen.getByText('24')).toBeInTheDocument()
     
     expect(screen.getByText('Teams')).toBeInTheDocument()
     expect(screen.getByText('156')).toBeInTheDocument()
     
-    expect(screen.getByText('Spiele')).toBeInTheDocument()
+    expect(screen.getByText('Games')).toBeInTheDocument()
     expect(screen.getByText('1234')).toBeInTheDocument()
   })
 

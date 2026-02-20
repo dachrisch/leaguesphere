@@ -14,10 +14,11 @@ import type {
   ProblemAlerts,
   UsersPerTeam,
   AdminDashboardData,
-  SpieleProLiga,
-  TeamsProLiga,
-  SchiedsrichterProTeam,
-  TeamsProLandesverband,
+  GamesPerLeague,
+  TeamsPerLeague,
+  RefereesPerTeam,
+  TeamsPerAssociation,
+  LeagueHierarchy,
 } from '../types/dashboard';
 
 class DashboardApi {
@@ -128,23 +129,28 @@ class DashboardApi {
     return response.data
   }
 
-  async getSpieleProLiga(): Promise<SpieleProLiga[]> {
-    const response = await this.client.get<SpieleProLiga[]>('/spiele-pro-liga/')
+  async getGamesPerLeague(): Promise<GamesPerLeague[]> {
+    const response = await this.client.get<GamesPerLeague[]>('/games-per-league/')
     return response.data
   }
 
-  async getTeamsProLiga(): Promise<TeamsProLiga[]> {
-    const response = await this.client.get<TeamsProLiga[]>('/teams-pro-liga/')
+  async getTeamsPerLeague(): Promise<TeamsPerLeague[]> {
+    const response = await this.client.get<TeamsPerLeague[]>('/teams-per-league/')
     return response.data
   }
 
-  async getTeamsProLandesverband(): Promise<TeamsProLandesverband[]> {
-    const response = await this.client.get<TeamsProLandesverband[]>('/teams-pro-landesverband/')
+  async getTeamsPerAssociation(): Promise<TeamsPerAssociation[]> {
+    const response = await this.client.get<TeamsPerAssociation[]>('/teams-per-association/')
     return response.data
   }
 
-  async getSchiedsrichterProTeam(): Promise<SchiedsrichterProTeam[]> {
-    const response = await this.client.get<SchiedsrichterProTeam[]>('/schiedsrichter-pro-team/')
+  async getRefereesPerTeam(): Promise<RefereesPerTeam[]> {
+    const response = await this.client.get<RefereesPerTeam[]>('/referees-per-team/')
+    return response.data
+  }
+
+  async getLeagueHierarchy(): Promise<LeagueHierarchy[]> {
+    const response = await this.client.get<LeagueHierarchy[]>('/league-hierarchy/')
     return response.data
   }
 }

@@ -6,12 +6,12 @@
 │                              SYSTEM OVERVIEW (Quick Stats)                                       │
 ├─────────────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                                   │
-│  Spieltage: 24        │  Teams: 156        │  Spiele: 1,234        │  Schiedsrichter: 89       │
+│  Gamedays: 24        │  Teams: 156        │  Games: 1,234        │  Referees: 89       │
 │                                                                                                   │
 └─────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────┐  ┌──────────────────────────────────────────────┐
-│        SPIELENDE PRO LIGA                     │  │     TEAMS PRO LIGA                           │
+│        GAMES PER LEAGUE                       │  │     TEAMS PER LEAGUE                         │
 ├──────────────────────────────────────────────┤  ├──────────────────────────────────────────────┤
 │                                              │  │                                              │
 │  Bundesliga              287  ▰▰▰▰▰▰▰▰▰░ │  │  Bundesliga                      24  ████░    │
@@ -26,35 +26,35 @@
 └──────────────────────────────────────────────┘  └──────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                    SCHIEDSRICHTER VERTEILUNG PRO TEAM                                            │
+│                    REFEREE DISTRIBUTION PER TEAM                                                 │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                                  │
-│  Team A (Bundesliga)              5 Schiedsrichter   ▰▰▰▰▰                                     │
-│  Team B (Regionalliga)            3 Schiedsrichter   ▰▰▰                                       │
-│  Team C (Oberliga)                2 Schiedsrichter   ▰▰                                        │
-│  Team D (Verbandsliga)            4 Schiedsrichter   ▰▰▰▰                                     │
-│  Team E (Landesliga)              2 Schiedsrichter   ▰▰                                        │
+│  Team A (Bundesliga)              5 Referees         ▰▰▰▰▰                                     │
+│  Team B (Regionalliga)            3 Referees         ▰▰▰                                       │
+│  Team C (Oberliga)                2 Referees         ▰▰                                        │
+│  Team D (Verbandsliga)            4 Referees         ▰▰▰▰                                     │
+│  Team E (Landesliga)              2 Referees         ▰▰                                        │
 │                                                                                                  │
-│  [Scroll für weitere Teams ↓]                                                                   │
+│  [Scroll for more teams ↓]                                                                       │
 │                                                                                                  │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                    TEAMS PRO LANDESVERBAND                                                       │
+│                    TEAMS PER ASSOCIATION                                                         │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                                  │
-│  Landesverband Bayern                24 Teams   ▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰░                             │
-│  Landesverband Baden-Württemberg     18 Teams   ▰▰▰▰▰▰▰▰▰░░░░░░░                             │
-│  Landesverband Hessen                12 Teams   ▰▰▰▰▰▰░░░░░░░░░░                             │
-│  Landesverband Nordrhein-Westfalen   28 Teams   ▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰░                            │
-│  Landesverband Schleswig-Holstein     8 Teams   ▰▰▰▰░░░░░░░░░░░░░                            │
-│  Landesverband Hamburg                6 Teams   ▰▰▰░░░░░░░░░░░░░░                            │
-│  Landesverband Berlin                10 Teams   ▰▰▰▰▰░░░░░░░░░░░░                            │
-│  Landesverband Sachsen               12 Teams   ▰▰▰▰▰▰░░░░░░░░░░                            │
-│  Landesverband Bayern-Nord            8 Teams   ▰▰▰▰░░░░░░░░░░░░░                            │
-│  Landesverband Saarland               4 Teams   ▰▰░░░░░░░░░░░░░░░                            │
+│  Association Bavaria                 24 Teams   ▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰░                             │
+│  Association Baden-Württemberg       18 Teams   ▰▰▰▰▰▰▰▰▰░░░░░░░                             │
+│  Association Hesse                   12 Teams   ▰▰▰▰▰▰░░░░░░░░░░                             │
+│  Association North Rhine-Westphalia  28 Teams   ▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰░                            │
+│  Association Schleswig-Holstein       8 Teams   ▰▰▰▰░░░░░░░░░░░░░                            │
+│  Association Hamburg                  6 Teams   ▰▰▰░░░░░░░░░░░░░░                            │
+│  Association Berlin                  10 Teams   ▰▰▰▰▰░░░░░░░░░░░░                            │
+│  Association Saxony                  12 Teams   ▰▰▰▰▰▰░░░░░░░░░░                            │
+│  Association Bavaria-North            8 Teams   ▰▰▰▰░░░░░░░░░░░░░                            │
+│  Association Saarland                 4 Teams   ▰▰░░░░░░░░░░░░░░░                            │
 │                                                                                                  │
-│  TOTAL: 130 Teams (26 weitere nicht zugeordnet)                                                 │
+│  TOTAL: 130 Teams (26 more not assigned)                                                        │
 │                                                                                                  │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 

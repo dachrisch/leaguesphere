@@ -77,58 +77,58 @@ class AdminStatsServiceTests(TestCase):
         )
 
     def test_get_admin_stats_returns_correct_counts(self):
-        """Test get_admin_stats returns correct spieltage, teams, spiele counts"""
+        """Test get_admin_stats returns correct gamedays, teams, games counts"""
         stats = DashboardService.get_admin_stats()
 
-        self.assertIn("spieltage", stats)
+        self.assertIn("gamedays", stats)
         self.assertIn("teams", stats)
-        self.assertIn("spiele", stats)
-        self.assertIsInstance(stats["spieltage"], int)
+        self.assertIn("games", stats)
+        self.assertIsInstance(stats["gamedays"], int)
         self.assertIsInstance(stats["teams"], int)
-        self.assertIsInstance(stats["spiele"], int)
+        self.assertIsInstance(stats["games"], int)
 
-    def test_get_spiele_pro_liga_returns_league_counts(self):
-        """Test get_spiele_pro_liga returns games grouped by league"""
-        data = DashboardService.get_spiele_pro_liga()
+    def test_get_games_per_league_returns_league_counts(self):
+        """Test get_games_per_league returns games grouped by league"""
+        data = DashboardService.get_games_per_league()
 
         self.assertIsInstance(data, list)
 
         # If data exists, check structure
         if data:
             first = data[0]
-            self.assertIn("liga_name", first)
+            self.assertIn("league_name", first)
             self.assertIn("count", first)
             self.assertIsInstance(first["count"], int)
 
-    def test_get_teams_pro_liga_returns_team_counts(self):
-        """Test get_teams_pro_liga returns teams grouped by league"""
-        data = DashboardService.get_teams_pro_liga()
+    def test_get_teams_per_league_returns_team_counts(self):
+        """Test get_teams_per_league returns teams grouped by league"""
+        data = DashboardService.get_teams_per_league()
 
         self.assertIsInstance(data, list)
         self.assertGreater(len(data), 0)
 
         # Check structure
         first = data[0]
-        self.assertIn("liga_name", first)
+        self.assertIn("league_name", first)
         self.assertIn("count", first)
         self.assertIsInstance(first["count"], int)
 
-    def test_get_teams_pro_landesverband_returns_association_counts(self):
-        """Test get_teams_pro_landesverband returns teams grouped by association"""
-        data = DashboardService.get_teams_pro_landesverband()
+    def test_get_teams_per_association_returns_association_counts(self):
+        """Test get_teams_per_association returns teams grouped by association"""
+        data = DashboardService.get_teams_per_association()
 
         self.assertIsInstance(data, list)
         self.assertGreater(len(data), 0)
 
         # Check structure
         first = data[0]
-        self.assertIn("landesverband_name", first)
+        self.assertIn("association_name", first)
         self.assertIn("count", first)
         self.assertIsInstance(first["count"], int)
 
-    def test_get_schiedsrichter_pro_team_returns_empty_or_valid(self):
-        """Test get_schiedsrichter_pro_team returns valid structure"""
-        data = DashboardService.get_schiedsrichter_pro_team()
+    def test_get_referees_per_team_returns_empty_or_valid(self):
+        """Test get_referees_per_team returns valid structure"""
+        data = DashboardService.get_referees_per_team()
 
         self.assertIsInstance(data, list)
 
@@ -139,3 +139,22 @@ class AdminStatsServiceTests(TestCase):
             self.assertIn("team_id", first)
             self.assertIn("count", first)
             self.assertIsInstance(first["count"], int)
+
+    def test_get_league_hierarchy_stats(self):
+        """Test get_league_hierarchy_stats returns valid hierarchy"""
+        data = DashboardService.get_league_hierarchy_stats()
+
+        self.assertIsInstance(data, list)
+        self.assertGreater(len(data), 0)
+
+        # Check structure
+        league = data[0]
+        self.assertIn("league_name", league)
+        self.assertIn("seasons", league)
+        self.assertGreater(len(league["seasons"]), 0)
+
+        season = league["seasons"][0]
+        self.assertIn("season_name", season)
+        self.assertIn("gamedays_count", season)
+        self.assertIn("avg_teams_per_gameday", season)
+        self.assertIn("avg_games_per_gameday", season)

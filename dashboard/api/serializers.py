@@ -213,38 +213,55 @@ class UsersPerTeamSerializer(serializers.Serializer):
 
 
 class AdminStatsSerializer(serializers.Serializer):
-    spieltage = serializers.IntegerField()
+    gamedays = serializers.IntegerField()
     teams = serializers.IntegerField()
-    spiele = serializers.IntegerField()
+    games = serializers.IntegerField()
 
 
-class SpieleProLigaSerializer(serializers.Serializer):
-    liga_name = serializers.CharField()
-    liga_id = serializers.IntegerField(required=False)
+class GamesPerLeagueSerializer(serializers.Serializer):
+    league_name = serializers.CharField()
+    league_id = serializers.IntegerField(required=False)
     count = serializers.IntegerField()
 
 
-class TeamsProLigaSerializer(serializers.Serializer):
-    liga_name = serializers.CharField()
-    liga_id = serializers.IntegerField(required=False)
+class TeamsPerLeagueSerializer(serializers.Serializer):
+    league_name = serializers.CharField()
+    league_id = serializers.IntegerField(required=False)
     count = serializers.IntegerField()
 
 
-class TeamsProLandesverbandSerializer(serializers.Serializer):
-    landesverband_name = serializers.CharField()
-    landesverband_id = serializers.IntegerField(required=False)
+class TeamsPerAssociationSerializer(serializers.Serializer):
+    association_name = serializers.CharField()
+    association_id = serializers.IntegerField(required=False)
     count = serializers.IntegerField()
 
 
-class SchiedsrichterProTeamSerializer(serializers.Serializer):
+class RefereesPerTeamSerializer(serializers.Serializer):
     team_id = serializers.IntegerField()
     team_name = serializers.CharField()
     count = serializers.IntegerField()
 
 
+class LeagueSeasonStatsSerializer(serializers.Serializer):
+    season_id = serializers.IntegerField()
+    season_name = serializers.CharField()
+    gamedays_count = serializers.IntegerField()
+    avg_teams_per_gameday = serializers.FloatField()
+    avg_games_per_gameday = serializers.FloatField()
+
+
+class LeagueHierarchySerializer(serializers.Serializer):
+    league_id = serializers.IntegerField()
+    league_name = serializers.CharField()
+    seasons_count = serializers.IntegerField()
+    total_gamedays = serializers.IntegerField()
+    seasons = LeagueSeasonStatsSerializer(many=True)
+
+
 class AdminDashboardSerializer(serializers.Serializer):
     stats = AdminStatsSerializer()
-    spiele_pro_liga = SpieleProLigaSerializer(many=True)
-    teams_pro_liga = TeamsProLigaSerializer(many=True)
-    teams_pro_landesverband = TeamsProLandesverbandSerializer(many=True)
-    schiedsrichter_pro_team = SchiedsrichterProTeamSerializer(many=True)
+    games_per_league = GamesPerLeagueSerializer(many=True)
+    teams_per_league = TeamsPerLeagueSerializer(many=True)
+    teams_per_association = TeamsPerAssociationSerializer(many=True)
+    referees_per_team = RefereesPerTeamSerializer(many=True)
+    league_hierarchy = LeagueHierarchySerializer(many=True)

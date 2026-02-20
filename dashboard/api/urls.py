@@ -14,26 +14,32 @@ from dashboard.api.views import (
     ProblemAlertsAPIView,
     UsersPerTeamAPIView,
     AdminStatsAPIView,
-    SpieleProLigaAPIView,
-    TeamsProLigaAPIView,
-    TeamsProLandesverbandAPIView,
-    SchiedsrichterProTeamAPIView,
+    LeagueHierarchyAPIView,
+    GamesPerLeagueAPIView,
+    TeamsPerLeagueAPIView,
+    TeamsPerAssociationAPIView,
+    RefereesPerTeamAPIView,
 )
 
 urlpatterns = [
     # Admin Dashboard Endpoints
     path("admin-stats/", AdminStatsAPIView.as_view(), name="admin-stats"),
-    path("spiele-pro-liga/", SpieleProLigaAPIView.as_view(), name="spiele-pro-liga"),
-    path("teams-pro-liga/", TeamsProLigaAPIView.as_view(), name="teams-pro-liga"),
     path(
-        "teams-pro-landesverband/",
-        TeamsProLandesverbandAPIView.as_view(),
-        name="teams-pro-landesverband",
+        "league-hierarchy/",
+        LeagueHierarchyAPIView.as_view(),
+        name="league-hierarchy",
+    ),
+    path("games-per-league/", GamesPerLeagueAPIView.as_view(), name="games-per-league"),
+    path("teams-per-league/", TeamsPerLeagueAPIView.as_view(), name="teams-per-league"),
+    path(
+        "teams-per-association/",
+        TeamsPerAssociationAPIView.as_view(),
+        name="teams-per-association",
     ),
     path(
-        "schiedsrichter-pro-team/",
-        SchiedsrichterProTeamAPIView.as_view(),
-        name="schiedsrichter-pro-team",
+        "referees-per-team/",
+        RefereesPerTeamAPIView.as_view(),
+        name="referees-per-team",
     ),
     # Legacy endpoints (keep existing)
     path("summary/", DashboardSummaryAPIView.as_view(), name="dashboard-summary"),

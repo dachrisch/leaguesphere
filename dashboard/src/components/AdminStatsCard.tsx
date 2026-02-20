@@ -21,8 +21,8 @@ const AdminStatsCard: React.FC<Props> = ({ data, loading }) => {
       <Col md={4} className="mb-3">
         <StatCard
           icon="bi-calendar3"
-          title="Spieltage"
-          value={data.spieltage}
+          title="Gamedays"
+          value={data.gamedays}
           color="primary"
         />
       </Col>
@@ -37,8 +37,8 @@ const AdminStatsCard: React.FC<Props> = ({ data, loading }) => {
       <Col md={4} className="mb-3">
         <StatCard
           icon="bi-controller"
-          title="Spiele"
-          value={data.spiele}
+          title="Games"
+          value={data.games}
           color="info"
         />
       </Col>

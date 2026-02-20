@@ -826,7 +826,7 @@ class DashboardService:
 
     @staticmethod
     def get_admin_stats() -> dict:
-        """Get core admin statistics: spieltage, teams, spiele"""
+        """Get core admin statistics: gamedays, teams, games"""
         # Count unique seasons
         total_seasons = Season.objects.count()
 
@@ -837,13 +837,13 @@ class DashboardService:
         total_games = Gameinfo.objects.count()
 
         return {
-            "spieltage": total_seasons,
+            "gamedays": total_seasons,
             "teams": total_teams,
-            "spiele": total_games,
+            "games": total_games,
         }
 
     @staticmethod
-    def get_spiele_pro_liga() -> list:
+    def get_games_per_league() -> list:
         """Get number of games per league"""
         data = (
             Gameinfo.objects.values("gameday__league__name", "gameday__league__id")
@@ -853,15 +853,15 @@ class DashboardService:
 
         return [
             {
-                "liga_name": item["gameday__league__name"] or "Unbekannt",
-                "liga_id": item["gameday__league__id"],
+                "league_name": item["gameday__league__name"] or "Unknown",
+                "league_id": item["gameday__league__id"],
                 "count": item["count"],
             }
             for item in data
         ]
 
     @staticmethod
-    def get_teams_pro_liga() -> list:
+    def get_teams_per_league() -> list:
         """Get number of teams per league"""
         data = (
             Team.objects.filter(seasonleagueteam__isnull=False)
@@ -872,16 +872,16 @@ class DashboardService:
 
         return [
             {
-                "liga_name": item["seasonleagueteam__league__name"] or "Unbekannt",
-                "liga_id": item["seasonleagueteam__league__id"],
+                "league_name": item["seasonleagueteam__league__name"] or "Unknown",
+                "league_id": item["seasonleagueteam__league__id"],
                 "count": item["count"],
             }
             for item in data
         ]
 
     @staticmethod
-    def get_teams_pro_landesverband() -> list:
-        """Get number of teams per state association (Landesverband)"""
+    def get_teams_per_association() -> list:
+        """Get number of teams per state association"""
         data = (
             Team.objects.values("association__name", "association__id")
             .annotate(count=Count("id", distinct=True))
@@ -890,16 +890,16 @@ class DashboardService:
 
         return [
             {
-                "landesverband_name": item["association__name"] or "Unbekannt",
-                "landesverband_id": item["association__id"],
+                "association_name": item["association__name"] or "Unknown",
+                "association_id": item["association__id"],
                 "count": item["count"],
             }
             for item in data
         ]
 
     @staticmethod
-    def get_schiedsrichter_pro_team() -> list:
-        """Get number of referees (Schiedsrichter) per team
+    def get_referees_per_team() -> list:
+        """Get number of referees per team
 
         Note: This requires a relationship between teams and officials.
         Current implementation returns empty list - needs data model mapping.
@@ -923,3 +923,66 @@ class DashboardService:
         except Exception:
             # Return empty if relation doesn't exist - requires implementation
             return []
+
+    @staticmethod
+    def get_league_hierarchy_stats() -> list:
+        """
+        Returns a hierarchical list of leagues, their seasons, and statistics.
+        Format: League -> Seasons -> Stats
+        """
+        leagues = League.objects.all().order_by("name")
+        result = []
+
+        for league in leagues:
+            seasons_in_league = (
+                Season.objects.filter(gameday__league=league)
+                .distinct()
+                .order_by("-name")
+            )
+
+            if not seasons_in_league.exists():
+                continue
+
+            seasons_stats = []
+            for season in seasons_in_league:
+                gamedays = Gameday.objects.filter(league=league, season=season)
+                gameday_count = gamedays.count()
+
+                # Calculate averages across gamedays in this season/league
+                # We need to count distinct teams and games per gameday
+                gameday_stats = gamedays.annotate(
+                    team_count=Count("gameinfo__gameresult__team", distinct=True),
+                    game_count=Count("gameinfo", distinct=True),
+                )
+
+                averages = gameday_stats.aggregate(
+                    avg_teams=Avg("team_count"), avg_games=Avg("game_count")
+                )
+
+                seasons_stats.append(
+                    {
+                        "season_id": season.pk,
+                        "season_name": season.name,
+                        "gamedays_count": gameday_count,
+                        "avg_teams_per_gameday": round(
+                            float(averages["avg_teams"] or 0), 1
+                        ),
+                        "avg_games_per_gameday": round(
+                            float(averages["avg_games"] or 0), 1
+                        ),
+                    }
+                )
+
+            total_gamedays = Gameday.objects.filter(league=league).count()
+
+            result.append(
+                {
+                    "league_id": league.pk,
+                    "league_name": league.name,
+                    "seasons_count": seasons_in_league.count(),
+                    "total_gamedays": total_gamedays,
+                    "seasons": seasons_stats,
+                }
+            )
+
+        return result

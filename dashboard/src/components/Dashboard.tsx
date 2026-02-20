@@ -3,27 +3,30 @@ import { Container, Row, Col, Alert, Button } from 'react-bootstrap'
 import { DashboardApi } from '../utils/api'
 import {
   AdminStats,
-  SpieleProLiga,
-  TeamsProLiga,
-  SchiedsrichterProTeam,
-  TeamsProLandesverband,
+  GamesPerLeague,
+  TeamsPerLeague,
+  RefereesPerTeam,
+  TeamsPerAssociation,
+  LeagueHierarchy,
 } from '../types/dashboard'
 import AdminStatsCard from './AdminStatsCard'
-import SpieleProLigaCard from './SpieleProLigaCard'
-import TeamsProLigaCard from './TeamsProLigaCard'
-import TeamsProLandesverbandCard from './TeamsProLandesverbandCard'
-import SchiedsrichterProTeamCard from './SchiedsrichterProTeamCard'
+import GamesPerLeagueCard from './GamesPerLeagueCard'
+import TeamsPerLeagueCard from './TeamsPerLeagueCard'
+import TeamsPerAssociationCard from './TeamsPerAssociationCard'
+import RefereesPerTeamCard from './RefereesPerTeamCard'
+import LeagueHierarchyAccordion from './LeagueHierarchyAccordion'
 
 const Dashboard: React.FC = () => {
   const [adminStats, setAdminStats] = useState<AdminStats | null>(null)
-  const [spieleProLiga, setSpieleProLiga] = useState<SpieleProLiga[]>([])
-  const [teamsProLiga, setTeamsProLiga] = useState<TeamsProLiga[]>([])
-  const [teamsProLandesverband, setTeamsProLandesverband] = useState<
-    TeamsProLandesverband[]
+  const [gamesPerLeague, setGamesPerLeague] = useState<GamesPerLeague[]>([])
+  const [teamsPerLeague, setTeamsPerLeague] = useState<TeamsPerLeague[]>([])
+  const [teamsPerAssociation, setTeamsPerAssociation] = useState<
+    TeamsPerAssociation[]
   >([])
-  const [schiedsrichterProTeam, setSchiedsrichterProTeam] = useState<
-    SchiedsrichterProTeam[]
+  const [refereesPerTeam, setRefereesPerTeam] = useState<
+    RefereesPerTeam[]
   >([])
+  const [leagueHierarchy, setLeagueHierarchy] = useState<LeagueHierarchy[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -35,25 +38,27 @@ const Dashboard: React.FC = () => {
       setError(null)
 
       // Fetch all admin data in parallel
-      const [stats, spiele, teams, landesverband, schiedsrichter] =
+      const [stats, games, teams, association, referees, hierarchy] =
         await Promise.all([
           api.getAdminStats(),
-          api.getSpieleProLiga(),
-          api.getTeamsProLiga(),
-          api.getTeamsProLandesverband(),
-          api.getSchiedsrichterProTeam(),
+          api.getGamesPerLeague(),
+          api.getTeamsPerLeague(),
+          api.getTeamsPerAssociation(),
+          api.getRefereesPerTeam(),
+          api.getLeagueHierarchy(),
         ])
 
       setAdminStats(stats.stats)
-      setSpieleProLiga(spiele)
-      setTeamsProLiga(teams)
-      setTeamsProLandesverband(landesverband)
-      setSchiedsrichterProTeam(schiedsrichter)
+      setGamesPerLeague(games)
+      setTeamsPerLeague(teams)
+      setTeamsPerAssociation(association)
+      setRefereesPerTeam(referees)
+      setLeagueHierarchy(hierarchy)
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : 'Fehler beim Laden der Dashboard-Daten'
+          : 'Error loading dashboard data'
       )
       console.error('Dashboard error:', err)
     } finally {
@@ -75,47 +80,54 @@ const Dashboard: React.FC = () => {
           onClick={fetchAdminData}
           disabled={loading}
         >
-          {loading ? 'Aktualisierung...' : 'Aktualisieren'}
+          {loading ? 'Refreshing...' : 'Refresh'}
         </Button>
       </div>
 
       {error && (
         <Alert variant="danger" dismissible onClose={() => setError(null)}>
-          <strong>Fehler:</strong> {error}
+          <strong>Error:</strong> {error}
         </Alert>
       )}
 
       {/* Admin Stats Cards */}
       <AdminStatsCard data={adminStats} loading={loading} />
 
+      {/* League Hierarchy View */}
+      <Row className="mb-4">
+        <Col>
+          <LeagueHierarchyAccordion data={leagueHierarchy} loading={loading} />
+        </Col>
+      </Row>
+
       {/* Two-Column Layout */}
       <Row className="mb-4">
         <Col lg={6} className="mb-3">
-          <SpieleProLigaCard data={spieleProLiga} loading={loading} />
+          <GamesPerLeagueCard data={gamesPerLeague} loading={loading} />
         </Col>
         <Col lg={6} className="mb-3">
-          <TeamsProLigaCard data={teamsProLiga} loading={loading} />
+          <TeamsPerLeagueCard data={teamsPerLeague} loading={loading} />
         </Col>
       </Row>
 
       {/* Full-Width Cards */}
       <Row className="mb-4">
         <Col lg={6} className="mb-3">
-          <SchiedsrichterProTeamCard
-            data={schiedsrichterProTeam}
+          <RefereesPerTeamCard
+            data={refereesPerTeam}
             loading={loading}
           />
         </Col>
         <Col lg={6} className="mb-3">
-          <TeamsProLandesverbandCard
-            data={teamsProLandesverband}
+          <TeamsPerAssociationCard
+            data={teamsPerAssociation}
             loading={loading}
           />
         </Col>
       </Row>
 
       <div className="text-center text-muted small mt-4">
-        <p>Dashboard aktualisiert: {new Date().toLocaleString('de-DE')}</p>
+        <p>Dashboard updated: {new Date().toLocaleString('en-US')}</p>
       </div>
     </Container>
   )
