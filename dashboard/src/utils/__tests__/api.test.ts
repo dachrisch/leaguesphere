@@ -19,24 +19,29 @@ describe('DashboardApi', () => {
       expect(typeof api.getAdminStats).toBe('function');
     });
 
-    it('should have getSpieleProLiga method', () => {
+    it('should have getGamesPerLeague method', () => {
       const api = new DashboardApi();
-      expect(typeof api.getSpieleProLiga).toBe('function');
+      expect(typeof api.getGamesPerLeague).toBe('function');
     });
 
-    it('should have getTeamsProLiga method', () => {
+    it('should have getTeamsPerLeague method', () => {
       const api = new DashboardApi();
-      expect(typeof api.getTeamsProLiga).toBe('function');
+      expect(typeof api.getTeamsPerLeague).toBe('function');
     });
 
-    it('should have getTeamsProLandesverband method', () => {
+    it('should have getTeamsPerAssociation method', () => {
       const api = new DashboardApi();
-      expect(typeof api.getTeamsProLandesverband).toBe('function');
+      expect(typeof api.getTeamsPerAssociation).toBe('function');
     });
 
-    it('should have getSchiedsrichterProTeam method', () => {
+    it('should have getRefereesPerTeam method', () => {
       const api = new DashboardApi();
-      expect(typeof api.getSchiedsrichterProTeam).toBe('function');
+      expect(typeof api.getRefereesPerTeam).toBe('function');
+    });
+
+    it('should have getLeagueHierarchy method', () => {
+      const api = new DashboardApi();
+      expect(typeof api.getLeagueHierarchy).toBe('function');
     });
   });
 });
