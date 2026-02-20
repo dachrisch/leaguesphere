@@ -91,7 +91,13 @@
     "of": "von",
     "fields": "Felder",
     "games": "Spiele",
-    "teams": "Teams"
+    "teams": "Teams",
+    "user": "Benutzer",
+    "homeTeam": "Heim: {{team}}",
+    "awayTeam": "Auswärts: {{team}}"
+  },
+  "title": {
+    "enterGameResult": "Spielergebnis eingeben"
   },
   "placeholder": {
     "standing": "z.B. Gruppe 1, HF1, P1",
@@ -121,7 +127,9 @@
     "loserOf": "Verlierer von {{match}}",
     "placeFrom": "{{place}}. Platz aus {{stage}}",
     "ungrouped": "Ungruppiert",
-    "assignedGamesCount": "Anzahl der Spiele, denen dieses Team zugewiesen ist"
+    "assignedGamesCount": "Anzahl der Spiele, denen dieses Team zugewiesen ist",
+    "loading": "Wird geladen...",
+    "loadingGameday": "Spieltag wird geladen..."
   },
   "tooltip": {
     "addTeamToGroup": "Ein neues Team zu dieser Gruppe hinzufügen",
@@ -141,7 +149,7 @@
     "deleteStage": "Diese Phase und alle darin enthaltenen Spiele dauerhaft entfernen",
     "stageColor": "Die Akzentfarbe für diese Phase ändern",
     "importFromJson": "Einen Spielplan aus einer JSON-Datei importieren",
-    "exportFromJson": "Den aktuellen Spielplan in eine JSON-Datei exportieren",
+    "exportToJson": "Den aktuellen Spielplan in eine JSON-Datei exportieren",
     "exportTemplateToJson": "Die logische Turnierstruktur als portable Vorlage exportieren",
     "undo": "Die letzte Aktion rückgängig machen",
     "redo": "Die zuvor rückgängig gemachte Aktion wiederholen",
@@ -158,7 +166,8 @@
     "enterResult": "Ergebnis eingeben",
     "deleteGame": "Spiel löschen",
     "autoTimeHint": "Automatisch berechnet - Klicken zum Überschreiben",
-    "manualTimeHint": "Manuell gesetzt - Klicken zum Bearbeiten"
+    "manualTimeHint": "Manuell gesetzt - Klicken zum Bearbeiten",
+    "swapTeams": "Heim- und Auswärtsteam tauschen"
   },
   "notification": {
     "gameResultSaved": "Spielergebnis gespeichert",
@@ -176,6 +185,12 @@
     "unlockSuccess": "Spielplan zur Bearbeitung freigeschaltet",
     "unlockFailed": "Spielplan konnte nicht freigeschaltet werden",
     "invalidTimeFormat": "Ungültiges Zeitformat. Verwenden Sie HH:MM (24-Stunden)",
+    "templateExported": {
+      "title": "Vorlage exportiert"
+    },
+    "resultsSaved": {
+      "title": "Ergebnisse gespeichert"
+    },
     "title": {
       "success": "Erfolg",
       "error": "Fehler",
@@ -183,6 +198,12 @@
       "importError": "Import-Fehler",
       "deletion": "Löschen",
       "timeFormat": "Zeitformat"
+    }
+  },
+  "error": {
+    "prerequisitesMissing": {
+      "title": "Voraussetzungen fehlen",
+      "message": "Bitte stellen Sie sicher, dass mindestens eine Saison und eine Liga existieren, bevor Sie einen Spieltag erstellen."
     }
   }
 }

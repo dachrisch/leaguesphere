@@ -128,7 +128,7 @@ const ListDesignerApp: React.FC = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     
-    addNotification(t('ui:notification.autoSaveSuccess'), 'success', 'Template Exported');
+    addNotification(t('ui:notification.autoSaveSuccess'), 'success', t('ui:notification.templateExported.title'));
   }, [flowState, metadata?.name, addNotification, t]);
 
   const { saveTrigger } = ui || {};
@@ -203,7 +203,7 @@ const ListDesignerApp: React.FC = () => {
       );
 
       setResultsMode(false);
-      addNotification(t('ui:notification.autoSaveSuccess'), 'success', 'Results Saved');
+      addNotification(t('ui:notification.autoSaveSuccess'), 'success', t('ui:notification.resultsSaved.title'));
       // Refresh state to show new scores in list
       loadGameday(gamedayId);
     } catch (error) {

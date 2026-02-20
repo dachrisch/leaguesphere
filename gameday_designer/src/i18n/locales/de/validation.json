@@ -34,6 +34,9 @@
     "metadataVenueMissing": "Spieltagsort (Venue) fehlt",
     "metadataStartMissing": "Startzeit ist erforderlich",
     "metadataSeasonMissing": "Saison-Auswahl ist erforderlich",
-    "metadataLeagueMissing": "Liga-Auswahl ist erforderlich"
+    "metadataLeagueMissing": "Liga-Auswahl ist erforderlich",
+    "progression_incomplete": "Spiel \"{{game}}\" fehlt eine Progressionsquelle für das {{slot}} Team",
+    "stage_time_conflict": "Phase \"{{stage2}}\" beginnt bevor die vorangehende Phase \"{{stage1}}\" endet auf Feld \"{{field}}\"",
+    "missing_official_error": "Bitte weise ein Schiedsrichterteam zu"
   }
   
