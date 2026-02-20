@@ -21,7 +21,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run --coverage",
-    "eslint": "eslint ./src"
+    "eslint": "eslint ./src",
+    "eslint:junit": "eslint ./src --format junit --output-file /tmp/eslint/dashboard.xml"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",

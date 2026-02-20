@@ -827,8 +827,8 @@ class DashboardService:
     @staticmethod
     def get_admin_stats() -> dict:
         """Get core admin statistics: gamedays, teams, games"""
-        # Count unique seasons
-        total_seasons = Season.objects.count()
+        # Count unique gamedays
+        total_gamedays = Gameday.objects.count()
 
         # Count unique teams
         total_teams = Team.objects.distinct().count()
@@ -837,7 +837,7 @@ class DashboardService:
         total_games = Gameinfo.objects.count()
 
         return {
-            "gamedays": total_seasons,
+            "gamedays": total_gamedays,
             "teams": total_teams,
             "games": total_games,
         }

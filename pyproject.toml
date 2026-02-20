@@ -55,7 +55,8 @@ include = [
     "passcheck*",
     "scorecard*",
     "teammanager*",
-    "fe_template*"
+    "fe_template*",
+    "dashboard*"
 ]
 
 [tool.bumpversion]

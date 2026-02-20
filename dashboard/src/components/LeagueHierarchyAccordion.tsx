@@ -57,7 +57,7 @@ const LeagueHierarchyAccordion: React.FC<Props> = ({ data, loading }) => {
                             </Col>
                             <Col md={8}>
                               <div className="d-flex flex-wrap gap-2 justify-content-md-end">
-                                <Badge bg="outline-primary" text="dark" border>
+                                <Badge bg="primary" className="bg-opacity-10 text-primary border border-primary">
                                   {season.gamedays_count} Gamedays
                                 </Badge>
                                 <Badge bg="light" text="dark" className="border">
