@@ -45,6 +45,7 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run --coverage",
     "test:coverage": "vitest run --coverage",
+    "validate:i18n": "node scripts/validate-translations.cjs",
     "eslint": "eslint ./src",
     "eslint:junit": "eslint ./src --format junit -o /tmp/eslint/js-lint-results-gameday_designer.xml",
     "eslint:json": "eslint ./src --format json -o js-lint-results-gameday_designer.json",

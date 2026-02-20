@@ -32,6 +32,12 @@ jobs:
           cache: 'npm'
           cache-dependency-path: ${{ matrix.project }}/package.json
 
+      - name: 🌐 Validate i18n translations
+        if: matrix.project == 'gameday_designer'
+        run: |
+          npm ci
+          npm run validate:i18n
+
       - name: 🧪 Testing ${{ matrix.project }}
         run: |
           npm ci

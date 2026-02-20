@@ -130,9 +130,9 @@ const GamedayDashboard: React.FC = () => {
 
       if (seasons.length === 0 || leagues.length === 0) {
         addNotification(
-          'Please ensure at least one Season and one League exist in the database before creating a gameday.', 
-          'warning', 
-          'Prerequisites missing'
+          t('ui:error.prerequisitesMissing.message'),
+          'warning',
+          t('ui:error.prerequisitesMissing.title')
         );
         return;
       }
