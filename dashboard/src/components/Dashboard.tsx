@@ -37,23 +37,15 @@ const Dashboard: React.FC = () => {
       setLoading(true)
       setError(null)
 
-      // Fetch all admin data in parallel
-      const [stats, games, teams, association, referees, hierarchy] =
-        await Promise.all([
-          api.getAdminStats(),
-          api.getGamesPerLeague(),
-          api.getTeamsPerLeague(),
-          api.getTeamsPerAssociation(),
-          api.getRefereesPerTeam(),
-          api.getLeagueHierarchy(),
-        ])
+      // Fetch combined admin data
+      const data = await api.getAdminStats()
 
-      setAdminStats(stats.stats)
-      setGamesPerLeague(games)
-      setTeamsPerLeague(teams)
-      setTeamsPerAssociation(association)
-      setRefereesPerTeam(referees)
-      setLeagueHierarchy(hierarchy)
+      setAdminStats(data.stats)
+      setGamesPerLeague(data.games_per_league)
+      setTeamsPerLeague(data.teams_per_league)
+      setTeamsPerAssociation(data.teams_per_association)
+      setRefereesPerTeam(data.referees_per_team)
+      setLeagueHierarchy(data.league_hierarchy)
     } catch (err) {
       setError(
         err instanceof Error

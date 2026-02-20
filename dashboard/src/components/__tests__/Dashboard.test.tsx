@@ -32,7 +32,12 @@ describe('Dashboard', () => {
     vi.clearAllMocks()
     // Setup successful API responses by default
     mockGetAdminStats.mockResolvedValue({
-      stats: null,
+      stats: { gamedays: 0, teams: 0, games: 0 },
+      games_per_league: [],
+      teams_per_league: [],
+      teams_per_association: [],
+      referees_per_team: [],
+      league_hierarchy: []
     })
     mockGetGamesPerLeague.mockResolvedValue([])
     mockGetTeamsPerLeague.mockResolvedValue([])
@@ -50,11 +55,6 @@ describe('Dashboard', () => {
     // Verify API methods were called
     await waitFor(() => {
       expect(mockGetAdminStats).toHaveBeenCalled()
-      expect(mockGetGamesPerLeague).toHaveBeenCalled()
-      expect(mockGetTeamsPerLeague).toHaveBeenCalled()
-      expect(mockGetTeamsPerAssociation).toHaveBeenCalled()
-      expect(mockGetRefereesPerTeam).toHaveBeenCalled()
-      expect(mockGetLeagueHierarchy).toHaveBeenCalled()
     })
   })
 
