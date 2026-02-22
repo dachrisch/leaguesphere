@@ -110,7 +110,7 @@ export const GameResultsTable: React.FC<GameResultsTableProps> = ({
                         type="number"
                         value={fh ?? ''}
                         onChange={(e) =>
-                          handleScoreChange(game.id, result.id, result.isHome, 'fh', e.target.value)
+                          handleScoreChange(game.id, result.id, result.isHome ?? true, 'fh', e.target.value)
                         }
                         disabled={loading}
                       />
@@ -120,7 +120,7 @@ export const GameResultsTable: React.FC<GameResultsTableProps> = ({
                         type="number"
                         value={sh ?? ''}
                         onChange={(e) =>
-                          handleScoreChange(game.id, result.id, result.isHome, 'sh', e.target.value)
+                          handleScoreChange(game.id, result.id, result.isHome ?? true, 'sh', e.target.value)
                         }
                         disabled={loading}
                       />

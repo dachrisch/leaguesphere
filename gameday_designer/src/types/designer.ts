@@ -377,7 +377,7 @@ export interface GameResultInput {
   team_name?: string;
   fh: number | null;
   sh: number | null;
-  isHome: boolean;
+  isHome?: boolean;
 }
 
 /**
