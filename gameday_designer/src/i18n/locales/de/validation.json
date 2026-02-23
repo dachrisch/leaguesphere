@@ -27,6 +27,16 @@
     "no_games": "Es wurden keine Spiele zum Zeitplan hinzugefügt",
     "team_without_games": "Team \"{{team}}\" ist keinem Spiel zugewiesen",
     "unused_field": "Feld \"{{field}}\" hat keine zugewiesenen Spiele",
-    "broken_progression": "Spiel \"{{game}}\" referenziert nicht existierende Platzierung \"{{target}}\" für {{slot}}"
+    "broken_progression": "Spiel \"{{game}}\" referenziert nicht existierende Platzierung \"{{target}}\" für {{slot}}",
+    "metadataNameMissing": "Spieltagsname ist erforderlich",
+    "metadataDateMissing": "Spieltagsdatum ist erforderlich",
+    "metadataDateInPast": "Spieltagsdatum liegt in der Vergangenheit",
+    "metadataVenueMissing": "Spieltagsort (Venue) fehlt",
+    "metadataStartMissing": "Startzeit ist erforderlich",
+    "metadataSeasonMissing": "Saison-Auswahl ist erforderlich",
+    "metadataLeagueMissing": "Liga-Auswahl ist erforderlich",
+    "progression_incomplete": "Spiel \"{{game}}\" fehlt eine Progressionsquelle für das {{slot}} Team",
+    "stage_time_conflict": "Phase \"{{stage2}}\" beginnt bevor die vorangehende Phase \"{{stage1}}\" endet auf Feld \"{{field}}\"",
+    "missing_official_error": "Bitte weise ein Schiedsrichterteam zu"
   }
   

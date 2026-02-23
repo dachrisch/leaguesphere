@@ -4,9 +4,12 @@
     "addStage": "Phase hinzufügen",
     "addGame": "Spiel hinzufügen",
     "addTeam": "Team hinzufügen",
+    "connectTeam": "Team verbinden",
     "addGroup": "Gruppe hinzufügen",
     "import": "Importieren",
     "export": "Exportieren",
+    "exportSchedule": "Spielplan (JSON)",
+    "exportTemplate": "Vorlage (Strukturiert)",
     "clearAll": "Alles löschen",
     "add": "Hinzufügen",
     "remove": "Entfernen",
@@ -15,6 +18,7 @@
     "confirm": "Bestätigen",
     "generate": "Generieren",
     "generateTournament": "Turnier generieren",
+    "replaceTeam": "Team auswechseln",
     "moveUp": "Nach oben",
     "moveDown": "Nach unten",
     "delete": "Löschen",
@@ -27,10 +31,13 @@
     "gamedayManagement": "Spieltags-Management",
     "gamedayDesigner": "Spieltags-Designer",
     "result": "Ergebnis",
+    "enterResults": "Ergebnisse eintragen",
+    "exitResults": "Designer-Ansicht",
     "backToDashboard": "Zurück zum Dashboard"
   },
   "label": {
     "dashboard": "Dashboard",
+    "gameResults": "Spielergebnisse",
     "back": "Zurück",
     "language": "Sprache",
     "german": "Deutsch",
@@ -42,6 +49,7 @@
     "away": "Gast",
     "score": "Ergebnis",
     "official": "Schiedsrichter",
+    "externalOfficials": "Externe Schiedsrichter",
     "breakAfter": "Pause danach",
     "breakAfterMinutes": "Pause danach (Minuten)",
     "actions": "Aktionen",
@@ -69,12 +77,34 @@
     "winner": "Sieger",
     "loser": "Verlierer",
     "tbd": "TBD",
-    "selectTeam": "-- Team wählen --"
+    "searchDatabase": "In Datenbank suchen...",
+    "selectTeam": "-- Team wählen --",
+    "gamedayName": "Spieltagsname",
+    "gamedayDate": "Spieltagsdatum",
+    "gamedayStartTime": "Startzeit",
+    "season": "Saison",
+    "league": "Liga",
+    "venue": "Austragungsort",
+    "ranking": "Ranking",
+    "rank": "Platz",
+    "in": "in",
+    "of": "von",
+    "fields": "Felder",
+    "games": "Spiele",
+    "teams": "Teams",
+    "user": "Benutzer",
+    "homeTeam": "Heim: {{team}}",
+    "awayTeam": "Auswärts: {{team}}"
+  },
+  "title": {
+    "enterGameResult": "Spielergebnis eingeben"
   },
   "placeholder": {
     "standing": "z.B. Gruppe 1, HF1, P1",
     "gamedayName": "Neuer Spieltag",
-    "searchGamedays": "Spieltage suchen..."
+    "searchGamedays": "Spieltage suchen...",
+    "selectSeason": "Saison wählen",
+    "selectLeague": "Liga wählen"
   },
   "message": {
     "noTeamsYet": "Noch keine Teams",
@@ -90,17 +120,20 @@
     "doubleClickToEditTeam": "Doppelklick zum Bearbeiten des Teamnamens",
     "gameday": "Spieltag",
     "dashboardSubtitle": "Erstellen und verwalten Sie Ihre Flag-Football-Turnierpläne",
-    "filteringTip": "Tipp: Verwenden Sie season:2026 oder status:draft für präzises Filtern.",
+    "filteringTip": "Tipp: Verwenden Sie season:2026 oder status:draft for präzises Filtern.",
     "noGamedaysFound": "Keine Spieltage gefunden",
     "getStartedMessage": "Beginnen Sie, indem Sie Ihren ersten Spieltag erstellen.",
     "winnerOf": "Sieger von {{match}}",
     "loserOf": "Verlierer von {{match}}",
     "placeFrom": "{{place}}. Platz aus {{stage}}",
     "ungrouped": "Ungruppiert",
-    "assignedGamesCount": "Anzahl der Spiele, denen dieses Team zugewiesen ist"
+    "assignedGamesCount": "Anzahl der Spiele, denen dieses Team zugewiesen ist",
+    "loading": "Wird geladen...",
+    "loadingGameday": "Spieltag wird geladen..."
   },
   "tooltip": {
     "addTeamToGroup": "Ein neues Team zu dieser Gruppe hinzufügen",
+    "connectTeam": "Ein existierendes Team aus der Datenbank verbinden",
     "addFirstTeamToGroup": "Erstes Team zu dieser Gruppe hinzufügen",
     "moveGroupUp": "Diese Teamgruppe um eine Position nach oben verschieben",
     "moveGroupDown": "Diese Teamgruppe um eine Position nach unten verschieben",
@@ -116,11 +149,14 @@
     "deleteStage": "Diese Phase und alle darin enthaltenen Spiele dauerhaft entfernen",
     "stageColor": "Die Akzentfarbe für diese Phase ändern",
     "importFromJson": "Einen Spielplan aus einer JSON-Datei importieren",
-    "exportFromJson": "Den aktuellen Spielplan in eine JSON-Datei exportieren",
+    "exportToJson": "Den aktuellen Spielplan in eine JSON-Datei exportieren",
+    "exportTemplateToJson": "Die logische Turnierstruktur als portable Vorlage exportieren",
     "undo": "Die letzte Aktion rückgängig machen",
     "redo": "Die zuvor rückgängig gemachte Aktion wiederholen",
+    "addExternalOfficials": "Externe Schiedsrichter-Gruppe hinzufügen",
     "clearAllNodesAndEdges": "Alle Felder, Phasen, Spiele und Teams dauerhaft löschen",
     "moveTeamToGroup": "Dieses Team in eine andere Gruppe verschieben",
+    "replaceTeam": "Dieses Team durch ein anderes aus der Datenbank ersetzen (aktualisiert alle Spiele)",
     "addField": "Ein neues Spielfeld zum Turnier hinzufügen",
     "addGroup": "Eine neue Teamgruppe erstellen, um Ihre Teams zu organisieren",
     "addStage": "Eine neue Turnierphase (z.B. Vorrunde, Playoffs) zu diesem Feld hinzufügen",
@@ -130,11 +166,13 @@
     "enterResult": "Ergebnis eingeben",
     "deleteGame": "Spiel löschen",
     "autoTimeHint": "Automatisch berechnet - Klicken zum Überschreiben",
-    "manualTimeHint": "Manuell gesetzt - Klicken zum Bearbeiten"
+    "manualTimeHint": "Manuell gesetzt - Klicken zum Bearbeiten",
+    "swapTeams": "Heim- und Auswärtsteam tauschen"
   },
   "notification": {
     "gameResultSaved": "Spielergebnis gespeichert",
     "saveResultFailed": "Spielergebnis konnte nicht gespeichert werden",
+    "autoSaveSuccess": "Änderungen automatisch gespeichert",
     "autoSaveFailed": "Änderungen konnten nicht automatisch gespeichert werden",
     "loadGamedayFailed": "Spieltag konnte nicht geladen werden",
     "loadGamedaysFailed": "Spieltage konnten nicht geladen werden",
@@ -147,6 +185,12 @@
     "unlockSuccess": "Spielplan zur Bearbeitung freigeschaltet",
     "unlockFailed": "Spielplan konnte nicht freigeschaltet werden",
     "invalidTimeFormat": "Ungültiges Zeitformat. Verwenden Sie HH:MM (24-Stunden)",
+    "templateExported": {
+      "title": "Vorlage exportiert"
+    },
+    "resultsSaved": {
+      "title": "Ergebnisse gespeichert"
+    },
     "title": {
       "success": "Erfolg",
       "error": "Fehler",
@@ -154,6 +198,12 @@
       "importError": "Import-Fehler",
       "deletion": "Löschen",
       "timeFormat": "Zeitformat"
+    }
+  },
+  "error": {
+    "prerequisitesMissing": {
+      "title": "Voraussetzungen fehlen",
+      "message": "Bitte stellen Sie sicher, dass mindestens eine Saison und eine Liga existieren, bevor Sie einen Spieltag erstellen."
     }
   }
 }

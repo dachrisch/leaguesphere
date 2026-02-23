@@ -144,7 +144,6 @@ class Gameday(models.Model):
         max_length=20, choices=STATUS_CHOICES, default=STATUS_DRAFT
     )
     published_at = models.DateTimeField(null=True, blank=True)
-    designer_data = models.JSONField(null=True, blank=True)
 
     objects: QuerySet["Gameday"] = models.Manager()
 
@@ -158,11 +157,40 @@ class Gameday(models.Model):
         return f"{self.pk}__{self.date} {self.name}"
 
 
+class GamedayDesignerState(models.Model):
+    """Visual designer state for draft gamedays."""
+
+    gameday = models.OneToOneField(
+        Gameday,
+        on_delete=models.CASCADE,
+        related_name="designer_state",
+        primary_key=True,
+    )
+
+    state_data = models.JSONField(
+        default=dict, help_text="React Flow designer state (nodes, edges, teams)"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_modified_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True
+    )
+
+    objects: QuerySet["GamedayDesignerState"] = models.Manager()
+
+    class Meta:
+        db_table = "gamedays_designer_state"
+
+    def __str__(self):
+        return f"Designer state for {self.gameday}"
+
+
 class Gameinfo(models.Model):
     STATUS_DRAFT = "DRAFT"
-    STATUS_PUBLISHED = "PUBLISHED"
-    STATUS_IN_PROGRESS = "IN_PROGRESS"
-    STATUS_COMPLETED = "COMPLETED"
+    STATUS_PUBLISHED = "Geplant"
+    STATUS_IN_PROGRESS = "Gestartet"
+    STATUS_COMPLETED = "Beendet"
 
     # Retaining existing "Geplant" for backward compatibility if needed,
     # but strictly defining new flow constants.
@@ -184,11 +212,6 @@ class Gameinfo(models.Model):
         max_length=100, blank=True, null=True, default=None
     )
 
-    # Result tracking
-    halftime_score = models.JSONField(null=True, blank=True)
-    final_score = models.JSONField(null=True, blank=True)
-    is_locked = models.BooleanField(default=False)
-
     objects: QuerySet["Gameinfo"] = models.Manager()
 
     class Meta:
@@ -206,7 +229,7 @@ class Gameinfo(models.Model):
 
 class Gameresult(models.Model):
     gameinfo: Gameinfo = models.ForeignKey(Gameinfo, on_delete=models.CASCADE)
-    team = models.ForeignKey(Team, on_delete=models.PROTECT, blank=True)
+    team = models.ForeignKey(Team, on_delete=models.PROTECT, blank=True, null=True)
     fh = models.SmallIntegerField(null=True)
     sh = models.SmallIntegerField(null=True)
     pa = models.PositiveSmallIntegerField(null=True)
@@ -290,11 +313,11 @@ class TeamLog(models.Model):
         if self.cop:
             return (
                 f"{self.gameinfo.pk}__{self.team}#{self.sequence} {self.event} - Half: {self.half}"
-                f'{" [DELETED]" if self.isDeleted else ""}'
+                f"{' [DELETED]' if self.isDeleted else ''}"
             )
         return (
             f"{self.gameinfo.pk}__{self.team}#{self.sequence} {self.event} Player: {self.player} "
-            f'Value: {self.value} - Half: {self.half}{" [DELETED]" if self.isDeleted else ""}'
+            f"Value: {self.value} - Half: {self.half}{' [DELETED]' if self.isDeleted else ''}"
         )
 
 

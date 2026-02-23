@@ -61,12 +61,13 @@ const AppHeader: React.FC = () => {
           <Nav className="align-items-center gap-3">
             {isEditor && onGenerateTournament && (
               <Button
-                variant="outline-primary"
+                variant="primary"
                 onClick={onGenerateTournament}
                 size="sm"
-                className="btn-adaptive text-light border-light opacity-75 hover-opacity-100"
+                className="btn-adaptive fw-bold shadow-sm"
                 disabled={isLocked}
                 title={t('ui:tooltip.generateTournament')}
+                data-testid="generate-tournament-button"
               >
                 <i className={`bi bi-magic me-2`}></i>
                 <span className="btn-label-adaptive">{t('ui:button.generateTournament')}</span>
@@ -85,7 +86,7 @@ const AppHeader: React.FC = () => {
             
             <div className="d-flex align-items-center text-light border-start ps-3 ms-1" style={{ height: '24px' }}>
               <i className="bi bi-person-circle me-2 fs-5"></i>
-              <span className="small fw-medium">User</span>
+              <span className="small fw-medium">{t('ui:label.user')}</span>
             </div>
           </Nav>
         </Navbar.Collapse>

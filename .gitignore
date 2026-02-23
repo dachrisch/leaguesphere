@@ -165,3 +165,8 @@ ngrok.sh
 /deployed/mysql-data/
 *.sql
 test-reports/
+# Allow test database dump for test setup
+!container/test_db_dump.sql
+
+# Git worktrees
+.worktrees/

@@ -98,7 +98,7 @@ describe('StageSection', () => {
     );
 
     // Should be expanded - there are now TWO "Add Game" buttons (header + body)
-    const addGameButtons = screen.getAllByText('Add Game');
+    const addGameButtons = screen.getAllByTitle(/add a new game/i);
     expect(addGameButtons.length).toBeGreaterThan(0);
   });
 
@@ -233,7 +233,7 @@ describe('StageSection', () => {
       );
 
       // Get header Add Game button
-      const addButtons = screen.getAllByRole('button', { name: /add game/i });
+      const addButtons = screen.getAllByTitle(/add a new game/i);
       fireEvent.click(addButtons[0]);
 
       expect(mockOnAddGame).toHaveBeenCalledWith('stage-1');
@@ -248,7 +248,7 @@ describe('StageSection', () => {
       );
 
       // Should only find one Add Game button (in header)
-      const addButtons = screen.getAllByRole('button', { name: /add game/i });
+      const addButtons = screen.getAllByTitle(/add a new game/i);
       expect(addButtons).toHaveLength(1);
       
       // Verify it's in the header
@@ -267,7 +267,7 @@ describe('StageSection', () => {
       expect(screen.getByText(/no games/i)).toBeInTheDocument();
 
       // Should show big Add Game button in body (there are two buttons now, header and body)
-      const addButtons = screen.getAllByRole('button', { name: /add game/i });
+      const addButtons = screen.getAllByTitle(/add a new game/i);
       expect(addButtons.length).toBeGreaterThan(1);
       
       const bodyButton = addButtons.find(btn => btn.closest('.stage-section__body'));
@@ -320,7 +320,7 @@ describe('StageSection', () => {
       })
     );
 
-    const timeInput = screen.getByLabelText(/label.start/i);
+    const timeInput = screen.getByLabelText(/Start/i);
     fireEvent.change(timeInput, { target: { value: '10:30' } });
 
     expect(mockOnUpdate).toHaveBeenCalledWith('stage-1', { startTime: '10:30' });
@@ -395,7 +395,7 @@ describe('StageSection', () => {
       fireEvent.click(screen.getByTitle(/edit the name/i));
 
       // Select Ranking Stage
-      const typeSelect = screen.getByLabelText(/label.type/i);
+      const typeSelect = screen.getByLabelText(/Type/i);
       fireEvent.change(typeSelect, { target: { value: 'RANKING' } });
 
       // Click Save
@@ -419,7 +419,7 @@ describe('StageSection', () => {
       expect(screen.getByDisplayValue('Preliminary')).toBeInTheDocument();
 
       // Click on type select - should not close edit mode
-      const typeSelect = screen.getByLabelText(/label.type/i);
+      const typeSelect = screen.getByLabelText(/Type/i);
       const nameInput = screen.getByDisplayValue('Preliminary');
       
       // Simulate blur with relatedTarget being the select
@@ -469,7 +469,7 @@ describe('StageSection', () => {
       fireEvent.change(input, { target: { value: 'New Name' } });
 
       // Change type
-      const typeSelect = screen.getByLabelText(/label.type/i);
+      const typeSelect = screen.getByLabelText(/Type/i);
       fireEvent.change(typeSelect, { target: { value: 'RANKING' } });
 
       // Click Save

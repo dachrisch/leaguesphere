@@ -39,7 +39,7 @@ describe('TournamentGeneratorModal - Defaults and Duration', () => {
   it('should initialize start time with new default (10:00)', () => {
     renderModal();
 
-    const startTimeInput = screen.getByLabelText(/label.startTime/i) as HTMLInputElement;
+    const startTimeInput = screen.getByLabelText(/Start Time/i) as HTMLInputElement;
     expect(startTimeInput.value).toBe(DEFAULT_START_TIME);
     expect(DEFAULT_START_TIME).toBe('10:00');
   });
@@ -47,7 +47,7 @@ describe('TournamentGeneratorModal - Defaults and Duration', () => {
   it('should display a game duration input initialized with 70', () => {
     renderModal();
 
-    const durationInput = screen.getByLabelText(/label.gameDuration/i) as HTMLInputElement;
+    const durationInput = screen.getByLabelText(/Game Duration/i) as HTMLInputElement;
     expect(durationInput.value).toBe(DEFAULT_GAME_DURATION.toString());
     expect(DEFAULT_GAME_DURATION).toBe(70);
   });
@@ -56,7 +56,7 @@ describe('TournamentGeneratorModal - Defaults and Duration', () => {
     const user = userEvent.setup();
     renderModal();
 
-    const durationInput = screen.getByLabelText(/label.gameDuration/i) as HTMLInputElement;
+    const durationInput = screen.getByLabelText(/Game Duration/i) as HTMLInputElement;
     await user.clear(durationInput);
     await user.type(durationInput, '45');
     
@@ -67,7 +67,7 @@ describe('TournamentGeneratorModal - Defaults and Duration', () => {
     const user = userEvent.setup();
     renderModal();
 
-    const durationInput = screen.getByLabelText(/label.gameDuration/i) as HTMLInputElement;
+    const durationInput = screen.getByLabelText(/Game Duration/i) as HTMLInputElement;
     const generateButton = screen.getByRole('button', { name: /generate/i });
 
     // Too low

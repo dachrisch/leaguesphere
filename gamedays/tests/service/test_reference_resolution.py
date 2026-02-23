@@ -1,6 +1,14 @@
 import pytest
 from django.test import TestCase
-from gamedays.models import Gameday, Gameinfo, Team, Season, League, Association
+from gamedays.models import (
+    Gameday,
+    Gameinfo,
+    Team,
+    Season,
+    League,
+    Association,
+    GamedayDesignerState,
+)
 from django.contrib.auth.models import User
 from gamedays.service.gameday_service import GamedayService
 
@@ -20,7 +28,7 @@ class TestReferenceResolution(TestCase):
             name="Team B", description="B", location="L", association=self.association
         )
 
-        # Create Gameday with designer_data
+        # Create Gameday
         self.gameday = Gameday.objects.create(
             name="Test Gameday",
             date="2026-01-17",
@@ -28,7 +36,12 @@ class TestReferenceResolution(TestCase):
             season=self.season,
             league=self.league,
             author=self.user,
-            designer_data={
+        )
+
+        # Create designer state with team references
+        GamedayDesignerState.objects.create(
+            gameday=self.gameday,
+            state_data={
                 "nodes": [
                     {"id": "game1", "type": "game", "data": {"standing": "Game 1"}},
                     {
@@ -77,7 +90,6 @@ class TestReferenceResolution(TestCase):
         Gameresult.objects.create(gameinfo=self.gi1, team=self.team_b, fh=0, sh=7)
 
         self.gi1.status = Gameinfo.STATUS_COMPLETED
-        self.gi1.final_score = {"home": 21, "away": 7}
         self.gi1.save()
 
         # Resolve references
