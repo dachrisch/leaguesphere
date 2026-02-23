@@ -35,7 +35,7 @@ fi
 
 # 3.6 Build React apps and collect static files
 echo "🏗️ Building React apps..."
-for app in passcheck liveticker scorecard gameday_designer; do
+for app in passcheck liveticker scorecard gameday_designer dashboard; do
     if [ -d "$app" ]; then
         echo "  Building $app..."
         npm --prefix "$app/" install
