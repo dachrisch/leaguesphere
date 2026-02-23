@@ -88,22 +88,4 @@ describe('ListDesignerApp - E2E CRUD Flow', () => {
     expect(screen.getByText(/Preliminary Round/i)).toBeInTheDocument();
     expect(screen.getByText(/Game 1/i)).toBeInTheDocument();
   });
-
-  it('verifies results entry mode toggle', async () => {
-    // Start in PUBLISHED state to show results button
-    vi.mocked(gamedayApi.getGameday).mockResolvedValue({ ...mockGameday, status: 'PUBLISHED' });
-    
-    const { user } = await renderApp();
-    
-    const resultsModeBtn = await screen.findByTestId('results-mode-button');
-    await user.click(resultsModeBtn);
-    
-    // Verify results table is shown
-    await waitFor(() => expect(screen.getByText(/Game Results/i)).toBeInTheDocument());
-    
-    // Toggle back to designer
-    await user.click(resultsModeBtn);
-    expect(screen.queryByText(/Game Results/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/^Fields$/)).toBeInTheDocument();
-  });
 });

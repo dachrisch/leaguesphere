@@ -10,7 +10,6 @@ import { Row, Col, Card, Button } from 'react-bootstrap';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import GlobalTeamTable from './list/GlobalTeamTable';
 import FieldSection from './list/FieldSection';
-import { GameResultsTable } from './GameResultsTable';
 import type { FlowNode, FlowEdge, FieldNode, StageNode, GlobalTeam, GlobalTeamGroup } from '../types/flowchart';
 import { isFieldNode, isStageNode } from '../types/flowchart';
 import { ICONS } from '../utils/iconConstants';
@@ -54,9 +53,6 @@ export interface ListCanvasProps {
   onDynamicReferenceClick: (sourceGameId: string) => void;
   onNotify?: (message: string, type: import('../types/designer').NotificationType, title?: string) => void;
   onAddOfficials?: () => void;
-  resultsMode?: boolean;
-  gameResults?: import('../types/designer').GameResultsDisplay[];
-  onSaveBulkResults?: (results: Record<string, unknown>) => Promise<void>;
   readOnly?: boolean;
 }
 
@@ -99,9 +95,6 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
     onDynamicReferenceClick,
     onNotify,
     onAddOfficials,
-    resultsMode = false,
-    gameResults = [],
-    onSaveBulkResults,
     readOnly = false,
   } = props;
 
@@ -135,25 +128,6 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
     e.stopPropagation();
     onAddGlobalTeamGroup();
   }, [onAddGlobalTeamGroup]);
-
-  if (resultsMode) {
-    return (
-      <div className="list-canvas px-3">
-        <Card className="shadow-sm">
-          <Card.Header className="bg-white">
-            <i className="bi bi-table me-2" />
-            <strong>{t('ui:label.gameResults')}</strong>
-          </Card.Header>
-          <Card.Body>
-            <GameResultsTable 
-              games={gameResults} 
-              onSave={onSaveBulkResults || (async () => {})} 
-            />
-          </Card.Body>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="list-canvas px-3">
