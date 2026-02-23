@@ -60,6 +60,36 @@ class LeagueHierarchySerializer(serializers.Serializer):
     seasons = LeagueSeasonStatsSerializer(many=True)
 
 
+class GamedayCalendarEntrySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    date = serializers.CharField()
+    start = serializers.CharField(allow_null=True)
+    league_name = serializers.CharField(allow_null=True)
+    season_name = serializers.CharField(allow_null=True)
+    status = serializers.CharField(allow_null=True)
+    is_live = serializers.BooleanField()
+
+
+class LiveGamedaySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    date = serializers.CharField()
+
+
+class NextGamedaySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    date = serializers.CharField()
+    days_until = serializers.IntegerField()
+
+
+class GamedayScheduleSerializer(serializers.Serializer):
+    gamedays = GamedayCalendarEntrySerializer(many=True)
+    live_gameday = LiveGamedaySerializer(allow_null=True)
+    next_gameday = NextGamedaySerializer(allow_null=True)
+
+
 class AdminDashboardSerializer(serializers.Serializer):
     stats = AdminStatsSerializer()
     games_per_league = GamesPerLeagueSerializer(many=True)
@@ -68,3 +98,4 @@ class AdminDashboardSerializer(serializers.Serializer):
     referees_per_team = RefereesPerTeamSerializer(many=True)
     league_hierarchy = LeagueHierarchySerializer(many=True)
     teams_list = TeamEntrySerializer(many=True)
+    gameday_schedule = GamedayScheduleSerializer()

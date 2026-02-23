@@ -46,11 +46,17 @@ class TestAdminStatsAPIView:
         assert "teams_per_association" in data
         assert "referees_per_team" in data
         assert "league_hierarchy" in data
+        assert "gameday_schedule" in data
 
         # Verify stats structure
         assert "gamedays" in data["stats"]
         assert "teams" in data["stats"]
         assert "games" in data["stats"]
+
+        # Verify schedule structure
+        assert "gamedays" in data["gameday_schedule"]
+        assert "live_gameday" in data["gameday_schedule"]
+        assert "next_gameday" in data["gameday_schedule"]
 
     def test_games_per_league_endpoint_requires_auth(self, api_client):
         """Test games-per-league endpoint requires authentication."""

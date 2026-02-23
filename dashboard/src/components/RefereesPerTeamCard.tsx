@@ -29,7 +29,12 @@ const RefereesPerTeamCard: React.FC<Props> = ({ data, loading }) => {
                 key={item.team_id}
                 className="d-flex justify-content-between align-items-center px-0 border-bottom"
               >
-                <span>{item.team_name}</span>
+                <a
+                  href={`/teammanager/team/${item.team_id}`}
+                  className="text-decoration-none"
+                >
+                  {item.team_name}
+                </a>
                 <span
                   className="badge bg-info"
                   style={{ fontSize: '0.9rem', padding: '0.5rem 0.75rem' }}

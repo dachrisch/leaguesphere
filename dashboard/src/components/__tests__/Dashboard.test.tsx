@@ -33,6 +33,7 @@ describe('Dashboard', () => {
     // Setup successful API responses by default
     mockGetAdminStats.mockResolvedValue({
       stats: null,
+      gameday_schedule: { gamedays: [], live_gameday: null, next_gameday: null },
     })
     mockGetGamesPerLeague.mockResolvedValue([])
     mockGetTeamsPerLeague.mockResolvedValue([])

@@ -9,6 +9,7 @@ import {
   RefereesPerTeam,
   TeamsPerAssociation,
   LeagueHierarchy,
+  GamedaySchedule,
 } from '../types/dashboard'
 import AdminStatsCard from './AdminStatsCard'
 import GamesPerLeagueCard from './GamesPerLeagueCard'
@@ -16,10 +17,12 @@ import TeamsPerLeagueCard from './TeamsPerLeagueCard'
 import TeamsPerAssociationCard from './TeamsPerAssociationCard'
 import RefereesPerTeamCard from './RefereesPerTeamCard'
 import LeagueHierarchyAccordion from './LeagueHierarchyAccordion'
+import GamedayCalendar from './GamedayCalendar'
 
 const Dashboard: React.FC = () => {
   const [adminStats, setAdminStats] = useState<AdminStats | null>(null)
   const [adminDashboardData, setAdminDashboardData] = useState<AdminDashboardData | null>(null)
+  const [gamedaySchedule, setGamedaySchedule] = useState<GamedaySchedule | null>(null)
   const [gamesPerLeague, setGamesPerLeague] = useState<GamesPerLeague[]>([])
   const [teamsPerLeague, setTeamsPerLeague] = useState<TeamsPerLeague[]>([])
   const [teamsPerAssociation, setTeamsPerAssociation] = useState<
@@ -52,6 +55,7 @@ const Dashboard: React.FC = () => {
 
       setAdminStats(stats.stats)
       setAdminDashboardData(stats)
+      setGamedaySchedule(stats.gameday_schedule ?? null)
       setGamesPerLeague(games)
       setTeamsPerLeague(teams)
       setTeamsPerAssociation(association)
@@ -100,6 +104,13 @@ const Dashboard: React.FC = () => {
         leagueHierarchy={leagueHierarchy}
         teamsList={adminDashboardData?.teams_list ?? []}
       />
+
+      {/* Gameday Calendar Row */}
+      <Row className="mb-4">
+        <Col>
+          <GamedayCalendar data={gamedaySchedule} loading={loading} />
+        </Col>
+      </Row>
 
       {/* League Hierarchy View */}
       <Row className="mb-4">

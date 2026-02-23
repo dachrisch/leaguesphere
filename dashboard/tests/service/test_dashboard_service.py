@@ -201,3 +201,89 @@ class AdminStatsServiceTests(TestCase):
                 self.assertIn("name", entry)
         finally:
             dummy_team.delete()
+
+
+class GamedayScheduleServiceTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        from datetime import date, time
+        cls.user = User.objects.create_user(username="author")
+        cls.season = Season.objects.create(name="2026")
+        cls.league = League.objects.create(name="DFFL")
+        cls.official_team = Team.objects.create(name="Officials")
+
+        # Future gameday
+        cls.future_gd = Gameday.objects.create(
+            name="Future Gameday",
+            season=cls.season,
+            league=cls.league,
+            date=date(2026, 4, 1),
+            start=time(10, 0, 0),
+            author=cls.user,
+        )
+
+        # Past gameday
+        cls.past_gd = Gameday.objects.create(
+            name="Past Gameday",
+            season=cls.season,
+            league=cls.league,
+            date=date(2026, 1, 1),
+            start=time(10, 0, 0),
+            author=cls.user,
+        )
+
+    def test_returns_required_keys(self):
+        data = DashboardService.get_gameday_schedule()
+        self.assertIn("gamedays", data)
+        self.assertIn("live_gameday", data)
+        self.assertIn("next_gameday", data)
+
+    def test_gameday_entry_has_required_fields(self):
+        data = DashboardService.get_gameday_schedule()
+        entry = data["gamedays"][0]
+        for field in ["id", "name", "date", "start", "league_name", "season_name", "status", "is_live"]:
+            self.assertIn(field, entry)
+
+    def test_next_gameday_is_future(self):
+        # We need a fixed today for this to be deterministic in logic,
+        # but the service uses timezone.now().date().
+        # Since our test data uses 2026-04-01, it should be in the future
+        # relative to the current date (unless the test is run in 2027+).
+        data = DashboardService.get_gameday_schedule()
+        next_gd = data["next_gameday"]
+        if next_gd:
+            self.assertEqual(next_gd["id"], self.future_gd.pk)
+            self.assertGreaterEqual(next_gd["days_until"], 0)
+
+    def test_live_gameday_is_none_when_no_live_games(self):
+        data = DashboardService.get_gameday_schedule()
+        self.assertIsNone(data["live_gameday"])
+
+    def test_live_gameday_detected_when_gameinfo_is_live(self):
+        from gamedays.models import Gameinfo
+        # Create a live game for the future gameday
+        Gameinfo.objects.create(
+            gameday=self.future_gd,
+            scheduled=time(10, 0),
+            field=1,
+            status="1. Halbzeit",
+            officials=self.official_team
+        )
+
+        data = DashboardService.get_gameday_schedule()
+        self.assertIsNotNone(data["live_gameday"])
+        self.assertEqual(data["live_gameday"]["id"], self.future_gd.pk)
+
+    def test_is_live_flag_set_on_gameday_entry(self):
+        from gamedays.models import Gameinfo
+        Gameinfo.objects.create(
+            gameday=self.future_gd,
+            scheduled=time(10, 0),
+            field=1,
+            status="1. Halbzeit",
+            officials=self.official_team
+        )
+
+        data = DashboardService.get_gameday_schedule()
+        future_entry = next(g for g in data["gamedays"] if g["id"] == self.future_gd.pk)
+        self.assertTrue(future_entry["is_live"])

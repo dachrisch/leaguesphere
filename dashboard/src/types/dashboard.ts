@@ -229,6 +229,37 @@ export interface LeagueHierarchy {
   seasons: LeagueSeasonStats[]
 }
 
+// Admin Dashboard - Gameday Calendar
+export interface GamedayCalendarEntry {
+  id: number
+  name: string
+  date: string
+  start: string
+  league_name: string
+  season_name: string
+  status: 'DRAFT' | 'PUBLISHED' | 'IN_PROGRESS' | 'COMPLETED'
+  is_live: boolean
+}
+
+export interface LiveGameday {
+  id: number
+  name: string
+  date: string
+}
+
+export interface NextGameday {
+  id: number
+  name: string
+  date: string
+  days_until: number
+}
+
+export interface GamedaySchedule {
+  gamedays: GamedayCalendarEntry[]
+  live_gameday: LiveGameday | null
+  next_gameday: NextGameday | null
+}
+
 // Admin Dashboard - Full admin stats response
 export interface AdminDashboardData {
   stats: AdminStats
@@ -238,4 +269,5 @@ export interface AdminDashboardData {
   teams_per_association: TeamsPerAssociation[]
   league_hierarchy: LeagueHierarchy[]
   teams_list: TeamEntry[]
+  gameday_schedule: GamedaySchedule
 }

@@ -238,6 +238,7 @@ class AdminStatsAPIView(APIView):
             "referees_per_team": DashboardService.get_referees_per_team(),
             "league_hierarchy": DashboardService.get_league_hierarchy_stats(),
             "teams_list": DashboardService.get_teams_list(),
+            "gameday_schedule": DashboardService.get_gameday_schedule(),
         }
         serializer = AdminDashboardSerializer(data)
         return Response(serializer.data)

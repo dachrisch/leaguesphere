@@ -1021,3 +1021,64 @@ class DashboardService:
             .values('id', 'name')
             .order_by('name')
         )
+
+    @staticmethod
+    def get_gameday_schedule() -> dict:
+        """Returns gameday schedule data for the admin calendar view."""
+        from django.utils.timezone import now as tz_now
+
+        LIVE_STATUSES = ["Gestartet", "1. Halbzeit", "2. Halbzeit"]
+
+        today = tz_now().date()
+
+        gamedays = (
+            Gameday.objects
+            .select_related("league", "season")
+            .annotate(
+                is_live=Exists(
+                    Gameinfo.objects.filter(
+                        gameday=OuterRef("pk"),
+                        status__in=LIVE_STATUSES,
+                    )
+                )
+            )
+            .order_by("date", "start")
+        )
+
+        gameday_list = []
+        live_gameday = None
+        next_gameday = None
+
+        for gd in gamedays:
+            entry = {
+                "id": gd.pk,
+                "name": gd.name,
+                "date": str(gd.date),
+                "start": str(gd.start) if gd.start else None,
+                "league_name": gd.league.name if gd.league else None,
+                "season_name": gd.season.name if gd.season else None,
+                "status": gd.status,
+                "is_live": gd.is_live,
+            }
+            gameday_list.append(entry)
+
+            if gd.is_live and live_gameday is None:
+                live_gameday = {
+                    "id": gd.pk,
+                    "name": gd.name,
+                    "date": str(gd.date),
+                }
+
+            if next_gameday is None and not gd.is_live and gd.date >= today:
+                next_gameday = {
+                    "id": gd.pk,
+                    "name": gd.name,
+                    "date": str(gd.date),
+                    "days_until": (gd.date - today).days,
+                }
+
+        return {
+            "gamedays": gameday_list,
+            "live_gameday": live_gameday,
+            "next_gameday": next_gameday,
+        }

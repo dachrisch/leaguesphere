@@ -15,9 +15,21 @@ describe('RefereesPerTeamCard', () => {
 
   it('should render team names and referee counts', () => {
     render(<RefereesPerTeamCard data={mockData} loading={false} />)
-    
+
     expect(screen.getByText('Team A')).toBeInTheDocument()
     expect(screen.getByText('Team B')).toBeInTheDocument()
+  })
+
+  it('should render team names as links with correct href', () => {
+    const { container } = render(<RefereesPerTeamCard data={mockData} loading={false} />)
+
+    const teamALink = container.querySelector('a[href="/teammanager/team/1"]')
+    expect(teamALink).toBeInTheDocument()
+    expect(teamALink).toHaveTextContent('Team A')
+
+    const teamBLink = container.querySelector('a[href="/teammanager/team/2"]')
+    expect(teamBLink).toBeInTheDocument()
+    expect(teamBLink).toHaveTextContent('Team B')
   })
 
   it('should render loading spinner when loading', () => {
