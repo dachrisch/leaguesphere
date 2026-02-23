@@ -368,25 +368,3 @@ export function createDefaultField(id: string, order: number): Field {
   };
 }
 
-/**
- * Game result input for a single team in a game.
- */
-export interface GameResultInput {
-  id: number;
-  team?: { id: number; name: string };
-  team_name?: string;
-  fh: number | null;
-  sh: number | null;
-  isHome?: boolean;
-}
-
-/**
- * Game results display showing all games and their results.
- */
-export interface GameResultsDisplay {
-  id: number;
-  field: number;
-  scheduled: string;
-  status: string;
-  results: GameResultInput[];
-}

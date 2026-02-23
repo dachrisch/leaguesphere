@@ -69,15 +69,11 @@ const ListDesignerApp: React.FC = () => {
     addOfficialsGroup,
   } = controller;
 
-  const { 
-    setGamedayName, 
-    setOnGenerateTournament, 
+  const {
+    setGamedayName,
+    setOnGenerateTournament,
     setToolbarProps,
-    setIsLocked: setContextLocked,
-    resultsMode,
-    setResultsMode,
-    gameResults,
-    setGameResults
+    setIsLocked: setContextLocked
   } = useGamedayContext();
 
   const {
@@ -103,14 +99,6 @@ const ListDesignerApp: React.FC = () => {
     dismissNotification,
     addNotification,
   } = handlers;
-
-  // Use variables to avoid lint errors while keeping them available for future
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _unusedResultsMode = resultsMode;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _unusedGameResults = gameResults;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _unusedSetGameResults = setGameResults;
 
   const handleExportTemplate = useCallback(() => {
     const template = exportToStructuredTemplate(flowState);
@@ -161,56 +149,10 @@ const ListDesignerApp: React.FC = () => {
     setOnGenerateTournament(onGenerateTournamentHandler);
 
     setToolbarProps(prev => {
-      const resultsModeHandler = async () => {
-        if (!id) return;
-        if (!resultsMode) {
-          const games = await gamedayApi.getGamedayGames(parseInt(id));
-          setGameResults(games);
-          setResultsMode(true);
-        } else {
-          setResultsMode(false);
-        }
-      };
-
-      const newProps = {
-        ...toolbarPropsValue,
-        onResultsMode: resultsModeHandler,
-        resultsMode
-      };
-
-      if (JSON.stringify(prev) === JSON.stringify(newProps)) return prev;
-      return newProps as typeof toolbarPropsValue;
+      if (JSON.stringify(prev) === JSON.stringify(toolbarPropsValue)) return prev;
+      return toolbarPropsValue;
     });
-  }, [metadata?.name, isLocked, onGenerateTournamentHandler, toolbarPropsValue, setGamedayName, setContextLocked, setOnGenerateTournament, setToolbarProps, id, resultsMode, setResultsMode, setGameResults]);
-
-  const handleSaveBulkResults = async (results: Record<string, unknown>) => {
-    if (!id) return;
-    const gamedayId = parseInt(id);
-    
-    try {
-      // Group by gameId
-      const groupedResults: Record<number, unknown[]> = {};
-      Object.entries(results).forEach(([key, val]) => {
-        const gameId = parseInt(key.split('-')[0]);
-        if (!groupedResults[gameId]) groupedResults[gameId] = [];
-        groupedResults[gameId].push(val);
-      });
-
-      await Promise.all(
-        Object.entries(groupedResults).map(([gameId, res]) => 
-          gamedayApi.updateBulkGameResults(gamedayId, parseInt(gameId), res)
-        )
-      );
-
-      setResultsMode(false);
-      addNotification(t('ui:notification.autoSaveSuccess'), 'success', t('ui:notification.resultsSaved.title'));
-      // Refresh state to show new scores in list
-      loadGameday(gamedayId);
-    } catch (error) {
-      console.error('Failed to save bulk results', error);
-      addNotification(t('ui:notification.saveResultFailed'), 'danger', t('ui:notification.title.error'));
-    }
-  };
+  }, [metadata?.name, isLocked, onGenerateTournamentHandler, toolbarPropsValue, setGamedayName, setContextLocked, setOnGenerateTournament, setToolbarProps]);
 
   const lastSavedStateRef = useRef<string>('');
   const initialLoadRef = useRef(true);
@@ -615,9 +557,6 @@ const ListDesignerApp: React.FC = () => {
             onNotify={addNotification}
             onAddOfficials={addOfficialsGroup}
             onGenerateTournament={onGenerateTournamentHandler}
-            resultsMode={resultsMode}
-            gameResults={gameResults}
-            onSaveBulkResults={handleSaveBulkResults}
             readOnly={isLocked}
           />
         </div>

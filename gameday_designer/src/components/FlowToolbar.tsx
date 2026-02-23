@@ -40,10 +40,6 @@ export interface FlowToolbarProps {
   canRedo?: boolean;
   /** Whether export is available (has valid data) */
   canExport?: boolean;
-  /** Callback to switch to results mode */
-  onResultsMode?: () => void;
-  /** Whether results mode is active */
-  resultsMode?: boolean;
 }
 
 /**
@@ -62,8 +58,6 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
   canUndo = false,
   canRedo = false,
   canExport = false,
-  onResultsMode,
-  resultsMode = false,
 }) => {
   const { t } = useTypedTranslation(['ui']);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,21 +96,6 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
   return (
     <div className="flow-toolbar" data-testid="flow-toolbar">
       <ButtonToolbar>
-        {/* Results mode button */}
-        {gamedayStatus !== 'DRAFT' && onResultsMode && (
-          <ButtonGroup className="me-2">
-            <Button
-              variant={resultsMode ? "primary" : "outline-primary"}
-              onClick={onResultsMode}
-              title={resultsMode ? t('ui:button.exitResults') : t('ui:button.enterResults')}
-              data-testid="results-mode-button"
-            >
-              <i className={`bi ${resultsMode ? 'bi-grid' : 'bi-table'} me-1`}></i>
-              {resultsMode ? t('ui:button.exitResults') : t('ui:button.enterResults')}
-            </Button>
-          </ButtonGroup>
-        )}
-
         {/* Import/Export buttons */}
         <ButtonGroup className="me-2">
           <Button
