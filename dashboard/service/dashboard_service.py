@@ -13,6 +13,7 @@ from django.db.models import (
     Case,
     When,
     IntegerField,
+    Prefetch,
 )
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -830,8 +831,8 @@ class DashboardService:
         # Count unique seasons
         total_seasons = Season.objects.count()
 
-        # Count unique teams
-        total_teams = Team.objects.distinct().count()
+        # Count unique teams (exclude dummy placeholder teams)
+        total_teams = Team.objects.exclude(location='dummy').distinct().count()
 
         # Count total games (Gameinfo)
         total_games = Gameinfo.objects.count()
@@ -864,7 +865,8 @@ class DashboardService:
     def get_teams_per_league() -> list:
         """Get number of teams per league"""
         data = (
-            Team.objects.filter(seasonleagueteam__isnull=False)
+            Team.objects.exclude(location='dummy')
+            .filter(seasonleagueteam__isnull=False)
             .values("seasonleagueteam__league__name", "seasonleagueteam__league__id")
             .annotate(count=Count("id", distinct=True))
             .order_by("-count")
@@ -883,7 +885,8 @@ class DashboardService:
     def get_teams_per_association() -> list:
         """Get number of teams per state association"""
         data = (
-            Team.objects.values("association__name", "association__id")
+            Team.objects.exclude(location='dummy')
+            .values("association__name", "association__id")
             .annotate(count=Count("id", distinct=True))
             .order_by("-count")
         )
@@ -906,7 +909,8 @@ class DashboardService:
         """
         try:
             data = (
-                Team.objects.filter(gameinfo_officials__isnull=False)
+                Team.objects.exclude(location='dummy')
+                .filter(gameinfo_officials__isnull=False)
                 .values("id", "name")
                 .annotate(count=Count("gameinfo_officials", distinct=True))
                 .order_by("-count")
@@ -959,6 +963,27 @@ class DashboardService:
                     avg_teams=Avg("team_count"), avg_games=Avg("game_count")
                 )
 
+                # Build gamedays list with game counts for navigation links
+                gamedays_qs = Gameday.objects.filter(
+                    league=league, season=season
+                ).prefetch_related(
+                    Prefetch(
+                        "gameinfo_set",
+                        queryset=Gameinfo.objects.order_by("scheduled"),
+                    )
+                ).order_by("date")
+
+                gamedays_data = []
+                for gd in gamedays_qs:
+                    gamedays_data.append(
+                        {
+                            "id": gd.id,
+                            "name": gd.name,
+                            "date": str(gd.date),
+                            "game_count": gd.gameinfo_set.count(),
+                        }
+                    )
+
                 seasons_stats.append(
                     {
                         "season_id": season.pk,
@@ -970,6 +995,7 @@ class DashboardService:
                         "avg_games_per_gameday": round(
                             float(averages["avg_games"] or 0), 1
                         ),
+                        "gamedays": gamedays_data,
                     }
                 )
 
@@ -986,3 +1012,12 @@ class DashboardService:
             )
 
         return result
+
+    @staticmethod
+    def get_teams_list() -> list:
+        """Returns all non-dummy teams ordered by name."""
+        return list(
+            Team.objects.exclude(location='dummy')
+            .values('id', 'name')
+            .order_by('name')
+        )

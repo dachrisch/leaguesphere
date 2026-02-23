@@ -3,6 +3,7 @@ import { Container, Row, Col, Alert, Button } from 'react-bootstrap'
 import { DashboardApi } from '../utils/api'
 import {
   AdminStats,
+  AdminDashboardData,
   GamesPerLeague,
   TeamsPerLeague,
   RefereesPerTeam,
@@ -18,6 +19,7 @@ import LeagueHierarchyAccordion from './LeagueHierarchyAccordion'
 
 const Dashboard: React.FC = () => {
   const [adminStats, setAdminStats] = useState<AdminStats | null>(null)
+  const [adminDashboardData, setAdminDashboardData] = useState<AdminDashboardData | null>(null)
   const [gamesPerLeague, setGamesPerLeague] = useState<GamesPerLeague[]>([])
   const [teamsPerLeague, setTeamsPerLeague] = useState<TeamsPerLeague[]>([])
   const [teamsPerAssociation, setTeamsPerAssociation] = useState<
@@ -49,6 +51,7 @@ const Dashboard: React.FC = () => {
         ])
 
       setAdminStats(stats.stats)
+      setAdminDashboardData(stats)
       setGamesPerLeague(games)
       setTeamsPerLeague(teams)
       setTeamsPerAssociation(association)
@@ -91,7 +94,12 @@ const Dashboard: React.FC = () => {
       )}
 
       {/* Admin Stats Cards */}
-      <AdminStatsCard data={adminStats} loading={loading} />
+      <AdminStatsCard
+        data={adminStats}
+        loading={loading}
+        leagueHierarchy={leagueHierarchy}
+        teamsList={adminDashboardData?.teams_list ?? []}
+      />
 
       {/* League Hierarchy View */}
       <Row className="mb-4">

@@ -31,12 +31,25 @@ class RefereesPerTeamSerializer(serializers.Serializer):
     count = serializers.IntegerField()
 
 
+class GamedaySummarySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    date = serializers.CharField()
+    game_count = serializers.IntegerField()
+
+
+class TeamEntrySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+
+
 class LeagueSeasonStatsSerializer(serializers.Serializer):
     season_id = serializers.IntegerField()
     season_name = serializers.CharField()
     gamedays_count = serializers.IntegerField()
     avg_teams_per_gameday = serializers.FloatField()
     avg_games_per_gameday = serializers.FloatField()
+    gamedays = GamedaySummarySerializer(many=True)
 
 
 class LeagueHierarchySerializer(serializers.Serializer):
@@ -54,3 +67,4 @@ class AdminDashboardSerializer(serializers.Serializer):
     teams_per_association = TeamsPerAssociationSerializer(many=True)
     referees_per_team = RefereesPerTeamSerializer(many=True)
     league_hierarchy = LeagueHierarchySerializer(many=True)
+    teams_list = TeamEntrySerializer(many=True)

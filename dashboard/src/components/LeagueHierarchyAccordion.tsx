@@ -69,6 +69,21 @@ const LeagueHierarchyAccordion: React.FC<Props> = ({ data, loading }) => {
                               </div>
                             </Col>
                           </Row>
+                          {season.gamedays.length > 0 && (
+                            <div className="mt-2">
+                              {season.gamedays.map(gd => (
+                                <div key={gd.id} className="mb-1">
+                                  <a
+                                    href={`/gamedays/gameday/${gd.id}/`}
+                                    className="fw-semibold text-decoration-none"
+                                  >
+                                    {gd.name} <small className="text-muted">{gd.date}</small>
+                                  </a>
+                                  <small className="text-muted ms-2">({gd.game_count} games)</small>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </Card.Body>
                       </Card>
                     </Col>

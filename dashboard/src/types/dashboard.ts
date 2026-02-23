@@ -200,12 +200,25 @@ export interface TeamsPerAssociation {
 }
 
 // Admin Dashboard - League Hierarchy
+export interface TeamEntry {
+  id: number
+  name: string
+}
+
+export interface GamedaySummary {
+  id: number
+  name: string
+  date: string
+  game_count: number
+}
+
 export interface LeagueSeasonStats {
   season_id: number
   season_name: string
   gamedays_count: number
   avg_teams_per_gameday: number
   avg_games_per_gameday: number
+  gamedays: GamedaySummary[]
 }
 
 export interface LeagueHierarchy {
@@ -224,4 +237,5 @@ export interface AdminDashboardData {
   referees_per_team: RefereesPerTeam[]
   teams_per_association: TeamsPerAssociation[]
   league_hierarchy: LeagueHierarchy[]
+  teams_list: TeamEntry[]
 }

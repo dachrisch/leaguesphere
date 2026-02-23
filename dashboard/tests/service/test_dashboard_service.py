@@ -78,14 +78,27 @@ class AdminStatsServiceTests(TestCase):
 
     def test_get_admin_stats_returns_correct_counts(self):
         """Test get_admin_stats returns correct gamedays, teams, games counts"""
-        stats = DashboardService.get_admin_stats()
+        stats_before = DashboardService.get_admin_stats()
+        teams_before = stats_before["teams"]
 
-        self.assertIn("gamedays", stats)
-        self.assertIn("teams", stats)
-        self.assertIn("games", stats)
-        self.assertIsInstance(stats["gamedays"], int)
-        self.assertIsInstance(stats["teams"], int)
-        self.assertIsInstance(stats["games"], int)
+        # Create a dummy team — should be excluded from counts
+        dummy_team = Team.objects.create(
+            name="Dummy Team",
+            description="Placeholder",
+            location="dummy",
+        )
+        try:
+            stats_after = DashboardService.get_admin_stats()
+            self.assertEqual(stats_after["teams"], teams_before, "Dummy team should not be counted")
+        finally:
+            dummy_team.delete()
+
+        self.assertIn("gamedays", stats_before)
+        self.assertIn("teams", stats_before)
+        self.assertIn("games", stats_before)
+        self.assertIsInstance(stats_before["gamedays"], int)
+        self.assertIsInstance(stats_before["teams"], int)
+        self.assertIsInstance(stats_before["games"], int)
 
     def test_get_games_per_league_returns_league_counts(self):
         """Test get_games_per_league returns games grouped by league"""
@@ -158,3 +171,33 @@ class AdminStatsServiceTests(TestCase):
         self.assertIn("gamedays_count", season)
         self.assertIn("avg_teams_per_gameday", season)
         self.assertIn("avg_games_per_gameday", season)
+        self.assertIn("gamedays", season)
+        self.assertIsInstance(season["gamedays"], list)
+        self.assertGreater(len(season["gamedays"]), 0)
+
+        gameday = season["gamedays"][0]
+        self.assertIn("id", gameday)
+        self.assertIn("name", gameday)
+        self.assertIn("date", gameday)
+        self.assertIn("game_count", gameday)
+        self.assertIsInstance(gameday["game_count"], int)
+        self.assertNotIn("games", gameday)
+
+    def test_get_teams_list_excludes_dummy(self):
+        """Test get_teams_list excludes teams with location='dummy'"""
+        dummy_team = Team.objects.create(
+            name="Placeholder",
+            description="Dummy placeholder",
+            location="dummy",
+        )
+        try:
+            result = DashboardService.get_teams_list()
+            team_ids = [t["id"] for t in result]
+            self.assertNotIn(dummy_team.id, team_ids, "Dummy team should be excluded from teams_list")
+            self.assertIn(self.team_a.id, team_ids, "Real team should be in teams_list")
+            # Verify structure
+            for entry in result:
+                self.assertIn("id", entry)
+                self.assertIn("name", entry)
+        finally:
+            dummy_team.delete()
