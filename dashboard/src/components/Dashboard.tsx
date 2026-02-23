@@ -67,7 +67,7 @@ const Dashboard: React.FC = () => {
   }, [api])
 
   useEffect(() => {
-    fetchAdminData()
+    void fetchAdminData()
   }, [fetchAdminData])
 
   return (
@@ -77,7 +77,7 @@ const Dashboard: React.FC = () => {
         <Button
           variant="outline-primary"
           size="sm"
-          onClick={fetchAdminData}
+          onClick={() => { void fetchAdminData() }}
           disabled={loading}
         >
           {loading ? 'Refreshing...' : 'Refresh'}
