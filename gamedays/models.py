@@ -114,18 +114,6 @@ class Achievement(models.Model):
 
 
 class Gameday(models.Model):
-    STATUS_DRAFT = "DRAFT"
-    STATUS_PUBLISHED = "PUBLISHED"
-    STATUS_IN_PROGRESS = "IN_PROGRESS"
-    STATUS_COMPLETED = "COMPLETED"
-
-    STATUS_CHOICES = [
-        (STATUS_DRAFT, "Draft"),
-        (STATUS_PUBLISHED, "Published"),
-        (STATUS_IN_PROGRESS, "In Progress"),
-        (STATUS_COMPLETED, "Completed"),
-    ]
-
     name = models.CharField(max_length=100)
     season = models.ForeignKey(Season, on_delete=models.CASCADE)
     league = models.ForeignKey(League, on_delete=models.CASCADE)
@@ -134,12 +122,6 @@ class Gameday(models.Model):
     format = models.CharField(max_length=100, default='6_2', blank=True)
     author = models.ForeignKey(User, on_delete=models.SET_DEFAULT, default=1)
     address = models.TextField(default='', blank=True)
-
-    # Lifecycle fields
-    status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default=STATUS_DRAFT
-    )
-    published_at = models.DateTimeField(null=True, blank=True)
 
     objects: QuerySet["Gameday"] = models.Manager()
 
@@ -153,44 +135,7 @@ class Gameday(models.Model):
         return f'{self.pk}__{self.date} {self.name}'
 
 
-class GamedayDesignerState(models.Model):
-    """Visual designer state for draft gamedays."""
-
-    gameday = models.OneToOneField(
-        Gameday,
-        on_delete=models.CASCADE,
-        related_name="designer_state",
-        primary_key=True,
-    )
-
-    state_data = models.JSONField(
-        default=dict, help_text="React Flow designer state (nodes, edges, teams)"
-    )
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    last_modified_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True
-    )
-
-    objects: QuerySet["GamedayDesignerState"] = models.Manager()
-
-    class Meta:
-        db_table = "gamedays_designer_state"
-
-    def __str__(self):
-        return f"Designer state for {self.gameday}"
-
-
 class Gameinfo(models.Model):
-    STATUS_DRAFT = "DRAFT"
-    STATUS_PUBLISHED = "PUBLISHED"
-    STATUS_IN_PROGRESS = "IN_PROGRESS"
-    STATUS_COMPLETED = "COMPLETED"
-
-    # Retaining existing "Geplant" for backward compatibility if needed,
-    # but strictly defining new flow constants.
-
     gameday = models.ForeignKey(Gameday, on_delete=models.CASCADE)
     scheduled = models.TimeField()
     field = models.PositiveSmallIntegerField()
@@ -203,11 +148,6 @@ class Gameinfo(models.Model):
     standing = models.CharField(max_length=100)
     league_group = models.ForeignKey('league_table.LeagueGroup', on_delete=CASCADE, null=True, default=None)
     in_possession = models.CharField(max_length=100, blank=True, null=True, default=None)
-
-    # Result tracking
-    halftime_score = models.JSONField(null=True, blank=True)
-    final_score = models.JSONField(null=True, blank=True)
-    is_locked = models.BooleanField(default=False)
 
     objects: QuerySet["Gameinfo"] = models.Manager()
 
