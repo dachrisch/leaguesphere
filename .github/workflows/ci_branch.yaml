@@ -20,4 +20,4 @@ jobs:
     uses: ./.github/workflows/part_node_test_matrix.yaml
     secrets: inherit
     with:
-      projects: '["scorecard", "liveticker", "gameday_designer", "passcheck"]'
+      projects: '["scorecard", "liveticker", "gameday_designer", "passcheck", "dashboard"]'
