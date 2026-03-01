@@ -1,8 +1,7 @@
 import pandas as pd
-from django.db.models.fields import return_None
 
 from gamedays.forms import SCHEDULE_CUSTOM_CHOICE_C, GamedayGaminfoFieldsAndGroupsForm
-from gamedays.models import Gameinfo, Gameday
+from gamedays.models import Gameinfo, Gameday, Gameresult, TeamLog
 from gamedays.service.gameday_settings import (
     ID_AWAY,
     SCHEDULED,
@@ -32,7 +31,6 @@ from gamedays.service.gameday_settings import (
     OVERTIME,
     GAME_END,
 )
-from gamedays.service.gamelog import TeamLog, Gameresult
 from gamedays.service.model_wrapper import GamedayModelWrapper
 
 EMPTY_DATA = "[]"
