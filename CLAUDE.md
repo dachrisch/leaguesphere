@@ -77,7 +77,7 @@ All infrastructure changes, Ansible playbook modifications, and environment conf
 - Ansible ensures idempotency and proper variable scoping
 
 **Test Environment:**
-- Host: `servyy-test.lxd` (IP: `10.185.182.207`)
+- Host: `servyy-test.lxd` (IP: `10.185.182.250`)
 - Purpose: Full deployment testing before production
 - Inventory: `/home/cda/dev/infrastructure/container/ansible/test` (if separate) or `--limit servyy-test` flag
 
@@ -117,7 +117,7 @@ ansible-playbook ansible/plays/playbook.yml -i ansible/production --limit lehel.
 **Full Test Command:**
 ```bash
 # Backend tests (must pass before push)
-MYSQL_HOST=10.185.182.207 \
+MYSQL_HOST=10.185.182.250 \
 MYSQL_DB_NAME=test_db \
 MYSQL_USER=user \
 MYSQL_PWD=user \
@@ -196,6 +196,17 @@ uv sync --extra test
 ```
 
 **Run development server:**
+
+Use `container/start_dev_server.sh` to start the development server. It automatically discovers the LXC container IP, builds all React apps, runs migrations, and starts Django:
+
+```bash
+cd container && ./start_dev_server.sh
+# Or with a fresh database import:
+cd container && ./start_dev_server.sh --fresh
+```
+
+Alternatively, run manually:
+
 ```bash
 # Use --insecure to serve static files during development
 python manage.py runserver --insecure
@@ -204,7 +215,7 @@ python manage.py runserver --insecure
 league_manager=dev python manage.py runserver --insecure
 
 # With test database
-MYSQL_HOST=10.185.182.207 \
+MYSQL_HOST=10.185.182.250 \
 MYSQL_DB_NAME=test_db \
 MYSQL_USER=user \
 MYSQL_PWD=user \
@@ -240,7 +251,7 @@ lxc start servyy-test
 cd container && ./spinup_test_db.sh
 
 # 4. Run tests with proper environment variables
-MYSQL_HOST=10.185.182.207 \
+MYSQL_HOST=10.185.182.250 \
 MYSQL_DB_NAME=test_db \
 MYSQL_USER=user \
 MYSQL_PWD=user \
@@ -248,7 +259,7 @@ SECRET_KEY=test-secret-key \
 pytest
 
 # Run with coverage
-MYSQL_HOST=10.185.182.207 \
+MYSQL_HOST=10.185.182.250 \
 MYSQL_DB_NAME=test_db \
 MYSQL_USER=user \
 MYSQL_PWD=user \
@@ -256,7 +267,7 @@ SECRET_KEY=test-secret-key \
 pytest --junitxml=test-reports/test-results.xml --cov=. --cov-report=xml --cov-report=html
 
 # Quick tests (no coverage, reuse DB)
-MYSQL_HOST=10.185.182.207 \
+MYSQL_HOST=10.185.182.250 \
 MYSQL_DB_NAME=test_db \
 MYSQL_USER=user \
 MYSQL_PWD=user \
@@ -533,7 +544,7 @@ The project uses LXC containers for isolated test database environments.
 
 **LXC Container Setup:**
 - Container name: `servyy-test`
-- IP address: `10.185.182.207`
+- IP address: `10.185.182.250`
 - Runs Docker MariaDB instance for tests
 - Accessible via SSH as `servyy-test.lxd`
 
