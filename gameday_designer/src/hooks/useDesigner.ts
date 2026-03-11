@@ -15,7 +15,7 @@ import {
   createInitialDesignerState,
   createDefaultField,
   createDefaultGameSlot,
-} from '../types/designer';
+} from '../types/index';
 
 /**
  * Partial update type for game slots.
