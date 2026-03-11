@@ -5,6 +5,7 @@ logger = logging.getLogger(__name__)
 
 from gamedays.forms import SCHEDULE_CUSTOM_CHOICE_C, GamedayGaminfoFieldsAndGroupsForm
 from gamedays.models import Gameinfo, Gameday, Gameresult, TeamLog, GameSetup
+from gamedays.service.placeholder_service import GamedayPlaceholderService
 from gamedays.service.gameday_settings import (
     ID_AWAY,
     SCHEDULED,
@@ -367,7 +368,6 @@ class GamedayGameService:
         self.away_team_id = 0
 
         if len(self.gameresult) > 0:
-            from gamedays.service.placeholder_service import GamedayPlaceholderService
             placeholder_service = GamedayPlaceholderService(self.game.gameday_id)
             
             home_row = self.gameresult[self.gameresult['isHome'] == True].iloc[0]
