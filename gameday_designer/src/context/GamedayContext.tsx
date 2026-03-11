@@ -45,26 +45,33 @@ export const GamedayProvider: React.FC<{ children: ReactNode }> = ({ children })
   const setGamedayNameCb = useCallback((name: string) => setGamedayName(name), []);
   const setOnGenerateTournament = useCallback((handler: (() => void) | null) => setOnGenerateTournamentInternal(() => handler), []);
   const setToolbarProps = useCallback((props: GamedayContextType['toolbarProps']) => setToolbarPropsInternal(props), []);
-  const setIsLockedCb = useCallback((locked: boolean) => setIsLocked(locked), []);
-  const setGameResults = useCallback(
-    (results: GameResultsDisplay[]) => setGameResultsInternal(results),
-    []
-  );
+  const setGameResults = useCallback((results: GameResultsDisplay[]) => setGameResultsInternal(results), []);
 
-  const value = useMemo(() => ({ 
-    gamedayName, 
+  const value = useMemo(() => ({
+    gamedayName,
     setGamedayName: setGamedayNameCb,
     onGenerateTournament,
     setOnGenerateTournament,
     toolbarProps,
     setToolbarProps,
     isLocked,
-    setIsLocked: setIsLockedCb,
+    setIsLocked,
     resultsMode,
     setResultsMode,
     gameResults,
+    setGameResults,
+  }), [
+    gamedayName, 
+    setGamedayNameCb, 
+    onGenerateTournament, 
+    setOnGenerateTournament, 
+    toolbarProps, 
+    setToolbarProps, 
+    isLocked,
+    resultsMode,
+    gameResults,
     setGameResults
-  }), [gamedayName, setGamedayNameCb, onGenerateTournament, setOnGenerateTournament, toolbarProps, setToolbarProps, isLocked, setIsLockedCb, resultsMode, gameResults, setGameResults]);
+  ]);
 
   return (
     <GamedayContext.Provider value={value}>

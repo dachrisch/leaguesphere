@@ -35,6 +35,7 @@
     "metadataDateInPast": "Gameday date is in the past",
     "metadataVenueMissing": "Gameday venue is missing",
     "metadataStartMissing": "Gameday Start Time is mandatory",
-      "metadataSeasonMissing": "Season selection is mandatory",
-      "metadataLeagueMissing": "League selection is mandatory"
-    }  
+    "metadataSeasonMissing": "Season selection is mandatory",
+    "metadataLeagueMissing": "League selection is mandatory",
+    "missing_official_error": "Please assign an official team"
+  }  

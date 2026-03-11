@@ -39,16 +39,46 @@
     "dashboard": "Dashboard",
     "gameResults": "Game Results",
     "back": "Back",
+    "language": "Language",
+    "german": "Deutsch",
+    "english": "English",
+    "stage": "Stage",
+    "standing": "Standing",
+    "time": "Time",
+    "home": "Home",
+    "away": "Away",
+    "score": "Score",
+    "official": "Official",
+    "externalOfficials": "External Officials",
+    "breakAfter": "Break after",
+    "breakAfterMinutes": "Break after (minutes)",
+    "actions": "Actions",
+    "validation": "Validation",
+    "tournamentFormat": "Tournament Format",
+    "numberOfFields": "Number of Fields",
+    "startTime": "Start Time",
+    "gameDuration": "Game Duration (min)",
+    "breakDuration": "Break between Games (min)",
+    "preview": "Preview",
     "fields": "Fields",
     "stages": "Stages",
     "teams": "Teams",
     "games": "Games",
-    "official": "Official",
-    "externalOfficials": "External Officials",
-    "german": "Deutsch",
-    "english": "English",
+    "teamPool": "Team Pool",
+    "globalTeamPool": "Global Team Pool",
+    "start": "Start",
+    "type": "Stage Type",
+    "readOnly": "Read Only",
+    "halftimeScore": "Halftime Score",
+    "finalScore": "Final Score",
+    "halftime": "Halftime",
+    "final": "Final",
     "undo": "Undo",
+    "winner": "Winner",
+    "loser": "Loser",
+    "tbd": "TBD",
     "searchDatabase": "Search from database...",
+    "selectTeam": "-- Select Team --",
     "gamedayName": "Gameday Name",
     "gamedayDate": "Gameday Date",
     "gamedayStartTime": "Start Time",
@@ -58,17 +88,27 @@
     "ranking": "Ranking",
     "rank": "Rank",
     "in": "in",
-    "of": "of"
+    "of": "of",
+    "user": "User",
+    "homeTeam": "Home: {{team}}",
+    "awayTeam": "Away: {{team}}"
   },
   "title": {
-    "enterGameResult": "Enter Game Result"
+    "enterGameResult": "Enter Game Result",
+    "bulkResultsEntry": "Enter Results",
+    "teamPool": "Team Pool",
+    "gamedayDashboard": "Tournament Dashboard",
+    "selectOfficial": "Select Official",
+    "selectTeam": "Select Team"
   },
   "placeholder": {
     "standing": "e.g., Group 1, HF1, P1",
     "gamedayName": "New Gameday",
     "searchGamedays": "Search gamedays...",
     "selectSeason": "Select Season",
-    "selectLeague": "Select League"
+    "selectLeague": "Select League",
+    "allSeasons": "All Seasons",
+    "allStatuses": "All Statuses"
   },
   "message": {
     "noTeamsYet": "No teams yet",
@@ -90,8 +130,14 @@
     "winnerOf": "Winner of {{match}}",
     "loserOf": "Loser of {{match}}",
     "placeFrom": "{{place}}. Place from {{stage}}",
-    "ungrouped": "Ungrouped",
-    "assignedGamesCount": "Number of games this team is assigned to"
+    "ungrouped": "Ungruppiert",
+    "assignedGamesCount": "Number of games this team is assigned to",
+    "loading": "Loading...",
+    "loadingGameday": "Loading gameday...",
+    "manageTournaments": "Manage Flag Football Tournaments",
+    "loadingGamedays": "Loading gamedays...",
+    "noGamedaysYet": "No gamedays yet",
+    "startByCreating": "Start by creating a new gameday."
   },
   "tooltip": {
     "addTeamToGroup": "Add a new team to this group",
@@ -128,7 +174,9 @@
     "enterResult": "Enter result",
     "deleteGame": "Delete game",
     "autoTimeHint": "Auto-calculated - click to override",
-    "manualTimeHint": "Manually set - click to edit"
+    "manualTimeHint": "Manually set - click to edit",
+    "swapTeams": "Swap home and away teams",
+    "unlockToDelete": "Unlock the schedule to delete it"
   },
   "notification": {
     "gameResultSaved": "Game result saved",
@@ -146,6 +194,12 @@
     "unlockSuccess": "Schedule unlocked for editing",
     "unlockFailed": "Failed to unlock schedule",
     "invalidTimeFormat": "Invalid time format. Use HH:MM (24-hour)",
+    "templateExported": {
+      "title": "Template Exported"
+    },
+    "resultsSaved": {
+      "title": "Results Saved"
+    },
     "title": {
       "success": "Success",
       "error": "Error",
@@ -153,6 +207,18 @@
       "importError": "Import Error",
       "deletion": "Deletion",
       "timeFormat": "Time Format"
-    }
+    },
+    "loadFailed": "Load failed",
+    "resultSaved": "Result saved",
+    "resultSaveFailed": "Failed to save result",
+    "resultsSavedBulk": "Results saved successfully",
+    "resultsSaveFailedBulk": "Failed to save results"
+  },
+  "error": {
+    "prerequisitesMissing": {
+      "title": "Prerequisites missing",
+      "message": "Please ensure at least one Season and one League exist before creating a gameday."
+    },
+    "gamedayNotFound": "Gameday not found"
   }
 }

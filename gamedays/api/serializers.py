@@ -1,6 +1,7 @@
 import logging
 
-from rest_framework.fields import SerializerMethodField, IntegerField
+from django.db import transaction
+from rest_framework.fields import SerializerMethodField, IntegerField, JSONField
 from rest_framework.serializers import ModelSerializer, Serializer
 
 from gamedays.models import (
@@ -10,6 +11,7 @@ from gamedays.models import (
     GameSetup,
     Season,
     League,
+    GamedayDesignerState,
     Gameresult,
 )
 
@@ -29,16 +31,52 @@ class LeagueSerializer(ModelSerializer):
 
 
 class GamedaySerializer(ModelSerializer):
+    designer_data = SerializerMethodField()
+
     class Meta:
         model = Gameday
         fields = "__all__"
         read_only_fields = ["author"]
         extra_kwargs = {"start": {"format": "%H:%M"}}
 
+    def get_designer_data(self, instance):
+        """Read from new GamedayDesignerState model."""
+        if hasattr(instance, "designer_state"):
+            return instance.designer_state.state_data
+        return None
+
+    def update(self, instance, validated_data):
+        """Update gameday and create/update designer state."""
+        with transaction.atomic():
+            designer_data = self.initial_data.get("designer_data")
+
+            if designer_data is not None:
+                # Get user from request context (defensive)
+                request = self.context.get("request")
+                user = request.user if request else None
+
+                # Create or update GamedayDesignerState
+                if hasattr(instance, "designer_state"):
+                    # Update existing
+                    state = instance.designer_state
+                    state.state_data = designer_data
+                    state.last_modified_by = user
+                    state.save()
+                else:
+                    # Create new
+                    GamedayDesignerState.objects.create(
+                        gameday=instance,
+                        state_data=designer_data,
+                        last_modified_by=user,
+                    )
+
+            return super().update(instance, validated_data)
+
 
 class GamedayListSerializer(ModelSerializer):
     season_display = SerializerMethodField()
     league_display = SerializerMethodField()
+    designer_data = SerializerMethodField()
 
     class Meta:
         model = Gameday
@@ -55,6 +93,7 @@ class GamedayListSerializer(ModelSerializer):
             "author",
             "address",
             "status",
+            "designer_data",
         ]
         read_only_fields = ["author"]
         extra_kwargs = {"start": {"format": "%H:%M"}}
@@ -64,6 +103,12 @@ class GamedayListSerializer(ModelSerializer):
 
     def get_league_display(self, obj):
         return obj.league.name if obj.league else ""
+
+    def get_designer_data(self, instance):
+        """Read from new GamedayDesignerState model."""
+        if hasattr(instance, "designer_state"):
+            return instance.designer_state.state_data
+        return None
 
 
 class GamedayInfoSerializer(Serializer):
@@ -181,8 +226,12 @@ class GameLogSerializer(Serializer):
         entries_firsthalf, entries_secondhalf = self._get_entries(
             is_home=is_home, obj=obj
         )
+        name = obj[self.HOME_TEAM] if is_home else obj[self.AWAY_TEAM]
+        if name is None:
+            from gamedays.service.schedule_resolution_service import GamedayScheduleResolutionService
+            name = GamedayScheduleResolutionService.get_game_placeholder(obj[self.ID], is_home)
         return {
-            "name": obj[self.HOME_TEAM] if is_home else obj[self.AWAY_TEAM],
+            "name": name,
             "score": obj[score_key],
             "firsthalf": {"score": obj[fh_key], "entries": entries_firsthalf},
             "secondhalf": {"score": obj[sh_key], "entries": entries_secondhalf},

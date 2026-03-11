@@ -97,27 +97,27 @@ commit;
 LOCK TABLES `gamedays_gameinfo` WRITE;
 /*!40000 ALTER TABLE `gamedays_gameinfo` DISABLE KEYS */;
 set autocommit=0;
-INSERT INTO `gamedays_gameinfo` (`id`, `scheduled`, `field`, `status`, `gameStarted`, `gameHalftime`, `gameFinished`, `stage`, `standing`, `gameday_id`, `officials_id`, `in_possession`, `league_group_id`, `final_score`, `halftime_score`, `is_locked`) VALUES (1,'10:00:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','A Game 1',1,3,NULL,NULL,NULL,NULL,0),
-(2,'11:20:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','A Game 2',1,2,NULL,NULL,NULL,NULL,0),
-(3,'12:40:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','A Game 3',1,1,NULL,NULL,NULL,NULL,0),
-(4,'14:00:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','B Game 1',1,6,NULL,NULL,NULL,NULL,0),
-(5,'15:20:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','B Game 2',1,5,NULL,NULL,NULL,NULL,0),
-(6,'16:40:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','B Game 3',1,4,NULL,NULL,NULL,NULL,0),
-(7,'18:00:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','SF1',1,1,NULL,NULL,NULL,NULL,0),
-(8,'19:20:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','SF2',1,2,NULL,NULL,NULL,NULL,0),
-(9,'22:00:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','Final',1,3,NULL,NULL,NULL,NULL,0),
-(10,'20:40:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','3rd Place',1,4,NULL,NULL,NULL,NULL,0),
-(14,'10:00:00.000000',1,'Geplant',NULL,NULL,NULL,'Vorrunde','Gruppe 1',2,6,NULL,NULL,NULL,NULL,0),
-(15,'11:10:00.000000',1,'Geplant',NULL,NULL,NULL,'Vorrunde','Gruppe 1',2,5,NULL,NULL,NULL,NULL,0),
-(16,'12:20:00.000000',1,'Geplant',NULL,NULL,NULL,'Vorrunde','Gruppe 1',2,4,NULL,NULL,NULL,NULL,0),
-(17,'13:30:00.000000',1,'Geplant',NULL,NULL,NULL,'Finalrunde','HF',2,14,NULL,NULL,NULL,NULL,0),
-(18,'14:40:00.000000',1,'Geplant',NULL,NULL,NULL,'Finalrunde','P3',2,31,NULL,NULL,NULL,NULL,0),
-(19,'15:50:00.000000',1,'Geplant',NULL,NULL,NULL,'Finalrunde','P1',2,32,NULL,NULL,NULL,NULL,0),
-(20,'10:00:00.000000',2,'Geplant',NULL,NULL,NULL,'Vorrunde','Gruppe 2',2,3,NULL,NULL,NULL,NULL,0),
-(21,'11:10:00.000000',2,'Geplant',NULL,NULL,NULL,'Vorrunde','Gruppe 2',2,2,NULL,NULL,NULL,NULL,0),
-(22,'12:20:00.000000',2,'Geplant',NULL,NULL,NULL,'Vorrunde','Gruppe 2',2,1,NULL,NULL,NULL,NULL,0),
-(23,'13:30:00.000000',2,'Geplant',NULL,NULL,NULL,'Finalrunde','HF',2,15,NULL,NULL,NULL,NULL,0),
-(24,'14:40:00.000000',2,'Geplant',NULL,NULL,NULL,'Finalrunde','P5',2,20,NULL,NULL,NULL,NULL,0);
+INSERT INTO `gamedays_gameinfo` (`id`, `scheduled`, `field`, `status`, `gameStarted`, `gameHalftime`, `gameFinished`, `stage`, `standing`, `gameday_id`, `officials_id`, `in_possession`, `league_group_id`) VALUES (1,'10:00:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','A Game 1',1,3,NULL,NULL),
+(2,'11:20:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','A Game 2',1,2,NULL,NULL),
+(3,'12:40:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','A Game 3',1,1,NULL,NULL),
+(4,'14:00:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','B Game 1',1,6,NULL,NULL),
+(5,'15:20:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','B Game 2',1,5,NULL,NULL),
+(6,'16:40:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','B Game 3',1,4,NULL,NULL),
+(7,'18:00:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','SF1',1,1,NULL,NULL),
+(8,'19:20:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','SF2',1,2,NULL,NULL),
+(9,'22:00:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','Final',1,3,NULL,NULL),
+(10,'20:40:00.000000',1,'Geplant',NULL,NULL,NULL,'Preliminary','3rd Place',1,4,NULL,NULL),
+(14,'10:00:00.000000',1,'Geplant',NULL,NULL,NULL,'Vorrunde','Gruppe 1',2,6,NULL,NULL),
+(15,'11:10:00.000000',1,'Geplant',NULL,NULL,NULL,'Vorrunde','Gruppe 1',2,5,NULL,NULL),
+(16,'12:20:00.000000',1,'Geplant',NULL,NULL,NULL,'Vorrunde','Gruppe 1',2,4,NULL,NULL),
+(17,'13:30:00.000000',1,'Geplant',NULL,NULL,NULL,'Finalrunde','HF',2,14,NULL,NULL),
+(18,'14:40:00.000000',1,'Geplant',NULL,NULL,NULL,'Finalrunde','P3',2,31,NULL,NULL),
+(19,'15:50:00.000000',1,'Geplant',NULL,NULL,NULL,'Finalrunde','P1',2,32,NULL,NULL),
+(20,'10:00:00.000000',2,'Geplant',NULL,NULL,NULL,'Vorrunde','Gruppe 2',2,3,NULL,NULL),
+(21,'11:10:00.000000',2,'Geplant',NULL,NULL,NULL,'Vorrunde','Gruppe 2',2,2,NULL,NULL),
+(22,'12:20:00.000000',2,'Geplant',NULL,NULL,NULL,'Vorrunde','Gruppe 2',2,1,NULL,NULL),
+(23,'13:30:00.000000',2,'Geplant',NULL,NULL,NULL,'Finalrunde','HF',2,15,NULL,NULL),
+(24,'14:40:00.000000',2,'Geplant',NULL,NULL,NULL,'Finalrunde','P5',2,20,NULL,NULL);
 /*!40000 ALTER TABLE `gamedays_gameinfo` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;

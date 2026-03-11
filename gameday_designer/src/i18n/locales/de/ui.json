@@ -91,14 +91,27 @@
     "of": "von",
     "fields": "Felder",
     "games": "Spiele",
-    "teams": "Teams"
+    "teams": "Teams",
+    "user": "Benutzer",
+    "homeTeam": "Heim: {{team}}",
+    "awayTeam": "Auswärts: {{team}}"
+  },
+  "title": {
+    "enterGameResult": "Spielergebnis eingeben",
+    "bulkResultsEntry": "Ergebnisse eintragen",
+    "teamPool": "Team-Pool",
+    "gamedayDashboard": "Turnier-Dashboard",
+    "selectOfficial": "Schiedsrichter wählen",
+    "selectTeam": "Team wählen"
   },
   "placeholder": {
     "standing": "z.B. Gruppe 1, HF1, P1",
     "gamedayName": "Neuer Spieltag",
     "searchGamedays": "Spieltage suchen...",
     "selectSeason": "Saison wählen",
-    "selectLeague": "Liga wählen"
+    "selectLeague": "Liga wählen",
+    "allSeasons": "Alle Saisons",
+    "allStatuses": "Alle Status"
   },
   "message": {
     "noTeamsYet": "Noch keine Teams",
@@ -121,7 +134,13 @@
     "loserOf": "Verlierer von {{match}}",
     "placeFrom": "{{place}}. Platz aus {{stage}}",
     "ungrouped": "Ungruppiert",
-    "assignedGamesCount": "Anzahl der Spiele, denen dieses Team zugewiesen ist"
+    "assignedGamesCount": "Anzahl der Spiele, denen dieses Team zugewiesen ist",
+    "loading": "Wird geladen...",
+    "loadingGameday": "Spieltag wird geladen...",
+    "manageTournaments": "Flag Football Turnierpläne verwalten",
+    "loadingGamedays": "Lade Spieltage...",
+    "noGamedaysYet": "Noch keine Spieltage",
+    "startByCreating": "Beginnen Sie, indem Sie einen neuen Spieltag erstellen."
   },
   "tooltip": {
     "addTeamToGroup": "Ein neues Team zu dieser Gruppe hinzufügen",
@@ -136,12 +155,12 @@
     "teamColor": "Das Farbabzeichen für dieses Team ändern",
     "editFieldName": "Klicken, um den Namen dieses Spielfelds zu bearbeiten",
     "deleteField": "Dieses Feld und alle darin enthaltenen Phasen und Spiele dauerhaft entfernen",
-    "fieldColor": "Die Akzentfarbe für dieses Feld ändern",
+    "fieldColor": "Die Akzentfarbe for dieses Feld ändern",
     "editStageName": "Klicken, um den Namen dieser Turnierphase zu bearbeiten",
     "deleteStage": "Diese Phase und alle darin enthaltenen Spiele dauerhaft entfernen",
     "stageColor": "Die Akzentfarbe für diese Phase ändern",
     "importFromJson": "Einen Spielplan aus einer JSON-Datei importieren",
-    "exportFromJson": "Den aktuellen Spielplan in eine JSON-Datei exportieren",
+    "exportToJson": "Den aktuellen Spielplan in eine JSON-Datei exportieren",
     "exportTemplateToJson": "Die logische Turnierstruktur als portable Vorlage exportieren",
     "undo": "Die letzte Aktion rückgängig machen",
     "redo": "Die zuvor rückgängig gemachte Aktion wiederholen",
@@ -158,7 +177,9 @@
     "enterResult": "Ergebnis eingeben",
     "deleteGame": "Spiel löschen",
     "autoTimeHint": "Automatisch berechnet - Klicken zum Überschreiben",
-    "manualTimeHint": "Manuell gesetzt - Klicken zum Bearbeiten"
+    "manualTimeHint": "Manuell gesetzt - Klicken zum Bearbeiten",
+    "swapTeams": "Heim- und Auswärtsteam tauschen",
+    "unlockToDelete": "Schalten Sie den Spielplan frei, um ihn zu löschen"
   },
   "notification": {
     "gameResultSaved": "Spielergebnis gespeichert",
@@ -176,6 +197,12 @@
     "unlockSuccess": "Spielplan zur Bearbeitung freigeschaltet",
     "unlockFailed": "Spielplan konnte nicht freigeschaltet werden",
     "invalidTimeFormat": "Ungültiges Zeitformat. Verwenden Sie HH:MM (24-Stunden)",
+    "templateExported": {
+      "title": "Vorlage exportiert"
+    },
+    "resultsSaved": {
+      "title": "Ergebnisse gespeichert"
+    },
     "title": {
       "success": "Erfolg",
       "error": "Fehler",
@@ -183,6 +210,18 @@
       "importError": "Import-Fehler",
       "deletion": "Löschen",
       "timeFormat": "Zeitformat"
-    }
+    },
+    "loadFailed": "Laden fehlgeschlagen",
+    "resultSaved": "Ergebnis gespeichert",
+    "resultSaveFailed": "Ergebnis speichern fehlgeschlagen",
+    "resultsSavedBulk": "Ergebnisse erfolgreich gespeichert",
+    "resultsSaveFailedBulk": "Speichern der Ergebnisse fehlgeschlagen"
+  },
+  "error": {
+    "prerequisitesMissing": {
+      "title": "Voraussetzungen fehlen",
+      "message": "Bitte stellen Sie sicher, dass mindestens eine Saison und eine Liga existieren, bevor Sie einen Spieltag erstellen."
+    },
+    "gamedayNotFound": "Spieltag nicht gefunden"
   }
 }

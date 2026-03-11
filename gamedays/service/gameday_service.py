@@ -4,7 +4,7 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 from gamedays.forms import SCHEDULE_CUSTOM_CHOICE_C, GamedayGaminfoFieldsAndGroupsForm
-from gamedays.models import Gameinfo, Gameday, Gameresult, TeamLog, GameSetup
+from gamedays.models import Gameinfo, Gameday, GamedayDesignerState, Gameresult, TeamLog, GameSetup
 from gamedays.service.gameday_settings import (
     ID_AWAY,
     SCHEDULED,
@@ -180,12 +180,21 @@ class EmptyGamedayService:
 
     @staticmethod
     def get_resolved_designer_data(gameday_pk):
-        gameday = Gameday.objects.get(pk=gameday_pk)
-        return gameday.designer_data or {"nodes": [], "edges": []}
+        try:
+            gameday = Gameday.objects.get(pk=gameday_pk)
 
-    @staticmethod
-    def get_staff_passcheck_details():
-        return EmptyPasscheckDetailsTable
+            # Read from new model
+            try:
+                data = gameday.designer_state.state_data
+            except GamedayDesignerState.DoesNotExist:
+                return {"nodes": [], "edges": []}
+
+            if not data:
+                return {"nodes": [], "edges": []}
+
+            return data
+        except Gameday.DoesNotExist:
+            return {"nodes": [], "edges": []}
 
 
 class GamedayService:
@@ -281,6 +290,84 @@ class GamedayService:
 
     def get_defense_player_statistic_table(self):
         return self.gmw.get_defense_statistic_table()
+
+    def get_resolved_designer_data(self, gameday_pk=None):
+        try:
+            # Always reload from database to get fresh designer_state relation
+            gameday = Gameday.objects.get(
+                pk=gameday_pk if gameday_pk else self.gameday_pk
+            )
+
+            # Read from new model
+            try:
+                data = gameday.designer_state.state_data
+            except GamedayDesignerState.DoesNotExist:
+                return {"nodes": [], "edges": []}
+
+            if not data:
+                return {"nodes": [], "edges": []}
+
+            results = Gameresult.objects.filter(gameinfo__gameday=gameday)
+            games = Gameinfo.objects.filter(gameday=gameday)
+
+            def resolve_team(ref):
+                try:
+                    if not ref or not isinstance(ref, dict):
+                        return None
+                    target_match = ref.get("matchName")
+                    ref_type = ref.get("type")  # 'winner' or 'loser'
+
+                    target_game = games.filter(standing=target_match).first()
+                    if (
+                        not target_game
+                        or target_game.status != Gameinfo.STATUS_COMPLETED
+                    ):
+                        return None
+
+                    game_results = results.filter(gameinfo=target_game).order_by(
+                        "isHome"
+                    )
+                    if len(game_results) < 2:
+                        return None
+
+                    home_res = results.filter(gameinfo=target_game, isHome=True).first()
+                    away_res = results.filter(gameinfo=target_game, isHome=False).first()
+
+                    home_score = (home_res.fh or 0) + (home_res.sh or 0) if home_res else 0
+                    away_score = (away_res.fh or 0) + (away_res.sh or 0) if away_res else 0
+
+                    winner = home_res if home_score > away_score else away_res
+                    loser = away_res if home_score > away_score else home_res
+
+                    if home_score == away_score:
+                        return "Tie"
+
+                    resolved_team = winner if ref_type == "winner" else loser
+                    if not resolved_team or not resolved_team.team:
+                        return None
+                    return resolved_team.team.name
+                except Exception:
+                    return None
+
+            for node in data.get("nodes", []):
+                try:
+                    if node.get("type") == "game":
+                        node_data = node.get("data", {})
+                        home_ref = node_data.get("homeTeamDynamic")
+                        away_ref = node_data.get("awayTeamDynamic")
+
+                        if home_ref:
+                            node_data["resolvedHomeTeam"] = resolve_team(home_ref)
+                        if away_ref:
+                            node_data["resolvedAwayTeam"] = resolve_team(away_ref)
+                except Exception:
+                    # Skip this node if resolution fails
+                    continue
+
+            return data
+        except Exception:
+            # If all else fails, return empty designer data
+            return {"nodes": [], "edges": []}
 
     @staticmethod
     def update_format(gameday, data):

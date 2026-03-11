@@ -225,7 +225,7 @@ describe('ListCanvas - Inline Add Field Button Pattern', () => {
       renderCanvas(createDefaultProps());
 
       // Component uses translated label.teamPool (mapped to "Team Pool" in en)
-      expect(screen.getByText('label.teamPool')).toBeInTheDocument();
+      expect(screen.getByText('Team Pool')).toBeInTheDocument();
     });
 
     it('Global Team Pool appears before Fields section', () => {
@@ -235,7 +235,7 @@ describe('ListCanvas - Inline Add Field Button Pattern', () => {
       const sectionTexts = Array.from(sections).map((s) => s.textContent || "");
 
       // Team Pool should come before Fields
-      const teamPoolIndex = sectionTexts.findIndex((t) => t.includes('label.teamPool'));
+      const teamPoolIndex = sectionTexts.findIndex((t) => t.includes('Team Pool'));
       const fieldsIndex = sectionTexts.findIndex((t) => t.includes('Fields'));
 
       expect(teamPoolIndex).toBeGreaterThanOrEqual(0);
@@ -247,7 +247,7 @@ describe('ListCanvas - Inline Add Field Button Pattern', () => {
       const { container } = renderCanvas(createDefaultProps());
 
       // Find the team pool header (clickable)
-      const teamPoolHeader = screen.getByText('label.teamPool').closest('.card-header');
+      const teamPoolHeader = screen.getByText('Team Pool').closest('.card-header');
       expect(teamPoolHeader).toBeInTheDocument();
 
       // Click to collapse
