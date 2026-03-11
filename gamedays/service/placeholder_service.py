@@ -31,9 +31,14 @@ class GamedayPlaceholderService:
             self._template = application.template
             return self._template
         
-        # 2. Fallback to format-based name for migrated templates
+        # 2. Fallback to format-based name for migrated templates (convention from migrate_json_schedules)
         template_name = f"schedule_{self.gameday.format}"
         self._template = ScheduleTemplate.objects.filter(name=template_name).first()
+        if self._template:
+            logger.info(
+                f"Gameday {self.gameday_id} matched template by format name '{template_name}' "
+                f"(no TemplateApplication record). Consider creating one."
+            )
         return self._template
 
     def get_placeholder(self, gameinfo_id: int, is_home: bool = True, is_official: bool = False) -> str:
