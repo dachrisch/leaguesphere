@@ -106,6 +106,28 @@ export interface Field {
   stages: Stage[];
 }
 
+export interface DesignerState {
+  fields: Field[];
+  selectedGameSlot: string | null;
+  validationResult: ValidationResult;
+}
+
+export interface ValidationResult {
+  isValid: boolean;
+  errors: ValidationError[];
+  warnings: ValidationWarning[];
+}
+
+export interface ValidationError {
+  type: string;
+  message: string;
+}
+
+export interface ValidationWarning {
+  type: string;
+  message: string;
+}
+
 export interface StructuredTemplate {
   version: string;
   fields: Field[];
@@ -152,6 +174,22 @@ export function createDefaultField(id: string, order: number): Field {
     name: `Feld ${order + 1}`,
     order,
     gameSlots: [],
+  };
+}
+
+export function createEmptyValidationResult(): ValidationResult {
+  return {
+    isValid: true,
+    errors: [],
+    warnings: [],
+  };
+}
+
+export function createInitialDesignerState(): DesignerState {
+  return {
+    fields: [],
+    selectedGameSlot: null,
+    validationResult: createEmptyValidationResult(),
   };
 }
 
