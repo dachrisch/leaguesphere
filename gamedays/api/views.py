@@ -26,7 +26,15 @@ from gamedays.serializers.game_results import (
     GameResultsUpdateSerializer,
     GameInfoSerializer,
 )
-from gamedays.models import Gameday, Gameinfo, GameOfficial, Season, League, Gameresult
+from gamedays.models import (
+    Gameday,
+    Gameinfo,
+    GameOfficial,
+    Season,
+    League,
+    Gameresult,
+    GamedayDesignerState,
+)
 from gamedays.service.gameday_service import GamedayService
 
 
@@ -97,6 +105,20 @@ class GamedayViewSet(viewsets.ModelViewSet):
         gameday.save()
 
         return Response(GamedaySerializer(gameday).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["get", "put"], url_path="designer-state")
+    def designer_state(self, request, pk=None):
+        gameday = self.get_object()
+        if request.method == "GET":
+            state, created = GamedayDesignerState.objects.get_or_create(gameday=gameday)
+            return Response({"state_data": state.state_data})
+
+        if request.method == "PUT":
+            state, created = GamedayDesignerState.objects.get_or_create(gameday=gameday)
+            state.state_data = request.data.get("state_data", {})
+            state.last_modified_by = request.user
+            state.save()
+            return Response({"state_data": state.state_data})
 
 
 class GamedayListAPIView(ListAPIView):
@@ -215,8 +237,16 @@ class GameResultUpdateAPIView(APIView):
             home_res = Gameresult.objects.filter(gameinfo=game, isHome=True).first()
             away_res = Gameresult.objects.filter(gameinfo=game, isHome=False).first()
 
-            home_fh = halftime_score.get("home", 0) if halftime_score else (home_res.fh if home_res else 0)
-            away_fh = halftime_score.get("away", 0) if halftime_score else (away_res.fh if away_res else 0)
+            home_fh = (
+                halftime_score.get("home", 0)
+                if halftime_score
+                else (home_res.fh if home_res else 0)
+            )
+            away_fh = (
+                halftime_score.get("away", 0)
+                if halftime_score
+                else (away_res.fh if away_res else 0)
+            )
 
             Gameresult.objects.filter(gameinfo=game, isHome=True).update(
                 fh=home_fh, sh=final_score.get("home", 0) - (home_fh or 0)
