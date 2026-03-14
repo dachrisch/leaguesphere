@@ -19,6 +19,11 @@ from dashboard.api.views import (
     TeamsPerLeagueAPIView,
     TeamsPerAssociationAPIView,
     RefereesPerTeamAPIView,
+    TeamsPerLeagueBySeasonAPIView,
+    TeamsInLeagueForSeasonAPIView,
+    GamesPerSeasonAPIView,
+    GamesInSeasonByWeekAPIView,
+    GamesInWeekAPIView,
 )
 
 urlpatterns = [
@@ -70,4 +75,10 @@ urlpatterns = [
     path("user-segments/", UserSegmentsAPIView.as_view(), name="user-segments"),
     path("problem-alerts/", ProblemAlertsAPIView.as_view(), name="problem-alerts"),
     path("users-per-team/", UsersPerTeamAPIView.as_view(), name="users-per-team"),
+    # Season Drilldown Endpoints
+    path("teams-per-league-by-season/", TeamsPerLeagueBySeasonAPIView.as_view(), name="teams-per-league-by-season"),
+    path("teams/<str:season_name>/<str:league_name>/", TeamsInLeagueForSeasonAPIView.as_view(), name="teams-in-league-season"),
+    path("games-per-season/", GamesPerSeasonAPIView.as_view(), name="games-per-season"),
+    path("games/<str:season_name>/weeks/", GamesInSeasonByWeekAPIView.as_view(), name="games-season-weeks"),
+    path("games/week/<int:gameday_id>/", GamesInWeekAPIView.as_view(), name="games-in-week"),
 ]

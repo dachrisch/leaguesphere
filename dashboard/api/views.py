@@ -307,3 +307,63 @@ class RefereesPerTeamAPIView(APIView):
         data = DashboardService.get_referees_per_team()
         serializer = RefereesPerTeamSerializer(data, many=True)
         return Response(serializer.data)
+
+
+# ============ Season Drilldown API Endpoints ============
+
+class TeamsPerLeagueBySeasonAPIView(APIView):
+    """Teams per league with season breakdown"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @method_decorator(cache_page(60))
+    def get(self, request):
+        """Get teams per league organized by season with trend"""
+        data = DashboardService.get_teams_per_league_by_season()
+        return Response(data)
+
+
+class TeamsInLeagueForSeasonAPIView(APIView):
+    """Drilldown: Teams in a specific league for a specific season"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, season_name, league_name):
+        """Get teams in league for season"""
+        data = DashboardService.get_teams_in_league_for_season(season_name, league_name)
+        return Response(data)
+
+
+class GamesPerSeasonAPIView(APIView):
+    """Games per season endpoint"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @method_decorator(cache_page(60))
+    def get(self, request):
+        """Get games per season with league breakdown"""
+        data = DashboardService.get_games_per_season()
+        return Response(data)
+
+
+class GamesInSeasonByWeekAPIView(APIView):
+    """Drilldown: Games in season broken down by week"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, season_name):
+        """Get games in season by week"""
+        league_name = request.query_params.get('league')
+        data = DashboardService.get_games_in_season_by_week(season_name, league_name)
+        return Response(data)
+
+
+class GamesInWeekAPIView(APIView):
+    """Drilldown: Games in a specific week/gameday"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, gameday_id):
+        """Get all games for a specific gameday/week"""
+        data = DashboardService.get_games_in_week(gameday_id)
+        return Response(data)
