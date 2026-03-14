@@ -1082,3 +1082,188 @@ class DashboardService:
             "live_gameday": live_gameday,
             "next_gameday": next_gameday,
         }
+
+    # ============ Season Drilldown Methods ============
+
+    @staticmethod
+    def get_teams_per_league_by_season():
+        """
+        Returns teams per league organized by season with trend.
+        This enhances get_teams_per_league with season breakdown.
+        """
+        seasons = Season.objects.all().order_by('-name')[:3]
+        season_names = [s.name for s in seasons]
+
+        if len(season_names) < 1:
+            return []
+
+        result = []
+        leagues = League.objects.all()
+
+        for league in leagues:
+            counts = {}
+            for season_name in season_names:
+                from gamedays.models import SeasonLeagueTeam
+                count = SeasonLeagueTeam.objects.filter(
+                    season__name=season_name,
+                    league=league
+                ).count()
+                counts[season_name] = count
+
+            oldest = counts.get(season_names[0], 0)
+            newest = counts.get(season_names[-1], 0)
+
+            if oldest > 0:
+                trend = ((newest - oldest) / oldest) * 100
+                trend_str = f"{'+' if trend > 0 else ''}{trend:.0f}%"
+            else:
+                trend_str = "N/A" if newest == 0 else "New"
+
+            result.append({
+                'league': league.name,
+                'league_id': league.id,
+                'counts': counts,
+                'trend': trend_str,
+                'current': newest,
+            })
+
+        return result
+
+    @staticmethod
+    def get_teams_in_league_for_season(season_name, league_name):
+        """
+        Returns detailed team info for a specific season and league.
+        Drilldown from TeamsPerLeagueCard.
+        """
+        from gamedays.models import SeasonLeagueTeam, Gameresult
+
+        teams = SeasonLeagueTeam.objects.select_related(
+            'season', 'league', 'team', 'team__association'
+        ).filter(
+            season__name=season_name,
+            league__name=league_name
+        ).values(
+            'team__id',
+            'team__name',
+            'team__association__abbr',
+        ).distinct()
+
+        result = []
+        for item in teams:
+            game_count = Gameresult.objects.filter(
+                gameinfo__gameday__season__name=season_name,
+                gameinfo__gameday__league__name=league_name,
+                team_id=item['team__id']
+            ).count()
+
+            result.append({
+                'id': item['team__id'],
+                'name': item['team__name'],
+                'association': item['team__association__abbr'] or 'N/A',
+                'games': game_count,
+            })
+
+        return sorted(result, key=lambda x: x['name'])
+
+    @staticmethod
+    def get_games_per_season():
+        """
+        Returns total games per season, broken down by league.
+        """
+        seasons = Season.objects.all().order_by('-name')[:5]
+
+        result = []
+        for season in seasons:
+            leagues = League.objects.all()
+            season_data = {
+                'season': season.name,
+                'season_id': season.id,
+                'total': 0,
+                'by_league': {},
+                'completed': 0,
+            }
+
+            for league in leagues:
+                count = Gameinfo.objects.filter(
+                    gameday__season=season,
+                    gameday__league=league
+                ).count()
+                season_data['by_league'][league.name] = count
+                season_data['total'] += count
+
+                completed = Gameinfo.objects.filter(
+                    gameday__season=season,
+                    gameday__league=league,
+                    status='Beendet'
+                ).count()
+                season_data['completed'] += completed
+
+            result.append(season_data)
+
+        return result
+
+    @staticmethod
+    def get_games_in_season_by_week(season_name, league_name=None):
+        """
+        Returns games in a season broken down by week/gameday.
+        Drilldown from GamesPerSeasonCard.
+        """
+        gamedays = Gameday.objects.filter(
+            season__name=season_name
+        ).select_related('league').order_by('date')
+
+        if league_name:
+            gamedays = gamedays.filter(league__name=league_name)
+
+        result = []
+        for gameday in gamedays:
+            game_count = Gameinfo.objects.filter(gameday=gameday).count()
+            completed_count = Gameinfo.objects.filter(
+                gameday=gameday,
+                status='Beendet'
+            ).count()
+
+            result.append({
+                'gameday_id': gameday.id,
+                'gameday_name': gameday.name,
+                'date': gameday.date.isoformat(),
+                'league': gameday.league.name,
+                'games': game_count,
+                'completed': completed_count,
+            })
+
+        return result
+
+    @staticmethod
+    def get_games_in_week(gameday_id):
+        """
+        Returns all games for a specific gameday/week.
+        """
+        games = Gameinfo.objects.filter(
+            gameday_id=gameday_id
+        ).select_related(
+            'gameday__season', 'gameday__league'
+        ).order_by('scheduled')
+
+        result = []
+        for game in games:
+            home_result = Gameresult.objects.filter(
+                gameinfo=game, isHome=True
+            ).select_related('team').first()
+            away_result = Gameresult.objects.filter(
+                gameinfo=game, isHome=False
+            ).select_related('team').first()
+
+            result.append({
+                'id': game.id,
+                'scheduled': game.scheduled.isoformat() if game.scheduled else None,
+                'field': game.field,
+                'stage': game.stage,
+                'status': game.status,
+                'home_team': home_result.team.name if home_result and home_result.team else None,
+                'away_team': away_result.team.name if away_result and away_result.team else None,
+                'home_score': home_result.pa if home_result else None,
+                'away_score': away_result.pa if away_result else None,
+            })
+
+        return result
