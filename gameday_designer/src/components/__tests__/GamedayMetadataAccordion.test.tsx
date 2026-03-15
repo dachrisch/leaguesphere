@@ -64,7 +64,7 @@ describe('GamedayMetadataAccordion', () => {
     await renderAccordion();
 
     expect(screen.getByText('Test Gameday')).toBeInTheDocument();
-    expect(screen.getByText('01.05.2026')).toBeInTheDocument();
+    expect(screen.getByText('01/05/2026')).toBeInTheDocument();
 
     const button = document.querySelector('.accordion-button');
     expect(button).not.toHaveClass('collapsed');
