@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'finance-dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item active">{{ config.league.name }} - {{ config.season.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Main Configuration and Statistics -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-dark text-white">
+                    <h4 class="mb-0">Configuration Details</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ config_form.cost_model|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ config_form.base_rate_override|as_crispy_field }}
+                                <small class="text-muted d-block mt-n2 mb-3">
+                                    Current Default: 
+                                    {% if config.cost_model == 'SEASON' %}
+                                        {{ stats.base_rate }} €
+                                    {% else %}
+                                        {{ stats.base_rate }} €
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <button type="submit" name="config_submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Save Model Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Discounts Management -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Discounts & Grants</h5>
+                    <button class="btn btn-sm btn-success" type="button" data-bs-toggle="collapse" data-bs-target="#addDiscountForm">
+                        <i class="bi bi-plus-lg"></i> Add Discount
+                    </button>
+                </div>
+                <div class="collapse" id="addDiscountForm">
+                    <div class="card-body bg-light border-bottom">
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="row">
+                                <div class="col-md-4">
+                                    {{ discount_form.team|as_crispy_field }}
+                                </div>
+                                <div class="col-md-2">
+                                    {{ discount_form.discount_type|as_crispy_field }}
+                                </div>
+                                <div class="col-md-2">
+                                    {{ discount_form.value|as_crispy_field }}
+                                </div>
+                                <div class="col-md-4">
+                                    {{ discount_form.description|as_crispy_field }}
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <button type="submit" name="discount_submit" class="btn btn-sm btn-success">Save Discount</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Target Team</th>
+                                    <th>Type</th>
+                                    <th>Value</th>
+                                    <th>Description</th>
+                                    <th class="text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for discount in config.discounts.all %}
+                                <tr>
+                                    <td>
+                                        {% if discount.team %}
+                                            <span class="badge bg-secondary">{{ discount.team.name }}</span>
+                                        {% else %}
+                                            <span class="badge bg-dark">Global (All Teams)</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ discount.get_discount_type_display }}</td>
+                                    <td class="fw-bold">{{ discount.value }} {% if discount.discount_type == 'PERCENT' %}%{% else %}€{% endif %}</td>
+                                    <td><small>{{ discount.description }}</small></td>
+                                    <td class="text-center">
+                                        <form method="post" action="{% url 'finance-discount-delete' discount.pk %}" onsubmit="return confirm('Really delete this discount?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm text-danger"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-3 text-muted">No discounts applied.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar: Financial Summary -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4 sticky-top" style="top: 20px;">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Projected Revenue</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Gross Total:</span>
+                        <span class="fw-bold">{{ stats.gross|floatformat:2 }} €</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 text-danger">
+                        <span>Discounts:</span>
+                        <span>-{{ stats.discount|floatformat:2 }} €</span>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between mb-0 h4">
+                        <span>NET TOTAL:</span>
+                        <span class="text-success">{{ stats.net|floatformat:2 }} €</span>
+                    </div>
+                </div>
+                {% if stats.details %}
+                <div class="card-footer bg-white border-top-0">
+                    <h6>Participation Breakdown</h6>
+                    <ul class="list-group list-group-flush small">
+                        {% for detail in stats.details %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            {{ detail.team.name }}
+                            <span>{{ detail.net|floatformat:2 }} €</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

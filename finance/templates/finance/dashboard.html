@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Financial Dashboard</h1>
+        <a href="{% url 'finance-settings' %}" class="btn btn-secondary">
+            <i class="bi bi-gear"></i> Global Settings
+        </a>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Gross Revenue</h5>
+                    <h2 class="card-text">{{ total_gross|floatformat:2 }} €</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Discounts</h5>
+                    <h2 class="card-text">-{{ total_discount|floatformat:2 }} €</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Projected Net Revenue</h5>
+                    <h2 class="card-text">{{ total_net|floatformat:2 }} €</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configurations Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">League/Season Configurations</h5>
+            <span class="badge bg-light text-dark">{{ configs_with_stats|length }} Active</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>League</th>
+                            <th>Season</th>
+                            <th>Cost Model</th>
+                            <th class="text-end">Gross</th>
+                            <th class="text-end">Discount</th>
+                            <th class="text-end">Net</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in configs_with_stats %}
+                        <tr>
+                            <td><strong>{{ item.config.league.name }}</strong></td>
+                            <td>{{ item.config.season.name }}</td>
+                            <td>
+                                <span class="badge bg-info text-dark">
+                                    {{ item.config.get_cost_model_display }}
+                                </span>
+                            </td>
+                            <td class="text-end text-primary">{{ item.stats.gross|floatformat:2 }} €</td>
+                            <td class="text-end text-danger">-{{ item.stats.discount|floatformat:2 }} €</td>
+                            <td class="text-end fw-bold {% if item.stats.net > 0 %}text-success{% endif %}">
+                                {{ item.stats.net|floatformat:2 }} €
+                            </td>
+                            <td class="text-center">
+                                <a href="{% url 'finance-config-detail' item.config.pk %}" class="btn btn-sm btn-outline-primary">
+                                    Manage <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                No financial configurations found. Manage them in the admin to see results here.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
