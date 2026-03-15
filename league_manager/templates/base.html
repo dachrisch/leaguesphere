@@ -46,7 +46,11 @@
                         <a class="nav-link" href="{% url 'league-home' %}">Home</a>
                     </li>
                     {% for key, menu in menu_items.items %}
-                    {% if menu.items %}
+                    {% if menu.items|length == 1 and not menu.items.0.is_divider %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ menu.items.0.url }}">{{ menu.name }}</a>
+                    </li>
+                    {% elif menu.items %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
                            aria-expanded="false">

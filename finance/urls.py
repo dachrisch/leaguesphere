@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import RedirectView
 from .views import (
     FinanceDashboardView, 
     FinanceConfigDetailView, 
@@ -8,6 +9,7 @@ from .views import (
 )
 
 urlpatterns = [
+    path('', RedirectView.as_view(pattern_name='finance-dashboard', permanent=True)),
     path('dashboard/', FinanceDashboardView.as_view(), name='finance-dashboard'),
     path('config/<int:pk>/', FinanceConfigDetailView.as_view(), name='finance-config-detail'),
     path('config/<int:config_id>/discount/add/', DiscountCreateView.as_view(), name='finance-discount-add'),
