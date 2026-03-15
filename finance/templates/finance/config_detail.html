@@ -3,42 +3,42 @@
 
 {% block content %}
 <div class="container mt-4">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{% url 'finance-dashboard' %}">Dashboard</a></li>
-            <li class="breadcrumb-item active">{{ config.league.name }} - {{ config.season.name }}</li>
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb bg-light p-3 rounded shadow-sm">
+            <li class="breadcrumb-item"><a href="{% url 'finance-dashboard' %}" class="text-decoration-none"><i class="bi bi-house-door"></i> Dashboard</a></li>
+            <li class="breadcrumb-item active fw-bold">{{ config.league.name }} - {{ config.season.name }}</li>
         </ol>
     </nav>
 
     <div class="row">
         <!-- Main Configuration and Statistics -->
         <div class="col-lg-8">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-dark text-white">
-                    <h4 class="mb-0">Configuration Details</h4>
+            <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+                <div class="card-header bg-dark text-white py-3">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-gear-wide-connected me-2"></i> Configuration Details</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body bg-white p-4">
                     <form method="post">
                         {% csrf_token %}
-                        <div class="row">
+                        <div class="row g-4">
                             <div class="col-md-6">
-                                {{ config_form.cost_model|as_crispy_field }}
+                                <div class="p-3 bg-light rounded border border-info border-opacity-25 h-100">
+                                    {{ config_form.cost_model|as_crispy_field }}
+                                </div>
                             </div>
                             <div class="col-md-6">
-                                {{ config_form.base_rate_override|as_crispy_field }}
-                                <small class="text-muted d-block mt-n2 mb-3">
-                                    Current Default: 
-                                    {% if config.cost_model == 'SEASON' %}
-                                        {{ stats.base_rate }} €
-                                    {% else %}
-                                        {{ stats.base_rate }} €
-                                    {% endif %}
-                                </small>
+                                <div class="p-3 bg-light rounded border border-info border-opacity-25 h-100">
+                                    {{ config_form.base_rate_override|as_crispy_field }}
+                                    <div class="mt-2 text-muted small">
+                                        <i class="bi bi-info-circle"></i> System Default: 
+                                        <span class="fw-bold">{{ stats.base_rate }} €</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="text-end">
-                            <button type="submit" name="config_submit" class="btn btn-primary">
-                                <i class="bi bi-save"></i> Save Model Changes
+                        <div class="text-end mt-4">
+                            <button type="submit" name="config_submit" class="btn btn-primary px-4 shadow-sm">
+                                <i class="bi bi-check2-circle me-1"></i> Update Configuration
                             </button>
                         </div>
                     </form>
@@ -46,113 +46,125 @@
             </div>
 
             <!-- Discounts Management -->
-            <div class="card shadow-sm">
-                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Discounts & Grants</h5>
-                    <button class="btn btn-sm btn-success" type="button" data-bs-toggle="collapse" data-bs-target="#addDiscountForm">
-                        <i class="bi bi-plus-lg"></i> Add Discount
+            <div class="card shadow-sm border-0 overflow-hidden">
+                <div class="card-header bg-secondary bg-opacity-10 d-flex justify-content-between align-items-center py-3 border-bottom">
+                    <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-tags me-2 text-primary"></i> Discounts & Grants</h5>
+                    <button class="btn btn-sm btn-success px-3 shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#addDiscountForm">
+                        <i class="bi bi-plus-lg me-1"></i> Add New
                     </button>
                 </div>
                 <div class="collapse" id="addDiscountForm">
-                    <div class="card-body bg-light border-bottom">
+                    <div class="card-body bg-light border-bottom p-4">
+                        <h6 class="text-uppercase text-muted small fw-bold mb-3">Add New Discount</h6>
                         <form method="post">
                             {% csrf_token %}
-                            <div class="row">
+                            <div class="row g-3">
                                 <div class="col-md-4">
                                     {{ discount_form.team|as_crispy_field }}
                                 </div>
-                                <div class="col-md-2">
+                                <div class="col-md-3">
                                     {{ discount_form.discount_type|as_crispy_field }}
                                 </div>
                                 <div class="col-md-2">
                                     {{ discount_form.value|as_crispy_field }}
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     {{ discount_form.description|as_crispy_field }}
                                 </div>
                             </div>
-                            <div class="text-end">
-                                <button type="submit" name="discount_submit" class="btn btn-sm btn-success">Save Discount</button>
+                            <div class="text-end mt-3">
+                                <button type="submit" name="discount_submit" class="btn btn-success px-4">Create Discount</button>
                             </div>
                         </form>
                     </div>
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Target Team</th>
-                                    <th>Type</th>
-                                    <th>Value</th>
-                                    <th>Description</th>
-                                    <th class="text-center">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for discount in config.discounts.all %}
-                                <tr>
-                                    <td>
-                                        {% if discount.team %}
-                                            <span class="badge bg-secondary">{{ discount.team.name }}</span>
-                                        {% else %}
-                                            <span class="badge bg-dark">Global (All Teams)</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ discount.get_discount_type_display }}</td>
-                                    <td class="fw-bold">{{ discount.value }} {% if discount.discount_type == 'PERCENT' %}%{% else %}€{% endif %}</td>
-                                    <td><small>{{ discount.description }}</small></td>
-                                    <td class="text-center">
-                                        <form method="post" action="{% url 'finance-discount-delete' discount.pk %}" onsubmit="return confirm('Really delete this discount?');">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm text-danger"><i class="bi bi-trash"></i></button>
-                                        </form>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="5" class="text-center py-3 text-muted">No discounts applied.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light text-muted small text-uppercase fw-bold">
+                            <tr>
+                                <th class="ps-4">Target Team</th>
+                                <th>Type</th>
+                                <th>Value</th>
+                                <th>Description</th>
+                                <th class="text-center pe-4">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for discount in config.discounts.all %}
+                            <tr>
+                                <td class="ps-4">
+                                    {% if discount.team %}
+                                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 rounded-pill">{{ discount.team.name }}</span>
+                                    {% else %}
+                                        <span class="badge bg-dark rounded-pill px-3">Global (All Teams)</span>
+                                    {% endif %}
+                                </td>
+                                <td><span class="fw-medium">{{ discount.get_discount_type_display }}</span></td>
+                                <td>
+                                    <span class="text-danger fw-bold h6 mb-0">
+                                        -{{ discount.value }} {% if discount.discount_type == 'PERCENT' %}%{% else %}€{% endif %}
+                                    </span>
+                                </td>
+                                <td><span class="text-muted small">{{ discount.description }}</span></td>
+                                <td class="text-center pe-4">
+                                    <form method="post" action="{% url 'finance-discount-delete' discount.pk %}" onsubmit="return confirm('Really delete this discount?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0 rounded-circle"><i class="bi bi-trash-fill"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-5 text-muted">
+                                    <i class="bi bi-tag display-6 d-block mb-2 opacity-25"></i>
+                                    No discounts applied to this configuration.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
         <!-- Sidebar: Financial Summary -->
         <div class="col-lg-4">
-            <div class="card shadow-sm mb-4 sticky-top" style="top: 20px;">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">Projected Revenue</h5>
+            <div class="card shadow-sm border-0 border-top border-success border-5 sticky-top mb-4" style="top: 20px;">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold text-success"><i class="bi bi-cash-coin me-2"></i> Projected Revenue</h5>
                 </div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Gross Total:</span>
-                        <span class="fw-bold">{{ stats.gross|floatformat:2 }} €</span>
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted small text-uppercase fw-bold">Gross Total</span>
+                        <span class="fw-bold h5 mb-0">{{ stats.gross|floatformat:2 }} €</span>
                     </div>
-                    <div class="d-flex justify-content-between mb-2 text-danger">
-                        <span>Discounts:</span>
-                        <span>-{{ stats.discount|floatformat:2 }} €</span>
+                    <div class="d-flex justify-content-between align-items-center mb-3 text-danger">
+                        <span class="small text-uppercase fw-bold">Discounts</span>
+                        <span class="fw-bold h5 mb-0">-{{ stats.discount|floatformat:2 }} €</span>
                     </div>
-                    <hr>
-                    <div class="d-flex justify-content-between mb-0 h4">
-                        <span>NET TOTAL:</span>
-                        <span class="text-success">{{ stats.net|floatformat:2 }} €</span>
+                    <hr class="my-4">
+                    <div class="text-center py-2 bg-success bg-opacity-10 rounded-3">
+                        <div class="text-uppercase text-success small fw-bold mb-1">Net Projected Revenue</div>
+                        <div class="display-5 fw-bold text-success">{{ stats.net|floatformat:2 }} €</div>
                     </div>
                 </div>
+                
                 {% if stats.details %}
-                <div class="card-footer bg-white border-top-0">
-                    <h6>Participation Breakdown</h6>
-                    <ul class="list-group list-group-flush small">
+                <div class="card-footer bg-light border-0 p-4">
+                    <h6 class="text-uppercase text-muted small fw-bold mb-3">Participation Breakdown</h6>
+                    <div class="list-group list-group-flush rounded border overflow-hidden">
                         {% for detail in stats.details %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                            {{ detail.team.name }}
-                            <span>{{ detail.net|floatformat:2 }} €</span>
-                        </li>
+                        <div class="list-group-item d-flex justify-content-between align-items-center small py-2">
+                            <span class="text-truncate me-2" style="max-width: 150px;">{{ detail.team.name }}</span>
+                            <div class="text-end">
+                                <div class="fw-bold">{{ detail.net|floatformat:2 }} €</div>
+                                {% if detail.discount > 0 %}
+                                <div class="text-danger extra-small" style="font-size: 0.75rem;">(-{{ detail.discount|floatformat:2 }} €)</div>
+                                {% endif %}
+                            </div>
+                        </div>
                         {% endfor %}
-                    </ul>
+                    </div>
                 </div>
                 {% endif %}
             </div>
