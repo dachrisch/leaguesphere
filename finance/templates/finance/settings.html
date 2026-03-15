@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'finance-dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item active">Global Financial Settings</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="bi bi-gear"></i> Global Default Rates</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small">
+                        These rates are used as fallbacks when a League/Season configuration doesn't have a specific base rate override.
+                    </p>
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-primary">Update Global Settings</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
