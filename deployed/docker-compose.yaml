@@ -60,6 +60,7 @@ services:
     image: mariadb:10.11
     container_name: ${COMPOSE_PROJECT_NAME}.finance-db
     command: --default-storage-engine=innodb
+    env_file: ls.env
     environment:
       MARIADB_ROOT_PASSWORD: ${MYSQL_FINANCE_ROOT_PWD}
       MARIADB_DATABASE: ${MYSQL_FINANCE_DB_NAME}
