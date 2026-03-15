@@ -56,6 +56,21 @@ services:
       retries: 5
       start_period: 90s
 
+  finance-db:
+    image: mariadb:10.11
+    container_name: ${COMPOSE_PROJECT_NAME}.finance-db
+    command: --default-storage-engine=innodb
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MYSQL_FINANCE_ROOT_PWD}
+      MARIADB_DATABASE: ${MYSQL_FINANCE_DB_NAME}
+      MARIADB_USER: ${MYSQL_FINANCE_USER}
+      MARIADB_PASSWORD: ${MYSQL_FINANCE_PWD}
+    volumes:
+      - finance_data:/var/lib/mysql
+    networks:
+      - backend
+    restart: unless-stopped
+
 networks:
   backend:
     internal: true
@@ -63,3 +78,6 @@ networks:
     internal: false  # Allow external connectivity for MySQL
   proxy:
     external: true
+
+volumes:
+  finance_data:
