@@ -501,4 +501,4 @@ describe('StageSection', () => {
       expect(mockOnUpdate).not.toHaveBeenCalled();
       expect(screen.queryByDisplayValue('Preliminary')).not.toBeInTheDocument();
     });
-});
+});});

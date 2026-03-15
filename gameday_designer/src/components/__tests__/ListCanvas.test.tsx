@@ -82,7 +82,7 @@ describe('ListCanvas - Inline Add Field Button Pattern', () => {
       renderCanvas(createDefaultProps());
 
       // Should have Fields section header (translated label)
-      expect(screen.getByText('Fields')).toBeInTheDocument();
+      expect(screen.getByText(i18n.t('ui:label.fields'))).toBeInTheDocument();
     });
 
     it('Fields header has icon', () => {
@@ -99,7 +99,7 @@ describe('ListCanvas - Inline Add Field Button Pattern', () => {
   describe('Empty state - no fields', () => {
     it('shows empty state when there are no fields', () => {
       renderCanvas(createDefaultProps());
-      expect(screen.getByText(/no fields yet/i)).toBeInTheDocument();
+      expect(screen.getByText(i18n.t('ui:message.noFieldsYet'))).toBeInTheDocument();
     });
 
     it('shows Add Field button in empty state', () => {
@@ -242,7 +242,7 @@ describe('ListCanvas - Inline Add Field Button Pattern', () => {
       renderCanvas(createDefaultProps());
 
       // Component uses translated label.teamPool (mapped to "Team Pool" in en)
-      expect(screen.getByText('label.teamPool')).toBeInTheDocument();
+      expect(screen.getByText(i18n.t('ui:label.teamPool'))).toBeInTheDocument();
     });
 
     it('Global Team Pool appears before Fields section', () => {
@@ -252,7 +252,7 @@ describe('ListCanvas - Inline Add Field Button Pattern', () => {
       const sectionTexts = Array.from(sections).map((s) => s.textContent || "");
 
       // Team Pool should come before Fields
-      const teamPoolIndex = sectionTexts.findIndex((t) => t.includes('label.teamPool'));
+      const teamPoolIndex = sectionTexts.findIndex((t) => t.includes(i18n.t('ui:label.teamPool')));
       const fieldsIndex = sectionTexts.findIndex((t) => t.includes('Fields'));
 
       expect(teamPoolIndex).toBeGreaterThanOrEqual(0);
@@ -264,7 +264,7 @@ describe('ListCanvas - Inline Add Field Button Pattern', () => {
       const { container } = renderCanvas(createDefaultProps());
 
       // Find the team pool header (clickable)
-      const teamPoolHeader = screen.getByText('label.teamPool').closest('.card-header');
+      const teamPoolHeader = screen.getByText(i18n.t('ui:label.teamPool')).closest('.card-header');
       expect(teamPoolHeader).toBeInTheDocument();
 
       // Click to collapse

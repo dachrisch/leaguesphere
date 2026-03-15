@@ -18,12 +18,39 @@ import type { TeamReference } from '../../types/designer';
 
 describe('TeamSelector', () => {
   const mockOnChange = vi.fn();
-...
+
+  const TestWrapper = ({ 
+    initialValue, 
+    ...props 
+  }: { 
+    initialValue: TeamReference; 
+    label?: string;
+    matchNames?: string[];
+    groupNames?: string[];
+    availableStages?: Array<{ id: string; name: string }>;
+  }) => {
+    const [value, setValue] = React.useState(initialValue);
+    const handleChange = (newValue: TeamReference) => {
+      setValue(newValue);
+      mockOnChange(newValue);
+    };
+
+    return (
+      <TeamSelector
+        value={value}
+        onChange={handleChange}
+        label={props.label || 'Team'}
+        matchNames={props.matchNames || ['HF1', 'HF2', 'Spiel 3', 'Finale']}
+        groupNames={props.groupNames || ['Gruppe 1', 'Gruppe 2']}
+        availableStages={props.availableStages || []}
+      />
+    );
+  };
+
   beforeEach(async () => {
     await i18n.changeLanguage('en');
     vi.clearAllMocks();
   });
-
 
   const renderSelector = (
     value: TeamReference = { type: 'static', name: '' },
@@ -35,20 +62,20 @@ describe('TeamSelector', () => {
   describe('type selection', () => {
     it('renders a type selector', () => {
       renderSelector();
-      expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(i18n.t('ui:label.type'))).toBeInTheDocument();
     });
 
     it('shows all reference types as options', () => {
       renderSelector();
 
-      const typeSelect = screen.getByLabelText(/type/i) as HTMLSelectElement;
+      const typeSelect = screen.getByLabelText(i18n.t('ui:label.type')) as HTMLSelectElement;
 
       expect(typeSelect).toBeInTheDocument();
-      expect(screen.getByRole('option', { name: /group-team/i })).toBeInTheDocument();
-      expect(screen.getByRole('option', { name: /standing/i })).toBeInTheDocument();
-      expect(screen.getByRole('option', { name: /winner/i })).toBeInTheDocument();
-      expect(screen.getByRole('option', { name: /loser/i })).toBeInTheDocument();
-      expect(screen.getByRole('option', { name: /static/i })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: new RegExp(i18n.t('ui:label.teamPool'), 'i') })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: new RegExp(i18n.t('ui:label.standing'), 'i') })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: new RegExp(i18n.t('ui:label.winner'), 'i') })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: new RegExp(i18n.t('ui:label.loser'), 'i') })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: new RegExp(i18n.t('ui:label.teams'), 'i') })).toBeInTheDocument();
     });
   });
 
@@ -89,14 +116,14 @@ describe('TeamSelector', () => {
     it('shows place and group inputs for standing type', () => {
       renderSelector({ type: 'standing', place: 1, groupName: 'Gruppe 1' });
 
-      expect(screen.getByLabelText(i18n.t('ui:label.rank'))).toBeInTheDocument();
+      expect(screen.getByLabelText(i18n.t('ui:label.standing'))).toBeInTheDocument();
       expect(screen.getByLabelText(i18n.t('ui:label.groups'))).toBeInTheDocument();
     });
 
     it('calls onChange when place or group changes', async () => {
       renderSelector({ type: 'standing', place: 1, groupName: 'Gruppe 1' });
 
-      const placeInput = screen.getByLabelText(i18n.t('ui:label.rank'));
+      const placeInput = screen.getByLabelText(i18n.t('ui:label.standing'));
       fireEvent.change(placeInput, { target: { value: '2' } });
       expect(mockOnChange).toHaveBeenLastCalledWith(expect.objectContaining({ place: 2 }));
 
@@ -219,7 +246,7 @@ describe('TeamSelector', () => {
         />
       );
 
-      const typeSelect = screen.getByLabelText(/type/i);
+      const typeSelect = screen.getByLabelText(i18n.t('ui:label.type'));
       
       await user.selectOptions(typeSelect, 'groupTeam');
       expect(mockOnChange).toHaveBeenLastCalledWith({ type: 'groupTeam', group: 0, team: 0 });
