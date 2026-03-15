@@ -66,18 +66,18 @@
 
     <!-- Configurations Table -->
     <div class="card border-0 shadow-sm overflow-hidden">
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
             <h5 class="mb-0 fw-bold"><i class="bi bi-list-task me-2"></i> League/Season Configurations</h5>
-            <span class="badge bg-primary rounded-pill">{{ configs_with_stats|length }} Active</span>
+            <span class="badge bg-light text-dark rounded-pill">{{ configs_with_stats|length }} Active</span>
         </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="bg-light">
                     <tr>
                         <th class="ps-4">League / Season</th>
-                        <th>Cost Model</th>
-                        <th class="text-end">Gross</th>
-                        <th class="text-end">Discount</th>
+                        <th>Model / Progress</th>
+                        <th class="text-end">Expected Gross</th>
+                        <th class="text-end">Live Gross</th>
                         <th class="text-end">Net</th>
                         <th class="text-center pe-4">Actions</th>
                     </tr>
@@ -93,9 +93,13 @@
                             <span class="badge {% if item.config.cost_model == 'SEASON' %}bg-info text-dark{% else %}bg-warning text-dark{% endif %} rounded-pill px-3">
                                 {{ item.config.get_cost_model_display }}
                             </span>
+                            <div class="mt-1 small text-muted">
+                                {{ item.stats.live_participation_count }} / {{ item.stats.expected_participation_count }} 
+                                {% if item.config.cost_model == 'SEASON' %}Teams{% else %}Participations{% endif %}
+                            </div>
                         </td>
+                        <td class="text-end text-muted fw-semibold">{{ item.stats.expected_gross|floatformat:2 }} €</td>
                         <td class="text-end text-primary fw-semibold">{{ item.stats.gross|floatformat:2 }} €</td>
-                        <td class="text-end text-danger">-{{ item.stats.discount|floatformat:2 }} €</td>
                         <td class="text-end">
                             <span class="fw-bold {% if item.stats.net > 0 %}text-success{% endif %} h5 mb-0">
                                 {{ item.stats.net|floatformat:2 }} €
