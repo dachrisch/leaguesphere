@@ -111,6 +111,7 @@ services:
     command: --default-storage-engine=innodb
     env_file: ls.env.staging
     environment:
+
       MARIADB_ROOT_PASSWORD: ${MYSQL_FINANCE_ROOT_PWD}
       MARIADB_DATABASE: ${MYSQL_FINANCE_DB_NAME}
       MARIADB_USER: ${MYSQL_FINANCE_USER}
