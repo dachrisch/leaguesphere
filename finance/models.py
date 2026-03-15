@@ -35,6 +35,11 @@ class LeagueSeasonFinancialConfig(models.Model):
     cost_model = models.CharField(max_length=10, choices=COST_MODEL_CHOICES, default=MODEL_SEASON)
     base_rate_override = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
                                             help_text="Override the global default base rate.")
+    
+    # Expected values for planning
+    expected_teams_count = models.PositiveIntegerField(default=0, help_text="Used for Season model")
+    expected_gamedays_count = models.PositiveIntegerField(default=0, help_text="Used for Gameday model")
+    expected_teams_per_gameday = models.PositiveIntegerField(default=0, help_text="Used for Gameday model")
 
     class Meta:
         unique_together = ('league', 'season')

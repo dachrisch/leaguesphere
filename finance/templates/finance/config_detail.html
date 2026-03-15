@@ -14,15 +14,15 @@
         <!-- Main Configuration and Statistics -->
         <div class="col-lg-8">
             <div class="card shadow-sm border-0 mb-4 overflow-hidden">
-                <div class="card-header bg-dark text-white py-3">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-gear-wide-connected me-2"></i> Configuration Details</h5>
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-gear-wide-connected me-2"></i> Configuration & Planning</h5>
                 </div>
                 <div class="card-body bg-white p-4">
                     <form method="post">
                         {% csrf_token %}
                         <div class="row g-4">
-                            <div class="col-md-6">
-                                <div class="p-3 bg-light rounded border border-info border-opacity-25 h-100">
+                            <div class="col-md-12">
+                                <div class="p-3 bg-light rounded border border-info border-opacity-25">
                                     {{ config_form.cost_model|as_crispy_field }}
                                 </div>
                             </div>
@@ -32,6 +32,18 @@
                                     <div class="mt-2 text-muted small">
                                         <i class="bi bi-info-circle"></i> System Default: 
                                         <span class="fw-bold">{{ stats.base_rate }} €</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 bg-light rounded border border-warning border-opacity-25 h-100">
+                                    <h6 class="fw-bold mb-3 text-warning-emphasis"><i class="bi bi-calendar-event"></i> Planning Targets</h6>
+                                    <div id="season_fields" style="display: none;">
+                                        {{ config_form.expected_teams_count|as_crispy_field }}
+                                    </div>
+                                    <div id="gameday_fields" style="display: none;">
+                                        {{ config_form.expected_gamedays_count|as_crispy_field }}
+                                        {{ config_form.expected_teams_per_gameday|as_crispy_field }}
                                     </div>
                                 </div>
                             </div>
@@ -135,17 +147,25 @@
                 </div>
                 <div class="card-body p-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <span class="text-muted small text-uppercase fw-bold">Gross Total</span>
+                        <span class="text-muted small text-uppercase fw-bold">Live Gross Total</span>
                         <span class="fw-bold h5 mb-0">{{ stats.gross|floatformat:2 }} €</span>
                     </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted small text-uppercase fw-bold">Expected Gross</span>
+                        <span class="fw-bold h5 mb-0 text-muted">{{ stats.expected_gross|floatformat:2 }} €</span>
+                    </div>
                     <div class="d-flex justify-content-between align-items-center mb-3 text-danger">
-                        <span class="small text-uppercase fw-bold">Discounts</span>
+                        <span class="small text-uppercase fw-bold">Discounts Applied</span>
                         <span class="fw-bold h5 mb-0">-{{ stats.discount|floatformat:2 }} €</span>
                     </div>
                     <hr class="my-4">
                     <div class="text-center py-2 bg-success bg-opacity-10 rounded-3">
-                        <div class="text-uppercase text-success small fw-bold mb-1">Net Projected Revenue</div>
+                        <div class="text-uppercase text-success small fw-bold mb-1">Net Projected Revenue (Live)</div>
                         <div class="display-5 fw-bold text-success">{{ stats.net|floatformat:2 }} €</div>
+                    </div>
+                    <div class="mt-3 text-center small text-muted">
+                        Progress: {{ stats.live_participation_count }} / {{ stats.expected_participation_count }}
+                        {% if config.cost_model == 'SEASON' %}Teams{% else %}Participations{% endif %}
                     </div>
                 </div>
                 
@@ -171,4 +191,30 @@
         </div>
     </div>
 </div>
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const costModelRadios = document.querySelectorAll('input[name="cost_model"]');
+        const seasonFields = document.getElementById('season_fields');
+        const gamedayFields = document.getElementById('gameday_fields');
+
+        function toggleFields() {
+            const selectedModel = document.querySelector('input[name="cost_model"]:checked').value;
+            if (selectedModel === 'SEASON') {
+                seasonFields.style.display = 'block';
+                gamedayFields.style.display = 'none';
+            } else {
+                seasonFields.style.display = 'none';
+                gamedayFields.style.display = 'block';
+            }
+        }
+
+        costModelRadios.forEach(radio => {
+            radio.addEventListener('change', toggleFields);
+        });
+
+        // Initial toggle
+        toggleFields();
+    });
+</script>
 {% endblock %}

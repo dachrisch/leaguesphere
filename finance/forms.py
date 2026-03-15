@@ -5,7 +5,10 @@ from gamedays.models import Team
 class FinancialConfigForm(forms.ModelForm):
     class Meta:
         model = LeagueSeasonFinancialConfig
-        fields = ['league', 'season', 'cost_model', 'base_rate_override']
+        fields = [
+            'league', 'season', 'cost_model', 'base_rate_override',
+            'expected_teams_count', 'expected_gamedays_count', 'expected_teams_per_gameday'
+        ]
         widgets = {
             'cost_model': forms.RadioSelect,
         }
