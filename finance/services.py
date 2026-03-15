@@ -85,6 +85,7 @@ class FinanceService:
             'gross': gross_total,
             'discount': discount_total,
             'net': gross_total - discount_total,
+            'base_rate': base_rate,
             'details': details if config.cost_model == config.MODEL_SEASON else None
         }
 

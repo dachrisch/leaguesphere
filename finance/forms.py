@@ -5,10 +5,17 @@ from gamedays.models import Team
 class FinancialConfigForm(forms.ModelForm):
     class Meta:
         model = LeagueSeasonFinancialConfig
-        fields = ['cost_model', 'base_rate_override']
+        fields = ['league', 'season', 'cost_model', 'base_rate_override']
         widgets = {
             'cost_model': forms.RadioSelect,
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            # Disable league/season on edit to prevent changing the identity of the config
+            self.fields['league'].disabled = True
+            self.fields['season'].disabled = True
 
 class DiscountForm(forms.ModelForm):
     class Meta:

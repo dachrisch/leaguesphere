@@ -36,7 +36,19 @@ class FinanceDashboardView(LoginRequiredMixin, StaffRequiredMixin, ListView):
         context['total_gross'] = total_gross
         context['total_discount'] = total_discount
         context['total_net'] = total_net
+        context['create_form'] = FinancialConfigForm()
         return context
+
+class ConfigCreateView(LoginRequiredMixin, StaffRequiredMixin, CreateView):
+    model = LeagueSeasonFinancialConfig
+    form_class = FinancialConfigForm
+    template_name = 'finance/config_form.html'
+    success_url = reverse_lazy('finance-dashboard')
+
+class ConfigDeleteView(LoginRequiredMixin, StaffRequiredMixin, DeleteView):
+    model = LeagueSeasonFinancialConfig
+    template_name = 'finance/config_confirm_delete.html'
+    success_url = reverse_lazy('finance-dashboard')
 
 class FinanceConfigDetailView(LoginRequiredMixin, StaffRequiredMixin, DetailView):
     model = LeagueSeasonFinancialConfig
