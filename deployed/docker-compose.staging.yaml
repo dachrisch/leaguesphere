@@ -63,6 +63,9 @@ services:
 
   app:
     image: leaguesphere/backend:staging
+    build:
+      context: ..
+      dockerfile: container/app.Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME}.app
     command: gunicorn -b 0.0.0.0:8000 league_manager.wsgi
     labels:
@@ -81,6 +84,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      finance-db:
+        condition: service_started
     restart: unless-stopped
 
   watchtower:
