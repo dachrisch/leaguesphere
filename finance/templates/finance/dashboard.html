@@ -66,13 +66,13 @@
 
     <!-- Configurations Table -->
     <div class="card border-0 shadow-sm overflow-hidden">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+        <div class="card-header d-flex justify-content-between align-items-center py-3" style="background:#cfe2ff;color:#084298;">
             <h5 class="mb-0 fw-bold"><i class="bi bi-list-task me-2"></i> League/Season Configurations</h5>
-            <span class="badge bg-light text-dark rounded-pill">{{ configs_with_stats|length }} Active</span>
+            <span class="badge rounded-pill" style="background:rgba(8,66,152,0.15);color:#084298;">{{ configs_with_stats|length }} Active</span>
         </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead class="bg-light">
+                <thead style="background:#e9ecef;color:#495057;">
                     <tr>
                         <th class="ps-4">League / Season</th>
                         <th>Model / Progress</th>
@@ -132,5 +132,43 @@
             </table>
         </div>
     </div>
+
+    {% if pending_configs %}
+    <div class="card border-0 shadow-sm overflow-hidden mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center py-3" style="background:#fff3cd;color:#664d03;">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-exclamation-triangle me-2"></i> Unconfigured League/Seasons</h5>
+            <span class="badge rounded-pill" style="background:rgba(102,77,3,0.15);color:#664d03;">{{ pending_configs|length }} Pending</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead style="background:#e9ecef;color:#495057;">
+                    <tr>
+                        <th class="ps-4">League / Season</th>
+                        <th>Gamedays</th>
+                        <th>Teams in games</th>
+                        <th class="text-center pe-4">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in pending_configs %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-bold text-dark">{{ item.league_name }}</div>
+                            <div class="text-muted small">{{ item.season_name }}</div>
+                        </td>
+                        <td class="text-muted">{{ item.gameday_count }}</td>
+                        <td class="text-muted">{{ item.team_count }}</td>
+                        <td class="text-center pe-4">
+                            <a href="{% url 'finance-config-add' %}?league={{ item.league_id }}&season={{ item.season_id }}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-plus-lg me-1"></i> Create Config
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

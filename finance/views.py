@@ -2,9 +2,11 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
+from django.db.models import Count
 from .models import LeagueSeasonFinancialConfig, LeagueSeasonDiscount, FinancialSettings
 from .services import FinanceService
 from .forms import FinancialConfigForm, DiscountForm, GlobalSettingsForm
+from gamedays.models import Gameday, Gameresult
 
 class StaffRequiredMixin(UserPassesTestMixin):
     def test_func(self):
@@ -21,7 +23,7 @@ class FinanceDashboardView(LoginRequiredMixin, StaffRequiredMixin, ListView):
         total_gross = 0
         total_discount = 0
         total_net = 0
-        
+
         for config in self.get_queryset():
             stats = FinanceService.calculate_costs(config)
             configs_with_stats.append({
@@ -31,12 +33,43 @@ class FinanceDashboardView(LoginRequiredMixin, StaffRequiredMixin, ListView):
             total_gross += stats['gross']
             total_discount += stats['discount']
             total_net += stats['net']
-            
+
         context['configs_with_stats'] = configs_with_stats
         context['total_gross'] = total_gross
         context['total_discount'] = total_discount
         context['total_net'] = total_net
         context['create_form'] = FinancialConfigForm()
+
+        # Compute pending configurations
+        configured = set(
+            LeagueSeasonFinancialConfig.objects.values_list('league_id', 'season_id')
+        )
+        combos = Gameday.objects.values(
+            'league', 'league__name', 'season', 'season__name'
+        ).annotate(gameday_count=Count('id'))
+
+        pending = []
+        for c in combos:
+            if (c['league'], c['season']) not in configured:
+                team_ids = set(
+                    Gameresult.objects
+                    .filter(
+                        gameinfo__gameday__league=c['league'],
+                        gameinfo__gameday__season=c['season']
+                    )
+                    .exclude(team__location='dummy')
+                    .values_list('team', flat=True)
+                ) - {None}
+                pending.append({
+                    'league_id': c['league'],
+                    'league_name': c['league__name'],
+                    'season_id': c['season'],
+                    'season_name': c['season__name'],
+                    'gameday_count': c['gameday_count'],
+                    'team_count': len(team_ids),
+                })
+
+        context['pending_configs'] = pending
         return context
 
 class ConfigCreateView(LoginRequiredMixin, StaffRequiredMixin, CreateView):
