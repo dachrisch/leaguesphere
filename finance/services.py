@@ -15,10 +15,20 @@ class FinanceService:
         """Calculates unique teams per gameday for a specific league and season."""
         gamedays = Gameday.objects.filter(league=league, season=season)
         participation = []
-        
+
         for gameday in gamedays:
-            playing_teams = set(Gameresult.objects.filter(gameinfo__gameday=gameday).values_list('team', flat=True))
-            officiating_teams = set(Gameinfo.objects.filter(gameday=gameday).values_list('officials', flat=True))
+            playing_teams = set(
+                Gameresult.objects
+                .filter(gameinfo__gameday=gameday)
+                .exclude(team__location='dummy')
+                .values_list('team', flat=True)
+            )
+            officiating_teams = set(
+                Gameinfo.objects
+                .filter(gameday=gameday)
+                .exclude(officials__location='dummy')
+                .values_list('officials', flat=True)
+            )
             unique_teams = playing_teams | officiating_teams
             # Remove None/Null team IDs
             unique_teams = {t for t in unique_teams if t is not None}
@@ -27,7 +37,7 @@ class FinanceService:
                 'team_count': len(unique_teams),
                 'teams': unique_teams
             })
-            
+
         return participation
 
     @classmethod

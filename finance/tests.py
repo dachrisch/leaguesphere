@@ -113,13 +113,13 @@ class FinanceServiceTest(TestCase):
             cost_model=LeagueSeasonFinancialConfig.MODEL_GAMEDAY,
             base_rate_override=Decimal("20.00")
         )
-        
+
         gameday = Gameday.objects.create(
             name="Gameday 1", league=self.league, season=self.season, date="2026-03-15", start="10:00", author=self.user
         )
         gi = Gameinfo.objects.create(gameday=gameday, scheduled="10:00", field=1, officials=self.team2, stage="Main", standing="P1")
         Gameresult.objects.create(gameinfo=gi, team=self.team1, isHome=True)
-        
+
         # Team 1 gets a fixed discount of 5.00 per participation (this is how it's currently implemented in services.py)
         # Actually, in services.py: gameday_discount += cls._calculate_team_discounts(config, team, base_rate)
         # So if they participate in 1 gameday, they get 5.00 off.
@@ -129,7 +129,7 @@ class FinanceServiceTest(TestCase):
             discount_type=LeagueSeasonDiscount.TYPE_FIXED,
             value=Decimal("5.00")
         )
-        
+
         costs = FinanceService.calculate_costs(config)
         # Gross = 2 teams * 20 = 40
         # Discount = Team 1 (5.00) + Team 2 (0) = 5.00
@@ -137,3 +137,29 @@ class FinanceServiceTest(TestCase):
         self.assertEqual(costs['gross'], Decimal("40.00"))
         self.assertEqual(costs['discount'], Decimal("5.00"))
         self.assertEqual(costs['net'], Decimal("35.00"))
+
+    def test_dummy_teams_excluded_from_participation(self):
+        dummy_team = Team.objects.create(
+            name="Gewinner Spiel 4", description="", location="dummy"
+        )
+        config = LeagueSeasonFinancialConfig.objects.create(
+            league=self.league,
+            season=self.season,
+            cost_model=LeagueSeasonFinancialConfig.MODEL_SEASON,
+            base_rate_override=Decimal("100.00")
+        )
+        gameday = Gameday.objects.create(
+            name="Gameday 1", league=self.league, season=self.season,
+            date="2026-03-15", start="10:00", author=self.user
+        )
+        # real team plays, dummy team officiates
+        gi = Gameinfo.objects.create(
+            gameday=gameday, scheduled="10:00", field=1,
+            officials=dummy_team, stage="Main", standing="P1"
+        )
+        Gameresult.objects.create(gameinfo=gi, team=self.team1, isHome=True)
+
+        costs = FinanceService.calculate_costs(config)
+        # Only team1 counts (dummy officiating team excluded)
+        self.assertEqual(costs['live_participation_count'], 1)
+        self.assertEqual(costs['gross'], Decimal("100.00"))
