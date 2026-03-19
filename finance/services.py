@@ -49,16 +49,19 @@ class FinanceService:
         live_participation_count = 0
 
         if config.cost_model == config.MODEL_SEASON:
-            registered_teams = SeasonLeagueTeam.objects.filter(league=config.league, season=config.season).select_related('team')
-            live_participation_count = registered_teams.count()
-            for slt in registered_teams:
+            participation = cls.get_participation_data(config.league, config.season)
+            all_team_ids = set()
+            for p in participation:
+                all_team_ids.update(p['teams'])
+            live_participation_count = len(all_team_ids)
+            for team in Team.objects.filter(id__in=all_team_ids):
                 team_gross = base_rate
-                team_discount = cls._calculate_team_discounts(config, slt.team, team_gross)
-                
+                team_discount = cls._calculate_team_discounts(config, team, team_gross)
+
                 gross_total += team_gross
                 discount_total += team_discount
                 details.append({
-                    'team': slt.team,
+                    'team': team,
                     'gross': team_gross,
                     'discount': team_discount,
                     'net': team_gross - team_discount
