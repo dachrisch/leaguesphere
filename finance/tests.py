@@ -1,7 +1,7 @@
 from decimal import Decimal
 from django.test import TestCase
 from django.contrib.auth.models import User
-from gamedays.models import League, Season, Team, Gameday, Gameinfo, Gameresult, SeasonLeagueTeam
+from gamedays.models import League, Season, Team, Gameday, Gameinfo, Gameresult
 from .models import LeagueSeasonFinancialConfig, LeagueSeasonDiscount, FinancialSettings
 from .services import FinanceService
 
