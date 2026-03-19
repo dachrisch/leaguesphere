@@ -19,8 +19,7 @@ class FinancialSettingsAdmin(admin.ModelAdmin):
 class LeagueSeasonDiscountInline(admin.TabularInline):
     model = LeagueSeasonDiscount
     extra = 1
-    fields = ('team', 'discount_type', 'value', 'description')
-    autocomplete_fields = ['team']
+    fields = ('discount_type', 'value', 'description')
 
 
 @admin.register(LeagueSeasonFinancialConfig)

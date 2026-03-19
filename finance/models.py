@@ -1,5 +1,5 @@
 from django.db import models
-from gamedays.models import League, Season, Team
+from gamedays.models import League, Season
 
 
 class FinancialSettings(models.Model):
@@ -51,7 +51,7 @@ class LeagueSeasonFinancialConfig(models.Model):
 
 
 class LeagueSeasonDiscount(models.Model):
-    """Discount applied to a league/season, optionally restricted to a specific team."""
+    """Discount applied globally to a league/season configuration."""
     TYPE_FIXED = 'FIXED'
     TYPE_PERCENTAGE = 'PERCENT'
     DISCOUNT_TYPE_CHOICES = [
@@ -60,13 +60,9 @@ class LeagueSeasonDiscount(models.Model):
     ]
 
     config = models.ForeignKey(LeagueSeasonFinancialConfig, on_delete=models.CASCADE, related_name='discounts')
-    team = models.ForeignKey(Team, on_delete=models.CASCADE, null=True, blank=True,
-                             db_constraint=False,
-                             help_text="If null, the discount applies to all teams in this config.")
     discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPE_CHOICES, default=TYPE_FIXED)
     value = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.CharField(max_length=255, blank=True)
 
     def __str__(self):
-        team_str = self.team if self.team else "All Teams"
-        return f"{self.config.league} - {team_str}: {self.value} ({self.get_discount_type_display()})"
+        return f"{self.discount_type} {self.value} – {self.config}"

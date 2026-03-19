@@ -1,4 +1,5 @@
-from gamedays.models import Team, Gameday, Gameinfo, Gameresult, SeasonLeagueTeam
+from decimal import Decimal
+from gamedays.models import Team, Gameday, Gameinfo, Gameresult
 from .models import FinancialSettings, LeagueSeasonFinancialConfig, LeagueSeasonDiscount
 
 
@@ -66,15 +67,12 @@ class FinanceService:
             live_participation_count = len(all_team_ids)
             for team in Team.objects.filter(id__in=all_team_ids):
                 team_gross = base_rate
-                team_discount = cls._calculate_team_discounts(config, team, team_gross)
-
                 gross_total += team_gross
-                discount_total += team_discount
                 details.append({
                     'team': team,
                     'gross': team_gross,
-                    'discount': team_discount,
-                    'net': team_gross - team_discount
+                    'discount': Decimal('0'),
+                    'net': team_gross,
                 })
             
             expected_gross = config.expected_teams_count * base_rate
@@ -84,21 +82,13 @@ class FinanceService:
             for p in participation_data:
                 gameday_gross = p['team_count'] * base_rate
                 live_participation_count += p['team_count']
-                gameday_discount = 0
-                
-                # Fetch teams to calculate per-team discounts
-                teams = Team.objects.filter(id__in=p['teams'])
-                for team in teams:
-                    gameday_discount += cls._calculate_team_discounts(config, team, base_rate)
-                
                 gross_total += gameday_gross
-                discount_total += gameday_discount
             
             expected_gross = config.expected_gamedays_count * config.expected_teams_per_gameday * base_rate
             expected_participation_count = config.expected_gamedays_count * config.expected_teams_per_gameday
         
-        # Apply global (non-team-specific) discounts once to the final total
-        global_discounts = config.discounts.filter(team=None)
+        # Apply global discounts once to the final total
+        global_discounts = config.discounts.all()
         global_discount_total = 0
         for d in global_discounts:
             if d.discount_type == d.TYPE_FIXED:
@@ -119,14 +109,3 @@ class FinanceService:
             'details': details if config.cost_model == config.MODEL_SEASON else None
         }
 
-    @staticmethod
-    def _calculate_team_discounts(config, team, base_amount):
-        """Calculates cumulative discounts for a specific team in a league/season."""
-        team_discounts = config.discounts.filter(team=team)
-        total = 0
-        for d in team_discounts:
-            if d.discount_type == d.TYPE_FIXED:
-                total += d.value
-            else:
-                total += (base_amount * d.value / 100)
-        return total

@@ -1,6 +1,6 @@
 from django import forms
 from .models import LeagueSeasonFinancialConfig, LeagueSeasonDiscount, FinancialSettings
-from gamedays.models import Team
+
 
 class FinancialConfigForm(forms.ModelForm):
     class Meta:
@@ -23,7 +23,7 @@ class FinancialConfigForm(forms.ModelForm):
 class DiscountForm(forms.ModelForm):
     class Meta:
         model = LeagueSeasonDiscount
-        fields = ['team', 'discount_type', 'value', 'description']
+        fields = ['discount_type', 'value', 'description']
 
 class GlobalSettingsForm(forms.ModelForm):
     class Meta:
