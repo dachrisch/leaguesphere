@@ -21,14 +21,14 @@ describe('templateMapper', () => {
         position: { x: 0, y: 0 },
         data: {
           stage: 'Preliminary',
-          stageType: 'STANDARD',
+          stageType: 'STANDARD' as const,
           standing: 'A1',
           homeTeamId: 't1', // Group 0, Team 0
           awayTeamId: 't2', // Group 0, Team 1
           official: { type: 'static', name: 't3' }, // Group 1, Team 0
           breakAfter: 0,
         }
-      } as any,
+      } as FlowNode,
     ];
 
     const flowState: Partial<FlowState> = {

@@ -7,7 +7,7 @@ import { GlobalTeam } from '../../types/flowchart';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import SaveTemplateModal from './SaveTemplateModal';
 import { gamedayApi } from '../../api/gamedayApi';
-import { GenericTemplate, applyGenericTemplate } from '../../utils/templateMapper';
+import { GenericTemplate } from '../../utils/templateMapper';
 
 export interface TournamentGeneratorModalProps {
   /** Whether the modal is visible */
@@ -49,7 +49,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
   onSaveAsTemplate,
   isValid = false,
 }) => {
-  const { t, i18n } = useTypedTranslation(['ui', 'modal', 'domain']);
+  const { t } = useTypedTranslation(['ui', 'modal', 'domain']);
   
   const [customTemplates, setCustomTemplates] = useState<GenericTemplate[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
@@ -136,6 +136,16 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
     }, [selectedTemplate, selectedCustomTemplate, generateTeams, selectedTeamIds.length]);
   
     const canGenerate = (selectedTemplate || selectedCustomTemplate) && isDurationValid && isTeamCountValid;
+
+    console.log('Validation Debug:', {
+        gameDuration,
+        isDurationValid,
+        selectedTeamIdsCount: selectedTeamIds.length,
+        isTeamCountValid,
+        canGenerate,
+        selectedTemplate: selectedTemplate?.name,
+        generateTeams
+    });
 
   /**
    * Handle tournament generation confirmation

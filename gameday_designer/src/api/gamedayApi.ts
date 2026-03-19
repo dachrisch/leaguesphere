@@ -208,13 +208,13 @@ class GamedayApi {
     return response.data;
   }
 
-  async saveTemplate(data: any): Promise<any> {
+  async saveTemplate(data: unknown): Promise<unknown> {
     if (this.isDev && !this.forceClient) return mockGamedayService.saveTemplate(data);
     const response = await this.client.post('/designer/templates/save-from-designer/', data);
     return response.data;
   }
 
-  async getTemplates(): Promise<any[]> {
+  async getTemplates(): Promise<unknown[]> {
     if (this.isDev && !this.forceClient) return mockGamedayService.getTemplates();
     const response = await this.client.get('/designer/templates/');
     return response.data;

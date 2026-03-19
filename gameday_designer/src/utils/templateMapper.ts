@@ -1,5 +1,5 @@
-import { FlowState, GlobalTeam, FlowNode, GameNode, isGameNode, createGameNode, createGameToGameEdge, FlowEdge, GlobalTeamGroup } from '../types/flowchart';
-import { isStaticReference, isWinnerReference, isLoserReference, isGroupTeamReference } from '../types/designer';
+import { FlowState, GlobalTeam, FlowNode, GameNode, isGameNode, createGameNode, FlowEdge, GlobalTeamGroup } from '../types/flowchart';
+import { isWinnerReference, isLoserReference, isGroupTeamReference } from '../types/designer';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface GenericTemplateSlot {
@@ -47,7 +47,7 @@ export function genericizeFlowState(state: FlowState, name: string, description:
     state.globalTeams.filter(t => t.groupId === group.id).sort((a, b) => a.order - b.order)
   );
 
-  const resolveTeam = (teamId: string | null, dynamicRef: any) => {
+  const resolveTeam = (teamId: string | null, dynamicRef: unknown) => {
     if (dynamicRef) {
       if (isWinnerReference(dynamicRef)) return { reference: `Winner ${dynamicRef.matchName}` };
       if (isLoserReference(dynamicRef)) return { reference: `Loser ${dynamicRef.matchName}` };
@@ -67,7 +67,7 @@ export function genericizeFlowState(state: FlowState, name: string, description:
     return {};
   };
 
-  const resolveOfficial = (official: any) => {
+  const resolveOfficial = (official: { type?: string; name?: string; matchName?: string } | null | undefined) => {
     if (!official) return {};
     if (official.type === 'static') {
         const team = state.globalTeams.find(t => t.label === official.name || t.id === official.name);
@@ -110,7 +110,7 @@ export function genericizeFlowState(state: FlowState, name: string, description:
     };
   });
 
-  const fields = [...state.fields].sort((a, b) => a.order - b.order);
+  const fieldsList = [...state.fields].sort((a, b) => a.order - b.order);
   slots.forEach(slot => {
       const node = gameNodes.find(n => n.data.standing === slot.standing && n.data.stage === slot.stage);
       if (node && node.parentId) {
@@ -118,7 +118,7 @@ export function genericizeFlowState(state: FlowState, name: string, description:
           if (stageNode && stageNode.parentId) {
               const fieldNode = state.nodes.find(n => n.id === stageNode.parentId);
               if (fieldNode) {
-                  const fieldIdx = fields.findIndex(f => f.id === fieldNode.id || f.id === fieldNode.data.name);
+                  const fieldIdx = fieldsList.findIndex(f => f.id === fieldNode.id || f.id === fieldNode.data.name);
                   slot.field = fieldIdx !== -1 ? fieldIdx + 1 : 1;
               }
           }
@@ -172,8 +172,8 @@ export function applyGenericTemplate(template: GenericTemplate, currentState: Fl
 } {
   const newNodes: FlowNode[] = [];
   const newEdges: FlowEdge[] = [];
-  let newGroups = [...currentState.globalTeamGroups];
-  let newTeams = [...currentState.globalTeams];
+  const newGroups = [...currentState.globalTeamGroups];
+  const newTeams = [...currentState.globalTeams];
 
   // 1. Scaffold groups if missing
   if (newGroups.length === 0 && template.group_config) {
@@ -205,23 +205,23 @@ export function applyGenericTemplate(template: GenericTemplate, currentState: Fl
   };
 
   // 2. Create Field and Stage nodes
-  const fields: FlowNode[] = [];
+  const fieldsNodes: FlowNode[] = [];
   for (let i = 1; i <= template.num_fields; i++) {
     const fieldId = `field-${i}`;
-    fields.push({
+    fieldsNodes.push({
       id: fieldId,
       type: 'field',
       position: { x: (i - 1) * 400, y: 0 },
       data: { name: `Feld ${i}`, order: i - 1, color: '#007bff' }
-    } as any);
+    } as FlowNode);
   }
-  newNodes.push(...fields);
+  newNodes.push(...fieldsNodes);
 
   const stagesMap = new Map<string, string>(); // stage_name -> stage_id
 
   // 3. Create Game nodes
-  template.slots.forEach((slot, idx) => {
-    const fieldNode = fields[slot.field - 1] || fields[0];
+  template.slots.forEach((slot) => {
+    const fieldNode = fieldsNodes[slot.field - 1] || fieldsNodes[0];
     
     let stageId = stagesMap.get(slot.stage);
     if (!stageId) {
@@ -233,7 +233,7 @@ export function applyGenericTemplate(template: GenericTemplate, currentState: Fl
         parentId: fieldNode.id,
         position: { x: 20, y: 60 }, // Stacked logic simplified for now
         data: { name: slot.stage, order: stagesMap.size - 1, type: slot.stage_type }
-      } as any);
+      } as FlowNode);
     }
 
     const homeTeamId = getTeamId(slot.home_group, slot.home_team);

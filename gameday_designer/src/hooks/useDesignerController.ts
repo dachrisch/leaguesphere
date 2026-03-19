@@ -165,7 +165,7 @@ export function useDesignerController(
     try {
       await gamedayApi.saveTemplate(genericTemplate);
       addNotification('Template saved successfully', 'success', 'Template Saved');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to save template', error);
       throw error;
     }

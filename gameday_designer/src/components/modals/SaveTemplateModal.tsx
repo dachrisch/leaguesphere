@@ -27,8 +27,9 @@ const SaveTemplateModal: React.FC<SaveTemplateModalProps> = ({ show, onHide, onS
     try {
       await onSave(name, description, sharing);
       onHide();
-    } catch (err: any) {
-      setError(err.message || 'Failed to save template');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save template';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -66,7 +67,7 @@ const SaveTemplateModal: React.FC<SaveTemplateModalProps> = ({ show, onHide, onS
             <Form.Label>{t('ui:label.sharingLevel')}</Form.Label>
             <Form.Select
               value={sharing}
-              onChange={(e) => setSharing(e.target.value as any)}
+              onChange={(e) => setSharing(e.target.value as 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL')}
             >
               <option value="PRIVATE">{t('ui:sharing.private')}</option>
               <option value="ASSOCIATION">{t('ui:sharing.association')}</option>

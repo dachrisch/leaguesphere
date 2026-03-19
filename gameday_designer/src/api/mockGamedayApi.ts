@@ -142,12 +142,12 @@ class MockGamedayService {
     this.saveToStorage();
   }
 
-  async getTemplates(): Promise<any[]> {
+  async getTemplates(): Promise<unknown[]> {
     return [];
   }
 
-  async saveTemplate(data: any): Promise<any> {
-    return { id: 100, ...data };
+  async saveTemplate(data: unknown): Promise<unknown> {
+    return { id: 100, ...(data as Record<string, unknown>) };
   }
 }
 
