@@ -89,6 +89,7 @@ const ListDesignerApp: React.FC = () => {
     handleDeleteNode,
     handleSelectNode,
     handleGenerateTournament,
+    handleSaveTemplate,
     handleAddGlobalTeam,
     handleAddGlobalTeamGroup,
     handleAddOfficialsGroup,
@@ -476,6 +477,8 @@ const ListDesignerApp: React.FC = () => {
         onGenerate={handleGenerateTournament}
         teams={flowState.globalTeams}
         hasData={ui?.hasData ?? false}
+        onSaveAsTemplate={handleSaveTemplate}
+        isValid={validation.isValid}
       />
 
       <PublishConfirmationModal

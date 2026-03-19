@@ -208,6 +208,12 @@ class GamedayApi {
     return response.data;
   }
 
+  async saveTemplate(data: any): Promise<any> {
+    if (this.isDev && !this.forceClient) return {};
+    const response = await this.client.post('/templates/save-from-designer/', data);
+    return response.data;
+  }
+
   /**
    * Update game result.
    */

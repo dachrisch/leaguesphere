@@ -1,10 +1,3 @@
-/**
- * TournamentGeneratorModal Component
- *
- * Modal dialog for generating complete tournaments from predefined templates.
- * Allows users to select format, field count, and start time.
- */
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Modal, Button, Form, Card, Row, Col, Alert } from 'react-bootstrap';
 import { TournamentTemplate, TournamentGenerationConfig } from '../../types/tournament';
@@ -12,6 +5,7 @@ import { getAllTemplates } from '../../utils/tournamentTemplates';
 import { DEFAULT_START_TIME, DEFAULT_GAME_DURATION } from '../../utils/tournamentConstants';
 import { GlobalTeam } from '../../types/flowchart';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
+import SaveTemplateModal from './SaveTemplateModal';
 
 export interface TournamentGeneratorModalProps {
   /** Whether the modal is visible */
@@ -32,6 +26,12 @@ export interface TournamentGeneratorModalProps {
     autoAssignTeams: boolean;
     selectedTeamIds?: string[];
   }) => void;
+
+  /** Callback when user wants to save current config as template */
+  onSaveAsTemplate?: (name: string, description: string, sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL') => Promise<void>;
+
+  /** Whether the current config is valid for saving */
+  isValid?: boolean;
 }
 
 /**
@@ -49,6 +49,8 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
   teams,
   hasData = false,
   onGenerate,
+  onSaveAsTemplate,
+  isValid = false,
 }) => {
   const { t } = useTypedTranslation(['ui', 'modal', 'domain']);
   // Get all available templates
@@ -69,6 +71,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
   const [generateTeams, setGenerateTeams] = useState<boolean>(false);
   const [autoAssignTeams, setAutoAssignTeams] = useState<boolean>(true);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
+  const [showSaveModal, setShowSaveModal] = useState(false);
 
   const hasTeams = teams.length > 0;
 
@@ -98,70 +101,19 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
     // Auto-select teams when template changes or teams list changes
     useEffect(() => {
       if (!generateTeams && selectedTemplate && teams.length > 0) {
-        // If we don't have enough teams selected, or none selected, select the first N teams
-        if (selectedTeamIds.length === 0) {
-          const count = selectedTemplate.teamCount.exact || selectedTemplate.teamCount.min;
-          setSelectedTeamIds(teams.slice(0, count).map(t => t.id));
-        }
+        const teamLimit = selectedTemplate.teamCount.exact || selectedTemplate.teamCount.max;
+        setSelectedTeamIds(teams.slice(0, teamLimit).map(t => t.id));
       }
-    }, [selectedTemplate, teams, generateTeams, selectedTeamIds.length]);
-
-    // Ensure generateTeams is false if pool has teams
-    useEffect(() => {
-      if (hasTeams) {
-        setGenerateTeams(false);
-      }
-    }, [hasTeams]);
-  
-      // Validation
-      const isDurationValid = gameDuration >= 15 && gameDuration <= 180;
-      const isTeamCountValid = useMemo(() => {
-        if (!selectedTemplate) return false;
-        if (generateTeams) return true;
-        const required = selectedTemplate.teamCount.exact || selectedTemplate.teamCount.min;
-        return selectedTeamIds.length === required;
-      }, [selectedTemplate, generateTeams, selectedTeamIds.length]);
-    
-      const canGenerate = selectedTemplate && isDurationValid && isTeamCountValid;
-    
-      // Update field count when template changes
-          useEffect(() => {
-  
-    
-    if (selectedTemplate && selectedTemplate.fieldOptions.length > 0 && fieldCount === 1) {
-      setFieldCount(selectedTemplate.fieldOptions[0]);
-    }
-  }, [selectedTemplate, fieldCount]);
-
-  const handleToggleTeam = (teamId: string) => {
-    setSelectedTeamIds(prev => {
-      if (prev.includes(teamId)) {
-        return prev.filter(id => id !== teamId);
-      } else {
-        // Don't allow selecting more than max
-        if (selectedTemplate && prev.length >= (selectedTemplate.teamCount.exact || selectedTemplate.teamCount.max)) {
-          return prev;
-        }
-        return [...prev, teamId];
-      }
-    });
-  };
+    }, [selectedTemplate, teams, generateTeams]);
 
   /**
-   * Handle generate button click
+   * Handle tournament generation confirmation
    */
   const handleGenerate = () => {
-    if (!canGenerate) return;
+    if (!selectedTemplate) return;
 
     onGenerate({
-      template: {
-        ...selectedTemplate!,
-        timing: {
-          ...selectedTemplate!.timing,
-          defaultGameDuration: gameDuration,
-          defaultBreakBetweenGames: breakDuration,
-        },
-      },
+      template: selectedTemplate,
       fieldCount,
       startTime,
       gameDuration,
@@ -170,245 +122,228 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
       autoAssignTeams,
       selectedTeamIds: generateTeams ? undefined : selectedTeamIds,
     });
-
+    
     onHide();
   };
 
   return (
-    <Modal show={show} onHide={onHide} size="lg" centered>
-      <Modal.Header closeButton>
-        <Modal.Title>
-          <i className="bi bi-trophy me-2"></i>
-          {t('modal:tournamentGenerator.title')}
+    <Modal show={show} onHide={onHide} size="lg" centered backdrop="static" className="tournament-generator-modal">
+      <Modal.Header closeButton className="bg-white border-bottom-0 px-4 pt-4">
+        <Modal.Title className="fw-bold d-flex align-items-center">
+          <i className="bi bi-grid-3x3-gap-fill text-primary me-3 fs-3"></i>
+          {t('ui:title.generateTournament')}
         </Modal.Title>
       </Modal.Header>
 
-      <Modal.Body>
-        {/* Auto-Clear Warning - Only shown if there is existing data */}
+      <Modal.Body className="bg-light p-4">
         {hasData && (
-          <Alert variant="warning" className="mb-4 shadow-sm border-2">
+          <Alert variant="warning" className="mb-4 shadow-sm">
             <div className="d-flex align-items-center">
-              <i className="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+              <i className="bi bi-exclamation-triangle-fill me-3 fs-4"></i>
               <div>
-                <h5 className="mb-1 fw-bold">{t('modal:tournamentGenerator.warningTitle', 'Auto-Clear Warning')}</h5>
-                <p className="mb-0">{t('modal:tournamentGenerator.warningMessage', 'Generating a new tournament will PERMANENTLY delete your current schedule and fields. This action cannot be undone.')}</p>
+                <strong>{t('ui:message.autoClearTitle')}</strong>
+                <br />
+                {t('ui:message.autoClearWarning')}
               </div>
             </div>
           </Alert>
         )}
 
-        {availableTemplates.length === 0 ? (
-          <Alert variant="info">
-            <i className="bi bi-info-circle me-2"></i>
-            {t('modal:tournamentGenerator.noTemplates')}
-          </Alert>
-        ) : (
-          <>
-            {/* Template selection cards */}
-            <Form.Group className="mb-3">
-              <Form.Label>
-                <strong>{t('ui:label.tournamentFormat')}</strong>
-              </Form.Label>
-              {availableTemplates.map((template) => (
-                <Card
-                  key={template.id}
-                  className={`mb-2 ${
-                    selectedTemplate?.id === template.id ? 'border-primary' : ''
-                  }`}
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => setSelectedTemplate(template)}
-                >
-                  <Card.Body className="p-3">
-                    <Form.Check
-                      type="radio"
-                      id={`template-${template.id}`}
-                      name="template"
-                      label={
-                        <>
-                          <strong>{template.name}</strong>
-                          <div className="text-muted small mt-1">
-                            {t('modal:tournamentGenerator.previewStages', { count: template.stages.length })} |{' '}
-                            {template.stages.map((s) => s.name).join(' → ')}
-                          </div>
-                        </>
-                      }
-                      checked={selectedTemplate?.id === template.id}
-                      onChange={() => setSelectedTemplate(template)}
-                    />
-                  </Card.Body>
-                </Card>
-              ))}
-            </Form.Group>
+        {onSaveAsTemplate && (
+          <div className="d-flex justify-content-between align-items-center mb-4 p-3 bg-white border rounded shadow-sm">
+            <div>
+              <h6 className="mb-1">{t('ui:title.saveCurrentConfig')}</h6>
+              <p className="text-muted small mb-0">{t('ui:message.saveConfigDescription')}</p>
+            </div>
+            <Button 
+              variant="outline-primary" 
+              size="sm" 
+              onClick={() => setShowSaveModal(true)}
+              disabled={!isValid}
+            >
+              <i className="bi bi-save me-2"></i>
+              {t('ui:button.saveAsTemplate')}
+            </Button>
+          </div>
+        )}
 
-            {/* Configuration */}
-            {selectedTemplate && (
-              <>
-                <Row>
-                  <Col md={3}>
-                    <Form.Group className="mb-3" controlId="tournament-field-count">
-                      <Form.Label>{t('ui:label.numberOfFields')}</Form.Label>
-                      <Form.Select
-                        value={fieldCount}
+        <h5 className="mb-3 d-flex align-items-center">
+          <span className="badge bg-primary rounded-pill me-2">1</span>
+          {t('ui:title.selectTemplate')}
+        </h5>
+        
+        <Row className="g-3 mb-4">
+          {availableTemplates.map((template) => (
+            <Col key={template.id} md={6}>
+              <Card 
+                className={`h-100 cursor-pointer border-2 transition-all ${
+                  selectedTemplate?.id === template.id ? 'border-primary bg-primary bg-opacity-10 shadow-sm' : 'border-transparent bg-white'
+                }`}
+                onClick={() => {
+                  setSelectedTemplate(template);
+                  setFieldCount(template.fieldOptions[0] || 1);
+                }}
+              >
+                <Card.Body className="p-3">
+                  <div className="d-flex justify-content-between align-items-start mb-2">
+                    <h6 className={`mb-0 fw-bold ${selectedTemplate?.id === template.id ? 'text-primary' : ''}`}>
+                      {template.name}
+                    </h6>
+                    {selectedTemplate?.id === template.id && (
+                      <i className="bi bi-check-circle-fill text-primary fs-5"></i>
+                    )}
+                  </div>
+                  <div className="d-flex gap-2">
+                    <span className="badge bg-light text-dark border">
+                      <i className="bi bi-people-fill me-1"></i>
+                      {template.teamCount.exact || `${template.teamCount.min}-${template.teamCount.max}`} {t('domain:team.teams')}
+                    </span>
+                    <span className="badge bg-light text-dark border">
+                      <i className="bi bi-layers-fill me-1"></i>
+                      {template.stages.length} {t('domain:stage.stages')}
+                    </span>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+
+        {selectedTemplate && (
+          <>
+            <h5 className="mb-3 d-flex align-items-center">
+              <span className="badge bg-primary rounded-pill me-2">2</span>
+              {t('ui:title.configureTournament')}
+            </h5>
+            <Card className="border-0 shadow-sm mb-4">
+              <Card.Body className="p-4">
+                <Row className="g-4">
+                  <Col md={6}>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold text-uppercase text-muted">{t('ui:label.fields')}</Form.Label>
+                      <Form.Select 
+                        value={fieldCount} 
                         onChange={(e) => setFieldCount(parseInt(e.target.value))}
+                        className="form-select-lg"
                       >
-                        {selectedTemplate.fieldOptions.map((count) => (
-                          <option key={count} value={count}>
-                            {t('modal:tournamentGenerator.previewFields', { count })}
+                        {selectedTemplate.fieldOptions.map(opt => (
+                          <option key={opt} value={opt}>
+                            {opt} {opt === 1 ? t('domain:field.field') : t('domain:field.fields')}
                           </option>
                         ))}
                       </Form.Select>
                     </Form.Group>
                   </Col>
-                  <Col md={3}>
-                    <Form.Group className="mb-3" controlId="tournament-start-time">
-                      <Form.Label>{t('ui:label.startTime')}</Form.Label>
+                  <Col md={6}>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold text-uppercase text-muted">{t('ui:label.startTime')}</Form.Label>
                       <Form.Control
                         type="time"
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
+                        className="form-control-lg"
                       />
                     </Form.Group>
                   </Col>
-                  <Col md={3}>
-                    <Form.Group className="mb-3" controlId="tournament-game-duration">
-                      <Form.Label>{t('ui:label.gameDuration')}</Form.Label>
-                      <Form.Control
-                        type="number"
-                        min={15}
-                        max={180}
-                        value={gameDuration}
-                        onChange={(e) => setGameDuration(parseInt(e.target.value) || 0)}
-                        isInvalid={!isDurationValid}
-                      />
-                      <Form.Control.Feedback type="invalid">
-                        {t('modal:tournamentGenerator.durationValidation')}
-                      </Form.Control.Feedback>
+                  <Col md={6}>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold text-uppercase text-muted">{t('ui:label.gameDuration')}</Form.Label>
+                      <div className="input-group">
+                        <Form.Control
+                          type="number"
+                          value={gameDuration}
+                          onChange={(e) => setGameDuration(parseInt(e.target.value))}
+                          className="form-control-lg"
+                        />
+                        <span className="input-group-text">{t('ui:label.minutes')}</span>
+                      </div>
                     </Form.Group>
                   </Col>
-                  <Col md={3}>
-                    <Form.Group className="mb-3" controlId="tournament-break-duration">
-                      <Form.Label>{t('ui:label.breakDuration')}</Form.Label>
-                      <Form.Control
-                        type="number"
-                        min={0}
-                        max={60}
-                        value={breakDuration}
-                        onChange={(e) => setBreakDuration(parseInt(e.target.value) || 0)}
-                      />
+                  <Col md={6}>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold text-uppercase text-muted">{t('ui:label.breakDuration')}</Form.Label>
+                      <div className="input-group">
+                        <Form.Control
+                          type="number"
+                          value={breakDuration}
+                          onChange={(e) => setBreakDuration(parseInt(e.target.value))}
+                          className="form-control-lg"
+                        />
+                        <span className="input-group-text">{t('ui:label.minutes')}</span>
+                      </div>
                     </Form.Group>
                   </Col>
                 </Row>
 
-                {/* Team Options */}
-                <Form.Group className="mb-3">
-                  <Form.Check
-                    type="checkbox"
-                    id="generate-teams"
-                    label={
-                      <>
-                        {t('modal:tournamentGenerator.generateTeams', {
-                          count: selectedTemplate.teamCount.exact || selectedTemplate.teamCount.min
-                        })}
-                        {hasTeams && (
-                          <span className="text-muted small ms-2">
-                            ({t('modal:tournamentGenerator.generateTeamsDisabledHint')})
-                          </span>
-                        )}
-                      </>
-                    }
-                    checked={generateTeams}
-                    disabled={hasTeams}
-                    onChange={(e) => setGenerateTeams(e.target.checked)}
-                  />
-                  <Form.Check
-                    type="checkbox"
-                    id="auto-assign-teams"
-                    label={t('modal:tournamentGenerator.autoAssignTeams')}
-                    checked={autoAssignTeams}
-                    onChange={(e) => setAutoAssignTeams(e.target.checked)}
-                    className="mt-2"
-                  />
-                </Form.Group>
+                <hr className="my-4" />
 
-                {/* Manual Team Selection */}
-                {!generateTeams && teams.length > 0 && (
-                  <div className="mb-3">
-                    <Form.Label>
-                      <strong>{t('modal:tournamentGenerator.selectTeamsTitle', 'Select Teams')}</strong>
-                      <span className="ms-2 small text-muted">
-                        ({selectedTeamIds.length} / {selectedTemplate.teamCount.exact || selectedTemplate.teamCount.min})
-                      </span>
-                    </Form.Label>
-                    <div 
-                      className="border rounded p-2" 
-                      style={{ maxHeight: '200px', overflowY: 'auto', backgroundColor: '#f8f9fa' }}
-                    >
-                      {teams.map(team => (
-                        <Form.Check 
-                          key={team.id}
-                          type="checkbox"
-                          id={`select-team-${team.id}`}
-                          label={team.label}
-                          checked={selectedTeamIds.includes(team.id)}
-                          onChange={() => handleToggleTeam(team.id)}
-                          className="mb-1"
-                        />
-                      ))}
-                    </div>
+                <h6 className="mb-3 fw-bold">{t('ui:title.teamAssignment')}</h6>
+                <div className="bg-light p-3 rounded mb-3">
+                  <Form.Check 
+                    type="radio"
+                    id="assign-existing"
+                    name="team-source"
+                    label={t('ui:label.useExistingTeams')}
+                    checked={!generateTeams}
+                    onChange={() => setGenerateTeams(false)}
+                    disabled={!hasTeams}
+                    className="mb-2 fw-bold"
+                  />
+                  <Form.Check 
+                    type="radio"
+                    id="generate-new"
+                    name="team-source"
+                    label={t('ui:label.generatePlaceholders')}
+                    checked={generateTeams}
+                    onChange={() => setGenerateTeams(true)}
+                    className="fw-bold"
+                  />
+                </div>
+
+                {!generateTeams && hasTeams && (
+                  <div className="mt-3">
+                    <Form.Check 
+                      type="switch"
+                      id="auto-assign"
+                      label={t('ui:label.autoAssignTeams')}
+                      checked={autoAssignTeams}
+                      onChange={(e) => setAutoAssignTeams(e.target.checked)}
+                      className="mb-2"
+                    />
+                    <Form.Text className="text-muted small">
+                      {autoAssignTeams 
+                        ? t('ui:message.autoAssignNote') 
+                        : t('ui:message.manualAssignNote')}
+                    </Form.Text>
                   </div>
                 )}
-
-                {selectedTemplate && !isTeamCountValid && (
-                  <Alert variant="warning" className="mb-3">
-                    <i className="bi bi-exclamation-triangle me-2"></i>
-                    {t('modal:tournamentGenerator.insufficientTeams', { min: selectedTemplate.teamCount.min })}
-                  </Alert>
-                )}
-              </>
-            )}
-
-            {/* Preview */}
-            {selectedTemplate && (
-              <Alert variant="light" className="mb-0">
-                <strong>
-                  <i className="bi bi-eye me-2"></i>
-                  {t('modal:tournamentGenerator.previewTitle')}
-                </strong>
-                <ul className="mb-0 mt-2">
-                  <li>
-                    {t('modal:tournamentGenerator.previewFields', { count: fieldCount })}
-                  </li>
-                  <li>{t('modal:tournamentGenerator.previewStages', { count: selectedTemplate.stages.length })}</li>
-                  <li>{t('modal:tournamentGenerator.previewFirstGame', { time: startTime })}</li>
-                  <li>
-                    {t('modal:tournamentGenerator.previewGameDuration', {
-                      duration: gameDuration
-                    })}
-                  </li>
-                  <li>
-                    {t('ui:label.breakDuration')}: {breakDuration} {t('domain:minutes')}
-                  </li>
-                </ul>
-              </Alert>
-            )}
+              </Card.Body>
+            </Card>
           </>
         )}
       </Modal.Body>
 
-      <Modal.Footer>
-        <Button variant="secondary" onClick={onHide}>
+      <Modal.Footer className="bg-white border-top-0 px-4 pb-4">
+        <Button variant="link" onClick={onHide} className="text-muted text-decoration-none">
           {t('ui:button.cancel')}
         </Button>
         <Button
           variant="primary"
           onClick={handleGenerate}
-          disabled={!canGenerate}
+          disabled={!selectedTemplate}
+          className="px-4 py-2 shadow-sm"
           data-testid="confirm-generate-button"
         >
           <i className="bi bi-lightning-fill me-1"></i>
           {t('ui:button.generateTournament')}
         </Button>
       </Modal.Footer>
+
+      <SaveTemplateModal
+        show={showSaveModal}
+        onHide={() => setShowSaveModal(false)}
+        onSave={onSaveAsTemplate || (async () => {})}
+      />
     </Modal>
   );
 };

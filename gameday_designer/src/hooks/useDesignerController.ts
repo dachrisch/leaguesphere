@@ -21,11 +21,12 @@ import {
   TOURNAMENT_GENERATION_STATE_DELAY,
   DEFAULT_TOURNAMENT_GROUP_NAME,
 } from '../utils/tournamentConstants';
-import type { GlobalTeam, HighlightedElement, Notification, NotificationType, FlowState } from '../types/flowchart';
+import type { GlobalTeam, GlobalTeamGroup, HighlightedElement, Notification, NotificationType, FlowState } from '../types/flowchart';
 import type { TournamentGenerationConfig, RoundRobinConfig } from '../types/tournament';
 import type { UseFlowStateReturn, GamedayMetadata } from '../types/designer';
 import { v4 as uuidv4 } from 'uuid';
 import { gamedayApi } from '../api/gamedayApi';
+import { genericizeFlowState } from '../utils/templateMapper';
 
 export function useDesignerController(
   gamedayId: string | undefined,
@@ -153,6 +154,21 @@ export function useDesignerController(
     }
     downloadFlowchartAsJson(state);
     addNotification('Schedule exported successfully', 'success', 'Export Success');
+  }, [addNotification]);
+
+  const handleSaveTemplate = useCallback(async (name: string, description: string, sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL') => {
+    const currentState = flowStateRef.current?.exportState();
+    if (!currentState) return;
+    
+    const genericTemplate = genericizeFlowState(currentState, name, description, sharing);
+    
+    try {
+      await gamedayApi.saveTemplate(genericTemplate);
+      addNotification('Template saved successfully', 'success', 'Template Saved');
+    } catch (error: any) {
+      console.error('Failed to save template', error);
+      throw error;
+    }
   }, [addNotification]);
 
   const assignTeamsToTournament = useCallback(
@@ -321,6 +337,7 @@ export function useDesignerController(
     handleDynamicReferenceClick,
     handleImport,
     handleExport,
+    handleSaveTemplate,
     handleClearAll: () => flowStateRef.current?.clearAll(),
     handleUpdateMetadata: (data: Partial<GamedayMetadata>) => flowStateRef.current?.updateMetadata(data),
     handleUpdateNode: (id: string, data: Record<string, unknown>) => flowStateRef.current?.updateNode(id, data),
@@ -357,7 +374,7 @@ export function useDesignerController(
       flowStateRef.current?.addStageToGameEdge(sourceStageId, sourceRank, targetGameId, targetSlot, sourceGroup),
   }), [
     loadData, saveData, expandField, expandStage, handleHighlightElement, 
-    handleDynamicReferenceClick, handleImport, handleExport,
+    handleDynamicReferenceClick, handleImport, handleExport, handleSaveTemplate,
     handleSwapTeams, handleGenerateTournament, showTournamentModal, 
     dismissNotification, addNotification, onMetadataHighlight
   ]);
