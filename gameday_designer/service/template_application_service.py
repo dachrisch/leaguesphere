@@ -78,7 +78,6 @@ class TemplateApplicationService:
         self.team_mapping = team_mapping
         self.applied_by = applied_by
 
-    @transaction.atomic
     def apply(self) -> ApplicationResult:
         """
         Apply template to gameday (atomic operation).
@@ -89,29 +88,30 @@ class TemplateApplicationService:
         Raises:
             ApplicationError: If validation fails or application encounters error
         """
-        # Step 1: Validate compatibility
-        self._validate_compatibility()
+        with transaction.atomic():
+            # Step 1: Validate compatibility
+            self._validate_compatibility()
 
-        # Step 2: Clear existing schedule
-        self._clear_existing_schedule()
+            # Step 2: Clear existing schedule
+            self._clear_existing_schedule()
 
-        # Step 3: Create gameinfos from slots
-        gameinfos = self._create_gameinfos()
+            # Step 3: Create gameinfos from slots
+            gameinfos = self._create_gameinfos()
 
-        # Step 4: Resolve ranking-based references
-        self._resolve_ranking_references()
+            # Step 4: Resolve ranking-based references
+            self._resolve_ranking_references()
 
-        # Step 5: Create gameresults for each gameinfo
-        self._create_gameresults(gameinfos)
+            # Step 5: Create gameresults for each gameinfo
+            self._create_gameresults(gameinfos)
 
-        # Step 6: Store audit trail
-        self._create_audit_record()
+            # Step 6: Store audit trail
+            application = self._create_audit_record()
 
-        return ApplicationResult(
-            success=True,
-            gameinfos_created=len(gameinfos),
-            message=f'Successfully applied template "{self.template.name}" to gameday "{self.gameday.name}". Created {len(gameinfos)} games.',
-        )
+            return ApplicationResult(
+                success=True,
+                gameinfos_created=len(gameinfos),
+                message=f'Successfully applied template "{self.template.name}" to gameday "{self.gameday.name}". Created {len(gameinfos)} games.',
+            )
 
     def _resolve_ranking_references(self):
         """
@@ -388,7 +388,7 @@ class TemplateApplicationService:
 
         Records when template was applied, by whom, and team mapping used.
         """
-        TemplateApplication.objects.create(
+        return TemplateApplication.objects.create(
             template=self.template,
             gameday=self.gameday,
             applied_by=self.applied_by,

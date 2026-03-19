@@ -14,7 +14,13 @@ from django.contrib.auth.decorators import login_required
 import logging
 
 from gamedays.models import Gameday
-from gameday_designer.models import ScheduleTemplate, TemplateApplication
+from gameday_designer.models import (
+    ScheduleTemplate,
+    TemplateApplication,
+    TemplateSlot,
+    TemplateUpdateRule,
+    TemplateUpdateRuleTeam,
+)
 from gameday_designer.serializers import (
     ScheduleTemplateListSerializer,
     ScheduleTemplateDetailSerializer,
@@ -57,6 +63,14 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
     queryset = ScheduleTemplate.objects.all()
     permission_classes = [IsAssociationMemberOrStaff]
 
+    def get_permissions(self):
+        """
+        Return appropriate permissions based on action.
+        """
+        if self.action == "apply":
+            return [CanApplyTemplate()]
+        return super().get_permissions()
+
     def get_serializer_class(self):
         """
         Return appropriate serializer based on action.
@@ -69,20 +83,50 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Filter queryset based on permissions and query parameters.
-
-        Staff sees all templates.
-        Non-staff users see all templates (read-only for global).
-        Supports filtering by association.
+        Filter templates based on sharing settings:
+        - GLOBAL templates (visible to everyone)
+        - ASSOCIATION templates matching user's association
+        - PRIVATE templates created by the user
+        Staff users see all templates.
         """
-        queryset = ScheduleTemplate.objects.all()
+        user = self.request.user
 
-        # Filter by association if provided
-        association_id = self.request.query_params.get("association")
-        if association_id:
-            queryset = queryset.filter(association_id=association_id)
+        # Staff sees everything
+        if user and user.is_authenticated and user.is_staff:
+            return ScheduleTemplate.objects.all().select_related(
+                "association", "created_by", "updated_by"
+            )
 
-        return queryset.select_related("association", "created_by", "updated_by")
+        # Base query: Global templates are ALWAYS visible
+        query = Q(sharing=ScheduleTemplate.SHARING_GLOBAL)
+
+        if user and user.is_authenticated:
+            from gamedays.models import UserProfile
+
+            try:
+                profile = UserProfile.objects.get(user=user)
+                user_association = profile.team.association if profile.team else None
+            except UserProfile.DoesNotExist:
+                user_association = None
+
+            # Add private templates
+            query |= Q(created_by=user, sharing=ScheduleTemplate.SHARING_PRIVATE)
+
+            # Add association templates
+            query |= Q(sharing=ScheduleTemplate.SHARING_ASSOCIATION)
+
+            # Support filtering by association if provided in query params
+            assoc_id = self.request.query_params.get("association")
+            if assoc_id:
+                return ScheduleTemplate.objects.filter(
+                    association_id=assoc_id, sharing=ScheduleTemplate.SHARING_ASSOCIATION
+                ).select_related("association", "created_by", "updated_by")
+
+            return (
+                ScheduleTemplate.objects.filter(query)
+                .distinct()
+                .select_related("association", "created_by", "updated_by")
+            )
 
     def perform_create(self, serializer):
         """
