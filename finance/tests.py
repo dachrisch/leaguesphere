@@ -26,11 +26,18 @@ class FinanceServiceTest(TestCase):
             season=self.season,
             cost_model=LeagueSeasonFinancialConfig.MODEL_SEASON
         )
-        # Register two teams
-        SeasonLeagueTeam.objects.create(league=self.league, season=self.season, team=self.team1)
-        SeasonLeagueTeam.objects.create(league=self.league, season=self.season, team=self.team2)
-        
+        gameday = Gameday.objects.create(
+            name="Gameday 1", league=self.league, season=self.season,
+            date="2026-03-15", start="10:00", author=self.user
+        )
+        gi = Gameinfo.objects.create(
+            gameday=gameday, scheduled="10:00", field=1,
+            officials=self.team2, stage="Main", standing="P1"
+        )
+        Gameresult.objects.create(gameinfo=gi, team=self.team1, isHome=True)
+
         costs = FinanceService.calculate_costs(config)
+        # team1 plays, team2 officials → 2 unique teams × 100.00
         self.assertEqual(costs['gross'], Decimal("200.00"))
         self.assertEqual(costs['net'], Decimal("200.00"))
 
@@ -65,16 +72,23 @@ class FinanceServiceTest(TestCase):
             cost_model=LeagueSeasonFinancialConfig.MODEL_SEASON,
             base_rate_override=Decimal("100.00")
         )
-        SeasonLeagueTeam.objects.create(league=self.league, season=self.season, team=self.team1)
-        
-        # Fixed discount for team 1
+        gameday = Gameday.objects.create(
+            name="Gameday 1", league=self.league, season=self.season,
+            date="2026-03-15", start="10:00", author=self.user
+        )
+        gi = Gameinfo.objects.create(
+            gameday=gameday, scheduled="10:00", field=1,
+            officials=self.team2, stage="Main", standing="P1"
+        )
+        Gameresult.objects.create(gameinfo=gi, team=self.team1, isHome=True)
+
+        # Fixed global discount
         LeagueSeasonDiscount.objects.create(
             config=config,
-            team=self.team1,
+            team=None,
             discount_type=LeagueSeasonDiscount.TYPE_FIXED,
             value=Decimal("10.00")
         )
-        
         # Percent global discount
         LeagueSeasonDiscount.objects.create(
             config=config,
@@ -82,16 +96,15 @@ class FinanceServiceTest(TestCase):
             discount_type=LeagueSeasonDiscount.TYPE_PERCENTAGE,
             value=Decimal("10.00")
         )
-        
+
         costs = FinanceService.calculate_costs(config)
-        # Gross = 100
-        # Team Discount = 10
-        # Global Discount = 10% of 100 = 10
-        # Total Discount = 20
-        # Net = 80
-        self.assertEqual(costs['gross'], Decimal("100.00"))
-        self.assertEqual(costs['discount'], Decimal("20.00"))
-        self.assertEqual(costs['net'], Decimal("80.00"))
+        # Gross = 2 teams × 100 = 200
+        # Fixed discount = 10
+        # Percent discount = 10% of 200 = 20
+        # Total discount = 30, net = 170
+        self.assertEqual(costs['gross'], Decimal("200.00"))
+        self.assertEqual(costs['discount'], Decimal("30.00"))
+        self.assertEqual(costs['net'], Decimal("170.00"))
 
     def test_gameday_model_team_discount(self):
         config = LeagueSeasonFinancialConfig.objects.create(
