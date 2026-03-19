@@ -10,69 +10,96 @@
         </ol>
     </nav>
 
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Create League/Season Financial Configuration</h5>
+    <div class="card shadow-sm border-0 overflow-hidden">
+        <div class="card-header py-3" style="background:#cfe2ff;color:#084298;">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-gear-wide-connected me-2"></i> Create League/Season Financial Configuration</h5>
+        </div>
+        <div class="card-body bg-white p-4">
+            <form method="post">
+                {% csrf_token %}
+                <!-- League + Season -->
+                <div class="row g-4 mb-3">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded border border-info border-opacity-25">
+                            {{ form.league|as_crispy_field }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded border border-info border-opacity-25">
+                            {{ form.season|as_crispy_field }}
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <form method="post">
-                        {% csrf_token %}
-                        {{ form.league|as_crispy_field }}
-                        {{ form.season|as_crispy_field }}
-                        <div class="p-3 bg-light rounded border border-info border-opacity-25 mb-3">
+                <!-- Cost model full width -->
+                <div class="row g-4 mb-3">
+                    <div class="col-md-12">
+                        <div class="p-3 bg-light rounded border border-info border-opacity-25">
                             {{ form.cost_model|as_crispy_field }}
                         </div>
-                        {{ form.base_rate_override|as_crispy_field }}
-                        
-                        <div class="p-3 bg-light rounded border border-warning border-opacity-25 mt-3">
+                    </div>
+                </div>
+                <!-- Base rate + Planning targets -->
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded border border-info border-opacity-25 h-100">
+                            {{ form.base_rate_override|as_crispy_field }}
+                            <div class="mt-2 text-muted small" id="hint_season" style="display:none;">
+                                <i class="bi bi-info-circle"></i> System Default:
+                                <span class="fw-bold">{{ default_rate_season }} €</span>
+                            </div>
+                            <div class="mt-2 text-muted small" id="hint_gameday" style="display:none;">
+                                <i class="bi bi-info-circle"></i> System Default:
+                                <span class="fw-bold">{{ default_rate_gameday }} €</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded border border-warning border-opacity-25 h-100">
                             <h6 class="fw-bold mb-3 text-warning-emphasis"><i class="bi bi-calendar-event"></i> Planning Targets</h6>
-                            <div id="season_fields" style="display: none;">
+                            <div id="season_fields" style="display:none;">
                                 {{ form.expected_teams_count|as_crispy_field }}
                             </div>
-                            <div id="gameday_fields" style="display: none;">
+                            <div id="gameday_fields" style="display:none;">
                                 {{ form.expected_gamedays_count|as_crispy_field }}
                                 {{ form.expected_teams_per_gameday|as_crispy_field }}
                             </div>
                         </div>
-
-                        <div class="d-flex justify-content-between mt-4">
-                            <a href="{% url 'finance-dashboard' %}" class="btn btn-secondary">Cancel</a>
-                            <button type="submit" class="btn btn-primary">Create Configuration</button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{% url 'finance-dashboard' %}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bi bi-check2-circle me-1"></i> Create Configuration
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const costModelRadios = document.querySelectorAll('input[name="cost_model"]');
-        const seasonFields = document.getElementById('season_fields');
-        const gamedayFields = document.getElementById('gameday_fields');
+document.addEventListener('DOMContentLoaded', function () {
+    const costModelRadios = document.querySelectorAll('input[name="cost_model"]');
+    const seasonFields = document.getElementById('season_fields');
+    const gamedayFields = document.getElementById('gameday_fields');
+    const hintSeason = document.getElementById('hint_season');
+    const hintGameday = document.getElementById('hint_gameday');
 
-        function toggleFields() {
-            const checkedRadio = document.querySelector('input[name="cost_model"]:checked');
-            if (!checkedRadio) return;
-            
-            const selectedModel = checkedRadio.value;
-            if (selectedModel === 'SEASON') {
-                seasonFields.style.display = 'block';
-                gamedayFields.style.display = 'none';
-            } else {
-                seasonFields.style.display = 'none';
-                gamedayFields.style.display = 'block';
-            }
-        }
+    function toggleFields() {
+        const checked = document.querySelector('input[name="cost_model"]:checked');
+        if (!checked) return;
+        const isSeason = checked.value === 'SEASON';
+        seasonFields.style.display = isSeason ? 'block' : 'none';
+        gamedayFields.style.display = isSeason ? 'none' : 'block';
+        hintSeason.style.display = isSeason ? 'block' : 'none';
+        hintGameday.style.display = isSeason ? 'none' : 'block';
+    }
 
-        costModelRadios.forEach(radio => {
-            radio.addEventListener('change', toggleFields);
-        });
-
-        // Initial toggle
-        toggleFields();
-    });
+    costModelRadios.forEach(r => r.addEventListener('change', toggleFields));
+    toggleFields();
+});
 </script>
 {% endblock %}
 

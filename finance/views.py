@@ -78,6 +78,21 @@ class ConfigCreateView(LoginRequiredMixin, StaffRequiredMixin, CreateView):
     template_name = 'finance/config_form.html'
     success_url = reverse_lazy('finance-dashboard')
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['initial'] = {
+            'league': self.request.GET.get('league'),
+            'season': self.request.GET.get('season'),
+        }
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        settings = FinanceService.get_global_defaults()
+        context['default_rate_season'] = settings.default_rate_per_team_season
+        context['default_rate_gameday'] = settings.default_rate_per_team_gameday
+        return context
+
 class ConfigDeleteView(LoginRequiredMixin, StaffRequiredMixin, DeleteView):
     model = LeagueSeasonFinancialConfig
     template_name = 'finance/config_confirm_delete.html'
