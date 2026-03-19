@@ -1,5 +1,5 @@
 from decimal import Decimal
-from django.test import TestCase
+from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from gamedays.models import League, Season, Team, Gameday, Gameinfo, Gameresult
 from .models import LeagueSeasonFinancialConfig, LeagueSeasonDiscount, FinancialSettings
@@ -175,3 +175,64 @@ class FinanceServiceTest(TestCase):
         # Only team1 counts (dummy officiating team excluded)
         self.assertEqual(costs['live_participation_count'], 1)
         self.assertEqual(costs['gross'], Decimal("100.00"))
+
+
+class FinanceAccessControlTest(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.finance_url = '/finance/dashboard/'  # dashboard URL
+
+        self.bumbleflies_staff = User.objects.create_user(
+            username='bf_admin', email='admin@bumbleflies.de', password='pass'
+        )
+        self.bumbleflies_staff.is_staff = True
+        self.bumbleflies_staff.save()
+
+        self.other_staff = User.objects.create_user(
+            username='other_admin', email='admin@other.de', password='pass'
+        )
+        self.other_staff.is_staff = True
+        self.other_staff.save()
+
+        self.regular_user = User.objects.create_user(
+            username='regular', email='user@bumbleflies.de', password='pass'
+        )
+
+    def test_bumbleflies_staff_can_access_finance(self):
+        self.client.login(username='bf_admin', password='pass')
+        response = self.client.get(self.finance_url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_other_staff_redirected_to_home(self):
+        self.client.login(username='other_admin', password='pass')
+        response = self.client.get(self.finance_url)
+        self.assertRedirects(response, '/', fetch_redirect_response=False)
+
+    def test_non_staff_redirected_to_home(self):
+        self.client.login(username='regular', password='pass')
+        response = self.client.get(self.finance_url)
+        self.assertRedirects(response, '/', fetch_redirect_response=False)
+
+    def test_unauthenticated_redirected_to_home(self):
+        response = self.client.get(self.finance_url)
+        self.assertRedirects(response, '/', fetch_redirect_response=False)
+
+    def test_bumbleflies_staff_sees_finance_menu(self):
+        self.client.login(username='bf_admin', password='pass')
+        response = self.client.get('/')
+        menu_groups = response.context.get('menu_items', {})
+        finance_group = menu_groups.get('Finance', {})
+        self.assertTrue(finance_group.get('items'), 'Finance menu group should have items for bumbleflies staff')
+
+    def test_other_staff_does_not_see_finance_menu(self):
+        self.client.login(username='other_admin', password='pass')
+        response = self.client.get('/')
+        menu_groups = response.context.get('menu_items', {})
+        finance_group = menu_groups.get('Finance', {})
+        self.assertFalse(finance_group.get('items'), 'Finance menu group should have no items for non-bumbleflies staff')
+
+    def test_unauthenticated_does_not_see_finance_menu(self):
+        response = self.client.get('/')
+        menu_groups = response.context.get('menu_items', {})
+        finance_group = menu_groups.get('Finance', {})
+        self.assertFalse(finance_group.get('items'), 'Finance menu group should have no items for unauthenticated users')

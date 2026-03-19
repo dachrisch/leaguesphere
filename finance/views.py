@@ -1,18 +1,24 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.urls import reverse_lazy
 from django.db.models import Count
 from .models import LeagueSeasonFinancialConfig, LeagueSeasonDiscount, FinancialSettings
 from .services import FinanceService
 from .forms import FinancialConfigForm, DiscountForm, GlobalSettingsForm
 from gamedays.models import Gameday, Gameresult
+from league_manager.utils.view_utils import is_finance_admin
+
 
 class StaffRequiredMixin(UserPassesTestMixin):
     def test_func(self):
-        return self.request.user.is_staff
+        return is_finance_admin(self.request.user)
 
-class FinanceDashboardView(LoginRequiredMixin, StaffRequiredMixin, ListView):
+    def handle_no_permission(self):
+        return redirect('/')
+
+
+class FinanceDashboardView(StaffRequiredMixin, ListView):
     model = LeagueSeasonFinancialConfig
     template_name = 'finance/dashboard.html'
     context_object_name = 'configs'
@@ -72,7 +78,7 @@ class FinanceDashboardView(LoginRequiredMixin, StaffRequiredMixin, ListView):
         context['pending_configs'] = pending
         return context
 
-class ConfigCreateView(LoginRequiredMixin, StaffRequiredMixin, CreateView):
+class ConfigCreateView(StaffRequiredMixin, CreateView):
     model = LeagueSeasonFinancialConfig
     form_class = FinancialConfigForm
     template_name = 'finance/config_form.html'
@@ -93,12 +99,12 @@ class ConfigCreateView(LoginRequiredMixin, StaffRequiredMixin, CreateView):
         context['default_rate_gameday'] = settings.default_rate_per_team_gameday
         return context
 
-class ConfigDeleteView(LoginRequiredMixin, StaffRequiredMixin, DeleteView):
+class ConfigDeleteView(StaffRequiredMixin, DeleteView):
     model = LeagueSeasonFinancialConfig
     template_name = 'finance/config_confirm_delete.html'
     success_url = reverse_lazy('finance-dashboard')
 
-class FinanceConfigDetailView(LoginRequiredMixin, StaffRequiredMixin, DetailView):
+class FinanceConfigDetailView(StaffRequiredMixin, DetailView):
     model = LeagueSeasonFinancialConfig
     template_name = 'finance/config_detail.html'
     context_object_name = 'config'
@@ -127,14 +133,14 @@ class FinanceConfigDetailView(LoginRequiredMixin, StaffRequiredMixin, DetailView
                 return redirect('finance-config-detail', pk=config.pk)
         return self.get(request, *args, **kwargs)
 
-class DiscountDeleteView(LoginRequiredMixin, StaffRequiredMixin, DeleteView):
+class DiscountDeleteView(StaffRequiredMixin, DeleteView):
     model = LeagueSeasonDiscount
     template_name = 'finance/discount_confirm_delete.html'
     
     def get_success_url(self):
         return reverse_lazy('finance-config-detail', kwargs={'pk': self.object.config.pk})
 
-class GlobalSettingsUpdateView(LoginRequiredMixin, StaffRequiredMixin, UpdateView):
+class GlobalSettingsUpdateView(StaffRequiredMixin, UpdateView):
     model = FinancialSettings
     form_class = GlobalSettingsForm
     template_name = 'finance/settings.html'
