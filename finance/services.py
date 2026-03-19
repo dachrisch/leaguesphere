@@ -19,25 +19,25 @@ class FinanceService:
 
         for gameday in gamedays:
             playing_teams = set(
-                Gameresult.objects
-                .filter(gameinfo__gameday=gameday)
-                .exclude(team__location='dummy')
-                .values_list('team', flat=True)
+                Gameresult.objects.filter(gameinfo__gameday=gameday)
+                .exclude(team__location="dummy")
+                .values_list("team", flat=True)
             )
             officiating_teams = set(
-                Gameinfo.objects
-                .filter(gameday=gameday)
-                .exclude(officials__location='dummy')
-                .values_list('officials', flat=True)
+                Gameinfo.objects.filter(gameday=gameday)
+                .exclude(officials__location="dummy")
+                .values_list("officials", flat=True)
             )
             unique_teams = playing_teams | officiating_teams
             # Remove None/Null team IDs
             unique_teams = {t for t in unique_teams if t is not None}
-            participation.append({
-                'gameday': gameday,
-                'team_count': len(unique_teams),
-                'teams': unique_teams
-            })
+            participation.append(
+                {
+                    "gameday": gameday,
+                    "team_count": len(unique_teams),
+                    "teams": unique_teams,
+                }
+            )
 
         return participation
 
@@ -45,7 +45,7 @@ class FinanceService:
     def calculate_costs(cls, config: LeagueSeasonFinancialConfig):
         """Calculates total costs, discounts, and net revenue for a league/season."""
         defaults = cls.get_global_defaults()
-        
+
         if config.base_rate_override is not None:
             base_rate = config.base_rate_override
         else:
@@ -63,30 +63,40 @@ class FinanceService:
             participation = cls.get_participation_data(config.league, config.season)
             all_team_ids = set()
             for p in participation:
-                all_team_ids.update(p['teams'])
+                all_team_ids.update(p["teams"])
             live_participation_count = len(all_team_ids)
             for team in Team.objects.filter(id__in=all_team_ids):
                 team_gross = base_rate
                 gross_total += team_gross
-                details.append({
-                    'team': team,
-                    'gross': team_gross,
-                    'discount': Decimal('0'),
-                    'net': team_gross,
-                })
-            
+                details.append(
+                    {
+                        "team": team,
+                        "gross": team_gross,
+                        "discount": Decimal("0"),
+                        "net": team_gross,
+                    }
+                )
+
             expected_gross = config.expected_teams_count * base_rate
             expected_participation_count = config.expected_teams_count
         else:
-            participation_data = cls.get_participation_data(config.league, config.season)
+            participation_data = cls.get_participation_data(
+                config.league, config.season
+            )
             for p in participation_data:
-                gameday_gross = p['team_count'] * base_rate
-                live_participation_count += p['team_count']
+                gameday_gross = p["team_count"] * base_rate
+                live_participation_count += p["team_count"]
                 gross_total += gameday_gross
-            
-            expected_gross = config.expected_gamedays_count * config.expected_teams_per_gameday * base_rate
-            expected_participation_count = config.expected_gamedays_count * config.expected_teams_per_gameday
-        
+
+            expected_gross = (
+                config.expected_gamedays_count
+                * config.expected_teams_per_gameday
+                * base_rate
+            )
+            expected_participation_count = (
+                config.expected_gamedays_count * config.expected_teams_per_gameday
+            )
+
         # Apply global discounts once to the final total
         global_discounts = config.discounts.all()
         global_discount_total = 0
@@ -94,18 +104,17 @@ class FinanceService:
             if d.discount_type == d.TYPE_FIXED:
                 global_discount_total += d.value
             else:
-                global_discount_total += (gross_total * d.value / 100)
-        
+                global_discount_total += gross_total * d.value / 100
+
         discount_total += global_discount_total
 
         return {
-            'gross': gross_total,
-            'discount': discount_total,
-            'net': gross_total - discount_total,
-            'base_rate': base_rate,
-            'expected_gross': expected_gross,
-            'expected_participation_count': expected_participation_count,
-            'live_participation_count': live_participation_count,
-            'details': details if config.cost_model == config.MODEL_SEASON else None
+            "gross": gross_total,
+            "discount": discount_total,
+            "net": gross_total - discount_total,
+            "base_rate": base_rate,
+            "expected_gross": expected_gross,
+            "expected_participation_count": expected_participation_count,
+            "live_participation_count": live_participation_count,
+            "details": details if config.cost_model == config.MODEL_SEASON else None,
         }
-

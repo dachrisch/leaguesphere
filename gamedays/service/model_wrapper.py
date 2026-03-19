@@ -115,8 +115,10 @@ class GamedayModelWrapper:
                 self._gameinfo["gameday"].iloc[0]
             )
 
-            placeholder_service = GamedayPlaceholderService(self._gameinfo['gameday'].iloc[0])
-            
+            placeholder_service = GamedayPlaceholderService(
+                self._gameinfo["gameday"].iloc[0]
+            )
+
             # Resolve each missing row
             for index, row in self._games_with_result[
                 self._games_with_result[TEAM_NAME].isna()

@@ -140,7 +140,11 @@ class GamedayViewSet(viewsets.ModelViewSet):
             update_fields = []
             for field in ("name", "date", "start", "address"):
                 value = metadata.get(field)
-                if value is not None and value != "" and getattr(gameday, field) != value:
+                if (
+                    value is not None
+                    and value != ""
+                    and getattr(gameday, field) != value
+                ):
                     setattr(gameday, field, value)
                     update_fields.append(field)
             if update_fields:

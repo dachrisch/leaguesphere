@@ -325,7 +325,11 @@ class DBSetup:
             TeamFactory(name=name)
 
     def g4_final4_1_status_empty(self) -> "Gameday":
-        from gamedays.management.schedule_manager import ScheduleCreator, Schedule, GroupSchedule
+        from gamedays.management.schedule_manager import (
+            ScheduleCreator,
+            Schedule,
+            GroupSchedule,
+        )
 
         gameday = self.create_empty_gameday()
         gameday.format = "4_final4_1"

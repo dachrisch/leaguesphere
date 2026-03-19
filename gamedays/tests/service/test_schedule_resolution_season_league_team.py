@@ -1,4 +1,5 @@
 """Tests that GamedayScheduleResolutionService registers teams to SeasonLeagueTeam on progression."""
+
 import datetime
 from unittest.mock import patch
 
@@ -21,7 +22,9 @@ from gamedays.models import (
     SeasonLeagueTeam,
     Team,
 )
-from gamedays.service.schedule_resolution_service import GamedayScheduleResolutionService
+from gamedays.service.schedule_resolution_service import (
+    GamedayScheduleResolutionService,
+)
 
 
 @pytest.mark.django_db
@@ -30,9 +33,15 @@ class TestScheduleResolutionRegistersSeasonLeagueTeam:
         self.user = User.objects.create_user(username="test", password="test")
         self.season = Season.objects.create(name="2025")
         self.league = League.objects.create(name="Süd")
-        self.team_home = Team.objects.create(name="Winner A", description="A", location="City")
-        self.team_away = Team.objects.create(name="Winner B", description="B", location="City")
-        self.official_team = Team.objects.create(name="Official", description="O", location="City")
+        self.team_home = Team.objects.create(
+            name="Winner A", description="A", location="City"
+        )
+        self.team_away = Team.objects.create(
+            name="Winner B", description="B", location="City"
+        )
+        self.official_team = Team.objects.create(
+            name="Official", description="O", location="City"
+        )
 
         self.gameday = Gameday.objects.create(
             name="Finals Day",

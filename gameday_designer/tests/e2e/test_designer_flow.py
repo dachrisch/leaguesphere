@@ -226,6 +226,4 @@ def test_published_gameday_shows_games_in_spielplan(live_server, page: Page):
     expect(spielplan.locator("#schedule tbody tr").first).to_be_visible(timeout=5000)
 
     # Sanity-check: "not created" message must NOT appear
-    expect(
-        page.get_by_text("Spielplan wurde noch nicht erstellt.")
-    ).not_to_be_visible()
+    expect(page.get_by_text("Spielplan wurde noch nicht erstellt.")).not_to_be_visible()

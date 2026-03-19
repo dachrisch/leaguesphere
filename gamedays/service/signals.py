@@ -19,7 +19,9 @@ def update_game_schedule(sender, instance: Gameinfo, created, **kwargs):
         try:
             # Check for Designer-based gameday (template slots)
             if TemplateApplication.objects.filter(gameday=instance.gameday).exists():
-                resolution_service = GamedayScheduleResolutionService(instance.gameday_id)
+                resolution_service = GamedayScheduleResolutionService(
+                    instance.gameday_id
+                )
                 # Trigger updates for both standing (group) and stage
                 if resolution_service.gmw.is_finished(instance.standing):
                     resolution_service.update_participants(instance.standing)
@@ -27,11 +29,16 @@ def update_game_schedule(sender, instance: Gameinfo, created, **kwargs):
                     resolution_service.update_participants(instance.stage)
             elif GamedayDesignerState.objects.filter(gameday=instance.gameday).exists():
                 # Canvas-published gameday: resolve dynamic team refs in downstream games
-                from gamedays.service.canvas_progression_service import CanvasBracketProgressionService
+                from gamedays.service.canvas_progression_service import (
+                    CanvasBracketProgressionService,
+                )
+
                 CanvasBracketProgressionService(instance).apply()
             else:
                 # Fallback to legacy JSON-based logic
-                update_schedule = ScheduleUpdate(instance.gameday_id, instance.gameday.format)
+                update_schedule = ScheduleUpdate(
+                    instance.gameday_id, instance.gameday.format
+                )
                 update_schedule.update()
         except Exception as e:
             logger.warning(

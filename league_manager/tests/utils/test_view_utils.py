@@ -44,20 +44,20 @@ class IsFinanceAdminTests(SimpleTestCase):
         return user
 
     def test_staff_with_bumbleflies_email_is_finance_admin(self):
-        user = self._make_staff('admin@bumbleflies.de')
+        user = self._make_staff("admin@bumbleflies.de")
         self.assertTrue(is_finance_admin(user))
 
     def test_staff_with_other_email_is_not_finance_admin(self):
-        user = self._make_staff('admin@other.de')
+        user = self._make_staff("admin@other.de")
         self.assertFalse(is_finance_admin(user))
 
     def test_staff_with_subdomain_email_is_not_finance_admin(self):
         # 'admin@sub.bumbleflies.de'.endswith('@bumbleflies.de') is False — it ends with '.bumbleflies.de'
-        user = self._make_staff('admin@sub.bumbleflies.de')
+        user = self._make_staff("admin@sub.bumbleflies.de")
         self.assertFalse(is_finance_admin(user))
 
     def test_non_staff_with_bumbleflies_email_is_not_finance_admin(self):
-        user = MagicMock(is_staff=False, email='user@bumbleflies.de')
+        user = MagicMock(is_staff=False, email="user@bumbleflies.de")
         self.assertFalse(is_finance_admin(user))
 
     def test_anonymous_user_is_not_finance_admin(self):

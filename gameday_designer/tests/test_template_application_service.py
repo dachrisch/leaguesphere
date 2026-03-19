@@ -752,7 +752,9 @@ class TestSeasonLeagueTeamRegistration:
             author=user,
         )
         teams = [
-            Team.objects.create(name=f"Team {i}", description=f"Desc {i}", location="City")
+            Team.objects.create(
+                name=f"Team {i}", description=f"Desc {i}", location="City"
+            )
             for i in range(3)
         ]
         team_mapping = {f"0_{i}": teams[i].pk for i in range(3)}
@@ -798,7 +800,9 @@ class TestSeasonLeagueTeamRegistration:
             format="2_1",
             author=user,
         )
-        official = Team.objects.create(name="Official Team", description="Off", location="City")
+        official = Team.objects.create(
+            name="Official Team", description="Off", location="City"
+        )
         team_mapping = {"0_0": official.pk}
 
         service = TemplateApplicationService(template, gameday, team_mapping)

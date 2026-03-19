@@ -4,8 +4,13 @@ from gamedays.models import League, Season
 
 class FinancialSettings(models.Model):
     """Singleton for global financial defaults."""
-    default_rate_per_team_season = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    default_rate_per_team_gameday = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+
+    default_rate_per_team_season = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0.00
+    )
+    default_rate_per_team_gameday = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0.00
+    )
 
     class Meta:
         verbose_name = "Global Financial Settings"
@@ -23,26 +28,40 @@ class FinancialSettings(models.Model):
 
 class LeagueSeasonFinancialConfig(models.Model):
     """Cost configuration for a specific league and season."""
-    MODEL_SEASON = 'SEASON'
-    MODEL_GAMEDAY = 'GAMEDAY'
+
+    MODEL_SEASON = "SEASON"
+    MODEL_GAMEDAY = "GAMEDAY"
     COST_MODEL_CHOICES = [
-        (MODEL_SEASON, 'Cost per team in season (Flat)'),
-        (MODEL_GAMEDAY, 'Cost per team per gameday participation'),
+        (MODEL_SEASON, "Cost per team in season (Flat)"),
+        (MODEL_GAMEDAY, "Cost per team per gameday participation"),
     ]
 
     league = models.ForeignKey(League, on_delete=models.CASCADE, db_constraint=False)
     season = models.ForeignKey(Season, on_delete=models.CASCADE, db_constraint=False)
-    cost_model = models.CharField(max_length=10, choices=COST_MODEL_CHOICES, default=MODEL_SEASON)
-    base_rate_override = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
-                                            help_text="Override the global default base rate.")
-    
+    cost_model = models.CharField(
+        max_length=10, choices=COST_MODEL_CHOICES, default=MODEL_SEASON
+    )
+    base_rate_override = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Override the global default base rate.",
+    )
+
     # Expected values for planning
-    expected_teams_count = models.PositiveIntegerField(default=0, help_text="Used for Season model")
-    expected_gamedays_count = models.PositiveIntegerField(default=0, help_text="Used for Gameday model")
-    expected_teams_per_gameday = models.PositiveIntegerField(default=0, help_text="Used for Gameday model")
+    expected_teams_count = models.PositiveIntegerField(
+        default=0, help_text="Used for Season model"
+    )
+    expected_gamedays_count = models.PositiveIntegerField(
+        default=0, help_text="Used for Gameday model"
+    )
+    expected_teams_per_gameday = models.PositiveIntegerField(
+        default=0, help_text="Used for Gameday model"
+    )
 
     class Meta:
-        unique_together = ('league', 'season')
+        unique_together = ("league", "season")
         verbose_name = "League/Season Financial Config"
         verbose_name_plural = "League/Season Financial Configs"
 
@@ -52,15 +71,20 @@ class LeagueSeasonFinancialConfig(models.Model):
 
 class LeagueSeasonDiscount(models.Model):
     """Discount applied globally to a league/season configuration."""
-    TYPE_FIXED = 'FIXED'
-    TYPE_PERCENTAGE = 'PERCENT'
+
+    TYPE_FIXED = "FIXED"
+    TYPE_PERCENTAGE = "PERCENT"
     DISCOUNT_TYPE_CHOICES = [
-        (TYPE_FIXED, 'Fixed Amount'),
-        (TYPE_PERCENTAGE, 'Percentage'),
+        (TYPE_FIXED, "Fixed Amount"),
+        (TYPE_PERCENTAGE, "Percentage"),
     ]
 
-    config = models.ForeignKey(LeagueSeasonFinancialConfig, on_delete=models.CASCADE, related_name='discounts')
-    discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPE_CHOICES, default=TYPE_FIXED)
+    config = models.ForeignKey(
+        LeagueSeasonFinancialConfig, on_delete=models.CASCADE, related_name="discounts"
+    )
+    discount_type = models.CharField(
+        max_length=10, choices=DISCOUNT_TYPE_CHOICES, default=TYPE_FIXED
+    )
     value = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.CharField(max_length=255, blank=True)
 

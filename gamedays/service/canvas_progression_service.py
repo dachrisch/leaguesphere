@@ -26,11 +26,25 @@ class CanvasBracketProgressionService:
         for node in game_nodes:
             data = node.get("data", {})
             target_standing = data.get("standing")
-            self._try_update(data.get("homeTeamDynamic"), target_standing, True, winner_team, loser_team)
-            self._try_update(data.get("awayTeamDynamic"), target_standing, False, winner_team, loser_team)
+            self._try_update(
+                data.get("homeTeamDynamic"),
+                target_standing,
+                True,
+                winner_team,
+                loser_team,
+            )
+            self._try_update(
+                data.get("awayTeamDynamic"),
+                target_standing,
+                False,
+                winner_team,
+                loser_team,
+            )
 
     def _resolve_winner_loser(self):
-        results = list(Gameresult.objects.filter(gameinfo=self.game).select_related("team"))
+        results = list(
+            Gameresult.objects.filter(gameinfo=self.game).select_related("team")
+        )
         if len(results) < 2:
             return None, None
         home = next((r for r in results if r.isHome), None)
@@ -56,7 +70,9 @@ class CanvasBracketProgressionService:
         else:
             return
         try:
-            gi = Gameinfo.objects.get(gameday=self.game.gameday, standing=target_standing)
+            gi = Gameinfo.objects.get(
+                gameday=self.game.gameday, standing=target_standing
+            )
         except Gameinfo.DoesNotExist:
             return
         Gameresult.objects.filter(gameinfo=gi, isHome=is_home).update(team=team)

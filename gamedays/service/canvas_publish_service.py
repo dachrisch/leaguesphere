@@ -1,6 +1,5 @@
 from gamedays.models import Gameday, Gameinfo, Gameresult, GamedayDesignerState, Team
 
-
 OFFICIALS_PLACEHOLDER = "N/A"
 
 
@@ -64,13 +63,13 @@ class CanvasPublishService:
             Gameresult.objects.create(
                 gameinfo=gi,
                 team=self._resolve_team(data.get("homeTeamId"), global_teams)
-                    or self._resolve_dynamic_team(data.get("homeTeamDynamic")),
+                or self._resolve_dynamic_team(data.get("homeTeamDynamic")),
                 isHome=True,
             )
             Gameresult.objects.create(
                 gameinfo=gi,
                 team=self._resolve_team(data.get("awayTeamId"), global_teams)
-                    or self._resolve_dynamic_team(data.get("awayTeamDynamic")),
+                or self._resolve_dynamic_team(data.get("awayTeamDynamic")),
                 isHome=False,
             )
 

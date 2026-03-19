@@ -9,46 +9,130 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('gamedays', '0030_gamedaydesignerstate'),
+        ("gamedays", "0030_gamedaydesignerstate"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='FinancialSettings',
+            name="FinancialSettings",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('default_rate_per_team_season', models.DecimalField(decimal_places=2, default=0.0, max_digits=10)),
-                ('default_rate_per_team_gameday', models.DecimalField(decimal_places=2, default=0.0, max_digits=10)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "default_rate_per_team_season",
+                    models.DecimalField(decimal_places=2, default=0.0, max_digits=10),
+                ),
+                (
+                    "default_rate_per_team_gameday",
+                    models.DecimalField(decimal_places=2, default=0.0, max_digits=10),
+                ),
             ],
             options={
-                'verbose_name': 'Global Financial Settings',
-                'verbose_name_plural': 'Global Financial Settings',
+                "verbose_name": "Global Financial Settings",
+                "verbose_name_plural": "Global Financial Settings",
             },
         ),
         migrations.CreateModel(
-            name='LeagueSeasonFinancialConfig',
+            name="LeagueSeasonFinancialConfig",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('cost_model', models.CharField(choices=[('SEASON', 'Cost per team in season (Flat)'), ('GAMEDAY', 'Cost per team per gameday participation')], default='SEASON', max_length=10)),
-                ('base_rate_override', models.DecimalField(blank=True, decimal_places=2, help_text='Override the global default base rate.', max_digits=10, null=True)),
-                ('league', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='gamedays.league')),
-                ('season', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='gamedays.season')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "cost_model",
+                    models.CharField(
+                        choices=[
+                            ("SEASON", "Cost per team in season (Flat)"),
+                            ("GAMEDAY", "Cost per team per gameday participation"),
+                        ],
+                        default="SEASON",
+                        max_length=10,
+                    ),
+                ),
+                (
+                    "base_rate_override",
+                    models.DecimalField(
+                        blank=True,
+                        decimal_places=2,
+                        help_text="Override the global default base rate.",
+                        max_digits=10,
+                        null=True,
+                    ),
+                ),
+                (
+                    "league",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="gamedays.league",
+                    ),
+                ),
+                (
+                    "season",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="gamedays.season",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'League/Season Financial Config',
-                'verbose_name_plural': 'League/Season Financial Configs',
-                'unique_together': {('league', 'season')},
+                "verbose_name": "League/Season Financial Config",
+                "verbose_name_plural": "League/Season Financial Configs",
+                "unique_together": {("league", "season")},
             },
         ),
         migrations.CreateModel(
-            name='LeagueSeasonDiscount',
+            name="LeagueSeasonDiscount",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('discount_type', models.CharField(choices=[('FIXED', 'Fixed Amount'), ('PERCENT', 'Percentage')], default='FIXED', max_length=10)),
-                ('value', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('description', models.CharField(blank=True, max_length=255)),
-                ('team', models.ForeignKey(blank=True, help_text='If null, the discount applies to all teams in this config.', null=True, on_delete=django.db.models.deletion.CASCADE, to='gamedays.team')),
-                ('config', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='discounts', to='finance.leagueseasonfinancialconfig')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "discount_type",
+                    models.CharField(
+                        choices=[("FIXED", "Fixed Amount"), ("PERCENT", "Percentage")],
+                        default="FIXED",
+                        max_length=10,
+                    ),
+                ),
+                ("value", models.DecimalField(decimal_places=2, max_digits=10)),
+                ("description", models.CharField(blank=True, max_length=255)),
+                (
+                    "team",
+                    models.ForeignKey(
+                        blank=True,
+                        help_text="If null, the discount applies to all teams in this config.",
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="gamedays.team",
+                    ),
+                ),
+                (
+                    "config",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="discounts",
+                        to="finance.leagueseasonfinancialconfig",
+                    ),
+                ),
             ],
         ),
     ]

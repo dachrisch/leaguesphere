@@ -35,4 +35,6 @@ class PermissionHelper:
 
 
 def is_finance_admin(user):
-    return user.is_staff and (user.email or '').endswith('@bumbleflies.de')
+    if not user.is_authenticated:
+        return False
+    return user.is_staff and (user.email or "").endswith("@bumbleflies.de")

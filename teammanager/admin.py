@@ -14,9 +14,10 @@ from gamedays.models import (
 
 # Register your models here.
 
+
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin):
-    search_fields = ('name', 'description')
+    search_fields = ("name", "description")
 
 
 admin.site.register(League)
