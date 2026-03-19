@@ -105,7 +105,7 @@ class FinanceConfigDetailView(LoginRequiredMixin, StaffRequiredMixin, DetailView
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        config = self.get_object()
+        config = self.object
         context['stats'] = FinanceService.calculate_costs(config)
         context['discount_form'] = DiscountForm()
         context['config_form'] = FinancialConfigForm(instance=config)
@@ -126,17 +126,6 @@ class FinanceConfigDetailView(LoginRequiredMixin, StaffRequiredMixin, DetailView
                 discount.save()
                 return redirect('finance-config-detail', pk=config.pk)
         return self.get(request, *args, **kwargs)
-
-class DiscountCreateView(LoginRequiredMixin, StaffRequiredMixin, CreateView):
-    model = LeagueSeasonDiscount
-    form_class = DiscountForm
-
-    def form_valid(self, form):
-        config_id = self.kwargs.get('config_id')
-        config = get_object_or_404(LeagueSeasonFinancialConfig, pk=config_id)
-        form.instance.config = config
-        form.save()
-        return redirect('finance-config-detail', pk=config_id)
 
 class DiscountDeleteView(LoginRequiredMixin, StaffRequiredMixin, DeleteView):
     model = LeagueSeasonDiscount
