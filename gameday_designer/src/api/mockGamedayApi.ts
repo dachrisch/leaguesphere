@@ -141,6 +141,14 @@ class MockGamedayService {
     this.gamedays = this.gamedays.filter(g => g.id !== id);
     this.saveToStorage();
   }
+
+  async getTemplates(): Promise<any[]> {
+    return [];
+  }
+
+  async saveTemplate(data: any): Promise<any> {
+    return { id: 100, ...data };
+  }
 }
 
 export const mockGamedayService = new MockGamedayService();

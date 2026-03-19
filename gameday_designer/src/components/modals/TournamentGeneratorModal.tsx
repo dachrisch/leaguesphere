@@ -7,7 +7,7 @@ import { GlobalTeam } from '../../types/flowchart';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import SaveTemplateModal from './SaveTemplateModal';
 import { gamedayApi } from '../../api/gamedayApi';
-import { GenericTemplate } from '../../utils/templateMapper';
+import { GenericTemplate, applyGenericTemplate } from '../../utils/templateMapper';
 
 export interface TournamentGeneratorModalProps {
   /** Whether the modal is visible */
@@ -39,12 +39,6 @@ export interface TournamentGeneratorModalProps {
 
 /**
  * TournamentGeneratorModal component
- *
- * Features:
- * - Template selection based on team count
- * - Field count configuration
- * - Start time input
- * - Preview of tournament structure
  */
 const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
   show,
@@ -55,23 +49,17 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
   onSaveAsTemplate,
   isValid = false,
 }) => {
-  const { t } = useTypedTranslation(['ui', 'modal', 'domain']);
+  const { t, i18n } = useTypedTranslation(['ui', 'modal', 'domain']);
   
   const [customTemplates, setCustomTemplates] = useState<GenericTemplate[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
 
   // Get all available templates
   const builtInTemplates = useMemo(() => getAllTemplates(), []);
-  
-  const availableTemplates = useMemo(() => {
-    // We can't easily merge types perfectly for the UI without some mapping
-    // For now we'll just treat them as separate lists in the UI if needed
-    return builtInTemplates;
-  }, [builtInTemplates]);
 
   // Template selection state
   const [selectedTemplate, setSelectedTemplate] = useState<TournamentTemplate | null>(
-    availableTemplates[0] || null
+    builtInTemplates[0] || null
   );
   const [selectedCustomTemplate, setSelectedCustomTemplate] = useState<GenericTemplate | null>(null);
 
@@ -101,9 +89,9 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
    * Reset form to default values
    */
   const resetForm = () => {
-    setSelectedTemplate(availableTemplates[0] || null);
+    setSelectedTemplate(builtInTemplates[0] || null);
     setSelectedCustomTemplate(null);
-    setFieldCount(availableTemplates[0]?.fieldOptions[0] || 1);
+    setFieldCount(builtInTemplates[0]?.fieldOptions[0] || 1);
     setStartTime(DEFAULT_START_TIME);
     setGameDuration(DEFAULT_GAME_DURATION);
     setBreakDuration(10);
@@ -117,7 +105,6 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
       if (!show) {
         resetForm();
       }
-      // We only want to reset when 'show' changes to false
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [show]);
 
@@ -126,26 +113,46 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
       if (!generateTeams && teams.length > 0) {
         let teamLimit = 0;
         if (selectedTemplate) {
-            teamLimit = selectedTemplate.teamCount.exact || selectedTemplate.teamCount.max;
+            teamLimit = selectedTemplate.teamCount.exact || selectedTemplate.teamCount.min;
         } else if (selectedCustomTemplate) {
             teamLimit = selectedCustomTemplate.num_teams;
         }
         
-        if (teamLimit > 0) {
+        if (teamLimit > 0 && selectedTeamIds.length === 0) {
             setSelectedTeamIds(teams.slice(0, teamLimit).map(t => t.id));
         }
       }
-    }, [selectedTemplate, selectedCustomTemplate, teams, generateTeams]);
+    }, [selectedTemplate, selectedCustomTemplate, teams, generateTeams, selectedTeamIds.length]);
+
+    // Validation
+    const isDurationValid = gameDuration >= 15 && gameDuration <= 180;
+    const isTeamCountValid = useMemo(() => {
+      if (!selectedTemplate && !selectedCustomTemplate) return false;
+      if (generateTeams) return true;
+      const required = selectedTemplate 
+        ? (selectedTemplate.teamCount.exact || selectedTemplate.teamCount.min)
+        : (selectedCustomTemplate?.num_teams || 0);
+      return selectedTeamIds.length === required;
+    }, [selectedTemplate, selectedCustomTemplate, generateTeams, selectedTeamIds.length]);
+  
+    const canGenerate = (selectedTemplate || selectedCustomTemplate) && isDurationValid && isTeamCountValid;
 
   /**
    * Handle tournament generation confirmation
    */
   const handleGenerate = () => {
-    if (!selectedTemplate && !selectedCustomTemplate) return;
+    if (!canGenerate) return;
 
     if (selectedTemplate) {
         onGenerate({
-          template: selectedTemplate,
+          template: {
+            ...selectedTemplate,
+            timing: {
+                ...selectedTemplate.timing,
+                defaultGameDuration: gameDuration,
+                defaultBreakBetweenGames: breakDuration
+            }
+          },
           fieldCount,
           startTime,
           gameDuration,
@@ -161,7 +168,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                 name: selectedCustomTemplate.name,
                 teamCount: { min: selectedCustomTemplate.num_teams, max: selectedCustomTemplate.num_teams, exact: selectedCustomTemplate.num_teams },
                 fieldOptions: [selectedCustomTemplate.num_fields],
-                stages: [], // Will be handled by customTemplate flag
+                stages: [],
                 timing: {
                     firstGameStartTime: startTime,
                     defaultGameDuration: gameDuration,
@@ -193,13 +200,12 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
 
       <Modal.Body className="bg-light p-4">
         {hasData && (
-          <Alert variant="warning" className="mb-4 shadow-sm">
+          <Alert variant="warning" className="mb-4 shadow-sm border-2">
             <div className="d-flex align-items-center">
-              <i className="bi bi-exclamation-triangle-fill me-3 fs-4"></i>
+              <i className="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
               <div>
-                <strong>{t('ui:message.autoClearTitle')}</strong>
-                <br />
-                {t('ui:message.autoClearWarning')}
+                <h5 className="mb-1 fw-bold">{t('modal:tournamentGenerator.warningTitle', 'Auto-Clear Warning')}</h5>
+                <p className="mb-0">{t('modal:tournamentGenerator.warningMessage') || t('ui:message.autoClearWarning')}</p>
               </div>
             </div>
           </Alert>
@@ -230,7 +236,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
         
         <Row className="g-3 mb-4">
           <Col xs={12}><small className="text-muted text-uppercase fw-bold">{t('ui:label.builtInTemplates')}</small></Col>
-          {availableTemplates.map((template) => (
+          {builtInTemplates.map((template) => (
             <Col key={template.id} md={6}>
               <Card 
                 className={`h-100 cursor-pointer border-2 transition-all ${
@@ -319,7 +325,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
               <Card.Body className="p-4">
                 <Row className="g-4">
                   <Col md={6}>
-                    <Form.Group>
+                    <Form.Group controlId="tournament-fields">
                       <Form.Label className="small fw-bold text-uppercase text-muted">{t('ui:label.fields')}</Form.Label>
                       <Form.Select 
                         value={fieldCount} 
@@ -339,7 +345,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                     </Form.Group>
                   </Col>
                   <Col md={6}>
-                    <Form.Group>
+                    <Form.Group controlId="tournament-start-time">
                       <Form.Label className="small fw-bold text-uppercase text-muted">{t('ui:label.startTime')}</Form.Label>
                       <Form.Control
                         type="time"
@@ -350,27 +356,32 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                     </Form.Group>
                   </Col>
                   <Col md={6}>
-                    <Form.Group>
+                    <Form.Group controlId="tournament-game-duration">
                       <Form.Label className="small fw-bold text-uppercase text-muted">{t('ui:label.gameDuration')}</Form.Label>
                       <div className="input-group">
                         <Form.Control
                           type="number"
                           value={gameDuration}
-                          onChange={(e) => setGameDuration(parseInt(e.target.value))}
-                          className="form-control-lg"
+                          onChange={(e) => setGameDuration(parseInt(e.target.value) || 0)}
+                          className={`form-control-lg ${!isDurationValid ? 'is-invalid' : ''}`}
                         />
                         <span className="input-group-text">{t('ui:label.minutes')}</span>
+                        {!isDurationValid && (
+                            <Form.Control.Feedback type="invalid">
+                                {t('modal:tournamentGenerator.durationValidation')}
+                            </Form.Control.Feedback>
+                        )}
                       </div>
                     </Form.Group>
                   </Col>
                   <Col md={6}>
-                    <Form.Group>
+                    <Form.Group controlId="tournament-break-duration">
                       <Form.Label className="small fw-bold text-uppercase text-muted">{t('ui:label.breakDuration')}</Form.Label>
                       <div className="input-group">
                         <Form.Control
                           type="number"
                           value={breakDuration}
-                          onChange={(e) => setBreakDuration(parseInt(e.target.value))}
+                          onChange={(e) => setBreakDuration(parseInt(e.target.value) || 0)}
                           className="form-control-lg"
                         />
                         <span className="input-group-text">{t('ui:label.minutes')}</span>
@@ -395,7 +406,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                   />
                   <Form.Check 
                     type="radio"
-                    id="generate-new"
+                    id="generate-teams"
                     name="team-source"
                     label={t('ui:label.generatePlaceholders')}
                     checked={generateTeams}
@@ -421,6 +432,15 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                     </Form.Text>
                   </div>
                 )}
+
+                {((selectedTemplate || selectedCustomTemplate) && !isTeamCountValid) && (
+                  <Alert variant="warning" className="mt-3 mb-0">
+                    <i className="bi bi-exclamation-triangle me-2"></i>
+                    {t('modal:tournamentGenerator.insufficientTeams', { 
+                        min: selectedTemplate ? selectedTemplate.teamCount.min : (selectedCustomTemplate?.num_teams || 0) 
+                    })}
+                  </Alert>
+                )}
               </Card.Body>
             </Card>
           </>
@@ -434,7 +454,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
         <Button
           variant="primary"
           onClick={handleGenerate}
-          disabled={!selectedTemplate && !selectedCustomTemplate}
+          disabled={!canGenerate}
           className="px-4 py-2 shadow-sm"
           data-testid="confirm-generate-button"
         >

@@ -45,6 +45,8 @@ vi.mock('../../api/gamedayApi', () => ({
     searchTeams: vi.fn().mockResolvedValue([]),
     getDesignerState: vi.fn().mockResolvedValue({ state_data: null }),
     updateDesignerState: vi.fn().mockResolvedValue({}),
+    getTemplates: vi.fn().mockResolvedValue([]),
+    saveTemplate: vi.fn(),
     updateGameResultDetail: vi.fn().mockResolvedValue({}),
   },
 }));
