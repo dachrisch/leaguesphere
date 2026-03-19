@@ -1,11 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Modal, Button, Form, Card, Row, Col, Alert } from 'react-bootstrap';
+import { Modal, Button, Form, Card, Row, Col, Alert, Spinner } from 'react-bootstrap';
 import { TournamentTemplate, TournamentGenerationConfig } from '../../types/tournament';
 import { getAllTemplates } from '../../utils/tournamentTemplates';
 import { DEFAULT_START_TIME, DEFAULT_GAME_DURATION } from '../../utils/tournamentConstants';
 import { GlobalTeam } from '../../types/flowchart';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import SaveTemplateModal from './SaveTemplateModal';
+import { gamedayApi } from '../../api/gamedayApi';
+import { GenericTemplate } from '../../utils/templateMapper';
 
 export interface TournamentGeneratorModalProps {
   /** Whether the modal is visible */
@@ -25,6 +27,7 @@ export interface TournamentGeneratorModalProps {
     generateTeams: boolean; 
     autoAssignTeams: boolean;
     selectedTeamIds?: string[];
+    customTemplate?: GenericTemplate;
   }) => void;
 
   /** Callback when user wants to save current config as template */
@@ -53,18 +56,27 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
   isValid = false,
 }) => {
   const { t } = useTypedTranslation(['ui', 'modal', 'domain']);
+  
+  const [customTemplates, setCustomTemplates] = useState<GenericTemplate[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+
   // Get all available templates
-  const availableTemplates = useMemo(() => getAllTemplates(), []);
+  const builtInTemplates = useMemo(() => getAllTemplates(), []);
+  
+  const availableTemplates = useMemo(() => {
+    // We can't easily merge types perfectly for the UI without some mapping
+    // For now we'll just treat them as separate lists in the UI if needed
+    return builtInTemplates;
+  }, [builtInTemplates]);
 
   // Template selection state
   const [selectedTemplate, setSelectedTemplate] = useState<TournamentTemplate | null>(
     availableTemplates[0] || null
   );
+  const [selectedCustomTemplate, setSelectedCustomTemplate] = useState<GenericTemplate | null>(null);
 
   // Configuration state
-  const [fieldCount, setFieldCount] = useState<number>(
-    availableTemplates[0]?.fieldOptions[0] || 1
-  );
+  const [fieldCount, setFieldCount] = useState<number>(1);
   const [startTime, setStartTime] = useState<string>(DEFAULT_START_TIME);
   const [gameDuration, setGameDuration] = useState<number>(DEFAULT_GAME_DURATION);
   const [breakDuration, setBreakDuration] = useState<number>(10);
@@ -73,6 +85,16 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [showSaveModal, setShowSaveModal] = useState(false);
 
+  useEffect(() => {
+    if (show) {
+      setIsLoadingTemplates(true);
+      gamedayApi.getTemplates()
+        .then(templates => setCustomTemplates(templates))
+        .catch(err => console.error('Failed to fetch custom templates', err))
+        .finally(() => setIsLoadingTemplates(false));
+    }
+  }, [show]);
+
   const hasTeams = teams.length > 0;
 
   /**
@@ -80,6 +102,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
    */
   const resetForm = () => {
     setSelectedTemplate(availableTemplates[0] || null);
+    setSelectedCustomTemplate(null);
     setFieldCount(availableTemplates[0]?.fieldOptions[0] || 1);
     setStartTime(DEFAULT_START_TIME);
     setGameDuration(DEFAULT_GAME_DURATION);
@@ -100,28 +123,61 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
 
     // Auto-select teams when template changes or teams list changes
     useEffect(() => {
-      if (!generateTeams && selectedTemplate && teams.length > 0) {
-        const teamLimit = selectedTemplate.teamCount.exact || selectedTemplate.teamCount.max;
-        setSelectedTeamIds(teams.slice(0, teamLimit).map(t => t.id));
+      if (!generateTeams && teams.length > 0) {
+        let teamLimit = 0;
+        if (selectedTemplate) {
+            teamLimit = selectedTemplate.teamCount.exact || selectedTemplate.teamCount.max;
+        } else if (selectedCustomTemplate) {
+            teamLimit = selectedCustomTemplate.num_teams;
+        }
+        
+        if (teamLimit > 0) {
+            setSelectedTeamIds(teams.slice(0, teamLimit).map(t => t.id));
+        }
       }
-    }, [selectedTemplate, teams, generateTeams]);
+    }, [selectedTemplate, selectedCustomTemplate, teams, generateTeams]);
 
   /**
    * Handle tournament generation confirmation
    */
   const handleGenerate = () => {
-    if (!selectedTemplate) return;
+    if (!selectedTemplate && !selectedCustomTemplate) return;
 
-    onGenerate({
-      template: selectedTemplate,
-      fieldCount,
-      startTime,
-      gameDuration,
-      breakDuration,
-      generateTeams,
-      autoAssignTeams,
-      selectedTeamIds: generateTeams ? undefined : selectedTeamIds,
-    });
+    if (selectedTemplate) {
+        onGenerate({
+          template: selectedTemplate,
+          fieldCount,
+          startTime,
+          gameDuration,
+          breakDuration,
+          generateTeams,
+          autoAssignTeams,
+          selectedTeamIds: generateTeams ? undefined : selectedTeamIds,
+        });
+    } else if (selectedCustomTemplate) {
+        onGenerate({
+            template: {
+                id: String(selectedCustomTemplate.id),
+                name: selectedCustomTemplate.name,
+                teamCount: { min: selectedCustomTemplate.num_teams, max: selectedCustomTemplate.num_teams, exact: selectedCustomTemplate.num_teams },
+                fieldOptions: [selectedCustomTemplate.num_fields],
+                stages: [], // Will be handled by customTemplate flag
+                timing: {
+                    firstGameStartTime: startTime,
+                    defaultGameDuration: gameDuration,
+                    defaultBreakBetweenGames: breakDuration
+                }
+            },
+            fieldCount: selectedCustomTemplate.num_fields,
+            startTime,
+            gameDuration,
+            breakDuration,
+            generateTeams,
+            autoAssignTeams,
+            selectedTeamIds: generateTeams ? undefined : selectedTeamIds,
+            customTemplate: selectedCustomTemplate
+        });
+    }
     
     onHide();
   };
@@ -173,6 +229,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
         </h5>
         
         <Row className="g-3 mb-4">
+          <Col xs={12}><small className="text-muted text-uppercase fw-bold">{t('ui:label.builtInTemplates')}</small></Col>
           {availableTemplates.map((template) => (
             <Col key={template.id} md={6}>
               <Card 
@@ -181,6 +238,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                 }`}
                 onClick={() => {
                   setSelectedTemplate(template);
+                  setSelectedCustomTemplate(null);
                   setFieldCount(template.fieldOptions[0] || 1);
                 }}
               >
@@ -207,9 +265,51 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
               </Card>
             </Col>
           ))}
+
+          {customTemplates.length > 0 && (
+            <>
+              <Col xs={12} className="mt-4"><small className="text-muted text-uppercase fw-bold">{t('ui:label.customTemplates')}</small></Col>
+              {customTemplates.map((template) => (
+                <Col key={template.id} md={6}>
+                  <Card 
+                    className={`h-100 cursor-pointer border-2 transition-all ${
+                      selectedCustomTemplate?.id === template.id ? 'border-primary bg-primary bg-opacity-10 shadow-sm' : 'border-transparent bg-white'
+                    }`}
+                    onClick={() => {
+                      setSelectedCustomTemplate(template);
+                      setSelectedTemplate(null);
+                      setFieldCount(template.num_fields);
+                    }}
+                  >
+                    <Card.Body className="p-3">
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <h6 className={`mb-0 fw-bold ${selectedCustomTemplate?.id === template.id ? 'text-primary' : ''}`}>
+                          {template.name}
+                        </h6>
+                        {selectedCustomTemplate?.id === template.id && (
+                          <i className="bi bi-check-circle-fill text-primary fs-5"></i>
+                        )}
+                      </div>
+                      <div className="d-flex gap-2">
+                        <span className="badge bg-light text-dark border">
+                          <i className="bi bi-people-fill me-1"></i>
+                          {template.num_teams} {t('domain:team.teams')}
+                        </span>
+                        <span className="badge bg-light text-dark border">
+                          <i className="bi bi-grid-3x3-gap-fill me-1"></i>
+                          {template.num_fields} {t('domain:field.fields')}
+                        </span>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              ))}
+            </>
+          )}
+          {isLoadingTemplates && <Col xs={12} className="text-center p-3"><Spinner animation="border" variant="primary" size="sm" /></Col>}
         </Row>
 
-        {selectedTemplate && (
+        {(selectedTemplate || selectedCustomTemplate) && (
           <>
             <h5 className="mb-3 d-flex align-items-center">
               <span className="badge bg-primary rounded-pill me-2">2</span>
@@ -225,12 +325,16 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                         value={fieldCount} 
                         onChange={(e) => setFieldCount(parseInt(e.target.value))}
                         className="form-select-lg"
+                        disabled={!!selectedCustomTemplate}
                       >
-                        {selectedTemplate.fieldOptions.map(opt => (
+                        {selectedTemplate?.fieldOptions.map(opt => (
                           <option key={opt} value={opt}>
                             {opt} {opt === 1 ? t('domain:field.field') : t('domain:field.fields')}
                           </option>
                         ))}
+                        {selectedCustomTemplate && (
+                            <option value={selectedCustomTemplate.num_fields}>{selectedCustomTemplate.num_fields} {selectedCustomTemplate.num_fields === 1 ? t('domain:field.field') : t('domain:field.fields')}</option>
+                        )}
                       </Form.Select>
                     </Form.Group>
                   </Col>
@@ -330,7 +434,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
         <Button
           variant="primary"
           onClick={handleGenerate}
-          disabled={!selectedTemplate}
+          disabled={!selectedTemplate && !selectedCustomTemplate}
           className="px-4 py-2 shadow-sm"
           data-testid="confirm-generate-button"
         >

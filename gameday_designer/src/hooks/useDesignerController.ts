@@ -26,7 +26,7 @@ import type { TournamentGenerationConfig, RoundRobinConfig } from '../types/tour
 import type { UseFlowStateReturn, GamedayMetadata } from '../types/designer';
 import { v4 as uuidv4 } from 'uuid';
 import { gamedayApi } from '../api/gamedayApi';
-import { genericizeFlowState } from '../utils/templateMapper';
+import { genericizeFlowState, applyGenericTemplate, GenericTemplate } from '../utils/templateMapper';
 
 export function useDesignerController(
   gamedayId: string | undefined,
@@ -190,12 +190,38 @@ export function useDesignerController(
       generateTeams: boolean; 
       autoAssignTeams: boolean;
       selectedTeamIds?: string[];
+      customTemplate?: GenericTemplate;
     }) => {
       try {
         const fs = flowStateRef.current;
         const currentTeams = fs?.globalTeams || [];
         let teamsToUse = currentTeams;
         
+        // Handle custom template
+        if (config.customTemplate) {
+            const latestFs = flowStateRef.current;
+            if (!latestFs) return;
+            const imported = applyGenericTemplate(config.customTemplate, latestFs.exportState());
+            
+            latestFs.importState({
+                metadata: latestFs.metadata || {} as GamedayMetadata,
+                nodes: imported.nodes,
+                edges: imported.edges,
+                fields: imported.nodes.filter(n => n.type === 'field').map(f => ({
+                    id: f.id,
+                    name: f.data.name,
+                    order: f.data.order,
+                    color: f.data.color
+                })),
+                globalTeams: imported.globalTeams,
+                globalTeamGroups: imported.globalTeamGroups
+            });
+            
+            setShowTournamentModal(false);
+            addNotification('Tournament structure applied from custom template', 'success', 'Success');
+            return;
+        }
+
         const generatedGroups: GlobalTeamGroup[] = [];
         if (config.generateTeams) {
           const teamCount = config.template.teamCount.exact || config.template.teamCount.min;

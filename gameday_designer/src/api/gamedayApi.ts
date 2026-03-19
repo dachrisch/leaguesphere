@@ -214,6 +214,12 @@ class GamedayApi {
     return response.data;
   }
 
+  async getTemplates(): Promise<any[]> {
+    if (this.isDev && !this.forceClient) return [];
+    const response = await this.client.get('/templates/');
+    return response.data;
+  }
+
   /**
    * Update game result.
    */
