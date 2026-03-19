@@ -52,7 +52,7 @@ class IsFinanceAdminTests(SimpleTestCase):
         self.assertFalse(is_finance_admin(user))
 
     def test_staff_with_subdomain_email_is_not_finance_admin(self):
-        # user@sub.bumbleflies.de ends with '.bumbleflies.de', not '@bumbleflies.de'
+        # 'admin@sub.bumbleflies.de'.endswith('@bumbleflies.de') is False — it ends with '.bumbleflies.de'
         user = self._make_staff('admin@sub.bumbleflies.de')
         self.assertFalse(is_finance_admin(user))
 
