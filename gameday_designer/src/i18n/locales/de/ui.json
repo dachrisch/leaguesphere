@@ -103,7 +103,9 @@
     "sharingLevel": "Freigabe-Ebene",
     "useExistingTeams": "Vorhandene Teams verwenden",
     "generatePlaceholders": "Platzhalter generieren",
-    "autoAssignTeams": "Teams automatisch zuweisen"
+    "autoAssignTeams": "Teams automatisch zuweisen",
+    "builtInTemplates": "Vordefinierte Vorlagen",
+    "customTemplates": "Eigene Vorlagen"
   },
   "title": {
     "enterGameResult": "Ergebnis eingeben",
