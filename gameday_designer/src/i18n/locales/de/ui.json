@@ -37,7 +37,8 @@
     "addOfficials": "Offizielle hinzufügen",
     "saveResults": "Ergebnisse speichern",
     "saving": "Speichere...",
-    "saveTemplate": "Vorlage speichern"
+    "saveTemplate": "Vorlage speichern",
+    "saveAsTemplate": "Als Vorlage speichern"
   },
   "label": {
     "dashboard": "Dashboard",

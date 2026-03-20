@@ -37,7 +37,8 @@
     "addOfficials": "Add Officials",
     "saveResults": "Save Results",
     "saving": "Saving...",
-    "saveTemplate": "Save Template"
+    "saveTemplate": "Save Template",
+    "saveAsTemplate": "Save as Template"
   },
   "label": {
     "dashboard": "Dashboard",
