@@ -35,7 +35,7 @@ class ScheduleTemplate(models.Model):
         (SHARING_GLOBAL, "Global"),
     ]
     sharing = models.CharField(
-        max_length=20, choices=SHARING_CHOICES, default=SHARING_GLOBAL
+        max_length=20, choices=SHARING_CHOICES, default=SHARING_ASSOCIATION
     )
 
     # Association-specific or global
