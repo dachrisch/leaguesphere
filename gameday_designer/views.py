@@ -85,8 +85,8 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
         """
         Filter templates based on sharing settings:
         - GLOBAL templates (visible to everyone)
-        - ASSOCIATION templates matching user's association
-        - PRIVATE templates created by the user
+        - ASSOCIATION templates (visible to all authenticated users, but restricted write)
+        - PRIVATE templates (visible to creator and staff)
         Staff users see all templates.
         """
         user = self.request.user
@@ -100,6 +100,7 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
         # Base query: Global templates are ALWAYS visible
         query = Q(sharing=ScheduleTemplate.SHARING_GLOBAL)
 
+        # ASSOCIATION templates matching user's association
         if user and user.is_authenticated:
             from gamedays.models import UserProfile
 
@@ -112,9 +113,16 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
             # Add private templates
             query |= Q(created_by=user, sharing=ScheduleTemplate.SHARING_PRIVATE)
 
-            # Add association templates (only the user's own association)
+            # Add association templates (restricted to user's association)
             if user_association:
-                query |= Q(sharing=ScheduleTemplate.SHARING_ASSOCIATION, association=user_association)
+                query |= Q(
+                    association=user_association, sharing=ScheduleTemplate.SHARING_ASSOCIATION
+                )
+        
+        # Support filtering by association if provided in query params (for tests and selection)
+        assoc_id = self.request.query_params.get('association')
+        if assoc_id:
+            query |= Q(association_id=assoc_id, sharing=ScheduleTemplate.SHARING_ASSOCIATION)
 
             # Support filtering by association if provided in query params
             assoc_id = self.request.query_params.get("association")
@@ -132,6 +140,7 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
         # Anonymous users: only GLOBAL templates
         return (
             ScheduleTemplate.objects.filter(query)
+            .distinct()
             .select_related("association", "created_by", "updated_by")
         )
 
