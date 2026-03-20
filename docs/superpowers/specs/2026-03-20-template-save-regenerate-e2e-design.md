@@ -46,25 +46,34 @@ await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument()
 
 ### Initial State
 
-The gameday starts with existing nodes so that `validation.isValid = true` (required to enable the "Save as Template" button):
+The gameday starts with existing nodes so that `validation.isValid = true` (required to enable the "Save as Template" button in `TournamentGeneratorModal`). The `isValid` prop is computed by the validation hook inside `ListDesignerApp` and passed to the modal — it requires at least one field with at least one game. The `getDesignerState` mock must return:
 
 - 1 field node
 - 1 stage node (child of field)
-- 2 game nodes (children of stage)
+- 2 game nodes (children of stage, each with home/away team assignments)
 - `status: 'DRAFT'`
 
 ### API Mocks
 
+All mocks set up in `beforeEach` before render:
+
 | API call | Return value | Notes |
 |---|---|---|
 | `gamedayApi.getGameday` | Gameday with DRAFT status | Standard fixture |
-| `gamedayApi.getDesignerState` | State with field/stage/game nodes | Enables save button |
-| `gamedayApi.saveData` | Resolves OK | Auto-save during generation |
-| `gamedayApi.getTemplates` — call 1 | `[]` | No custom templates initially |
-| `gamedayApi.getTemplates` — call 2 | `[savedCustomTemplate]` | After save, template appears |
+| `gamedayApi.getDesignerState` | State with field/stage/game nodes | Enables "Save as Template" button (`isValid=true`) |
+| `gamedayApi.updateDesignerState` | Resolves `{}` | Auto-save triggered after generation and after clear |
+| `gamedayApi.getTemplates` | Call 1: `[]`, Call 2: `[savedCustomTemplate]` | See note below |
 | `gamedayApi.saveTemplate` | Returns `savedCustomTemplate` | The save-from-designer endpoint |
+| `gamedayApi.listSeasons` | `[]` | Required by GamedayMetadataAccordion form |
+| `gamedayApi.listLeagues` | `[]` | Required by GamedayMetadataAccordion form |
 
-The `getTemplates` mock uses `mockResolvedValueOnce` for call 1 and `mockResolvedValue` for call 2 so the second open automatically picks up the new template.
+**`getTemplates` mock setup:** Use `mockResolvedValueOnce` + `mockResolvedValue` chained before render:
+```ts
+vi.mocked(gamedayApi.getTemplates)
+  .mockResolvedValueOnce([])
+  .mockResolvedValue([savedCustomTemplate]);
+```
+`TournamentGeneratorModal` calls `getTemplates` inside a `useEffect` on `show` becoming `true`. The modal opens twice in this test (Steps 2 and 19), so `getTemplates` is called exactly twice. Call 1 (first modal open) returns `[]`; call 2 (second modal open, after save) returns `[savedCustomTemplate]`.
 
 ---
 
@@ -72,33 +81,55 @@ The `getTemplates` mock uses `mockResolvedValueOnce` for call 1 and `mockResolve
 
 ```
 Step 1:  render app → waitFor loading spinner gone
+
 Step 2:  click [data-testid="generate-tournament-button"]
 Step 3:  waitFor modal to appear (role="dialog")
-Step 4:  click "Save as Template" button (ui:button.saveAsTemplate text)
+
+Step 4:  click button with text "Save as Template"
+         (i18n key: ui:button.saveAsTemplate → EN: "Save as Template")
+         Button has no data-testid; use getByRole('button', { name: /save as template/i })
+         Button is only rendered when onSaveAsTemplate prop is provided AND
+         is enabled only when isValid=true (validated by initial state fixture)
+
 Step 5:  waitFor SaveTemplateModal sub-modal to appear
-Step 6:  type template name ("My Custom Template") into name field
+Step 6:  type "My Custom Template" into the template name input
+         SaveTemplateModal's Form.Group has no controlId, so getByLabelText will NOT work.
+         Use: getByPlaceholderText(/e\.g\., 6 teams/i)  (i18n: ui:placeholder.templateName)
+         or:  getByRole('textbox')  (only textbox rendered in the sub-modal at this point)
 Step 7:  click save/confirm button in SaveTemplateModal
-Step 8:  assert gamedayApi.saveTemplate called with name "My Custom Template"
+
+Step 8:  ASSERT: gamedayApi.saveTemplate called with object containing name "My Custom Template"
 Step 9:  waitFor SaveTemplateModal to close (back in generator modal)
+
 Step 10: click first built-in template card (auto-selects it)
-Step 11: click "Generate teams automatically" radio/checkbox
-         (bypasses team-count validation — no teams in test data)
+
+Step 11: click "Generate teams automatically" radio button
+         (i18n key: ui:label.generatePlaceholders → EN: "Generate teams automatically")
+         Control is type="radio" — use: getByRole('radio', { name: /generate teams automatically/i })
+         This sets generateTeams=true, bypassing team-count validation
+         (no teams exist in test data, so this is required for canGenerate=true)
+
 Step 12: click [data-testid="confirm-generate-button"]
-Step 13: waitFor modal to close
-Step 14: assert schedule was generated (gamedayApi.saveData called)
-Step 15: open GamedayMetadataAccordion
-         (click [data-testid="gameday-metadata-toggle"])
+Step 13: waitFor modal to close (role="dialog" gone)
+
+Step 14: ASSERT: gamedayApi.updateDesignerState called (auto-save after generation)
+
+Step 15: click [data-testid="gameday-metadata-toggle"] to open accordion
 Step 16: click [data-testid="clear-all-button"]
-Step 17: waitFor confirmation → confirm clear
-Step 18: assert canvas is cleared (saveData called with empty nodes)
-Step 19: click [data-testid="generate-tournament-button"]
-Step 20: waitFor modal to appear
-Step 21: waitFor custom template card with name "My Custom Template" to appear
-         in "Eigene Vorlagen" / "Custom Templates" section
-Step 22: click the custom template card
-Step 23: click [data-testid="confirm-generate-button"]
-Step 24: waitFor modal to close
-Step 25: assert gamedayApi.saveData called again (schedule regenerated)
+         (No confirmation dialog — clear-all is a direct call, no modal)
+
+Step 17: ASSERT: gamedayApi.updateDesignerState called again (auto-save after clear)
+
+Step 18: click [data-testid="generate-tournament-button"]
+Step 19: waitFor modal to appear (role="dialog")
+Step 20: waitFor text "My Custom Template" to appear in the modal
+         (custom template card rendered in "Custom Templates" / "Eigene Vorlagen" section)
+
+Step 21: click the card containing "My Custom Template"
+Step 22: click [data-testid="confirm-generate-button"]
+Step 23: waitFor modal to close
+
+Step 24: ASSERT: gamedayApi.updateDesignerState called again (regeneration auto-save)
 ```
 
 ---
@@ -108,10 +139,10 @@ Step 25: assert gamedayApi.saveData called again (schedule regenerated)
 | Step | Assertion |
 |---|---|
 | 8 | `gamedayApi.saveTemplate` called with `{ name: "My Custom Template", ... }` |
-| 14 | `gamedayApi.saveData` called at least once after generation |
-| 18 | `gamedayApi.saveData` called with state containing empty nodes |
-| 21 | Custom template card text "My Custom Template" visible in modal |
-| 25 | `gamedayApi.saveData` called again (regeneration triggered auto-save) |
+| 14 | `gamedayApi.updateDesignerState` called at least once after generation |
+| 17 | `gamedayApi.updateDesignerState` call count increased after clear |
+| 20 | Text "My Custom Template" visible inside `role="dialog"` |
+| 24 | `gamedayApi.updateDesignerState` called again after regeneration |
 
 ---
 
@@ -128,5 +159,5 @@ Step 25: assert gamedayApi.saveData called again (schedule regenerated)
 
 - `@testing-library/user-event` for realistic click/type events
 - `vitest` mocks for `gamedayApi`
-- Existing `testConfig` for i18n setup (same as other tests)
+- Existing `testConfig` for i18n setup (same as other tests in `__tests__/`)
 - No new test utilities needed
