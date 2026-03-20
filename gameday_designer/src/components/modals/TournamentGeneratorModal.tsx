@@ -137,16 +137,6 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
   
     const canGenerate = (selectedTemplate || selectedCustomTemplate) && isDurationValid && isTeamCountValid;
 
-    console.log('Validation Debug:', {
-        gameDuration,
-        isDurationValid,
-        selectedTeamIdsCount: selectedTeamIds.length,
-        isTeamCountValid,
-        canGenerate,
-        selectedTemplate: selectedTemplate?.name,
-        generateTeams
-    });
-
   /**
    * Handle tournament generation confirmation
    */
