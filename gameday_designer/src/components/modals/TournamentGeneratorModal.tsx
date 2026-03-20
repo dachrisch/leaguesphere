@@ -270,11 +270,11 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                   <div className="d-flex gap-2">
                     <span className="badge bg-light text-dark border">
                       <i className="bi bi-people-fill me-1"></i>
-                      {template.teamCount.exact || `${template.teamCount.min}-${template.teamCount.max}`} {t('domain:team.teams')}
+                      {template.teamCount.exact || `${template.teamCount.min}-${template.teamCount.max}`} {t('domain:teams')}
                     </span>
                     <span className="badge bg-light text-dark border">
                       <i className="bi bi-layers-fill me-1"></i>
-                      {template.stages.length} {t('domain:stage.stages')}
+                      {template.stages.length} {t('domain:stages')}
                     </span>
                   </div>
                 </Card.Body>
@@ -309,11 +309,11 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                       <div className="d-flex gap-2">
                         <span className="badge bg-light text-dark border">
                           <i className="bi bi-people-fill me-1"></i>
-                          {template.num_teams} {t('domain:team.teams')}
+                          {template.num_teams} {t('domain:teams')}
                         </span>
                         <span className="badge bg-light text-dark border">
                           <i className="bi bi-grid-3x3-gap-fill me-1"></i>
-                          {template.num_fields} {t('domain:field.fields')}
+                          {template.num_fields} {t('domain:fields')}
                         </span>
                       </div>
                     </Card.Body>
@@ -345,11 +345,11 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                       >
                         {selectedTemplate?.fieldOptions.map(opt => (
                           <option key={opt} value={opt}>
-                            {opt} {opt === 1 ? t('domain:field.field') : t('domain:field.fields')}
+                            {opt} {opt === 1 ? t('domain:field') : t('domain:fields')}
                           </option>
                         ))}
                         {selectedCustomTemplate && (
-                            <option value={selectedCustomTemplate.num_fields}>{selectedCustomTemplate.num_fields} {selectedCustomTemplate.num_fields === 1 ? t('domain:field.field') : t('domain:field.fields')}</option>
+                            <option value={selectedCustomTemplate.num_fields}>{selectedCustomTemplate.num_fields} {selectedCustomTemplate.num_fields === 1 ? t('domain:field') : t('domain:fields')}</option>
                         )}
                       </Form.Select>
                     </Form.Group>
@@ -375,7 +375,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                           onChange={(e) => setGameDuration(parseInt(e.target.value) || 0)}
                           className={`form-control-lg ${!isDurationValid ? 'is-invalid' : ''}`}
                         />
-                        <span className="input-group-text">{t('ui:label.minutes')}</span>
+                        <span className="input-group-text">{t('domain:minutes')}</span>
                         {!isDurationValid && (
                             <Form.Control.Feedback type="invalid">
                                 {t('modal:tournamentGenerator.durationValidation')}
@@ -394,7 +394,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                           onChange={(e) => setBreakDuration(parseInt(e.target.value) || 0)}
                           className="form-control-lg"
                         />
-                        <span className="input-group-text">{t('ui:label.minutes')}</span>
+                        <span className="input-group-text">{t('domain:minutes')}</span>
                       </div>
                     </Form.Group>
                   </Col>
