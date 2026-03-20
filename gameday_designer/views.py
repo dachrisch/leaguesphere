@@ -112,8 +112,9 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
             # Add private templates
             query |= Q(created_by=user, sharing=ScheduleTemplate.SHARING_PRIVATE)
 
-            # Add association templates
-            query |= Q(sharing=ScheduleTemplate.SHARING_ASSOCIATION)
+            # Add association templates (only the user's own association)
+            if user_association:
+                query |= Q(sharing=ScheduleTemplate.SHARING_ASSOCIATION, association=user_association)
 
             # Support filtering by association if provided in query params
             assoc_id = self.request.query_params.get("association")
@@ -127,6 +128,12 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
                 .distinct()
                 .select_related("association", "created_by", "updated_by")
             )
+
+        # Anonymous users: only GLOBAL templates
+        return (
+            ScheduleTemplate.objects.filter(query)
+            .select_related("association", "created_by", "updated_by")
+        )
 
     def perform_create(self, serializer):
         """
