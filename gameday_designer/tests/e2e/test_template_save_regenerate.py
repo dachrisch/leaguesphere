@@ -72,6 +72,15 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     # Wait for auto-save debounce (1.5 s) to complete
     page.wait_for_timeout(2000)
 
+    # Snapshot the game and team counts produced by the built-in template.
+    # Phase 5 must reproduce exactly these numbers — neither more (additive bug)
+    # nor fewer (data-loss bug).
+    expect(page.locator('tr[id^="game-"]').first).to_be_visible(timeout=5000)
+    expected_game_count = page.locator('tr[id^="game-"]').count()
+    expected_team_count = page.locator('.team-group-card [id^="team-"]').count()
+    assert expected_game_count > 0, "Built-in template should produce at least one game"
+    assert expected_team_count > 0, "Built-in template should produce at least one team"
+
     # ---- Phase 3: Save the generated structure as a custom template ----------
     page.get_by_test_id("generate-tournament-button").click()
     expect(page.get_by_role("dialog")).to_be_visible(timeout=5000)
@@ -132,5 +141,7 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     # Modal closes after confirming
     expect(page.get_by_role("dialog")).not_to_be_visible(timeout=5000)
 
-    # ---- Phase 6: Assert schedule was recreated ------------------------------
+    # ---- Phase 6: Assert game and team counts match the original generation --
     expect(page.locator('tr[id^="game-"]').first).to_be_visible(timeout=10000)
+    expect(page.locator('tr[id^="game-"]')).to_have_count(expected_game_count)
+    expect(page.locator('.team-group-card [id^="team-"]')).to_have_count(expected_team_count)

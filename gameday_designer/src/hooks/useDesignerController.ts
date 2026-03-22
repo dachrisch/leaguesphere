@@ -205,7 +205,25 @@ export function useDesignerController(
             // has the complete slot data.
             const fullTemplate = await gamedayApi.getTemplateDetail(config.customTemplate.id as number) as GenericTemplate;
             const imported = applyGenericTemplate(fullTemplate, latestFs.exportState());
-            
+
+            // If the canvas was cleared before applying, applyGenericTemplate has no
+            // existing teams to carry forward.  Regenerate placeholder teams so the
+            // team pool is populated just like a built-in-template generation.
+            if (config.generateTeams && imported.globalTeams.length === 0) {
+                const teamCount = fullTemplate.num_teams;
+                const groups = imported.globalTeamGroups;
+                const groupCount = groups.length || 1;
+                const teamData = generateTeamsForTournament(teamCount);
+                const teamsPerGroupCount = Math.ceil(teamCount / groupCount);
+                imported.globalTeams = teamData.map((data, index) => ({
+                    id: uuidv4(),
+                    label: data.label,
+                    color: data.color,
+                    groupId: groups[Math.min(Math.floor(index / teamsPerGroupCount), groupCount - 1)]?.id ?? null,
+                    order: index,
+                }));
+            }
+
             latestFs.importState({
                 metadata: latestFs.metadata || {} as GamedayMetadata,
                 nodes: imported.nodes,
