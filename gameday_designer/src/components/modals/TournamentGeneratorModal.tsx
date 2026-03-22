@@ -217,11 +217,12 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
               <h6 className="mb-1">{t('ui:title.saveCurrentConfig')}</h6>
               <p className="text-muted small mb-0">{t('ui:message.saveConfigDescription')}</p>
             </div>
-            <Button 
-              variant="outline-primary" 
-              size="sm" 
+            <Button
+              variant="outline-primary"
+              size="sm"
               onClick={() => setShowSaveModal(true)}
               disabled={!isValid}
+              data-testid="save-as-template-button"
             >
               <i className="bi bi-save me-2"></i>
               {t('ui:button.saveAsTemplate')}
@@ -238,7 +239,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
           <Col xs={12}><small className="text-muted text-uppercase fw-bold">{t('ui:label.builtInTemplates')}</small></Col>
           {builtInTemplates.map((template) => (
             <Col key={template.id} md={6}>
-              <Card 
+              <Card
                 className={`h-100 cursor-pointer border-2 transition-all ${
                   selectedTemplate?.id === template.id ? 'border-primary bg-primary bg-opacity-10 shadow-sm' : 'border-transparent bg-white'
                 }`}
@@ -247,6 +248,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                   setSelectedCustomTemplate(null);
                   setFieldCount(template.fieldOptions[0] || 1);
                 }}
+                data-testid={`builtin-template-${template.id}`}
               >
                 <Card.Body className="p-3">
                   <div className="d-flex justify-content-between align-items-start mb-2">
@@ -277,7 +279,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
               <Col xs={12} className="mt-4"><small className="text-muted text-uppercase fw-bold">{t('ui:label.customTemplates')}</small></Col>
               {customTemplates.map((template) => (
                 <Col key={template.id} md={6}>
-                  <Card 
+                  <Card
                     className={`h-100 cursor-pointer border-2 transition-all ${
                       selectedCustomTemplate?.id === template.id ? 'border-primary bg-primary bg-opacity-10 shadow-sm' : 'border-transparent bg-white'
                     }`}
@@ -286,6 +288,7 @@ const TournamentGeneratorModal: React.FC<TournamentGeneratorModalProps> = ({
                       setSelectedTemplate(null);
                       setFieldCount(template.num_fields);
                     }}
+                    data-testid={`custom-template-${template.id}`}
                   >
                     <Card.Body className="p-3">
                       <div className="d-flex justify-content-between align-items-start mb-2">

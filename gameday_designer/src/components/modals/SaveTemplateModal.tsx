@@ -51,6 +51,7 @@ const SaveTemplateModal: React.FC<SaveTemplateModalProps> = ({ show, onHide, onS
               onChange={(e) => setName(e.target.value)}
               placeholder={t('ui:placeholder.templateName')}
               autoFocus
+              data-testid="template-name-input"
             />
           </Form.Group>
           <Form.Group className="mb-3">
@@ -85,7 +86,7 @@ const SaveTemplateModal: React.FC<SaveTemplateModalProps> = ({ show, onHide, onS
         <Button variant="secondary" onClick={onHide} disabled={loading}>
           {t('ui:button.cancel')}
         </Button>
-        <Button variant="primary" onClick={handleSave} disabled={loading}>
+        <Button variant="primary" onClick={handleSave} disabled={loading} data-testid="save-template-submit-button">
           {loading ? t('ui:button.saving') : t('ui:button.saveTemplate')}
         </Button>
       </Modal.Footer>
