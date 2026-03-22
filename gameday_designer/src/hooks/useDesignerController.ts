@@ -201,7 +201,10 @@ export function useDesignerController(
         if (config.customTemplate) {
             const latestFs = flowStateRef.current;
             if (!latestFs) return;
-            const imported = applyGenericTemplate(config.customTemplate, latestFs.exportState());
+            // The list endpoint omits `slots`; fetch the full detail so applyGenericTemplate
+            // has the complete slot data.
+            const fullTemplate = await gamedayApi.getTemplateDetail(config.customTemplate.id as number) as GenericTemplate;
+            const imported = applyGenericTemplate(fullTemplate, latestFs.exportState());
             
             latestFs.importState({
                 metadata: latestFs.metadata || {} as GamedayMetadata,

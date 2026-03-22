@@ -1,4 +1,4 @@
-import { FlowState, GlobalTeam, FlowNode, GameNode, isGameNode, createGameNode, FlowEdge, GlobalTeamGroup } from '../types/flowchart';
+import { FlowState, GlobalTeam, FlowNode, GameNode, isGameNode, createGameNodeInStage, FlowEdge, GlobalTeamGroup } from '../types/flowchart';
 import { isWinnerReference, isLoserReference, isGroupTeamReference } from '../types/designer';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -239,10 +239,10 @@ export function applyGenericTemplate(template: GenericTemplate, currentState: Fl
     const homeTeamId = getTeamId(slot.home_group, slot.home_team);
     const awayTeamId = getTeamId(slot.away_group, slot.away_team);
 
-    const gameNode = createGameNode({
-      id: `game-${uuidv4().slice(0, 8)}`,
-      parentId: stageId,
-      data: {
+    const gameNode = createGameNodeInStage(
+      `game-${uuidv4().slice(0, 8)}`,
+      stageId,
+      {
         stage: slot.stage,
         stageType: slot.stage_type,
         standing: slot.standing,
@@ -252,7 +252,7 @@ export function applyGenericTemplate(template: GenericTemplate, currentState: Fl
         awayTeamDynamic: slot.away_reference ? parseReference(slot.away_reference) : undefined,
         breakAfter: slot.break_after,
       }
-    });
+    );
     newNodes.push(gameNode);
   });
 

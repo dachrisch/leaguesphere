@@ -220,6 +220,11 @@ class GamedayApi {
     return response.data;
   }
 
+  async getTemplateDetail(id: number): Promise<unknown> {
+    const response = await this.client.get(`/designer/templates/${id}/`);
+    return response.data;
+  }
+
   /**
    * Update game result.
    */
