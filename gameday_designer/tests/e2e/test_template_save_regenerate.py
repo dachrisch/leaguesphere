@@ -81,6 +81,12 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     assert expected_game_count > 0, "Built-in template should produce at least one game"
     assert expected_team_count > 0, "Built-in template should produce at least one team"
 
+    # Snapshot assigned team slots (.react-select__single-value is present only when a
+    # team is selected; empty slots show .react-select__placeholder instead).
+    expect(page.locator('tr[id^="game-"] .react-select__single-value').first).to_be_visible(timeout=5000)
+    expected_assigned_slots = page.locator('tr[id^="game-"] .react-select__single-value').count()
+    assert expected_assigned_slots > 0, "Phase 2 games should have team assignments"
+
     # ---- Phase 3: Save the generated structure as a custom template ----------
     page.get_by_test_id("generate-tournament-button").click()
     expect(page.get_by_role("dialog")).to_be_visible(timeout=5000)
@@ -145,3 +151,4 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     expect(page.locator('tr[id^="game-"]').first).to_be_visible(timeout=10000)
     expect(page.locator('tr[id^="game-"]')).to_have_count(expected_game_count)
     expect(page.locator('.team-group-card [id^="team-"]')).to_have_count(expected_team_count)
+    expect(page.locator('tr[id^="game-"] .react-select__single-value')).to_have_count(expected_assigned_slots)

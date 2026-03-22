@@ -204,25 +204,39 @@ export function useDesignerController(
             // The list endpoint omits `slots`; fetch the full detail so applyGenericTemplate
             // has the complete slot data.
             const fullTemplate = await gamedayApi.getTemplateDetail(config.customTemplate.id as number) as GenericTemplate;
-            const imported = applyGenericTemplate(fullTemplate, latestFs.exportState());
 
-            // If the canvas was cleared before applying, applyGenericTemplate has no
-            // existing teams to carry forward.  Regenerate placeholder teams so the
-            // team pool is populated just like a built-in-template generation.
-            if (config.generateTeams && imported.globalTeams.length === 0) {
+            // Pre-generate teams and groups BEFORE calling applyGenericTemplate so that
+            // getTeamId() inside applyGenericTemplate can resolve slot indices to real IDs.
+            // (If we generate teams after, every home/awayTeamId remains null.)
+            const preState = latestFs.exportState();
+            if (config.generateTeams && preState.globalTeams.length === 0) {
                 const teamCount = fullTemplate.num_teams;
-                const groups = imported.globalTeamGroups;
-                const groupCount = groups.length || 1;
+                if (preState.globalTeamGroups.length === 0) {
+                    const groupConfig = fullTemplate.group_config ?? [];
+                    const numGroups = groupConfig.length || fullTemplate.num_groups || 1;
+                    preState.globalTeamGroups = groupConfig.length > 0
+                        ? groupConfig.map((g, i) => ({ id: `g${i + 1}`, name: g.name, order: i }))
+                        : Array.from({ length: numGroups }, (_, i) => ({
+                            id: `g${i + 1}`,
+                            name: `Gruppe ${String.fromCharCode(65 + i)}`,
+                            order: i,
+                          }));
+                }
+                const groupCount = preState.globalTeamGroups.length || 1;
                 const teamData = generateTeamsForTournament(teamCount);
                 const teamsPerGroupCount = Math.ceil(teamCount / groupCount);
-                imported.globalTeams = teamData.map((data, index) => ({
+                preState.globalTeams = teamData.map((data, index) => ({
                     id: uuidv4(),
                     label: data.label,
                     color: data.color,
-                    groupId: groups[Math.min(Math.floor(index / teamsPerGroupCount), groupCount - 1)]?.id ?? null,
+                    groupId: preState.globalTeamGroups[
+                        Math.min(Math.floor(index / teamsPerGroupCount), groupCount - 1)
+                    ]?.id ?? null,
                     order: index,
                 }));
             }
+
+            const imported = applyGenericTemplate(fullTemplate, preState);
 
             latestFs.importState({
                 metadata: latestFs.metadata || {} as GamedayMetadata,
