@@ -8,6 +8,7 @@ Provides REST API for schedule template management.
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, render
 from django.contrib.auth.decorators import login_required
 
