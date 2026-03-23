@@ -180,7 +180,9 @@ class GamedayModelWrapper:
             ).ruleset
         except LeagueSeasonConfig.DoesNotExist:
             # fallback use default league ruleset
-            league_season_ruleset = LeagueRuleset.objects.get(pk=2)
+            league_season_ruleset = LeagueRuleset.objects.first()
+            if league_season_ruleset is None:
+                return qualify_round
         league_config_ruleset = LeagueConfigRuleset.from_ruleset(league_season_ruleset)
         engine = TieBreakerEngine(league_config_ruleset)
         # TODO
@@ -203,7 +205,9 @@ class GamedayModelWrapper:
             ).ruleset
         except LeagueSeasonConfig.DoesNotExist:
             # fallback use default league ruleset
-            league_season_ruleset = LeagueRuleset.objects.get(pk=2)
+            league_season_ruleset = LeagueRuleset.objects.first()
+            if league_season_ruleset is None:
+                return pd.DataFrame()
         league_config_ruleset = LeagueConfigRuleset.from_ruleset(league_season_ruleset)
         engine = FinalRankingEngine(league_config_ruleset)
         return engine.compute_final_table(self._games_with_result)
