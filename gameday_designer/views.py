@@ -340,6 +340,74 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
 
         return Response({"slots": serializer.data}, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=["post"], url_path="save-from-designer")
+    def save_from_designer(self, request):
+        """
+        Create a new ScheduleTemplate from a designer GenericTemplate payload.
+
+        POST /templates/save-from-designer/
+        Body: GenericTemplate JSON (name, num_teams, num_fields, num_groups,
+              game_duration, sharing, slots[])
+
+        Returns:
+            201: {id, name, ...}
+            400: {error: str}
+        """
+        data = request.data
+
+        required = ["name", "num_teams", "num_fields", "num_groups", "slots"]
+        for field in required:
+            if field not in data:
+                return Response(
+                    {"error": f"Missing required field: {field}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        sharing = data.get("sharing", ScheduleTemplate.SHARING_PRIVATE)
+        if sharing not in (
+            ScheduleTemplate.SHARING_PRIVATE,
+            ScheduleTemplate.SHARING_ASSOCIATION,
+            ScheduleTemplate.SHARING_GLOBAL,
+        ):
+            sharing = ScheduleTemplate.SHARING_PRIVATE
+
+        template = ScheduleTemplate.objects.create(
+            name=data["name"],
+            description=data.get("description", ""),
+            num_teams=data["num_teams"],
+            num_fields=data["num_fields"],
+            num_groups=data["num_groups"],
+            game_duration=data.get("game_duration", 70),
+            sharing=sharing,
+            created_by=request.user if request.user.is_authenticated else None,
+            updated_by=request.user if request.user.is_authenticated else None,
+        )
+
+        for slot_data in data.get("slots", []):
+            TemplateSlot.objects.create(
+                template=template,
+                field=slot_data.get("field", 1),
+                slot_order=slot_data.get("slot_order", 1),
+                stage=slot_data.get("stage", ""),
+                stage_type=slot_data.get("stage_type", "STANDARD"),
+                standing=slot_data.get("standing", ""),
+                home_group=slot_data.get("home_group"),
+                home_team=slot_data.get("home_team"),
+                home_reference=slot_data.get("home_reference", ""),
+                away_group=slot_data.get("away_group"),
+                away_team=slot_data.get("away_team"),
+                away_reference=slot_data.get("away_reference", ""),
+                official_group=slot_data.get("official_group"),
+                official_team=slot_data.get("official_team"),
+                official_reference=slot_data.get("official_reference", ""),
+                break_after=slot_data.get("break_after", 0),
+            )
+
+        serializer = ScheduleTemplateDetailSerializer(
+            template, context={"request": request}
+        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     @action(detail=True, methods=["get"])
     def usage(self, request, pk=None):
         """
