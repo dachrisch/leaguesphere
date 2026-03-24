@@ -89,61 +89,62 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
         - ASSOCIATION templates (visible to all authenticated users, but restricted write)
         - PRIVATE templates (visible to creator and staff)
         Staff users see all templates.
+
+        Supports ?sharing=personal|association|global to narrow results further.
         """
         user = self.request.user
 
         # Staff sees everything
         if user and user.is_authenticated and user.is_staff:
-            return ScheduleTemplate.objects.all().select_related(
+            queryset = ScheduleTemplate.objects.all().select_related(
                 "association", "created_by", "updated_by"
             )
+        else:
+            # Base query: Global templates are ALWAYS visible
+            query = Q(sharing=ScheduleTemplate.SHARING_GLOBAL)
 
-        # Base query: Global templates are ALWAYS visible
-        query = Q(sharing=ScheduleTemplate.SHARING_GLOBAL)
+            # ASSOCIATION templates matching user's association
+            if user and user.is_authenticated:
+                from gamedays.models import UserProfile
 
-        # ASSOCIATION templates matching user's association
-        if user and user.is_authenticated:
-            from gamedays.models import UserProfile
+                try:
+                    profile = UserProfile.objects.get(user=user)
+                    user_association = profile.team.association if profile.team else None
+                except UserProfile.DoesNotExist:
+                    user_association = None
 
-            try:
-                profile = UserProfile.objects.get(user=user)
-                user_association = profile.team.association if profile.team else None
-            except UserProfile.DoesNotExist:
-                user_association = None
+                # Add private templates owned by this user
+                query |= Q(created_by=user, sharing=ScheduleTemplate.SHARING_PRIVATE)
 
-            # Add private templates
-            query |= Q(created_by=user, sharing=ScheduleTemplate.SHARING_PRIVATE)
-
-            # Add association templates (restricted to user's association)
-            if user_association:
-                query |= Q(
-                    association=user_association, sharing=ScheduleTemplate.SHARING_ASSOCIATION
-                )
-        
-        # Support filtering by association if provided in query params (for tests and selection)
-        assoc_id = self.request.query_params.get('association')
-        if assoc_id:
-            query |= Q(association_id=assoc_id, sharing=ScheduleTemplate.SHARING_ASSOCIATION)
+                # Add association templates (restricted to user's association)
+                if user_association:
+                    query |= Q(
+                        association=user_association, sharing=ScheduleTemplate.SHARING_ASSOCIATION
+                    )
 
             # Support filtering by association if provided in query params
             assoc_id = self.request.query_params.get("association")
             if assoc_id:
-                return ScheduleTemplate.objects.filter(
-                    association_id=assoc_id, sharing=ScheduleTemplate.SHARING_ASSOCIATION
-                ).select_related("association", "created_by", "updated_by")
+                query |= Q(association_id=assoc_id, sharing=ScheduleTemplate.SHARING_ASSOCIATION)
 
-            return (
+            queryset = (
                 ScheduleTemplate.objects.filter(query)
                 .distinct()
                 .select_related("association", "created_by", "updated_by")
             )
 
-        # Anonymous users: only GLOBAL templates
-        return (
-            ScheduleTemplate.objects.filter(query)
-            .distinct()
-            .select_related("association", "created_by", "updated_by")
-        )
+        # Apply ?sharing= query param to narrow results
+        sharing_param = self.request.query_params.get("sharing")
+        if sharing_param == "personal":
+            queryset = queryset.filter(
+                sharing=ScheduleTemplate.SHARING_PRIVATE, created_by=user
+            )
+        elif sharing_param == "association":
+            queryset = queryset.filter(sharing=ScheduleTemplate.SHARING_ASSOCIATION)
+        elif sharing_param == "global":
+            queryset = queryset.filter(sharing=ScheduleTemplate.SHARING_GLOBAL)
+
+        return queryset
 
     def perform_create(self, serializer):
         """

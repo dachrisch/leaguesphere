@@ -68,6 +68,39 @@ class TestTemplateListEndpoint:
             if t["association"] is not None:
                 assert t["association"] == template.association.pk
 
+    def test_list_filters_by_sharing_personal(self, api_client, staff_user, association, db):
+        """sharing=personal returns only PRIVATE templates created by the requesting user."""
+        other_user = User.objects.create_user(username="other_sharing", password="pw")
+        ScheduleTemplate.objects.create(
+            name="Mine", num_teams=6, num_fields=2, num_groups=1, game_duration=70,
+            sharing=ScheduleTemplate.SHARING_PRIVATE, created_by=staff_user, updated_by=staff_user,
+        )
+        ScheduleTemplate.objects.create(
+            name="Theirs", num_teams=6, num_fields=2, num_groups=1, game_duration=70,
+            sharing=ScheduleTemplate.SHARING_PRIVATE, created_by=other_user, updated_by=other_user,
+        )
+        api_client.force_authenticate(user=staff_user)
+        response = api_client.get("/api/designer/templates/?sharing=personal")
+        assert response.status_code == 200
+        names = [t["name"] for t in response.data]
+        assert "Mine" in names
+        assert "Theirs" not in names
+
+    def test_list_filters_by_sharing_global(self, api_client, staff_user, db):
+        """sharing=global returns all GLOBAL templates regardless of creator."""
+        ScheduleTemplate.objects.create(
+            name="Global One", num_teams=6, num_fields=2, num_groups=1, game_duration=70,
+            sharing=ScheduleTemplate.SHARING_GLOBAL, created_by=staff_user, updated_by=staff_user,
+        )
+        api_client.force_authenticate(user=staff_user)
+        response = api_client.get("/api/designer/templates/?sharing=global")
+        assert response.status_code == 200
+        names = [t["name"] for t in response.data]
+        assert "Global One" in names
+        # No PRIVATE or ASSOCIATION templates should appear
+        for t in response.data:
+            assert t["sharing"] == ScheduleTemplate.SHARING_GLOBAL
+
 
 @pytest.mark.django_db
 class TestTemplateDetailEndpoint:
