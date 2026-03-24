@@ -70,6 +70,7 @@ export interface ScheduleTemplate {
   num_fields: number;
   num_groups: number;
   game_duration: number;
+  sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL';
   association: number | null;
   association_display?: string;
   created_by: number | null;
@@ -209,7 +210,6 @@ export interface ApplyTemplateRequest {
  */
 export interface CloneTemplateRequest {
   new_name: string;
-  association?: number;
 }
 
 /**

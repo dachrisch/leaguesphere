@@ -59,11 +59,13 @@ class DesignerApi {
    * @param params - Optional filter parameters
    * @param params.association - Filter by association ID
    * @param params.search - Search query for template name
+   * @param params.sharing - Filter by sharing scope (personal/association/global)
    * @returns Paginated list of templates
    */
   async listTemplates(params?: {
     association?: number;
     search?: string;
+    sharing?: 'personal' | 'association' | 'global';
   }): Promise<PaginatedResponse<ScheduleTemplate>> {
     const response = await this.client.get<PaginatedResponse<ScheduleTemplate>>(
       '/templates/',
