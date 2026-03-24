@@ -603,6 +603,39 @@ class TestTemplateCloneEndpoint:
 
         assert response.status_code == status.HTTP_201_CREATED
 
+    def test_clone_uses_new_name_from_request(self, api_client, staff_user, template):
+        """Clone uses new_name from request body instead of hardcoded prefix."""
+        api_client.force_authenticate(user=staff_user)
+        response = api_client.post(
+            f"/api/designer/templates/{template.pk}/clone/",
+            data={"new_name": "My Custom Clone"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["name"] == "My Custom Clone"
+
+    def test_clone_always_private_and_no_association(self, api_client, staff_user, template):
+        """Clone is always sharing=PRIVATE with association=None regardless of source."""
+        api_client.force_authenticate(user=staff_user)
+        response = api_client.post(
+            f"/api/designer/templates/{template.pk}/clone/",
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        cloned = ScheduleTemplate.objects.get(pk=response.data["id"])
+        assert cloned.sharing == ScheduleTemplate.SHARING_PRIVATE
+        assert cloned.association is None
+
+    def test_clone_sets_created_by_to_requesting_user(self, api_client, staff_user, template):
+        """Clone's created_by is always the requesting user."""
+        api_client.force_authenticate(user=staff_user)
+        response = api_client.post(
+            f"/api/designer/templates/{template.pk}/clone/", format="json"
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        cloned = ScheduleTemplate.objects.get(pk=response.data["id"])
+        assert cloned.created_by == staff_user
+
 
 @pytest.mark.django_db
 class TestTemplateValidateEndpoint:

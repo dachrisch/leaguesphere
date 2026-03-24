@@ -233,14 +233,16 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
         template = self.get_object()
 
         # Create new template with copied data
+        new_name = request.data.get("new_name") or f"Copy of {template.name}"
         cloned_template = ScheduleTemplate.objects.create(
-            name=f"Copy of {template.name}",
+            name=new_name,
             description=template.description,
             num_teams=template.num_teams,
             num_fields=template.num_fields,
             num_groups=template.num_groups,
             game_duration=template.game_duration,
-            association=template.association,
+            sharing=ScheduleTemplate.SHARING_PRIVATE,
+            association=None,
             created_by=request.user if request.user.is_authenticated else None,
             updated_by=request.user if request.user.is_authenticated else None,
         )
