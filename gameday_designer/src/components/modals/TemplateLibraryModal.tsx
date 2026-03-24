@@ -100,16 +100,16 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
       await designerApi.cloneTemplate((item.template as ScheduleTemplate).id, { new_name: promptedName });
     } else {
       const builtin = item.template as TournamentTemplate;
-      const schedData = getCurrentScheduleData?.() ?? { num_teams: builtin.minTeams, num_fields: 2, num_groups: 1, game_duration: 15 };
+      const schedData = getCurrentScheduleData?.() ?? { num_teams: builtin.teamCount.min, num_fields: 2, num_groups: 1, game_duration: 15 };
       await designerApi.createTemplate({
         name: promptedName,
         description: `Clone of built-in: ${builtin.name}`,
         sharing: 'PRIVATE',
-        num_teams: builtin.minTeams,
+        num_teams: builtin.teamCount.min,
         num_fields: builtin.fieldOptions[0] ?? 2,
         num_groups: schedData.num_groups,
         game_duration: schedData.game_duration,
-      } as any);
+      });
     }
     // Trigger re-fetch by toggling search query
     setSearchQuery(q => q + '\u200b');
@@ -135,14 +135,14 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
       num_fields: schedData.num_fields,
       num_groups: schedData.num_groups,
       game_duration: schedData.game_duration,
-    } as any);
+    });
     setShowSave(false);
     setSearchQuery(q => q + '\u200b');
     setTimeout(() => setSearchQuery(q => q.replace('\u200b', '')), 100);
   }, [getCurrentScheduleData]);
 
   const requiredTeams = selected?.type === 'builtin'
-    ? (selected.template as TournamentTemplate).minTeams
+    ? (selected.template as TournamentTemplate).teamCount.min
     : (selected?.template as ScheduleTemplate)?.num_teams ?? 0;
 
   return (

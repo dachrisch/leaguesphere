@@ -63,7 +63,7 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
             </>
           )}
           {isBuiltin && (
-            <Badge bg="light" text="dark">{(selected.template as TournamentTemplate).minTeams} teams</Badge>
+            <Badge bg="light" text="dark">{(selected.template as TournamentTemplate).teamCount.min} teams</Badge>
           )}
         </div>
       </div>

@@ -70,6 +70,7 @@ export interface ScheduleTemplate {
   num_fields: number;
   num_groups: number;
   game_duration: number;
+  description?: string;
   sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL';
   association: number | null;
   association_display?: string;

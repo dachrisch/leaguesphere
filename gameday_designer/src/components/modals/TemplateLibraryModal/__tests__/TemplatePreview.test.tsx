@@ -2,14 +2,15 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
 import TemplatePreview from '../TemplatePreview';
 import { SelectedTemplate } from '../TemplateList';
+import type { TournamentTemplate } from '../../../../types/tournament';
 
 const mockBuiltinTemplate = {
   id: 'f6_2_2',
   name: '6-Team Cup',
-  minTeams: 6,
-  maxTeams: 6,
+  teamCount: { min: 6, max: 6 },
   fieldOptions: [2],
   stages: [],
+  timing: { firstGameStartTime: '09:00', defaultGameDuration: 15, defaultBreakBetweenGames: 5 },
 };
 
 const mockSavedTemplate = {
@@ -25,7 +26,7 @@ describe('TemplatePreview', () => {
   });
 
   it('shows Apply button for built-in template', () => {
-    const selected: SelectedTemplate = { type: 'builtin', template: mockBuiltinTemplate as any };
+    const selected: SelectedTemplate = { type: 'builtin', template: mockBuiltinTemplate as unknown as TournamentTemplate };
     render(<TemplatePreview selected={selected} currentUserId={1} onApply={vi.fn()} onClone={vi.fn()} onDelete={vi.fn()} onSave={vi.fn()} />);
     expect(screen.getByRole('button', { name: /apply/i })).toBeInTheDocument();
   });

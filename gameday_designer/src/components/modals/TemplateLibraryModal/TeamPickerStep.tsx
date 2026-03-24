@@ -41,7 +41,7 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
               style={{ cursor: 'pointer', fontSize: 13, padding: '6px 12px' }}
               onClick={() => toggleTeam(team.id)}
             >
-              {team.name}
+              {team.label}
             </Badge>
           ))}
         </div>
