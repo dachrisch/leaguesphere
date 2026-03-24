@@ -7,7 +7,6 @@ import ListCanvas from './ListCanvas';
 import { GameResultsTable, ScoreEdit } from './GameResultsTable';
 import { FlowToolbarProps } from './FlowToolbar';
 import GamedayMetadataAccordion from './GamedayMetadataAccordion';
-import TournamentGeneratorModal from './modals/TournamentGeneratorModal';
 import PublishConfirmationModal from './modals/PublishConfirmationModal';
 import DeleteGamedayConfirmModal from './modals/DeleteGamedayConfirmModal';
 import GameResultModal from './modals/GameResultModal';
@@ -17,7 +16,6 @@ import LoadingOverlay from './ui/LoadingOverlay';
 import { useGamedayContext } from '../context/GamedayContext';
 import { GameNode } from '../types/designer';
 import { isGameNode } from '../types/flowchart';
-import { exportToStructuredTemplate } from '../utils/flowchartExport';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import { gamedayApi } from '../api/gamedayApi';
 import './ListDesignerApp.css';
@@ -34,7 +32,6 @@ const ListDesignerApp: React.FC = () => {
     setResultsMode,
     gameResults,
     setGameResults,
-    setOnGenerateTournament
   } = useGamedayContext();
 
   const [showPublishModal, setShowPublishModal] = useState(false);
@@ -88,8 +85,6 @@ const ListDesignerApp: React.FC = () => {
     handleSwapTeams,
     handleDeleteNode,
     handleSelectNode,
-    handleGenerateTournament,
-    handleSaveTemplate,
     handleAddGlobalTeam,
     handleAddGlobalTeamGroup,
     handleAddOfficialsGroup,
@@ -97,29 +92,7 @@ const ListDesignerApp: React.FC = () => {
     handleAddStage,
     dismissNotification,
     addNotification,
-    showTournamentModal,
-    setShowTournamentModal,
   } = handlers;
-
-  const handleExportTemplate = useCallback(() => {
-    const state = flowState.exportState();
-    const template = exportToStructuredTemplate(state);
-    const jsonString = JSON.stringify(template, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    
-    const filename = `template_${metadata?.name?.replace(/\s+/g, '_') || 'tournament'}.json`;
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    addNotification(t('ui:notification.autoSaveSuccess'), 'success', t('ui:notification.templateExported.title'));
-  }, [flowState, metadata?.name, addNotification, t]);
 
   const isLocked = metadata?.status ? metadata.status !== 'DRAFT' : false;
 
@@ -138,15 +111,6 @@ const ListDesignerApp: React.FC = () => {
     }
   }, [metadata?.name, isLocked, setGamedayName, setContextLocked]);
 
-  const showModalRef = useRef(setShowTournamentModal);
-  useEffect(() => {
-    showModalRef.current = setShowTournamentModal;
-  }, [setShowTournamentModal]);
-
-  useEffect(() => {
-    setOnGenerateTournament(() => () => showModalRef.current(true));
-  }, [setOnGenerateTournament]);
-
   const resultsModeHandler = useCallback(async () => {
     if (!id) return;
     if (!resultsMode) {
@@ -164,7 +128,6 @@ const ListDesignerApp: React.FC = () => {
     const newProps: FlowToolbarProps = {
       onImport: handleImport,
       onExport: handleExport,
-      onExportTemplate: handleExportTemplate,
       gamedayStatus: metadata?.status,
       canExport: ui?.canExport ?? false,
       onNotify: addNotification,
@@ -191,7 +154,7 @@ const ListDesignerApp: React.FC = () => {
       setToolbarProps(newProps);
     }
   }, [
-    handleImport, handleExport, handleExportTemplate, metadata?.status, ui?.canExport, 
+    handleImport, handleExport, metadata?.status, ui?.canExport,
     addNotification, undo, redo, canUndo, canRedo, stats, resultsModeHandler, 
     resultsMode, setToolbarProps
   ]);
@@ -454,7 +417,7 @@ const ListDesignerApp: React.FC = () => {
               onAddStageToGameEdge={handleAddStageToGameEdge}
               onRemoveEdgeFromSlot={handleRemoveEdgeFromSlot}
               onOpenResultModal={handleOpenResultModal}
-              onGenerateTournament={() => setShowTournamentModal(true)}
+              onOpenTemplates={undefined}
               expandedFieldIds={ui?.expandedFieldIds || new Set()}
               expandedStageIds={ui?.expandedStageIds || new Set()}
               highlightedElement={ui?.highlightedElement}
@@ -470,16 +433,6 @@ const ListDesignerApp: React.FC = () => {
           )}
         </Stack>
       </div>
-
-      <TournamentGeneratorModal
-        show={showTournamentModal}
-        onHide={() => setShowTournamentModal(false)}
-        onGenerate={handleGenerateTournament}
-        teams={flowState.globalTeams}
-        hasData={ui?.hasData ?? false}
-        onSaveAsTemplate={handleSaveTemplate}
-        isValid={validation.isValid}
-      />
 
       <PublishConfirmationModal
         show={showPublishModal}
