@@ -13,6 +13,7 @@ import GameResultModal from './modals/GameResultModal';
 import TeamSelectionModal from './modals/TeamSelectionModal';
 import NotificationToast from './ui/NotificationToast';
 import LoadingOverlay from './ui/LoadingOverlay';
+import TemplateLibraryModal from './modals/TemplateLibraryModal';
 import { useGamedayContext } from '../context/GamedayContext';
 import { GameNode } from '../types/designer';
 import { isGameNode } from '../types/flowchart';
@@ -24,16 +25,19 @@ const ListDesignerApp: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTypedTranslation(['ui', 'domain']);
-  const { 
-    setGamedayName, 
-    setToolbarProps, 
+  const {
+    setGamedayName,
+    setToolbarProps,
     setIsLocked: setContextLocked,
+    setOnOpenTemplates,
+    currentUserId,
     resultsMode,
     setResultsMode,
     gameResults,
     setGameResults,
   } = useGamedayContext();
 
+  const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
@@ -90,6 +94,7 @@ const ListDesignerApp: React.FC = () => {
     handleAddOfficialsGroup,
     handleAddFieldContainer,
     handleAddStage,
+    handleGenerateTournament,
     dismissNotification,
     addNotification,
   } = handlers;
@@ -110,6 +115,11 @@ const ListDesignerApp: React.FC = () => {
       setContextLocked(isLocked);
     }
   }, [metadata?.name, isLocked, setGamedayName, setContextLocked]);
+
+  useEffect(() => {
+    setOnOpenTemplates(() => () => setShowTemplateLibrary(true));
+    return () => setOnOpenTemplates(null);
+  }, [setOnOpenTemplates]);
 
   const resultsModeHandler = useCallback(async () => {
     if (!id) return;
@@ -417,7 +427,7 @@ const ListDesignerApp: React.FC = () => {
               onAddStageToGameEdge={handleAddStageToGameEdge}
               onRemoveEdgeFromSlot={handleRemoveEdgeFromSlot}
               onOpenResultModal={handleOpenResultModal}
-              onOpenTemplates={undefined}
+              onOpenTemplates={() => setShowTemplateLibrary(true)}
               expandedFieldIds={ui?.expandedFieldIds || new Set()}
               expandedStageIds={ui?.expandedStageIds || new Set()}
               highlightedElement={ui?.highlightedElement}
@@ -471,6 +481,33 @@ const ListDesignerApp: React.FC = () => {
         groupId={teamSelectionContext?.slotId ?? ''}
         onSelect={handleTeamSelected}
         title={teamSelectionContext?.side === 'official' ? t('ui:title.selectOfficial') : t('ui:title.selectTeam')}
+      />
+
+      <TemplateLibraryModal
+        show={showTemplateLibrary}
+        onHide={() => setShowTemplateLibrary(false)}
+        gamedayId={parseInt(id)}
+        currentUserId={currentUserId}
+        flowTeams={flowState.globalTeams}
+        onScheduleApplied={() => { void loadData(); }}
+        onGenerateFromBuiltin={(config) => {
+          handleGenerateTournament({
+            templateId: config.templateId,
+            fieldCount: config.fieldCount,
+            startTime: config.startTime,
+            gameDuration: config.gameDuration,
+            breakDuration: config.breakDuration,
+            generateTeams: false,
+            autoAssignTeams: false,
+            selectedTeamIds: config.selectedTeamIds,
+          });
+        }}
+        getCurrentScheduleData={() => ({
+          num_teams: flowState.globalTeams.length,
+          num_fields: flowState.fields.length,
+          num_groups: flowState.globalTeamGroups.length || 1,
+          game_duration: 70,
+        })}
       />
 
       <NotificationToast
