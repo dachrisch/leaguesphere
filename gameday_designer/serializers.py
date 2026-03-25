@@ -276,6 +276,10 @@ class ApplyTemplateRequestSerializer(serializers.Serializer):
 
     gameday_id = serializers.IntegerField(required=True)
     team_mapping = serializers.JSONField(required=True)
+    start_time = serializers.TimeField(required=False, default=None)
+    game_duration = serializers.IntegerField(required=False, min_value=1, default=None)
+    break_duration = serializers.IntegerField(required=False, min_value=0, default=None)
+    num_fields = serializers.IntegerField(required=False, min_value=1, default=None)
 
     def validate_gameday_id(self, value):
         """Validate that gameday exists."""

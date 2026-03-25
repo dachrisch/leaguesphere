@@ -63,6 +63,11 @@ class TemplateApplicationService:
         gameday: Gameday,
         team_mapping: Dict[str, int],
         applied_by: Optional[User] = None,
+        *,
+        start_time=None,
+        game_duration=None,
+        break_duration=None,
+        num_fields=None,
     ):
         """
         Initialize application service.
@@ -72,11 +77,19 @@ class TemplateApplicationService:
             gameday: The Gameday to apply template to
             team_mapping: Dictionary mapping placeholder (e.g., '0_0') to team ID
             applied_by: User applying the template (optional, for audit trail)
+            start_time: Override gameday start time (keyword-only, optional)
+            game_duration: Override template game duration in minutes (keyword-only, optional)
+            break_duration: Additional break duration to add after each slot (keyword-only, optional)
+            num_fields: Override number of fields, redistributing slots round-robin (keyword-only, optional)
         """
         self.template = template
         self.gameday = gameday
         self.team_mapping = team_mapping
         self.applied_by = applied_by
+        self.start_time = start_time
+        self.game_duration = game_duration
+        self.break_duration = break_duration
+        self.num_fields = num_fields
 
     def apply(self) -> ApplicationResult:
         """
@@ -196,7 +209,9 @@ class TemplateApplicationService:
             # If we can't parse, assume it's okay (backward compatibility)
             gameday_fields = max_field_used
 
-        if max_field_used > gameday_fields:
+        # When num_fields override is set, slots will be redistributed round-robin so
+        # the original field assignments are irrelevant — skip the fields check.
+        if self.num_fields is None and max_field_used > gameday_fields:
             raise ApplicationError(
                 f"Template requires field {max_field_used} but gameday only has {gameday_fields} fields"
             )
@@ -258,42 +273,100 @@ class TemplateApplicationService:
         """
         Create Gameinfo objects from template slots.
 
+        When num_fields override is set, all template slots are fetched ordered by
+        (field, slot_order) and redistributed round-robin across effective_fields.
+        Otherwise the original per-field ordering is used.
+
         Returns:
             List of created Gameinfo objects
         """
         gameinfos = []
 
-        # Process each field independently for time calculation
-        for field_num in range(1, self.template.num_fields + 1):
-            slots = list(
-                self.template.slots.filter(field=field_num).order_by("slot_order")
-            )
-            if not slots:
-                continue
+        effective_start = self.start_time or self.gameday.start
+        effective_duration = self.game_duration or self.template.game_duration
+        effective_fields = self.num_fields or self.template.num_fields
 
-            # Convert model objects to simple dicts for TimeService
-            slot_data = [{"break_after": s.break_after} for s in slots]
-            start_times = TimeService.calculate_game_times(
-                self.gameday.start, self.template.game_duration, slot_data
+        if self.num_fields is not None:
+            # Redistribution mode: assign slots round-robin across effective_fields
+            all_slots = list(
+                self.template.slots.all().order_by("field", "slot_order")
             )
 
-            for slot, scheduled in zip(slots, start_times):
-                # Resolve official team
-                official_team = self._resolve_team_placeholder(
-                    slot.official_group, slot.official_team, slot.official_reference
+            # Store ordered slots for _create_gameresults to reuse
+            self._ordered_slots = all_slots
+
+            # Assign effective field numbers round-robin
+            for i, slot in enumerate(all_slots):
+                slot._effective_field = (i % effective_fields) + 1
+
+            # Group by effective field for per-field time calculation
+            from collections import defaultdict
+            field_groups: dict = defaultdict(list)
+            for slot in all_slots:
+                field_groups[slot._effective_field].append(slot)
+
+            # Build a flat ordered list matching the final gameinfos order
+            # We process fields in order 1..effective_fields, matching slot assignment
+            for field_num in range(1, effective_fields + 1):
+                slots = field_groups.get(field_num, [])
+                if not slots:
+                    continue
+
+                slot_data = [
+                    {"break_after": s.break_after + (self.break_duration or 0)}
+                    for s in slots
+                ]
+                start_times = TimeService.calculate_game_times(
+                    effective_start, effective_duration, slot_data
                 )
 
-                # Create Gameinfo
-                gameinfo = Gameinfo.objects.create(
-                    gameday=self.gameday,
-                    scheduled=scheduled,
-                    field=slot.field,
-                    stage=slot.stage,
-                    standing=slot.standing,
-                    officials=official_team,
-                    status="Geplant",
+                for slot, scheduled in zip(slots, start_times):
+                    official_team = self._resolve_team_placeholder(
+                        slot.official_group, slot.official_team, slot.official_reference
+                    )
+                    gameinfo = Gameinfo.objects.create(
+                        gameday=self.gameday,
+                        scheduled=scheduled,
+                        field=slot._effective_field,
+                        stage=slot.stage,
+                        standing=slot.standing,
+                        officials=official_team,
+                        status="Geplant",
+                    )
+                    gameinfos.append(gameinfo)
+        else:
+            # Standard mode: process each original field independently
+            self._ordered_slots = None  # Not needed; _create_gameresults uses default order
+
+            for field_num in range(1, self.template.num_fields + 1):
+                slots = list(
+                    self.template.slots.filter(field=field_num).order_by("slot_order")
                 )
-                gameinfos.append(gameinfo)
+                if not slots:
+                    continue
+
+                slot_data = [
+                    {"break_after": s.break_after + (self.break_duration or 0)}
+                    for s in slots
+                ]
+                start_times = TimeService.calculate_game_times(
+                    effective_start, effective_duration, slot_data
+                )
+
+                for slot, scheduled in zip(slots, start_times):
+                    official_team = self._resolve_team_placeholder(
+                        slot.official_group, slot.official_team, slot.official_reference
+                    )
+                    gameinfo = Gameinfo.objects.create(
+                        gameday=self.gameday,
+                        scheduled=scheduled,
+                        field=slot.field,
+                        stage=slot.stage,
+                        standing=slot.standing,
+                        officials=official_team,
+                        status="Geplant",
+                    )
+                    gameinfos.append(gameinfo)
 
         return gameinfos
 
@@ -346,12 +419,32 @@ class TemplateApplicationService:
 
         Each gameinfo gets two Gameresult objects: home team and away team.
 
+        When num_fields redistribution was used in _create_gameinfos(), the gameinfos
+        are ordered by (effective_field, slot_in_that_field). We must pair them with
+        slots in the same order. _create_gameinfos() stores the redistributed slot list
+        grouped by effective field in self._ordered_slots; we rebuild that same ordering
+        here by re-grouping from self._ordered_slots.
+
         Args:
             gameinfos: List of Gameinfo objects
         """
-        slots = self.template.slots.all().order_by("field", "slot_order")
+        if self.num_fields is not None and self._ordered_slots is not None:
+            # Redistribution mode: regroup by effective field (same logic as _create_gameinfos)
+            effective_fields = self.num_fields
+            from collections import defaultdict
+            field_groups: dict = defaultdict(list)
+            for slot in self._ordered_slots:
+                field_groups[slot._effective_field].append(slot)
 
-        for gameinfo, slot in zip(gameinfos, slots):
+            ordered_slots_for_zip = []
+            for field_num in range(1, effective_fields + 1):
+                ordered_slots_for_zip.extend(field_groups.get(field_num, []))
+
+            slots_iter = iter(ordered_slots_for_zip)
+        else:
+            slots_iter = iter(self.template.slots.all().order_by("field", "slot_order"))
+
+        for gameinfo, slot in zip(gameinfos, slots_iter):
             # Resolve home team
             home_team = self._resolve_team_placeholder(
                 slot.home_group, slot.home_team, slot.home_reference
