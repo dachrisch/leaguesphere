@@ -497,11 +497,12 @@ const ListDesignerApp: React.FC = () => {
             startTime: config.startTime,
             gameDuration: config.gameDuration,
             breakDuration: config.breakDuration,
-            generateTeams: false,
-            autoAssignTeams: false,
+            generateTeams: config.generateTeams ?? false,
+            autoAssignTeams: config.generateTeams ?? false,
             selectedTeamIds: config.selectedTeamIds,
           });
         }}
+        onNotify={addNotification}
         getCurrentScheduleData={() => ({
           num_teams: flowState.globalTeams.length,
           num_fields: flowState.fields.length,

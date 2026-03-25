@@ -87,6 +87,7 @@ const TemplateList: React.FC<TemplateListProps> = ({ selectedId, onSelect, searc
                   active={selectedId === id}
                   onClick={() => onSelect({ type: 'builtin', template: t })}
                   className="border-0 py-2 px-3"
+                  data-testid={`builtin-template-${t.id}`}
                 >
                   🏆 <span>{t.name}</span>
                   <div className="text-muted" style={{ fontSize: 11 }}>Built-in</div>

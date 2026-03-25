@@ -8,6 +8,7 @@ import { designerApi } from '../../api/designerApi';
 import { GlobalTeam } from '../../types/flowchart';
 import { ScheduleTemplate } from '../../types/api';
 import { TournamentTemplate } from '../../utils/tournamentTemplates';
+import { NotificationType } from '../../types/designer';
 
 type FilterScope = 'all' | 'personal' | 'association' | 'global';
 type Step = 'library' | 'team-picker';
@@ -33,13 +34,15 @@ interface TemplateLibraryModalProps {
     gameDuration: number;
     breakDuration: number;
     selectedTeamIds: string[];
+    generateTeams?: boolean;
   }) => void;
   getCurrentScheduleData?: () => { num_teams: number; num_fields: number; num_groups: number; game_duration: number };
+  onNotify?: (message: string, type: NotificationType, title?: string) => void;
 }
 
 const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
   show, onHide, gamedayId, currentUserId, flowTeams, onScheduleApplied,
-  onGenerateFromBuiltin, getCurrentScheduleData,
+  onGenerateFromBuiltin, getCurrentScheduleData, onNotify,
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedTemplate | null>(null);
@@ -59,8 +62,23 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
 
   const handleApply = useCallback((item: SelectedTemplate, config?: TournamentConfig) => {
     setApplyConfig(config);
+    // Built-in template with no teams: auto-generate teams, skip team picker
+    if (item.type === 'builtin' && flowTeams.length === 0) {
+      const builtin = item.template as TournamentTemplate;
+      onGenerateFromBuiltin?.({
+        templateId: builtin.id,
+        fieldCount: builtin.fieldOptions[0] ?? 2,
+        startTime: config?.startTime ?? '09:00',
+        gameDuration: config?.gameDuration ?? 15,
+        breakDuration: config?.breakDuration ?? 5,
+        selectedTeamIds: [],
+        generateTeams: true,
+      });
+      onHide();
+      return;
+    }
     setStep('team-picker');
-  }, []);
+  }, [flowTeams.length, onGenerateFromBuiltin, onHide]);
 
   const handleTeamConfirm = useCallback(async (teamIds: string[]) => {
     if (!selected) return;
@@ -137,9 +155,10 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
       game_duration: schedData.game_duration,
     });
     setShowSave(false);
+    onNotify?.('Template saved successfully', 'success');
     setSearchQuery(q => q + '\u200b');
     setTimeout(() => setSearchQuery(q => q.replace('\u200b', '')), 100);
-  }, [getCurrentScheduleData]);
+  }, [getCurrentScheduleData, onNotify]);
 
   const requiredTeams = selected?.type === 'builtin'
     ? (selected.template as TournamentTemplate).teamCount.min

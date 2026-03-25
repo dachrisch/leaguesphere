@@ -97,6 +97,7 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
       <div className="p-3 border-top bg-light d-flex gap-2">
         <Button
           variant="primary"
+          data-testid="apply-template-button"
           onClick={() => onApply(selected, isBuiltin ? { startTime, gameDuration, breakDuration } : undefined)}
         >
           Apply to Gameday →
