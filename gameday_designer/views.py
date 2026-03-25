@@ -207,10 +207,10 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
                 gameday=gameday,
                 team_mapping=team_mapping,
                 applied_by=request.user if request.user.is_authenticated else None,
-                start_time=serializer.validated_data.get('start_time'),
-                game_duration=serializer.validated_data.get('game_duration'),
-                break_duration=serializer.validated_data.get('break_duration'),
-                num_fields=serializer.validated_data.get('num_fields'),
+                start_time=serializer.validated_data['start_time'],
+                game_duration=serializer.validated_data['game_duration'],
+                break_duration=serializer.validated_data['break_duration'],
+                num_fields=serializer.validated_data['num_fields'],
             )
             result = service.apply()
 

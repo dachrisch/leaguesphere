@@ -7,6 +7,7 @@ Implements atomic transaction for data integrity.
 This is the GREEN phase of TDD - implementing service to make tests pass.
 """
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Set, Tuple
 import datetime
@@ -90,6 +91,7 @@ class TemplateApplicationService:
         self.game_duration = game_duration
         self.break_duration = break_duration
         self.num_fields = num_fields
+        self._ordered_slots = None
 
     def apply(self) -> ApplicationResult:
         """
@@ -300,7 +302,6 @@ class TemplateApplicationService:
                 slot._effective_field = (i % effective_fields) + 1
 
             # Group by effective field for per-field time calculation
-            from collections import defaultdict
             field_groups: dict = defaultdict(list)
             for slot in all_slots:
                 field_groups[slot._effective_field].append(slot)
@@ -429,22 +430,12 @@ class TemplateApplicationService:
             gameinfos: List of Gameinfo objects
         """
         if self.num_fields is not None and self._ordered_slots is not None:
-            # Redistribution mode: regroup by effective field (same logic as _create_gameinfos)
             effective_fields = self.num_fields
-            from collections import defaultdict
-            field_groups: dict = defaultdict(list)
-            for slot in self._ordered_slots:
-                field_groups[slot._effective_field].append(slot)
-
-            ordered_slots_for_zip = []
-            for field_num in range(1, effective_fields + 1):
-                ordered_slots_for_zip.extend(field_groups.get(field_num, []))
-
-            slots_iter = iter(ordered_slots_for_zip)
+            ordered_slots_for_zip = [s for fn in range(1, effective_fields + 1)
+                                     for s in self._ordered_slots if s._effective_field == fn]
         else:
-            slots_iter = iter(self.template.slots.all().order_by("field", "slot_order"))
-
-        for gameinfo, slot in zip(gameinfos, slots_iter):
+            ordered_slots_for_zip = list(self.template.slots.all().order_by("field", "slot_order"))
+        for gameinfo, slot in zip(gameinfos, ordered_slots_for_zip):
             # Resolve home team
             home_team = self._resolve_team_placeholder(
                 slot.home_group, slot.home_team, slot.home_reference
