@@ -204,6 +204,10 @@ export interface Gameday extends GamedayMetadata {
 export interface ApplyTemplateRequest {
   gameday_id: number;
   team_mapping: { [key: string]: number };
+  start_time?: string;       // HH:MM format
+  game_duration?: number;
+  break_duration?: number;
+  num_fields?: number;
 }
 
 /**

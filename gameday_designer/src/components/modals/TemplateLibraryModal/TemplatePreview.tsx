@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Badge, Form, Row, Col } from 'react-bootstrap';
 import { ScheduleTemplate } from '../../../types/api';
 import { SelectedTemplate } from './TemplateList';
@@ -8,6 +8,7 @@ export interface TournamentConfig {
   startTime: string;
   gameDuration: number;
   breakDuration: number;
+  numFields: number;
 }
 
 interface TemplatePreviewProps {
@@ -25,6 +26,24 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
   const [startTime, setStartTime] = useState('09:00');
   const [gameDuration, setGameDuration] = useState(15);
   const [breakDuration, setBreakDuration] = useState(5);
+  const [numFields, setNumFields] = useState(2);
+
+  useEffect(() => {
+    if (!selected) return;
+    if (selected.type === 'builtin') {
+      const builtin = selected.template as TournamentTemplate;
+      setGameDuration(builtin.timing?.defaultGameDuration ?? 15);
+      setBreakDuration(builtin.timing?.defaultBreakBetweenGames ?? 5);
+      setNumFields(builtin.fieldOptions?.[0] ?? 2);
+      setStartTime('09:00');
+    } else {
+      const saved = selected.template as ScheduleTemplate;
+      setGameDuration(saved.game_duration);
+      setNumFields(saved.num_fields);
+      setBreakDuration(0);
+      setStartTime('09:00');
+    }
+  }, [selected]);
 
   if (!selected) {
     return (
@@ -73,32 +92,36 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
           <p className="text-muted small mb-3">{savedTemplate.description}</p>
         )}
 
-        {isBuiltin && (
-          <div className="bg-warning-subtle border border-warning rounded p-3 mb-3">
-            <h6 className="text-warning-emphasis mb-3">⚙️ Configure before applying</h6>
-            <Row className="g-2">
-              <Col xs={12} sm={4}>
-                <Form.Label className="small fw-semibold">Start time</Form.Label>
-                <Form.Control type="time" size="sm" value={startTime} onChange={e => setStartTime(e.target.value)} />
+        <div className="bg-warning-subtle border border-warning rounded p-3 mb-3">
+          <h6 className="text-warning-emphasis mb-3">⚙️ Configure before applying</h6>
+          <Row className="g-2">
+            <Col xs={12} sm={3}>
+              <Form.Label className="small fw-semibold">Start time</Form.Label>
+              <Form.Control type="time" size="sm" value={startTime} onChange={e => setStartTime(e.target.value)} />
+            </Col>
+            <Col xs={12} sm={3}>
+              <Form.Label className="small fw-semibold">Game duration (min)</Form.Label>
+              <Form.Control type="number" size="sm" min={5} max={90} value={gameDuration} onChange={e => setGameDuration(+e.target.value)} />
+            </Col>
+            <Col xs={12} sm={3}>
+              <Form.Label className="small fw-semibold">Break after (min)</Form.Label>
+              <Form.Control type="number" size="sm" min={0} max={30} value={breakDuration} onChange={e => setBreakDuration(+e.target.value)} />
+            </Col>
+            {!isBuiltin && (
+              <Col xs={12} sm={3}>
+                <Form.Label className="small fw-semibold">Number of fields</Form.Label>
+                <Form.Control type="number" size="sm" min={1} max={10} value={numFields} onChange={e => setNumFields(+e.target.value)} />
               </Col>
-              <Col xs={12} sm={4}>
-                <Form.Label className="small fw-semibold">Game duration (min)</Form.Label>
-                <Form.Control type="number" size="sm" min={5} max={90} value={gameDuration} onChange={e => setGameDuration(+e.target.value)} />
-              </Col>
-              <Col xs={12} sm={4}>
-                <Form.Label className="small fw-semibold">Break after (min)</Form.Label>
-                <Form.Control type="number" size="sm" min={0} max={30} value={breakDuration} onChange={e => setBreakDuration(+e.target.value)} />
-              </Col>
-            </Row>
-          </div>
-        )}
+            )}
+          </Row>
+        </div>
       </div>
 
       <div className="p-3 border-top bg-light d-flex gap-2">
         <Button
           variant="primary"
           data-testid="apply-template-button"
-          onClick={() => onApply(selected, isBuiltin ? { startTime, gameDuration, breakDuration } : undefined)}
+          onClick={() => onApply(selected, { startTime, gameDuration, breakDuration, numFields })}
         >
           Apply to Gameday →
         </Button>
