@@ -177,14 +177,6 @@ export interface GamedayListEntry extends GamedayMetadata {
   has_designer_state?: boolean;
 }
 
-import type { 
-  FlowNode, 
-  FlowEdge, 
-  FlowField, 
-  GlobalTeam, 
-  GlobalTeamGroup 
-} from './flowchart';
-
 /**
  * Full Gameday structure including tournament designer data.
  */
