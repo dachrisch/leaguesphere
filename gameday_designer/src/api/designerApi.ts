@@ -226,6 +226,34 @@ class DesignerApi {
     );
     return response.data;
   }
+
+  /**
+   * Create a new team.
+   *
+   * @param name - Team name
+   * @returns Created team with id and name
+   */
+  async createTeam(name: string): Promise<{ id: number; name: string }> {
+    const response = await this.client.post<{ id: number; name: string }>(
+      '/teams/',
+      { name }
+    );
+    return response.data;
+  }
+
+  /**
+   * Bulk-create teams.
+   *
+   * @param count - Number of teams to create
+   * @returns Array of created teams with id and name
+   */
+  async createTeamsBulk(count: number): Promise<{ id: number; name: string }[]> {
+    const response = await this.client.post<{ id: number; name: string }[]>(
+      '/teams/bulk/',
+      { count }
+    );
+    return response.data;
+  }
 }
 
 /**

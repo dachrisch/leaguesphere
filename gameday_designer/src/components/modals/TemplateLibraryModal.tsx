@@ -99,13 +99,30 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
       const template = selected.template as ScheduleTemplate;
       const team_mapping: Record<string, number> = {};
       teamIds.forEach((teamId, i) => { team_mapping[String(i)] = parseInt(teamId, 10); });
-      await designerApi.applyTemplate(template.id, { gameday_id: gamedayId, team_mapping });
+      await designerApi.applyTemplate(template.id, {
+        gameday_id: gamedayId,
+        team_mapping,
+        start_time: applyConfig?.startTime,
+        game_duration: applyConfig?.gameDuration,
+        break_duration: applyConfig?.breakDuration,
+        num_fields: applyConfig?.numFields,
+      });
       onScheduleApplied?.();
       onHide();
     } catch (e) {
       console.error('Failed to apply template', e);
     }
   }, [selected, applyConfig, gamedayId, onHide, onScheduleApplied, onGenerateFromBuiltin]);
+
+  const handleCreateTeam = useCallback(async (name: string): Promise<GlobalTeam> => {
+    const result = await designerApi.createTeam(name);
+    return { id: String(result.id), label: result.name, groupId: null, order: flowTeams.length };
+  }, [flowTeams.length]);
+
+  const handleAutoGenerateTeams = useCallback(async (count: number): Promise<GlobalTeam[]> => {
+    const results = await designerApi.createTeamsBulk(count);
+    return results.map((r, i) => ({ id: String(r.id), label: r.name, groupId: null, order: flowTeams.length + i }));
+  }, [flowTeams.length]);
 
   const handleClone = useCallback(async (item: SelectedTemplate) => {
     const srcName = item.type === 'builtin'
@@ -227,6 +244,8 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
         availableTeams={flowTeams}
         onConfirm={handleTeamConfirm}
         onBack={() => setStep('library')}
+        onCreateTeam={handleCreateTeam}
+        onAutoGenerateTeams={handleAutoGenerateTeams}
       />
 
       <SaveTemplateSheet
