@@ -48,6 +48,21 @@ describe('TemplatePreview', () => {
     const selected: SelectedTemplate = { type: 'saved', template: mockSavedTemplate };
     render(<TemplatePreview selected={selected} currentUserId={1} onApply={onApply} onClone={vi.fn()} onDelete={vi.fn()} onSave={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: /apply/i }));
-    expect(onApply).toHaveBeenCalled();
+    expect(onApply).toHaveBeenCalledWith(selected, expect.objectContaining({
+      startTime: '09:00',
+      gameDuration: 70,
+      breakDuration: 0,
+      numFields: 2,
+    }));
+  });
+
+  it('Number of fields input appears for saved template but not builtin', () => {
+    const selected: SelectedTemplate = { type: 'saved', template: mockSavedTemplate };
+    const { rerender } = render(<TemplatePreview selected={selected} currentUserId={1} onApply={vi.fn()} onClone={vi.fn()} onDelete={vi.fn()} onSave={vi.fn()} />);
+    expect(screen.getByLabelText(/number of fields/i)).toBeInTheDocument();
+
+    const builtinSelected: SelectedTemplate = { type: 'builtin', template: mockBuiltinTemplate as unknown as TournamentTemplate };
+    rerender(<TemplatePreview selected={builtinSelected} currentUserId={1} onApply={vi.fn()} onClone={vi.fn()} onDelete={vi.fn()} onSave={vi.fn()} />);
+    expect(screen.queryByLabelText(/number of fields/i)).not.toBeInTheDocument();
   });
 });

@@ -30,18 +30,17 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
 
   useEffect(() => {
     if (!selected) return;
+    setStartTime('09:00');
     if (selected.type === 'builtin') {
       const builtin = selected.template as TournamentTemplate;
       setGameDuration(builtin.timing?.defaultGameDuration ?? 15);
       setBreakDuration(builtin.timing?.defaultBreakBetweenGames ?? 5);
       setNumFields(builtin.fieldOptions?.[0] ?? 2);
-      setStartTime('09:00');
     } else {
       const saved = selected.template as ScheduleTemplate;
       setGameDuration(saved.game_duration);
       setNumFields(saved.num_fields);
       setBreakDuration(0);
-      setStartTime('09:00');
     }
   }, [selected]);
 
