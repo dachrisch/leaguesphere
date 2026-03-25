@@ -8,6 +8,7 @@ Provides REST API for schedule template management.
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.views import APIView
 
 
 class TemplatePagination(PageNumberPagination):
@@ -19,7 +20,7 @@ from django.contrib.auth.decorators import login_required
 
 import logging
 
-from gamedays.models import Gameday
+from gamedays.models import Gameday, Team
 from gameday_designer.models import (
     ScheduleTemplate,
     TemplateApplication,
@@ -449,3 +450,79 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class TeamCreationView(APIView):
+    """
+    Create a single team by name.
+
+    POST /api/designer/teams/
+    Body: {"name": "Team Alpha"}
+
+    Returns:
+        201: {"id": 1, "name": "Team Alpha"} — team was created
+        200: {"id": 1, "name": "Team Alpha"} — team already existed
+        400: {"error": "..."} — validation error
+    """
+
+    def post(self, request):
+        name = request.data.get("name", "").strip()
+        if not name:
+            return Response(
+                {"error": "name is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        team, created = Team.objects.get_or_create(
+            name=name,
+            defaults={"description": name, "location": "placeholder"},
+        )
+
+        response_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        return Response({"id": team.pk, "name": team.name}, status=response_status)
+
+
+class TeamBulkCreationView(APIView):
+    """
+    Create N auto-named teams.
+
+    POST /api/designer/teams/bulk/
+    Body: {"count": 6}
+
+    Returns:
+        201: [{"id": 1, "name": "Team 1"}, ...]
+        400: {"error": "..."} — validation error
+    """
+
+    def post(self, request):
+        count = request.data.get("count")
+        if count is None:
+            return Response(
+                {"error": "count is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            count = int(count)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "count must be an integer"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if count < 1:
+            return Response(
+                {"error": "count must be at least 1"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        teams = []
+        for i in range(1, count + 1):
+            name = f"Team {i}"
+            team, _ = Team.objects.get_or_create(
+                name=name,
+                defaults={"description": name, "location": "placeholder"},
+            )
+            teams.append({"id": team.pk, "name": team.name})
+
+        return Response(teams, status=status.HTTP_201_CREATED)
