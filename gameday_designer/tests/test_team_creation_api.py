@@ -71,13 +71,10 @@ class TestTeamCreationView:
         assert "error" in response.data
 
     def test_unauthenticated_user_is_rejected(self, api_client):
-        """Unauthenticated requests are rejected (401 or 403)."""
+        """Unauthenticated requests are rejected with 401."""
         response = api_client.post(self.URL, {"name": "Ghost Team"}, format="json")
 
-        assert response.status_code in (
-            status.HTTP_401_UNAUTHORIZED,
-            status.HTTP_403_FORBIDDEN,
-        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.django_db
@@ -164,11 +161,16 @@ class TestTeamBulkCreationView:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "error" in response.data
 
+    def test_bulk_count_too_large_returns_400(self, api_client, staff_user):
+        """count > 50 returns 400."""
+        api_client.force_authenticate(user=staff_user)
+        response = api_client.post(self.URL, {"count": 51}, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "error" in response.data
+
     def test_unauthenticated_user_is_rejected(self, api_client):
-        """Unauthenticated requests are rejected (401 or 403)."""
+        """Unauthenticated requests are rejected with 401."""
         response = api_client.post(self.URL, {"count": 3}, format="json")
 
-        assert response.status_code in (
-            status.HTTP_401_UNAUTHORIZED,
-            status.HTTP_403_FORBIDDEN,
-        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
