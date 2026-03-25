@@ -19,6 +19,7 @@ import { GameNode } from '../types/designer';
 import { isGameNode } from '../types/flowchart';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import { gamedayApi } from '../api/gamedayApi';
+import { getAllTemplates } from '../utils/tournamentTemplates';
 import './ListDesignerApp.css';
 
 const ListDesignerApp: React.FC = () => {
@@ -491,8 +492,10 @@ const ListDesignerApp: React.FC = () => {
         flowTeams={flowState.globalTeams}
         onScheduleApplied={() => { void loadData(); }}
         onGenerateFromBuiltin={(config) => {
+          const template = getAllTemplates().find(t => t.id === config.templateId);
+          if (!template) return;
           handleGenerateTournament({
-            templateId: config.templateId,
+            template,
             fieldCount: config.fieldCount,
             startTime: config.startTime,
             gameDuration: config.gameDuration,

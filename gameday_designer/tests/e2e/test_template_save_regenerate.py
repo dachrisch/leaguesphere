@@ -89,8 +89,8 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     # Expect success notification
     expect(page.get_by_text("Template saved successfully")).to_be_visible(timeout=10000)
 
-    # Close the Template Library modal
-    page.keyboard.press("Escape")
+    # Close the Template Library modal via the ✕ button
+    page.get_by_role("button", name="✕").click()
     expect(page.get_by_text("Template Library")).not_to_be_visible(timeout=5000)
 
     # ---- Phase 4: Clear the schedule -----------------------------------------
@@ -115,6 +115,6 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     # Preview should show it
     expect(page.get_by_test_id("apply-template-button")).to_be_visible(timeout=5000)
 
-    # Close modal
-    page.keyboard.press("Escape")
+    # Close modal via the ✕ button
+    page.get_by_role("button", name="✕").click()
     expect(page.get_by_text("Template Library")).not_to_be_visible(timeout=5000)

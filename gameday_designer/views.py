@@ -7,6 +7,11 @@ Provides REST API for schedule template management.
 
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
+
+
+class TemplatePagination(PageNumberPagination):
+    page_size = 1000
 from rest_framework.response import Response
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, render
@@ -63,6 +68,7 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
 
     queryset = ScheduleTemplate.objects.all()
     permission_classes = [IsAssociationMemberOrStaff]
+    pagination_class = TemplatePagination
 
     def get_permissions(self):
         """

@@ -29,7 +29,7 @@ class TestTemplateListEndpoint:
         response = api_client.get("/api/designer/templates/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) >= 2  # At least our two fixtures
+        assert len(response.data["results"]) >= 2  # At least our two fixtures
 
     def test_list_returns_lightweight_serializer(self, api_client, template_with_slots):
         """List endpoint uses lightweight serializer (no nested data)."""
@@ -37,7 +37,7 @@ class TestTemplateListEndpoint:
 
         assert response.status_code == status.HTTP_200_OK
         template_data = next(
-            (t for t in response.data if t["id"] == template_with_slots.pk), None
+            (t for t in response.data["results"] if t["id"] == template_with_slots.pk), None
         )
 
         assert template_data is not None
@@ -54,7 +54,7 @@ class TestTemplateListEndpoint:
         response = api_client.get("/api/designer/templates/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) >= 2
+        assert len(response.data["results"]) >= 2
 
     def test_filtering_by_association(self, api_client, template, global_template):
         """Can filter templates by association."""
@@ -64,7 +64,7 @@ class TestTemplateListEndpoint:
 
         assert response.status_code == status.HTTP_200_OK
         # Should only return templates for that association
-        for t in response.data:
+        for t in response.data["results"]:
             if t["association"] is not None:
                 assert t["association"] == template.association.pk
 
@@ -82,7 +82,7 @@ class TestTemplateListEndpoint:
         api_client.force_authenticate(user=staff_user)
         response = api_client.get("/api/designer/templates/?sharing=personal")
         assert response.status_code == 200
-        names = [t["name"] for t in response.data]
+        names = [t["name"] for t in response.data["results"]]
         assert "Mine" in names
         assert "Theirs" not in names
 
@@ -95,10 +95,10 @@ class TestTemplateListEndpoint:
         api_client.force_authenticate(user=staff_user)
         response = api_client.get("/api/designer/templates/?sharing=global")
         assert response.status_code == 200
-        names = [t["name"] for t in response.data]
+        names = [t["name"] for t in response.data["results"]]
         assert "Global One" in names
         # No PRIVATE or ASSOCIATION templates should appear
-        for t in response.data:
+        for t in response.data["results"]:
             assert t["sharing"] == ScheduleTemplate.SHARING_GLOBAL
 
 
