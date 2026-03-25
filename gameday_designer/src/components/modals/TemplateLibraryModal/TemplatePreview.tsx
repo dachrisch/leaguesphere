@@ -108,8 +108,8 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
             </Col>
             {!isBuiltin && (
               <Col xs={12} sm={3}>
-                <Form.Label className="small fw-semibold">Number of fields</Form.Label>
-                <Form.Control type="number" size="sm" min={1} max={10} value={numFields} onChange={e => setNumFields(+e.target.value)} />
+                <Form.Label htmlFor="num-fields-input" className="small fw-semibold">Number of fields</Form.Label>
+                <Form.Control id="num-fields-input" type="number" size="sm" min={1} max={10} value={numFields} onChange={e => setNumFields(+e.target.value)} />
               </Col>
             )}
           </Row>
