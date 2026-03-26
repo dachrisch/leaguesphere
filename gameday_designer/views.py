@@ -9,18 +9,18 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.views import APIView
-
-
-class TemplatePagination(PageNumberPagination):
-    page_size = 1000
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from django.db import IntegrityError
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, render
 from django.contrib.auth.decorators import login_required
 
 import logging
+
+
+class TemplatePagination(PageNumberPagination):
+    page_size = 1000
 
 from gamedays.models import Gameday, Team
 from gameday_designer.models import (
@@ -226,10 +226,10 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_200_OK,
             )
 
-        except ApplicationError:
+        except ApplicationError as e:
             logging.exception("Error applying schedule template")
             return Response(
-                {"error": "Failed to apply template."},
+                {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

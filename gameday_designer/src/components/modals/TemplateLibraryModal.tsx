@@ -98,7 +98,12 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
       }
       const template = selected.template as ScheduleTemplate;
       const team_mapping: Record<string, number> = {};
-      teamIds.forEach((teamId, i) => { team_mapping[String(i)] = parseInt(teamId, 10); });
+      const teamsPerGroup = Math.ceil(template.num_teams / template.num_groups);
+      teamIds.forEach((teamId, i) => {
+        const groupIdx = Math.floor(i / teamsPerGroup);
+        const teamIdx = i % teamsPerGroup;
+        team_mapping[`${groupIdx}_${teamIdx}`] = parseInt(teamId, 10);
+      });
       await designerApi.applyTemplate(template.id, {
         gameday_id: gamedayId,
         team_mapping,
