@@ -96,6 +96,7 @@ const ListDesignerApp: React.FC = () => {
     handleAddFieldContainer,
     handleAddStage,
     handleGenerateTournament,
+    handleSaveTemplate,
     dismissNotification,
     addNotification,
   } = handlers;
@@ -489,7 +490,6 @@ const ListDesignerApp: React.FC = () => {
         onHide={() => setShowTemplateLibrary(false)}
         gamedayId={parseInt(id)}
         currentUserId={currentUserId}
-        flowTeams={flowState.globalTeams}
         onScheduleApplied={() => { void loadData(); }}
         onGenerateFromBuiltin={(config) => {
           const template = getAllTemplates().find(t => t.id === config.templateId);
@@ -506,12 +506,7 @@ const ListDesignerApp: React.FC = () => {
           });
         }}
         onNotify={addNotification}
-        getCurrentScheduleData={() => ({
-          num_teams: flowState.globalTeams.length,
-          num_fields: flowState.fields.length,
-          num_groups: flowState.globalTeamGroups.length || 1,
-          game_duration: 70,
-        })}
+        onSaveTemplate={handleSaveTemplate}
       />
 
       <NotificationToast

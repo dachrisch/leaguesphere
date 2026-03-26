@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Modal, Button, Form, InputGroup } from 'react-bootstrap';
 import TemplateList, { SelectedTemplate } from './TemplateLibraryModal/TemplateList';
 import TemplatePreview, { TournamentConfig } from './TemplateLibraryModal/TemplatePreview';
@@ -25,7 +25,6 @@ interface TemplateLibraryModalProps {
   onHide: () => void;
   gamedayId: number;
   currentUserId: number;
-  flowTeams: GlobalTeam[];
   onScheduleApplied?: () => void;
   onGenerateFromBuiltin?: (config: {
     templateId: string;
@@ -36,13 +35,13 @@ interface TemplateLibraryModalProps {
     selectedTeamIds: string[];
     generateTeams?: boolean;
   }) => void;
-  getCurrentScheduleData?: () => { num_teams: number; num_fields: number; num_groups: number; game_duration: number };
+  onSaveTemplate?: (name: string, description: string, sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL') => Promise<void>;
   onNotify?: (message: string, type: NotificationType, title?: string) => void;
 }
 
 const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
-  show, onHide, gamedayId, currentUserId, flowTeams, onScheduleApplied,
-  onGenerateFromBuiltin, getCurrentScheduleData, onNotify,
+  show, onHide, gamedayId, currentUserId, onScheduleApplied,
+  onGenerateFromBuiltin, onSaveTemplate, onNotify,
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedTemplate | null>(null);
@@ -51,6 +50,23 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
   const [step, setStep] = useState<Step>('library');
   const [showSave, setShowSave] = useState(false);
   const [applyConfig, setApplyConfig] = useState<TournamentConfig | undefined>();
+  const [leagueTeams, setLeagueTeams] = useState<GlobalTeam[]>([]);
+
+  useEffect(() => {
+    if (!show) return;
+    setStep('library');
+    setSelected(null);
+    setSelectedId(null);
+  }, [show]);
+
+  useEffect(() => {
+    if (step !== 'team-picker') return;
+    designerApi.getLeagueTeams(gamedayId)
+      .then(teams => setLeagueTeams(
+        teams.map((t, i) => ({ id: String(t.id), label: t.name, groupId: null, order: i }))
+      ))
+      .catch(() => onNotify?.('Failed to load league teams', 'error'));
+  }, [step, gamedayId]);
 
   const handleSelect = useCallback((item: SelectedTemplate) => {
     const id = item.type === 'builtin'
@@ -62,23 +78,8 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
 
   const handleApply = useCallback((item: SelectedTemplate, config?: TournamentConfig) => {
     setApplyConfig(config);
-    // Built-in template with no teams: auto-generate teams, skip team picker
-    if (item.type === 'builtin' && flowTeams.length === 0) {
-      const builtin = item.template as TournamentTemplate;
-      onGenerateFromBuiltin?.({
-        templateId: builtin.id,
-        fieldCount: builtin.fieldOptions[0] ?? 2,
-        startTime: config?.startTime ?? '09:00',
-        gameDuration: config?.gameDuration ?? 15,
-        breakDuration: config?.breakDuration ?? 5,
-        selectedTeamIds: [],
-        generateTeams: true,
-      });
-      onHide();
-      return;
-    }
     setStep('team-picker');
-  }, [flowTeams.length, onGenerateFromBuiltin, onHide]);
+  }, []);
 
   const handleTeamConfirm = useCallback(async (teamIds: string[]) => {
     if (!selected) return;
@@ -92,6 +93,7 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
           gameDuration: applyConfig?.gameDuration ?? 15,
           breakDuration: applyConfig?.breakDuration ?? 5,
           selectedTeamIds: teamIds,
+          generateTeams: true,
         });
         onHide();
         return;
@@ -120,25 +122,15 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
     }
   }, [selected, applyConfig, gamedayId, onHide, onScheduleApplied, onGenerateFromBuiltin, onNotify]);
 
-  const handleCreateTeam = useCallback(async (name: string): Promise<GlobalTeam> => {
-    try {
-      const result = await designerApi.createTeam(name);
-      return { id: String(result.id), label: result.name, groupId: null, order: flowTeams.length };
-    } catch (e) {
-      onNotify?.(`Failed to create team "${name}"`, 'error');
-      throw e;  // re-throw so TeamPickerStep's finally still runs
-    }
-  }, [flowTeams.length, onNotify]);
-
   const handleAutoGenerateTeams = useCallback(async (count: number): Promise<GlobalTeam[]> => {
     try {
       const results = await designerApi.createTeamsBulk(count);
-      return results.map((r, i) => ({ id: String(r.id), label: r.name, groupId: null, order: flowTeams.length + i }));
+      return results.map((r, i) => ({ id: String(r.id), label: r.name, groupId: null, order: leagueTeams.length + i }));
     } catch (e) {
       onNotify?.(`Failed to generate teams`, 'error');
       throw e;
     }
-  }, [flowTeams.length, onNotify]);
+  }, [leagueTeams.length, onNotify]);
 
   const handleClone = useCallback(async (item: SelectedTemplate) => {
     const srcName = item.type === 'builtin'
@@ -151,21 +143,12 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
       await designerApi.cloneTemplate((item.template as ScheduleTemplate).id, { new_name: promptedName });
     } else {
       const builtin = item.template as TournamentTemplate;
-      const schedData = getCurrentScheduleData?.() ?? { num_teams: builtin.teamCount.min, num_fields: 2, num_groups: 1, game_duration: 15 };
-      await designerApi.createTemplate({
-        name: promptedName,
-        description: `Clone of built-in: ${builtin.name}`,
-        sharing: 'PRIVATE',
-        num_teams: builtin.teamCount.min,
-        num_fields: builtin.fieldOptions[0] ?? 2,
-        num_groups: schedData.num_groups,
-        game_duration: schedData.game_duration,
-      });
+      await onSaveTemplate?.(promptedName, `Clone of built-in: ${builtin.name}`, 'PRIVATE');
     }
     // Trigger re-fetch by toggling search query
     setSearchQuery(q => q + '\u200b');
     setTimeout(() => setSearchQuery(q => q.replace('\u200b', '')), 100);
-  }, [getCurrentScheduleData]);
+  }, [onSaveTemplate]);
 
   const handleDelete = useCallback(async (template: ScheduleTemplate) => {
     if (!window.confirm(`Delete "${template.name}"? This cannot be undone.`)) return;
@@ -177,21 +160,17 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
   }, []);
 
   const handleSave = useCallback(async (data: { name: string; description: string; sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL' }) => {
-    const schedData = getCurrentScheduleData?.() ?? { num_teams: 0, num_fields: 0, num_groups: 0, game_duration: 0 };
-    await designerApi.createTemplate({
-      name: data.name,
-      description: data.description,
-      sharing: data.sharing,
-      num_teams: schedData.num_teams,
-      num_fields: schedData.num_fields,
-      num_groups: schedData.num_groups,
-      game_duration: schedData.game_duration,
-    });
+    try {
+      await onSaveTemplate?.(data.name, data.description, data.sharing);
+    } catch {
+      onNotify?.('Failed to save template', 'error');
+      return;
+    }
     setShowSave(false);
     onNotify?.('Template saved successfully', 'success');
     setSearchQuery(q => q + '\u200b');
     setTimeout(() => setSearchQuery(q => q.replace('\u200b', '')), 100);
-  }, [getCurrentScheduleData, onNotify]);
+  }, [onSaveTemplate, onNotify]);
 
   const requiredTeams = selected?.type === 'builtin'
     ? (selected.template as TournamentTemplate).teamCount.min
@@ -258,10 +237,9 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
       <TeamPickerStep
         show={show && step === 'team-picker'}
         requiredTeams={requiredTeams}
-        availableTeams={flowTeams}
+        availableTeams={leagueTeams}
         onConfirm={handleTeamConfirm}
         onBack={() => setStep('library')}
-        onCreateTeam={handleCreateTeam}
         onAutoGenerateTeams={handleAutoGenerateTeams}
       />
 
