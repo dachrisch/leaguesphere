@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Button, Badge, Form } from 'react-bootstrap';
 import { GlobalTeam } from '../../../types/flowchart';
 
@@ -20,6 +20,15 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
   const [newTeamName, setNewTeamName] = useState('');
   const [creating, setCreating] = useState(false);
   const [localTeams, setLocalTeams] = useState<GlobalTeam[]>([]);
+
+  useEffect(() => {
+    if (show) {
+      setSelectedIds([]);
+      setLocalTeams([]);
+      setNewTeamName('');
+      setCreating(false);
+    }
+  }, [show]);
 
   const allTeams = [...availableTeams, ...localTeams];
 
@@ -47,6 +56,7 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
   const handleAutoGenerate = async () => {
     if (!onAutoGenerateTeams) return;
     const count = requiredTeams - selectedIds.length;
+    if (count <= 0) return;
     setCreating(true);
     try {
       const teams = await onAutoGenerateTeams(count);

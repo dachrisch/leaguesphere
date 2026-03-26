@@ -111,18 +111,29 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
       onHide();
     } catch (e) {
       console.error('Failed to apply template', e);
+      onNotify?.('Failed to apply template', 'error');
     }
-  }, [selected, applyConfig, gamedayId, onHide, onScheduleApplied, onGenerateFromBuiltin]);
+  }, [selected, applyConfig, gamedayId, onHide, onScheduleApplied, onGenerateFromBuiltin, onNotify]);
 
   const handleCreateTeam = useCallback(async (name: string): Promise<GlobalTeam> => {
-    const result = await designerApi.createTeam(name);
-    return { id: String(result.id), label: result.name, groupId: null, order: flowTeams.length };
-  }, [flowTeams.length]);
+    try {
+      const result = await designerApi.createTeam(name);
+      return { id: String(result.id), label: result.name, groupId: null, order: flowTeams.length };
+    } catch (e) {
+      onNotify?.(`Failed to create team "${name}"`, 'error');
+      throw e;  // re-throw so TeamPickerStep's finally still runs
+    }
+  }, [flowTeams.length, onNotify]);
 
   const handleAutoGenerateTeams = useCallback(async (count: number): Promise<GlobalTeam[]> => {
-    const results = await designerApi.createTeamsBulk(count);
-    return results.map((r, i) => ({ id: String(r.id), label: r.name, groupId: null, order: flowTeams.length + i }));
-  }, [flowTeams.length]);
+    try {
+      const results = await designerApi.createTeamsBulk(count);
+      return results.map((r, i) => ({ id: String(r.id), label: r.name, groupId: null, order: flowTeams.length + i }));
+    } catch (e) {
+      onNotify?.(`Failed to generate teams`, 'error');
+      throw e;
+    }
+  }, [flowTeams.length, onNotify]);
 
   const handleClone = useCallback(async (item: SelectedTemplate) => {
     const srcName = item.type === 'builtin'

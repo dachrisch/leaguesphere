@@ -17,6 +17,11 @@ import type {
   TemplateUsage,
 } from '../types';
 
+export interface TeamRecord {
+  id: number;
+  name: string;
+}
+
 /**
  * API client class for Gameday Designer backend operations.
  */
@@ -233,8 +238,8 @@ class DesignerApi {
    * @param name - Team name
    * @returns Created team with id and name
    */
-  async createTeam(name: string): Promise<{ id: number; name: string }> {
-    const response = await this.client.post<{ id: number; name: string }>(
+  async createTeam(name: string): Promise<TeamRecord> {
+    const response = await this.client.post<TeamRecord>(
       '/teams/',
       { name }
     );
@@ -247,8 +252,8 @@ class DesignerApi {
    * @param count - Number of teams to create
    * @returns Array of created teams with id and name
    */
-  async createTeamsBulk(count: number): Promise<{ id: number; name: string }[]> {
-    const response = await this.client.post<{ id: number; name: string }[]>(
+  async createTeamsBulk(count: number): Promise<TeamRecord[]> {
+    const response = await this.client.post<TeamRecord[]>(
       '/teams/bulk/',
       { count }
     );
