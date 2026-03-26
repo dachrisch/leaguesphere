@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button, Badge, Form, Row, Col } from 'react-bootstrap';
 import { ScheduleTemplate } from '../../../types/api';
 import { SelectedTemplate } from './TemplateList';
@@ -24,25 +24,20 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
   selected, currentUserId, onApply, onClone, onDelete,
 }) => {
   const [startTime, setStartTime] = useState('09:00');
-  const [gameDuration, setGameDuration] = useState(15);
-  const [breakDuration, setBreakDuration] = useState(5);
-  const [numFields, setNumFields] = useState(2);
-
-  useEffect(() => {
-    if (!selected) return;
-    setStartTime('09:00');
-    if (selected.type === 'builtin') {
-      const builtin = selected.template as TournamentTemplate;
-      setGameDuration(builtin.timing?.defaultGameDuration ?? 15);
-      setBreakDuration(builtin.timing?.defaultBreakBetweenGames ?? 5);
-      setNumFields(builtin.fieldOptions?.[0] ?? 2);
-    } else {
-      const saved = selected.template as ScheduleTemplate;
-      setGameDuration(saved.game_duration);
-      setNumFields(saved.num_fields);
-      setBreakDuration(0);
-    }
-  }, [selected]);
+  const [gameDuration, setGameDuration] = useState(() => {
+    if (!selected) return 15;
+    if (selected.type === 'builtin') return (selected.template as TournamentTemplate).timing?.defaultGameDuration ?? 15;
+    return (selected.template as ScheduleTemplate).game_duration;
+  });
+  const [breakDuration, setBreakDuration] = useState(() => {
+    if (!selected || selected.type !== 'builtin') return 0;
+    return (selected.template as TournamentTemplate).timing?.defaultBreakBetweenGames ?? 5;
+  });
+  const [numFields, setNumFields] = useState(() => {
+    if (!selected) return 2;
+    if (selected.type === 'builtin') return (selected.template as TournamentTemplate).fieldOptions?.[0] ?? 2;
+    return (selected.template as ScheduleTemplate).num_fields;
+  });
 
   if (!selected) {
     return (

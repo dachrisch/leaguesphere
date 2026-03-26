@@ -243,6 +243,7 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
           </div>
           <div className="flex-grow-1">
             <TemplatePreview
+              key={selectedId ?? 'none'}
               selected={selected}
               currentUserId={currentUserId}
               onApply={handleApply}
