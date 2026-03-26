@@ -57,10 +57,19 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     expect(builtin_template).to_be_visible(timeout=5000)
     builtin_template.click()
 
-    # Apply — no teams exist so it auto-generates and modal closes
+    # Apply — advances to the TeamPicker step
+    import re as _re
     expect(page.get_by_test_id("apply-template-button")).to_be_visible(timeout=5000)
     page.get_by_test_id("apply-template-button").click()
-    expect(page.get_by_text("Template Library")).not_to_be_visible(timeout=5000)
+
+    # TeamPickerStep dialog appears; no league teams exist so auto-generate placeholder teams
+    expect(page.get_by_text("Select Teams")).to_be_visible(timeout=5000)
+    page.get_by_role("button", name=_re.compile(r"Auto-generate")).click()
+
+    apply_btn = page.get_by_role("button", name=_re.compile(r"Apply to Gameday"))
+    expect(apply_btn).to_be_enabled(timeout=10000)
+    apply_btn.click()
+    expect(page.get_by_text("Select Teams")).not_to_be_visible(timeout=5000)
 
     # Wait for auto-save debounce
     page.wait_for_timeout(2000)
@@ -102,19 +111,43 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     # Wait for auto-save debounce
     page.wait_for_timeout(2000)
 
-    # ---- Phase 5: Open Template Library and verify saved template appears ----
+    # ---- Phase 5: Regenerate from the saved custom template -----------------
     page.get_by_test_id("open-template-library-button").click()
     expect(page.get_by_text("Template Library")).to_be_visible(timeout=5000)
 
-    # The saved template should appear in "My Templates" group
+    # The saved template should appear in the list
     expect(page.get_by_text("My E2E Template")).to_be_visible(timeout=10000)
-
-    # Select the saved template
     page.get_by_text("My E2E Template").click()
 
-    # Preview should show it
+    # Apply the saved template — advances to TeamPicker step
     expect(page.get_by_test_id("apply-template-button")).to_be_visible(timeout=5000)
+    page.get_by_test_id("apply-template-button").click()
 
-    # Close modal via the ✕ button
-    page.get_by_role("button", name="✕").click()
-    expect(page.get_by_text("Template Library")).not_to_be_visible(timeout=5000)
+    # TeamPickerStep: auto-generate placeholder teams and confirm
+    expect(page.get_by_text("Select Teams")).to_be_visible(timeout=5000)
+    page.get_by_role("button", name=_re.compile(r"Auto-generate")).click()
+
+    apply_btn = page.get_by_role("button", name=_re.compile(r"Apply to Gameday"))
+    expect(apply_btn).to_be_enabled(timeout=10000)
+    apply_btn.click()
+
+    # Template Library should close after applying
+    expect(page.get_by_text("Select Teams")).not_to_be_visible(timeout=5000)
+
+    # No error notification should appear (catches HTTP 400 "Template has no slots defined")
+    expect(page.get_by_text("Failed to apply template")).not_to_be_visible(timeout=3000)
+
+    # ---- Phase 6: Assert schedule was recreated ------------------------------
+    # Games must reappear in the designer canvas (catches empty-canvas bug where
+    # the apply endpoint succeeds but the designer state is not refreshed)
+    expect(page.locator('tr[id^="game-"]').first).to_be_visible(timeout=10000)
+    actual_game_count = page.locator('tr[id^="game-"]').count()
+    assert actual_game_count == expected_game_count, (
+        f"Regenerated schedule should have {expected_game_count} games, got {actual_game_count}"
+    )
+
+    # Teams must also reappear (catches partial-restore where games load but team pool is empty)
+    actual_team_count = page.locator('.team-group-card [id^="team-"]').count()
+    assert actual_team_count == expected_team_count, (
+        f"Regenerated schedule should have {expected_team_count} teams, got {actual_team_count}"
+    )
