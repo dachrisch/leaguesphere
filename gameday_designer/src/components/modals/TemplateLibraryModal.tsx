@@ -1,9 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Modal, Button, Form, InputGroup } from 'react-bootstrap';
+import { Modal, Button, Form, InputGroup, Badge } from 'react-bootstrap';
 import TemplateList, { SelectedTemplate } from './TemplateLibraryModal/TemplateList';
 import TemplatePreview, { TournamentConfig } from './TemplateLibraryModal/TemplatePreview';
 import SaveTemplateSheet from './TemplateLibraryModal/SaveTemplateSheet';
-import TeamPickerStep from './TemplateLibraryModal/TeamPickerStep';
 import { designerApi } from '../../api/designerApi';
 import { GlobalTeam } from '../../types/flowchart';
 import { ScheduleTemplate } from '../../types/api';
@@ -52,21 +51,30 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
   const [applyConfig, setApplyConfig] = useState<TournamentConfig | undefined>();
   const [leagueTeams, setLeagueTeams] = useState<GlobalTeam[]>([]);
 
-  useEffect(() => {
-    if (!show) return;
+  // Team picker state (inlined from TeamPickerStep to avoid dual-modal backdrop conflict)
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [creating, setCreating] = useState(false);
+  const [localTeams, setLocalTeams] = useState<GlobalTeam[]>([]);
+
+  const handleHide = useCallback(() => {
     setStep('library');
     setSelected(null);
     setSelectedId(null);
-  }, [show]);
+    onHide();
+  }, [onHide]);
 
+  // Fetch league teams and reset team picker state when entering team-picker step
   useEffect(() => {
     if (step !== 'team-picker') return;
+    setSelectedIds([]);
+    setLocalTeams([]);
+    setCreating(false);
     designerApi.getLeagueTeams(gamedayId)
       .then(teams => setLeagueTeams(
         teams.map((t, i) => ({ id: String(t.id), label: t.name, groupId: null, order: i }))
       ))
       .catch(() => onNotify?.('Failed to load league teams', 'error'));
-  }, [step, gamedayId]);
+  }, [step, gamedayId, onNotify]);
 
   const handleSelect = useCallback((item: SelectedTemplate) => {
     const id = item.type === 'builtin'
@@ -95,7 +103,7 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
           selectedTeamIds: teamIds,
           generateTeams: true,
         });
-        onHide();
+        handleHide();
         return;
       }
       const template = selected.template as ScheduleTemplate;
@@ -115,12 +123,12 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
         num_fields: applyConfig?.numFields,
       });
       onScheduleApplied?.();
-      onHide();
+      handleHide();
     } catch (e) {
       console.error('Failed to apply template', e);
       onNotify?.('Failed to apply template', 'error');
     }
-  }, [selected, applyConfig, gamedayId, onHide, onScheduleApplied, onGenerateFromBuiltin, onNotify]);
+  }, [selected, applyConfig, gamedayId, handleHide, onScheduleApplied, onGenerateFromBuiltin, onNotify]);
 
   const handleAutoGenerateTeams = useCallback(async (count: number): Promise<GlobalTeam[]> => {
     try {
@@ -131,6 +139,29 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
       throw e;
     }
   }, [leagueTeams.length, onNotify]);
+
+  const handleAutoGenerate = useCallback(async () => {
+    // Compute required teams from selected to avoid ordering dependency on computed const
+    const req = selected?.type === 'builtin'
+      ? (selected.template as TournamentTemplate).teamCount.min
+      : (selected?.template as ScheduleTemplate)?.num_teams ?? 0;
+    const count = req - selectedIds.length;
+    if (count <= 0) return;
+    setCreating(true);
+    try {
+      const teams = await handleAutoGenerateTeams(count);
+      setLocalTeams(prev => [...prev, ...teams]);
+      setSelectedIds(prev => [...prev, ...teams.map(t => t.id)]);
+    } finally {
+      setCreating(false);
+    }
+  }, [selected, selectedIds.length, handleAutoGenerateTeams]);
+
+  const toggleTeam = useCallback((id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
+    );
+  }, []);
 
   const handleClone = useCallback(async (item: SelectedTemplate) => {
     const srcName = item.type === 'builtin'
@@ -176,72 +207,123 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
     ? (selected.template as TournamentTemplate).teamCount.min
     : (selected?.template as ScheduleTemplate)?.num_teams ?? 0;
 
+  const allTeams = [...leagueTeams, ...localTeams];
+  const canConfirm = selectedIds.length >= requiredTeams;
+
+  // Use a single modal throughout the entire flow to avoid backdrop z-index conflicts
+  // when two Bootstrap modals transition simultaneously.
   return (
     <>
-      <Modal show={show && step === 'library'} onHide={onHide} size="xl" fullscreen="lg-down">
-        <Modal.Header className="bg-dark text-white">
-          <Modal.Title>📚 Template Library</Modal.Title>
-          <div className="ms-auto d-flex gap-2 align-items-center">
-            <Button size="sm" variant="success" onClick={() => setShowSave(true)}>
-              💾 Save current as template
-            </Button>
-            <Button size="sm" variant="outline-light" onClick={onHide}>✕</Button>
-          </div>
-        </Modal.Header>
+      <Modal
+        show={show}
+        onHide={step === 'team-picker' ? () => setStep('library') : handleHide}
+        size={step === 'library' ? 'xl' : undefined}
+        fullscreen={step === 'library' ? 'lg-down' : undefined}
+        centered={step === 'team-picker'}
+      >
+        {step === 'library' ? (
+          <>
+            <Modal.Header className="bg-dark text-white">
+              <Modal.Title>📚 Template Library</Modal.Title>
+              <div className="ms-auto d-flex gap-2 align-items-center">
+                <Button size="sm" variant="success" onClick={() => setShowSave(true)}>
+                  💾 Save current as template
+                </Button>
+                <Button size="sm" variant="outline-light" onClick={handleHide}>✕</Button>
+              </div>
+            </Modal.Header>
 
-        <div className="p-2 border-bottom bg-light d-flex flex-wrap gap-2 align-items-center">
-          <InputGroup size="sm" style={{ maxWidth: 260 }}>
-            <InputGroup.Text>🔍</InputGroup.Text>
-            <Form.Control
-              placeholder="Search templates..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
-          </InputGroup>
-          {PILLS.map(pill => (
-            <Button
-              key={pill.scope}
-              size="sm"
-              variant={filterScope === pill.scope ? 'primary' : 'outline-secondary'}
-              className="rounded-pill"
-              onClick={() => setFilterScope(pill.scope)}
-            >
-              {pill.label}
-            </Button>
-          ))}
-        </div>
+            <div className="p-2 border-bottom bg-light d-flex flex-wrap gap-2 align-items-center">
+              <InputGroup size="sm" style={{ maxWidth: 260 }}>
+                <InputGroup.Text>🔍</InputGroup.Text>
+                <Form.Control
+                  placeholder="Search templates..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                />
+              </InputGroup>
+              {PILLS.map(pill => (
+                <Button
+                  key={pill.scope}
+                  size="sm"
+                  variant={filterScope === pill.scope ? 'primary' : 'outline-secondary'}
+                  className="rounded-pill"
+                  onClick={() => setFilterScope(pill.scope)}
+                >
+                  {pill.label}
+                </Button>
+              ))}
+            </div>
 
-        <Modal.Body className="p-0 d-flex" style={{ height: '60vh' }}>
-          <div style={{ width: 240, flexShrink: 0, borderRight: '1px solid #dee2e6' }}>
-            <TemplateList
-              selectedId={selectedId}
-              onSelect={handleSelect}
-              searchQuery={searchQuery}
-              filterScope={filterScope}
-            />
-          </div>
-          <div className="flex-grow-1">
-            <TemplatePreview
-              key={selectedId ?? 'none'}
-              selected={selected}
-              currentUserId={currentUserId}
-              onApply={handleApply}
-              onClone={handleClone}
-              onDelete={handleDelete}
-              onSave={() => setShowSave(true)}
-            />
-          </div>
-        </Modal.Body>
+            <Modal.Body className="p-0 d-flex" style={{ height: '60vh' }}>
+              <div style={{ width: 240, flexShrink: 0, borderRight: '1px solid #dee2e6' }}>
+                <TemplateList
+                  selectedId={selectedId}
+                  onSelect={handleSelect}
+                  searchQuery={searchQuery}
+                  filterScope={filterScope}
+                />
+              </div>
+              <div className="flex-grow-1">
+                <TemplatePreview
+                  key={selectedId ?? 'none'}
+                  selected={selected}
+                  currentUserId={currentUserId}
+                  onApply={handleApply}
+                  onClone={handleClone}
+                  onDelete={handleDelete}
+                  onSave={() => setShowSave(true)}
+                />
+              </div>
+            </Modal.Body>
+          </>
+        ) : (
+          <>
+            <Modal.Header closeButton>
+              <Modal.Title>Select Teams</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <p className="text-muted small mb-3">
+                {selectedIds.length} of {requiredTeams} required selected
+              </p>
+              <div className="d-flex flex-wrap gap-2">
+                {allTeams.map(team => (
+                  <Badge
+                    key={team.id}
+                    bg={selectedIds.includes(team.id) ? 'primary' : 'light'}
+                    text={selectedIds.includes(team.id) ? 'white' : 'dark'}
+                    style={{ cursor: 'pointer', fontSize: 13, padding: '6px 12px' }}
+                    onClick={() => toggleTeam(team.id)}
+                  >
+                    {team.label}
+                  </Badge>
+                ))}
+              </div>
+              {selectedIds.length < requiredTeams && (
+                <Button
+                  size="sm"
+                  variant="outline-secondary"
+                  className="mt-2"
+                  disabled={creating}
+                  onClick={handleAutoGenerate}
+                >
+                  {creating ? '...' : `Auto-generate ${requiredTeams - selectedIds.length} teams`}
+                </Button>
+              )}
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="outline-secondary" onClick={() => setStep('library')}>← Back</Button>
+              <Button
+                variant="primary"
+                disabled={!canConfirm}
+                onClick={() => handleTeamConfirm(selectedIds.slice(0, requiredTeams))}
+              >
+                Apply to Gameday →
+              </Button>
+            </Modal.Footer>
+          </>
+        )}
       </Modal>
-
-      <TeamPickerStep
-        show={show && step === 'team-picker'}
-        requiredTeams={requiredTeams}
-        availableTeams={leagueTeams}
-        onConfirm={handleTeamConfirm}
-        onBack={() => setStep('library')}
-        onAutoGenerateTeams={handleAutoGenerateTeams}
-      />
 
       <SaveTemplateSheet
         show={showSave}
