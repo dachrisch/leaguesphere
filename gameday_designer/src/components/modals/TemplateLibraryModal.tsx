@@ -40,7 +40,7 @@ interface TemplateLibraryModalProps {
 }
 
 const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
-  show, onHide, gamedayId, currentUserId, onScheduleApplied,
+  show, onHide, gamedayId, currentUserId,
   onGenerateFromBuiltin, onGenerateFromSavedTemplate, onSaveTemplate, onNotify,
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
