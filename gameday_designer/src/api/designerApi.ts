@@ -259,6 +259,13 @@ class DesignerApi {
     );
     return response.data;
   }
+
+  async getLeagueTeams(gamedayId: number): Promise<TeamRecord[]> {
+    const response = await this.client.get<TeamRecord[]>(
+      `/gamedays/${gamedayId}/league-teams/`
+    );
+    return response.data;
+  }
 }
 
 /**

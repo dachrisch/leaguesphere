@@ -1,15 +1,16 @@
 """
-Tests for TeamCreationView and TeamBulkCreationView endpoints.
+Tests for TeamCreationView, TeamBulkCreationView, and LeagueTeamsView endpoints.
 
-POST /api/designer/teams/       — create a single team by name
-POST /api/designer/teams/bulk/  — create N auto-named teams
+POST /api/designer/teams/                             — create a single team by name
+POST /api/designer/teams/bulk/                        — create N auto-named teams
+GET  /api/designer/gamedays/<id>/league-teams/        — list teams for a gameday's league
 """
 
 import pytest
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from gamedays.models import Team
+from gamedays.models import Team, SeasonLeagueTeam
 
 
 @pytest.mark.django_db
@@ -172,5 +173,52 @@ class TestTeamBulkCreationView:
     def test_unauthenticated_user_is_rejected(self, api_client):
         """Unauthenticated requests are rejected with 401."""
         response = api_client.post(self.URL, {"count": 3}, format="json")
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestLeagueTeamsView:
+    """Tests for GET /api/designer/gamedays/<id>/league-teams/."""
+
+    def url(self, gameday_id):
+        return f"/api/designer/gamedays/{gameday_id}/league-teams/"
+
+    def test_returns_teams_from_league(self, api_client, staff_user, gameday, teams):
+        """Returns all teams in the gameday's league+season."""
+        slt = SeasonLeagueTeam.objects.create(season=gameday.season, league=gameday.league)
+        slt.teams.set(teams[:3])
+        api_client.force_authenticate(user=staff_user)
+
+        response = api_client.get(self.url(gameday.pk))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 3
+        returned_ids = {item["id"] for item in response.data}
+        assert returned_ids == {t.pk for t in teams[:3]}
+        for item in response.data:
+            assert "id" in item
+            assert "name" in item
+
+    def test_returns_empty_list_when_no_season_league_team(self, api_client, staff_user, gameday):
+        """Returns empty list when no SeasonLeagueTeam exists for the gameday."""
+        api_client.force_authenticate(user=staff_user)
+
+        response = api_client.get(self.url(gameday.pk))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data == []
+
+    def test_returns_404_for_unknown_gameday(self, api_client, staff_user):
+        """Returns 404 when gameday does not exist."""
+        api_client.force_authenticate(user=staff_user)
+
+        response = api_client.get(self.url(99999))
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_unauthenticated_user_is_rejected(self, api_client, gameday):
+        """Unauthenticated requests are rejected with 401."""
+        response = api_client.get(self.url(gameday.pk))
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED

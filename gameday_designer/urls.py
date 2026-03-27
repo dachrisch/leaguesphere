@@ -8,7 +8,7 @@ Note: Frontend app view is in app_urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from gameday_designer.views import ScheduleTemplateViewSet, TeamCreationView, TeamBulkCreationView
+from gameday_designer.views import ScheduleTemplateViewSet, TeamCreationView, TeamBulkCreationView, LeagueTeamsView
 
 # Create router for ViewSets (for API)
 router = DefaultRouter()
@@ -21,4 +21,5 @@ urlpatterns = [
     path("", include(router.urls)),
     path("teams/", TeamCreationView.as_view(), name="team-create"),
     path("teams/bulk/", TeamBulkCreationView.as_view(), name="team-bulk-create"),
+    path("gamedays/<int:gameday_id>/league-teams/", LeagueTeamsView.as_view(), name="league-teams"),
 ]

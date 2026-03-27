@@ -550,3 +550,22 @@ class TeamBulkCreationView(APIView):
             teams.append({"id": team.pk, "name": team.name})
 
         return Response(teams, status=status.HTTP_201_CREATED)
+
+
+class LeagueTeamsView(APIView):
+    """
+    GET /api/designer/gamedays/<gameday_id>/league-teams/
+    Returns all teams in the gameday's league+season via SeasonLeagueTeam.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, gameday_id):
+        from gamedays.models import SeasonLeagueTeam
+
+        gameday = get_object_or_404(Gameday, pk=gameday_id)
+        slt = SeasonLeagueTeam.objects.filter(
+            season=gameday.season, league=gameday.league
+        ).first()
+        teams = slt.teams.all() if slt else []
+        return Response([{"id": t.pk, "name": t.name} for t in teams])

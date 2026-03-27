@@ -126,12 +126,21 @@ def _setup_published_gameday(page: Page, live_server) -> str:
     # Select the first built-in tournament format
     page.locator('[data-testid^="builtin-template-"]').first.click()
 
-    # Click Apply — no teams exist yet so it auto-generates and closes
+    # Click Apply — advances to the TeamPicker step
     expect(page.get_by_test_id("apply-template-button")).to_be_visible(timeout=5000)
     page.get_by_test_id("apply-template-button").click()
 
-    # Modal should close after applying
-    expect(page.get_by_text("Template Library")).not_to_be_visible(timeout=5000)
+    # TeamPickerStep dialog appears; no league teams exist so auto-generate placeholder teams
+    expect(page.get_by_text("Select Teams")).to_be_visible(timeout=5000)
+    page.get_by_role("button", name=re.compile(r"Auto-generate")).click()
+
+    # Wait for teams to be generated and "Apply to Gameday" to become enabled
+    apply_btn = page.get_by_role("button", name=re.compile(r"Apply to Gameday"))
+    expect(apply_btn).to_be_enabled(timeout=10000)
+    apply_btn.click()
+
+    # Both modals should now be closed
+    expect(page.get_by_text("Select Teams")).not_to_be_visible(timeout=5000)
 
     # Wait for the canvas to populate — the auto-save debounce is 1.5 s, so we
     # give enough time for the state update to render before we publish.
