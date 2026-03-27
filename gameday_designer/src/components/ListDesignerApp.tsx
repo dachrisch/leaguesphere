@@ -20,6 +20,8 @@ import { isGameNode } from '../types/flowchart';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import { gamedayApi } from '../api/gamedayApi';
 import { getAllTemplates } from '../utils/tournamentTemplates';
+import type { GenericTemplate } from '../utils/templateMapper';
+import type { TournamentTemplate } from '../types/tournament';
 import './ListDesignerApp.css';
 
 const ListDesignerApp: React.FC = () => {
@@ -503,6 +505,18 @@ const ListDesignerApp: React.FC = () => {
             generateTeams: config.generateTeams ?? false,
             autoAssignTeams: config.generateTeams ?? false,
             selectedTeamIds: config.selectedTeamIds,
+          });
+        }}
+        onGenerateFromSavedTemplate={(templateId, config) => {
+          handleGenerateTournament({
+            template: null as unknown as TournamentTemplate,
+            fieldCount: 2,
+            startTime: config?.startTime ?? '09:00',
+            gameDuration: config?.gameDuration ?? 15,
+            breakDuration: config?.breakDuration ?? 0,
+            generateTeams: true,
+            autoAssignTeams: false,
+            customTemplate: { id: templateId } as GenericTemplate,
           });
         }}
         onNotify={addNotification}

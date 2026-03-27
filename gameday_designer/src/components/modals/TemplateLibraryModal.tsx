@@ -34,13 +34,14 @@ interface TemplateLibraryModalProps {
     selectedTeamIds: string[];
     generateTeams?: boolean;
   }) => void;
+  onGenerateFromSavedTemplate?: (templateId: number, config?: TournamentConfig) => void;
   onSaveTemplate?: (name: string, description: string, sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL') => Promise<void>;
   onNotify?: (message: string, type: NotificationType, title?: string) => void;
 }
 
 const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
   show, onHide, gamedayId, currentUserId, onScheduleApplied,
-  onGenerateFromBuiltin, onSaveTemplate, onNotify,
+  onGenerateFromBuiltin, onGenerateFromSavedTemplate, onSaveTemplate, onNotify,
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedTemplate | null>(null);
@@ -107,28 +108,13 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
         return;
       }
       const template = selected.template as ScheduleTemplate;
-      const team_mapping: Record<string, number> = {};
-      const teamsPerGroup = Math.ceil(template.num_teams / template.num_groups);
-      teamIds.forEach((teamId, i) => {
-        const groupIdx = Math.floor(i / teamsPerGroup);
-        const teamIdx = i % teamsPerGroup;
-        team_mapping[`${groupIdx}_${teamIdx}`] = parseInt(teamId, 10);
-      });
-      await designerApi.applyTemplate(template.id, {
-        gameday_id: gamedayId,
-        team_mapping,
-        start_time: applyConfig?.startTime,
-        game_duration: applyConfig?.gameDuration,
-        break_duration: applyConfig?.breakDuration,
-        num_fields: applyConfig?.numFields,
-      });
-      onScheduleApplied?.();
+      onGenerateFromSavedTemplate?.(template.id, applyConfig);
       handleHide();
     } catch (e) {
       console.error('Failed to apply template', e);
       onNotify?.('Failed to apply template', 'error');
     }
-  }, [selected, applyConfig, gamedayId, handleHide, onScheduleApplied, onGenerateFromBuiltin, onNotify]);
+  }, [selected, applyConfig, handleHide, onGenerateFromBuiltin, onGenerateFromSavedTemplate, onNotify]);
 
   const handleAutoGenerateTeams = useCallback(async (count: number): Promise<GlobalTeam[]> => {
     try {
@@ -198,7 +184,6 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
       return;
     }
     setShowSave(false);
-    onNotify?.('Template saved successfully', 'success');
     setSearchQuery(q => q + '\u200b');
     setTimeout(() => setSearchQuery(q => q.replace('\u200b', '')), 100);
   }, [onSaveTemplate, onNotify]);
