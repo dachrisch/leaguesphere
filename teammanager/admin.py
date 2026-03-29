@@ -1,8 +1,7 @@
 from django.contrib import admin
 
 from gamedays.models import UserProfile, Permissions, UserPermissions, \
-    Achievement, PlayerAchievement
-from teammanager.models import Team, League, Season
+    Achievement, PlayerAchievement, Team, League, Season
 
 # Register your models here.
 
