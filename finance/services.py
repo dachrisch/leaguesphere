@@ -5,7 +5,9 @@ from .models import FinancialSettings, LeagueSeasonFinancialConfig, LeagueSeason
 class FinanceService:
     @staticmethod
     def get_global_defaults():
-        settings, created = FinancialSettings.objects.get_or_create(pk=1)
+        settings = FinancialSettings.objects.first()
+        if not settings:
+            settings = FinancialSettings.objects.create()
         return settings
 
     @classmethod
