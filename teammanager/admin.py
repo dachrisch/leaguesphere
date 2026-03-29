@@ -1,18 +1,11 @@
 from django.contrib import admin
 
 from gamedays.models import UserProfile, Permissions, UserPermissions, \
-    Achievement, PlayerAchievement, Team, League, Season
+    Achievement, PlayerAchievement
 
 # Register your models here.
 
 
-@admin.register(Team)
-class TeamAdmin(admin.ModelAdmin):
-    search_fields = ("name", "description")
-
-
-admin.site.register(League)
-admin.site.register(Season)
 admin.site.register(UserProfile)
 admin.site.register(UserPermissions)
 admin.site.register(Permissions)
