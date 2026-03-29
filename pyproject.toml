@@ -7,7 +7,6 @@ name = "leaguesphere"
  
 version = "3.7.0"
  
-version = "3.7.0"
  
 requires-python = ">=3.12"
 dependencies = [
@@ -66,9 +65,7 @@ include = [
 
 [tool.bumpversion]
  
-current_version = "3.7.0"
  
-current_version = "3.7.0"
  
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)(\\-rc\\.(?P<rc_build>\\d+))?"
 serialize = [
