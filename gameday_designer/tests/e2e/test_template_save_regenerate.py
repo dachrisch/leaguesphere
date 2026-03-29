@@ -74,12 +74,19 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     # Wait for auto-save debounce
     page.wait_for_timeout(2000)
 
-    # Snapshot the game and team counts
+    # Snapshot the game, team, stage, and progression counts
     expect(page.locator('tr[id^="game-"]').first).to_be_visible(timeout=5000)
     expected_game_count = page.locator('tr[id^="game-"]').count()
     expected_team_count = page.locator('.team-group-card [id^="team-"]').count()
+    expected_stage_count = page.locator('.stage-section[id^="stage-"]').count()
+    # Progression slots show winner (⚡) or loser (💔) labels in the react-select value
+    expected_progression_count = page.locator('table').filter(
+        has_text=_re.compile(r'[⚡💔]')
+    ).count()
     assert expected_game_count > 0, "Built-in template should produce at least one game"
     assert expected_team_count > 0, "Built-in template should produce at least one team"
+    assert expected_stage_count > 0, "Built-in template should produce at least one stage"
+    assert expected_progression_count > 0, "Built-in template should produce at least one progression slot"
 
     # ---- Phase 3: Save the generated structure as a custom template ----------
     page.get_by_test_id("open-template-library-button").click()
@@ -150,4 +157,20 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     actual_team_count = page.locator('.team-group-card [id^="team-"]').count()
     assert actual_team_count == expected_team_count, (
         f"Regenerated schedule should have {expected_team_count} teams, got {actual_team_count}"
+    )
+
+    # Stage count must match (catches templates saved/restored without all stages)
+    actual_stage_count = page.locator('.stage-section[id^="stage-"]').count()
+    assert actual_stage_count == expected_stage_count, (
+        f"Regenerated schedule should have {expected_stage_count} stages, got {actual_stage_count}"
+    )
+
+    # Progression slots (winner/loser references between stages) must be filled
+    # (catches templates where game structure is restored but cross-stage edges are dropped)
+    actual_progression_count = page.locator('table').filter(
+        has_text=_re.compile(r'[⚡💔]')
+    ).count()
+    assert actual_progression_count == expected_progression_count, (
+        f"Regenerated schedule should have {expected_progression_count} filled progression slots, "
+        f"got {actual_progression_count}"
     )

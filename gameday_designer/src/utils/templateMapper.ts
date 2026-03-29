@@ -1,5 +1,5 @@
-import { FlowState, GlobalTeam, FlowNode, GameNode, isGameNode, createGameNodeInStage, FlowEdge, GlobalTeamGroup } from '../types/flowchart';
-import { isWinnerReference, isLoserReference, isGroupTeamReference } from '../types/designer';
+import { FlowState, GlobalTeam, FlowNode, GameNode, isGameNode, isStageNode, createGameNodeInStage, createGameToGameEdge, createStageToGameEdge, FlowEdge, GlobalTeamGroup, StageCategory } from '../types/flowchart';
+import { isWinnerReference, isLoserReference, isGroupTeamReference, isRankReference, isGroupRankReference } from '../types/designer';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface GenericTemplateSlot {
@@ -7,6 +7,7 @@ export interface GenericTemplateSlot {
   slot_order: number;
   stage: string;
   stage_type: 'STANDARD' | 'RANKING';
+  stage_category: StageCategory;
   standing: string;
   home_group?: number;
   home_team?: number;
@@ -43,7 +44,7 @@ export interface GenericTemplate {
 
 export function genericizeFlowState(state: FlowState, name: string, description: string = '', sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL' = 'ASSOCIATION'): GenericTemplate {
   const groups = [...state.globalTeamGroups].sort((a, b) => a.order - b.order);
-  const teamsInGroups = groups.map(group => 
+  const teamsInGroups = groups.map(group =>
     state.globalTeams.filter(t => t.groupId === group.id).sort((a, b) => a.order - b.order)
   );
 
@@ -52,8 +53,10 @@ export function genericizeFlowState(state: FlowState, name: string, description:
       if (isWinnerReference(dynamicRef)) return { reference: `Winner ${dynamicRef.matchName}` };
       if (isLoserReference(dynamicRef)) return { reference: `Loser ${dynamicRef.matchName}` };
       if (isGroupTeamReference(dynamicRef)) return { group: dynamicRef.group, team: dynamicRef.team };
+      if (isGroupRankReference(dynamicRef)) return { reference: `Rank ${dynamicRef.place} ${dynamicRef.groupName} from ${dynamicRef.stageName}` };
+      if (isRankReference(dynamicRef)) return { reference: `Rank ${dynamicRef.place} from ${dynamicRef.stageName}` };
     }
-    
+
     if (teamId) {
       const team = state.globalTeams.find(t => t.id === teamId);
       if (team && team.groupId) {
@@ -66,6 +69,36 @@ export function genericizeFlowState(state: FlowState, name: string, description:
     }
     return {};
   };
+
+  // Resolve team assignment from an edge when dynamicRef/teamId are both absent
+  const resolveTeamFromEdge = (gameId: string, targetHandle: 'home' | 'away'): { reference?: string } => {
+    const edge = state.edges.find(e =>
+      e.target === gameId && e.targetHandle === targetHandle
+    );
+    if (!edge) return {};
+
+    const srcNode = state.nodes.find(n => n.id === edge.source);
+    if (!srcNode) return {};
+
+    if (edge.type === 'gameToGame' && isGameNode(srcNode)) {
+      const prefix = edge.sourceHandle === 'loser' ? 'Loser' : 'Winner';
+      return { reference: `${prefix} ${srcNode.data.standing}` };
+    }
+
+    if (edge.type === 'stageToGame' && isStageNode(srcNode)) {
+      // Data is in edge.data for stageToGame
+      const { sourceRank, sourceGroup } = edge.data as any;
+      if (sourceGroup) {
+        return { reference: `Rank ${sourceRank} ${sourceGroup} from ${srcNode.data.name}` };
+      }
+      return { reference: `Rank ${sourceRank} from ${srcNode.data.name}` };
+    }
+
+    return {};
+  };
+
+  const hasValue = (resolved: { group?: number; team?: number; reference?: string }): boolean =>
+    resolved.group !== undefined || (resolved.reference !== undefined && resolved.reference !== '');
 
   const resolveOfficial = (official: { type?: string; name?: string; matchName?: string } | null | undefined) => {
     if (!official) return {};
@@ -85,17 +118,42 @@ export function genericizeFlowState(state: FlowState, name: string, description:
     return {};
   };
 
-  const gameNodes = state.nodes.filter(isGameNode) as GameNode[];
+  const gameNodes = state.nodes.filter(isGameNode);
+  const fieldsList = [...state.fields].sort((a, b) => a.order - b.order);
+
   const slots: GenericTemplateSlot[] = gameNodes.map(node => {
-    const home = resolveTeam(node.data.homeTeamId, node.data.homeTeamDynamic);
-    const away = resolveTeam(node.data.awayTeamId, node.data.awayTeamDynamic);
+    // Derive stage name, type, and category from the parent stage node.
+    const parentNode = state.nodes.find(n => n.id === node.parentId);
+    const stageNode = parentNode && isStageNode(parentNode) ? parentNode : null;
+    const stageName = stageNode ? stageNode.data.name : node.data.stage;
+    const stageType = stageNode ? (stageNode.data.stageType ?? 'STANDARD') : node.data.stageType;
+    const stageCategory = stageNode ? (stageNode.data.category ?? 'preliminary') : 'preliminary';
+
+    // Derive field number from the stage's parent field node.
+    let fieldNum = 1;
+    if (stageNode?.parentId) {
+      const fieldNode = state.nodes.find(n => n.id === stageNode.parentId);
+      if (fieldNode) {
+        const fieldIdx = fieldsList.findIndex(f => f.id === fieldNode.id);
+        fieldNum = fieldIdx !== -1 ? fieldIdx + 1 : 1;
+      }
+    }
+
+    let home = resolveTeam(node.data.homeTeamId, node.data.homeTeamDynamic);
+    let away = resolveTeam(node.data.awayTeamId, node.data.awayTeamDynamic);
+
+    // Fall back to edge-based resolution for TBD progression slots
+    if (!hasValue(home)) home = resolveTeamFromEdge(node.id, 'home');
+    if (!hasValue(away)) away = resolveTeamFromEdge(node.id, 'away');
+
     const official = resolveOfficial(node.data.official);
 
     return {
-      field: 1, 
-      slot_order: 1, 
-      stage: node.data.stage,
-      stage_type: node.data.stageType,
+      field: fieldNum,
+      slot_order: 1,
+      stage: stageName,
+      stage_type: stageType,
+      stage_category: stageCategory,
       standing: node.data.standing,
       home_group: home.group,
       home_team: home.team,
@@ -108,21 +166,6 @@ export function genericizeFlowState(state: FlowState, name: string, description:
       official_reference: official.reference || '',
       break_after: node.data.breakAfter || 0,
     };
-  });
-
-  const fieldsList = [...state.fields].sort((a, b) => a.order - b.order);
-  slots.forEach(slot => {
-      const node = gameNodes.find(n => n.data.standing === slot.standing && n.data.stage === slot.stage);
-      if (node && node.parentId) {
-          const stageNode = state.nodes.find(n => n.id === node.parentId);
-          if (stageNode && stageNode.parentId) {
-              const fieldNode = state.nodes.find(n => n.id === stageNode.parentId);
-              if (fieldNode) {
-                  const fieldIdx = fieldsList.findIndex(f => f.id === fieldNode.id || f.id === fieldNode.data.name);
-                  slot.field = fieldIdx !== -1 ? fieldIdx + 1 : 1;
-              }
-          }
-      }
   });
 
   const sortedSlots = slots.sort((a, b) => {
@@ -164,11 +207,11 @@ export function genericizeFlowState(state: FlowState, name: string, description:
  * Apply a generic template to a gameday designer state.
  * Scaffolds teams and groups if missing.
  */
-export function applyGenericTemplate(template: GenericTemplate, currentState: FlowState): { 
-  nodes: FlowNode[], 
-  edges: FlowEdge[], 
-  globalTeams: GlobalTeam[], 
-  globalTeamGroups: GlobalTeamGroup[] 
+export function applyGenericTemplate(template: GenericTemplate, currentState: FlowState): {
+  nodes: FlowNode[],
+  edges: FlowEdge[],
+  globalTeams: GlobalTeam[],
+  globalTeamGroups: GlobalTeamGroup[]
 } {
   const newNodes: FlowNode[] = [];
   const newEdges: FlowEdge[] = [];
@@ -185,7 +228,6 @@ export function applyGenericTemplate(template: GenericTemplate, currentState: Fl
       });
     });
   } else if (newGroups.length < template.num_groups) {
-    // Basic scaffolding if group_config is missing or partial
     for (let i = newGroups.length; i < template.num_groups; i++) {
       newGroups.push({
         id: `g${i + 1}`,
@@ -217,22 +259,92 @@ export function applyGenericTemplate(template: GenericTemplate, currentState: Fl
   }
   newNodes.push(...fieldsNodes);
 
-  const stagesMap = new Map<string, string>(); // stage_name -> stage_id
+  const stagesMap = new Map<string, string>();
 
-  // 3. Create Game nodes
-  template.slots.forEach((slot) => {
+  // 3. Create Game nodes — topologically sorted so source games precede their dependents.
+  //    Alphabetical sort (used by genericizeFlowState) puts "Final" and "3rd Place" before
+  //    "SF1"/"SF2", which would create the Playoffs stage first (order=0) and push SF nodes
+  //    AFTER Final in allNodes.  GameTable.getEligibleSourceGames relies on allNodes index
+  //    within the same stage, so SF1 would appear ineligible as a source for Final.
+  //    Topological sort ensures: group-stage games first, then SF1/SF2, then Final/3rd-Place.
+  const topoSortedSlots = (() => {
+    const byStanding = new Map(template.slots.map(s => [s.standing, s]));
+
+    // Extract the standing that a winner/loser reference points to (null if not a game ref)
+    const refTarget = (ref?: string): string | null => {
+      if (!ref) return null;
+      const m = ref.match(/^(?:Winner|Loser) (.+)$/);
+      return m && byStanding.has(m[1]) ? m[1] : null;
+    };
+
+    // Kahn's algorithm: build in-degree and reverse-dependency maps
+    const inDegree = new Map<string, number>(template.slots.map(s => [s.standing, 0]));
+    const rdeps = new Map<string, string[]>(); // standing → standings that depend on it
+
+    for (const slot of template.slots) {
+      for (const ref of [slot.home_reference, slot.away_reference]) {
+        const target = refTarget(ref);
+        if (target) {
+          inDegree.set(slot.standing, (inDegree.get(slot.standing) ?? 0) + 1);
+          rdeps.set(target, [...(rdeps.get(target) ?? []), slot.standing]);
+        }
+      }
+    }
+
+    const queue: GenericTemplateSlot[] = template.slots.filter(
+      s => inDegree.get(s.standing) === 0
+    );
+    // Stable tie-break: lower field first, then alphabetical standing
+    queue.sort((a, b) => a.field !== b.field ? a.field - b.field : a.standing.localeCompare(b.standing));
+
+    const out: GenericTemplateSlot[] = [];
+    while (queue.length) {
+      const slot = queue.shift()!;
+      out.push(slot);
+      for (const dep of (rdeps.get(slot.standing) ?? [])) {
+        const newDeg = (inDegree.get(dep) ?? 0) - 1;
+        inDegree.set(dep, newDeg);
+        if (newDeg === 0) {
+          const depSlot = byStanding.get(dep)!;
+          // Insert in sorted position (field asc, then standing asc) for stable output
+          let i = queue.length;
+          while (i > 0) {
+            const prev = queue[i - 1];
+            if (prev.field < depSlot.field || (prev.field === depSlot.field && prev.standing.localeCompare(depSlot.standing) <= 0)) break;
+            i--;
+          }
+          queue.splice(i, 0, depSlot);
+        }
+      }
+    }
+
+    // Append any remaining slots (e.g. cycles or rank-only references)
+    for (const slot of template.slots) {
+      if (!out.includes(slot)) out.push(slot);
+    }
+    return out;
+  })();
+
+  topoSortedSlots.forEach((slot) => {
     const fieldNode = fieldsNodes[slot.field - 1] || fieldsNodes[0];
-    
-    let stageId = stagesMap.get(slot.stage);
+    const stageKey = `${slot.field}-${slot.stage}`;
+
+    let stageId = stagesMap.get(stageKey);
     if (!stageId) {
       stageId = `stage-${uuidv4().slice(0, 8)}`;
-      stagesMap.set(slot.stage, stageId);
+      stagesMap.set(stageKey, stageId);
       newNodes.push({
         id: stageId,
         type: 'stage',
         parentId: fieldNode.id,
-        position: { x: 20, y: 60 }, // Stacked logic simplified for now
-        data: { name: slot.stage, order: stagesMap.size - 1, type: slot.stage_type }
+        position: { x: 20, y: 60 },
+        data: {
+          type: 'stage',
+          name: slot.stage,
+          order: stagesMap.size - 1,
+          stageType: slot.stage_type,
+          category: slot.stage_category || 'preliminary',
+        }
       } as FlowNode);
     }
 
@@ -248,24 +360,99 @@ export function applyGenericTemplate(template: GenericTemplate, currentState: Fl
         standing: slot.standing,
         homeTeamId: homeTeamId || undefined,
         awayTeamId: awayTeamId || undefined,
-        homeTeamDynamic: slot.home_reference ? parseReference(slot.home_reference) : undefined,
-        awayTeamDynamic: slot.away_reference ? parseReference(slot.away_reference) : undefined,
+        homeTeamDynamic: slot.home_reference ? parseReference(slot.home_reference, newNodes) : undefined,
+        awayTeamDynamic: slot.away_reference ? parseReference(slot.away_reference, newNodes) : undefined,
         breakAfter: slot.break_after,
       }
     );
     newNodes.push(gameNode);
   });
 
+  // 4. Rebuild all edges from dynamic references
+  const allGameNodes = newNodes.filter(isGameNode);
+  for (const targetGame of allGameNodes) {
+    for (const slot of ['home', 'away'] as const) {
+      const dynamicRef = slot === 'home'
+        ? targetGame.data.homeTeamDynamic
+        : targetGame.data.awayTeamDynamic;
+      if (!dynamicRef) continue;
+
+      if (isWinnerReference(dynamicRef) || isLoserReference(dynamicRef)) {
+        const sourceGame = allGameNodes.find(g => g.data.standing === dynamicRef.matchName);
+        if (sourceGame) {
+          newEdges.push(createGameToGameEdge(
+            uuidv4(),
+            sourceGame.id,
+            dynamicRef.type,
+            targetGame.id,
+            slot
+          ));
+        }
+      } else if (isRankReference(dynamicRef) || isGroupRankReference(dynamicRef)) {
+        const sourceStage = newNodes.find(n => isStageNode(n) && n.id === dynamicRef.stageId);
+        if (sourceStage) {
+          newEdges.push(createStageToGameEdge(
+            uuidv4(),
+            sourceStage.id,
+            dynamicRef.place,
+            targetGame.id,
+            slot,
+            isGroupRankReference(dynamicRef) ? dynamicRef.groupName : undefined
+          ));
+        }
+      }
+    }
+  }
+
   return {
     nodes: newNodes,
-    edges: newEdges, // Edges are derived from dynamic refs in list-based UI
+    edges: newEdges,
     globalTeams: newTeams,
     globalTeamGroups: newGroups,
   };
 }
 
-function parseReference(ref: string) {
-    if (ref.startsWith('Winner ')) return { type: 'winner', matchName: ref.replace('Winner ', '') };
-    if (ref.startsWith('Loser ')) return { type: 'loser', matchName: ref.replace('Loser ', '') };
+/**
+ * Parse a reference string back into a TeamReference object.
+ * Needs all nodes to resolve stage names to stage IDs.
+ */
+function parseReference(ref: string, nodes: FlowNode[]) {
+    if (ref.startsWith('Winner ')) {
+        return { type: 'winner' as const, matchName: ref.replace('Winner ', '') };
+    }
+    if (ref.startsWith('Loser ')) {
+        return { type: 'loser' as const, matchName: ref.replace('Loser ', '') };
+    }
+    
+    // Rank formats:
+    // Rank {place} from {stageName}
+    // Rank {place} {groupName} from {stageName}
+    const rankMatch = ref.match(/^Rank (\d+)(?: (.*?))? from (.*)$/);
+    if (rankMatch) {
+        const place = parseInt(rankMatch[1], 10);
+        const groupName = rankMatch[2];
+        const stageName = rankMatch[3];
+        
+        // Find stage node by name
+        const stageNode = nodes.find(n => isStageNode(n) && n.data.name === stageName);
+        if (stageNode) {
+            if (groupName) {
+                return {
+                    type: 'groupRank' as const,
+                    place,
+                    groupName,
+                    stageId: stageNode.id,
+                    stageName: stageNode.data.name
+                };
+            }
+            return {
+                type: 'rank' as const,
+                place,
+                stageId: stageNode.id,
+                stageName: stageNode.data.name
+            };
+        }
+    }
+    
     return undefined;
 }
