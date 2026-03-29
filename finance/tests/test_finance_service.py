@@ -2,8 +2,8 @@ from decimal import Decimal
 from django.test import TestCase
 from django.contrib.auth.models import User
 from gamedays.models import League, Season, Team, Gameday, Gameinfo, Gameresult, SeasonLeagueTeam
-from .models import LeagueSeasonFinancialConfig, LeagueSeasonDiscount, FinancialSettings
-from .services import FinanceService
+from finance.models import LeagueSeasonFinancialConfig, LeagueSeasonDiscount, FinancialSettings
+from finance.services import FinanceService
 
 
 class FinanceServiceTest(TestCase):
@@ -27,8 +27,10 @@ class FinanceServiceTest(TestCase):
             cost_model=LeagueSeasonFinancialConfig.MODEL_SEASON
         )
         # Register two teams
-        SeasonLeagueTeam.objects.create(league=self.league, season=self.season, team=self.team1)
-        SeasonLeagueTeam.objects.create(league=self.league, season=self.season, team=self.team2)
+        slt1 = SeasonLeagueTeam.objects.create(league=self.league, season=self.season)
+        slt1.teams.add(self.team1)
+        slt2 = SeasonLeagueTeam.objects.create(league=self.league, season=self.season)
+        slt2.teams.add(self.team2)
         
         costs = FinanceService.calculate_costs(config)
         self.assertEqual(costs['gross'], Decimal("200.00"))
@@ -65,7 +67,8 @@ class FinanceServiceTest(TestCase):
             cost_model=LeagueSeasonFinancialConfig.MODEL_SEASON,
             base_rate_override=Decimal("100.00")
         )
-        SeasonLeagueTeam.objects.create(league=self.league, season=self.season, team=self.team1)
+        slt = SeasonLeagueTeam.objects.create(league=self.league, season=self.season)
+        slt.teams.add(self.team1)
         
         # Fixed discount for team 1
         LeagueSeasonDiscount.objects.create(
