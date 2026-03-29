@@ -718,6 +718,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
         style={{ cursor: dynamicRef ? 'pointer' : 'default' }}
       >
         <Select<TeamOption>
+          classNamePrefix="react-select"
           value={(() => {
             const opt = options.find(opt => opt.value === currentValue) || options[0];
             return isWinner ? { ...opt, isWinner: true } : opt;
