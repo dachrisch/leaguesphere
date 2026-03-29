@@ -1,4 +1,4 @@
-import { FlowState, GlobalTeam, FlowNode, GameNode, isGameNode, isStageNode, createGameNodeInStage, createGameToGameEdge, createStageToGameEdge, FlowEdge, GlobalTeamGroup, StageCategory } from '../types/flowchart';
+import { FlowState, GlobalTeam, FlowNode, isGameNode, isStageNode, createGameNodeInStage, createGameToGameEdge, createStageToGameEdge, FlowEdge, GlobalTeamGroup, StageCategory, StageToGameEdgeData } from '../types/flowchart';
 import { isWinnerReference, isLoserReference, isGroupTeamReference, isRankReference, isGroupRankReference } from '../types/designer';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -87,7 +87,7 @@ export function genericizeFlowState(state: FlowState, name: string, description:
 
     if (edge.type === 'stageToGame' && isStageNode(srcNode)) {
       // Data is in edge.data for stageToGame
-      const { sourceRank, sourceGroup } = edge.data as any;
+      const { sourceRank, sourceGroup } = edge.data as StageToGameEdgeData;
       if (sourceGroup) {
         return { reference: `Rank ${sourceRank} ${sourceGroup} from ${srcNode.data.name}` };
       }
