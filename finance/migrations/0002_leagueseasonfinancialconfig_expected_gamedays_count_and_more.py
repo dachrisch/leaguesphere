@@ -6,29 +6,23 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("finance", "0001_initial"),
+        ('finance', '0001_initial'),
     ]
 
     operations = [
         migrations.AddField(
-            model_name="leagueseasonfinancialconfig",
-            name="expected_gamedays_count",
-            field=models.PositiveIntegerField(
-                default=0, help_text="Used for Gameday model"
-            ),
+            model_name='leagueseasonfinancialconfig',
+            name='expected_gamedays_count',
+            field=models.PositiveIntegerField(default=0, help_text='Used for Gameday model'),
         ),
         migrations.AddField(
-            model_name="leagueseasonfinancialconfig",
-            name="expected_teams_count",
-            field=models.PositiveIntegerField(
-                default=0, help_text="Used for Season model"
-            ),
+            model_name='leagueseasonfinancialconfig',
+            name='expected_teams_count',
+            field=models.PositiveIntegerField(default=0, help_text='Used for Season model'),
         ),
         migrations.AddField(
-            model_name="leagueseasonfinancialconfig",
-            name="expected_teams_per_gameday",
-            field=models.PositiveIntegerField(
-                default=0, help_text="Used for Gameday model"
-            ),
+            model_name='leagueseasonfinancialconfig',
+            name='expected_teams_per_gameday',
+            field=models.PositiveIntegerField(default=0, help_text='Used for Gameday model'),
         ),
     ]

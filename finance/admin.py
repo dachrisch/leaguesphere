@@ -6,11 +6,7 @@ from .services import FinanceService
 
 @admin.register(FinancialSettings)
 class FinancialSettingsAdmin(admin.ModelAdmin):
-    list_display = (
-        "__str__",
-        "default_rate_per_team_season",
-        "default_rate_per_team_gameday",
-    )
+    list_display = ('__str__', 'default_rate_per_team_season', 'default_rate_per_team_gameday')
 
     def has_add_permission(self, request):
         # Don't allow adding more than one instance
@@ -23,39 +19,31 @@ class FinancialSettingsAdmin(admin.ModelAdmin):
 class LeagueSeasonDiscountInline(admin.TabularInline):
     model = LeagueSeasonDiscount
     extra = 1
-    fields = ("discount_type", "value", "description")
+    fields = ('team', 'discount_type', 'value', 'description')
+    autocomplete_fields = ['team']
 
 
 @admin.register(LeagueSeasonFinancialConfig)
 class LeagueSeasonFinancialConfigAdmin(admin.ModelAdmin):
-    list_display = (
-        "league",
-        "season",
-        "cost_model",
-        "get_gross",
-        "get_discount",
-        "get_net",
-    )
-    list_filter = ("league", "season", "cost_model")
+    list_display = ('league', 'season', 'cost_model', 'get_gross', 'get_discount', 'get_net')
+    list_filter = ('league', 'season', 'cost_model')
     inlines = [LeagueSeasonDiscountInline]
-
+    
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related("league", "season")
+        return super().get_queryset(request).select_related('league', 'season')
 
     @admin.display(description="Gross Cost (€)")
     def get_gross(self, obj):
         costs = FinanceService.calculate_costs(obj)
-        return format_html("<b>{:.2f} €</b>", costs["gross"])
+        return format_html("<b>{:.2f} €</b>", costs['gross'])
 
     @admin.display(description="Discounts (€)")
     def get_discount(self, obj):
         costs = FinanceService.calculate_costs(obj)
-        return format_html(
-            "<span style='color: red;'>-{:.2f} €</span>", costs["discount"]
-        )
+        return format_html("<span style='color: red;'>-{:.2f} €</span>", costs['discount'])
 
     @admin.display(description="Net Revenue (€)")
     def get_net(self, obj):
         costs = FinanceService.calculate_costs(obj)
-        color = "green" if costs["net"] > 0 else "black"
-        return format_html("<b style='color: {};'>{:.2f} €</b>", color, costs["net"])
+        color = "green" if costs['net'] > 0 else "black"
+        return format_html("<b style='color: {};'>{:.2f} €</b>", color, costs['net'])
