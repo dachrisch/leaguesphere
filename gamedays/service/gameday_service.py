@@ -2,8 +2,11 @@ import logging
 from abc import ABC, abstractmethod
 
 import pandas as pd
+from django.utils.html import format_html
 
+from gamedays.constants import LEAGUE_GAMEDAY_GAME_DETAIL
 from gamedays.service.placeholder_service import GamedayPlaceholderService
+from league_manager.utils.url_service import UrlService
 
 logger = logging.getLogger(__name__)
 
@@ -299,8 +302,15 @@ class GamedayService:
 
     @staticmethod
     def _get_game_detail_button(gameday_pk: int, gameinfo_id: int):
-        return f"""<a href="game/{gameinfo_id}" class="btn btn-primary">Zum Spiel<i class="bi bi-chevron-right"></i></a>"""
+        absolute_url = UrlService.build_absolute_url(
+            LEAGUE_GAMEDAY_GAME_DETAIL,
+            kwargs={"gameday_pk": gameday_pk, "pk": gameinfo_id},
+        )
 
+        return format_html(
+            """<a href="{}" target="_top" class="btn btn-primary">Zum Spiel<i class="bi bi-chevron-right"></i></a>""",
+            absolute_url
+        )
 
 class EmptySplitScoreTable:
     @staticmethod

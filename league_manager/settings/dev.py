@@ -7,6 +7,7 @@ if not SECRET_KEY:
 
 DEBUG = True
 DEBUG_DATE = datetime.date.today()
+# DEBUG_DATE = datetime.date(2026, 3, 21)
 
 DEBUG_TOOLBAR = True
 # DEBUG_TOOLBAR = False
