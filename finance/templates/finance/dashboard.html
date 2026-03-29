@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="fw-bold"><i class="bi bi-currency-euro text-primary"></i> Financial Dashboard</h1>
+        <div class="btn-group">
+            <a href="{% url 'finance-config-add' %}" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> New Configuration
+            </a>
+            <a href="{% url 'finance-settings' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-gear"></i> Global Settings
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-5">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 border-start border-primary border-5 h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <p class="text-uppercase text-muted small fw-bold mb-1">Gross Revenue</p>
+                            <h2 class="fw-bold mb-0 text-primary">{{ total_gross|floatformat:2 }} €</h2>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 p-3 rounded-circle">
+                            <i class="bi bi-graph-up-arrow text-primary h3 mb-0"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 border-start border-danger border-5 h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <p class="text-uppercase text-muted small fw-bold mb-1">Total Discounts</p>
+                            <h2 class="fw-bold mb-0 text-danger">-{{ total_discount|floatformat:2 }} €</h2>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 p-3 rounded-circle">
+                            <i class="bi bi-percent text-danger h3 mb-0"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 border-start border-success border-5 h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <p class="text-uppercase text-muted small fw-bold mb-1">Projected Net</p>
+                            <h2 class="fw-bold mb-0 text-success">{{ total_net|floatformat:2 }} €</h2>
+                        </div>
+                        <div class="bg-success bg-opacity-10 p-3 rounded-circle">
+                            <i class="bi bi-wallet2 text-success h3 mb-0"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configurations Table -->
+    <div class="card border-0 shadow-sm overflow-hidden">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-list-task me-2"></i> League/Season Configurations</h5>
+            <span class="badge bg-light text-dark rounded-pill">{{ configs_with_stats|length }} Active</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">League / Season</th>
+                        <th>Model / Progress</th>
+                        <th class="text-end">Expected Gross</th>
+                        <th class="text-end">Live Gross</th>
+                        <th class="text-end">Net</th>
+                        <th class="text-center pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in configs_with_stats %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-bold text-dark">{{ item.config.league.name }}</div>
+                            <div class="text-muted small">{{ item.config.season.name }}</div>
+                        </td>
+                        <td>
+                            <span class="badge {% if item.config.cost_model == 'SEASON' %}bg-info text-dark{% else %}bg-warning text-dark{% endif %} rounded-pill px-3">
+                                {{ item.config.get_cost_model_display }}
+                            </span>
+                            <div class="mt-1 small text-muted">
+                                {{ item.stats.live_participation_count }} / {{ item.stats.expected_participation_count }} 
+                                {% if item.config.cost_model == 'SEASON' %}Teams{% else %}Participations{% endif %}
+                            </div>
+                        </td>
+                        <td class="text-end text-muted fw-semibold">{{ item.stats.expected_gross|floatformat:2 }} €</td>
+                        <td class="text-end text-primary fw-semibold">{{ item.stats.gross|floatformat:2 }} €</td>
+                        <td class="text-end">
+                            <span class="fw-bold {% if item.stats.net > 0 %}text-success{% endif %} h5 mb-0">
+                                {{ item.stats.net|floatformat:2 }} €
+                            </span>
+                        </td>
+                        <td class="text-center pe-4">
+                            <div class="btn-group">
+                                <a href="{% url 'finance-config-detail' item.config.pk %}" class="btn btn-sm btn-outline-primary" title="Manage">
+                                    <i class="bi bi-sliders2"></i>
+                                </a>
+                                <a href="{% url 'finance-config-delete' item.config.pk %}" class="btn btn-sm btn-outline-danger" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <div class="mb-3"><i class="bi bi-cash-stack display-4 text-muted"></i></div>
+                            <h5 class="text-muted">No financial configurations found.</h5>
+                            <p class="text-muted small mb-3">Start by creating your first league/season cost structure.</p>
+                            <a href="{% url 'finance-config-add' %}" class="btn btn-primary">
+                                <i class="bi bi-plus-lg"></i> Create First Configuration
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

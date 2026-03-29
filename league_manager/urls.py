@@ -86,6 +86,7 @@ urlpatterns = [
     path("leaguetable/", include("league_table.urls")),
     path("gamedays/", include("gamedays.urls")),
     path("passcheck/", include("passcheck.urls")),
+    path("finance/", include("finance.urls")),
     path("dal/", include("league_manager.dal.urls")),
     path("", homeview),
     path(

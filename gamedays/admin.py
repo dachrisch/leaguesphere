@@ -23,7 +23,11 @@ admin.site.register(GameSetup)
 admin.site.register(League)
 admin.site.register(Person)
 admin.site.register(Season)
-admin.site.register(Team)
+@admin.register(Team)
+class TeamAdmin(admin.ModelAdmin):
+    search_fields = ("name", "description")
+
+
 admin.site.register(TeamLog)
 
 
