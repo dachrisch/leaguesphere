@@ -1,10 +1,7 @@
 {
   "name": "scorecard",
-<<<<<<< HEAD
   "version": "3.7.0",
-=======
   "version": "3.7.0",
->>>>>>> master
   "private": true,
   "main": "index.js",
   "directories": {

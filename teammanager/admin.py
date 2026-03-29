@@ -5,7 +5,6 @@ from gamedays.models import UserProfile, Permissions, UserPermissions, \
 
 # Register your models here.
 
-<<<<<<< HEAD
 
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin):
@@ -14,8 +13,6 @@ class TeamAdmin(admin.ModelAdmin):
 
 admin.site.register(League)
 admin.site.register(Season)
-=======
->>>>>>> master
 admin.site.register(UserProfile)
 admin.site.register(UserPermissions)
 admin.site.register(Permissions)

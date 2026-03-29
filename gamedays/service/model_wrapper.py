@@ -123,13 +123,9 @@ class GamedayModelWrapper:
                 self._gameinfo["gameday"].iloc[0]
             )
 
-<<<<<<< HEAD
-            placeholder_service = GamedayPlaceholderService(
                 self._gameinfo["gameday"].iloc[0]
             )
-=======
             placeholder_service = GamedayPlaceholderService(self._gameinfo['gameday'].iloc[0])
->>>>>>> master
 
             # Resolve each missing row
             for index, row in self._games_with_result[
