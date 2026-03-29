@@ -3,6 +3,7 @@ import pathlib
 from collections import OrderedDict
 from datetime import datetime
 from http import HTTPStatus
+from unittest.mock import patch
 
 import pytest
 from django_webtest import WebTest
@@ -13,6 +14,8 @@ from gamedays.constants import API_GAMEDAY_WHISTLEGAMES, API_GAMEDAY_LIST
 from gamedays.models import Team, Gameday, Gameinfo
 from gamedays.service.gameday_service import EmptySchedule, EmptyQualifyTable
 from gamedays.tests.setup_factories.db_setup import DBSetup
+from league_table.tests.setup_factories.db_setup_leaguetable import LEAGUE_TABLE_TEST_RULESET
+from league_table.tests.setup_factories.factories_leaguetable import LeagueSeasonConfigFactory
 
 
 class TestGamedayAPIViews(WebTest):
@@ -85,11 +88,14 @@ class TestGamedaySchedule(WebTest):
         )
         assert response.status_code == HTTPStatus.OK
         assert response.json == json.loads(
-            EmptySchedule.to_json(), object_pairs_hook=OrderedDict
+            EmptySchedule().to_json(), object_pairs_hook=OrderedDict
         )
 
-    def test_get_qualify_table(self):
+    @patch("league_table.service.datatypes.LeagueConfigRuleset.from_ruleset")
+    def test_get_qualify_table(self, mock_get_league_config_ruleset):
+        mock_get_league_config_ruleset.return_value = LEAGUE_TABLE_TEST_RULESET
         gameday = DBSetup().g62_qualify_finished()
+        LeagueSeasonConfigFactory(league=gameday.league, season=gameday.season)
         with open(
             pathlib.Path(__file__).parent / "testdata/qualify_g62_qualify_finished.json"
         ) as f:
@@ -107,11 +113,14 @@ class TestGamedaySchedule(WebTest):
         )
         assert response.status_code == HTTPStatus.OK
         assert response.json == json.loads(
-            EmptyQualifyTable.to_json(), object_pairs_hook=OrderedDict
+            EmptyQualifyTable().to_json(), object_pairs_hook=OrderedDict
         )
 
-    def test_get_final_table(self):
+    @patch("league_table.service.datatypes.LeagueConfigRuleset.from_ruleset")
+    def test_get_final_table(self, mock_get_league_config_ruleset):
+        mock_get_league_config_ruleset.return_value = LEAGUE_TABLE_TEST_RULESET
         gameday = DBSetup().g62_finished()
+        LeagueSeasonConfigFactory(league=gameday.league, season=gameday.season)
         with open(
             pathlib.Path(__file__).parent / "testdata/final_g62_finished.json"
         ) as f:
@@ -128,9 +137,7 @@ class TestGamedaySchedule(WebTest):
             reverse("api-gameday-schedule", kwargs={"pk": gameday.pk}) + "?get=final"
         )
         assert response.status_code == HTTPStatus.OK
-        import pandas as pd
-
-        assert response.json == json.loads(pd.DataFrame().to_json(orient="split"))
+        assert response.json == []
 
 
 class TestGamesToWhistleAPIView(WebTest):

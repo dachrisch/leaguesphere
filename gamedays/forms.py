@@ -5,7 +5,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.forms import modelformset_factory, BaseFormSet, formset_factory
 
-from gamedays.models import Season, League, Gameday, Gameinfo, Team
+from gamedays.models import Season, League, Gameday, Gameinfo, Team, SeasonLeagueTeam
 
 SCHEDULE_CUSTOM_CHOICE_C = "CUSTOM"
 SCHEDULE_MAP_GROUPS_C = "groups"
@@ -17,12 +17,13 @@ SCHEDULE_CHOICES = (
     ("3_1", "3 Teams 1 Gruppe 1 Feld"),
     ("3_hinrunde_1", "3 Teams 1 Gruppe 1 Feld (nur Hinrunde)"),
     ("4_1", "4 Teams 1 Gruppe 1 Feld"),
+    ("4_4spiele_1", "4 Teams 1 Gruppe 1 Feld - 4 Spiele 30 Min Mittagspause"),
     ("4_final4_1", "4 Teams 1 Gruppe 1 Feld - 2 Niederlagen KO (Final 4)"),
     ("5_2", "5 Teams 1 Gruppe 2 Felder"),
     ("5_dfflf_2", "5 Teams 1 Grupppe 2 Felder - 20 Min Pause (DFFL Frauen)"),
     ("5_dffl1_2", "5 Teams 1 Gruppe 2 Felder - 30 Min Pause"),
     ("6_2", "6 Teams 2 Gruppen 2 Feldern"),
-    ("7_2", "7 Teams 2 Gruppen 2 Feldern"),
+    # ("7_2", "7 Teams 2 Gruppen 2 Feldern"), -> kein Ranking für diesen Spielplan
     ("8_2", "8 Teams 2 Gruppen 2 Felder"),
     ("8_vfpd_2", "8 Teams 1 Gruppe 2 Felder nur Viertelfinale und Playdown"),
     ("8_doublevictory_2", "8 Teams 1 Gruppe 2 Felder - Double Victory"),
@@ -30,15 +31,15 @@ SCHEDULE_CHOICES = (
     ("8_doublevictory_2", "8 Teams 2 Felder Double Victory"),
     ("8_3", "8 Teams 2 Gruppen 3 Felder"),
     ("9_2", "9 Teams 3 Gruppen 2 Felder"),
-    ("9_groupfinals_2", "9 Teams 3 Gruppen 2 Felder mit Gruppen Finale"),
     ("9_3", "9 Teams 3 Gruppen 3 Felder"),
     # Spielpläne deaktiviert, weil erst einmal nicht mehr gebraucht werden
     # ("2_1", "2 Teams 1 Feld"),
-    # ("11_3", "11 Teams 3 Felder"),
     # ("6_oneDivision_2", "DFFL 7er Division"),
     # ("7_oneDivision_2", "DFFL 8er Division"),
     # ("6_sfl_2", "SFL - 3x3 Conference"),
     # ("7_sfl_2", "7 Teams 1 Gruppe 2 Felder - 3x4 Conference"),
+    # ("9_groupfinals_2", "9 Teams 3 Gruppen 2 Felder mit Gruppen Finale"),
+    # ("11_3", "11 Teams 3 Felder"), -> kein Ranking
 )
 
 SCHEDULE_MAP = {
@@ -54,6 +55,11 @@ SCHEDULE_MAP = {
     },
     "4_1": {
         "name": "4 Teams 1 Gruppe 1 Feld",
+        "fields": 1,
+        SCHEDULE_MAP_GROUPS_C: [{SCHEDULE_MAP_TEAMS_C: 4}],
+    },
+    "4_4spiele_1": {
+        "name": "4 Teams 1 Gruppe 1 Feld - 4 Spiele 30 Min Mittagspause",
         "fields": 1,
         SCHEDULE_MAP_GROUPS_C: [{SCHEDULE_MAP_TEAMS_C: 4}],
     },
@@ -254,6 +260,13 @@ class GamedayFormatForm(forms.Form):
         cleaned = super().clean()
         group = cleaned.get(self.GROUP_C)
 
+        # Preserve selection order
+        raw_order = self.data.getlist(self.add_prefix(self.GROUP_C))
+        if raw_order:
+            id_to_team = {str(team.id): team for team in cleaned[self.GROUP_C]}
+            ordered_teams = [id_to_team[pk] for pk in raw_order if pk in id_to_team]
+            cleaned[self.GROUP_C] = ordered_teams
+
         if group and len(group) != self.needed_teams:
             self.add_error(
                 f"{self.GROUP_C}", f"Bitte genau {self.needed_teams} Teams auswählen."
@@ -420,3 +433,13 @@ def get_gameinfo_formset(extra=0):
         validate_min=True,
         min_num=1,
     )
+
+class SeasonLeagueTeamForm(forms.ModelForm):
+    class Meta:
+        model = SeasonLeagueTeam
+        fields = "__all__"
+        widgets = {
+            'teams': autocomplete.ModelSelect2Multiple(
+                url="/dal/team"
+            )
+        }

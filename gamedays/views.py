@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import pandas as pd
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Max
@@ -19,6 +20,11 @@ from django.views.generic import (
 )
 from formtools.wizard.views import SessionWizardView
 
+from league_manager.utils.url_service import UrlService
+from league_table.constants import LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE
+from league_table.models import LeagueSeasonConfig, OverrideOfficialGamedaySetting
+from league_table.service.leaguetable_repository import LeagueTableRepository
+from liveticker.constants import LIVETICKER_HOME
 from .constants import (
     LEAGUE_GAMEDAY_DETAIL,
     LEAGUE_GAMEDAY_LIST_AND_YEAR,
@@ -39,6 +45,7 @@ from .forms import (
     SCHEDULE_CUSTOM_CHOICE_C,
 )
 from .models import Gameday, Gameinfo
+from .service.builders import TableContextBuilder
 from .service.gameday_form_service import GamedayFormService
 from .service.gameday_service import GamedayService, GamedayGameService
 from .service.league_statistics_service import LeagueStatisticsService
@@ -135,8 +142,8 @@ class GamedayDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super(GamedayDetailView, self).get_context_data()
-        pk = context["gameday"].pk
-        gs = GamedayService.create(pk)
+        gameday = context["gameday"]
+        gs = GamedayService.create(gameday.pk)
         render_configs = {
             "index": False,
             "classes": [
@@ -151,7 +158,7 @@ class GamedayDetailView(DetailView):
             "escape": False,
             "table_id": "schedule",
         }
-        qualify_table = gs.get_qualify_table().to_html(**render_configs)
+        qualify_table = gs.get_qualify_table()
         if "officials" in settings.INSTALLED_APPS:
             show_official_names = False
             if self.request.user.is_staff:
@@ -161,18 +168,51 @@ class GamedayDetailView(DetailView):
             from officials.service.signup_service import OfficialSignupService
 
             officials = OfficialSignupService.get_signed_up_officials(
-                pk, show_official_names
+                gameday.pk, show_official_names
             )
             from officials.urls import OFFICIALS_PROFILE_LICENSE
 
             url_pattern_official = OFFICIALS_PROFILE_LICENSE
             from officials.urls import OFFICIALS_SIGN_UP_LIST
 
-            url_pattern_official_signup = OFFICIALS_SIGN_UP_LIST
+            url_pattern_official_signup = UrlService.build_absolute_url(OFFICIALS_SIGN_UP_LIST)
         else:
             officials = []
-            url_pattern_official = ""
-            url_pattern_official_signup = ""
+            url_pattern_official = ''
+            url_pattern_official_signup = ''
+
+        final_table = gs.get_final_table()
+        if apps.is_installed("league_table"):
+            qualify_table = TableContextBuilder.build(qualify_table)
+            final_table = TableContextBuilder.build(final_table)
+            season_slug = gameday.season.slug
+            league_slug = gameday.league.slug
+            context["league_table_url"] = reverse(
+                    LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE,
+                    kwargs={"season": season_slug, "league": league_slug},
+                )
+            try:
+                league_season_config = LeagueTableRepository.get_league_season_config_by_slug(league_slug, season_slug)
+                try:
+                    # if there is an override then check if officials are allowed
+                    if not league_season_config.overrideofficialgamedaysetting_set.get(gameday=gameday).allow_officials_to_register:
+                        officials = []
+                        url_pattern_official = ''
+                        url_pattern_official_signup = ''
+                except OverrideOfficialGamedaySetting.DoesNotExist:
+                    # there is obviously no override so use default league configs
+                    if not league_season_config.allow_officials_to_register:
+                        officials = []
+                        url_pattern_official = ""
+                        url_pattern_official_signup = ""
+            except LeagueSeasonConfig.DoesNotExist:
+                officials = []
+                url_pattern_official = ""
+                url_pattern_official_signup = ""
+
+        else:
+            qualify_table = qualify_table.to_html(**render_configs)
+            final_table = final_table.to_html(**render_configs)
 
         passcheck_info_table = ""
 
@@ -184,7 +224,7 @@ class GamedayDetailView(DetailView):
         context["info"] = {
             "schedule": gs.get_schedule().to_html(**render_configs),
             "qualify_table": qualify_table,
-            "final_table": gs.get_final_table().to_html(**render_configs),
+            "final_table": final_table,
             "officials": officials,
             "offense_table": gs.get_offense_player_statistics_table().to_html(
                 **render_configs
@@ -195,6 +235,7 @@ class GamedayDetailView(DetailView):
             "passcheck_info_table": passcheck_info_table,
             "url_pattern_official": url_pattern_official,
             "url_pattern_official_signup": url_pattern_official_signup,
+            "url_pattern_liveticker": f"{UrlService.build_absolute_url(LIVETICKER_HOME)}?league={gameday.league.name}&gameday={gameday.pk}",
         }
 
         return context

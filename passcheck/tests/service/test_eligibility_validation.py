@@ -19,7 +19,7 @@ from passcheck.tests.setup_factories.db_setup_passcheck import DbSetupPasscheck
 class TestValidators(TestCase):
     def test_max_game_days_validator(self):
         prime_league, _, _, season, team = DbSetupPasscheck.create_eligibility_rules()
-        season_league: SeasonLeagueTeam = SeasonLeagueTeam.objects.get(team=team)
+        season_league: SeasonLeagueTeam = SeasonLeagueTeam.objects.get(teams=team)
         prime_gameday = GamedayFactory(season=season, league=prime_league)
         rule = EligibilityRule.objects.get(
             league=season_league.league, eligible_in=prime_gameday.league
@@ -40,7 +40,7 @@ class TestValidators(TestCase):
         prime_league, _, third_league, season, team = (
             DbSetupPasscheck.create_eligibility_rules()
         )
-        season_league: SeasonLeagueTeam = SeasonLeagueTeam.objects.get(team=team)
+        season_league: SeasonLeagueTeam = SeasonLeagueTeam.objects.get(teams=team)
         some_prime_gameday = GamedayFactory(season=season, league=prime_league)
         rule = EligibilityRule.objects.get(
             league=season_league.league, eligible_in=some_prime_gameday.league
@@ -80,7 +80,7 @@ class TestValidators(TestCase):
 
     def test_youth_player_are_excepted(self):
         prime_league, _, _, season, team = DbSetupPasscheck.create_eligibility_rules()
-        season_league: SeasonLeagueTeam = SeasonLeagueTeam.objects.get(team=team)
+        season_league: SeasonLeagueTeam = SeasonLeagueTeam.objects.get(teams=team)
         prime_gameday = GamedayFactory(season=season, league=prime_league)
         today = datetime.today()
         league_id = f"{prime_gameday.league.pk}"
@@ -104,7 +104,7 @@ class TestValidators(TestCase):
 
     def test_female_player_are_excepted(self):
         prime_league, _, _, season, team = DbSetupPasscheck.create_eligibility_rules()
-        season_league: SeasonLeagueTeam = SeasonLeagueTeam.objects.get(team=team)
+        season_league: SeasonLeagueTeam = SeasonLeagueTeam.objects.get(teams=team)
         prime_gameday = GamedayFactory(season=season, league=prime_league)
         league_id = f"{prime_gameday.league.pk}"
         female_player = {
@@ -128,7 +128,7 @@ class TestValidators(TestCase):
 
     def test_validate_final_gameday(self):
         prime_league, _, _, season, team = DbSetupPasscheck.create_eligibility_rules()
-        season_league: SeasonLeagueTeam = SeasonLeagueTeam.objects.get(team=team)
+        season_league: SeasonLeagueTeam = SeasonLeagueTeam.objects.get(teams=team)
         final_gameday = GamedayFactory(
             season=season, league=prime_league, name="Final8"
         )

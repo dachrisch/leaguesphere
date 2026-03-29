@@ -17,6 +17,10 @@ from gamedays.models import Gameday, Gameinfo, Gameresult
 from gamedays.service.model_wrapper import GamedayModelWrapper
 from gamedays.tests.setup_factories.dataframe_setup import DataFrameAssertion
 from gamedays.tests.setup_factories.db_setup import DBSetup
+from league_table.tests.setup_factories.db_setup_leaguetable import LEAGUE_TABLE_TEST_RULESET
+from league_table.tests.setup_factories.factories_leaguetable import (
+    LeagueSeasonConfigFactory,
+)
 
 
 def update_gameresults(game):
@@ -132,8 +136,11 @@ class TestScheduleUpdate(TransactionTestCase):
             update_gameresults(game)
         p5_first.update(status="beendet")
 
-    def test_update_9_teams_3_fields(self):
+    @patch("league_table.service.datatypes.LeagueConfigRuleset.from_ruleset")
+    def test_update_9_teams_3_fields(self, mock_get_league_config_ruleset):
+        mock_get_league_config_ruleset.return_value = LEAGUE_TABLE_TEST_RULESET
         gameday = DBSetup().create_empty_gameday()
+        LeagueSeasonConfigFactory(league=gameday.league, season=gameday.season)
         gameday.format = "9_3"
         gameday.save()
         group_A = DBSetup().create_teams("A", 3)
@@ -181,15 +188,16 @@ class TestScheduleUpdate(TransactionTestCase):
         update_gameresults_by_standing_and_finish_game_for("P1")
 
         gmw = GamedayModelWrapper(gameday.pk)
-        DataFrameAssertion.expect(gmw.get_final_table()).to_equal_json(
-            "final_table_9_teams"
-        )
-        DataFrameAssertion.expect(gmw.get_schedule()).to_equal_json(
-            "schedule_9_teams_3_fields"
-        )
+        final_table = gmw.get_final_table()
+        del final_table['team_id']
+        DataFrameAssertion.expect(gmw.get_schedule()).to_equal_json('schedule_9_teams_3_fields')
+        DataFrameAssertion.expect(final_table).to_equal_json('final_table_9_teams')
 
-    def test_update_11_teams_3_fields(self):
+    @patch("league_table.service.datatypes.LeagueConfigRuleset.from_ruleset")
+    def test_update_11_teams_3_fields(self, mock_get_league_config_ruleset):
+        mock_get_league_config_ruleset.return_value = LEAGUE_TABLE_TEST_RULESET
         gameday = DBSetup().create_empty_gameday()
+        LeagueSeasonConfigFactory(league=gameday.league, season=gameday.season)
         gameday.format = "11_3"
         gameday.save()
         group_A = DBSetup().create_teams("A", 4)
@@ -246,11 +254,12 @@ class TestScheduleUpdate(TransactionTestCase):
         update_gameresults_by_standing_and_finish_game_for("P1")
 
         gmw = GamedayModelWrapper(gameday.pk)
-
+        final_table = gmw.get_final_table()
+        del final_table['team_id']
         DataFrameAssertion.expect(gmw.get_schedule()).to_equal_json(
             "schedule_11_teams_3_fields"
         )
-        DataFrameAssertion.expect(gmw.get_final_table()).to_equal_json(
+        DataFrameAssertion.expect(final_table).to_equal_json(
             "final_table_11_teams"
         )
 

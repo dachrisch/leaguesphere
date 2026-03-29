@@ -2,21 +2,30 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import QuerySet, CASCADE
 from django.utils import timezone
+from django.utils.text import slugify
 
 
 class Season(models.Model):
-    name = models.CharField(max_length=20)
+    name = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=200, unique=True, blank=True)
 
-    objects: QuerySet["Season"] = models.Manager()
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
 
 
 class League(models.Model):
-    name = models.CharField(max_length=20)
+    name = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=200, unique=True, blank=True)
 
-    objects: QuerySet["League"] = models.Manager()
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -35,7 +44,7 @@ class Association(models.Model):
 class Team(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.CharField(max_length=255, unique=True)
-    location = models.CharField(max_length=20)
+    location = models.CharField(max_length=100)
     logo = models.ImageField(
         "Logo", upload_to="teammanager/logos", blank=True, null=True
     )
@@ -50,71 +59,10 @@ class Team(models.Model):
 class SeasonLeagueTeam(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE)
     league = models.ForeignKey(League, on_delete=models.CASCADE)
-    team = models.ForeignKey(Team, on_delete=models.CASCADE)
-
-    objects: QuerySet["SeasonLeagueTeam"] = models.Manager()
+    teams = models.ManyToManyField(Team)
 
     def __str__(self):
-        return f"{self.season.name} {self.league} {self.team}"
-
-
-class UserProfile(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    avatar = models.ImageField(
-        "Avatar", upload_to="media/teammanager/avatars", blank=True, null=True
-    )
-    team = models.ForeignKey(Team, on_delete=models.PROTECT, null=True)
-    firstname = models.CharField(max_length=20, null=True)
-    lastname = models.CharField(max_length=20, null=True)
-    playernumber = models.IntegerField(null=True)
-    position = models.CharField(max_length=20, blank=True, null=True)
-    location = models.CharField(max_length=20, blank=True, null=True)
-    birth_date = models.DateField(null=True, blank=True)
-
-    objects: QuerySet = models.Manager()
-
-    def get_permisions(self):
-        permissions = list(UserPermissions.objects.filter(user=self))
-        return permissions
-
-    def check_teammanager(self):
-        permisssions = self.get_permisions()
-        is_teammanager = False
-        for permission in permisssions:
-            if permission.permission.name == "Teammanager":
-                is_teammanager = True
-        return is_teammanager
-
-    def __str__(self):
-        return f"{self.team.name}: {self.firstname} {self.lastname}"
-
-
-class Permissions(models.Model):
-    name = models.CharField(max_length=20)
-
-    objects: QuerySet = models.Manager()
-
-    def __str__(self):
-        return self.name
-
-
-class UserPermissions(models.Model):
-    permission = models.ForeignKey(Permissions, on_delete=models.CASCADE)
-    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
-
-    objects: QuerySet = models.Manager()
-
-    def __str__(self):
-        return f"{self.permission.name}: {self.user.firstname} {self.user.lastname}"
-
-
-class Achievement(models.Model):
-    name = models.CharField(max_length=20, blank=False, null=False)
-
-    objects: QuerySet = models.Manager()
-
-    def __str__(self):
-        return self.name
+        return f'{self.season.name} {self.league} -> {self.teams.count()} Teams'
 
 
 class Gameday(models.Model):
@@ -244,7 +192,7 @@ class Gameresult(models.Model):
         if self.sh is None:
             self.sh = ""
 
-        return f"{self.gameinfo.pk}__{self.gameinfo.field} {self.gameinfo.scheduled}: {self.team} -  / {self.pa}"
+        return f"{self.gameinfo.pk}__{self.gameinfo.field} {self.gameinfo.scheduled}: {self.team} ({"Home" if self.isHome else "Away"}) -> {self.fh + self.sh} / {self.pa}"
 
 
 class GameOfficial(models.Model):
@@ -313,6 +261,63 @@ class TeamLog(models.Model):
             f"{self.gameinfo.pk}__{self.team}#{self.sequence} {self.event} Player: {self.player} "
             f"Value: {self.value} - Half: {self.half}{' [DELETED]' if self.isDeleted else ''}"
         )
+
+
+class UserProfile(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    avatar = models.ImageField('Avatar', upload_to="media/teammanager/avatars", blank=True, null=True)
+    team = models.ForeignKey(Team, on_delete=models.PROTECT, null=True)
+    firstname = models.CharField(max_length=20, null=True)
+    lastname = models.CharField(max_length=20, null=True)
+    playernumber = models.IntegerField(null=True)
+    position = models.CharField(max_length=20, blank=True, null=True)
+    location = models.CharField(max_length=20, blank=True, null=True)
+    birth_date = models.DateField(null=True, blank=True)
+
+    objects: QuerySet = models.Manager()
+
+    def get_permisions(self):
+        permissions = list(UserPermissions.objects.filter(user=self))
+        return permissions
+
+    def check_teammanager(self):
+        permisssions = self.get_permisions()
+        is_teammanager = False
+        for permission in permisssions:
+            if permission.permission.name == 'Teammanager':
+                is_teammanager = True
+        return is_teammanager
+
+    def __str__(self):
+        return f'{self.team.name}: {self.firstname} {self.lastname}'
+
+
+class Permissions(models.Model):
+    name = models.CharField(max_length=20)
+
+    objects: QuerySet = models.Manager()
+
+    def __str__(self):
+        return self.name
+
+
+class UserPermissions(models.Model):
+    permission = models.ForeignKey(Permissions, on_delete=models.CASCADE)
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
+
+    objects: QuerySet = models.Manager()
+
+    def __str__(self):
+        return f'{self.permission.name}: {self.user.firstname} {self.user.lastname}'
+
+
+class Achievement(models.Model):
+    name = models.CharField(max_length=20, blank=False, null=False)
+
+    objects: QuerySet = models.Manager()
+
+    def __str__(self):
+        return self.name
 
 
 class PlayerAchievement(models.Model):

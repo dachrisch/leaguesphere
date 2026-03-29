@@ -35,7 +35,19 @@ from gamedays.models import (
     Gameresult,
     GamedayDesignerState,
 )
-from gamedays.service.gameday_service import GamedayService
+from gamedays.service.gameday_service import (
+    GamedayService,
+    TABLE_HEADERS,
+    HtmlAndJsonRendering,
+)
+from gamedays.service.gameday_settings import (
+    TEAM_NAME,
+    PF,
+    PA,
+    DIFF,
+    STANDING,
+    WIN_POINTS,
+)
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -213,9 +225,17 @@ class GamedayScheduleView(APIView):
         if get == "schedule":
             response = gs.get_schedule().to_json(orient=orient)
         elif get == "qualify":
-            response = gs.get_qualify_table().to_json(orient="split")
+            qualify_table = gs.get_qualify_table()
+            if not isinstance(qualify_table, HtmlAndJsonRendering):
+                qualify_table = qualify_table[[STANDING, TEAM_NAME, WIN_POINTS, PF, PA, DIFF]]
+                qualify_table = qualify_table.rename(columns=TABLE_HEADERS)
+            response = qualify_table.to_json(orient="split")
         elif get == "final":
-            response = gs.get_final_table().to_json(orient="split")
+            final_table = gs.get_final_table()
+            if not isinstance(final_table, HtmlAndJsonRendering):
+                final_table = final_table[[TEAM_NAME, WIN_POINTS, PF, PA, DIFF]]
+                final_table = final_table.rename(columns=TABLE_HEADERS)
+            response = final_table.to_json(orient="split")
         return Response(json.loads(response, object_pairs_hook=OrderedDict))
 
 

@@ -1,6 +1,10 @@
 {
   "name": "liveticker",
+<<<<<<< HEAD
   "version": "3.2.1-rc.2",
+=======
+  "version": "3.7.0",
+>>>>>>> master
   "private": true,
   "main": "index.js",
   "directories": {

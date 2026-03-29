@@ -2,6 +2,7 @@ import pytest
 from django.test import TestCase
 
 from gamedays.tests.setup_factories.db_setup import DBSetup
+from league_table.tests.setup_factories.factories_leaguetable import LeagueSeasonConfigFactory
 from officials.models import Official, OfficialGamedaySignup
 from officials.service.signup_service import (
     MaxSignupError,
@@ -30,6 +31,7 @@ class TestOfficialSignupService(TestCase):
 
     def test_create_signup_does_not_allow_duplicates(self):
         gameday = DBSetup().create_empty_gameday()
+        LeagueSeasonConfigFactory(league=gameday.league, season=gameday.season)
         DbSetupOfficials().create_officials_and_team()
         official = Official.objects.first()
         OfficialGamedaySignup.objects.create(gameday=gameday, official=official)
@@ -40,6 +42,7 @@ class TestOfficialSignupService(TestCase):
 
     def test_successfully_signed_up(self):
         gameday = DBSetup().create_empty_gameday()
+        LeagueSeasonConfigFactory(league=gameday.league, season=gameday.season)
         DbSetupOfficials().create_officials_and_team()
         official = Official.objects.first()
         OfficialSignupService.create_signup(

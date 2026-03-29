@@ -1,0 +1,90 @@
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; }
+  .mock-page { max-width: 900px; margin: 0 auto; padding: 20px; }
+  .card { border-radius: 8px; border: 1px solid #dee2e6; overflow: hidden; margin-bottom: 16px; }
+  .card-header { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .card-header.blue { background: #cfe2ff; color: #084298; }
+  .card-header.pending { background: #fff3cd; color: #664d03; }
+  .badge-blue { background: rgba(8,66,152,0.15); color: #084298; padding: 2px 10px; border-radius: 20px; font-size: 12px; }
+  .badge-yellow { background: rgba(102,77,3,0.15); color: #664d03; padding: 2px 10px; border-radius: 20px; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; background: white; }
+  thead.grey th { background: #e9ecef; color: #495057; padding: 10px 12px; font-size: 13px; font-weight: 600; }
+  tbody td { padding: 12px; border-top: 1px solid #f0f0f0; font-size: 14px; color: #212529; background: white; }
+  tbody tr:hover td { background: #f8f9fa; }
+  .fw-bold { font-weight: 600; }
+  .text-muted { color: #6c757d; font-size: 12px; }
+  .btn { padding: 5px 14px; border-radius: 6px; font-size: 13px; border: none; cursor: pointer; }
+  .btn-primary { background: #0d6efd; color: white; }
+  .btn-outline { background: transparent; border: 1px solid #0d6efd; color: #0d6efd; }
+  .badge-info { background: #cff4fc; color: #055160; padding: 3px 10px; border-radius: 20px; font-size: 12px; }
+  .annotation { background: #d1e7dd; border: 1px solid #a3cfbb; border-radius: 6px; padding: 8px 12px; font-size: 12px; margin: 8px 0; color: #0a3622; }
+</style>
+
+<div class="mock-page">
+  <h2>Financial Dashboard</h2>
+
+  <div class="card">
+    <div class="card-header blue">
+      <strong>≡ League/Season Configurations</strong>
+      <span class="badge-blue">1 Active</span>
+    </div>
+    <table>
+      <thead class="grey">
+        <tr>
+          <th>League / Season</th>
+          <th>Model / Progress</th>
+          <th style="text-align:right">Expected Gross</th>
+          <th style="text-align:right">Live Gross</th>
+          <th style="text-align:right">Net</th>
+          <th style="text-align:center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="fw-bold">Süd</div><div class="text-muted">2025</div></td>
+          <td><span class="badge-info">Cost per team in season (Flat)</span><div class="text-muted" style="margin-top:4px">10 / 36 Teams</div></td>
+          <td style="text-align:right;color:#6c757d;font-weight:600">468,00 €</td>
+          <td style="text-align:right;color:#0d6efd;font-weight:600">130,00 €</td>
+          <td style="text-align:right;color:#198754;font-weight:700;font-size:16px">130,00 €</td>
+          <td style="text-align:center">
+            <button class="btn btn-outline" style="margin-right:4px">⚙</button>
+            <button class="btn" style="border:1px solid #dc3545;color:#dc3545;">🗑</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header pending">
+      <strong>⚠ Unconfigured League/Seasons</strong>
+      <span class="badge-yellow">2 Pending</span>
+    </div>
+    <table>
+      <thead class="grey">
+        <tr>
+          <th>League / Season</th>
+          <th>Gamedays</th>
+          <th>Teams in games</th>
+          <th style="text-align:center">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="fw-bold">Nord</div><div class="text-muted">2025</div></td>
+          <td style="color:#6c757d">3 gamedays</td>
+          <td style="color:#6c757d">8 teams</td>
+          <td style="text-align:center"><button class="btn btn-primary">+ Create Config</button></td>
+        </tr>
+        <tr>
+          <td><div class="fw-bold">Süd</div><div class="text-muted">2026</div></td>
+          <td style="color:#6c757d">1 gameday</td>
+          <td style="color:#6c757d">4 teams</td>
+          <td style="text-align:center"><button class="btn btn-primary">+ Create Config</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="annotation">✓ "+ Create Config" pre-fills league &amp; season — user only sets cost model and rate.</div>
+</div>

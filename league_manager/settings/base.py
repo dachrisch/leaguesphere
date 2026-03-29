@@ -161,6 +161,11 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
         "NAME": os.environ.get("MYSQL_DB_NAME", "test_db"),
+<<<<<<< HEAD
+=======
+        # 'NAME': 'test_5erdffl$league_manager2',
+        # 'NAME': 'test_demodffl$default',
+>>>>>>> master
         "USER": os.environ.get("MYSQL_USER", "user"),
         "PASSWORD": os.environ.get("MYSQL_PWD", "user"),
         "HOST": os.environ.get("MYSQL_HOST", "127.0.0.1"),
