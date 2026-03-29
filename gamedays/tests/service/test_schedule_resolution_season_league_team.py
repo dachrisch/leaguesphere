@@ -113,7 +113,7 @@ class TestScheduleResolutionRegistersSeasonLeagueTeam:
         registered_teams = set(
             SeasonLeagueTeam.objects.filter(
                 season=self.season, league=self.league
-            ).values_list("team_id", flat=True)
+            ).values_list("teams", flat=True)
         )
         assert self.team_home.pk in registered_teams
         assert self.team_away.pk in registered_teams

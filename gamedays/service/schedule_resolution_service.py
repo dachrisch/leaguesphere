@@ -76,11 +76,11 @@ class GamedayScheduleResolutionService:
                     if target_gi.officials != team:
                         target_gi.officials = team
                         target_gi.save()
-                SeasonLeagueTeam.objects.get_or_create(
+                slt, _ = SeasonLeagueTeam.objects.get_or_create(
                     season=self.gameday.season,
                     league=self.gameday.league,
-                    team=team,
                 )
+                slt.teams.add(team)
             except (IndexError, Team.DoesNotExist, KeyError) as e:
                 logger.warning(f"Error applying team rule {team_rule.id}: {str(e)}")
 
