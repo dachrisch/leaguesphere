@@ -191,7 +191,7 @@ class GamedayModelWrapper:
         if not self.has_finalround():
             return None
         if self._gameinfo[self._gameinfo[STATUS] != FINISHED].empty is False:
-             return pd.DataFrame()
+            return pd.DataFrame()
 
         try:
             league_season_ruleset = LeagueSeasonConfig.objects.get(
