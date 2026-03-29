@@ -296,11 +296,11 @@ class TemplateApplicationService:
                 gameinfos.append(gameinfo)
 
                 if official_team is not None:
-                    SeasonLeagueTeam.objects.get_or_create(
+                    slt, _ = SeasonLeagueTeam.objects.get_or_create(
                         season=self.gameday.season,
                         league=self.gameday.league,
-                        team=official_team,
                     )
+                    slt.teams.add(official_team)
 
         return gameinfos
 
@@ -391,11 +391,11 @@ class TemplateApplicationService:
 
             for team in (home_team, away_team):
                 if team is not None:
-                    SeasonLeagueTeam.objects.get_or_create(
+                    slt, _ = SeasonLeagueTeam.objects.get_or_create(
                         season=self.gameday.season,
                         league=self.gameday.league,
-                        team=team,
                     )
+                    slt.teams.add(team)
 
     def _create_audit_record(self):
         """

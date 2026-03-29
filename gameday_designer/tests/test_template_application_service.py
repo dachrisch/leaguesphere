@@ -763,8 +763,8 @@ class TestSeasonLeagueTeamRegistration:
         service.apply()
 
         registered = SeasonLeagueTeam.objects.filter(season=season, league=league)
-        assert registered.count() == 3
-        registered_team_ids = set(registered.values_list("team_id", flat=True))
+        assert registered.count() == 1
+        registered_team_ids = set(registered.first().teams.values_list("pk", flat=True))
         assert registered_team_ids == {t.pk for t in teams}
 
     def test_apply_does_not_register_unresolved_reference_teams(self):
@@ -811,4 +811,4 @@ class TestSeasonLeagueTeamRegistration:
         registered = SeasonLeagueTeam.objects.filter(season=season, league=league)
         # Only the official team is registered; home/away are unresolved
         assert registered.count() == 1
-        assert registered.first().team == official
+        assert official in registered.first().teams.all()
