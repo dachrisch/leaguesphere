@@ -132,7 +132,10 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     expect(page.get_by_text("Template Library")).not_to_be_visible(timeout=5000)
 
     # ---- Phase 4: Clear the schedule -----------------------------------------
-    page.get_by_test_id("gameday-metadata-toggle").click()
+    # Open the metadata accordion only if it is currently collapsed
+    toggle = page.get_by_test_id("gameday-metadata-toggle")
+    if 'collapsed' in (toggle.get_attribute('class') or ''):
+        toggle.click()
     clear_btn = page.get_by_test_id("clear-all-button")
     expect(clear_btn).to_be_visible(timeout=5000)
     clear_btn.click()
