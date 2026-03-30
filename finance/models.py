@@ -30,8 +30,8 @@ class LeagueSeasonFinancialConfig(models.Model):
         (MODEL_GAMEDAY, 'Cost per team per gameday participation'),
     ]
 
-    league = models.ForeignKey(League, on_delete=models.CASCADE)
-    season = models.ForeignKey(Season, on_delete=models.CASCADE)
+    league = models.ForeignKey(League, on_delete=models.CASCADE, db_constraint=False)
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, db_constraint=False)
     cost_model = models.CharField(max_length=10, choices=COST_MODEL_CHOICES, default=MODEL_SEASON)
     base_rate_override = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
                                             help_text="Override the global default base rate.")
@@ -60,7 +60,7 @@ class LeagueSeasonDiscount(models.Model):
     ]
 
     config = models.ForeignKey(LeagueSeasonFinancialConfig, on_delete=models.CASCADE, related_name='discounts')
-    team = models.ForeignKey(Team, on_delete=models.CASCADE, null=True, blank=True,
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, null=True, blank=True, db_constraint=False,
                              help_text="If null, the discount applies to all teams in this config.")
     discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPE_CHOICES, default=TYPE_FIXED)
     value = models.DecimalField(max_digits=10, decimal_places=2)
