@@ -63,6 +63,9 @@ services:
 
   app:
     image: leaguesphere/backend:staging
+    build:
+      context: ..
+      dockerfile: container/app.Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME}.app
     command: gunicorn -b 0.0.0.0:8000 league_manager.wsgi
     healthcheck:
@@ -87,6 +90,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      finance-db:
+        condition: service_started
     restart: unless-stopped
 
   watchtower:
@@ -111,6 +116,23 @@ services:
       retries: 5
       start_period: 120s
 
+  finance-db:
+    image: mariadb:10.11
+    container_name: ${COMPOSE_PROJECT_NAME}.finance-db
+    command: --default-storage-engine=innodb
+    env_file: ls.env.staging
+    environment:
+
+      MARIADB_ROOT_PASSWORD: ${MYSQL_FINANCE_ROOT_PWD}
+      MARIADB_DATABASE: ${MYSQL_FINANCE_DB_NAME}
+      MARIADB_USER: ${MYSQL_FINANCE_USER}
+      MARIADB_PASSWORD: ${MYSQL_FINANCE_PWD}
+    volumes:
+      - finance_data_stage:/var/lib/mysql
+    networks:
+      - backend
+    restart: unless-stopped
+
 networks:
   backend:
     internal: true
@@ -118,3 +140,6 @@ networks:
     internal: false
   proxy:
     external: true
+
+volumes:
+  finance_data_stage:

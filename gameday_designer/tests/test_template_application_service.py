@@ -25,6 +25,7 @@ from gamedays.models import (
     Team,
     Gameinfo,
     Gameresult,
+    SeasonLeagueTeam,
 )
 from gameday_designer.models import (
     ScheduleTemplate,
@@ -710,3 +711,104 @@ class TestTemplateApplicationServiceResult:
         assert result.success is True
         assert result.gameinfos_created == 1
         assert isinstance(result.message, str)
+
+
+@pytest.mark.django_db
+class TestSeasonLeagueTeamRegistration:
+    """Test that applying a template registers teams to SeasonLeagueTeam."""
+
+    def test_apply_registers_playing_and_official_teams(self):
+        """All resolved teams (home, away, official) are registered to SeasonLeagueTeam."""
+        template = ScheduleTemplate.objects.create(
+            name="Registration Test",
+            num_teams=3,
+            num_fields=1,
+            num_groups=1,
+        )
+        TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=0,
+            stage="Vorrunde",
+            standing="Round Robin",
+            home_group=0,
+            home_team=0,
+            away_group=0,
+            away_team=1,
+            official_group=0,
+            official_team=2,
+        )
+
+        season = Season.objects.create(name="2025")
+        league = League.objects.create(name="Test League")
+        user = User.objects.create(username="test_user")
+        gameday = Gameday.objects.create(
+            name="Test Gameday",
+            season=season,
+            league=league,
+            date=datetime.date.today(),
+            start=datetime.time(10, 0),
+            format="3_1",
+            author=user,
+        )
+        teams = [
+            Team.objects.create(
+                name=f"Team {i}", description=f"Desc {i}", location="City"
+            )
+            for i in range(3)
+        ]
+        team_mapping = {f"0_{i}": teams[i].pk for i in range(3)}
+
+        service = TemplateApplicationService(template, gameday, team_mapping)
+        service.apply()
+
+        registered = SeasonLeagueTeam.objects.filter(season=season, league=league)
+        assert registered.count() == 1
+        registered_team_ids = set(registered.first().teams.values_list("pk", flat=True))
+        assert registered_team_ids == {t.pk for t in teams}
+
+    def test_apply_does_not_register_unresolved_reference_teams(self):
+        """Slots with unresolved references (final round placeholders) do not create SeasonLeagueTeam."""
+        template = ScheduleTemplate.objects.create(
+            name="Reference Test",
+            num_teams=2,
+            num_fields=1,
+            num_groups=1,
+        )
+        # Slot with reference strings — teams not known yet
+        TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=0,
+            stage="Final",
+            standing="P1",
+            home_reference="Winner HF1",
+            away_reference="Winner HF2",
+            official_group=0,
+            official_team=0,
+        )
+
+        season = Season.objects.create(name="2025")
+        league = League.objects.create(name="Test League")
+        user = User.objects.create(username="test_user")
+        gameday = Gameday.objects.create(
+            name="Test Gameday",
+            season=season,
+            league=league,
+            date=datetime.date.today(),
+            start=datetime.time(10, 0),
+            format="2_1",
+            author=user,
+        )
+        official = Team.objects.create(
+            name="Official Team", description="Off", location="City"
+        )
+        team_mapping = {"0_0": official.pk}
+
+        service = TemplateApplicationService(template, gameday, team_mapping)
+        service.apply()
+
+        registered = SeasonLeagueTeam.objects.filter(season=season, league=league)
+        # Only the official team is registered; home/away are unresolved
+        assert registered.count() == 1
+        assert official in registered.first().teams.all()

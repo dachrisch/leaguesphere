@@ -1,0 +1,105 @@
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; }
+  .mock-page { max-width: 960px; margin: 0 auto; padding: 20px; }
+  .card { border-radius: 8px; border: 1px solid #dee2e6; overflow: hidden; margin-bottom: 16px; background: white; }
+  .card-header { padding: 12px 16px; background: #cfe2ff; color: #084298; font-weight: 700; font-size: 15px; }
+  .card-body { padding: 24px; }
+  .row { display: flex; gap: 16px; }
+  .col { flex: 1; }
+  .col-full { flex: 0 0 100%; }
+  .field-box { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; height: 100%; box-sizing: border-box; }
+  .field-box.info { border-color: #9ec5fe; background: #f0f5ff; }
+  .field-box.warning { border-color: #ffe69c; background: #fffbf0; }
+  label { font-size: 12px; font-weight: 600; color: #495057; display: block; margin-bottom: 4px; }
+  .mock-input { width: 100%; padding: 7px 10px; border: 1px solid #ced4da; border-radius: 6px; font-size: 14px; color: #212529; box-sizing: border-box; background: white; }
+  .mock-hint { font-size: 12px; color: #6c757d; margin-top: 6px; }
+  .mock-hint strong { color: #0d6efd; }
+  .radio-group { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .radio-opt { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .section-label { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #664d03; margin-bottom: 10px; }
+  .btn { padding: 7px 20px; border-radius: 6px; font-size: 14px; border: none; cursor: pointer; }
+  .btn-primary { background: #0d6efd; color: white; }
+  .btn-secondary { background: #6c757d; color: white; }
+  .annotation { background: #fff3cd; border: 1px solid #ffe69c; border-radius: 6px; padding: 8px 12px; font-size: 12px; margin: 4px 0 12px; color: #664d03; }
+  .tag-new { background: #d1e7dd; color: #0a3622; padding: 1px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; margin-left: 6px; }
+  .tag-moved { background: #fff3cd; color: #664d03; padding: 1px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; margin-left: 6px; }
+  .discount-row { display: flex; gap: 8px; align-items: flex-end; margin-top: 10px; }
+  .discount-row .mock-input { font-size: 13px; }
+  .discount-item { background: #fff; border: 1px solid #dee2e6; border-radius: 6px; padding: 6px 10px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+  .del-btn { color: #dc3545; background: none; border: none; cursor: pointer; font-size: 14px; }
+  hr { border: none; border-top: 1px solid #dee2e6; margin: 16px 0; }
+  .breadcrumb { font-size: 13px; color: #6c757d; margin-bottom: 16px; }
+  .breadcrumb a { color: #0d6efd; text-decoration: none; }
+</style>
+
+<div class="mock-page">
+  <div class="breadcrumb"><a href="#">Dashboard</a> / New Financial Configuration</div>
+  <h2>Create League/Season Financial Configuration</h2>
+
+  <div class="card">
+    <div class="card-header">⚙ Configuration &amp; Planning</div>
+    <div class="card-body">
+
+      <!-- League + Season (new on create page) -->
+      <div class="row" style="margin-bottom:16px">
+        <div class="col">
+          <div class="field-box info">
+            <label>League <span class="tag-new">on create</span></label>
+            <select class="mock-input"><option>Süd</option><option>Nord</option></select>
+          </div>
+        </div>
+        <div class="col">
+          <div class="field-box info">
+            <label>Season <span class="tag-new">on create</span></label>
+            <select class="mock-input"><option>2025</option><option>2026</option></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cost model full width -->
+      <div class="row" style="margin-bottom:16px">
+        <div class="col-full">
+          <div class="field-box info">
+            <label>Cost Model*</label>
+            <div class="radio-group">
+              <label class="radio-opt"><input type="radio" name="model" checked> Cost per team in season (Flat)</label>
+              <label class="radio-opt"><input type="radio" name="model"> Cost per team per gameday participation</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Base rate + Discounts side by side -->
+      <div class="row" style="margin-bottom:16px">
+        <div class="col">
+          <div class="field-box info">
+            <label>Base Rate Override</label>
+            <input class="mock-input" type="number" placeholder="13.00">
+            <div class="mock-hint"><i>ℹ</i> System Default: <strong>13,00 €</strong> <span class="tag-new">shown on create too</span></div>
+            <hr>
+            <div class="section-label">Discounts &amp; Grants <span class="tag-moved">moved here</span></div>
+            <div class="discount-item">-10% global discount <button class="del-btn">✕</button></div>
+            <div class="discount-row">
+              <div style="flex:1"><label>Type</label><select class="mock-input"><option>% Percent</option><option>€ Fixed</option></select></div>
+              <div style="flex:1"><label>Value</label><input class="mock-input" placeholder="10"></div>
+              <div style="flex:2"><label>Description</label><input class="mock-input" placeholder="Early bird"></div>
+              <button class="btn btn-primary" style="white-space:nowrap">+ Add</button>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="field-box warning">
+            <div class="section-label">📅 Planning Targets</div>
+            <label>Expected Teams Count</label>
+            <input class="mock-input" placeholder="36">
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;margin-top:8px">
+        <button class="btn btn-secondary">Cancel</button>
+        <button class="btn btn-primary">Create Configuration</button>
+      </div>
+    </div>
+  </div>
+</div>

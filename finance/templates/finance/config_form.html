@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'finance-dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item active">New Financial Configuration</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Create League/Season Financial Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form.league|as_crispy_field }}
+                        {{ form.season|as_crispy_field }}
+                        <div class="p-3 bg-light rounded border border-info border-opacity-25 mb-3">
+                            {{ form.cost_model|as_crispy_field }}
+                        </div>
+                        {{ form.base_rate_override|as_crispy_field }}
+                        
+                        <div class="p-3 bg-light rounded border border-warning border-opacity-25 mt-3">
+                            <h6 class="fw-bold mb-3 text-warning-emphasis"><i class="bi bi-calendar-event"></i> Planning Targets</h6>
+                            <div id="season_fields" style="display: none;">
+                                {{ form.expected_teams_count|as_crispy_field }}
+                            </div>
+                            <div id="gameday_fields" style="display: none;">
+                                {{ form.expected_gamedays_count|as_crispy_field }}
+                                {{ form.expected_teams_per_gameday|as_crispy_field }}
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'finance-dashboard' %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Create Configuration</button>
+                        </div>
+                    </form>
+                </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const costModelRadios = document.querySelectorAll('input[name="cost_model"]');
+        const seasonFields = document.getElementById('season_fields');
+        const gamedayFields = document.getElementById('gameday_fields');
+
+        function toggleFields() {
+            const checkedRadio = document.querySelector('input[name="cost_model"]:checked');
+            if (!checkedRadio) return;
+            
+            const selectedModel = checkedRadio.value;
+            if (selectedModel === 'SEASON') {
+                seasonFields.style.display = 'block';
+                gamedayFields.style.display = 'none';
+            } else {
+                seasonFields.style.display = 'none';
+                gamedayFields.style.display = 'block';
+            }
+        }
+
+        costModelRadios.forEach(radio => {
+            radio.addEventListener('change', toggleFields);
+        });
+
+        // Initial toggle
+        toggleFields();
+    });
+</script>
+{% endblock %}
+

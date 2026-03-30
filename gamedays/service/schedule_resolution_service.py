@@ -1,4 +1,4 @@
-from gamedays.models import Team, Gameinfo, Gameresult, Gameday
+from gamedays.models import Team, Gameinfo, Gameresult, Gameday, SeasonLeagueTeam
 from gameday_designer.models import (
     ScheduleTemplate,
     TemplateUpdateRule,
@@ -42,7 +42,7 @@ class GamedayScheduleResolutionService:
             gameday=self.gameday,
             field=rule.slot.field,
             stage=rule.slot.stage,
-            standing=rule.slot.standing
+            standing=rule.slot.standing,
         )
 
         if target_gis.count() == 0:
@@ -76,6 +76,11 @@ class GamedayScheduleResolutionService:
                     if target_gi.officials != team:
                         target_gi.officials = team
                         target_gi.save()
+                slt, _ = SeasonLeagueTeam.objects.get_or_create(
+                    season=self.gameday.season,
+                    league=self.gameday.league,
+                )
+                slt.teams.add(team)
             except (IndexError, Team.DoesNotExist, KeyError) as e:
                 logger.warning(f"Error applying team rule {team_rule.id}: {str(e)}")
 

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'finance-dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item active">Delete Financial Configuration</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Confirm Deletion</h5>
+                </div>
+                <div class="card-body">
+                    <p>Are you sure you want to delete the financial configuration for:</p>
+                    <div class="alert alert-warning">
+                        <strong>League:</strong> {{ object.league.name }}<br>
+                        <strong>Season:</strong> {{ object.season.name }}<br>
+                        <strong>Model:</strong> {{ object.get_cost_model_display }}
+                    </div>
+                    <p class="text-danger small">This will also delete all associated discounts for this league and season.</p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'finance-dashboard' %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-danger">Yes, Delete Configuration</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

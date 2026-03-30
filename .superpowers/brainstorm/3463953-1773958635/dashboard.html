@@ -1,0 +1,103 @@
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; }
+  .mock-page { max-width: 900px; margin: 0 auto; padding: 20px; }
+  .card { border-radius: 8px; border: 1px solid #dee2e6; overflow: hidden; margin-bottom: 16px; }
+  .card-header { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .card-header.blue { background: #0d6efd; color: white; }
+  .card-header.pending { background: #ffc107; color: #000; }
+  .badge-light { background: rgba(255,255,255,0.2); color: white; padding: 2px 10px; border-radius: 20px; font-size: 12px; }
+  .badge-dark { background: rgba(0,0,0,0.15); color: #000; padding: 2px 10px; border-radius: 20px; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  thead.white-on-blue th { background: #0d6efd; color: white; padding: 10px 12px; font-size: 13px; font-weight: 600; }
+  thead.light th { background: #f8f9fa; color: #666; padding: 10px 12px; font-size: 13px; font-weight: 600; }
+  tbody td { padding: 12px; border-top: 1px solid #f0f0f0; font-size: 14px; }
+  .fw-bold { font-weight: 600; }
+  .text-muted { color: #6c757d; font-size: 12px; }
+  .btn { padding: 5px 14px; border-radius: 6px; font-size: 13px; border: none; cursor: pointer; }
+  .btn-primary { background: #0d6efd; color: white; }
+  .btn-outline { background: transparent; border: 1px solid #0d6efd; color: #0d6efd; }
+  .btn-warning { background: #ffc107; color: #000; font-size: 12px; padding: 3px 10px; }
+  .badge-info { background: #cff4fc; color: #055160; padding: 3px 10px; border-radius: 20px; font-size: 12px; }
+  .split { display: flex; gap: 20px; }
+  .split > div { flex: 1; }
+  .annotation { background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 8px 12px; font-size: 12px; margin: 8px 0; color: #664d03; }
+  .tag-new { background: #d1e7dd; color: #0a3622; padding: 1px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; margin-left: 6px; }
+  .tag-fixed { background: #cfe2ff; color: #084298; padding: 1px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; margin-left: 6px; }
+  .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; color: #666; margin: 16px 0 8px; }
+</style>
+
+<div class="mock-page">
+  <h2>Financial Dashboard <span style="font-size:14px;font-weight:400;color:#666">— mockup of proposed changes</span></h2>
+
+  <!-- ACTIVE CONFIGURATIONS (with fixed header) -->
+  <div class="section-title">Active Configurations <span class="tag-fixed">FIXED: white text on blue thead</span></div>
+  <div class="card">
+    <div class="card-header blue">
+      <strong><i>≡</i> League/Season Configurations</strong>
+      <span class="badge-light">1 Active</span>
+    </div>
+    <table>
+      <thead class="white-on-blue">
+        <tr>
+          <th>League / Season</th>
+          <th>Model / Progress</th>
+          <th style="text-align:right">Expected Gross</th>
+          <th style="text-align:right">Live Gross</th>
+          <th style="text-align:right">Net</th>
+          <th style="text-align:center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="fw-bold">Süd</div><div class="text-muted">2025</div></td>
+          <td><span class="badge-info">Cost per team in season (Flat)</span><div class="text-muted" style="margin-top:4px">10 / 36 Teams</div></td>
+          <td style="text-align:right;color:#6c757d;font-weight:600">468,00 €</td>
+          <td style="text-align:right;color:#0d6efd;font-weight:600">130,00 €</td>
+          <td style="text-align:right;color:#198754;font-weight:700;font-size:16px">130,00 €</td>
+          <td style="text-align:center">
+            <button class="btn btn-outline" style="margin-right:4px">⚙</button>
+            <button class="btn" style="border:1px solid #dc3545;color:#dc3545;">🗑</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- PENDING CONFIGURATIONS (new section) -->
+  <div class="section-title">Pending Configurations <span class="tag-new">NEW</span></div>
+  <div class="annotation">League/season combos that have gamedays but no finance config yet. One-click to create with defaults pre-filled.</div>
+  <div class="card">
+    <div class="card-header pending">
+      <strong>⚠ Unconfigured League/Seasons</strong>
+      <span class="badge-dark">2 Pending</span>
+    </div>
+    <table>
+      <thead class="light">
+        <tr>
+          <th>League / Season</th>
+          <th>Gamedays</th>
+          <th>Teams seen in games</th>
+          <th style="text-align:center">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="fw-bold">Nord</div><div class="text-muted">2025</div></td>
+          <td>3 gamedays</td>
+          <td>8 teams</td>
+          <td style="text-align:center"><button class="btn btn-primary">+ Create Config</button></td>
+        </tr>
+        <tr>
+          <td><div class="fw-bold">Süd</div><div class="text-muted">2026</div></td>
+          <td>1 gameday</td>
+          <td>4 teams</td>
+          <td style="text-align:center"><button class="btn btn-primary">+ Create Config</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="annotation" style="background:#d1e7dd;border-color:#a3cfbb;color:#0a3622">
+    ✓ When "+ Create Config" is clicked, it opens the create form with <strong>league and season pre-filled</strong>, so the user only needs to set the cost model and rate.
+  </div>
+</div>

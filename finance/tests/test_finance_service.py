@@ -1,0 +1,129 @@
+from decimal import Decimal
+from django.test import TestCase
+from django.contrib.auth.models import User
+from gamedays.models import League, Season, Team, Gameday, Gameinfo, Gameresult, SeasonLeagueTeam
+from finance.models import LeagueSeasonFinancialConfig, LeagueSeasonDiscount, FinancialSettings
+from finance.services import FinanceService
+
+
+class FinanceServiceTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create(id=1, username="admin")
+        self.season = Season.objects.create(name="2026")
+        self.league = League.objects.create(name="DFFL")
+        self.team1 = Team.objects.create(name="Team A", description="Team A Desc", location="Berlin")
+        self.team2 = Team.objects.create(name="Team B", description="Team B Desc", location="Hamburg")
+        
+        # Default settings
+        self.settings = FinancialSettings.objects.create(
+            default_rate_per_team_season=Decimal("100.00"),
+            default_rate_per_team_gameday=Decimal("20.00")
+        )
+
+    def test_calculate_costs_season_model(self):
+        config = LeagueSeasonFinancialConfig.objects.create(
+            league=self.league,
+            season=self.season,
+            cost_model=LeagueSeasonFinancialConfig.MODEL_SEASON
+        )
+        # Register two teams
+        slt1 = SeasonLeagueTeam.objects.create(league=self.league, season=self.season)
+        slt1.teams.add(self.team1)
+        slt2 = SeasonLeagueTeam.objects.create(league=self.league, season=self.season)
+        slt2.teams.add(self.team2)
+        
+        costs = FinanceService.calculate_costs(config)
+        self.assertEqual(costs['gross'], Decimal("200.00"))
+        self.assertEqual(costs['net'], Decimal("200.00"))
+
+    def test_calculate_costs_gameday_model(self):
+        config = LeagueSeasonFinancialConfig.objects.create(
+            league=self.league,
+            season=self.season,
+            cost_model=LeagueSeasonFinancialConfig.MODEL_GAMEDAY
+        )
+        
+        gameday = Gameday.objects.create(
+            name="Gameday 1",
+            league=self.league,
+            season=self.season,
+            date="2026-03-15",
+            start="10:00",
+            author=self.user
+        )
+        
+        # Team 1 plays, Team 2 officials
+        gi = Gameinfo.objects.create(gameday=gameday, scheduled="10:00", field=1, officials=self.team2, stage="Main", standing="P1")
+        Gameresult.objects.create(gameinfo=gi, team=self.team1, isHome=True)
+        
+        costs = FinanceService.calculate_costs(config)
+        # 2 unique teams * 20.00 = 40.00
+        self.assertEqual(costs['gross'], Decimal("40.00"))
+
+    def test_discounts_fixed_and_percent(self):
+        config = LeagueSeasonFinancialConfig.objects.create(
+            league=self.league,
+            season=self.season,
+            cost_model=LeagueSeasonFinancialConfig.MODEL_SEASON,
+            base_rate_override=Decimal("100.00")
+        )
+        slt = SeasonLeagueTeam.objects.create(league=self.league, season=self.season)
+        slt.teams.add(self.team1)
+        
+        # Fixed discount for team 1
+        LeagueSeasonDiscount.objects.create(
+            config=config,
+            team=self.team1,
+            discount_type=LeagueSeasonDiscount.TYPE_FIXED,
+            value=Decimal("10.00")
+        )
+        
+        # Percent global discount
+        LeagueSeasonDiscount.objects.create(
+            config=config,
+            team=None,
+            discount_type=LeagueSeasonDiscount.TYPE_PERCENTAGE,
+            value=Decimal("10.00")
+        )
+        
+        costs = FinanceService.calculate_costs(config)
+        # Gross = 100
+        # Team Discount = 10
+        # Global Discount = 10% of 100 = 10
+        # Total Discount = 20
+        # Net = 80
+        self.assertEqual(costs['gross'], Decimal("100.00"))
+        self.assertEqual(costs['discount'], Decimal("20.00"))
+        self.assertEqual(costs['net'], Decimal("80.00"))
+
+    def test_gameday_model_team_discount(self):
+        config = LeagueSeasonFinancialConfig.objects.create(
+            league=self.league,
+            season=self.season,
+            cost_model=LeagueSeasonFinancialConfig.MODEL_GAMEDAY,
+            base_rate_override=Decimal("20.00")
+        )
+        
+        gameday = Gameday.objects.create(
+            name="Gameday 1", league=self.league, season=self.season, date="2026-03-15", start="10:00", author=self.user
+        )
+        gi = Gameinfo.objects.create(gameday=gameday, scheduled="10:00", field=1, officials=self.team2, stage="Main", standing="P1")
+        Gameresult.objects.create(gameinfo=gi, team=self.team1, isHome=True)
+        
+        # Team 1 gets a fixed discount of 5.00 per participation (this is how it's currently implemented in services.py)
+        # Actually, in services.py: gameday_discount += cls._calculate_team_discounts(config, team, base_rate)
+        # So if they participate in 1 gameday, they get 5.00 off.
+        LeagueSeasonDiscount.objects.create(
+            config=config,
+            team=self.team1,
+            discount_type=LeagueSeasonDiscount.TYPE_FIXED,
+            value=Decimal("5.00")
+        )
+        
+        costs = FinanceService.calculate_costs(config)
+        # Gross = 2 teams * 20 = 40
+        # Discount = Team 1 (5.00) + Team 2 (0) = 5.00
+        # Net = 35.00
+        self.assertEqual(costs['gross'], Decimal("40.00"))
+        self.assertEqual(costs['discount'], Decimal("5.00"))
+        self.assertEqual(costs['net'], Decimal("35.00"))

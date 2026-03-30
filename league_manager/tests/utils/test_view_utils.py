@@ -1,9 +1,10 @@
 from unittest.mock import MagicMock
 
-from django.test import TestCase
+from django.contrib.auth.models import AnonymousUser
+from django.test import SimpleTestCase, TestCase
 
 from gamedays.models import Team
-from league_manager.utils.view_utils import PermissionHelper
+from league_manager.utils.view_utils import PermissionHelper, is_finance_admin
 
 
 class PermissionHelperTests(TestCase):
@@ -35,3 +36,33 @@ class PermissionHelperTests(TestCase):
             )
         # if mock isn't deleted explicitly it will stay active for all the other tests and some will fail
         del Team.objects.get
+
+
+class IsFinanceAdminTests(SimpleTestCase):
+    def _make_staff(self, email):
+        user = MagicMock(is_staff=True, email=email)
+        return user
+
+    def test_staff_with_bumbleflies_email_is_finance_admin(self):
+        user = self._make_staff("admin@bumbleflies.de")
+        self.assertTrue(is_finance_admin(user))
+
+    def test_staff_with_other_email_is_not_finance_admin(self):
+        user = self._make_staff("admin@other.de")
+        self.assertFalse(is_finance_admin(user))
+
+    def test_staff_with_subdomain_email_is_not_finance_admin(self):
+        # 'admin@sub.bumbleflies.de'.endswith('@bumbleflies.de') is False — it ends with '.bumbleflies.de'
+        user = self._make_staff("admin@sub.bumbleflies.de")
+        self.assertFalse(is_finance_admin(user))
+
+    def test_non_staff_with_bumbleflies_email_is_not_finance_admin(self):
+        user = MagicMock(is_staff=False, email="user@bumbleflies.de")
+        self.assertFalse(is_finance_admin(user))
+
+    def test_anonymous_user_is_not_finance_admin(self):
+        self.assertFalse(is_finance_admin(AnonymousUser()))
+
+    def test_staff_with_none_email_is_not_finance_admin(self):
+        user = self._make_staff(None)
+        self.assertFalse(is_finance_admin(user))

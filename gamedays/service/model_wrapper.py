@@ -118,11 +118,6 @@ class GamedayModelWrapper:
 
         # Only proceed if there are missing team names
         if self._games_with_result[TEAM_NAME].isna().any():
-
-            placeholder_service = GamedayPlaceholderService(
-                self._gameinfo["gameday"].iloc[0]
-            )
-
             placeholder_service = GamedayPlaceholderService(self._gameinfo['gameday'].iloc[0])
 
             # Resolve each missing row
@@ -196,7 +191,7 @@ class GamedayModelWrapper:
         if not self.has_finalround():
             return None
         if self._gameinfo[self._gameinfo[STATUS] != FINISHED].empty is False:
-             return pd.DataFrame()
+            return pd.DataFrame()
 
         try:
             league_season_ruleset = LeagueSeasonConfig.objects.get(

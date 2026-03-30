@@ -32,3 +32,9 @@ class PermissionHelper:
         except Team.DoesNotExist:
             pass
         return user_request
+
+
+def is_finance_admin(user):
+    if not user.is_authenticated:
+        return False
+    return user.is_staff and (user.email or "").endswith("@bumbleflies.de")

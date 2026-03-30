@@ -17,7 +17,9 @@ class GameResultSerializer(serializers.ModelSerializer):
         return GamedayPlaceholderService.resolve_placeholder(
             obj.gameinfo_id, obj.isHome
         )
-        return GamedayPlaceholderService.resolve_placeholder(obj.gameinfo_id, obj.isHome)
+        return GamedayPlaceholderService.resolve_placeholder(
+            obj.gameinfo_id, obj.isHome
+        )
 
 
 class GameResultsUpdateSerializer(serializers.Serializer):

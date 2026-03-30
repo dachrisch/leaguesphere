@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "knox",
     "passcheck",
     "gameday_designer",
+    "finance",
     "health_check",
 ]
 
@@ -112,6 +113,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+DATABASE_ROUTERS = ["finance.router.FinanceRouter"]
+
 # Sites framework
 SITE_ID = 1
 
@@ -158,17 +161,29 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
         "NAME": os.environ.get("MYSQL_DB_NAME", "test_db"),
-        # 'NAME': 'test_5erdffl$league_manager2',
-        # 'NAME': 'test_demodffl$default',
         "USER": os.environ.get("MYSQL_USER", "user"),
         "PASSWORD": os.environ.get("MYSQL_PWD", "user"),
         "HOST": os.environ.get("MYSQL_HOST", "127.0.0.1"),
         "PORT": os.environ.get("MYSQL_PORT", "3306"),
         "OPTIONS": {
-            "init_command": "SET default_storage_engine=InnoDB;"  # SET foreign_key_checks = 0;',
+            "init_command": "SET default_storage_engine=InnoDB;",
         },
     },
 }
+
+# Optional: Dedicated Finance Database configuration
+if os.environ.get("MYSQL_FINANCE_DB_NAME"):
+    DATABASES["finance"] = {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": os.environ.get("MYSQL_FINANCE_DB_NAME"),
+        "USER": os.environ.get("MYSQL_FINANCE_USER"),
+        "PASSWORD": os.environ.get("MYSQL_FINANCE_PWD"),
+        "HOST": os.environ.get("MYSQL_FINANCE_HOST", "finance-db"),
+        "PORT": os.environ.get("MYSQL_FINANCE_PORT", "3306"),
+        "OPTIONS": {
+            "init_command": "SET default_storage_engine=InnoDB;",
+        },
+    }
 
 MOODLE_URL = os.environ.get("MOODLE_URL")
 MOODLE_WSTOKEN = os.environ.get("MOODLE_WSTOKEN")
