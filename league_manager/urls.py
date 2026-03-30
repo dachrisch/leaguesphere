@@ -33,6 +33,11 @@ class HealthCheckView(_BaseHealthCheckView):
         "health_check.checks.Storage",
     ]
 
+    async def get(self, request, *args, **kwargs):
+        response = await super().get(request, *args, **kwargs)
+        response.status_code = 200
+        return response
+
 
 from league_manager.views import (
     homeview,
