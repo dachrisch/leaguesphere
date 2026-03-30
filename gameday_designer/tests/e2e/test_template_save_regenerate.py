@@ -88,6 +88,28 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     assert expected_stage_count > 0, "Built-in template should produce at least one stage"
     assert expected_progression_count > 0, "Built-in template should produce at least one progression slot"
 
+    # Assign an official to the first game to exercise the save/restore cycle
+    page.get_by_test_id("add-officials-button").click()
+    page.wait_for_timeout(500)
+    # Add a team to the officials group (the group card is identified by its stable DOM id)
+    page.locator('#group-group-officials').get_by_role("button", name="Add Team").click()
+    page.wait_for_timeout(500)
+    # Open the official select on the first game and pick the new team (first non-disabled option)
+    first_game_row = page.locator('tr[id^="game-"]').first
+    first_game_row.locator('.official-select__control').click()
+    page.locator('.official-select__option[aria-disabled="false"]').first.click()
+    page.wait_for_timeout(1000)
+
+    # Snapshot officials count (games with a selected official shown in the single-value slot)
+    expected_official_count = page.locator('tr[id^="game-"] .official-select__single-value').count()
+    assert expected_official_count > 0, "Should have at least one game with an official assigned"
+
+    # Snapshot times count (game rows whose time cell shows a real HH:MM time, not '--:--')
+    expected_time_count = page.locator('tr[id^="game-"] > td:nth-child(2)').filter(
+        has_not_text='--:--'
+    ).count()
+    assert expected_time_count > 0, "Built-in template should produce games with calculated start times"
+
     # ---- Phase 3: Save the generated structure as a custom template ----------
     page.get_by_test_id("open-template-library-button").click()
     expect(page.get_by_text("Template Library")).to_be_visible(timeout=5000)
@@ -173,4 +195,20 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     assert actual_progression_count == expected_progression_count, (
         f"Regenerated schedule should have {expected_progression_count} filled progression slots, "
         f"got {actual_progression_count}"
+    )
+
+    # Officials must be restored (catches templates saved/restored without officials)
+    actual_official_count = page.locator('tr[id^="game-"] .official-select__single-value').count()
+    assert actual_official_count == expected_official_count, (
+        f"Regenerated schedule should have {expected_official_count} games with officials, "
+        f"got {actual_official_count}"
+    )
+
+    # Start times must be preserved (catches templates where startTime is dropped on regeneration)
+    actual_time_count = page.locator('tr[id^="game-"] > td:nth-child(2)').filter(
+        has_not_text='--:--'
+    ).count()
+    assert actual_time_count == expected_time_count, (
+        f"Regenerated schedule should have {expected_time_count} games with start times, "
+        f"got {actual_time_count}"
     )

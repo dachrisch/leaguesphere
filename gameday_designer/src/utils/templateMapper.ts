@@ -1,5 +1,5 @@
 import { FlowState, GlobalTeam, FlowNode, isGameNode, isStageNode, createGameNodeInStage, createGameToGameEdge, createStageToGameEdge, FlowEdge, GlobalTeamGroup, StageCategory, StageToGameEdgeData } from '../types/flowchart';
-import { isWinnerReference, isLoserReference, isGroupTeamReference, isRankReference, isGroupRankReference } from '../types/designer';
+import { isWinnerReference, isLoserReference, isGroupTeamReference, isRankReference, isGroupRankReference, TeamReference } from '../types/designer';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface GenericTemplateSlot {
@@ -19,6 +19,8 @@ export interface GenericTemplateSlot {
   official_team?: number;
   official_reference?: string;
   break_after: number;
+  start_time?: string;
+  manual_time?: boolean;
   update_rule?: {
     pre_finished: string;
     team_rules: Array<{
@@ -165,6 +167,8 @@ export function genericizeFlowState(state: FlowState, name: string, description:
       official_team: official.team,
       official_reference: official.reference || '',
       break_after: node.data.breakAfter || 0,
+      start_time: node.data.startTime,
+      manual_time: node.data.manualTime || false,
     };
   });
 
@@ -351,6 +355,16 @@ export function applyGenericTemplate(template: GenericTemplate, currentState: Fl
     const homeTeamId = getTeamId(slot.home_group, slot.home_team);
     const awayTeamId = getTeamId(slot.away_group, slot.away_team);
 
+    // Restore official: prefer group/team index lookup, fall back to reference string
+    let official: TeamReference | null = null;
+    const officialTeamId = getTeamId(slot.official_group, slot.official_team);
+    if (officialTeamId) {
+      official = { type: 'static', name: officialTeamId };
+    } else if (slot.official_reference) {
+      const parsed = parseReference(slot.official_reference, newNodes);
+      official = parsed ? (parsed as TeamReference) : { type: 'static', name: slot.official_reference };
+    }
+
     const gameNode = createGameNodeInStage(
       `game-${uuidv4().slice(0, 8)}`,
       stageId,
@@ -362,7 +376,10 @@ export function applyGenericTemplate(template: GenericTemplate, currentState: Fl
         awayTeamId: awayTeamId || undefined,
         homeTeamDynamic: slot.home_reference ? parseReference(slot.home_reference, newNodes) : undefined,
         awayTeamDynamic: slot.away_reference ? parseReference(slot.away_reference, newNodes) : undefined,
+        official: official,
         breakAfter: slot.break_after,
+        startTime: slot.start_time,
+        manualTime: slot.manual_time,
       }
     );
     newNodes.push(gameNode);
