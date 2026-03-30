@@ -22,6 +22,8 @@ import {
   DEFAULT_TOURNAMENT_GROUP_NAME,
 } from '../utils/tournamentConstants';
 import type { GlobalTeam, GlobalTeamGroup, HighlightedElement, Notification, NotificationType, FlowState } from '../types/flowchart';
+import { isFieldNode, isGameNode, isStageNode } from '../types/flowchart';
+import { calculateGameTimes } from '../utils/timeCalculation';
 import type { TournamentGenerationConfig, RoundRobinConfig } from '../types/tournament';
 import type { UseFlowStateReturn, GamedayMetadata } from '../types/designer';
 import { v4 as uuidv4 } from 'uuid';
@@ -238,9 +240,30 @@ export function useDesignerController(
 
             const imported = applyGenericTemplate(fullTemplate, preState);
 
+            // Calculate game start times from the user-configured startTime/gameDuration/breakDuration.
+            // applyGenericTemplate does not call calculateGameTimes (slot.start_time has no DB column),
+            // so without this step all games would render '--:--', unlike the built-in template path.
+            const importedFields = imported.nodes.filter(isFieldNode);
+            const importedStages = imported.nodes.filter(isStageNode).map(stage =>
+                stage.data.order === 0
+                    ? { ...stage, data: { ...stage.data, startTime: config.startTime } }
+                    : stage
+            );
+            const importedGames = imported.nodes.filter(isGameNode);
+            const timedGames = calculateGameTimes(
+                importedFields,
+                importedStages,
+                importedGames,
+                config.gameDuration ?? 15,
+                config.breakDuration ?? 5
+            );
+            const timedNodes = imported.nodes.map(n =>
+                isGameNode(n) ? (timedGames.find(g => g.id === n.id) ?? n) : n
+            );
+
             latestFs.importState({
                 metadata: latestFs.metadata || {} as GamedayMetadata,
-                nodes: imported.nodes,
+                nodes: timedNodes,
                 edges: imported.edges,
                 fields: imported.nodes.filter(n => n.type === 'field').map(f => ({
                     id: f.id,
