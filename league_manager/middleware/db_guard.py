@@ -39,6 +39,9 @@ class DatabaseGuardMiddleware:
                 db_online = False
                 cache.set(self.db_status_cache_key, False, 5)  # Cache failure for 5s
 
+        # Store status on request for other middlewares (like debug_toolbar) to check
+        request.db_online = db_online
+
         if not db_online:
             return redirect(error_url)
 

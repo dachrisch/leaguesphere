@@ -49,4 +49,17 @@ if DEBUG_TOOLBAR:
         "debug_toolbar.middleware.DebugToolbarMiddleware",
     ]
 
+
+def show_toolbar(request):
+    # Disable toolbar if DB is down (checked by DatabaseGuardMiddleware)
+    if hasattr(request, "db_online") and not request.db_online:
+        return False
+    # Standard check for INTERNAL_IPS
+    return DEBUG and request.META.get("REMOTE_ADDR") in INTERNAL_IPS
+
+
+DEBUG_TOOLBAR_CONFIG = {
+    "SHOW_TOOLBAR_CALLBACK": "league_manager.settings.dev.show_toolbar",
+}
+
 INTERNAL_IPS = ["127.0.0.1"]
