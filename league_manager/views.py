@@ -11,6 +11,10 @@ def homeview(request):
     return render(request, "homeview.html")
 
 
+def database_error_view(request):
+    return render(request, "league_manager/db_error.html")
+
+
 def robots_txt_view(request):
     """
     Serve robots.txt file.

@@ -34,7 +34,12 @@ class HealthCheckView(_BaseHealthCheckView):
     ]
 
 
-from league_manager.views import homeview, ClearCacheView, robots_txt_view
+from league_manager.views import (
+    homeview,
+    ClearCacheView,
+    robots_txt_view,
+    database_error_view,
+)
 from league_manager.sitemaps import (
     StaticViewSitemap,
     LeaguetableSitemap,
@@ -70,6 +75,7 @@ urlpatterns = [
         TemplateView.as_view(template_name="league_manager/maintenance.html"),
         name=LEAGUE_MANAGER_MAINTENANCE,
     ),
+    path("database-error/", database_error_view, name="database-error"),
     path("clear-cache/", ClearCacheView.as_view(), name=CLEAR_CACHE),
     path("admin/", admin.site.urls),
     # ToDo: fix gameday urls
