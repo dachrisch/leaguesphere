@@ -91,8 +91,8 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     # Assign an official to the first game to exercise the save/restore cycle
     page.get_by_test_id("add-officials-button").click()
     page.wait_for_timeout(500)
-    # Add a team to the officials group (the group card is identified by its stable DOM id)
-    page.locator('#group-group-officials').get_by_role("button", name="Add Team").click()
+    # Add a team to the officials group - use the "Add your first team" button (empty group)
+    page.locator('#group-group-officials').get_by_title("Add your first team to this group").click()
     page.wait_for_timeout(500)
     # Open the official select on the first game and pick the new team (first non-disabled option)
     first_game_row = page.locator('tr[id^="game-"]').first
