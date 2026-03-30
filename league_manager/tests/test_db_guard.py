@@ -31,12 +31,12 @@ def test_db_guard_skips_health_check(client):
         # Should NOT be a redirect
         assert response.status_code == 200
         # Body should contain failure info but status is 200
-        # Depending on how django-health-check renders, we check for 'Database' failure
         assert b'Database' in response.content
 
 @pytest.mark.django_db
 def test_db_guard_skips_error_page(client):
     """Test that the middleware doesn't redirect when already on error page."""
+    # We expect 503 now as defined in the static view
     response = client.get(reverse('database-error'))
-    assert response.status_code == 200
+    assert response.status_code == 503
     assert b'Datenbank nicht erreichbar' in response.content
