@@ -114,7 +114,7 @@ urlpatterns = [
     path(r"health/", HealthCheckView.as_view()),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-if settings.DEBUG:
+if settings.DEBUG and getattr(settings, "DEBUG_TOOLBAR", False):
     import debug_toolbar
 
     urlpatterns = [
