@@ -47,8 +47,8 @@ class DatabaseGuardMiddleware:
         except:
             error_url = '/database-error/'
 
-        # Skip check for static/media files
-        if request.path.startswith('/static/') or request.path.startswith('/media/'):
+        # Skip check for static/media files and robots/sitemap
+        if any(request.path.startswith(p) for p in ['/static/', '/media/', '/robots.txt', '/sitemap.xml']):
             return self.get_response(request)
 
         # Check DB status
