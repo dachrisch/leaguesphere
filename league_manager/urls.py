@@ -33,18 +33,8 @@ class HealthCheckView(_BaseHealthCheckView):
         "health_check.checks.Storage",
     ]
 
-    async def get(self, request, *args, **kwargs):
-        response = await super().get(request, *args, **kwargs)
-        response.status_code = 200
-        return response
 
-
-from league_manager.views import (
-    homeview,
-    ClearCacheView,
-    robots_txt_view,
-    database_error_view,
-)
+from league_manager.views import homeview, ClearCacheView, robots_txt_view
 from league_manager.sitemaps import (
     StaticViewSitemap,
     LeaguetableSitemap,
@@ -80,7 +70,6 @@ urlpatterns = [
         TemplateView.as_view(template_name="league_manager/maintenance.html"),
         name=LEAGUE_MANAGER_MAINTENANCE,
     ),
-    path("database-error/", database_error_view, name="database-error"),
     path("clear-cache/", ClearCacheView.as_view(), name=CLEAR_CACHE),
     path("admin/", admin.site.urls),
     # ToDo: fix gameday urls
@@ -114,7 +103,7 @@ urlpatterns = [
     path(r"health/", HealthCheckView.as_view()),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-if settings.DEBUG and getattr(settings, "DEBUG_TOOLBAR", False):
+if getattr(settings, "DEBUG_TOOLBAR", False):
     import debug_toolbar
 
     urlpatterns = [
