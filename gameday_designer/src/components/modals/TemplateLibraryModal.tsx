@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Modal, Button, Form, InputGroup, Badge } from 'react-bootstrap';
+import { Modal, Button, Form, InputGroup } from 'react-bootstrap';
 import TemplateList, { SelectedTemplate } from './TemplateLibraryModal/TemplateList';
 import TemplatePreview, { TournamentConfig } from './TemplateLibraryModal/TemplatePreview';
+import TeamPickerStep from './TemplateLibraryModal/TeamPickerStep';
 import SaveTemplateSheet from './TemplateLibraryModal/SaveTemplateSheet';
 import { designerApi } from '../../api/designerApi';
 import { GlobalTeam } from '../../types/flowchart';
@@ -55,11 +56,6 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
   const [applyConfig, setApplyConfig] = useState<TournamentConfig | undefined>();
   const [leagueTeams, setLeagueTeams] = useState<GlobalTeam[]>([]);
 
-  // Team picker state (inlined from TeamPickerStep to avoid dual-modal backdrop conflict)
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [creating, setCreating] = useState(false);
-  const [localTeams, setLocalTeams] = useState<GlobalTeam[]>([]);
-
   const handleHide = useCallback(() => {
     setStep('library');
     setSelected(null);
@@ -67,14 +63,9 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
     onHide();
   }, [onHide]);
 
-  // Fetch league teams and reset team picker state when entering team-picker step
+  // Fetch league teams when entering team-picker step
   useEffect(() => {
     if (step !== 'team-picker') return;
-    Promise.resolve().then(() => {
-      setSelectedIds([]);
-      setLocalTeams([]);
-      setCreating(false);
-    });
     designerApi.getLeagueTeams(gamedayId)
       .then(teams => setLeagueTeams(
         teams.map((t, i) => ({ id: String(t.id), label: t.name, groupId: null, order: i }))
@@ -95,11 +86,8 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
     setStep('team-picker');
   }, []);
 
-  const handleTeamConfirm = useCallback(async (teamIds: string[]) => {
+  const handleTeamConfirm = useCallback(async (selectedTeams: GlobalTeam[]) => {
     if (!selected) return;
-    const allTeams = [...leagueTeams, ...localTeams];
-    const teamMap = new Map(allTeams.map(t => [t.id, t]));
-    const selectedTeams = teamIds.map(id => teamMap.get(id)).filter(Boolean) as GlobalTeam[];
 
     try {
       if (selected.type === 'builtin') {
@@ -123,7 +111,7 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
       console.error('Failed to apply template', e);
       onNotify?.('Failed to apply template', 'error');
     }
-  }, [selected, leagueTeams, localTeams, applyConfig, handleHide, onGenerateFromBuiltin, onGenerateFromSavedTemplate, onNotify]);
+  }, [selected, applyConfig, handleHide, onGenerateFromBuiltin, onGenerateFromSavedTemplate, onNotify]);
 
   const handleAutoGenerateTeams = useCallback(async (count: number): Promise<GlobalTeam[]> => {
     try {
@@ -134,29 +122,6 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
       throw e;
     }
   }, [leagueTeams.length, onNotify]);
-
-  const handleAutoGenerate = useCallback(async () => {
-    // Compute required teams from selected to avoid ordering dependency on computed const
-    const req = selected?.type === 'builtin'
-      ? (selected.template as TournamentTemplate).teamCount.min
-      : (selected?.template as ScheduleTemplate)?.num_teams ?? 0;
-    const count = req - selectedIds.length;
-    if (count <= 0) return;
-    setCreating(true);
-    try {
-      const teams = await handleAutoGenerateTeams(count);
-      setLocalTeams(prev => [...prev, ...teams]);
-      setSelectedIds(prev => [...prev, ...teams.map(t => t.id)]);
-    } finally {
-      setCreating(false);
-    }
-  }, [selected, selectedIds.length, handleAutoGenerateTeams]);
-
-  const toggleTeam = useCallback((id: string) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
-    );
-  }, []);
 
   const handleClone = useCallback((item: SelectedTemplate) => {
     const srcName = item.type === 'builtin'
@@ -221,11 +186,6 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
     ? (selected.template as TournamentTemplate).teamCount.min
     : (selected?.template as ScheduleTemplate)?.num_teams ?? 0;
 
-  const allTeams = [...leagueTeams, ...localTeams];
-  const canConfirm = selectedIds.length >= requiredTeams;
-
-  // Use a single modal throughout the entire flow to avoid backdrop z-index conflicts
-  // when two Bootstrap modals transition simultaneously.
   return (
     <>
       <Modal
@@ -292,50 +252,13 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
             </Modal.Body>
           </>
         ) : (
-          <>
-            <Modal.Header closeButton>
-              <Modal.Title>Select Teams</Modal.Title>
-            </Modal.Header>
-            <Modal.Body>
-              <p className="text-muted small mb-3">
-                {selectedIds.length} of {requiredTeams} required selected
-              </p>
-              <div className="d-flex flex-wrap gap-2">
-                {allTeams.map(team => (
-                  <Badge
-                    key={team.id}
-                    bg={selectedIds.includes(team.id) ? 'primary' : 'light'}
-                    text={selectedIds.includes(team.id) ? 'white' : 'dark'}
-                    style={{ cursor: 'pointer', fontSize: 13, padding: '6px 12px' }}
-                    onClick={() => toggleTeam(team.id)}
-                  >
-                    {team.label}
-                  </Badge>
-                ))}
-              </div>
-              {selectedIds.length < requiredTeams && (
-                <Button
-                  size="sm"
-                  variant="outline-secondary"
-                  className="mt-2"
-                  disabled={creating}
-                  onClick={handleAutoGenerate}
-                >
-                  {creating ? '...' : `Auto-generate ${requiredTeams - selectedIds.length} teams`}
-                </Button>
-              )}
-            </Modal.Body>
-            <Modal.Footer>
-              <Button variant="outline-secondary" onClick={() => setStep('library')}>← Back</Button>
-              <Button
-                variant="primary"
-                disabled={!canConfirm}
-                onClick={() => handleTeamConfirm(selectedIds.slice(0, requiredTeams))}
-              >
-                Apply to Gameday →
-              </Button>
-            </Modal.Footer>
-          </>
+          <TeamPickerStep
+            requiredTeams={requiredTeams}
+            availableTeams={leagueTeams}
+            onBack={() => setStep('library')}
+            onConfirm={handleTeamConfirm}
+            onAutoGenerateTeams={handleAutoGenerateTeams}
+          />
         )}
       </Modal>
 
