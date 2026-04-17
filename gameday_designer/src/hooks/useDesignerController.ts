@@ -339,7 +339,6 @@ export function useDesignerController(
 
           // 2. Scaffold groups if they don't exist yet
           const existingGroupIds: string[] = fs?.globalTeamGroups.map(g => g.id) || [];
-          const totalGroupCount = Math.max(existingGroupIds.length, targetGroupCount);
           
           if (existingGroupIds.length < targetGroupCount) {
             for (let i = existingGroupIds.length; i < targetGroupCount; i++) {
