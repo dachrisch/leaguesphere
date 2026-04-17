@@ -234,33 +234,46 @@ export function useDesignerController(
             const requiredCount = fullTemplate.num_teams || 0;
             const neededCount = Math.max(0, requiredCount - teamsToUse.length);
 
+            // 1. Ensure groups exist (scaffold from template if missing)
+            if (preState.globalTeamGroups.length === 0) {
+                const groupConfig = fullTemplate.group_config ?? [];
+                const numGroups = groupConfig.length || fullTemplate.num_groups || 1;
+                preState.globalTeamGroups = groupConfig.length > 0
+                    ? groupConfig.map((g, i) => ({ id: `g${i + 1}`, name: g.name, order: i }))
+                    : Array.from({ length: numGroups }, (_, i) => ({
+                        id: `g${i + 1}`,
+                        name: `Gruppe ${String.fromCharCode(65 + i)}`,
+                        order: i,
+                      }));
+            }
+
+            const groupCount = preState.globalTeamGroups.length || 1;
+            const allTeamsGathered = [...teamsToUse];
+
+            // 2. Generate missing teams if requested
             if (config.generateTeams && neededCount > 0) {
-                if (preState.globalTeamGroups.length === 0) {
-                    const groupConfig = fullTemplate.group_config ?? [];
-                    const numGroups = groupConfig.length || fullTemplate.num_groups || 1;
-                    preState.globalTeamGroups = groupConfig.length > 0
-                        ? groupConfig.map((g, i) => ({ id: `g${i + 1}`, name: g.name, order: i }))
-                        : Array.from({ length: numGroups }, (_, i) => ({
-                            id: `g${i + 1}`,
-                            name: `Gruppe ${String.fromCharCode(65 + i)}`,
-                            order: i,
-                          }));
-                }
-                const groupCount = preState.globalTeamGroups.length || 1;
                 const teamData = generateTeamsForTournament(neededCount);
-                const teamsPerGroupCount = Math.ceil(neededCount / groupCount);
                 const generatedTeams: GlobalTeam[] = teamData.map((data, index) => ({
                     id: uuidv4(),
                     label: data.label,
                     color: data.color,
-                    groupId: preState.globalTeamGroups[
-                        Math.min(Math.floor(index / teamsPerGroupCount), groupCount - 1)
-                    ]?.id ?? null,
+                    groupId: null, // Assigned in redistribution below
                     order: teamsToUse.length + index,
                 }));
-                preState.globalTeams = [...teamsToUse, ...generatedTeams];
-                teamsToUse = preState.globalTeams;
+                allTeamsGathered.push(...generatedTeams);
             }
+
+            // 3. Ensure ALL teams have a groupId (redistribute if they are currently ungrouped)
+            // This is critical for selectedTeams from modal which often have groupId: null
+            const teamsPerGroupCount = Math.ceil(allTeamsGathered.length / groupCount);
+            preState.globalTeams = allTeamsGathered.map((team, index) => ({
+                ...team,
+                groupId: team.groupId || preState.globalTeamGroups[
+                    Math.min(Math.floor(index / teamsPerGroupCount), groupCount - 1)
+                ]?.id || null,
+            }));
+            
+            teamsToUse = preState.globalTeams;
 
             const imported = applyGenericTemplate(fullTemplate, preState);
 
@@ -337,7 +350,7 @@ export function useDesignerController(
             }
 
             const teamData = generateTeamsForTournament(neededCount);
-            const teamsPerGroupCount = Math.ceil(neededCount / groupCount);
+            const teamsPerGroupCount = Math.ceil(neededCount / (groupCount || 1));
             
             const newTeams: GlobalTeam[] = teamData.map((data, index) => {
               const groupIndex = Math.min(Math.floor(index / teamsPerGroupCount), groupIds.length - 1);
@@ -350,6 +363,22 @@ export function useDesignerController(
 
             teamsToUse = [...teamsToUse, ...newTeams];
           }
+        }
+
+        // Ensure ALL teams have a groupId (redistribute if they are currently ungrouped)
+        // This handles selectedTeams from modal which may have groupId: null
+        const currentGroups = [...(fs?.globalTeamGroups || []), ...generatedGroups];
+        if (currentGroups.length > 0) {
+          const teamsPerGroupCount = Math.ceil(teamsToUse.length / currentGroups.length);
+          teamsToUse = teamsToUse.map((team, index) => {
+            if (team.groupId) return team;
+            return {
+              ...team,
+              groupId: currentGroups[
+                Math.min(Math.floor(index / teamsPerGroupCount), currentGroups.length - 1)
+              ].id
+            };
+          });
         }
 
         // Prepare structure

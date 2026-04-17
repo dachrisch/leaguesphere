@@ -15,14 +15,34 @@ export { default as StageSection } from './list/StageSection';
 export { default as TeamTable } from './list/TeamTable';
 export { default as GameTable } from './list/GameTable';
 
-// Shared component types
-export type { FlowToolbarProps } from './FlowToolbar';
-export type { FlowPropertiesPanelProps } from './FlowPropertiesPanel';
-export type { FieldSidebarProps } from './FieldSidebar';
+// Re-export legacy types
+import type { GameSlotCardProps } from './GameSlotCard';
+export type { GameSlotCardProps };
+import type { FieldColumnProps } from './FieldColumn';
+export type { FieldColumnProps };
+import type { DesignerCanvasProps } from './DesignerCanvas';
+export type { DesignerCanvasProps };
+import type { TeamSelectorProps } from './TeamSelector';
+export type { TeamSelectorProps };
+import type { GameSlotEditorProps } from './GameSlotEditor';
+export type { GameSlotEditorProps };
 
-// List component types
-export type { ListCanvasProps } from './ListCanvas';
-export type { FieldSectionProps } from './list/FieldSection';
-export type { StageSectionProps } from './list/StageSection';
-export type { TeamTableProps } from './list/TeamTable';
-export type { GameTableProps } from './list/GameTable';
+// Re-export new component types
+import type { FlowToolbarProps } from './FlowToolbar';
+export type { FlowToolbarProps };
+import type { FlowPropertiesPanelProps } from './FlowPropertiesPanel';
+export type { FlowPropertiesPanelProps };
+import type { FieldSidebarProps } from './FieldSidebar';
+export type { FieldSidebarProps };
+
+// Re-export list component types
+import type { ListCanvasProps } from './ListCanvas';
+export type { ListCanvasProps };
+import type { FieldSectionProps } from './list/FieldSection';
+export type { FieldSectionProps };
+import type { StageSectionProps } from './list/StageSection';
+export type { StageSectionProps };
+import type { TeamTableProps } from './list/TeamTable';
+export type { TeamTableProps };
+import type { GameTableProps } from './list/GameTable';
+export type { GameTableProps };
