@@ -324,37 +324,42 @@ export function useDesignerController(
           const teamCount = config.template.teamCount.exact || config.template.teamCount.min;
           const neededCount = Math.max(0, teamCount - teamsToUse.length);
 
+          // 1. Determine target group count for scaffolding
+          const firstStage = config.template.stages?.[0];
+          let targetGroupCount = 1;
+          if (firstStage && firstStage.fieldAssignment === 'split') {
+            targetGroupCount = firstStage.splitCount || config.fieldCount;
+            if (firstStage.splitCount === undefined && firstStage.progressionMode === 'round_robin') {
+              const teamsPerGroup = (firstStage.config as RoundRobinConfig).teamCount;
+              if (teamsPerGroup > 0) {
+                targetGroupCount = Math.floor(teamCount / teamsPerGroup);
+              }
+            }
+          }
+
+          // 2. Scaffold groups if they don't exist yet
+          const existingGroupIds: string[] = fs?.globalTeamGroups.map(g => g.id) || [];
+          const totalGroupCount = Math.max(existingGroupIds.length, targetGroupCount);
+          
+          if (existingGroupIds.length < targetGroupCount) {
+            for (let i = existingGroupIds.length; i < targetGroupCount; i++) {
+              const groupName = targetGroupCount > 1 ? `Gruppe ${String.fromCharCode(65 + i)}` : DEFAULT_TOURNAMENT_GROUP_NAME;
+              const newGroup = fs?.addGlobalTeamGroup(groupName);
+              if (newGroup) {
+                existingGroupIds.push(newGroup.id);
+                generatedGroups.push(newGroup);
+              }
+            }
+          }
+
+          // 3. Generate missing teams if requested
           if (neededCount > 0) {
-            const firstStage = config.template.stages?.[0];
-            let groupCount = 1;
-            if (firstStage && firstStage.fieldAssignment === 'split') {
-              groupCount = firstStage.splitCount || config.fieldCount;
-              if (firstStage.splitCount === undefined && firstStage.progressionMode === 'round_robin') {
-                const teamsPerGroup = (firstStage.config as RoundRobinConfig).teamCount;
-                if (teamsPerGroup > 0) {
-                  groupCount = Math.floor(teamCount / teamsPerGroup);
-                }
-              }
-            }
-
-            const groupIds: string[] = fs?.globalTeamGroups.map(g => g.id) || [];
-            if (groupIds.length < groupCount) {
-              for (let i = groupIds.length; i < groupCount; i++) {
-                const groupName = groupCount > 1 ? `Gruppe ${String.fromCharCode(65 + i)}` : DEFAULT_TOURNAMENT_GROUP_NAME;
-                const newGroup = fs?.addGlobalTeamGroup(groupName);
-                if (newGroup) {
-                  groupIds.push(newGroup.id);
-                  generatedGroups.push(newGroup);
-                }
-              }
-            }
-
             const teamData = generateTeamsForTournament(neededCount);
-            const teamsPerGroupCount = Math.ceil(neededCount / (groupCount || 1));
+            const teamsPerGroupCount = Math.ceil(neededCount / (targetGroupCount || 1));
             
             const newTeams: GlobalTeam[] = teamData.map((data, index) => {
-              const groupIndex = Math.min(Math.floor(index / teamsPerGroupCount), groupIds.length - 1);
-              const team = fs?.addGlobalTeam(data.label, groupIds[groupIndex]);
+              const groupIndex = Math.min(Math.floor(index / teamsPerGroupCount), existingGroupIds.length - 1);
+              const team = fs?.addGlobalTeam(data.label, existingGroupIds[groupIndex]);
               fs?.updateGlobalTeam(team.id, { color: data.color });
               const fullTeam = { ...team, color: data.color };
               newlyAddedTeams.push(fullTeam);
@@ -365,7 +370,7 @@ export function useDesignerController(
           }
         }
 
-        // Ensure ALL teams have a groupId (redistribute if they are currently ungrouped)
+        // 4. Ensure ALL teams have a groupId (redistribute if they are currently ungrouped)
         // This handles selectedTeams from modal which may have groupId: null
         const currentGroups = [...(fs?.globalTeamGroups || []), ...generatedGroups];
         if (currentGroups.length > 0) {
