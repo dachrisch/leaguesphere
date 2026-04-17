@@ -235,90 +235,107 @@ Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>"
 **Files:**
 - Create: `docker-compose.demo.yml`
 
-- [ ] **Step 1: Review existing docker-compose.yml**
+- [ ] **Step 1: Review existing docker-compose.staging.yaml**
 
 ```bash
 cd /home/cda/dev/leaguesphere
-cat docker-compose.yml | head -60
+cat deployed/docker-compose.staging.yaml | head -80
 ```
 
-Expected: Understand service structure, volumes, networks.
+Expected: Understand Traefik label pattern, service structure, networks.
 
-- [ ] **Step 2: Write docker-compose.demo.yml**
+- [ ] **Step 2: Write docker-compose.demo.yml with Traefik labels**
 
 Create `/home/cda/dev/leaguesphere/docker-compose.demo.yml`:
 
 ```yaml
-version: '3.8'
-
+name: ${SERVICE_NAME}
 services:
+  mariadb:
+    image: mariadb:latest
+    container_name: ${COMPOSE_PROJECT_NAME}.mysql
+    restart: unless-stopped
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - "./mysql-data:/var/lib/mysql"
+    env_file: ls.env.demo
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "sh", "-c", "mariadb -h localhost --skip-ssl -u root -p$$MYSQL_ROOT_PASSWORD -e 'SELECT 1'"]
+      interval: 15s
+      timeout: 5s
+      retries: 15
+      start_period: 90s
+    labels:
+      - traefik.enable=false
+      - io.portainer.accesscontrol.teams=leaguesphere
+
+  www:
+    image: leaguesphere/frontend:demo
+    container_name: ${COMPOSE_PROJECT_NAME}.www
+    labels:
+      # HTTP -> HTTPS redirect
+      - traefik.http.routers.${SERVICE_NAME}-http.entrypoints=web
+      - traefik.http.routers.${SERVICE_NAME}-http.rule=Host(`demo.leaguesphere.app`)
+      - traefik.http.routers.${SERVICE_NAME}-http.middlewares=${SERVICE_NAME}-https
+      - traefik.http.middlewares.${SERVICE_NAME}-https.redirectscheme.scheme=https
+
+      # HTTPS for lehel.xyz (DNS resolver)
+      - traefik.http.routers.${SERVICE_NAME}.tls=true
+      - traefik.http.routers.${SERVICE_NAME}.rule=Host(`${SERVICE_HOST}`)
+      - traefik.http.routers.${SERVICE_NAME}.tls.certresolver=letsencryptdnsresolver
+
+      # HTTPS for leaguesphere.app (HTTP resolver)
+      - traefik.http.routers.${SERVICE_NAME}_prod.tls=true
+      - traefik.http.routers.${SERVICE_NAME}_prod.rule=Host(`demo.leaguesphere.app`)
+      - traefik.http.routers.${SERVICE_NAME}_prod.tls.certresolver=letsencrypthttpresolver
+
+      # Local resolution (HTTP)
+      - traefik.http.routers.${SERVICE_NAME}_local_qualified.rule=Host(`${SERVICE_NAME}.${LOCAL_HOSTNAME}`)
+      - traefik.http.routers.${SERVICE_NAME}_local_qualified.entrypoints=web
+
+      - io.portainer.accesscontrol.teams=leaguesphere
+      - com.centurylinklabs.watchtower.scope=dev
+    networks:
+      - backend
+      - proxy
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+
   app:
-    build:
-      context: .
-      dockerfile: app.Dockerfile
-    environment:
-      DJANGO_SETTINGS_MODULE: league_manager.settings.demo
-      DB_ENGINE: mysql
-      DB_NAME: demo_db
-      DB_USER: demo_user
-      DB_PASSWORD: demo_password
-      DB_HOST: mariadb
-      DB_PORT: 3306
-      ALLOW_ASYNC_UNSAFE: true
+    image: leaguesphere/backend:demo
+    container_name: ${COMPOSE_PROJECT_NAME}.app
+    command: gunicorn -b 0.0.0.0:8000 league_manager.wsgi
+    healthcheck:
+      test: ["CMD-SHELL", "curl -A healthcheck -H \"Accept: application/json\" http://localhost:8000/health/?format=json"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+    labels:
+      - traefik.enable=false
+      - io.portainer.accesscontrol.teams=leaguesphere
+      - com.centurylinklabs.watchtower.scope=dev
+    env_file: ls.env.demo
+    networks:
+      - backend
     depends_on:
       mariadb:
         condition: service_healthy
-    volumes:
-      - ./league_manager:/app/league_manager
-      - ./container/entrypoint.demo.sh:/app/entrypoint.demo.sh
-    networks:
-      - demo-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    restart: unless-stopped
     entrypoint: /app/entrypoint.demo.sh
-    command: gunicorn league_manager.wsgi:application --bind 0.0.0.0:8000
-
-  nginx:
-    build:
-      context: .
-      dockerfile: nginx.Dockerfile
-    ports:
-      - "8080:80"
-      - "8443:443"
-    volumes:
-      - ./container/nginx.demo.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      - app
-    networks:
-      - demo-network
-
-  mariadb:
-    image: mariadb:latest
-    environment:
-      MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: demo_db
-      MYSQL_USER: demo_user
-      MYSQL_PASSWORD: demo_password
-    volumes:
-      - demo_db_volume:/var/lib/mysql
-    networks:
-      - demo-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  demo_db_volume:
 
 networks:
-  demo-network:
+  backend:
     driver: bridge
+  proxy:
+    external: true
+    name: proxy
 ```
 
 - [ ] **Step 3: Test compose file is valid YAML**
@@ -545,75 +562,6 @@ git commit -m "feat: add nginx demo configuration
 - Handles static and media files
 - Proxies requests with proper headers
 - Supports demo domain names
-
-Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>"
-```
-
----
-
-## Task 6: Create Traefik Demo Routing Configuration
-
-**Files:**
-- Create: `.traefik/demo.yml`
-
-- [ ] **Step 1: Check existing Traefik configuration**
-
-```bash
-ls -la /home/cda/dev/leaguesphere/.traefik/
-cat /home/cda/dev/leaguesphere/.traefik/stage.yml | head -20
-```
-
-Expected: Understand Traefik routing patterns used in the project.
-
-- [ ] **Step 2: Write demo Traefik configuration**
-
-Create `/home/cda/dev/leaguesphere/.traefik/demo.yml`:
-
-```yaml
-http:
-  routers:
-    demo:
-      rule: Host(`demo.leaguesphere.app`)
-      service: demo
-      entrypoints:
-        - websecure
-      tls:
-        certResolver: default
-      middlewares:
-        - demo-headers
-
-  services:
-    demo:
-      loadBalancer:
-        servers:
-          - url: http://demo_nginx:80
-
-  middlewares:
-    demo-headers:
-      headers:
-        customResponseHeaders:
-          X-Environment: "demo"
-```
-
-- [ ] **Step 3: Test configuration is valid YAML**
-
-```bash
-cd /home/cda/dev/leaguesphere
-python3 -c "import yaml; yaml.safe_load(open('.traefik/demo.yml'))" && echo "Valid YAML"
-```
-
-Expected: Prints "Valid YAML".
-
-- [ ] **Step 4: Commit**
-
-```bash
-cd /home/cda/dev/leaguesphere
-git add .traefik/demo.yml
-git commit -m "feat: add Traefik routing for demo.leaguesphere.app
-
-- Routes demo domain to demo nginx service
-- Enables TLS with default cert resolver
-- Adds X-Environment header for identification
 
 Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>"
 ```
@@ -1135,23 +1083,414 @@ Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>"
 
 ---
 
+## Task 13: Create secret_demo.yaml in Infrastructure Repo
+
+**Files:**
+- Create: `infrastructure/container/ansible/plays/vars/secret_demo.yaml`
+
+- [ ] **Step 1: Review secret_stage.yaml pattern**
+
+```bash
+cat /home/cda/dev/infrastructure/container/ansible/plays/vars/secret_stage.yaml
+```
+
+Expected: Understand the structure and variables needed.
+
+- [ ] **Step 2: Write secret_demo.yaml**
+
+Create `/home/cda/dev/infrastructure/container/ansible/plays/vars/secret_demo.yaml`:
+
+```yaml
+app:
+  name: leaguesphere_demo
+  repo: https://github.com/dachrisch/league-manager.git
+  container_dir: deployed-demo
+  compose_file: docker-compose.demo.yml
+  env_suffix: .demo
+  branch: main
+  db_host: mysql
+  db_name: demo_db
+  db_user: demo_user
+  db_password: DemoDBPassword123!
+  db_root_password: DemoRootPassword123!
+  secret_key: DemoSecretKey1234567890abcdefghijklmnopqr
+```
+
+- [ ] **Step 3: Verify YAML syntax**
+
+```bash
+python3 -c "import yaml; yaml.safe_load(open('/home/cda/dev/infrastructure/container/ansible/plays/vars/secret_demo.yaml'))" && echo "Valid YAML"
+```
+
+Expected: Prints "Valid YAML".
+
+- [ ] **Step 4: Commit to infrastructure repo**
+
+```bash
+cd /home/cda/dev/infrastructure/container/ansible
+git add plays/vars/secret_demo.yaml
+git commit -m "feat: add secret_demo.yaml for demo environment deployment
+
+- Database credentials for demo
+- Demo container directory and compose file
+- Django secret key for demo environment
+
+Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>"
+```
+
+---
+
+## Task 14: Create ls_demo Role Structure
+
+**Files:**
+- Create: `infrastructure/container/ansible/plays/roles/ls_demo/{tasks,templates,defaults,vars,handlers}/`
+
+- [ ] **Step 1: Create role directories**
+
+```bash
+mkdir -p /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/tasks
+mkdir -p /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/templates
+mkdir -p /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/defaults
+mkdir -p /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/vars
+mkdir -p /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/handlers
+```
+
+- [ ] **Step 2: Verify structure**
+
+```bash
+ls -la /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/
+```
+
+Expected: All subdirectories exist.
+
+---
+
+## Task 15: Create ls_demo/tasks/main.yaml
+
+**Files:**
+- Create: `infrastructure/container/ansible/plays/roles/ls_demo/tasks/main.yaml`
+
+- [ ] **Step 1: Write main task orchestrator**
+
+Create `/home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/tasks/main.yaml`:
+
+```yaml
+- meta: flush_handlers
+- name: Load ls_demo variables
+  include_vars: "{{ ls_vars_file | default('secret_main.yaml') }}"
+  tags:
+    - always
+- import_tasks: pull.yaml
+  tags:
+    - ls.demo.pull
+
+- import_tasks: env.yaml
+  tags:
+    - ls.demo.env
+- import_tasks: deploy.yaml
+  when:
+    - app.compose_file is defined
+    - deploy_containers | default(true)
+  tags:
+    - ls.demo.deploy
+```
+
+- [ ] **Step 2: Verify YAML syntax**
+
+```bash
+python3 -c "import yaml; yaml.safe_load(open('/home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/tasks/main.yaml'))" && echo "Valid"
+```
+
+Expected: Prints "Valid".
+
+---
+
+## Task 16: Create ls_demo/tasks/pull.yaml
+
+**Files:**
+- Create: `infrastructure/container/ansible/plays/roles/ls_demo/tasks/pull.yaml`
+
+- [ ] **Step 1: Copy pull.yaml from ls_app**
+
+```bash
+cp /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_app/tasks/pull.yaml /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/tasks/pull.yaml
+```
+
+- [ ] **Step 2: Verify file exists**
+
+```bash
+head -10 /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/tasks/pull.yaml
+```
+
+Expected: Shows git pull tasks.
+
+---
+
+## Task 17: Create ls_demo/tasks/env.yaml
+
+**Files:**
+- Create: `infrastructure/container/ansible/plays/roles/ls_demo/tasks/env.yaml`
+
+- [ ] **Step 1: Copy env.yaml from ls_app**
+
+```bash
+cp /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_app/tasks/env.yaml /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/tasks/env.yaml
+```
+
+- [ ] **Step 2: Verify file exists**
+
+```bash
+head -10 /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/tasks/env.yaml
+```
+
+Expected: Shows env template tasks.
+
+---
+
+## Task 18: Create ls_demo/tasks/deploy.yaml (Simplified)
+
+**Files:**
+- Create: `infrastructure/container/ansible/plays/roles/ls_demo/tasks/deploy.yaml`
+
+- [ ] **Step 1: Write simplified deploy task**
+
+Create `/home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/tasks/deploy.yaml`:
+
+```yaml
+- name: Ensure proxy network exists
+  community.docker.docker_network:
+    name: proxy
+  tags:
+    - ls.demo.deploy.network
+
+- name: Start/restart {{ app.name }} containers
+  community.docker.docker_compose_v2:
+    project_src: "{{ (container_dir, app.container_dir) | path_join }}"
+    project_name: "{{ app.name }}"
+    files:
+      - "{{ app.compose_file }}"
+    env_files:
+      - "{{ (container_dir, app.container_dir, docker_env_file | default('.env' ~ (app.env_suffix | default('')))) | path_join }}"
+    pull: always
+    state: present
+    recreate: auto
+  tags:
+    - ls.demo.deploy.compose
+
+- name: Wait for MySQL to be ready
+  community.docker.docker_container_info:
+    name: "{{ app.name }}.mysql"
+  register: mysql_info
+  until: mysql_info.container.State.Health.Status is defined and mysql_info.container.State.Health.Status == 'healthy'
+  retries: 30
+  delay: 2
+  tags:
+    - ls.demo.deploy.verify
+
+- name: Wait for backend container to be healthy
+  community.docker.docker_container_info:
+    name: "{{ app.name }}.app"
+  register: container_info
+  until: container_info.container.State.Health.Status is defined and container_info.container.State.Health.Status == 'healthy'
+  retries: 30
+  delay: 2
+  tags:
+    - ls.demo.deploy.verify
+
+- name: Display deployment status
+  debug:
+    msg: "{{ app.name }} deployed successfully. Containers are healthy."
+  tags:
+    - ls.demo.deploy.verify
+```
+
+- [ ] **Step 2: Verify YAML syntax**
+
+```bash
+python3 -c "import yaml; yaml.safe_load(open('/home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/tasks/deploy.yaml'))" && echo "Valid"
+```
+
+Expected: Prints "Valid".
+
+---
+
+## Task 19: Create ls_demo Role Templates
+
+**Files:**
+- Create: `infrastructure/container/ansible/plays/roles/ls_demo/templates/docker.env.j2`
+- Create: `infrastructure/container/ansible/plays/roles/ls_demo/templates/ls.env.j2`
+
+- [ ] **Step 1: Copy templates from ls_app**
+
+```bash
+cp /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_app/templates/docker.env.j2 /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/templates/docker.env.j2
+cp /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_app/templates/ls.env.j2 /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/templates/ls.env.j2
+```
+
+- [ ] **Step 2: Verify templates exist**
+
+```bash
+ls -la /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/templates/
+```
+
+Expected: Shows both .j2 files.
+
+---
+
+## Task 20: Create ls_demo Role Defaults
+
+**Files:**
+- Create: `infrastructure/container/ansible/plays/roles/ls_demo/defaults/main.yaml`
+
+- [ ] **Step 1: Write minimal defaults**
+
+Create `/home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/defaults/main.yaml`:
+
+```yaml
+---
+# Demo environment defaults
+docker_env_file: ".env.demo"
+deploy_containers: true
+ls_vars_file: "secret_demo.yaml"
+```
+
+- [ ] **Step 2: Verify file exists**
+
+```bash
+cat /home/cda/dev/infrastructure/container/ansible/plays/roles/ls_demo/defaults/main.yaml
+```
+
+Expected: Shows default variables.
+
+---
+
+## Task 21: Update leaguesphere.yml to Include ls_demo Role
+
+**Files:**
+- Modify: `infrastructure/container/ansible/plays/leaguesphere.yml`
+
+- [ ] **Step 1: Review current leaguesphere.yml**
+
+```bash
+cat /home/cda/dev/infrastructure/container/ansible/plays/leaguesphere.yml | tail -30
+```
+
+Expected: See ls_app role calls.
+
+- [ ] **Step 2: Add ls_demo role to playbook**
+
+Add this after the staging section (after ls_app stage roles):
+
+```yaml
+    # Demo deployment (jail)
+    - role: ls_demo
+      vars:
+        container_dir: "{{ (ssh_chroot_jail_path, 'home', ls.user, 'container-demo') | path_join }}"
+        ls_vars_file: "secret_demo.yaml"
+        deploy_containers: true
+        docker_env_file: ".env"
+      become_user: "{{ ls.user }}"
+      tags:
+        - ls.app
+        - ls.app.demo
+
+    # Demo env files (dev)
+    - role: ls_demo
+      vars:
+        container_dir: "{{ ('~', 'dev', ls.user) | path_join }}"
+        ls_vars_file: "secret_demo.yaml"
+        deploy_containers: false
+      remote_user: "{{ create_user }}"
+      become_user: "{{ create_user }}"
+      tags:
+        - ls.app.env
+        - ls.app.env.docker
+        - ls.app.env.ls
+        - ls.app.demo
+```
+
+- [ ] **Step 3: Commit changes**
+
+```bash
+cd /home/cda/dev/infrastructure/container/ansible
+git add plays/leaguesphere.yml
+git commit -m "feat: add ls_demo role to leaguesphere playbook
+
+- Deploy demo environment in jail (container-demo)
+- Configure demo env files in dev
+- Tags: ls.app.demo for selective deployment
+
+Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>"
+```
+
+---
+
+## Task 22: Run Ansible-Lint on ls_demo Role
+
+**Files:**
+- Verify: `infrastructure/container/ansible/plays/roles/ls_demo/`
+
+- [ ] **Step 1: Run ansible-lint on new role**
+
+```bash
+cd /home/cda/dev/infrastructure/container/ansible
+ansible-lint plays/roles/ls_demo/
+```
+
+Expected: No errors or warnings (or only expected/configured exclusions).
+
+- [ ] **Step 2: If lint fails, fix issues**
+
+Review output and fix any YAML syntax or role structure issues.
+
+- [ ] **Step 3: Run full playbook syntax check**
+
+```bash
+cd /home/cda/dev/infrastructure/container/ansible
+ansible-playbook --syntax-check plays/leaguesphere.yml
+```
+
+Expected: "Syntax OK" message.
+
+- [ ] **Step 4: Commit any lint fixes**
+
+```bash
+cd /home/cda/dev/infrastructure/container/ansible
+git add plays/roles/ls_demo/
+git commit -m "fix: address ansible-lint findings in ls_demo role
+
+Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>"
+```
+
+---
+
 ## Self-Review Against Spec
 
 **Checking spec coverage:**
 
-- ✅ Architecture Overview (Task 1-6: settings, seed command, docker-compose, entrypoint, nginx, traefik)
-- ✅ Docker & Container Setup (Task 3-5, 8: compose, nginx config, Dockerfile)
+- ✅ Architecture Overview (Tasks 1-5, 13-22: settings, seed command, docker-compose with Traefik labels, entrypoint, ansible deployment)
+- ✅ Docker & Container Setup (Tasks 3, 5, 8: compose with labels, nginx config, Dockerfile)
 - ✅ Demo Data Structure (Task 2: seed command with synthetic data)
-- ✅ Daily Reset Mechanism (Task 4: entrypoint with midnight logic)
+- ✅ Daily Reset Mechanism (Task 4: entrypoint with midnight logic inside container)
 - ✅ Credentials (Task 2, 7: admin/referee/manager/user accounts, documentation)
-- ✅ Routing & Networking (Task 6, 10: Traefik, demo banner)
-- ✅ Testing & Documentation (Task 9, 11, 12: comprehensive tests and guides)
+- ✅ Routing & Networking (Task 3: Traefik labels in docker-compose, Task 10: demo banner)
+- ✅ Infrastructure Deployment (Tasks 13-22: ansible role, playbook, linting)
+- ✅ Testing & Documentation (Tasks 9, 11, 12: comprehensive tests and guides)
 
 **Placeholder scan:** No TBD, TODO, or incomplete sections. All code samples are complete.
 
-**Type consistency:** All usernames, emails, password formats consistent throughout (e.g., `admin@demo.local`, `DemoAdmin123!`).
+**Type consistency:** 
+- All usernames, emails, password formats consistent (e.g., `admin@demo.local`, `DemoAdmin123!`)
+- Ansible variables consistent: `app.name`, `app.compose_file`, `app.db_name`, etc.
+- Service names consistent: `${SERVICE_NAME}`, `${COMPOSE_PROJECT_NAME}`
 
-**Scope check:** All tasks focus on demo environment setup only. No unrelated refactoring or features.
+**Scope check:** All tasks focus on demo environment setup only. No unrelated refactoring.
+
+**Important changes from original plan:**
+- Removed separate `.traefik/demo.yml` file
+- Traefik routing via Docker labels in `docker-compose.demo.yml` with environment variables
+- Database setup fully contained in container entrypoint (no ansible DB tasks)
+- Midnight reset happens inside container at startup (no external cron needed)
 
 ---
 

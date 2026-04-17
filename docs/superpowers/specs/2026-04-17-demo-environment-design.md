@@ -180,14 +180,32 @@ mysql demo_db < /app/demo_snapshot.sql
 
 ## Files & Changes Summary
 
+### LeagueSphere Repository
 | File | Change | Purpose |
 |------|--------|---------|
-| `docker-compose.demo.yml` | Create | Dedicated demo environment compose file |
-| `league_manager/settings/demo.py` | Create | Django settings for demo environment |
-| `league_manager/management/commands/seed_demo_data.py` | Create | Generate synthetic demo data |
-| `app.Dockerfile` | Modify | Add entrypoint logic for midnight reset check |
-| `docs/demo-info.md` | Create | Public documentation for demo users |
-| `.traefik/demo.yml` | Create | Traefik routing configuration for demo |
+| `docker-compose.demo.yml` | Create | Demo environment with Traefik labels |
+| `league_manager/settings/demo.py` | Create | Django settings for demo |
+| `league_manager/management/commands/seed_demo_data.py` | Create | Synthetic data generation |
+| `app.Dockerfile` | Modify | Add entrypoint.demo.sh |
+| `container/entrypoint.demo.sh` | Create | Midnight reset logic |
+| `container/nginx.demo.conf` | Create | Demo nginx configuration |
+| `docs/demo-info.md` | Create | Public demo documentation |
+| `docs/guides/demo-deployment.md` | Create | Deployment and troubleshooting |
+| Tests | Create | Integration and unit tests |
+
+### Infrastructure Repository (Ansible)
+| File | Change | Purpose |
+|------|--------|---------|
+| `plays/vars/secret_demo.yaml` | Create | Demo configuration and secrets |
+| `plays/roles/ls_demo/` | Create | Complete ansible role |
+| `plays/roles/ls_demo/tasks/main.yaml` | Create | Task orchestrator |
+| `plays/roles/ls_demo/tasks/pull.yaml` | Copy from ls_app | Git pull logic |
+| `plays/roles/ls_demo/tasks/env.yaml` | Copy from ls_app | Environment setup |
+| `plays/roles/ls_demo/tasks/deploy.yaml` | Create | Docker compose deployment |
+| `plays/roles/ls_demo/templates/docker.env.j2` | Copy from ls_app | Docker env template |
+| `plays/roles/ls_demo/templates/ls.env.j2` | Copy from ls_app | Django env template |
+| `plays/roles/ls_demo/defaults/main.yaml` | Create | Role defaults |
+| `plays/leaguesphere.yml` | Modify | Add ls_demo role calls |
 
 ## Success Criteria
 
