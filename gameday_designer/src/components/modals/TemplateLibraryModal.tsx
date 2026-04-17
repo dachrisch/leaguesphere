@@ -31,12 +31,12 @@ interface TemplateLibraryModalProps {
     startTime: string;
     gameDuration: number;
     breakDuration: number;
-    selectedTeamIds: string[];
-    generateTeams?: boolean;
+    selectedTeams: GlobalTeam[];
+    generateTeams: boolean;
   }) => void;
-  onGenerateFromSavedTemplate?: (templateId: number, config?: TournamentConfig) => void;
+  onGenerateFromSavedTemplate?: (templateId: number, config: TournamentConfig | undefined, selectedTeams: GlobalTeam[]) => void;
   onSaveTemplate?: (name: string, description: string, sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL') => Promise<void>;
-  onNotify?: (message: string, type: NotificationType, title?: string) => void;
+  onNotify?: (message: string, type: NotificationType, title?: string, onConfirm?: () => void, timeout?: number) => void;
 }
 
 const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
@@ -49,6 +49,9 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
   const [filterScope, setFilterScope] = useState<FilterScope>('all');
   const [step, setStep] = useState<Step>('library');
   const [showSave, setShowSave] = useState(false);
+  const [showCloneModal, setShowCloneModal] = useState(false);
+  const [cloneName, setCloneName] = useState('');
+  const [cloneItem, setCloneItem] = useState<SelectedTemplate | null>(null);
   const [applyConfig, setApplyConfig] = useState<TournamentConfig | undefined>();
   const [leagueTeams, setLeagueTeams] = useState<GlobalTeam[]>([]);
 
@@ -94,6 +97,10 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
 
   const handleTeamConfirm = useCallback(async (teamIds: string[]) => {
     if (!selected) return;
+    const allTeams = [...leagueTeams, ...localTeams];
+    const teamMap = new Map(allTeams.map(t => [t.id, t]));
+    const selectedTeams = teamIds.map(id => teamMap.get(id)).filter(Boolean) as GlobalTeam[];
+
     try {
       if (selected.type === 'builtin') {
         const builtin = selected.template as TournamentTemplate;
@@ -103,20 +110,20 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
           startTime: applyConfig?.startTime ?? '09:00',
           gameDuration: applyConfig?.gameDuration ?? 15,
           breakDuration: applyConfig?.breakDuration ?? 5,
-          selectedTeamIds: teamIds,
+          selectedTeams,
           generateTeams: true,
         });
         handleHide();
         return;
       }
       const template = selected.template as ScheduleTemplate;
-      onGenerateFromSavedTemplate?.(template.id, applyConfig);
+      onGenerateFromSavedTemplate?.(template.id, applyConfig, selectedTeams);
       handleHide();
     } catch (e) {
       console.error('Failed to apply template', e);
       onNotify?.('Failed to apply template', 'error');
     }
-  }, [selected, applyConfig, handleHide, onGenerateFromBuiltin, onGenerateFromSavedTemplate, onNotify]);
+  }, [selected, leagueTeams, localTeams, applyConfig, handleHide, onGenerateFromBuiltin, onGenerateFromSavedTemplate, onNotify]);
 
   const handleAutoGenerateTeams = useCallback(async (count: number): Promise<GlobalTeam[]> => {
     try {
@@ -151,32 +158,52 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
     );
   }, []);
 
-  const handleClone = useCallback(async (item: SelectedTemplate) => {
+  const handleClone = useCallback((item: SelectedTemplate) => {
     const srcName = item.type === 'builtin'
       ? (item.template as TournamentTemplate).name
       : (item.template as ScheduleTemplate).name;
-    const promptedName = window.prompt('Clone name:', `Copy of ${srcName}`);
-    if (!promptedName) return;
-
-    if (item.type === 'saved') {
-      await designerApi.cloneTemplate((item.template as ScheduleTemplate).id, { new_name: promptedName });
-    } else {
-      const builtin = item.template as TournamentTemplate;
-      await onSaveTemplate?.(promptedName, `Clone of built-in: ${builtin.name}`, 'PRIVATE');
-    }
-    // Trigger re-fetch by toggling search query
-    setSearchQuery(q => q + '\u200b');
-    setTimeout(() => setSearchQuery(q => q.replace('\u200b', '')), 100);
-  }, [onSaveTemplate]);
-
-  const handleDelete = useCallback(async (template: ScheduleTemplate) => {
-    if (!window.confirm(`Delete "${template.name}"? This cannot be undone.`)) return;
-    await designerApi.deleteTemplate(template.id);
-    setSelected(null);
-    setSelectedId(null);
-    setSearchQuery(q => q + ' ');
-    setTimeout(() => setSearchQuery(q => q.trim()), 100);
+    setCloneName(`Copy of ${srcName}`);
+    setCloneItem(item);
+    setShowCloneModal(true);
   }, []);
+
+  const executeClone = useCallback(async () => {
+    if (!cloneItem || !cloneName) return;
+
+    try {
+      if (cloneItem.type === 'saved') {
+        await designerApi.cloneTemplate((cloneItem.template as ScheduleTemplate).id, { new_name: cloneName });
+      } else {
+        const builtin = cloneItem.template as TournamentTemplate;
+        await onSaveTemplate?.(cloneName, `Clone of built-in: ${builtin.name}`, 'PRIVATE');
+      }
+      setShowCloneModal(false);
+      setCloneItem(null);
+      // Trigger re-fetch by toggling search query
+      setSearchQuery(q => q + '\u200b');
+      setTimeout(() => setSearchQuery(q => q.replace('\u200b', '')), 100);
+      onNotify?.('Template cloned successfully', 'success', 'Success');
+    } catch (e) {
+      console.error('Failed to clone template', e);
+      onNotify?.('Failed to clone template', 'danger', 'Error');
+    }
+  }, [cloneItem, cloneName, onSaveTemplate, onNotify]);
+
+  const handleDelete = useCallback((template: ScheduleTemplate) => {
+    onNotify?.(`Delete "${template.name}"? This cannot be undone.`, 'warning', 'Delete Template', async () => {
+      try {
+        await designerApi.deleteTemplate(template.id);
+        setSelected(null);
+        setSelectedId(null);
+        setSearchQuery(q => q + ' ');
+        setTimeout(() => setSearchQuery(q => q.trim()), 100);
+        onNotify?.('Template deleted successfully', 'success', 'Success');
+      } catch (e) {
+        console.error('Failed to delete template', e);
+        onNotify?.('Failed to delete template', 'danger', 'Error');
+      }
+    }, 10000);
+  }, [onNotify]);
 
   const handleSave = useCallback(async (data: { name: string; description: string; sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL' }) => {
     try {
@@ -317,6 +344,28 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
         onHide={() => setShowSave(false)}
         onSave={handleSave}
       />
+
+      <Modal show={showCloneModal} onHide={() => setShowCloneModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Clone Template</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group>
+            <Form.Label>New Template Name</Form.Label>
+            <Form.Control
+              type="text"
+              value={cloneName}
+              onChange={e => setCloneName(e.target.value)}
+              autoFocus
+              onKeyDown={e => e.key === 'Enter' && executeClone()}
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowCloneModal(false)}>Cancel</Button>
+          <Button variant="primary" onClick={executeClone} disabled={!cloneName.trim()}>Clone</Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 };
