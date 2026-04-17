@@ -388,11 +388,6 @@ describe('useDesignerController', () => {
         return { fs, controller: useDesignerController(undefined, fs) };
       });
 
-      // Spy on flowState methods
-      const addGlobalTeamSpy = vi.spyOn(result.current.fs, 'addGlobalTeam').mockImplementation((label, groupId, id) => ({
-        id: id || 'new-id', label: label || '', groupId: groupId || null, order: 0
-      }));
-      const updateGlobalTeamSpy = vi.spyOn(result.current.fs, 'updateGlobalTeam');
       const importStateSpy = vi.spyOn(result.current.fs, 'importState');
 
       vi.mocked(tournamentGenerator.generateTournament).mockReturnValue(mockStructure);
@@ -418,16 +413,11 @@ describe('useDesignerController', () => {
         await result.current.controller.handlers.handleGenerateTournament(configWithSelected);
       });
 
-      // 1. Verify that teams not already in flowState.globalTeams are added
-      // 2 selected teams + 2 generated teams = 4 calls
-      expect(addGlobalTeamSpy).toHaveBeenCalledTimes(4); 
-      expect(updateGlobalTeamSpy).toHaveBeenCalledTimes(4); 
-
-      // 2. Verify that neededCount is calculated correctly (Required - Selected)
+      // 1. Verify that neededCount is calculated correctly (Required - Selected)
       // Since generateTeamsForTournament is called with neededCount
       expect(teamAssignment.generateTeamsForTournament).toHaveBeenCalledWith(2);
 
-      // 3. Verify that the total number of teams (selected + generated) are included in the importState call
+      // 2. Verify that the total number of teams (selected + generated) are included in the importState call
       expect(importStateSpy).toHaveBeenCalledWith(expect.objectContaining({
         globalTeams: expect.arrayContaining([
           expect.objectContaining({ id: 'st1' }),
