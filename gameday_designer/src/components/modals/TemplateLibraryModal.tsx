@@ -9,6 +9,7 @@ import { GlobalTeam } from '../../types/flowchart';
 import { ScheduleTemplate } from '../../types/api';
 import { TournamentTemplate } from '../../utils/tournamentTemplates';
 import { NotificationType } from '../../types/designer';
+import { getTeamColor } from '../../utils/tournamentConstants';
 
 type FilterScope = 'all' | 'personal' | 'association' | 'global';
 type Step = 'library' | 'team-picker';
@@ -68,7 +69,13 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
     if (step !== 'team-picker') return;
     designerApi.getLeagueTeams(gamedayId)
       .then(teams => setLeagueTeams(
-        teams.map((t, i) => ({ id: String(t.id), label: t.name, groupId: null, order: i }))
+        teams.map((t, i) => ({ 
+          id: String(t.id), 
+          label: t.name, 
+          groupId: null, 
+          order: i,
+          color: getTeamColor(i)
+        }))
       ))
       .catch(() => onNotify?.('Failed to load league teams', 'error'));
   }, [step, gamedayId, onNotify]);
@@ -116,7 +123,13 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
   const handleAutoGenerateTeams = useCallback(async (count: number): Promise<GlobalTeam[]> => {
     try {
       const results = await designerApi.createTeamsBulk(count);
-      return results.map((r, i) => ({ id: String(r.id), label: r.name, groupId: null, order: leagueTeams.length + i }));
+      return results.map((r, i) => ({ 
+        id: String(r.id), 
+        label: r.name, 
+        groupId: null, 
+        order: leagueTeams.length + i,
+        color: getTeamColor(leagueTeams.length + i)
+      }));
     } catch (e) {
       onNotify?.(`Failed to generate teams`, 'error');
       throw e;

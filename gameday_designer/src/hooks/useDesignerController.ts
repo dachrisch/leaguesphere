@@ -229,7 +229,7 @@ export function useDesignerController(
 
             // 2. Generate missing teams if requested
             if (config.generateTeams && neededCount > 0) {
-                const teamData = generateTeamsForTournament(neededCount);
+                const teamData = generateTeamsForTournament(neededCount, teamsToUse.length);
                 const generatedTeams: GlobalTeam[] = teamData.map((data, index) => ({
                     id: uuidv4(),
                     label: data.label,
@@ -323,7 +323,7 @@ export function useDesignerController(
 
           // 3. Generate missing teams if requested
           if (neededCount > 0) {
-            const teamData = generateTeamsForTournament(neededCount);
+            const teamData = generateTeamsForTournament(neededCount, teamsToUse.length);
             const generatedTeams: GlobalTeam[] = teamData.map((data, index) => ({
               id: uuidv4(),
               label: data.label,
