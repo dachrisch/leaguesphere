@@ -11,7 +11,7 @@ import type { GlobalTeam, GameNode, StageNode } from '../types/flowchart';
 import type { TournamentStructure } from './tournamentGenerator';
 import type { EdgeSpec } from './bracketEdgeGenerator';
 import { createPlacementEdges } from './bracketEdgeGenerator';
-import { TEAM_COLORS, getTeamColor } from './tournamentConstants';
+import { getTeamColor } from './tournamentConstants';
 import { getRoundRobinPairings } from './roundRobinLogic';
 
 /**
