@@ -70,7 +70,8 @@ describe('useDesignerController Task 2', () => {
     });
 
     // Verify generateTeamsForTournament was called with 3 (4 total - 1 selected)
-    expect(teamAssignment.generateTeamsForTournament).toHaveBeenCalledWith(3);
+    // and startOffset of 1 (since 1 team was already in teamsToUse)
+    expect(teamAssignment.generateTeamsForTournament).toHaveBeenCalledWith(3, 1);
     
     // Verify generateTournament was called with all 4 teams
     const teamsToUse = vi.mocked(tournamentGenerator.generateTournament).mock.calls[0][0];
