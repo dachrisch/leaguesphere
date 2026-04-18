@@ -24,20 +24,20 @@ export { default as TeamTable } from './list/TeamTable';
 export { default as GameTable } from './list/GameTable';
 
 // Re-export legacy types
-export { type GameSlotCardProps } from './GameSlotCard';
-export { type FieldColumnProps } from './FieldColumn';
-export { type DesignerCanvasProps } from './DesignerCanvas';
-export { type TeamSelectorProps } from './TeamSelector';
-export { type GameSlotEditorProps } from './GameSlotEditor';
+export type { GameSlotCardProps } from './GameSlotCard';
+export type { FieldColumnProps } from './FieldColumn';
+export type { DesignerCanvasProps } from './DesignerCanvas';
+export type { TeamSelectorProps } from './TeamSelector';
+export type { GameSlotEditorProps } from './GameSlotEditor';
 
 // Re-export new component types
-export { type FlowToolbarProps } from './FlowToolbar';
-export { type FlowPropertiesPanelProps } from './FlowPropertiesPanel';
-export { type FieldSidebarProps } from './FieldSidebar';
+export type { FlowToolbarProps } from './FlowToolbar';
+export type { FlowPropertiesPanelProps } from './FlowPropertiesPanel';
+export type { FieldSidebarProps } from './FieldSidebar';
 
 // Re-export list component types
-export { type ListCanvasProps } from './ListCanvas';
-export { type FieldSectionProps } from './list/FieldSection';
-export { type StageSectionProps } from './list/StageSection';
-export { type TeamTableProps } from './list/TeamTable';
-export { type GameTableProps } from './list/GameTable';
+export type { ListCanvasProps } from './ListCanvas';
+export type { FieldSectionProps } from './list/FieldSection';
+export type { StageSectionProps } from './list/StageSection';
+export type { TeamTableProps } from './list/TeamTable';
+export type { GameTableProps } from './list/GameTable';

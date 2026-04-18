@@ -414,8 +414,8 @@ describe('useDesignerController', () => {
       });
 
       // 1. Verify that neededCount is calculated correctly (Required - Selected)
-      // Since generateTeamsForTournament is called with neededCount
-      expect(teamAssignment.generateTeamsForTournament).toHaveBeenCalledWith(2);
+      // Since generateTeamsForTournament is called with neededCount and startOffset
+      expect(teamAssignment.generateTeamsForTournament).toHaveBeenCalledWith(2, 2);
 
       // 2. Verify that the total number of teams (selected + generated) are included in the importState call
       expect(importStateSpy).toHaveBeenCalledWith(expect.objectContaining({
