@@ -26,23 +26,40 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
 
 # Database configuration for demo environment
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('MYSQL_DATABASE', 'demo_db'),
-        'USER': os.environ.get('MYSQL_USER', 'demo_user'),
-        'PASSWORD': os.environ.get('MYSQL_PASSWORD'),
-        'HOST': os.environ.get('MYSQL_HOST', 'demo-db'),
-        'PORT': os.environ.get('MYSQL_PORT', '3306'),
-        'OPTIONS': {
-            'charset': 'utf8mb4',
+# Local dev uses SQLite, Docker uses MySQL
+mysql_host = os.environ.get('MYSQL_HOST', 'demo-db')
+if mysql_host == 'demo-db' and not os.environ.get('RUNNING_IN_DOCKER'):
+    # Local development: use SQLite
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'db.demo.sqlite3'),
         }
     }
-}
+else:
+    # Docker environment: use MySQL
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.environ.get('MYSQL_DATABASE', 'demo_db'),
+            'USER': os.environ.get('MYSQL_USER', 'demo_user'),
+            'PASSWORD': os.environ.get('MYSQL_PASSWORD'),
+            'HOST': mysql_host,
+            'PORT': os.environ.get('MYSQL_PORT', '3306'),
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+            }
+        }
+    }
 
 # Security settings for demo
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+# Relax for local development, strict for production
+if os.environ.get('RUNNING_IN_DOCKER'):
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+else:
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 
 # Email backend - use console for demo (no external emails)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
