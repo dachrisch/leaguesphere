@@ -1,10 +1,11 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from django.utils import timezone
-from gamedays.models import Team, Season, League, Association, SeasonLeagueTeam, Gameday, Gameinfo, Gameresult
+from gamedays.models import Team, Season, League, Association, SeasonLeagueTeam, Gameday, Gameinfo, Gameresult, Person
+from passcheck.models import Player, Playerlist
 from league_table.models import LeagueGroup
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 
 class Command(BaseCommand):
@@ -32,6 +33,10 @@ class Command(BaseCommand):
         # Create season-league-team relationships
         self.create_season_league_teams(seasons, leagues, teams)
         self.stdout.write("✓ Created season-league-team relationships")
+
+        # Create players for teams
+        players_count = self.create_team_players(teams)
+        self.stdout.write(f"✓ Created {players_count} players for teams")
 
         # Create demo users by role
         self.create_demo_users()
@@ -141,6 +146,57 @@ class Command(BaseCommand):
                 )
                 if created or season_league_team.teams.count() == 0:
                     season_league_team.teams.set(league_teams)
+
+    def create_team_players(self, teams):
+        """Create players for each team."""
+        player_count = 0
+        first_names = [
+            'Michael', 'David', 'James', 'Robert', 'John', 'Thomas', 'Daniel', 'Matthew',
+            'Christopher', 'Anthony', 'Sarah', 'Emma', 'Lisa', 'Anna', 'Jennifer', 'Maria',
+            'Jessica', 'Laura', 'Michelle', 'Sandra'
+        ]
+        last_names = [
+            'Schmidt', 'Mueller', 'Schneider', 'Fischer', 'Weber', 'Meyer', 'Wagner', 'Becker',
+            'Schulz', 'Hoffmann', 'Schroeder', 'Koch', 'Bauer', 'Richter', 'Wolf', 'Schaefer',
+            'Hill', 'Graham', 'Thompson', 'Taylor'
+        ]
+
+        for team in teams:
+            # Create 10 players per team
+            num_players = 10
+            for i in range(num_players):
+                first_name = random.choice(first_names)
+                last_name = random.choice(last_names)
+                sex = random.choice([Person.MALE, Person.FEMALE])
+                year_of_birth = random.randint(1990, 2010)
+
+                person, _ = Person.objects.get_or_create(
+                    first_name=first_name,
+                    last_name=last_name,
+                    defaults={
+                        'sex': sex,
+                        'year_of_birth': year_of_birth,
+                    }
+                )
+
+                player, created = Player.objects.get_or_create(
+                    person=person,
+                    defaults={'pass_number': f"{team.id}{i:02d}"}
+                )
+
+                playerlist, created = Playerlist.objects.get_or_create(
+                    team=team,
+                    player=player,
+                    defaults={
+                        'jersey_number': (i % 100),
+                        'joined_on': date.today(),
+                    }
+                )
+
+                if created:
+                    player_count += 1
+
+        return player_count
 
     def create_demo_users(self):
         """Create demo user accounts with predefined credentials."""
