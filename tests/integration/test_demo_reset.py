@@ -61,6 +61,10 @@ class DemoResetIntegrationTests(TestCase):
         # Just verify the path is correct (actual file creation tested in entrypoint)
         self.assertEqual(os.path.dirname(snapshot_path), expected_dir)
 
+    @override_settings(
+        STRIPE_ENABLED=False,
+        EXTERNAL_API_INTEGRATIONS_ENABLED=False
+    )
     def test_demo_settings_disable_external_services(self):
         """Verify demo settings disable integrations"""
         from django.conf import settings
@@ -69,6 +73,10 @@ class DemoResetIntegrationTests(TestCase):
         self.assertFalse(getattr(settings, 'STRIPE_ENABLED', True))
         self.assertFalse(getattr(settings, 'EXTERNAL_API_INTEGRATIONS_ENABLED', True))
 
+    @override_settings(
+        DEMO_RESET_HOUR=0,
+        DEMO_RESET_MINUTE=0
+    )
     def test_demo_reset_schedule_is_utc_midnight(self):
         """Verify reset is scheduled for UTC midnight"""
         from django.conf import settings
