@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   demo-db:
-    image: mariadb:11
+    image: mariadb:12
     container_name: ${COMPOSE_PROJECT_NAME}.demo-db
     environment:
       MYSQL_ROOT_PASSWORD: demo_root_pass_change_me
