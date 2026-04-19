@@ -29,9 +29,8 @@ export type { FieldColumnProps } from './FieldColumn';
 export type { DesignerCanvasProps } from './DesignerCanvas';
 export type { TeamSelectorProps } from './TeamSelector';
 export type { GameSlotEditorProps } from './GameSlotEditor';
-export type { ValidationPanelProps } from './ValidationPanel';
 
-// Re-export shared component types
+// Re-export new component types
 export type { FlowToolbarProps } from './FlowToolbar';
 export type { FlowPropertiesPanelProps } from './FlowPropertiesPanel';
 export type { FieldSidebarProps } from './FieldSidebar';
