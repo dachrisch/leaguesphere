@@ -469,6 +469,10 @@ jobs:
       - setup_remote_docker:
           version: 20.10.24
       - run:
+          name: Set sanitized Docker tag
+          command: |
+            echo "export DOCKER_TAG=$(echo "$CIRCLE_TAG" | sed 's/+/-/g')" >> $BASH_ENV
+      - run:
           name: Plan demo deploy
           command: |
             circleci run release plan "leaguesphere-demo" \
@@ -479,12 +483,12 @@ jobs:
           image_name: backend
           registry_image_name: leaguesphere/backend
           tag: demo
-          extra_tag: $CIRCLE_TAG
+          extra_tag: $DOCKER_TAG
       - push_docker_image:
           image_name: frontend
           registry_image_name: leaguesphere/frontend
           tag: demo
-          extra_tag: $CIRCLE_TAG
+          extra_tag: $DOCKER_TAG
       - run:
           name: Update demo deploy to SUCCESS
           command: circleci run release update "leaguesphere-demo" --status=SUCCESS
