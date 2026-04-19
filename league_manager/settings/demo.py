@@ -4,6 +4,10 @@ from .base import *
 import os
 
 DEBUG = False
+
+# Demo-specific secret key (not for production)
+if not os.environ.get("SECRET_KEY"):
+    SECRET_KEY = "demo-insecure-key-for-local-testing-only-not-for-production"
 ALLOWED_HOSTS = [
     "demo.leaguesphere.app",
     "localhost",
