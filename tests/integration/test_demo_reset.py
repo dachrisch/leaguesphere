@@ -3,7 +3,7 @@ import pytest
 from django.test import TestCase, override_settings
 from django.core.management import call_command
 from django.contrib.auth.models import User
-from league_manager.models import Team
+from gamedays.models import Team
 from datetime import datetime, timedelta
 
 
@@ -18,19 +18,17 @@ class DemoResetIntegrationTests(TestCase):
 
     def test_demo_accounts_exist_after_seed(self):
         """Verify all demo accounts are created by seed command"""
-        demo_accounts = [
-            'admin@demo.local',
-            'referee@demo.local',
-            'manager@demo.local',
-            'user@demo.local',
-        ]
+        demo_accounts = {
+            'admin@demo.local': 'DemoAdmin123!',
+            'referee@demo.local': 'DemoRef123!',
+            'manager@demo.local': 'DemoMgr123!',
+            'user@demo.local': 'DemoUser123!',
+        }
 
-        for username in demo_accounts:
+        for username, password in demo_accounts.items():
             user = User.objects.get(username=username)
             self.assertIsNotNone(user)
-            self.assertTrue(user.check_password(
-                username.split('@')[0].title() + '123!'
-            ))
+            self.assertTrue(user.check_password(password))
 
     def test_demo_teams_created(self):
         """Verify demo teams are created"""
