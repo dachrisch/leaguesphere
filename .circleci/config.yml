@@ -651,7 +651,7 @@ workflows:
             - test_compose_network
           filters:
             tags:
-              only: /.*-demo\.[0-9]+$/
+              only: /.*\+demo\.[0-9]+$/
             branches:
               ignore: /.*/
       - run_migrations_demo:
@@ -660,7 +660,7 @@ workflows:
             - deploy_demo
           filters:
             tags:
-              only: /.*-demo\.[0-9]+$/
+              only: /.*\+demo\.[0-9]+$/
             branches:
               ignore: /.*/
 

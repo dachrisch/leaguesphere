@@ -262,13 +262,13 @@ case "$VERSION_ARG" in
         echo "Current version: $CURRENT_VERSION"
 
         # Determine bump strategy
-        if [[ $CURRENT_VERSION =~ -demo\.([0-9]+)$ ]]; then
-            # Already on demo version - bump demo_build (e.g., 2.13.0-demo.1 → 2.13.0-demo.2)
+        if [[ $CURRENT_VERSION =~ \+demo\.([0-9]+)$ ]]; then
+            # Already on demo version - bump demo_build (e.g., 3.11.3+demo.1 → 3.11.3+demo.2)
             echo "Incrementing demo build number..."
             DEMO_NUM="${BASH_REMATCH[1]}"
             NEW_DEMO=$((DEMO_NUM + 1))
-            BASE_VERSION="${CURRENT_VERSION%-demo.*}"
-            NEW_VERSION="${BASE_VERSION}-demo.${NEW_DEMO}"
+            BASE_VERSION="${CURRENT_VERSION%+demo.*}"
+            NEW_VERSION="${BASE_VERSION}+demo.${NEW_DEMO}"
 
             echo "Creating version: $NEW_VERSION"
 
@@ -287,9 +287,9 @@ case "$VERSION_ARG" in
             git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
             git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         else
-            # Non-demo version - create demo.1 (e.g., 2.13.0 → 2.13.0-demo.1)
+            # Non-demo version - create demo.1 (e.g., 3.11.3 → 3.11.3+demo.1)
             echo "Creating initial demo version..."
-            NEW_VERSION="${CURRENT_VERSION}-demo.1"
+            NEW_VERSION="${CURRENT_VERSION}+demo.1"
 
             echo "Creating version: $NEW_VERSION"
 
