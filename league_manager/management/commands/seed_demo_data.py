@@ -1,7 +1,8 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from django.utils import timezone
-from gamedays.models import Team, Season, League, Association, SeasonLeagueTeam
+from gamedays.models import Team, Season, League, Association, SeasonLeagueTeam, Gameday, Gameinfo, Gameresult
+from league_table.models import LeagueGroup
 import random
 from datetime import datetime, timedelta
 
@@ -35,6 +36,10 @@ class Command(BaseCommand):
         # Create demo users by role
         self.create_demo_users()
         self.stdout.write("✓ Created demo user accounts")
+
+        # Create gamedays with games
+        gamedays_count = self.create_gamedays(seasons, leagues, teams)
+        self.stdout.write(f"✓ Created {gamedays_count} gamedays with sample games")
 
         self.stdout.write(self.style.SUCCESS("✅ Demo data seeding completed successfully!"))
 
@@ -183,3 +188,125 @@ class Command(BaseCommand):
             if created:
                 user.set_password(account['password'])
                 user.save()
+
+    def create_gamedays(self, seasons, leagues, teams):
+        """Create sample gamedays with groups and games for the latest season."""
+        if not seasons or not leagues or not teams:
+            return 0
+
+        latest_season = seasons[-1]
+        gameday_count = 0
+        now = timezone.now()
+        admin_user = User.objects.filter(username='admin@demo.local').first()
+
+        if not admin_user:
+            return 0
+
+        # Create 2 gamedays per league
+        for league in leagues:
+            for day_num in range(1, 3):
+                gameday_date = now + timedelta(days=day_num * 7)
+                gameday_name = f"{league.name} - Spieltag {day_num}"
+
+                gameday, created = Gameday.objects.get_or_create(
+                    season=latest_season,
+                    league=league,
+                    name=gameday_name,
+                    defaults={
+                        'date': gameday_date.date(),
+                        'start': '10:00',
+                        'status': Gameday.STATUS_PUBLISHED if day_num == 1 else Gameday.STATUS_DRAFT,
+                        'author': admin_user,
+                    }
+                )
+
+                if created:
+                    gameday_count += 1
+                    # Create games for this gameday
+                    self.create_games_for_gameday(gameday, league, latest_season, teams)
+
+        return gameday_count
+
+    def create_games_for_gameday(self, gameday, league, season, teams):
+        """Create sample games within a gameday."""
+        if len(teams) < 2:
+            return
+
+        # Create 2 groups with alternating teams
+        group_a_teams = teams[0::2][:3]  # Every other team, up to 3
+        group_b_teams = teams[1::2][:3]  # Every other team, up to 3
+
+        # Ensure we have at least 2 teams per group
+        if len(group_a_teams) < 2:
+            group_a_teams = teams[:2]
+        if len(group_b_teams) < 2:
+            group_b_teams = teams[2:4] if len(teams) >= 4 else [teams[0]]
+
+        scheduled_times = ['10:00', '11:15', '12:30']
+        game_counter = 0
+
+        # Create round-robin games within each group
+        for group_idx, group_teams in enumerate([group_a_teams, group_b_teams], 1):
+            group_name = f"Gruppe {group_idx}"
+
+            # Create or get LeagueGroup
+            league_group, _ = LeagueGroup.objects.get_or_create(
+                league=league,
+                season=season,
+                name=group_name
+            )
+
+            # Create games between teams in this group
+            for i, home_team in enumerate(group_teams):
+                for away_team in group_teams[i+1:]:
+                    scheduled = scheduled_times[game_counter % len(scheduled_times)]
+
+                    gameinfo, created = Gameinfo.objects.get_or_create(
+                        gameday=gameday,
+                        league_group=league_group,
+                        defaults={
+                            'scheduled': scheduled,
+                            'field': (game_counter % 3) + 1,
+                            'status': 'beendet' if gameday.status == Gameday.STATUS_PUBLISHED else 'Geplant',
+                            'stage': f"Game {game_counter + 1}",
+                            'standing': group_name,
+                            'officials': random.choice([home_team, away_team]),
+                        }
+                    )
+
+                    if created:
+                        # Add game results
+                        self.create_game_result(gameinfo, home_team, away_team)
+
+                    game_counter += 1
+
+    def create_game_result(self, gameinfo, home_team, away_team):
+        """Create game results for home and away teams."""
+        home_goals_fh = random.randint(0, 3)
+        home_goals_sh = random.randint(0, 3)
+        away_goals_fh = random.randint(0, 3)
+        away_goals_sh = random.randint(0, 3)
+
+        # Home team result
+        Gameresult.objects.get_or_create(
+            gameinfo=gameinfo,
+            team=home_team,
+            isHome=True,
+            defaults={
+                'fh': home_goals_fh,
+                'sh': home_goals_sh,
+                'pa': random.randint(6, 12),
+            }
+        )
+
+        # Away team result
+        Gameresult.objects.get_or_create(
+            gameinfo=gameinfo,
+            team=away_team,
+            isHome=False,
+            defaults={
+                'fh': away_goals_fh,
+                'sh': away_goals_sh,
+                'pa': random.randint(6, 12),
+            }
+        )
