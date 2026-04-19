@@ -498,20 +498,6 @@ jobs:
           command: circleci run release update "leaguesphere-demo" --status=FAILED
           when: on_fail
 
-  run_migrations_staging:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - run_migrations_cmd:
-          image_name: backend
-
-  run_migrations_demo:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - run_migrations_cmd:
-          image_name: backend
-
   deploy_production:
     docker:
       - image: cimg/base:stable
@@ -639,29 +625,11 @@ workflows:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$/
             branches:
               ignore: /.*/
-      - run_migrations_staging:
-          context: staging
-          requires:
-            - deploy_staging
-          filters:
-            tags:
-              only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$/
-            branches:
-              ignore: /.*/
 
       - deploy_demo:
           context: demo
           requires:
             - test_compose_network
-          filters:
-            tags:
-              only: /.*\+demo\.[0-9]+$/
-            branches:
-              ignore: /.*/
-      - run_migrations_demo:
-          context: demo
-          requires:
-            - deploy_demo
           filters:
             tags:
               only: /.*\+demo\.[0-9]+$/
