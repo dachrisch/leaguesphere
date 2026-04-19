@@ -52,6 +52,9 @@ services:
       - "traefik.http.routers.demo.entrypoints=websecure"
       - "traefik.http.routers.demo.tls.certresolver=letsencrypt"
       - "traefik.http.services.demo.loadbalancer.server.port=80"
+      - "ofelia.enabled=true"
+      - "ofelia.job-exec.demo-reset.schedule=0 0 * * *"
+      - "ofelia.job-exec.demo-reset.command=docker restart ls-demo-app ls-demo-nginx ls-demo-db"
 
   demo-db:
     image: mariadb:11
