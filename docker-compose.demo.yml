@@ -52,6 +52,8 @@ services:
   demo-nginx:
     image: leaguesphere/frontend:demo
     container_name: ${COMPOSE_PROJECT_NAME}.demo-nginx
+    volumes:
+      - ./container/nginx.demo.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - backend
       - proxy
