@@ -11,14 +11,12 @@ export interface TeamSelectionModalProps {
   onHide: () => void;
   onSelect: (teams: GlobalTeam[]) => void;
   groupId: string;
-  leagueId?: number;
 }
 
 const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
   show,
   onHide,
   onSelect,
-  leagueId = 0,
 }) => {
   const [availableTeams, setAvailableTeams] = useState<GlobalTeam[]>([]);
   const [loading, setLoading] = useState(false);
@@ -29,7 +27,7 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
     const loadTeams = async () => {
       setLoading(true);
       try {
-        const teams = await gamedayApi.getLeagueTeams(leagueId);
+        const teams = await gamedayApi.getLeagueTeams(0);
         const globalTeams = teams.map((t, i) => ({
           id: String(t.id),
           label: t.name,
@@ -47,7 +45,7 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
     };
 
     loadTeams();
-  }, [show, leagueId]);
+  }, [show]);
 
   const handleConfirm = (selectedTeams: GlobalTeam[]) => {
     onSelect(selectedTeams);

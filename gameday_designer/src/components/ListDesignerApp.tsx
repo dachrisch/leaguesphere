@@ -489,7 +489,6 @@ const ListDesignerApp: React.FC = () => {
         groupId={teamSelectionContext?.slotId ?? ''}
         onSelect={handleTeamSelected}
         title={teamSelectionContext?.side === 'official' ? t('ui:title.selectOfficial') : t('ui:title.selectTeam')}
-        leagueId={metadata?.league ?? 0}
       />
 
       <TemplateLibraryModal
