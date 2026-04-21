@@ -495,7 +495,6 @@ export function useDesignerController(
     notifications,
     updateMetadata: flowState?.updateMetadata,
     ui: uiInternal,
-    // eslint-disable-next-line react-hooks/refs
     handlers: handlersInternal,
     canUndo: flowState?.canUndo,
     canRedo: flowState?.canRedo,
