@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button } from 'react-bootstrap';
-import { useTypedTranslation } from '../../i18n/useTypedTranslation';
+import { Modal, Spinner } from 'react-bootstrap';
 import { gamedayApi } from '../../api/gamedayApi';
 import TeamPickerStep from './TemplateLibraryModal/TeamPickerStep';
 import type { GlobalTeam } from '../../types/flowchart';
@@ -12,7 +11,6 @@ export interface TeamSelectionModalProps {
   onHide: () => void;
   onSelect: (teams: GlobalTeam[]) => void;
   groupId: string;
-  title?: string;
   gamedayId?: number;
 }
 
@@ -20,10 +18,8 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
   show,
   onHide,
   onSelect,
-  title,
   gamedayId = 0,
 }) => {
-  const { t } = useTypedTranslation(['modal', 'ui']);
   const [availableTeams, setAvailableTeams] = useState<GlobalTeam[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -74,18 +70,11 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
   };
 
   return (
-    <Modal show={show} onHide={onHide} centered size="lg">
+    <Modal show={show} onHide={onHide} centered size="lg" backdrop="static">
       {loading ? (
-        <>
-          <Modal.Header closeButton>
-            <Modal.Title>{title || t('modal:teamSelection.title', 'Add Teams to Pool')}</Modal.Title>
-          </Modal.Header>
-          <Modal.Body className="text-center py-5">
-            <div className="spinner-border" role="status">
-              <span className="visually-hidden">Loading teams...</span>
-            </div>
-          </Modal.Body>
-        </>
+        <div className="text-center p-5">
+          <Spinner animation="border" />
+        </div>
       ) : (
         <TeamPickerStep
           requiredTeams={1}
