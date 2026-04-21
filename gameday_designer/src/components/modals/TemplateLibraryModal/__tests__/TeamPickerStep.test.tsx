@@ -16,39 +16,43 @@ describe('TeamPickerStep', () => {
     expect(screen.getAllByText('6').length).toBeGreaterThan(0);
   });
 
-  it('auto-selects available teams up to requiredTeams', () => {
+  it('starts with no teams selected', () => {
     render(<TeamPickerStep requiredTeams={2} availableTeams={mockTeams} onConfirm={vi.fn()} onBack={vi.fn()} />);
-    // Check that exactly 2 are selected (bg-primary)
+    // Check that no teams are selected initially
     const badges = screen.getAllByText(/Team [A-C]/);
     const selectedBadges = badges.filter(b => b.classList.contains('bg-primary'));
-    expect(selectedBadges.length).toBe(2);
+    expect(selectedBadges.length).toBe(0);
   });
 
   it('toggles selection and disables/enables Apply button', () => {
-    // Start with 4 required, only 3 available -> should be disabled
-    render(<TeamPickerStep requiredTeams={4} availableTeams={mockTeams} onConfirm={vi.fn()} onBack={vi.fn()} />);
+    // Start with 2 required, 3 available -> Apply initially disabled
+    render(<TeamPickerStep requiredTeams={2} availableTeams={mockTeams} onConfirm={vi.fn()} onBack={vi.fn()} />);
     const applyButton = screen.getByRole('button', { name: /apply/i });
     expect(applyButton).toBeDisabled();
 
-    // Deselect one
+    // Select Team A
     fireEvent.click(screen.getByText('Team A'));
-    // Now 2 selected
-    const selectedBadges = screen.getAllByText(/Team [A-C]/).filter(b => b.classList.contains('bg-primary'));
-    expect(selectedBadges.length).toBe(2);
-    
-    // Select it back
+    expect(applyButton).toBeDisabled(); // Still 1 < 2
+
+    // Select Team B
+    fireEvent.click(screen.getByText('Team B'));
+    expect(applyButton).not.toBeDisabled(); // Now 2 >= 2
+
+    // Deselect Team A
     fireEvent.click(screen.getByText('Team A'));
-    const reSelectedBadges = screen.getAllByText(/Team [A-C]/).filter(b => b.classList.contains('bg-primary'));
-    expect(reSelectedBadges.length).toBe(3);
-    expect(applyButton).toBeDisabled(); // Still 3 < 4
+    expect(applyButton).toBeDisabled(); // Back to 1 < 2
   });
 
   it('calls onConfirm with selected team objects', () => {
     const onConfirm = vi.fn();
     render(<TeamPickerStep requiredTeams={2} availableTeams={mockTeams} onConfirm={onConfirm} onBack={vi.fn()} />);
-    
+
+    // Select first two teams
+    fireEvent.click(screen.getByText('Team A'));
+    fireEvent.click(screen.getByText('Team B'));
+
     fireEvent.click(screen.getByRole('button', { name: /apply/i }));
-    
+
     expect(onConfirm).toHaveBeenCalledWith([
       mockTeams[0],
       mockTeams[1],
@@ -60,22 +64,28 @@ describe('TeamPickerStep', () => {
       { id: 'gen-1', label: 'New Team 1', groupId: null, order: 3 },
     ];
     const onAutoGenerate = vi.fn().mockResolvedValue(mockGenerated);
-    
+
     render(<TeamPickerStep requiredTeams={4} availableTeams={mockTeams} onConfirm={vi.fn()} onBack={vi.fn()} onAutoGenerateTeams={onAutoGenerate} />);
-    
+
+    // Select 3 teams first
+    fireEvent.click(screen.getByText('Team A'));
+    fireEvent.click(screen.getByText('Team B'));
+    fireEvent.click(screen.getByText('Team C'));
+
+    // Now the button should show "auto-generate 1 missing teams"
     const genButton = screen.getByText(/auto-generate 1 missing teams/i);
     fireEvent.click(genButton);
-    
+
     await waitFor(() => {
       expect(onAutoGenerate).toHaveBeenCalledWith(1);
     });
-    
+
     await waitFor(() => {
       expect(screen.getByText(/New Team 1/)).toBeInTheDocument();
     });
-    
-    // Check that 4 teams are now selected
-    const selectedBadges = screen.getAllByText(/Team/i).filter(b => b.classList.contains('bg-primary'));
-    expect(selectedBadges.length).toBe(4); 
+
+    // Check that 4 teams are now selected (3 manual + 1 generated)
+    const selectedBadges = screen.getAllByText(/Team|New Team/i).filter(b => b.classList.contains('bg-primary'));
+    expect(selectedBadges.length).toBe(4);
   });
 });
