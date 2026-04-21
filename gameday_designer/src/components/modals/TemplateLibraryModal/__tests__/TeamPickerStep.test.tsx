@@ -2,10 +2,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import TeamPickerStep from '../TeamPickerStep';
 import React from 'react';
-import { designerApi } from '../../../api/designerApi';
+import { designerApi } from '../../../../api/designerApi';
 
 // Mock designerApi
-vi.mock('../../../api/designerApi', () => ({
+vi.mock('../../../../api/designerApi', () => ({
   designerApi: {
     getConfig: vi.fn(),
     getLeagueTeams: vi.fn(),
@@ -87,7 +87,7 @@ describe('TeamPickerStep', () => {
     fireEvent.click(screen.getByText('Team C'));
 
     // Now the button should show "auto-generate 1 missing teams"
-    const genButton = screen.getByText(/auto-generate 1 missing teams/i);
+    const genButton = await screen.findByText(/auto-generate 1 missing teams/i);
     fireEvent.click(genButton);
 
     await waitFor(() => {

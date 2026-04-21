@@ -17,6 +17,7 @@ vi.mock('../../api/gamedayApi', () => ({
 vi.mock('../../api/designerApi', () => ({
   designerApi: {
     getLeagueTeams: vi.fn(),
+    getConfig: vi.fn().mockResolvedValue({ mock_teams: true }),
   },
 }));
 
