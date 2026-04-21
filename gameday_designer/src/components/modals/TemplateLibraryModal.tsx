@@ -207,7 +207,8 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
         onHide={step === 'team-picker' ? () => setStep('library') : handleHide}
         size={step === 'library' ? 'xl' : undefined}
         fullscreen={step === 'library' ? 'lg-down' : undefined}
-        centered={step === 'team-picker'}
+        centered
+        dialogClassName="template-library-modal"
       >
         {step === 'library' ? (
           <>
