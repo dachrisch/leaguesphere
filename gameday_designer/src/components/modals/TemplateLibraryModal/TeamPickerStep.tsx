@@ -25,6 +25,10 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
   const [mockTeams, setMockTeams] = useState<boolean>(false);
 
   useEffect(() => {
+    console.log('TeamPickerStep:', { preselectedTeams, selectedIds: preselectedTeams.map(t => t.id), availableTeamIds: availableTeams.map(t => t.id) });
+  }, [preselectedTeams, availableTeams]);
+
+  useEffect(() => {
     designerApi.getConfig().then(config => setMockTeams(config.mock_teams)).catch(() => setMockTeams(false));
   }, []);
 
