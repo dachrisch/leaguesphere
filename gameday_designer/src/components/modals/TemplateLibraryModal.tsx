@@ -14,11 +14,11 @@ import { getTeamColor } from '../../utils/tournamentConstants';
 type FilterScope = 'all' | 'personal' | 'association' | 'global';
 type Step = 'library' | 'team-picker';
 
-const PILLS: { scope: FilterScope; label: string }[] = [
+const PILLS: { scope: FilterScope; label: React.ReactNode }[] = [
   { scope: 'all', label: 'All' },
-  { scope: 'personal', label: '🔒 My templates' },
-  { scope: 'association', label: '🏛️ Association' },
-  { scope: 'global', label: '🌐 Community' },
+  { scope: 'personal', label: <><i className="bi bi-lock me-2"></i>My templates</> },
+  { scope: 'association', label: <><i className="bi bi-bank me-2"></i>Association</> },
+  { scope: 'global', label: <><i className="bi bi-globe me-2"></i>Community</> },
 ];
 
 interface TemplateLibraryModalProps {
@@ -213,18 +213,20 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
         {step === 'library' ? (
           <>
             <Modal.Header className="bg-dark text-white">
-              <Modal.Title>📚 Template Library</Modal.Title>
+              <Modal.Title><i className="bi bi-book-half me-2"></i>Template Library</Modal.Title>
               <div className="ms-auto d-flex gap-2 align-items-center">
                 <Button size="sm" variant="success" onClick={() => setShowSave(true)}>
-                  💾 Save current as template
+                  <i className="bi bi-download me-2"></i>Save current as template
                 </Button>
-                <Button size="sm" variant="outline-light" onClick={handleHide}>✕</Button>
+                <Button size="sm" variant="outline-light" onClick={handleHide} aria-label="Close">
+                  <i className="bi bi-x-lg"></i>
+                </Button>
               </div>
             </Modal.Header>
 
             <div className="p-2 border-bottom bg-light d-flex flex-wrap gap-2 align-items-center">
               <InputGroup size="sm" style={{ maxWidth: 260 }}>
-                <InputGroup.Text>🔍</InputGroup.Text>
+                <InputGroup.Text><i className="bi bi-search"></i></InputGroup.Text>
                 <Form.Control
                   placeholder="Search templates..."
                   value={searchQuery}

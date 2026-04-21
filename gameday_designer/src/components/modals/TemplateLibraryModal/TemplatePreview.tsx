@@ -87,7 +87,7 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
         )}
 
         <div className="bg-warning-subtle border border-warning rounded p-3 mb-3">
-          <h6 className="text-warning-emphasis mb-3">⚙️ Configure before applying</h6>
+          <h6 className="text-warning-emphasis mb-3"><i className="bi bi-gear me-2"></i>Configure</h6>
           <Row className="g-2">
             <Col xs={12} sm={3}>
               <Form.Label className="small fw-semibold">Start time</Form.Label>
@@ -115,7 +115,7 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
           data-testid="apply-template-button"
           onClick={() => onApply(selected, { startTime, gameDuration, breakDuration, numFields })}
         >
-          Apply to Gameday →
+          Apply to Gameday <i className="bi bi-arrow-right ms-2"></i>
         </Button>
         <Button variant="outline-secondary" onClick={() => onClone(selected)}>
           Clone &amp; Edit

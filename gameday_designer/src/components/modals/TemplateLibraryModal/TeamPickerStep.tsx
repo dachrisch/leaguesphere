@@ -63,7 +63,7 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
   return (
     <>
       <Modal.Header closeButton>
-        <Modal.Title>Select Teams</Modal.Title>
+        <Modal.Title><i className="bi bi-people me-2"></i>Select Teams</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <p className="text-muted small mb-3">
@@ -75,7 +75,7 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
           <input
             type="text"
             className="form-control form-control-sm mb-2"
-            placeholder="🔍 Search teams..."
+            placeholder="Search teams..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
@@ -129,7 +129,7 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
                   }}
                   onClick={() => toggleTeam(team.id)}
                 >
-                  {isLocal && '✨ '}{team.label}
+                  {isLocal && <i className="bi bi-stars me-1"></i>}{team.label}
                 </Badge>
               );
             })}
@@ -153,7 +153,9 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
         )}
       </Modal.Body>
       <Modal.Footer className="bg-light">
-        <Button variant="outline-secondary" onClick={onBack}>← Back to Library</Button>
+        <Button variant="outline-secondary" onClick={onBack}>
+          <i className="bi bi-arrow-left me-2"></i>Back to Library
+        </Button>
         <Button
           variant="primary"
           disabled={!canConfirm}
@@ -166,7 +168,7 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
           }}
           style={{ minWidth: '150px' }}
         >
-          Apply to Gameday →
+          Apply to Gameday <i className="bi bi-arrow-right ms-2"></i>
         </Button>
       </Modal.Footer>
     </>
