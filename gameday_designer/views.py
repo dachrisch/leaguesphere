@@ -229,7 +229,7 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
         except ApplicationError as e:
             logging.exception("Error applying schedule template")
             return Response(
-                {"error": str(e)},
+                {"error": "Failed to apply template"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
