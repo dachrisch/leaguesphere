@@ -17,12 +17,7 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
   requiredTeams, availableTeams, onConfirm, onBack,
   onAutoGenerateTeams, backButtonLabel = 'Back to Library', preselectedTeams = [],
 }) => {
-  const preselectedNames = new Set(preselectedTeams.map(t => t.label.toLowerCase()));
-  const initialSelectedIds = availableTeams
-    .filter(t => preselectedNames.has(t.label.toLowerCase()))
-    .map(t => t.id);
-
-  const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [localTeams, setLocalTeams] = useState<GlobalTeam[]>([]);
   const [associationFilter, setAssociationFilter] = useState<string>('all');
@@ -32,6 +27,14 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
   useEffect(() => {
     designerApi.getConfig().then(config => setMockTeams(config.mock_teams)).catch(() => setMockTeams(false));
   }, []);
+
+  useEffect(() => {
+    const preselectedNames = new Set(preselectedTeams.map(t => t.label.toLowerCase()));
+    const matchedIds = availableTeams
+      .filter(t => preselectedNames.has(t.label.toLowerCase()))
+      .map(t => t.id);
+    setSelectedIds(matchedIds);
+  }, [availableTeams, preselectedTeams]);
 
   const allTeams = [...availableTeams, ...localTeams];
 
