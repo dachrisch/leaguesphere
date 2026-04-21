@@ -21,7 +21,6 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
   onHide,
   onSelect,
   gamedayId = 0,
-  mode = 'single',
   preselectedTeams = [],
 }) => {
   const [availableTeams, setAvailableTeams] = useState<GlobalTeam[]>([]);

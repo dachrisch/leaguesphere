@@ -21,7 +21,7 @@ const mockTeams = [
 describe('TeamPickerStep', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (designerApi.getConfig as any).mockResolvedValue({ mock_teams: true });
+    vi.mocked(designerApi.getConfig).mockResolvedValue({ mock_teams: true });
   });
 
   it('shows required team count', () => {
