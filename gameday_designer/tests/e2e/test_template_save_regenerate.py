@@ -132,7 +132,7 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     expect(page.get_by_text("Template saved successfully")).to_be_visible(timeout=10000)
 
     # Close the Template Library modal via the Close button
-    page.get_by_label("Close").click()
+    page.get_by_test_id("close-template-library-button").click()
     expect(page.get_by_text("Template Library")).not_to_be_visible(timeout=5000)
 
     # ---- Phase 4: Clear the schedule -----------------------------------------

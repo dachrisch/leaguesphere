@@ -218,7 +218,7 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
                 <Button size="sm" variant="success" onClick={() => setShowSave(true)}>
                   <i className="bi bi-download me-2"></i>Save current as template
                 </Button>
-                <Button size="sm" variant="outline-light" onClick={handleHide} aria-label="Close">
+                <Button size="sm" variant="outline-light" onClick={handleHide} aria-label="Close" data-testid="close-template-library-button">
                   <i className="bi bi-x-lg"></i>
                 </Button>
               </div>
