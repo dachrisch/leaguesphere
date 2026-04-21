@@ -21,7 +21,7 @@ vi.mock('../../hooks/useFlowState', () => ({
 
 // Mock TeamSelectionModal to expose a trigger button for tests
 vi.mock('../modals/TeamSelectionModal', () => ({
-  default: ({ show, onSelect }: { show: boolean; onSelect: (teams: any[]) => void }) =>
+  default: ({ show, onSelect }: { show: boolean; onSelect: (teams: GlobalTeam[]) => void }) =>
     show ? (
       <button data-testid="mock-team-select" onClick={() => onSelect([{ id: '99', label: 'Replaced Team', groupId: null, order: 0, color: '#000' }])}>
         Select Team

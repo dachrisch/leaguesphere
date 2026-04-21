@@ -1,11 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { renderHook } from '@testing-library/react';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
 import TeamSelectionModal from '../modals/TeamSelectionModal';
 import GameTable from '../list/GameTable';
-import { gamedayApi } from '../../api/gamedayApi';
 import { designerApi } from '../../api/designerApi';
 import type { FlowState, GameNode, FlowNode, StageNode } from '../../types/flowchart';
 

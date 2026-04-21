@@ -16,7 +16,7 @@ import LoadingOverlay from './ui/LoadingOverlay';
 import TemplateLibraryModal from './modals/TemplateLibraryModal';
 import { useGamedayContext } from '../context/GamedayContext';
 import { GameNode } from '../types/designer';
-import { isGameNode } from '../types/flowchart';
+import { isGameNode, GlobalTeam } from '../types/flowchart';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import { gamedayApi } from '../api/gamedayApi';
 import { getAllTemplates } from '../utils/tournamentTemplates';
@@ -274,7 +274,7 @@ const ListDesignerApp: React.FC = () => {
     setShowTeamSelectionModal(true);
   }, []);
 
-  const handleTeamSelected = useCallback((selectedTeams: any[]) => {
+  const handleTeamSelected = useCallback((selectedTeams: GlobalTeam[]) => {
     if (teamSelectionContext && selectedTeams.length > 0) {
       const team = selectedTeams[0];
       const teamId = typeof team.id === 'string' ? parseInt(team.id) : team.id;
