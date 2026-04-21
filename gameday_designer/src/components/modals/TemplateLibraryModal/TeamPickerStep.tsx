@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Modal, Button, Badge, Alert } from 'react-bootstrap';
 import { GlobalTeam } from '../../../types/flowchart';
 
@@ -19,15 +19,6 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
   const [localTeams, setLocalTeams] = useState<GlobalTeam[]>([]);
   const [selectedAssociation, setSelectedAssociation] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const hasInitializedRef = useRef(false);
-
-  // Auto-select league teams by default if they are available
-  useEffect(() => {
-    if (availableTeams.length > 0 && !hasInitializedRef.current) {
-      hasInitializedRef.current = true;
-      setSelectedIds(availableTeams.slice(0, requiredTeams).map(t => t.id));
-    }
-  }, [availableTeams, requiredTeams]);
 
   const allTeams = [...availableTeams, ...localTeams];
 
