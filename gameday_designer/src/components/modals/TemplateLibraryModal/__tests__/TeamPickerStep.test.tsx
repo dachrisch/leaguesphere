@@ -85,7 +85,7 @@ describe('TeamPickerStep', () => {
     });
 
     // Check that 4 teams are now selected (3 manual + 1 generated)
-    const selectedButtons = screen.getAllByText(/Team|New Team/i).filter(b => b.closest('button')?.classList.contains('btn-primary'));
+    const selectedButtons = screen.getAllByText(/^(Team [A-C]|New Team 1)$/).filter(b => b.closest('button')?.classList.contains('btn-primary'));
     expect(selectedButtons.length).toBe(4);
   });
 });
