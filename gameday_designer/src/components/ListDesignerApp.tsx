@@ -274,14 +274,18 @@ const ListDesignerApp: React.FC = () => {
     setShowTeamSelectionModal(true);
   }, []);
 
-  const handleTeamSelected = useCallback((team: { id: number; text: string }) => {
-    if (teamSelectionContext) {
+  const handleTeamSelected = useCallback((selectedTeams: any[]) => {
+    if (teamSelectionContext && selectedTeams.length > 0) {
+      const team = selectedTeams[0];
+      const teamId = typeof team.id === 'string' ? parseInt(team.id) : team.id;
+      const teamObj = { id: teamId, text: team.label };
+
       if (teamSelectionContext.side === 'group') {
-        handleConnectTeam(team, teamSelectionContext.slotId);
+        handleConnectTeam(teamObj, teamSelectionContext.slotId);
       } else if (teamSelectionContext.side === 'replace') {
-        handleReplaceGlobalTeam(teamSelectionContext.slotId, team);
+        handleReplaceGlobalTeam(teamSelectionContext.slotId, teamObj);
       } else {
-        handleAssignTeam(teamSelectionContext.slotId, teamSelectionContext.side as 'home' | 'away', String(team.id));
+        handleAssignTeam(teamSelectionContext.slotId, teamSelectionContext.side as 'home' | 'away', String(teamId));
       }
     }
     setShowTeamSelectionModal(false);

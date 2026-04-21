@@ -12,6 +12,7 @@ import type { FlowState, GameNode, FlowNode, StageNode } from '../../types/flowc
 vi.mock('../../api/gamedayApi', () => ({
   gamedayApi: {
     searchTeams: vi.fn(),
+    getLeagueTeams: vi.fn(),
   },
 }));
 
@@ -121,38 +122,57 @@ describe('Patch Coverage - TeamSelectionModal', () => {
   });
 
   it('covers search interactions and selection', async () => {
-    vi.mocked(gamedayApi.searchTeams).mockResolvedValue([
-      { id: 1, text: 'Team Alpha' }
+    vi.mocked(gamedayApi.getLeagueTeams).mockResolvedValue([
+      { id: 1, name: 'Team Alpha', association_abbr: 'AA' }
     ]);
 
     render(
-      <TeamSelectionModal 
-        show={true} 
-        onHide={mockOnHide} 
-        onSelect={mockOnSelect} 
-        groupId="group-1" 
+      <TeamSelectionModal
+        show={true}
+        onHide={mockOnHide}
+        onSelect={mockOnSelect}
+        groupId="group-1"
       />
     );
 
-    const input = screen.getByPlaceholderText(/search/i);
-    await userEvent.type(input, 'Alpha');
+    // Wait for teams to load
+    await waitFor(() => expect(gamedayApi.getLeagueTeams).toHaveBeenCalled(), { timeout: 1000 });
 
-    // Wait for debounce
-    await waitFor(() => expect(gamedayApi.searchTeams).toHaveBeenCalledWith('Alpha'), { timeout: 1000 });
+    // Find and click Team Alpha button
+    const teamButton = await screen.findByText('Team Alpha');
+    fireEvent.click(teamButton);
 
-    const resultItem = await screen.findByText('Team Alpha');
-    fireEvent.click(resultItem);
+    // Find and click the Apply button
+    const applyButton = await screen.findByRole('button', { name: /Apply to Gameday/i });
+    fireEvent.click(applyButton);
 
-    expect(mockOnSelect).toHaveBeenCalledWith({ id: 1, text: 'Team Alpha' });
+    expect(mockOnSelect).toHaveBeenCalled();
+    const callArgs = vi.mocked(mockOnSelect).mock.calls[0][0];
+    expect(callArgs[0].label).toBe('Team Alpha');
     expect(mockOnHide).toHaveBeenCalled();
   });
 
-  it('covers empty search query', async () => {
-    render(<TeamSelectionModal show={true} onHide={mockOnHide} onSelect={mockOnSelect} groupId="group-1" />);
-    const input = screen.getByPlaceholderText(/search/i);
-    await userEvent.type(input, 'A');
-    await userEvent.clear(input);
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  it('covers modal rendering and team selection flow', async () => {
+    vi.mocked(gamedayApi.getLeagueTeams).mockResolvedValue([
+      { id: 2, name: 'Team Beta', association_abbr: 'BB' }
+    ]);
+
+    render(
+      <TeamSelectionModal
+        show={true}
+        onHide={mockOnHide}
+        onSelect={mockOnSelect}
+        groupId="group-1"
+      />
+    );
+
+    // Wait for teams to load
+    await waitFor(() => expect(gamedayApi.getLeagueTeams).toHaveBeenCalled());
+
+    // Verify the modal can be hidden
+    const closeButton = screen.getByRole('button', { name: /close/i });
+    fireEvent.click(closeButton);
+    expect(mockOnHide).toHaveBeenCalled();
   });
 });
 

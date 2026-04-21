@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Modal, Button, Form, ListGroup, InputGroup, Spinner } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import { Modal, Button } from 'react-bootstrap';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import { gamedayApi } from '../../api/gamedayApi';
-import { ICONS } from '../../utils/iconConstants';
+import TeamPickerStep from './TemplateLibraryModal/TeamPickerStep';
+import type { GlobalTeam } from '../../types/flowchart';
+import { getTeamColor } from '../../utils/tournamentConstants';
 
 export interface TeamSelectionModalProps {
   show: boolean;
   onHide: () => void;
-  onSelect: (team: { id: number; text: string }) => void;
+  onSelect: (teams: GlobalTeam[]) => void;
   groupId: string;
   title?: string;
 }
@@ -19,100 +21,61 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
   title,
 }) => {
   const { t } = useTypedTranslation(['modal', 'ui']);
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<{ id: number; text: string }[]>([]);
+  const [availableTeams, setAvailableTeams] = useState<GlobalTeam[]>([]);
   const [loading, setLoading] = useState(false);
-  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (!show) {
-      Promise.resolve().then(() => {
-        setQuery('');
-        setResults([]);
-      });
-    }
-  }, [show]);
+    if (!show) return;
 
-  const handleSearch = async (searchQuery: string) => {
-    setQuery(searchQuery);
-    
-    if (searchTimeout.current) {
-      clearTimeout(searchTimeout.current);
-    }
-
-    if (!searchQuery.trim()) {
-      setResults([]);
-      return;
-    }
-
-    setLoading(true);
-    searchTimeout.current = setTimeout(async () => {
+    const loadTeams = async () => {
+      setLoading(true);
       try {
-        const teams = await gamedayApi.searchTeams(searchQuery);
-        setResults(teams);
+        const teams = await gamedayApi.getLeagueTeams(0); // Get all teams
+        const globalTeams = teams.map((t, i) => ({
+          id: String(t.id),
+          label: t.name,
+          groupId: null,
+          order: i,
+          color: getTeamColor(i),
+          associationAbbr: t.association_abbr ?? null
+        }));
+        setAvailableTeams(globalTeams);
       } catch (error) {
-        console.error('Failed to search teams:', error);
+        console.error('Failed to load teams:', error);
       } finally {
         setLoading(false);
       }
-    }, 300);
+    };
+
+    loadTeams();
+  }, [show]);
+
+  const handleConfirm = (selectedTeams: GlobalTeam[]) => {
+    onSelect(selectedTeams);
+    onHide();
   };
 
   return (
-    <Modal show={show} onHide={onHide} centered>
-      <Modal.Header closeButton>
-        <Modal.Title>{title || t('modal:teamSelection.title', 'Connect Existing Team')}</Modal.Title>
-      </Modal.Header>
-      <Modal.Body>
-        <Form.Group className="mb-3">
-          <InputGroup>
-            <Form.Control
-              type="text"
-              placeholder={t('modal:teamSelection.placeholder', 'Search by team name...')}
-              value={query}
-              onChange={(e) => handleSearch(e.target.value)}
-              autoFocus
-            />
-            <InputGroup.Text>
-              {loading ? <Spinner animation="border" size="sm" /> : <i className={`bi ${ICONS.SEARCH}`} />}
-            </InputGroup.Text>
-          </InputGroup>
-        </Form.Group>
-
-        <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-          {results.length > 0 ? (
-            <ListGroup variant="flush">
-              {results.map((team) => (
-                <ListGroup.Item
-                  key={team.id}
-                  action
-                  onClick={() => {
-                    onSelect(team);
-                    onHide();
-                  }}
-                  className="d-flex justify-content-between align-items-center"
-                >
-                  <span>{team.text}</span>
-                  <small className="text-muted">ID: {team.id}</small>
-                </ListGroup.Item>
-              ))}
-            </ListGroup>
-          ) : query && !loading ? (
-            <div className="text-center py-3 text-muted">
-              {t('modal:teamSelection.noResults', 'No teams found matching your search.')}
+    <Modal show={show} onHide={onHide} centered size="lg">
+      {loading ? (
+        <>
+          <Modal.Header closeButton>
+            <Modal.Title>{title || t('modal:teamSelection.title', 'Add Teams to Pool')}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="text-center py-5">
+            <div className="spinner-border" role="status">
+              <span className="visually-hidden">Loading teams...</span>
             </div>
-          ) : (
-            <div className="text-center py-3 text-muted small">
-              {t('modal:teamSelection.hint', 'Enter at least 2 characters to search.')}
-            </div>
-          )}
-        </div>
-      </Modal.Body>
-      <Modal.Footer>
-        <Button variant="secondary" onClick={onHide}>
-          {t('ui:button.cancel')}
-        </Button>
-      </Modal.Footer>
+          </Modal.Body>
+        </>
+      ) : (
+        <TeamPickerStep
+          requiredTeams={1}
+          availableTeams={availableTeams}
+          onConfirm={handleConfirm}
+          onBack={onHide}
+        />
+      )}
     </Modal>
   );
 };
