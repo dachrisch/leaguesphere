@@ -19,9 +19,9 @@ describe('TeamPickerStep', () => {
   it('starts with no teams selected', () => {
     render(<TeamPickerStep requiredTeams={2} availableTeams={mockTeams} onConfirm={vi.fn()} onBack={vi.fn()} />);
     // Check that no teams are selected initially
-    const badges = screen.getAllByText(/Team [A-C]/);
-    const selectedBadges = badges.filter(b => b.classList.contains('bg-primary'));
-    expect(selectedBadges.length).toBe(0);
+    const teamButtons = screen.getAllByText(/^Team [A-C]$/);
+    const selectedButtons = teamButtons.filter(b => b.closest('button')?.classList.contains('btn-primary'));
+    expect(selectedButtons.length).toBe(0);
   });
 
   it('toggles selection and disables/enables Apply button', () => {
@@ -85,7 +85,7 @@ describe('TeamPickerStep', () => {
     });
 
     // Check that 4 teams are now selected (3 manual + 1 generated)
-    const selectedBadges = screen.getAllByText(/Team|New Team/i).filter(b => b.classList.contains('bg-primary'));
-    expect(selectedBadges.length).toBe(4);
+    const selectedButtons = screen.getAllByText(/Team|New Team/i).filter(b => b.closest('button')?.classList.contains('btn-primary'));
+    expect(selectedButtons.length).toBe(4);
   });
 });
