@@ -496,11 +496,7 @@ const ListDesignerApp: React.FC = () => {
         title={teamSelectionContext?.side === 'official' ? t('ui:title.selectOfficial') : t('ui:title.selectTeam')}
         gamedayId={id ? parseInt(id) : 0}
         mode={teamSelectionContext?.side === 'group' ? 'group' : 'single'}
-        preselectedTeams={teamSelectionContext?.side === 'group' ? (() => {
-          const filtered = flowState.globalTeams.filter(t => t.groupId === teamSelectionContext.slotId);
-          console.log('ListDesignerApp - filtering teams:', { groupId: teamSelectionContext.slotId, allTeams: flowState.globalTeams.length, filtered: filtered.length, filteredTeams: filtered.map(t => ({ id: t.id, label: t.label, groupId: t.groupId })) });
-          return filtered;
-        })() : []}
+        preselectedTeams={teamSelectionContext?.side === 'group' ? flowState.globalTeams.filter(t => t.groupId === teamSelectionContext.slotId) : []}
       />
 
       <TemplateLibraryModal
