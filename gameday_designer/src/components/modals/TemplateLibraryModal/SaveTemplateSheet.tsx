@@ -27,7 +27,13 @@ const SaveTemplateSheet: React.FC<SaveTemplateSheetProps> = ({ show, onHide, onS
   };
 
   return (
-    <Modal show={show} onHide={onHide} centered>
+    <Modal
+      show={show}
+      onHide={onHide}
+      centered
+      backdropClassName="template-save-backdrop"
+      className="template-save-modal"
+    >
       <Modal.Header closeButton>
         <Modal.Title><i className="bi bi-download me-2"></i>Save as Template</Modal.Title>
       </Modal.Header>
