@@ -197,11 +197,12 @@ def test_add_team_to_pool_via_team_picker_dialog(live_server, page: Page):
     page.select_option("#gamedayLeague", label="E2E Pool League")
 
     # Click "Add Group" to create a team group
-    page.get_by_role("button", name=re.compile(r"Add Group")).click()
+    page.get_by_role("button", name=re.compile(r"Add Group")).first.click()
     expect(page.get_by_text("Group 1")).to_be_visible(timeout=5000)
 
     # Click "Add Team" button in the group
-    page.get_by_role("button", name=re.compile(r"Add Team")).first.click()
+    add_team_buttons = page.get_by_role("button", name=re.compile(r"Add Team"))
+    add_team_buttons.first.click()
 
     # Verify TeamPickerStep dialog opens
     expect(page.get_by_text("Select Teams")).to_be_visible(timeout=5000)
