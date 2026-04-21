@@ -69,12 +69,13 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
     if (step !== 'team-picker') return;
     designerApi.getLeagueTeams(gamedayId)
       .then(teams => setLeagueTeams(
-        teams.map((t, i) => ({ 
-          id: String(t.id), 
-          label: t.name, 
-          groupId: null, 
+        teams.map((t, i) => ({
+          id: String(t.id),
+          label: t.name,
+          groupId: null,
           order: i,
-          color: getTeamColor(i)
+          color: getTeamColor(i),
+          associationAbbr: t.association_abbr ?? null
         }))
       ))
       .catch(() => onNotify?.('Failed to load league teams', 'error'));
