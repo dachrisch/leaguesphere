@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Spinner } from 'react-bootstrap';
-import { gamedayApi } from '../../api/gamedayApi';
+import { designerApi } from '../../api/designerApi';
 import TeamPickerStep from './TemplateLibraryModal/TeamPickerStep';
 import type { GlobalTeam } from '../../types/flowchart';
 import { getTeamColor } from '../../utils/tournamentConstants';
@@ -11,12 +11,14 @@ export interface TeamSelectionModalProps {
   onHide: () => void;
   onSelect: (teams: GlobalTeam[]) => void;
   groupId: string;
+  gamedayId?: number;
 }
 
 const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
   show,
   onHide,
   onSelect,
+  gamedayId = 0,
 }) => {
   const [availableTeams, setAvailableTeams] = useState<GlobalTeam[]>([]);
   const [loading, setLoading] = useState(false);
@@ -27,7 +29,7 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
     const loadTeams = async () => {
       setLoading(true);
       try {
-        const teams = await gamedayApi.getLeagueTeams(0);
+        const teams = await designerApi.getLeagueTeams(gamedayId);
         const globalTeams = teams.map((t, i) => ({
           id: String(t.id),
           label: t.name,
@@ -45,7 +47,7 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
     };
 
     loadTeams();
-  }, [show]);
+  }, [show, gamedayId]);
 
   const handleConfirm = (selectedTeams: GlobalTeam[]) => {
     onSelect(selectedTeams);
@@ -80,6 +82,7 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
           onConfirm={handleConfirm}
           onBack={onHide}
           onAutoGenerateTeams={handleAutoGenerateTeams}
+          backButtonLabel="Cancel"
         />
       )}
     </Modal>

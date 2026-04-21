@@ -6,12 +6,18 @@ import { useUndoRedo } from '../../hooks/useUndoRedo';
 import TeamSelectionModal from '../modals/TeamSelectionModal';
 import GameTable from '../list/GameTable';
 import { gamedayApi } from '../../api/gamedayApi';
+import { designerApi } from '../../api/designerApi';
 import type { FlowState, GameNode, FlowNode, StageNode } from '../../types/flowchart';
 
 // Mock API
 vi.mock('../../api/gamedayApi', () => ({
   gamedayApi: {
     searchTeams: vi.fn(),
+  },
+}));
+
+vi.mock('../../api/designerApi', () => ({
+  designerApi: {
     getLeagueTeams: vi.fn(),
   },
 }));
@@ -122,7 +128,7 @@ describe('Patch Coverage - TeamSelectionModal', () => {
   });
 
   it('covers search interactions and selection', async () => {
-    vi.mocked(gamedayApi.getLeagueTeams).mockResolvedValue([
+    vi.mocked(designerApi.getLeagueTeams).mockResolvedValue([
       { id: 1, name: 'Team Alpha', association_abbr: 'AA' }
     ]);
 
@@ -136,7 +142,7 @@ describe('Patch Coverage - TeamSelectionModal', () => {
     );
 
     // Wait for teams to load
-    await waitFor(() => expect(gamedayApi.getLeagueTeams).toHaveBeenCalled(), { timeout: 1000 });
+    await waitFor(() => expect(designerApi.getLeagueTeams).toHaveBeenCalled(), { timeout: 1000 });
 
     // Find and click Team Alpha button
     const teamButton = await screen.findByText('Team Alpha');
@@ -153,7 +159,7 @@ describe('Patch Coverage - TeamSelectionModal', () => {
   });
 
   it('covers modal rendering and team selection flow', async () => {
-    vi.mocked(gamedayApi.getLeagueTeams).mockResolvedValue([
+    vi.mocked(designerApi.getLeagueTeams).mockResolvedValue([
       { id: 2, name: 'Team Beta', association_abbr: 'BB' }
     ]);
 
@@ -167,7 +173,7 @@ describe('Patch Coverage - TeamSelectionModal', () => {
     );
 
     // Wait for teams to load
-    await waitFor(() => expect(gamedayApi.getLeagueTeams).toHaveBeenCalled());
+    await waitFor(() => expect(designerApi.getLeagueTeams).toHaveBeenCalled());
 
     // Verify the modal can be hidden
     const closeButton = screen.getByRole('button', { name: /close/i });

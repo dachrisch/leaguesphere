@@ -8,11 +8,12 @@ interface TeamPickerStepProps {
   onConfirm: (selectedTeams: GlobalTeam[]) => void;
   onBack: () => void;
   onAutoGenerateTeams?: (count: number) => Promise<GlobalTeam[]>;
+  backButtonLabel?: string;
 }
 
 const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
   requiredTeams, availableTeams, onConfirm, onBack,
-  onAutoGenerateTeams,
+  onAutoGenerateTeams, backButtonLabel = 'Back to Library',
 }) => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
@@ -173,7 +174,11 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
       </Modal.Body>
       <Modal.Footer className="bg-light">
         <Button variant="outline-secondary" onClick={onBack}>
-          <i className="bi bi-arrow-left me-2"></i>Back to Library
+          {backButtonLabel === 'Cancel' ? (
+            <>{backButtonLabel}</>
+          ) : (
+            <><i className="bi bi-arrow-left me-2"></i>{backButtonLabel}</>
+          )}
         </Button>
         <Button
           variant="primary"
