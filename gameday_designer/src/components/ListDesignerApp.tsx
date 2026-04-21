@@ -87,6 +87,7 @@ const ListDesignerApp: React.FC = () => {
     handleRemoveEdgeFromSlot,
     handleAssignTeam,
     handleConnectTeam,
+    handleConnectTeamsBulk,
     handleAddGameToGameEdge,
     handleAddStageToGameEdge,
     handleSwapTeams,
@@ -288,6 +289,14 @@ const ListDesignerApp: React.FC = () => {
     setTeamSelectionModalContext(null);
   }, [teamSelectionContext, handleAssignTeam, handleConnectTeam, handleReplaceGlobalTeam]);
 
+  const handleTeamsSelectedBulk = useCallback((teams: { id: number; text: string }[]) => {
+    if (teamSelectionContext && teamSelectionContext.side === 'group') {
+      handleConnectTeamsBulk(teams, teamSelectionContext.slotId);
+    }
+    setShowTeamSelectionModal(false);
+    setTeamSelectionModalContext(null);
+  }, [teamSelectionContext, handleConnectTeamsBulk]);
+
   const handleSaveBulkResults = useCallback(async (results: Record<string, ScoreEdit>) => {
     if (!id) return;
     try {
@@ -483,7 +492,10 @@ const ListDesignerApp: React.FC = () => {
         show={showTeamSelectionModal}
         onHide={() => setShowTeamSelectionModal(false)}
         groupId={teamSelectionContext?.slotId ?? ''}
+        gamedayId={parseInt(id || '0')}
         onSelect={handleTeamSelected}
+        onSelectMultiple={handleTeamsSelectedBulk}
+        allowMultiple={teamSelectionContext?.side === 'group'}
         title={teamSelectionContext?.side === 'official' ? t('ui:title.selectOfficial') : t('ui:title.selectTeam')}
       />
 

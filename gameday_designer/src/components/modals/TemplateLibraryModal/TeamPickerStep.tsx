@@ -65,6 +65,8 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
     }
   };
 
+  const isDev = import.meta.env.DEV;
+
   return (
     <>
       <Modal.Header closeButton>
@@ -121,7 +123,7 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
 
         {allTeams.length === 0 && !creating ? (
           <Alert variant="info" className="py-2 small">
-            No league teams found. Use "Auto-generate" to create placeholders.
+            No league teams found. {isDev && 'Use "Auto-generate" to create placeholders.'}
           </Alert>
         ) : filteredTeams.length === 0 ? (
           <Alert variant="warning" className="py-2 small">
@@ -155,7 +157,7 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
           </div>
         )}
 
-        {onAutoGenerateTeams && selectedIds.length < requiredTeams && (
+        {isDev && onAutoGenerateTeams && selectedIds.length < requiredTeams && (
           <Button
             size="sm"
             variant="outline-primary"

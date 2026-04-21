@@ -55,6 +55,36 @@ export function useTeamPoolState(
   );
 
   /**
+   * Add multiple global teams to the pool.
+   */
+  const addGlobalTeamsBulk = useCallback(
+    (teamsToConnect: { text: string; databaseId: number }[], groupId: string | null) => {
+      setGlobalTeams((currentTeams) => {
+        const newTeams: GlobalTeam[] = [];
+        let currentOrder = currentTeams.length;
+
+        teamsToConnect.forEach((team) => {
+          const id = `team-${team.databaseId}`;
+          if (currentTeams.some(t => t.id === id) || newTeams.some(t => t.id === id)) {
+            return;
+          }
+
+          newTeams.push({
+            id,
+            label: team.text,
+            groupId: groupId ?? null,
+            order: currentOrder++,
+            color: TEAM_COLORS[currentOrder % TEAM_COLORS.length],
+          });
+        });
+
+        return [...currentTeams, ...newTeams];
+      });
+    },
+    [setGlobalTeams]
+  );
+
+  /**
    * Replace a global team with a new one from the database, updating all game assignments.
    */
   const replaceGlobalTeam = useCallback(
@@ -321,6 +351,7 @@ export function useTeamPoolState(
 
   return useMemo(() => ({
     addGlobalTeam,
+    addGlobalTeamsBulk,
     updateGlobalTeam,
     deleteGlobalTeam,
     reorderGlobalTeam,

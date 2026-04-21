@@ -30,6 +30,7 @@ describe('TeamGroupCard Interaction Fix (#680)', () => {
   const mockOnReorderTeam = vi.fn();
   const mockOnUpdateGroup = vi.fn();
   const mockOnAddTeam = vi.fn();
+  const mockOnShowTeamSelection = vi.fn();
 
   const defaultProps = {
     group: mockGroup,
@@ -42,6 +43,7 @@ describe('TeamGroupCard Interaction Fix (#680)', () => {
     onDeleteTeam: vi.fn(),
     onReorderTeam: mockOnReorderTeam,
     onAddTeam: mockOnAddTeam,
+    onShowTeamSelection: mockOnShowTeamSelection,
     getTeamUsage: vi.fn(() => []),
     index: 0,
     totalGroups: 2,
@@ -90,8 +92,18 @@ describe('TeamGroupCard Interaction Fix (#680)', () => {
 
     // There are two "Add Team" buttons (header + empty body)
     // Both now search by title as they are icon-only
-    const addBtns = screen.getAllByTitle(/add (a new|your first) team/i);
-    await user.click(addBtns[1]); // Click the one in the body
+    const connectBtns = screen.getAllByTitle(/Connect an existing team/i);
+    await user.click(connectBtns[1]); // Click the one in the body
+
+    expect(mockOnShowTeamSelection).toHaveBeenCalledWith('group-1', 'group');
+  });
+
+  it('renders generate team button and calls onAddTeam', async () => {
+    const user = userEvent.setup();
+    render(<TeamGroupCard {...defaultProps} teams={[]} />);
+
+    const generateBtns = screen.getAllByTitle(/Generate/i);
+    await user.click(generateBtns[1]);
 
     expect(mockOnAddTeam).toHaveBeenCalledWith('group-1');
   });

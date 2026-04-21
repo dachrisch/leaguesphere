@@ -457,6 +457,9 @@ export function useDesignerController(
     handleConnectTeam: (team: { id: number; text: string }, groupId: string) => {
       flowStateRef.current?.addGlobalTeam(team.text, groupId, team.id);
     },
+    handleConnectTeamsBulk: (teams: { id: number; text: string }[], groupId: string) => {
+      flowStateRef.current?.addGlobalTeamsBulk(teams.map(t => ({ text: t.text, databaseId: t.id })), groupId);
+    },
     handleSwapTeams,
     handleDeleteNode: (id: string) => flowStateRef.current?.deleteNode(id),
     handleSelectNode: (id: string | null) => flowStateRef.current?.selectNode(id),

@@ -7,11 +7,18 @@ import TeamSelectionModal from '../modals/TeamSelectionModal';
 import GameTable from '../list/GameTable';
 import { gamedayApi } from '../../api/gamedayApi';
 import type { FlowState, GameNode, FlowNode, StageNode } from '../../types/flowchart';
+import { designerApi } from '../../api/designerApi';
 
 // Mock API
 vi.mock('../../api/gamedayApi', () => ({
   gamedayApi: {
     searchTeams: vi.fn(),
+  },
+}));
+
+vi.mock('../../api/designerApi', () => ({
+  designerApi: {
+    getLeagueTeams: vi.fn(),
   },
 }));
 
@@ -120,9 +127,9 @@ describe('Patch Coverage - TeamSelectionModal', () => {
     vi.clearAllMocks();
   });
 
-  it('covers search interactions and selection', async () => {
-    vi.mocked(gamedayApi.searchTeams).mockResolvedValue([
-      { id: 1, text: 'Team Alpha' }
+  it('covers team list rendering and selection', async () => {
+    vi.mocked(designerApi.getLeagueTeams).mockResolvedValue([
+      { id: 1, name: 'Team Alpha', association_abbr: 'ABC' } as any
     ]);
 
     render(
@@ -131,28 +138,49 @@ describe('Patch Coverage - TeamSelectionModal', () => {
         onHide={mockOnHide} 
         onSelect={mockOnSelect} 
         groupId="group-1" 
+        gamedayId={123}
       />
     );
 
-    const input = screen.getByPlaceholderText(/search/i);
-    await userEvent.type(input, 'Alpha');
+    // Should show loading then result
+    expect(await screen.findByText('Team Alpha')).toBeInTheDocument();
 
-    // Wait for debounce
-    await waitFor(() => expect(gamedayApi.searchTeams).toHaveBeenCalledWith('Alpha'), { timeout: 1000 });
-
-    const resultItem = await screen.findByText('Team Alpha');
+    const resultItem = screen.getByText('Team Alpha');
     fireEvent.click(resultItem);
+
+    // Confirm button should now be enabled
+    const confirmBtn = screen.getByText(/confirm/i);
+    expect(confirmBtn).not.toBeDisabled();
+    fireEvent.click(confirmBtn);
 
     expect(mockOnSelect).toHaveBeenCalledWith({ id: 1, text: 'Team Alpha' });
     expect(mockOnHide).toHaveBeenCalled();
   });
 
-  it('covers empty search query', async () => {
-    render(<TeamSelectionModal show={true} onHide={mockOnHide} onSelect={mockOnSelect} groupId="group-1" />);
+  it('covers search filtering', async () => {
+    vi.mocked(designerApi.getLeagueTeams).mockResolvedValue([
+      { id: 1, name: 'Team Alpha' } as any,
+      { id: 2, name: 'Team Beta' } as any
+    ]);
+
+    render(
+      <TeamSelectionModal 
+        show={true} 
+        onHide={mockOnHide} 
+        onSelect={mockOnSelect} 
+        groupId="group-1" 
+        gamedayId={123}
+      />
+    );
+
+    expect(await screen.findByText('Team Alpha')).toBeInTheDocument();
+    expect(screen.getByText('Team Beta')).toBeInTheDocument();
+
     const input = screen.getByPlaceholderText(/search/i);
-    await userEvent.type(input, 'A');
-    await userEvent.clear(input);
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    await userEvent.type(input, 'Beta');
+
+    expect(screen.queryByText('Team Alpha')).not.toBeInTheDocument();
+    expect(screen.getByText('Team Beta')).toBeInTheDocument();
   });
 });
 

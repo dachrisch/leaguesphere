@@ -227,26 +227,27 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                 className="btn btn-sm btn-outline-primary btn-adaptive"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onAddTeam(group.id);
-                }}
-                title={t('ui:tooltip.addTeamToGroup')}
-              >
-                <i className={`bi ${ICONS.ADD} me-2`}></i>
-                <span className="btn-label-adaptive">{t('ui:button.addTeam')}</span>
-              </button>
-              <button
-                className="btn btn-sm btn-outline-info"
-                onClick={(e) => {
-                  e.stopPropagation();
                   onShowTeamSelection(group.id, 'group');
                 }}
                 title={t('ui:tooltip.connectTeam')}
               >
-                <i className={`bi ${ICONS.LINK}`}></i>
+                <i className={`bi ${ICONS.ADD} me-2`}></i>
+                <span className="btn-label-adaptive">{t('ui:button.addTeam')}</span>
               </button>
+              {import.meta.env.DEV && (
+                <button
+                  className="btn btn-sm btn-outline-info"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddTeam(group.id);
+                  }}
+                  title={t('ui:button.generate')}
+                >
+                  <i className={`bi ${ICONS.LINK}`}></i>
+                </button>
+              )}
               <button
-                className="btn btn-sm btn-outline-secondary"
-                onClick={(e) => {
+                className="btn btn-sm btn-outline-secondary"                onClick={(e) => {
                   e.stopPropagation();
                   onReorderGroup(group.id, 'up');
                 }}
@@ -289,14 +290,26 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
               <i className={`bi ${ICONS.TEAM} me-2`} style={{ fontSize: '2rem', opacity: 0.3 }}></i>
               <p className="text-muted mb-3">{t('ui:message.noTeamsInGroup')}</p>
               {!readOnly && (
-                <button
-                  className="btn btn-outline-primary btn-adaptive px-4"
-                  onClick={() => onAddTeam(group.id)}
-                  title={t('ui:tooltip.addFirstTeamToGroup')}
-                >
-                  <i className={`bi ${ICONS.ADD} me-2`}></i>
-                  <span className="btn-label-adaptive">{t('ui:button.addTeam')}</span>
-                </button>
+                <div className="d-flex flex-column gap-2 align-items-center">
+                  <button
+                    className="btn btn-outline-primary btn-adaptive px-4"
+                    onClick={() => onShowTeamSelection(group.id, 'group')}
+                    title={t('ui:tooltip.connectTeam')}
+                  >
+                    <i className={`bi ${ICONS.ADD} me-2`}></i>
+                    <span className="btn-label-adaptive">{t('ui:button.addTeam')}</span>
+                  </button>
+                  {import.meta.env.DEV && (
+                    <button
+                      className="btn btn-link btn-sm text-info"
+                      onClick={() => onAddTeam(group.id)}
+                      title={t('ui:button.generate')}
+                    >
+                      <i className={`bi ${ICONS.LINK} me-1`}></i>
+                      {t('ui:button.generate')}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           ) : (
