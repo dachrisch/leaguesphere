@@ -484,7 +484,7 @@ export function useDesignerController(
     dismissNotification, addNotification, onMetadataHighlight
   ]);
 
-  return useMemo(() => ({
+  const memoizedState = useMemo(() => ({
     metadata: flowState?.metadata,
     nodes: flowState?.nodes || [],
     edges: flowState?.edges || [],
@@ -495,7 +495,6 @@ export function useDesignerController(
     notifications,
     updateMetadata: flowState?.updateMetadata,
     ui: uiInternal,
-    handlers: handlersInternal,
     canUndo: flowState?.canUndo,
     canRedo: flowState?.canRedo,
     undo: flowState?.undo,
@@ -503,10 +502,15 @@ export function useDesignerController(
     stats: flowState?.stats,
     onMetadataHighlight,
   }), [
-    flowState?.metadata, flowState?.nodes, flowState?.edges, flowState?.fields, 
-    flowState?.globalTeams, flowState?.globalTeamGroups, flowState?.canUndo, 
+    flowState?.metadata, flowState?.nodes, flowState?.edges, flowState?.fields,
+    flowState?.globalTeams, flowState?.globalTeamGroups, flowState?.canUndo,
     flowState?.canRedo, flowState?.undo, flowState?.redo, flowState?.stats,
     flowState?.updateMetadata,
-    validation, notifications, uiInternal, handlersInternal, onMetadataHighlight
+    validation, notifications, uiInternal, onMetadataHighlight
   ]);
+
+  return useMemo(() => ({
+    ...memoizedState,
+    handlers: handlersInternal,
+  }), [memoizedState, handlersInternal]);
 }
