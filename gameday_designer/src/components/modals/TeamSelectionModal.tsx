@@ -81,7 +81,7 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
         </div>
       ) : (
         <TeamPickerStep
-          requiredTeams={mode === 'group' ? availableTeams.length : 1}
+          requiredTeams={1}
           availableTeams={availableTeams}
           onConfirm={handleConfirm}
           onBack={onHide}
