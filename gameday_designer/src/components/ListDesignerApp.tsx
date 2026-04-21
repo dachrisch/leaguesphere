@@ -276,16 +276,21 @@ const ListDesignerApp: React.FC = () => {
 
   const handleTeamSelected = useCallback((selectedTeams: GlobalTeam[]) => {
     if (teamSelectionContext && selectedTeams.length > 0) {
-      const team = selectedTeams[0];
-      const teamId = typeof team.id === 'string' ? parseInt(team.id) : team.id;
-      const teamObj = { id: teamId, text: team.label };
-
       if (teamSelectionContext.side === 'group') {
-        handleConnectTeam(teamObj, teamSelectionContext.slotId);
-      } else if (teamSelectionContext.side === 'replace') {
-        handleReplaceGlobalTeam(teamSelectionContext.slotId, teamObj);
+        selectedTeams.forEach(team => {
+          const teamId = typeof team.id === 'string' ? parseInt(team.id) : team.id;
+          const teamObj = { id: teamId, text: team.label };
+          handleConnectTeam(teamObj, teamSelectionContext.slotId);
+        });
       } else {
-        handleAssignTeam(teamSelectionContext.slotId, teamSelectionContext.side as 'home' | 'away', String(teamId));
+        const team = selectedTeams[0];
+        const teamId = typeof team.id === 'string' ? parseInt(team.id) : team.id;
+        const teamObj = { id: teamId, text: team.label };
+        if (teamSelectionContext.side === 'replace') {
+          handleReplaceGlobalTeam(teamSelectionContext.slotId, teamObj);
+        } else {
+          handleAssignTeam(teamSelectionContext.slotId, teamSelectionContext.side as 'home' | 'away', String(teamId));
+        }
       }
     }
     setShowTeamSelectionModal(false);
@@ -490,6 +495,8 @@ const ListDesignerApp: React.FC = () => {
         onSelect={handleTeamSelected}
         title={teamSelectionContext?.side === 'official' ? t('ui:title.selectOfficial') : t('ui:title.selectTeam')}
         gamedayId={id ? parseInt(id) : 0}
+        mode={teamSelectionContext?.side === 'group' ? 'group' : 'single'}
+        preselectedTeams={teamSelectionContext?.side === 'group' ? flowState.globalTeams.filter(t => t.groupId === teamSelectionContext.slotId) : []}
       />
 
       <TemplateLibraryModal

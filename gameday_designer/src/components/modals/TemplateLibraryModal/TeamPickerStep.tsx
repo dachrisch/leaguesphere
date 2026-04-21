@@ -10,13 +10,14 @@ interface TeamPickerStepProps {
   onBack: () => void;
   onAutoGenerateTeams?: (count: number) => Promise<GlobalTeam[]>;
   backButtonLabel?: string;
+  preselectedTeams?: GlobalTeam[];
 }
 
 const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
   requiredTeams, availableTeams, onConfirm, onBack,
-  onAutoGenerateTeams, backButtonLabel = 'Back to Library',
+  onAutoGenerateTeams, backButtonLabel = 'Back to Library', preselectedTeams = [],
 }) => {
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>(preselectedTeams.map(t => t.id));
   const [creating, setCreating] = useState(false);
   const [localTeams, setLocalTeams] = useState<GlobalTeam[]>([]);
   const [associationFilter, setAssociationFilter] = useState<string>('all');

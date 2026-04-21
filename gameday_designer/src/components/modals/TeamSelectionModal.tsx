@@ -12,6 +12,8 @@ export interface TeamSelectionModalProps {
   onSelect: (teams: GlobalTeam[]) => void;
   groupId: string;
   gamedayId?: number;
+  mode?: 'single' | 'group';
+  preselectedTeams?: GlobalTeam[];
 }
 
 const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
@@ -19,6 +21,8 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
   onHide,
   onSelect,
   gamedayId = 0,
+  mode = 'single',
+  preselectedTeams = [],
 }) => {
   const [availableTeams, setAvailableTeams] = useState<GlobalTeam[]>([]);
   const [loading, setLoading] = useState(false);
@@ -77,12 +81,13 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
         </div>
       ) : (
         <TeamPickerStep
-          requiredTeams={1}
+          requiredTeams={mode === 'group' ? availableTeams.length : 1}
           availableTeams={availableTeams}
           onConfirm={handleConfirm}
           onBack={onHide}
           onAutoGenerateTeams={handleAutoGenerateTeams}
           backButtonLabel="Cancel"
+          preselectedTeams={preselectedTeams}
         />
       )}
     </Modal>
