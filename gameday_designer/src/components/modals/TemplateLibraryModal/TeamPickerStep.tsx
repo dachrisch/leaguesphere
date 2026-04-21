@@ -17,7 +17,7 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [localTeams, setLocalTeams] = useState<GlobalTeam[]>([]);
-  const [selectedAssociation, setSelectedAssociation] = useState<string | null>(null);
+  const [associationFilter, setAssociationFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   const allTeams = [...availableTeams, ...localTeams];
@@ -31,11 +31,16 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
     ).values()
   ).sort();
 
-  // Filter teams by association and search query
+  // Filter teams by association/scope and search query
   const filteredTeams = allTeams.filter(team => {
-    const matchesAssociation = !selectedAssociation || team.associationAbbr === selectedAssociation;
     const matchesSearch = searchQuery === '' || team.label.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesAssociation && matchesSearch;
+    if (!matchesSearch) return false;
+
+    if (associationFilter === 'all') return true;
+    if (associationFilter === 'local') return localTeams.some(lt => lt.id === team.id);
+    if (associationFilter === 'other') return availableTeams.some(at => at.id === team.id);
+    
+    return team.associationAbbr === associationFilter;
   });
 
   const toggleTeam = (id: string) => {
@@ -74,28 +79,42 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
         <div className="mb-3">
           <input
             type="text"
-            className="form-control form-control-sm mb-2"
+            className="form-control form-control-sm mb-3"
             placeholder="Search teams..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
-          <div className="d-flex flex-wrap gap-1">
-            <Badge
-              bg={selectedAssociation === null ? 'primary' : 'secondary'}
-              style={{ cursor: 'pointer', padding: '6px 10px' }}
-              onClick={() => setSelectedAssociation(null)}
+          <div className="d-flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={associationFilter === 'all' ? 'primary' : 'outline-primary'}
+              onClick={() => setAssociationFilter('all')}
             >
-              All
-            </Badge>
+              All Teams
+            </Button>
+            <Button
+              size="sm"
+              variant={associationFilter === 'local' ? 'primary' : 'outline-primary'}
+              onClick={() => setAssociationFilter('local')}
+            >
+              Local Teams
+            </Button>
+            <Button
+              size="sm"
+              variant={associationFilter === 'other' ? 'primary' : 'outline-primary'}
+              onClick={() => setAssociationFilter('other')}
+            >
+              Other Teams
+            </Button>
             {associations.map(abbr => (
-              <Badge
+              <Button
                 key={abbr}
-                bg={selectedAssociation === abbr ? 'primary' : 'secondary'}
-                style={{ cursor: 'pointer', padding: '6px 10px' }}
-                onClick={() => setSelectedAssociation(abbr)}
+                size="sm"
+                variant={associationFilter === abbr ? 'primary' : 'outline-primary'}
+                onClick={() => setAssociationFilter(abbr)}
               >
                 {abbr}
-              </Badge>
+              </Button>
             ))}
           </div>
         </div>
@@ -114,23 +133,23 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
               const isSelected = selectedIds.includes(team.id);
               const isLocal = localTeams.some(lt => lt.id === team.id);
               return (
-                <Badge
+                <Button
                   key={team.id}
-                  bg={isSelected ? 'primary' : 'light'}
-                  text={isSelected ? 'white' : 'dark'}
-                  border={isSelected ? undefined : 'secondary'}
-                  className={`border ${isSelected ? '' : 'text-secondary'}`}
+                  size="sm"
+                  variant={isSelected ? 'primary' : 'outline-primary'}
+                  className="d-flex align-items-center gap-2"
                   style={{
-                    cursor: 'pointer',
                     fontSize: 13,
                     padding: '8px 14px',
                     transition: 'all 0.1s ease-in-out',
-                    opacity: isSelected ? 1 : 0.8
+                    opacity: isSelected ? 1 : 0.7
                   }}
                   onClick={() => toggleTeam(team.id)}
                 >
-                  {isLocal && <i className="bi bi-stars me-1"></i>}{team.label}
-                </Badge>
+                  {isSelected && <i className="bi bi-check"></i>}
+                  {isLocal && <i className="bi bi-stars"></i>}
+                  <span>{team.label}</span>
+                </Button>
               );
             })}
           </div>
