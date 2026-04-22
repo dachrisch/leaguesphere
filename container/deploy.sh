@@ -243,7 +243,7 @@ case "$VERSION_ARG" in
         git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
 
         # Push commits and tags to release branch
-        git push -u $REMOTE HEAD:$RELEASE_BRANCH && git push $REMOTE --tags
+        git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags
 
         # Show new version
         FINAL_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
@@ -316,7 +316,7 @@ case "$VERSION_ARG" in
         fi
 
         # Push commits and tags to release branch
-        git push -u $REMOTE HEAD:$RELEASE_BRANCH && git push $REMOTE --tags
+        git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags
 
         # Show new version
         NEW_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
@@ -386,7 +386,7 @@ case "$VERSION_ARG" in
         fi
 
         # Push commits and tags to release branch
-        git push -u $REMOTE HEAD:$RELEASE_BRANCH && git push $REMOTE --tags
+        git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags
 
         # Show new version
         NEW_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
