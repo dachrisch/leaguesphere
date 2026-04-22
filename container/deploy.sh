@@ -154,6 +154,22 @@ if [ -z "$VERSION_ARG" ]; then
     exit 1
 fi
 
+# Generate release information
+PETNAME=$(petname 2>/dev/null || echo "unknown")
+get_release_type() {
+    case "$1" in
+        major|minor|patch) echo "prod" ;;
+        stage) echo "stage" ;;
+        demo) echo "demo" ;;
+        *) echo "" ;;
+    esac
+}
+RELEASE_TYPE=$(get_release_type "$VERSION_ARG")
+RELEASE_BRANCH="release/${RELEASE_TYPE}_${PETNAME}"
+
+echo "Release branch: $RELEASE_BRANCH (petname: $PETNAME)"
+echo
+
 # Worktree mode setup
 if [ "$BRANCH_MODE" = "worktree" ]; then
     echo "=== Worktree Mode ==="
@@ -226,12 +242,13 @@ case "$VERSION_ARG" in
         git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
 
-        # Push commits and tags
-        git push $REMOTE && git push $REMOTE --tags
+        # Push commits and tags to release branch
+        git push -u $REMOTE HEAD:$RELEASE_BRANCH && git push $REMOTE --tags
 
         # Show new version
         FINAL_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
         echo "✅ Production release deployed: $FINAL_VERSION"
+        echo "Release branch: $RELEASE_BRANCH"
         ;;
     stage)
         # Staging deployment - create/increment RC version
@@ -298,12 +315,13 @@ case "$VERSION_ARG" in
             git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         fi
 
-        # Push commits and tags
-        git push $REMOTE && git push $REMOTE --tags
+        # Push commits and tags to release branch
+        git push -u $REMOTE HEAD:$RELEASE_BRANCH && git push $REMOTE --tags
 
         # Show new version
         NEW_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
         echo "✅ Staging deployment triggered: $NEW_VERSION"
+        echo "Release branch: $RELEASE_BRANCH"
         ;;
     demo)
         # Demo deployment - create/increment demo version
@@ -367,16 +385,13 @@ case "$VERSION_ARG" in
             git tag -af "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         fi
 
-        # Push commits and tags (skip in worktree mode - demo is temporary)
-        if [ "$BRANCH_MODE" != "worktree" ]; then
-            git push $REMOTE && git push $REMOTE --tags
-        else
-            echo "Skipping push in worktree mode (demo artifact)" >&2
-        fi
+        # Push commits and tags to release branch
+        git push -u $REMOTE HEAD:$RELEASE_BRANCH && git push $REMOTE --tags
 
         # Show new version
         NEW_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
         echo "✅ Demo deployment triggered: $NEW_VERSION"
+        echo "Release branch: $RELEASE_BRANCH"
         ;;
     *)
         echo "Error: Invalid option '$VERSION_ARG'"
