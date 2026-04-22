@@ -71,17 +71,18 @@ class Command(BaseCommand):
         try:
             # Try to use mysqldump first (preferred for MySQL)
             self._create_snapshot_with_mysqldump(snapshot_path)
+            actual_path = snapshot_path
         except (FileNotFoundError, subprocess.CalledProcessError):
             # Fallback to Django-based export
             self.stdout.write("mysqldump not available, using Django-based export...")
-            self._create_snapshot_with_django(snapshot_path)
+            actual_path = self._create_snapshot_with_django(snapshot_path)
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"✓ Demo snapshot created at {snapshot_path}"
+                f"✓ Demo snapshot created at {actual_path}"
             )
         )
-        logger.info(f"Demo snapshot created: {snapshot_path}")
+        logger.info(f"Demo snapshot created: {actual_path}")
 
     def _create_snapshot_with_mysqldump(self, snapshot_path):
         """Create snapshot using mysqldump command."""
@@ -127,6 +128,8 @@ class Command(BaseCommand):
 
         with open(snapshot_path, 'w') as f:
             f.write(out.getvalue())
+
+        return snapshot_path
 
     def restore_snapshot(self, snapshot_path):
         """Restore database from snapshot."""
@@ -184,16 +187,18 @@ class Command(BaseCommand):
     def _restore_snapshot_json(self, snapshot_path):
         """Restore from Django dumpdata JSON file."""
         from django.core.management import call_command
+        from django.core.serializers import deserialize
 
         # Clear existing data first
         self.stdout.write("Clearing existing data...")
         call_command('flush', '--no-input', verbosity=0)
 
-        # Load from snapshot using fixture file directly (loaddata can read file paths with --)
+        # Load from snapshot using Django's deserialization
         self.stdout.write("Loading snapshot data...")
-        # Use stdin to avoid fixture name parsing issues
         with open(snapshot_path, 'r') as f:
-            call_command('loaddata', '--stdin', stdin=f, format='json', verbosity=0)
+            # Deserialize JSON and save objects
+            for obj in deserialize('json', f):
+                obj.save()
 
     def _recreate_database(self, db_name):
         """Drop and recreate database."""
