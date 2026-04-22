@@ -109,25 +109,62 @@ class Command(BaseCommand):
         env = os.environ.copy()
         env['MYSQL_PWD'] = db_settings.get('PASSWORD', '')
 
-        with open(snapshot_path, 'w') as f:
-            subprocess.run(cmd, stdout=f, stderr=subprocess.PIPE, check=True, env=env)
+        # Write to temp file first, only move to final path if successful
+        temp_path = snapshot_path + '.tmp'
+        try:
+            with open(temp_path, 'w') as f:
+                subprocess.run(cmd, stdout=f, stderr=subprocess.PIPE, check=True, env=env)
+            # Only move to final path if successful
+            os.replace(temp_path, snapshot_path)
+        finally:
+            # Clean up temp file if it exists
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
 
     def _create_snapshot_with_django(self, snapshot_path):
-        """Fallback: Create snapshot using Django's dumpdata for models."""
+        """Fallback: Create snapshot using Django's serializers for models."""
+        from django.apps import apps
+        from django.core import serializers
+        from io import StringIO
+
         # Change extension to .json for dumpdata-based snapshots
         if snapshot_path.endswith('.sql'):
             snapshot_path = snapshot_path[:-4] + '.json'
 
         os.makedirs(os.path.dirname(snapshot_path) or '.', exist_ok=True)
 
-        from django.core.management import call_command
-        from io import StringIO
+        # Collect all model instances from apps that should be backed up
+        included_apps = {'auth', 'gamedays', 'league_manager', 'gameday_designer',
+                        'league_table', 'officials', 'knox', 'sites'}
+        excluded_models = {'admin.logentry', 'sessions.session', 'contenttypes.contenttype'}
 
+        objects_to_dump = []
+        for model in apps.get_models():
+            app_label = model._meta.app_label
+            model_name = f"{app_label}.{model._meta.model_name}"
+
+            # Include only specified apps and exclude certain models
+            if app_label in included_apps and model_name not in excluded_models:
+                try:
+                    objects_to_dump.extend(list(model.objects.all()))
+                except Exception as e:
+                    logger.warning(f"Failed to get objects from {model_name}: {e}")
+
+        # Serialize objects to JSON
         out = StringIO()
-        call_command('dumpdata', '--all', stdout=out)
+        try:
+            serializers.serialize('json', objects_to_dump, stream=out)
+            content = out.getvalue().strip()
+        except Exception as e:
+            logger.warning(f"Serialization failed: {e}")
+            content = ''
+
+        # Handle empty database - write empty JSON array instead of empty string
+        if not content:
+            content = '[]'
 
         with open(snapshot_path, 'w') as f:
-            f.write(out.getvalue())
+            f.write(content)
 
         return snapshot_path
 
@@ -196,8 +233,13 @@ class Command(BaseCommand):
         # Load from snapshot using Django's deserialization
         self.stdout.write("Loading snapshot data...")
         with open(snapshot_path, 'r') as f:
+            content = f.read()
+            # Skip if empty or just whitespace/empty array
+            if not content.strip() or content.strip() == '[]':
+                self.stdout.write("Snapshot contains no data")
+                return
             # Deserialize JSON and save objects
-            for obj in deserialize('json', f):
+            for obj in deserialize('json', content):
                 obj.save()
 
     def _recreate_database(self, db_name):
