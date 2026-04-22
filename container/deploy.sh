@@ -340,7 +340,7 @@ case "$VERSION_ARG" in
 
             git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json pyproject.toml uv.lock
             git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
-            git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
+            git tag -af "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         else
             # Non-demo version - create demo.1 (e.g., 3.11.3 → 3.11.3+demo.1)
             echo "Creating initial demo version..."
@@ -364,7 +364,7 @@ case "$VERSION_ARG" in
             # Commit and tag
             git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json pyproject.toml uv.lock
             git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
-            git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
+            git tag -af "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         fi
 
         # Push commits and tags (skip in worktree mode - demo is temporary)
