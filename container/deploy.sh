@@ -367,8 +367,12 @@ case "$VERSION_ARG" in
             git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         fi
 
-        # Push commits and tags
-        git push $REMOTE && git push $REMOTE --tags
+        # Push commits and tags (skip in worktree mode - demo is temporary)
+        if [ "$BRANCH_MODE" != "worktree" ]; then
+            git push $REMOTE && git push $REMOTE --tags
+        else
+            echo "Skipping push in worktree mode (demo artifact)" >&2
+        fi
 
         # Show new version
         NEW_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
