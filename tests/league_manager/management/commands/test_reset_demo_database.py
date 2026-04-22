@@ -30,7 +30,7 @@ class TestResetDemoDatabaseCommand:
         return os.path.join(temp_snapshot_dir, 'demo_snapshot.sql')
 
     def test_create_snapshot_creates_sql_file(self, snapshot_path):
-        """Test that create_snapshot generates a SQL file."""
+        """Test that create_snapshot generates a snapshot file."""
         # Create some test data
         User.objects.create_user(username='testuser', password='pass123')
         League.objects.create(name='Test League', slug='test-league')
@@ -43,16 +43,24 @@ class TestResetDemoDatabaseCommand:
             stdout=out
         )
 
-        # Verify snapshot file was created
-        assert os.path.exists(snapshot_path), f"Snapshot file not created at {snapshot_path}"
+        # Verify snapshot file was created (may be .sql or .json depending on mysqldump availability)
+        base_path = snapshot_path.rsplit('.', 1)[0] if '.' in snapshot_path else snapshot_path
+        json_path = f'{base_path}.json'
+        snapshot_exists = os.path.exists(snapshot_path) or os.path.exists(json_path)
+        assert snapshot_exists, f"Snapshot file not created (checked {snapshot_path} and {json_path})"
 
-        # Verify file has content
-        with open(snapshot_path, 'r') as f:
+        # Find actual file
+        actual_path = snapshot_path if os.path.exists(snapshot_path) else json_path
+
+        # Verify file has content and is valid SQL or JSON
+        with open(actual_path, 'r') as f:
             content = f.read()
             assert len(content) > 0, "Snapshot file is empty"
-            # SQL file should contain SQL keywords
-            assert 'CREATE' in content.upper() or 'INSERT' in content.upper(), \
-                "Snapshot should contain CREATE or INSERT statements"
+            # Check for SQL or JSON content
+            has_sql = 'CREATE' in content.upper() or 'INSERT' in content.upper()
+            has_json = '"model"' in content or '[{' in content
+            assert has_sql or has_json, \
+                "Snapshot should contain SQL keywords or JSON model data"
 
     def test_create_snapshot_output_message(self, snapshot_path):
         """Test that create_snapshot outputs success message."""
@@ -87,6 +95,10 @@ class TestResetDemoDatabaseCommand:
             stdout=out
         )
 
+        # Find the actual snapshot file (may be .sql or .json)
+        base_path = snapshot_path.rsplit('.', 1)[0] if '.' in snapshot_path else snapshot_path
+        actual_snapshot = snapshot_path if os.path.exists(snapshot_path) else f'{base_path}.json'
+
         # Clear database
         User.objects.all().delete()
         League.objects.all().delete()
@@ -98,7 +110,7 @@ class TestResetDemoDatabaseCommand:
         call_command(
             'reset_demo_database',
             '--restore-snapshot',
-            f'--snapshot-path={snapshot_path}',
+            f'--snapshot-path={actual_snapshot}',
             stdout=out
         )
 
@@ -130,18 +142,23 @@ class TestResetDemoDatabaseCommand:
             f'--snapshot-path={snapshot_path}',
         )
 
+        # Find the actual snapshot file (may be .sql or .json)
+        base_path = snapshot_path.rsplit('.', 1)[0] if '.' in snapshot_path else snapshot_path
+        actual_snapshot = snapshot_path if os.path.exists(snapshot_path) else f'{base_path}.json'
+
         # Restore and check output
         out = StringIO()
         call_command(
             'reset_demo_database',
             '--restore-snapshot',
-            f'--snapshot-path={snapshot_path}',
+            f'--snapshot-path={actual_snapshot}',
             stdout=out
         )
 
         output = out.getvalue()
         assert 'restored' in output.lower()
-        assert snapshot_path in output
+        # Check if either path is in output
+        assert snapshot_path in output or actual_snapshot in output
 
 
 @pytest.mark.django_db
@@ -181,7 +198,10 @@ class DemoResetIntegrationTest:
             f'--snapshot-path={snapshot_path}',
             stdout=out
         )
-        assert os.path.exists(snapshot_path)
+        # Find actual snapshot (may be .sql or .json)
+        base_path = snapshot_path.rsplit('.', 1)[0] if '.' in snapshot_path else snapshot_path
+        actual_snapshot = snapshot_path if os.path.exists(snapshot_path) else f'{base_path}.json'
+        assert os.path.exists(actual_snapshot)
 
         # Step 3: Modify data to simulate user changes
         User.objects.create_user(username='newuser', password='pass123')
@@ -193,7 +213,7 @@ class DemoResetIntegrationTest:
         call_command(
             'reset_demo_database',
             '--restore-snapshot',
-            f'--snapshot-path={snapshot_path}',
+            f'--snapshot-path={actual_snapshot}',
             stdout=out
         )
 

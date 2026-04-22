@@ -113,6 +113,10 @@ class Command(BaseCommand):
 
     def _create_snapshot_with_django(self, snapshot_path):
         """Fallback: Create snapshot using Django's dumpdata for models."""
+        # Change extension to .json for dumpdata-based snapshots
+        if snapshot_path.endswith('.sql'):
+            snapshot_path = snapshot_path[:-4] + '.json'
+
         os.makedirs(os.path.dirname(snapshot_path) or '.', exist_ok=True)
 
         from django.core.management import call_command
@@ -185,9 +189,11 @@ class Command(BaseCommand):
         self.stdout.write("Clearing existing data...")
         call_command('flush', '--no-input', verbosity=0)
 
-        # Load from snapshot
+        # Load from snapshot using fixture file directly (loaddata can read file paths with --)
         self.stdout.write("Loading snapshot data...")
-        call_command('loaddata', snapshot_path, verbosity=0)
+        # Use stdin to avoid fixture name parsing issues
+        with open(snapshot_path, 'r') as f:
+            call_command('loaddata', '--stdin', stdin=f, format='json', verbosity=0)
 
     def _recreate_database(self, db_name):
         """Drop and recreate database."""
