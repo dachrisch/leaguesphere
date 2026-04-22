@@ -68,11 +68,11 @@ create_worktree() {
     local random=$(head -c 4 /dev/urandom | xxd -p)
     local worktree_path="/tmp/leaguesphere-deploy-${timestamp}-${random}"
 
-    echo "Creating worktree at: $worktree_path"
-    echo "From branch: $branch"
+    echo "Creating worktree at: $worktree_path" >&2
+    echo "From branch: $branch" >&2
 
-    if ! git worktree add "$worktree_path" "$branch"; then
-        echo "Error: Failed to create worktree"
+    if ! git worktree add "$worktree_path" "$branch" >&2; then
+        echo "Error: Failed to create worktree" >&2
         exit 1
     fi
 
@@ -87,20 +87,20 @@ cleanup_worktree() {
         return 0
     fi
 
-    echo "Cleaning up worktree: $worktree_path"
+    echo "Cleaning up worktree: $worktree_path" >&2
 
     # Try to remove worktree using git
     if git worktree remove "$worktree_path" --force 2>/dev/null; then
-        echo "Worktree removed successfully"
+        echo "Worktree removed successfully" >&2
         return 0
     fi
 
     # Fallback: manual cleanup
-    echo "Attempting manual cleanup..."
+    echo "Attempting manual cleanup..." >&2
     rm -rf "$worktree_path" 2>/dev/null || true
     git worktree prune 2>/dev/null || true
 
-    echo "Cleanup complete"
+    echo "Cleanup complete" >&2
 }
 
 # Parse flags
