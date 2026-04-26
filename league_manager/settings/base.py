@@ -41,7 +41,6 @@ INSTALLED_APPS = [
     "passcheck",
     "gameday_designer",
     "journey",
-    "journey_dashboard",
     "health_check",
 ]
 
