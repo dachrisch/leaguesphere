@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "knox",
     "passcheck",
     "gameday_designer",
+    "journey",
     "health_check",
 ]
 
@@ -182,6 +183,8 @@ MOODLE_URL = os.environ.get("MOODLE_URL")
 MOODLE_WSTOKEN = os.environ.get("MOODLE_WSTOKEN")
 EQUIPMENT_APPROVAL_ENDPOINT = os.environ.get("EQUIPMENT_APPROVAL_ENDPOINT")
 EQUIPMENT_APPROVAL_TOKEN = os.environ.get("EQUIPMENT_APPROVAL_TOKEN")
+
+JOURNEY_INACTIVITY_MINUTES = int(os.environ.get("JOURNEY_INACTIVITY_MINUTES", 30))
 
 LOGGING = {
     "version": 1,

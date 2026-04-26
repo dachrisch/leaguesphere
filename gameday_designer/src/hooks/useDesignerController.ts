@@ -29,6 +29,7 @@ import type { UseFlowStateReturn, GamedayMetadata } from '../types/designer';
 import { v4 as uuidv4 } from 'uuid';
 import { gamedayApi } from '../api/gamedayApi';
 import { genericizeFlowState, applyGenericTemplate, GenericTemplate } from '../utils/templateMapper';
+import { trackEvent } from '../trackEvent';
 
 export function useDesignerController(
   gamedayId: string | undefined,
@@ -161,17 +162,24 @@ export function useDesignerController(
   const handleSaveTemplate = useCallback(async (name: string, description: string, sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL') => {
     const currentState = flowStateRef.current?.exportState();
     if (!currentState) return;
-    
+
     const genericTemplate = genericizeFlowState(currentState, name, description, sharing);
-    
+
     try {
-      await gamedayApi.saveTemplate(genericTemplate);
+      const response = await gamedayApi.saveTemplate(genericTemplate);
       addNotification('Template saved successfully', 'success', 'Template Saved');
+
+      // Track template save event
+      trackEvent('template_saved', {
+        template_name: name,
+        sharing_scope: sharing,
+        gameday_id: gamedayId,
+      });
     } catch (error: unknown) {
       console.error('Failed to save template', error);
       throw error;
     }
-  }, [addNotification]);
+  }, [addNotification, gamedayId]);
 
   const assignTeamsToTournament = useCallback(
     (structure: TournamentStructure, teams: GlobalTeam[], clearExisting: boolean = false) => {
@@ -392,12 +400,28 @@ export function useDesignerController(
         
         setShowTournamentModal(false);
         addNotification('Tournament generated successfully', 'success', 'Generation Success');
+
+        // Track template applied event
+        trackEvent('template_applied', {
+          template_id: config.customTemplate?.id || config.template?.id,
+          template_type: config.customTemplate ? 'saved' : 'builtin',
+          gameday_id: gamedayId,
+          team_count: teamsToUse?.length,
+          field_count: config.fieldCount,
+        });
+
+        // Track gameday created/updated event (tournament generation)
+        trackEvent('gameday_created_with_template', {
+          gameday_id: gamedayId,
+          template_id: config.customTemplate?.id || config.template?.id,
+          template_type: config.customTemplate ? 'saved' : 'builtin',
+        });
       } catch (error) {
         console.error('Failed to generate tournament:', error);
         addNotification('Failed to generate tournament. See console for details.', 'danger', 'Generation Error');
       }
     },
-    [addNotification, assignTeamsToTournament]
+    [addNotification, assignTeamsToTournament, gamedayId]
   );
 
   const handleSwapTeams = useCallback(

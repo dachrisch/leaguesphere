@@ -48,7 +48,9 @@ prod = [
 [tool.setuptools.packages.find]
 include = [
     "accounts*",
+    "gameday_designer*",
     "gamedays*",
+    "journey*",
     "league_manager*",
     "league_table*",
     "liveticker*",
