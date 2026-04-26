@@ -184,6 +184,8 @@ MOODLE_WSTOKEN = os.environ.get("MOODLE_WSTOKEN")
 EQUIPMENT_APPROVAL_ENDPOINT = os.environ.get("EQUIPMENT_APPROVAL_ENDPOINT")
 EQUIPMENT_APPROVAL_TOKEN = os.environ.get("EQUIPMENT_APPROVAL_TOKEN")
 
+JOURNEY_INACTIVITY_MINUTES = int(os.environ.get("JOURNEY_INACTIVITY_MINUTES", 30))
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
