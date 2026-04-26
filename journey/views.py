@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Count
+from django.views.generic import TemplateView
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 from .models import Journey, JourneyEvent
 from .serializers import JourneySerializer, JourneyEventSerializer
@@ -86,3 +88,8 @@ class JourneyViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filter journeys by authenticated user."""
         return Journey.objects.filter(user=self.request.user).order_by('-started_at')
+
+
+class JourneyDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = 'journey_dashboard/index.html'
+    login_url = '/accounts/auth/login/'

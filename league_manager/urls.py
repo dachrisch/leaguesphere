@@ -84,6 +84,7 @@ urlpatterns = [
     path("api/passcheck/", include("passcheck.api.urls")),
     path("api/journey/", include("journey.urls")),
     path("gamedays/gameday/design/", include("gameday_designer.app_urls")),
+    path("journeys/", include("journey.urls")),
     path("officials/", include("officials.urls")),
     path("teammanager/", include("teammanager.urls")),
     path("scorecard/", include("scorecard.urls")),
