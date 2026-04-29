@@ -92,4 +92,4 @@ class JourneyViewSet(viewsets.ModelViewSet):
 
 class JourneyDashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'journey_dashboard/index.html'
-    login_url = '/accounts/auth/login/'
+    login_url = 'login'

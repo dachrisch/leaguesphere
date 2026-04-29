@@ -10,12 +10,12 @@ function App() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Check auth
+  // Auth is handled by Django's LoginRequiredMixin on the server side.
+  // The API calls will use either the Knox token (if available) or the session cookie.
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     if (!token) {
-      window.location.href = '/accounts/auth/login/';
-      return;
+      console.log('No auth token found in localStorage, falling back to session authentication');
     }
   }, []);
 

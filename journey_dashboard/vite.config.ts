@@ -5,8 +5,15 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: '../league_manager/static/journey_dashboard',
+    outDir: '../journey/static/journey_dashboard',
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        entryFileNames: '[name].js',
+        chunkFileNames: '[name].js',
+        assetFileNames: '[name].[ext]',
+      },
+    },
   },
   server: {
     proxy: {
