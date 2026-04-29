@@ -344,7 +344,7 @@ const ListDesignerApp: React.FC = () => {
     } catch {
       addNotification(t('ui:notification.publishFailed'), 'danger', t('ui:notification.title.error'));
     }
-  }, [id, addNotification, t, loadData, metadata?.name]);
+  }, [id, addNotification, t, loadData, metadata]);
 
   const handleConfirmDelete = useCallback(async () => {
     setShowDeleteModal(false);

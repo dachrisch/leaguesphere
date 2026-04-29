@@ -166,7 +166,7 @@ export function useDesignerController(
     const genericTemplate = genericizeFlowState(currentState, name, description, sharing);
 
     try {
-      const response = await gamedayApi.saveTemplate(genericTemplate);
+      await gamedayApi.saveTemplate(genericTemplate);
       addNotification('Template saved successfully', 'success', 'Template Saved');
 
       // Track template save event
