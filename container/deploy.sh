@@ -154,21 +154,69 @@ if [ -z "$VERSION_ARG" ]; then
     exit 1
 fi
 
-# Generate release information
-PETNAME=$(petname 2>/dev/null || echo "unknown")
-get_release_type() {
-    case "$1" in
-        major|minor|patch) echo "prod" ;;
-        stage) echo "stage" ;;
-        demo) echo "demo" ;;
-        *) echo "" ;;
-    esac
-}
-RELEASE_TYPE=$(get_release_type "$VERSION_ARG")
-RELEASE_BRANCH="release/${RELEASE_TYPE}_${PETNAME}"
+# Determine current branch and deployment mode
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+IS_MASTER=0
+CREATE_RELEASE_BRANCH=0
+DEPLOY_BRANCH=""
 
-echo "Release branch: $RELEASE_BRANCH (petname: $PETNAME)"
-echo
+if [ "$BRANCH_MODE" = "worktree" ]; then
+    # Explicit branch provided via -b flag
+    CREATE_RELEASE_BRANCH=1
+    DEPLOY_BRANCH="$TARGET_BRANCH"
+elif [ "$CURRENT_BRANCH" = "master" ] || [ "$CURRENT_BRANCH" = "main" ]; then
+    # On master/main - create release branch
+    CREATE_RELEASE_BRANCH=1
+    DEPLOY_BRANCH="$CURRENT_BRANCH"
+    IS_MASTER=1
+else
+    # On feature branch - deploy from current branch, require master merge
+    echo "⚠️  Current branch: $CURRENT_BRANCH (not master)"
+    echo
+    echo "To deploy from a feature branch:"
+    echo "  1. Master must be merged into current branch"
+    echo "  2. Changes will be pushed to current branch (no release branch created)"
+    echo
+
+    # Check if master has been merged
+    if ! git merge-base --is-ancestor master HEAD 2>/dev/null; then
+        echo "❌ Error: master has not been merged into $CURRENT_BRANCH"
+        echo
+        echo "Please merge master first:"
+        echo "  git fetch origin"
+        echo "  git merge origin/master"
+        exit 1
+    fi
+
+    echo "✅ Master is merged into current branch"
+    echo "Deploying from: $CURRENT_BRANCH (version bump only, no release branch)"
+    echo
+
+    CREATE_RELEASE_BRANCH=0
+    DEPLOY_BRANCH="$CURRENT_BRANCH"
+fi
+
+# Generate release information only if creating release branch
+if [ $CREATE_RELEASE_BRANCH -eq 1 ]; then
+    PETNAME=$(petname 2>/dev/null || echo "unknown")
+    get_release_type() {
+        case "$1" in
+            major|minor|patch) echo "prod" ;;
+            stage) echo "stage" ;;
+            demo) echo "demo" ;;
+            *) echo "" ;;
+        esac
+    }
+    RELEASE_TYPE=$(get_release_type "$VERSION_ARG")
+    RELEASE_BRANCH="release/${RELEASE_TYPE}_${PETNAME}"
+
+    echo "Creating release branch: $RELEASE_BRANCH (petname: $PETNAME)"
+    echo
+else
+    RELEASE_BRANCH=""
+    echo "Deploying to current branch: $DEPLOY_BRANCH"
+    echo
+fi
 
 # Worktree mode setup
 if [ "$BRANCH_MODE" = "worktree" ]; then
@@ -242,8 +290,12 @@ case "$VERSION_ARG" in
         git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
 
-        # Push commits and tags to release branch
-        git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags
+        # Push based on deployment mode
+        if [ $CREATE_RELEASE_BRANCH -eq 1 ]; then
+            git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags
+        else
+            git push $REMOTE $DEPLOY_BRANCH && git push $REMOTE --tags
+        fi
 
         # Show new version
         FINAL_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
@@ -315,13 +367,21 @@ case "$VERSION_ARG" in
             git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         fi
 
-        # Push commits and tags to release branch
-        git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags
+        # Push based on deployment mode
+        if [ $CREATE_RELEASE_BRANCH -eq 1 ]; then
+            git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags
+        else
+            git push $REMOTE $DEPLOY_BRANCH && git push $REMOTE --tags
+        fi
 
         # Show new version
         NEW_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
         echo "✅ Staging deployment triggered: $NEW_VERSION"
-        echo "Release branch: $RELEASE_BRANCH"
+        if [ $CREATE_RELEASE_BRANCH -eq 1 ]; then
+            echo "Release branch: $RELEASE_BRANCH"
+        else
+            echo "Deployed to: $DEPLOY_BRANCH"
+        fi
         ;;
     demo)
         # Demo deployment - create/increment demo version
@@ -385,13 +445,21 @@ case "$VERSION_ARG" in
             git tag -af "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         fi
 
-        # Push commits and tags to release branch
-        git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags
+        # Push based on deployment mode
+        if [ $CREATE_RELEASE_BRANCH -eq 1 ]; then
+            git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags
+        else
+            git push $REMOTE $DEPLOY_BRANCH && git push $REMOTE --tags
+        fi
 
         # Show new version
         NEW_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
         echo "✅ Demo deployment triggered: $NEW_VERSION"
-        echo "Release branch: $RELEASE_BRANCH"
+        if [ $CREATE_RELEASE_BRANCH -eq 1 ]; then
+            echo "Release branch: $RELEASE_BRANCH"
+        else
+            echo "Deployed to: $DEPLOY_BRANCH"
+        fi
         ;;
     *)
         echo "Error: Invalid option '$VERSION_ARG'"
