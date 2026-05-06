@@ -350,20 +350,25 @@ const ListDesignerApp: React.FC = () => {
   const handleConfirmPublish = useCallback(async () => {
     setShowPublishModal(false); // close immediately before awaiting API
     try {
+      // Count games and stages from current flowState
+      const gameCount = flowState.nodes.filter(n => n.type === 'game').length;
+      const stageCount = flowState.nodes.filter(n => n.type === 'stage').length;
+
       await gamedayApi.publish(parseInt(id!));
       addNotification(t('ui:notification.publishSuccess'), 'success', t('ui:notification.title.success'));
 
       // Track gameday published event
       trackEvent('gameday_published', {
         gameday_id: id,
-        gameday_name: metadata?.name,
+        game_count: gameCount,
+        stage_count: stageCount,
       });
 
       loadData();
     } catch {
       addNotification(t('ui:notification.publishFailed'), 'danger', t('ui:notification.title.error'));
     }
-  }, [id, addNotification, t, loadData, metadata]);
+  }, [id, addNotification, t, loadData, flowState.nodes]);
 
   const handleConfirmDelete = useCallback(async () => {
     setShowDeleteModal(false);
