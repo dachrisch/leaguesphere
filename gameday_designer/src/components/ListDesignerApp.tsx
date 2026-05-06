@@ -28,7 +28,10 @@ import './ListDesignerApp.css';
 const getSessionId = (): string => {
   let sessionId = sessionStorage.getItem('gameday_session_id');
   if (!sessionId) {
-    sessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+    const randomBytes = new Uint8Array(8);
+    crypto.getRandomValues(randomBytes);
+    const randomString = Array.from(randomBytes, byte => byte.toString(16).padStart(2, '0')).join('');
+    sessionId = `session_${Date.now()}_${randomString}`;
     sessionStorage.setItem('gameday_session_id', sessionId);
   }
   return sessionId;
