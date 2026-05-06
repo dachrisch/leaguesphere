@@ -142,6 +142,9 @@ class MachtreportModelWrapper:
             )
         )
 
+        if teamlogs.empty:
+            return pd.DataFrame([], columns=list(column_mapping.values()))
+
         teamlogs.created_time = teamlogs.created_time.apply(lambda x: x.strftime("%H:%M:%S"))
 
         return teamlogs.rename(columns=column_mapping)

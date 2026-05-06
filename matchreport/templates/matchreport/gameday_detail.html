@@ -55,7 +55,15 @@
                  data-bs-target="#collapse{{ game.gameinfo_id }}" data-bs-toggle="collapse"
                  id="heading{{ game.gameinfo_id }}" role="button">
                 <div class="card-title">
-                    <h5>{{ game.home.team_name }} {{ game.home.points_scored }} - {{ game.away.points_scored }} {{ game.away.team_name }}</h5>
+                    <h5>
+                        {% if game.game_status == 'beendet' %}
+                            <span class="badge bg-success text-dark me-1" style="font-size: 0.65em; vertical-align: middle;">
+                        {% else %}
+                            <span class="badge bg-warning text-dark me-1" style="font-size: 0.65em; vertical-align: middle;">
+                        {% endif %}
+                        {{ game.game_status }}</span>
+                        {{ game.home.team_name }} {{ game.home.points_scored }} - {{ game.away.points_scored }} {{ game.away.team_name }}
+                    </h5>
                 </div>
             </div>
             <div aria-labelledby="heading{{ game.gameinfo_id }}" class="collapse" id="collapse{{ game.gameinfo_id }}">
@@ -80,7 +88,7 @@
                 </div>
                 <div class="card-body">
                     <h5>Strafen:</h5>
-                    {{ game.flags    | safe }}
+                    {{ game.flags | safe }}
                 </div>
             </div>
         </div>

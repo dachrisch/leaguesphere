@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
 <h2><span class="badge bg-warning text-dark me-1" style="font-size: 0.65em; vertical-align: middle;">BETA</span>Spielberichtsbogen Lite</h2>
+<hr />
 <ul class="nav nav-pills mb-1">
+
     {% for year in years %}
     <li class="nav-item">
         <a class="nav-link {% if year == season %}active{% endif %}"
@@ -9,6 +11,7 @@
     </li>
     {% endfor %}
 </ul>
+
 <ul class="nav nav-pills mb-3">
     {% for league in leagues %}
     <li class="nav-item">
@@ -17,6 +20,7 @@
     </li>
     {% endfor %}
 </ul>
+<hr />
 {% for gameday in gamedays %}
 <article class="media content-section">
     <div class="media-body">
