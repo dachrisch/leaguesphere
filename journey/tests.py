@@ -95,3 +95,274 @@ class JourneyAPITests(APITestCase):
             # Old journey should be marked as ended
             journey1.refresh_from_db()
             self.assertIsNotNone(journey1.ended_at, "Old journey should have ended_at set")
+
+
+class GamedayEventPersistenceTests(APITestCase):
+    """
+    Integration tests for gameday adoption tracking persistence
+    Verifies that gameday_* events persist in JourneyEvent model
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='gamedayuser', password='pass')
+        self.token = AuthToken.objects.create(self.user)[1]
+        self.journey = Journey.objects.create(user=self.user)
+
+    def test_gameday_opened_event_persists(self):
+        """
+        Test: gameday_opened event is stored in JourneyEvent model
+        Expected: Event has correct event_name and metadata
+        """
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token}')
+        response = self.client.post('/api/journey/events/', {
+            'event_name': 'gameday_opened',
+            'metadata': {
+                'gameday_id': 'gd_123',
+                'session_id': 'sess_456'
+            }
+        }, format='json')
+
+        self.assertEqual(response.status_code, 201)
+        event = JourneyEvent.objects.get(event_name='gameday_opened')
+        self.assertEqual(event.journey, self.journey)
+        self.assertEqual(event.metadata['gameday_id'], 'gd_123')
+        self.assertEqual(event.metadata['session_id'], 'sess_456')
+
+    def test_gameday_created_event_persists(self):
+        """
+        Test: gameday_created event is stored with metadata
+        Expected: Event persists with all metadata fields
+        """
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token}')
+        response = self.client.post('/api/journey/events/', {
+            'event_name': 'gameday_created',
+            'metadata': {
+                'gameday_id': 'gd_789',
+                'gameday_name': 'League Final 2024',
+                'format': 'league'
+            }
+        }, format='json')
+
+        self.assertEqual(response.status_code, 201)
+        event = JourneyEvent.objects.get(event_name='gameday_created')
+        self.assertEqual(event.metadata['gameday_id'], 'gd_789')
+        self.assertEqual(event.metadata['gameday_name'], 'League Final 2024')
+        self.assertEqual(event.metadata['format'], 'league')
+
+    def test_gameday_edited_event_persists(self):
+        """
+        Test: gameday_edited event stores field modification info
+        Expected: Metadata contains field_modified field
+        """
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token}')
+        response = self.client.post('/api/journey/events/', {
+            'event_name': 'gameday_edited',
+            'metadata': {
+                'gameday_id': 'gd_789',
+                'field_modified': 'teams'
+            }
+        }, format='json')
+
+        self.assertEqual(response.status_code, 201)
+        event = JourneyEvent.objects.get(event_name='gameday_edited')
+        self.assertEqual(event.metadata['field_modified'], 'teams')
+
+    def test_gameday_published_event_persists(self):
+        """
+        Test: gameday_published event stores publication info
+        Expected: Event metadata contains publish timestamp
+        """
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token}')
+        response = self.client.post('/api/journey/events/', {
+            'event_name': 'gameday_published',
+            'metadata': {
+                'gameday_id': 'gd_789',
+                'published_at': '2024-01-15T10:30:00Z'
+            }
+        }, format='json')
+
+        self.assertEqual(response.status_code, 201)
+        event = JourneyEvent.objects.get(event_name='gameday_published')
+        self.assertEqual(event.metadata['published_at'], '2024-01-15T10:30:00Z')
+
+    def test_template_used_event_persists(self):
+        """
+        Test: template_used event is stored with template metadata
+        Expected: Template ID and name stored in metadata
+        """
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token}')
+        response = self.client.post('/api/journey/events/', {
+            'event_name': 'template_used',
+            'metadata': {
+                'template_id': 'tpl_league_final',
+                'template_name': 'League Final Format'
+            }
+        }, format='json')
+
+        self.assertEqual(response.status_code, 201)
+        event = JourneyEvent.objects.get(event_name='template_used')
+        self.assertEqual(event.metadata['template_id'], 'tpl_league_final')
+        self.assertEqual(event.metadata['template_name'], 'League Final Format')
+
+    def test_metadata_stored_correctly(self):
+        """
+        Test: Complex metadata is stored and retrieved correctly
+        Expected: Nested objects and arrays preserved in JSON
+        """
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token}')
+        complex_metadata = {
+            'gameday_id': 'gd_complex',
+            'teams': ['Team A', 'Team B', 'Team C'],
+            'settings': {
+                'auto_calculate': True,
+                'timezone': 'Europe/Berlin'
+            }
+        }
+        response = self.client.post('/api/journey/events/', {
+            'event_name': 'gameday_created',
+            'metadata': complex_metadata
+        }, format='json')
+
+        self.assertEqual(response.status_code, 201)
+        event = JourneyEvent.objects.get(event_name='gameday_created',
+                                         **{'metadata__gameday_id': 'gd_complex'})
+        self.assertEqual(event.metadata['teams'], ['Team A', 'Team B', 'Team C'])
+        self.assertEqual(event.metadata['settings']['auto_calculate'], True)
+        self.assertEqual(event.metadata['settings']['timezone'], 'Europe/Berlin')
+
+    def test_events_queryable_by_event_name(self):
+        """
+        Test: Events can be queried by event_name
+        Expected: Correct events returned when filtering by name
+        """
+        # Create multiple different event types
+        journey = Journey.objects.create(user=self.user)
+        JourneyEvent.objects.create(journey=journey, event_name='gameday_opened')
+        JourneyEvent.objects.create(journey=journey, event_name='gameday_opened')
+        JourneyEvent.objects.create(journey=journey, event_name='gameday_created')
+        JourneyEvent.objects.create(journey=journey, event_name='gameday_published')
+
+        opened_events = JourneyEvent.objects.filter(event_name='gameday_opened')
+        created_events = JourneyEvent.objects.filter(event_name='gameday_created')
+        published_events = JourneyEvent.objects.filter(event_name='gameday_published')
+
+        self.assertEqual(opened_events.count(), 2)
+        self.assertEqual(created_events.count(), 1)
+        self.assertEqual(published_events.count(), 1)
+
+    def test_events_queryable_by_user(self):
+        """
+        Test: Events can be queried by user through journey
+        Expected: Only events for specific user returned
+        """
+        user2 = User.objects.create_user(username='anotheruser', password='pass')
+        journey1 = Journey.objects.create(user=self.user)
+        journey2 = Journey.objects.create(user=user2)
+
+        JourneyEvent.objects.create(journey=journey1, event_name='gameday_opened')
+        JourneyEvent.objects.create(journey=journey1, event_name='gameday_created')
+        JourneyEvent.objects.create(journey=journey2, event_name='gameday_opened')
+
+        user1_events = JourneyEvent.objects.filter(journey__user=self.user)
+        user2_events = JourneyEvent.objects.filter(journey__user=user2)
+
+        self.assertEqual(user1_events.count(), 2)
+        self.assertEqual(user2_events.count(), 1)
+
+    def test_event_ordering_by_created_at(self):
+        """
+        Test: Events are ordered by created_at timestamp
+        Expected: Events returned in chronological order
+        """
+        journey = Journey.objects.create(user=self.user)
+
+        # Create events with specific timestamps
+        event1 = JourneyEvent.objects.create(
+            journey=journey,
+            event_name='gameday_opened'
+        )
+        event2 = JourneyEvent.objects.create(
+            journey=journey,
+            event_name='gameday_created'
+        )
+        event3 = JourneyEvent.objects.create(
+            journey=journey,
+            event_name='gameday_published'
+        )
+
+        # Query events ordered by created_at
+        ordered_events = list(JourneyEvent.objects.filter(
+            journey=journey
+        ).order_by('created_at'))
+
+        # Verify order matches creation order
+        self.assertEqual(ordered_events[0].id, event1.id)
+        self.assertEqual(ordered_events[1].id, event2.id)
+        self.assertEqual(ordered_events[2].id, event3.id)
+
+    def test_full_gameday_lifecycle_persistence(self):
+        """
+        Test: Complete gameday lifecycle is persisted correctly
+        Expected: All events in sequence with correct metadata
+        """
+        journey = Journey.objects.create(user=self.user)
+
+        events_to_create = [
+            ('gameday_opened', {'gameday_id': 'gd_full', 'session_id': 'sess_1'}),
+            ('gameday_created', {'gameday_id': 'gd_full', 'gameday_name': 'Test Gameday'}),
+            ('gameday_edited', {'gameday_id': 'gd_full', 'field_modified': 'teams'}),
+            ('template_used', {'template_id': 'tpl_1', 'template_name': 'Default'}),
+            ('gameday_published', {'gameday_id': 'gd_full', 'status': 'live'}),
+        ]
+
+        for event_name, metadata in events_to_create:
+            JourneyEvent.objects.create(
+                journey=journey,
+                event_name=event_name,
+                metadata=metadata
+            )
+
+        # Verify all events persisted
+        persisted_events = JourneyEvent.objects.filter(journey=journey).order_by('created_at')
+        self.assertEqual(persisted_events.count(), 5)
+
+        # Verify event names match in order
+        event_names = [e.event_name for e in persisted_events]
+        expected_names = [e[0] for e in events_to_create]
+        self.assertEqual(event_names, expected_names)
+
+        # Verify metadata preserved
+        first_event = persisted_events.first()
+        self.assertEqual(first_event.event_name, 'gameday_opened')
+        self.assertEqual(first_event.metadata['session_id'], 'sess_1')
+
+    def test_event_creation_timestamp_accuracy(self):
+        """
+        Test: created_at timestamp is set accurately
+        Expected: Timestamp is close to current time
+        """
+        journey = Journey.objects.create(user=self.user)
+        before = timezone.now()
+        event = JourneyEvent.objects.create(
+            journey=journey,
+            event_name='gameday_opened'
+        )
+        after = timezone.now()
+
+        self.assertGreaterEqual(event.created_at, before)
+        self.assertLessEqual(event.created_at, after)
+
+    def test_empty_metadata_handled(self):
+        """
+        Test: Events with empty metadata are handled correctly
+        Expected: Empty dict stored and retrieved
+        """
+        journey = Journey.objects.create(user=self.user)
+        event = JourneyEvent.objects.create(
+            journey=journey,
+            event_name='gameday_opened',
+            metadata={}
+        )
+
+        retrieved_event = JourneyEvent.objects.get(id=event.id)
+        self.assertEqual(retrieved_event.metadata, {})
