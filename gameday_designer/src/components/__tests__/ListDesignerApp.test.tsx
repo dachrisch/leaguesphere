@@ -449,7 +449,7 @@ describe('ListDesignerApp', () => {
 
       // Mock the API methods
       const mockPublish = vi.mocked(gamedayApi.publish);
-      mockPublish.mockResolvedValue({} as any);
+      mockPublish.mockResolvedValue({} as ReturnType<typeof gamedayApi.publish>);
       const mockLoadData = vi.fn().mockResolvedValue({});
 
       // Create flowState with multiple games and stages
