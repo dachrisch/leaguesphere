@@ -117,7 +117,8 @@ class MachtreportModelWrapper:
                     "team__description",
                     "gameinfo__status",
                     "gameinfo__officials__name",
-                    "gameinfo__field"
+                    "gameinfo__field",
+                    "gameinfo__scheduled"
                 ]
             )
         )
@@ -133,6 +134,7 @@ class MachtreportModelWrapper:
             data["officials"] = game_end_info[game_end_info["isHome"] == isHome]["gameinfo__officials__name"].values[0]
             data["game_status"] = game_end_info[game_end_info["isHome"] == isHome]["gameinfo__status"].values[0]
             data["field"] = game_end_info[game_end_info["isHome"] == isHome]["gameinfo__field"].values[0]
+            data["scheduled"] = game_end_info[game_end_info["isHome"] == isHome]["gameinfo__scheduled"].values[0]
             data["gameinfo_id"] = game_end_info[game_end_info["isHome"] == isHome]["gameinfo_id"].values[0]
         return data
 

@@ -90,7 +90,7 @@
                 {% else %}
                     <span class="badge rounded-pill bg-warning text-dark" style="font-size: 0.7em;">{{ game.game_status }}</span>
                 {% endif %}
-
+                {{ game.scheduled |time:"H:i" }}
                 <div class="d-flex align-items-center flex-grow-1 gap-2">
                     <span class="fw-semibold text-end flex-grow-1">{{ game.home.team_name }}</span>
                     {% if game.game_status == 'beendet' %}
