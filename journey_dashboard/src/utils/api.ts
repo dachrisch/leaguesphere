@@ -61,3 +61,24 @@ export async function recordEvent(
   if (!res.ok) throw new Error(`Failed to record event: ${res.statusText}`);
   return res.json();
 }
+
+export async function getGamedayEvents(userId: string): Promise<JourneyEvent[]> {
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  const url = `${BASE_URL}/events/?user_id=${userId}`;
+  const res = await fetch(url, {
+    headers: getAuthHeader(),
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(`Failed to fetch events: ${res.statusText}`);
+
+  const data = await res.json();
+  const allEvents = data.results || [];
+
+  return allEvents.filter((event: JourneyEvent) =>
+    event.event_name.startsWith('gameday_') || event.event_name.startsWith('template_')
+  );
+}
