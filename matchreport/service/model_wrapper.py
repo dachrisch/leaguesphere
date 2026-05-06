@@ -213,7 +213,8 @@ class MachtreportModelWrapper:
                 **game_result,
                 "end_notes": end_notes,
                 "refs": game_refs.to_html(**render_config),
-                "flags": game_flags.to_html(**render_config) if not game_flags.empty else no_flags_text
+                "flags": game_flags.to_html(**render_config) if not game_flags.empty else no_flags_text,
+                "num_flags": len(game_flags)
             })
 
         return games

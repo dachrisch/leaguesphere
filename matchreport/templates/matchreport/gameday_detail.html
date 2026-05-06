@@ -38,7 +38,6 @@
         <h2>Passcheck Spieler</h2>
     </div>
     <div aria-labelledby="headingPasscheckPlayer" class="collapse" id="collapsePasscheckPlayer">
-        <!-- Tab Buttons -->
         <ul class="nav nav-tabs mb-3" role="tablist">
           {% for team_name, team_data in info.passcheck_player_data.items %}
             <li class="nav-item" role="presentation">
@@ -54,7 +53,6 @@
             </li>
           {% endfor %}
         </ul>
-        <!-- Tab Panels -->
         <div class="card-body tab-content">
           {% for team_name, team_data in info.passcheck_player_data.items %}
             <div
@@ -77,51 +75,111 @@
     </div>
     <div aria-labelledby="headingGames" class="collapse" id="collapseGames">
         {% for game in info.gameday_match_reports %}
-        <div class="card">
-            <div aria-controls="collapse{{ game.gameinfo_id }}" aria-expanded="false" class="card-header"
-                 data-bs-target="#collapse{{ game.gameinfo_id }}" data-bs-toggle="collapse"
-                 id="heading{{ game.gameinfo_id }}" role="button">
-                <div class="card-title">
-                    <h5>
-                        {% if game.game_status == 'beendet' %}
-                            <span class="badge bg-success text-dark me-1" style="font-size: 0.65em; vertical-align: middle;">
-                        {% else %}
-                            <span class="badge bg-warning text-dark me-1" style="font-size: 0.65em; vertical-align: middle;">
-                        {% endif %}
-                        {{ game.game_status }}</span>
-                        {{ game.home.team_name }} {{ game.home.points_scored }} - {{ game.away.points_scored }} {{ game.away.team_name }}
-                    </h5>
+        <div class="card border-0 border-bottom rounded-0">
+
+            {# ── Header / Score row ── #}
+            <div class="card-header bg-transparent d-flex align-items-center gap-3 py-3"
+                 role="button"
+                 data-bs-toggle="collapse"
+                 data-bs-target="#collapseGame{{ game.gameinfo_id }}"
+                 aria-expanded="false"
+                 aria-controls="collapseGame{{ game.gameinfo_id }}">
+
+                {% if game.game_status == 'beendet' %}
+                    <span class="badge rounded-pill bg-success" style="font-size: 0.7em;">beendet</span>
+                {% else %}
+                    <span class="badge rounded-pill bg-warning text-dark" style="font-size: 0.7em;">{{ game.game_status }}</span>
+                {% endif %}
+
+                <div class="d-flex align-items-center flex-grow-1 gap-2">
+                    <span class="fw-semibold text-end flex-grow-1">{{ game.home.team_name }}</span>
+                    {% if game.game_status == 'beendet' %}
+                        <span class="fs-5 fw-semibold px-2 text-nowrap">
+                            {{ game.home.points_scored }} <span class="text-muted fw-normal">–</span> {{ game.away.points_scored }}
+                        </span>
+                    {% else %}
+                        <span class="px-2 text-muted">vs</span>
+                    {% endif %}
+                    <span class="fw-semibold flex-grow-1">{{ game.away.team_name }}</span>
                 </div>
+
+                <i class="bi bi-chevron-down text-muted collapse-chevron" style="transition: transform .2s;"></i>
             </div>
-            <div aria-labelledby="heading{{ game.gameinfo_id }}" class="collapse" id="collapse{{ game.gameinfo_id }}">
-                <div class="card-body">
-                    <h5>Informationen</h5>
-                    <div class="row mb-1">
-                        <div class="col"><b>Status:</b> {{ game.game_status }}</div>
-                        <div class="col"><b>Officials (Team):</b> {{ game.officials }}</div>
+            <div id="collapseGame{{ game.gameinfo_id }}" class="collapse">
+                <div class="card-body p-0">
+                    <ul class="nav nav-tabs px-3 pt-2" id="tabs{{ game.gameinfo_id }}" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="info-tab-{{ game.gameinfo_id }}"
+                                    data-bs-toggle="tab"
+                                    data-bs-target="#info-{{ game.gameinfo_id }}"
+                                    type="button" role="tab">Info</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="refs-tab-{{ game.gameinfo_id }}"
+                                    data-bs-toggle="tab"
+                                    data-bs-target="#refs-{{ game.gameinfo_id }}"
+                                    type="button" role="tab">Schiedsrichter</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="flags-tab-{{ game.gameinfo_id }}"
+                                    data-bs-toggle="tab"
+                                    data-bs-target="#flags-{{ game.gameinfo_id }}"
+                                    type="button" role="tab">
+                                Strafen
+                                {% if game.flags %}
+                                    <span class="badge bg-secondary ms-1" style="font-size: 0.7em;">
+                                        {{ game.num_flags }}
+                                    </span>
+                                {% endif %}
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content p-3" id="tabContent{{ game.gameinfo_id }}">
+                        <div class="tab-pane fade show active" id="info-{{ game.gameinfo_id }}" role="tabpanel">
+                            <div class="row row-cols-2 g-3">
+                                <div>
+                                    <p class="text-muted small mb-0 text-uppercase" style="font-size: 0.7em; letter-spacing: .04em;">Status</p>
+                                    <p class="mb-0">{{ game.game_status }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-muted small mb-0 text-uppercase" style="font-size: 0.7em; letter-spacing: .04em;">Officials (Team)</p>
+                                    <p class="mb-0">{{ game.officials }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-muted small mb-0 text-uppercase" style="font-size: 0.7em; letter-spacing: .04em;">Heim Kapitän</p>
+                                    <p class="mb-0">{{ game.end_notes.homeCaptain }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-muted small mb-0 text-uppercase" style="font-size: 0.7em; letter-spacing: .04em;">Spielfeld</p>
+                                    <p class="mb-0">{{ game.field }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-muted small mb-0 text-uppercase" style="font-size: 0.7em; letter-spacing: .04em;">Auswärts Kapitän</p>
+                                    <p class="mb-0">{{ game.end_notes.awayCaptain }}</p>
+                                </div>
+                                {% if game.end_notes.note %}
+                                <div>
+                                    <p class="text-muted small mb-0 text-uppercase" style="font-size: 0.7em; letter-spacing: .04em;">Notiz</p>
+                                    <p class="mb-0 text-danger">{{ game.end_notes.note | safe }}</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="refs-{{ game.gameinfo_id }}" role="tabpanel">
+                            {{ game.refs | safe }}
+                        </div>
+                        <div class="tab-pane fade" id="flags-{{ game.gameinfo_id }}" role="tabpanel">
+                            {{ game.flags | safe }}
+                        </div>
+
                     </div>
-                    <div class="row mb-1">
-                        <div class="col"><b>Heim Kapitän:</b> {{ game.end_notes.homeCaptain }}</div>
-                        <div class="col"><b>Spielfeld:</b> {{ game.field }}</div>
-                    </div>
-                    <div class="row mb-1">
-                        <div class="col"><b>Auswärts Kapitän:</b> {{ game.end_notes.awayCaptain }}</div>
-                        <div class="col"><b>Notiz:</b> {{ game.end_notes.note | safe }}</div>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <h5>Schiedsrichter Crew:</h5>
-                    {{ game.refs | safe }}
-                </div>
-                <div class="card-body">
-                    <h5>Strafen:</h5>
-                    {{ game.flags | safe }}
                 </div>
             </div>
         </div>
         {% endfor %}
     </div>
 </div>
+
 
 
 
