@@ -25,6 +25,15 @@ import type { TournamentTemplate } from '../types/tournament';
 import { trackEvent } from '../trackEvent';
 import './ListDesignerApp.css';
 
+const getSessionId = (): string => {
+  let sessionId = sessionStorage.getItem('gameday_session_id');
+  if (!sessionId) {
+    sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    sessionStorage.setItem('gameday_session_id', sessionId);
+  }
+  return sessionId;
+};
+
 const ListDesignerApp: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -132,15 +141,8 @@ const ListDesignerApp: React.FC = () => {
       const games = await gamedayApi.getGamedayGames(parseInt(id));
       setGameResults(games);
       setResultsMode(true);
-      trackEvent('results_mode_entered', {
-        gameday_id: id,
-        game_count: games.length,
-      });
     } else {
       setResultsMode(false);
-      trackEvent('results_mode_exited', {
-        gameday_id: id,
-      });
     }
   }, [id, resultsMode, setGameResults, setResultsMode]);
 
@@ -251,6 +253,7 @@ const ListDesignerApp: React.FC = () => {
     if (id) {
       trackEvent('gameday_designer_opened', {
         gameday_id: id,
+        session_id: getSessionId(),
       });
     }
   }, [id]);

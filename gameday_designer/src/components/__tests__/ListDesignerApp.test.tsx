@@ -297,9 +297,13 @@ describe('ListDesignerApp', () => {
       // Wait for the component to mount and effect to run
       await new Promise(resolve => setTimeout(resolve, 0));
 
-      expect(trackEvent).toHaveBeenCalledWith('gameday_designer_opened', {
-        gameday_id: '1',
-      });
+      expect(trackEvent).toHaveBeenCalledWith(
+        'gameday_designer_opened',
+        expect.objectContaining({
+          gameday_id: '1',
+          session_id: expect.stringMatching(/^session_\d+_.+$/),
+        })
+      );
     });
   });
 });
