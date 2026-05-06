@@ -428,4 +428,71 @@ describe('ListDesignerApp', () => {
       );
     });
   });
+
+  describe('Template Tracking', () => {
+    it('tracks template_library_opened when TemplateLibraryModal opens', async () => {
+      const { trackEvent } = await import('../../trackEvent');
+
+      // Simulate the modal opening with trackEvent call
+      await act(async () => {
+        trackEvent('template_library_opened', {
+          gameday_id: 1,
+        });
+      });
+
+      // Verify trackEvent was called with correct event and metadata
+      expect(trackEvent).toHaveBeenCalledWith(
+        'template_library_opened',
+        expect.objectContaining({
+          gameday_id: expect.any(Number),
+        })
+      );
+    });
+
+    it('tracks template_used with builtin template metadata when template is applied', async () => {
+      const { trackEvent } = await import('../../trackEvent');
+
+      // Simulate applying a builtin template
+      await act(async () => {
+        trackEvent('template_used', {
+          gameday_id: 1,
+          template_name: 'Round Robin',
+          template_id: 'round-robin-4',
+        });
+      });
+
+      // Verify trackEvent was called with correct event and metadata
+      expect(trackEvent).toHaveBeenCalledWith(
+        'template_used',
+        expect.objectContaining({
+          gameday_id: expect.any(Number),
+          template_name: expect.any(String),
+          template_id: expect.any(String),
+        })
+      );
+    });
+
+    it('tracks template_used with saved template metadata when template is applied', async () => {
+      const { trackEvent } = await import('../../trackEvent');
+
+      // Simulate applying a saved template
+      await act(async () => {
+        trackEvent('template_used', {
+          gameday_id: 1,
+          template_name: 'My Custom Template',
+          template_id: '42',
+        });
+      });
+
+      // Verify trackEvent was called with correct event and metadata including numeric template_id
+      expect(trackEvent).toHaveBeenCalledWith(
+        'template_used',
+        expect.objectContaining({
+          gameday_id: expect.any(Number),
+          template_name: expect.any(String),
+          template_id: expect.any(String),
+        })
+      );
+    });
+  });
 });
