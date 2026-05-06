@@ -1,0 +1,101 @@
+.gameday-funnel {
+  padding: 24px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  margin-bottom: 24px;
+}
+
+.funnel-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #202124;
+  margin-bottom: 20px;
+  margin-top: 0;
+}
+
+.funnel-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.funnel-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stage-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #3c4043;
+  text-transform: capitalize;
+}
+
+.bar-container {
+  width: 100%;
+  background-color: #e8e8e8;
+  border-radius: 4px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.bar {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 5%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  position: relative;
+}
+
+.bar-text {
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 8px;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.bar.template-bar {
+  background: linear-gradient(90deg, #4285f4 0%, #5a9fd4 100%);
+}
+
+.funnel-divider {
+  font-size: 12px;
+  font-weight: 600;
+  color: #5f6368;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 2px dashed #dadce0;
+}
+
+.template-branch {
+  opacity: 0.9;
+  padding-left: 16px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .gameday-funnel {
+    padding: 16px;
+  }
+
+  .bar-text {
+    font-size: 11px;
+    padding: 0 6px;
+  }
+
+  .funnel-title {
+    font-size: 16px;
+  }
+}
