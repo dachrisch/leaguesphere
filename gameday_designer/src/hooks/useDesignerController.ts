@@ -126,7 +126,7 @@ export function useDesignerController(
   );
 
   const handleImport = useCallback(
-    (json: unknown) => {
+    (json: unknown, importSource: 'file' | 'clipboard' = 'file') => {
       const errors = validateScheduleJson(json);
       if (errors.length > 0) {
         addNotification(`Invalid JSON format: ${errors.join(', ')}`, 'danger', 'Import Error');
@@ -141,8 +141,14 @@ export function useDesignerController(
 
       flowStateRef.current?.importState(result.state);
       addNotification('Schedule imported successfully', 'success', 'Import Success');
+
+      // Track import event
+      trackEvent('import_executed', {
+        gameday_id: gamedayId,
+        import_source: importSource,
+      });
     },
-    [addNotification]
+    [addNotification, gamedayId]
   );
 
   const handleExport = useCallback(() => {
@@ -157,7 +163,13 @@ export function useDesignerController(
     }
     downloadFlowchartAsJson(state);
     addNotification('Schedule exported successfully', 'success', 'Export Success');
-  }, [addNotification]);
+
+    // Track export event
+    trackEvent('export_executed', {
+      gameday_id: gamedayId,
+      export_format: 'json',
+    });
+  }, [addNotification, gamedayId]);
 
   const handleSaveTemplate = useCallback(async (name: string, description: string, sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL') => {
     const currentState = flowStateRef.current?.exportState();
@@ -513,8 +525,27 @@ export function useDesignerController(
     handleGenerateTournament,
     showTournamentModal,
     setShowTournamentModal: (show: boolean) => setShowTournamentModal(show),
-    handleAddGlobalTeam: (groupId: string) => flowStateRef.current?.addGlobalTeam(undefined, groupId),
-    handleAddOfficialsGroup: () => flowStateRef.current?.addOfficialsGroup(),
+    handleAddGlobalTeam: (groupId: string) => {
+      flowStateRef.current?.addGlobalTeam(undefined, groupId);
+      // Track global team added event
+      const teamName = flowStateRef.current?.globalTeams?.[flowStateRef.current.globalTeams.length - 1]?.label || 'New Team';
+      trackEvent('global_team_added', {
+        gameday_id: gamedayId,
+        team_name: teamName,
+      });
+    },
+    handleAddOfficialsGroup: () => {
+      flowStateRef.current?.addOfficialsGroup();
+      // Track officials group added event
+      const officialGroups = flowStateRef.current?.nodes?.filter(n => n.type === 'officials') || [];
+      const groupName = officialGroups.length > 0
+        ? `Officials Group ${officialGroups.length}`
+        : 'Officials Group 1';
+      trackEvent('officials_group_added', {
+        gameday_id: gamedayId,
+        group_name: groupName,
+      });
+    },
     handleAddGlobalTeamGroup: () => flowStateRef.current?.addGlobalTeamGroup(),
     handleAddFieldContainer: () => flowStateRef.current?.addFieldNode({}, true),
     handleAddStage: (fieldId: string) => flowStateRef.current?.addStageNode(fieldId),
@@ -531,7 +562,7 @@ export function useDesignerController(
     loadData, saveData, expandField, expandStage, handleHighlightElement,
     handleDynamicReferenceClick, handleImport, handleExport, handleSaveTemplate,
     handleSwapTeams, handleGenerateTournament, showTournamentModal,
-    dismissNotification, addNotification, onMetadataHighlight, handleUpdateNode
+    dismissNotification, addNotification, onMetadataHighlight, handleUpdateNode, gamedayId
   ]);
 
   const memoizedState = useMemo(() => ({

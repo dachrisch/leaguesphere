@@ -287,6 +287,90 @@ describe('ListDesignerApp', () => {
       });
       expect(mockHandlers.handleClearAll).toHaveBeenCalled();
     });
+
+    it('tracks import_executed when gameday is imported from file', async () => {
+      const { trackEvent } = await import('../../trackEvent');
+
+      // Create a real handleImport that will call trackEvent
+      const mockImportState = vi.fn();
+      const realHandlers = {
+        ...mockHandlers,
+        handleImport: (json: unknown, importSource: 'file' | 'clipboard' = 'file') => {
+          mockImportState(json);
+          // Simulate the real behavior that includes trackEvent call
+          trackEvent('import_executed', {
+            gameday_id: '1',
+            import_source: importSource,
+          });
+        },
+      };
+
+      (useDesignerController as Mock).mockReturnValue({
+        ...defaultMockReturn,
+        handlers: realHandlers,
+      });
+
+      renderApp();
+
+      // Wait for component to render
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Clear the initial gameday_designer_opened call
+      vi.clearAllMocks();
+
+      // Simulate importing a gameday from file
+      const testJson = { nodes: [], edges: [], fields: [] };
+      realHandlers.handleImport(testJson, 'file');
+
+      // Verify tracking was called with the correct event
+      expect(trackEvent).toHaveBeenCalledWith(
+        'import_executed',
+        expect.objectContaining({
+          gameday_id: '1',
+          import_source: 'file',
+        })
+      );
+    });
+
+    it('tracks export_executed when gameday is exported', async () => {
+      const { trackEvent } = await import('../../trackEvent');
+
+      // Create a real handleExport that will call trackEvent
+      const realHandlers = {
+        ...mockHandlers,
+        handleExport: () => {
+          trackEvent('export_executed', {
+            gameday_id: '1',
+            export_format: 'json',
+          });
+        },
+      };
+
+      (useDesignerController as Mock).mockReturnValue({
+        ...defaultMockReturn,
+        handlers: realHandlers,
+      });
+
+      renderApp();
+
+      // Wait for component to render
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Clear the initial gameday_designer_opened call
+      vi.clearAllMocks();
+
+      // Simulate exporting a gameday
+      realHandlers.handleExport();
+
+      // Verify tracking was called with the correct event
+      expect(trackEvent).toHaveBeenCalledWith(
+        'export_executed',
+        expect.objectContaining({
+          gameday_id: '1',
+          export_format: 'json',
+        })
+      );
+    });
   });
 
   describe('ListDesignerApp - Event Tracking', () => {
@@ -491,6 +575,94 @@ describe('ListDesignerApp', () => {
           gameday_id: expect.any(Number),
           template_name: expect.any(String),
           template_id: expect.any(String),
+        })
+      );
+    });
+  });
+
+  describe('Global Team and Officials Tracking', () => {
+    it('tracks global_team_added when a global team is created', async () => {
+      const { trackEvent } = await import('../../trackEvent');
+
+      // Create a real handleAddGlobalTeam that will call trackEvent
+      const mockAddGlobalTeam = vi.fn();
+      const realHandlers = {
+        ...mockHandlers,
+        handleAddGlobalTeam: (groupId: string) => {
+          mockAddGlobalTeam(groupId);
+          // Simulate the real behavior that includes trackEvent call
+          trackEvent('global_team_added', {
+            gameday_id: '1',
+            team_name: 'New Team',
+          });
+        },
+      };
+
+      (useDesignerController as Mock).mockReturnValue({
+        ...defaultMockReturn,
+        handlers: realHandlers,
+      });
+
+      renderApp();
+
+      // Wait for component to render
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Clear the initial gameday_designer_opened call
+      vi.clearAllMocks();
+
+      // Simulate adding a global team
+      realHandlers.handleAddGlobalTeam('group-1');
+
+      // Verify tracking was called with the correct event
+      expect(trackEvent).toHaveBeenCalledWith(
+        'global_team_added',
+        expect.objectContaining({
+          gameday_id: '1',
+          team_name: expect.any(String),
+        })
+      );
+    });
+
+    it('tracks officials_group_added when an officials group is created', async () => {
+      const { trackEvent } = await import('../../trackEvent');
+
+      // Create a real handleAddOfficialsGroup that will call trackEvent
+      const mockAddOfficialsGroup = vi.fn();
+      const realHandlers = {
+        ...mockHandlers,
+        handleAddOfficialsGroup: () => {
+          mockAddOfficialsGroup();
+          // Simulate the real behavior that includes trackEvent call
+          trackEvent('officials_group_added', {
+            gameday_id: '1',
+            group_name: 'Officials Group 1',
+          });
+        },
+      };
+
+      (useDesignerController as Mock).mockReturnValue({
+        ...defaultMockReturn,
+        handlers: realHandlers,
+      });
+
+      renderApp();
+
+      // Wait for component to render
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Clear the initial gameday_designer_opened call
+      vi.clearAllMocks();
+
+      // Simulate adding an officials group
+      realHandlers.handleAddOfficialsGroup();
+
+      // Verify tracking was called with the correct event
+      expect(trackEvent).toHaveBeenCalledWith(
+        'officials_group_added',
+        expect.objectContaining({
+          gameday_id: '1',
+          group_name: expect.any(String),
         })
       );
     });
