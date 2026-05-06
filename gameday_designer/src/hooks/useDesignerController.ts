@@ -457,6 +457,32 @@ export function useDesignerController(
     notifications,
   }), [highlightedElement, expandedFieldIds, expandedStageIds, showTournamentModal, canExport, flowState?.nodes?.length, flowState?.globalTeams?.length, flowState?.fields?.length, flowState?.saveTrigger, isLoading, notifications]);
 
+  const handleUpdateNode = useCallback((id: string, data: Record<string, unknown>) => {
+    if (!gamedayId) return;
+
+    const currentNode = flowStateRef.current?.nodes.find(n => n.id === id);
+
+    // Update the node
+    flowStateRef.current?.updateNode(id, data);
+
+    // Determine edit type based on node type
+    let editType = 'node_updated';
+    if (currentNode?.type === 'game') {
+      editType = 'game_modified';
+    } else if (currentNode?.type === 'stage') {
+      editType = 'stage_modified';
+    } else if (currentNode?.type === 'field') {
+      editType = 'field_modified';
+    }
+
+    // Track the edit event
+    trackEvent('gameday_edited', {
+      gameday_id: gamedayId,
+      edit_type: editType,
+      element_id: id,
+    });
+  }, [gamedayId]);
+
   const handlersInternal = useMemo(() => ({
     loadData,
     saveData,
@@ -469,7 +495,7 @@ export function useDesignerController(
     handleSaveTemplate,
     handleClearAll: () => flowStateRef.current?.clearAll(),
     handleUpdateMetadata: (data: Partial<GamedayMetadata>) => flowStateRef.current?.updateMetadata(data),
-    handleUpdateNode: (id: string, data: Record<string, unknown>) => flowStateRef.current?.updateNode(id, data),
+    handleUpdateNode,
     handleUpdateGlobalTeam: (id: string, data: Record<string, unknown>) => flowStateRef.current?.updateGlobalTeam(id, data),
     handleDeleteGlobalTeam: (id: string) => flowStateRef.current?.deleteGlobalTeam(id),
     handleReplaceGlobalTeam: (oldId: string, newTeamData: { id: number; text: string }) => flowStateRef.current?.replaceGlobalTeam(oldId, newTeamData),
@@ -502,10 +528,10 @@ export function useDesignerController(
     handleAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away', sourceGroup?: string) =>
       flowStateRef.current?.addStageToGameEdge(sourceStageId, sourceRank, targetGameId, targetSlot, sourceGroup),
   }), [
-    loadData, saveData, expandField, expandStage, handleHighlightElement, 
+    loadData, saveData, expandField, expandStage, handleHighlightElement,
     handleDynamicReferenceClick, handleImport, handleExport, handleSaveTemplate,
-    handleSwapTeams, handleGenerateTournament, showTournamentModal, 
-    dismissNotification, addNotification, onMetadataHighlight
+    handleSwapTeams, handleGenerateTournament, showTournamentModal,
+    dismissNotification, addNotification, onMetadataHighlight, handleUpdateNode
   ]);
 
   const memoizedState = useMemo(() => ({

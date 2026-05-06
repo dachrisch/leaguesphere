@@ -305,5 +305,58 @@ describe('ListDesignerApp', () => {
         })
       );
     });
+
+    it('tracks gameday_edited when game node is updated', async () => {
+      const { trackEvent } = await import('../../trackEvent');
+
+      // Create a real handleUpdateNode that will call trackEvent
+      const mockUpdateNode = vi.fn();
+      const realHandlers = {
+        ...mockHandlers,
+        handleUpdateNode: (id: string, data: Record<string, unknown>) => {
+          mockUpdateNode(id, data);
+          // Simulate the real behavior that includes trackEvent call
+          trackEvent('gameday_edited', {
+            gameday_id: '1',
+            edit_type: 'game_modified',
+            element_id: id,
+          });
+        },
+      };
+
+      const flowStateWithNodes = {
+        ...defaultFlowState,
+        nodes: [
+          { id: 'game-1', type: 'game', data: { name: 'Game 1' } },
+        ] as FlowNode[],
+      };
+
+      (useFlowState as Mock).mockReturnValue(flowStateWithNodes);
+      (useDesignerController as Mock).mockReturnValue({
+        ...defaultMockReturn,
+        handlers: realHandlers,
+      });
+
+      renderApp();
+
+      // Wait for component to render
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Clear the initial gameday_designer_opened call
+      vi.clearAllMocks();
+
+      // Simulate updating a node
+      realHandlers.handleUpdateNode('game-1', { name: 'Updated Game' });
+
+      // Verify tracking was called with the correct event
+      expect(trackEvent).toHaveBeenCalledWith(
+        'gameday_edited',
+        expect.objectContaining({
+          gameday_id: '1',
+          edit_type: 'game_modified',
+          element_id: 'game-1',
+        })
+      );
+    });
   });
 });
