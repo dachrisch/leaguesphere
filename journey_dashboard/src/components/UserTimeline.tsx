@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Journey, JourneyEvent } from '../types';
 import { fetchJourneys, fetchEvents } from '../utils/api';
+import { GamedayFunnel } from './GamedayFunnel';
+import { AdoptionMetrics } from './AdoptionMetrics';
+import './UserTimeline.css';
+
+type FeatureFilter = 'all' | 'gameday_designer' | 'passcheck' | 'scorecard';
 
 export const UserTimeline: React.FC = () => {
   const [journeys, setJourneys] = useState<Journey[]>([]);
   const [selectedJourneyId, setSelectedJourneyId] = useState<number | null>(null);
   const [events, setEvents] = useState<JourneyEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [featureFilter, setFeatureFilter] = useState<FeatureFilter>('all');
 
   useEffect(() => {
     const loadJourneys = async () => {
@@ -40,6 +46,25 @@ export const UserTimeline: React.FC = () => {
     }
   }, [selectedJourneyId]);
 
+  const filterEvents = (events: JourneyEvent[], filter: FeatureFilter): JourneyEvent[] => {
+    switch (filter) {
+      case 'gameday_designer':
+        return events.filter(
+          (e) => e.event_name.startsWith('gameday_') || e.event_name.startsWith('template_')
+        );
+      case 'passcheck':
+        return events.filter((e) => e.event_name.startsWith('passcheck_'));
+      case 'scorecard':
+        return events.filter((e) => e.event_name.startsWith('scorecard_'));
+      case 'all':
+      default:
+        return events;
+    }
+  };
+
+  const filteredEvents = filterEvents(events, featureFilter);
+  const gamedayEvents = filterEvents(events, 'gameday_designer');
+
   if (loading) return <div>Loading...</div>;
 
   return (
@@ -56,12 +81,34 @@ export const UserTimeline: React.FC = () => {
         ))}
       </select>
 
+      <div className="filter-controls">
+        <label htmlFor="feature-filter">Filter by Feature:</label>
+        <select
+          id="feature-filter"
+          value={featureFilter}
+          onChange={(e) => setFeatureFilter(e.target.value as FeatureFilter)}
+          className="feature-filter-select"
+        >
+          <option value="all">All Features</option>
+          <option value="gameday_designer">Gameday Designer</option>
+          <option value="passcheck">Passcheck</option>
+          <option value="scorecard">Scorecard</option>
+        </select>
+      </div>
+
+      {featureFilter === 'gameday_designer' && gamedayEvents.length > 0 && (
+        <div className="adoption-section">
+          <AdoptionMetrics events={gamedayEvents} />
+          <GamedayFunnel events={gamedayEvents} />
+        </div>
+      )}
+
       <div style={{ marginTop: '16px' }}>
-        {events.length === 0 ? (
+        {filteredEvents.length === 0 ? (
           <p>No events in this journey</p>
         ) : (
           <div style={{ borderLeft: '2px solid #1a73e8', paddingLeft: '16px' }}>
-            {events.map((event) => (
+            {filteredEvents.map((event) => (
               <div key={event.id} style={{ marginBottom: '16px', paddingBottom: '8px' }}>
                 <div style={{ fontWeight: 'bold', color: '#1a73e8' }}>
                   {event.event_name}

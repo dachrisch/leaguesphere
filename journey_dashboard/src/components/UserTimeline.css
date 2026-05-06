@@ -1,0 +1,86 @@
+.user-timeline {
+  padding: 16px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.user-timeline h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: #202124;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.user-timeline select {
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid #d3d3d3;
+  border-radius: 4px;
+  background-color: #fff;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.user-timeline select:hover {
+  border-color: #1a73e8;
+}
+
+.user-timeline select:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+}
+
+.filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.filter-controls label {
+  font-weight: 500;
+  color: #202124;
+  font-size: 14px;
+  margin: 0;
+}
+
+.feature-filter-select {
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid #d3d3d3;
+  border-radius: 4px;
+  background-color: #fff;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  min-width: 180px;
+}
+
+.feature-filter-select:hover {
+  border-color: #1a73e8;
+}
+
+.feature-filter-select:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+}
+
+.adoption-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e8e8e8;
+}
+
+.adoption-section > div {
+  margin-bottom: 24px;
+}
+
+.adoption-section > div:last-child {
+  margin-bottom: 0;
+}
