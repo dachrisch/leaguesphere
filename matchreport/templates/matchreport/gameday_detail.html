@@ -38,8 +38,35 @@
         <h2>Passcheck Spieler</h2>
     </div>
     <div aria-labelledby="headingPasscheckPlayer" class="collapse" id="collapsePasscheckPlayer">
-        <div class="card-body">
-            {{ info.passcheck_player_table | safe }}
+        <!-- Tab Buttons -->
+        <ul class="nav nav-tabs mb-3" role="tablist">
+          {% for team_name, team_data in info.passcheck_player_data.items %}
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link {% if forloop.first %}active{% endif %}"
+                data-bs-toggle="tab"
+                data-bs-target="#team-{{ forloop.counter }}"
+                type="button"
+                role="tab"
+              >
+                {{ team_name }} ({{ team_data.num_players }} Spieler)
+              </button>
+            </li>
+          {% endfor %}
+        </ul>
+        <!-- Tab Panels -->
+        <div class="card-body tab-content">
+          {% for team_name, team_data in info.passcheck_player_data.items %}
+            <div
+              class="tab-pane fade {% if forloop.first %}show active{% endif %}"
+              id="team-{{ forloop.counter }}"
+              role="tabpanel"
+            >
+              {{ team_data.player_table|safe }}
+            </div>
+          {% empty %}
+              <p>Es wurden keine Passchecks an diesem Spieltag durchgeführt.</p>
+          {% endfor %}
         </div>
     </div>
 </div>

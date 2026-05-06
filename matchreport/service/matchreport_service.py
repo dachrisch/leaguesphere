@@ -27,8 +27,13 @@ class MatchreportService:
         self.mmw = MachtreportModelWrapper(pk)
         self.gameday_pk = pk
 
-    def get_passcheck_player_details(self):
-        return self.mmw.passcheck_player_details_df
+    def get_passcheck_player_details(self, render_config):
+        data = self.mmw.get_gameday_passcheck_team_players_dict()
+
+        for key in data.keys():
+            data[key]["player_table"] = data[key]["player_table"].to_html(**render_config)
+
+        return data
 
     def get_staff_passcheck_details(self):
         return self.mmw.get_staff_passcheck_details()
@@ -37,16 +42,5 @@ class MatchreportService:
         return self.mmw.get_gameday_match_report(render_config=render_config)
 
     def get_staff_game_end_notes(self, gameinfo: str):
-        return (
-            GameSetup.objects.filter(gameinfo=gameinfo)
-            .values(
-                *[
-                    "gameinfo__officials__name",
-                    "homeCaptain",
-                    "awayCaptain",
-                    "note",
-                ]
-            )
-            .first()
-        )
+        return self.mmw.get_staff_game_end_notes(gameinfo)
 

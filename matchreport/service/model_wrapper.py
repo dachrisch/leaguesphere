@@ -5,10 +5,20 @@ from gamedays.models import Gameinfo, GameSetup, Person, Gameresult, GameOfficia
 from officials.models import OfficialLicenseHistory
 from passcheck.models import PasscheckVerification, PlayerlistGameday
 
+PLAYER_PASSCHECK_COLUMN_MAPPING = {
+    "gameday_jersey": "Trikotnr.",
+    "playerlist__team__description": "Spieler Team",
+    "playerlist__player__pass_number": "Passnummer",
+    "playerlist__player__person__first_name": "Vorname",
+    "playerlist__player__person__last_name": "Nachname",
+    "playerlist__player__person__year_of_birth": "Geburtsdatum",
+    "playerlist__player__person__sex": "Geschlecht",
+}
+
 
 class MachtreportModelWrapper:
 
-    def __init__(self, pk, additional_columns=[]):
+    def __init__(self, pk):
         gameinfo = Gameinfo.objects.filter(gameday_id=pk)
         if not gameinfo.exists():
             raise Gameinfo.DoesNotExist
@@ -18,14 +28,13 @@ class MachtreportModelWrapper:
             *(
                     [f.name for f in Gameinfo._meta.local_fields]
                     + ["officials__name"]
-                    + additional_columns
             )
         )
         )
         if self._gameinfo.empty:
             raise Gameinfo.DoesNotExist
 
-        self.passcheck_player_details_df = self.get_gameday_passcheck_details()
+        self.passcheck_player_details_df = self._get_gameday_passcheck_details()
 
     def get_staff_passcheck_details(self):
         column_mapping = {
@@ -52,32 +61,35 @@ class MachtreportModelWrapper:
 
         return passchecks.rename(columns=column_mapping)
 
-    def get_gameday_passcheck_details(self):
-        column_mapping = {
-            "gameday_jersey": "Trikotnr.",
-            "playerlist__team__name": "Spieler Team",
-            "playerlist__player__pass_number": "Passnummer",
-            "playerlist__player__person__first_name": "Vorname",
-            "playerlist__player__person__last_name": "Nachname",
-            "playerlist__player__person__year_of_birth": "Geburtsdatum",
-            "playerlist__player__person__sex": "Geschlecht",
-        }
+    def get_gameday_passcheck_team_players_dict(self) -> dict:
+        output_dict = {}
+
+        for team_name, df in self.passcheck_player_details_df.groupby("playerlist__team__description"):
+            output_dict[team_name] = {
+                "num_players": len(df),
+                "player_table": df.rename(columns=PLAYER_PASSCHECK_COLUMN_MAPPING),
+            }
+
+        return output_dict
+
+    def _get_gameday_passcheck_details(self):
+
 
         pass_check_players = pd.DataFrame(
             PlayerlistGameday.objects.filter(gameday_id=self.gameday.pk)
             .values(
-                *column_mapping.keys()
+                *PLAYER_PASSCHECK_COLUMN_MAPPING.keys()
             )
         )
         if pass_check_players.empty:
             # For youth leagues there are no pass checks therefore we can't return anything here.
-            return pd.DataFrame([])
+            return pd.DataFrame([], columns=list(PLAYER_PASSCHECK_COLUMN_MAPPING.keys()))
 
         sex_mapping_dict = {k: v for (k, v) in Person.SEX_CHOICES}
 
         pass_check_players.playerlist__player__person__sex = pass_check_players.playerlist__player__person__sex.apply(lambda x: sex_mapping_dict.get(x, "NA"))
 
-        return pass_check_players.rename(columns=column_mapping)
+        return pass_check_players
 
     def _get_staff_game_end_notes(self, gameinfo: str):
         return (
@@ -205,3 +217,17 @@ class MachtreportModelWrapper:
             })
 
         return games
+
+    def get_staff_game_end_notes(self, gameinfo):
+        return (
+            GameSetup.objects.filter(gameinfo=gameinfo)
+            .values(
+                *[
+                    "gameinfo__officials__name",
+                    "homeCaptain",
+                    "awayCaptain",
+                    "note",
+                ]
+            )
+            .first()
+        )

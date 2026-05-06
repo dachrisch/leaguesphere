@@ -66,7 +66,7 @@ class MatchreportGamedayDetailView(DetailView):
                 "text-center",
             ],
             "border": 0,
-            "justify": "left",
+            "justify": "center",
             "escape": False,
             "table_id": "schedule",
         }
@@ -85,20 +85,21 @@ class MatchreportGamedayDetailView(DetailView):
 
         passcheck_info_table = ""
         if self.request.user.is_staff:
-            passcheck_info_table = ms.get_staff_passcheck_details().to_html(
-                **render_configs
-            )
+            passcheck_info_table_df = ms.get_staff_passcheck_details()
+            passcheck_info_table = """<p>An diesem Spieltag gab es keine Passchecks</p>"""
+            if not passcheck_info_table_df.empty:
+                passcheck_info_table = passcheck_info_table_df.to_html(
+                    **render_configs
+                )
 
-        passcheck_player_table = ""
+        passcheck_player_data = {}
         if self.request.user.is_staff:
-            passcheck_player_table = """<p>An diesem Speiltag gab es keine Passchecks</p>"""
-            if not ms.get_passcheck_player_details().empty:
-                passcheck_player_table = ms.get_passcheck_player_details().to_html(**render_configs)
+            passcheck_player_data = ms.get_passcheck_player_details(render_configs)
 
         context["info"] = {
             "officials": officials,
             "passcheck_info_table": passcheck_info_table,
-            "passcheck_player_table": passcheck_player_table,
+            "passcheck_player_data": passcheck_player_data,
             "gameday_match_reports": ms.get_gameday_match_reports(render_configs),
         }
 
