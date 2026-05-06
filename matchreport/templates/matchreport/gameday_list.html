@@ -1,32 +1,67 @@
 {% extends "base.html" %}
 {% block content %}
 <h2><span class="badge bg-warning text-dark me-1" style="font-size: 0.65em; vertical-align: middle;">BETA</span>Spielberichtsbogen Lite</h2>
-<hr />
-<ul class="nav nav-pills mb-1">
+<div class="d-flex align-items-center gap-4 mb-3">
+  <div class="d-flex align-items-center gap-2">
+    <span class="text-muted small fw-semibold">Saison</span>
+    <ul class="nav nav-pills">
+      {% for year in years %}
+      <li class="nav-item">
+        <a class="nav-link py-1 {% if year == season %}active{% endif %}"
+           href="{% url season_year_pattern season=year %}">{{ year }}</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
 
-    {% for year in years %}
-    <li class="nav-item">
-        <a class="nav-link {% if year == season %}active{% endif %}"
-           href="{% url season_year_pattern season=year%}">{{ year }}</a>
-    </li>
-    {% endfor %}
-</ul>
-
-<ul class="nav nav-pills mb-3">
-    {% for league in leagues %}
-    <li class="nav-item">
-        <a class="nav-link {% if league == current_league %}active{% endif %}"
-           href="{% url season_year_league_pattern season=season league=league %}">{{ league }}</a>
-    </li>
-    {% endfor %}
-</ul>
-<hr />
-{% for gameday in gamedays %}
-<article class="media content-section">
-    <div class="media-body">
-        <i class="bi bi-list-columns-reverse"></i>
-        <a class="mr-2" href="{% url 'matchreport-gameday-detail' gameday.id %}">{{ gameday.name }} am {{ gameday.date }}</a> {{gameday.league.name}}
+  <div class="d-flex align-items-center gap-2">
+    <span class="text-muted small fw-semibold">Liga</span>
+    <div class="dropdown">
+      <button class="btn btn-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+        {{ current_league }}
+      </button>
+      <ul class="dropdown-menu">
+        {% for league in leagues %}
+        <li>
+          <a class="dropdown-item {% if league == current_league %}active{% endif %}"
+             href="{% url season_year_league_pattern season=season league=league %}">
+            {{ league }}
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
     </div>
-</article>
-{% endfor %}
+  </div>
+</div>
+<hr />
+<table class="table table-hover align-middle">
+  <thead class="table-light">
+    <tr>
+      <th>Spieltag</th>
+      <th>Datum</th>
+      <th>Liga</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for gameday in gamedays %}
+    <tr>
+      <td>{{ gameday.name }}</td>
+      <td class="text-muted">{{ gameday.date }}</td>
+      <td><span class="badge bg-secondary">{{ gameday.league.name }}</span></td>
+      <td class="text-end">
+        <a href="{% url 'matchreport-gameday-detail' gameday.id %}" class="btn btn-sm btn-outline-primary">Öffnen<i class="bi bi-chevron-right"></i></a>
+      </td>
+    </tr>
+        {% empty %}
+<tr>
+  <td colspan="4" class="text-center text-muted py-5">
+    <i class="bi bi-calendar-x fs-2 d-block mb-2"></i>
+    Keine Spieltage für diese Auswahl gefunden. Bitte wähle ein Jahr und eine Liga.
+  </td>
+</tr>
+    {% endfor %}
+  </tbody>
+</table>
 {% endblock content %}
+
