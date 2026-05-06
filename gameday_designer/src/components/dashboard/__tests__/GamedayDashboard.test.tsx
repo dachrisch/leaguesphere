@@ -195,9 +195,9 @@ describe('GamedayDashboard', () => {
     const { trackEvent } = await import('../../../trackEvent');
     const newGameday = { id: 99, name: 'New Gameday' };
 
-    (gamedayApi.createGameday as any).mockResolvedValue(newGameday);
-    (gamedayApi.listSeasons as any).mockResolvedValue([{ id: 1 }]);
-    (gamedayApi.listLeagues as any).mockResolvedValue([{ id: 1 }]);
+    (gamedayApi.createGameday as ReturnType<typeof vi.fn>).mockResolvedValue(newGameday);
+    (gamedayApi.listSeasons as ReturnType<typeof vi.fn>).mockResolvedValue([{ id: 1 }]);
+    (gamedayApi.listLeagues as ReturnType<typeof vi.fn>).mockResolvedValue([{ id: 1 }]);
 
     await renderDashboard();
 

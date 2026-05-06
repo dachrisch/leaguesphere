@@ -28,7 +28,7 @@ import './ListDesignerApp.css';
 const getSessionId = (): string => {
   let sessionId = sessionStorage.getItem('gameday_session_id');
   if (!sessionId) {
-    sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    sessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
     sessionStorage.setItem('gameday_session_id', sessionId);
   }
   return sessionId;
