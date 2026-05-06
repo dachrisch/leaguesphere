@@ -132,8 +132,15 @@ const ListDesignerApp: React.FC = () => {
       const games = await gamedayApi.getGamedayGames(parseInt(id));
       setGameResults(games);
       setResultsMode(true);
+      trackEvent('results_mode_entered', {
+        gameday_id: id,
+        game_count: games.length,
+      });
     } else {
       setResultsMode(false);
+      trackEvent('results_mode_exited', {
+        gameday_id: id,
+      });
     }
   }, [id, resultsMode, setGameResults, setResultsMode]);
 
@@ -237,6 +244,15 @@ const ListDesignerApp: React.FC = () => {
     }
     // Only run when ID changes. loadData is stable but we avoid any risk of loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  // Track designer opened event
+  useEffect(() => {
+    if (id) {
+      trackEvent('gameday_designer_opened', {
+        gameday_id: id,
+      });
+    }
   }, [id]);
 
   const handleOpenResultModal = useCallback((gameId: string) => {

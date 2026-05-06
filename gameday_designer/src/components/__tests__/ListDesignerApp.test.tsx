@@ -52,6 +52,11 @@ vi.mock('../../api/gamedayApi', () => ({
   },
 }));
 
+// Mock trackEvent
+vi.mock('../../trackEvent', () => ({
+  trackEvent: vi.fn(),
+}));
+
 const defaultFlowState = {
   nodes: [] as FlowNode[],
   edges: [] as FlowEdge[],
@@ -275,12 +280,26 @@ describe('ListDesignerApp', () => {
       await act(async () => {
         accordionButton.click();
       });
-      
+
       const clearButton = screen.getByTestId('clear-all-button');
       await act(async () => {
         clearButton.click();
       });
       expect(mockHandlers.handleClearAll).toHaveBeenCalled();
+    });
+  });
+
+  describe('ListDesignerApp - Event Tracking', () => {
+    it('tracks gameday_designer_opened when component mounts', async () => {
+      const { trackEvent } = await import('../../trackEvent');
+      renderApp();
+
+      // Wait for the component to mount and effect to run
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(trackEvent).toHaveBeenCalledWith('gameday_designer_opened', {
+        gameday_id: '1',
+      });
     });
   });
 });
