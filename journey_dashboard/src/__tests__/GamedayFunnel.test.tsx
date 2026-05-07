@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { calculateFunnel, GamedayFunnel, FunnelData } from '../components/GamedayFunnel';
+import { calculateFunnel, GamedayFunnel } from '../components/GamedayFunnel';
 import { JourneyEvent } from '../types';
 import React from 'react';
 import { render } from '@testing-library/react';

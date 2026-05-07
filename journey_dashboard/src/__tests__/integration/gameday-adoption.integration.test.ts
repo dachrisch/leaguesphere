@@ -10,7 +10,7 @@
  * - Template adoption path
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { JourneyEvent } from '../../types';
 import { calculateFunnel } from '../../components/GamedayFunnel';
 import { calculateMetrics } from '../../components/AdoptionMetrics';

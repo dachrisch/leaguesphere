@@ -53,7 +53,7 @@ export function calculateFunnel(events: JourneyEvent[]): FunnelData {
 }
 
 interface GamedayFunnelProps {
-  events: any[];
+  events: JourneyEvent[];
 }
 
 /**

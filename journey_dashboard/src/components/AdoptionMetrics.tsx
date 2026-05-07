@@ -37,7 +37,7 @@ export function calculateMetrics(events: JourneyEvent[]): MetricsData {
 }
 
 interface AdoptionMetricsProps {
-  events: any[];
+  events: JourneyEvent[];
 }
 
 /**
