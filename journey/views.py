@@ -63,7 +63,7 @@ class JourneyEventViewSet(viewsets.ModelViewSet):
         journey_id = self.request.query_params.get('journey')
         if journey_id:
             qs = qs.filter(journey_id=journey_id)
-        return qs.order_by('-created_at')
+        return qs.order_by('created_at')
 
     @action(detail=False, methods=['get'])
     def stats(self, request):

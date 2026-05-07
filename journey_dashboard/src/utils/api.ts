@@ -17,24 +17,24 @@ function getAuthHeader(): HeadersInit {
 
 export async function fetchJourneys(userId?: number): Promise<Journey[]> {
   const url = userId ? `${BASE_URL}/journeys/?user=${userId}` : `${BASE_URL}/journeys/`;
-  const res = await fetch(url, { 
+  const res = await fetch(url, {
     headers: getAuthHeader(),
     credentials: 'include'
   });
   if (!res.ok) throw new Error(`Failed to fetch journeys: ${res.statusText}`);
   const data = await res.json();
-  return data.results || [];
+  return Array.isArray(data) ? data : (data.results || []);
 }
 
 export async function fetchEvents(journeyId: number): Promise<JourneyEvent[]> {
   const url = `${BASE_URL}/events/?journey=${journeyId}`;
-  const res = await fetch(url, { 
+  const res = await fetch(url, {
     headers: getAuthHeader(),
     credentials: 'include'
   });
   if (!res.ok) throw new Error(`Failed to fetch events: ${res.statusText}`);
   const data = await res.json();
-  return data.results || [];
+  return Array.isArray(data) ? data : (data.results || []);
 }
 
 export async function fetchStats(): Promise<StatsResponse> {
@@ -76,7 +76,7 @@ export async function getGamedayEvents(userId: string): Promise<JourneyEvent[]> 
   if (!res.ok) throw new Error(`Failed to fetch events: ${res.statusText}`);
 
   const data = await res.json();
-  const allEvents = data.results || [];
+  const allEvents = Array.isArray(data) ? data : (data.results || []);
 
   return allEvents.filter((event: JourneyEvent) =>
     event.event_name.startsWith('gameday_') || event.event_name.startsWith('template_')
