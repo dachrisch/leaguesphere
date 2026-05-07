@@ -8,5 +8,5 @@ router.register(r'journeys', JourneyViewSet, basename='journey')
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('dashboard/', JourneyDashboardView.as_view(), name='dashboard'),
+    path('dashboard/', JourneyDashboardView.as_view(), name='journey-dashboard'),
 ]

@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Count
+from django.http import HttpResponseForbidden
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 
@@ -93,3 +94,31 @@ class JourneyViewSet(viewsets.ModelViewSet):
 class JourneyDashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'journey_dashboard/index.html'
     login_url = 'login'
+
+    def dispatch(self, request, *args, **kwargs):
+        """Check email authorization after login verification."""
+        # LoginRequiredMixin.dispatch() will redirect unauthenticated users to login
+        response = super().dispatch(request, *args, **kwargs)
+
+        # Only check email authorization if user is authenticated
+        # (dispatch will have already redirected if not)
+        if request.user.is_authenticated and not self._is_authorized_user(request):
+            return HttpResponseForbidden("You do not have access to this resource.")
+
+        return response
+
+    @staticmethod
+    def _is_authorized_user(request):
+        """
+        Check if user is authenticated and has @bumbleflies.de email.
+
+        Args:
+            request: The HTTP request object
+
+        Returns:
+            True if user is authorized, False otherwise
+        """
+        return (
+            request.user.is_authenticated
+            and request.user.email.endswith('@bumbleflies.de')
+        )
