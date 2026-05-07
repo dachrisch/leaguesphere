@@ -1,5 +1,6 @@
-from django.test import TestCase, Client
+from django.test import TestCase, Client, RequestFactory
 from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework.test import APITestCase
@@ -366,3 +367,63 @@ class GamedayEventPersistenceTests(APITestCase):
 
         retrieved_event = JourneyEvent.objects.get(id=event.id)
         self.assertEqual(retrieved_event.metadata, {})
+
+
+class JourneyMenuTestCase(TestCase):
+    """Test cases for Journey Dashboard menu authorization and display"""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.User = get_user_model()
+
+    def test_menu_shows_for_bumbleflies_email(self):
+        """Menu item should appear for @bumbleflies.de users"""
+        user = self.User.objects.create_user(
+            username='testuser',
+            email='test@bumbleflies.de',
+            password='pass'
+        )
+        request = self.factory.get('/')
+        request.user = user
+
+        from journey.menu import JourneyMenu
+        menu = JourneyMenu()
+        items = menu.get_menu_items(request)
+
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]['name'], 'Journey Dashboard')
+        self.assertIn('journey-dashboard', items[0]['url'])
+
+    def test_menu_hidden_for_other_email(self):
+        """Menu item should not appear for non-@bumbleflies.de users"""
+        user = self.User.objects.create_user(
+            username='otheruser',
+            email='user@example.com',
+            password='pass'
+        )
+        request = self.factory.get('/')
+        request.user = user
+
+        from journey.menu import JourneyMenu
+        menu = JourneyMenu()
+        items = menu.get_menu_items(request)
+
+        self.assertEqual(len(items), 0)
+
+    def test_menu_hidden_for_unauthenticated_user(self):
+        """Menu item should not appear for anonymous users"""
+        request = self.factory.get('/')
+        request.user = None
+
+        from journey.menu import JourneyMenu
+        menu = JourneyMenu()
+        items = menu.get_menu_items(request)
+
+        self.assertEqual(len(items), 0)
+
+    def test_menu_name_is_analytics(self):
+        """Menu group name should be 'Analytics'"""
+        from journey.menu import JourneyMenu
+        menu = JourneyMenu()
+
+        self.assertEqual(menu.get_name(), 'Analytics')
