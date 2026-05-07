@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import JourneyLayout from './components/JourneyLayout';
 import { SummaryCards } from './components/SummaryCards';
 import { TopActionsTable } from './components/TopActionsTable';
 import { UserTimeline } from './components/UserTimeline';
@@ -36,16 +37,18 @@ function App() {
   }, []);
 
   return (
-    <div className="app" style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
-      <h1>User Journey Dashboard</h1>
-      <p style={{ color: '#666', marginBottom: '24px' }}>
-        Track admin user actions and engagement patterns.
-      </p>
+    <JourneyLayout>
+      <div className="app" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <h1>User Journey Dashboard</h1>
+        <p style={{ color: '#666', marginBottom: '24px' }}>
+          Track admin user actions and engagement patterns.
+        </p>
 
-      <SummaryCards stats={stats} loading={loading} />
-      <TopActionsTable stats={stats} loading={loading} />
-      <UserTimeline />
-    </div>
+        <SummaryCards stats={stats} loading={loading} />
+        <TopActionsTable stats={stats} loading={loading} />
+        <UserTimeline />
+      </div>
+    </JourneyLayout>
   );
 }
 
