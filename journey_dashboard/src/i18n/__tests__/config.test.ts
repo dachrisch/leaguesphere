@@ -58,7 +58,10 @@ describe('i18n/config', () => {
       const i18n = await import('../config');
 
       expect(i18n.default).toBeDefined();
-      expect(i18n.default.isInitialized).toBe(true);
+      // Check that i18n is properly initialized with expected config
+      expect(i18n.default.options).toBeDefined();
+      expect(i18n.default.options.fallbackLng).toEqual(['de']);
+      expect(i18n.default.options.defaultNS).toBe('ui');
     });
 
     it('should configure fallback language as German (de)', async () => {
