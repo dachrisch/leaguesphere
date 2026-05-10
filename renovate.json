@@ -23,7 +23,9 @@
       "automerge": true
     },
     {
-      "matchPaths": ["pyproject.toml"],
+      "matchFileNames": [
+        "pyproject.toml"
+      ],
       "automerge": true
     }
   ]
