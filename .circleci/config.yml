@@ -96,7 +96,7 @@ jobs:
   python:
     docker:
       - image: cimg/python:3.14.3
-      - image: cimg/mysql:9.6
+      - image: cimg/mysql:9.7
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
           MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
@@ -213,7 +213,7 @@ jobs:
   e2e:
     docker:
       - image: cimg/python:3.14.3-node
-      - image: cimg/mysql:9.6
+      - image: cimg/mysql:9.7
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
           MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
