@@ -146,9 +146,8 @@ class LicenseCalculator:
 
 class ParticipationValidator:
     def __init__(self, course_license):
-        self.course = LicenseStrategy.COURSE_MAPPING(course_license).get(
-            "user_current_license"
-        )
+        course_map = LicenseStrategy.COURSE_MAPPING(course_license)
+        self.course = course_map.get("user_current_license") if course_map else None
 
     def fails_minimum_season_games(self, participant_license, minimum_season_games):
         return self._evaluate_requirement(

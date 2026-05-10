@@ -164,7 +164,10 @@ class GamedayDetailView(DetailView):
             if self.request.user.is_staff:
                 show_official_names = True
             elif self.request.user.username:
-                show_official_names = self.request.user.username in qualify_table
+                try:
+                    show_official_names = self.request.user.username in qualify_table
+                except TypeError:
+                    show_official_names = False
             from officials.service.signup_service import OfficialSignupService
 
             officials = OfficialSignupService.get_signed_up_officials(
