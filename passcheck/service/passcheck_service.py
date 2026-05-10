@@ -363,6 +363,8 @@ class PasscheckService:
         gameinfo = Gameinfo.objects.filter(
             officials_id=team, gameday__in=today_gamedays
         ).order_by("scheduled")
+        if not gameinfo.exists():
+            return {"completed": False}
         games_to_check = gameinfo.filter(scheduled__lte=gameinfo.first().scheduled)
         number_of_teams_to_check = games_to_check.count() * 2
         verified_teams = PasscheckVerification.objects.filter(
