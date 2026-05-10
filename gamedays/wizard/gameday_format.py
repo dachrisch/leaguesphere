@@ -32,7 +32,10 @@ class GamedayFormatStepHandler(WizardStepHandler):
         needed_teams = [group[SCHEDULE_MAP_TEAMS_C] for group in groups]
         number_groups = len(groups)
         if len(group_array) > 0 and len(group_array) != len(groups):
-            raise ValueError("ungleiche Anzahl an Gruppen!")
+            raise ValueError(
+                f"Mismatch in group count: schedule format requires {len(groups)} group(s), "
+                f"but {len(group_array)} group(s) were provided."
+            )
         formset = get_gameday_format_formset(
             extra=len(groups),
             needed_teams_list=needed_teams,
