@@ -121,6 +121,8 @@ class PasscheckService:
 
     def get_roster(self, team_id: int, year: int, gameday_id: int = None):
         team = self._get_team(team_id)
+        if team is None:
+            raise ValueError(f"Team {team_id} not found")
         years = (
             Playerlist.objects.filter(team=team)
             .exclude(gamedays__league__name=None)
