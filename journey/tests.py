@@ -393,7 +393,7 @@ class JourneyMenuTestCase(TestCase):
 
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0]['name'], 'Journey Dashboard')
-        self.assertIn('journey-dashboard', items[0]['url'])
+        self.assertEqual(items[0]['url'], reverse('journey-dashboard'))
 
     def test_menu_hidden_for_other_email(self):
         """Menu item should not appear for non-@bumbleflies.de users"""

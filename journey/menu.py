@@ -24,8 +24,7 @@ class JourneyMenu(BaseMenu):
         return [
             MenuItem.create(
                 name="Journey Dashboard",
-                url="/journey-dashboard/",
-                is_static=True,
+                url="journey-dashboard",
                 permissions=[]
             )
         ]
