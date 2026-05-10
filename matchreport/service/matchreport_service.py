@@ -14,6 +14,12 @@ class EmptyMatchReportService:
     def get_staff_passcheck_details(self):
         return EmptyPasscheckDetailsTable()
 
+    def get_passcheck_player_details(self, render_config):
+        return {}
+
+    def get_gameday_match_reports(self, render_config):
+        return []
+
 
 class MatchreportService:
     @classmethod
@@ -40,7 +46,4 @@ class MatchreportService:
 
     def get_gameday_match_reports(self, render_config):
         return self.mmw.get_gameday_match_report(render_config=render_config)
-
-    def get_staff_game_end_notes(self, gameinfo: str):
-        return self.mmw.get_staff_game_end_notes(gameinfo)
 

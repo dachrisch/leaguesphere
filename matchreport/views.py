@@ -1,7 +1,9 @@
 from datetime import datetime
 
 from django.conf import settings
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models.functions import ExtractYear
+from django.http import HttpResponseForbidden, HttpResponseNotAllowed, HttpResponse
 from django.shortcuts import render
 from django.views import View
 from django.views.generic import (
@@ -10,7 +12,6 @@ from django.views.generic import (
 
 from .constants import (
     MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
-    MATCHREPORT_GAMEDAY_LIST,
     MATCHREPORT_GAMEDAY_LIST_AND_YEAR
 )
 
@@ -48,9 +49,15 @@ class MatchreportGamedayListView(View):
             },
         )
 
-class MatchreportGamedayDetailView(DetailView):
+class MatchreportGamedayDetailView(UserPassesTestMixin, DetailView):
     template_name = "matchreport/gameday_detail.html"
     model = Gameday
+
+    def get(self, request, *args, **kwargs):
+        response = super().get(request, *args, **kwargs)
+        if not self.request.user.is_staff:
+            return HttpResponseForbidden()
+        return response
 
     def get_context_data(self, **kwargs):
         context = super(MatchreportGamedayDetailView, self).get_context_data()
@@ -70,9 +77,12 @@ class MatchreportGamedayDetailView(DetailView):
             "escape": False,
             "table_id": "schedule",
         }
+
+        is_staff = self.request.user.is_staff
+
         if "officials" in settings.INSTALLED_APPS:
             show_official_names = False
-            if self.request.user.is_staff:
+            if is_staff:
                 show_official_names = True
             from officials.service.signup_service import OfficialSignupService
 
@@ -83,24 +93,29 @@ class MatchreportGamedayDetailView(DetailView):
             officials = []
 
 
-        passcheck_info_table = ""
-        if self.request.user.is_staff:
+        passcheck_info_table = """<p>Du hast keine Berechtigung diese Seite zu sehen!</p>"""
+        passcheck_player_data = {}
+        gameday_match_reports = []
+        if is_staff:
             passcheck_info_table_df = ms.get_staff_passcheck_details()
             passcheck_info_table = """<p>An diesem Spieltag gab es keine Passchecks</p>"""
+
             if not passcheck_info_table_df.empty:
                 passcheck_info_table = passcheck_info_table_df.to_html(
                     **render_configs
                 )
 
-        passcheck_player_data = {}
-        if self.request.user.is_staff:
             passcheck_player_data = ms.get_passcheck_player_details(render_configs)
+            gameday_match_reports = ms.get_gameday_match_reports(render_configs)
 
         context["info"] = {
             "officials": officials,
             "passcheck_info_table": passcheck_info_table,
             "passcheck_player_data": passcheck_player_data,
-            "gameday_match_reports": ms.get_gameday_match_reports(render_configs),
+            "gameday_match_reports": gameday_match_reports,
         }
 
         return context
+
+    def test_func(self):
+        return self.request.user.is_staff
