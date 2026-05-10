@@ -41,15 +41,8 @@ from gamedays.service.gameday_service import (
 from gamedays.tests.setup_factories.db_setup import DBSetup
 from gamedays.tests.setup_factories.factories import (
     UserFactory,
-    GamedayFactory,
-    SeasonFactory,
 )
-from gamedays.wizard import FIELD_GROUP_STEP, GAMEDAY_FORMAT_STEP, GAMEINFO_STEP
-from league_table.tests.setup_factories.db_setup_leaguetable import LEAGUE_TABLE_TEST_RULESET
-from league_table.tests.setup_factories.factories_leaguetable import (
-    LeagueGroupFactory,
-    LeagueSeasonConfigFactory,
-)
+
 from matchreport.constants import MATCHREPORT_GAMEDAY_DETAIL
 
 
@@ -105,3 +98,15 @@ class TestMatchreportGamedayDetailView(TestCase):
         assert len(context["info"]["passcheck_player_data"]) == 0
         assert len(context["info"]["gameday_match_reports"]) == num_games
         assert len(context["info"]["officials"]) == 0
+
+    def test_matchreport_no_gameday_found(self):
+        self.client.force_login(UserFactory(is_staff=True))
+        resp = self.client.get(
+            reverse(
+                MATCHREPORT_GAMEDAY_DETAIL,
+                kwargs={
+                    "pk": 0
+                }
+            )
+        )
+        assert resp.status_code == HTTPStatus.NOT_FOUND

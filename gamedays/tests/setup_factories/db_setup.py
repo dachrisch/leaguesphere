@@ -660,6 +660,18 @@ class DBSetup:
                 author=author,
             )
 
+    def create_teamlog_flag(self, gameinfo, team, player, half, input_value):
+        TeamLogFactory(
+            gameinfo=gameinfo,
+            team=team,
+            half=half,
+            sequence=0,
+            event="Strafe",
+            player=player,
+            input=input_value,
+            author=gameinfo.gameday.author,
+        )
+
     def create_gamesetup(self, gameinfo):
         return GameSetupFactory(
             gameinfo=gameinfo,
