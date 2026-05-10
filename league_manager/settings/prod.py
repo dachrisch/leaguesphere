@@ -12,6 +12,7 @@ ALLOWED_HOSTS = [
     "stage.leaguesphere.app",
     "www.stage.leaguesphere.app",
     "leaguesphere.servyy-test.lxd",
+    "leaguesphere.lehel.xyz",
 ]
 CSRF_TRUSTED_ORIGINS = [
     "https://leaguesphere.app",
@@ -19,6 +20,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://stage.leaguesphere.app",
     "https://www.stage.leaguesphere.app",
     "https://leaguesphere.servyy-test.lxd",
+    "https://leaguesphere.lehel.xyz",
 ]
 
 # Sitemap domain for production
