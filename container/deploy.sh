@@ -221,21 +221,69 @@ if [ -z "$VERSION_ARG" ]; then
     exit 1
 fi
 
-# Generate release information
-PETNAME=$(petname 2>/dev/null || echo "unknown")
-get_release_type() {
-    case "$1" in
-        major|minor|patch) echo "prod" ;;
-        stage) echo "stage" ;;
-        demo) echo "demo" ;;
-        *) echo "" ;;
-    esac
-}
-RELEASE_TYPE=$(get_release_type "$VERSION_ARG")
-RELEASE_BRANCH="release/${RELEASE_TYPE}_${PETNAME}"
+# Determine current branch and deployment mode
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+IS_MASTER=0
+CREATE_RELEASE_BRANCH=0
+DEPLOY_BRANCH=""
 
-echo "Release branch: $RELEASE_BRANCH (petname: $PETNAME)"
-echo
+if [ "$BRANCH_MODE" = "worktree" ]; then
+    # Explicit branch provided via -b flag
+    CREATE_RELEASE_BRANCH=1
+    DEPLOY_BRANCH="$TARGET_BRANCH"
+elif [ "$CURRENT_BRANCH" = "master" ] || [ "$CURRENT_BRANCH" = "main" ]; then
+    # On master/main - create release branch
+    CREATE_RELEASE_BRANCH=1
+    DEPLOY_BRANCH="$CURRENT_BRANCH"
+    IS_MASTER=1
+else
+    # On feature branch - deploy from current branch, require master merge
+    echo "⚠️  Current branch: $CURRENT_BRANCH (not master)"
+    echo
+    echo "To deploy from a feature branch:"
+    echo "  1. Master must be merged into current branch"
+    echo "  2. Changes will be pushed to current branch (no release branch created)"
+    echo
+
+    # Check if master has been merged
+    if ! git merge-base --is-ancestor origin/master HEAD 2>/dev/null; then
+        echo "❌ Error: origin/master has not been merged into $CURRENT_BRANCH"
+        echo
+        echo "Please merge master first:"
+        echo "  git fetch origin"
+        echo "  git merge origin/master"
+        exit 1
+    fi
+
+    echo "✅ Master is merged into current branch"
+    echo "Deploying from: $CURRENT_BRANCH (version bump only, no release branch)"
+    echo
+
+    CREATE_RELEASE_BRANCH=0
+    DEPLOY_BRANCH="$CURRENT_BRANCH"
+fi
+
+# Generate release information only if creating release branch
+if [ $CREATE_RELEASE_BRANCH -eq 1 ]; then
+    PETNAME=$(petname 2>/dev/null || echo "unknown")
+    get_release_type() {
+        case "$1" in
+            major|minor|patch) echo "prod" ;;
+            stage) echo "stage" ;;
+            demo) echo "demo" ;;
+            *) echo "" ;;
+        esac
+    }
+    RELEASE_TYPE=$(get_release_type "$VERSION_ARG")
+    RELEASE_BRANCH="release/${RELEASE_TYPE}_${PETNAME}"
+
+    echo "Creating release branch: $RELEASE_BRANCH (petname: $PETNAME)"
+    echo
+else
+    RELEASE_BRANCH=""
+    echo "Deploying to current branch: $DEPLOY_BRANCH"
+    echo
+fi
 
 # Worktree mode setup
 if [ "$BRANCH_MODE" = "worktree" ]; then
