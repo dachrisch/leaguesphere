@@ -14,7 +14,7 @@ class GameResultProgressSerializer(serializers.ModelSerializer):
 class GameinfoProgressSerializer(serializers.ModelSerializer):
     """Serializes individual game within a gameday."""
 
-    gameresult = GameResultProgressSerializer(read_only=True)
+    gameresult = serializers.SerializerMethodField()
 
     class Meta:
         model = Gameinfo
@@ -28,6 +28,13 @@ class GameinfoProgressSerializer(serializers.ModelSerializer):
             'gameresult',
         ]
         read_only_fields = fields
+
+    def get_gameresult(self, obj):
+        """Return the first gameresult if it exists."""
+        result = obj.gameresult_set.first()
+        if result:
+            return GameResultProgressSerializer(result).data
+        return None
 
 
 class GamedayProgressSerializer(serializers.ModelSerializer):
