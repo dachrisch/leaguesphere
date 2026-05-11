@@ -188,7 +188,8 @@
       "live": "· {{count}} live",
       "pending": "· {{count}} offen",
       "minutesUntil": "{{minutes}} min",
-      "stale": "veraltet"
+      "stale": "veraltet",
+      "gamesScheduled": "{{count}} Spiele geplant"
     },
     "state": {
       "loading": "Lade Spielfortschritt...",
