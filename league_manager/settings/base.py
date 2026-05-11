@@ -1,7 +1,6 @@
 import os
 
 from django.contrib import messages
-
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 from dotenv import load_dotenv
 
@@ -29,7 +28,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.sites",
     "django.contrib.sitemaps",
-    "league_manager",
+    "league_manager.apps.LeagueManagerConfig",
     "rest_framework",
     "scorecard",
     "liveticker",
@@ -48,14 +47,22 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "league_manager.middleware.maintenance.MaintenanceModeMiddleware",
+    "league_manager.middleware.db_guard.DatabaseGuardMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "league_manager.middleware.maintenance.MaintenanceModeMiddleware",
 ]
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "league-manager-cache",
+    }
+}
 
 PAGES_LINKS = {
     "GENERIC_GAME_SCHEDULE_GOOGLE_SHEETS": "https://docs.google.com/spreadsheets/d/1YRZk1Gt4OzBVzUamRIktJOFrMhmvGMk0ziGxmeih-ZY/edit?usp=sharing",
@@ -78,6 +85,7 @@ TEMPLATES = [
                 "league_manager.context_processors.global_menu",
                 "league_manager.context_processors.version_number",
                 "league_manager.context_processors.pages_links",
+                "league_manager.context_processors.demo_mode",
             ],
         },
     },
@@ -175,15 +183,6 @@ MOODLE_URL = os.environ.get("MOODLE_URL")
 MOODLE_WSTOKEN = os.environ.get("MOODLE_WSTOKEN")
 EQUIPMENT_APPROVAL_ENDPOINT = os.environ.get("EQUIPMENT_APPROVAL_ENDPOINT")
 EQUIPMENT_APPROVAL_TOKEN = os.environ.get("EQUIPMENT_APPROVAL_TOKEN")
-
-MAINTENANCE_MODE = False
-MAINTENANCE_PAGES = [
-    "/gamedays/gameday/new/",
-    r"^/gamedays/gameday/\d+/update$",
-    "/passcheck/player/create",
-    r"^/passcheck/player/\d+/update$",
-    "/officials/gameday/sign-up",
-]
 
 LOGGING = {
     "version": 1,

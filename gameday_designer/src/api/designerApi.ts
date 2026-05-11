@@ -17,6 +17,14 @@ import type {
   TemplateUsage,
 } from '../types';
 
+export interface TeamRecord {
+  id: number;
+  name: string;
+  association_id?: number | null;
+  association_abbr?: string | null;
+  association_name?: string | null;
+}
+
 /**
  * API client class for Gameday Designer backend operations.
  */
@@ -59,11 +67,13 @@ class DesignerApi {
    * @param params - Optional filter parameters
    * @param params.association - Filter by association ID
    * @param params.search - Search query for template name
+   * @param params.sharing - Filter by sharing scope (personal/association/global)
    * @returns Paginated list of templates
    */
   async listTemplates(params?: {
     association?: number;
     search?: string;
+    sharing?: 'personal' | 'association' | 'global';
   }): Promise<PaginatedResponse<ScheduleTemplate>> {
     const response = await this.client.get<PaginatedResponse<ScheduleTemplate>>(
       '/templates/',
@@ -222,6 +232,46 @@ class DesignerApi {
     const response = await this.client.get<TemplateUsage>(
       `/templates/${id}/usage/`
     );
+    return response.data;
+  }
+
+  /**
+   * Create a new team.
+   *
+   * @param name - Team name
+   * @returns Created team with id and name
+   */
+  async createTeam(name: string): Promise<TeamRecord> {
+    const response = await this.client.post<TeamRecord>(
+      '/teams/',
+      { name }
+    );
+    return response.data;
+  }
+
+  /**
+   * Bulk-create teams.
+   *
+   * @param count - Number of teams to create
+   * @returns Array of created teams with id and name
+   */
+  async createTeamsBulk(count: number): Promise<TeamRecord[]> {
+    const response = await this.client.post<TeamRecord[]>(
+      '/teams/bulk/',
+      { count }
+    );
+    return response.data;
+  }
+
+  async getLeagueTeams(gamedayId: number): Promise<TeamRecord[]> {
+    const response = await this.client.get<TeamRecord[]>(
+      `/gamedays/${gamedayId}/league-teams/`
+    );
+    return response.data;
+  }
+
+  async getConfig(): Promise<{ mock_teams: boolean }> {
+    const response = await this.client.get<{ mock_teams: boolean }>('/config/');
     return response.data;
   }
 }

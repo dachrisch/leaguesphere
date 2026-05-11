@@ -1,12 +1,18 @@
 import datetime
+import sys
 
 from .base import *
 
+if not SECRET_KEY:
+    SECRET_KEY = "django-insecure-local-dev-key-set-SECRET_KEY-env-var-in-production"
+
 DEBUG = True
+MOCK_TEAMS = True
 DEBUG_DATE = datetime.date.today()
 # DEBUG_DATE = datetime.date(2026, 3, 21)
 
-DEBUG_TOOLBAR = True
+DEBUG_TOOLBAR = "pytest" not in sys.modules
+# DEBUG_TOOLBAR = True
 # DEBUG_TOOLBAR = False
 # PROFILING = True
 PROFILING = False
@@ -48,5 +54,20 @@ if DEBUG_TOOLBAR:
     MIDDLEWARE = MIDDLEWARE + [
         "debug_toolbar.middleware.DebugToolbarMiddleware",
     ]
+
+def show_toolbar(request):
+    """
+    Callback to determine whether to show the debug toolbar.
+    Returns False if the database is offline to prevent the toolbar
+    from attempting to query the database and causing a crash.
+    """
+    from django.core.cache import cache
+    if cache.get('db_connection_status') is False:
+        return False
+    return True
+
+DEBUG_TOOLBAR_CONFIG = {
+    'SHOW_TOOLBAR_CALLBACK': show_toolbar,
+}
 
 INTERNAL_IPS = ["127.0.0.1"]

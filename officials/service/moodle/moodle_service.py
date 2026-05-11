@@ -3,10 +3,9 @@ import math
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from time import time
-from datetime import datetime
+from typing import Any
 
 from django.conf import settings
-from django.core.exceptions import MultipleObjectsReturned
 from django.db import connections
 from django.db.models import QuerySet
 from django.urls import reverse
@@ -15,7 +14,6 @@ from gamedays.models import Association, Team
 from officials.models import OfficialLicenseHistory, Official
 from officials.service.boff_license_calculation import (
     LicenseCalculator,
-    LicenseStrategy,
 )
 from officials.service.moodle.moodle_api import (
     MoodleApi,
@@ -63,7 +61,7 @@ class MoodleService:
     def get_exams(self):
         return getattr(self._thread_local, "exams", EmptyApiExams())
 
-    def get_all_users_for_course(self, course_id) -> []:
+    def get_all_users_for_course(self, course_id) -> list[Any]:
         participants: ApiParticipants = self.moodle_api.get_participants_for_course(
             course_id
         )
@@ -76,8 +74,8 @@ class MoodleService:
         return self.moodle_api.get_courses(course_id).get_all()[0]
 
     @measure_execution_time
-    def update_licenses(self, course_ids: str = None):
-        courses: ApiCourses = self.moodle_api.get_courses(course_ids)
+    def update_licenses(self, course_ids: str = None, ignore_year=False):
+        courses: ApiCourses = self.moodle_api.get_courses(course_ids, ignore_year)
         missing_team_names = set()
         result_list = []
         missed_officials_list = []
@@ -91,24 +89,27 @@ class MoodleService:
             }
 
             for future in concurrent.futures.as_completed(futures):
-                course = futures[future]
                 team_name_set, missed_official, course_result = future.result()
                 missing_team_names.update(team_name_set)
                 missed_officials_list += missed_official
                 result_list += [course_result]
         connections.close_all()
 
+        missed_officials_messages = [item["message"] for item in missed_officials_list]
+        missed_officials_ids = [item["id"] for item in missed_officials_list]
+
         return {
             "items_result_list": len(result_list),
             "items_missed_officials": len(missed_officials_list),
             "result_list": result_list,
-            "missed_officials": missed_officials_list,
+            "missed_officials": missed_officials_messages,
+            "missed_officials_as_user_id": missed_officials_ids,
             "missing_team_names": sorted(missing_team_names),
         }
 
     def get_participants_from_course(self, course: ApiCourse):
         result = self.get_participants_from_course_with_time_measure(course)
-        team_name_set, missed_official, officials = result[0]
+        team_name_set, missed_official, officials, skip_reason = result[0]
         formatted_time = result[1]
         course_result = {
             "course": self._get_ahref_for_course(course.get_id(), course.get_name()),
@@ -116,20 +117,31 @@ class MoodleService:
             "officials_count": len(officials),
             "officials": officials,
         }
+        if skip_reason:
+            course_result["info"] = skip_reason
+
         return team_name_set, missed_official, course_result
 
     @measure_execution_time
     def get_participants_from_course_with_time_measure(self, course: ApiCourse):
-        if course.is_relevant():
-            year = datetime.today().year
-            self.license_history = OfficialLicenseHistory.objects.filter(
-                created_at__year=year
+        if not course.is_relevant():
+            return (
+                set(),
+                [],
+                [],
+                f"Kurs als nicht relevant markiert -> Kurs-Enddatum: {course.end_date} / Kurs-Lizenzstufe: {LicenseCalculator.get_license_name(course.get_license_id())}",
             )
-            exams = self.moodle_api.get_exams_for_course(course.get_id())
-            if not exams.is_empty():
-                self.set_exams(exams)
-                return self.get_participants_from_relevant_course(course)
-        return set(), [], []
+        self.license_history = OfficialLicenseHistory.objects.filter(
+            created_at__year=course.get_year()
+        )
+        exams = self.moodle_api.get_exams_for_course(course.get_id())
+        if exams.is_empty():
+            return set(), [], [], "Kurs hat kein Quiz (oder keine Ergenisse im Quiz) mit Namen 'Lizenzprüfung' oder 'Exam'."
+        self.set_exams(exams)
+        missing_teams_list, missed_officials_list, result_list = (
+            self.get_participants_from_relevant_course(course)
+        )
+        return missing_teams_list, missed_officials_list, result_list, None
 
     def get_participants_from_relevant_course(self, course):
         participants: ApiParticipants = self.moodle_api.get_participants_for_course(
@@ -154,19 +166,36 @@ class MoodleService:
             team_description = user_info.get_team()
         except FieldNotFoundException as exception:
             missed_officials = [
-                f"ERROR --- XXX -> {self._get_ahref_for_course(course.get_id())}: {self._get_ahref_for_moodle_profile(user_info.id)} - {user_info.get_last_name()} "
-                f"-> {exception}"
+                {
+                    "id": user_info.id,
+                    "message": f"ERROR --- XXX -> {self._get_ahref_for_course(course.get_id())}: {self._get_ahref_for_moodle_profile(user_info.id)} - {user_info.get_last_name()} "
+                    f"-> {exception}",
+                }
             ]
             return None, missed_officials, []
         team: Team = self._get_first(Team.objects.filter(description=team_description))
         if team is None:
             missed_officials = [
-                f"{self._get_ahref_for_moodle_profile(course.get_id())}: {self._get_ahref_for_moodle_profile(user_info.id)} - {user_info.get_last_name()} "
-                f"-> fehlendes Team: {team_description}"
+                {
+                    "id": user_info.id,
+                    "message": f"{self._get_ahref_for_moodle_profile(course.get_id())}: {self._get_ahref_for_moodle_profile(user_info.id)} - {user_info.get_last_name()} "
+                    f"-> fehlendes Team: {team_description}",
+                }
             ]
             return team_description, missed_officials, []
         else:
-            official = self.create_new_or_update_existing_official(user_info)
+            try:
+                official = self.create_new_or_update_existing_official(user_info)
+            except Association.DoesNotExist:
+                missed_officials = [
+                    {
+                        "id": user_info.id,
+                        "message": f"{self._get_ahref_for_moodle_profile(course.get_id())}: {self._get_ahref_for_moodle_profile(user_info.id)} - {user_info.get_last_name()} "
+                        f"-> Association nicht gefunden: {user_info.get_association()}",
+                    }
+                ]
+                return team_description, missed_officials, []
+
         license_history = self.create_new_or_update_license_history(
             official, course, user_info
         )
@@ -251,11 +280,6 @@ class MoodleService:
 
     # noinspection PyMethodMayBeStatic
     def _get_first(self, query_set: QuerySet):
-        if query_set.count() > 1:
-            raise MultipleObjectsReturned(
-                f"For the following QuerySet multiple items found {query_set} "
-                f"with WHERE-clause {query_set.query.where}"
-            )
         return query_set.first()
 
     def get_user_info_by(self, external_id) -> ApiUserInfo:

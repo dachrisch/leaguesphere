@@ -19,22 +19,31 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth import views as auth_view
 from django.contrib.sitemaps.views import sitemap
+from django.http import JsonResponse
 from django.urls import path, include
-from django.views.generic import TemplateView
+from django.views import View
+from django.views.generic import TemplateView, RedirectView
 
-from health_check.views import HealthCheckView as _BaseHealthCheckView
-
-
-class HealthCheckView(_BaseHealthCheckView):
-    checks = [
-        "health_check.checks.Cache",
-        "health_check.checks.Database",
-        "health_check.checks.DNS",
-        "health_check.checks.Storage",
-    ]
+from gamedays.constants import LEAGUE_GAMEDAY_LIST
+from league_manager.constants import LEAGUE_MANAGER_MAINTENANCE, CLEAR_CACHE
 
 
-from league_manager.views import homeview, ClearCacheView, robots_txt_view
+class HealthCheckView(View):
+    """
+    Simple synchronous health check endpoint.
+
+    Replaced async health_check.views.HealthCheckView which caused
+    gunicorn worker deadlocks when running under sync WSGI with
+    async-to-sync bridge (asgiref). The complex health checks
+    would hang indefinitely, triggering worker timeouts and
+    cascading failures.
+    """
+
+    def get(self, request):
+        return JsonResponse({"status": "healthy"})
+
+
+from league_manager.views import ClearCacheView, robots_txt_view, database_error_view, DemoInfoView
 from league_manager.sitemaps import (
     StaticViewSitemap,
     LeaguetableSitemap,
@@ -42,11 +51,6 @@ from league_manager.sitemaps import (
     PasscheckTeamSitemap,
     OfficialsSitemap,
 )
-
-ADMIN_ALL_URLS = "admin-all-urls"
-CLEAR_CACHE = "clear-cache"
-
-LEAGUE_MANAGER_MAINTENANCE = "maintenance"
 
 # Sitemap configuration
 sitemaps = {
@@ -72,6 +76,7 @@ urlpatterns = [
     ),
     path("clear-cache/", ClearCacheView.as_view(), name=CLEAR_CACHE),
     path("admin/", admin.site.urls),
+    path("database-error/", database_error_view, name="database-error"),
     # ToDo: fix gameday urls
     path("api/", include("gamedays.api.urls")),
     path("api/designer/", include("gameday_designer.urls")),
@@ -88,7 +93,8 @@ urlpatterns = [
     path("passcheck/", include("passcheck.urls")),
     path("matchreport/", include("matchreport.urls")),
     path("dal/", include("league_manager.dal.urls")),
-    path("", homeview),
+    path("demo-info/", DemoInfoView.as_view(), name="demo_info"),
+    path("", RedirectView.as_view(pattern_name=LEAGUE_GAMEDAY_LIST, permanent=True)),
     path(
         "login/",
         auth_view.LoginView.as_view(template_name="registration/login.html"),
@@ -104,7 +110,7 @@ urlpatterns = [
     path(r"health/", HealthCheckView.as_view()),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-if settings.DEBUG:
+if getattr(settings, "DEBUG_TOOLBAR", False):
     import debug_toolbar
 
     urlpatterns = [

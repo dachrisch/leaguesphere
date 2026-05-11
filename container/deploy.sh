@@ -3,7 +3,7 @@
 set -e
 
 show_help() {
-    echo "Usage: $0 [-b <branch>] [-r <remote>] [major|minor|patch|stage]"
+    echo "Usage: $0 [-b <branch>] [-r <remote>] [major|minor|patch|stage|demo]"
     echo
     echo "Flags:"
     echo "  -b, --branch <branch>   Deploy from specified branch via worktree"
@@ -14,10 +14,12 @@ show_help() {
     echo "  minor     Bump the minor version (production)"
     echo "  patch     Bump the patch version (production)"
     echo "  stage     Create/increment staging RC version"
+    echo "  demo      Create/increment demo version"
     echo "  -h, --help  Show this help message and exit"
     echo
     echo "Examples:"
-    echo "  $0 stage                      # Current branch (existing)"
+    echo "  $0 stage                      # Current branch (staging/RC)"
+    echo "  $0 demo                       # Current branch (demo)"
     echo "  $0 -b upstream/master patch   # Worktree from upstream/master"
     echo "  $0 -b origin/master stage     # RC version via worktree"
     echo "  $0 -r upstream major          # Push to upstream remote"
@@ -66,11 +68,11 @@ create_worktree() {
     local random=$(head -c 4 /dev/urandom | xxd -p)
     local worktree_path="/tmp/leaguesphere-deploy-${timestamp}-${random}"
 
-    echo "Creating worktree at: $worktree_path"
-    echo "From branch: $branch"
+    echo "Creating worktree at: $worktree_path" >&2
+    echo "From branch: $branch" >&2
 
-    if ! git worktree add "$worktree_path" "$branch"; then
-        echo "Error: Failed to create worktree"
+    if ! git worktree add "$worktree_path" "$branch" >&2; then
+        echo "Error: Failed to create worktree" >&2
         exit 1
     fi
 
@@ -85,20 +87,20 @@ cleanup_worktree() {
         return 0
     fi
 
-    echo "Cleaning up worktree: $worktree_path"
+    echo "Cleaning up worktree: $worktree_path" >&2
 
     # Try to remove worktree using git
     if git worktree remove "$worktree_path" --force 2>/dev/null; then
-        echo "Worktree removed successfully"
+        echo "Worktree removed successfully" >&2
         return 0
     fi
 
     # Fallback: manual cleanup
-    echo "Attempting manual cleanup..."
+    echo "Attempting manual cleanup..." >&2
     rm -rf "$worktree_path" 2>/dev/null || true
     git worktree prune 2>/dev/null || true
 
-    echo "Cleanup complete"
+    echo "Cleanup complete" >&2
 }
 
 # Parse flags
@@ -132,7 +134,7 @@ while [[ $# -gt 0 ]]; do
             show_help
             exit 0
             ;;
-        major|minor|patch|stage)
+        major|minor|patch|stage|demo)
             VERSION_ARG="$1"
             shift
             break
@@ -151,6 +153,22 @@ if [ -z "$VERSION_ARG" ]; then
     show_help
     exit 1
 fi
+
+# Generate release information
+PETNAME=$(petname 2>/dev/null || echo "unknown")
+get_release_type() {
+    case "$1" in
+        major|minor|patch) echo "prod" ;;
+        stage) echo "stage" ;;
+        demo) echo "demo" ;;
+        *) echo "" ;;
+    esac
+}
+RELEASE_TYPE=$(get_release_type "$VERSION_ARG")
+RELEASE_BRANCH="release/${RELEASE_TYPE}_${PETNAME}"
+
+echo "Release branch: $RELEASE_BRANCH (petname: $PETNAME)"
+echo
 
 # Worktree mode setup
 if [ "$BRANCH_MODE" = "worktree" ]; then
@@ -174,7 +192,63 @@ case "$VERSION_ARG" in
         if [ -d "../league_manager" ]; then
             cd ..
         fi
-        bump-my-version bump "$VERSION_ARG" && git push $REMOTE && git push $REMOTE --tags
+
+        # Read current version
+        CURRENT_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
+        echo "Current version: $CURRENT_VERSION"
+
+        # Extract base version (remove any +demo.X or -rc.X suffix)
+        BASE_VERSION="${CURRENT_VERSION%%+*}"
+        BASE_VERSION="${BASE_VERSION%%-*}"
+
+        echo "Base version: $BASE_VERSION"
+
+        # Parse version components
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
+
+        # Bump version based on argument
+        case "$VERSION_ARG" in
+            major)
+                NEW_MAJOR=$((MAJOR + 1))
+                NEW_VERSION="${NEW_MAJOR}.0.0"
+                ;;
+            minor)
+                NEW_MINOR=$((MINOR + 1))
+                NEW_VERSION="${MAJOR}.${NEW_MINOR}.0"
+                ;;
+            patch)
+                NEW_PATCH=$((PATCH + 1))
+                NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+                ;;
+        esac
+
+        echo "Creating version: $NEW_VERSION"
+
+        # Update version files directly
+        sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" league_manager/__init__.py
+        sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" liveticker/package.json
+        sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
+        sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
+        sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
+        sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
+        sed -i "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
+
+        # Regenerate uv.lock to match updated pyproject.toml
+        echo "Regenerating uv.lock..."
+        uv lock
+
+        # Commit and tag
+        git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json pyproject.toml uv.lock
+        git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
+        git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
+
+        # Push commits and tags to release branch
+        git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags
+
+        # Show new version
+        FINAL_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
+        echo "✅ Production release deployed: $FINAL_VERSION"
+        echo "Release branch: $RELEASE_BRANCH"
         ;;
     stage)
         # Staging deployment - create/increment RC version
@@ -241,12 +315,83 @@ case "$VERSION_ARG" in
             git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         fi
 
-        # Push commits and tags
-        git push $REMOTE && git push $REMOTE --tags
+        # Push commits and tags to release branch
+        git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags
 
         # Show new version
         NEW_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
         echo "✅ Staging deployment triggered: $NEW_VERSION"
+        echo "Release branch: $RELEASE_BRANCH"
+        ;;
+    demo)
+        # Demo deployment - create/increment demo version
+        # If running from container/ directory, go to root
+        if [ -d "../league_manager" ]; then
+            cd ..
+        fi
+
+        # Read current version
+        CURRENT_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
+        echo "Current version: $CURRENT_VERSION"
+
+        # Determine bump strategy
+        if [[ $CURRENT_VERSION =~ \+demo\.([0-9]+)$ ]]; then
+            # Already on demo version - bump demo_build (e.g., 3.11.3+demo.1 → 3.11.3+demo.2)
+            echo "Incrementing demo build number..."
+            DEMO_NUM="${BASH_REMATCH[1]}"
+            NEW_DEMO=$((DEMO_NUM + 1))
+            BASE_VERSION="${CURRENT_VERSION%+demo.*}"
+            NEW_VERSION="${BASE_VERSION}+demo.${NEW_DEMO}"
+
+            echo "Creating version: $NEW_VERSION"
+
+            sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" league_manager/__init__.py
+            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" liveticker/package.json
+            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
+            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
+            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
+            sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
+            sed -i "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
+
+            echo "Regenerating uv.lock..."
+            uv lock
+
+            git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json pyproject.toml uv.lock
+            git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
+            git tag -af "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
+        else
+            # Non-demo version - create demo.1 (e.g., 3.11.3 → 3.11.3+demo.1)
+            echo "Creating initial demo version..."
+            NEW_VERSION="${CURRENT_VERSION}+demo.1"
+
+            echo "Creating version: $NEW_VERSION"
+
+            # Update version files directly
+            sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" league_manager/__init__.py
+            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" liveticker/package.json
+            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
+            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
+            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
+            sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
+            sed -i "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
+
+            # Regenerate uv.lock to match updated pyproject.toml
+            echo "Regenerating uv.lock..."
+            uv lock
+
+            # Commit and tag
+            git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json pyproject.toml uv.lock
+            git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
+            git tag -af "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
+        fi
+
+        # Push commits and tags to release branch
+        git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags
+
+        # Show new version
+        NEW_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
+        echo "✅ Demo deployment triggered: $NEW_VERSION"
+        echo "Release branch: $RELEASE_BRANCH"
         ;;
     *)
         echo "Error: Invalid option '$VERSION_ARG'"
