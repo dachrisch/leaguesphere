@@ -69,7 +69,7 @@ export const UserTimeline: React.FC = () => {
     if (!dateStr) return 'active';
     try {
       return new Date(dateStr).toLocaleString();
-    } catch (e) {
+    } catch {
       return dateStr;
     }
   };
