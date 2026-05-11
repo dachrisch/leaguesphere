@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { beforeEach } from 'vitest';
+import { I18nextProvider } from 'react-i18next';
 import ProgressGameDayCard from '../cards/ProgressGameDayCard';
 import type { GamedayProgress } from '../../../api/gameProgressApi';
 import type { GamedaySummary } from '../../../types/progress';
@@ -10,6 +11,15 @@ describe('ProgressGameDayCard', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('en');
   });
+
+  const renderWithI18n = (component: React.ReactElement) => {
+    return render(
+      <I18nextProvider i18n={i18n}>
+        {component}
+      </I18nextProvider>
+    );
+  };
+
   const mockGameday: GamedayProgress = {
     id: 1,
     name: 'Spieltag 1',
@@ -64,17 +74,17 @@ describe('ProgressGameDayCard', () => {
   };
 
   test('renders gameday name', () => {
-    render(<ProgressGameDayCard gameday={mockGameday} summary={mockSummary} />);
+    renderWithI18n(<ProgressGameDayCard gameday={mockGameday} summary={mockSummary} />);
     expect(screen.getByText('Spieltag 1')).toBeInTheDocument();
   });
 
   test('renders gameday date', () => {
-    render(<ProgressGameDayCard gameday={mockGameday} summary={mockSummary} />);
+    renderWithI18n(<ProgressGameDayCard gameday={mockGameday} summary={mockSummary} />);
     expect(screen.getByText(/10|05/)).toBeInTheDocument();
   });
 
   test('renders league display in subtitle', () => {
-    const { container } = render(
+    const { container } = renderWithI18n(
       <ProgressGameDayCard gameday={mockGameday} summary={mockSummary} />
     );
     const subtitle = container.querySelector('div[class*="gameDayCardSubtitle"]');
@@ -82,7 +92,7 @@ describe('ProgressGameDayCard', () => {
   });
 
   test('renders segment bar for each game', () => {
-    const { container } = render(
+    const { container } = renderWithI18n(
       <ProgressGameDayCard gameday={mockGameday} summary={mockSummary} />
     );
     const segmentBars = container.querySelectorAll('div[class*="segmentBar"]');
@@ -90,7 +100,7 @@ describe('ProgressGameDayCard', () => {
   });
 
   test('renders correct number of games info', () => {
-    const { container } = render(
+    const { container } = renderWithI18n(
       <ProgressGameDayCard gameday={mockGameday} summary={mockSummary} />
     );
     const stats = container.querySelector('div[class*="gameDayCardStats"]');
@@ -105,12 +115,12 @@ describe('ProgressGameDayCard', () => {
       games: [],
     };
 
-    render(<ProgressGameDayCard gameday={emptyGameday} summary={mockSummary} />);
+    renderWithI18n(<ProgressGameDayCard gameday={emptyGameday} summary={mockSummary} />);
     expect(screen.getByText('Spieltag 1')).toBeInTheDocument();
   });
 
   test('renders card container', () => {
-    const { container } = render(
+    const { container } = renderWithI18n(
       <ProgressGameDayCard gameday={mockGameday} summary={mockSummary} />
     );
     const card = container.querySelector('div');
