@@ -67,14 +67,20 @@ const GamedayCard: React.FC<GamedayCardProps> = ({ gameday, isLive = false }) =>
       {isLive && <ProgressBar total={stats.total} played={stats.played} live={stats.live} />}
 
       <div className={styles.cardStats}>
-        <span>
-          {t('ui:gameProgress.card.played', { played: stats.played, total: stats.total })}
-        </span>
-        {stats.live > 0 && (
-          <span className={styles.liveCount}>{t('ui:gameProgress.card.live', { count: stats.live })}</span>
-        )}
-        {stats.pending > 0 && (
-          <span className={styles.pendingCount}>{t('ui:gameProgress.card.pending', { count: stats.pending })}</span>
+        {gameday.minutesUntilStart === undefined && stats.played === 0 && stats.live === 0 ? (
+          <span>{t('ui:gameProgress.card.gamesScheduled', { count: stats.total })}</span>
+        ) : (
+          <>
+            <span>
+              {t('ui:gameProgress.card.played', { played: stats.played, total: stats.total })}
+            </span>
+            {stats.live > 0 && (
+              <span className={styles.liveCount}>{t('ui:gameProgress.card.live', { count: stats.live })}</span>
+            )}
+            {stats.pending > 0 && (
+              <span className={styles.pendingCount}>{t('ui:gameProgress.card.pending', { count: stats.pending })}</span>
+            )}
+          </>
         )}
         {isLive && <span className={styles.percentComplete}>{stats.percentComplete}%</span>}
       </div>
