@@ -13,6 +13,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ListDesignerApp from './components/ListDesignerApp';
 import GamedayDashboard from './components/dashboard/GamedayDashboard';
+import GameProgressPage from './components/game-progress/GameProgressPage';
 import MainLayout from './components/layout/MainLayout';
 import { GamedayProvider } from './context/GamedayContext';
 
@@ -20,7 +21,12 @@ import { GamedayProvider } from './context/GamedayContext';
  * Main App component for Gameday Designer.
  */
 const App: React.FC = () => {
-  const basename = import.meta.env.DEV ? '/' : '/gamedays/gameday/design';
+  const isProgressPage = window.location.pathname.startsWith('/gamedays/progress');
+  let basename = import.meta.env.DEV ? '/' : '/gamedays/gameday/design';
+  if (isProgressPage) {
+    basename = import.meta.env.DEV ? '/' : '/gamedays/progress';
+  }
+
   const mountEl = document.getElementById('gameday-designer');
   const currentUserId = parseInt(mountEl?.dataset.userId ?? '0', 10);
 
@@ -28,10 +34,14 @@ const App: React.FC = () => {
     <BrowserRouter basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <GamedayProvider currentUserId={currentUserId}>
         <Routes>
-          <Route path="/" element={<MainLayout />}>
-            <Route index element={<GamedayDashboard />} />
-            <Route path="designer/:id" element={<ListDesignerApp />} />
-          </Route>
+          {isProgressPage ? (
+            <Route path="/" element={<GameProgressPage />} />
+          ) : (
+            <Route path="/" element={<MainLayout />}>
+              <Route index element={<GamedayDashboard />} />
+              <Route path="designer/:id" element={<ListDesignerApp />} />
+            </Route>
+          )}
         </Routes>
       </GamedayProvider>
     </BrowserRouter>
