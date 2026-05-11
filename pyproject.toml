@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "leaguesphere"
-version = "3.14.1-rc.6"
+version = "3.15.0"
 requires-python = ">=3.12"
 dependencies = [
     "Django==6.0.5",
@@ -48,9 +48,7 @@ prod = [
 [tool.setuptools.packages.find]
 include = [
     "accounts*",
-    "gameday_designer*",
     "gamedays*",
-    "journey*",
     "league_manager*",
     "league_table*",
     "liveticker*",
@@ -63,7 +61,7 @@ include = [
 ]
 
 [tool.bumpversion]
-current_version = "3.14.1-rc.6"
+current_version = "3.15.0"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)(\\-rc\\.(?P<rc_build>\\d+))?"
 serialize = [
     "{major}.{minor}.{patch}-rc.{rc_build}",
