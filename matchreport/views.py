@@ -20,7 +20,7 @@ from .service.matchreport_service import MatchreportService
 
 
 # Create your views here.
-class MatchreportGamedayListView(View):
+class MatchreportGamedayListView(UserPassesTestMixin, View):
     template_name = "matchreport/gameday_list.html"
 
     def get(self, request, **kwargs):
@@ -48,6 +48,9 @@ class MatchreportGamedayListView(View):
                 "season_year_league_pattern": MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
             },
         )
+
+    def test_func(self):
+        return self.request.user.is_staff
 
 class MatchreportGamedayDetailView(UserPassesTestMixin, DetailView):
     template_name = "matchreport/gameday_detail.html"
