@@ -54,7 +54,8 @@ class GameProgressViewSet(viewsets.ReadOnlyModelViewSet):
             'league',
             'season',
         ).prefetch_related(
-            'gameinfo_set__gameresult',
+            'gameinfo_set',
+            'gameinfo_set__gameresult_set',
         )
 
         return queryset
