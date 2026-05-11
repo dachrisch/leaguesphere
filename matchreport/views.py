@@ -92,7 +92,6 @@ class MatchreportGamedayDetailView(UserPassesTestMixin, DetailView):
         else:
             officials = []
 
-
         passcheck_info_table = """<p>Du hast keine Berechtigung diese Seite zu sehen!</p>"""
         passcheck_player_data = {}
         gameday_match_reports = []
