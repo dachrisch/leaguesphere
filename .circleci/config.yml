@@ -201,11 +201,7 @@ jobs:
           command: npm --prefix gameday_designer/ run test:run
       - run:
           name: "JavaScript Linter"
-          command: |
-            mkdir -p /tmp/eslint
-            npm --prefix gameday_designer/ run eslint:junit
-      - store_test_results:
-          path: /tmp/eslint
+          command: npm --prefix gameday_designer/ run eslint
       - run:
           name: "JavaScript Build"
           command: npm --prefix gameday_designer/ run build
