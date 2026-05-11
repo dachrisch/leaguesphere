@@ -3,8 +3,9 @@
  */
 
 export interface GameResult {
-  home_score: number | null;
-  guest_score: number | null;
+  fh: number | null;
+  sh: number | null;
+  pa: number | null;
 }
 
 export interface GameInfo {
@@ -30,6 +31,20 @@ export interface GamedayProgress {
   games: GameInfo[];
 }
 
+export interface GamedayStats {
+  total: number;
+  played: number;
+  live: number;
+  pending: number;
+  percentComplete: number;
+}
+
+export interface GamedayWithStats extends GamedayProgress {
+  stats: GamedayStats;
+  minutesUntilStart?: number;
+  isStale?: boolean;
+}
+
 export type GamedayCategory = 'live' | 'soon' | 'today' | 'recent' | 'upcoming';
 
 export interface GameProgressState {
@@ -38,13 +53,19 @@ export interface GameProgressState {
   gamedays: GamedayProgress[];
 
   // Categorized groupings
-  live: GamedayProgress[];
-  soon: GamedayProgress[];
-  today: GamedayProgress[];
-  recent: GamedayProgress[];
-  upcoming: GamedayProgress[];
+  live: GamedayWithStats[];
+  soon: GamedayWithStats[];
+  today: GamedayWithStats[];
+  recent: GamedayWithStats[];
+  upcoming: GamedayWithStats[];
 
   // Metadata
   totalLiveGames: number;
   todayGamedayCount: number;
 }
+
+export const GameStatus = {
+  PLANNED: 'Geplant',
+  IN_PROGRESS: 'Gestartet',
+  COMPLETED: 'beendet',
+} as const;
