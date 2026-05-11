@@ -1,11 +1,12 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { beforeEach } from 'vitest';
-import { I18nextProvider } from 'react-i18next';
+import { render, screen } from '@testing-library/react';
+import { beforeEach, vi } from 'vitest';
+import { I18nextProvider, useTranslation } from 'react-i18next';
 import i18nConfig from '../../../i18n/testConfig';
 import ProgressGameDayCard from '../cards/ProgressGameDayCard';
 import type { GamedayProgress } from '../../../api/gameProgressApi';
 import type { GamedaySummary } from '../../../types/progress';
+import * as useTypedTranslationModule from '../../../i18n/useTypedTranslation';
 
 describe('ProgressGameDayCard', () => {
   const renderWithI18n = (component: React.ReactElement) => {
@@ -22,10 +23,21 @@ describe('ProgressGameDayCard', () => {
       await i18nConfig.init({});
     }
     await i18nConfig.changeLanguage('en');
-    // Wait for language change to be processed
-    await waitFor(() => {
-      expect(i18nConfig.language).toBe('en');
-    });
+
+    // Mock useTypedTranslation to ensure it returns English translations
+    const mockT = (key: string, defaultValue?: string) => {
+      const translations: Record<string, string> = {
+        'ui:progress.card.played': 'played',
+        'ui:progress.card.live': 'live',
+        'ui:progress.card.upcoming': 'upcoming',
+      };
+      return translations[key] || defaultValue || key;
+    };
+
+    vi.spyOn(useTypedTranslationModule, 'useTypedTranslation').mockReturnValue({
+      t: mockT,
+      i18n: i18nConfig,
+    } as any);
   });
 
   const mockGameday: GamedayProgress = {
