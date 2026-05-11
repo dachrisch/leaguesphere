@@ -1,6 +1,5 @@
 import React from 'react';
 import { Container, Navbar, Nav, Button } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
 import '../styles/JourneyHeader.css';
 
 /**
@@ -8,10 +7,8 @@ import '../styles/JourneyHeader.css';
  * Provides navigation bar with back button and app branding.
  */
 const JourneyHeader: React.FC = () => {
-  const navigate = useNavigate();
-
   const handleBackClick = () => {
-    navigate('/');
+    window.location.href = '/';
   };
 
   return (
