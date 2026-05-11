@@ -65,6 +65,15 @@ export const UserTimeline: React.FC = () => {
   const filteredEvents = filterEvents(events, featureFilter);
   const gamedayEvents = filterEvents(events, 'gameday_designer');
 
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return 'active';
+    try {
+      return new Date(dateStr).toLocaleString();
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   if (loading) return <div>Loading...</div>;
 
   return (
@@ -73,10 +82,11 @@ export const UserTimeline: React.FC = () => {
       <select
         value={selectedJourneyId || ''}
         onChange={(e) => setSelectedJourneyId(Number(e.target.value))}
+        className="form-select mb-3"
       >
         {journeys.map((j) => (
           <option key={j.id} value={j.id}>
-            {j.started_at} to {j.ended_at || 'active'}
+            {formatDate(j.started_at)} to {formatDate(j.ended_at)}
           </option>
         ))}
       </select>

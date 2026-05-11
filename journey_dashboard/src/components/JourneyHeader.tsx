@@ -12,7 +12,7 @@ const JourneyHeader: React.FC = () => {
   };
 
   return (
-    <Navbar bg="dark" variant="dark" expand="lg" className="shadow-sm py-1" data-testid="journey-header">
+    <Navbar bg="dark" variant="dark" expand="lg" className="journey-header shadow-sm py-1" data-testid="journey-header">
       <Container fluid>
         <div className="d-flex align-items-center">
           <Navbar.Brand
