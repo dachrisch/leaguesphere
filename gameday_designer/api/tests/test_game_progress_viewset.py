@@ -67,7 +67,7 @@ class GameProgressViewSetTestCase(TestCase):
     def test_api_endpoint_exists(self):
         """RED: API endpoint at /api/gamedays/progress/ must exist"""
         self.client.force_authenticate(user=self.user)
-        response = self.client.get('/api/gamedays/progress/', format='json')
+        response = self.client.get('/api/progress/', format='json')
         # Should not be 404
         self.assertNotEqual(response.status_code, 404)
 
@@ -77,14 +77,14 @@ class GameProgressViewSetTestCase(TestCase):
         user = User.objects.create_user(username='regular', password='pass')
         self.client.force_authenticate(user=user)
 
-        response = self.client.get('/api/gamedays/progress/', format='json')
+        response = self.client.get('/api/progress/', format='json')
         # Should be 403 Forbidden or 401 Unauthorized
         self.assertIn(response.status_code, [401, 403])
 
     def test_api_returns_paginated_response(self):
         """RED: API must return paginated response with count, next, previous"""
         self.client.force_authenticate(user=self.user)
-        response = self.client.get('/api/gamedays/progress/', format='json')
+        response = self.client.get('/api/progress/', format='json')
 
         data = response.json()
         self.assertIn('count', data)
@@ -95,7 +95,7 @@ class GameProgressViewSetTestCase(TestCase):
     def test_api_returns_gameday_list(self):
         """RED: API results must be list of gamedays"""
         self.client.force_authenticate(user=self.user)
-        response = self.client.get('/api/gamedays/progress/', format='json')
+        response = self.client.get('/api/progress/', format='json')
 
         data = response.json()
         self.assertGreater(data['count'], 0)
@@ -104,7 +104,7 @@ class GameProgressViewSetTestCase(TestCase):
     def test_api_gameday_structure(self):
         """RED: Each gameday in response must have required fields"""
         self.client.force_authenticate(user=self.user)
-        response = self.client.get('/api/gamedays/progress/', format='json')
+        response = self.client.get('/api/progress/', format='json')
 
         gameday = response.json()['results'][0]
 
@@ -119,7 +119,7 @@ class GameProgressViewSetTestCase(TestCase):
     def test_api_default_date_range(self):
         """RED: API should default to past day + next 7 days"""
         self.client.force_authenticate(user=self.user)
-        response = self.client.get('/api/gamedays/progress/', format='json')
+        response = self.client.get('/api/progress/', format='json')
 
         data = response.json()
         # Should include today and tomorrow (within 7 days)
