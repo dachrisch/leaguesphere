@@ -337,9 +337,6 @@ class GamedayGameDetailView(DetailView):
 
         game_setup_details = {}
 
-        if self.request.user.is_staff:
-            game_setup_details = ggs.get_staff_game_end_notes()
-
         if split_score_repaired:
             split_score_table_html = f"""{split_score_table_html}</ br>
 <small>Die Aufteilung der Punkte je Halbzeit kann eventuell inkorrekt sein.</small>"""
