@@ -1,10 +1,15 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import { beforeEach } from 'vitest';
 import ProgressGameDayCard from '../cards/ProgressGameDayCard';
 import type { GamedayProgress } from '../../../api/gameProgressApi';
 import type { GamedaySummary } from '../../../types/progress';
+import i18n from '../../../i18n/testConfig';
 
 describe('ProgressGameDayCard', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
   const mockGameday: GamedayProgress = {
     id: 1,
     name: 'Spieltag 1',
