@@ -125,7 +125,10 @@ class PlayerlistUpdateView(PlayerlistCommonMixin, UserPassesTestMixin, UpdateVie
         return reverse(PASSCHECK_ROSTER_LIST, kwargs={"pk": self.object.team_id})
 
     def test_func(self):
-        player = Playerlist.objects.get(pk=self.kwargs.get("pk"))
+        try:
+            player = Playerlist.objects.get(pk=self.kwargs.get("pk"))
+        except Playerlist.DoesNotExist:
+            return False
         return PermissionHelper.has_staff_or_user_permission(
             self.request, player.team_id
         )
@@ -203,7 +206,10 @@ class PlayerlistTransferView(PlayerlistCommonMixin, UserPassesTestMixin, UpdateV
             status="approved", current_team=pk
         ).exists():
             return False
-        player = Playerlist.objects.get(pk=pk)
+        try:
+            player = Playerlist.objects.get(pk=pk)
+        except Playerlist.DoesNotExist:
+            return False
         return PermissionHelper.has_staff_or_user_permission(
             self.request, player.team_id
         )
@@ -214,7 +220,7 @@ class PasscheckPlayerGamesList(View):
 
     def get(self, request, **kwargs):
         player_id = kwargs.get("pk")
-        player = Playerlist.objects.get(pk=player_id)
+        player = get_object_or_404(Playerlist, pk=player_id)
         user_permission = PermissionHelper.get_user_request_permission(
             self.request, player.team_id
         )

@@ -44,10 +44,13 @@ init_database() {
 
     # Create snapshot for resets
     mkdir -p "$(dirname "$DEMO_SNAPSHOT")"
-    mysqldump -h"${MYSQL_HOST}" -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" \
-        --single-transaction --quick --lock-tables=false \
-        "${MYSQL_DATABASE}" > "$DEMO_SNAPSHOT"
-    log "Demo snapshot created at $DEMO_SNAPSHOT"
+    python manage.py reset_demo_database \
+        --create-snapshot \
+        --snapshot-path="$DEMO_SNAPSHOT" 2>&1 | tee -a "$LOGS_DIR/demo_reset.log"
+
+    if [ $? -ne 0 ]; then
+        log "WARNING: Failed to create snapshot"
+    fi
 }
 
 # Reset database from snapshot
@@ -61,19 +64,17 @@ reset_database() {
         return
     fi
 
-    # Drop and recreate database
-    mysql -h"${MYSQL_HOST}" -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" <<EOF
-DROP DATABASE IF EXISTS \`${MYSQL_DATABASE}\`;
-CREATE DATABASE \`${MYSQL_DATABASE}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-EOF
+    cd /app
+    python manage.py reset_demo_database \
+        --restore-snapshot \
+        --snapshot-path="$DEMO_SNAPSHOT" 2>&1 | tee -a "$LOGS_DIR/demo_reset.log"
 
-    log "Database dropped and recreated"
-
-    # Restore from snapshot
-    mysql -h"${MYSQL_HOST}" -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" \
-        "${MYSQL_DATABASE}" < "$DEMO_SNAPSHOT"
-
-    log "Database restored from snapshot"
+    if [ $? -eq 0 ]; then
+        log "Database reset successful"
+    else
+        log "ERROR: Database reset failed"
+        exit 1
+    fi
 }
 
 # Main logic

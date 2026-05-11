@@ -68,11 +68,11 @@ create_worktree() {
     local random=$(head -c 4 /dev/urandom | xxd -p)
     local worktree_path="/tmp/leaguesphere-deploy-${timestamp}-${random}"
 
-    echo "Creating worktree at: $worktree_path"
-    echo "From branch: $branch"
+    echo "Creating worktree at: $worktree_path" >&2
+    echo "From branch: $branch" >&2
 
-    if ! git worktree add "$worktree_path" "$branch"; then
-        echo "Error: Failed to create worktree"
+    if ! git worktree add "$worktree_path" "$branch" >&2; then
+        echo "Error: Failed to create worktree" >&2
         exit 1
     fi
 
@@ -87,20 +87,20 @@ cleanup_worktree() {
         return 0
     fi
 
-    echo "Cleaning up worktree: $worktree_path"
+    echo "Cleaning up worktree: $worktree_path" >&2
 
     # Try to remove worktree using git
     if git worktree remove "$worktree_path" --force 2>/dev/null; then
-        echo "Worktree removed successfully"
+        echo "Worktree removed successfully" >&2
         return 0
     fi
 
     # Fallback: manual cleanup
-    echo "Attempting manual cleanup..."
+    echo "Attempting manual cleanup..." >&2
     rm -rf "$worktree_path" 2>/dev/null || true
     git worktree prune 2>/dev/null || true
 
-    echo "Cleanup complete"
+    echo "Cleanup complete" >&2
 }
 
 # Parse flags
@@ -153,6 +153,22 @@ if [ -z "$VERSION_ARG" ]; then
     show_help
     exit 1
 fi
+
+# Generate release information
+PETNAME=$(petname 2>/dev/null || echo "unknown")
+get_release_type() {
+    case "$1" in
+        major|minor|patch) echo "prod" ;;
+        stage) echo "stage" ;;
+        demo) echo "demo" ;;
+        *) echo "" ;;
+    esac
+}
+RELEASE_TYPE=$(get_release_type "$VERSION_ARG")
+RELEASE_BRANCH="release/${RELEASE_TYPE}_${PETNAME}"
+
+echo "Release branch: $RELEASE_BRANCH (petname: $PETNAME)"
+echo
 
 # Worktree mode setup
 if [ "$BRANCH_MODE" = "worktree" ]; then
@@ -226,12 +242,13 @@ case "$VERSION_ARG" in
         git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
 
-        # Push commits and tags
-        git push $REMOTE && git push $REMOTE --tags
+        # Push commits and tags to release branch
+        git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags
 
         # Show new version
         FINAL_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
         echo "✅ Production release deployed: $FINAL_VERSION"
+        echo "Release branch: $RELEASE_BRANCH"
         ;;
     stage)
         # Staging deployment - create/increment RC version
@@ -298,12 +315,13 @@ case "$VERSION_ARG" in
             git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         fi
 
-        # Push commits and tags
-        git push $REMOTE && git push $REMOTE --tags
+        # Push commits and tags to release branch
+        git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags
 
         # Show new version
         NEW_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
         echo "✅ Staging deployment triggered: $NEW_VERSION"
+        echo "Release branch: $RELEASE_BRANCH"
         ;;
     demo)
         # Demo deployment - create/increment demo version
@@ -340,7 +358,7 @@ case "$VERSION_ARG" in
 
             git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json pyproject.toml uv.lock
             git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
-            git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
+            git tag -af "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         else
             # Non-demo version - create demo.1 (e.g., 3.11.3 → 3.11.3+demo.1)
             echo "Creating initial demo version..."
@@ -364,15 +382,16 @@ case "$VERSION_ARG" in
             # Commit and tag
             git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json pyproject.toml uv.lock
             git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
-            git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
+            git tag -af "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         fi
 
-        # Push commits and tags
-        git push $REMOTE && git push $REMOTE --tags
+        # Push commits and tags to release branch
+        git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags
 
         # Show new version
         NEW_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
         echo "✅ Demo deployment triggered: $NEW_VERSION"
+        echo "Release branch: $RELEASE_BRANCH"
         ;;
     *)
         echo "Error: Invalid option '$VERSION_ARG'"

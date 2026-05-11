@@ -121,6 +121,8 @@ class PasscheckService:
 
     def get_roster(self, team_id: int, year: int, gameday_id: int = None):
         team = self._get_team(team_id)
+        if team is None:
+            raise ValueError(f"Team {team_id} not found")
         years = (
             Playerlist.objects.filter(team=team)
             .exclude(gamedays__league__name=None)
@@ -361,6 +363,8 @@ class PasscheckService:
         gameinfo = Gameinfo.objects.filter(
             officials_id=team, gameday__in=today_gamedays
         ).order_by("scheduled")
+        if not gameinfo.exists():
+            return {"completed": False}
         games_to_check = gameinfo.filter(scheduled__lte=gameinfo.first().scheduled)
         number_of_teams_to_check = games_to_check.count() * 2
         verified_teams = PasscheckVerification.objects.filter(

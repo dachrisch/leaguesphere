@@ -160,7 +160,13 @@ class Schedule:
             return home_placeholder
         group_index = int(tmp[0])
         team_index = int(tmp[1])
-        return self.groups[group_index].teams[team_index]
+        try:
+            return self.groups[group_index].teams[team_index]
+        except (IndexError, AttributeError):
+            raise ValueError(
+                f"Schedule format references invalid team: group {group_index}, position {team_index}. "
+                f"Verify schedule template matches team count in groups."
+            )
 
     def _format_match_number_of_teams(self):
         number_of_teams = int(self.format.split("_")[0])
