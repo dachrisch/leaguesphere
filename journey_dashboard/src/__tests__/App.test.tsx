@@ -3,15 +3,12 @@
  *
  * Coverage targets:
  * - JourneyLayout component renders correctly
- * - JourneyHeader renders in the layout
- * - Back button exists and is clickable
  * - Dashboard content renders properly
- * - Component hierarchy: App → JourneyLayout → JourneyHeader + content
+ * - Component hierarchy: App → JourneyLayout → content
  */
 
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import App from '../App';
@@ -40,19 +37,6 @@ describe('App with JourneyLayout', () => {
     localStorage.clear();
   });
 
-  it('should render journey header', async () => {
-    render(
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    );
-
-    await waitFor(() => {
-      const header = screen.getByTestId('journey-header');
-      expect(header).toBeInTheDocument();
-    });
-  });
-
   it('should render page title in content area', async () => {
     render(
       <BrowserRouter>
@@ -66,7 +50,7 @@ describe('App with JourneyLayout', () => {
     });
   });
 
-  it('should render back button in header', async () => {
+  it('should render main content components', async () => {
     render(
       <BrowserRouter>
         <App />
@@ -74,30 +58,9 @@ describe('App with JourneyLayout', () => {
     );
 
     await waitFor(() => {
-      const backButton = screen.getByTestId('back-button');
-      expect(backButton).toBeInTheDocument();
-      expect(backButton).toHaveTextContent('Back');
+      expect(screen.getByTestId('summary-cards')).toBeInTheDocument();
+      expect(screen.getByTestId('top-actions-table')).toBeInTheDocument();
+      expect(screen.getByTestId('user-timeline')).toBeInTheDocument();
     });
-  });
-
-  it('should have clickable back button', async () => {
-    const user = userEvent.setup();
-
-    render(
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    );
-
-    await waitFor(() => {
-      const backButton = screen.getByTestId('back-button');
-      expect(backButton).toBeInTheDocument();
-    });
-
-    const backButton = screen.getByTestId('back-button');
-    // Button should be clickable (not disabled)
-    await user.click(backButton);
-    // If click succeeds, button was clickable
-    expect(backButton).toBeInTheDocument();
   });
 });
