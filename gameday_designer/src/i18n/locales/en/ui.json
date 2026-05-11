@@ -176,6 +176,26 @@
     "nameRequired": "Name is required",
     "gamedayNotFound": "Gameday not found"
   },
+  "gameProgress": {
+    "section": {
+      "live": "● LIVE · {{count}} Games",
+      "today": "LATER TODAY · {{count}} Gameday",
+      "outlook": "OUTLOOK · NEXT {{days}} DAYS · {{count}}",
+      "recent": "RECENT · LAST 24 H · {{count}}"
+    },
+    "card": {
+      "played": "{{played}}/{{total}} played",
+      "live": "· {{count}} live",
+      "pending": "· {{count}} pending",
+      "minutesUntil": "{{minutes}} min",
+      "stale": "stale"
+    },
+    "state": {
+      "loading": "Loading game progress...",
+      "error": "Error loading games: {{message}}",
+      "empty": "No games scheduled"
+    }
+  },
   "tooltip": {
     "addTeamToGroup": "Add a new team to this group",
     "connectTeam": "Connect an existing team from the database pool",

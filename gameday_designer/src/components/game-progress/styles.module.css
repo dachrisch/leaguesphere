@@ -9,100 +9,154 @@
 .content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1.5rem;
 }
 
 .section {
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
 }
 
 .sectionTitle {
-  font-size: 1.5rem;
+  font-size: 0.95rem;
   font-weight: 600;
   margin-bottom: 1rem;
-  color: #333;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .gamedayList {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: 1fr;
   gap: 1rem;
 }
 
-.card {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-  transition: box-shadow 0.2s;
+@media (min-width: 768px) {
+  .gamedayList {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-.card:hover {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+@media (min-width: 1200px) {
+  .gamedayList {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.gamedayCard {
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1.25rem;
+  transition: all 0.2s;
+}
+
+.gamedayCard:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.cardLive {
+  border-color: #28a745;
+  background-color: #f0fdf4;
+}
+
+.cardTop {
+  margin-bottom: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .cardHeader {
-  padding: 1rem;
-  border-bottom: 1px solid #e9ecef;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
 }
 
-.cardHeader h3 {
-  margin: 0;
+.liveBadge {
+  background-color: #28a745;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.timeUntil {
+  font-weight: 600;
+  color: #ff9500;
   font-size: 1.1rem;
+}
+
+.stale {
+  color: #6c757d;
+}
+
+.league {
+  color: #6c757d;
+  font-size: 0.8rem;
+}
+
+.gamedayName {
+  margin: 0.5rem 0;
+  font-size: 1.2rem;
+  font-weight: 600;
   color: #333;
 }
 
-.cardHeader small {
-  color: #6c757d;
-  font-size: 0.875rem;
-}
-
-.cardBody {
-  padding: 1rem;
+.gamedayMeta {
   display: flex;
-  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
   font-size: 0.9rem;
   color: #6c757d;
 }
 
-.gameRow {
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #e9ecef;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 0.5rem;
-  align-items: center;
-  font-size: 0.9rem;
-}
-
-.gameRow:last-child {
-  border-bottom: none;
-}
-
-.statusBadge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  font-size: 0.85rem;
+.date {
   font-weight: 500;
 }
 
-.statusLive {
-  background-color: #dc3545;
-  color: white;
+.timeRange {
+  color: #6c757d;
 }
 
-.statusScheduled {
-  background-color: #17a2b8;
-  color: white;
+.progressBar {
+  display: flex;
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
 }
 
-.statusFinished {
-  background-color: #28a745;
-  color: white;
+.progressSegment {
+  flex: 0 0 auto;
+  height: 100%;
+}
+
+.cardStats {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.liveCount {
+  color: #28a745;
+  font-weight: 500;
+}
+
+.pendingCount {
+  color: #6c757d;
+}
+
+.percentComplete {
+  margin-left: auto;
+  font-weight: 600;
+  color: #333;
 }
 
 .loading,
