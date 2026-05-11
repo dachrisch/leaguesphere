@@ -95,7 +95,6 @@ describe.skip('useGameProgress Hook', () => {
 
   describe('State Grouping', () => {
     test('RED: Hook groups gamedays by status (live, soon, today, etc.)', async () => {
-      const now = new Date('2026-09-13T15:42:00');
       const mockData = {
         count: 4,
         next: null,
@@ -280,7 +279,7 @@ describe.skip('useGameProgress Hook', () => {
         new Error('API failed')
       );
 
-      const { result, rerender } = renderHook(() => useGameProgress());
+      const { result } = renderHook(() => useGameProgress());
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);

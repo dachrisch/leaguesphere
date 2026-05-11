@@ -2,7 +2,7 @@
  * TypeScript types for Game Progress Dashboard
  */
 
-import type { GameInfo, GamedayProgress } from '../api/gameProgressApi';
+import type { GamedayProgress } from '../api/gameProgressApi';
 
 /**
  * Computed summary for a gameday

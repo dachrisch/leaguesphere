@@ -13,27 +13,12 @@ import styles from '../styles.module.css';
 
 interface ProgressLiveSectionProps {
   gamedays: GamedaySummary[];
-  liveGameCount?: number;
-  upcomingCount?: number;
-  recentCount?: number;
-  todayGameDayCount?: number;
 }
 
 const ProgressLiveSection: React.FC<ProgressLiveSectionProps> = ({
   gamedays,
-  liveGameCount,
-  upcomingCount,
-  recentCount,
-  todayGameDayCount,
 }) => {
-  const { t, i18n } = useTypedTranslation(['ui']);
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString(i18n.language === 'en' ? 'en-GB' : 'de-DE', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  const { t } = useTypedTranslation(['ui']);
 
   return (
     <div className={styles.section}>

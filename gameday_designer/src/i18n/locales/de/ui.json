@@ -247,5 +247,44 @@
     },
     "resultsSaved": "Ergebnisse erfolgreich gespeichert",
     "resultsSaveFailed": "Fehler beim Speichern der Ergebnisse"
+  },
+  "progress": {
+    "title": "Spieltag Live-Status",
+    "subtitle": "Übersicht aller Spieltage: aktiv · kommend · archiv",
+    "hero": {
+      "live": "live",
+      "games_in_play": "Spiele im Spiel",
+      "games_today": "noch heute",
+      "completed_24h": "beendet (24 h)",
+      "today": "HEUTE",
+      "scheduled": "Spieltage geplant"
+    },
+    "section": {
+      "live": "LIVE",
+      "later_today": "SPÄTER HEUTE",
+      "outlook": "AUSBLICK",
+      "outlook_subtitle": "NÄCHSTE 7 TAGE",
+      "review": "RÜCKBLICK",
+      "review_subtitle": "LETZTE 24 H",
+      "next_scheduled": "NÄCHSTER TERMIN",
+      "gap": "Pause von {{days}} Tagen"
+    },
+    "card": {
+      "games": "Spiele",
+      "played": "gespielt",
+      "live": "live",
+      "upcoming": "offen",
+      "kickoff": "KICKOFF"
+    },
+    "empty": {
+      "no_live": "Keine laufenden Spieltage",
+      "no_upcoming": "Nichts in den nächsten 7 Tagen",
+      "no_recent": "Keine Spieltage in den letzten 24 h"
+    },
+    "time": {
+      "minutes": "min",
+      "hours": "h",
+      "days": "d"
+    }
   }
 }

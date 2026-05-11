@@ -247,5 +247,44 @@
     },
     "resultsSaved": "Results saved successfully",
     "resultsSaveFailed": "Failed to save results"
+  },
+  "progress": {
+    "title": "Game Day Live Status",
+    "subtitle": "Overview of all game days: live · upcoming · archive",
+    "hero": {
+      "live": "live",
+      "games_in_play": "Games in play",
+      "games_today": "today",
+      "completed_24h": "finished (24h)",
+      "today": "TODAY",
+      "scheduled": "Game days scheduled"
+    },
+    "section": {
+      "live": "LIVE",
+      "later_today": "LATER TODAY",
+      "outlook": "OUTLOOK",
+      "outlook_subtitle": "NEXT 7 DAYS",
+      "review": "REVIEW",
+      "review_subtitle": "LAST 24 H",
+      "next_scheduled": "NEXT SCHEDULED",
+      "gap": "Gap of {{days}} days"
+    },
+    "card": {
+      "games": "Games",
+      "played": "played",
+      "live": "live",
+      "upcoming": "upcoming",
+      "kickoff": "KICKOFF"
+    },
+    "empty": {
+      "no_live": "No live game days",
+      "no_upcoming": "Nothing in the next 7 days",
+      "no_recent": "No game days in the last 24 h"
+    },
+    "time": {
+      "minutes": "min",
+      "hours": "h",
+      "days": "d"
+    }
   }
 }

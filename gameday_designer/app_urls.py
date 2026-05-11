@@ -11,5 +11,6 @@ app_name = "gameday_designer_app"
 
 urlpatterns = [
     path("", index, name="index"),
+    path("progress/", index, name="progress"),
     re_path(r"^.*/$", index),
 ]

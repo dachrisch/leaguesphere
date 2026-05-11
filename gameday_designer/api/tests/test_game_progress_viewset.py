@@ -135,7 +135,7 @@ class GameProgressViewSetTestCase(TestCase):
         tomorrow = date.today() + timedelta(days=1)
 
         response = self.client.get(
-            f'/api/gamedays/progress/?date_from={tomorrow.isoformat()}',
+            f'/api/progress/?date_from={tomorrow.isoformat()}',
             format='json'
         )
 
@@ -151,7 +151,7 @@ class GameProgressViewSetTestCase(TestCase):
         today = date.today()
 
         response = self.client.get(
-            f'/api/gamedays/progress/?date_to={today.isoformat()}',
+            f'/api/progress/?date_to={today.isoformat()}',
             format='json'
         )
 
@@ -177,7 +177,7 @@ class GameProgressViewSetTestCase(TestCase):
 
         self.client.force_authenticate(user=self.user)
         response = self.client.get(
-            f'/api/gamedays/progress/?league={self.league.id}',
+            f'/api/progress/?league={self.league.id}',
             format='json'
         )
 

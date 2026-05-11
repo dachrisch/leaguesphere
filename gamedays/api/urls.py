@@ -24,6 +24,7 @@ from gamedays.api.views import (
     GameResultsListView,
     GameResultsUpdateView,
 )
+from gameday_designer.api.views import GameProgressViewSet
 from gamedays.constants import (
     API_GAMEDAY_WHISTLEGAMES,
     API_GAMEDAY_LIST,
@@ -40,6 +41,7 @@ router = DefaultRouter()
 router.register(r"gamedays", GamedayViewSet, basename="gameday")
 router.register(r"seasons", SeasonViewSet, basename="season")
 router.register(r"leagues", LeagueViewSet, basename="league")
+router.register(r"progress", GameProgressViewSet, basename="game-progress")
 
 urlpatterns = [
     path("", include(router.urls)),
