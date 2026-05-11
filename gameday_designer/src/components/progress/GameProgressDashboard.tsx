@@ -9,10 +9,9 @@
  * - AUSBLICK & RÜCKBLICK (footer columns: next 7 days + 24h review)
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import { useGameProgress } from './hooks/useGameProgress';
-import ProgressHeroStrip from './sections/ProgressHeroStrip';
 import ProgressLiveSection from './sections/ProgressLiveSection';
 import ProgressUpcomingSection from './sections/ProgressUpcomingSection';
 import ProgressOutlookReviewFooter from './sections/ProgressOutlookReviewFooter';
@@ -23,7 +22,6 @@ import styles from './styles.module.css';
  */
 const GameProgressDashboard: React.FC = () => {
   const { t } = useTypedTranslation(['ui']);
-  const [isOpen, setIsOpen] = useState(false);
 
   const { loading, error, live, soon, today, upcomingWeek, recent, nextScheduled, liveGameCount, todayGameDayCount } =
     useGameProgress();
