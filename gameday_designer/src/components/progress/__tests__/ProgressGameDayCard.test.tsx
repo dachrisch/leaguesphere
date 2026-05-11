@@ -1,46 +1,31 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach } from 'vitest';
 import { I18nextProvider } from 'react-i18next';
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
+import i18nConfig from '../../../i18n/testConfig';
 import ProgressGameDayCard from '../cards/ProgressGameDayCard';
 import type { GamedayProgress } from '../../../api/gameProgressApi';
 import type { GamedaySummary } from '../../../types/progress';
-import uiEN from '../../../i18n/locales/en/ui.json';
-import domainEN from '../../../i18n/locales/en/domain.json';
 
 describe('ProgressGameDayCard', () => {
-  let testI18n: typeof i18n;
-
   const renderWithI18n = (component: React.ReactElement) => {
     return render(
-      <I18nextProvider i18n={testI18n}>
+      <I18nextProvider i18n={i18nConfig}>
         {component}
       </I18nextProvider>
     );
   };
 
   beforeEach(async () => {
-    // Create a fresh i18n instance for each test with only English
-    testI18n = i18n.createInstance();
-    await testI18n
-      .use(initReactI18next)
-      .init({
-        resources: {
-          en: {
-            ui: uiEN,
-            domain: domainEN,
-          },
-        },
-        lng: 'en',
-        fallbackLng: 'en',
-        defaultNS: 'ui',
-        ns: ['ui', 'domain'],
-        interpolation: {
-          escapeValue: false,
-        },
-      });
+    // Ensure i18n is initialized and set to English
+    if (!i18nConfig.isInitialized) {
+      await i18nConfig.init({});
+    }
+    await i18nConfig.changeLanguage('en');
+    // Wait for language change to be processed
+    await waitFor(() => {
+      expect(i18nConfig.language).toBe('en');
+    });
   });
 
   const mockGameday: GamedayProgress = {
