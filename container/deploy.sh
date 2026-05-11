@@ -357,10 +357,14 @@ case "$VERSION_ARG" in
         git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
 
-        # Push commits and tags to release branch
-        if git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags; then
-            # Create PR for release branch (to PR_REMOTE, not REMOTE)
-            create_release_pr "$RELEASE_BRANCH" "$DEPLOY_BRANCH" "$REMOTE" "$PR_REMOTE" "$NEW_VERSION"
+        # Push commits and tags
+        if [ $CREATE_RELEASE_BRANCH -eq 1 ]; then
+            if git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags; then
+                # Create PR for release branch (to PR_REMOTE, not REMOTE)
+                create_release_pr "$RELEASE_BRANCH" "$DEPLOY_BRANCH" "$REMOTE" "$PR_REMOTE" "$NEW_VERSION"
+            fi
+        else
+            git push $REMOTE $DEPLOY_BRANCH && git push $REMOTE --tags
         fi
 
         # Show new version
@@ -433,13 +437,15 @@ case "$VERSION_ARG" in
             git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         fi
 
-        # Push commits and tags to release branch
-        if git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags; then
-            # Create PR for release branch if it was created (to PR_REMOTE, not REMOTE)
-            if [ $CREATE_RELEASE_BRANCH -eq 1 ]; then
+        # Push commits and tags
+        if [ "$CREATE_RELEASE_BRANCH" -eq 1 ]; then
+            if git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags; then
+                # Create PR for release branch (to PR_REMOTE, not REMOTE)
                 NEW_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
                 create_release_pr "$RELEASE_BRANCH" "$DEPLOY_BRANCH" "$REMOTE" "$PR_REMOTE" "$NEW_VERSION"
             fi
+        else
+            git push $REMOTE $DEPLOY_BRANCH && git push $REMOTE --tags
         fi
 
         # Show new version
@@ -514,13 +520,15 @@ case "$VERSION_ARG" in
             git tag -af "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         fi
 
-        # Push commits and tags to release branch
-        if git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags; then
-            # Create PR for release branch if it was created (to PR_REMOTE, not REMOTE)
-            if [ $CREATE_RELEASE_BRANCH -eq 1 ]; then
+        # Push commits and tags
+        if [ "$CREATE_RELEASE_BRANCH" -eq 1 ]; then
+            if git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags; then
+                # Create PR for release branch (to PR_REMOTE, not REMOTE)
                 NEW_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
                 create_release_pr "$RELEASE_BRANCH" "$DEPLOY_BRANCH" "$REMOTE" "$PR_REMOTE" "$NEW_VERSION"
             fi
+        else
+            git push $REMOTE $DEPLOY_BRANCH && git push $REMOTE --tags
         fi
 
         # Show new version
