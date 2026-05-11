@@ -1,11 +1,10 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, vi } from 'vitest';
-import { I18nextProvider, useTranslation } from 'react-i18next';
+import { I18nextProvider, type UseTranslationResponse } from 'react-i18next';
 import i18nConfig from '../../../i18n/testConfig';
 import ProgressGameDayCard from '../cards/ProgressGameDayCard';
 import type { GamedayProgress } from '../../../api/gameProgressApi';
-import type { GamedaySummary } from '../../../types/progress';
 import * as useTypedTranslationModule from '../../../i18n/useTypedTranslation';
 
 describe('ProgressGameDayCard', () => {
@@ -37,7 +36,8 @@ describe('ProgressGameDayCard', () => {
     vi.spyOn(useTypedTranslationModule, 'useTypedTranslation').mockReturnValue({
       t: mockT,
       i18n: i18nConfig,
-    } as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as UseTranslationResponse<any>);
   });
 
   const mockGameday: GamedayProgress = {
