@@ -7,7 +7,7 @@ interface JourneyLayoutProps {
 
 /**
  * Main layout component for Journey Dashboard.
- * Provides header and content area with proper spacing.
+ * Provides content area with proper spacing.
  */
 const JourneyLayout: React.FC<JourneyLayoutProps> = ({ children }) => {
   return (
