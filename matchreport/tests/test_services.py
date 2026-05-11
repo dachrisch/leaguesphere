@@ -29,16 +29,17 @@ class TestMatchreportService(TestCase):
         self.assertEqual(len(service.get_gameday_match_reports(render_config=default_render_config)), 0)
 
     def test_matchreport_service(self):
-
         gameday = DBSetup().g62_with_tiebreak_finished()
 
         all_games = list(gameday.gameinfo_set.all())
+
+        last_game = all_games[-1]
 
         for game in all_games:
 
             final_note = ""
 
-            if game.id == 11:
+            if game.id == last_game.id:
                 final_note = "Disqualifikation von #99 von Team A1"
 
             game_setup, _ = GameSetup.objects.get_or_create(gameinfo_id=game.id)
@@ -52,8 +53,6 @@ class TestMatchreportService(TestCase):
             })
             self.assertTrue(serializer.is_valid())
             serializer.save()
-
-        last_game = all_games[-1]
 
         DBSetup().create_teamlog_flag(
             gameinfo=last_game,
@@ -96,7 +95,7 @@ class TestMatchreportService(TestCase):
                 }
             )
 
-        ms = MatchreportService.create(1)
+        ms = MatchreportService.create(gameday.pk)
 
         staff_passcheck_details = ms.get_staff_passcheck_details()
         self.assertEqual(len(staff_passcheck_details), len(all_teams))
@@ -117,7 +116,7 @@ class TestMatchreportService(TestCase):
             self.assertEqual(game.get("end_notes", {}).get("awayCaptain"), "Away Captain")
             self.assertEqual(game.get("end_notes", {}).get("homeCaptain"), "Home Captain")
 
-            if game.get("gameinfo_id") == 11:
+            if game.get("gameinfo_id") == last_game.id:
                 self.assertFalse("In diesem Spiel gab es keine Strafen" in game.get("flags"))
                 self.assertTrue("Disqualifikation" in game.get("end_notes", {}).get("note"))
                 self.assertEqual(game.get("num_flags"), 1)

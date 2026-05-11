@@ -220,17 +220,3 @@ class MachtreportModelWrapper:
             })
 
         return games
-
-    def get_staff_game_end_notes(self, gameinfo):
-        return (
-            GameSetup.objects.filter(gameinfo=gameinfo)
-            .values(
-                *[
-                    "gameinfo__officials__name",
-                    "homeCaptain",
-                    "awayCaptain",
-                    "note",
-                ]
-            )
-            .first()
-        )
