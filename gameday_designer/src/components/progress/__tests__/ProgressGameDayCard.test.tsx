@@ -8,10 +8,6 @@ import type { GamedaySummary } from '../../../types/progress';
 import i18n from '../../../i18n/testConfig';
 
 describe('ProgressGameDayCard', () => {
-  beforeEach(async () => {
-    await i18n.changeLanguage('en');
-  });
-
   const renderWithI18n = (component: React.ReactElement) => {
     return render(
       <I18nextProvider i18n={i18n}>
@@ -19,6 +15,14 @@ describe('ProgressGameDayCard', () => {
       </I18nextProvider>
     );
   };
+
+  beforeEach(async () => {
+    // Ensure i18n is properly initialized and set to English
+    if (!i18n.isInitialized) {
+      await i18n.init({});
+    }
+    await i18n.changeLanguage('en');
+  });
 
   const mockGameday: GamedayProgress = {
     id: 1,
