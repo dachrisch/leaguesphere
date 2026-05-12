@@ -266,66 +266,64 @@ describe('calculateMetrics', () => {
 });
 
 describe('AdoptionMetrics Component', () => {
-  it('should render adoption metrics component', () => {
-    const events: JourneyEvent[] = [
-      { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
-      { id: 2, event_name: 'gameday_published', metadata: {}, created_at: '2024-01-02' },
-    ];
+  const mockAdoptionData = {
+    gameday: { opens: 10, published: 5, templates: 2 },
+    passcheck: { opens: 20, completed: 15 },
+    scorecard: { opens: 30, matches: 25 },
+  };
 
-    const { container } = render(React.createElement(AdoptionMetrics, { events }));
+  it('should render adoption metrics component with all features', () => {
+    const { container } = render(React.createElement(AdoptionMetrics, { adoptionData: mockAdoptionData }));
 
     expect(container.querySelector('.adoption-metrics')).toBeTruthy();
     expect(container.querySelector('.metrics-title')).toBeTruthy();
+    
+    const text = container.textContent || '';
+    expect(text).toContain('Gameday Designer');
+    expect(text).toContain('Passcheck');
+    expect(text).toContain('Scorecard');
   });
 
-  it('should render all three metric cards', () => {
-    const events: JourneyEvent[] = [
-      { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
-      { id: 2, event_name: 'gameday_published', metadata: {}, created_at: '2024-01-02' },
-      { id: 3, event_name: 'template_used', metadata: {}, created_at: '2024-01-03' },
-    ];
+  it('should render correct number of metric cards', () => {
+    const { container } = render(React.createElement(AdoptionMetrics, { adoptionData: mockAdoptionData }));
 
-    const { container } = render(React.createElement(AdoptionMetrics, { events }));
-
+    // Gameday (4) + Passcheck (3) + Scorecard (2) = 9 cards
     const cards = container.querySelectorAll('.metric-card');
-    expect(cards.length).toBe(3);
+    expect(cards.length).toBe(9);
   });
 
-  it('should display metric cards with values and labels', () => {
-    const events: JourneyEvent[] = [
-      { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
-      { id: 2, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-02' },
-      { id: 3, event_name: 'gameday_published', metadata: {}, created_at: '2024-01-03' },
-      { id: 4, event_name: 'template_used', metadata: {}, created_at: '2024-01-04' },
-    ];
-
-    const { container } = render(React.createElement(AdoptionMetrics, { events }));
+  it('should display correct values and labels', () => {
+    const { container } = render(React.createElement(AdoptionMetrics, { adoptionData: mockAdoptionData }));
 
     const text = container.textContent || '';
-    expect(text).toContain('Designer Opens');
-    expect(text).toContain('Publish Rate');
-    expect(text).toContain('Template Adoption');
-    expect(text).toContain('2'); // 2 opens
-    expect(text).toContain('50%'); // 50% publish rate
+    // Gameday opens
+    expect(text).toContain('10');
+    // Gameday publish rate: 5/10 = 50%
+    expect(text).toContain('50%');
+    // Passcheck opens
+    expect(text).toContain('20');
+    // Scorecard matches
+    expect(text).toContain('25');
   });
 
-  it('should render with empty events array', () => {
-    const events: JourneyEvent[] = [];
+  it('should render loading state when data is null', () => {
+    const { container } = render(React.createElement(AdoptionMetrics, { adoptionData: null }));
 
-    const { container } = render(React.createElement(AdoptionMetrics, { events }));
+    expect(container.querySelector('.adoption-metrics-loading')).toBeTruthy();
+    expect(container.textContent).toContain('Loading adoption metrics...');
+  });
 
+  it('should handle missing optional metrics', () => {
+    const minimalData = {
+      gameday: { opens: 10 },
+      passcheck: { opens: 0 },
+      scorecard: { opens: 5 },
+    };
+    const { container } = render(React.createElement(AdoptionMetrics, { adoptionData: minimalData }));
+    
     expect(container.querySelector('.adoption-metrics')).toBeTruthy();
-    expect(container.querySelector('.metrics-grid')).toBeTruthy();
-  });
-
-  it('should display metric descriptions', () => {
-    const events: JourneyEvent[] = [];
-
-    const { container } = render(React.createElement(AdoptionMetrics, { events }));
-
     const text = container.textContent || '';
-    expect(text).toContain('opened');
-    expect(text).toContain('published gamedays');
-    expect(text).toContain('used templates');
+    expect(text).toContain('10');
+    expect(text).toContain('0%'); // Publish rate with 0 publishes
   });
 });

@@ -15,12 +15,17 @@ import App from '../App';
 
 // Mock the API calls to prevent actual HTTP requests
 vi.mock('../utils/api', () => ({
-  fetchStats: vi.fn(() => Promise.resolve(null)),
+  fetchStats: vi.fn(() => Promise.resolve({ stats: [], total_events: 0, unique_event_types: 0 })),
+  fetchGlobalAdoption: vi.fn(() => Promise.resolve({
+    gameday: { opens: 0 },
+    passcheck: { opens: 0 },
+    scorecard: { opens: 0 }
+  })),
 }));
 
 // Mock the child components to simplify testing
-vi.mock('../components/SummaryCards', () => ({
-  SummaryCards: () => <div data-testid="summary-cards">Summary Cards</div>,
+vi.mock('../components/AdoptionMetrics', () => ({
+  AdoptionMetrics: () => <div data-testid="adoption-metrics">Adoption Metrics</div>,
 }));
 
 vi.mock('../components/TopActionsTable', () => ({
@@ -45,7 +50,7 @@ describe('App with JourneyLayout', () => {
     );
 
     await waitFor(() => {
-      const title = screen.getByText('User Journey Dashboard');
+      const title = screen.getByText('Global Journey Dashboard');
       expect(title).toBeInTheDocument();
     });
   });
@@ -58,7 +63,7 @@ describe('App with JourneyLayout', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('summary-cards')).toBeInTheDocument();
+      expect(screen.getByTestId('adoption-metrics')).toBeInTheDocument();
       expect(screen.getByTestId('top-actions-table')).toBeInTheDocument();
       expect(screen.getByTestId('user-timeline')).toBeInTheDocument();
     });

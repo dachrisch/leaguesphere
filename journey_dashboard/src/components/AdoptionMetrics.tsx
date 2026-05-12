@@ -144,12 +144,30 @@ export const AdoptionMetrics: React.FC<AdoptionMetricsProps> = ({ adoptionData }
   );
 };
 
-// Deprecated: Keeping for backward compatibility with tests for now
-// @ts-ignore - explicitly de-emphasized
-export function calculateMetrics(events: any) {
+/**
+ * Calculate adoption metrics from journey events
+ * @param events - Array of JourneyEvent objects
+ * @returns MetricsData object with adoption metrics
+ */
+export function calculateMetrics(events: any[]) {
+  // Count unique gamedays opened (count of gameday_opened events)
+  const designerOpens = events.filter(e => e.event_name === 'gameday_opened').length || 0;
+
+  // Count gamedays published
+  const publishedCount = events.filter(e => e.event_name === 'gameday_published').length;
+
+  // Calculate publish rate as percentage of opens
+  const publishRate = designerOpens > 0 ? (publishedCount / designerOpens) * 100 : 0;
+
+  // Count template usage
+  const templateUsedCount = events.filter(e => e.event_name === 'template_used').length;
+
+  // Calculate template adoption as percentage of opens
+  const templateAdoptionRate = designerOpens > 0 ? (templateUsedCount / designerOpens) * 100 : 0;
+
   return {
-    designerOpens: 0,
-    publishRate: 0,
-    templateAdoptionRate: 0,
+    designerOpens,
+    publishRate,
+    templateAdoptionRate,
   };
 }
