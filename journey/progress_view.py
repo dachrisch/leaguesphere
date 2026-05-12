@@ -8,4 +8,4 @@ class GameProgressPageView(LoginRequiredMixin, TemplateView):
     Requires user authentication to view.
     """
 
-    template_name = "gameday_designer/progress.html"
+    template_name = "journey_dashboard/index.html"
