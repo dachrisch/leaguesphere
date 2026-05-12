@@ -65,11 +65,11 @@ export const GamedayFunnel: React.FC<GamedayFunnelProps> = ({ events }) => {
   const funnel = calculateFunnel(events);
 
   const stages = [
-    { key: 'opened', label: 'Opened', data: funnel.opened, color: '#4285f4' },
-    { key: 'created', label: 'Created', data: funnel.created, color: '#34a853' },
-    { key: 'edited', label: 'Edited', data: funnel.edited, color: '#fbbc04' },
-    { key: 'published', label: 'Published', data: funnel.published, color: '#ea4335' },
-    { key: 'templateUsed', label: 'Template Used', data: funnel.templateUsed, color: '#4285f4', isTemplate: true },
+    { key: 'opened', label: 'Opened', data: funnel.opened, color: '#0d6efd' },
+    { key: 'created', label: 'Created', data: funnel.created, color: '#198754' },
+    { key: 'edited', label: 'Edited', data: funnel.edited, color: '#ffc107' },
+    { key: 'published', label: 'Published', data: funnel.published, color: '#dc3545' },
+    { key: 'templateUsed', label: 'Template Used', data: funnel.templateUsed, color: '#0d6efd', isTemplate: true },
   ];
 
   return (

@@ -13,13 +13,13 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ stats, loading }) =>
   return (
     <div className="summary-cards" style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
       <div className="card" style={cardStyle}>
-        <div className="card-value" style={{ fontSize: '24px', fontWeight: 'bold', color: '#1a73e8' }}>
+        <div className="card-value" style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0d6efd' }}>
           {stats.total_events}
         </div>
         <div className="card-label">Events Today</div>
       </div>
       <div className="card" style={cardStyle}>
-        <div className="card-value" style={{ fontSize: '24px', fontWeight: 'bold', color: '#1a73e8' }}>
+        <div className="card-value" style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0d6efd' }}>
           {stats.unique_event_types}
         </div>
         <div className="card-label">Event Types</div>
@@ -29,9 +29,9 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ stats, loading }) =>
 };
 
 const cardStyle = {
-  padding: '16px',
-  border: '1px solid #e0e0e0',
-  borderRadius: '8px',
+  padding: '1rem',
+  border: '1px solid #dee2e6',
+  borderRadius: '0.5rem',
   flex: 1,
-  backgroundColor: '#f9f9f9',
+  backgroundColor: '#fff',
 };

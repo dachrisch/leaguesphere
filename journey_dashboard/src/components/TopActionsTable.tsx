@@ -21,18 +21,18 @@ export const TopActionsTable: React.FC<TopActionsTableProps> = ({ stats, loading
           <option value="30d">Last 30 days</option>
         </select>
       </div>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <table className="table table-hover">
         <thead>
-          <tr style={{ borderBottom: '2px solid #ccc' }}>
-            <th style={{ textAlign: 'left', padding: '8px' }}>Action</th>
-            <th style={{ textAlign: 'right', padding: '8px' }}>Count</th>
+          <tr>
+            <th>Action</th>
+            <th className="text-end">Count</th>
           </tr>
         </thead>
         <tbody>
           {stats.stats.map((stat) => (
-            <tr key={stat.event_name} style={{ borderBottom: '1px solid #eee' }}>
-              <td style={{ padding: '8px' }}>{stat.event_name}</td>
-              <td style={{ textAlign: 'right', padding: '8px', fontWeight: 'bold' }}>{stat.count}</td>
+            <tr key={stat.event_name}>
+              <td>{stat.event_name}</td>
+              <td className="text-end fw-bold">{stat.count}</td>
             </tr>
           ))}
         </tbody>

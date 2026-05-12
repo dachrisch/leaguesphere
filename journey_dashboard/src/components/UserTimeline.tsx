@@ -117,17 +117,17 @@ export const UserTimeline: React.FC = () => {
         {filteredEvents.length === 0 ? (
           <p>No events in this journey</p>
         ) : (
-          <div style={{ borderLeft: '2px solid #1a73e8', paddingLeft: '16px' }}>
+          <div style={{ borderLeft: '3px solid #0d6efd', paddingLeft: '1rem' }}>
             {filteredEvents.map((event) => (
-              <div key={event.id} style={{ marginBottom: '16px', paddingBottom: '8px' }}>
-                <div style={{ fontWeight: 'bold', color: '#1a73e8' }}>
+              <div key={event.id} style={{ marginBottom: '1.25rem', paddingBottom: '0.5rem', borderBottom: '1px solid #f8f9fa' }}>
+                <div style={{ fontWeight: 'bold', color: '#0d6efd' }}>
                   {event.event_name}
                 </div>
-                <div style={{ fontSize: '12px', color: '#888' }}>
+                <div className="text-muted" style={{ fontSize: '0.75rem' }}>
                   {new Date(event.created_at).toLocaleString()}
                 </div>
                 {Object.keys(event.metadata).length > 0 && (
-                  <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                  <div className="text-secondary" style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>
                     {JSON.stringify(event.metadata)}
                   </div>
                 )}
