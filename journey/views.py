@@ -123,7 +123,9 @@ class JourneyViewSet(viewsets.ModelViewSet):
     queryset = Journey.objects.all()
 
     def get_queryset(self):
-        """Filter journeys by authenticated user."""
+        """Filter journeys by authenticated user or show all if staff."""
+        if self.request.user.is_staff:
+            return Journey.objects.all().order_by('-started_at')
         return Journey.objects.filter(user=self.request.user).order_by('-started_at')
 
 
