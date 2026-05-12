@@ -1,5 +1,5 @@
 import React from 'react';
-import { GlobalAdoptionResponse } from '../types';
+import { GlobalAdoptionResponse, JourneyEvent } from '../types';
 import './AdoptionMetrics.css';
 
 /**
@@ -149,7 +149,7 @@ export const AdoptionMetrics: React.FC<AdoptionMetricsProps> = ({ adoptionData }
  * @param events - Array of JourneyEvent objects
  * @returns MetricsData object with adoption metrics
  */
-export function calculateMetrics(events: any[]) {
+export function calculateMetrics(events: JourneyEvent[]) {
   // Count unique gamedays opened (count of gameday_opened events)
   const designerOpens = events.filter(e => e.event_name === 'gameday_opened').length || 0;
 
