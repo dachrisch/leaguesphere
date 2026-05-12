@@ -181,7 +181,7 @@
       "live": "● LIVE · {{count}} Spiele",
       "today": "SPÄTER HEUTE · {{count}} Spieltag",
       "outlook": "AUSBLICK · NÄCHSTE {{days}} TAGE · {{count}}",
-      "recent": "RÜCKBLICK · LETZTE 24 H · {{count}}"
+      "recent": "RÜCKBLICK · LETZTE 7 TAGE · {{count}}"
     },
     "card": {
       "played": "{{played}}/{{total}} gespielt",

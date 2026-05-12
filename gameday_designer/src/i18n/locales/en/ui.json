@@ -181,7 +181,7 @@
       "live": "● LIVE · {{count}} Games",
       "today": "LATER TODAY · {{count}} Gameday",
       "outlook": "OUTLOOK · NEXT {{days}} DAYS · {{count}}",
-      "recent": "RECENT · LAST 24 H · {{count}}"
+      "recent": "RECENT · LAST 7 DAYS · {{count}}"
     },
     "card": {
       "played": "{{played}}/{{total}} played",
