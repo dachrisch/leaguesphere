@@ -473,3 +473,58 @@ class JourneyDashboardViewTestCase(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertIn('login', response.url)
+
+class JourneyPermissionTests(APITestCase):
+    """Test cases for journey permissions and data visibility (staff vs regular user)"""
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='staff', password='pass', is_staff=True)
+        self.regular_user = User.objects.create_user(username='regular', password='pass', is_staff=False)
+        self.other_user = User.objects.create_user(username='other', password='pass', is_staff=False)
+        
+        self.staff_token = AuthToken.objects.create(self.staff_user)[1]
+        self.regular_token = AuthToken.objects.create(self.regular_user)[1]
+        
+        self.journey_reg = Journey.objects.create(user=self.regular_user)
+        self.journey_oth = Journey.objects.create(user=self.other_user)
+        
+        JourneyEvent.objects.create(journey=self.journey_reg, event_name='gameday_opened')
+        JourneyEvent.objects.create(journey=self.journey_oth, event_name='passcheck_opened')
+
+    def test_stats_visibility_regular_user(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.regular_token}')
+        response = self.client.get('/api/journey/events/stats/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['total_events'], 2)
+        # Verify both event types are present in global stats
+        event_names = [item['event_name'] for item in response.data['stats']]
+        self.assertIn('gameday_opened', event_names)
+        self.assertIn('passcheck_opened', event_names)
+
+    def test_stats_visibility_staff_user(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.staff_token}')
+        response = self.client.get('/api/journey/events/stats/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['total_events'], 2)
+
+    def test_adoption_access_denied_regular_user(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.regular_token}')
+        response = self.client.get('/api/journey/events/adoption/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_adoption_access_granted_staff_user(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.staff_token}')
+        response = self.client.get('/api/journey/events/adoption/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['gameday']['opens'], 1)
+        self.assertEqual(response.data['passcheck']['opens'], 1)
+
+    def test_get_queryset_visibility(self):
+        # Regular user should only see their own events
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.regular_token}')
+        response = self.client.get('/api/journey/events/')
+        self.assertEqual(len(response.data), 1)
+        
+        # Staff user should see all events
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.staff_token}')
+        response = self.client.get('/api/journey/events/')
+        self.assertEqual(len(response.data), 2)

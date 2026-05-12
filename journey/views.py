@@ -75,8 +75,6 @@ class JourneyEventViewSet(viewsets.ModelViewSet):
         """Return aggregate event counts for the last 7 days."""
         seven_days_ago = timezone.now() - timedelta(days=7)
         filters = {'created_at__gte': seven_days_ago}
-        if not request.user.is_staff:
-            filters['journey__user'] = request.user
 
         events = JourneyEvent.objects.filter(**filters)
         stats = events.values('event_name').annotate(count=Count('id')).order_by('-count')
