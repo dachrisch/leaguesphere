@@ -377,12 +377,13 @@ class JourneyMenuTestCase(TestCase):
         self.factory = RequestFactory()
         self.User = get_user_model()
 
-    def test_menu_shows_for_bumbleflies_email(self):
-        """Menu item should appear for @bumbleflies.de users"""
+    def test_menu_shows_for_staff_user(self):
+        """Menu item should appear for staff users"""
         user = self.User.objects.create_user(
-            username='testuser',
-            email='test@bumbleflies.de',
-            password='pass'
+            username='staffuser',
+            email='user@example.com',
+            password='pass',
+            is_staff=True
         )
         request = self.factory.get('/')
         request.user = user
@@ -395,12 +396,13 @@ class JourneyMenuTestCase(TestCase):
         self.assertEqual(items[0]['name'], 'Journey Dashboard')
         self.assertEqual(items[0]['url'], reverse('journey-dashboard'))
 
-    def test_menu_hidden_for_other_email(self):
-        """Menu item should not appear for non-@bumbleflies.de users"""
+    def test_menu_hidden_for_non_staff_user(self):
+        """Menu item should not appear for non-staff users"""
         user = self.User.objects.create_user(
-            username='otheruser',
+            username='regularuser',
             email='user@example.com',
-            password='pass'
+            password='pass',
+            is_staff=False
         )
         request = self.factory.get('/')
         request.user = user
@@ -437,27 +439,29 @@ class JourneyDashboardViewTestCase(TestCase):
         self.client = Client()
         self.url = reverse('journey-dashboard')
 
-    def test_view_accessible_for_bumbleflies_user(self):
-        """View should return 200 for @bumbleflies.de users."""
+    def test_view_accessible_for_staff_user(self):
+        """View should return 200 for staff users."""
         user = User.objects.create_user(
-            username='testuser',
-            email='test@bumbleflies.de',
-            password='testpass123'
+            username='staffuser',
+            email='user@example.com',
+            password='testpass123',
+            is_staff=True
         )
-        self.client.login(username='testuser', password='testpass123')
+        self.client.login(username='staffuser', password='testpass123')
 
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
 
-    def test_view_forbidden_for_other_email(self):
-        """View should return 403 for non-@bumbleflies.de users."""
+    def test_view_forbidden_for_non_staff_user(self):
+        """View should return 403 for non-staff users."""
         user = User.objects.create_user(
-            username='otheruser',
+            username='regularuser',
             email='user@example.com',
-            password='testpass123'
+            password='testpass123',
+            is_staff=False
         )
-        self.client.login(username='otheruser', password='testpass123')
+        self.client.login(username='regularuser', password='testpass123')
 
         response = self.client.get(self.url)
 

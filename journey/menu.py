@@ -2,7 +2,7 @@ from league_manager.base_menu import BaseMenu, MenuItem
 
 
 class JourneyMenu(BaseMenu):
-    """Menu for journey dashboard with @bumbleflies.de email restriction."""
+    """Menu for journey dashboard with staff restriction."""
 
     def get_name(self):
         """Return the menu group name."""
@@ -10,7 +10,7 @@ class JourneyMenu(BaseMenu):
 
     def get_menu_items(self, request):
         """
-        Return menu items only for @bumbleflies.de users.
+        Return menu items only for staff users.
 
         Args:
             request: The HTTP request object
@@ -32,7 +32,7 @@ class JourneyMenu(BaseMenu):
     @staticmethod
     def _is_authorized_user(request):
         """
-        Check if user is authenticated and has @bumbleflies.de email.
+        Check if user is authenticated and is staff.
 
         Args:
             request: The HTTP request object
@@ -42,7 +42,4 @@ class JourneyMenu(BaseMenu):
         """
         if request.user is None:
             return False
-        return (
-            request.user.is_authenticated
-            and request.user.email.endswith('@bumbleflies.de')
-        )
+        return request.user.is_authenticated and request.user.is_staff

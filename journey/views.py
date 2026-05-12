@@ -110,7 +110,7 @@ class JourneyDashboardView(LoginRequiredMixin, TemplateView):
     @staticmethod
     def _is_authorized_user(request):
         """
-        Check if user is authenticated and has @bumbleflies.de email.
+        Check if user is authenticated and is staff.
 
         Args:
             request: The HTTP request object
@@ -118,7 +118,4 @@ class JourneyDashboardView(LoginRequiredMixin, TemplateView):
         Returns:
             True if user is authorized, False otherwise
         """
-        return (
-            request.user.is_authenticated
-            and request.user.email.endswith('@bumbleflies.de')
-        )
+        return request.user.is_authenticated and request.user.is_staff
