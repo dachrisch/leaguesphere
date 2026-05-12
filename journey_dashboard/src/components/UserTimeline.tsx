@@ -1,124 +1,79 @@
 import React, { useState, useEffect } from 'react';
 import { Journey, JourneyEvent } from '../types';
-import { fetchJourneys, fetchEvents } from '../utils/api';
-import { GamedayFunnel } from './GamedayFunnel';
-import { AdoptionMetrics } from './AdoptionMetrics';
+import { fetchEvents, fetchJourneys } from '../utils/api';
 import './UserTimeline.css';
-
-type FeatureFilter = 'all' | 'gameday_designer' | 'passcheck' | 'scorecard';
 
 export const UserTimeline: React.FC = () => {
   const [journeys, setJourneys] = useState<Journey[]>([]);
   const [selectedJourneyId, setSelectedJourneyId] = useState<number | null>(null);
   const [events, setEvents] = useState<JourneyEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [featureFilter, setFeatureFilter] = useState<FeatureFilter>('all');
 
+  // Load journeys on mount
   useEffect(() => {
     const loadJourneys = async () => {
       try {
-        setLoading(true);
         const data = await fetchJourneys();
         setJourneys(data);
-        if (data.length > 0) {
-          setSelectedJourneyId(data[0].id);
-        }
       } catch (err) {
         console.error('Failed to load journeys:', err);
-      } finally {
-        setLoading(false);
       }
     };
     loadJourneys();
   }, []);
 
+  // Load events when selection changes
   useEffect(() => {
-    if (selectedJourneyId) {
-      const loadEvents = async () => {
-        try {
-          const data = await fetchEvents(selectedJourneyId);
-          setEvents(data);
-        } catch (err) {
-          console.error('Failed to load events:', err);
-        }
-      };
-      loadEvents();
-    }
+    const loadEvents = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchEvents(selectedJourneyId || undefined);
+        setEvents(data);
+      } catch (err) {
+        console.error('Failed to load events:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadEvents();
   }, [selectedJourneyId]);
-
-  const filterEvents = (events: JourneyEvent[], filter: FeatureFilter): JourneyEvent[] => {
-    switch (filter) {
-      case 'gameday_designer':
-        return events.filter(
-          (e) => e.event_name.startsWith('gameday_') || e.event_name.startsWith('template_')
-        );
-      case 'passcheck':
-        return events.filter((e) => e.event_name.startsWith('passcheck_'));
-      case 'scorecard':
-        return events.filter((e) => e.event_name.startsWith('scorecard_'));
-      case 'all':
-      default:
-        return events;
-    }
-  };
-
-  const filteredEvents = filterEvents(events, featureFilter);
-  const gamedayEvents = filterEvents(events, 'gameday_designer');
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return 'active';
     try {
       return new Date(dateStr).toLocaleString();
     } catch {
-      return dateStr;
+      return dateStr || 'unknown';
     }
   };
 
-  if (loading) return <div>Loading...</div>;
-
   return (
     <div className="user-timeline">
-      <h3>Journey Timeline</h3>
-      <select
-        value={selectedJourneyId || ''}
-        onChange={(e) => setSelectedJourneyId(Number(e.target.value))}
-        className="form-select mb-3"
-      >
-        {journeys.map((j) => (
-          <option key={j.id} value={j.id}>
-            {formatDate(j.started_at)} to {formatDate(j.ended_at)}
-          </option>
-        ))}
-      </select>
-
-      <div className="filter-controls">
-        <label htmlFor="feature-filter">Filter by Feature:</label>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h3 style={{ margin: 0 }}>Event Feed</h3>
         <select
-          id="feature-filter"
-          value={featureFilter}
-          onChange={(e) => setFeatureFilter(e.target.value as FeatureFilter)}
-          className="feature-filter-select"
+          value={selectedJourneyId || ''}
+          onChange={(e) => setSelectedJourneyId(e.target.value ? Number(e.target.value) : null)}
+          className="form-select"
+          style={{ width: 'auto', minWidth: '300px' }}
         >
-          <option value="all">All Features</option>
-          <option value="gameday_designer">Gameday Designer</option>
-          <option value="passcheck">Passcheck</option>
-          <option value="scorecard">Scorecard</option>
+          <option value="">All Sessions (Global Feed)</option>
+          {journeys.map((j) => (
+            <option key={j.id} value={j.id}>
+              Session {j.id}: {formatDate(j.started_at)}
+            </option>
+          ))}
         </select>
       </div>
 
-      {featureFilter === 'gameday_designer' && gamedayEvents.length > 0 && (
-        <div className="adoption-section">
-          <AdoptionMetrics events={gamedayEvents} />
-          <GamedayFunnel events={gamedayEvents} />
-        </div>
-      )}
-
       <div style={{ marginTop: '16px' }}>
-        {filteredEvents.length === 0 ? (
-          <p>No events in this journey</p>
+        {loading ? (
+          <div>Loading events...</div>
+        ) : events.length === 0 ? (
+          <p>No events recorded for this selection</p>
         ) : (
           <div style={{ borderLeft: '3px solid #0d6efd', paddingLeft: '1rem' }}>
-            {filteredEvents.map((event) => (
+            {events.map((event) => (
               <div key={event.id} style={{ marginBottom: '1.25rem', paddingBottom: '0.5rem', borderBottom: '1px solid #f8f9fa' }}>
                 <div style={{ fontWeight: 'bold', color: '#0d6efd' }}>
                   {event.event_name}
