@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { progressApi, type ProgressApiParams } from '../../../api/progressApi';
 import type { GamedayProgress, GamedayWithStats, GamedayStats, GameProgressState } from '../../../types/progressTypes';
 import { GameStatus } from '../../../types/progressTypes';
+import { getLastGameTime } from '../utils/gameTimeUtils';
 
 function calculateStats(gameday: GamedayProgress): GamedayStats {
   const total = gameday.games.length;
@@ -33,18 +34,7 @@ function calculateMinutesUntilStart(dateStr: string, timeStr: string): number {
   return minutesUntil > 0 ? minutesUntil : 0;
 }
 
-function getLastGameTime(games: GameInfo[]): string | null {
-  if (games.length === 0) return null;
-  let lastTime = games[0].scheduled;
-  for (const game of games) {
-    if (game.scheduled > lastTime) {
-      lastTime = game.scheduled;
-    }
-  }
-  return lastTime;
-}
-
-function calculateGamedayEndTime(dateStr: string, games: GameInfo[]): Date {
+function calculateGamedayEndTime(dateStr: string, games: GamedayProgress['games']): Date {
   const lastGameTime = getLastGameTime(games);
   if (!lastGameTime) {
     return new Date(`${dateStr}T23:59:59`);
@@ -89,11 +79,11 @@ function categorizeGamedays(gamedays: GamedayProgress[]): Omit<GameProgressState
       totalLiveGames += gamedayWithStats.stats.live;
     } else if (isToday) {
       const gamedayEndTime = calculateGamedayEndTime(gameday.date, gameday.games);
-      const endTimePlusTwoHours = new Date(gamedayEndTime.getTime() + 3 * 60 * 60 * 1000);
+      const endTimePlusThreeHours = new Date(gamedayEndTime.getTime() + 3 * 60 * 60 * 1000);
       const noGamesStarted = gamedayWithStats.stats.played === 0 && gamedayWithStats.stats.live === 0;
       const someGamesStarted = gamedayWithStats.stats.played > 0 || gamedayWithStats.stats.live > 0;
       const noGamesAtAll = gamedayWithStats.stats.total === 0;
-      const isStale = noGamesAtAll || (now > gamedayEndTime && noGamesStarted) || (now > endTimePlusTwoHours && someGamesStarted);
+      const isStale = noGamesAtAll || (now > gamedayEndTime && noGamesStarted) || (now > endTimePlusThreeHours && someGamesStarted);
       const withMinutes = {
         ...gamedayWithStats,
         minutesUntilStart: calculateMinutesUntilStart(gameday.date, gameday.start),
