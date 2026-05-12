@@ -222,14 +222,8 @@ class GamedayDetailView(DetailView):
             qualify_table = qualify_table.to_html(**render_configs)
             final_table = final_table.to_html(**render_configs)
 
-        passcheck_info_table = ""
-
         schedule = gs.get_schedule()
-        if self.request.user.is_staff:
-            passcheck_info_table = gs.get_staff_passcheck_details().to_html(
-                **render_configs
-            )
-        else:
+        if not self.request.user.is_staff:
             if not isinstance(schedule, EmptySchedule):
                 del schedule[ID]
 
@@ -244,7 +238,6 @@ class GamedayDetailView(DetailView):
             "defense_table": gs.get_defense_player_statistic_table().to_html(
                 **render_configs
             ),
-            "passcheck_info_table": passcheck_info_table,
             "url_pattern_official": url_pattern_official,
             "url_pattern_official_signup": url_pattern_official_signup,
             "url_pattern_league_filter": UrlService.build_absolute_url(
@@ -359,9 +352,6 @@ class GamedayGameDetailView(DetailView):
         )
 
         game_setup_details = {}
-
-        if self.request.user.is_staff:
-            game_setup_details = ggs.get_staff_game_end_notes()
 
         if split_score_repaired:
             split_score_table_html = f"""{split_score_table_html}</ br>
