@@ -44,7 +44,7 @@ class HealthCheckView(View):
 
 
 from league_manager.views import ClearCacheView, robots_txt_view, database_error_view, DemoInfoView
-from gameday_designer.progress_view import GameProgressPageView
+from journey.progress_view import GameProgressPageView
 from league_manager.sitemaps import (
     StaticViewSitemap,
     LeaguetableSitemap,
@@ -81,7 +81,7 @@ urlpatterns = [
     # ToDo: fix gameday urls
     path("api/", include("gamedays.api.urls")),
     path("api/designer/", include("gameday_designer.urls")),
-    path("api/game-progress/", include("gameday_designer.api.progress_urls")),
+    path("api/game-progress/", include("journey.api.progress_urls")),
     path("api/liveticker/", include("liveticker.api.urls")),
     path("api/officials/", include("officials.api.urls")),
     path("api/passcheck/", include("passcheck.api.urls")),
