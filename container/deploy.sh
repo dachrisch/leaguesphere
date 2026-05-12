@@ -29,6 +29,13 @@ show_help() {
     echo "  $0 stage                                    # Bump patch RC (3.17.0 → 3.17.1-rc.1)"
     echo "  $0 stage minor                              # Bump minor RC (3.17.0 → 3.18.0-rc.1)"
     echo "  $0 stage major                              # Bump major RC (3.17.0 → 4.0.0-rc.1)"
+    echo "  $0 minor                                    # Finalize RC or bump minor (3.18.0-rc.1 → 3.18.0)"
+    echo
+    echo "  RC Workflow (prepare, test, release):"
+    echo "    $0 stage minor                            # Prepare RC: 3.17.0 → 3.18.0-rc.1"
+    echo "    # Test 3.18.0-rc.1 in staging..."
+    echo "    $0 minor                                  # Release: 3.18.0-rc.1 → 3.18.0"
+    echo
     echo "  $0 -b origin/master patch                  # origin/master → origin, PR to upstream"
     echo "  $0 -b upstream/master -r origin stage      # upstream/master → origin, PR to upstream"
     echo "  $0 -r upstream -pr-remote upstream patch   # Current → upstream, PR to upstream"
