@@ -18,6 +18,20 @@ export interface JourneyStats {
   count: number;
 }
 
+export interface AdoptionStats {
+  opens: number;
+  published?: number;
+  templates?: number;
+  completed?: number;
+  matches?: number;
+}
+
+export interface GlobalAdoptionResponse {
+  gameday: AdoptionStats;
+  passcheck: AdoptionStats;
+  scorecard: AdoptionStats;
+}
+
 export interface StatsResponse {
   stats: JourneyStats[];
   total_events: number;

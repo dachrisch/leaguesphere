@@ -110,14 +110,14 @@ class GamedayEventPersistenceTests(APITestCase):
         self.token = AuthToken.objects.create(self.user)[1]
         self.journey = Journey.objects.create(user=self.user)
 
-    def test_gameday_opened_event_persists(self):
+    def test_gameday_designer_opened_event_persists(self):
         """
-        Test: gameday_opened event is stored in JourneyEvent model
+        Test: gameday_designer_opened event is stored in JourneyEvent model
         Expected: Event has correct event_name and metadata
         """
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token}')
         response = self.client.post('/api/journey/events/', {
-            'event_name': 'gameday_opened',
+            'event_name': 'gameday_designer_opened',
             'metadata': {
                 'gameday_id': 'gd_123',
                 'session_id': 'sess_456'
@@ -125,7 +125,7 @@ class GamedayEventPersistenceTests(APITestCase):
         }, format='json')
 
         self.assertEqual(response.status_code, 201)
-        event = JourneyEvent.objects.get(event_name='gameday_opened')
+        event = JourneyEvent.objects.get(event_name='gameday_designer_opened')
         self.assertEqual(event.journey, self.journey)
         self.assertEqual(event.metadata['gameday_id'], 'gd_123')
         self.assertEqual(event.metadata['session_id'], 'sess_456')
@@ -239,12 +239,12 @@ class GamedayEventPersistenceTests(APITestCase):
         """
         # Create multiple different event types
         journey = Journey.objects.create(user=self.user)
-        JourneyEvent.objects.create(journey=journey, event_name='gameday_opened')
-        JourneyEvent.objects.create(journey=journey, event_name='gameday_opened')
+        JourneyEvent.objects.create(journey=journey, event_name='gameday_designer_opened')
+        JourneyEvent.objects.create(journey=journey, event_name='gameday_designer_opened')
         JourneyEvent.objects.create(journey=journey, event_name='gameday_created')
         JourneyEvent.objects.create(journey=journey, event_name='gameday_published')
 
-        opened_events = JourneyEvent.objects.filter(event_name='gameday_opened')
+        opened_events = JourneyEvent.objects.filter(event_name='gameday_designer_opened')
         created_events = JourneyEvent.objects.filter(event_name='gameday_created')
         published_events = JourneyEvent.objects.filter(event_name='gameday_published')
 
@@ -261,9 +261,9 @@ class GamedayEventPersistenceTests(APITestCase):
         journey1 = Journey.objects.create(user=self.user)
         journey2 = Journey.objects.create(user=user2)
 
-        JourneyEvent.objects.create(journey=journey1, event_name='gameday_opened')
+        JourneyEvent.objects.create(journey=journey1, event_name='gameday_designer_opened')
         JourneyEvent.objects.create(journey=journey1, event_name='gameday_created')
-        JourneyEvent.objects.create(journey=journey2, event_name='gameday_opened')
+        JourneyEvent.objects.create(journey=journey2, event_name='gameday_designer_opened')
 
         user1_events = JourneyEvent.objects.filter(journey__user=self.user)
         user2_events = JourneyEvent.objects.filter(journey__user=user2)
@@ -281,7 +281,7 @@ class GamedayEventPersistenceTests(APITestCase):
         # Create events with specific timestamps
         event1 = JourneyEvent.objects.create(
             journey=journey,
-            event_name='gameday_opened'
+            event_name='gameday_designer_opened'
         )
         event2 = JourneyEvent.objects.create(
             journey=journey,
@@ -310,7 +310,7 @@ class GamedayEventPersistenceTests(APITestCase):
         journey = Journey.objects.create(user=self.user)
 
         events_to_create = [
-            ('gameday_opened', {'gameday_id': 'gd_full', 'session_id': 'sess_1'}),
+            ('gameday_designer_opened', {'gameday_id': 'gd_full', 'session_id': 'sess_1'}),
             ('gameday_created', {'gameday_id': 'gd_full', 'gameday_name': 'Test Gameday'}),
             ('gameday_edited', {'gameday_id': 'gd_full', 'field_modified': 'teams'}),
             ('template_used', {'template_id': 'tpl_1', 'template_name': 'Default'}),
@@ -335,7 +335,7 @@ class GamedayEventPersistenceTests(APITestCase):
 
         # Verify metadata preserved
         first_event = persisted_events.first()
-        self.assertEqual(first_event.event_name, 'gameday_opened')
+        self.assertEqual(first_event.event_name, 'gameday_designer_opened')
         self.assertEqual(first_event.metadata['session_id'], 'sess_1')
 
     def test_event_creation_timestamp_accuracy(self):
@@ -347,7 +347,7 @@ class GamedayEventPersistenceTests(APITestCase):
         before = timezone.now()
         event = JourneyEvent.objects.create(
             journey=journey,
-            event_name='gameday_opened'
+            event_name='gameday_designer_opened'
         )
         after = timezone.now()
 
@@ -362,7 +362,7 @@ class GamedayEventPersistenceTests(APITestCase):
         journey = Journey.objects.create(user=self.user)
         event = JourneyEvent.objects.create(
             journey=journey,
-            event_name='gameday_opened',
+            event_name='gameday_designer_opened',
             metadata={}
         )
 
@@ -473,3 +473,58 @@ class JourneyDashboardViewTestCase(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertIn('login', response.url)
+
+class JourneyPermissionTests(APITestCase):
+    """Test cases for journey permissions and data visibility (staff vs regular user)"""
+    def setUp(self):
+        self.staff_user = User.objects.create_user(username='staff', password='pass', is_staff=True)
+        self.regular_user = User.objects.create_user(username='regular', password='pass', is_staff=False)
+        self.other_user = User.objects.create_user(username='other', password='pass', is_staff=False)
+        
+        self.staff_token = AuthToken.objects.create(self.staff_user)[1]
+        self.regular_token = AuthToken.objects.create(self.regular_user)[1]
+        
+        self.journey_reg = Journey.objects.create(user=self.regular_user)
+        self.journey_oth = Journey.objects.create(user=self.other_user)
+        
+        JourneyEvent.objects.create(journey=self.journey_reg, event_name='gameday_designer_opened')
+        JourneyEvent.objects.create(journey=self.journey_oth, event_name='passcheck_started')
+
+    def test_stats_visibility_regular_user(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.regular_token}')
+        response = self.client.get('/api/journey/events/stats/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['total_events'], 2)
+        # Verify both event types are present in global stats
+        event_names = [item['event_name'] for item in response.data['stats']]
+        self.assertIn('gameday_designer_opened', event_names)
+        self.assertIn('passcheck_started', event_names)
+
+    def test_stats_visibility_staff_user(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.staff_token}')
+        response = self.client.get('/api/journey/events/stats/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['total_events'], 2)
+
+    def test_adoption_access_denied_regular_user(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.regular_token}')
+        response = self.client.get('/api/journey/events/adoption/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_adoption_access_granted_staff_user(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.staff_token}')
+        response = self.client.get('/api/journey/events/adoption/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['gameday']['opens'], 1)
+        self.assertEqual(response.data['passcheck']['opens'], 1)
+
+    def test_get_queryset_visibility(self):
+        # Regular user should only see their own events
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.regular_token}')
+        response = self.client.get('/api/journey/events/')
+        self.assertEqual(len(response.data), 1)
+        
+        # Staff user should see all events
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.staff_token}')
+        response = self.client.get('/api/journey/events/')
+        self.assertEqual(len(response.data), 2)

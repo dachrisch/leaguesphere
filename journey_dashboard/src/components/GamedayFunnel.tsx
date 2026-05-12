@@ -22,7 +22,7 @@ export interface FunnelData {
  */
 export function calculateFunnel(events: JourneyEvent[]): FunnelData {
   // Count events for each stage
-  const openedCount = events.filter(e => e.event_name === 'gameday_opened').length || 1; // Baseline: 100%
+  const openedCount = events.filter(e => e.event_name === 'gameday_designer_opened').length || 1; // Baseline: 100%
   const createdCount = events.filter(e => e.event_name === 'gameday_created').length;
   const editedCount = events.filter(e => e.event_name === 'gameday_edited').length;
   const publishedCount = events.filter(e => e.event_name === 'gameday_published').length;

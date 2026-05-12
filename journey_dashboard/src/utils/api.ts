@@ -1,4 +1,4 @@
-import { Journey, JourneyEvent, StatsResponse } from '../types';
+import { Journey, JourneyEvent, StatsResponse, GlobalAdoptionResponse } from '../types';
 
 const BASE_URL = '/api/journey';
 
@@ -26,8 +26,8 @@ export async function fetchJourneys(userId?: number): Promise<Journey[]> {
   return Array.isArray(data) ? data : (data.results || []);
 }
 
-export async function fetchEvents(journeyId: number): Promise<JourneyEvent[]> {
-  const url = `${BASE_URL}/events/?journey=${journeyId}`;
+export async function fetchEvents(journeyId?: number): Promise<JourneyEvent[]> {
+  const url = journeyId ? `${BASE_URL}/events/?journey=${journeyId}` : `${BASE_URL}/events/`;
   const res = await fetch(url, {
     headers: getAuthHeader(),
     credentials: 'include'
@@ -44,6 +44,16 @@ export async function fetchStats(): Promise<StatsResponse> {
     credentials: 'include'
   });
   if (!res.ok) throw new Error(`Failed to fetch stats: ${res.statusText}`);
+  return res.json();
+}
+
+export async function fetchGlobalAdoption(): Promise<GlobalAdoptionResponse> {
+  const url = `${BASE_URL}/events/adoption/`;
+  const res = await fetch(url, {
+    headers: getAuthHeader(),
+    credentials: 'include'
+  });
+  if (!res.ok) throw new Error(`Failed to fetch global adoption: ${res.statusText}`);
   return res.json();
 }
 
