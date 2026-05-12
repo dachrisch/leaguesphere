@@ -157,7 +157,9 @@ gameday_designer/static/gameday_designer/js/*.js
 gameday_designer/static/gameday_designer/js/*.css
 gameday_designer/static/gameday_designer/js/*.woff
 gameday_designer/static/gameday_designer/js/*.woff2
-league_manager/static/journey_dashboard/
+journey/static/journey_dashboard/*.js
+journey/static/journey_dashboard/*.css
+# league_manager/static/journey_dashboard/ - removed, was incorrect path
 
 # Superpowers tooling artifacts
 .superpowers/
