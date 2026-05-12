@@ -222,14 +222,8 @@ class GamedayDetailView(DetailView):
             qualify_table = qualify_table.to_html(**render_configs)
             final_table = final_table.to_html(**render_configs)
 
-        passcheck_info_table = ""
-
         schedule = gs.get_schedule()
-        if self.request.user.is_staff:
-            passcheck_info_table = gs.get_staff_passcheck_details().to_html(
-                **render_configs
-            )
-        else:
+        if not self.request.user.is_staff:
             if not isinstance(schedule, EmptySchedule):
                 del schedule[ID]
 
