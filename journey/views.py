@@ -59,8 +59,12 @@ class JourneyEventViewSet(viewsets.ModelViewSet):
             return Journey.objects.create(user=user)
 
     def get_queryset(self):
-        """Filter events by user and optional journey."""
-        qs = JourneyEvent.objects.filter(journey__user=self.request.user)
+        """Filter events by authenticated user and optionally by journey."""
+        if self.request.user.is_staff:
+            qs = JourneyEvent.objects.all()
+        else:
+            qs = JourneyEvent.objects.filter(journey__user=self.request.user)
+
         journey_id = self.request.query_params.get('journey')
         if journey_id:
             qs = qs.filter(journey_id=journey_id)
@@ -70,16 +74,50 @@ class JourneyEventViewSet(viewsets.ModelViewSet):
     def stats(self, request):
         """Return aggregate event counts for the last 7 days."""
         seven_days_ago = timezone.now() - timedelta(days=7)
-        events = JourneyEvent.objects.filter(
-            journey__user=request.user,
-            created_at__gte=seven_days_ago
-        )
+        filters = {'created_at__gte': seven_days_ago}
+        if not request.user.is_staff:
+            filters['journey__user'] = request.user
+
+        events = JourneyEvent.objects.filter(**filters)
         stats = events.values('event_name').annotate(count=Count('id')).order_by('-count')
         return Response({
             'stats': list(stats),
             'total_events': events.count(),
             'unique_event_types': len(list(stats)),
         })
+
+    @action(detail=False, methods=['get'])
+    def adoption(self, request):
+        """Return adoption metrics for staff users."""
+        if not request.user.is_staff:
+            return Response({"detail": "Permission denied."}, status=403)
+
+        thirty_days_ago = timezone.now() - timedelta(days=30)
+        events = JourneyEvent.objects.filter(created_at__gte=thirty_days_ago)
+
+        # Optimization: Single query to get all counts
+        counts = events.values('event_name').annotate(count=Count('id'))
+        count_map = {item['event_name']: item['count'] for item in counts}
+
+        def get_count(name):
+            return count_map.get(name, 0)
+
+        return Response({
+            "gameday": {
+                "opens": get_count("gameday_opened"),
+                "published": get_count("gameday_published"),
+                "templates": get_count("template_used"),
+            },
+            "passcheck": {
+                "opens": get_count("passcheck_opened"),
+                "completed": get_count("passcheck_completed"),
+            },
+            "scorecard": {
+                "opens": get_count("scorecard_opened"),
+                "matches": get_count("scorecard_match_started"),
+            }
+        })
+
 
 class JourneyViewSet(viewsets.ModelViewSet):
     serializer_class = JourneySerializer
