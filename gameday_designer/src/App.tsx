@@ -20,12 +20,11 @@ import { GamedayProvider } from './context/GamedayContext';
  * Main App component for Gameday Designer.
  */
 const App: React.FC = () => {
-  const basename = import.meta.env.DEV ? '/' : '/gamedays/gameday/design';
   const mountEl = document.getElementById('gameday-designer');
   const currentUserId = parseInt(mountEl?.dataset.userId ?? '0', 10);
 
   return (
-    <BrowserRouter basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter basename={import.meta.env.DEV ? '/' : '/gamedays/gameday/design'} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <GamedayProvider currentUserId={currentUserId}>
         <Routes>
           <Route path="/" element={<MainLayout />}>
