@@ -26,11 +26,7 @@ class JourneyMenu(BaseMenu):
                 name="Journey Dashboard",
                 url="journey-dashboard",
                 permissions=[]
-            ),
-            MenuItem.create(
-                name='📊 Game Progress',
-                url="game-progress-page",
-            ),
+            )
         ]
 
     @staticmethod
