@@ -23,11 +23,13 @@
                 </a>
             </li>
         {% endfor %}
+        {% if show_select_all_option|default_if_none:True %}
         <li>
             <a class="dropdown-item" href="{% url 'league-gameday-list-and-year' season=selected_season %}">
                 Alle anzeigen
             </a>
         </li>
+        {% endif %}
     </ul>
 </div>
 {% endif %}

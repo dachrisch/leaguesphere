@@ -25,8 +25,13 @@ class MatchreportGamedayListView(UserPassesTestMixin, View):
 
     def get(self, request, **kwargs):
         year = kwargs.get("season", datetime.today().year)
+        show_all_games = request.GET.get("showAllGames") == "true"
         league = kwargs.get("league")
-        gamedays = Gameday.objects.filter(date__year=year).order_by("-date")
+        gamedays = Gameday.objects.filter(date__year=year).order_by("date")
+        leagues = gamedays.values_list("league__name", flat=True).distinct().order_by("league__name")
+        filtered_gamedays_by_today = gamedays.filter(date__gt=datetime.today()).order_by("date")
+        if filtered_gamedays_by_today.count() > 0 and not show_all_games:
+            gamedays = filtered_gamedays_by_today
         gamedays_filtered_by_league = (
             gamedays.filter(league__name=league) if league else gamedays
         )
@@ -35,17 +40,15 @@ class MatchreportGamedayListView(UserPassesTestMixin, View):
             self.template_name,
             {
                 "gamedays": gamedays_filtered_by_league,
-                "years": Gameday.objects.annotate(year=ExtractYear("date"))
+                "seasons": Gameday.objects.annotate(year=ExtractYear("date"))
                 .values_list("year", flat=True)
                 .distinct()
                 .order_by("-year"),
-                "season": year,
-                "leagues": gamedays.values_list("league__name", flat=True)
-                .distinct()
-                .order_by("-league__name"),
-                "current_league": league,
+                "selected_season": year,
+                "leagues": leagues,
+                "selected_league": league,
                 "season_year_pattern": MATCHREPORT_GAMEDAY_LIST_AND_YEAR,
-                "season_year_league_pattern": MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
+                "league_year_url_pattern": MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
             },
         )
 
