@@ -528,3 +528,31 @@ class JourneyPermissionTests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.staff_token}')
         response = self.client.get('/api/journey/events/')
         self.assertEqual(len(response.data), 2)
+
+
+class GameProgressViewTests(TestCase):
+    """Tests for GameProgressPageView template resolution."""
+
+    def test_game_progress_view_template_exists(self):
+        """Verify GameProgressPageView references an existing template."""
+        from journey.progress_view import GameProgressPageView
+        from django.template.loader import get_template
+
+        view = GameProgressPageView()
+        template_name = view.template_name
+
+        # Should not raise TemplateDoesNotExist
+        try:
+            template = get_template(template_name)
+            self.assertIsNotNone(template)
+        except Exception as e:
+            self.fail(f"Template {template_name} not found: {e}")
+
+    def test_game_progress_view_correct_template(self):
+        """Verify GameProgressPageView uses journey_dashboard template, not gameday_designer."""
+        from journey.progress_view import GameProgressPageView
+
+        view = GameProgressPageView()
+        # Should reference journey_dashboard, not gameday_designer
+        self.assertIn("journey_dashboard", view.template_name)
+        self.assertNotIn("gameday_designer/progress", view.template_name)
