@@ -39,8 +39,4 @@ class Gameday_designerMenuOrgaEntry(BaseMenu):
                 name='<span class="badge bg-warning text-dark me-1" style="font-size: 0.65em; vertical-align: middle;">BETA</span> Spieltag designen',
                 url="gameday_designer_app:index",  # Reverses to /gamedays/gameday/design/
             ),
-            MenuItem.create(
-                name='📊 Game Progress',
-                url="game-progress-page",  # Reverses to /gamedays/progress/
-            ),
         ]
