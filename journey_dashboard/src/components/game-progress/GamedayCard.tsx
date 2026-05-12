@@ -20,9 +20,10 @@ const GamedayCard: React.FC<GamedayCardProps> = ({ gameday, isLive = false }) =>
   const { stats } = gameday;
   const lastGameTime = getLastGameTime(gameday.games);
   const endTime = lastGameTime ? addHours(lastGameTime, 2) : (gameday.start ? addHours(gameday.start, 2) : '');
+  const gamedayUrl = `/gamedays/gameday/${gameday.id}/`;
 
   return (
-    <div className={`${styles.gamedayCard} ${isLive ? styles.cardLive : ''}`}>
+    <a href={gamedayUrl} className={`${styles.gamedayCard} ${isLive ? styles.cardLive : ''}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
       <div className={styles.cardTop}>
         <div className={styles.cardHeader}>
           {isLive && <span className={styles.liveBadge}>● LIVE</span>}
@@ -74,7 +75,7 @@ const GamedayCard: React.FC<GamedayCardProps> = ({ gameday, isLive = false }) =>
         )}
         {isLive && <span className={styles.percentComplete}>{stats.percentComplete}%</span>}
       </div>
-    </div>
+    </a>
   );
 };
 
