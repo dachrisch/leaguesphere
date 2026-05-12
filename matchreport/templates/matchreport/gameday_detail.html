@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+{% if user.is_staff %}
+{% if not request.GET.isExtern %}
+<h3><span class="badge bg-warning text-dark me-1" style="font-size: 0.65em; vertical-align: middle;">BETA</span>Spielberichtsbogen Lite</h3>
+<div class="d-flex justify-content-between align-items-center">
+    <h1>{{ object.name }}</h1>
+</div>
+{% endif %}
+<div class="row mb-1">
+    <div class="col">Liga: {{ object.league.name }}</div>
+</div><div class="row mb-1">
+    <div class="col">Datum: {{ object.date | date:"l, j. F Y " }}</div>
+</div>
+<div class="row mb-1">
+    <div class="col">Turnierbeginn: {{ object.start|time:"H:i" }} Uhr</div>
+</div>
+<div class="row mb-1">
+    <div class="col">Adresse: <a href="https://www.google.com/maps/search/?api=1&query={{object.address}}"
+                                 target="_blank">{{ object.address }}</a></div>
+</div>
+
+<div class="card" style="overflow: auto">
+    <div aria-controls="collapsePasscheck" aria-expanded="false" class="card-header" data-bs-target="#collapsePasscheck"
+         data-bs-toggle="collapse" id="headingPasscheck" role="button">
+        <h2>Passcheck Übersicht</h2>
+    </div>
+    <div aria-labelledby="headingPasscheck" class="collapse show" id="collapsePasscheck">
+        <div class="card-body">
+            {{ info.passcheck_info_table | safe }}
+        </div>
+    </div>
+</div>
+<div class="card" style="overflow: auto">
+    <div aria-controls="collapsePasscheckPlayer" aria-expanded="false" class="card-header" data-bs-target="#collapsePasscheckPlayer"
+         data-bs-toggle="collapse" id="headingPasscheckPlayer" role="button">
+        <h2>Passcheck Spieler</h2>
+    </div>
+    <div aria-labelledby="headingPasscheckPlayer" class="collapse" id="collapsePasscheckPlayer">
+        <ul class="nav nav-tabs mb-3" role="tablist">
+          {% for team_name, team_data in info.passcheck_player_data.items %}
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link {% if forloop.first %}active{% endif %}"
+                data-bs-toggle="tab"
+                data-bs-target="#team-{{ forloop.counter }}"
+                type="button"
+                role="tab"
+              >
+                {{ team_name }} ({{ team_data.num_players }} Spieler)
+              </button>
+            </li>
+          {% endfor %}
+        </ul>
+        <div class="card-body tab-content">
+          {% for team_name, team_data in info.passcheck_player_data.items %}
+            <div
+              class="tab-pane fade {% if forloop.first %}show active{% endif %}"
+              id="team-{{ forloop.counter }}"
+              role="tabpanel"
+            >
+              {{ team_data.player_table|safe }}
+            </div>
+          {% empty %}
+              <p>Es wurden keine Passchecks an diesem Spieltag durchgeführt.</p>
+          {% endfor %}
+        </div>
+    </div>
+</div>
+<div class="card" style="overflow: auto">
+    <div aria-controls="collapseGames" aria-expanded="false" class="card-header" data-bs-target="#collapseGames"
+         data-bs-toggle="collapse" id="headingGames" role="button">
+        <h2>Spiele</h2>
+    </div>
+    <div aria-labelledby="headingGames" class="collapse" id="collapseGames">
+        {% for game in info.gameday_match_reports %}
+        <div class="card border-0 border-bottom rounded-0">
+
+            {# ── Header / Score row ── #}
+            <div class="card-header bg-transparent d-flex align-items-center gap-3 py-3"
+                 role="button"
+                 data-bs-toggle="collapse"
+                 data-bs-target="#collapseGame{{ game.gameinfo_id }}"
+                 aria-expanded="false"
+                 aria-controls="collapseGame{{ game.gameinfo_id }}">
+
+                {% if game.game_status == 'beendet' %}
+                    <span class="badge rounded-pill bg-success" style="font-size: 0.7em;">beendet</span>
+                {% else %}
+                    <span class="badge rounded-pill bg-warning text-dark" style="font-size: 0.7em;">{{ game.game_status }}</span>
+                {% endif %}
+                {{ game.scheduled |time:"H:i" }}
+                <div class="d-flex align-items-center flex-grow-1 gap-2">
+                    <span class="fw-semibold text-end flex-grow-1">{{ game.home.team_name }}</span>
+                    {% if game.game_status == 'beendet' %}
+                        <span class="fs-5 fw-semibold px-2 text-nowrap">
+                            {{ game.home.points_scored }} <span class="text-muted fw-normal">–</span> {{ game.away.points_scored }}
+                        </span>
+                    {% else %}
+                        <span class="px-2 text-muted">vs</span>
+                    {% endif %}
+                    <span class="fw-semibold flex-grow-1">{{ game.away.team_name }}</span>
+                </div>
+
+                <i class="bi bi-chevron-down text-muted collapse-chevron" style="transition: transform .2s;"></i>
+            </div>
+            <div id="collapseGame{{ game.gameinfo_id }}" class="collapse">
+                <div class="card-body p-0">
+                    <ul class="nav nav-tabs px-3 pt-2" id="tabs{{ game.gameinfo_id }}" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="info-tab-{{ game.gameinfo_id }}"
+                                    data-bs-toggle="tab"
+                                    data-bs-target="#info-{{ game.gameinfo_id }}"
+                                    type="button" role="tab">Info</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="refs-tab-{{ game.gameinfo_id }}"
+                                    data-bs-toggle="tab"
+                                    data-bs-target="#refs-{{ game.gameinfo_id }}"
+                                    type="button" role="tab">Schiedsrichter</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="flags-tab-{{ game.gameinfo_id }}"
+                                    data-bs-toggle="tab"
+                                    data-bs-target="#flags-{{ game.gameinfo_id }}"
+                                    type="button" role="tab">
+                                Strafen
+                                {% if game.flags %}
+                                    <span class="badge bg-secondary ms-1" style="font-size: 0.7em;">
+                                        {{ game.num_flags }}
+                                    </span>
+                                {% endif %}
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content p-3" id="tabContent{{ game.gameinfo_id }}">
+                        <div class="tab-pane fade show active" id="info-{{ game.gameinfo_id }}" role="tabpanel">
+                            <div class="row row-cols-2 g-3">
+                                <div>
+                                    <p class="text-muted small mb-0 text-uppercase" style="font-size: 0.7em; letter-spacing: .04em;">Status</p>
+                                    <p class="mb-0">{{ game.game_status }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-muted small mb-0 text-uppercase" style="font-size: 0.7em; letter-spacing: .04em;">Officials (Team)</p>
+                                    <p class="mb-0">{{ game.officials }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-muted small mb-0 text-uppercase" style="font-size: 0.7em; letter-spacing: .04em;">Heim Kapitän</p>
+                                    <p class="mb-0">{{ game.end_notes.homeCaptain }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-muted small mb-0 text-uppercase" style="font-size: 0.7em; letter-spacing: .04em;">Spielfeld</p>
+                                    <p class="mb-0">{{ game.field }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-muted small mb-0 text-uppercase" style="font-size: 0.7em; letter-spacing: .04em;">Auswärts Kapitän</p>
+                                    <p class="mb-0">{{ game.end_notes.awayCaptain }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-muted small mb-0 text-uppercase" style="font-size: 0.7em; letter-spacing: .04em;">Notiz</p>
+                                    {% if game.end_notes.note %}
+                                        <p class="mb-0 text-danger">{{ game.end_notes.note | safe }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="refs-{{ game.gameinfo_id }}" role="tabpanel">
+                            {{ game.refs | safe }}
+                        </div>
+                        <div class="tab-pane fade" id="flags-{{ game.gameinfo_id }}" role="tabpanel">
+                            {{ game.flags | safe }}
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+
+
+
+
+{% endif %}
+{% include "partials/delete_modal.html" %}
+
+<script>
+    $(function() {
+        $('table tbody tr').addClass('text-nowrap')
+    })
+$(document).ready(function(){
+  $("#search").on("keyup", function() {
+  console.log('keyup', $(this).val().toLowerCase())
+  console.log($("#schedule tbody tr"))
+    var value = $(this).val().toLowerCase();
+    $("#schedule tbody tr").filter(function() {
+      $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+    });
+  });
+});
+
+</script>
+
+{% endblock content %}

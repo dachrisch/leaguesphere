@@ -3,7 +3,7 @@
 set -e
 
 show_help() {
-    echo "Usage: $0 [-b <branch>] [-r <remote>] [--pr-remote <remote>] [major|minor|patch|stage|demo]"
+    echo "Usage: $0 [-b <branch>] [-r <remote>] [--pr-remote <remote>] [major|minor|patch|stage [major|minor|patch]|demo]"
     echo
     echo "Flags:"
     echo "  -b, --branch <branch>        Deploy from specified branch via worktree"
@@ -12,11 +12,11 @@ show_help() {
     echo "  -h, --help                   Show this help message and exit"
     echo
     echo "Options:"
-    echo "  major     Bump the major version (production)"
-    echo "  minor     Bump the minor version (production)"
-    echo "  patch     Bump the patch version (production)"
-    echo "  stage     Create/increment staging RC version"
-    echo "  demo      Create/increment demo version"
+    echo "  major                 Bump the major version (production)"
+    echo "  minor                 Bump the minor version (production)"
+    echo "  patch                 Bump the patch version (production)"
+    echo "  stage [major|minor|patch]   Create/increment staging RC version (default: patch)"
+    echo "  demo                  Create/increment demo version"
     echo
     echo "Workflow:"
     echo "  1. Deploy from origin branch (or specified via -b)"
@@ -26,7 +26,16 @@ show_help() {
     echo "  5. Sync upstream back to origin"
     echo
     echo "Examples:"
-    echo "  $0 stage                                    # Current branch → origin, PR to upstream"
+    echo "  $0 stage                                    # Bump patch RC (3.17.0 → 3.17.1-rc.1)"
+    echo "  $0 stage minor                              # Bump minor RC (3.17.0 → 3.18.0-rc.1)"
+    echo "  $0 stage major                              # Bump major RC (3.17.0 → 4.0.0-rc.1)"
+    echo "  $0 minor                                    # Finalize RC or bump minor (3.18.0-rc.1 → 3.18.0)"
+    echo
+    echo "  RC Workflow (prepare, test, release):"
+    echo "    $0 stage minor                            # Prepare RC: 3.17.0 → 3.18.0-rc.1"
+    echo "    # Test 3.18.0-rc.1 in staging..."
+    echo "    $0 minor                                  # Release: 3.18.0-rc.1 → 3.18.0"
+    echo
     echo "  $0 -b origin/master patch                  # origin/master → origin, PR to upstream"
     echo "  $0 -b upstream/master -r origin stage      # upstream/master → origin, PR to upstream"
     echo "  $0 -r upstream -pr-remote upstream patch   # Current → upstream, PR to upstream"
@@ -201,9 +210,21 @@ while [[ $# -gt 0 ]]; do
             show_help
             exit 0
             ;;
-        major|minor|patch|stage|demo)
+        major|minor|patch|demo)
             VERSION_ARG="$1"
             shift
+            break
+            ;;
+        stage)
+            VERSION_ARG="$1"
+            shift
+            # Check if next arg is a version type
+            if [[ "$1" =~ ^(major|minor|patch)$ ]]; then
+                STAGE_VERSION_TYPE="$1"
+                shift
+            else
+                STAGE_VERSION_TYPE="patch"  # Default to patch
+            fi
             break
             ;;
         *)
@@ -302,7 +323,7 @@ fi
 # Main deployment logic
 case "$VERSION_ARG" in
     major|minor|patch)
-        # Production deployment - bump stable version
+        # Production deployment - finalize RC or bump stable version
         # If running from container/ directory, go to root
         if [ -d "../league_manager" ]; then
             cd ..
@@ -312,30 +333,37 @@ case "$VERSION_ARG" in
         CURRENT_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
         echo "Current version: $CURRENT_VERSION"
 
-        # Extract base version (remove any +demo.X or -rc.X suffix)
-        BASE_VERSION="${CURRENT_VERSION%%+*}"
-        BASE_VERSION="${BASE_VERSION%%-*}"
+        # Check if current version is an RC - if so, finalize it instead of bumping
+        if [[ $CURRENT_VERSION =~ -rc\. ]]; then
+            # Finalize RC by removing the -rc.X suffix
+            NEW_VERSION="${CURRENT_VERSION%-rc.*}"
+            echo "Finalizing RC: $CURRENT_VERSION → $NEW_VERSION"
+        else
+            # Extract base version (remove any +demo.X suffix)
+            BASE_VERSION="${CURRENT_VERSION%%+*}"
+            echo "Base version: $BASE_VERSION"
 
-        echo "Base version: $BASE_VERSION"
+            # Parse version components
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
 
-        # Parse version components
-        IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
+            # Bump version based on argument
+            case "$VERSION_ARG" in
+                major)
+                    NEW_MAJOR=$((MAJOR + 1))
+                    NEW_VERSION="${NEW_MAJOR}.0.0"
+                    ;;
+                minor)
+                    NEW_MINOR=$((MINOR + 1))
+                    NEW_VERSION="${MAJOR}.${NEW_MINOR}.0"
+                    ;;
+                patch)
+                    NEW_PATCH=$((PATCH + 1))
+                    NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+                    ;;
+            esac
 
-        # Bump version based on argument
-        case "$VERSION_ARG" in
-            major)
-                NEW_MAJOR=$((MAJOR + 1))
-                NEW_VERSION="${NEW_MAJOR}.0.0"
-                ;;
-            minor)
-                NEW_MINOR=$((MINOR + 1))
-                NEW_VERSION="${MAJOR}.${NEW_MINOR}.0"
-                ;;
-            patch)
-                NEW_PATCH=$((PATCH + 1))
-                NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
-                ;;
-        esac
+            echo "Bumping $VERSION_ARG version: $CURRENT_VERSION → $NEW_VERSION"
+        fi
 
         echo "Creating version: $NEW_VERSION"
 
@@ -409,12 +437,24 @@ case "$VERSION_ARG" in
             git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
             git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         else
-            # Stable version - bump patch and create RC.1 (e.g., 2.13.0 → 2.13.1-rc.1)
-            # Manual approach needed because bump-my-version cannot create RC from stable
-            echo "Bumping patch version and creating RC.1..."
+            # Stable version - create RC.1 for specified version type
+            echo "Creating ${STAGE_VERSION_TYPE} RC.1 from stable version..."
             IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
-            NEW_PATCH=$((PATCH + 1))
-            NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}-rc.1"
+
+            case "$STAGE_VERSION_TYPE" in
+                major)
+                    NEW_MAJOR=$((MAJOR + 1))
+                    NEW_VERSION="${NEW_MAJOR}.0.0-rc.1"
+                    ;;
+                minor)
+                    NEW_MINOR=$((MINOR + 1))
+                    NEW_VERSION="${MAJOR}.${NEW_MINOR}.0-rc.1"
+                    ;;
+                patch)
+                    NEW_PATCH=$((PATCH + 1))
+                    NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}-rc.1"
+                    ;;
+            esac
 
             echo "Creating version: $NEW_VERSION"
 

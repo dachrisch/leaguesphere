@@ -2,6 +2,7 @@ import pytest
 from django.urls import reverse
 
 
+@pytest.mark.django_db
 def test_health_check_endpoint(client):
     """Test that health check endpoint returns 200 and healthy status."""
     url = "/health/"

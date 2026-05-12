@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<h2><span class="badge bg-warning text-dark me-1" style="font-size: 0.65em; vertical-align: middle;">BETA</span>Spielberichtsbogen Lite</h2>
+<div class="d-flex gap-2 mb-3">
+    {% include 'utils/season_filter.html' with url_pattern=season_year_pattern  %}
+    {% include 'utils/league_filter.html' with url_pattern=league_year_url_pattern  show_select_all_option=False %}
+</div>
+<hr />
+<table class="table table-hover align-middle">
+  <thead class="table-light">
+    <tr>
+      <th>Spieltag</th>
+      <th>Datum</th>
+      <th>Liga</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for gameday in gamedays %}
+    <tr>
+      <td>{{ gameday.name }}</td>
+      <td class="text-muted">{{ gameday.date }}</td>
+      <td><span class="badge bg-secondary">{{ gameday.league.name }}</span></td>
+      <td class="text-end">
+        <a href="{% url 'matchreport-gameday-detail' gameday.id %}" class="btn btn-sm btn-outline-primary">Öffnen<i class="bi bi-chevron-right"></i></a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="4" class="text-center text-muted py-5">
+            <i class="bi bi-calendar-x fs-2 d-block mb-2"></i>
+            Keine Spieltage für diese Auswahl gefunden. Bitte wähle ein Jahr und eine Liga.
+        </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock content %}
+
