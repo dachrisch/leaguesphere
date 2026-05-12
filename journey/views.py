@@ -102,17 +102,17 @@ class JourneyEventViewSet(viewsets.ModelViewSet):
 
         return Response({
             "gameday": {
-                "opens": get_count("gameday_opened"),
+                "opens": get_count("gameday_designer_opened"),
                 "published": get_count("gameday_published"),
                 "templates": get_count("template_used"),
             },
             "passcheck": {
-                "opens": get_count("passcheck_opened"),
-                "completed": get_count("passcheck_completed"),
+                "opens": get_count("passcheck_started"),
+                "completed": get_count("roster_submitted"),
             },
             "scorecard": {
-                "opens": get_count("scorecard_opened"),
-                "matches": get_count("scorecard_match_started"),
+                "opens": get_count("game_started"),
+                "matches": get_count("game_completed"),
             }
         })
 

@@ -150,8 +150,8 @@ export const AdoptionMetrics: React.FC<AdoptionMetricsProps> = ({ adoptionData }
  * @returns MetricsData object with adoption metrics
  */
 export function calculateMetrics(events: JourneyEvent[]) {
-  // Count unique gamedays opened (count of gameday_opened events)
-  const designerOpens = events.filter(e => e.event_name === 'gameday_opened').length || 0;
+  // Count unique gamedays opened (count of gameday_designer_opened events)
+  const designerOpens = events.filter(e => e.event_name === 'gameday_designer_opened').length || 0;
 
   // Count gamedays published
   const publishedCount = events.filter(e => e.event_name === 'gameday_published').length;

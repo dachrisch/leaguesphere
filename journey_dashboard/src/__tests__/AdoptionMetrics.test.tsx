@@ -17,11 +17,11 @@ import { render } from '@testing-library/react';
 
 describe('calculateMetrics', () => {
   describe('Designer Opens Calculation', () => {
-    it('should count unique gameday_opened events', () => {
+    it('should count unique gameday_designer_opened events', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
-        { id: 2, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-02' },
-        { id: 3, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-03' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 2, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-02' },
+        { id: 3, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-03' },
       ];
 
       const result = calculateMetrics(events);
@@ -52,10 +52,10 @@ describe('calculateMetrics', () => {
   describe('Publish Rate Calculation', () => {
     it('should calculate publish rate as percentage of opens', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
-        { id: 2, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-02' },
-        { id: 3, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-03' },
-        { id: 4, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-04' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 2, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-02' },
+        { id: 3, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-03' },
+        { id: 4, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-04' },
         { id: 5, event_name: 'gameday_published', metadata: {}, created_at: '2024-01-05' },
         { id: 6, event_name: 'gameday_published', metadata: {}, created_at: '2024-01-06' },
       ];
@@ -68,8 +68,8 @@ describe('calculateMetrics', () => {
 
     it('should calculate 100% publish rate when all opens publish', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
-        { id: 2, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-02' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 2, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-02' },
         { id: 3, event_name: 'gameday_published', metadata: {}, created_at: '2024-01-03' },
         { id: 4, event_name: 'gameday_published', metadata: {}, created_at: '2024-01-04' },
       ];
@@ -81,8 +81,8 @@ describe('calculateMetrics', () => {
 
     it('should return 0% when no publishes occur', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
-        { id: 2, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-02' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 2, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-02' },
       ];
 
       const result = calculateMetrics(events);
@@ -102,9 +102,9 @@ describe('calculateMetrics', () => {
 
     it('should handle fractional publish rates', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
-        { id: 2, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-02' },
-        { id: 3, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-03' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 2, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-02' },
+        { id: 3, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-03' },
         { id: 4, event_name: 'gameday_published', metadata: {}, created_at: '2024-01-04' },
       ];
 
@@ -118,10 +118,10 @@ describe('calculateMetrics', () => {
   describe('Template Adoption Rate Calculation', () => {
     it('should calculate template adoption as percentage of opens', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
-        { id: 2, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-02' },
-        { id: 3, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-03' },
-        { id: 4, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-04' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 2, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-02' },
+        { id: 3, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-03' },
+        { id: 4, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-04' },
         { id: 5, event_name: 'template_used', metadata: {}, created_at: '2024-01-05' },
         { id: 6, event_name: 'template_used', metadata: {}, created_at: '2024-01-06' },
       ];
@@ -134,8 +134,8 @@ describe('calculateMetrics', () => {
 
     it('should calculate 100% adoption when all opens use templates', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
-        { id: 2, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-02' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 2, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-02' },
         { id: 3, event_name: 'template_used', metadata: {}, created_at: '2024-01-03' },
         { id: 4, event_name: 'template_used', metadata: {}, created_at: '2024-01-04' },
       ];
@@ -147,8 +147,8 @@ describe('calculateMetrics', () => {
 
     it('should return 0% when no templates are used', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
-        { id: 2, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-02' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 2, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-02' },
       ];
 
       const result = calculateMetrics(events);
@@ -168,9 +168,9 @@ describe('calculateMetrics', () => {
 
     it('should handle fractional adoption rates', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
-        { id: 2, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-02' },
-        { id: 3, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-03' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 2, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-02' },
+        { id: 3, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-03' },
         { id: 4, event_name: 'template_used', metadata: {}, created_at: '2024-01-04' },
       ];
 
@@ -194,7 +194,7 @@ describe('calculateMetrics', () => {
 
     it('should handle mixed event types', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
         { id: 2, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-02' },
         { id: 3, event_name: 'random_event', metadata: {}, created_at: '2024-01-03' },
         { id: 4, event_name: 'gameday_edited', metadata: {}, created_at: '2024-01-04' },
@@ -211,7 +211,7 @@ describe('calculateMetrics', () => {
 
     it('should handle more publishes than opens (e.g., multiple publishes per session)', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
         { id: 2, event_name: 'gameday_published', metadata: {}, created_at: '2024-01-02' },
         { id: 3, event_name: 'gameday_published', metadata: {}, created_at: '2024-01-03' },
       ];
@@ -222,10 +222,10 @@ describe('calculateMetrics', () => {
       expect(result.publishRate).toBe(200);
     });
 
-    it('should handle only gameday_opened events', () => {
+    it('should handle only gameday_designer_opened events', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
-        { id: 2, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-02' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 2, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-02' },
       ];
 
       const result = calculateMetrics(events);
@@ -239,11 +239,11 @@ describe('calculateMetrics', () => {
   describe('Combined Scenarios', () => {
     it('should calculate all metrics correctly in realistic scenario', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
-        { id: 2, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-02' },
-        { id: 3, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-03' },
-        { id: 4, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-04' },
-        { id: 5, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-05' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 2, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-02' },
+        { id: 3, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-03' },
+        { id: 4, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-04' },
+        { id: 5, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-05' },
         { id: 6, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-06' },
         { id: 7, event_name: 'gameday_edited', metadata: {}, created_at: '2024-01-07' },
         { id: 8, event_name: 'gameday_published', metadata: {}, created_at: '2024-01-08' },

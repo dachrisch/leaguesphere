@@ -18,8 +18,8 @@ describe('calculateFunnel', () => {
   describe('Basic Funnel Calculation', () => {
     it('should calculate funnel with all stages present', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
-        { id: 2, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-02' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 2, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-02' },
         { id: 3, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-03' },
         { id: 4, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-04' },
         { id: 5, event_name: 'gameday_edited', metadata: {}, created_at: '2024-01-05' },
@@ -39,7 +39,7 @@ describe('calculateFunnel', () => {
 
     it('should set opened stage to 100% as baseline', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
       ];
 
       const result = calculateFunnel(events);
@@ -62,10 +62,10 @@ describe('calculateFunnel', () => {
   describe('Percentage Calculations', () => {
     it('should calculate correct percentages for each stage relative to previous', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
-        { id: 2, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-02' },
-        { id: 3, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-03' },
-        { id: 4, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-04' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 2, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-02' },
+        { id: 3, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-03' },
+        { id: 4, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-04' },
         { id: 5, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-05' },
         { id: 6, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-06' },
         { id: 7, event_name: 'gameday_edited', metadata: {}, created_at: '2024-01-07' },
@@ -85,7 +85,7 @@ describe('calculateFunnel', () => {
 
     it('should calculate template usage percentage correctly', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
         { id: 2, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-02' },
         { id: 3, event_name: 'gameday_edited', metadata: {}, created_at: '2024-01-03' },
         { id: 4, event_name: 'gameday_published', metadata: {}, created_at: '2024-01-04' },
@@ -128,7 +128,7 @@ describe('calculateFunnel', () => {
 
     it('should handle single stage (only opened)', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
       ];
 
       const result = calculateFunnel(events);
@@ -140,7 +140,7 @@ describe('calculateFunnel', () => {
 
     it('should handle partial funnel (only created, no edited)', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
         { id: 2, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-02' },
       ];
 
@@ -157,7 +157,7 @@ describe('calculateFunnel', () => {
   describe('Template Adoption', () => {
     it('should track template usage correctly', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
         { id: 2, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-02' },
         { id: 3, event_name: 'gameday_edited', metadata: {}, created_at: '2024-01-03' },
         { id: 4, event_name: 'gameday_published', metadata: {}, created_at: '2024-01-04' },
@@ -172,7 +172,7 @@ describe('calculateFunnel', () => {
 
     it('should calculate template adoption as percentage of published', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
         { id: 2, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-02' },
         { id: 3, event_name: 'gameday_edited', metadata: {}, created_at: '2024-01-03' },
         { id: 4, event_name: 'gameday_published', metadata: {}, created_at: '2024-01-04' },
@@ -191,7 +191,7 @@ describe('calculateFunnel', () => {
 
     it('should handle zero template adoption', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
         { id: 2, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-02' },
         { id: 3, event_name: 'gameday_edited', metadata: {}, created_at: '2024-01-03' },
         { id: 4, event_name: 'gameday_published', metadata: {}, created_at: '2024-01-04' },
@@ -207,7 +207,7 @@ describe('calculateFunnel', () => {
   describe('Event Filtering', () => {
     it('should only count relevant event names', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
         { id: 2, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-02' },
         { id: 3, event_name: 'random_event', metadata: {}, created_at: '2024-01-03' },
         { id: 4, event_name: 'gameday_edited', metadata: {}, created_at: '2024-01-04' },
@@ -225,8 +225,8 @@ describe('calculateFunnel', () => {
 
     it('should handle multiple events of same type', () => {
       const events: JourneyEvent[] = [
-        { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
-        { id: 2, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-02' },
+        { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
+        { id: 2, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-02' },
         { id: 3, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-03' },
         { id: 4, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-04' },
         { id: 5, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-05' },
@@ -248,7 +248,7 @@ describe('calculateFunnel', () => {
 describe('GamedayFunnel Component', () => {
   it('should render funnel component with events', () => {
     const events: JourneyEvent[] = [
-      { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
+      { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
       { id: 2, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-02' },
       { id: 3, event_name: 'gameday_edited', metadata: {}, created_at: '2024-01-03' },
       { id: 4, event_name: 'gameday_published', metadata: {}, created_at: '2024-01-04' },
@@ -262,7 +262,7 @@ describe('GamedayFunnel Component', () => {
 
   it('should render all funnel stages', () => {
     const events: JourneyEvent[] = [
-      { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
+      { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
       { id: 2, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-02' },
       { id: 3, event_name: 'gameday_edited', metadata: {}, created_at: '2024-01-03' },
       { id: 4, event_name: 'gameday_published', metadata: {}, created_at: '2024-01-04' },
@@ -277,7 +277,7 @@ describe('GamedayFunnel Component', () => {
 
   it('should display stage names and metrics', () => {
     const events: JourneyEvent[] = [
-      { id: 1, event_name: 'gameday_opened', metadata: {}, created_at: '2024-01-01' },
+      { id: 1, event_name: 'gameday_designer_opened', metadata: {}, created_at: '2024-01-01' },
       { id: 2, event_name: 'gameday_created', metadata: {}, created_at: '2024-01-02' },
     ];
 
