@@ -7,8 +7,8 @@ class GameResultProgressSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Gameresult
-        fields = ['home_score', 'guest_score']
-        read_only_fields = ['home_score', 'guest_score']
+        fields = ['fh', 'sh', 'pa']
+        read_only_fields = ['fh', 'sh', 'pa']
 
 
 class GameinfoProgressSerializer(serializers.ModelSerializer):
@@ -30,8 +30,8 @@ class GameinfoProgressSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_gameresult(self, obj):
-        """Return the first gameresult if it exists."""
-        result = obj.gameresult_set.first()
+        """Return the home team gameresult if it exists."""
+        result = obj.gameresult_set.filter(isHome=True).first()
         if result:
             return GameResultProgressSerializer(result).data
         return None

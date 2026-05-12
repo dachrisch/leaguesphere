@@ -2,7 +2,8 @@ import React from 'react';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import ProgressBar from './ProgressBar';
 import styles from './styles.module.css';
-import type { GamedayWithStats, GameInfo } from '../../types/progressTypes';
+import type { GamedayWithStats } from '../../types/progressTypes';
+import { getLastGameTime } from './utils/gameTimeUtils';
 
 interface GamedayCardProps {
   gameday: GamedayWithStats;
@@ -12,17 +13,6 @@ interface GamedayCardProps {
 function addHours(timeStr: string, hours: number): string {
   const [h, m] = timeStr.split(':').map(Number);
   return `${String((h + hours) % 24).padStart(2, '0')}:${String(m ?? 0).padStart(2, '0')}`;
-}
-
-function getLastGameTime(games: GameInfo[]): string | null {
-  if (games.length === 0) return null;
-  let lastScheduled = games[0].scheduled;
-  for (const game of games) {
-    if (game.scheduled > lastScheduled) {
-      lastScheduled = game.scheduled;
-    }
-  }
-  return lastScheduled;
 }
 
 const GamedayCard: React.FC<GamedayCardProps> = ({ gameday, isLive = false }) => {
