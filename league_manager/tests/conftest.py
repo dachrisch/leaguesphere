@@ -33,6 +33,9 @@ def _should_skip_pattern(pattern_name: Optional[str], pattern_url: str) -> bool:
     # Skip static/media URLs
     if pattern_url.startswith('static/') or pattern_url.startswith('media/'):
         return True
+    # Skip error simulation views (intentionally return 5xx)
+    if 'database-error' in pattern_url:
+        return True
     return False
 
 
