@@ -229,7 +229,12 @@
       "recent": "Rückblick ({{count}} Spiele)"
     },
     "card": {
-      "gamesScheduled": "Spiele geplant"
+      "gamesScheduled": "Spiele geplant",
+      "live": "Live",
+      "played": "Gespielt",
+      "pending": "Anstehend",
+      "stale": "Abgelaufen",
+      "minutesUntil": "{{minutes}} Min bis zum Start"
     }
   },
   "notification": {

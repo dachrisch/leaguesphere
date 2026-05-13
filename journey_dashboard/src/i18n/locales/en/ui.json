@@ -229,7 +229,12 @@
       "recent": "Lookback ({{count}} games)"
     },
     "card": {
-      "gamesScheduled": "Games scheduled"
+      "gamesScheduled": "Games scheduled",
+      "live": "Live",
+      "played": "Played",
+      "pending": "Pending",
+      "stale": "Stale",
+      "minutesUntil": "{{minutes}} min until start"
     }
   },
   "notification": {
