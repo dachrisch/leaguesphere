@@ -71,6 +71,15 @@ RUN rm -rf static/gameday_designer/js
 RUN npm ci
 RUN npm run build
 
+ARG APP_DIR="/journey-dashboard-app"
+WORKDIR ${APP_DIR}
+
+COPY journey_dashboard ${APP_DIR}
+RUN rm -rf static/journey_dashboard/js
+
+RUN npm ci
+RUN npm run build
+
 FROM nginx:stable
 
 COPY --from=python-builder /app/league_manager/league_manager/static /static
@@ -78,6 +87,7 @@ COPY --from=node-builder /liveticker-app/static /static
 COPY --from=node-builder /scorecard-app/static /static
 COPY --from=node-builder /passcheck-app/static /static
 COPY --from=node-builder /gameday-designer-app/static /static
+COPY --from=node-builder /journey-dashboard-app/static /static
 COPY ./container/nginx.conf /etc/nginx/conf.d/default.conf
 COPY ./container/healthcheck.sh /healthcheck.sh
 RUN chmod +x /healthcheck.sh

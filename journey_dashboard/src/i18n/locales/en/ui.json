@@ -216,6 +216,27 @@
     "renameField": "Rename field",
     "duplicate": "Duplicate"
   },
+  "gameProgress": {
+    "state": {
+      "loading": "Loading...",
+      "error": "Error loading game data: {{message}}",
+      "empty": "No games found"
+    },
+    "section": {
+      "live": "Live ({{count}} games)",
+      "today": "Today ({{count}} games)",
+      "outlook": "Outlook (next {{days}} days, {{count}} games)",
+      "recent": "Lookback ({{count}} games)"
+    },
+    "card": {
+      "gamesScheduled": "Games scheduled",
+      "live": "Live",
+      "played": "Played",
+      "pending": "Pending",
+      "stale": "Stale",
+      "minutesUntil": "{{minutes}} min until start"
+    }
+  },
   "notification": {
     "gameResultSaved": "Game result saved",
     "saveResultFailed": "Failed to save game result",
