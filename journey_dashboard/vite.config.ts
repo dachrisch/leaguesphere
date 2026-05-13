@@ -5,7 +5,7 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: '../journey/static/journey_dashboard',
+    outDir: 'static/journey_dashboard',
     emptyOutDir: true,
     rollupOptions: {
       output: {

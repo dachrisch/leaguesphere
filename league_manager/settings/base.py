@@ -141,6 +141,9 @@ TIME_ZONE = "Europe/Berlin"
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "league_manager/static")
+STATICFILES_DIRS = [
+    os.path.join(os.path.dirname(BASE_DIR), "journey_dashboard/static"),
+]
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 MEDIA_URL = "/media/"
