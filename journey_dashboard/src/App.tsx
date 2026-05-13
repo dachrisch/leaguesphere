@@ -8,27 +8,25 @@ import { fetchStats, fetchGlobalAdoption } from './utils/api';
 import { StatsResponse, GlobalAdoptionResponse } from './types';
 import './index.css';
 
+function getCurrentPage(): 'journey' | 'progress' {
+  const pathname = window.location.pathname;
+  if (pathname.includes('/gamedays/progress/')) {
+    return 'progress';
+  }
+  return 'journey';
+}
+
 function App() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [adoptionData, setAdoptionData] = useState<GlobalAdoptionResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState<'journey' | 'progress'>('journey');
+  const [currentPage] = useState<'journey' | 'progress'>(getCurrentPage());
 
   // Auth is handled by Django's LoginRequiredMixin on the server side.
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     if (!token) {
       console.log('No auth token found in localStorage, falling back to session authentication');
-    }
-  }, []);
-
-  // Detect current page based on URL
-  useEffect(() => {
-    const pathname = window.location.pathname;
-    if (pathname.includes('/gamedays/progress/')) {
-      setCurrentPage('progress');
-    } else if (pathname.includes('/journeys/dashboard/')) {
-      setCurrentPage('journey');
     }
   }, []);
 
