@@ -14,9 +14,10 @@ def test_collect_all_url_patterns_includes_named_urls():
     """Test that named URLs are collected."""
     patterns = collect_all_url_patterns()
     pattern_names = [p['name'] for p in patterns if p['name']]
-    # Should have some named patterns like 'health', 'robots-txt', etc.
+    # Should have some named patterns
     assert len(pattern_names) > 0
-    assert 'health' in pattern_names or any('health' in str(name or '') for name in pattern_names)
+    # Verify a known named URL is collected
+    assert 'robots-txt' in pattern_names
 
 
 def test_collect_all_url_patterns_includes_patterns():
