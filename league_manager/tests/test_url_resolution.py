@@ -3,9 +3,23 @@ from django.test import Client
 from django.contrib.auth import get_user_model
 from django.urls import get_resolver
 from league_manager.tests.conftest import collect_all_url_patterns
+from gamedays.tests.setup_factories.factories import TeamFactory, GamedayFactory
+from passcheck.tests.setup_factories.factories_passcheck import PlayerlistFactory
 
 
 User = get_user_model()
+
+
+@pytest.fixture
+def url_test_fixtures(db):
+    """Create minimal objects with ID 1 for URL resolution test."""
+    # Create Gameday with ID 1 for passcheck endpoints
+    gameday = GamedayFactory(pk=1)
+    # Create Team with ID 1
+    team = TeamFactory(pk=1)
+    # Create Playerlist with pk=1 for roster endpoint
+    PlayerlistFactory(pk=1, team=team, gamedays=[gameday])
+    return {"gameday": gameday, "team": team}
 
 
 @pytest.fixture
@@ -48,7 +62,7 @@ def test_collect_all_url_patterns_includes_patterns():
 
 
 @pytest.mark.django_db
-def test_all_registered_urls_resolve(authenticated_client):
+def test_all_registered_urls_resolve(authenticated_client, url_test_fixtures):
     """
     Test that all registered URL patterns actually resolve.
 
