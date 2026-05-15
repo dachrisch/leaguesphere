@@ -173,7 +173,8 @@ class MachtreportModelWrapper:
 
         latest_license = OfficialLicenseHistory.objects.filter(
             official_id=OuterRef("official")
-        ).order_by("-created_at").values('license__name')[:1]
+        ).order_by("-created_at__year", "license__name") \
+            .values('license__name')[:1]
 
         position_order = {
             "Referee": 0,
