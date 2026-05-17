@@ -1,9 +1,9 @@
 from datetime import datetime
 
 from django.conf import settings
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models.functions import ExtractYear
-from django.http import HttpResponseForbidden, HttpResponseNotAllowed, HttpResponse
+from django.http import HttpResponseForbidden
 from django.shortcuts import render
 from django.views import View
 from django.views.generic import (
@@ -15,23 +15,18 @@ from .constants import (
     MATCHREPORT_GAMEDAY_LIST_AND_YEAR
 )
 
-from gamedays.models import Gameday, Gameinfo
+from gamedays.models import Gameday
 from .service.matchreport_service import MatchreportService
 
 
-# Create your views here.
 class MatchreportGamedayListView(UserPassesTestMixin, View):
     template_name = "matchreport/gameday_list.html"
 
     def get(self, request, **kwargs):
         year = kwargs.get("season", datetime.today().year)
-        show_all_games = request.GET.get("showAllGames") == "true"
         league = kwargs.get("league")
         gamedays = Gameday.objects.filter(date__year=year).order_by("date")
         leagues = gamedays.values_list("league__name", flat=True).distinct().order_by("league__name")
-        filtered_gamedays_by_today = gamedays.filter(date__gt=datetime.today()).order_by("date")
-        if filtered_gamedays_by_today.count() > 0 and not show_all_games:
-            gamedays = filtered_gamedays_by_today
         gamedays_filtered_by_league = (
             gamedays.filter(league__name=league) if league else gamedays
         )

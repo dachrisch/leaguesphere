@@ -1,4 +1,4 @@
-from gamedays.models import Gameinfo, GameSetup
+from gamedays.models import Gameinfo
 from gamedays.service.gameday_service import EMPTY_DATA
 from matchreport.service.model_wrapper import MachtreportModelWrapper
 
