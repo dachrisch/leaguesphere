@@ -5,28 +5,33 @@
   ],
   "lockFileMaintenance": {
     "enabled": true,
-    "automerge": true
+    "automerge": true,
+    "semanticCommitType": "fix"
   },
   "packageRules": [
     {
       "matchDepTypes": ["devDependencies"],
-      "automerge": true
+      "automerge": true,
+      "semanticCommitType": "fix"
     },
     {
       "matchUpdateTypes": ["patch"],
       "matchCurrentVersion": "!/^0/",
-      "automerge": true
+      "automerge": true,
+      "semanticCommitType": "fix"
     },
     {
       "matchUpdateTypes": ["minor"],
       "matchCurrentVersion": "!/^0/",
-      "automerge": true
+      "automerge": true,
+      "semanticCommitType": "fix"
     },
     {
       "matchFileNames": [
         "pyproject.toml"
       ],
-      "automerge": true
+      "automerge": true,
+      "semanticCommitType": "fix"
     }
   ]
 }
