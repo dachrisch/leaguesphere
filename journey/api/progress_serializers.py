@@ -5,13 +5,10 @@ from gamedays.models import Gameday, Gameinfo, Gameresult
 class GameResultProgressSerializer(serializers.ModelSerializer):
     """Serializes game result (score) for game progress dashboard."""
 
-    team = serializers.CharField(source='team.name', read_only=True)
-    is_home = serializers.BooleanField(source='isHome', read_only=True)
-
     class Meta:
         model = Gameresult
-        fields = ['team', 'is_home', 'fh', 'sh', 'pa']
-        read_only_fields = ['team', 'is_home', 'fh', 'sh', 'pa']
+        fields = ['fh', 'sh', 'pa']
+        read_only_fields = ['fh', 'sh', 'pa']
 
 
 class GameinfoProgressSerializer(serializers.ModelSerializer):
@@ -33,10 +30,10 @@ class GameinfoProgressSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_gameresult(self, obj):
-        """Return game results for both home and away teams."""
-        results = obj.gameresult_set.all()
-        if results:
-            return GameResultProgressSerializer(results, many=True).data
+        """Return the home team gameresult if it exists."""
+        result = obj.gameresult_set.filter(isHome=True).first()
+        if result:
+            return GameResultProgressSerializer(result).data
         return None
 
 
