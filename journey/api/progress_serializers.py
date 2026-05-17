@@ -51,6 +51,7 @@ class GamedayProgressSerializer(serializers.ModelSerializer):
     )
     league_display = serializers.CharField(source='league.name', read_only=True)
     season_display = serializers.CharField(source='season.name', read_only=True)
+    computed_status = serializers.SerializerMethodField()
 
     class Meta:
         model = Gameday
@@ -65,5 +66,20 @@ class GamedayProgressSerializer(serializers.ModelSerializer):
             'season',
             'season_display',
             'games',
+            'computed_status',
         ]
         read_only_fields = fields
+
+    def get_computed_status(self, obj):
+        """Compute status from games when Gameday.status is empty."""
+        if obj.status:
+            return None
+
+        games = obj.gameinfo_set.all()
+        if not games:
+            return 'PUBLISHED'
+
+        statuses = [game.status for game in games]
+        all_completed = all(status == 'beendet' for status in statuses)
+
+        return 'COMPLETED' if all_completed else 'PUBLISHED'
