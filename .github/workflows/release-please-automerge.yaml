@@ -8,7 +8,7 @@ permissions:
 jobs:
   automerge:
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'autorelease: pending')
+    if: "${{ contains(github.event.pull_request.labels.*.name, 'autorelease: pending') }}"
     steps:
       - uses: actions/checkout@v4
       - name: Check if patch-only release
