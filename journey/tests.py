@@ -556,3 +556,114 @@ class GameProgressViewTests(TestCase):
         # Should reference journey_dashboard, not gameday_designer
         self.assertIn("journey_dashboard", view.template_name)
         self.assertNotIn("gameday_designer/progress", view.template_name)
+
+
+class GamedayProgressSerializerTests(TestCase):
+    """Tests for GamedayProgressSerializer status computation."""
+
+    def setUp(self):
+        from gamedays.models import Season, League
+        self.author = User.objects.create_user(username='author', password='pass')
+        self.season = Season.objects.create(name='2026', slug='2026')
+        self.league = League.objects.create(name='Test League', slug='test-league')
+
+    def test_empty_gameday_status_with_completed_games(self):
+        """When Gameday.status is empty and all games are completed, serializer returns COMPLETED."""
+        from gamedays.models import Gameday, Gameinfo, Team
+        from journey.api.progress_serializers import GamedayProgressSerializer
+        from datetime import date, time
+
+        team = Team.objects.create(name='Test Team', description='Test Team Desc', location='Test')
+        gameday = Gameday.objects.create(
+            name='Test Gameday',
+            season=self.season,
+            league=self.league,
+            date=date(2026, 5, 17),
+            start=time(10, 0),
+            author=self.author,
+            status=''  # Empty status
+        )
+
+        # Create a completed game
+        gameinfo = Gameinfo.objects.create(
+            gameday=gameday,
+            scheduled=time(10, 0),
+            field=1,
+            officials=team,
+            status='beendet',  # Completed
+            stage='Group',
+            standing='1st'
+        )
+
+        serializer = GamedayProgressSerializer(gameday)
+        data = serializer.data
+
+        # Should have computed status of COMPLETED since all games are finished
+        self.assertEqual(data['computed_status'], 'COMPLETED')
+
+    def test_empty_gameday_status_with_pending_games(self):
+        """When Gameday.status is empty and has pending games, serializer returns PUBLISHED."""
+        from gamedays.models import Gameday, Gameinfo, Team
+        from journey.api.progress_serializers import GamedayProgressSerializer
+        from datetime import date, time
+
+        team = Team.objects.create(name='Test Team 2', description='Test Team 2 Desc', location='Test')
+        gameday = Gameday.objects.create(
+            name='Test Gameday 2',
+            season=self.season,
+            league=self.league,
+            date=date(2026, 5, 18),
+            start=time(10, 0),
+            author=self.author,
+            status=''  # Empty status
+        )
+
+        # Create a pending game
+        gameinfo = Gameinfo.objects.create(
+            gameday=gameday,
+            scheduled=time(10, 0),
+            field=1,
+            officials=team,
+            status='Geplant',  # Planned
+            stage='Group',
+            standing='1st'
+        )
+
+        serializer = GamedayProgressSerializer(gameday)
+        data = serializer.data
+
+        # Should have computed status of PUBLISHED since there are pending games
+        self.assertEqual(data['computed_status'], 'PUBLISHED')
+
+    def test_gameday_with_explicit_status_preserved(self):
+        """When Gameday.status is set, it should be preserved (not computed)."""
+        from gamedays.models import Gameday, Gameinfo, Team
+        from journey.api.progress_serializers import GamedayProgressSerializer
+        from datetime import date, time
+
+        team = Team.objects.create(name='Test Team 3', description='Test Team 3 Desc', location='Test')
+        gameday = Gameday.objects.create(
+            name='Test Gameday 3',
+            season=self.season,
+            league=self.league,
+            date=date(2026, 5, 19),
+            start=time(10, 0),
+            author=self.author,
+            status='DRAFT'  # Explicit status
+        )
+
+        gameinfo = Gameinfo.objects.create(
+            gameday=gameday,
+            scheduled=time(10, 0),
+            field=1,
+            officials=team,
+            status='beendet',
+            stage='Group',
+            standing='1st'
+        )
+
+        serializer = GamedayProgressSerializer(gameday)
+        data = serializer.data
+
+        # Should preserve the explicit DRAFT status
+        self.assertEqual(data['status'], 'DRAFT')

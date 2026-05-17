@@ -24,6 +24,7 @@ export interface GamedayProgress {
   date: string;
   start: string;
   status: string;
+  computed_status?: string;
   league: number;
   league_display: string;
   season: number;
