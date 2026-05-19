@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.19.6](https://github.com/dachrisch/leaguesphere/compare/v3.19.5...v3.19.6) (2026-05-19)
+
+
+### Bug Fixes
+
+* add release test marker ([3c45129](https://github.com/dachrisch/leaguesphere/commit/3c451294c168e140425433043e00c45b3486e61c))
+* configure release-please component for root project ([0b4197e](https://github.com/dachrisch/leaguesphere/commit/0b4197e9d396fcf241cd438355f9046d751f34cf))
+* force release pipeline test ([cc7c99c](https://github.com/dachrisch/leaguesphere/commit/cc7c99cacb3e22ac73404346978a845c01a5dfa4))
+* synchronize manifest version with latest release tag ([126b9ce](https://github.com/dachrisch/leaguesphere/commit/126b9ceebb855d0f4e06f1da8c281f1a50f4b012))
+* test release pipeline - trigger version bump and full CI workflow ([b0bdcef](https://github.com/dachrisch/leaguesphere/commit/b0bdcef15e4a6c512da4f3d14da7b6730d6b7fc4))
+* test release pipeline - verify end-to-end workflow ([6ec0193](https://github.com/dachrisch/leaguesphere/commit/6ec0193e2e21e419ee35f474c6edec6b69dda1c1))
+* test release pipeline detection ([11f6ec4](https://github.com/dachrisch/leaguesphere/commit/11f6ec47cb97efaac274f151c7fcd91c397c3847))
+* test release pipeline detection ([a41fa73](https://github.com/dachrisch/leaguesphere/commit/a41fa73608380a771db855a61aba0ed5436727d7))
+* use packages format to properly map root path component ([7b42a1c](https://github.com/dachrisch/leaguesphere/commit/7b42a1ca30e0c06db574a62af70af4879d7d1aa1))
+
 ## [3.19.5](https://github.com/dachrisch/leaguesphere/compare/v3.19.4...v3.19.5) (2026-05-19)
 
 
