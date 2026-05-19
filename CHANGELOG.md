@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.19.2](https://github.com/dachrisch/leaguesphere/compare/v3.19.1...v3.19.2) (2026-05-19)
+
+
+### Bug Fixes
+
+* sync all version files to 3.19.1 ([98daed1](https://github.com/dachrisch/leaguesphere/commit/98daed1800670bd8559d822c83d402ba4296db45))
+* update version files on both PR create and update ([81e9147](https://github.com/dachrisch/leaguesphere/commit/81e91475c61a93eaf16999d32cb8a8e67d1002af))
+
 ## [3.19.1](https://github.com/dachrisch/leaguesphere/compare/v3.19.0...v3.19.1) (2026-05-19)
 
 
