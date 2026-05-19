@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.19.1](https://github.com/dachrisch/leaguesphere/compare/v3.19.0...v3.19.1) (2026-05-19)
+
+
+### Bug Fixes
+
+* **deps:** update dependency numpy to v2.4.6 ([#1195](https://github.com/dachrisch/leaguesphere/issues/1195)) ([035696d](https://github.com/dachrisch/leaguesphere/commit/035696db2afa7807fe482e4eff15af5aa3fb9860))
+
 ## [3.19.0](https://github.com/dachrisch/leaguesphere/compare/v3.18.10...v3.19.0) (2026-05-19)
 
 
