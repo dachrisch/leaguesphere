@@ -1,0 +1,45 @@
+name: Release Please Finalize
+
+on:
+  pull_request_target:
+    branches:
+      - master
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  finalize:
+    if: startsWith(github.head_ref, 'release-please--')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+      - uses: astral-sh/setup-uv@v8.1.0
+
+      - run: uv lock
+
+      - name: Update version in all version files
+        run: |
+          # Extract version from pyproject.toml
+          NEW_VERSION=$(grep "^version = " pyproject.toml | head -1 | cut -d'"' -f2)
+
+          # Update version in all version files
+          sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" league_manager/__init__.py
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" liveticker/package.json
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" journey_dashboard/package.json
+
+      - name: Commit version and lock file updates
+        run: |
+          git config user.name "release-please[bot]"
+          git config user.email "release-please[bot]@users.noreply.github.com"
+          git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json journey_dashboard/package.json uv.lock
+          git diff --cached --quiet || git commit -m "chore: regenerate uv.lock and update version files"
+          git push

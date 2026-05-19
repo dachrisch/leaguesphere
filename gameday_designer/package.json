@@ -1,11 +1,11 @@
 {
   "name": "gameday_designer",
-  "version": "3.18.10",
+  "version": "3.19.4",
   "private": true,
   "type": "module",
   "dependencies": {
-    "@types/node": "25.8.0",
-    "@types/react": "19.2.14",
+    "@types/node": "25.9.1",
+    "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
     "axios": "1.16.1",
     "i18next": "26.2.0",
@@ -67,12 +67,12 @@
     "i18next-resources-for-ts": "2.1.0",
     "jsdom": "29.1.1",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.59.3",
+    "typescript-eslint": "8.59.4",
     "vite": "8.0.13",
     "vitest": "4.1.6"
   },
   "overrides": {
-    "postcss": "8.5.14",
+    "postcss": "8.5.15",
     "nth-check": "3.0.1",
     "serialize-javascript": "7.0.5",
     "debug": "4.4.3",
