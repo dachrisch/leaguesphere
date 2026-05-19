@@ -24,6 +24,16 @@ commands:
             - .venv
           key: v2-dependencies-{{ checksum "pyproject.toml" }}
 
+  ensure_lockfile:
+    steps:
+      - run:
+          name: Ensure uv.lock is up to date
+          command: |
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> $BASH_ENV
+            source $BASH_ENV
+            uv lock
+
   build_docker_image:
     parameters:
       dockerfile:
@@ -282,6 +292,7 @@ jobs:
     working_directory: ~/repo
     steps:
       - checkout
+      - ensure_lockfile
       - setup_remote_docker:
           version: 20.10.24
           docker_layer_caching: true
@@ -295,6 +306,7 @@ jobs:
     working_directory: ~/repo
     steps:
       - checkout
+      - ensure_lockfile
       - setup_remote_docker:
           version: 20.10.24
           docker_layer_caching: true
