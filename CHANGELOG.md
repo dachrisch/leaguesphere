@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.19.4](https://github.com/dachrisch/leaguesphere/compare/v3.19.3...v3.19.4) (2026-05-19)
+
+
+### Bug Fixes
+
+* improve finalize workflow trigger ([63d1776](https://github.com/dachrisch/leaguesphere/commit/63d1776daed8c4ef1eeacd851f710b5c827f2c43))
+* manually sync all versions to 3.19.3 ([303e72b](https://github.com/dachrisch/leaguesphere/commit/303e72b53d2f8f7ecce80526c2d00b7ab3225ab8))
+
 ## [3.19.3](https://github.com/dachrisch/leaguesphere/compare/v3.19.2...v3.19.3) (2026-05-19)
 
 
