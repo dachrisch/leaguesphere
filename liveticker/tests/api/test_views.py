@@ -17,6 +17,7 @@ class TestLivetickerAPIView(WebTest):
         assert response.json == []
 
     def test_get_all_livetickers_only_scheduled(self):
+        cache.clear()
         gameday_one = DBSetup().g62_status_empty()
         gameday_two = DBSetup().g62_status_empty()
         first_game_gameday_one = Gameinfo.objects.filter(gameday=gameday_one).first()
