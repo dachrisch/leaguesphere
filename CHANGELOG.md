@@ -1,5 +1,32 @@
 # Changelog
 
+## [3.19.5](https://github.com/dachrisch/leaguesphere/compare/v3.19.4...v3.19.5) (2026-05-19)
+
+
+### Bug Fixes
+
+* add release test marker ([3c45129](https://github.com/dachrisch/leaguesphere/commit/3c451294c168e140425433043e00c45b3486e61c))
+* clear cache in liveticker test to prevent flakiness ([59f8e43](https://github.com/dachrisch/leaguesphere/commit/59f8e43dd63f139d542b94f297b95a4f32ef00ea))
+* configure release-please component for root project ([0b4197e](https://github.com/dachrisch/leaguesphere/commit/0b4197e9d396fcf241cd438355f9046d751f34cf))
+* **deps:** update dependency @types/node to v25.9.1 ([e2f6a0e](https://github.com/dachrisch/leaguesphere/commit/e2f6a0e925f7cd46d67626de0ff2e395709a0871))
+* **deps:** update dependency @types/node to v25.9.1 ([e7f3b21](https://github.com/dachrisch/leaguesphere/commit/e7f3b2120a7917435fd88af9fa487acbeff623e3))
+* **deps:** update dependency @types/node to v25.9.1 ([#1202](https://github.com/dachrisch/leaguesphere/issues/1202)) ([a12b20d](https://github.com/dachrisch/leaguesphere/commit/a12b20d0aaaf167a90e85a9f5bac8a8195b72f30))
+* **deps:** update dependency @types/react to v19.2.15 ([#1204](https://github.com/dachrisch/leaguesphere/issues/1204)) ([1e86129](https://github.com/dachrisch/leaguesphere/commit/1e861291ea73c70fad22502f44f459c0c37d4844))
+* **deps:** update dependency @types/react to v19.2.15 ([#1209](https://github.com/dachrisch/leaguesphere/issues/1209)) ([a94f86c](https://github.com/dachrisch/leaguesphere/commit/a94f86c992d1bb329ce64894e2b756acb4a546e1))
+* **deps:** update dependency postcss to v8.5.15 ([#1200](https://github.com/dachrisch/leaguesphere/issues/1200)) ([34b8be4](https://github.com/dachrisch/leaguesphere/commit/34b8be414c4ff5561442616c2ccd90a804b90a10))
+* explicitly pass release-please config file to action ([a83198f](https://github.com/dachrisch/leaguesphere/commit/a83198fb0c0cdc149108945defe952c539320dee))
+* force release pipeline test ([cc7c99c](https://github.com/dachrisch/leaguesphere/commit/cc7c99cacb3e22ac73404346978a845c01a5dfa4))
+* game progress missing counts trigger ([a7d92de](https://github.com/dachrisch/leaguesphere/commit/a7d92de0d052cf15183d36619cdc412ddb14ed9f))
+* game progress view missing game counts in production ([#1210](https://github.com/dachrisch/leaguesphere/issues/1210)) ([8aa3e8a](https://github.com/dachrisch/leaguesphere/commit/8aa3e8a58a2de7817ecab025f0f23acf70ff7d5b))
+* reset manifest to trigger release-please ([afba736](https://github.com/dachrisch/leaguesphere/commit/afba736ff740b8c6623eca189060178cc47dd005))
+* synchronize manifest version with latest release tag ([126b9ce](https://github.com/dachrisch/leaguesphere/commit/126b9ceebb855d0f4e06f1da8c281f1a50f4b012))
+* test release pipeline - trigger version bump and full CI workflow ([b0bdcef](https://github.com/dachrisch/leaguesphere/commit/b0bdcef15e4a6c512da4f3d14da7b6730d6b7fc4))
+* test release pipeline - verify end-to-end workflow ([6ec0193](https://github.com/dachrisch/leaguesphere/commit/6ec0193e2e21e419ee35f474c6edec6b69dda1c1))
+* test release pipeline detection ([11f6ec4](https://github.com/dachrisch/leaguesphere/commit/11f6ec47cb97efaac274f151c7fcd91c397c3847))
+* test release pipeline detection ([a41fa73](https://github.com/dachrisch/leaguesphere/commit/a41fa73608380a771db855a61aba0ed5436727d7))
+* update package-lock files after npm version updates ([339fd5c](https://github.com/dachrisch/leaguesphere/commit/339fd5c3c726d7d03e672a74448bd26b6c03507b))
+* use packages format to properly map root path component ([7b42a1c](https://github.com/dachrisch/leaguesphere/commit/7b42a1ca30e0c06db574a62af70af4879d7d1aa1))
+
 ## [3.19.4](https://github.com/dachrisch/leaguesphere/compare/v3.19.3...v3.19.4) (2026-05-19)
 
 
