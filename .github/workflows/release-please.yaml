@@ -15,3 +15,24 @@ jobs:
         with:
           release-type: python
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+      - uses: actions/checkout@v4
+        if: steps.release.outputs.pr_created == 'true'
+        with:
+          ref: ${{ steps.release.outputs.pr_branch }}
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+      - uses: astral-sh/setup-uv@v2
+        if: steps.release.outputs.pr_created == 'true'
+
+      - run: uv lock
+        if: steps.release.outputs.pr_created == 'true'
+
+      - name: Commit regenerated lock file
+        if: steps.release.outputs.pr_created == 'true'
+        run: |
+          git config user.name "release-please[bot]"
+          git config user.email "release-please[bot]@users.noreply.github.com"
+          git add uv.lock
+          git diff --cached --quiet || git commit -m "chore: regenerate uv.lock"
+          git push
