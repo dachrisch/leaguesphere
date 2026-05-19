@@ -1,12 +1,9 @@
 name: Release Please Finalize
 
 on:
-  pull_request:
+  pull_request_target:
     branches:
       - master
-    paths:
-      - pyproject.toml
-      - .release-please-manifest.json
 
 permissions:
   contents: write
@@ -14,7 +11,7 @@ permissions:
 
 jobs:
   finalize:
-    if: github.actor == 'release-please[bot]'
+    if: startsWith(github.head_ref, 'release-please--')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -22,7 +19,7 @@ jobs:
           ref: ${{ github.head_ref }}
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
-      - uses: astral-sh/setup-uv@v2
+      - uses: astral-sh/setup-uv@v8.1.0
 
       - run: uv lock
 
