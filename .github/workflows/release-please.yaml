@@ -13,5 +13,5 @@ jobs:
       - uses: googleapis/release-please-action@v5
         id: release
         with:
-          release-type: python
+          config-file: release-please-config.json
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
