@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.19.3](https://github.com/dachrisch/leaguesphere/compare/v3.19.2...v3.19.3) (2026-05-19)
+
+
+### Bug Fixes
+
+* separate release-please workflows for PR creation and finalization ([d59a406](https://github.com/dachrisch/leaguesphere/commit/d59a406ad71f001b1d9e2af40758145838d278c3))
+
 ## [3.19.2](https://github.com/dachrisch/leaguesphere/compare/v3.19.1...v3.19.2) (2026-05-19)
 
 
