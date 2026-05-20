@@ -58,8 +58,8 @@
     "@testing-library/user-event": "14.6.1",
     "@types/react-router-dom": "5.3.3",
     "@vitejs/plugin-react": "6.0.2",
-    "@vitest/coverage-v8": "4.1.6",
-    "@vitest/ui": "4.1.6",
+    "@vitest/coverage-v8": "4.1.7",
+    "@vitest/ui": "4.1.7",
     "esbuild": "^0.28.0",
     "eslint": "10.4.0",
     "eslint-formatter-junit": "9.0.1",
@@ -69,7 +69,7 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.59.4",
     "vite": "8.0.13",
-    "vitest": "4.1.6"
+    "vitest": "4.1.7"
   },
   "overrides": {
     "postcss": "8.5.15",
