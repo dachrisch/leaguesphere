@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.19.8](https://github.com/dachrisch/leaguesphere/compare/v3.19.7...v3.19.8) (2026-05-21)
+
+
+### Bug Fixes
+
+* **deps:** update dependency vite to v8.0.14 ([#1219](https://github.com/dachrisch/leaguesphere/issues/1219)) ([9780079](https://github.com/dachrisch/leaguesphere/commit/9780079aea6484228b61e52c0037b347b99f3ad1))
+* **deps:** update dependency vite to v8.0.14 ([#1220](https://github.com/dachrisch/leaguesphere/issues/1220)) ([c98083b](https://github.com/dachrisch/leaguesphere/commit/c98083b10c8b84886d70e950d95a8035d0d43377))
+* **deps:** update dependency webpack to v5.107.0 ([#1217](https://github.com/dachrisch/leaguesphere/issues/1217)) ([e7318bc](https://github.com/dachrisch/leaguesphere/commit/e7318bc0a05ad0b603cc1b6599f9c665e1b1f6ad))
+* **deps:** update dependency webpack to v5.107.1 ([#1221](https://github.com/dachrisch/leaguesphere/issues/1221)) ([38138af](https://github.com/dachrisch/leaguesphere/commit/38138af2ea2430c69d4b418b21b876c64bd4e849))
+
 ## [3.19.7](https://github.com/dachrisch/leaguesphere/compare/v3.19.6...v3.19.7) (2026-05-20)
 
 
