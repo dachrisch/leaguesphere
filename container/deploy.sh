@@ -380,6 +380,7 @@ case "$VERSION_ARG" in
         sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
         sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
         sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
+        sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" journey_dashboard/package.json
         sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
         sed -i "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
 
@@ -387,8 +388,15 @@ case "$VERSION_ARG" in
         echo "Regenerating uv.lock..."
         uv lock
 
+        # Keep release-please manifest in sync when deploying manually
+        if [ -f ".release-please-manifest.json" ] && command -v jq &>/dev/null; then
+            jq --arg v "$NEW_VERSION" '."." = $v' .release-please-manifest.json \
+              > .release-please-manifest.json.tmp \
+              && mv .release-please-manifest.json.tmp .release-please-manifest.json
+        fi
+
         # Commit and tag
-        git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json pyproject.toml uv.lock
+        git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json journey_dashboard/package.json pyproject.toml uv.lock .release-please-manifest.json
         git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
 
@@ -434,13 +442,14 @@ case "$VERSION_ARG" in
             sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
             sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
             sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
+            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" journey_dashboard/package.json
             sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
             sed -i "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
 
             echo "Regenerating uv.lock..."
             uv lock
 
-            git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json pyproject.toml uv.lock
+            git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json journey_dashboard/package.json pyproject.toml uv.lock
             git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
             git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         else
@@ -471,6 +480,7 @@ case "$VERSION_ARG" in
             sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
             sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
             sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
+            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" journey_dashboard/package.json
             sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
             sed -i "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
 
@@ -479,7 +489,7 @@ case "$VERSION_ARG" in
             uv lock
 
             # Commit and tag
-            git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json pyproject.toml uv.lock
+            git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json journey_dashboard/package.json pyproject.toml uv.lock
             git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
             git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         fi
@@ -532,13 +542,14 @@ case "$VERSION_ARG" in
             sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
             sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
             sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
+            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" journey_dashboard/package.json
             sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
             sed -i "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
 
             echo "Regenerating uv.lock..."
             uv lock
 
-            git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json pyproject.toml uv.lock
+            git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json journey_dashboard/package.json pyproject.toml uv.lock
             git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
             git tag -af "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         else
@@ -554,6 +565,7 @@ case "$VERSION_ARG" in
             sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
             sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
             sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
+            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" journey_dashboard/package.json
             sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
             sed -i "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
 
@@ -562,7 +574,7 @@ case "$VERSION_ARG" in
             uv lock
 
             # Commit and tag
-            git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json pyproject.toml uv.lock
+            git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json journey_dashboard/package.json pyproject.toml uv.lock
             git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
             git tag -af "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         fi

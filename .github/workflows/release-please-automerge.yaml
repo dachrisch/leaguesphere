@@ -1,0 +1,32 @@
+name: Release Please Automerge
+on:
+  pull_request_target:
+    types: [opened, synchronized, labeled]
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    if: "${{ contains(github.event.pull_request.labels.*.name, 'autorelease: pending') }}"
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check if patch-only release
+        id: version-check
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          NEW=$(echo "$PR_TITLE" | grep -oP '\d+\.\d+\.\d+$' || true)
+          CURRENT=$(jq -r '."."' .release-please-manifest.json 2>/dev/null || true)
+          if [ -n "$NEW" ] && [ -n "$CURRENT" ] && \
+             [ "$(echo "$NEW" | cut -d. -f1-2)" = "$(echo "$CURRENT" | cut -d. -f1-2)" ]; then
+            echo "patch_only=true" >> $GITHUB_OUTPUT
+          else
+            echo "patch_only=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Automerge patch release
+        if: steps.version-check.outputs.patch_only == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge "$PR_URL" --auto --merge

@@ -100,3 +100,5 @@ Open terminal in pythonanywhere. While in home directory do the following steps:
 
     rm -rf .virtualenvs/
     mkvirtualenv venv --python=/usr/bin/python3.8
+
+<!-- Release test commit -->

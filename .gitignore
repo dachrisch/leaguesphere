@@ -177,3 +177,4 @@ ngrok.sh
 # Git worktrees
 .worktrees/
 test-reports/
+Testing release detection

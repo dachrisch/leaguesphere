@@ -40,7 +40,7 @@ class Gameday_designerMenuOrgaEntry(BaseMenu):
                 url="gameday_designer_app:index",  # Reverses to /gamedays/gameday/design/
             ),
             MenuItem.create(
-                name='📊 Game Progress',
+                name='📊 Live Status',
                 url="game-progress-page",  # Reverses to /gamedays/progress/
             ),
         ]
