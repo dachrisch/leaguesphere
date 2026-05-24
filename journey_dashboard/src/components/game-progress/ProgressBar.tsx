@@ -8,19 +8,22 @@ interface ProgressBarProps {
 }
 
 const ProgressBar: React.FC<ProgressBarProps> = ({ total, played, live }) => {
+  const isFinished = played === total && total > 0;
   const playedPercentage = total > 0 ? (played / total) * 100 : 0;
   const livePercentage = total > 0 ? (live / total) * 100 : 0;
   const pendingPercentage = total > 0 ? ((total - played - live) / total) * 100 : 0;
 
+  const playedColor = isFinished ? '#28a745' : '#6c757d';
+
   return (
     <div className={styles.progressBar}>
-      {/* Played games (blue) */}
+      {/* Played games (gray or green if finished) */}
       {playedPercentage > 0 && (
         <div
           className={styles.progressSegment}
           style={{
             width: `${playedPercentage}%`,
-            backgroundColor: '#6c757d',
+            backgroundColor: playedColor,
           }}
         />
       )}

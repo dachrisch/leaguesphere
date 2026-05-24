@@ -45,7 +45,9 @@ const GameProgressPage: React.FC = () => {
             <h2 className={styles.sectionTitle}>
               {state.totalLiveGames > 0 
                 ? t('ui:gameProgress.section.live', { count: state.totalLiveGames })
-                : t('ui:gameProgress.section.today_top')}
+                : state.totalPlayedGamesToday > 0
+                  ? t('ui:gameProgress.section.today_results', { count: state.live.length })
+                  : t('ui:gameProgress.section.today_top', { count: state.live.length })}
             </h2>
             <div className={styles.gamedayList}>
               {state.live.map((gameday) => (
