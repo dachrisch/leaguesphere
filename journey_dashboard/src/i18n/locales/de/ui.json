@@ -224,10 +224,11 @@
     },
     "section": {
       "live": "Live ({{count}} Spiele)",
-      "today": "Heute ({{count}} Spiele)",
-      "today_top": "Heute",
-      "outlook": "Ausblick (nächste {{days}} Tage, {{count}} Spiele)",
-      "recent": "Rückblick ({{count}} Spiele)"
+      "today": "Heute ({{count}} Spieltage)",
+      "today_top": "Heute ({{count}} Spieltage)",
+      "today_results": "Ergebnisse ({{count}} Spieltage)",
+      "outlook": "Ausblick (nächste {{days}} Tage, {{count}} Spieltage)",
+      "recent": "Rückblick ({{count}} Spieltage)"
     },
     "card": {
       "gamesScheduled": "Spiele geplant",

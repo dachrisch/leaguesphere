@@ -62,6 +62,7 @@ function categorizeGamedays(gamedays: GamedayProgress[]): Omit<GameProgressState
   const upcoming: GamedayWithStats[] = [];
 
   let totalLiveGames = 0;
+  let totalPlayedGamesToday = 0;
 
   gamedays.forEach((gameday) => {
     const gamedayWithStats = addStats(gameday);
@@ -92,6 +93,7 @@ function categorizeGamedays(gamedays: GamedayProgress[]): Omit<GameProgressState
       if (!isStale) {
         live.push(withMinutes);
         totalLiveGames += gamedayWithStats.stats.live;
+        totalPlayedGamesToday += gamedayWithStats.stats.played;
       } else {
         todayGamedays.push(withMinutes);
       }
@@ -114,6 +116,7 @@ function categorizeGamedays(gamedays: GamedayProgress[]): Omit<GameProgressState
     recent,
     upcoming,
     totalLiveGames,
+    totalPlayedGamesToday,
     todayGamedayCount: todayGamedays.length,
   };
 }

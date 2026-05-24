@@ -224,10 +224,11 @@
     },
     "section": {
       "live": "Live ({{count}} games)",
-      "today": "Today ({{count}} games)",
-      "today_top": "Today",
-      "outlook": "Outlook (next {{days}} days, {{count}} games)",
-      "recent": "Lookback ({{count}} games)"
+      "today": "Today ({{count}} gamedays)",
+      "today_top": "Today ({{count}} gamedays)",
+      "today_results": "Results ({{count}} gamedays)",
+      "outlook": "Outlook (next {{days}} days, {{count}} gamedays)",
+      "recent": "Lookback ({{count}} gamedays)"
     },
     "card": {
       "gamesScheduled": "Games scheduled",
