@@ -22,11 +22,24 @@ const GamedayCard: React.FC<GamedayCardProps> = ({ gameday, isLive = false }) =>
   const endTime = lastGameTime ? addHours(lastGameTime, 2) : (gameday.start ? addHours(gameday.start, 2) : '');
   const gamedayUrl = `/gamedays/gameday/${gameday.id}/`;
 
-  const isActuallyLive = stats.live > 0 || (stats.played > 0 && stats.pending > 0);
-  const isFinished = stats.played === stats.total && stats.total > 0;
-  const showProgressBar = (isActuallyLive || isFinished) && !gameday.isStale;
-  const showMinutesUntilStart = !gameday.isStale && gameday.minutesUntilStart !== undefined && !isActuallyLive && !isFinished;
-  const showScheduledOnly = gameday.minutesUntilStart === undefined && stats.played === 0 && stats.live === 0;
+  const hasGamesInProgress = stats.live > 0;
+  const hasGamesPlayedButPending = stats.played > 0 && stats.pending > 0;
+  const isActuallyLive = hasGamesInProgress || hasGamesPlayedButPending;
+
+  const hasGames = stats.total > 0;
+  const allGamesCompleted = stats.played === stats.total;
+  const isFinished = hasGames && allGamesCompleted;
+
+  const isNotStale = !gameday.isStale;
+  const hasMinutesUntilStart = gameday.minutesUntilStart !== undefined;
+  const showProgressBar = (isActuallyLive || isFinished) && isNotStale;
+  const shouldShowMinutes = isNotStale && hasMinutesUntilStart && !isActuallyLive && !isFinished;
+  const showMinutesUntilStart = shouldShowMinutes;
+
+  const noMinutesAvailable = gameday.minutesUntilStart === undefined;
+  const noGamesPlayed = stats.played === 0;
+  const noGamesLive = stats.live === 0;
+  const showScheduledOnly = noMinutesAvailable && noGamesPlayed && noGamesLive;
 
   return (
     <a href={gamedayUrl} className={`${styles.gamedayCard} ${isLive ? styles.cardLive : ''}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>

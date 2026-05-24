@@ -45,7 +45,28 @@ function calculateGamedayEndTime(dateStr: string, games: GamedayProgress['games'
 }
 
 function isGamedayFinished(stats: GamedayStats): boolean {
-  return stats.pending === 0 && stats.live === 0;
+  const allGamesPending = stats.pending === 0;
+  const noGamesInProgress = stats.live === 0;
+  return allGamesPending && noGamesInProgress;
+}
+
+function isTodayGamedayStale(
+  stats: GamedayStats,
+  isFinished: boolean,
+  now: Date,
+  gamedayEndTime: Date,
+): boolean {
+  const endTimePlusThreeHours = new Date(gamedayEndTime.getTime() + 3 * 60 * 60 * 1000);
+
+  const noGamesStarted = stats.played === 0 && stats.live === 0;
+  const someGamesStarted = !noGamesStarted;
+  const noGamesAtAll = stats.total === 0;
+
+  const isOverByTimeAndNoStart = now > gamedayEndTime && noGamesStarted;
+  const isOverByLongTimeAndSomeStart = now > endTimePlusThreeHours && someGamesStarted;
+
+  const shouldBeStaleBecauseNoProgress = noGamesAtAll || isOverByTimeAndNoStart || isOverByLongTimeAndSomeStart;
+  return !isFinished && shouldBeStaleBecauseNoProgress;
 }
 
 function categorizeGamedays(gamedays: GamedayProgress[]): Omit<GameProgressState, 'loading' | 'error' | 'gamedays'> {
@@ -75,14 +96,7 @@ function categorizeGamedays(gamedays: GamedayProgress[]): Omit<GameProgressState
     const isToday = gamedayDate.getTime() === today.getTime();
 
     if (isToday) {
-      const endTimePlusThreeHours = new Date(gamedayEndTime.getTime() + 3 * 60 * 60 * 1000);
-      const noGamesStarted = gamedayWithStats.stats.played === 0 && gamedayWithStats.stats.live === 0;
-      const someGamesStarted = !noGamesStarted;
-      const noGamesAtAll = gamedayWithStats.stats.total === 0;
-
-      const isOverByTimeAndNoStart = now > gamedayEndTime && noGamesStarted;
-      const isOverByLongTimeAndSomeStart = now > endTimePlusThreeHours && someGamesStarted;
-      const isStale = !isFinished && (noGamesAtAll || isOverByTimeAndNoStart || isOverByLongTimeAndSomeStart);
+      const isStale = isTodayGamedayStale(gamedayWithStats.stats, isFinished, now, gamedayEndTime);
 
       const withMinutes = {
         ...gamedayWithStats,
