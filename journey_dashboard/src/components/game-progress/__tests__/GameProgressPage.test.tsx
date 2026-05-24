@@ -3,13 +3,15 @@ import { render, screen } from '@testing-library/react';
 import GameProgressPage from '../GameProgressPage';
 import { useGameProgress } from '../hooks/useGameProgress';
 
+import { GameProgressState } from '../../../types/progressTypes';
+
 vi.mock('../hooks/useGameProgress');
 vi.mock('../../../i18n/useTypedTranslation', () => ({
   useTypedTranslation: () => ({
-    t: (key: string, params?: any) => {
-      if (key === 'ui:gameProgress.section.live') return `Live (${params.count} Games)`;
+    t: (key: string, params?: Record<string, string | number>) => {
+      if (key === 'ui:gameProgress.section.live') return `Live (${params?.count} Games)`;
       if (key === 'ui:gameProgress.section.today_top') return 'Today';
-      if (key === 'ui:gameProgress.section.today_results') return `Results (${params.count} Gamedays)`;
+      if (key === 'ui:gameProgress.section.today_results') return `Results (${params?.count} Gamedays)`;
       if (key === 'ui:gameProgress.section.outlook') return 'Outlook';
       return key;
     },
@@ -18,11 +20,11 @@ vi.mock('../../../i18n/useTypedTranslation', () => ({
 
 // Mock GamedayCard to avoid deep rendering issues in this test
 vi.mock('../GamedayCard', () => ({
-  default: ({ gameday }: any) => <div data-testid="gameday-card">{gameday.name}</div>
+  default: ({ gameday }: { gameday: { name: string } }) => <div data-testid="gameday-card">{gameday.name}</div>
 }));
 
 describe('GameProgressPage', () => {
-  const baseState = {
+  const baseState: GameProgressState = {
     loading: false,
     error: null,
     gamedays: [],
@@ -39,9 +41,9 @@ describe('GameProgressPage', () => {
   it('should show "Today" header when gamedays exist but none are live or played', () => {
     vi.mocked(useGameProgress).mockReturnValue({
       ...baseState,
-      gamedays: [{ id: 1 } as any],
-      live: [{ id: 1, name: 'Upcoming Today' } as any],
-    } as any);
+      gamedays: [{ id: 1 }] as unknown as GameProgressState['gamedays'],
+      live: [{ id: 1, name: 'Upcoming Today' }] as unknown as GameProgressState['live'],
+    } as GameProgressState);
 
     render(<GameProgressPage />);
     expect(screen.getByText('Today')).toBeDefined();
@@ -50,10 +52,10 @@ describe('GameProgressPage', () => {
   it('should show "Live" header when games are actually in progress', () => {
     vi.mocked(useGameProgress).mockReturnValue({
       ...baseState,
-      gamedays: [{ id: 1 } as any],
-      live: [{ id: 1, name: 'Live Gameday' } as any],
+      gamedays: [{ id: 1 }] as unknown as GameProgressState['gamedays'],
+      live: [{ id: 1, name: 'Live Gameday' }] as unknown as GameProgressState['live'],
       totalLiveGames: 3,
-    } as any);
+    } as GameProgressState);
 
     render(<GameProgressPage />);
     expect(screen.getByText('Live (3 Games)')).toBeDefined();
@@ -62,10 +64,10 @@ describe('GameProgressPage', () => {
   it('should show "Results" header when games are finished but none are live', () => {
     vi.mocked(useGameProgress).mockReturnValue({
       ...baseState,
-      gamedays: [{ id: 1 } as any],
-      live: [{ id: 1, name: 'Finished Today' } as any],
+      gamedays: [{ id: 1 }] as unknown as GameProgressState['gamedays'],
+      live: [{ id: 1, name: 'Finished Today' }] as unknown as GameProgressState['live'],
       totalPlayedGamesToday: 10,
-    } as any);
+    } as GameProgressState);
 
     render(<GameProgressPage />);
     expect(screen.getByText('Results (1 Gamedays)')).toBeDefined();

@@ -1,23 +1,23 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import GamedayCard from '../GamedayCard';
-import { GameStatus } from '../../../types/progressTypes';
+import { GamedayWithStats } from '../../../types/progressTypes';
 
 // Mock translation
 vi.mock('../../../i18n/useTypedTranslation', () => ({
   useTypedTranslation: () => ({
-    t: (key: string, params?: any) => {
+    t: (key: string, params?: Record<string, string | number>) => {
       if (key === 'ui:gameProgress.card.upcomingBadge') return 'UPCOMING';
       if (key === 'ui:gameProgress.card.finishedBadge') return 'FINISHED';
-      if (key === 'ui:gameProgress.card.minutesUntil') return `${params.minutes} min until start`;
-      if (key === 'ui:gameProgress.card.played') return `Played ${params.played}/${params.total}`;
+      if (key === 'ui:gameProgress.card.minutesUntil') return `${params?.minutes} min until start`;
+      if (key === 'ui:gameProgress.card.played') return `Played ${params?.played}/${params?.total}`;
       return key;
     },
   }),
 }));
 
 describe('GamedayCard', () => {
-  const baseGameday = {
+  const baseGameday: Partial<GamedayWithStats> = {
     id: 1,
     name: 'Test Gameday',
     date: '2026-05-24',
@@ -32,7 +32,7 @@ describe('GamedayCard', () => {
       ...baseGameday,
       minutesUntilStart: 60,
     };
-    render(<GamedayCard gameday={gameday as any} isLive={true} />);
+    render(<GamedayCard gameday={gameday as GamedayWithStats} isLive={true} />);
     
     expect(screen.getByText(/UPCOMING/)).toBeDefined();
     expect(screen.getByText('60 min until start')).toBeDefined();
@@ -45,7 +45,7 @@ describe('GamedayCard', () => {
       ...baseGameday,
       stats: { total: 10, played: 2, live: 1, pending: 7, percentComplete: 20 }
     };
-    render(<GamedayCard gameday={gameday as any} isLive={true} />);
+    render(<GamedayCard gameday={gameday as GamedayWithStats} isLive={true} />);
     
     expect(screen.getByText(/LIVE/)).toBeDefined();
     expect(screen.getByText('Played 2/10')).toBeDefined();
@@ -57,7 +57,7 @@ describe('GamedayCard', () => {
       ...baseGameday,
       stats: { total: 10, played: 10, live: 0, pending: 0, percentComplete: 100 }
     };
-    render(<GamedayCard gameday={gameday as any} isLive={true} />);
+    render(<GamedayCard gameday={gameday as GamedayWithStats} isLive={true} />);
     
     expect(screen.getByText(/FINISHED/)).toBeDefined();
     expect(screen.getByText('Played 10/10')).toBeDefined();
@@ -69,7 +69,7 @@ describe('GamedayCard', () => {
       ...baseGameday,
       isStale: true,
     };
-    render(<GamedayCard gameday={gameday as any} isLive={true} />);
+    render(<GamedayCard gameday={gameday as GamedayWithStats} isLive={true} />);
     
     expect(screen.getByText('ui:gameProgress.card.stale')).toBeDefined();
     // Minutes until start should be hidden if stale
