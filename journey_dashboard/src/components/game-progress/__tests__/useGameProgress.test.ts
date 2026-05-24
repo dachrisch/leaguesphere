@@ -1,14 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useGameProgress } from '../hooks/useGameProgress';
+import { GamedayProgress, GameStatus } from '../../../types/progressTypes';
 import { progressApi } from '../../../api/progressApi';
-import { GameStatus } from '../../../types/progressTypes';
 
-vi.mock('../../../api/progressApi', () => ({
-  progressApi: {
-    list: vi.fn(),
-  },
-}));
+vi.mock('../../../api/progressApi');
 
 describe('useGameProgress', () => {
   const mockNow = new Date('2026-05-24T12:00:00');
@@ -24,18 +20,17 @@ describe('useGameProgress', () => {
   });
 
   it('should categorize a today ongoing gameday as live and calculate minutes until start', async () => {
-    const mockGameday = {
+    const mockGameday: Partial<GamedayProgress> = {
       id: 1,
       name: 'Today Gameday',
       date: '2026-05-24',
       start: '14:00:00',
       games: [
-        { id: 101, status: GameStatus.PLANNED, scheduled: '14:00:00' }
+        { id: 101, status: GameStatus.PLANNED, scheduled: '14:00:00', field: 1, gameStarted: null, gameFinished: null, gameresult: null }
       ],
-      stats: { total: 1, played: 0, live: 0, pending: 1, percentComplete: 0 }
     };
 
-    vi.mocked(progressApi.list).mockResolvedValue([mockGameday as any]);
+    vi.mocked(progressApi.list).mockResolvedValue([mockGameday as GamedayProgress]);
 
     const { result } = renderHook(() => useGameProgress());
 
@@ -50,18 +45,17 @@ describe('useGameProgress', () => {
   });
 
   it('should not mark a finished gameday as stale even if time has passed', async () => {
-    const mockGameday = {
+    const mockGameday: Partial<GamedayProgress> = {
       id: 2,
       name: 'Finished Today',
       date: '2026-05-24',
       start: '08:00:00',
       games: [
-        { id: 201, status: GameStatus.COMPLETED, scheduled: '08:00:00' }
+        { id: 201, status: GameStatus.COMPLETED, scheduled: '08:00:00', field: 1, gameStarted: '08:00:00', gameFinished: '09:00:00', gameresult: null }
       ],
-      stats: { total: 1, played: 1, live: 0, pending: 0, percentComplete: 100 }
     };
 
-    vi.mocked(progressApi.list).mockResolvedValue([mockGameday as any]);
+    vi.mocked(progressApi.list).mockResolvedValue([mockGameday as GamedayProgress]);
 
     const { result } = renderHook(() => useGameProgress());
 
@@ -74,18 +68,17 @@ describe('useGameProgress', () => {
 
   it('should mark an unstarted gameday as stale if it is long past its end time', async () => {
     // End time is start + 2h = 10:00. Now is 12:00.
-    const mockGameday = {
+    const mockGameday: Partial<GamedayProgress> = {
       id: 3,
       name: 'Stale Today',
       date: '2026-05-24',
       start: '08:00:00',
       games: [
-        { id: 301, status: GameStatus.PLANNED, scheduled: '08:00:00' }
+        { id: 301, status: GameStatus.PLANNED, scheduled: '08:00:00', field: 1, gameStarted: null, gameFinished: null, gameresult: null }
       ],
-      stats: { total: 1, played: 0, live: 0, pending: 1, percentComplete: 0 }
     };
 
-    vi.mocked(progressApi.list).mockResolvedValue([mockGameday as any]);
+    vi.mocked(progressApi.list).mockResolvedValue([mockGameday as GamedayProgress]);
 
     const { result } = renderHook(() => useGameProgress());
 
@@ -97,26 +90,30 @@ describe('useGameProgress', () => {
   });
 
   it('should calculate totalPlayedGamesToday correctly', async () => {
-    const mockGamedays = [
+    const mockGamedays: Partial<GamedayProgress>[] = [
       {
         id: 1,
         date: '2026-05-24',
         name: 'G1',
         start: '12:00:00',
-        games: [{ status: GameStatus.COMPLETED }, { status: GameStatus.COMPLETED }],
-        stats: { total: 2, played: 2, live: 0, pending: 0 }
+        games: [
+          { status: GameStatus.COMPLETED, id: 1 },
+          { status: GameStatus.COMPLETED, id: 2 }
+        ] as unknown as GamedayProgress['games'],
       },
       {
         id: 2,
         date: '2026-05-24',
         name: 'G2',
         start: '12:00:00',
-        games: [{ status: GameStatus.COMPLETED }, { status: GameStatus.IN_PROGRESS }],
-        stats: { total: 2, played: 1, live: 1, pending: 0 }
+        games: [
+          { status: GameStatus.COMPLETED, id: 3 },
+          { status: GameStatus.IN_PROGRESS, id: 4 }
+        ] as unknown as GamedayProgress['games'],
       }
     ];
 
-    vi.mocked(progressApi.list).mockResolvedValue(mockGamedays as any);
+    vi.mocked(progressApi.list).mockResolvedValue(mockGamedays as GamedayProgress[]);
 
     const { result } = renderHook(() => useGameProgress());
 
