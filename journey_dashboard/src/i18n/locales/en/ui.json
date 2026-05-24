@@ -231,12 +231,12 @@
       "recent": "Lookback ({{count}} gamedays)"
     },
     "card": {
-      "gamesScheduled": "Games scheduled {{count}}",
-      "live": "Live",
+      "gamesScheduled": "{{count}} games planned",
+      "live": "{{count}} games live",
       "upcomingBadge": "UPCOMING",
       "finishedBadge": "FINISHED",
       "played": "Played {{played}}/{{total}}",
-      "pending": "Pending",
+      "pending": "{{count}} games pending",
       "stale": "Stale",
       "minutesUntil": "{{minutes}} min until start"
     }
