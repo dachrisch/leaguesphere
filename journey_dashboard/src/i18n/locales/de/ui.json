@@ -225,12 +225,14 @@
     "section": {
       "live": "Live ({{count}} Spiele)",
       "today": "Heute ({{count}} Spiele)",
+      "today_top": "Heute",
       "outlook": "Ausblick (nächste {{days}} Tage, {{count}} Spiele)",
       "recent": "Rückblick ({{count}} Spiele)"
     },
     "card": {
       "gamesScheduled": "Spiele geplant",
       "live": "Live",
+      "upcomingBadge": "ANSTEHEND",
       "played": "Gespielt",
       "pending": "Anstehend",
       "stale": "Abgelaufen",
