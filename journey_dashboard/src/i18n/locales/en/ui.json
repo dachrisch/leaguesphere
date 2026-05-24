@@ -231,7 +231,7 @@
       "recent": "Lookback ({{count}} gamedays)"
     },
     "card": {
-      "gamesScheduled": "Games scheduled",
+      "gamesScheduled": "Games scheduled {{count}}",
       "live": "Live",
       "upcomingBadge": "UPCOMING",
       "finishedBadge": "FINISHED",

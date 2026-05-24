@@ -231,7 +231,7 @@
       "recent": "Rückblick ({{count}} Spieltage)"
     },
     "card": {
-      "gamesScheduled": "Spiele geplant",
+      "gamesScheduled": "Spiele geplant {{count}}",
       "live": "Live",
       "upcomingBadge": "ANSTEHEND",
       "finishedBadge": "BEENDET",
