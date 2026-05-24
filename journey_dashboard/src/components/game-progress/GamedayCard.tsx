@@ -22,9 +22,10 @@ const GamedayCard: React.FC<GamedayCardProps> = ({ gameday, isLive = false }) =>
   const endTime = lastGameTime ? addHours(lastGameTime, 2) : (gameday.start ? addHours(gameday.start, 2) : '');
   const gamedayUrl = `/gamedays/gameday/${gameday.id}/`;
 
-  const isActuallyLive = stats.played > 0 || stats.live > 0;
-  const showProgressBar = isLive && isActuallyLive;
-  const showMinutesUntilStart = !gameday.isStale && gameday.minutesUntilStart !== undefined;
+  const isActuallyLive = stats.live > 0 || (stats.played > 0 && stats.pending > 0);
+  const isFinished = stats.played === stats.total && stats.total > 0;
+  const showProgressBar = (isActuallyLive || isFinished) && !gameday.isStale;
+  const showMinutesUntilStart = !gameday.isStale && gameday.minutesUntilStart !== undefined && !isActuallyLive && !isFinished;
   const showScheduledOnly = gameday.minutesUntilStart === undefined && stats.played === 0 && stats.live === 0;
 
   return (
@@ -34,6 +35,8 @@ const GamedayCard: React.FC<GamedayCardProps> = ({ gameday, isLive = false }) =>
           {isLive && (
             isActuallyLive ? (
               <span className={styles.liveBadge}>● LIVE</span>
+            ) : isFinished ? (
+              <span className={styles.liveBadge}>● {t('ui:gameProgress.card.finishedBadge')}</span>
             ) : (
               <span className={styles.upcomingBadgeToday}>● {t('ui:gameProgress.card.upcomingBadge')}</span>
             )

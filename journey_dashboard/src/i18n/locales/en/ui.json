@@ -233,7 +233,8 @@
       "gamesScheduled": "Games scheduled",
       "live": "Live",
       "upcomingBadge": "UPCOMING",
-      "played": "Played",
+      "finishedBadge": "FINISHED",
+      "played": "Played {{played}}/{{total}}",
       "pending": "Pending",
       "stale": "Stale",
       "minutesUntil": "{{minutes}} min until start"
