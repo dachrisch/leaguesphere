@@ -1,6 +1,6 @@
 {
   "name": "liveticker",
-  "version": "3.19.8",
+  "version": "3.19.9-rc.1",
   "private": true,
   "main": "index.js",
   "directories": {
