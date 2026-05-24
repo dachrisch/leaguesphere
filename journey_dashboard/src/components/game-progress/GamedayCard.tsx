@@ -23,6 +23,9 @@ const GamedayCard: React.FC<GamedayCardProps> = ({ gameday, isLive = false }) =>
   const gamedayUrl = `/gamedays/gameday/${gameday.id}/`;
 
   const isActuallyLive = stats.played > 0 || stats.live > 0;
+  const showProgressBar = isLive && isActuallyLive;
+  const showMinutesUntilStart = !gameday.isStale && gameday.minutesUntilStart !== undefined;
+  const showScheduledOnly = gameday.minutesUntilStart === undefined && stats.played === 0 && stats.live === 0;
 
   return (
     <a href={gamedayUrl} className={`${styles.gamedayCard} ${isLive ? styles.cardLive : ''}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
@@ -35,14 +38,13 @@ const GamedayCard: React.FC<GamedayCardProps> = ({ gameday, isLive = false }) =>
               <span className={styles.upcomingBadgeToday}>● {t('ui:gameProgress.card.upcomingBadge')}</span>
             )
           )}
-          {gameday.isStale ? (
+          {gameday.isStale && (
             <span className={`${styles.timeUntil} ${styles.stale}`}>{t('ui:gameProgress.card.stale')}</span>
-          ) : (
-            gameday.minutesUntilStart !== undefined && (
-              <span className={styles.timeUntil}>
-                {t('ui:gameProgress.card.minutesUntil', { minutes: gameday.minutesUntilStart })}
-              </span>
-            )
+          )}
+          {showMinutesUntilStart && (
+            <span className={styles.timeUntil}>
+              {t('ui:gameProgress.card.minutesUntil', { minutes: gameday.minutesUntilStart })}
+            </span>
           )}
           <span className={styles.league}>{gameday.league_display}</span>
         </div>
@@ -63,10 +65,10 @@ const GamedayCard: React.FC<GamedayCardProps> = ({ gameday, isLive = false }) =>
         </span>
       </div>
 
-      {isLive && isActuallyLive && <ProgressBar total={stats.total} played={stats.played} live={stats.live} />}
+      {showProgressBar && <ProgressBar total={stats.total} played={stats.played} live={stats.live} />}
 
       <div className={styles.cardStats}>
-        {gameday.minutesUntilStart === undefined && stats.played === 0 && stats.live === 0 ? (
+        {showScheduledOnly ? (
           <span>{t('ui:gameProgress.card.gamesScheduled', { count: stats.total })}</span>
         ) : (
           <>
@@ -81,7 +83,7 @@ const GamedayCard: React.FC<GamedayCardProps> = ({ gameday, isLive = false }) =>
             )}
           </>
         )}
-        {isLive && isActuallyLive && <span className={styles.percentComplete}>{stats.percentComplete}%</span>}
+        {showProgressBar && <span className={styles.percentComplete}>{stats.percentComplete}%</span>}
       </div>
     </a>
   );

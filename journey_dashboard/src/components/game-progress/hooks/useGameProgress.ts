@@ -82,12 +82,15 @@ function categorizeGamedays(gamedays: GamedayProgress[]): Omit<GameProgressState
       live.push(withMinutes);
       totalLiveGames += gamedayWithStats.stats.live;
     } else if (isToday) {
-      const gamedayEndTime = calculateGamedayEndTime(gameday.date, gameday.games);
       const endTimePlusThreeHours = new Date(gamedayEndTime.getTime() + 3 * 60 * 60 * 1000);
       const noGamesStarted = gamedayWithStats.stats.played === 0 && gamedayWithStats.stats.live === 0;
-      const someGamesStarted = gamedayWithStats.stats.played > 0 || gamedayWithStats.stats.live > 0;
+      const someGamesStarted = !noGamesStarted;
       const noGamesAtAll = gamedayWithStats.stats.total === 0;
-      const isStale = noGamesAtAll || (now > gamedayEndTime && noGamesStarted) || (now > endTimePlusThreeHours && someGamesStarted);
+
+      const isOverByTimeAndNoStart = now > gamedayEndTime && noGamesStarted;
+      const isOverByLongTimeAndSomeStart = now > endTimePlusThreeHours && someGamesStarted;
+      const isStale = noGamesAtAll || isOverByTimeAndNoStart || isOverByLongTimeAndSomeStart;
+
       const withMinutes = {
         ...gamedayWithStats,
         minutesUntilStart: calculateMinutesUntilStart(gameday.date, gameday.start),
