@@ -75,7 +75,11 @@ function categorizeGamedays(gamedays: GamedayProgress[]): Omit<GameProgressState
     const isToday = gamedayDate.getTime() === today.getTime();
 
     if (isToday && isOngoing) {
-      live.push(gamedayWithStats);
+      const withMinutes = {
+        ...gamedayWithStats,
+        minutesUntilStart: calculateMinutesUntilStart(gameday.date, gameday.start),
+      };
+      live.push(withMinutes);
       totalLiveGames += gamedayWithStats.stats.live;
     } else if (isToday) {
       const gamedayEndTime = calculateGamedayEndTime(gameday.date, gameday.games);

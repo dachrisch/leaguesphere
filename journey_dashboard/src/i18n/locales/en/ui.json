@@ -225,12 +225,14 @@
     "section": {
       "live": "Live ({{count}} games)",
       "today": "Today ({{count}} games)",
+      "today_top": "Today",
       "outlook": "Outlook (next {{days}} days, {{count}} games)",
       "recent": "Lookback ({{count}} games)"
     },
     "card": {
       "gamesScheduled": "Games scheduled",
       "live": "Live",
+      "upcomingBadge": "UPCOMING",
       "played": "Played",
       "pending": "Pending",
       "stale": "Stale",

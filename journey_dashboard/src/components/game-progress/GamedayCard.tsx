@@ -22,11 +22,19 @@ const GamedayCard: React.FC<GamedayCardProps> = ({ gameday, isLive = false }) =>
   const endTime = lastGameTime ? addHours(lastGameTime, 2) : (gameday.start ? addHours(gameday.start, 2) : '');
   const gamedayUrl = `/gamedays/gameday/${gameday.id}/`;
 
+  const isActuallyLive = stats.played > 0 || stats.live > 0;
+
   return (
     <a href={gamedayUrl} className={`${styles.gamedayCard} ${isLive ? styles.cardLive : ''}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
       <div className={styles.cardTop}>
         <div className={styles.cardHeader}>
-          {isLive && <span className={styles.liveBadge}>● LIVE</span>}
+          {isLive && (
+            isActuallyLive ? (
+              <span className={styles.liveBadge}>● LIVE</span>
+            ) : (
+              <span className={styles.upcomingBadgeToday}>● {t('ui:gameProgress.card.upcomingBadge')}</span>
+            )
+          )}
           {gameday.isStale ? (
             <span className={`${styles.timeUntil} ${styles.stale}`}>{t('ui:gameProgress.card.stale')}</span>
           ) : (
@@ -55,7 +63,7 @@ const GamedayCard: React.FC<GamedayCardProps> = ({ gameday, isLive = false }) =>
         </span>
       </div>
 
-      {isLive && <ProgressBar total={stats.total} played={stats.played} live={stats.live} />}
+      {isLive && isActuallyLive && <ProgressBar total={stats.total} played={stats.played} live={stats.live} />}
 
       <div className={styles.cardStats}>
         {gameday.minutesUntilStart === undefined && stats.played === 0 && stats.live === 0 ? (
@@ -73,7 +81,7 @@ const GamedayCard: React.FC<GamedayCardProps> = ({ gameday, isLive = false }) =>
             )}
           </>
         )}
-        {isLive && <span className={styles.percentComplete}>{stats.percentComplete}%</span>}
+        {isLive && isActuallyLive && <span className={styles.percentComplete}>{stats.percentComplete}%</span>}
       </div>
     </a>
   );
