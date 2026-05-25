@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.19.10](https://github.com/dachrisch/leaguesphere/compare/v3.19.9...v3.19.10) (2026-05-25)
+
+
+### Bug Fixes
+
+* **deps:** update babel monorepo to v7.29.7 ([#1225](https://github.com/dachrisch/leaguesphere/issues/1225)) ([8a49954](https://github.com/dachrisch/leaguesphere/commit/8a4995403e630ef875c00c4d02bcf0e373f6b141))
+
 ## [3.19.9](https://github.com/dachrisch/leaguesphere/compare/v3.19.8...v3.19.9) (2026-05-25)
 
 
