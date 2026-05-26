@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.19.11](https://github.com/dachrisch/leaguesphere/compare/v3.19.10...v3.19.11) (2026-05-26)
+
+
+### Bug Fixes
+
+* **deps:** update dependency i18next to v26.3.0 ([#1230](https://github.com/dachrisch/leaguesphere/issues/1230)) ([939fbe7](https://github.com/dachrisch/leaguesphere/commit/939fbe709970b67b376e96fb69b0dfa8646e76f3))
+* **deps:** update dependency typescript-eslint to v8.60.0 ([#1229](https://github.com/dachrisch/leaguesphere/issues/1229)) ([bdad9f2](https://github.com/dachrisch/leaguesphere/commit/bdad9f28e184461d1069413179870499daf77cc2))
+* **deps:** update dependency webpack to v5.107.2 ([#1227](https://github.com/dachrisch/leaguesphere/issues/1227)) ([59b7345](https://github.com/dachrisch/leaguesphere/commit/59b73451d40106c9b43c23121888de3a7294dd8b))
+* sync league_manager version to 3.19.10 ([0cfff49](https://github.com/dachrisch/leaguesphere/commit/0cfff495ca6258473a049f119b1c5f49773fe95f))
+
 ## [3.19.10](https://github.com/dachrisch/leaguesphere/compare/v3.19.9...v3.19.10) (2026-05-25)
 
 
