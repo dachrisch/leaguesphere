@@ -1,5 +1,23 @@
 # Changelog
 
+## [3.20.0](https://github.com/dachrisch/leaguesphere/compare/v3.19.13...v3.20.0) (2026-05-27)
+
+
+### Features
+
+* add entrypoint.staging.sh for prod DB sync on container restart ([713baa0](https://github.com/dachrisch/leaguesphere/commit/713baa00e6df80d830cc5cd46b2dbdf7db7c604f))
+* dynamic live/upcoming status for today's gamedays ([b3339b4](https://github.com/dachrisch/leaguesphere/commit/b3339b42cd44f0eba6c866ac23aa760c0597d48d))
+* improve dashboard terminology, section headers, and progress visualization ([95e62d7](https://github.com/dachrisch/leaguesphere/commit/95e62d7117f2dfb6750827e06b0c9b46abc4c115))
+* show 'UPCOMING' status for today's gamedays until first game starts ([f3995fd](https://github.com/dachrisch/leaguesphere/commit/f3995fd837a24c754fa7239ed341742103536dd0))
+
+
+### Bug Fixes
+
+* add game count to gamesScheduled translation strings ([c03feb6](https://github.com/dachrisch/leaguesphere/commit/c03feb6a186e1c2d16c6ec9bfd531e9dba6a5ffa))
+* resolve 'stale' status for finished gamedays and fix 'played' stats translation ([96de390](https://github.com/dachrisch/leaguesphere/commit/96de390e88d90800b0dec5fea3a07ef7eb7a0098))
+* standardize game count labels to 'num games X' format ([16aa488](https://github.com/dachrisch/leaguesphere/commit/16aa488c64892376485ac4527f5c5ec1acba9f1e))
+* sync package-lock.json files after rebase ([919496c](https://github.com/dachrisch/leaguesphere/commit/919496cb02524148f00f122b1b18def5cfeb486a))
+
 ## [3.19.13](https://github.com/dachrisch/leaguesphere/compare/v3.19.12...v3.19.13) (2026-05-27)
 
 
