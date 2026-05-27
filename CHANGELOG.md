@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.19.12](https://github.com/dachrisch/leaguesphere/compare/v3.19.11...v3.19.12) (2026-05-27)
+
+
+### Bug Fixes
+
+* **deps:** update dependency django-autocomplete-light to v4.0.1 ([#1231](https://github.com/dachrisch/leaguesphere/issues/1231)) ([399aabc](https://github.com/dachrisch/leaguesphere/commit/399aabc9c38846ab22d53cdfb46ce7fd84daf490))
+
 ## [3.19.11](https://github.com/dachrisch/leaguesphere/compare/v3.19.10...v3.19.11) (2026-05-26)
 
 
