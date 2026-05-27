@@ -62,6 +62,7 @@ export interface GameProgressState {
 
   // Metadata
   totalLiveGames: number;
+  totalPlayedGamesToday: number;
   todayGamedayCount: number;
 }
 

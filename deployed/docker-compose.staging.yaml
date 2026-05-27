@@ -67,6 +67,7 @@ services:
   staging-app:
     image: leaguesphere/backend:staging
     container_name: ${COMPOSE_PROJECT_NAME}.staging-app
+    entrypoint: /app/entrypoint.staging.sh
     command: gunicorn -b 0.0.0.0:8000 league_manager.wsgi
     healthcheck:
       test: ["CMD-SHELL", "curl -A healthcheck -H \"Accept: application/json\" http://localhost:8000/health/?format=json"]
@@ -83,7 +84,6 @@ services:
     env_file: ls.env.staging
     environment:
       DJANGO_SETTINGS_MODULE: league_manager.settings.stage
-      RUN_MIGRATIONS: true
     networks:
       - backend
       - egress

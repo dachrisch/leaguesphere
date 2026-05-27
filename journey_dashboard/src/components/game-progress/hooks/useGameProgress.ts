@@ -45,7 +45,28 @@ function calculateGamedayEndTime(dateStr: string, games: GamedayProgress['games'
 }
 
 function isGamedayFinished(stats: GamedayStats): boolean {
-  return stats.pending === 0 && stats.live === 0;
+  const allGamesPending = stats.pending === 0;
+  const noGamesInProgress = stats.live === 0;
+  return allGamesPending && noGamesInProgress;
+}
+
+function isTodayGamedayStale(
+  stats: GamedayStats,
+  isFinished: boolean,
+  now: Date,
+  gamedayEndTime: Date,
+): boolean {
+  const endTimePlusThreeHours = new Date(gamedayEndTime.getTime() + 3 * 60 * 60 * 1000);
+
+  const noGamesStarted = stats.played === 0 && stats.live === 0;
+  const someGamesStarted = !noGamesStarted;
+  const noGamesAtAll = stats.total === 0;
+
+  const isOverByTimeAndNoStart = now > gamedayEndTime && noGamesStarted;
+  const isOverByLongTimeAndSomeStart = now > endTimePlusThreeHours && someGamesStarted;
+
+  const shouldBeStaleBecauseNoProgress = noGamesAtAll || isOverByTimeAndNoStart || isOverByLongTimeAndSomeStart;
+  return !isFinished && shouldBeStaleBecauseNoProgress;
 }
 
 function categorizeGamedays(gamedays: GamedayProgress[]): Omit<GameProgressState, 'loading' | 'error' | 'gamedays'> {
@@ -62,6 +83,7 @@ function categorizeGamedays(gamedays: GamedayProgress[]): Omit<GameProgressState
   const upcoming: GamedayWithStats[] = [];
 
   let totalLiveGames = 0;
+  let totalPlayedGamesToday = 0;
 
   gamedays.forEach((gameday) => {
     const gamedayWithStats = addStats(gameday);
@@ -71,25 +93,24 @@ function categorizeGamedays(gamedays: GamedayProgress[]): Omit<GameProgressState
     const isFinished = isGamedayFinished(gamedayWithStats.stats);
     const gamedayEndTime = calculateGamedayEndTime(gameday.date, gameday.games);
     const now = new Date();
-    const isOngoing = !isFinished && now < gamedayEndTime;
     const isToday = gamedayDate.getTime() === today.getTime();
 
-    if (isToday && isOngoing) {
-      live.push(gamedayWithStats);
-      totalLiveGames += gamedayWithStats.stats.live;
-    } else if (isToday) {
-      const gamedayEndTime = calculateGamedayEndTime(gameday.date, gameday.games);
-      const endTimePlusThreeHours = new Date(gamedayEndTime.getTime() + 3 * 60 * 60 * 1000);
-      const noGamesStarted = gamedayWithStats.stats.played === 0 && gamedayWithStats.stats.live === 0;
-      const someGamesStarted = gamedayWithStats.stats.played > 0 || gamedayWithStats.stats.live > 0;
-      const noGamesAtAll = gamedayWithStats.stats.total === 0;
-      const isStale = noGamesAtAll || (now > gamedayEndTime && noGamesStarted) || (now > endTimePlusThreeHours && someGamesStarted);
+    if (isToday) {
+      const isStale = isTodayGamedayStale(gamedayWithStats.stats, isFinished, now, gamedayEndTime);
+
       const withMinutes = {
         ...gamedayWithStats,
         minutesUntilStart: calculateMinutesUntilStart(gameday.date, gameday.start),
         isStale,
       };
-      todayGamedays.push(withMinutes);
+
+      if (!isStale) {
+        live.push(withMinutes);
+        totalLiveGames += gamedayWithStats.stats.live;
+        totalPlayedGamesToday += gamedayWithStats.stats.played;
+      } else {
+        todayGamedays.push(withMinutes);
+      }
     } else if (gamedayDate > today) {
       const daysFromNow = Math.ceil((gamedayDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       if (daysFromNow <= 7) {
@@ -109,6 +130,7 @@ function categorizeGamedays(gamedays: GamedayProgress[]): Omit<GameProgressState
     recent,
     upcoming,
     totalLiveGames,
+    totalPlayedGamesToday,
     todayGamedayCount: todayGamedays.length,
   };
 }

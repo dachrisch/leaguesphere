@@ -72,14 +72,16 @@ class GamedayProgressSerializer(serializers.ModelSerializer):
 
     def get_computed_status(self, obj):
         """Compute status from games when Gameday.status is empty."""
-        if obj.status:
+        gameday_has_status = obj.status is not None and obj.status != ''
+        if gameday_has_status:
             return None
 
         games = obj.gameinfo_set.all()
-        if not games:
+        has_games = games.exists()
+        if not has_games:
             return 'PUBLISHED'
 
         statuses = [game.status for game in games]
-        all_completed = all(status == 'beendet' for status in statuses)
+        all_completed = all(status == Gameinfo.STATUS_COMPLETED for status in statuses)
 
         return 'COMPLETED' if all_completed else 'PUBLISHED'

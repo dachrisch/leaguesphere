@@ -39,11 +39,15 @@ const GameProgressPage: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.content}>
-        {/* LIVE section */}
+        {/* LIVE / TODAY section */}
         {state.live.length > 0 && (
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>
-              {t('ui:gameProgress.section.live', { count: state.totalLiveGames })}
+              {state.totalLiveGames > 0 
+                ? t('ui:gameProgress.section.live', { count: state.totalLiveGames })
+                : state.totalPlayedGamesToday > 0
+                  ? t('ui:gameProgress.section.today_results', { count: state.live.length })
+                  : t('ui:gameProgress.section.today_top', { count: state.live.length })}
             </h2>
             <div className={styles.gamedayList}>
               {state.live.map((gameday) => (
