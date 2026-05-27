@@ -224,15 +224,19 @@
     },
     "section": {
       "live": "Live ({{count}} Spiele)",
-      "today": "Heute ({{count}} Spiele)",
-      "outlook": "Ausblick (nächste {{days}} Tage, {{count}} Spiele)",
-      "recent": "Rückblick ({{count}} Spiele)"
+      "today": "Heute ({{count}} Spieltage)",
+      "today_top": "Heute ({{count}} Spieltage)",
+      "today_results": "Ergebnisse ({{count}} Spieltage)",
+      "outlook": "Ausblick (nächste {{days}} Tage, {{count}} Spieltage)",
+      "recent": "Rückblick ({{count}} Spieltage)"
     },
     "card": {
-      "gamesScheduled": "Spiele geplant",
-      "live": "Live",
-      "played": "Gespielt",
-      "pending": "Anstehend",
+      "gamesScheduled": "{{count}} Spiele geplant",
+      "live": "{{count}} Spiele live",
+      "upcomingBadge": "ANSTEHEND",
+      "finishedBadge": "BEENDET",
+      "played": "Gespielt {{played}}/{{total}}",
+      "pending": "{{count}} Spiele anstehend",
       "stale": "Abgelaufen",
       "minutesUntil": "{{minutes}} Min bis zum Start"
     }

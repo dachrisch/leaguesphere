@@ -1,5 +1,61 @@
 # Changelog
 
+## [3.20.0](https://github.com/dachrisch/leaguesphere/compare/v3.19.13...v3.20.0) (2026-05-27)
+
+
+### Features
+
+* add entrypoint.staging.sh for prod DB sync on container restart ([713baa0](https://github.com/dachrisch/leaguesphere/commit/713baa00e6df80d830cc5cd46b2dbdf7db7c604f))
+* dynamic live/upcoming status for today's gamedays ([b3339b4](https://github.com/dachrisch/leaguesphere/commit/b3339b42cd44f0eba6c866ac23aa760c0597d48d))
+* improve dashboard terminology, section headers, and progress visualization ([95e62d7](https://github.com/dachrisch/leaguesphere/commit/95e62d7117f2dfb6750827e06b0c9b46abc4c115))
+* show 'UPCOMING' status for today's gamedays until first game starts ([f3995fd](https://github.com/dachrisch/leaguesphere/commit/f3995fd837a24c754fa7239ed341742103536dd0))
+
+
+### Bug Fixes
+
+* add game count to gamesScheduled translation strings ([c03feb6](https://github.com/dachrisch/leaguesphere/commit/c03feb6a186e1c2d16c6ec9bfd531e9dba6a5ffa))
+* resolve 'stale' status for finished gamedays and fix 'played' stats translation ([96de390](https://github.com/dachrisch/leaguesphere/commit/96de390e88d90800b0dec5fea3a07ef7eb7a0098))
+* standardize game count labels to 'num games X' format ([16aa488](https://github.com/dachrisch/leaguesphere/commit/16aa488c64892376485ac4527f5c5ec1acba9f1e))
+* sync package-lock.json files after rebase ([919496c](https://github.com/dachrisch/leaguesphere/commit/919496cb02524148f00f122b1b18def5cfeb486a))
+
+## [3.19.13](https://github.com/dachrisch/leaguesphere/compare/v3.19.12...v3.19.13) (2026-05-27)
+
+
+### Bug Fixes
+
+* **deps:** update dependency webpack-cli to v7.0.3 ([#1233](https://github.com/dachrisch/leaguesphere/issues/1233)) ([cb3b1fe](https://github.com/dachrisch/leaguesphere/commit/cb3b1fecd899186f11d54940f14ae25d26d5e6cb))
+
+## [3.19.12](https://github.com/dachrisch/leaguesphere/compare/v3.19.11...v3.19.12) (2026-05-27)
+
+
+### Bug Fixes
+
+* **deps:** update dependency django-autocomplete-light to v4.0.1 ([#1231](https://github.com/dachrisch/leaguesphere/issues/1231)) ([399aabc](https://github.com/dachrisch/leaguesphere/commit/399aabc9c38846ab22d53cdfb46ce7fd84daf490))
+
+## [3.19.11](https://github.com/dachrisch/leaguesphere/compare/v3.19.10...v3.19.11) (2026-05-26)
+
+
+### Bug Fixes
+
+* **deps:** update dependency i18next to v26.3.0 ([#1230](https://github.com/dachrisch/leaguesphere/issues/1230)) ([939fbe7](https://github.com/dachrisch/leaguesphere/commit/939fbe709970b67b376e96fb69b0dfa8646e76f3))
+* **deps:** update dependency typescript-eslint to v8.60.0 ([#1229](https://github.com/dachrisch/leaguesphere/issues/1229)) ([bdad9f2](https://github.com/dachrisch/leaguesphere/commit/bdad9f28e184461d1069413179870499daf77cc2))
+* **deps:** update dependency webpack to v5.107.2 ([#1227](https://github.com/dachrisch/leaguesphere/issues/1227)) ([59b7345](https://github.com/dachrisch/leaguesphere/commit/59b73451d40106c9b43c23121888de3a7294dd8b))
+* sync league_manager version to 3.19.10 ([0cfff49](https://github.com/dachrisch/leaguesphere/commit/0cfff495ca6258473a049f119b1c5f49773fe95f))
+
+## [3.19.10](https://github.com/dachrisch/leaguesphere/compare/v3.19.9...v3.19.10) (2026-05-25)
+
+
+### Bug Fixes
+
+* **deps:** update babel monorepo to v7.29.7 ([#1225](https://github.com/dachrisch/leaguesphere/issues/1225)) ([8a49954](https://github.com/dachrisch/leaguesphere/commit/8a4995403e630ef875c00c4d02bcf0e373f6b141))
+
+## [3.19.9](https://github.com/dachrisch/leaguesphere/compare/v3.19.8...v3.19.9) (2026-05-25)
+
+
+### Bug Fixes
+
+* **deps:** lock file maintenance ([#1223](https://github.com/dachrisch/leaguesphere/issues/1223)) ([ae0e973](https://github.com/dachrisch/leaguesphere/commit/ae0e973cba6b58870e74a14421dd7cfacff4ded4))
+
 ## [3.19.8](https://github.com/dachrisch/leaguesphere/compare/v3.19.7...v3.19.8) (2026-05-21)
 
 

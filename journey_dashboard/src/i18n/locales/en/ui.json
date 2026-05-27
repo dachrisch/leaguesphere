@@ -224,15 +224,19 @@
     },
     "section": {
       "live": "Live ({{count}} games)",
-      "today": "Today ({{count}} games)",
-      "outlook": "Outlook (next {{days}} days, {{count}} games)",
-      "recent": "Lookback ({{count}} games)"
+      "today": "Today ({{count}} gamedays)",
+      "today_top": "Today ({{count}} gamedays)",
+      "today_results": "Results ({{count}} gamedays)",
+      "outlook": "Outlook (next {{days}} days, {{count}} gamedays)",
+      "recent": "Lookback ({{count}} gamedays)"
     },
     "card": {
-      "gamesScheduled": "Games scheduled",
-      "live": "Live",
-      "played": "Played",
-      "pending": "Pending",
+      "gamesScheduled": "{{count}} games planned",
+      "live": "{{count}} games live",
+      "upcomingBadge": "UPCOMING",
+      "finishedBadge": "FINISHED",
+      "played": "Played {{played}}/{{total}}",
+      "pending": "{{count}} games pending",
       "stale": "Stale",
       "minutesUntil": "{{minutes}} min until start"
     }
