@@ -30,7 +30,7 @@ ARG APP_USER="django"
 ARG APP_DIR="/app"
 
 RUN apt -y update && \
-    apt -y install curl jq default-libmysqlclient-dev mariadb-client
+    apt -y install curl jq default-libmysqlclient-dev
 
 # add user
 RUN adduser --disabled-password --home ${APP_DIR} ${APP_USER}
@@ -42,12 +42,11 @@ COPY --from=app-builder --chown=${APP_USER}:${APP_USER} /app/.venv ${APP_DIR}/.v
 COPY --chown=${APP_USER}:${APP_USER} . ${APP_DIR}
 COPY --chown=${APP_USER}:${APP_USER} container/entrypoint.sh /app/entrypoint.sh
 COPY --chown=${APP_USER}:${APP_USER} container/entrypoint.demo.sh /app/entrypoint.demo.sh
-COPY --chown=${APP_USER}:${APP_USER} container/entrypoint.staging.sh /app/entrypoint.staging.sh
 
 USER ${APP_USER}
 WORKDIR ${APP_DIR}
 
-RUN rm -rf .git/ && chmod 740 /app/entrypoint.sh /app/entrypoint.demo.sh /app/entrypoint.staging.sh
+RUN rm -rf .git/ && chmod 740 /app/entrypoint.sh /app/entrypoint.demo.sh
 
 # Use the virtual environment
 ENV PATH="${APP_DIR}/.venv/bin:${PATH}"
