@@ -41,7 +41,7 @@ from league_table.service.ranking.engine import (
     FinalRankingEngine,
     TieBreakerEngine,
 )
-from passcheck.models import PasscheckVerification
+from passcheck.models import PasscheckVerification, PlayerlistGameday
 
 
 class DfflPoints(object):
@@ -109,6 +109,17 @@ class GamedayModelWrapper:
         self._games_with_result: DataFrame = games_with_result
         self._resolve_placeholders()
 
+        try:
+            self.league_season_config = LeagueSeasonConfig.objects.get(
+                league=self.gameday.league, season=self.gameday.season
+            )
+            self.league_season_ruleset = self.league_season_config.ruleset
+        except LeagueSeasonConfig.DoesNotExist:
+            try:
+                self.league_season_ruleset = LeagueRuleset.objects.get(pk=2)
+            except LeagueRuleset.DoesNotExist:
+                self.league_season_ruleset = None
+
     def _resolve_placeholders(self):
         if (
             self._games_with_result.empty
@@ -172,18 +183,10 @@ class GamedayModelWrapper:
         if not apps.is_installed("league_table"):
             return qualify_round
 
-        from league_table.models import LeagueSeasonConfig
+        if self.league_season_ruleset is None:
+            return qualify_round
 
-        try:
-            league_season_ruleset = LeagueSeasonConfig.objects.get(
-                league=self.gameday.league, season=self.gameday.season
-            ).ruleset
-        except LeagueSeasonConfig.DoesNotExist:
-            try:
-                league_season_ruleset = LeagueRuleset.objects.get(pk=2)
-            except LeagueRuleset.DoesNotExist:
-                return qualify_round
-        league_config_ruleset = LeagueConfigRuleset.from_ruleset(league_season_ruleset)
+        league_config_ruleset = LeagueConfigRuleset.from_ruleset(self.league_season_ruleset)
         engine = TieBreakerEngine(league_config_ruleset)
         # TODO
         # qualify_round["win_quotient"] = qualify_round["points"]
@@ -201,19 +204,33 @@ class GamedayModelWrapper:
         if self._gameinfo[self._gameinfo[STATUS] != FINISHED].empty is False:
              return pd.DataFrame()
 
-        try:
-            league_season_ruleset = LeagueSeasonConfig.objects.get(
-                league=self.gameday.league, season=self.gameday.season
-            ).ruleset
-        except LeagueSeasonConfig.DoesNotExist:
-            try:
-                league_season_ruleset = LeagueRuleset.objects.get(pk=2)
-            except LeagueRuleset.DoesNotExist:
-                return None
-        league_config_ruleset = LeagueConfigRuleset.from_ruleset(league_season_ruleset)
+        if self.league_season_ruleset is None:
+            return None
+        league_config_ruleset = LeagueConfigRuleset.from_ruleset(self.league_season_ruleset)
         engine = FinalRankingEngine(league_config_ruleset)
         return engine.compute_final_table(self._games_with_result)
 
+    def _get_passcheck_player_jersey_number(self):
+        key_mapping = {
+            "gameday_id": "gameday_id",
+            "gameday_jersey": "gameday_jersey",
+            "playerlist__team_id": "team_id",
+            "playerlist__player__person__first_name": "first_name",
+            "playerlist__player__person__last_name": "last_name",
+        }
+
+        passcheck_players = pd.DataFrame(
+            PlayerlistGameday.objects
+                .filter(gameday_id=self.gameday)
+                .values(*key_mapping.keys())
+        ).rename(columns=key_mapping).astype({
+            "gameday_id": int,
+            "gameday_jersey": int,
+            "team_id": int,
+            "first_name": str,
+            "last_name": str,
+        })
+        return passcheck_players
 
     def get_offense_player_statistics_table(self):
         scoring_events = ["Touchdown", "1-Extra-Punkt", "2-Extra-Punkte"]
@@ -228,13 +245,22 @@ class GamedayModelWrapper:
             )
             .exclude(team=None)
             .exclude(player=None)
-            .values(TEAM_DESCRIPTION, "event", "player", "value")
+            .values(TEAM_DESCRIPTION, "team__name", TEAM_ID, "event", "player", "value")
         )
 
         if events.empty:
             return pd.DataFrame(columns=output_columns)
 
-        events["player"] = events.apply(lambda x: f"{x.team__description} #{x.player}", axis=1)
+        if self.league_season_config.get_gameday_statistic_settings().get("show_player_names", False):
+            passcheck_player_names_df = self._get_passcheck_player_jersey_number()
+            events["player"] = events.merge(
+                passcheck_player_names_df,
+                left_on=["player", TEAM_ID],
+                right_on=["gameday_jersey", "team_id"],
+                how="left",
+            ).apply(lambda x: f"{x.team__name} #{x.player} " + ("Unbekannt" if pd.isna(x.first_name) else f"{x.first_name} {x.last_name}"), axis=1)
+        else:
+            events["player"] = events.apply(lambda x: f"{x.name} #{x.player}", axis=1)
 
         table = (
             pd.crosstab(
@@ -261,7 +287,7 @@ class GamedayModelWrapper:
             output_columns
         ]
 
-        return table.head(10)
+        return table[table.Platz <= self.league_season_config.get_gameday_statistic_settings().get("top_n_players", 10)]
 
     def get_defense_statistic_table(self):
         ints = (
@@ -303,13 +329,24 @@ class GamedayModelWrapper:
             )
             .exclude(team=None)
             .exclude(player=None)
-            .values(TEAM_DESCRIPTION, "event", "player")
+            .values(TEAM_DESCRIPTION, TEAM_ID, "team__name", "event", "player")
         )
 
         if events.empty:
             return pd.DataFrame(columns=output_columns)
 
-        events["player"] = events.apply(lambda x: f"{x.team__description} #{x.player}", axis=1)
+        if self.league_season_config.get_gameday_statistic_settings().get("show_player_names", False):
+            passcheck_player_names_df = self._get_passcheck_player_jersey_number()
+            events["player"] = events.merge(
+                passcheck_player_names_df,
+                left_on=["player", TEAM_ID],
+                right_on=["gameday_jersey", "team_id"],
+                how="left",
+            ).apply(lambda x: f"{x.team__name} #{x.player} " + (
+                "Unbekannt" if pd.isna(x.first_name) else f"{x.first_name} {x.last_name}"), axis=1)
+        else:
+            events["player"] = events.apply(lambda x: f"{x.name} #{x.player}", axis=1)
+
         events = (
             events.groupby("player", as_index=False)
             .event.count()

@@ -161,6 +161,38 @@ class LeagueSeasonConfig(models.Model):
         help_text="Dieses Feld verliert gegenüber dem vorherigen Feld", default=0
     )
 
+    show_player_names_in_season_statistics = models.BooleanField(
+        help_text="Wenn WAHR, dann werden die Klartext Namen der Spieler in der Saison Statistik angezeigt",
+        default=False,
+    )
+
+    top_n_players_in_season_statistics = models.PositiveSmallIntegerField(
+        help_text="Anzahl der Top N Spieler in der Saison Statistik",
+        default=10,
+    )
+
+    show_player_names_in_gameday_statistics = models.BooleanField(
+        help_text="Wenn WAHR, dann werden die Klartext Namen der Spieler in der Spieltags Statistik angezeigt",
+        default=False,
+    )
+
+    top_n_players_in_gameday_statistics = models.PositiveSmallIntegerField(
+        help_text="Anzahl der Top N Spieler in der Spieltags Statistik",
+        default=10,
+    )
+
+    def get_gameday_statistic_settings(self):
+        return {
+            "top_n_players": self.top_n_players_in_gameday_statistics,
+            "show_player_names": self.show_player_names_in_gameday_statistics
+        }
+
+    def get_season_statistic_settings(self):
+        return {
+            "top_n_players": self.top_n_players_in_season_statistics,
+            "show_player_names": self.show_player_names_in_season_statistics
+        }
+
     def get_team_point_adjustment_map(self):
         adjustments = TeamPointAdjustments.objects.filter(
             league_season_config=self
