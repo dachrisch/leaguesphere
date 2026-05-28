@@ -69,7 +69,7 @@ class GamedayListView(View):
         league = kwargs.get("league")
         gamedays = Gameday.objects.filter(date__year=year).order_by("date")
         leagues = gamedays.values_list("league__name", flat=True).distinct().order_by("league__name")
-        filtered_gamedays_by_today = gamedays.filter(date__gt=datetime.today()).order_by("date")
+        filtered_gamedays_by_today = gamedays.filter(date__gte=datetime.today()).order_by("date")
         if filtered_gamedays_by_today.count() > 0 and not show_all_games:
             gamedays = filtered_gamedays_by_today
         gamedays_filtered_by_league = (
