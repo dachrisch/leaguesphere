@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.20.1](https://github.com/dachrisch/leaguesphere/compare/v3.20.0...v3.20.1) (2026-05-28)
+
+
+### Bug Fixes
+
+* Displaying gamedays of the current day ([#1236](https://github.com/dachrisch/leaguesphere/issues/1236)) ([e570125](https://github.com/dachrisch/leaguesphere/commit/e570125726aba1d217d92b421cbb1e5502a1a34a))
+
 ## [3.20.0](https://github.com/dachrisch/leaguesphere/compare/v3.19.13...v3.20.0) (2026-05-27)
 
 
