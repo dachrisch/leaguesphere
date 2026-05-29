@@ -24,6 +24,7 @@ from league_manager.utils.url_service import UrlService
 from league_table.constants import LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE
 from league_table.models import LeagueSeasonConfig, OverrideOfficialGamedaySetting
 from league_table.service.leaguetable_repository import LeagueTableRepository
+from league_table.service.leaguetable_settings import TOP_N_PLAYER
 from liveticker.constants import LIVETICKER_HOME
 from .constants import (
     LEAGUE_GAMEDAY_DETAIL,
@@ -104,6 +105,11 @@ class GamedayLeagueStatisticView(TemplateView):
         context["season_year_league_pattern"] = LEAGUE_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE
         context = {**context, **kwargs}
 
+        try:
+            config = LeagueSeasonConfig.objects.get(league__name=self.kwargs["league"], season__name=self.kwargs["season"]).get_season_statistic_settings()
+        except LeagueSeasonConfig.DoesNotExist as e:
+            config = dict()
+
         render_configs = {
             "index": False,
             "classes": [
@@ -118,7 +124,7 @@ class GamedayLeagueStatisticView(TemplateView):
             "escape": False,
         }
 
-        lss = LeagueStatisticsService.create(**kwargs, top_n_players=10)
+        lss = LeagueStatisticsService.create(**kwargs, top_n_players=config.get(TOP_N_PLAYER, 10))
 
         td_table = lss.get_touchdowns_table()
         int_table = lss.get_interception_table()
@@ -136,6 +142,7 @@ class GamedayLeagueStatisticView(TemplateView):
             "player_safety_table": safety_table.to_html(**render_configs),
             "player_scoring_table": scoring_players_table.to_html(**render_configs),
             "team_statistics_table": team_statistics_table.to_html(**render_configs),
+            "extended_info": config.get("show_player_names", False)
         }
 
         return context
@@ -149,6 +156,12 @@ class GamedayDetailView(DetailView):
         context = super(GamedayDetailView, self).get_context_data()
         gameday = context["gameday"]
         gs = GamedayService.create(gameday.pk)
+
+        try:
+            config = LeagueSeasonConfig.objects.get(league__name=self.object.league.name, season__name=self.object.season.name).get_gameday_statistic_settings()
+        except LeagueSeasonConfig.DoesNotExist as e:
+            config = dict()
+
         render_configs = {
             "index": False,
             "classes": [
@@ -245,6 +258,7 @@ class GamedayDetailView(DetailView):
                 LEAGUE_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE, {"season": gameday.season, "league": gameday.league}
             ),
             "url_pattern_liveticker": f"{UrlService.build_absolute_url(LIVETICKER_HOME)}?league={gameday.league.slug}&gameday={gameday.pk}",
+            "extended_info": config.get("show_player_names", False)
         }
 
         return context

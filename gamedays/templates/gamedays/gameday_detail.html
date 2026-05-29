@@ -145,6 +145,9 @@
             {{ info.defense_table | safe }}
             {% endif %}
         </div>
+    {% if info.extended_info %}
+        <small><i class="bi bi-info"></i>Die Spieler Statistiken summiert die Anzahl aller Events eines Spielers. Die aufgeführten <b>Namen</b> entsprechen den Spielern aus dem Passcheck.</small>
+    {% endif %}
     </div>
 </div>
 

@@ -151,7 +151,9 @@ class TestGamedayLeagueStatisticView(TestCase):
         assert resp.status_code == HTTPStatus.OK
         context = resp.context_data
 
-        for v in context["info"].values():
+        for k, v in context["info"].items():
+            if k == "extended_info":
+                continue
             assert v == "Die Statistiken erscheinen nach den ersten Spielen."
 
     def test_league_statistic_view_with_gameday_team_log(self):
@@ -175,7 +177,9 @@ class TestGamedayLeagueStatisticView(TestCase):
         assert resp.status_code == HTTPStatus.OK
         context = resp.context_data
 
-        for v in context["info"].values():
+        for k, v in context["info"].items():
+            if k == "extended_info":
+                continue
             assert v != "Die Statistiken erscheinen nach den ersten Spielen."
 
 

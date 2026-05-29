@@ -120,8 +120,11 @@
                         {{ info.player_safety_table | safe }}
                     {% endif %}
                 </div>
-
-                <small><i class="bi bi-info"></i>Die Spieler Statistiken summiert die Anzahl aller Events einer <b>Trikotnummer</b>, eines Teams, in einer Saison in der oben genannten Liga.</small>
+                {% if info.extended_info %}
+                    <small><i class="bi bi-info"></i>Die Spieler Statistiken summiert die Anzahl aller Events eines Spielers. Die aufgeführten <b>Namen</b> entsprechen den Spielern aus den Passchecks der einzelnen Spieltage.</small>
+                {% else %}
+                    <small><i class="bi bi-info"></i>Die Spieler Statistiken summiert die Anzahl aller Events einer <b>Trikotnummer</b>, eines Teams, in einer Saison in der oben genannten Liga.</small>
+                {% endif %}
             </div>
 
         </div>
@@ -142,7 +145,6 @@
             </div>
         </div>
     </div>
-
     <small><i class="bi bi-info"></i>Die Statistiken beinhaltet <b>keine</b> Final- / Relegations Spieltage.</small>
 
 {% endblock content %}
