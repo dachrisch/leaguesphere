@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.21.0](https://github.com/dachrisch/leaguesphere/compare/v3.20.4...v3.21.0) (2026-05-29)
+
+
+### Features
+
+* **master:** Display Passcheck Names in Statistics ([#1244](https://github.com/dachrisch/leaguesphere/issues/1244)) ([a269e45](https://github.com/dachrisch/leaguesphere/commit/a269e45d4df781511a0ee67b7801d07049c9aeb7))
+
 ## [3.20.4](https://github.com/dachrisch/leaguesphere/compare/v3.20.3...v3.20.4) (2026-05-29)
 
 
