@@ -3,6 +3,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from gamedays.models import Gameday, Gameinfo, TeamLog
 from league_table.models import LeagueSeasonConfig
+from league_table.service.leaguetable_settings import SHOW_PLAYER_NAMES, TOP_N_PLAYER
 from passcheck.models import PlayerlistGameday
 
 INDIVIDUAL_STATISTIC_EVENTS = [
@@ -32,7 +33,8 @@ class LeagueStatisticsModelWrapper:
             self.league_season_config = LeagueSeasonConfig.objects.get(
                 league__name=self.league, season__name=self.season
             )
-        except ObjectDoesNotExist:
+
+        except LeagueSeasonConfig.DoesNotExist:
             self.league_season_config = None
 
         self.scoring_column_values = {
@@ -114,7 +116,7 @@ class LeagueStatisticsModelWrapper:
         if safe_config := self.league_season_config:
             config = safe_config.get_season_statistic_settings()
 
-        if config.get("show_player_names", False):
+        if config.get(SHOW_PLAYER_NAMES, False):
             passcheck_player_names_df = self._get_season_passcheck_player_jersey_number()
             self.team_logs["team_player"] = self.team_logs.merge(
                 passcheck_player_names_df,
@@ -182,7 +184,7 @@ class LeagueStatisticsModelWrapper:
 
         top_n_players = 10
         if config := self.league_season_config:
-            top_n_players = config.get_season_statistic_settings().get("top_n_player", 10)
+            top_n_players = config.get_season_statistic_settings().get(TOP_N_PLAYER, 10)
 
         return relevant_column[
             (relevant_column["rank"] <= top_n_players) & (relevant_column[event] > 0)

@@ -37,7 +37,8 @@ from gamedays.service.gameday_settings import (
 )
 from gamedays.service.placeholder_service import GamedayPlaceholderService
 from league_table.models import LeagueSeasonConfig, LeagueRuleset
-from league_table.service.datatypes import LeagueConfigRuleset
+from league_table.service.datatypes import LeagueConfigRuleset, LeagueConfig
+from league_table.service.leaguetable_settings import TOP_N_PLAYER, SHOW_PLAYER_NAMES
 from league_table.service.ranking.engine import (
     FinalRankingEngine,
     TieBreakerEngine,
@@ -116,7 +117,9 @@ class GamedayModelWrapper:
                 league=self.gameday.league, season=self.gameday.season
             )
             self.league_season_ruleset = self.league_season_config.ruleset
-        except ObjectDoesNotExist:
+        except LeagueSeasonConfig.DoesNotExist:
+            self.league_season_config = None
+        except LeagueRuleset.DoesNotExist:
             try:
                 self.league_season_ruleset = LeagueRuleset.objects.get(pk=2)
             except LeagueRuleset.DoesNotExist:
@@ -131,10 +134,6 @@ class GamedayModelWrapper:
 
         # Only proceed if there are missing team names
         if self._games_with_result[TEAM_DESCRIPTION].isna().any():
-
-            placeholder_service = GamedayPlaceholderService(
-                self._gameinfo["gameday"].iloc[0]
-            )
 
             placeholder_service = GamedayPlaceholderService(self._gameinfo['gameday'].iloc[0])
 
@@ -257,7 +256,7 @@ class GamedayModelWrapper:
         if safe_config := self.league_season_config:
             config = safe_config.get_gameday_statistic_settings()
 
-        if config.get("show_player_names", False):
+        if config.get(SHOW_PLAYER_NAMES, False):
             passcheck_player_names_df = self._get_passcheck_player_jersey_number()
             events["player"] = events.merge(
                 passcheck_player_names_df,
@@ -293,7 +292,7 @@ class GamedayModelWrapper:
             output_columns
         ]
 
-        return table[table.Platz <= config.get("top_n_players", 10)]
+        return table[table.Platz <= config.get(TOP_N_PLAYER, 10)]
 
     def get_defense_statistic_table(self):
         ints = (
@@ -345,7 +344,7 @@ class GamedayModelWrapper:
         if safe_config := self.league_season_config:
             config = safe_config.get_gameday_statistic_settings()
 
-        if config.get("show_player_names", False):
+        if config.get(SHOW_PLAYER_NAMES, False):
             passcheck_player_names_df = self._get_passcheck_player_jersey_number()
             events["player"] = events.merge(
                 passcheck_player_names_df,

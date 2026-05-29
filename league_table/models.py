@@ -1,6 +1,7 @@
 from django.db import models
 
 from gamedays.models import League, Season, Gameday, Team
+from league_table.service.leaguetable_settings import SHOW_PLAYER_NAMES, TOP_N_PLAYER
 
 
 class LeagueGroup(models.Model):
@@ -167,7 +168,7 @@ class LeagueSeasonConfig(models.Model):
     )
 
     top_n_players_in_season_statistics = models.PositiveSmallIntegerField(
-        help_text="Anzahl der Top N Spieler in der Saison Statistik",
+        help_text="Anzahl der Top N Spieler in der Saison Statistik (Mehr als 25 kann zu erheblichen Performance Problemen führen)",
         default=10,
     )
 
@@ -183,14 +184,14 @@ class LeagueSeasonConfig(models.Model):
 
     def get_gameday_statistic_settings(self):
         return {
-            "top_n_players": self.top_n_players_in_gameday_statistics,
-            "show_player_names": self.show_player_names_in_gameday_statistics
+            TOP_N_PLAYER: self.top_n_players_in_gameday_statistics,
+            SHOW_PLAYER_NAMES: self.show_player_names_in_gameday_statistics
         }
 
     def get_season_statistic_settings(self):
         return {
-            "top_n_players": self.top_n_players_in_season_statistics,
-            "show_player_names": self.show_player_names_in_season_statistics
+            TOP_N_PLAYER: self.top_n_players_in_season_statistics,
+            SHOW_PLAYER_NAMES: self.show_player_names_in_season_statistics
         }
 
     def get_team_point_adjustment_map(self):
