@@ -182,12 +182,8 @@ class LeagueStatisticsModelWrapper:
             ["rank", "team_player", event]
         ]
 
-        top_n_players = 10
-        if config := self.league_season_config:
-            top_n_players = config.get_season_statistic_settings().get(TOP_N_PLAYER, 10)
-
         return relevant_column[
-            (relevant_column["rank"] <= top_n_players) & (relevant_column[event] > 0)
+            (relevant_column["rank"] <= top) & (relevant_column[event] > 0)
         ].rename(
             columns={
                 "rank": "Liga Platzierung",

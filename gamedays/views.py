@@ -24,6 +24,7 @@ from league_manager.utils.url_service import UrlService
 from league_table.constants import LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE
 from league_table.models import LeagueSeasonConfig, OverrideOfficialGamedaySetting
 from league_table.service.leaguetable_repository import LeagueTableRepository
+from league_table.service.leaguetable_settings import TOP_N_PLAYER
 from liveticker.constants import LIVETICKER_HOME
 from .constants import (
     LEAGUE_GAMEDAY_DETAIL,
@@ -123,7 +124,7 @@ class GamedayLeagueStatisticView(TemplateView):
             "escape": False,
         }
 
-        lss = LeagueStatisticsService.create(**kwargs, top_n_players=10)
+        lss = LeagueStatisticsService.create(**kwargs, top_n_players=config.get(TOP_N_PLAYER, 10))
 
         td_table = lss.get_touchdowns_table()
         int_table = lss.get_interception_table()
