@@ -1,6 +1,8 @@
 import pandas as pd
 
 from gamedays.models import Gameday, Gameinfo, TeamLog
+from league_table.models import LeagueSeasonConfig
+from passcheck.models import PlayerlistGameday
 
 INDIVIDUAL_STATISTIC_EVENTS = [
     "Touchdown",
@@ -11,7 +13,7 @@ INDIVIDUAL_STATISTIC_EVENTS = [
     "Safety (+1)",
 ]
 
-TEAM_LOG_COLUMNS = ["id", "team__name", "team__description", "player", "event", "value"]
+TEAM_LOG_COLUMNS = ["id", "gameinfo__gameday_id", "team__name", "team_id", "team__description", "player", "event", "value"]
 
 
 class LeagueStatisticsModelWrapper:
@@ -24,6 +26,13 @@ class LeagueStatisticsModelWrapper:
         self.team_logs = pd.DataFrame([])
         self.player_aggregation = pd.DataFrame([])
         self.team_aggregation = pd.DataFrame([])
+
+        try:
+            self.league_season_config = LeagueSeasonConfig.objects.get(
+                league__name=self.league, season__name=self.season
+            )
+        except LeagueSeasonConfig.DoesNotExist:
+            self.league_season_config = None
 
         self.scoring_column_values = {
             "Touchdown": 6,
@@ -55,8 +64,6 @@ class LeagueStatisticsModelWrapper:
             )
         )
 
-        # TODO: Filter out gameday containing 'Relegation' or 'Final'
-
         self.gameinfo_ids = list(
             map(
                 lambda x: x[0],
@@ -65,6 +72,28 @@ class LeagueStatisticsModelWrapper:
                 ),
             )
         )
+
+    def _get_season_passcheck_player_jersey_number(self):
+        key_mapping = {
+            "gameday_id": "gameday_id",
+            "gameday_jersey": "gameday_jersey",
+            "playerlist__team_id": "team_id",
+            "playerlist__player__person__first_name": "first_name",
+            "playerlist__player__person__last_name": "last_name",
+        }
+
+        passcheck_players = pd.DataFrame(
+            PlayerlistGameday.objects
+                .filter(gameday__season__name=self.season)
+                .values(*key_mapping.keys())
+        ).rename(columns=key_mapping).astype({
+            "gameday_id": int,
+            "gameday_jersey": int,
+            "team_id": int,
+            "first_name": str,
+            "last_name": str,
+        })
+        return passcheck_players
 
     def _aggregate_team_logs(self):
         self.team_logs = pd.DataFrame(
@@ -80,9 +109,24 @@ class LeagueStatisticsModelWrapper:
         if len(self.team_logs) == 0:
             raise ValueError("There are no team logs in this league.")
 
-        self.team_logs["team_player"] = self.team_logs.apply(
-            lambda x: f"{x['team__name']} #{x['player']}", axis=1
-        )
+        config = dict()
+        if not_null_config := self.league_season_config:
+            config = not_null_config.get_season_statistic_settings()
+
+        if config.get("show_player_names", False):
+            passcheck_player_names_df = self._get_season_passcheck_player_jersey_number()
+            self.team_logs["team_player"] = self.team_logs.merge(
+                passcheck_player_names_df,
+                left_on=["gameinfo__gameday_id", "player", "team_id"],
+                right_on=["gameday_id", "gameday_jersey", "team_id"],
+                how="left",
+            ).apply(lambda x: f"{x.team__name}" + (
+                f" #{x.player}" if pd.isna(x.first_name) else f" - {x.first_name} {x.last_name}"
+            ), axis=1)
+        else:
+            self.team_logs["team_player"] = self.team_logs.apply(
+                lambda x: f"{x['team__name']} #{x['player']}", axis=1
+            )
 
     def _aggregate_player_events(self):
         self.player_aggregation = (
@@ -130,14 +174,17 @@ class LeagueStatisticsModelWrapper:
         relevant_column["rank"] = (
             relevant_column[event].rank(method="min", ascending=False).astype(int)
         )
-        # scoring_player_aggregation["rank"] <= top
 
         relevant_column = relevant_column.rename_axis(None, axis=1).reset_index()[
             ["rank", "team_player", event]
         ]
 
+        top_n_players = 10
+        if config := self.league_season_config:
+            top_n_players = config.get_season_statistic_settings().get("top_n_player", 10)
+
         return relevant_column[
-            (relevant_column["rank"] <= top) & (relevant_column[event] > 0)
+            (relevant_column["rank"] <= top_n_players) & (relevant_column[event] > 0)
         ].rename(
             columns={
                 "rank": "Liga Platzierung",
