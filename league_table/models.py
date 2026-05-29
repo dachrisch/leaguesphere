@@ -168,7 +168,7 @@ class LeagueSeasonConfig(models.Model):
     )
 
     top_n_players_in_season_statistics = models.PositiveSmallIntegerField(
-        help_text="Anzahl der Top N Spieler in der Saison Statistik (Mehr als 25 kann zu erheblichen Performance Problemen führen)",
+        help_text="Anzahl der Top N Spieler in der Saison Statistik",
         default=10,
     )
 
