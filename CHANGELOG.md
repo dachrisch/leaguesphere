@@ -1,5 +1,33 @@
 # Changelog
 
+## [3.20.4](https://github.com/dachrisch/leaguesphere/compare/v3.20.3...v3.20.4) (2026-05-29)
+
+
+### Bug Fixes
+
+* **deps:** update dependency web-vitals to v5.3.0 ([#1241](https://github.com/dachrisch/leaguesphere/issues/1241)) ([d47869d](https://github.com/dachrisch/leaguesphere/commit/d47869dd02ed4c769c4e02204e2d84b5c37cbadf))
+
+## [3.20.3](https://github.com/dachrisch/leaguesphere/compare/v3.20.2...v3.20.3) (2026-05-29)
+
+
+### Bug Fixes
+
+* **deps:** update dependency web-vitals to v5.3.0 ([#1240](https://github.com/dachrisch/leaguesphere/issues/1240)) ([2c63787](https://github.com/dachrisch/leaguesphere/commit/2c6378786dffba1556e866bb0f212f32fb9d520e))
+
+## [3.20.2](https://github.com/dachrisch/leaguesphere/compare/v3.20.1...v3.20.2) (2026-05-29)
+
+
+### Bug Fixes
+
+* **deps:** update dependency react-router-dom to v7.16.0 ([#1238](https://github.com/dachrisch/leaguesphere/issues/1238)) ([1990bb0](https://github.com/dachrisch/leaguesphere/commit/1990bb08fedbec5008631aaf89d7363ddf2720be))
+
+## [3.20.1](https://github.com/dachrisch/leaguesphere/compare/v3.20.0...v3.20.1) (2026-05-28)
+
+
+### Bug Fixes
+
+* Displaying gamedays of the current day ([#1236](https://github.com/dachrisch/leaguesphere/issues/1236)) ([e570125](https://github.com/dachrisch/leaguesphere/commit/e570125726aba1d217d92b421cbb1e5502a1a34a))
+
 ## [3.20.0](https://github.com/dachrisch/leaguesphere/compare/v3.19.13...v3.20.0) (2026-05-27)
 
 
