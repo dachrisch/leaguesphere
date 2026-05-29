@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from django.apps import apps
+from django.core.exceptions import ObjectDoesNotExist
 from pandas import DataFrame
 
 from gamedays.models import Gameinfo, Gameresult, TeamLog
@@ -115,7 +116,7 @@ class GamedayModelWrapper:
                 league=self.gameday.league, season=self.gameday.season
             )
             self.league_season_ruleset = self.league_season_config.ruleset
-        except LeagueSeasonConfig.DoesNotExist:
+        except ObjectDoesNotExist:
             try:
                 self.league_season_ruleset = LeagueRuleset.objects.get(pk=2)
             except LeagueRuleset.DoesNotExist:

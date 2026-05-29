@@ -1,4 +1,5 @@
 import pandas as pd
+from django.core.exceptions import ObjectDoesNotExist
 
 from gamedays.models import Gameday, Gameinfo, TeamLog
 from league_table.models import LeagueSeasonConfig
@@ -31,7 +32,7 @@ class LeagueStatisticsModelWrapper:
             self.league_season_config = LeagueSeasonConfig.objects.get(
                 league__name=self.league, season__name=self.season
             )
-        except LeagueSeasonConfig.DoesNotExist:
+        except ObjectDoesNotExist:
             self.league_season_config = None
 
         self.scoring_column_values = {
