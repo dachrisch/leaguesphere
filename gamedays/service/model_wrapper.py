@@ -112,6 +112,7 @@ class GamedayModelWrapper:
         self._resolve_placeholders()
 
         self.league_season_config = None
+        self.league_season_ruleset = None
         try:
             self.league_season_config = LeagueSeasonConfig.objects.get(
                 league=self.gameday.league, season=self.gameday.season
