@@ -109,6 +109,7 @@ class GamedayModelWrapper:
         self._games_with_result: DataFrame = games_with_result
         self._resolve_placeholders()
 
+        self.league_season_config = None
         try:
             self.league_season_config = LeagueSeasonConfig.objects.get(
                 league=self.gameday.league, season=self.gameday.season
@@ -251,16 +252,20 @@ class GamedayModelWrapper:
         if events.empty:
             return pd.DataFrame(columns=output_columns)
 
-        if self.league_season_config.get_gameday_statistic_settings().get("show_player_names", False):
+        config = dict()
+        if safe_config := self.league_season_config:
+            config = safe_config.get_gameday_statistic_settings()
+
+        if config.get("show_player_names", False):
             passcheck_player_names_df = self._get_passcheck_player_jersey_number()
             events["player"] = events.merge(
                 passcheck_player_names_df,
                 left_on=["player", TEAM_ID],
                 right_on=["gameday_jersey", "team_id"],
                 how="left",
-            ).apply(lambda x: f"{x.team__name} #{x.player} " + ("Unbekannt" if pd.isna(x.first_name) else f"{x.first_name} {x.last_name}"), axis=1)
+            ).apply(lambda x: f"{x.team__name} #{x.player}" + (" Unbekannt" if pd.isna(x.first_name) else f" - {x.first_name} {x.last_name}"), axis=1)
         else:
-            events["player"] = events.apply(lambda x: f"{x.name} #{x.player}", axis=1)
+            events["player"] = events.apply(lambda x: f"{x.team__description} #{x.player}", axis=1)
 
         table = (
             pd.crosstab(
@@ -287,7 +292,7 @@ class GamedayModelWrapper:
             output_columns
         ]
 
-        return table[table.Platz <= self.league_season_config.get_gameday_statistic_settings().get("top_n_players", 10)]
+        return table[table.Platz <= config.get("top_n_players", 10)]
 
     def get_defense_statistic_table(self):
         ints = (
@@ -335,15 +340,19 @@ class GamedayModelWrapper:
         if events.empty:
             return pd.DataFrame(columns=output_columns)
 
-        if self.league_season_config.get_gameday_statistic_settings().get("show_player_names", False):
+        config = dict()
+        if safe_config := self.league_season_config:
+            config = safe_config.get_gameday_statistic_settings()
+
+        if config.get("show_player_names", False):
             passcheck_player_names_df = self._get_passcheck_player_jersey_number()
             events["player"] = events.merge(
                 passcheck_player_names_df,
                 left_on=["player", TEAM_ID],
                 right_on=["gameday_jersey", "team_id"],
                 how="left",
-            ).apply(lambda x: f"{x.team__name} #{x.player} " + (
-                "Unbekannt" if pd.isna(x.first_name) else f"{x.first_name} {x.last_name}"), axis=1)
+            ).apply(lambda x: f"{x.team__name} #{x.player}" + (
+                " Unbekannt" if pd.isna(x.first_name) else f" - {x.first_name} {x.last_name}"), axis=1)
         else:
             events["player"] = events.apply(lambda x: f"{x.name} #{x.player}", axis=1)
 

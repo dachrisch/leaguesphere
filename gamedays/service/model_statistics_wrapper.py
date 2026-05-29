@@ -110,8 +110,8 @@ class LeagueStatisticsModelWrapper:
             raise ValueError("There are no team logs in this league.")
 
         config = dict()
-        if not_null_config := self.league_season_config:
-            config = not_null_config.get_season_statistic_settings()
+        if safe_config := self.league_season_config:
+            config = safe_config.get_season_statistic_settings()
 
         if config.get("show_player_names", False):
             passcheck_player_names_df = self._get_season_passcheck_player_jersey_number()
