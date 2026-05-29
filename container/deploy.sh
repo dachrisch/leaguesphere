@@ -375,14 +375,14 @@ case "$VERSION_ARG" in
         echo "Creating version: $NEW_VERSION"
 
         # Update version files directly
-        sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" league_manager/__init__.py
-        sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" liveticker/package.json
-        sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
-        sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
-        sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
-        sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" journey_dashboard/package.json
-        sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
-        sed -i "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
+        sed -i '' "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" league_manager/__init__.py
+        sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" liveticker/package.json
+        sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
+        sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
+        sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
+        sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" journey_dashboard/package.json
+        sed -i '' "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
+        sed -i '' "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
 
         # Regenerate uv.lock to match updated pyproject.toml
         echo "Regenerating uv.lock..."
@@ -437,14 +437,14 @@ case "$VERSION_ARG" in
 
             echo "Creating version: $NEW_VERSION"
 
-            sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" league_manager/__init__.py
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" liveticker/package.json
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" journey_dashboard/package.json
-            sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
-            sed -i "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
+            sed -i '' "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" league_manager/__init__.py
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" liveticker/package.json
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" journey_dashboard/package.json
+            sed -i '' "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
+            sed -i '' "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
 
             echo "Regenerating uv.lock..."
             uv lock
@@ -475,14 +475,14 @@ case "$VERSION_ARG" in
             echo "Creating version: $NEW_VERSION"
 
             # Update version files directly
-            sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" league_manager/__init__.py
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" liveticker/package.json
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" journey_dashboard/package.json
-            sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
-            sed -i "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
+            sed -i '' "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" league_manager/__init__.py
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" liveticker/package.json
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" journey_dashboard/package.json
+            sed -i '' "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
+            sed -i '' "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
 
             # Regenerate uv.lock to match updated pyproject.toml
             echo "Regenerating uv.lock..."
@@ -537,14 +537,14 @@ case "$VERSION_ARG" in
 
             echo "Creating version: $NEW_VERSION"
 
-            sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" league_manager/__init__.py
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" liveticker/package.json
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" journey_dashboard/package.json
-            sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
-            sed -i "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
+            sed -i '' "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" league_manager/__init__.py
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" liveticker/package.json
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" journey_dashboard/package.json
+            sed -i '' "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
+            sed -i '' "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
 
             echo "Regenerating uv.lock..."
             uv lock
@@ -560,14 +560,14 @@ case "$VERSION_ARG" in
             echo "Creating version: $NEW_VERSION"
 
             # Update version files directly
-            sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" league_manager/__init__.py
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" liveticker/package.json
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" journey_dashboard/package.json
-            sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
-            sed -i "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
+            sed -i '' "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" league_manager/__init__.py
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" liveticker/package.json
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
+            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" journey_dashboard/package.json
+            sed -i '' "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
+            sed -i '' "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
 
             # Regenerate uv.lock to match updated pyproject.toml
             echo "Regenerating uv.lock..."
