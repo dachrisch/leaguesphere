@@ -355,7 +355,7 @@ class GamedayModelWrapper:
             ).apply(lambda x: f"{x.team__name} #{x.player}" + (
                 " Unbekannt" if pd.isna(x.first_name) else f" - {x.first_name} {x.last_name}"), axis=1)
         else:
-            events["player"] = events.apply(lambda x: f"{x.name} #{x.player}", axis=1)
+            events["player"] = events.apply(lambda x: f"{x.team__description} #{x.player}", axis=1)
 
         events = (
             events.groupby("player", as_index=False)
