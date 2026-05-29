@@ -4,7 +4,6 @@ import pandas as pd
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Max
 from django.db.models.functions import ExtractYear
 from django.shortcuts import render, get_object_or_404, redirect
@@ -106,7 +105,7 @@ class GamedayLeagueStatisticView(TemplateView):
 
         try:
             config = LeagueSeasonConfig.objects.get(league__name=self.kwargs["league"], season__name=self.kwargs["season"]).get_season_statistic_settings()
-        except ObjectDoesNotExist as e:
+        except LeagueSeasonConfig.DoesNotExist as e:
             config = dict()
 
         render_configs = {
@@ -158,7 +157,7 @@ class GamedayDetailView(DetailView):
 
         try:
             config = LeagueSeasonConfig.objects.get(league__name=self.object.league.name, season__name=self.object.season.name).get_gameday_statistic_settings()
-        except ObjectDoesNotExist as e:
+        except LeagueSeasonConfig.DoesNotExist as e:
             config = dict()
 
         render_configs = {
