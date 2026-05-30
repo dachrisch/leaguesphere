@@ -25,7 +25,7 @@ class MatchreportGamedayListView(UserPassesTestMixin, View):
     def get(self, request, **kwargs):
         year = kwargs.get("season", datetime.today().year)
         league = kwargs.get("league")
-        gamedays = Gameday.objects.filter(date__year=year).order_by("date")
+        gamedays = Gameday.objects.select_related('league').filter(date__year=year).order_by("date")
         leagues = gamedays.values_list("league__name", flat=True).distinct().order_by("league__name")
         gamedays_filtered_by_league = (
             gamedays.filter(league__name=league) if league else gamedays

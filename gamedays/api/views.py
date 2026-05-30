@@ -120,10 +120,11 @@ class GamedayViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
+        from django.db.models import Prefetch
         queryset = (
             Gameday.objects.all()
             .select_related("season", "league", "author")
-            .prefetch_related("designer_state")
+            .prefetch_related(Prefetch("gamedaydesignerstate_set"))
             .order_by("date", "name")
         )
         search = self.request.query_params.get("search", "")
@@ -209,9 +210,10 @@ class GamedayListAPIView(ListAPIView):
         return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
+        queryset = Gameday.objects.select_related('league', 'season', 'author')
         if settings.DEBUG:
-            return Gameday.objects.filter(date=settings.DEBUG_DATE)
-        return Gameday.objects.filter(date=datetime.today())
+            return queryset.filter(date=settings.DEBUG_DATE)
+        return queryset.filter(date=datetime.today())
 
 
 class GameinfoUpdateAPIView(RetrieveUpdateAPIView):
@@ -221,7 +223,7 @@ class GameinfoUpdateAPIView(RetrieveUpdateAPIView):
 
 class GamedayRetrieveUpdate(RetrieveUpdateAPIView):
     serializer_class = GamedaySerializer
-    queryset = Gameday.objects.all()
+    queryset = Gameday.objects.select_related('league', 'season', 'author').all()
 
 
 class GameOfficialCreateOrUpdateView(RetrieveUpdateAPIView):
