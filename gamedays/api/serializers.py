@@ -70,7 +70,10 @@ class GamedayListSerializer(ModelSerializer):
         return obj.league.name if obj.league else ""
 
     def get_has_designer_state(self, obj):
-        return GamedayDesignerState.objects.filter(gameday_id=obj.pk).exists()
+        try:
+            return obj.designer_state is not None
+        except GamedayDesignerState.DoesNotExist:
+            return False
 
 
 class GamedayInfoSerializer(Serializer):
@@ -108,7 +111,7 @@ class GameinfoSerializer(ModelSerializer):
         }
 
     def _get_scores(self, obj):
-        results = Gameresult.objects.filter(gameinfo=obj)
+        results = obj.gameresult_set.all()
         scores = {"home_fh": 0, "home_sh": 0, "away_fh": 0, "away_sh": 0}
         for r in results:
             prefix = "home" if r.isHome else "away"

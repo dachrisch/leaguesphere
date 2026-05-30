@@ -1,9 +1,12 @@
 import json
+import hashlib
 from collections import OrderedDict
 from datetime import datetime
 
 from django.conf import settings
 from django.shortcuts import get_object_or_404
+from django.views.decorators.http import condition
+from django.utils.decorators import method_decorator
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
@@ -50,6 +53,37 @@ from gamedays.service.gameday_settings import (
 )
 
 
+def generate_gameday_list_etag(request):
+    """Generate ETag for gameday list based on query parameters and latest gameday."""
+    # Include query parameters in ETag
+    etag_data = request.GET.urlencode() or "all"
+
+    # Include latest gameday pk to detect changes
+    try:
+        latest_gameday = Gameday.objects.values_list('pk', flat=True).order_by('-pk').first()
+        if latest_gameday:
+            etag_data += f":{latest_gameday}"
+    except Gameday.DoesNotExist:
+        pass
+
+    return f'"{hashlib.md5(etag_data.encode()).hexdigest()}"'
+
+
+def generate_gameday_games_etag(request, gameday_pk=None):
+    """Generate ETag for gameday games list based on latest gameresult."""
+    try:
+        gameday = Gameday.objects.get(pk=gameday_pk)
+        # Include gameday pk and latest gameresult pk
+        latest_result = Gameresult.objects.filter(
+            gameinfo__gameday=gameday
+        ).values_list('pk', flat=True).order_by('-pk').first()
+
+        etag_data = f"{gameday_pk}:{latest_result or 'no-results'}"
+        return f'"{hashlib.md5(etag_data.encode()).hexdigest()}"'
+    except Gameday.DoesNotExist:
+        return '""'
+
+
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 100
     page_size_query_param = "page_size"
@@ -66,6 +100,10 @@ class GamedayViewSet(viewsets.ModelViewSet):
         if self.action == "list":
             return GamedayListSerializer
         return GamedaySerializer
+
+    @method_decorator(condition(etag_func=generate_gameday_list_etag))
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -85,6 +123,7 @@ class GamedayViewSet(viewsets.ModelViewSet):
         queryset = (
             Gameday.objects.all()
             .select_related("season", "league", "author")
+            .prefetch_related("designer_state")
             .order_by("date", "name")
         )
         search = self.request.query_params.get("search", "")
@@ -165,6 +204,10 @@ class GamedayListAPIView(ListAPIView):
     serializer_class = GamedaySerializer
     queryset = Gameday.objects.all()
 
+    @method_decorator(condition(etag_func=generate_gameday_list_etag))
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
     def get_queryset(self):
         if settings.DEBUG:
             return Gameday.objects.filter(date=settings.DEBUG_DATE)
@@ -173,7 +216,7 @@ class GamedayListAPIView(ListAPIView):
 
 class GameinfoUpdateAPIView(RetrieveUpdateAPIView):
     serializer_class = GameinfoSerializer
-    queryset = Gameinfo.objects.all()
+    queryset = Gameinfo.objects.prefetch_related('gameresult_set')
 
 
 class GamedayRetrieveUpdate(RetrieveUpdateAPIView):
@@ -335,6 +378,7 @@ class LeagueViewSet(viewsets.ReadOnlyModelViewSet):
 class GameResultsListView(APIView):
     """Get all games for a gameday"""
 
+    @method_decorator(condition(etag_func=lambda request, gameday_pk=None: generate_gameday_games_etag(request, gameday_pk)))
     def get(self, request, gameday_pk=None):
         """GET /api/gamedays/{gameday_id}/games/"""
         try:
@@ -344,7 +388,7 @@ class GameResultsListView(APIView):
                 {"error": "Gameday not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
-        games = Gameinfo.objects.filter(gameday=gameday)
+        games = Gameinfo.objects.filter(gameday=gameday).prefetch_related('gameresult_set')
         serializer = GameInfoSerializer(games, many=True)
         return Response(serializer.data)
 
