@@ -98,7 +98,7 @@ class Gameday(models.Model):
     class Meta:
         ordering = ["date"]
         indexes = [
-            models.Index(fields=["id", "date"]),
+            models.Index(fields=["date"]),
         ]
 
     def __str__(self):
@@ -158,8 +158,8 @@ class Gameinfo(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=["id", "officials"]),
-            models.Index(fields=["id", "gameday"]),
+            models.Index(fields=["officials"]),
+            models.Index(fields=["gameday"]),
         ]
 
     def __str__(self):
@@ -181,9 +181,9 @@ class Gameresult(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=["id", "gameinfo", "isHome"]),
-            models.Index(fields=["id", "gameinfo"]),
-            models.Index(fields=["id", "team"]),
+            models.Index(fields=["gameinfo", "isHome"]),
+            models.Index(fields=["gameinfo"]),
+            models.Index(fields=["team"]),
         ]
 
     def __str__(self):

@@ -28,8 +28,8 @@ class Official(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=["id", "team"]),
-            models.Index(fields=["id", "association"]),
+            models.Index(fields=["team"]),
+            models.Index(fields=["association"]),
         ]
 
     def __str__(self):
