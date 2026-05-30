@@ -1,8 +1,10 @@
-from django.db.models import Sum
+from django.db.models import Sum, Prefetch, Q
+from django.db.models.functions import Coalesce
 
+from gamedays.models import GameOfficial
 from gamedays.service.team_repository_service import TeamRepositoryService
 from officials.api.serializers import OfficialGameCountSerializer
-from officials.models import Official
+from officials.models import Official, OfficialExternalGames
 from officials.service.game_official_entries import (
     InternalGameOfficialEntry,
     ExternalGameOfficialEntry,
@@ -19,8 +21,22 @@ class OfficialService:
 
     def get_all_officials_with_team_infos(self, team_id, season, is_staff):
         team_repository_service = TeamRepositoryService(team_id)
+
+        game_official_prefetch = Prefetch(
+            'gameofficial_set',
+            queryset=GameOfficial.objects.filter(
+                gameinfo__gameday__date__year=season
+            ).select_related('gameinfo__gameday')
+        )
+        external_games_prefetch = Prefetch(
+            'officialexternalgames_set',
+            queryset=OfficialExternalGames.objects.filter(date__year=season)
+        )
+
         all_team_officials = (
-            Official.objects.filter(
+            Official.objects.select_related('team')
+            .prefetch_related(game_official_prefetch, external_games_prefetch, 'officiallicensehistory_set')
+            .filter(
                 officiallicensehistory__created_at__gte=f"{season - 1}-10-01",
                 officiallicensehistory__created_at__lte=f"{season}-12-31",
                 team=team_repository_service.team,

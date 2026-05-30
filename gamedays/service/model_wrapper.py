@@ -71,7 +71,7 @@ class DfflPoints(object):
 class GamedayModelWrapper:
 
     def __init__(self, pk, additional_columns=[]):
-        gameinfo = Gameinfo.objects.filter(gameday_id=pk)
+        gameinfo = Gameinfo.objects.select_related('gameday__league', 'gameday__season').filter(gameday_id=pk)
         if not gameinfo.exists():
             raise Gameinfo.DoesNotExist
         self.gameday = gameinfo.first().gameday
