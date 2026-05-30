@@ -436,7 +436,9 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
         """
         template = self.get_object()
 
-        applications = TemplateApplication.objects.filter(template=template)
+        applications = TemplateApplication.objects.filter(
+            template=template
+        ).select_related('template', 'gameday', 'applied_by')
         applications_count = applications.count()
 
         # Get 10 most recent applications
