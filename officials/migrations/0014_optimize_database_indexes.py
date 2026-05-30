@@ -12,20 +12,20 @@ class Migration(migrations.Migration):
 
     operations = [
         # ===== OFFICIAL MODEL =====
-        # Remove: Index(["id", "team"])
+        # Remove: Index(["id", "team"]) — actual name from migration 0009
         migrations.RemoveIndex(
             model_name="official",
-            name="officials_official_id_team_idx",
+            name="officials_o_id_f573ca_idx",
         ),
         # Add: Index(["team"])
         migrations.AddIndex(
             model_name="official",
             index=models.Index(fields=["team"], name="officials_official_team_idx"),
         ),
-        # Remove: Index(["id", "association"])
+        # Remove: Index(["id", "association"]) — actual name from migration 0009
         migrations.RemoveIndex(
             model_name="official",
-            name="officials_official_id_association_idx",
+            name="officials_o_id_72c331_idx",
         ),
         # Add: Index(["association"])
         migrations.AddIndex(

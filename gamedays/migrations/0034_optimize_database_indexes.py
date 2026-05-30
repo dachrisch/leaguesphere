@@ -12,10 +12,10 @@ class Migration(migrations.Migration):
 
     operations = [
         # ===== GAMEDAY MODEL =====
-        # Remove: Index(["id", "date"])
+        # Remove: Index(["id", "date"]) — actual name from migration 0018
         migrations.RemoveIndex(
             model_name="gameday",
-            name="gamedays_gameday_id_date_idx",
+            name="gamedays_ga_id_167c15_idx",
         ),
         # Add: Index(["date"])
         migrations.AddIndex(
@@ -23,10 +23,10 @@ class Migration(migrations.Migration):
             index=models.Index(fields=["date"], name="gamedays_gameday_date_idx"),
         ),
         # ===== GAMEINFO MODEL =====
-        # Remove: Index(["id", "officials"])
+        # Remove: Index(["id", "officials"]) — actual name from migration 0018
         migrations.RemoveIndex(
             model_name="gameinfo",
-            name="gamedays_gameinfo_id_officials_idx",
+            name="gamedays_ga_id_5c5d8e_idx",
         ),
         # Add: Index(["officials"])
         migrations.AddIndex(
@@ -35,10 +35,10 @@ class Migration(migrations.Migration):
                 fields=["officials"], name="gamedays_gameinfo_officials_idx"
             ),
         ),
-        # Remove: Index(["id", "gameday"])
+        # Remove: Index(["id", "gameday"]) — actual name from migration 0018
         migrations.RemoveIndex(
             model_name="gameinfo",
-            name="gamedays_gameinfo_id_gameday_idx",
+            name="gamedays_ga_id_26afd5_idx",
         ),
         # Add: Index(["gameday"])
         migrations.AddIndex(
@@ -46,10 +46,10 @@ class Migration(migrations.Migration):
             index=models.Index(fields=["gameday"], name="gamedays_gameinfo_gameday_idx"),
         ),
         # ===== GAMERESULT MODEL =====
-        # Remove: Index(["id", "gameinfo", "isHome"])
+        # Remove: Index(["id", "gameinfo", "isHome"]) — actual name from migration 0018
         migrations.RemoveIndex(
             model_name="gameresult",
-            name="gamedays_gameresult_id_gameinfo_ishome_idx",
+            name="gamedays_ga_id_e28311_idx",
         ),
         # Add: Index(["gameinfo", "isHome"])
         migrations.AddIndex(
@@ -59,10 +59,10 @@ class Migration(migrations.Migration):
                 name="gamedays_gameresult_gameinfo_ishome_idx",
             ),
         ),
-        # Remove: Index(["id", "gameinfo"])
+        # Remove: Index(["id", "gameinfo"]) — actual name from migration 0018
         migrations.RemoveIndex(
             model_name="gameresult",
-            name="gamedays_gameresult_id_gameinfo_idx",
+            name="gamedays_ga_id_55dc8c_idx",
         ),
         # Add: Index(["gameinfo"])
         migrations.AddIndex(
@@ -71,10 +71,10 @@ class Migration(migrations.Migration):
                 fields=["gameinfo"], name="gamedays_gameresult_gameinfo_idx"
             ),
         ),
-        # Remove: Index(["id", "team"])
+        # Remove: Index(["id", "team"]) — actual name from migration 0018
         migrations.RemoveIndex(
             model_name="gameresult",
-            name="gamedays_gameresult_id_team_idx",
+            name="gamedays_ga_id_f40410_idx",
         ),
         # Add: Index(["team"])
         migrations.AddIndex(
