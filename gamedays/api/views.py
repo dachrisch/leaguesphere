@@ -218,7 +218,7 @@ class GamedayListAPIView(ListAPIView):
 
 class GameinfoUpdateAPIView(RetrieveUpdateAPIView):
     serializer_class = GameinfoSerializer
-    queryset = Gameinfo.objects.prefetch_related('gameresult_set')
+    queryset = Gameinfo.objects.prefetch_related('gameresult_set').all()
 
 
 class GamedayRetrieveUpdate(RetrieveUpdateAPIView):
@@ -390,7 +390,9 @@ class GameResultsListView(APIView):
                 {"error": "Gameday not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
-        games = Gameinfo.objects.filter(gameday=gameday).prefetch_related('gameresult_set')
+        games = Gameinfo.objects.filter(gameday=gameday).prefetch_related(
+            'gameresult_set__team'
+        )
         serializer = GameInfoSerializer(games, many=True)
         return Response(serializer.data)
 
