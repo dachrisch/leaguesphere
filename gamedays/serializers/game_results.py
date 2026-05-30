@@ -89,11 +89,11 @@ class GameInfoSerializer(serializers.ModelSerializer):
 
     def get_results(self, obj):
         """Get all results for this game"""
-        results = Gameresult.objects.filter(gameinfo=obj)
+        results = obj.gameresult_set.all()
         return GameResultSerializer(results, many=True).data
 
     def _get_scores(self, obj):
-        results = Gameresult.objects.filter(gameinfo=obj)
+        results = obj.gameresult_set.all()
         scores = {"home_fh": 0, "home_sh": 0, "away_fh": 0, "away_sh": 0}
         for r in results:
             prefix = "home" if r.isHome else "away"
