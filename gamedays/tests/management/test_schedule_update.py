@@ -286,7 +286,7 @@ class TestScheduleUpdate(TransactionTestCase):
         assert results_sf1_qs[0].team.name == "B2"
         assert results_sf1_qs[1].team.name == "A1"
 
-        results_sf2_qs = Gameresult.objects.filter(gameinfo=info_semifinals[1])
+        results_sf2_qs = Gameresult.objects.filter(gameinfo=info_semifinals[1]).order_by("id")
         assert results_sf2_qs[0].team.name == "A2"
         assert results_sf2_qs[1].team.name == "B1"
 
