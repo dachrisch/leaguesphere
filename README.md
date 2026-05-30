@@ -1,7 +1,7 @@
 # LeagueSphere ![GitHub Tag](https://img.shields.io/github/v/tag/dachrisch/leaguesphere)
 
 [![Website](https://img.shields.io/website?url=https%3A%2F%2Fleaguesphere.app&style=for-the-badge)](https://leaguesphere.app)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/dachrisch/leaguesphere/ci_pr.yaml?style=for-the-badge)
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/dachrisch/leaguesphere/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/dachrisch/leaguesphere/tree/master)
 ![Last Commit](https://img.shields.io/github/last-commit/dachrisch/leaguesphere?style=for-the-badge)
 [![codecov](https://img.shields.io/codecov/c/github/dachrisch/leaguesphere?style=for-the-badge)](https://codecov.io/gh/dachrisch/leaguesphere)
 
