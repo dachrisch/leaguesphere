@@ -100,5 +100,32 @@ Before reporting a task as finished, you MUST pass all of the following:
 **⚠️ WARNING**: PRs with linting errors will be rejected by CI/CD. Fix linting errors before pushing.
 
 ## 🛠 Maintenance
-- Use `bump2version` (or `bump-my-version`) for version synchronization across backend and package.json files.
-- Document progress in `feature-dev/` for significant features.
+
+### Version Management (Automated via release-please)
+LeagueSphere uses **release-please** for fully automated semantic versioning:
+- **Conventional commits** trigger automatic version bumps:
+  - `fix:` → Patch bump (e.g., 3.21.0 → 3.21.1)
+  - `feat:` → Minor bump (e.g., 3.21.0 → 3.22.0)
+  - `BREAKING CHANGE:` in commit body → Major bump (e.g., 3.21.0 → 4.0.0)
+- **Release PRs**: release-please automatically creates PRs with version bumps and changelog updates
+- **Automerge**: Patch-only releases auto-merge; minor/major require manual approval
+- **Version sync**: After PR merge, the finalize job syncs versions across all files:
+  - `pyproject.toml`, `league_manager/__init__.py`
+  - `gameday_designer/package.json`, `passcheck/package.json`, `liveticker/package.json`, `scorecard/package.json`, `journey_dashboard/package.json`
+  - `uv.lock`
+
+**Workflow:**
+```bash
+# For staging (RC testing before release)
+./container/deploy.sh stage minor          # Create RC: 3.21.0 → 3.22.0-rc.1
+
+# For production (after staging validation)
+./container/deploy.sh minor                # Finalize: 3.22.0-rc.1 → 3.22.0
+```
+
+**Do NOT manually edit version files** — they are automatically synchronized by release-please.
+
+### Feature Documentation
+- Document progress in `docs/features/current/` for in-progress features
+- Move completed features to `docs/features/history/` after release
+- Include problem statement, solution approach, and test results
