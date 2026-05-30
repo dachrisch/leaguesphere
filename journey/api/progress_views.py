@@ -1,9 +1,10 @@
 from datetime import timedelta
+from django.db.models import Prefetch, Q
 from django.utils import timezone
 from rest_framework import viewsets, filters
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from gamedays.models import Gameday
+from gamedays.models import Gameday, Gameresult
 from .progress_serializers import GamedayProgressSerializer
 
 
@@ -50,12 +51,17 @@ class GameProgressViewSet(viewsets.ReadOnlyModelViewSet):
         if season:
             queryset = queryset.filter(season__name__icontains=season)
 
+        home_results_prefetch = Prefetch(
+            'gameinfo_set__gameresult_set',
+            queryset=Gameresult.objects.filter(isHome=True)
+        )
+
         queryset = queryset.select_related(
             'league',
             'season',
         ).prefetch_related(
             'gameinfo_set',
-            'gameinfo_set__gameresult_set',
+            home_results_prefetch,
         )
 
         return queryset
