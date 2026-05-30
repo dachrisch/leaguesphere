@@ -267,20 +267,21 @@ class TestScheduleUpdate(TransactionTestCase):
         gameday = DBSetup().g62_qualify_finished()
 
         info_p5 = Gameinfo.objects.get(standing="P5")
-        results_p5 = Gameresult.objects.filter(gameinfo=info_p5)
+        results_p5 = Gameresult.objects.filter(gameinfo=info_p5).order_by("id")
         assert results_p5[0].team.name == "A3"
         assert results_p5[1].team.name == "B3"
 
         info_semifinals = Gameinfo.objects.filter(standing="HF")
-        results_sf1_qs = Gameresult.objects.filter(gameinfo=info_semifinals[0])
+        results_sf1_qs = Gameresult.objects.filter(gameinfo=info_semifinals[0]).order_by("id")
         assert results_sf1_qs[0].team.name == "B2"
         assert results_sf1_qs[1].team.name == "A1"
 
         su = ScheduleUpdate(gameday.pk, gameday.format)
         su.update()
 
-        assert results_p5[0].team.name == "A3"
-        assert results_p5[1].team.name == "B3"
+        results_p5_after = Gameresult.objects.filter(gameinfo=info_p5).order_by("id")
+        assert results_p5_after[0].team.name == "A3"
+        assert results_p5_after[1].team.name == "B3"
 
         assert results_sf1_qs[0].team.name == "B2"
         assert results_sf1_qs[1].team.name == "A1"
