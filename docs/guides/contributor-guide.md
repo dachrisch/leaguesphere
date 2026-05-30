@@ -102,28 +102,38 @@ Before reporting a task as finished, you MUST pass all of the following:
 ## 🛠 Maintenance
 
 ### Version Management (Automated via release-please)
-LeagueSphere uses **release-please** for fully automated semantic versioning:
-- **Conventional commits** trigger automatic version bumps:
-  - `fix:` → Patch bump (e.g., 3.21.0 → 3.21.1)
-  - `feat:` → Minor bump (e.g., 3.21.0 → 3.22.0)
-  - `BREAKING CHANGE:` in commit body → Major bump (e.g., 3.21.0 → 4.0.0)
-- **Release PRs**: release-please automatically creates PRs with version bumps and changelog updates
-- **Automerge**: Patch-only releases auto-merge; minor/major require manual approval
-- **Version sync**: After PR merge, the finalize job syncs versions across all files:
-  - `pyproject.toml`, `league_manager/__init__.py`
-  - `gameday_designer/package.json`, `passcheck/package.json`, `liveticker/package.json`, `scorecard/package.json`, `journey_dashboard/package.json`
-  - `uv.lock`
+LeagueSphere uses **release-please** for fully automated semantic versioning. **You don't need to manually manage versions** — just merge your PR with conventional commits.
 
-**Workflow:**
+**Conventional Commits** trigger automatic version bumps:
+- `fix:` → Patch bump (e.g., 3.21.0 → 3.21.1)
+- `feat:` → Minor bump (e.g., 3.21.0 → 3.22.0)
+- `BREAKING CHANGE:` in commit body → Major bump (e.g., 3.21.0 → 4.0.0)
+
+**Standard Release Process** (most common):
+1. **Merge PR** to master with conventional commits
+2. **release-please** automatically creates a release PR with version bump + changelog
+3. **Auto-merge or manual merge** depending on release type:
+   - Patch releases: Auto-merge (no action needed)
+   - Minor/major: Manual merge required (for safety)
+4. **Finalize job** syncs versions across all files:
+   - `pyproject.toml`, `league_manager/__init__.py`
+   - All `package.json` files (frontend apps)
+   - `uv.lock`
+5. **CircleCI deployment** proceeds to `hold_production` awaiting manual approval
+
+**Optional: Manual/Staging Release** (for RC testing):
 ```bash
-# For staging (RC testing before release)
-./container/deploy.sh stage minor          # Create RC: 3.21.0 → 3.22.0-rc.1
+# Create release candidate
+./container/deploy.sh stage minor          # 3.21.0 → 3.22.0-rc.1
 
-# For production (after staging validation)
-./container/deploy.sh minor                # Finalize: 3.22.0-rc.1 → 3.22.0
+# Test on staging.leaguesphere.app, then finalize
+./container/deploy.sh minor                # 3.22.0-rc.1 → 3.22.0
 ```
 
-**Do NOT manually edit version files** — they are automatically synchronized by release-please.
+**⚠️ Important**: 
+- Do NOT manually edit version files — they are automatically synchronized
+- Do NOT use `./container/deploy.sh major|minor|patch` for normal releases — only for manual/RC workflows
+- The finalize job automatically handles version sync after PR merge
 
 ### Feature Documentation
 - Document progress in `docs/features/current/` for in-progress features

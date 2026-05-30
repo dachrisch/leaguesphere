@@ -31,20 +31,31 @@ LeagueSphere uses **release-please** for fully automated semantic versioning bas
 - `feat: ...` commits → Minor bump (3.21.0 → 3.22.0)
 - `BREAKING CHANGE:` in body → Major bump (3.21.0 → 4.0.0)
 
-### Release Workflow
+### Standard Release Workflow (Automatic)
+**Most common path** — just merge your PR:
+
 1. **Development**: Use conventional commits on your feature branch
-2. **Release PR**: Merge to master → release-please automatically creates a PR with version bump + changelog
-3. **Automerge**: Patch-only releases auto-merge; minor/major require manual approval
-4. **Staging (Optional)**: For RC testing before release:
-   ```bash
-   ./container/deploy.sh stage minor  # Create RC: 3.21.0 → 3.22.0-rc.1
-   ```
-5. **Production**: CircleCI builds, tests, and waits for manual approval
-   ```bash
-   ./container/deploy.sh minor  # Finalize RC: 3.22.0-rc.1 → 3.22.0
-   ```
-6. **Manual Approval (Required)**: Visit CircleCI dashboard and approve the `hold_production` job
-7. **Verify**: Ensure all CI checks are GREEN and the production site is functional
+2. **Merge to master**: Create PR with `feat:`, `fix:`, or `BREAKING CHANGE:` commits
+3. **Auto Release**: After merge, release-please automatically:
+   - Creates a release PR with version bump and changelog
+   - Auto-merges patch-only releases
+   - Waits for manual merge on minor/major
+4. **Finalize**: After release PR merge, finalize job:
+   - Syncs versions across all files
+   - Commits and pushes `uv.lock` updates
+5. **Deploy**: CircleCI builds and waits for manual approval on `hold_production` job
+6. **Verify**: All CI checks GREEN and production site functional
+
+### Manual/Staging Workflow (Optional)
+For release candidate testing before production:
+
+```bash
+./container/deploy.sh stage minor   # Create RC: 3.21.0 → 3.22.0-rc.1
+# Test on staging.leaguesphere.app
+./container/deploy.sh minor         # Finalize: 3.22.0-rc.1 → 3.22.0
+```
+
+**Do NOT use `./container/deploy.sh major|minor|patch` for normal releases** — release-please handles this automatically.
 
 ### Version Files (Auto-Synced)
 DO NOT manually edit version numbers. They are automatically synchronized by the finalize job across:

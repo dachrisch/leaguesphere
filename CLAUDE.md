@@ -50,13 +50,9 @@ npm run dev
 
 # Get test DB IP for MYSQL_HOST
 lxc list servyy-test --format json | jq -r '.[0].state.network.eth0.addresses[] | select(.family=="inet") | .address' | head -n 1
-
-# Deploy to staging / production
-./container/deploy.sh stage [major|minor|patch]  # Create/bump RC version
-./container/deploy.sh major|minor|patch          # Release to production
 ```
 
-See **[Contributor Guide § Verification](docs/guides/contributor-guide.md#-verification--completion--mandatory-checks)** for full deployment workflow.
+See **[Infrastructure Policy](docs/guides/infrastructure-policy.md)** and **[Contributor Guide § Version Management](docs/guides/contributor-guide.md#-version-management-automated-via-release-please)** for deployment and release workflows.
 
 ---
 
