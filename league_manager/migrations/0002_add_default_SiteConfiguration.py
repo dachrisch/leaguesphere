@@ -9,11 +9,11 @@ def create_default_config(apps, schema_editor):
     MAINTENANCE_PAGES = [
         "/gamedays/gameday/new/",
         "/passcheck/player/create",
-        "^/passcheck/player/\d+/(update|delete|transfer)/$",
+        r"^/passcheck/player/\d+/(update|delete|transfer)/$",
         "/officials/gameday/sign-up",
         "/gamedays/gameday/design",
-        "^/gamedays/gameday/\d+/gameinfos/(update|delete)/$",
-        "^/gamedays/gameday/\d+/(update|delete)/$",
+        r"^/gamedays/gameday/\d+/gameinfos/(update|delete)/$",
+        r"^/gamedays/gameday/\d+/(update|delete)/$",
     ]
     SiteConfiguration.objects.get_or_create(
         id=1,

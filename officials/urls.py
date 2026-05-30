@@ -61,7 +61,7 @@ urlpatterns = [
         name=OFFICIALS_GAME_OFFICIALS_APPEARANCE,
     ),
     re_path(
-        "team/(?P<pk>\w+)?/gamelist/(?P<season>\d+)?/",
+        r"team/(?P<pk>\w+)?/gamelist/(?P<season>\d+)?/",
         GameOfficialListView.as_view(),
         name=OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_TEAM_AND_YEAR,
     ),
