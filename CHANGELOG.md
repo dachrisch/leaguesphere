@@ -1,5 +1,22 @@
 # Changelog
 
+## [3.21.2](https://github.com/dachrisch/leaguesphere/compare/v3.21.1...v3.21.2) (2026-05-30)
+
+
+### Bug Fixes
+
+* add explicit ordering to second query in semifinal test ([5ea76aa](https://github.com/dachrisch/leaguesphere/commit/5ea76aaa7048b1b8051a6a2dc112fa39ace73cf3))
+* correct index names in database index optimization migrations ([f7a71f1](https://github.com/dachrisch/leaguesphere/commit/f7a71f18a6354794c6ee7b79a1ab233efbc9f2f3))
+* sort gamedays by date ascending, then by name ([6b44523](https://github.com/dachrisch/leaguesphere/commit/6b44523a951061be68579d9acc9cd19489c8c524))
+* sort gamedays by date then name in template view ([270d1d4](https://github.com/dachrisch/leaguesphere/commit/270d1d4dfd661274304313406a25e396327c0e77))
+* use portable sed syntax for cross-platform compatibility ([4e8a091](https://github.com/dachrisch/leaguesphere/commit/4e8a091ba2e6eca60cd735fde9b38d91761f2166))
+
+
+### Performance Improvements
+
+* optimize database indexes ([42f0ee5](https://github.com/dachrisch/leaguesphere/commit/42f0ee55ae40facca1314c5f00c7e06a5f7bca96))
+* optimize database indexes by removing ineffective primary key first pattern ([4b3564d](https://github.com/dachrisch/leaguesphere/commit/4b3564d5f15e95097689803b3ab47b191000c2e0))
+
 ## [3.21.1](https://github.com/dachrisch/leaguesphere/compare/v3.21.0...v3.21.1) (2026-05-29)
 
 
