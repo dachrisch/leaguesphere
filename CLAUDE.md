@@ -51,12 +51,12 @@ npm run dev
 # Get test DB IP for MYSQL_HOST
 lxc list servyy-test --format json | jq -r '.[0].state.network.eth0.addresses[] | select(.family=="inet") | .address' | head -n 1
 
-# Deploy to staging
-./container/deploy.sh stage
-
-# Trigger version bump and release pipeline
-./container/deploy.sh major|minor|patch
+# Deploy to staging / production
+./container/deploy.sh stage [major|minor|patch]  # Create/bump RC version
+./container/deploy.sh major|minor|patch          # Release to production
 ```
+
+See **[Contributor Guide § Verification](docs/guides/contributor-guide.md#-verification--completion--mandatory-checks)** for full deployment workflow.
 
 ---
 
@@ -72,11 +72,52 @@ LeagueSphere is a **hybrid Django + React** application for tournament managemen
   - `passcheck`: Player eligibility verification interface
   - `liveticker`: Real-time fan updates
   - `scorecard`: On-field scoring entry
+  - `journey_dashboard`: Game progress dashboard (shows gameday schedule and live score updates)
+  - `dashboard`: Legacy dashboard (being phased out)
   
 - **Database (MariaDB/MySQL)**: Central persistence layer. Test environment uses dedicated LXC container (`servyy-test`).
 
+### Game Progress Dashboard Feature
+A dedicated feature for viewing live game progress across a 21-day window (7 days past, 14 days future):
+- **View**: `GameProgressPageView` in `journey/progress_view.py` — authentication-required template view
+- **API**: `GameProgressViewSet` in `journey/api/progress_views.py` — read-only API returning denormalized gameday + games + scores
+- **Frontend**: `journey_dashboard/` React app displays paginated gameday schedule with live score updates
+- **Query Optimization**: Uses `select_related()` for league/season and `prefetch_related()` for gameinfo/gameresult sets
+- **Filters**: By league and season via query parameters
+
 ### Integration Pattern
 All frontend apps communicate with Django via REST API (endpoints use `/api/` prefix). Frontend apps use Vite's `base` configuration to align with Django's static URL structure. The `collectstatic` command aggregates all built frontend assets for production delivery.
+
+---
+
+## ⚡ Query Optimization & Caching Patterns
+
+### HTTP-Level ETag Caching
+The `gamedays/api/views.py` implements ETag-based caching to reduce redundant data transfers:
+- **Gameday List**: Uses `@condition(etag_func=generate_gameday_list_etag)` decorator with query parameters + latest gameday pk
+- **Gameday Games**: Uses `generate_gameday_games_etag()` based on latest gameresult pk
+- Returns HTTP 304 (Not Modified) when ETags match, preventing unnecessary response payload transfers
+
+**When to use:** Always use ETags for read-heavy endpoints that serve large data structures. Include relevant query parameters and latest object PKs in ETag generation.
+
+### Query Optimization with Prefetch & Select
+The `GameProgressViewSet` demonstrates the optimization pattern:
+```python
+queryset = queryset.select_related(
+    'league',
+    'season',
+).prefetch_related(
+    'gameinfo_set',
+    'gameinfo_set__gameresult_set',
+)
+```
+- `select_related()`: Joins related objects (league, season) in a single query
+- `prefetch_related()`: Batch-fetches related sets (gameinfos and their results) in separate queries
+- **Critical for performance:** Every API endpoint returning gameday data should use these patterns
+
+**When to use:** 
+- `select_related()`: Foreign keys / one-to-one relationships (use when relationships are mandatory)
+- `prefetch_related()`: Reverse foreign keys / many-to-many (use to avoid N+1 queries)
 
 ---
 
@@ -142,6 +183,7 @@ All features and bugfixes MUST follow the RED → GREEN → REFACTOR cycle:
 - Use conventional commits: `feat:`, `fix:`, `refactor:`, etc.
 - Create PR via: `gh pr create --repo dachrisch/leaguesphere --base master --title "..." --body "..."`
 - Require ≥90% patch coverage
+- See **[Contributor Guide § Git & Branching](docs/guides/contributor-guide.md#-core-development-workflow)** for release and versioning details
 
 ### 3. Staging Validation
 All changes MUST be tested on [stage.leaguesphere.app](https://stage.leaguesphere.app) before merging to master.
@@ -193,6 +235,14 @@ For detailed protocols and standards, refer to:
 - **[Setup Guide](docs/guides/setup-guide.md)**: Local environment configuration
 - **[AGENTS.md](AGENTS.md)**: Universal guidelines for all autonomous agents
 - **[GEMINI.md](GEMINI.md)**: Gemini CLI-specific instructions
+
+**Documentation Structure (`docs/` directory):**
+- `docs/arch/`: Architectural Decision Records and system design
+- `docs/features/`: Feature documentation (current and historical)
+- `docs/guides/`: Setup, contributor, and coding standards
+- `docs/plans/`: Historical and current implementation plans
+- `docs/reports/`: Performance analysis, verification reports, and summaries
+- `docs/testing/`: Test scenarios and testing strategies
 
 ---
 
