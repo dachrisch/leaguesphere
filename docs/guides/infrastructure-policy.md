@@ -24,16 +24,31 @@ Staging provides a near-production environment for final validation before a rel
 - **Validation Requirement**: All changes MUST be validated on staging before merging into the `master` branch.
 
 ## 🚀 Release Management
-Releases are coordinated using the `deploy.sh` script in the `container/` directory and monitored via the CircleCI dashboard.
+LeagueSphere uses **release-please** for fully automated semantic versioning based on conventional commits. All development workflow and version management is documented in the **[Contributor Guide § Maintenance](contributor-guide.md#-maintenance)**.
 
-### Release Versions
-- **Major**: Breaking changes or major architectural shifts.
-- **Minor**: Significant new features.
-- **Patch**: Bug fixes and minor improvements.
+### Automated Version Bumping (via Conventional Commits)
+- `fix: ...` commits → Patch bump (3.21.0 → 3.21.1)
+- `feat: ...` commits → Minor bump (3.21.0 → 3.22.0)
+- `BREAKING CHANGE:` in body → Major bump (3.21.0 → 4.0.0)
 
-### Protocol
-1. **Trigger Release**: Run `./container/deploy.sh <type>` to tag and trigger the deployment pipeline.
-2. **Staging Automation**: CircleCI automatically builds, tests, and deploys to the staging environment.
-3. **Manual Approval (Required)**: For production deployments, you **MUST** visit the CircleCI dashboard and manually approve the `hold_production` job.
-4. **Production Deployment**: Once approved, the pipeline will proceed with the production release and database migrations.
-5. **Verify**: Ensure all CI checks are GREEN and the production site is functional.
+### Release Workflow
+1. **Development**: Use conventional commits on your feature branch
+2. **Release PR**: Merge to master → release-please automatically creates a PR with version bump + changelog
+3. **Automerge**: Patch-only releases auto-merge; minor/major require manual approval
+4. **Staging (Optional)**: For RC testing before release:
+   ```bash
+   ./container/deploy.sh stage minor  # Create RC: 3.21.0 → 3.22.0-rc.1
+   ```
+5. **Production**: CircleCI builds, tests, and waits for manual approval
+   ```bash
+   ./container/deploy.sh minor  # Finalize RC: 3.22.0-rc.1 → 3.22.0
+   ```
+6. **Manual Approval (Required)**: Visit CircleCI dashboard and approve the `hold_production` job
+7. **Verify**: Ensure all CI checks are GREEN and the production site is functional
+
+### Version Files (Auto-Synced)
+DO NOT manually edit version numbers. They are automatically synchronized by the finalize job across:
+- `pyproject.toml` (backend version)
+- `league_manager/__init__.py`
+- All `package.json` files (frontend apps)
+- `uv.lock`
