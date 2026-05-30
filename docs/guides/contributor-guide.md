@@ -54,9 +54,7 @@ Refer to the **[Project README](@README.md)** for a full directory list.
 | **Type Safety** | Type hints | No `any` types | **CI BLOCKS MERGE** on violations |
 | **Security** | Input validation | Secure randomness | Code review enforcement |
 
-**🚨 LINTING IS NOT OPTIONAL:** Frontend code with ESLint errors will be automatically rejected by CI and cannot be merged. Run `npm run eslint` before every push.
-
-See **[Coding Standards](coding-standards.md)** for detailed rules and examples.
+See **[Coding Standards](coding-standards.md)** for detailed rules, examples, and linting requirements.
 
 ## 🎨 Core Development Workflow
 
@@ -83,21 +81,14 @@ Before reporting a task as finished, you MUST pass all of the following:
     npm run test:run
     ```
 
-2.  **MANDATORY Linting** — NO EXCEPTIONS:
-    - **Backend**: `black .` — Code MUST be black-formatted. No linting errors allowed.
-    - **Frontend**: `npm run eslint` — Code MUST pass ESLint with ZERO errors.
-    - See **[Coding Standards: Linting](coding-standards.md#-linting-standards)** for enforced rules.
-    - Common violations that BLOCK PRs:
-      - ❌ `as any` type assertions (use proper types)
-      - ❌ Deprecated methods (`.substr()` instead of `.slice()`)
-      - ❌ `Math.random()` for security-sensitive values (use `crypto.getRandomValues()`)
-      - ❌ Unused imports or variables
+2.  **Code Quality & Linting**: Pass all checks before pushing.
+    - **Backend**: `black .` — Code MUST be black-formatted
+    - **Frontend**: `npm run eslint` — Code MUST pass ESLint with ZERO errors
+    - **Details**: See **[Coding Standards § Linting Standards](coding-standards.md#-linting-standards)** for all enforced rules and examples
 
 3.  **Staging Validation**: Verify the fix on [stage.leaguesphere.app](https://stage.leaguesphere.app).
 
-4.  **Production Approval**: For version tags, manually approve the `hold_production` job in the CircleCI dashboard to complete the deployment.
-
-**⚠️ WARNING**: PRs with linting errors will be rejected by CI/CD. Fix linting errors before pushing.
+4.  **Production Approval**: Manually approve the `hold_production` job in the CircleCI dashboard to complete the deployment.
 
 ## 🛠 Maintenance
 
