@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.21.3](https://github.com/dachrisch/leaguesphere/compare/v3.21.2...v3.21.3) (2026-05-30)
+
+
+### Bug Fixes
+
+* escape sequences in regex patterns ([6933fe6](https://github.com/dachrisch/leaguesphere/commit/6933fe6acfb3f6a3f47b9ee15bba5f6cf7ee9f98))
+
+
+### Performance Improvements
+
+* **gamedays:** batch query optimization and HTTP-level ETag caching ([69d5144](https://github.com/dachrisch/leaguesphere/commit/69d514486ee98dd7c3a3cde137dc294351f566a5))
+* **gamedays:** batch query optimization and HTTP-level ETag caching ([d794980](https://github.com/dachrisch/leaguesphere/commit/d7949802ab143df6e3ecbf8538b6ea0e8f91a893))
+
 ## [3.21.2](https://github.com/dachrisch/leaguesphere/compare/v3.21.1...v3.21.2) (2026-05-30)
 
 
