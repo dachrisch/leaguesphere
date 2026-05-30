@@ -35,70 +35,32 @@ This project uses [uv](https://docs.astral.sh/uv/) for package management.
 uv sync --extra test  # Install with test dependencies
 ```
 
-## Dev Documentation
+## Development & Deployment
 
-### Deploy
-run 
+For comprehensive development guidelines, see **[Contributor Guide](docs/guides/contributor-guide.md)** — the authoritative source for all developers.
+
+**Quick reference:**
 ```bash
-cd container
-deploy.sh major|minor|patch
-``` 
+# Install & run
+uv sync --extra test
+python manage.py runserver
 
-### Django
+# Test & verify
+pytest                                    # Backend tests
+npm run test:run                         # Frontend tests (from app dir)
+black .                                   # Format backend
+npm run eslint                           # Lint frontend
 
-#### Run server
+# Migrations
+python manage.py makemigrations
+python manage.py migrate
 
-To run server local under pycharm
-
-1. create new python configuration (Alt + E)
-  1. set script path to `manage.py`
-  2. set **parameters** to: `runserver`
-  3. set **environment variables** to: `league_manager=dev`
-
-#### Migration steps
-
-Run new migration step in terminal
-
-```
-    python manage.py makemigrations
-    python manage.py migrate
-```
-
-#### Access images and CSS
-
-Run in Terminal
-
-```
+# Static files
 python manage.py collectstatic
 ```
 
-### MySQL
-
-#### EXPORT MySQL from pythonanywhere
-
-    mysqldump -u 5erdffl -h 5erdffl.mysql.eu.pythonanywhere-services.com --set-gtid-purged=OFF --no-tablespaces '5erdffl$league_manager'  > db-backup.sql
-
-#### IMPORT MySQL into pythonanywhere
-
-    mysql -u 5erdffl -h 5erdffl.mysql.eu.pythonanywhere-services.com '5erdffl$league_manager'  < db-backup.sql
-
-#### IMPORT MySQL from local .sql file via mysql command
-
-under windows: move terminal to mysql bin folder (`cd C:\xampp\mysql\bin`)
-
-    mysql -u root -p 5erdffl$league_manager < db-backup.sql
-
-#### EXPORT MySQL to local .sql file via mysql command
-
-    mysqldump -u root -p --set-gtid-purged=OFF --no-tablespaces 5erdffl$league_manager  > db-backup.sql
-
-### Python
-
-#### Reset virtual environment for pythonanywhere
-
-Open terminal in pythonanywhere. While in home directory do the following steps:
-
-    rm -rf .virtualenvs/
-    mkvirtualenv venv --python=/usr/bin/python3.8
-
-<!-- Release test commit -->
+See the **[docs/guides/](docs/guides/)** directory for:
+- **[Contributor Guide](docs/guides/contributor-guide.md)** — Build, test, release workflow
+- **[Coding Standards](docs/guides/coding-standards.md)** — Code rules and linting standards
+- **[Infrastructure Policy](docs/guides/infrastructure-policy.md)** — Deployment safety protocols
+- **[Setup Guide](docs/guides/setup-guide.md)** — Local environment configuration
