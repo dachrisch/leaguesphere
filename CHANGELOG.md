@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.21.4](https://github.com/dachrisch/leaguesphere/compare/v3.21.3...v3.21.4) (2026-05-30)
+
+
+### Documentation
+
+* clarify standard release workflow - just merge PR, release-please handles versioning ([c524dd9](https://github.com/dachrisch/leaguesphere/commit/c524dd9e8c776f2c1c7e1e755e7611547bf4feed))
+* improve CLAUDE.md with recent features and optimization patterns ([53c4f22](https://github.com/dachrisch/leaguesphere/commit/53c4f227e4f009909222a46b8ae22a6daed9f2f6))
+* remove duplication - infrastructure-policy references contributor guide for release workflow ([8f83579](https://github.com/dachrisch/leaguesphere/commit/8f83579b937e2b3e6c743f748bc1e6dfcf4d8e6e))
+* remove duplication between contributor-guide and coding-standards ([84fb93c](https://github.com/dachrisch/leaguesphere/commit/84fb93c322922b77ab94fad32b0e38846607a01e))
+* update contributor guide maintenance section - replace outdated bump2version with release-please automation ([7db263f](https://github.com/dachrisch/leaguesphere/commit/7db263f882f13c827ad8b036ca734d74b9fe99cc))
+* update infrastructure policy with release-please workflow ([e66a4f8](https://github.com/dachrisch/leaguesphere/commit/e66a4f8b8a9deb4c1e7a0788fb98609c13b882cd))
+* update README.md - replace outdated dev documentation with guide references ([4dabbd2](https://github.com/dachrisch/leaguesphere/commit/4dabbd2333119b4879deb687b8fab1e5d497cb8d))
+
 ## [3.21.3](https://github.com/dachrisch/leaguesphere/compare/v3.21.2...v3.21.3) (2026-05-30)
 
 
