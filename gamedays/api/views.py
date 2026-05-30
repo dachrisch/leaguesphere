@@ -120,11 +120,9 @@ class GamedayViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
-        from django.db.models import Prefetch
         queryset = (
             Gameday.objects.all()
-            .select_related("season", "league", "author")
-            .prefetch_related(Prefetch("gamedaydesignerstate_set"))
+            .select_related("season", "league", "author", "designer_state")
             .order_by("date", "name")
         )
         search = self.request.query_params.get("search", "")

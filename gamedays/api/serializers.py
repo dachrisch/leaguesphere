@@ -70,7 +70,10 @@ class GamedayListSerializer(ModelSerializer):
         return obj.league.name if obj.league else ""
 
     def get_has_designer_state(self, obj):
-        return len(obj.gamedaydesignerstate_set.all()) > 0
+        try:
+            return obj.designer_state is not None
+        except GamedayDesignerState.DoesNotExist:
+            return False
 
 
 class GamedayInfoSerializer(Serializer):
