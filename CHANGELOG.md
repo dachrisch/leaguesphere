@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.22.4](https://github.com/dachrisch/leaguesphere/compare/v3.22.3...v3.22.4) (2026-05-31)
+
+
+### Bug Fixes
+
+* add concurrency group to release-please-automerge workflow ([4aa04be](https://github.com/dachrisch/leaguesphere/commit/4aa04beaa3b378993d0fb25b083a2668185b28d3))
+* add error handling to automerge polling for malformed API responses ([92d9406](https://github.com/dachrisch/leaguesphere/commit/92d9406b4be4d49dadce55f8c1651cd5a6eef0a1))
+* add error handling to automerge polling for malformed API responses ([31d8c97](https://github.com/dachrisch/leaguesphere/commit/31d8c9718e766b5d4ca54f68fde17465404163b0))
+
 ## [3.22.3](https://github.com/dachrisch/leaguesphere/compare/v3.22.2...v3.22.3) (2026-05-31)
 
 
