@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.22.1](https://github.com/dachrisch/leaguesphere/compare/v3.22.0...v3.22.1) (2026-05-31)
+
+
+### Bug Fixes
+
+* increase gunicorn workers to resolve intermittent 404 errors under load ([aa87590](https://github.com/dachrisch/leaguesphere/commit/aa875908e438dc8a030d6c71ca083706e8dde722))
+
 ## [3.22.0](https://github.com/dachrisch/leaguesphere/compare/v3.21.4...v3.22.0) (2026-05-31)
 
 
