@@ -114,16 +114,17 @@ class TestTemplateDetailEndpoint:
         assert response.data["id"] == template_with_slots.pk
         assert response.data["name"] == "Test Template"
 
-    def test_detail_includes_nested_slots(self, api_client, template_with_slots):
+    def test_detail_includes_nested_slots(self, api_client, template_with_slots, assert_num_queries):
         """Detail endpoint includes nested slots."""
-        response = api_client.get(f"/api/designer/templates/{template_with_slots.pk}/")
+        with assert_num_queries(3):
+            response = api_client.get(f"/api/designer/templates/{template_with_slots.pk}/")
 
         assert response.status_code == status.HTTP_200_OK
         assert "slots" in response.data
         assert len(response.data["slots"]) == 2
         assert response.data["slots"][0]["slot_order"] == 1
 
-    def test_detail_includes_nested_update_rules(self, api_client, template, db):
+    def test_detail_includes_nested_update_rules(self, api_client, template, db, assert_num_queries):
         """Detail endpoint includes nested update rules."""
         slot = TemplateSlot.objects.create(
             template=template,
@@ -143,7 +144,8 @@ class TestTemplateDetailEndpoint:
             update_rule=update_rule, role="home", standing="HF1", place=1
         )
 
-        response = api_client.get(f"/api/designer/templates/{template.pk}/")
+        with assert_num_queries(4):
+            response = api_client.get(f"/api/designer/templates/{template.pk}/")
 
         assert response.status_code == status.HTTP_200_OK
         assert "update_rules" in response.data

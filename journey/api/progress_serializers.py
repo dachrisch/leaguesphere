@@ -31,9 +31,9 @@ class GameinfoProgressSerializer(serializers.ModelSerializer):
 
     def get_gameresult(self, obj):
         """Return the home team gameresult if it exists."""
-        result = obj.gameresult_set.filter(isHome=True).first()
-        if result:
-            return GameResultProgressSerializer(result).data
+        for result in obj.gameresult_set.all():
+            if result.isHome:
+                return GameResultProgressSerializer(result).data
         return None
 
 
@@ -76,12 +76,9 @@ class GamedayProgressSerializer(serializers.ModelSerializer):
         if gameday_has_status:
             return None
 
-        games = obj.gameinfo_set.all()
-        has_games = games.exists()
-        if not has_games:
+        games_list = list(obj.gameinfo_set.all())
+        if not games_list:
             return 'PUBLISHED'
 
-        statuses = [game.status for game in games]
-        all_completed = all(status == Gameinfo.STATUS_COMPLETED for status in statuses)
-
+        all_completed = all(game.status == Gameinfo.STATUS_COMPLETED for game in games_list)
         return 'COMPLETED' if all_completed else 'PUBLISHED'

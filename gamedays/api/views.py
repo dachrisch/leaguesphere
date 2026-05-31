@@ -122,8 +122,7 @@ class GamedayViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = (
             Gameday.objects.all()
-            .select_related("season", "league", "author")
-            .prefetch_related("designer_state")
+            .select_related("season", "league", "author", "designer_state")
             .order_by("date", "name")
         )
         search = self.request.query_params.get("search", "")
@@ -209,19 +208,20 @@ class GamedayListAPIView(ListAPIView):
         return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
+        queryset = Gameday.objects.select_related('league', 'season', 'author')
         if settings.DEBUG:
-            return Gameday.objects.filter(date=settings.DEBUG_DATE)
-        return Gameday.objects.filter(date=datetime.today())
+            return queryset.filter(date=settings.DEBUG_DATE)
+        return queryset.filter(date=datetime.today())
 
 
 class GameinfoUpdateAPIView(RetrieveUpdateAPIView):
     serializer_class = GameinfoSerializer
-    queryset = Gameinfo.objects.prefetch_related('gameresult_set')
+    queryset = Gameinfo.objects.prefetch_related('gameresult_set').all()
 
 
 class GamedayRetrieveUpdate(RetrieveUpdateAPIView):
     serializer_class = GamedaySerializer
-    queryset = Gameday.objects.all()
+    queryset = Gameday.objects.select_related('league', 'season', 'author').all()
 
 
 class GameOfficialCreateOrUpdateView(RetrieveUpdateAPIView):
@@ -388,7 +388,9 @@ class GameResultsListView(APIView):
                 {"error": "Gameday not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
-        games = Gameinfo.objects.filter(gameday=gameday).prefetch_related('gameresult_set')
+        games = Gameinfo.objects.filter(gameday=gameday).prefetch_related(
+            'gameresult_set__team'
+        )
         serializer = GameInfoSerializer(games, many=True)
         return Response(serializer.data)
 

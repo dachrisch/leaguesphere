@@ -143,6 +143,8 @@ STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "league_manager/static")
 STATICFILES_DIRS = [
     os.path.join(os.path.dirname(BASE_DIR), "journey_dashboard/static"),
+    os.path.join(os.path.dirname(BASE_DIR), "gamedays/static"),
+    os.path.join(os.path.dirname(BASE_DIR), "officials/static"),
 ]
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")

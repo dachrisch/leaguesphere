@@ -1,5 +1,6 @@
 from http import HTTPStatus
 import json
+import pytest
 from django.urls import reverse
 from django_webtest import WebTest
 from gamedays.models import Gameday, Season, League

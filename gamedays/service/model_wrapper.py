@@ -71,7 +71,7 @@ class DfflPoints(object):
 class GamedayModelWrapper:
 
     def __init__(self, pk, additional_columns=[]):
-        gameinfo = Gameinfo.objects.filter(gameday_id=pk)
+        gameinfo = Gameinfo.objects.select_related('gameday__league', 'gameday__season').filter(gameday_id=pk)
         if not gameinfo.exists():
             raise Gameinfo.DoesNotExist
         self.gameday = gameinfo.first().gameday
@@ -296,16 +296,19 @@ class GamedayModelWrapper:
         return table[table.Platz <= config.get(TOP_N_PLAYER, 10)]
 
     def get_defense_statistic_table(self):
+        events_by_type = self._get_all_defense_events()
+
         ints = (
-            self._get_player_events_table(
-                event_name="Interception", event_plural_name="Interceptions"
+            self._process_events_table(
+                events_by_type.get("Interception", pd.DataFrame()),
+                event_plural_name="Interceptions"
             )
             .reset_index(drop=True)
             .astype(str)
         )
         safeties = (
-            self._get_player_events_table(
-                event_name="Safety (+2)",
+            self._process_events_table(
+                events_by_type.get("Safety (+2)", pd.DataFrame()),
                 event_plural_name="Safety (+2)",
             )
             .reset_index(drop=True)
@@ -326,6 +329,56 @@ class GamedayModelWrapper:
         )
 
         return result
+
+    def _get_all_defense_events(self):
+        events = pd.DataFrame(
+            TeamLog.objects.filter(
+                gameinfo__in=self._gameinfo["id"],
+                isDeleted=False,
+                event__in=["Interception", "Safety (+2)"]
+            )
+            .exclude(team=None)
+            .exclude(player=None)
+            .values(TEAM_DESCRIPTION, TEAM_ID, "team__name", "event", "player")
+        )
+
+        if events.empty:
+            return {"Interception": pd.DataFrame(), "Safety (+2)": pd.DataFrame()}
+
+        config = dict()
+        if safe_config := self.league_season_config:
+            config = safe_config.get_gameday_statistic_settings()
+
+        if config.get(SHOW_PLAYER_NAMES, False):
+            passcheck_player_names_df = self._get_passcheck_player_jersey_number()
+            events["player"] = events.merge(
+                passcheck_player_names_df,
+                left_on=["player", TEAM_ID],
+                right_on=["gameday_jersey", "team_id"],
+                how="left",
+            ).apply(lambda x: f"{x.team__name} #{x.player}" + (
+                " Unbekannt" if pd.isna(x.first_name) else f" - {x.first_name} {x.last_name}"), axis=1)
+        else:
+            events["player"] = events.apply(lambda x: f"{x.team__description} #{x.player}", axis=1)
+
+        return {event_type: group for event_type, group in events.groupby("event")}
+
+    def _process_events_table(self, events: pd.DataFrame, event_plural_name: str):
+        if events.empty:
+            return pd.DataFrame(columns=["Platz", "Spieler", event_plural_name])
+
+        events = (
+            events.groupby("player", as_index=False)
+            .event.count()
+            .sort_values(by="event", ascending=False)
+        )
+
+        events["Platz"] = events.event.rank(method="min", ascending=False).astype(int)
+        return (
+            events[["Platz", "player", "event"]]
+            .rename(columns={"player": "Spieler", "event": event_plural_name})
+            .head()
+        )
 
     def _get_player_events_table(self, event_name: str, event_plural_name: str):
         output_columns = ["Platz", "Spieler", event_plural_name]

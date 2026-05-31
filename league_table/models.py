@@ -75,7 +75,7 @@ class LeagueRuleset(models.Model):
                 "key": league_ruleset_tiebreak.step.key,
                 "is_ascending": league_ruleset_tiebreak.sort_order == "ascending",
             }
-            for league_ruleset_tiebreak in self.leaguerulesettiebreak_set.all().order_by(
+            for league_ruleset_tiebreak in self.leaguerulesettiebreak_set.select_related('step').all().order_by(
                 "order"
             )
         ]
