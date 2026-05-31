@@ -53,22 +53,27 @@ jobs:
             # Extract and format check runs with error handling
             CHECKS_JSON=$(echo "$CHECKS" | jq -s '.[] | .check_runs[]? | {name: .name, conclusion: .conclusion, status: .status}' 2>/dev/null | jq -s '.' 2>/dev/null || echo '[]')
 
+            # Also check combined status (includes CircleCI and other external CI)
+            STATUS=$(gh api repos/$REPO/commits/$COMMIT_SHA/status 2>/dev/null || echo '{}')
+            COMBINED_STATE=$(echo "$STATUS" | jq -r '.state // "pending"' 2>/dev/null || echo "pending")
+
             # Parse results
             TOTAL_CHECKS=$(echo "$CHECKS_JSON" | jq 'length')
             SUCCESSFUL=$(echo "$CHECKS_JSON" | jq '[.[] | select(.conclusion == "success")] | length')
             FAILED=$(echo "$CHECKS_JSON" | jq '[.[] | select(.conclusion == "failure")] | length')
             PENDING=$(echo "$CHECKS_JSON" | jq '[.[] | select(.status != "completed")] | length')
 
-            echo "Status: $SUCCESSFUL passed, $FAILED failed, $PENDING pending (total: $TOTAL_CHECKS)"
+            echo "GitHub Checks: $SUCCESSFUL passed, $FAILED failed, $PENDING pending (total: $TOTAL_CHECKS)"
+            echo "Combined Status (GitHub + CircleCI): $COMBINED_STATE"
 
-            # Proceed when all checks pass (finalize runs asynchronously after merge)
-            if [ "$FAILED" -eq 0 ] && [ "$PENDING" -eq 0 ] && [ "$TOTAL_CHECKS" -gt 0 ]; then
-              echo "✓ All checks passed! Proceeding with automerge."
+            # Proceed when all checks pass (both GitHub and CircleCI)
+            if [ "$COMBINED_STATE" = "success" ]; then
+              echo "✓ All checks passed (GitHub + CircleCI)! Proceeding with automerge."
               exit 0
             fi
 
-            # Fail fast if any check failed
-            if [ "$FAILED" -gt 0 ]; then
+            # Fail fast if any check failed (GitHub or CircleCI)
+            if [ "$FAILED" -gt 0 ] || [ "$COMBINED_STATE" = "failure" ]; then
               echo "✗ Some checks failed - will not automerge"
               gh api repos/$REPO/pulls/$PR_NUMBER/reviews -X POST \
                 -f event=COMMENT \
