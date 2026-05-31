@@ -48,18 +48,20 @@ jobs:
             echo "Checking commit: $COMMIT_SHA"
 
             # Get all check runs for this commit
-            CHECKS=$(gh api repos/$REPO/commits/$COMMIT_SHA/check-runs \
-              --jq '.check_runs[] | {name: .name, conclusion: .conclusion, status: .status}')
+            CHECKS=$(gh api repos/$REPO/commits/$COMMIT_SHA/check-runs 2>/dev/null || echo '{"check_runs":[]}')
+
+            # Extract and format check runs with error handling
+            CHECKS_JSON=$(echo "$CHECKS" | jq -s '.[] | .check_runs[]? | {name: .name, conclusion: .conclusion, status: .status}' 2>/dev/null | jq -s '.' 2>/dev/null || echo '[]')
 
             # Parse results
-            TOTAL_CHECKS=$(echo "$CHECKS" | jq -s 'length')
-            SUCCESSFUL=$(echo "$CHECKS" | jq -s '[.[] | select(.conclusion == "success")] | length')
-            FAILED=$(echo "$CHECKS" | jq -s '[.[] | select(.conclusion == "failure")] | length')
-            PENDING=$(echo "$CHECKS" | jq -s '[.[] | select(.status != "completed")] | length')
+            TOTAL_CHECKS=$(echo "$CHECKS_JSON" | jq 'length')
+            SUCCESSFUL=$(echo "$CHECKS_JSON" | jq '[.[] | select(.conclusion == "success")] | length')
+            FAILED=$(echo "$CHECKS_JSON" | jq '[.[] | select(.conclusion == "failure")] | length')
+            PENDING=$(echo "$CHECKS_JSON" | jq '[.[] | select(.status != "completed")] | length')
 
             # Check specifically for finalize workflow
-            FINALIZE=$(echo "$CHECKS" | jq -s '.[] | select(.name == "release-please-finalize")' | head -1)
-            FINALIZE_CONCLUSION=$(echo "$FINALIZE" | jq -r '.conclusion // "pending"')
+            FINALIZE=$(echo "$CHECKS_JSON" | jq '.[] | select(.name == "release-please-finalize")' | head -1)
+            FINALIZE_CONCLUSION=$(echo "$FINALIZE" | jq -r '.conclusion // "pending"' 2>/dev/null || echo "pending")
 
             echo "Status: $SUCCESSFUL passed, $FAILED failed, $PENDING pending (total: $TOTAL_CHECKS)"
             echo "Finalize: $FINALIZE_CONCLUSION"
