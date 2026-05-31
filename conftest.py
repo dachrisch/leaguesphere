@@ -63,9 +63,9 @@ if not hasattr(TestCase, 'assertNumQueries'):
 @pytest.fixture(autouse=True)
 def reset_queries():
     """Reset query count between tests."""
-    connection.queries_clear()
+    connection.queries_log.clear()
     yield
-    connection.queries_clear()
+    connection.queries_log.clear()
 
 
 def pytest_configure(config):

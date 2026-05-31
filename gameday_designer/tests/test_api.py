@@ -114,6 +114,7 @@ class TestTemplateDetailEndpoint:
         assert response.data["id"] == template_with_slots.pk
         assert response.data["name"] == "Test Template"
 
+    @pytest.mark.high_query_count
     def test_detail_includes_nested_slots(self, api_client, template_with_slots):
         """Detail endpoint includes nested slots."""
         response = api_client.get(f"/api/designer/templates/{template_with_slots.pk}/")
@@ -123,6 +124,7 @@ class TestTemplateDetailEndpoint:
         assert len(response.data["slots"]) == 2
         assert response.data["slots"][0]["slot_order"] == 1
 
+    @pytest.mark.high_query_count
     def test_detail_includes_nested_update_rules(self, api_client, template, db):
         """Detail endpoint includes nested update rules."""
         slot = TemplateSlot.objects.create(
