@@ -52,7 +52,7 @@ npm run dev
 lxc list servyy-test --format json | jq -r '.[0].state.network.eth0.addresses[] | select(.family=="inet") | .address' | head -n 1
 ```
 
-See **[Infrastructure Policy](docs/guides/infrastructure-policy.md)** and **[Contributor Guide § Version Management](docs/guides/contributor-guide.md#-version-management-automated-via-release-please)** for deployment and release workflows.
+See **[Infrastructure Performance Policy](docs/guides/infrastructure-performance-policy.md)** for performance standards and automated checking. See **[Infrastructure Policy](docs/guides/infrastructure-policy.md)** and **[Contributor Guide § Version Management](docs/guides/contributor-guide.md#-version-management-automated-via-release-please)** for deployment and release workflows.
 
 ---
 
@@ -88,6 +88,8 @@ All frontend apps communicate with Django via REST API (endpoints use `/api/` pr
 
 ## ⚡ Query Optimization & Caching Patterns
 
+**See [Performance Guide](docs/guides/performance-guide.md) for comprehensive standards and automated checking.**
+
 ### HTTP-Level ETag Caching
 The `gamedays/api/views.py` implements ETag-based caching to reduce redundant data transfers:
 - **Gameday List**: Uses `@condition(etag_func=generate_gameday_list_etag)` decorator with query parameters + latest gameday pk
@@ -114,6 +116,14 @@ queryset = queryset.select_related(
 **When to use:** 
 - `select_related()`: Foreign keys / one-to-one relationships (use when relationships are mandatory)
 - `prefetch_related()`: Reverse foreign keys / many-to-many (use to avoid N+1 queries)
+
+### Mandatory Query Assertions in Tests
+Every test touching the database **MUST** verify query count:
+```python
+with self.assertNumQueries(1):  # Exactly 1 query expected
+    response = self.client.get('/api/gamedays/')
+```
+Query count must NOT increase with result set size (e.g., 10 gamedays = same query count as 1000).
 
 ---
 
