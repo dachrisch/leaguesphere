@@ -179,6 +179,7 @@ DATABASES = {
         "PASSWORD": os.environ.get("MYSQL_PWD", "user"),
         "HOST": os.environ.get("MYSQL_HOST", "127.0.0.1"),
         "PORT": os.environ.get("MYSQL_PORT", "3306"),
+        "CONN_MAX_AGE": 300,
         "OPTIONS": {
             "init_command": "SET default_storage_engine=InnoDB;"  # SET foreign_key_checks = 0;',
         },
