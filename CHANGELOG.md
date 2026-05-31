@@ -1,5 +1,39 @@
 # Changelog
 
+## [3.22.0](https://github.com/dachrisch/leaguesphere/compare/v3.21.4...v3.22.0) (2026-05-31)
+
+
+### Features
+
+* add dev-server project skill for local development with test database ([3fe143e](https://github.com/dachrisch/leaguesphere/commit/3fe143ea86ae848bac5fc76ff2d8a63d25ea48b9))
+* add project skill for running tests with proper setup ([356b12a](https://github.com/dachrisch/leaguesphere/commit/356b12a651732d2f780d413500294cc197519a6e))
+* add static file directories for gamedays and officials modules ([c316b4e](https://github.com/dachrisch/leaguesphere/commit/c316b4e300d0a2df46deca4f3fbb8c1813066593))
+
+
+### Bug Fixes
+
+* add select_related to TemplateApplication query in usage endpoint ([ac156b8](https://github.com/dachrisch/leaguesphere/commit/ac156b87014c09e8abe0bd1b40225bf9191b1caf))
+* correct designer_state relationship after rebase ([e32bcc4](https://github.com/dachrisch/leaguesphere/commit/e32bcc4cd12b619924c55a2bbe60d48c8265777e))
+* optimize database queries - add select_related and prefetch_related to prevent N+1 issues ([867cafe](https://github.com/dachrisch/leaguesphere/commit/867cafe3997e761e2161b69587d43b45b78d34c6))
+* optimize game progress prefetch to only load home team results ([7dad705](https://github.com/dachrisch/leaguesphere/commit/7dad7051c208910291ebaafc3c96723736df7711))
+* optimize journey progress serializer to avoid redundant queries on prefetched data ([98797ca](https://github.com/dachrisch/leaguesphere/commit/98797ca320bf2da400f05814489733fada4a52a8))
+* optimize more N+1 queries in game result serializers and views ([7ecf288](https://github.com/dachrisch/leaguesphere/commit/7ecf288b33301a232cd48c8eb10098180e102398))
+* revert pytest.ini to use league_manager.settings.dev ([6652b2d](https://github.com/dachrisch/leaguesphere/commit/6652b2df3f1def8705be1aa9ad8442c6a05c64cb))
+
+
+### Performance Improvements
+
+* Eliminate TieBreakStep N+1 queries in LeagueRuleset ([a2de648](https://github.com/dachrisch/leaguesphere/commit/a2de648ca731da54d6a968a8990bffd3fbdfc1d0))
+* **gamedays:** consolidate defense statistic queries to eliminate N+1 pattern ([dedc286](https://github.com/dachrisch/leaguesphere/commit/dedc2867d20e9651df76c5ac1b52809c2d11abd7))
+* **gamedays:** consolidate defense statistic queries to eliminate N+1 pattern ([306466d](https://github.com/dachrisch/leaguesphere/commit/306466d4b5970ab1ec7763e7b8c4c5c9d0826d45))
+* Optimize N+1 query patterns in gameday and officials views ([fddbf03](https://github.com/dachrisch/leaguesphere/commit/fddbf034f8a046d6a6114301e89ce5e94239683f))
+
+
+### Documentation
+
+* add query markers to gameday designer integration tests and fix conftest ([71fdf46](https://github.com/dachrisch/leaguesphere/commit/71fdf46de3ecb7da3260d9c22a38cdace2afe2dc))
+* establish infrastructure performance policy with automated query checking ([fb3e835](https://github.com/dachrisch/leaguesphere/commit/fb3e8356ec1dd015cbaf84f4cbf7ffbdf4f58fdd))
+
 ## [3.21.4](https://github.com/dachrisch/leaguesphere/compare/v3.21.3...v3.21.4) (2026-05-30)
 
 
