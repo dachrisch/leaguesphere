@@ -23,23 +23,56 @@ jobs:
 
       - run: uv lock
 
+      - name: Verify version extraction
+        run: |
+          NEW_VERSION=$(grep "^version = " pyproject.toml | head -1 | cut -d'"' -f2)
+          echo "Extracted version from pyproject.toml: $NEW_VERSION"
+          if [ -z "$NEW_VERSION" ]; then
+            echo "ERROR: Could not extract version from pyproject.toml"
+            exit 1
+          fi
+
       - name: Update version in all version files
         run: |
-          # Extract version from pyproject.toml
           NEW_VERSION=$(grep "^version = " pyproject.toml | head -1 | cut -d'"' -f2)
+          echo "Updating version files to $NEW_VERSION..."
 
-          # Update version in all version files
+          # Update Python version file
           sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" league_manager/__init__.py
+
+          # Verify the update worked
+          ACTUAL=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
+          if [ "$ACTUAL" != "$NEW_VERSION" ]; then
+            echo "ERROR: Failed to update league_manager/__init__.py"
+            echo "Expected: $NEW_VERSION, Got: $ACTUAL"
+            exit 1
+          fi
+
+          # Update Node.js version files
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" liveticker/package.json
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" journey_dashboard/package.json
 
+          echo "Version files updated successfully"
+
       - name: Commit version and lock file updates
         run: |
           git config user.name "release-please[bot]"
           git config user.email "release-please[bot]@users.noreply.github.com"
           git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json gameday_designer/package.json journey_dashboard/package.json uv.lock
-          git diff --cached --quiet || git commit -m "chore: regenerate uv.lock and update version files"
-          git push
+
+          # Check if there are changes to commit
+          if git diff --cached --quiet; then
+            echo "No changes to commit - version files already updated"
+          else
+            echo "Committing version and lock file updates..."
+            git commit -m "chore: regenerate uv.lock and update version files"
+            if git push; then
+              echo "✓ Successfully pushed version updates"
+            else
+              echo "ERROR: Failed to push version updates"
+              exit 1
+            fi
+          fi
