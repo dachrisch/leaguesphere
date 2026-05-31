@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.22.5](https://github.com/dachrisch/leaguesphere/compare/v3.22.4...v3.22.5) (2026-05-31)
+
+
+### Bug Fixes
+
+* don't block automerge if finalize job doesn't report as check ([25ae313](https://github.com/dachrisch/leaguesphere/commit/25ae313ec9a2976604dc1e574bc954389db1d9ce))
+* don't block automerge if finalize job doesn't report as check ([ea73869](https://github.com/dachrisch/leaguesphere/commit/ea738699d94fe4b22297457926bae6ff64021cda))
+* remove finalize job check from automerge polling ([e2f28e1](https://github.com/dachrisch/leaguesphere/commit/e2f28e19ea4baeb627bd0a381f4d156a9b920845))
+* remove finalize job check from automerge polling ([6ec2161](https://github.com/dachrisch/leaguesphere/commit/6ec2161489b9522db90d17db29a79cedf2e44eb5))
+
 ## [3.22.4](https://github.com/dachrisch/leaguesphere/compare/v3.22.3...v3.22.4) (2026-05-31)
 
 
