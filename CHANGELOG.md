@@ -1,5 +1,22 @@
 # Changelog
 
+## [3.22.7](https://github.com/dachrisch/leaguesphere/compare/v3.22.6...v3.22.7) (2026-05-31)
+
+
+### Documentation
+
+* add centralized documentation guidelines ([c09d84c](https://github.com/dachrisch/leaguesphere/commit/c09d84c0cc9163c0cc9da20f62c0e772d2b804de))
+* add consolidation summary documenting changes and final structure ([e003596](https://github.com/dachrisch/leaguesphere/commit/e0035964e0f96f62e2e42a336c83064014f3c47c))
+* add documentation standards to all agent instructions (CLAUDE, GEMINI, AGENTS) ([85c85f0](https://github.com/dachrisch/leaguesphere/commit/85c85f0120506cc2410f24c4add467df594fe844))
+* centralize documentation in /docs/topics with clear agent guidelines ([07c9a18](https://github.com/dachrisch/leaguesphere/commit/07c9a189a2e6da2a30d35331214d79c2964b0a65))
+* clean up scattered documentation files ([d4b56dd](https://github.com/dachrisch/leaguesphere/commit/d4b56ddc9d330f1d45672da5ab96cc4e1ca33ee6))
+* consolidate documentation to topics structure ([0a40775](https://github.com/dachrisch/leaguesphere/commit/0a40775f15e8dd01f9298b2adfcb51c9e2686c9a))
+* create comprehensive documentation index with topic navigation ([5251dfd](https://github.com/dachrisch/leaguesphere/commit/5251dfd0b015510d56a356be11e4d847e1dcbc47))
+* create topic-based directory structure with README guides ([9b6aafc](https://github.com/dachrisch/leaguesphere/commit/9b6aafcb7de9f7d7b8b090ff5fd45d70b5a46789))
+* move outdated plans from current/ to history/ ([1d15107](https://github.com/dachrisch/leaguesphere/commit/1d1510750f452e7169de9111d6caf31c5fad6f7c))
+* remove obsolete completion reports and archived conductor tracks ([8131aab](https://github.com/dachrisch/leaguesphere/commit/8131aabb7fb258cb09ccfb382a6455135e8f09b8))
+* remove outdated completed plans from planning directory ([b67c985](https://github.com/dachrisch/leaguesphere/commit/b67c9856525f831f5a3b161891fcb39d68a44ee6))
+
 ## [3.22.6](https://github.com/dachrisch/leaguesphere/compare/v3.22.5...v3.22.6) (2026-05-31)
 
 
