@@ -58,7 +58,7 @@ jobs:
             PENDING=$(echo "$CHECKS" | jq -s '[.[] | select(.status != "completed")] | length')
 
             # Check specifically for finalize workflow
-            FINALIZE=$(echo "$CHECKS" | jq -s '.[] | select(.name == "Release Please Finalize")' | head -1)
+            FINALIZE=$(echo "$CHECKS" | jq -s '.[] | select(.name == "release-please-finalize")' | head -1)
             FINALIZE_CONCLUSION=$(echo "$FINALIZE" | jq -r '.conclusion // "pending"')
 
             echo "Status: $SUCCESSFUL passed, $FAILED failed, $PENDING pending (total: $TOTAL_CHECKS)"
