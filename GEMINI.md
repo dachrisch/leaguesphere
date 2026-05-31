@@ -18,6 +18,17 @@ Operate using a **Research -> Strategy -> Execution** lifecycle. For the Executi
 - **Empirical Reproduction**: Prioritize empirical reproduction of reported issues to confirm the failure state.
 - **Verification**: Run tests and workspace standards before committing or finishing a task.
 
+## 📖 Documentation Standards
+
+All documentation lives in `/docs/topics/` organized by topic. Before creating or modifying documentation:
+
+1. **Check the [Documentation Guidelines](docs/DOCUMENTATION.md)** — Detailed rules for where each type of doc belongs
+2. **Follow the directory structure** — Architecture, Guides, Features, Deployment, Testing, Troubleshooting, Planning
+3. **Link from the index** — Update the parent topic README.md when adding a new doc
+4. **Remove old versions** — Don't leave outdated docs scattered around
+
+See [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md) for the complete guide.
+
 ## 🛠 Central Authority
 
 Refer to these specialized guides for detailed protocols:
