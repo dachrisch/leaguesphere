@@ -6,6 +6,9 @@ permissions:
   contents: write
   pull-requests: write
   checks: read
+concurrency:
+  group: automerge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 jobs:
   automerge:
     runs-on: ubuntu-latest
