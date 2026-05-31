@@ -5,6 +5,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  checks: read
 jobs:
   automerge:
     runs-on: ubuntu-latest
@@ -24,6 +25,67 @@ jobs:
           else
             echo "patch_only=false" >> $GITHUB_OUTPUT
           fi
+      - name: Wait for finalize and all checks to pass
+        if: steps.version-check.outputs.patch_only == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Waiting for finalize workflow and all checks to complete..."
+
+          # Poll for up to 10 minutes (60 attempts × 10 seconds)
+          for attempt in {1..60}; do
+            echo "Attempt $attempt/60 - Checking PR status..."
+
+            # Get the last commit on this PR
+            COMMIT_SHA=$(gh api repos/$REPO/pulls/$PR_NUMBER \
+              --jq '.head.sha')
+
+            echo "Checking commit: $COMMIT_SHA"
+
+            # Get all check runs for this commit
+            CHECKS=$(gh api repos/$REPO/commits/$COMMIT_SHA/check-runs \
+              --jq '.check_runs[] | {name: .name, conclusion: .conclusion, status: .status}')
+
+            # Parse results
+            TOTAL_CHECKS=$(echo "$CHECKS" | jq -s 'length')
+            SUCCESSFUL=$(echo "$CHECKS" | jq -s '[.[] | select(.conclusion == "success")] | length')
+            FAILED=$(echo "$CHECKS" | jq -s '[.[] | select(.conclusion == "failure")] | length')
+            PENDING=$(echo "$CHECKS" | jq -s '[.[] | select(.status != "completed")] | length')
+
+            # Check specifically for finalize workflow
+            FINALIZE=$(echo "$CHECKS" | jq -s '.[] | select(.name == "Release Please Finalize")' | head -1)
+            FINALIZE_CONCLUSION=$(echo "$FINALIZE" | jq -r '.conclusion // "pending"')
+
+            echo "Status: $SUCCESSFUL passed, $FAILED failed, $PENDING pending (total: $TOTAL_CHECKS)"
+            echo "Finalize: $FINALIZE_CONCLUSION"
+
+            # Check if all conditions are met
+            if [ "$FAILED" -eq 0 ] && [ "$PENDING" -eq 0 ] && [ "$TOTAL_CHECKS" -gt 0 ]; then
+              if [ "$FINALIZE_CONCLUSION" = "success" ]; then
+                echo "✓ All checks passed and finalize workflow completed successfully!"
+                exit 0
+              else
+                echo "⚠ All checks passed, but finalize status is: $FINALIZE_CONCLUSION"
+              fi
+            fi
+
+            # Fail fast if any check failed
+            if [ "$FAILED" -gt 0 ]; then
+              echo "✗ Some checks failed - will not automerge"
+              gh api repos/$REPO/pulls/$PR_NUMBER/reviews -X POST \
+                -f event=COMMENT \
+                -f body="Automerge blocked: Some checks failed. Please review and fix before retrying." || true
+              exit 1
+            fi
+
+            echo "Waiting... (sleeping 10 seconds)"
+            sleep 10
+          done
+
+          echo "✗ Timeout: Checks did not complete within 10 minutes"
+          exit 1
       - name: Automerge patch release
         if: steps.version-check.outputs.patch_only == 'true'
         env:
