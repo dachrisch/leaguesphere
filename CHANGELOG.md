@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.22.3](https://github.com/dachrisch/leaguesphere/compare/v3.22.2...v3.22.3) (2026-05-31)
+
+
+### Bug Fixes
+
+* add proper check sequencing to release-please workflows ([fb9a8d0](https://github.com/dachrisch/leaguesphere/commit/fb9a8d03627d89a543e08a300b3e3016c42e6b0d))
+* optimize database connection pooling to fix max_user_connections limit ([6bb3978](https://github.com/dachrisch/leaguesphere/commit/6bb397840a0e04f921c6cd73ee9eb3b7a8c963e7))
+* resolve release-please workflow race condition preventing __init__.py updates ([a6e0c16](https://github.com/dachrisch/leaguesphere/commit/a6e0c16ef91b3d0fd3926152f360ec7544246576))
+
+
+### Documentation
+
+* add release-please workflow fix guide ([72504cf](https://github.com/dachrisch/leaguesphere/commit/72504cfe2d776d1b145dd90f975c0166b1cad433))
+* add release-please workflow race condition analysis to reports ([a1a4f1d](https://github.com/dachrisch/leaguesphere/commit/a1a4f1d9701c9f0a9b18ed484a1cbe894f164231))
+
 ## [3.22.2](https://github.com/dachrisch/leaguesphere/compare/v3.22.1...v3.22.2) (2026-05-31)
 
 
