@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.22.2](https://github.com/dachrisch/leaguesphere/compare/v3.22.1...v3.22.2) (2026-05-31)
+
+
+### Bug Fixes
+
+* optimize database connection pooling for shared hosting ([#1259](https://github.com/dachrisch/leaguesphere/issues/1259)) ([1c71852](https://github.com/dachrisch/leaguesphere/commit/1c71852f92ede46a7d23eefa475e8d6638d3033d))
+
 ## [3.22.1](https://github.com/dachrisch/leaguesphere/compare/v3.22.0...v3.22.1) (2026-05-31)
 
 
