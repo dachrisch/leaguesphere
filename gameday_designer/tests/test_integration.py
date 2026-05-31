@@ -13,7 +13,6 @@ class TestGamedayDesignerIntegration(WebTest):
         self.season = Season.objects.create(name="2026")
         self.league = League.objects.create(name="DFFL")
 
-    @pytest.mark.high_query_count
     def test_designer_app_loads(self):
         self.app.set_user(self.user)
         # Check if the main designer page loads
@@ -24,7 +23,6 @@ class TestGamedayDesignerIntegration(WebTest):
         # Check if the JS bundle is referenced
         assert "index.js" in response.text
 
-    @pytest.mark.high_query_count
     def test_api_session_auth_integration(self):
         self.app.set_user(self.user)
         # Fetch the index page first to get the CSRF cookie
@@ -62,7 +60,6 @@ class TestGamedayDesignerIntegration(WebTest):
         assert response.status_code == HTTPStatus.OK
         assert Gameday.objects.get(id=gameday_id).address == "Test Venue"
 
-    @pytest.mark.high_query_count
     def test_api_list_gamedays_search(self):
         self.app.set_user(self.user)
         Gameday.objects.create(

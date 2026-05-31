@@ -72,9 +72,5 @@ def pytest_configure(config):
     """Register custom markers."""
     config.addinivalue_line(
         "markers",
-        "high_query_count: mark test as expecting high query count (temporarily disable check)"
-    )
-    config.addinivalue_line(
-        "markers",
         "skip_query_check: skip query count validation for this test"
     )
