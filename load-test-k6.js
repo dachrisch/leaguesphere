@@ -6,7 +6,7 @@ import { Counter, Trend, Rate } from 'k6/metrics';
 const errorRate = new Rate('errors');
 const errorCounter = new Counter('http_error_count');
 
-const BASE_URL = 'https://www.leaguesphere.app';
+const BASE_URL = __ENV.TARGET_HOST || 'https://www.leaguesphere.app';
 
 const endpoints = [
   '/gamedays/',
