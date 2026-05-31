@@ -11,6 +11,17 @@ This file provides high-signal technical instructions for **all autonomous agent
 - **TDD Requirement**: Features or bugfixes MUST be implemented using test-driven development. Reproduce bugs with a test before fixing.
 - **Verification Mandatory**: Run the FULL test suite and linting before reporting completion.
 
+## 📖 Documentation Standards
+
+All documentation lives in `/docs/topics/` organized by topic. Before creating or modifying documentation:
+
+1. **Check the [Documentation Guidelines](docs/DOCUMENTATION.md)** — Detailed rules for where each type of doc belongs
+2. **Follow the directory structure** — Architecture, Guides, Features, Deployment, Testing, Troubleshooting, Planning
+3. **Link from the index** — Update the parent topic README.md when adding a new doc
+4. **Remove old versions** — Don't leave outdated docs scattered around
+
+See [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md) for the complete guide.
+
 ## 🛠 Central Authority
 
 Refer to the specialized guides for detailed protocols:
