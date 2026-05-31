@@ -68,8 +68,13 @@ jobs:
 
             # Check if all conditions are met
             if [ "$FAILED" -eq 0 ] && [ "$PENDING" -eq 0 ] && [ "$TOTAL_CHECKS" -gt 0 ]; then
-              if [ "$FINALIZE_CONCLUSION" = "success" ]; then
+              # If finalize exists and is successful, we're good
+              if [ -n "$FINALIZE" ] && [ "$FINALIZE_CONCLUSION" = "success" ]; then
                 echo "✓ All checks passed and finalize workflow completed successfully!"
+                exit 0
+              # If finalize doesn't exist as a check, other checks passed, proceed
+              elif [ -z "$FINALIZE" ]; then
+                echo "✓ All required checks passed! (Finalize will run asynchronously)"
                 exit 0
               else
                 echo "⚠ All checks passed, but finalize status is: $FINALIZE_CONCLUSION"
