@@ -10,7 +10,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  finalize:
+  release-please-finalize:
     if: startsWith(github.head_ref, 'release-please--')
     runs-on: ubuntu-latest
     steps:
