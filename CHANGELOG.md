@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.22.6](https://github.com/dachrisch/leaguesphere/compare/v3.22.5...v3.22.6) (2026-05-31)
+
+
+### Bug Fixes
+
+* add CircleCI status polling to automerge workflow ([52f17cf](https://github.com/dachrisch/leaguesphere/commit/52f17cff5329d9e6f16ea9107697e0854da32d1b))
+* add CircleCI status polling to automerge workflow ([cb1dfe6](https://github.com/dachrisch/leaguesphere/commit/cb1dfe6ae1c50f8a495c119f112844dacc41ba04))
+
 ## [3.22.5](https://github.com/dachrisch/leaguesphere/compare/v3.22.4...v3.22.5) (2026-05-31)
 
 
