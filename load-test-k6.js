@@ -4,7 +4,6 @@ import { Counter, Trend, Rate } from 'k6/metrics';
 
 // Custom metrics
 const errorRate = new Rate('errors');
-const reqDuration = new Trend('http_req_duration');
 const errorCounter = new Counter('http_error_count');
 
 const BASE_URL = 'https://www.leaguesphere.app';
@@ -29,6 +28,12 @@ export const options = {
     { duration: '1m', target: 9 },   // 9 VU for 1 minute
     { duration: '1m', target: 10 },  // 10 VU for 1 minute
   ],
+  ext: {
+    loadimpact: {
+      projectID: 3542522,
+      name: 'LeagueSphere Load Test',
+    },
+  },
 };
 
 export default function () {
@@ -50,9 +55,6 @@ export default function () {
   } else {
     errorRate.add(0);
   }
-
-  // Track request duration
-  reqDuration.add(response.timings.duration);
 
   // Small sleep to distribute requests
   sleep(0.1);
