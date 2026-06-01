@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.22.8](https://github.com/dachrisch/leaguesphere/compare/v3.22.7...v3.22.8) (2026-06-01)
+
+
+### Bug Fixes
+
+* **deps:** update dependency typescript-eslint to v8.60.1 ([#1278](https://github.com/dachrisch/leaguesphere/issues/1278)) ([5cbae35](https://github.com/dachrisch/leaguesphere/commit/5cbae35fd29522a102497202a0feca5285b6f430))
+* **deps:** update dependency vite to v8.0.16 ([ab022ce](https://github.com/dachrisch/leaguesphere/commit/ab022ce1eacce8e64addd12c6555dab0328a3212))
+* **deps:** update dependency vite to v8.0.16 ([6d38bbe](https://github.com/dachrisch/leaguesphere/commit/6d38bbe191e6ca2ba22d396ea9c8b6c9222b0e64))
+* **deps:** update dependency vite to v8.0.16 ([f29c58f](https://github.com/dachrisch/leaguesphere/commit/f29c58faf0c148341a659120b36b3bd15bd2f8fb))
+* **deps:** update dependency vite to v8.0.16 ([3a78f69](https://github.com/dachrisch/leaguesphere/commit/3a78f69e5bfdc9753c620fd109a9e8ded9fc17cf))
+* **deps:** update react monorepo ([587cd83](https://github.com/dachrisch/leaguesphere/commit/587cd83045816c41a1f66dc6bafc5e5f054301a6))
+* **deps:** update react monorepo ([a644e0b](https://github.com/dachrisch/leaguesphere/commit/a644e0b5bf435210b45fcb12f65f370860fd0f8f))
+
 ## [3.22.7](https://github.com/dachrisch/leaguesphere/compare/v3.22.6...v3.22.7) (2026-05-31)
 
 
