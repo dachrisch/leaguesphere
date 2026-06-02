@@ -48,11 +48,38 @@ npm run dev
 # Spin up fresh LXC test database
 ./container/spinup_test_db.sh --fresh
 
-# Get test DB IP for MYSQL_HOST
-lxc list servyy-test --format json | jq -r '.[0].state.network.eth0.addresses[] | select(.family=="inet") | .address' | head -n 1
+# Set up test DB environment variable (REQUIRED for running tests)
+export MYSQL_HOST=$(lxc list servyy-test --format json | jq -r '.[0].state.network.eth0.addresses[] | select(.family=="inet") | .address' | head -n 1)
+```
+
+### Load Testing & Monitoring
+```bash
+# Run k6 load test (ramping 1→10 virtual users over 10 minutes)
+k6 run load-test-k6.js
+
+# Monitor results in production Grafana dashboard
+# https://monitor.lehel.xyz/ → k6 Load Testing dashboard
 ```
 
 See **[Infrastructure Performance Policy](docs/guides/infrastructure-performance-policy.md)** for performance standards and automated checking. See **[Infrastructure Policy](docs/guides/infrastructure-policy.md)** and **[Contributor Guide § Version Management](docs/guides/contributor-guide.md#-version-management-automated-via-release-please)** for deployment and release workflows.
+
+### First-Time Frontend Setup (Any React App)
+```bash
+# From app directory (e.g., gameday_designer/, passcheck/, liveticker/, etc.)
+cd gameday_designer
+
+# Install dependencies
+npm install
+
+# Start dev server (runs on http://localhost:5173)
+npm run dev
+
+# In another terminal, run tests
+npm run test:run
+
+# Verify linting (CI blocks merge on errors)
+npm run eslint
+```
 
 ---
 
@@ -254,6 +281,10 @@ For detailed protocols and standards, refer to:
 - **[Setup Guide](docs/guides/setup-guide.md)**: Local environment configuration
 - **[AGENTS.md](AGENTS.md)**: Universal guidelines for all autonomous agents
 - **[GEMINI.md](GEMINI.md)**: Gemini CLI-specific instructions
+
+**Recent Implementation Work:**
+- **[Load Testing Infrastructure](history/2026-05-31_load-testing-infrastructure.md)** — k6 load tests, Prometheus metrics pipeline, Grafana dashboard setup
+- **[Production Test Guide](../PROD_TEST_GUIDE.md)** — Prometheus/Pushgateway verification procedures
 
 **Documentation Structure (`docs/` directory):**
 - `docs/arch/`: Architectural Decision Records and system design

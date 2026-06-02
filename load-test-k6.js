@@ -34,6 +34,10 @@ export const options = {
       name: 'LeagueSphere Load Test',
     },
   },
+  systemTags: ['scenario', 'method', 'status', 'group'],
+  thresholds: {
+    http_req_duration: ['p(95)<2000', 'p(99)<3000'],
+  },
 };
 
 export default function () {
