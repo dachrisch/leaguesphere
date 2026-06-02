@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.22.9](https://github.com/dachrisch/leaguesphere/compare/v3.22.8...v3.22.9) (2026-06-02)
+
+
+### Bug Fixes
+
+* **deps:** update vitest monorepo to v4.1.8 ([#1281](https://github.com/dachrisch/leaguesphere/issues/1281)) ([690021f](https://github.com/dachrisch/leaguesphere/commit/690021f5f9866b8ccf6c1c7ff1a36274ba9d65e6))
+
 ## [3.22.8](https://github.com/dachrisch/leaguesphere/compare/v3.22.7...v3.22.8) (2026-06-01)
 
 
