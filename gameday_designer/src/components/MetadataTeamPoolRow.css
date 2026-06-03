@@ -2,37 +2,35 @@
   display: grid;
   gap: 1.5rem;
   width: 100%;
-  max-width: 1600px;
   margin: 0 auto;
   grid-template-columns: 1fr;
+  place-items: center;
 }
 
-/* At 1600px+: 2-column layout with 600px max-width per cell */
+/* At 1600px+: 2-column layout with 600px for each card */
 @media (min-width: 1600px) {
   .metadata-team-pool-row {
     grid-template-columns: 1fr 1fr;
+    max-width: 1320px; /* 600px + gap (1.5rem) + 600px + padding */
   }
+}
 
-  .metadata-team-pool-row__metadata,
-  .metadata-team-pool-row__team-pool {
-    max-width: 600px;
-    justify-self: center;
-  }
+.metadata-team-pool-row__metadata,
+.metadata-team-pool-row__team-pool {
+  width: 100%;
+  max-width: 600px;
 }
 
 /* Metadata accordion styles when inside the row */
 .metadata-team-pool-row .gameday-metadata-accordion {
-  max-width: 100%;
-}
-
-@media (min-width: 1600px) {
-  .metadata-team-pool-row .gameday-metadata-accordion {
-    max-width: 600px;
-  }
+  width: 100%;
+  max-width: 600px;
 }
 
 /* Team pool card styles */
 .team-pool-card {
+  width: 100%;
+  max-width: 600px;
   flex-shrink: 0;
 }
 
