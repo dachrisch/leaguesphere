@@ -61,7 +61,7 @@ const defaultFlowState = {
   nodes: [] as FlowNode[],
   edges: [] as FlowEdge[],
   fields: [] as FieldNode[],
-  globalTeams: [] as GlobalTeam[],
+  globalTeams: [{ id: '1', label: 'Test Team', groupId: null, order: 0, color: '#000' }] as GlobalTeam[],
   globalTeamGroups: [] as GlobalTeamGroup[],
   metadata: null,
   saveTrigger: 0,
