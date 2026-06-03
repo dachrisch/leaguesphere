@@ -20,27 +20,7 @@
   gap: 1.5rem;
   min-height: 0;
   align-items: center;
-  overflow-y: auto;
   width: 100%;
-}
-
-/* Custom scrollbar styling for scrollable areas */
-.list-canvas__content::-webkit-scrollbar {
-  width: 8px;
-}
-
-.list-canvas__content::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-.list-canvas__content::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 4px;
-}
-
-.list-canvas__content::-webkit-scrollbar-thumb:hover {
-  background: #999;
 }
 
 /* Fields Card */
@@ -64,26 +44,7 @@
 
 .fields-card .card-body {
   flex: 1;
-  overflow-y: auto;
   min-height: 0;
-}
-
-.fields-card .card-body::-webkit-scrollbar {
-  width: 8px;
-}
-
-.fields-card .card-body::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-.fields-card .card-body::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 4px;
-}
-
-.fields-card .card-body::-webkit-scrollbar-thumb:hover {
-  background: #999;
 }
 
 /**
