@@ -143,7 +143,7 @@
   grid-template-columns: 1fr;
 }
 
-@media (min-width: 2500px) {
+@media (min-width: 3200px) {
   .fields-grid {
     grid-template-columns: 1fr 1fr;
   }
