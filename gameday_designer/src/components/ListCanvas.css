@@ -144,7 +144,7 @@
 }
 
 @media (min-width: 3200px) {
-  .fields-column {
+  .fields-card {
     max-width: 90vw;
   }
 
