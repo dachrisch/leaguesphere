@@ -4,7 +4,8 @@
   width: 100%;
   margin: 0 auto;
   grid-template-columns: 1fr;
-  place-items: center;
+  align-items: stretch;
+  justify-items: center;
 }
 
 /* At 1600px+: 2-column layout with 600px for each card */
@@ -19,6 +20,15 @@
 .metadata-team-pool-row__team-pool {
   width: 100%;
   max-width: 600px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.metadata-team-pool-row__metadata > *,
+.metadata-team-pool-row__team-pool > * {
+  flex: 1;
+  min-height: 0;
 }
 
 /* Metadata accordion styles when inside the row */
