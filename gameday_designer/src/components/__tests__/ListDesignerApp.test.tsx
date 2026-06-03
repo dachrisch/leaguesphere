@@ -61,7 +61,7 @@ const defaultFlowState = {
   nodes: [] as FlowNode[],
   edges: [] as FlowEdge[],
   fields: [] as FieldNode[],
-  globalTeams: [] as GlobalTeam[],
+  globalTeams: [{ id: '1', label: 'Test Team', groupId: null, order: 0, color: '#000' }] as GlobalTeam[],
   globalTeamGroups: [] as GlobalTeamGroup[],
   metadata: null,
   saveTrigger: 0,
@@ -281,7 +281,8 @@ describe('ListDesignerApp', () => {
         accordionButton.click();
       });
 
-      const clearButton = screen.getByTestId('clear-all-button');
+      // Wait for the accordion to open and button to appear
+      const clearButton = await screen.findByTestId('clear-all-button');
       await act(async () => {
         clearButton.click();
       });

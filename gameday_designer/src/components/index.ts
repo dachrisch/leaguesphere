@@ -15,12 +15,7 @@ export { default as StageSection } from './list/StageSection';
 export { default as TeamTable } from './list/TeamTable';
 export { default as GameTable } from './list/GameTable';
 
-// Re-export legacy types
-export type { GameSlotCardProps } from './GameSlotCard';
-export type { FieldColumnProps } from './FieldColumn';
-export type { DesignerCanvasProps } from './DesignerCanvas';
-export type { TeamSelectorProps } from './TeamSelector';
-export type { GameSlotEditorProps } from './GameSlotEditor';
+// Legacy types removed - components no longer in use
 
 // Re-export new component types
 export type { FlowToolbarProps } from './FlowToolbar';
