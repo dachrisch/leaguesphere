@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.23.1](https://github.com/dachrisch/leaguesphere/compare/v3.23.0...v3.23.1) (2026-06-03)
+
+
+### Bug Fixes
+
+* **deps:** update dependency django-health-check to v4.4.2 ([417ad5f](https://github.com/dachrisch/leaguesphere/commit/417ad5fd11c4860756fd564aadc9da56fd380707))
+* **deps:** update dependency django-health-check to v4.4.2 ([4347297](https://github.com/dachrisch/leaguesphere/commit/434729765828ed94502ed442e639410d00862489))
+
 ## [3.23.0](https://github.com/dachrisch/leaguesphere/compare/v3.22.9...v3.23.0) (2026-06-03)
 
 
