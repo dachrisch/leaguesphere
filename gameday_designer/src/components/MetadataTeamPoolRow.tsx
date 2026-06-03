@@ -117,7 +117,7 @@ const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
           className={`team-pool-card ${highlightedElement?.id === 'team-pool' ? 'is-highlighted' : ''}`}
           data-testid="team-pool-card"
         >
-          <Card.Header className="d-flex align-items-center" style={{ cursor: 'pointer' }}>
+          <Card.Header className="d-flex align-items-center">
             <i className={`bi ${isCollapsed ? 'bi-chevron-right' : 'bi-chevron-down'} me-2`} />
             <i className={`bi ${ICONS.TEAM} me-2`} />
             <strong>{t('ui:label.teamPool')}</strong>
