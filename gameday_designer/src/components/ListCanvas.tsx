@@ -5,7 +5,7 @@
  * and fields with their nested stages/games.
  */
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Card, Button } from 'react-bootstrap';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import FieldSection from './list/FieldSection';

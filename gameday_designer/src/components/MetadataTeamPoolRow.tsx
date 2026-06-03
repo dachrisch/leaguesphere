@@ -9,7 +9,7 @@
  */
 
 import React, { useCallback } from 'react';
-import { Card, Button } from 'react-bootstrap';
+import { Card, Button, Collapse } from 'react-bootstrap';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import GamedayMetadataAccordion from './GamedayMetadataAccordion';
 import GlobalTeamTable from './list/GlobalTeamTable';
@@ -151,7 +151,7 @@ const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
               </div>
             )}
           </Card.Header>
-          {!isCollapsed && (
+          <Collapse in={!isCollapsed} unmountOnExit>
             <Card.Body>
               <GlobalTeamTable
                 teams={globalTeams}
@@ -172,7 +172,7 @@ const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
                 readOnly={readOnly}
               />
             </Card.Body>
-          )}
+          </Collapse>
         </Card>
       </div>
     </div>
