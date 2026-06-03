@@ -67,7 +67,6 @@ export interface ListCanvasProps {
   onUnlockGameday: () => Promise<void>;
   validation: FlowValidationResult;
   isRowCollapsed: boolean;
-  onScroll?: (scrollTop: number) => void;
 }
 
 const ListCanvas: React.FC<ListCanvasProps> = (props) => {
@@ -165,13 +164,7 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
 
   return (
     <div className="list-canvas px-3">
-      <div
-        className="list-canvas__content"
-        onScroll={(e) => {
-          const scrollTop = (e.target as HTMLDivElement).scrollTop;
-          props.onScroll?.(scrollTop);
-        }}
-      >
+      <div className="list-canvas__content">
         {/* Metadata + Team Pool Row */}
         <MetadataTeamPoolRow
           metadata={metadata}

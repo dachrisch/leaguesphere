@@ -485,7 +485,7 @@ describe('ListDesignerApp Coverage', () => {
         </MemoryRouter>
       );
 
-      const contentDiv = document.querySelector('.list-canvas__content');
+      const contentDiv = document.querySelector('.list-designer-app__content');
       expect(contentDiv).toBeTruthy();
 
       // Simulate scroll past threshold
@@ -511,7 +511,7 @@ describe('ListDesignerApp Coverage', () => {
         </MemoryRouter>
       );
 
-      const contentDiv = document.querySelector('.list-canvas__content');
+      const contentDiv = document.querySelector('.list-designer-app__content');
 
       // Scroll down past threshold
       await act(async () => {

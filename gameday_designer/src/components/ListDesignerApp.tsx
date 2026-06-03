@@ -406,7 +406,17 @@ const ListDesignerApp: React.FC = () => {
 
   return (
     <div className="list-designer-app bg-light">
-      <div className="list-designer-app__content flex-grow-1 overflow-auto px-4 pb-5">
+      <div
+        className="list-designer-app__content flex-grow-1 overflow-auto px-4 pb-5"
+        onScroll={(e) => {
+          const scrollTop = (e.target as HTMLDivElement).scrollTop;
+          if (scrollTop > 50 && !isRowCollapsed) {
+            setIsRowCollapsed(true);
+          } else if (scrollTop <= 50 && isRowCollapsed) {
+            setIsRowCollapsed(false);
+          }
+        }}
+      >
         {resultsMode ? (
             <div className="bg-white p-4 rounded shadow-sm">
               <h3 className="mb-4">{t('ui:label.gameResults')}</h3>
@@ -437,13 +447,6 @@ const ListDesignerApp: React.FC = () => {
               onUpdateGlobalTeamGroup={handleUpdateGlobalTeamGroup}
               onDeleteGlobalTeamGroup={handleDeleteGlobalTeamGroup}
               onReorderGlobalTeamGroup={handleReorderGlobalTeamGroup}
-              onScroll={(scrollTop) => {
-                if (scrollTop > 50 && !isRowCollapsed) {
-                  setIsRowCollapsed(true);
-                } else if (scrollTop <= 50 && isRowCollapsed) {
-                  setIsRowCollapsed(false);
-                }
-              }}
               onShowTeamSelection={handleShowTeamSelection}
               getTeamUsage={handleGetTeamUsage}
               onAssignTeam={handleAssignTeam}
