@@ -1,5 +1,33 @@
 # Changelog
 
+## [3.23.0](https://github.com/dachrisch/leaguesphere/compare/v3.22.9...v3.23.0) (2026-06-03)
+
+
+### Features
+
+* add enhanced k6 Grafana dashboard with request rate, latency percentiles, and CPU history ([609a049](https://github.com/dachrisch/leaguesphere/commit/609a04974af572e38a11ed0759102abae7d3c061))
+* add Grafana dashboard for k6 load test monitoring ([73314f9](https://github.com/dachrisch/leaguesphere/commit/73314f91ef6a73cbe5e0135bd14dfcd11e6409de))
+* add k6 load test script with ramping 1-10 req/sec pattern ([08ea1ed](https://github.com/dachrisch/leaguesphere/commit/08ea1ede813f0f90b937241fdd2f9753e06dd6f2))
+
+
+### Bug Fixes
+
+* **deps:** update astral-sh/setup-uv action to v8.2.0 ([#1290](https://github.com/dachrisch/leaguesphere/issues/1290)) ([67f91d7](https://github.com/dachrisch/leaguesphere/commit/67f91d797b164b59de60dfa2045f17bf766a314b))
+* **deps:** update dependency axios to v1.17.0 ([5e7696a](https://github.com/dachrisch/leaguesphere/commit/5e7696a19959deb7e5fdeabdeb75b3bff0aadbb0))
+* **deps:** update dependency axios to v1.17.0 ([2fe7575](https://github.com/dachrisch/leaguesphere/commit/2fe75752d0ab6d5c7d53a3f2b859350f255652f9))
+* **deps:** update dependency axios to v1.17.0 ([8e252ee](https://github.com/dachrisch/leaguesphere/commit/8e252eea6adf6bd5279a94c68acbdd005a4a4618))
+* **deps:** update dependency axios to v1.17.0 ([87a2e8d](https://github.com/dachrisch/leaguesphere/commit/87a2e8d3bec2f497965d8e8ce9902b2700f47ca7))
+* **deps:** update dependency django to v6.0.6 ([#1288](https://github.com/dachrisch/leaguesphere/issues/1288)) ([ff9ceca](https://github.com/dachrisch/leaguesphere/commit/ff9ceca086da67ad0f63f41fcdb9da77efcf59e6))
+* **deps:** update dependency i18next to v26.3.1 ([#1289](https://github.com/dachrisch/leaguesphere/issues/1289)) ([8fe5cee](https://github.com/dachrisch/leaguesphere/commit/8fe5cee015203374dc141d699adb40fcedf3b9ea))
+* use TARGET_HOST environment variable in k6 load test script ([20515de](https://github.com/dachrisch/leaguesphere/commit/20515dea987db1b1db719fb71e1370ee81d9aa22))
+
+
+### Documentation
+
+* add history for CLAUDE.md documentation enhancement work ([e7a2982](https://github.com/dachrisch/leaguesphere/commit/e7a2982bfb3eef30869558ba7ee237d98cafa210))
+* enhance CLAUDE.md with load testing and frontend setup guidance ([1016d9e](https://github.com/dachrisch/leaguesphere/commit/1016d9e5038867802a8499604e1c4a469ee24195))
+* enhance CLAUDE.md with load testing and frontend setup guidance ([67d8576](https://github.com/dachrisch/leaguesphere/commit/67d857642cd81eb7f36b5c299b8c974ae2df6759))
+
 ## [3.22.9](https://github.com/dachrisch/leaguesphere/compare/v3.22.8...v3.22.9) (2026-06-02)
 
 
