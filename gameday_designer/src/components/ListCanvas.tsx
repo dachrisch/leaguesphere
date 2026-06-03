@@ -5,7 +5,7 @@
  * and fields with their nested stages/games.
  */
 
-import React, { useCallback, useMemo, memo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Card, Button } from 'react-bootstrap';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import FieldSection from './list/FieldSection';
@@ -69,7 +69,7 @@ export interface ListCanvasProps {
   isRowCollapsed: boolean;
 }
 
-const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
+const ListCanvas: React.FC<ListCanvasProps> = (props) => {
   const {
     nodes,
     edges,
@@ -289,6 +289,6 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
       </div>
     </div>
   );
-});
+};
 
 export default ListCanvas;
