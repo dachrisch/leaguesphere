@@ -144,6 +144,10 @@
 }
 
 @media (min-width: 3200px) {
+  .fields-column {
+    max-width: 90vw;
+  }
+
   .fields-grid {
     grid-template-columns: 1fr 1fr;
   }
