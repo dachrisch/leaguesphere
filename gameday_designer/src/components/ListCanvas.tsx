@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useCallback, useMemo, memo } from 'react';
-import { Row, Col, Card, Button } from 'react-bootstrap';
+import { Card, Button } from 'react-bootstrap';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import GlobalTeamTable from './list/GlobalTeamTable';
 import FieldSection from './list/FieldSection';
@@ -157,180 +157,162 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
 
   return (
     <div className="list-canvas px-3">
-      <Row className="list-canvas__content g-3">
-        <Col md={isTeamPoolExpanded ? 3 : 'auto'} className={`teams-column ${!isTeamPoolExpanded ? 'teams-column--collapsed' : ''}`}>
-          <Card
-            id="team-team-pool"
-            className={`team-pool-card ${!isTeamPoolExpanded ? 'team-pool-card--collapsed' : ''} ${highlightedElement?.id === 'team-pool' ? 'is-highlighted' : ''}`}
-            onClick={!isTeamPoolExpanded ? handleToggleTeamPool : undefined}
-            style={{ cursor: !isTeamPoolExpanded ? 'pointer' : 'default' }}
-            data-testid="team-pool-card"
-          >
-            {isTeamPoolExpanded ? (
-              <>
-                <Card.Header className="d-flex align-items-center" onClick={handleToggleTeamPool} style={{ cursor: 'pointer' }}>
-                  <i className={`bi ${ICONS.COLLAPSED} me-2`} />
-                  <i className={`bi ${ICONS.TEAM} me-2`} />
-                  <strong>{t('ui:label.teamPool')}</strong>
-                  {!readOnly && (
-                    <div className="ms-auto d-flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline-primary" 
-                        onClick={handleAddGroupHeader} 
-                        className="btn-adaptive"
-                        title={t('ui:tooltip.addGroup')}
-                      >
-                        <i className={`bi ${ICONS.ADD} me-2`} />
-                        <span className="btn-label-adaptive">{t('ui:button.addGroup')}</span>
-                      </Button>
-                      {onAddOfficials && (
-                        <Button
-                          size="sm"
-                          variant="outline-secondary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onAddOfficials();
-                          }}
-                          title={t('ui:tooltip.addExternalOfficials')}
-                          data-testid="add-officials-button"
-                          disabled={globalTeamGroups.some(g => g.id === 'group-officials')}
-                        >
-                          <i className="bi bi-person-badge" />
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </Card.Header>
-                <Card.Body>
-                  <GlobalTeamTable
-                    teams={globalTeams}
-                    groups={globalTeamGroups}
-                    highlightedElement={highlightedElement}
-                    onAddGroup={onAddGlobalTeamGroup}
-                    onUpdateGroup={onUpdateGlobalTeamGroup}
-                    onDeleteGroup={onDeleteGlobalTeamGroup}
-                    onReorderGroup={onReorderGlobalTeamGroup}
-                    onAddTeam={onAddGlobalTeam}
-                    onUpdate={onUpdateGlobalTeam}
-                    onDelete={onDeleteGlobalTeam}
-                    onReplace={onReplaceGlobalTeam}
-                    onReorder={onReorderGlobalTeam}
-                    onShowTeamSelection={onShowTeamSelection}
-                    getTeamUsage={getTeamUsage}
-                    allNodes={nodes}
-                    readOnly={readOnly}
-                  />
-                </Card.Body>
-              </>
-            ) : (
-              <div className="team-pool-sidebar">
-                <i className={`bi ${ICONS.TEAM} mb-2`} />
-                {globalTeamGroups.length > 0 && (
-                  <div className="team-pool-sidebar__indicators">
-                    <span className="badge bg-primary">{globalTeamGroups.length}</span>
-                    <span className="badge bg-secondary">{globalTeams.length}</span>
-                  </div>
+      <div className="list-canvas__content">
+        {/* Team Pool Card - Full width, collapsible */}
+        <Card
+          id="team-team-pool"
+          className={`team-pool-card ${highlightedElement?.id === 'team-pool' ? 'is-highlighted' : ''}`}
+          data-testid="team-pool-card"
+        >
+          <Card.Header className="d-flex align-items-center" onClick={handleToggleTeamPool} style={{ cursor: 'pointer' }}>
+            <i className={`bi ${isTeamPoolExpanded ? 'bi-chevron-down' : 'bi-chevron-right'} me-2`} />
+            <i className={`bi ${ICONS.TEAM} me-2`} />
+            <strong>{t('ui:label.teamPool')}</strong>
+            {!readOnly && (
+              <div className="ms-auto d-flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline-primary"
+                  onClick={handleAddGroupHeader}
+                  className="btn-adaptive"
+                  title={t('ui:tooltip.addGroup')}
+                >
+                  <i className={`bi ${ICONS.ADD} me-2`} />
+                  <span className="btn-label-adaptive">{t('ui:button.addGroup')}</span>
+                </Button>
+                {onAddOfficials && (
+                  <Button
+                    size="sm"
+                    variant="outline-secondary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddOfficials();
+                    }}
+                    title={t('ui:tooltip.addExternalOfficials')}
+                    data-testid="add-officials-button"
+                    disabled={globalTeamGroups.some(g => g.id === 'group-officials')}
+                  >
+                    <i className="bi bi-person-badge" />
+                  </Button>
                 )}
-                <div className="team-pool-sidebar__title">{t('ui:label.teamPool')}</div>
               </div>
             )}
-          </Card>
-        </Col>
-
-        <Col md={isTeamPoolExpanded ? 9 : true} className="fields-column">
-          <Card 
-            id="field-fields-card"
-            className={`fields-card ${highlightedElement?.id === 'fields-card' ? 'is-highlighted' : ''}`}
-          >
-            <Card.Header className="d-flex align-items-center">
-              <i className={`bi ${ICONS.FIELD} me-2`} />
-              <strong>{t('ui:label.fields')}</strong>
-              {!readOnly && (
-                <div className="ms-auto d-flex gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline-primary" 
-                    onClick={onAddField} 
-                    className="btn-adaptive"
-                    title={t('ui:tooltip.addField')}
-                    data-testid="add-field-button"
-                  >
-                    <i className={`bi ${ICONS.ADD} me-2`} />
-                    <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
-                  </Button>
-                </div>
-              )}
-            </Card.Header>
+          </Card.Header>
+          {isTeamPoolExpanded && (
             <Card.Body>
-              {fields.length === 0 ? (
-                <div className="text-center py-5">
-                  <i className={`bi ${ICONS.FIELD}`} style={{ fontSize: '4rem', opacity: 0.3 }} />
-                  <h3 className="mt-3">{t('ui:message.noFieldsYet')}</h3>
-                  <p className="text-muted mb-3">{t('ui:message.createFirstField')}</p>
-                  {!readOnly && (
-                    <div className="d-flex justify-content-center gap-3">
-                      <Button 
-                        variant="outline-success" 
-                        onClick={() => onOpenTemplates?.()} 
-                        className="btn-adaptive px-4"
-                        title={t('ui:tooltip.generateTournament')}
-                      >
-                        <i className={`bi bi-magic me-2`} />
-                        <span className="btn-label-adaptive">{t('ui:button.generateTournament')}</span>
-                      </Button>
-                      <Button 
-                        variant="outline-primary" 
-                        onClick={onAddField} 
-                        className="btn-adaptive px-4"
-                        title={t('ui:tooltip.addField')}
-                      >
-                        <i className={`bi ${ICONS.ADD} me-2`} />
-                        <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="fields-grid compact-actions">
-                  {fields.map((field) => (
-                    <FieldSection
-                      key={field.id}
-                      field={field}
-                      stages={getFieldStagesMap.get(field.id) || []}
-                      allNodes={nodes}
-                      edges={edges}
-                      globalTeams={globalTeams}
-                      globalTeamGroups={globalTeamGroups}
-                      onUpdate={onUpdateNode}
-                      onDelete={onDeleteNode}
-                      onAddStage={onAddStage}
+              <GlobalTeamTable
+                teams={globalTeams}
+                groups={globalTeamGroups}
+                highlightedElement={highlightedElement}
+                onAddGroup={onAddGlobalTeamGroup}
+                onUpdateGroup={onUpdateGlobalTeamGroup}
+                onDeleteGroup={onDeleteGlobalTeamGroup}
+                onReorderGroup={onReorderGlobalTeamGroup}
+                onAddTeam={onAddGlobalTeam}
+                onUpdate={onUpdateGlobalTeam}
+                onDelete={onDeleteGlobalTeam}
+                onReplace={onReplaceGlobalTeam}
+                onReorder={onReorderGlobalTeam}
+                onShowTeamSelection={onShowTeamSelection}
+                getTeamUsage={getTeamUsage}
+                allNodes={nodes}
+                readOnly={readOnly}
+              />
+            </Card.Body>
+          )}
+        </Card>
+
+        {/* Fields Card - Full width below team pool */}
+        <Card
+          id="field-fields-card"
+          className={`fields-card ${highlightedElement?.id === 'fields-card' ? 'is-highlighted' : ''}`}
+        >
+          <Card.Header className="d-flex align-items-center">
+            <i className={`bi ${ICONS.FIELD} me-2`} />
+            <strong>{t('ui:label.fields')}</strong>
+            {!readOnly && (
+              <div className="ms-auto d-flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline-primary"
+                  onClick={onAddField}
+                  className="btn-adaptive"
+                  title={t('ui:tooltip.addField')}
+                  data-testid="add-field-button"
+                >
+                  <i className={`bi ${ICONS.ADD} me-2`} />
+                  <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
+                </Button>
+              </div>
+            )}
+          </Card.Header>
+          <Card.Body>
+            {fields.length === 0 ? (
+              <div className="text-center py-5">
+                <i className={`bi ${ICONS.FIELD}`} style={{ fontSize: '4rem', opacity: 0.3 }} />
+                <h3 className="mt-3">{t('ui:message.noFieldsYet')}</h3>
+                <p className="text-muted mb-3">{t('ui:message.createFirstField')}</p>
+                {!readOnly && (
+                  <div className="d-flex justify-content-center gap-3">
+                    <Button
+                      variant="outline-success"
+                      onClick={() => onOpenTemplates?.()}
+                      className="btn-adaptive px-4"
+                      title={t('ui:tooltip.generateTournament')}
+                    >
+                      <i className={`bi bi-magic me-2`} />
+                      <span className="btn-label-adaptive">{t('ui:button.generateTournament')}</span>
+                    </Button>
+                    <Button
+                      variant="outline-primary"
+                      onClick={onAddField}
+                      className="btn-adaptive px-4"
+                      title={t('ui:tooltip.addField')}
+                    >
+                      <i className={`bi ${ICONS.ADD} me-2`} />
+                      <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="fields-grid compact-actions">
+                {fields.map((field) => (
+                  <FieldSection
+                    key={field.id}
+                    field={field}
+                    stages={getFieldStagesMap.get(field.id) || []}
+                    allNodes={nodes}
+                    edges={edges}
+                    globalTeams={globalTeams}
+                    globalTeamGroups={globalTeamGroups}
+                    onUpdate={onUpdateNode}
+                    onDelete={onDeleteNode}
+                    onAddStage={onAddStage}
                     onSelectNode={onSelectNode}
                     onHighlightElement={onHighlightElement}
                     selectedNodeId={selectedNodeId}
-                      onAssignTeam={onAssignTeam}
-                      onSwapTeams={onSwapTeams}
-                      onAddGame={onAddGame}
-                      onAddGameToGameEdge={onAddGameToGameEdge}
-            onAddStageToGameEdge={onAddStageToGameEdge}
-            onRemoveEdgeFromSlot={onRemoveEdgeFromSlot}
-            onOpenResultModal={onOpenResultModal}
-            isExpanded={expandedFieldIds?.has?.(field.id)}
-
-                      expandedStageIds={expandedStageIds}
-                      highlightedElement={highlightedElement}
-                      highlightedSourceGameId={highlightedSourceGameId}
-                      onDynamicReferenceClick={onDynamicReferenceClick}
-                      onNotify={onNotify}
-                      readOnly={readOnly}
-                    />
-                  ))}
-                </div>
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+                    onAssignTeam={onAssignTeam}
+                    onSwapTeams={onSwapTeams}
+                    onAddGame={onAddGame}
+                    onAddGameToGameEdge={onAddGameToGameEdge}
+                    onAddStageToGameEdge={onAddStageToGameEdge}
+                    onRemoveEdgeFromSlot={onRemoveEdgeFromSlot}
+                    onOpenResultModal={onOpenResultModal}
+                    isExpanded={expandedFieldIds?.has?.(field.id)}
+                    expandedStageIds={expandedStageIds}
+                    highlightedElement={highlightedElement}
+                    highlightedSourceGameId={highlightedSourceGameId}
+                    onDynamicReferenceClick={onDynamicReferenceClick}
+                    onNotify={onNotify}
+                    readOnly={readOnly}
+                  />
+                ))}
+              </div>
+            )}
+          </Card.Body>
+        </Card>
+      </div>
     </div>
   );
 });

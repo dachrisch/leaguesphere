@@ -261,25 +261,30 @@ describe('ListCanvas - Inline Add Field Button Pattern', () => {
     });
 
     it('can toggle team pool expansion state', () => {
-      const { container } = renderCanvas(createDefaultProps());
+      renderCanvas(createDefaultProps());
 
       // Find the team pool header (clickable)
       const teamPoolHeader = screen.getByText(i18n.t('ui:label.teamPool')).closest('.card-header');
       expect(teamPoolHeader).toBeInTheDocument();
 
+      // Initially, card body should be visible
+      const teamPoolCard = teamPoolHeader?.closest('.team-pool-card');
+      let cardBody = teamPoolCard?.querySelector('.card-body');
+      expect(cardBody).toBeInTheDocument();
+
       // Click to collapse
       fireEvent.click(teamPoolHeader!);
 
-      // After clicking, the team pool should be collapsed
-      const collapsedCard = container.querySelector('.team-pool-card--collapsed');
-      expect(collapsedCard).toBeInTheDocument();
+      // After clicking, the card body should be hidden
+      cardBody = teamPoolCard?.querySelector('.card-body');
+      expect(cardBody).not.toBeInTheDocument();
 
       // Click again to expand
-      fireEvent.click(collapsedCard!);
+      fireEvent.click(teamPoolHeader!);
 
-      // Should no longer be collapsed
-      const expandedCard = container.querySelector('.team-pool-card--collapsed');
-      expect(expandedCard).not.toBeInTheDocument();
+      // Card body should be visible again
+      cardBody = teamPoolCard?.querySelector('.card-body');
+      expect(cardBody).toBeInTheDocument();
     });
 
     it('shows Add Group button when team groups exist', () => {
