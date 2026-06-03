@@ -8,7 +8,7 @@
  * Receives collapsed state from parent (ListDesignerApp controls scroll-triggered collapse).
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Card, Button, Collapse } from 'react-bootstrap';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import GamedayMetadataAccordion from './GamedayMetadataAccordion';
@@ -84,11 +84,16 @@ const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
   onAddOfficials,
 }) => {
   const { t } = useTypedTranslation(['ui']);
+  const [isManuallyCollapsed, setIsManuallyCollapsed] = useState(false);
 
   const handleAddGroupHeader = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     onAddGlobalTeamGroup();
   }, [onAddGlobalTeamGroup]);
+
+  const handleTeamPoolHeaderClick = useCallback(() => {
+    setIsManuallyCollapsed(!isManuallyCollapsed);
+  }, [isManuallyCollapsed]);
 
   return (
     <div className="metadata-team-pool-row">
@@ -117,8 +122,12 @@ const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
           className={`team-pool-card ${highlightedElement?.id === 'team-pool' ? 'is-highlighted' : ''}`}
           data-testid="team-pool-card"
         >
-          <Card.Header className="d-flex align-items-center">
-            <i className={`bi ${isCollapsed ? 'bi-chevron-right' : 'bi-chevron-down'} me-2`} />
+          <Card.Header
+            className="d-flex align-items-center"
+            style={{ cursor: 'pointer' }}
+            onClick={handleTeamPoolHeaderClick}
+          >
+            <i className={`bi ${isManuallyCollapsed || isCollapsed ? 'bi-chevron-right' : 'bi-chevron-down'} me-2`} />
             <i className={`bi ${ICONS.TEAM} me-2`} />
             <strong>{t('ui:label.teamPool')}</strong>
             {!readOnly && (
@@ -151,7 +160,7 @@ const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
               </div>
             )}
           </Card.Header>
-          <Collapse in={!isCollapsed} unmountOnExit>
+          <Collapse in={!isCollapsed && !isManuallyCollapsed} unmountOnExit>
             <Card.Body>
               <GlobalTeamTable
                 teams={globalTeams}
