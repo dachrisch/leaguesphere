@@ -1,0 +1,42 @@
+.metadata-team-pool-row {
+  display: grid;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  grid-template-columns: 1fr;
+}
+
+/* At 1600px+: 2-column layout with 600px max-width per cell */
+@media (min-width: 1600px) {
+  .metadata-team-pool-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .metadata-team-pool-row__metadata,
+  .metadata-team-pool-row__team-pool {
+    max-width: 600px;
+    justify-self: center;
+  }
+}
+
+/* Metadata accordion styles when inside the row */
+.metadata-team-pool-row .gameday-metadata-accordion {
+  max-width: 100%;
+}
+
+@media (min-width: 1600px) {
+  .metadata-team-pool-row .gameday-metadata-accordion {
+    max-width: 600px;
+  }
+}
+
+/* Team pool card styles */
+.team-pool-card {
+  flex-shrink: 0;
+}
+
+.team-pool-card.is-highlighted {
+  border-color: var(--bs-info);
+  background-color: rgba(13, 110, 253, 0.05);
+}

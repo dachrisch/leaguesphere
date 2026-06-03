@@ -1,12 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Stack, Alert } from 'react-bootstrap';
+import { Container, Alert } from 'react-bootstrap';
 import { useDesignerController } from '../hooks/useDesignerController';
 import { useFlowState } from '../hooks/useFlowState';
 import ListCanvas from './ListCanvas';
 import { GameResultsTable, ScoreEdit } from './GameResultsTable';
 import { FlowToolbarProps } from './FlowToolbar';
-import GamedayMetadataAccordion from './GamedayMetadataAccordion';
 import PublishConfirmationModal from './modals/PublishConfirmationModal';
 import DeleteGamedayConfirmModal from './modals/DeleteGamedayConfirmModal';
 import GameResultModal from './modals/GameResultModal';
@@ -59,7 +58,7 @@ const ListDesignerApp: React.FC = () => {
   const [showResultModal, setShowResultModal] = useState(false);
   const [selectedGameForResult, setSelectedGameForResult] = useState<GameNode | null>(null);
   const [showTeamSelectionModal, setShowTeamSelectionModal] = useState(false);
-  const [isMetadataCollapsed, setIsMetadataCollapsed] = useState(false);
+  const [isRowCollapsed, setIsRowCollapsed] = useState(false);
   const [teamSelectionContext, setTeamSelectionModalContext] = useState<{
     slotId: string;
     side: 'home' | 'away' | 'official' | 'group' | 'replace';
@@ -407,49 +406,23 @@ const ListDesignerApp: React.FC = () => {
 
   return (
     <div className="list-designer-app bg-light">
-      <div 
+      <div
         className="list-designer-app__content flex-grow-1 overflow-auto px-4 pb-5"
         onScroll={(e) => {
           const scrollTop = (e.target as HTMLDivElement).scrollTop;
-          if (scrollTop > 50 && !isMetadataCollapsed) {
-            setIsMetadataCollapsed(true);
-          } else if (scrollTop <= 50 && isMetadataCollapsed) {
-            setIsMetadataCollapsed(false);
+          if (scrollTop > 50 && !isRowCollapsed) {
+            setIsRowCollapsed(true);
+          } else if (scrollTop <= 50 && isRowCollapsed) {
+            setIsRowCollapsed(false);
           }
         }}
       >
-        <Stack gap={4}>
-          <div className="sticky-top bg-light py-2" style={{ zIndex: 1020 }}>
-            <GamedayMetadataAccordion
-            metadata={metadata}
-            onUpdate={handleUpdateMetadata}
-            onClearAll={handleClearAll}
-            onDelete={() => setShowDeleteModal(true)}
-            onPublish={() => setShowPublishModal(true)}
-            onUnlock={async () => {
-              try {
-                await gamedayApi.patchGameday(parseInt(id), { status: 'DRAFT' });
-                addNotification(t('ui:notification.unlockSuccess'), 'success', t('ui:notification.title.success'));
-                loadData();
-              } catch {
-                addNotification(t('ui:notification.unlockFailed'), 'danger', t('ui:notification.title.error'));
-              }
-            }}
-            validation={validation}
-            highlightedElement={ui?.highlightedElement}
-            onHighlight={handleHighlightElement}
-            readOnly={isLocked}
-            hasData={ui?.hasData ?? false}
-            forceCollapsed={isMetadataCollapsed}
-          />
-        </div>
-
         {resultsMode ? (
             <div className="bg-white p-4 rounded shadow-sm">
               <h3 className="mb-4">{t('ui:label.gameResults')}</h3>
-              <GameResultsTable 
-                games={gameResults} 
-                onSave={handleSaveBulkResults} 
+              <GameResultsTable
+                games={gameResults}
+                onSave={handleSaveBulkResults}
               />
             </div>
           ) : (
@@ -495,9 +468,24 @@ const ListDesignerApp: React.FC = () => {
               gameResults={gameResults}
               onSaveBulkResults={handleSaveBulkResults}
               readOnly={isLocked}
+              metadata={metadata}
+              onUpdateMetadata={handleUpdateMetadata}
+              onClearAll={handleClearAll}
+              onDeleteGameday={() => setShowDeleteModal(true)}
+              onPublishGameday={() => setShowPublishModal(true)}
+              onUnlockGameday={async () => {
+                try {
+                  await gamedayApi.patchGameday(parseInt(id), { status: 'DRAFT' });
+                  addNotification(t('ui:notification.unlockSuccess'), 'success', t('ui:notification.title.success'));
+                  loadData();
+                } catch {
+                  addNotification(t('ui:notification.unlockFailed'), 'danger', t('ui:notification.title.error'));
+                }
+              }}
+              validation={validation}
+              isRowCollapsed={isRowCollapsed}
             />
           )}
-        </Stack>
       </div>
 
       <PublishConfirmationModal

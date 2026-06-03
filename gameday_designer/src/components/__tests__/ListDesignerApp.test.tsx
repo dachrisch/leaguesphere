@@ -281,7 +281,8 @@ describe('ListDesignerApp', () => {
         accordionButton.click();
       });
 
-      const clearButton = screen.getByTestId('clear-all-button');
+      // Wait for the accordion to open and button to appear
+      const clearButton = await screen.findByTestId('clear-all-button');
       await act(async () => {
         clearButton.click();
       });

@@ -11,7 +11,7 @@ import ListCanvas from '../ListCanvas';
 import { GamedayProvider } from '../../context/GamedayContext';
 import i18n from '../../i18n/testConfig';
 import type { ListCanvasProps } from '../ListCanvas';
-import type { FieldNode } from '../../types/flowchart';
+import type { FieldNode, GamedayMetadata, FlowValidationResult } from '../../types/flowchart';
 
 // Helper function to create default props
 const createDefaultProps = (overrides: Partial<ListCanvasProps> = {}): ListCanvasProps => ({
@@ -44,6 +44,27 @@ const createDefaultProps = (overrides: Partial<ListCanvasProps> = {}): ListCanva
   expandedFieldIds: new Set(),
   expandedStageIds: new Set(),
   onNotify: vi.fn(),
+  // Metadata + Team Pool Row props
+  metadata: {
+    id: 1,
+    name: 'Test Gameday',
+    date: '2025-01-01',
+    startTime: '10:00',
+    venue: 'Test Venue',
+    season: 1,
+    league: 1,
+    status: 'DRAFT' as const,
+  } as GamedayMetadata,
+  onUpdateMetadata: vi.fn(),
+  onClearAll: vi.fn(),
+  onDeleteGameday: vi.fn(),
+  onPublishGameday: vi.fn(),
+  onUnlockGameday: vi.fn(() => Promise.resolve()),
+  validation: {
+    errors: [],
+    warnings: [],
+  } as FlowValidationResult,
+  isRowCollapsed: false,
   ...overrides,
 });
 
@@ -260,31 +281,30 @@ describe('ListCanvas - Inline Add Field Button Pattern', () => {
       expect(teamPoolIndex).toBeLessThan(fieldsIndex);
     });
 
-    it('can toggle team pool expansion state', () => {
-      renderCanvas(createDefaultProps());
+    it('renders team pool card when expanded', () => {
+      renderCanvas(createDefaultProps({ isRowCollapsed: false }));
 
-      // Find the team pool header (clickable)
+      // Find the team pool header
       const teamPoolHeader = screen.getByText(i18n.t('ui:label.teamPool')).closest('.card-header');
       expect(teamPoolHeader).toBeInTheDocument();
 
-      // Initially, card body should be visible
+      // Card body should be visible when not collapsed
       const teamPoolCard = teamPoolHeader?.closest('.team-pool-card');
-      let cardBody = teamPoolCard?.querySelector('.card-body');
+      const cardBody = teamPoolCard?.querySelector('.card-body');
       expect(cardBody).toBeInTheDocument();
+    });
 
-      // Click to collapse
-      fireEvent.click(teamPoolHeader!);
+    it('hides team pool card body when collapsed', () => {
+      renderCanvas(createDefaultProps({ isRowCollapsed: true }));
 
-      // After clicking, the card body should be hidden
-      cardBody = teamPoolCard?.querySelector('.card-body');
+      // Find the team pool header
+      const teamPoolHeader = screen.getByText(i18n.t('ui:label.teamPool')).closest('.card-header');
+      expect(teamPoolHeader).toBeInTheDocument();
+
+      // Card body should not be visible when collapsed
+      const teamPoolCard = teamPoolHeader?.closest('.team-pool-card');
+      const cardBody = teamPoolCard?.querySelector('.card-body');
       expect(cardBody).not.toBeInTheDocument();
-
-      // Click again to expand
-      fireEvent.click(teamPoolHeader!);
-
-      // Card body should be visible again
-      cardBody = teamPoolCard?.querySelector('.card-body');
-      expect(cardBody).toBeInTheDocument();
     });
 
     it('shows Add Group button when team groups exist', () => {

@@ -1,8 +1,7 @@
 /**
  * ListCanvas Component Styles
  *
- * Simple vertical layout with team pool above fields.
- * Both cards centered with max-width constraint.
+ * Renders the fields card below the metadata/team-pool row.
  */
 
 .list-canvas {
@@ -41,52 +40,6 @@
 }
 
 .list-canvas__content::-webkit-scrollbar-thumb:hover {
-  background: #999;
-}
-
-/* Team Pool Card */
-.team-pool-card {
-  border: none;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 1600px;
-  flex-shrink: 0;
-}
-
-.team-pool-card .card-header {
-  background-color: #fff;
-  border-bottom: 1px solid #dee2e6;
-  flex-shrink: 0;
-}
-
-.team-pool-card .card-header:hover {
-  background-color: #f8f9fa;
-}
-
-.team-pool-card .card-body {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
-}
-
-.team-pool-card .card-body::-webkit-scrollbar {
-  width: 8px;
-}
-
-.team-pool-card .card-body::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-.team-pool-card .card-body::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 4px;
-}
-
-.team-pool-card .card-body::-webkit-scrollbar-thumb:hover {
   background: #999;
 }
 

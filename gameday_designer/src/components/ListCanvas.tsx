@@ -5,13 +5,13 @@
  * and fields with their nested stages/games.
  */
 
-import React, { useState, useCallback, useMemo, memo } from 'react';
+import React, { useCallback, useMemo, memo } from 'react';
 import { Card, Button } from 'react-bootstrap';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
-import GlobalTeamTable from './list/GlobalTeamTable';
 import FieldSection from './list/FieldSection';
 import { GameResultsTable } from './GameResultsTable';
-import type { FlowNode, FlowEdge, FieldNode, StageNode, GlobalTeam, GlobalTeamGroup } from '../types/flowchart';
+import MetadataTeamPoolRow from './MetadataTeamPoolRow';
+import type { FlowNode, FlowEdge, FieldNode, StageNode, GlobalTeam, GlobalTeamGroup, GamedayMetadata, FlowValidationResult, HighlightedElement } from '../types/flowchart';
 import { isFieldNode, isStageNode } from '../types/flowchart';
 import { ICONS } from '../utils/iconConstants';
 import './ListCanvas.css';
@@ -26,7 +26,7 @@ export interface ListCanvasProps {
   onAddField: () => void;
   onAddStage: (fieldId: string) => void;
   onSelectNode: (nodeId: string | null) => void;
-  onHighlightElement: (id: string, type: import('../types/flowchart').HighlightedElement['type']) => void;
+  onHighlightElement: (id: string, type: HighlightedElement['type']) => void;
   selectedNodeId: string | null;
   onAddGlobalTeam: (groupId: string) => void;
   onUpdateGlobalTeam: (teamId: string, data: Partial<Omit<GlobalTeam, 'id'>>) => void;
@@ -58,6 +58,15 @@ export interface ListCanvasProps {
   gameResults?: import('../types/designer').GameResultsDisplay[];
   onSaveBulkResults?: (results: Record<string, unknown>) => Promise<void>;
   readOnly?: boolean;
+  // Metadata + Team Pool Row props
+  metadata: GamedayMetadata;
+  onUpdateMetadata: (data: Partial<GamedayMetadata>) => void;
+  onClearAll: () => void;
+  onDeleteGameday: () => void;
+  onPublishGameday: () => void;
+  onUnlockGameday: () => Promise<void>;
+  validation: FlowValidationResult;
+  isRowCollapsed: boolean;
 }
 
 const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
@@ -103,14 +112,17 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
     gameResults = [],
     onSaveBulkResults,
     readOnly = false,
+    metadata,
+    onUpdateMetadata,
+    onClearAll,
+    onDeleteGameday,
+    onPublishGameday,
+    onUnlockGameday,
+    validation,
+    isRowCollapsed,
   } = props;
 
   const { t } = useTypedTranslation(['ui']);
-  const [isTeamPoolExpanded, setIsTeamPoolExpanded] = useState(true);
-
-  const handleToggleTeamPool = useCallback(() => {
-    setIsTeamPoolExpanded((prev) => !prev);
-  }, []);
 
   const fields = useMemo(() => 
     nodes
@@ -130,11 +142,6 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
     map.forEach(stages => stages.sort((a, b) => a.data.order - b.data.order));
     return map;
   }, [nodes]);
-
-  const handleAddGroupHeader = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onAddGlobalTeamGroup();
-  }, [onAddGlobalTeamGroup]);
 
   if (resultsMode) {
     return (
@@ -158,69 +165,36 @@ const ListCanvas: React.FC<ListCanvasProps> = memo((props) => {
   return (
     <div className="list-canvas px-3">
       <div className="list-canvas__content">
-        {/* Team Pool Card - Full width, collapsible */}
-        <Card
-          id="team-team-pool"
-          className={`team-pool-card ${highlightedElement?.id === 'team-pool' ? 'is-highlighted' : ''}`}
-          data-testid="team-pool-card"
-        >
-          <Card.Header className="d-flex align-items-center" onClick={handleToggleTeamPool} style={{ cursor: 'pointer' }}>
-            <i className={`bi ${isTeamPoolExpanded ? 'bi-chevron-down' : 'bi-chevron-right'} me-2`} />
-            <i className={`bi ${ICONS.TEAM} me-2`} />
-            <strong>{t('ui:label.teamPool')}</strong>
-            {!readOnly && (
-              <div className="ms-auto d-flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline-primary"
-                  onClick={handleAddGroupHeader}
-                  className="btn-adaptive"
-                  title={t('ui:tooltip.addGroup')}
-                >
-                  <i className={`bi ${ICONS.ADD} me-2`} />
-                  <span className="btn-label-adaptive">{t('ui:button.addGroup')}</span>
-                </Button>
-                {onAddOfficials && (
-                  <Button
-                    size="sm"
-                    variant="outline-secondary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAddOfficials();
-                    }}
-                    title={t('ui:tooltip.addExternalOfficials')}
-                    data-testid="add-officials-button"
-                    disabled={globalTeamGroups.some(g => g.id === 'group-officials')}
-                  >
-                    <i className="bi bi-person-badge" />
-                  </Button>
-                )}
-              </div>
-            )}
-          </Card.Header>
-          {isTeamPoolExpanded && (
-            <Card.Body>
-              <GlobalTeamTable
-                teams={globalTeams}
-                groups={globalTeamGroups}
-                highlightedElement={highlightedElement}
-                onAddGroup={onAddGlobalTeamGroup}
-                onUpdateGroup={onUpdateGlobalTeamGroup}
-                onDeleteGroup={onDeleteGlobalTeamGroup}
-                onReorderGroup={onReorderGlobalTeamGroup}
-                onAddTeam={onAddGlobalTeam}
-                onUpdate={onUpdateGlobalTeam}
-                onDelete={onDeleteGlobalTeam}
-                onReplace={onReplaceGlobalTeam}
-                onReorder={onReorderGlobalTeam}
-                onShowTeamSelection={onShowTeamSelection}
-                getTeamUsage={getTeamUsage}
-                allNodes={nodes}
-                readOnly={readOnly}
-              />
-            </Card.Body>
-          )}
-        </Card>
+        {/* Metadata + Team Pool Row */}
+        <MetadataTeamPoolRow
+          metadata={metadata}
+          onUpdateMetadata={onUpdateMetadata}
+          onClearAll={onClearAll}
+          onDeleteGameday={onDeleteGameday}
+          onPublishGameday={onPublishGameday}
+          onUnlockGameday={onUnlockGameday}
+          validation={validation}
+          onHighlightElement={onHighlightElement}
+          highlightedElement={highlightedElement}
+          readOnly={readOnly}
+          hasData={(nodes.length > 0 || globalTeams.length > 0)}
+          isCollapsed={isRowCollapsed}
+          globalTeams={globalTeams}
+          globalTeamGroups={globalTeamGroups}
+          allNodes={nodes}
+          onAddGlobalTeam={onAddGlobalTeam}
+          onUpdateGlobalTeam={onUpdateGlobalTeam}
+          onDeleteGlobalTeam={onDeleteGlobalTeam}
+          onReplaceGlobalTeam={onReplaceGlobalTeam}
+          onReorderGlobalTeam={onReorderGlobalTeam}
+          onAddGlobalTeamGroup={onAddGlobalTeamGroup}
+          onUpdateGlobalTeamGroup={onUpdateGlobalTeamGroup}
+          onDeleteGlobalTeamGroup={onDeleteGlobalTeamGroup}
+          onReorderGlobalTeamGroup={onReorderGlobalTeamGroup}
+          onShowTeamSelection={onShowTeamSelection}
+          getTeamUsage={getTeamUsage}
+          onAddOfficials={onAddOfficials}
+        />
 
         {/* Fields Card - Full width below team pool */}
         <Card
