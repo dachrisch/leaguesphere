@@ -5,7 +5,8 @@
  */
 
 .list-canvas {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   padding: 1rem;
   background-color: transparent;
   display: flex;
@@ -15,12 +16,13 @@
 
 .list-canvas__content {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  min-height: 0;
   align-items: center;
   width: 100%;
+  overflow-y: auto;
 }
 
 /* Fields Card */
