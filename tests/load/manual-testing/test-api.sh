@@ -11,7 +11,7 @@ echo "CSRF Token: $CSRF"
 # Login
 curl -s -c /tmp/cookies.txt -b /tmp/cookies.txt \
   -X POST "https://stage.leaguesphere.app/login/" \
-  -d "username=chrisd&password=bumbleFLIES1&csrfmiddlewaretoken=$CSRF" \
+  -d "username=k6&password=load!Test&csrfmiddlewaretoken=$CSRF" \
   > /dev/null
 
 echo "Cookies after login:"

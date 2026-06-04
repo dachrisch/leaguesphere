@@ -29,8 +29,8 @@ import { createWorkerLogger } from './load-test-helpers/logging.js';
 // ============================================================================
 
 const BASE_URL = __ENV.TARGET_HOST || 'https://stage.leaguesphere.app';
-const TEST_USERNAME = __ENV.TEST_USERNAME || 'chrisd';
-const TEST_PASSWORD = __ENV.TEST_PASSWORD || 'bumbleFLIES1';
+const TEST_USERNAME = __ENV.TEST_USERNAME || 'k6';
+const TEST_PASSWORD = __ENV.TEST_PASSWORD || 'load!Test';
 const NUM_GAMEDAYS = parseInt(__ENV.NUM_GAMEDAYS || __ENV.GAMEDAYS || '5', 10);
 const SPECTATORS_PER_GAMEDAY = parseInt(__ENV.SPECTATORS_PER_GAMEDAY || '3', 10);
 const COORDINATION_FILE = __ENV.COORDINATION_FILE || '/tmp/gameday_coordination.json';

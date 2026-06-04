@@ -4,359 +4,244 @@ Load testing infrastructure for LeagueSphere using [k6](https://k6.io/).
 
 ## Overview
 
-This directory contains k6 load testing scripts and tools for testing LeagueSphere under simulated production load. K6 generates synthetic traffic, measures response times and error rates, and pushes metrics to Prometheus for visualization in Grafana.
+This directory contains the **gameday-centric orchestrator** — a comprehensive load testing framework that simulates realistic user behavior across three coordinated phases:
 
-## Files
-
-- **`k6.js`** — Main k6 load test script
-  - Load pattern: Ramping 1→10 virtual users over 10 minutes
-  - Endpoints: `/gamedays/`, `/leaguetable/dffl/`, `/officials/team/all/list/`, `/gamedays/gameday/718/`
-  - Metrics: Request rate, latency percentiles (p50/90/95/99), error rates
-  - Thresholds: p95 < 2000ms, p99 < 3000ms
-
-- **`run.sh`** — Execution wrapper with Prometheus Pushgateway integration
-  - Establishes SSH tunnel to Pushgateway on production
-  - Runs k6 with `experimental-prometheus-rw` output
-  - Automatically manages tunnel lifecycle
-
-- **`verify-pipeline.sh`** — Validates Prometheus/Pushgateway data flow
-  - Pushes test metrics to Pushgateway
-  - Verifies metrics appear in Prometheus
-  - Confirms pipeline is operational before running tests
+1. **Discovery** — Find gamedays with unplayed games and prepare them for testing
+2. **Performers** — Simulate officials scoring complete games  
+3. **Spectators** — Simulate fans viewing gameday progress with autonomous polling behavior
 
 ## Quick Start
 
-### Run Local Load Test
+### Run 1 Gameday with 1 Performer
 
 ```bash
-# Navigate to tests/load directory
-cd leaguesphere/tests/load
-
-# Run against production
-./run.sh
-
-# Run against staging
-./run.sh k6.js https://stage.leaguesphere.app
-
-# Run against local development
-./run.sh k6.js http://localhost:8000
+cd tests/load
+GAMEDAYS=1 SPECTATORS_PER_GAMEDAY=1 TEST_USERNAME=k6 TEST_PASSWORD='load!Test' bash run-load-test.sh
 ```
 
-### Verify Prometheus Pipeline
+**Duration:** ~25 minutes  
+**Total VUs:** 2 (1 performer + 1 spectator)  
+**Target:** https://stage.leaguesphere.app (default)
+
+### Run with Custom Configuration
 
 ```bash
-# Check metrics flow from Pushgateway → Prometheus
-./verify-pipeline.sh
-
-# With custom endpoints
-export PUSHGATEWAY_URL="http://custom-pushgateway:9091"
-export PROMETHEUS_URL="http://custom-prometheus:9090"
-./verify-pipeline.sh
+GAMEDAYS=5 \
+SPECTATORS_PER_GAMEDAY=3 \
+TARGET_HOST=https://stage.leaguesphere.app \
+TEST_USERNAME=k6 \
+TEST_PASSWORD='load!Test' \
+bash run-load-test.sh
 ```
 
-### Monitor Results
+## Architecture
 
-**Production Dashboard:**
-```
-https://monitor.lehel.xyz/d/k6-leaguesphere-prod-enhanced
-```
+### Main Orchestrator
 
-Dashboard shows:
-- K6 load profile (virtual users over time)
-- K6 request rate and latency percentiles
-- LeagueSphere actual request rate and latency (from Traefik metrics)
-- Server CPU usage during test
-- Request success rate
+**`load-test-gameday-orchestrator.js`** — Single k6 script that orchestrates all phases:
+
+- **Phase 1 - Discovery (2 min, 1 VU)**
+  - Login with manager credentials
+  - Find published gamedays with unplayed games
+  - Update gameday dates to today
+  - Write coordination file
+
+- **Phase 2 - Performers (20 min, N VUs)**
+  - Login as officials
+  - Score games sequentially:
+    1. Setup game state
+    2. Assign officials
+    3. Record first half events (3 events, alternating teams)
+    4. Record halftime
+    5. Record second half events (3 events, alternating teams)
+    6. Finalize game
+
+- **Phase 3 - Spectators (20+ min, N×M VUs)**
+  - Anonymous polling of gameday progress
+  - Adaptive polling frequency (3.5s idle → 1.5s active)
+  - Autonomous state detection (game start/finish/score changes)
+  - Wander behavior (80% focus on assigned gameday, 20% explore others)
+
+### Wrapper Script
+
+**`run-load-test.sh`** — Coordinator that:
+- Handles k6 file I/O limitations (k6 cannot write files during execution)
+- Extracts coordination data from k6 console output
+- Orchestrates all phases sequentially
+- Aggregates logs post-test
+
+### Helper Modules
+
+Located in `load-test-helpers/`:
+
+- **`auth.js`** — Token-based authentication (performers) and anonymous access (spectators)
+- **`gameday-discovery.js`** — Discovery phase logic
+- **`performer-gameday.js`** — Game scoring and event recording
+- **`spectator-autonomous.js`** — Autonomous spectator polling
+- **`logging.js`** — Structured JSON logging with event tracking
+- **`coordination.js`** — Coordination file handling
 
 ## Configuration
 
 ### Environment Variables
 
-**For `run.sh`:**
-- `TARGET_HOST` — Target URL for load test (default: `https://www.leaguesphere.app`)
-- `PUSHGATEWAY_HOST` — Production Pushgateway host (default: `lehel.xyz`)
-
-**For `verify-pipeline.sh`:**
-- `PUSHGATEWAY_URL` — Pushgateway endpoint (default: `http://localhost:9091`)
-- `PROMETHEUS_URL` — Prometheus endpoint (default: `http://localhost:9090`)
-
-### K6 Script Configuration
-
-Edit `k6.js` to modify:
-- **Load pattern**: `rampingVUs` stages (currently 1→10 over 10 minutes)
-- **Endpoints**: Modify `ENDPOINTS` array to test different routes
-- **Thresholds**: `options.thresholds` for p95/p99 success criteria
-- **Duration**: Adjust `duration` in each ramp stage
-
-Example modifications:
-```javascript
-// Change load pattern
-{duration: '2m', target: 20},  // Ramp to 20 users
-{duration: '5m', target: 20},  // Hold at 20 users
-{duration: '2m', target: 0},   // Ramp down
-
-// Add new endpoint
-'https://' + TARGET_HOST + '/api/endpoint',
-
-// Adjust thresholds
-'p(95) < 1000':  true,  // More aggressive
-'p(99) < 5000':  true,  // More lenient
+```bash
+TARGET_HOST              # API base URL (default: https://stage.leaguesphere.app)
+GAMEDAYS                 # Number of gamedays to test (default: 5)
+SPECTATORS_PER_GAMEDAY   # Spectators per gameday (default: 3)
+TEST_USERNAME            # Login username (default: k6)
+TEST_PASSWORD            # Login password (default: load!Test)
+PHASE                    # Execution phase (default: all)
+                         # Options: discovery, perform, watch, all
+COORDINATION_FILE        # Coordination data file path (default: /tmp/gameday_coordination.json)
+LOG_DIR                  # Log directory for worker logs (default: /tmp)
+K6_OPTS                  # Additional k6 command-line flags
 ```
 
-## Metrics Flow
+### VU Calculation
 
+Total VUs = GAMEDAYS + (GAMEDAYS × SPECTATORS_PER_GAMEDAY)
+
+Examples:
+- 1 gameday, 1 spectator → 2 VUs
+- 5 gamedays, 3 spectators → 20 VUs
+- 10 gamedays, 5 spectators → 60 VUs
+
+## Running Phases Individually
+
+If needed, run specific phases:
+
+```bash
+# Discovery only
+PHASE=discovery bash run-load-test.sh
+
+# Performers only (requires coordination file from discovery)
+PHASE=perform bash run-load-test.sh
+
+# Spectators only (requires coordination file from discovery)
+PHASE=watch bash run-load-test.sh
 ```
-K6 Load Test
-    ↓
-experimental-prometheus-rw output
-    ↓
-SSH Tunnel (localhost:9091)
-    ↓
-Prometheus Pushgateway (lehel.xyz:9091)
-    ↓
-Prometheus (every 15s scrape)
-    ↓
-Grafana Dashboard (monitor.lehel.xyz)
+
+## Monitoring
+
+### View Results
+
+K6 outputs summary statistics including:
+- Request count and success rate
+- Response time percentiles (p50, p95, p99)
+- Error rates
+- Custom event metrics (game setup, halftime, finalize, etc.)
+
+### Production Monitoring
+
+View real application metrics during/after tests:
+- **Grafana Dashboard:** https://monitor.lehel.xyz/d/k6-leaguesphere-prod-enhanced
+- **Prometheus:** http://localhost:9090
+
+## Testing
+
+### Integration Test (Smoke Test)
+
+Verify the framework works end-to-end:
+
+```bash
+bash integration-test-gameday.sh
 ```
 
-### Metrics Published by K6
-
-**Virtual Users:**
-- `k6_vu{job="k6-load-test"}` — Current virtual user count
-
-**Request Metrics:**
-- `k6_http_reqs_total{job="k6-load-test"}` — Total requests counter
-- `k6_http_req_duration{job="k6-load-test"}` — Request duration histogram
-
-**Error Metrics:**
-- Custom `errors` rate metric
-- HTTP status codes in labels
-
-### Metrics from LeagueSphere (Traefik)
-
-The dashboard also shows real application metrics during the test:
-- `traefik_service_requests_total{service=~".*leaguesphere.*"}` — Real request rate
-- `traefik_service_request_duration_seconds_bucket{service=~".*leaguesphere.*"}` — Real latency
+This runs a quick discovery + performance cycle to validate:
+- API connectivity
+- Authentication
+- Game discovery and preparation
+- Event recording
+- Coordination file generation
 
 ## Troubleshooting
 
-### "SSH tunnel failed" or "Could not establish tunnel"
+### "Coordination file not found"
 
-**Problem:** SSH connection to Pushgateway failed
-**Solution:**
-1. Verify SSH access: `ssh lehel.xyz echo "OK"`
-2. Check Pushgateway running: `curl http://lehel.xyz:9091/metrics`
-3. Verify port forwarding: `netstat -tuln | grep 9091`
-
-### "No data in Grafana" after test
-
-**Problem:** K6 metrics don't appear in dashboard
-**Solution:**
-1. Run `verify-pipeline.sh` to check data flow
-2. Check Prometheus targets: `curl http://prometheus:9090/api/v1/targets`
-3. Verify Pushgateway is registered in Prometheus scrape config
-4. Wait 15+ seconds (Prometheus scrape interval)
-
-### "Thresholds exceeded" warnings
-
-**Problem:** Test shows warnings about p95 or p99 latency
-**Solution:**
-1. Check server health: CPU/memory load during test
-2. Verify LeagueSphere latency panel in dashboard
-3. If app latency is high, not a k6 issue — indicates real performance problem
-4. Adjust thresholds in `k6.js` if needed
-
-## Best Practices
-
-1. **Verify pipeline before major tests**: Run `verify-pipeline.sh` first
-2. **Monitor dashboard during test**: Keep Grafana open while running test
-3. **Correlate with real metrics**: Compare K6 request rate vs LeagueSphere actual rate
-4. **Check server health**: Monitor CPU/memory impact during test
-5. **Document results**: Record baseline metrics for comparison
-
-## Related Documentation
-
-- **Load Testing History**: `leaguesphere/history/2026-05-31_load-testing-infrastructure.md`
-- **Dashboard Extension**: `leaguesphere/history/2026-06-03_k6-dashboard-extension.md`
-- **K6 Official Docs**: https://k6.io/docs/
-- **Prometheus Metrics**: https://prometheus.io/docs/
-
-## Examples
-
-### Run 30-minute load test
-```bash
-# Edit k6.js to change duration:
-# {duration: '30m', target: 10},
-
-./run.sh
-```
-
-### Test specific endpoint
-```bash
-# Modify k6.js ENDPOINTS array to only include one endpoint
-./run.sh
-```
-
-### Load test against staging
-```bash
-./run.sh k6.js https://stage.leaguesphere.app
-```
-
-### Continuous load testing
-```bash
-# Run test every hour
-watch -n 3600 'cd tests/load && ./run.sh'
-```
-
----
-
-## Realistic Multi-Phase Load Test (New)
-
-### Overview
-
-A comprehensive load test that simulates production-like behavior across three coordinated phases:
-
-1. **Phase 1 - Setup Manager (1 VU, 3 min):** Prepares gamedays by changing dates to today
-2. **Phase 2 - Performers (5-10 VUs, 20 min):** Scores games from start to finish
-3. **Phase 3 - Spectators (50-100 VUs, 20 min):** Views games with realistic wave arrivals
-
-Total run time: ~55 minutes  
-Peak concurrent VUs: 110 (1 setup + 10 performers + 100 spectators)
-
-### Quick Start
+**Error:** Failed to load coordination file when running perform/watch phases  
+**Solution:** Ensure discovery phase completed successfully before running subsequent phases
 
 ```bash
-cd tests/load
+# Run discovery first
+PHASE=discovery bash run-load-test.sh
 
-# Run complete multi-phase test against staging
-export TARGET_HOST=https://stage.leaguesphere.app
-export TEST_USERNAME=chrisd
-export TEST_PASSWORD=bumbleFLIES1
-export MAX_GAMEDAYS=5
-
-# Option 1: Run using runner script (orchestrates all phases)
-./load-test-runner.sh
-
-# Option 2: Run specific phase
-k6 run --env "PHASE=setup" ../../load-test-realistic-cycle.js
-k6 run --env "PHASE=performers" ../../load-test-realistic-cycle.js
-k6 run --env "PHASE=spectators" ../../load-test-realistic-cycle.js
-
-# Option 3: Run entire test in one go
-k6 run --env "PHASE=all" ../../load-test-realistic-cycle.js
+# Then performers
+PHASE=perform bash run-load-test.sh
 ```
 
-### Phase Details
+### "Team not found" during event recording
 
-#### Phase 1: Setup Manager
-- **VUs:** 1
-- **Duration:** 3 minutes
-- **Actions:**
-  - Fetch published gamedays from API
-  - Change date of 5-10 gamedays to today
-  - Fetch all games for each gameday
-  - Write `gameday_assignments.json` coordination file
+**Issue:** Game preparation didn't properly fetch team data  
+**Solution:** Ensure discovery phase completed successfully and target gamedays have valid team assignments
 
-**Success Criteria:** Coordination file contains 5+ gamedays with games assigned to performers
+### "No gamedays found"
 
-#### Phase 2: Performers
-- **VUs:** 5-10 (1 per gameday)
-- **Duration:** 20 minutes
-- **Per Game Sequence:**
-  1. Setup game (`PUT /api/game/{id}/setup`)
-  2. Set officials (`PUT /api/game/{id}/officials`)
-  3. Record first half events (3 events, alternating teams)
-  4. Mark halftime (`PUT /api/game/{id}/halftime`)
-  5. Record second half events (3 events, alternating teams)
-  6. Finalize game (`PUT /api/game/{id}/finalize`)
+**Issue:** Discovery phase found no published gamedays with unplayed games  
+**Solution:** Verify the staging environment has published gamedays available
 
-**Per-game duration:** ~2-3 minutes  
-**Success Criteria:** p95 latency < 1000ms, error rate < 2%
+### High latency or p95/p99 threshold violations
 
-#### Phase 3: Spectators
-- **VUs:** 50-100
-- **Duration:** 20 minutes
-- **Wave Arrivals:**
-  - Wave 1 (min 5): 30 VUs arrive, browse gameday overview
-  - Wave 2 (min 9): 100 VUs total, peak load with game polling
-  - Wave 3 (min 17): Final browsing and standings view
+**Interpretation:** May indicate real application performance issues under load, not a test problem  
+**Action:** Check application logs and server health during test execution
 
-**Success Criteria:** Concurrent viewing doesn't cause performance degradation
+## Files
 
-### Coordination File
+### Core
+- `load-test-gameday-orchestrator.js` — Main k6 orchestrator
+- `run-load-test.sh` — Wrapper coordinator
+- `log-aggregator.js` — Post-test log aggregation
+- `integration-test-gameday.sh` — Smoke test
 
-Setup Manager produces `gameday_assignments.json` in `/tmp/`:
+### Helpers (`load-test-helpers/`)
+- `auth.js` — Authentication
+- `gameday-discovery.js` — Discovery phase
+- `performer-gameday.js` — Game scoring
+- `spectator-autonomous.js` — Spectator polling
+- `logging.js` — Structured logging
+- `coordination.js` — Coordination I/O
 
-```json
-{
-  "timestamp": "2026-06-04T12:00:00Z",
-  "gamedays": [
-    {
-      "id": 858,
-      "name": "Gameday on 04.06.2026",
-      "games_count": 4,
-      "games": [
-        {
-          "id": 9001,
-          "home": "Team A",
-          "away": "Team B",
-          "field": 1,
-          "scheduled": "10:00"
-        }
-      ],
-      "assigned_performer": "performer_0",
-      "assigned_spectators": ["spectator_858_0", "spectator_858_1"]
-    }
-  ]
-}
-```
+### Operations
+- `verify-pipeline.sh` — Prometheus pipeline validation
 
-### Environment Variables
+### Manual Testing (`manual-testing/`)
+- `test-api.sh` — Authenticate and extract CSRF token
+- `scorecard.sh` — Record complete game lifecycle manually
+- `record_event.sh` — Record individual journey events
+- `record_events.sh` — Bulk record sequence of events
 
-```bash
-TARGET_HOST            # API base URL (default: https://stage.leaguesphere.app)
-TEST_USERNAME          # Login username (default: chrisd)
-TEST_PASSWORD          # Login password (default: bumbleFLIES1)
-MAX_GAMEDAYS          # Number of gamedays to prepare (default: 5)
-PHASE                 # Which phase to run: 'setup', 'performers', 'spectators', 'all'
-```
+### Legacy
+- `k6.js` — Legacy basic ramping test (rarely used)
 
-### Monitoring
+## Known Constraints
 
-View results in Grafana:
-- **Production:** https://monitor.lehel.xyz/d/k6-leaguesphere-prod-enhanced
-- Local Prometheus: http://localhost:9090
+### API Behavior
 
-### Troubleshooting
+- **Gameday date update** requires full payload (name, start, season, league), not just date
+- **Workaround:** Orchestrator fetches full gameday before update
 
-**Q: Coordination file not found**
-A: Ensure Phase 1 (Setup) completed successfully and has write access to `/tmp/`
+### K6 File I/O
 
-**Q: Games not found**
-A: Check that `MAX_GAMEDAYS` is set to a value where published gamedays exist (5-10 recommended)
+- K6 cannot write files during test execution
+- **Solution:** Wrapper script (`run-load-test.sh`) extracts coordination data from console output
 
-**Q: High latency in Phase 3**
-A: This is expected at peak (100 VUs). Check server health and compare against baseline.
+## Next Steps
 
-### Architecture
+1. Run smoke test: `bash integration-test-gameday.sh`
+2. Start load test: `GAMEDAYS=1 SPECTATORS_PER_GAMEDAY=1 bash run-load-test.sh`
+3. Monitor in Grafana: https://monitor.lehel.xyz/d/k6-leaguesphere-prod-enhanced
+4. Review aggregated logs in `/tmp/`
 
-- **Main script:** `load-test-realistic-cycle.js` - Orchestrates all three phases
-- **Helper modules:** `load-test-helpers/` - Modular functions for auth, setup, performers, spectators
-- **Coordination:** `gameday_assignments.json` - Shared state written by Phase 1, read by Phases 2-3
-- **Runner:** `load-test-runner.sh` - Bash wrapper to orchestrate phases sequentially
+## Documentation
 
-### Files
-
-- `load-test-realistic-cycle.js` - Main k6 script with all phases
-- `load-test-helpers/auth.js` - Authentication module
-- `load-test-helpers/coordination.js` - Coordination file I/O
-- `load-test-helpers/setup-manager.js` - Phase 1 (setup) logic
-- `load-test-helpers/performers.js` - Phase 2 (game scoring) logic
-- `load-test-helpers/spectators.js` - Phase 3 (viewing) logic
-- `load-test-runner.sh` - Phase orchestration script
+- **Design Spec:** `docs/superpowers/specs/2026-06-04-realistic-gameday-load-test.md`
+- **Implementation Plan:** `docs/superpowers/plans/2026-06-04-gameday-load-test.md`
+- **Related History:** `history/2026-06-04_gameday-load-test.md`
+- **K6 Official Docs:** https://k6.io/docs/
+- **Prometheus Metrics:** https://prometheus.io/docs/
 
 ---
 
 **Last Updated:** 2026-06-04  
-**K6 Version:** 0.45+  
-**Dashboard:** https://monitor.lehel.xyz/d/k6-leaguesphere-prod-enhanced
+**K6 Version:** v2.0.0+  
+**Status:** Production-ready
