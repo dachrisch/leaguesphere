@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.24.0](https://github.com/dachrisch/leaguesphere/compare/v3.23.1...v3.24.0) (2026-06-04)
+
+
+### Features
+
+* add authentication helper module for login flow ([6f51c58](https://github.com/dachrisch/leaguesphere/commit/6f51c588ffd84e640435efcd51b0cc757e515acc))
+* add coordination file helper for multi-phase sync ([757012b](https://github.com/dachrisch/leaguesphere/commit/757012b865c85f33748ac7b19c9316eb8a636ae5))
+* add load test runner orchestration script ([0c44154](https://github.com/dachrisch/leaguesphere/commit/0c4415434cad7dedff4f6a17c7dcef3467261248))
+* add Phase 1 setup manager for gameday preparation ([6bbfacd](https://github.com/dachrisch/leaguesphere/commit/6bbfacd8ea2630e8f430aa94f5ce239bc5a59ede))
+* add Phase 2 performers for game scoring lifecycle ([b99ebc8](https://github.com/dachrisch/leaguesphere/commit/b99ebc871aebd75be5d0f8bf7d2e1b993835b2c3))
+* add Phase 3 spectators for realistic viewing patterns ([ff01dd2](https://github.com/dachrisch/leaguesphere/commit/ff01dd26bfecf2f532befdb5804f027d6f007637))
+* implement complete k6 realistic multi-phase load test script ([c4e44bf](https://github.com/dachrisch/leaguesphere/commit/c4e44bf7c90421cf0c7a15f022b248dc38dfb5aa))
+* implement k6 realistic multi-phase load test ([b26ecf3](https://github.com/dachrisch/leaguesphere/commit/b26ecf35c380aabc5859a1ef08b4d5a7048610f9))
+
+
+### Documentation
+
+* add comprehensive guide for realistic multi-phase load test ([75aeba5](https://github.com/dachrisch/leaguesphere/commit/75aeba5a74303a0fa770504a511f55378116a755))
+
 ## [3.23.1](https://github.com/dachrisch/leaguesphere/compare/v3.23.0...v3.23.1) (2026-06-03)
 
 
