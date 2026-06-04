@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.25.0](https://github.com/dachrisch/leaguesphere/compare/v3.24.0...v3.25.0) (2026-06-04)
+
+
+### Features
+
+* add k6 load test helpers and game event recording scripts ([1000221](https://github.com/dachrisch/leaguesphere/commit/10002215af5431e4e8cd367291da7cf24521746b))
+
+
+### Bug Fixes
+
+* handle empty response bodies in k6 performance endpoints ([3ed8290](https://github.com/dachrisch/leaguesphere/commit/3ed82900442eb77c138dee898185fc865cce7108))
+* handle empty response bodies in k6 performance endpoints ([1cf15e4](https://github.com/dachrisch/leaguesphere/commit/1cf15e4192f29b2cf11c3ba5e71ffebeb42c3594))
+
 ## [3.24.0](https://github.com/dachrisch/leaguesphere/compare/v3.23.1...v3.24.0) (2026-06-04)
 
 
