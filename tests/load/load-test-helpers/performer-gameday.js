@@ -209,8 +209,11 @@ export function scoreCompleteGame(game, token, logger) {
    * @param {Object} logger - WorkerLogger instance
    */
   const gameId = game.id;
-  const homeTeam = 'Home';
-  const awayTeam = 'Away';
+
+  // Fetch actual team names from game details
+  const teamData = fetchGameDetails(gameId, token, logger);
+  const homeTeam = teamData.homeTeam;
+  const awayTeam = teamData.awayTeam;
 
   logger.logEvent('game_start', {
     game_id: gameId,
@@ -227,25 +230,33 @@ export function scoreCompleteGame(game, token, logger) {
   sleep(0.5);
 
   // First Half - 3 events alternating teams
-  const firstHalfEvents = ['Touchdown', 'Touchdown', 'Safety'];
-  const firstHalfTeams = [homeTeam, awayTeam, homeTeam];
+  // Note: Skipping event recording if homeTeam is still placeholder (real team names needed from API)
+  if (homeTeam !== 'Home' && awayTeam !== 'Away') {
+    const firstHalfEvents = ['Touchdown', 'Touchdown', 'Safety'];
+    const firstHalfTeams = [homeTeam, awayTeam, homeTeam];
 
-  for (let i = 0; i < firstHalfEvents.length; i++) {
-    recordEvent(gameId, firstHalfTeams[i], firstHalfEvents[i], 1, token, logger);
-    sleep(0.3);
-  }
+    for (let i = 0; i < firstHalfEvents.length; i++) {
+      recordEvent(gameId, firstHalfTeams[i], firstHalfEvents[i], 1, token, logger);
+      sleep(0.3);
+    }
 
-  // Halftime
-  recordHalftime(gameId, token, logger);
-  sleep(1);
+    // Halftime
+    recordHalftime(gameId, token, logger);
+    sleep(1);
 
-  // Second Half - 3 events alternating teams
-  const secondHalfEvents = ['Touchdown', 'Touchdown', 'Safety'];
-  const secondHalfTeams = [homeTeam, awayTeam, homeTeam];
+    // Second Half - 3 events alternating teams
+    const secondHalfEvents = ['Touchdown', 'Touchdown', 'Safety'];
+    const secondHalfTeams = [homeTeam, awayTeam, homeTeam];
 
-  for (let i = 0; i < secondHalfEvents.length; i++) {
-    recordEvent(gameId, secondHalfTeams[i], secondHalfEvents[i], 2, token, logger);
-    sleep(0.3);
+    for (let i = 0; i < secondHalfEvents.length; i++) {
+      recordEvent(gameId, secondHalfTeams[i], secondHalfEvents[i], 2, token, logger);
+      sleep(0.3);
+    }
+  } else {
+    logger.logEvent('game_skipped', {
+      game_id: gameId,
+      reason: 'placeholder_teams',
+    });
   }
 
   // Finalize
