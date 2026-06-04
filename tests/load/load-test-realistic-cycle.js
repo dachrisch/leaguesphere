@@ -2,7 +2,6 @@
 
 import { group, sleep } from 'k6';
 import { login } from './load-test-helpers/auth.js';
-import { writeCoordinationFile, readCoordinationFile } from './load-test-helpers/coordination.js';
 import { fetchPublishedGamedays, prepareGamedaysForTest } from './load-test-helpers/setup-manager.js';
 import { performCompleteGame } from './load-test-helpers/performers.js';
 import { spectatorWatchGame } from './load-test-helpers/spectators.js';
@@ -11,9 +10,22 @@ const BASE_URL = __ENV.TARGET_HOST || 'https://stage.leaguesphere.app';
 const TEST_USERNAME = __ENV.TEST_USERNAME || 'chrisd';
 const TEST_PASSWORD = __ENV.TEST_PASSWORD || 'bumbleFLIES1';
 const MAX_GAMEDAYS = parseInt(__ENV.MAX_GAMEDAYS || '5');
+const COORDINATION_FILE = __ENV.COORDINATION_FILE || '/tmp/gameday_assignments.json';
 
 // Determine execution phase
 const executionPhase = __ENV.PHASE || 'all'; // 'setup', 'performers', 'spectators', 'all'
+
+// Load coordination file at init time using open()
+let coordinationData = null;
+if (executionPhase !== 'setup') {
+  try {
+    const rawData = open(COORDINATION_FILE);
+    coordinationData = JSON.parse(rawData);
+    console.log(`Loaded coordination data for ${coordinationData.gamedays.length} gamedays`);
+  } catch (error) {
+    console.error(`Failed to load coordination file: ${error.message}`);
+  }
+}
 
 export const options = {
   stages: (() => {
@@ -43,20 +55,13 @@ export const options = {
       case 'all':
       default:
         // Combined: 55 minutes total (all three phases)
-        // 0-3m: Setup (1 VU)
-        // 2-20m: Performers (5-10 VUs)
-        // 5-25m: Spectators (30-100 VUs)
         return [
-          // Setup phase
           { duration: '3m', target: 1 },
-
-          // Performers phase starts at min 2 (overlap with setup)
-          // Ramp performers while setup is still running
-          { duration: '1m', target: 6 },  // Total: 1 setup + 5 performers
-          { duration: '18m', target: 110 }, // Total: 1 setup + 10 performers + 100 spectators
-          { duration: '8m', target: 110 }, // Hold peak load
-          { duration: '1m', target: 50 },  // Ramp down
-          { duration: '24m', target: 0 },  // Long tail (spectators browsing)
+          { duration: '1m', target: 6 },
+          { duration: '18m', target: 110 },
+          { duration: '8m', target: 110 },
+          { duration: '1m', target: 50 },
+          { duration: '24m', target: 0 },
         ];
     }
   })(),
@@ -69,13 +74,11 @@ export const options = {
 
 export default function () {
   let auth = null;
-  let coordination = null;
 
   // ============================================================
   // PHASE 1: SETUP MANAGER (Only 1 VU executes this)
   // ============================================================
   if (executionPhase === 'all' || executionPhase === 'setup') {
-    // Use shared state to ensure only 1 VU runs Phase 1
     if (__VU === 1) {
       group('Phase 1: Setup Manager', () => {
         console.log('=== Phase 1: Setup Manager ===');
@@ -92,9 +95,14 @@ export default function () {
         const prepared = prepareGamedaysForTest(gamedays, auth.cookies, auth.csrfToken, MAX_GAMEDAYS);
         console.log(`Prepared ${prepared.length} gamedays for test`);
 
-        // Write coordination file for other phases
-        writeCoordinationFile(prepared);
-        sleep(0.5);
+        // Write coordination file as JSON
+        const coordinationJson = JSON.stringify({
+          timestamp: new Date().toISOString(),
+          gamedays: prepared,
+        }, null, 2);
+
+        console.log(`Coordination data (would be written to ${COORDINATION_FILE}):`);
+        console.log(JSON.stringify(prepared, null, 2));
       });
     } else {
       // Other VUs in Phase 1 just wait
@@ -119,12 +127,16 @@ export default function () {
         auth = login(TEST_USERNAME, TEST_PASSWORD);
       }
 
-      // Read coordination file
-      coordination = readCoordinationFile();
-      const gamedays = coordination.gamedays;
+      // Use coordination data loaded at init time
+      if (!coordinationData) {
+        console.error('No coordination data available for Phase 2');
+        return;
+      }
+
+      const gamedays = coordinationData.gamedays;
 
       // Assign performers: performer_0 → VU 1, performer_1 → VU 2, etc.
-      const performerIndex = (__VU - 1) % 10; // Allow up to 10 performers
+      const performerIndex = (__VU - 1) % 10;
       const assignedGameday = gamedays.find((g) => g.assigned_performer === `performer_${performerIndex}`);
 
       if (!assignedGameday) {
@@ -152,9 +164,13 @@ export default function () {
         auth = login(TEST_USERNAME, TEST_PASSWORD);
       }
 
-      // Read coordination file
-      coordination = readCoordinationFile();
-      const gamedays = coordination.gamedays;
+      // Use coordination data loaded at init time
+      if (!coordinationData) {
+        console.error('No coordination data available for Phase 3');
+        return;
+      }
+
+      const gamedays = coordinationData.gamedays;
 
       // Assign spectators to gamedays (round-robin)
       const gamedayIndex = ((__VU - 100) % gamedays.length);
