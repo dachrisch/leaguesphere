@@ -49,33 +49,22 @@ globalThis.__GLOBAL = globalThis.__GLOBAL || {};
 
 let coordinationData = null;
 
-// Load coordination file at init time (required for k6 file I/O)
-// For PHASE='all', file may not exist yet during discovery, which is ok
-if (PHASE !== 'discovery') {
+// Load coordination data based on phase
+// - 'discover': VU 1 writes the file, other VUs skip
+// - 'perform': File must exist from prior discovery run
+// - 'all': File created during discovery phase, loaded later by performers
+if (PHASE === 'perform' || PHASE === 'watch') {
+  // For 'perform' and 'watch' phases, coordination file must exist from prior discovery
   try {
     const coordFile = open(COORDINATION_FILE);
     coordinationData = JSON.parse(coordFile);
-    console.log(
-      `Loaded coordination data from ${COORDINATION_FILE}: ${coordinationData.gamedays.length} gamedays`
-    );
+    console.log(`✓ Loaded coordination file for ${PHASE} phase`);
   } catch (e) {
-    // For 'all' phase, discovery creates the file during test execution
-    // For 'perform'/'watch', the file must exist
-    if (PHASE === 'all') {
-      console.warn(
-        `Coordination file not found (expected during discovery phase): ${e.message}`
-      );
-    } else {
-      console.error(
-        `Failed to load coordination file from ${COORDINATION_FILE}: ${e.message}`
-      );
-      console.error(
-        'Make sure discovery phase has been run first with PHASE=discovery'
-      );
-      throw e;
-    }
+    throw new Error(`Coordination file required for ${PHASE} phase but not found at ${COORDINATION_FILE}: ${e.message}`);
   }
 }
+// For 'discover' phase: coordinationData remains null (VU 1 will write the file)
+// For 'all' phase: coordinationData will be null at init time; performers will wait for discovery to complete
 
 // ============================================================================
 // Options & Thresholds
@@ -259,9 +248,10 @@ export default function () {
       });
     }
 
-    // Wait for discovery to complete before proceeding to other phases
-    if (PHASE === 'all' && __VU > 1) {
-      sleep(2);
+    // Other VUs skip discovery phase; VU 1 writes the coordination file
+    if (__VU > 1) {
+      // VU 1 will write coordination file; other VUs will load it during performers phase
+      return;
     }
   }
 
@@ -272,10 +262,38 @@ export default function () {
       (PHASE === 'all' && __VU > 1)
     ) {
       group('Phase 2: Performers', () => {
-        // Defensive check: ensure coordination data is available
+        // For 'all' phase: coordination file is created by VU 1 during discovery
+        // Other VUs must wait for it to be written
+        if (!coordinationData && PHASE === 'all') {
+          // Wait for discovery phase to complete (it runs on iteration 1 for VU 1)
+          // Max wait: 180 seconds (should complete in ~2 minutes)
+          let waitTime = 0;
+          while (!coordinationData && waitTime < 180) {
+            try {
+              const coordFile = open(COORDINATION_FILE);
+              coordinationData = JSON.parse(coordFile);
+              console.log(`✓ Loaded coordination file after ${waitTime}s delay`);
+              break;
+            } catch (e) {
+              sleep(1);
+              waitTime += 1;
+            }
+          }
+        }
+
         if (!coordinationData || !coordinationData.gamedays) {
-          console.error('Coordination data not available for performers');
+          console.error('Coordination data not available for performers (VU ' + __VU + ', iteration ' + __ITER + ')');
           return;
+        }
+
+        if (coordinationData.gamedays.length > 0) {
+          const firstGameday = coordinationData.gamedays[0];
+          const firstGame = firstGameday.games?.[0];
+          if (firstGame && (!firstGame.homeTeam || !firstGame.awayTeam)) {
+            console.warn(`⚠️ WARNING: Game ${firstGame.id} has missing team names (homeTeam: ${firstGame.homeTeam}, awayTeam: ${firstGame.awayTeam})`);
+          } else if (firstGame) {
+            console.log(`✓ Coordination data verified: ${coordinationData.gamedays.length} gamedays, first game has teams ${firstGame.homeTeam} vs ${firstGame.awayTeam}`);
+          }
         }
 
         // Determine performer index
@@ -303,9 +321,25 @@ export default function () {
       (PHASE === 'all' && __VU > 1 + NUM_GAMEDAYS)
     ) {
       group('Phase 3: Spectators', () => {
-        // Defensive check: ensure coordination data is available
+        // For 'all' phase: coordination file is created by VU 1 during discovery
+        // Other VUs must wait for it to be written
+        if (!coordinationData && PHASE === 'all') {
+          let waitTime = 0;
+          while (!coordinationData && waitTime < 180) {
+            try {
+              const coordFile = open(COORDINATION_FILE);
+              coordinationData = JSON.parse(coordFile);
+              console.log(`✓ Spectators loaded coordination file after ${waitTime}s delay`);
+              break;
+            } catch (e) {
+              sleep(1);
+              waitTime += 1;
+            }
+          }
+        }
+
         if (!coordinationData || !coordinationData.gamedays) {
-          console.error('Coordination data not available for spectators');
+          console.error('Coordination data not available for spectators (VU ' + __VU + ', iteration ' + __ITER + ')');
           return;
         }
 
