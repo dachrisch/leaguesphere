@@ -204,21 +204,22 @@ export function scoreCompleteGame(game, token, logger) {
   /**
    * Score a complete game: setup → officials → H1 events → halftime → H2 events → finalize
    *
-   * @param {Object} game - Game object {id, field, scheduled}
+   * @param {Object} game - Game object {id, homeTeam, awayTeam, field, scheduled}
    * @param {string} token - Auth token
    * @param {Object} logger - WorkerLogger instance
    */
   const gameId = game.id;
 
-  // Fetch actual team names from game details
-  const teamData = fetchGameDetails(gameId, token, logger);
-  const homeTeam = teamData.homeTeam;
-  const awayTeam = teamData.awayTeam;
+  // Team names are pre-fetched from discovery phase and stored in coordination file
+  const homeTeam = game.homeTeam;
+  const awayTeam = game.awayTeam;
 
   logger.logEvent('game_start', {
     game_id: gameId,
     field: game.field,
     scheduled: game.scheduled,
+    home_team: homeTeam,
+    away_team: awayTeam,
   });
 
   // Setup
@@ -230,33 +231,25 @@ export function scoreCompleteGame(game, token, logger) {
   sleep(0.5);
 
   // First Half - 3 events alternating teams
-  // Note: Skipping event recording if homeTeam is still placeholder (real team names needed from API)
-  if (homeTeam !== 'Home' && awayTeam !== 'Away') {
-    const firstHalfEvents = ['Touchdown', 'Touchdown', 'Safety'];
-    const firstHalfTeams = [homeTeam, awayTeam, homeTeam];
+  const firstHalfEvents = ['Touchdown', 'Touchdown', 'Safety'];
+  const firstHalfTeams = [homeTeam, awayTeam, homeTeam];
 
-    for (let i = 0; i < firstHalfEvents.length; i++) {
-      recordEvent(gameId, firstHalfTeams[i], firstHalfEvents[i], 1, token, logger);
-      sleep(0.3);
-    }
+  for (let i = 0; i < firstHalfEvents.length; i++) {
+    recordEvent(gameId, firstHalfTeams[i], firstHalfEvents[i], 1, token, logger);
+    sleep(0.3);
+  }
 
-    // Halftime
-    recordHalftime(gameId, token, logger);
-    sleep(1);
+  // Halftime
+  recordHalftime(gameId, token, logger);
+  sleep(1);
 
-    // Second Half - 3 events alternating teams
-    const secondHalfEvents = ['Touchdown', 'Touchdown', 'Safety'];
-    const secondHalfTeams = [homeTeam, awayTeam, homeTeam];
+  // Second Half - 3 events alternating teams
+  const secondHalfEvents = ['Touchdown', 'Touchdown', 'Safety'];
+  const secondHalfTeams = [homeTeam, awayTeam, homeTeam];
 
-    for (let i = 0; i < secondHalfEvents.length; i++) {
-      recordEvent(gameId, secondHalfTeams[i], secondHalfEvents[i], 2, token, logger);
-      sleep(0.3);
-    }
-  } else {
-    logger.logEvent('game_skipped', {
-      game_id: gameId,
-      reason: 'placeholder_teams',
-    });
+  for (let i = 0; i < secondHalfEvents.length; i++) {
+    recordEvent(gameId, secondHalfTeams[i], secondHalfEvents[i], 2, token, logger);
+    sleep(0.3);
   }
 
   // Finalize
@@ -265,6 +258,8 @@ export function scoreCompleteGame(game, token, logger) {
 
   logger.logEvent('game_complete', {
     game_id: gameId,
+    home_team: homeTeam,
+    away_team: awayTeam,
     total_events: 6,
   });
 }
