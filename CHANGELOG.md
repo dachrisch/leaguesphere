@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.25.1](https://github.com/dachrisch/leaguesphere/compare/v3.25.0...v3.25.1) (2026-06-04)
+
+
+### Bug Fixes
+
+* **deps:** update react-router monorepo to v7.17.0 ([#1299](https://github.com/dachrisch/leaguesphere/issues/1299)) ([ac9c865](https://github.com/dachrisch/leaguesphere/commit/ac9c865a0e8a735cc535f8aba5976ea1f1dc95a1))
+
 ## [3.25.0](https://github.com/dachrisch/leaguesphere/compare/v3.24.0...v3.25.0) (2026-06-04)
 
 
