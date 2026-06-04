@@ -49,7 +49,8 @@ globalThis.__GLOBAL = globalThis.__GLOBAL || {};
 
 let coordinationData = null;
 
-// Load coordination file if phase is not discovery
+// Load coordination file at init time (required for k6 file I/O)
+// For PHASE='all', file may not exist yet during discovery, which is ok
 if (PHASE !== 'discovery') {
   try {
     const coordFile = open(COORDINATION_FILE);
@@ -58,13 +59,21 @@ if (PHASE !== 'discovery') {
       `Loaded coordination data from ${COORDINATION_FILE}: ${coordinationData.gamedays.length} gamedays`
     );
   } catch (e) {
-    console.error(
-      `Failed to load coordination file from ${COORDINATION_FILE}: ${e.message}`
-    );
-    console.error(
-      'Make sure discovery phase has been run first with PHASE=discovery'
-    );
-    throw e;
+    // For 'all' phase, discovery creates the file during test execution
+    // For 'perform'/'watch', the file must exist
+    if (PHASE === 'all') {
+      console.warn(
+        `Coordination file not found (expected during discovery phase): ${e.message}`
+      );
+    } else {
+      console.error(
+        `Failed to load coordination file from ${COORDINATION_FILE}: ${e.message}`
+      );
+      console.error(
+        'Make sure discovery phase has been run first with PHASE=discovery'
+      );
+      throw e;
+    }
   }
 }
 

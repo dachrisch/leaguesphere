@@ -66,11 +66,11 @@ export function hasUnplayedGames(games) {
   return games.some((game) => game.status !== 'COMPLETED');
 }
 
-export function updateGamedayDateToToday(gamedayId, token) {
+export function updateGamedayDateToToday(gameday, token) {
   /**
    * Update gameday date to today (required: games can only be scored on today's gameday)
    *
-   * @param {number} gamedayId - Gameday ID
+   * @param {Object} gameday - Gameday object with id, name, start, season, league, etc.
    * @param {string} token - Authentication token
    * @returns {Object} Updated gameday object
    */
@@ -78,9 +78,13 @@ export function updateGamedayDateToToday(gamedayId, token) {
   const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
 
   const res = http.put(
-    `${BASE_URL}/api/gamedays/${gamedayId}/`,
+    `${BASE_URL}/api/gamedays/${gameday.id}/`,
     JSON.stringify({
       date: dateStr,
+      name: gameday.name,
+      start: gameday.start,
+      season: gameday.season,
+      league: gameday.league,
       status: 'PUBLISHED',
     }),
     {
@@ -93,7 +97,7 @@ export function updateGamedayDateToToday(gamedayId, token) {
 
   check(res, {
     'gameday date update succeeds': (r) => r.status === 200,
-  }) || fail(`Failed to update gameday ${gamedayId} date: ${res.status} ${res.body}`);
+  }) || fail(`Failed to update gameday ${gameday.id} date: ${res.status} ${res.body}`);
 
   return res.json() || {};
 }
@@ -121,7 +125,7 @@ export function prepareGamedayForTest(gameday, token, maxGamedaysToTest = 5) {
   }
 
   // Update date to today
-  updateGamedayDateToToday(gameday.id, token);
+  updateGamedayDateToToday(gameday, token);
 
   // Return prepared object
   return {
@@ -133,11 +137,26 @@ export function prepareGamedayForTest(gameday, token, maxGamedaysToTest = 5) {
     season: gameday.season,
     league: gameday.league,
     games_count: games.length,
-    games: games.map((g) => ({
+    games: games.map((g) => {
+      // Extract team names from results array
+      const homeResult = g.results?.find((r) => r.isHome === true);
+      const awayResult = g.results?.find((r) => r.isHome === false);
+
+      const homeTeam = homeResult?.team_name || null;
+      const awayTeam = awayResult?.team_name || null;
+
+      return {
+        id: g.id,
+        field: g.field || 'unknown',
+        scheduled: g.scheduled || 'unknown',
+        status: g.status || 'PUBLISHED',
+        homeTeam: homeTeam,
+        awayTeam: awayTeam,
+      };
+    }),
+    _debug_team_extraction: games.filter((g) => g.results?.length > 0).map((g) => ({
       id: g.id,
-      field: g.field || 'unknown',
-      scheduled: g.scheduled || 'unknown',
-      status: g.status || 'PUBLISHED',
+      teams: g.results?.map((r) => ({ name: r.team_name, isHome: r.isHome })),
     })),
   };
 }
