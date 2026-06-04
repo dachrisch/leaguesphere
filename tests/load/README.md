@@ -210,6 +210,153 @@ watch -n 3600 'cd tests/load && ./run.sh'
 
 ---
 
-**Last Updated:** 2026-06-03  
+## Realistic Multi-Phase Load Test (New)
+
+### Overview
+
+A comprehensive load test that simulates production-like behavior across three coordinated phases:
+
+1. **Phase 1 - Setup Manager (1 VU, 3 min):** Prepares gamedays by changing dates to today
+2. **Phase 2 - Performers (5-10 VUs, 20 min):** Scores games from start to finish
+3. **Phase 3 - Spectators (50-100 VUs, 20 min):** Views games with realistic wave arrivals
+
+Total run time: ~55 minutes  
+Peak concurrent VUs: 110 (1 setup + 10 performers + 100 spectators)
+
+### Quick Start
+
+```bash
+cd tests/load
+
+# Run complete multi-phase test against staging
+export TARGET_HOST=https://stage.leaguesphere.app
+export TEST_USERNAME=chrisd
+export TEST_PASSWORD=bumbleFLIES1
+export MAX_GAMEDAYS=5
+
+# Option 1: Run using runner script (orchestrates all phases)
+./load-test-runner.sh
+
+# Option 2: Run specific phase
+k6 run --env "PHASE=setup" ../../load-test-realistic-cycle.js
+k6 run --env "PHASE=performers" ../../load-test-realistic-cycle.js
+k6 run --env "PHASE=spectators" ../../load-test-realistic-cycle.js
+
+# Option 3: Run entire test in one go
+k6 run --env "PHASE=all" ../../load-test-realistic-cycle.js
+```
+
+### Phase Details
+
+#### Phase 1: Setup Manager
+- **VUs:** 1
+- **Duration:** 3 minutes
+- **Actions:**
+  - Fetch published gamedays from API
+  - Change date of 5-10 gamedays to today
+  - Fetch all games for each gameday
+  - Write `gameday_assignments.json` coordination file
+
+**Success Criteria:** Coordination file contains 5+ gamedays with games assigned to performers
+
+#### Phase 2: Performers
+- **VUs:** 5-10 (1 per gameday)
+- **Duration:** 20 minutes
+- **Per Game Sequence:**
+  1. Setup game (`PUT /api/game/{id}/setup`)
+  2. Set officials (`PUT /api/game/{id}/officials`)
+  3. Record first half events (3 events, alternating teams)
+  4. Mark halftime (`PUT /api/game/{id}/halftime`)
+  5. Record second half events (3 events, alternating teams)
+  6. Finalize game (`PUT /api/game/{id}/finalize`)
+
+**Per-game duration:** ~2-3 minutes  
+**Success Criteria:** p95 latency < 1000ms, error rate < 2%
+
+#### Phase 3: Spectators
+- **VUs:** 50-100
+- **Duration:** 20 minutes
+- **Wave Arrivals:**
+  - Wave 1 (min 5): 30 VUs arrive, browse gameday overview
+  - Wave 2 (min 9): 100 VUs total, peak load with game polling
+  - Wave 3 (min 17): Final browsing and standings view
+
+**Success Criteria:** Concurrent viewing doesn't cause performance degradation
+
+### Coordination File
+
+Setup Manager produces `gameday_assignments.json` in `/tmp/`:
+
+```json
+{
+  "timestamp": "2026-06-04T12:00:00Z",
+  "gamedays": [
+    {
+      "id": 858,
+      "name": "Gameday on 04.06.2026",
+      "games_count": 4,
+      "games": [
+        {
+          "id": 9001,
+          "home": "Team A",
+          "away": "Team B",
+          "field": 1,
+          "scheduled": "10:00"
+        }
+      ],
+      "assigned_performer": "performer_0",
+      "assigned_spectators": ["spectator_858_0", "spectator_858_1"]
+    }
+  ]
+}
+```
+
+### Environment Variables
+
+```bash
+TARGET_HOST            # API base URL (default: https://stage.leaguesphere.app)
+TEST_USERNAME          # Login username (default: chrisd)
+TEST_PASSWORD          # Login password (default: bumbleFLIES1)
+MAX_GAMEDAYS          # Number of gamedays to prepare (default: 5)
+PHASE                 # Which phase to run: 'setup', 'performers', 'spectators', 'all'
+```
+
+### Monitoring
+
+View results in Grafana:
+- **Production:** https://monitor.lehel.xyz/d/k6-leaguesphere-prod-enhanced
+- Local Prometheus: http://localhost:9090
+
+### Troubleshooting
+
+**Q: Coordination file not found**
+A: Ensure Phase 1 (Setup) completed successfully and has write access to `/tmp/`
+
+**Q: Games not found**
+A: Check that `MAX_GAMEDAYS` is set to a value where published gamedays exist (5-10 recommended)
+
+**Q: High latency in Phase 3**
+A: This is expected at peak (100 VUs). Check server health and compare against baseline.
+
+### Architecture
+
+- **Main script:** `load-test-realistic-cycle.js` - Orchestrates all three phases
+- **Helper modules:** `load-test-helpers/` - Modular functions for auth, setup, performers, spectators
+- **Coordination:** `gameday_assignments.json` - Shared state written by Phase 1, read by Phases 2-3
+- **Runner:** `load-test-runner.sh` - Bash wrapper to orchestrate phases sequentially
+
+### Files
+
+- `load-test-realistic-cycle.js` - Main k6 script with all phases
+- `load-test-helpers/auth.js` - Authentication module
+- `load-test-helpers/coordination.js` - Coordination file I/O
+- `load-test-helpers/setup-manager.js` - Phase 1 (setup) logic
+- `load-test-helpers/performers.js` - Phase 2 (game scoring) logic
+- `load-test-helpers/spectators.js` - Phase 3 (viewing) logic
+- `load-test-runner.sh` - Phase orchestration script
+
+---
+
+**Last Updated:** 2026-06-04  
 **K6 Version:** 0.45+  
 **Dashboard:** https://monitor.lehel.xyz/d/k6-leaguesphere-prod-enhanced
