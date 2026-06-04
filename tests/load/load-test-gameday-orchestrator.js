@@ -28,10 +28,10 @@ import { createWorkerLogger } from './load-test-helpers/logging.js';
 // Environment Configuration
 // ============================================================================
 
-const BASE_URL = __ENV.BASE_URL || 'https://stage.leaguesphere.app';
+const BASE_URL = __ENV.TARGET_HOST || 'https://stage.leaguesphere.app';
 const TEST_USERNAME = __ENV.TEST_USERNAME || 'chrisd';
 const TEST_PASSWORD = __ENV.TEST_PASSWORD || 'bumbleFLIES1';
-const NUM_GAMEDAYS = parseInt(__ENV.NUM_GAMEDAYS || '5', 10);
+const NUM_GAMEDAYS = parseInt(__ENV.NUM_GAMEDAYS || __ENV.GAMEDAYS || '5', 10);
 const SPECTATORS_PER_GAMEDAY = parseInt(__ENV.SPECTATORS_PER_GAMEDAY || '3', 10);
 const COORDINATION_FILE = __ENV.COORDINATION_FILE || '/tmp/gameday_coordination.json';
 const LOG_DIR = __ENV.LOG_DIR || '/tmp';
@@ -236,14 +236,16 @@ export default function () {
           spectators_assigned: spectatorsAssigned.length,
         });
 
-        // Store logger for post-test aggregation
+        // Store logger and coordination output for post-test aggregation
         __GLOBAL.orchestratorLogger = orchestratorLogger;
         __GLOBAL.coordinationOutput = coordinationOutput;
 
-        // Write coordination file
-        const coordFilePath = COORDINATION_FILE;
+        // Log coordination data for external processing
+        // Note: k6 cannot write files during test execution. Use a wrapper script
+        // to extract __GLOBAL.coordinationOutput and write it to disk.
+        console.log(`COORDINATION_DATA_JSON: ${JSON.stringify(coordinationOutput)}`);
         console.log(
-          `Writing coordination output to ${coordFilePath}: ${JSON.stringify(coordinationOutput, null, 2)}`
+          `Coordination data prepared for export: ${coordinationOutput.gamedays.length} gamedays, ${performersAssigned.length} performers, ${spectatorsAssigned.length} spectators`
         );
       });
     }

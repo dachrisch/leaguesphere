@@ -39,12 +39,8 @@ echo ""
 echo "Phase 2: Discovery - Finding gamedays with unplayed games..."
 echo "────────────────────────────────────────────────────────────────"
 
-k6 run load-test-gameday-orchestrator.js \
-  --env TARGET_HOST="https://stage.leaguesphere.app" \
-  --env PHASE=discovery \
-  --env GAMEDAYS=1 \
-  --env TEST_USERNAME=chrisd \
-  --env TEST_PASSWORD=bumbleFLIES1
+PHASE=discovery GAMEDAYS=1 TARGET_HOST="https://stage.leaguesphere.app" \
+  bash run-load-test.sh
 
 # Verify coordination file exists
 if [ ! -f /tmp/gameday_coordination.json ]; then
@@ -70,14 +66,9 @@ echo ""
 echo "Phase 3: Performer - Recording game events and scores..."
 echo "────────────────────────────────────────────────────────────────"
 
-k6 run load-test-gameday-orchestrator.js \
-  --env TARGET_HOST="https://stage.leaguesphere.app" \
-  --env PHASE=perform \
-  --env GAMEDAYS=1 \
-  --env TEST_USERNAME=chrisd \
-  --env TEST_PASSWORD=bumbleFLIES1 \
-  --vus 1 \
-  --duration 5m
+PHASE=perform GAMEDAYS=1 TARGET_HOST="https://stage.leaguesphere.app" \
+  K6_OPTS="--vus 1 --duration 5m" \
+  bash run-load-test.sh
 
 # Verify performer log exists
 if [ ! -f /tmp/performer_0.json ]; then
@@ -103,13 +94,9 @@ echo ""
 echo "Phase 4: Spectator - Polling gameday progress autonomously..."
 echo "────────────────────────────────────────────────────────────────"
 
-k6 run load-test-gameday-orchestrator.js \
-  --env TARGET_HOST="https://stage.leaguesphere.app" \
-  --env PHASE=watch \
-  --env GAMEDAYS=1 \
-  --env SPECTATORS_PER_GAMEDAY=1 \
-  --vus 1 \
-  --duration 5m
+PHASE=watch GAMEDAYS=1 SPECTATORS_PER_GAMEDAY=1 TARGET_HOST="https://stage.leaguesphere.app" \
+  K6_OPTS="--vus 1 --duration 5m" \
+  bash run-load-test.sh
 
 # Find first spectator log
 SPECTATOR_LOG=$(ls /tmp/spectator_*.json 2>/dev/null | head -1)
