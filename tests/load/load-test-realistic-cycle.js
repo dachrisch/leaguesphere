@@ -88,12 +88,23 @@ export default function () {
         sleep(0.5);
 
         // Fetch published gamedays
-        const gamedays = fetchPublishedGamedays(auth.cookies, 10);
+        const gamedays = fetchPublishedGamedays(auth.token, 10);
         console.log(`Found ${gamedays.length} published gamedays`);
 
         // Prepare gamedays (change dates, fetch games, assign performers/spectators)
-        const prepared = prepareGamedaysForTest(gamedays, auth.cookies, auth.csrfToken, MAX_GAMEDAYS);
+        const prepared = prepareGamedaysForTest(gamedays, auth.token, auth.csrfToken, MAX_GAMEDAYS);
         console.log(`Prepared ${prepared.length} gamedays for test`);
+
+        // Log all prepared games
+        let totalGames = 0;
+        prepared.forEach((gameday, idx) => {
+          console.log(`\n[Gameday ${idx + 1}] ID: ${gameday.id}, Name: ${gameday.name}, Games: ${gameday.games.length}`);
+          gameday.games.forEach((game) => {
+            console.log(`  ├─ Game ${game.id}: ${game.home} vs ${game.away}`);
+            totalGames++;
+          });
+        });
+        console.log(`\nTotal games prepared: ${totalGames}`);
 
         // Write coordination file as JSON
         const coordinationJson = JSON.stringify({
@@ -101,7 +112,7 @@ export default function () {
           gamedays: prepared,
         }, null, 2);
 
-        console.log(`Coordination data (would be written to ${COORDINATION_FILE}):`);
+        console.log(`\nCoordination data (would be written to ${COORDINATION_FILE}):`);
         console.log(JSON.stringify(prepared, null, 2));
       });
     } else {
@@ -123,7 +134,7 @@ export default function () {
       console.log(`=== Phase 2: Performer ${__VU} ===`);
 
       // Login if not already authenticated
-      if (!auth) {
+      if (!auth || !auth.token) {
         auth = login(TEST_USERNAME, TEST_PASSWORD);
       }
 
@@ -144,13 +155,19 @@ export default function () {
         return;
       }
 
-      console.log(`Performer ${performerIndex} scoring gameday ${assignedGameday.id} with ${assignedGameday.games_count} games`);
+      console.log(`\n=== Performer ${performerIndex} (VU ${__VU}) scoring gameday ${assignedGameday.id} (${assignedGameday.games.length} games) ===`);
 
       // Score each game in sequence
+      let completedCount = 0;
       for (const game of assignedGameday.games) {
-        performCompleteGame(game, auth.cookies, auth.csrfToken);
+        console.log(`[Performer ${performerIndex}] Processing game ${game.id}: ${game.home} vs ${game.away}`);
+        performCompleteGame(game, auth.token, auth.csrfToken);
+        completedCount++;
+        console.log(`[Performer ${performerIndex}] ✓ Game ${game.id} completed (${completedCount}/${assignedGameday.games.length})`);
         sleep(1); // Brief rest between games
       }
+
+      console.log(`[Performer ${performerIndex}] All ${completedCount} games completed for gameday ${assignedGameday.id}`);
     });
   }
 
@@ -160,7 +177,7 @@ export default function () {
   if (executionPhase === 'all' || executionPhase === 'spectators') {
     group('Phase 3: Spectators', () => {
       // Login if not already authenticated
-      if (!auth) {
+      if (!auth || !auth.token) {
         auth = login(TEST_USERNAME, TEST_PASSWORD);
       }
 
@@ -184,10 +201,11 @@ export default function () {
       const gameIds = assignedGameday.games.map((g) => g.id);
       const waveArrivalTime = calculateWaveArrival(__VU);
 
-      console.log(`Spectator ${__VU} arriving in wave at min ${waveArrivalTime} for gameday ${assignedGameday.id}`);
+      console.log(`[Spectator ${__VU}] Wave arrival in ${waveArrivalTime} min, gameday ${assignedGameday.id} (${gameIds.length} games: ${gameIds.join(', ')})`);
 
       // Watch the game with wave arrival
-      spectatorWatchGame(assignedGameday.id, gameIds, auth.cookies, waveArrivalTime);
+      spectatorWatchGame(assignedGameday.id, gameIds, auth.token, waveArrivalTime);
+      console.log(`[Spectator ${__VU}] Watching complete`);
     });
   }
 }
