@@ -1,5 +1,11 @@
 // tests/load/load-test-helpers/auth.js
 
+/**
+ * Authentication helper for performers
+ *
+ * NOTE: Spectators do NOT use this; they access /api/progress/gamedays/ anonymously
+ */
+
 import http from 'k6/http';
 import { check, fail } from 'k6';
 
