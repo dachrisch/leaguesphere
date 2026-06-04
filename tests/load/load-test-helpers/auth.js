@@ -1,49 +1,52 @@
 // tests/load/load-test-helpers/auth.js
 
 import http from 'k6/http';
-import { check } from 'k6';
+import { check, fail } from 'k6';
 
 const BASE_URL = __ENV.TARGET_HOST || 'https://stage.leaguesphere.app';
 
 export function login(username, password) {
   /**
-   * Login to LeagueSphere and return authenticated session
+   * Login to LeagueSphere via API and return authenticated session
    * @param {string} username - Username
    * @param {string} password - Password
-   * @returns {Object} {cookies, csrfToken} for authenticated requests
+   * @returns {Object} {cookies, token, csrfToken} for authenticated requests
    */
 
-  // Step 1: Fetch login page to get CSRF token
-  const loginPageRes = http.get(`${BASE_URL}/login/`);
-  check(loginPageRes, {
-    'login page loads': (r) => r.status === 200,
-  });
-
-  // Extract CSRF token from HTML
-  const csrfMatch = loginPageRes.body.match(/name="csrfmiddlewaretoken"\s+value="([^"]+)"/);
-  const csrfToken = csrfMatch ? csrfMatch[1] : '';
-
-  // Step 2: POST login credentials
+  // Login via API
   const loginRes = http.post(
-    `${BASE_URL}/login/`,
-    {
+    `${BASE_URL}/accounts/auth/login/`,
+    JSON.stringify({
       username: username,
       password: password,
-      csrfmiddlewaretoken: csrfToken,
-    },
+    }),
     {
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
-      redirect: 'follow',
     }
   );
 
+  console.log(`Login request to: ${BASE_URL}/api/auth/login/`);
+  console.log(`Login response status: ${loginRes.status}`);
+  console.log(`Login response body: ${loginRes.body}`);
+
   check(loginRes, {
-    'login succeeds': (r) => r.status === 200 || r.status === 302,
+    'login succeeds': (r) => r.status === 200,
+  }) || fail(`Login failed: ${loginRes.status} - ${loginRes.body}`);
+
+  const data = loginRes.json();
+  const token = data.token;
+
+  // Get CSRF token from API
+  const csrfRes = http.get(`${BASE_URL}/api/gamedays/`, {
+    headers: { Authorization: `Token ${token}` },
   });
 
+  const csrfToken = csrfRes.headers['X-CSRFToken'] || '';
+
   return {
+    token: token,
     cookies: loginRes.cookies,
     csrfToken: csrfToken,
   };

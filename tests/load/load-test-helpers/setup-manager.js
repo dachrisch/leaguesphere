@@ -6,16 +6,16 @@ import { fail } from 'k6';
 
 const BASE_URL = __ENV.TARGET_HOST || 'https://stage.leaguesphere.app';
 
-export function fetchPublishedGamedays(cookies, limit = 10) {
+export function fetchPublishedGamedays(token, limit = 10) {
   /**
    * Fetch list of published gamedays from API
-   * @param {Object} cookies - Authenticated session cookies
+   * @param {string} token - Authentication token
    * @param {number} limit - Max gamedays to fetch
    * @returns {Array} Array of gameday objects
    */
   const res = http.get(
     `${BASE_URL}/api/gamedays/?status=PUBLISHED&page_size=${limit}`,
-    { cookies: cookies }
+    { headers: { Authorization: `Token ${token}` } }
   );
 
   check(res, {
@@ -26,16 +26,16 @@ export function fetchPublishedGamedays(cookies, limit = 10) {
   return data || [];
 }
 
-export function fetchGamedayDetail(gameday_id, cookies) {
+export function fetchGamedayDetail(gameday_id, token) {
   /**
    * Fetch detailed gameday info including all games
    * @param {number} gameday_id - Gameday ID
-   * @param {Object} cookies - Authenticated session cookies
+   * @param {string} token - Authentication token
    * @returns {Object} Gameday detail with games array
    */
   const res = http.get(
     `${BASE_URL}/api/gamedays/${gameday_id}/`,
-    { cookies: cookies }
+    { headers: { Authorization: `Token ${token}` } }
   );
 
   check(res, {
@@ -45,16 +45,16 @@ export function fetchGamedayDetail(gameday_id, cookies) {
   return res.json();
 }
 
-export function fetchGamedayGames(gameday_id, cookies) {
+export function fetchGamedayGames(gameday_id, token) {
   /**
    * Fetch all games for a gameday
    * @param {number} gameday_id - Gameday ID
-   * @param {Object} cookies - Authenticated session cookies
+   * @param {string} token - Authentication token
    * @returns {Array} Array of game objects with team info
    */
   const res = http.get(
     `${BASE_URL}/api/gamedays/${gameday_id}/games/`,
-    { cookies: cookies }
+    { headers: { Authorization: `Token ${token}` } }
   );
 
   check(res, {
@@ -97,7 +97,7 @@ export function updateGamedayDateToToday(gameday_id, cookies, csrfToken) {
   return res.json();
 }
 
-export function prepareGamedaysForTest(gamedays, cookies, csrfToken, maxGamedays = 5) {
+export function prepareGamedaysForTest(gamedays, token, csrfToken, maxGamedays = 5) {
   /**
    * Prepare gamedays for test by:
    * 1. Selecting first N published gamedays
@@ -106,23 +106,48 @@ export function prepareGamedaysForTest(gamedays, cookies, csrfToken, maxGamedays
    * 4. Assigning performers and spectators
    *
    * @param {Array} gamedays - List of published gamedays
-   * @param {Object} cookies - Authenticated session cookies
+   * @param {string} token - Authentication token
    * @param {string} csrfToken - CSRF token
    * @param {number} maxGamedays - Max gamedays to use (5-10 recommended)
    * @returns {Array} Prepared gameday objects with game lists and assignments
    */
   const prepared = [];
+  let processedCount = 0;
 
-  for (let i = 0; i < Math.min(gamedays.length, maxGamedays); i++) {
+  for (let i = 0; i < gamedays.length && processedCount < maxGamedays; i++) {
     const gameday = gamedays[i];
-    console.log(`Preparing gameday ${i + 1}/${maxGamedays}: ${gameday.id}`);
+    console.log(`Attempting gameday ${i + 1}: ${gameday.id}`);
 
-    // Update date to today
-    updateGamedayDateToToday(gameday.id, cookies, csrfToken);
+    // Try to update date to today
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0];
+
+    const updateRes = http.put(
+      `${BASE_URL}/api/gamedays/${gameday.id}/`,
+      JSON.stringify({
+        name: gameday.name,
+        date: dateStr,
+        start: gameday.start || '18:00',
+        status: 'PUBLISHED',
+        season: gameday.season,
+        league: gameday.league,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Token ${token}`,
+        },
+      }
+    );
+
+    if (updateRes.status >= 400) {
+      fail(`Failed to update gameday ${gameday.id}: ${updateRes.status} ${updateRes.body}`);
+    }
+
     sleep(0.5);
 
     // Fetch detailed games list
-    const games = fetchGamedayGames(gameday.id, cookies);
+    const games = fetchGamedayGames(gameday.id, token);
     sleep(0.5);
 
     // Prepare gameday object with games
@@ -137,10 +162,17 @@ export function prepareGamedaysForTest(gamedays, cookies, csrfToken, maxGamedays
         field: g.field || 'unknown',
         scheduled: g.scheduled || 'unknown',
       })),
-      assigned_performer: `performer_${i % 10}`,
+      assigned_performer: `performer_${processedCount % 10}`,
       assigned_spectators: Array.from({ length: Math.min(3, 10) }, (_, j) => `spectator_${gameday.id}_${j}`),
     });
+
+    processedCount++;
   }
 
+  if (prepared.length === 0) {
+    fail('Could not prepare any gamedays - all gamedays resulted in permission errors');
+  }
+
+  console.log(`Successfully prepared ${prepared.length} gamedays for test`);
   return prepared;
 }
