@@ -20,6 +20,62 @@ This creates:
 
 Expected result: 2 log files (`performer_0.json`, `spectator_0.json`) in `/tmp/`
 
+## How the Orchestrator Works
+
+The orchestrator is **not just a simple API benchmark**—it simulates a realistic multi-user, multi-role game day scenario with three concurrent phases:
+
+### Discovery Phase (0-2 minutes)
+The orchestrator prepares the test environment by finding ready-to-play gamedays:
+
+1. **Login** with test credentials
+2. **Fetch published gamedays** (up to 20 per page)
+3. **For each gameday**:
+   - Fetch ALL games in that gameday
+   - Check game statuses (filter for unplayed games)
+   - **UPDATE gameday date to TODAY** ← Critical: Games can only be scored if they're today's date
+   - **Extract team names** from game results and store in coordination file
+   - Prepare coordination file with full game list including team information
+4. **Output coordination data** for performers and spectators to use
+
+**Why complex?** Games are date-locked (business rule). The test must update gameday dates to enable scoring, requiring both read (fetch) and write (update) operations. Additionally, team names must be captured from the API response and stored for use during the performers phase.
+
+### Performers Phase (2-24 minutes, simultaneous with spectators)
+Multiple VUs simulate real-time game scorekeeping (referees/scorekeepers):
+
+1. **Login** as performer
+2. **Load pre-fetched team names** from coordination file (captured during discovery)
+3. **Continuously record game events**:
+   - Setup game (initialize game state)
+   - Assign officials
+   - Record in-game events with real team names (from coordination file)
+   - Mark game milestones (halftime, full-time)
+   - Finalize game
+4. **Repeat across assigned gameday(s)** for the full 20-minute duration
+
+**Why complex?** Not one request per game—performers make multiple requests over time, simulating a live game being scored in real-time. Team names are pre-fetched from discovery phase (not called again during performers phase) to avoid duplicate API calls.
+
+### Spectators Phase (4-24 minutes, overlaps with performers)
+Multiple VUs simulate live viewers polling for updates:
+
+1. **Login** as spectator
+2. **Poll gameday progress API** repeatedly:
+   - Fetch current game scores
+   - Check game status
+   - Monitor player/team stats
+3. **Concurrent polling** from multiple VUs for the full 20-minute duration
+
+**Why complex?** Realistically, multiple viewers are watching simultaneously, each polling independently. This tests read scalability under concurrent load.
+
+### Why This Design Matters
+This is **not testing raw API throughput**—it's testing realistic concurrent usage:
+
+- **Multi-role**: Different users with different jobs (discovery, scoring, viewing)
+- **Temporal**: Overlapping load phases (discovery → ramp up → peak → ramp down)
+- **Realistic constraints**: Games are date-locked, requiring gameday updates before scoring
+- **Concurrent users**: Performers and spectators overlap, creating realistic peak load
+
+---
+
 ## VU Calculation
 
 The orchestrator calculates virtual users (VUs) based on gamedays and spectators per gameday.
@@ -533,6 +589,31 @@ rm /tmp/gameday_coordination.json
 # Re-run discovery phase
 k6 run load-test-gameday-orchestrator.js --env PHASE=discovery --env NUM_GAMEDAYS=5
 ```
+
+### Missing Team Names in Event Recording
+
+If you see errors like "team Home not found" or events aren't being recorded:
+
+**Root cause:** Team names must be captured during discovery phase and stored in coordination file.
+
+**Solution:**
+1. Ensure discovery phase completes successfully: `PHASE=discovery k6 run load-test-gameday-orchestrator.js`
+2. Verify coordination file has team names: `cat /tmp/gameday_coordination.json | jq '.gamedays[0].games[0] | {id, homeTeam, awayTeam}'`
+3. If team names are missing (homeTeam: null), regenerate coordination file:
+   ```bash
+   rm /tmp/gameday_coordination.json
+   k6 run load-test-gameday-orchestrator.js --env PHASE=discovery --env NUM_GAMEDAYS=1
+   ```
+4. Check API endpoint is returning team data: 
+   ```bash
+   curl -H "Authorization: Token YOUR_TOKEN" \
+     https://stage.leaguesphere.app/api/gamedays/4/games/ | jq '.[]  | {id, results}'
+   ```
+
+**For PHASE='all' tests:**
+- Discovery phase (VU 1) runs first and writes coordination file
+- Performers and spectators wait up to 180 seconds for coordination file to be created
+- All 6 game events should record successfully with real team names
 
 ## See Also
 
