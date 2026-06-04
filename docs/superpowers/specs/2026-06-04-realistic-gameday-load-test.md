@@ -182,6 +182,202 @@ k6 run load-test-gameday-orchestrator.js --env GAMEDAYS=5 --env SPECTATORS_PER_G
             └──────────────────────┘
 ```
 
+## Observability & Debugging
+
+### Per-Worker Logging (Structured)
+
+Each worker logs all actions with ISO 8601 timestamps to JSON for easy parsing:
+
+**Performer logs** (`performer_{id}.json`):
+```json
+{
+  "worker_id": "performer_0",
+  "gameday_id": 145,
+  "gameday_name": "Gameday Name",
+  "events": [
+    {
+      "timestamp": "2026-06-04T14:23:45.123Z",
+      "game_id": 1001,
+      "action": "setup",
+      "status": "success",
+      "http_status": 200,
+      "response_time_ms": 234,
+      "error": null
+    },
+    {
+      "timestamp": "2026-06-04T14:23:45.678Z",
+      "game_id": 1001,
+      "action": "officials_assigned",
+      "status": "success",
+      "http_status": 200,
+      "response_time_ms": 145,
+      "error": null
+    },
+    {
+      "timestamp": "2026-06-04T14:23:46.234Z",
+      "game_id": 1001,
+      "action": "event_recorded",
+      "event_type": "Touchdown",
+      "team": "Home",
+      "half": 1,
+      "status": "success",
+      "http_status": 200,
+      "response_time_ms": 89,
+      "error": null
+    }
+  ],
+  "summary": {
+    "total_games": 10,
+    "completed_games": 7,
+    "failed_games": 0,
+    "total_events_recorded": 42,
+    "start_time": "2026-06-04T14:20:00Z",
+    "end_time": "2026-06-04T14:35:00Z"
+  }
+}
+```
+
+**Spectator logs** (`spectator_{gameday_id}_{id}.json`):
+```json
+{
+  "worker_id": "spectator_145_0",
+  "gameday_id": 145,
+  "gameday_name": "Gameday Name",
+  "events": [
+    {
+      "timestamp": "2026-06-04T14:23:00Z",
+      "action": "poll_start",
+      "poll_interval_ms": 3500,
+      "error": null
+    },
+    {
+      "timestamp": "2026-06-04T14:23:03.500Z",
+      "action": "state_check",
+      "status": "success",
+      "http_status": 200,
+      "response_time_ms": 234,
+      "games_count": 10,
+      "active_games": 0,
+      "error": null
+    },
+    {
+      "timestamp": "2026-06-04T14:25:12.100Z",
+      "action": "game_state_change_detected",
+      "game_id": 1001,
+      "previous_status": "PUBLISHED",
+      "new_status": "RUNNING",
+      "game_started": true,
+      "polling_frequency_increase": true
+    },
+    {
+      "timestamp": "2026-06-04T14:25:15.234Z",
+      "action": "high_frequency_poll",
+      "poll_interval_ms": 1500,
+      "game_id": 1001
+    },
+    {
+      "timestamp": "2026-06-04T14:28:45.234Z",
+      "action": "game_finished_detected",
+      "game_id": 1001,
+      "final_score_home": 3,
+      "final_score_away": 1
+    }
+  ],
+  "summary": {
+    "total_polls": 145,
+    "avg_response_time_ms": 234,
+    "state_changes_detected": 12,
+    "games_watched": 4,
+    "wander_events": 15,
+    "start_time": "2026-06-04T14:20:00Z",
+    "end_time": "2026-06-04T14:35:00Z"
+  }
+}
+```
+
+### Log Aggregation (Coordinator)
+
+Post-test script aggregates per-worker logs into gameday-level summary:
+
+**Gameday summary** (`gameday_145_summary.json`):
+```json
+{
+  "gameday_id": 145,
+  "gameday_name": "Gameday Name",
+  "test_window": "2026-06-04T14:20:00Z to 2026-06-04T14:35:00Z",
+  "performers": {
+    "performer_0": {
+      "status": "completed",
+      "games_scored": 10,
+      "failed_games": 0,
+      "events_recorded": 60,
+      "avg_game_duration_ms": 4500,
+      "total_duration_ms": 45000,
+      "http_errors": 0,
+      "p50_response_time_ms": 200,
+      "p95_response_time_ms": 850,
+      "p99_response_time_ms": 1200
+    }
+  },
+  "spectators": [
+    {
+      "worker_id": "spectator_145_0",
+      "status": "completed",
+      "total_polls": 145,
+      "avg_response_time_ms": 234,
+      "state_changes_detected": 12,
+      "games_watched": 4,
+      "wander_events": 15,
+      "http_errors": 0,
+      "p50_response_time_ms": 180,
+      "p95_response_time_ms": 450,
+      "p99_response_time_ms": 650
+    },
+    {
+      "worker_id": "spectator_145_1",
+      "status": "completed",
+      "total_polls": 143,
+      "avg_response_time_ms": 239,
+      "state_changes_detected": 11,
+      "games_watched": 4,
+      "wander_events": 18,
+      "http_errors": 1,
+      "error_details": "504 Gateway Timeout at 14:28:30Z",
+      "p50_response_time_ms": 185,
+      "p95_response_time_ms": 480,
+      "p99_response_time_ms": 720
+    }
+  ],
+  "metrics": {
+    "total_vus_active": 3,
+    "total_api_calls": 1847,
+    "total_http_errors": 1,
+    "error_rate": 0.05,
+    "p50_api_response_ms": 200,
+    "p95_api_response_ms": 850,
+    "p99_api_response_ms": 1200,
+    "gameday_scorer_efficiency": "Game 1001-1010 scored in sequence, avg 4.5s per game"
+  },
+  "anomalies": [
+    {
+      "timestamp": "2026-06-04T14:28:30Z",
+      "worker_id": "spectator_145_1",
+      "issue": "504 Gateway Timeout",
+      "affected_action": "state_check",
+      "recovery": "Retried successfully at 14:28:32Z"
+    }
+  ]
+}
+```
+
+### Debug Queries
+
+Tools to analyze logs:
+1. **Find performer bottleneck** — Which game took longest to score? Why?
+2. **Spectator responsiveness** — Did they detect game state change within 5 seconds?
+3. **Error correlation** — When performer failed on game X, did spectators detect it?
+4. **Polling efficiency** — Did spectators adapt frequency correctly (low when idle, high when game running)?
+
 ## Success Criteria
 
 1. **Orchestrator phase** completes in <3 minutes, discovers 1-10 gamedays
@@ -189,7 +385,8 @@ k6 run load-test-gameday-orchestrator.js --env GAMEDAYS=5 --env SPECTATORS_PER_G
 3. **Spectators** detect game state changes and adapt polling (proven by logs)
 4. **Scaling**: VU count matches formula `GAMEDAYS + (GAMEDAYS * SPECTATORS_PER_GAMEDAY)`
 5. **Concurrent execution**: Performers and spectators run in parallel from minute 3 onwards
-6. **Load metrics**:
+6. **Debugging**: Each worker produces timestamped JSON logs, aggregator creates gameday summary
+7. **Load metrics**:
    - 0% HTTP errors on success-path requests
    - p(95) response time < 1s for progress API
    - p(99) response time < 2s for game scoring API
