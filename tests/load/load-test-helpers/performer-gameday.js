@@ -42,7 +42,9 @@ export function setupGame(gameId, token, logger) {
     'game setup succeeds': (r) => r.status === 200,
   }) || fail(`Game setup failed: ${res.status}`);
 
-  return success ? res.json() || {} : {};
+  if (!success) return {};
+  const body = res.body.trim();
+  return body ? JSON.parse(body) : {};
 }
 
 export function setOfficials(gameId, token, logger) {
@@ -82,7 +84,9 @@ export function setOfficials(gameId, token, logger) {
     'officials set succeeds': (r) => r.status === 200,
   }) || fail(`Set officials failed: ${res.status}`);
 
-  return success ? res.json() || {} : {};
+  if (!success) return {};
+  const body = res.body.trim();
+  return body ? JSON.parse(body) : {};
 }
 
 export function recordEvent(gameId, teamName, eventName, half, token, logger) {
@@ -124,12 +128,15 @@ export function recordEvent(gameId, teamName, eventName, half, token, logger) {
     'event recorded': (r) => r.status === 200 || r.status === 201,
   }) || fail(`Record event failed: ${res.status}`);
 
-  return success ? res.json() || {} : {};
+  if (!success) return {};
+  const body = res.body.trim();
+  return body ? JSON.parse(body) : {};
 }
 
 export function recordHalftime(gameId, token, logger) {
   /**
    * PUT /api/game/{game_id}/halftime - Mark halftime
+   * Note: This endpoint returns an empty response body (HTTP 200)
    */
   const startTime = Date.now();
   const res = http.put(
@@ -158,7 +165,10 @@ export function recordHalftime(gameId, token, logger) {
     'halftime recorded': (r) => r.status === 200,
   }) || fail(`Record halftime failed: ${res.status}`);
 
-  return success ? res.json() || {} : {};
+  // Halftime endpoint returns empty body, so handle gracefully
+  if (!success) return {};
+  const body = res.body.trim();
+  return body ? JSON.parse(body) : {};
 }
 
 export function finalizeGame(gameId, homeTeam, awayTeam, token, logger) {
@@ -197,7 +207,9 @@ export function finalizeGame(gameId, homeTeam, awayTeam, token, logger) {
     'game finalized': (r) => r.status === 200,
   }) || fail(`Finalize game failed: ${res.status}`);
 
-  return success ? res.json() || {} : {};
+  if (!success) return {};
+  const body = res.body.trim();
+  return body ? JSON.parse(body) : {};
 }
 
 export function scoreCompleteGame(game, token, logger) {
