@@ -269,7 +269,11 @@ export function spectatorVU(coordinationData, gamedayId) {
 
   // Store logger in global for post-test aggregation
   if (!__GLOBAL.spectatorLoggers) {
-    __GLOBAL.spectatorLoggers = [];
+    __GLOBAL.spectatorLoggers = {};
   }
-  __GLOBAL.spectatorLoggers.push(logger);
+  const workerId = `spectator_${gamedayId}_${spectatorIndex}`;
+  __GLOBAL.spectatorLoggers[workerId] = logger;
+
+  // Print summary for worker logs extraction
+  console.log(`WORKER_LOG_JSON [${workerId}]: ${JSON.stringify(logger.getEventsJson())}`);
 }

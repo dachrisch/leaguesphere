@@ -123,3 +123,56 @@ if [ "$PHASE" = "discovery" ] || [ "$PHASE" = "all" ]; then
 fi
 
 log_info "K6 Load Test Wrapper Complete"
+
+# ============================================================================
+# Post-Test: Extract Worker Logs and Generate Reports
+# ============================================================================
+
+if [ "$PHASE" = "all" ] || [ "$PHASE" = "discovery" ] || [ "$PHASE" = "perform" ]; then
+  log_info "Extracting worker logs from k6 output..."
+
+  # Extract WORKER_LOG_JSON lines from k6 output
+  WORKER_LOG_LINES=$(echo "$K6_OUTPUT" | grep 'WORKER_LOG_JSON' || true)
+
+  if [ -n "$WORKER_LOG_LINES" ]; then
+    WORKER_COUNT=$(echo "$WORKER_LOG_LINES" | wc -l)
+    log_info "Found $WORKER_COUNT worker log entries"
+
+    # Extract and write individual worker logs
+    echo "$WORKER_LOG_LINES" | while read -r line; do
+      # Extract worker ID and JSON data
+      WORKER_ID=$(echo "$line" | sed 's/.*\[//;s/\].*//')
+      JSON_DATA=$(echo "$line" | sed 's/.*WORKER_LOG_JSON \['"$WORKER_ID"'\]: //')
+
+      if [ -n "$JSON_DATA" ] && echo "$JSON_DATA" | jq . > /dev/null 2>&1; then
+        WORKER_TYPE=$(echo "$JSON_DATA" | jq -r '.metadata.worker_id // .metadata.name' | grep -o '^[^_]*')
+        FILENAME="${WORKER_TYPE}_${WORKER_ID}.json"
+        LOG_PATH="$LOG_DIR/$FILENAME"
+
+        echo "$JSON_DATA" | jq . > "$LOG_PATH"
+        log_info "Wrote worker log: $LOG_PATH"
+      fi
+    done
+  else
+    log_info "No worker logs found in k6 output"
+  fi
+
+  # Generate comprehensive report
+  log_info "Generating comprehensive load test report..."
+
+  REPORT_DIR="${LOG_DIR%/}/reports"
+  mkdir -p "$REPORT_DIR"
+
+  REPORT_FILE="$REPORT_DIR/load-test-report.html"
+
+  node "$(dirname "$0")/report-generator.js" \
+    --log-dir "$LOG_DIR" \
+    --coordination-file "$COORDINATION_FILE" \
+    --output "$REPORT_FILE"
+
+  if [ -f "$REPORT_FILE" ]; then
+    log_info "Report generated: $REPORT_FILE"
+  fi
+fi
+
+log_info "Post-test processing complete"

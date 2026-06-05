@@ -283,8 +283,9 @@ export function performerVU(coordinationData, token) {
     return;
   }
 
+  const workerId = `performer_${performerIndex}`;
   const logger = createWorkerLogger(
-    `performer_${performerIndex}`,
+    workerId,
     assignedGameday.id,
     assignedGameday.name
   );
@@ -292,23 +293,39 @@ export function performerVU(coordinationData, token) {
   logger.logEvent('performer_start', {
     gameday_id: assignedGameday.id,
     games_count: assignedGameday.games_count,
+    vu_id: __VU,
   });
 
   // Score all games in the gameday
   let completedGames = 0;
+  let failedGames = 0;
+
   assignedGameday.games.forEach((game) => {
-    scoreCompleteGame(game, token, logger);
-    completedGames++;
+    try {
+      scoreCompleteGame(game, token, logger);
+      completedGames++;
+    } catch (error) {
+      logger.logEvent('game_error', {
+        game_id: game.id,
+        error: error.message || String(error),
+      });
+      failedGames++;
+    }
     sleep(1); // Brief rest between games
   });
 
   logger.logEvent('performer_complete', {
     completed_games: completedGames,
+    failed_games: failedGames,
+    total_games: assignedGameday.games_count,
   });
 
   // Store logger globally for post-test aggregation
   if (!__GLOBAL.performerLoggers) {
-    __GLOBAL.performerLoggers = [];
+    __GLOBAL.performerLoggers = {};
   }
-  __GLOBAL.performerLoggers.push(logger);
+  __GLOBAL.performerLoggers[workerId] = logger;
+
+  // Print summary for worker logs extraction
+  console.log(`WORKER_LOG_JSON [${workerId}]: ${JSON.stringify(logger.getEventsJson())}`);
 }
