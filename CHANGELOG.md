@@ -1,5 +1,33 @@
 # Changelog
 
+## [3.26.0](https://github.com/dachrisch/leaguesphere/compare/v3.25.1...v3.26.0) (2026-06-06)
+
+
+### Features
+
+* complete 3-phase k6 load test with performers and spectators ([f255a30](https://github.com/dachrisch/leaguesphere/commit/f255a3077c492f57d4f51dd7c5316c0c6b49db76))
+* extract team names from discovery API response and store in coordination file ([c3e78ae](https://github.com/dachrisch/leaguesphere/commit/c3e78ae55f912fee83f8045edb58c182f66ffe4b))
+
+
+### Bug Fixes
+
+* add defensive JSON parsing in performer VU for empty response bodies ([d7c406e](https://github.com/dachrisch/leaguesphere/commit/d7c406e1c1f7f540d2cf57ab4f6d69c148328be3))
+* **deps:** update dependency @types/node to v25.9.2 ([#1303](https://github.com/dachrisch/leaguesphere/issues/1303)) ([ddcbc04](https://github.com/dachrisch/leaguesphere/commit/ddcbc04db9f840b1fdf8fd8c51edd3f9ef2f4220))
+* **deps:** update dependency @types/node to v25.9.2 ([#1304](https://github.com/dachrisch/leaguesphere/issues/1304)) ([f35872f](https://github.com/dachrisch/leaguesphere/commit/f35872f5eee321afa150dd503b83107a46c8f178))
+* **deps:** update react monorepo to v19.2.17 ([#1302](https://github.com/dachrisch/leaguesphere/issues/1302)) ([7b71b2b](https://github.com/dachrisch/leaguesphere/commit/7b71b2b5c52c329ba28871fa9e60cb6e153026a7))
+* handle PHASE='all' coordination file loading with proper wait mechanism ([078e14c](https://github.com/dachrisch/leaguesphere/commit/078e14c4b8deb23ba7476e44a2c538652843ae46))
+* remove broken fetchGameDetails() that called non-existent endpoint ([f53dfa4](https://github.com/dachrisch/leaguesphere/commit/f53dfa413cfa26b9cfef9034251cdfe7524a1adf))
+* restructure k6 orchestrator to use setup() function for phase coordination ([df3796f](https://github.com/dachrisch/leaguesphere/commit/df3796f11b21f8a54b3c814115f473ef1950f67d))
+* use pre-fetched team names from coordination file, remove placeholder team guards ([50b0206](https://github.com/dachrisch/leaguesphere/commit/50b020660bf640fc249707db56f96f9082553105))
+
+
+### Documentation
+
+* add completion history for gameday load test implementation ([11fdb36](https://github.com/dachrisch/leaguesphere/commit/11fdb36a0bba7490faccc18c634ed8e4ce28d6d6))
+* add comprehensive documentation for JSON parsing fix ([80c1811](https://github.com/dachrisch/leaguesphere/commit/80c181164de8f93df672b1a0ce1de55f71e0a323))
+* add orchestrator event recording fixes plan and verification report ([11abb27](https://github.com/dachrisch/leaguesphere/commit/11abb27a7b1461e098c7f0b43f99225ff368de21))
+* update orchestrator documentation with team name capture details and troubleshooting ([b747f0b](https://github.com/dachrisch/leaguesphere/commit/b747f0b23267c2f89148eddd373e12a069f4f84a))
+
 ## [3.25.1](https://github.com/dachrisch/leaguesphere/compare/v3.25.0...v3.25.1) (2026-06-04)
 
 
