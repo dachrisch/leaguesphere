@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.26.3](https://github.com/dachrisch/leaguesphere/compare/v3.26.2...v3.26.3) (2026-06-08)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @emnapi/runtime to v1.11.0 ([#1308](https://github.com/dachrisch/leaguesphere/issues/1308)) ([8903a47](https://github.com/dachrisch/leaguesphere/commit/8903a47bfe3990cbbf54eb81788c4b5a4c2f5d29))
+
 ## [3.26.2](https://github.com/dachrisch/leaguesphere/compare/v3.26.1...v3.26.2) (2026-06-08)
 
 
