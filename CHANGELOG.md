@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.26.6](https://github.com/dachrisch/leaguesphere/compare/v3.26.5...v3.26.6) (2026-06-11)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @types/node to v25.9.3 ([#1316](https://github.com/dachrisch/leaguesphere/issues/1316)) ([2b6eb9b](https://github.com/dachrisch/leaguesphere/commit/2b6eb9b470071724a00a44e9ab8dded09435611a))
+
 ## [3.26.5](https://github.com/dachrisch/leaguesphere/compare/v3.26.4...v3.26.5) (2026-06-09)
 
 
