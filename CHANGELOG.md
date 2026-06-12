@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.26.8](https://github.com/dachrisch/leaguesphere/compare/v3.26.7...v3.26.8) (2026-06-12)
+
+
+### Bug Fixes
+
+* **deps:** update cimg/python docker tag to v3.14.6 ([#1320](https://github.com/dachrisch/leaguesphere/issues/1320)) ([ca88103](https://github.com/dachrisch/leaguesphere/commit/ca881030f5bca75b652dd314c28233688262d0f8))
+
 ## [3.26.7](https://github.com/dachrisch/leaguesphere/compare/v3.26.6...v3.26.7) (2026-06-11)
 
 
