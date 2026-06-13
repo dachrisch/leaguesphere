@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.26.10](https://github.com/dachrisch/leaguesphere/compare/v3.26.9...v3.26.10) (2026-06-13)
+
+
+### Bug Fixes
+
+* **deps:** update eslint monorepo to v10.5.0 ([#1324](https://github.com/dachrisch/leaguesphere/issues/1324)) ([9eb1ac3](https://github.com/dachrisch/leaguesphere/commit/9eb1ac3e844dcde875d1d3a451e78841a4d15823))
+
 ## [3.26.9](https://github.com/dachrisch/leaguesphere/compare/v3.26.8...v3.26.9) (2026-06-12)
 
 
