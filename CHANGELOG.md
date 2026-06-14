@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.26.13](https://github.com/dachrisch/leaguesphere/compare/v3.26.12...v3.26.13) (2026-06-14)
+
+
+### Bug Fixes
+
+* **deps:** update dependency pytest to v9.1.0 ([#1330](https://github.com/dachrisch/leaguesphere/issues/1330)) ([76e1bb1](https://github.com/dachrisch/leaguesphere/commit/76e1bb1a050878b31ca34c1694444b9527d856a2))
+
 ## [3.26.12](https://github.com/dachrisch/leaguesphere/compare/v3.26.11...v3.26.12) (2026-06-13)
 
 
