@@ -1,4 +1,8 @@
 {% extends "base.html" %}
+
+{% block og_title %}{{ league }} {{ season }} Statistiken{% endblock %}
+{% block og_description %}Spieler und Teamstatistiken für die {{ league }} {{ season }}{% endblock %}
+
 {% block content %}
     <div class="d-flex justify-content-between align-items-center me-2">
         <a href="{% url season_year_league_pattern season=season league=league %}" class="btn btn-primary">

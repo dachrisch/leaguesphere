@@ -21,6 +21,7 @@ class LeagueTableView(View):
             "info": TableContextBuilder.build(table),
             "current_season": league_table_service.get_season_name(),
             "current_league": league_slug,
+            "current_league_name": league_table_service.get_league_name(),
             "seasons": league_table_service.get_seasons_for_league_slug(league_slug),
             "url_pattern": LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE,
         }

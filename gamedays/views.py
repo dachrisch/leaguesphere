@@ -379,6 +379,7 @@ class GamedayGameDetailView(DetailView):
         context["info"] = {
             "away_team": ggs.away_team_name,
             "home_team": ggs.home_team_name,
+            "date": ggs.game.gameday.date,
             "events_table": (
                 events_table.to_html(
                     **{

@@ -1,4 +1,8 @@
 {% extends "officials/profile_license.html" %}
+
+{% block og_title %}Official #{{ official_info.id }}{% endblock %}
+{% block og_description %}Official #{{ official_info.id }} der {{ official_info.team }}{% endblock %}
+
 {% block license_status %}
 {% if current_year != season %}
 <div class="row bg-info text-white mb-2">

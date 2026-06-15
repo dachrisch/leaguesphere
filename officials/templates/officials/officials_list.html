@@ -1,4 +1,8 @@
 {% extends "base.html" %}
+
+{% block og_title %}Officials der {{ team }}{% endblock %}
+{% block og_description %}Übersicht der Officials der {{ team }}{% endblock %}
+
 {% block content %}
 <article class="media content-section">
     {% include 'team/team_navigation.html' %}
