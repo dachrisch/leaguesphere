@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.26.14](https://github.com/dachrisch/leaguesphere/compare/v3.26.13...v3.26.14) (2026-06-15)
+
+
+### Bug Fixes
+
+* **deps:** update dependency axios to v1.18.0 ([#1332](https://github.com/dachrisch/leaguesphere/issues/1332)) ([cec9e92](https://github.com/dachrisch/leaguesphere/commit/cec9e9264f8300e3046fb44f64afcfabf954b2a6))
+
 ## [3.26.13](https://github.com/dachrisch/leaguesphere/compare/v3.26.12...v3.26.13) (2026-06-14)
 
 
