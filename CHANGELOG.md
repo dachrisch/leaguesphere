@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.26.17](https://github.com/dachrisch/leaguesphere/compare/v3.26.16...v3.26.17) (2026-06-15)
+
+
+### Bug Fixes
+
+* **deps:** update typescript-eslint monorepo to v8.61.1 ([#1339](https://github.com/dachrisch/leaguesphere/issues/1339)) ([984f88b](https://github.com/dachrisch/leaguesphere/commit/984f88bc78856b40459a9b81229fff4419820196))
+
 ## [3.26.16](https://github.com/dachrisch/leaguesphere/compare/v3.26.15...v3.26.16) (2026-06-15)
 
 
