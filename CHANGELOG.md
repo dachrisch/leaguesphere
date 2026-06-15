@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.26.15](https://github.com/dachrisch/leaguesphere/compare/v3.26.14...v3.26.15) (2026-06-15)
+
+
+### Bug Fixes
+
+* **deps:** lock file maintenance ([a43d18e](https://github.com/dachrisch/leaguesphere/commit/a43d18e6b554f02fb47c1f2e4d95331561e51432))
+* **deps:** lock file maintenance ([0573ed1](https://github.com/dachrisch/leaguesphere/commit/0573ed1b1875980091ba105bc94197d614bb3acb))
+* **deps:** update dependency axios to v1.18.0 ([c2a8f18](https://github.com/dachrisch/leaguesphere/commit/c2a8f18e388f8d7e218faae1587246746eec61f2))
+* **deps:** update dependency axios to v1.18.0 ([5194832](https://github.com/dachrisch/leaguesphere/commit/519483273fc50eb67ccbc4e3e6639a6e6aa8b6c7))
+
 ## [3.26.14](https://github.com/dachrisch/leaguesphere/compare/v3.26.13...v3.26.14) (2026-06-15)
 
 
