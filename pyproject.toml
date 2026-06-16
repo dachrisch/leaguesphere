@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "leaguesphere"
-version = "3.26.17"
+version = "3.26.18"
 requires-python = ">=3.12"
 dependencies = [
     "Django==6.0.6",

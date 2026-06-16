@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.26.18](https://github.com/dachrisch/leaguesphere/compare/v3.26.17...v3.26.18) (2026-06-16)
+
+
+### Bug Fixes
+
+* **deps:** update react-router monorepo to v7.18.0 ([#1342](https://github.com/dachrisch/leaguesphere/issues/1342)) ([4635afd](https://github.com/dachrisch/leaguesphere/commit/4635afdbbb0e3141608aa16d8f007e700e8cacce))
+
 ## [3.26.17](https://github.com/dachrisch/leaguesphere/compare/v3.26.16...v3.26.17) (2026-06-15)
 
 
