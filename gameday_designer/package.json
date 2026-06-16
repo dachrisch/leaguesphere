@@ -50,7 +50,7 @@
     ]
   },
   "devDependencies": {
-    "@babel/plugin-transform-private-property-in-object": "8.0.0",
+    "@babel/plugin-transform-private-property-in-object": "7.29.7",
     "@eslint/js": "10.0.1",
     "@testing-library/dom": "10.4.1",
     "@testing-library/jest-dom": "6.9.1",
