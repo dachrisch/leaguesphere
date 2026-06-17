@@ -33,6 +33,8 @@
     <meta property="og:description" content="{% block og_description %}Welcome to leaguesphere{% endblock %}">
     <meta property="og:site_name" content="Leaguesphere">
     <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}{{ request.build_absolute_uri '/static/teammanager/icons/Player.jpg' }}{% endblock %}">
+    <meta property="og:url" content="{% block og_url %}{{ request.build_absolute_uri request.path }}{% endblock %}">
 </head>
 <body>
 {% if DEMO_MODE %}

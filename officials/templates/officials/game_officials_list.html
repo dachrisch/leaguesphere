@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% block og_title %}{% if team %}{{ team }} Alle Einsätze{% else %}Alle Offizials Einsätze{% endif %}{% endblock %}
+{% block og_description %}{% if team %}Übersicht aller Einsätze der Offizials der {{ team }}{% else %}Komplette Liste aller Offizials Einsätze{% endif %}{% endblock %}
 {% block content %}
 <article class="media content-section">
     <div class="media-body">
