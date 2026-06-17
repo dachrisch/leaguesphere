@@ -10,7 +10,7 @@ class LeagueTableRepository:
     def get_league_season_config_by_slug(
         league_slug: str, season_slug: str | None
     ) -> LeagueSeasonConfig:
-        qs = LeagueSeasonConfig.objects.filter(league__slug=league_slug)
+        qs = LeagueSeasonConfig.objects.select_related('league', 'season').filter(league__slug=league_slug)
 
         if season_slug is None:
             return qs.latest("season__pk")

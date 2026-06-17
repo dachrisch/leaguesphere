@@ -97,7 +97,7 @@ class GamedayFactory(DjangoModelFactory):
     class Meta:
         model = Gameday
 
-    date = datetime.today().strftime("%Y-%m-%d")
+    date = datetime.today().date()
     start = "10:00"
     name = "Test Spieltag"
     season = factory.SubFactory(SeasonFactory)
