@@ -344,6 +344,9 @@ class GamedayGameDetailView(DetailView):
     model = Gameinfo
     template_name = "gamedays/games/game_detail.html"
 
+    def get_queryset(self):
+        return Gameinfo.objects.select_related('gameday')
+
     def get_context_data(self, **kwargs):
         context = super(GamedayGameDetailView, self).get_context_data()
         gameinfo = context["gameinfo"]
@@ -379,7 +382,7 @@ class GamedayGameDetailView(DetailView):
         context["info"] = {
             "away_team": ggs.away_team_name,
             "home_team": ggs.home_team_name,
-            "date": ggs.game.gameday.date,
+            "date": gameinfo.gameday.date,
             "events_table": (
                 events_table.to_html(
                     **{
