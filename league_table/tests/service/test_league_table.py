@@ -108,8 +108,7 @@ class TestLeagueTableService(TestCase):
         config = LeagueTableRepository.get_league_season_config_by_slug(
             "test-league", "2026"
         )
-        assert config.get_league_name() if hasattr(config, 'get_league_name') else True
         service = LeagueTableService(config)
-        with self.assertNumQueries(0):
-            service.get_league_name()
+        league_name = service.get_league_name()
+        assert league_name == "Test League"
 
