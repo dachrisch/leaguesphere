@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.26.19](https://github.com/dachrisch/leaguesphere/compare/v3.26.18...v3.26.19) (2026-06-17)
+
+
+### Bug Fixes
+
+* **deps:** update babel monorepo to v8 ([c9093fb](https://github.com/dachrisch/leaguesphere/commit/c9093fb79d351326936a3f639bcc167567d09183))
+* **deps:** update babel monorepo to v8 ([6fb3bc8](https://github.com/dachrisch/leaguesphere/commit/6fb3bc89e3cee844b982e9d200db3063673a1a1b))
+* **fe:** downgrade experimental Babel 8 to stable 7.x ([bf6a429](https://github.com/dachrisch/leaguesphere/commit/bf6a4292e75a94bce51d586791e1b816d8dd53e5))
+* update journey_dashboard babel dependencies to resolve peer conflicts ([b55f17b](https://github.com/dachrisch/leaguesphere/commit/b55f17b17bfe905ea5d99e7dcfe8be88554c317d))
+
 ## [3.26.18](https://github.com/dachrisch/leaguesphere/compare/v3.26.17...v3.26.18) (2026-06-16)
 
 
