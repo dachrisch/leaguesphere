@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.26.20](https://github.com/dachrisch/leaguesphere/compare/v3.26.19...v3.26.20) (2026-06-17)
+
+
+### Bug Fixes
+
+* **deps:** update babel monorepo to v8.0.1 ([04b644c](https://github.com/dachrisch/leaguesphere/commit/04b644c8f1936c201cbc55c2182b3b56745e08ac))
+* **deps:** update babel monorepo to v8.0.1 ([731ce10](https://github.com/dachrisch/leaguesphere/commit/731ce10c7870b8a134d2e769c750d9b828e90807))
+
 ## [3.26.19](https://github.com/dachrisch/leaguesphere/compare/v3.26.18...v3.26.19) (2026-06-17)
 
 
