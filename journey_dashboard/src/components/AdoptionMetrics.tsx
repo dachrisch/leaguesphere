@@ -166,7 +166,7 @@ export const AdoptionMetrics: React.FC<AdoptionMetricsProps> = ({ adoptionData }
         <div className="game-creation-stats-section">
           <GameCreationStats
             data={gameCreationStatsData}
-            onTabChange={(days) => {
+            onTabChange={() => {
               // Optional: trigger re-fetch on tab change if needed
             }}
           />

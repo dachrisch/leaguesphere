@@ -12,7 +12,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, fireEvent } from '@testing-library/react';
 import { LeagueAdoptionBreakdown } from '../LeagueAdoptionBreakdown';
 import { LeagueAdoptionStat } from '../../types';
 
@@ -75,15 +75,15 @@ describe('LeagueAdoptionBreakdown', () => {
 
     // Default sort is by percentage descending
     // FF BL (100%) should be first
-    let firstRowText = rows[0]?.textContent || '';
+    const firstRowText = rows[0]?.textContent || '';
     expect(firstRowText).toContain('FF BL');
 
     // OL NRW (10%) should be second
-    let secondRowText = rows[1]?.textContent || '';
+    const secondRowText = rows[1]?.textContent || '';
     expect(secondRowText).toContain('OL NRW');
 
     // Bayern U16 (0%) should be last
-    let thirdRowText = rows[2]?.textContent || '';
+    const thirdRowText = rows[2]?.textContent || '';
     expect(thirdRowText).toContain('Bayern U16');
   });
 

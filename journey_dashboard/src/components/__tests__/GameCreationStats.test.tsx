@@ -12,7 +12,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, fireEvent } from '@testing-library/react';
 import { GameCreationStats } from '../GameCreationStats';
 import { GameCreationStatsResponse } from '../../types';
 

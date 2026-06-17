@@ -20,6 +20,24 @@ function getAdoptionColor(percentage: number): string {
 }
 
 /**
+ * Sort indicator component
+ */
+interface SortIndicatorProps {
+  field: SortField;
+  sortField: SortField;
+  sortOrder: SortOrder;
+}
+
+const SortIndicator: React.FC<SortIndicatorProps> = ({ field, sortField, sortOrder }) => {
+  if (sortField !== field) return <span className="sort-icon">⇅</span>;
+  return (
+    <span className="sort-icon active">
+      {sortOrder === 'asc' ? '↑' : '↓'}
+    </span>
+  );
+};
+
+/**
  * Sortable table showing per-league adoption breakdown
  */
 export const LeagueAdoptionBreakdown: React.FC<LeagueAdoptionBreakdownProps> = ({
@@ -51,15 +69,6 @@ export const LeagueAdoptionBreakdown: React.FC<LeagueAdoptionBreakdownProps> = (
     return sortOrder === 'asc' ? comparison : -comparison;
   });
 
-  const SortIndicator = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return <span className="sort-icon">⇅</span>;
-    return (
-      <span className="sort-icon active">
-        {sortOrder === 'asc' ? '↑' : '↓'}
-      </span>
-    );
-  };
-
   return (
     <div className="league-adoption-breakdown">
       <h4 className="breakdown-title">Adoption by League</h4>
@@ -69,16 +78,16 @@ export const LeagueAdoptionBreakdown: React.FC<LeagueAdoptionBreakdownProps> = (
           <thead>
             <tr>
               <th onClick={() => handleSort('league_name')} className="sortable">
-                League <SortIndicator field="league_name" />
+                League <SortIndicator field="league_name" sortField={sortField} sortOrder={sortOrder} />
               </th>
               <th onClick={() => handleSort('designer')} className="sortable number">
-                Designer <SortIndicator field="designer" />
+                Designer <SortIndicator field="designer" sortField={sortField} sortOrder={sortOrder} />
               </th>
               <th onClick={() => handleSort('legacy')} className="sortable number">
-                Legacy <SortIndicator field="legacy" />
+                Legacy <SortIndicator field="legacy" sortField={sortField} sortOrder={sortOrder} />
               </th>
               <th onClick={() => handleSort('designer_percentage')} className="sortable number">
-                % Designer <SortIndicator field="designer_percentage" />
+                % Designer <SortIndicator field="designer_percentage" sortField={sortField} sortOrder={sortOrder} />
               </th>
             </tr>
           </thead>
