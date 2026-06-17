@@ -50,7 +50,7 @@
     ]
   },
   "devDependencies": {
-    "@babel/plugin-transform-private-property-in-object": "7.29.7",
+    "@babel/plugin-transform-private-property-in-object": "8.0.0",
     "@emnapi/core": "^1.10.0",
     "@emnapi/runtime": "^1.10.0",
     "@eslint/js": "10.0.1",
