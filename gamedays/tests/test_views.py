@@ -222,6 +222,7 @@ class TestGamedayGameDetailView(TestCase):
         assert context["object"].pk == gameinfo.pk
         assert context["info"]["home_team"] == home_team[0].team.description
         assert context["info"]["away_team"] == away_team[0].team.description
+        assert context["info"]["date"] == gameday.date
         assert context["info"]["events_table"] == EmptyEventsTable.to_html()
         assert context["info"]["split_score_table"].startswith(
             EmptySplitScoreTable.to_html()
