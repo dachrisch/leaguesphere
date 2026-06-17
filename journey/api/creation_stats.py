@@ -145,7 +145,7 @@ class GameCreationStatsService:
                 if league_key not in league_stats:
                     league_stats[league_key] = {'designer': 0, 'legacy': 0}
 
-                if gameday.designer_state:
+                if hasattr(gameday, 'designer_state'):
                     league_stats[league_key]['designer'] += 1
                 else:
                     league_stats[league_key]['legacy'] += 1
