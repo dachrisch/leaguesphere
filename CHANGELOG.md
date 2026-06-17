@@ -1,5 +1,179 @@
 # Changelog
 
+## [3.26.19](https://github.com/dachrisch/leaguesphere/compare/v3.26.18...v3.26.19) (2026-06-17)
+
+
+### Bug Fixes
+
+* **deps:** update babel monorepo to v8 ([c9093fb](https://github.com/dachrisch/leaguesphere/commit/c9093fb79d351326936a3f639bcc167567d09183))
+* **deps:** update babel monorepo to v8 ([6fb3bc8](https://github.com/dachrisch/leaguesphere/commit/6fb3bc89e3cee844b982e9d200db3063673a1a1b))
+* **fe:** downgrade experimental Babel 8 to stable 7.x ([bf6a429](https://github.com/dachrisch/leaguesphere/commit/bf6a4292e75a94bce51d586791e1b816d8dd53e5))
+* update journey_dashboard babel dependencies to resolve peer conflicts ([b55f17b](https://github.com/dachrisch/leaguesphere/commit/b55f17b17bfe905ea5d99e7dcfe8be88554c317d))
+
+## [3.26.18](https://github.com/dachrisch/leaguesphere/compare/v3.26.17...v3.26.18) (2026-06-16)
+
+
+### Bug Fixes
+
+* **deps:** update react-router monorepo to v7.18.0 ([#1342](https://github.com/dachrisch/leaguesphere/issues/1342)) ([4635afd](https://github.com/dachrisch/leaguesphere/commit/4635afdbbb0e3141608aa16d8f007e700e8cacce))
+
+## [3.26.17](https://github.com/dachrisch/leaguesphere/compare/v3.26.16...v3.26.17) (2026-06-15)
+
+
+### Bug Fixes
+
+* **deps:** update typescript-eslint monorepo to v8.61.1 ([#1339](https://github.com/dachrisch/leaguesphere/issues/1339)) ([984f88b](https://github.com/dachrisch/leaguesphere/commit/984f88bc78856b40459a9b81229fff4419820196))
+
+## [3.26.16](https://github.com/dachrisch/leaguesphere/compare/v3.26.15...v3.26.16) (2026-06-15)
+
+
+### Bug Fixes
+
+* **deps:** update vitest monorepo to v4.1.9 ([#1337](https://github.com/dachrisch/leaguesphere/issues/1337)) ([8099e5e](https://github.com/dachrisch/leaguesphere/commit/8099e5e1c657f213eb47eb9c8b7379905cef015d))
+
+## [3.26.15](https://github.com/dachrisch/leaguesphere/compare/v3.26.14...v3.26.15) (2026-06-15)
+
+
+### Bug Fixes
+
+* **deps:** lock file maintenance ([a43d18e](https://github.com/dachrisch/leaguesphere/commit/a43d18e6b554f02fb47c1f2e4d95331561e51432))
+* **deps:** lock file maintenance ([0573ed1](https://github.com/dachrisch/leaguesphere/commit/0573ed1b1875980091ba105bc94197d614bb3acb))
+* **deps:** update dependency axios to v1.18.0 ([c2a8f18](https://github.com/dachrisch/leaguesphere/commit/c2a8f18e388f8d7e218faae1587246746eec61f2))
+* **deps:** update dependency axios to v1.18.0 ([5194832](https://github.com/dachrisch/leaguesphere/commit/519483273fc50eb67ccbc4e3e6639a6e6aa8b6c7))
+
+## [3.26.14](https://github.com/dachrisch/leaguesphere/compare/v3.26.13...v3.26.14) (2026-06-15)
+
+
+### Bug Fixes
+
+* **deps:** update dependency axios to v1.18.0 ([#1332](https://github.com/dachrisch/leaguesphere/issues/1332)) ([cec9e92](https://github.com/dachrisch/leaguesphere/commit/cec9e9264f8300e3046fb44f64afcfabf954b2a6))
+
+## [3.26.13](https://github.com/dachrisch/leaguesphere/compare/v3.26.12...v3.26.13) (2026-06-14)
+
+
+### Bug Fixes
+
+* **deps:** update dependency pytest to v9.1.0 ([#1330](https://github.com/dachrisch/leaguesphere/issues/1330)) ([76e1bb1](https://github.com/dachrisch/leaguesphere/commit/76e1bb1a050878b31ca34c1694444b9527d856a2))
+
+## [3.26.12](https://github.com/dachrisch/leaguesphere/compare/v3.26.11...v3.26.12) (2026-06-13)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @emnapi/runtime to v1.11.1 ([#1327](https://github.com/dachrisch/leaguesphere/issues/1327)) ([5c9b565](https://github.com/dachrisch/leaguesphere/commit/5c9b565cac54dd84a3bd021e68d695c5c5b86271))
+
+## [3.26.11](https://github.com/dachrisch/leaguesphere/compare/v3.26.10...v3.26.11) (2026-06-13)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @emnapi/core to v1.11.1 ([#1326](https://github.com/dachrisch/leaguesphere/issues/1326)) ([1b31223](https://github.com/dachrisch/leaguesphere/commit/1b31223fabee74f843b73cc52fa17e825ae3ba4c))
+
+## [3.26.10](https://github.com/dachrisch/leaguesphere/compare/v3.26.9...v3.26.10) (2026-06-13)
+
+
+### Bug Fixes
+
+* **deps:** update eslint monorepo to v10.5.0 ([#1324](https://github.com/dachrisch/leaguesphere/issues/1324)) ([9eb1ac3](https://github.com/dachrisch/leaguesphere/commit/9eb1ac3e844dcde875d1d3a451e78841a4d15823))
+
+## [3.26.9](https://github.com/dachrisch/leaguesphere/compare/v3.26.8...v3.26.9) (2026-06-12)
+
+
+### Bug Fixes
+
+* **deps:** update dependency esbuild to v0.28.1 ([#1321](https://github.com/dachrisch/leaguesphere/issues/1321)) ([615ad91](https://github.com/dachrisch/leaguesphere/commit/615ad9196d3dc93e6c9bbc16c03cafb97d42dec9))
+
+## [3.26.8](https://github.com/dachrisch/leaguesphere/compare/v3.26.7...v3.26.8) (2026-06-12)
+
+
+### Bug Fixes
+
+* **deps:** update cimg/python docker tag to v3.14.6 ([#1320](https://github.com/dachrisch/leaguesphere/issues/1320)) ([ca88103](https://github.com/dachrisch/leaguesphere/commit/ca881030f5bca75b652dd314c28233688262d0f8))
+
+## [3.26.7](https://github.com/dachrisch/leaguesphere/compare/v3.26.6...v3.26.7) (2026-06-11)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @types/node to v25.9.3 ([#1317](https://github.com/dachrisch/leaguesphere/issues/1317)) ([6ad4173](https://github.com/dachrisch/leaguesphere/commit/6ad4173a0a1e9bab5378bc1324b5f74ff03ff95b))
+
+## [3.26.6](https://github.com/dachrisch/leaguesphere/compare/v3.26.5...v3.26.6) (2026-06-11)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @types/node to v25.9.3 ([#1316](https://github.com/dachrisch/leaguesphere/issues/1316)) ([2b6eb9b](https://github.com/dachrisch/leaguesphere/commit/2b6eb9b470071724a00a44e9ab8dded09435611a))
+
+## [3.26.5](https://github.com/dachrisch/leaguesphere/compare/v3.26.4...v3.26.5) (2026-06-09)
+
+
+### Bug Fixes
+
+* **deps:** update typescript-eslint monorepo to v8.61.0 ([#1312](https://github.com/dachrisch/leaguesphere/issues/1312)) ([9ce4bd0](https://github.com/dachrisch/leaguesphere/commit/9ce4bd0f26ba0bd6f218944cbb469cd3b1bc3aa0))
+
+## [3.26.4](https://github.com/dachrisch/leaguesphere/compare/v3.26.3...v3.26.4) (2026-06-09)
+
+
+### Bug Fixes
+
+* **deps:** update dependency prettier to v3.8.4 ([#1313](https://github.com/dachrisch/leaguesphere/issues/1313)) ([b459227](https://github.com/dachrisch/leaguesphere/commit/b459227a3409e384713a0e12eb5b1e502b052cfa))
+
+## [3.26.3](https://github.com/dachrisch/leaguesphere/compare/v3.26.2...v3.26.3) (2026-06-08)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @emnapi/runtime to v1.11.0 ([#1308](https://github.com/dachrisch/leaguesphere/issues/1308)) ([8903a47](https://github.com/dachrisch/leaguesphere/commit/8903a47bfe3990cbbf54eb81788c4b5a4c2f5d29))
+
+## [3.26.2](https://github.com/dachrisch/leaguesphere/compare/v3.26.1...v3.26.2) (2026-06-08)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @emnapi/core to v1.11.0 ([#1307](https://github.com/dachrisch/leaguesphere/issues/1307)) ([4896476](https://github.com/dachrisch/leaguesphere/commit/4896476c22ccbd6f5481a9641198b19208fa94af))
+
+## [3.26.1](https://github.com/dachrisch/leaguesphere/compare/v3.26.0...v3.26.1) (2026-06-08)
+
+
+### Bug Fixes
+
+* **deps:** lock file maintenance ([#1306](https://github.com/dachrisch/leaguesphere/issues/1306)) ([40a93eb](https://github.com/dachrisch/leaguesphere/commit/40a93eb4cf3a9034878b5918bb76063eeee067bc))
+
+## [3.26.0](https://github.com/dachrisch/leaguesphere/compare/v3.25.1...v3.26.0) (2026-06-06)
+
+
+### Features
+
+* complete 3-phase k6 load test with performers and spectators ([f255a30](https://github.com/dachrisch/leaguesphere/commit/f255a3077c492f57d4f51dd7c5316c0c6b49db76))
+* extract team names from discovery API response and store in coordination file ([c3e78ae](https://github.com/dachrisch/leaguesphere/commit/c3e78ae55f912fee83f8045edb58c182f66ffe4b))
+
+
+### Bug Fixes
+
+* add defensive JSON parsing in performer VU for empty response bodies ([d7c406e](https://github.com/dachrisch/leaguesphere/commit/d7c406e1c1f7f540d2cf57ab4f6d69c148328be3))
+* **deps:** update dependency @types/node to v25.9.2 ([#1303](https://github.com/dachrisch/leaguesphere/issues/1303)) ([ddcbc04](https://github.com/dachrisch/leaguesphere/commit/ddcbc04db9f840b1fdf8fd8c51edd3f9ef2f4220))
+* **deps:** update dependency @types/node to v25.9.2 ([#1304](https://github.com/dachrisch/leaguesphere/issues/1304)) ([f35872f](https://github.com/dachrisch/leaguesphere/commit/f35872f5eee321afa150dd503b83107a46c8f178))
+* **deps:** update react monorepo to v19.2.17 ([#1302](https://github.com/dachrisch/leaguesphere/issues/1302)) ([7b71b2b](https://github.com/dachrisch/leaguesphere/commit/7b71b2b5c52c329ba28871fa9e60cb6e153026a7))
+* handle PHASE='all' coordination file loading with proper wait mechanism ([078e14c](https://github.com/dachrisch/leaguesphere/commit/078e14c4b8deb23ba7476e44a2c538652843ae46))
+* remove broken fetchGameDetails() that called non-existent endpoint ([f53dfa4](https://github.com/dachrisch/leaguesphere/commit/f53dfa413cfa26b9cfef9034251cdfe7524a1adf))
+* restructure k6 orchestrator to use setup() function for phase coordination ([df3796f](https://github.com/dachrisch/leaguesphere/commit/df3796f11b21f8a54b3c814115f473ef1950f67d))
+* use pre-fetched team names from coordination file, remove placeholder team guards ([50b0206](https://github.com/dachrisch/leaguesphere/commit/50b020660bf640fc249707db56f96f9082553105))
+
+
+### Documentation
+
+* add completion history for gameday load test implementation ([11fdb36](https://github.com/dachrisch/leaguesphere/commit/11fdb36a0bba7490faccc18c634ed8e4ce28d6d6))
+* add comprehensive documentation for JSON parsing fix ([80c1811](https://github.com/dachrisch/leaguesphere/commit/80c181164de8f93df672b1a0ce1de55f71e0a323))
+* add orchestrator event recording fixes plan and verification report ([11abb27](https://github.com/dachrisch/leaguesphere/commit/11abb27a7b1461e098c7f0b43f99225ff368de21))
+* update orchestrator documentation with team name capture details and troubleshooting ([b747f0b](https://github.com/dachrisch/leaguesphere/commit/b747f0b23267c2f89148eddd373e12a069f4f84a))
+
+## [3.25.1](https://github.com/dachrisch/leaguesphere/compare/v3.25.0...v3.25.1) (2026-06-04)
+
+
+### Bug Fixes
+
+* **deps:** update react-router monorepo to v7.17.0 ([#1299](https://github.com/dachrisch/leaguesphere/issues/1299)) ([ac9c865](https://github.com/dachrisch/leaguesphere/commit/ac9c865a0e8a735cc535f8aba5976ea1f1dc95a1))
+
 ## [3.25.0](https://github.com/dachrisch/leaguesphere/compare/v3.24.0...v3.25.0) (2026-06-04)
 
 

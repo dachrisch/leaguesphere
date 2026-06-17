@@ -323,7 +323,7 @@ class Command(BaseCommand):
                         defaults={
                             'scheduled': scheduled,
                             'field': (game_counter % 3) + 1,
-                            'status': 'beendet' if gameday.status == Gameday.STATUS_PUBLISHED else 'Geplant',
+                            'status': 'Geplant',  # All games start as unplayed (Planned)
                             'stage': f"Game {game_counter + 1}",
                             'standing': group_name,
                             'officials': random.choice([home_team, away_team]),
