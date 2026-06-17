@@ -1,0 +1,237 @@
+.games-created-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  background: #ffffff;
+  margin-bottom: 20px;
+}
+
+.games-created-card.loading {
+  text-align: center;
+  color: #666;
+}
+
+.games-created-card .card-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: #333;
+}
+
+/* Time Window Tabs */
+.time-window-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.time-window-tabs .tab {
+  background: none;
+  border: none;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+.time-window-tabs .tab:hover {
+  color: #333;
+}
+
+.time-window-tabs .tab.active {
+  color: #0d6efd;
+}
+
+.time-window-tabs .tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #0d6efd;
+}
+
+/* Stats Display */
+.stats-display {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 16px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stat-label {
+  font-weight: 500;
+  color: #666;
+  min-width: 80px;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.stat-percentage {
+  font-size: 14px;
+  color: #999;
+}
+
+/* Expand/Collapse Button */
+.expand-button {
+  background: none;
+  border: none;
+  color: #0d6efd;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  transition: color 0.2s ease;
+}
+
+.expand-button:hover {
+  color: #0a58ca;
+}
+
+.expand-button .chevron {
+  display: inline-block;
+  transition: transform 0.2s ease;
+  font-size: 12px;
+}
+
+/* League Breakdown Container */
+.league-breakdown-container {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #f0f0f0;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+  }
+}
+
+/* League Adoption Breakdown Table */
+.league-adoption-breakdown {
+  width: 100%;
+}
+
+.league-adoption-breakdown .breakdown-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: #333;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+
+.adoption-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.adoption-table thead {
+  background: #f8f9fa;
+}
+
+.adoption-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #e0e0e0;
+  user-select: none;
+}
+
+.adoption-table th.sortable {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.adoption-table th.sortable:hover {
+  color: #0d6efd;
+}
+
+.adoption-table th.number {
+  text-align: right;
+}
+
+.adoption-table td {
+  padding: 12px;
+  border-bottom: 1px solid #f0f0f0;
+  color: #666;
+}
+
+.adoption-table td.number {
+  text-align: right;
+  font-weight: 500;
+}
+
+.adoption-table td.league-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.adoption-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.adoption-table .adoption-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.adoption-table .empty-state {
+  text-align: center;
+  color: #999;
+  padding: 24px 12px;
+}
+
+.breakdown-note {
+  font-size: 12px;
+  color: #999;
+  margin: 0;
+  text-align: right;
+}
+
+.sort-icon {
+  font-size: 12px;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+
+.sort-icon.active {
+  opacity: 1;
+  color: #0d6efd;
+}
