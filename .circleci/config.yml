@@ -610,9 +610,7 @@ jobs:
             echo "Publishing production release for tag: ${TAG}"
             gh release edit "${TAG}" \
               --repo "${REPO}" \
-              --draft=false \
-              --latest \
-              --generate-notes
+              --latest
           env:
             GH_TOKEN: ${GITHUB_TOKEN}
 
