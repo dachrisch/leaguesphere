@@ -578,7 +578,7 @@ jobs:
       - checkout
       - run:
           name: Install GitHub CLI
-          command: apt-get update && apt-get install -y gh
+          command: sudo apt-get update && sudo apt-get install -y gh
       - run:
           name: Create Stage Release
           command: |
@@ -601,7 +601,7 @@ jobs:
       - checkout
       - run:
           name: Install GitHub CLI
-          command: apt-get update && apt-get install -y gh
+          command: sudo apt-get update && sudo apt-get install -y gh
       - run:
           name: Create Production Release
           command: |
