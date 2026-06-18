@@ -589,8 +589,7 @@ jobs:
             gh release create "${TAG}+stage" \
               --title "Stage Release: ${VERSION}" \
               --notes "✅ Staging deployment successful. Awaiting production approval." \
-              --prerelease \
-              --draft
+              --prerelease
           env:
             GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
