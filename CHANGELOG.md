@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.27.0](https://github.com/dachrisch/leaguesphere/compare/v3.26.21...v3.27.0) (2026-06-18)
+
+
+### Features
+
+* implement tag-driven CircleCI release management ([cad8484](https://github.com/dachrisch/leaguesphere/commit/cad84843e5e939751b8f0118ff699af18afe550a))
+
 ## [3.26.21](https://github.com/dachrisch/leaguesphere/compare/v3.26.20...v3.26.21) (2026-06-18)
 
 
