@@ -16,3 +16,17 @@ jobs:
           config-file: release-please-config.json
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           skip-github-release: true
+
+      - name: Create tag for CircleCI if release was created
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          VERSION="${{ steps.release.outputs.version }}"
+          TAG="v${VERSION}"
+
+          echo "Creating tag: ${TAG}"
+          git config user.name "release-please[bot]"
+          git config user.email "release-please[bot]@users.noreply.github.com"
+          git tag "${TAG}"
+          git push origin "${TAG}"
