@@ -1,4 +1,13 @@
 {% extends "base.html" %}
+
+{% block og_title %}
+    {% if selected_league %}
+        {{ selected_season }} {{ selected_league }} Spieltage
+    {% else %}
+        Leaguesphere {{ selected_season }} Spieltage
+    {% endif %}
+{% endblock %}
+
 {% block content %}
 
 <div class="d-flex gap-2 mb-3">

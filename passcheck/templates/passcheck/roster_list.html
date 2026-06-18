@@ -1,4 +1,8 @@
 {% extends "base.html" %}
+
+{% block og_title %}Roster {{ team.name }}{% endblock %}
+{% block og_description %}Roster übersicht der {{ team.name }}{% endblock %}
+
 {% load custom_filters %}
 {% block content %}
 <article class="media content-section">

@@ -1,4 +1,9 @@
 {% extends "base.html" %}
+
+{% block og_title %}{{ object.name }} - {{ object.league.name }}{% endblock %}
+{% block og_description %}Spieltag am {{ object.date | date:"D, j. F Y " }} in {{ object.address }}. Turnierbeginn: {{ object.start|time:"H:i" }} Uhr.{% endblock %}
+{% block og_type %}website{% endblock %}
+
 {% load static %}
 {% block content %}
 {% if not request.GET.isExtern %}

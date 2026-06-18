@@ -182,3 +182,8 @@ class LeagueTableService:
         if self.league_season_config is None:
             return None
         return self.league_season_config.season.name
+
+    def get_league_name(self):
+        if self.league_season_config is None:
+            return None
+        return self.league_season_config.league.name

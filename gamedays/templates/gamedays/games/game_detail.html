@@ -1,4 +1,8 @@
 {% extends "base.html" %}
+
+{% block og_title %}{{ info.home_team }} vs. {{ info.away_team }}{% endblock %}
+{% block og_description %}Spielzusammenfassung vom {{ info.date | date:"D, j. F Y " }}{% endblock %}
+
 {% load static %}
 {% block content %}
 {% if not request.GET.isExtern %}

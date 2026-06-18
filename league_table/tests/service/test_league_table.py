@@ -80,3 +80,35 @@ def get_df_from_json(filename):
 #         DBSetup().g62_finished()
 #         league_table = LeagueTable()
 #         assert league_table.get_standing(season=Season.objects.first(), league='non existent league').empty
+
+from django.test import TestCase
+from league_table.service.league_table_service import LeagueTableService
+from league_table.models import LeagueSeasonConfig
+from gamedays.models import League, Season
+
+
+class TestLeagueTableService(TestCase):
+    def setUp(self):
+        self.season = Season.objects.create(name="2026", slug="2026")
+        self.league = League.objects.create(name="Test League", slug="test-league")
+        self.league_season_config = LeagueSeasonConfig.objects.create(
+            league=self.league, season=self.season
+        )
+
+    def test_get_league_name_with_valid_config(self):
+        service = LeagueTableService(self.league_season_config)
+        assert service.get_league_name() == "Test League"
+
+    def test_get_league_name_with_none_config(self):
+        service = LeagueTableService(None)
+        assert service.get_league_name() is None
+
+    def test_get_league_name_uses_select_related(self):
+        from league_table.service.leaguetable_repository import LeagueTableRepository
+        config = LeagueTableRepository.get_league_season_config_by_slug(
+            "test-league", "2026"
+        )
+        service = LeagueTableService(config)
+        league_name = service.get_league_name()
+        assert league_name == "Test League"
+
