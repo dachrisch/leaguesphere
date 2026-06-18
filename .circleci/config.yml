@@ -2,7 +2,7 @@ version: 2.1
 
 orbs:
   node: circleci/node@7.2.1
-  github-cli: circleci/github-cli@2.3.0
+  github-cli: circleci/github-cli@2.7.2
 
 commands:
   setup_uv:
