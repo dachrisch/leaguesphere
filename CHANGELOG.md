@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.28.1](https://github.com/dachrisch/leaguesphere/compare/v3.28.0...v3.28.1) (2026-06-18)
+
+
+### Bug Fixes
+
+* unset draft flag on release transitions ([cc3d7d6](https://github.com/dachrisch/leaguesphere/commit/cc3d7d66c84b9054e5d77ceff6ccb8558fc7193a))
+
 ## [3.28.0](https://github.com/dachrisch/leaguesphere/compare/v3.27.0...v3.28.0) (2026-06-18)
 
 
