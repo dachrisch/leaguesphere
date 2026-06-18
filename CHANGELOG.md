@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.28.2](https://github.com/dachrisch/leaguesphere/compare/v3.28.1...v3.28.2) (2026-06-18)
+
+
+### Bug Fixes
+
+* explicitly remove prerelease flag when publishing ([30af934](https://github.com/dachrisch/leaguesphere/commit/30af93447c5d619fb8fc42930834c8948b3a327f))
+
 ## [3.28.1](https://github.com/dachrisch/leaguesphere/compare/v3.28.0...v3.28.1) (2026-06-18)
 
 
