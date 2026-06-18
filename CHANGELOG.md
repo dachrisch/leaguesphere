@@ -1,5 +1,22 @@
 # Changelog
 
+## [3.26.21](https://github.com/dachrisch/leaguesphere/compare/v3.26.20...v3.26.21) (2026-06-18)
+
+
+### Bug Fixes
+
+* **deps:** update dependency django-autocomplete-light to v5 ([#1351](https://github.com/dachrisch/leaguesphere/issues/1351)) ([a7e85b0](https://github.com/dachrisch/leaguesphere/commit/a7e85b0d88b40df77c5dd4c62b95c409000dec10))
+* **deps:** update dependency serialize-javascript to v7.0.6 ([b0f77b5](https://github.com/dachrisch/leaguesphere/commit/b0f77b564cec8594ed77fae884c64ce8b370ea65))
+* **deps:** update dependency serialize-javascript to v7.0.6 ([3f23533](https://github.com/dachrisch/leaguesphere/commit/3f235339f0ac465337579776931ebcf9a7b92e9d))
+
+## [3.26.20](https://github.com/dachrisch/leaguesphere/compare/v3.26.19...v3.26.20) (2026-06-17)
+
+
+### Bug Fixes
+
+* **deps:** update babel monorepo to v8.0.1 ([04b644c](https://github.com/dachrisch/leaguesphere/commit/04b644c8f1936c201cbc55c2182b3b56745e08ac))
+* **deps:** update babel monorepo to v8.0.1 ([731ce10](https://github.com/dachrisch/leaguesphere/commit/731ce10c7870b8a134d2e769c750d9b828e90807))
+
 ## [3.26.19](https://github.com/dachrisch/leaguesphere/compare/v3.26.18...v3.26.19) (2026-06-17)
 
 

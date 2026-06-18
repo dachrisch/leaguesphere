@@ -1,6 +1,6 @@
 {
   "name": "journey_dashboard",
-  "version": "3.26.19",
+  "version": "3.26.21",
   "private": true,
   "type": "module",
   "dependencies": {
@@ -50,7 +50,7 @@
     ]
   },
   "devDependencies": {
-    "@babel/plugin-transform-private-property-in-object": "8.0.0",
+    "@babel/plugin-transform-private-property-in-object": "8.0.1",
     "@emnapi/core": "^1.11.1",
     "@emnapi/runtime": "^1.11.1",
     "@eslint/js": "10.0.1",

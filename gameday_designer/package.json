@@ -1,6 +1,6 @@
 {
   "name": "gameday_designer",
-  "version": "3.26.19",
+  "version": "3.26.21",
   "private": true,
   "type": "module",
   "dependencies": {
@@ -50,7 +50,7 @@
     ]
   },
   "devDependencies": {
-    "@babel/plugin-transform-private-property-in-object": "8.0.0",
+    "@babel/plugin-transform-private-property-in-object": "8.0.1",
     "@eslint/js": "10.0.1",
     "@testing-library/dom": "10.4.1",
     "@testing-library/jest-dom": "6.9.1",
@@ -74,7 +74,7 @@
   "overrides": {
     "postcss": "8.5.15",
     "nth-check": "3.0.1",
-    "serialize-javascript": "7.0.5",
+    "serialize-javascript": "7.0.6",
     "debug": "4.4.3",
     "xml2js": "0.6.2",
     "typescript": "6.0.3",
