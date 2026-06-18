@@ -2,6 +2,7 @@ version: 2.1
 
 orbs:
   node: circleci/node@7.2.1
+  github-cli: circleci/github-cli@2.3.0
 
 commands:
   setup_uv:
@@ -576,9 +577,7 @@ jobs:
       - image: cimg/base:stable
     steps:
       - checkout
-      - run:
-          name: Install GitHub CLI
-          command: sudo apt-get update && sudo apt-get install -y gh
+      - github-cli/install
       - run:
           name: Create Stage Release
           command: |
@@ -591,16 +590,14 @@ jobs:
               --notes "✅ Staging deployment successful. Awaiting production approval." \
               --prerelease
           env:
-            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            GH_TOKEN: ${GITHUB_TOKEN}
 
   create_production_release:
     docker:
       - image: cimg/base:stable
     steps:
       - checkout
-      - run:
-          name: Install GitHub CLI
-          command: sudo apt-get update && sudo apt-get install -y gh
+      - github-cli/install
       - run:
           name: Publish Production Release
           command: |
@@ -617,7 +614,7 @@ jobs:
               --draft=false \
               --latest
           env:
-            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            GH_TOKEN: ${GITHUB_TOKEN}
 
 workflows:
   version: 2
