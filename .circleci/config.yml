@@ -2,6 +2,7 @@ version: 2.1
 
 orbs:
   node: circleci/node@7.2.1
+  github-cli: circleci/github-cli@3.0.0
 
 commands:
   setup_uv:
@@ -571,53 +572,44 @@ jobs:
       - run_migrations_cmd:
           image_name: backend
 
-  create_stage_release:
+  promote_to_prerelease:
     docker:
       - image: cimg/base:stable
     steps:
       - checkout
+      - github-cli/install
       - run:
-          name: Install GitHub CLI
-          command: sudo apt-get update && sudo apt-get install -y gh
-      - run:
-          name: Create Stage Release
+          name: Promote Release to Prerelease
           command: |
             TAG="${CIRCLE_TAG}"
-            VERSION="${TAG#v}"
+            REPO="${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
 
-            echo "Creating stage release for tag: ${TAG}"
-            gh release create "${TAG}+stage" \
-              --title "Stage Release: ${VERSION}" \
-              --notes "✅ Staging deployment successful. Awaiting production approval." \
+            echo "Promoting ${TAG} to prerelease after staging succeeds"
+            gh release edit "${TAG}" \
+              --repo "${REPO}" \
               --prerelease
           env:
-            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            GH_TOKEN: ${GITHUB_TOKEN}
 
   create_production_release:
     docker:
       - image: cimg/base:stable
     steps:
       - checkout
-      - run:
-          name: Install GitHub CLI
-          command: sudo apt-get update && sudo apt-get install -y gh
+      - github-cli/install
       - run:
           name: Publish Production Release
           command: |
             TAG="${CIRCLE_TAG}"
-            VERSION="${TAG#v}"
-
-            if gh release view "${TAG}+stage" --json isPrerelease 2>/dev/null; then
-              echo "Promoting from stage release..."
-              gh release delete "${TAG}+stage" --cleanup-tag || true
-            fi
+            REPO="${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
 
             echo "Publishing production release for tag: ${TAG}"
             gh release edit "${TAG}" \
-              --draft=false \
+              --repo "${REPO}" \
+              --prerelease=false \
               --latest
           env:
-            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            GH_TOKEN: ${GITHUB_TOKEN}
 
 workflows:
   version: 2
@@ -710,7 +702,7 @@ workflows:
             branches:
               ignore: /.*/
 
-      - create_stage_release:
+      - promote_to_prerelease:
           requires:
             - deploy_staging
           filters:
