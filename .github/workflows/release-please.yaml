@@ -15,4 +15,17 @@ jobs:
         with:
           config-file: release-please-config.json
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-          skip-github-release: true
+
+      - uses: actions/checkout@v6
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+
+      - name: Convert release to draft
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          VERSION="${{ steps.release.outputs.version }}"
+          TAG="v${VERSION}"
+
+          echo "Converting release ${TAG} to draft..."
+          gh release edit "${TAG}" --draft
