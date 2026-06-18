@@ -587,6 +587,7 @@ jobs:
             echo "Promoting ${TAG} to prerelease after staging succeeds"
             gh release edit "${TAG}" \
               --repo "${REPO}" \
+              --draft=false \
               --prerelease
           env:
             GH_TOKEN: ${GITHUB_TOKEN}
@@ -606,7 +607,7 @@ jobs:
             echo "Publishing production release for tag: ${TAG}"
             gh release edit "${TAG}" \
               --repo "${REPO}" \
-              --prerelease=false \
+              --draft=false \
               --latest
           env:
             GH_TOKEN: ${GITHUB_TOKEN}
