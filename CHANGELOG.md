@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.26.21](https://github.com/dachrisch/leaguesphere/compare/v3.26.20...v3.26.21) (2026-06-18)
+
+
+### Bug Fixes
+
+* **deps:** update dependency django-autocomplete-light to v5 ([#1351](https://github.com/dachrisch/leaguesphere/issues/1351)) ([a7e85b0](https://github.com/dachrisch/leaguesphere/commit/a7e85b0d88b40df77c5dd4c62b95c409000dec10))
+* **deps:** update dependency serialize-javascript to v7.0.6 ([b0f77b5](https://github.com/dachrisch/leaguesphere/commit/b0f77b564cec8594ed77fae884c64ce8b370ea65))
+* **deps:** update dependency serialize-javascript to v7.0.6 ([3f23533](https://github.com/dachrisch/leaguesphere/commit/3f235339f0ac465337579776931ebcf9a7b92e9d))
+
 ## [3.26.20](https://github.com/dachrisch/leaguesphere/compare/v3.26.19...v3.26.20) (2026-06-17)
 
 
