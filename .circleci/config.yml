@@ -589,7 +589,7 @@ jobs:
             gh release create "${TAG}+stage" \
               --repo "${REPO}" \
               --title "Stage Release: ${VERSION}" \
-              --notes "✅ Staging deployment successful. Awaiting production approval." \
+              --generate-notes \
               --prerelease
           env:
             GH_TOKEN: ${GITHUB_TOKEN}
@@ -616,7 +616,8 @@ jobs:
             gh release edit "${TAG}" \
               --repo "${REPO}" \
               --draft=false \
-              --latest
+              --latest \
+              --generate-notes
           env:
             GH_TOKEN: ${GITHUB_TOKEN}
 
