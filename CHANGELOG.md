@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.28.0](https://github.com/dachrisch/leaguesphere/compare/v3.27.0...v3.28.0) (2026-06-18)
+
+
+### Features
+
+* **master:** Added Open Graph Tags to enhance the sharing experience ([d5497c6](https://github.com/dachrisch/leaguesphere/commit/d5497c6699f31bab6593df4ea549902cb630b6c2))
+
 ## [3.27.0](https://github.com/dachrisch/leaguesphere/compare/v3.26.21...v3.27.0) (2026-06-18)
 
 
