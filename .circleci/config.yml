@@ -607,11 +607,6 @@ jobs:
             VERSION="${TAG#v}"
             REPO="${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
 
-            if gh release view "${TAG}+stage" --repo "${REPO}" --json isPrerelease 2>/dev/null; then
-              echo "Promoting from stage release..."
-              gh release delete "${TAG}+stage" --repo "${REPO}" --cleanup-tag || true
-            fi
-
             echo "Publishing production release for tag: ${TAG}"
             gh release edit "${TAG}" \
               --repo "${REPO}" \
