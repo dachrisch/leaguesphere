@@ -603,7 +603,7 @@ jobs:
           name: Install GitHub CLI
           command: sudo apt-get update && sudo apt-get install -y gh
       - run:
-          name: Create Production Release
+          name: Publish Production Release
           command: |
             TAG="${CIRCLE_TAG}"
             VERSION="${TAG#v}"
@@ -613,9 +613,9 @@ jobs:
               gh release delete "${TAG}+stage" --cleanup-tag || true
             fi
 
-            echo "Creating production release for tag: ${TAG}"
-            gh release create "${TAG}" \
-              --title "Release: ${VERSION}" \
+            echo "Publishing production release for tag: ${TAG}"
+            gh release edit "${TAG}" \
+              --draft=false \
               --latest
           env:
             GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
