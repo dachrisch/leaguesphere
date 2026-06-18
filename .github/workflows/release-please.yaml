@@ -16,6 +16,9 @@ jobs:
           config-file: release-please-config.json
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
+      - uses: actions/checkout@v6
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+
       - name: Convert release to draft
         if: ${{ steps.release.outputs.release_created == 'true' }}
         env:
