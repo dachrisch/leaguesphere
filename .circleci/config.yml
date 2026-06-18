@@ -586,6 +586,7 @@ jobs:
 
             echo "Creating stage release for tag: ${TAG}"
             gh release create "${TAG}+stage" \
+              --repo dachrisch/leaguesphere \
               --title "Stage Release: ${VERSION}" \
               --notes "✅ Staging deployment successful. Awaiting production approval." \
               --prerelease
@@ -604,13 +605,14 @@ jobs:
             TAG="${CIRCLE_TAG}"
             VERSION="${TAG#v}"
 
-            if gh release view "${TAG}+stage" --json isPrerelease 2>/dev/null; then
+            if gh release view "${TAG}+stage" --repo dachrisch/leaguesphere --json isPrerelease 2>/dev/null; then
               echo "Promoting from stage release..."
-              gh release delete "${TAG}+stage" --cleanup-tag || true
+              gh release delete "${TAG}+stage" --repo dachrisch/leaguesphere --cleanup-tag || true
             fi
 
             echo "Publishing production release for tag: ${TAG}"
             gh release edit "${TAG}" \
+              --repo dachrisch/leaguesphere \
               --draft=false \
               --latest
           env:
