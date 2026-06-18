@@ -572,24 +572,21 @@ jobs:
       - run_migrations_cmd:
           image_name: backend
 
-  create_stage_release:
+  promote_to_prerelease:
     docker:
       - image: cimg/base:stable
     steps:
       - checkout
       - github-cli/install
       - run:
-          name: Create Stage Release
+          name: Promote Release to Prerelease
           command: |
             TAG="${CIRCLE_TAG}"
-            VERSION="${TAG#v}"
             REPO="${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
 
-            echo "Creating stage release for tag: ${TAG}"
-            gh release create "${TAG}+stage" \
+            echo "Promoting ${TAG} to prerelease after staging succeeds"
+            gh release edit "${TAG}" \
               --repo "${REPO}" \
-              --title "Stage Release: ${VERSION}" \
-              --generate-notes \
               --prerelease
           env:
             GH_TOKEN: ${GITHUB_TOKEN}
@@ -604,13 +601,12 @@ jobs:
           name: Publish Production Release
           command: |
             TAG="${CIRCLE_TAG}"
-            VERSION="${TAG#v}"
             REPO="${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
 
             echo "Publishing production release for tag: ${TAG}"
             gh release edit "${TAG}" \
               --repo "${REPO}" \
-              --draft=false \
+              --prerelease=false \
               --latest
           env:
             GH_TOKEN: ${GITHUB_TOKEN}
@@ -706,7 +702,7 @@ workflows:
             branches:
               ignore: /.*/
 
-      - create_stage_release:
+      - promote_to_prerelease:
           requires:
             - deploy_staging
           filters:
