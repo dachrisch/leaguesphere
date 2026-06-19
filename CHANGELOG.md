@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.28.3](https://github.com/dachrisch/leaguesphere/compare/v3.28.2...v3.28.3) (2026-06-19)
+
+
+### Bug Fixes
+
+* **deps:** update babel monorepo to v8.0.2 ([#1358](https://github.com/dachrisch/leaguesphere/issues/1358)) ([fe319ff](https://github.com/dachrisch/leaguesphere/commit/fe319ff375addab6593334633b4ce64409347dd7))
+* **deps:** update dependency @types/node to v25.9.4 ([a78d361](https://github.com/dachrisch/leaguesphere/commit/a78d3614b284a2a8198b0548d2a8e7a6f8947a3e))
+* **deps:** update dependency @types/node to v25.9.4 ([4741669](https://github.com/dachrisch/leaguesphere/commit/4741669f70d6a8abd95b3fc5968c2c24b26c311f))
+* **deps:** update dependency @types/node to v25.9.4 ([3596b2a](https://github.com/dachrisch/leaguesphere/commit/3596b2ae49896359e2fb8e55bc3de14d70cf1007))
+* **deps:** update dependency @types/node to v25.9.4 ([a5187d4](https://github.com/dachrisch/leaguesphere/commit/a5187d40899b4fc327cebf1b95a465654fb47c6e))
+* **deps:** update dependency django-debug-toolbar to v7 ([3fab5b1](https://github.com/dachrisch/leaguesphere/commit/3fab5b1df524a51c8d0f32aa0c9fff4ab9119721))
+* **deps:** update dependency django-debug-toolbar to v7 ([f19a78b](https://github.com/dachrisch/leaguesphere/commit/f19a78baed47e6204495f263541705323f96253c))
+* **deps:** update dependency pytest to v9.1.1 ([#1364](https://github.com/dachrisch/leaguesphere/issues/1364)) ([10fcc2e](https://github.com/dachrisch/leaguesphere/commit/10fcc2e68e1f904a91a81306ed8cfa3cf77d1ccb))
+
 ## [3.28.2](https://github.com/dachrisch/leaguesphere/compare/v3.28.1...v3.28.2) (2026-06-18)
 
 
