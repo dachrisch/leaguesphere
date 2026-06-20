@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.28.4](https://github.com/dachrisch/leaguesphere/compare/v3.28.3...v3.28.4) (2026-06-20)
+
+
+### Bug Fixes
+
+* **deps:** update dependency uuid to v14.0.1 ([#1366](https://github.com/dachrisch/leaguesphere/issues/1366)) ([ceb0954](https://github.com/dachrisch/leaguesphere/commit/ceb0954cf544733e731c324b3e1eb3dea9b0cf58))
+* link version tag to releases page instead of tree view ([6c73b2e](https://github.com/dachrisch/leaguesphere/commit/6c73b2e7ec1338aff2a13bbfb828e37a8ecbb2dc))
+
 ## [3.28.3](https://github.com/dachrisch/leaguesphere/compare/v3.28.2...v3.28.3) (2026-06-19)
 
 
