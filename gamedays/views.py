@@ -58,6 +58,9 @@ from .wizard import (
     WizardStepHandler,
     WIZARD_STEP_HANDLER_MAP,
 )
+from matchreport.constants import (
+    MATCHREPORT_GAMEDAY_DETAIL
+)
 
 
 class GamedayListView(View):
@@ -255,12 +258,18 @@ class GamedayDetailView(DetailView):
             "defense_table": gs.get_defense_player_statistic_table().to_html(
                 **render_configs
             ),
+            "external_urls": [
+                {"url": "www.google.com", "description": "Stream Feld 1"},
+                {"url": "claude.ai", "description": "Stream Feld 2"},
+                {"url": "claude.ai", "description": "Stream Feld 3"},
+            ],
             "url_pattern_official": url_pattern_official,
             "url_pattern_official_signup": url_pattern_official_signup,
             "url_pattern_league_filter": UrlService.build_absolute_url(
                 LEAGUE_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE, {"season": gameday.season, "league": gameday.league}
             ),
             "url_pattern_liveticker": f"{UrlService.build_absolute_url(LIVETICKER_HOME)}?league={gameday.league.slug}&gameday={gameday.pk}",
+            "url_pattern_matchreport": MATCHREPORT_GAMEDAY_DETAIL,
             "extended_info": config.get("show_player_names", False)
         }
 
