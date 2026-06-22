@@ -119,8 +119,8 @@ class TestGamedayDetailView(TestCase):
         assert context["info"]["offense_table"] == EmptyOffenseStatisticTable().to_html()
         assert context["info"]["defense_table"] == EmptyDefenseStatisticTable().to_html()
         assert len(context["info"]["external_urls"]) == 1
-        assert context["info"]["external_urls"]["url"] == resource_url.url
-        assert context["info"]["external_urls"]["description"] == resource_url.description
+        assert context["info"]["external_urls"][0]["url"] == resource_url.url
+        assert context["info"]["external_urls"][0]["description"] == resource_url.description
 
     def test_detail_view_gameday_not_available(self):
         resp = self.client.get(reverse(LEAGUE_GAMEDAY_DETAIL, args=[00]))
