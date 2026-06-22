@@ -175,7 +175,8 @@ export const Officials = (props) => {
     setIsSuccessfulSubmitted(true);
   };
   if (isSuccessfulSubmitted) {
-    return <Navigate to={`${DETAILS_URL}?start=${fhPossession}`} />;
+    const startId = fhPossession == selectedGame.away ? selectedGame.id_away : selectedGame.id_home;
+    return <Navigate to={`${DETAILS_URL}?start=${startId}`} />;
   }
   const resetOfficialsSearch = () => {
     dispatch({

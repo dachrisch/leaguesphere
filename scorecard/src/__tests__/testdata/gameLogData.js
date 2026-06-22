@@ -2,6 +2,7 @@ export const GAME_LOG_COMPLETE_GAME = {
   'gameId': 53,
   'isFirstHalf': false,
   'home': {
+    'id': 101,
     'name': 'Home',
     'score': 42,
     'firsthalf': {
@@ -44,6 +45,7 @@ export const GAME_LOG_COMPLETE_GAME = {
     },
   },
   'away': {
+    'id': 102,
     'name': 'Away',
     'score': 13,
     'firsthalf': {
@@ -85,6 +87,7 @@ export const GAME_LOG_ONLY_FIRSTHALF = {
   'gameId': 52,
   'isFirstHalf': true,
   'home': {
+    'id': 201,
     'name': 'Wesel',
     'score': 21,
     'firsthalf': {
@@ -112,6 +115,7 @@ export const GAME_LOG_ONLY_FIRSTHALF = {
     },
   },
   'away': {
+    'id': 202,
     'name': 'Iser',
     'score': 3,
     'secondhalf': {

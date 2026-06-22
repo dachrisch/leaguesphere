@@ -194,7 +194,9 @@ class GameLogSerializer(Serializer):
         name = obj[self.HOME_TEAM] if is_home else obj[self.AWAY_TEAM]
         if name is None:
             name = GamedayPlaceholderService.resolve_placeholder(obj[self.ID], is_home)
+        team_id = obj["home_id"] if is_home else obj["away_id"]
         return {
+            "id": team_id,
             "name": name,
             "score": obj[score_key],
             "firsthalf": {"score": obj[fh_key], "entries": entries_firsthalf},
