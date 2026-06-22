@@ -39,7 +39,7 @@ const setup = (gameLog = GAME_LOG_COMPLETE_GAME) => {
   };
   const store = testStore(initialState);
   render(
-      <Router initialEntries={[{pathname: '/details', search: `?start=${GAME_LOG_COMPLETE_GAME.away.name}`}]}>
+      <Router initialEntries={[{pathname: '/details', search: `?start=${GAME_LOG_COMPLETE_GAME.away.id}`}]}>
         <Routes>
           <Route path={DETAILS_URL} element={<Details store={store} />} />
           <Route path={FINALIZE_URL} element={<div>Finalize Page</div>} />
@@ -118,10 +118,10 @@ describe('Details component', () => {
     expect(awayButton).not.toBeChecked();
     /* [0][
       0 - "/api/gamelog/53",
-      1 - {"event": [{"name": "INT", "player": ""}], "gameId": 53, "half": 2, "team": "Home"},
+      1 - {"event": [{"name": "INT", "player": ""}], "gameId": 53, "half": 2, "team": 101},
       2 - "GET_GAME_LOG",
       3 - "GAME_CREATE_LOG_ENTRY_FAIL"] */
-    expect(apiPost.mock.calls[0][1]['team']).toEqual('Home');
+    expect(apiPost.mock.calls[0][1]['team']).toEqual(GAME_LOG_COMPLETE_GAME.home.id);
 
     expect(screen.getByText('Einträge Heim')).toBeInTheDocument();
   });

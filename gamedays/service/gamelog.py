@@ -70,9 +70,15 @@ class GameLog(object):
 
     def __init__(self, gameinfo):
         self.gameinfo = gameinfo
-        home = Gameresult.objects.get(gameinfo=self.gameinfo, isHome=True).team.name
-        away = Gameresult.objects.get(gameinfo=self.gameinfo, isHome=False).team.name
-        self.gamelog = GameLogObject(gameinfo.pk, home, away)
+        home_team = Gameresult.objects.get(gameinfo=self.gameinfo, isHome=True).team
+        away_team = Gameresult.objects.get(gameinfo=self.gameinfo, isHome=False).team
+        self.gamelog = GameLogObject(
+            gameinfo.pk,
+            home_team.name,
+            away_team.name,
+            home_team.pk,
+            away_team.pk,
+        )
 
     def as_json(self):
         self.gamelog.is_first_half = self.is_firsthalf()
@@ -223,7 +229,8 @@ class Half(object):
 
 
 class Team(object):
-    def __init__(self, name):
+    def __init__(self, name, id=None):
+        self.id = id
         self.name = name
         self.score = None
         self.firsthalf = Half()
@@ -231,6 +238,7 @@ class Team(object):
 
     def as_json(self):
         return dict(
+            id=self.id,
             name=self.name,
             score=self.score,
             firsthalf=self.firsthalf,
@@ -239,10 +247,10 @@ class Team(object):
 
 
 class GameLogObject(object):
-    def __init__(self, gameId, home, away):
+    def __init__(self, gameId, home, away, home_id=None, away_id=None):
         self.gameId = gameId
-        self.home = Team(home)
-        self.away = Team(away)
+        self.home = Team(home, home_id)
+        self.away = Team(away, away_id)
         self.is_first_half = True
 
     def as_json(self):

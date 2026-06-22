@@ -83,3 +83,46 @@ class TestGameService(TestCase):
         gamelog = game_service.delete_gamelog(2)
         assert gamelog.get_home_score() == 34
         assert gamelog.get_home_firsthalf_score() == 13
+
+    def test_create_gamelog_resolves_team_by_id(self):
+        gameday = DBSetup().g62_status_empty()
+        team = Team.objects.get(name="A1")
+        game = DBSetup().create_teamlog_home_and_away(home=team)
+        event = [{"name": "Touchdown", "input": None, "player": "12"}]
+        GameService(game.pk).create_gamelog(team.pk, event, gameday.author, 1)
+        assert TeamLog.objects.filter(
+            gameinfo=game, team=team, event="Touchdown"
+        ).exists()
+
+    def test_create_gamelog_resolves_team_by_name(self):
+        gameday = DBSetup().g62_status_empty()
+        team = Team.objects.get(name="A1")
+        game = DBSetup().create_teamlog_home_and_away(home=team)
+        event = [{"name": "Touchdown", "input": None, "player": "12"}]
+        GameService(game.pk).create_gamelog(team.name, event, gameday.author, 1)
+        assert TeamLog.objects.filter(
+            gameinfo=game, team=team, event="Touchdown"
+        ).exists()
+
+    def test_create_gamelog_resolves_team_by_description(self):
+        # The coin-toss "?start=" value carries Team.description (full club name),
+        # while the write path historically only matched Team.name (short name).
+        # The first scorecard entry per game must still resolve and return 201.
+        gameday = DBSetup().g62_status_empty()
+        team = Team.objects.get(name="A1")
+        assert team.name != team.description
+        game = DBSetup().create_teamlog_home_and_away(home=team)
+        event = [{"name": "Touchdown", "input": None, "player": "12"}]
+        GameService(game.pk).create_gamelog(team.description, event, gameday.author, 1)
+        assert TeamLog.objects.filter(
+            gameinfo=game, team=team, event="Touchdown"
+        ).exists()
+
+    def test_create_gamelog_raises_for_unknown_team(self):
+        gameday = DBSetup().g62_status_empty()
+        game = DBSetup().create_teamlog_home_and_away()
+        event = [{"name": "Touchdown", "input": None, "player": "12"}]
+        with self.assertRaises(Team.DoesNotExist):
+            GameService(game.pk).create_gamelog(
+                "no such team", event, gameday.author, 1
+            )
