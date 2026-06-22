@@ -39,7 +39,7 @@ class TestGamelog(TestCase):
         assert not gamelog.is_firsthalf()
 
     def test_json_representation_of_gamelog_object(self):
-        g = GameLogObject(81, "White", "Red")
+        g = GameLogObject(81, "White", "Red", 11, 22)
         g.home.score = 18
         g.away.score = 7
         assert json.dumps(g.as_json(), cls=AsJsonEncoder) == json.dumps(
@@ -47,12 +47,14 @@ class TestGamelog(TestCase):
                 "gameId": 81,
                 "isFirstHalf": True,
                 "home": {
+                    "id": 11,
                     "name": "White",
                     "score": 18,
                     "firsthalf": {"score": None, "entries": []},
                     "secondhalf": {"score": None, "entries": []},
                 },
                 "away": {
+                    "id": 22,
                     "name": "Red",
                     "score": 7,
                     "firsthalf": {"score": None, "entries": []},

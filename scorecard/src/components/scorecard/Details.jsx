@@ -22,13 +22,16 @@ const Details = (props) => {
   const [isFinal, setIsFinal] = useState(false);
   const [searchParams] = useSearchParams();
   useEffect(() => {
-    const startingTeam = searchParams.get('start');
-    if (startingTeam) {
-      setTeamInPossession(startingTeam);
-      setShowHomeLog(startingTeam == gameLog.home.name);
+    const startingTeamId = searchParams.get('start');
+    if (startingTeamId) {
+      const isHome = String(startingTeamId) == String(gameLog.home.id);
+      setTeamInPossession(isHome ? gameLog.home.name : gameLog.away.name);
+      setShowHomeLog(isHome);
       setHalf(gameLog.isFirstHalf ? 1 : 2);
     }
   }, [gameLog.home.name]);
+  const teamIdFor = (teamName) =>
+    teamName == gameLog.home.name ? gameLog.home.id : gameLog.away.id;
   const handleSwitch = () => {
     setDisplaybothTeamLogs(!displayBothTeamLogs);
   };
@@ -69,9 +72,9 @@ const Details = (props) => {
     }
     if (isAgainstOpponent) {
       const opponentTeam = teamInPossession == gameLog.home.name ? gameLog.away.name : gameLog.home.name;
-      props.createLogEntry({'team': opponentTeam, 'gameId': gameLog.gameId, 'half': half, ...event});
+      props.createLogEntry({'team': teamIdFor(opponentTeam), 'gameId': gameLog.gameId, 'half': half, ...event});
     } else {
-      props.createLogEntry({'team': teamInPossession, 'gameId': gameLog.gameId, 'half': half, ...event});
+      props.createLogEntry({'team': teamIdFor(teamInPossession), 'gameId': gameLog.gameId, 'half': half, ...event});
     }
     props.updateTeamInPossession(gameLog.gameId, nextTeamInPossession);
     setTeamInPossession(nextTeamInPossession);

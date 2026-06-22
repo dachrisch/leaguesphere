@@ -15,7 +15,7 @@ from gamedays.constants import (
     API_GAME_OFFICIALS,
     API_GAME_SETUP,
 )
-from gamedays.models import Gameinfo, Gameresult, GameOfficial, GameSetup, TeamLog
+from gamedays.models import Gameinfo, Gameresult, GameOfficial, GameSetup, TeamLog, Team
 from gamedays.tests.setup_factories.db_setup import DBSetup
 
 
@@ -145,6 +145,12 @@ class TestGameLog(WebTest):
         ) as f:
             expected_gamelog = json.load(f)
         expected_gamelog["gameId"] = gameinfo.pk
+        expected_gamelog["home"]["id"] = Gameresult.objects.get(
+            gameinfo=gameinfo, isHome=True
+        ).team_id
+        expected_gamelog["away"]["id"] = Gameresult.objects.get(
+            gameinfo=gameinfo, isHome=False
+        ).team_id
         assert response.json == expected_gamelog
 
     def test_post_team_log(self):
@@ -168,6 +174,7 @@ class TestGameLog(WebTest):
         assert TeamLog.objects.first().author == another_user
         assert response.json == {
             "away": {
+                "id": Team.objects.get(name="A2").pk,
                 "firsthalf": {"entries": [], "score": 0},
                 "name": "A2",
                 "score": 0,
@@ -175,6 +182,7 @@ class TestGameLog(WebTest):
             },
             "gameId": first_game.pk,
             "home": {
+                "id": Team.objects.get(name="A1").pk,
                 "firsthalf": {
                     "entries": [{"pat1": 7, "sequence": 1, "td": 19}],
                     "score": 7,
@@ -206,12 +214,14 @@ class TestGameLog(WebTest):
         assert response.json == {
             "gameId": first_game.pk,
             "away": {
+                "id": Team.objects.get(name="A2").pk,
                 "name": "A2",
                 "score": 0,
                 "firsthalf": {"entries": [], "score": 0},
                 "secondhalf": {"entries": [], "score": 0},
             },
             "home": {
+                "id": Team.objects.get(name="A1").pk,
                 "name": "A1",
                 "score": 6,
                 "firsthalf": {
@@ -241,6 +251,7 @@ class TestGameLog(WebTest):
             "gameId": first_game.pk,
             "isFirstHalf": True,
             "home": {
+                "id": Team.objects.get(name="A1").pk,
                 "name": "A1",
                 "score": 0,
                 "firsthalf": {
@@ -250,6 +261,7 @@ class TestGameLog(WebTest):
                 "secondhalf": {"score": 0, "entries": []},
             },
             "away": {
+                "id": Team.objects.get(name="A2").pk,
                 "name": "A2",
                 "score": 0,
                 "firsthalf": {"score": 0, "entries": []},

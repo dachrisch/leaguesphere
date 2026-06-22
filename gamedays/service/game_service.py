@@ -27,9 +27,28 @@ class GameService(object):
 
     def create_gamelog(self, team_name, event, user, half):
         # ToDo extract to TeamWrapper
-        team = Team.objects.get(name=team_name)
+        team = self._resolve_team(team_name)
         gamelog = GameLogCreator(self.gameinfo.gameinfo, team, event, user, half)
         return gamelog.create()
+
+    @staticmethod
+    def _resolve_team(team_identifier) -> Team:
+        # The scorecard posts the team id (pk) so the write path is unambiguous.
+        # Fall back to name/description so a stale/cached client mid-deploy that still
+        # posts a team name (or the description that used to leak via "?start=") keeps
+        # working instead of 404ing.
+        if str(team_identifier).isdigit():
+            team = Team.objects.filter(pk=team_identifier).first()
+            if team is not None:
+                return team
+        team = Team.objects.filter(name=team_identifier).first()
+        if team is None:
+            team = Team.objects.filter(description=team_identifier).first()
+        if team is None:
+            raise Team.DoesNotExist(
+                f"Team matching query does not exist: {team_identifier!r}"
+            )
+        return team
 
     def update_score(self, gamelog: GameLog):
         self.gameresult.save_home_first_half(
