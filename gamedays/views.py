@@ -156,7 +156,7 @@ class GamedayDetailView(DetailView):
     template_name = "gamedays/gameday_detail.html"
 
     def get_queryset(self):
-        return Gameday.objects.select_related('league', 'season')
+        return Gameday.objects.select_related('league', 'season').prefetch_related('resourceurl_set')
 
     def get_context_data(self, **kwargs):
         context = super(GamedayDetailView, self).get_context_data()
@@ -258,11 +258,7 @@ class GamedayDetailView(DetailView):
             "defense_table": gs.get_defense_player_statistic_table().to_html(
                 **render_configs
             ),
-            "external_urls": [
-                {"url": "www.google.com", "description": "Stream Feld 1"},
-                {"url": "claude.ai", "description": "Stream Feld 2"},
-                {"url": "claude.ai", "description": "Stream Feld 3"},
-            ],
+            "external_urls": list(gameday.resourceurl_set.values('description', 'url')),
             "url_pattern_official": url_pattern_official,
             "url_pattern_official_signup": url_pattern_official_signup,
             "url_pattern_league_filter": UrlService.build_absolute_url(

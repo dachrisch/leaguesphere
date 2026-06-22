@@ -23,7 +23,7 @@
             <div class="card-body">
                 <div class="row mb-2">
                     <div class="col-auto"><strong>Liga:</strong></div>
-                    <div class="col"><a href="{{info.url_pattern_league_filter}}">{{ object.league.name }}</a></div>
+                    <div class="col">{{ object.league.name }}</div>
                 </div>
                 <div class="row mb-2">
                     <div class="col-auto"><strong>Datum:</strong></div>
@@ -103,7 +103,7 @@
                 </div>
                 {% else %}
                 <p class="text-muted mb-0">
-                    <small><i class="bi bi-info-circle"></i> Keine externen Links verfügbar</small>
+                    <small><i class="bi bi-info-circle"></i> Keine Links verfügbar</small>
                 </p>
                 {% endif %}
             </div>

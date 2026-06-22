@@ -8,6 +8,9 @@
             {% include "partials/legend_with_cancel.html" with title=action_label cancel_url=cancel_url %}
             {{ form|crispy }}
         </fieldset>
+        <div class="mb-3">
+            <i class="bi bi-info-circle"></i> Aktuell lassen sich URLs für einen Gameday nur über das Backend erstellen und verwalten.
+        </div>
         <div class="form-group">
             {% if object %}
             <div class="d-flex gap-2">

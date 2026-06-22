@@ -42,6 +42,7 @@ from gamedays.tests.setup_factories.factories import (
     UserFactory,
     GamedayFactory,
     SeasonFactory,
+    ResourceUrlFactory,
 )
 from gamedays.wizard import FIELD_GROUP_STEP, GAMEDAY_FORMAT_STEP, GAMEINFO_STEP
 from league_table.tests.setup_factories.db_setup_leaguetable import LEAGUE_TABLE_TEST_RULESET
@@ -101,9 +102,11 @@ class TestGamedayDetailView(TestCase):
         assert context["info"]["final_table"] != ""
         assert context["info"]["offense_table"] != EmptyOffenseStatisticTable().to_html()
         assert context["info"]["defense_table"] != EmptyDefenseStatisticTable().to_html()
+        assert len(context["info"]["external_urls"]) == 0
 
     def test_detail_view_with_empty_gameday(self):
         gameday = DBSetup().create_empty_gameday()
+        resource_url = ResourceUrlFactory(gameday=gameday)
         resp = self.client.get(
             reverse(LEAGUE_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk})
         )
@@ -115,6 +118,9 @@ class TestGamedayDetailView(TestCase):
         assert context["info"]["final_table"] == TableContextBuilder.build(EmptyFinalTable())
         assert context["info"]["offense_table"] == EmptyOffenseStatisticTable().to_html()
         assert context["info"]["defense_table"] == EmptyDefenseStatisticTable().to_html()
+        assert len(context["info"]["external_urls"]) == 1
+        assert context["info"]["external_urls"]["url"] == resource_url.url
+        assert context["info"]["external_urls"]["description"] == resource_url.description
 
     def test_detail_view_gameday_not_available(self):
         resp = self.client.get(reverse(LEAGUE_GAMEDAY_DETAIL, args=[00]))
