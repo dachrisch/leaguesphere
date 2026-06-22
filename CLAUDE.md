@@ -282,6 +282,9 @@ For detailed protocols and standards, refer to:
 - **[AGENTS.md](AGENTS.md)**: Universal guidelines for all autonomous agents
 - **[GEMINI.md](GEMINI.md)**: Gemini CLI-specific instructions
 
+**Deployment Environments:**
+- **[Prod / Stage / Demo / Test reference](../container/docs/leaguesphere-environments.md)** (in the `container` infra repo) — environment matrix, per-env setup commands, log/metric locations, and the "investigate-on-prod / reproduce-with-prod-data" (`ls_db_sync`) workflows. `ls_db_sync` clones prod into the **stage stack**, which can run on `lehel.xyz` (`./servyy.sh`) *or* on `servyy-test.lxd` (`./servyy-test.sh`) for an isolated copy. `spinup_test_db.sh` is the separate synthetic-fixture DB for the pytest suite.
+
 **Recent Implementation Work:**
 - **[Load Testing Infrastructure](history/2026-05-31_load-testing-infrastructure.md)** — k6 load tests, Prometheus metrics pipeline, Grafana dashboard setup
 - **[Production Test Guide](../PROD_TEST_GUIDE.md)** — Prometheus/Pushgateway verification procedures
