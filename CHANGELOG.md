@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.28.5](https://github.com/dachrisch/leaguesphere/compare/v3.28.4...v3.28.5) (2026-06-22)
+
+
+### Bug Fixes
+
+* **deps:** lock file maintenance ([c40429f](https://github.com/dachrisch/leaguesphere/commit/c40429ffafcdc323e7547a5c09ce72c0bf4290e2))
+* **deps:** lock file maintenance ([7cf73eb](https://github.com/dachrisch/leaguesphere/commit/7cf73eb994e3c01585d500573ccaf54006ab3360))
+* **deps:** update dependency numpy to v2.5.0 ([#1367](https://github.com/dachrisch/leaguesphere/issues/1367)) ([c3493bb](https://github.com/dachrisch/leaguesphere/commit/c3493bb2dffef5017547015fe8c618b8ae97005b))
+
 ## [3.28.4](https://github.com/dachrisch/leaguesphere/compare/v3.28.3...v3.28.4) (2026-06-20)
 
 
