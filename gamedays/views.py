@@ -258,14 +258,19 @@ class GamedayDetailView(DetailView):
             "defense_table": gs.get_defense_player_statistic_table().to_html(
                 **render_configs
             ),
-            "external_urls": list(gameday.resourceurl_set.values('description', 'url')),
+            "external_urls": [
+                {
+                    "description": url.description,
+                    "url": url.url
+                }
+                for url in gameday.resourceurl_set.all()
+            ],
             "url_pattern_official": url_pattern_official,
             "url_pattern_official_signup": url_pattern_official_signup,
             "url_pattern_league_filter": UrlService.build_absolute_url(
                 LEAGUE_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE, {"season": gameday.season, "league": gameday.league}
             ),
             "url_pattern_liveticker": f"{UrlService.build_absolute_url(LIVETICKER_HOME)}?league={gameday.league.slug}&gameday={gameday.pk}",
-            "url_pattern_matchreport": MATCHREPORT_GAMEDAY_DETAIL,
             "extended_info": config.get("show_player_names", False)
         }
 

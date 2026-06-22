@@ -375,7 +375,7 @@ class ResourceUrl(models.Model):
         help_text="Beschreibung der URL"
     )
 
-    objects: QuerySet["Person"] = models.Manager()
+    objects: QuerySet["ResourceUrl"] = models.Manager()
 
     def __str__(self):
         return f"{self.gameday.pk}__{self.pk} - {self.description} -> {self.url}"
