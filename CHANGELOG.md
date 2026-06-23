@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.28.7](https://github.com/dachrisch/leaguesphere/compare/v3.28.6...v3.28.7) (2026-06-23)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @vitejs/plugin-react to v6.0.3 ([#1378](https://github.com/dachrisch/leaguesphere/issues/1378)) ([64134a6](https://github.com/dachrisch/leaguesphere/commit/64134a6ad0d9c67fd1462dc3f9bfb0a61ed65ca4))
+* **deps:** update dependency @vitejs/plugin-react to v6.0.3 ([#1379](https://github.com/dachrisch/leaguesphere/issues/1379)) ([4af7840](https://github.com/dachrisch/leaguesphere/commit/4af78403875c11f8763e8286b57fd3e8633a8d89))
+* **deps:** update dependency django-health-check to v4.4.3 ([f40d9c6](https://github.com/dachrisch/leaguesphere/commit/f40d9c6aafb2504cbf0b6c8b99f7731a415682c1))
+* **deps:** update dependency django-health-check to v4.4.3 ([e244664](https://github.com/dachrisch/leaguesphere/commit/e244664901b999bee4632a78cf5f89a9fae2c45e))
+* **deps:** update dependency vite to v8.1.0 ([26dda06](https://github.com/dachrisch/leaguesphere/commit/26dda0601f49a36e215462426f785cb51caaae4c))
+* **deps:** update dependency vite to v8.1.0 ([9116e3f](https://github.com/dachrisch/leaguesphere/commit/9116e3f44b1c9656187b7cd05ec2131e25c02386))
+* **deps:** update dependency vite to v8.1.0 ([85d80e8](https://github.com/dachrisch/leaguesphere/commit/85d80e8a73db85264a72f0d721ca8ee3ba10e4c8))
+* **deps:** update dependency vite to v8.1.0 ([0dc1377](https://github.com/dachrisch/leaguesphere/commit/0dc1377f8a41005c17454e417fa868eb7edff5e4))
+* **frontend:** output IIFE bundles for classic-script apps (vite 8.1.0 import.meta) ([4cc065f](https://github.com/dachrisch/leaguesphere/commit/4cc065fee04d49062eb6373bc9ebf42e701a4ea3))
+
 ## [3.28.6](https://github.com/dachrisch/leaguesphere/compare/v3.28.5...v3.28.6) (2026-06-22)
 
 
