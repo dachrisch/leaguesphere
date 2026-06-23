@@ -454,24 +454,10 @@ jobs:
                 -e 's|image: leaguesphere/frontend:latest|image: frontend:latest|g' \
                 docker-compose.yaml > docker-compose.ci.yaml
             docker network create proxy || true
-            set -x
-            up_rc=0
-            docker-compose -f docker-compose.ci.yaml up -d || up_rc=$?
+            docker-compose -f docker-compose.ci.yaml up -d
             sleep 15
-            echo "===== compose ps ====="
             docker-compose -f docker-compose.ci.yaml ps
-            echo "===== generated ls.env.ci ====="
-            cat ls.env.ci || true
-            echo "===== app container logs ====="
-            docker-compose -f docker-compose.ci.yaml logs --no-color --timestamps app || true
-            echo "===== db container logs ====="
-            docker-compose -f docker-compose.ci.yaml logs --no-color --timestamps db || true
             APP_CONTAINER=$(docker-compose -f docker-compose.ci.yaml ps -q app)
-            echo "===== app health (inspect) ====="
-            docker inspect --format '{{json .State.Health}}' "$APP_CONTAINER" || true
-            echo "===== app /health/ probe (manual) ====="
-            docker exec "$APP_CONTAINER" sh -c 'curl -sv -A healthcheck "http://localhost:8000/health/?format=json"' 2>&1 | head -60 || true
-            if [ "$up_rc" -ne 0 ]; then echo "compose up failed rc=$up_rc"; exit "$up_rc"; fi
             docker exec $APP_CONTAINER sh -c 'curl -f --max-time 10 https://www.google.com'
             docker-compose -f docker-compose.ci.yaml down -v
 
