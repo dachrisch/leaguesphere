@@ -9,10 +9,16 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
+        // Classic <script> tag (no type="module") in the Django template, so the
+        // bundle must be IIFE. The default `es` format lets the bundler emit
+        // `import.meta` (e.g. from deps), which throws "Cannot use 'import.meta'
+        // outside a module" in a classic script and prevents the app from mounting.
+        format: 'iife',
         entryFileNames: 'passcheck.js',
         chunkFileNames: 'passcheck.js',
         assetFileNames: 'passcheck.[ext]',
         manualChunks: undefined,
+        inlineDynamicImports: true,
       },
     },
   },
