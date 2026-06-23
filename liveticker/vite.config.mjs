@@ -39,12 +39,18 @@ export default defineConfig({
     rollupOptions: {
       input: path.resolve(__dirname, 'src/index.jsx'),
       output: {
+        // Classic <script> tag (no type="module") in the Django template, so the
+        // bundle must be IIFE. The default `es` format lets the bundler emit
+        // `import.meta` (e.g. from deps), which throws "Cannot use 'import.meta'
+        // outside a module" in a classic script and prevents the app from mounting.
+        format: 'iife',
         // Single bundle output to match Django expectations
         entryFileNames: 'liveticker.js',
         chunkFileNames: 'liveticker-[name].js',
         assetFileNames: 'liveticker-[name].[ext]',
         // Disable code splitting for single bundle
         manualChunks: undefined,
+        inlineDynamicImports: true,
       },
     },
     // Inline small assets
