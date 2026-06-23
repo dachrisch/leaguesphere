@@ -51,7 +51,9 @@ services:
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}  # Default to false if not set
     networks:
       - backend   # For www communication
-      - database  # For external MySQL access
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       interval: 15s
@@ -59,10 +61,33 @@ services:
       retries: 5
       start_period: 90s
 
+  db:
+    image: mariadb:latest
+    container_name: ${COMPOSE_PROJECT_NAME}.db
+    restart: unless-stopped
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - "./mysql-data:/var/lib/mysql"
+      - "./mysql-backup:/backup"
+      - "./mysql-init:/docker-entrypoint-initdb.d:ro"
+    env_file: ls.env
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "sh", "-c", "mariadb -h localhost --skip-ssl -u root -p$$MYSQL_ROOT_PASSWORD -e 'SELECT 1'"]
+      interval: 15s
+      timeout: 5s
+      retries: 15
+      start_period: 90s
+    labels:
+      - traefik.enable=false
+      - io.portainer.accesscontrol.teams=leaguesphere
+      - com.centurylinklabs.watchtower.scope=prod
+
 networks:
   backend:
     internal: true
-  database:
-    internal: false  # Allow external connectivity for MySQL
   proxy:
     external: true
