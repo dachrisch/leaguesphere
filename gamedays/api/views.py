@@ -137,6 +137,10 @@ class GamedayViewSet(viewsets.ModelViewSet):
                     queryset = queryset.filter(status__iexact=value)
             else:
                 queryset = queryset.filter(name__icontains=search)
+        has_designer_state = self.request.query_params.get("has_designer_state")
+        if has_designer_state is not None:
+            wants_state = has_designer_state.lower() in ("true", "1", "yes")
+            queryset = queryset.filter(designer_state__isnull=not wants_state)
         return queryset
 
     @action(detail=True, methods=["post"])

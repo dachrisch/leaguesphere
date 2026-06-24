@@ -69,11 +69,14 @@ class MockGamedayService {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(this.gamedays));
   }
 
-  async list(params?: { search?: string }): Promise<PaginatedResponse<GamedayListEntry>> {
+  async list(params?: { search?: string; has_designer_state?: boolean }): Promise<PaginatedResponse<GamedayListEntry>> {
     let filtered = [...this.gamedays];
-    
+
     if (params?.search) {
       filtered = filtered.filter(g => matchGameday(g, params.search!));
+    }
+    if (params?.has_designer_state) {
+      filtered = filtered.filter(g => g.has_designer_state === true);
     }
 
     // Sort by date descending
