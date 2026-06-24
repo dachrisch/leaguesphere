@@ -442,10 +442,11 @@ jobs:
             EOF
             cat > ls.env.ci \<<EOF
             SECRET_KEY=ci-test-secret-key-not-for-production
-            MYSQL_HOST=mysql-mock.example.com
+            MYSQL_HOST=db
             MYSQL_DB_NAME=ci_test_db
             MYSQL_USER=ci_test_user
             MYSQL_PWD=ci_test_password
+            MYSQL_ROOT_PASSWORD=ci_test_root_pw
             DEBUG=False
             EOF
             sed -e 's/env_file: ls.env/env_file: ls.env.ci/g' \

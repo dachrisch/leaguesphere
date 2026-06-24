@@ -1,5 +1,56 @@
 # Changelog
 
+## [3.29.0](https://github.com/dachrisch/leaguesphere/compare/v3.28.7...v3.29.0) (2026-06-23)
+
+
+### Features
+
+* **prod:** internal-only MariaDB db service + optional mariadb-backup user ([4c98a88](https://github.com/dachrisch/leaguesphere/commit/4c98a8847906bee3106b2ca30a580b2a041c72cc))
+
+## [3.28.7](https://github.com/dachrisch/leaguesphere/compare/v3.28.6...v3.28.7) (2026-06-23)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @vitejs/plugin-react to v6.0.3 ([#1378](https://github.com/dachrisch/leaguesphere/issues/1378)) ([64134a6](https://github.com/dachrisch/leaguesphere/commit/64134a6ad0d9c67fd1462dc3f9bfb0a61ed65ca4))
+* **deps:** update dependency @vitejs/plugin-react to v6.0.3 ([#1379](https://github.com/dachrisch/leaguesphere/issues/1379)) ([4af7840](https://github.com/dachrisch/leaguesphere/commit/4af78403875c11f8763e8286b57fd3e8633a8d89))
+* **deps:** update dependency django-health-check to v4.4.3 ([f40d9c6](https://github.com/dachrisch/leaguesphere/commit/f40d9c6aafb2504cbf0b6c8b99f7731a415682c1))
+* **deps:** update dependency django-health-check to v4.4.3 ([e244664](https://github.com/dachrisch/leaguesphere/commit/e244664901b999bee4632a78cf5f89a9fae2c45e))
+* **deps:** update dependency vite to v8.1.0 ([26dda06](https://github.com/dachrisch/leaguesphere/commit/26dda0601f49a36e215462426f785cb51caaae4c))
+* **deps:** update dependency vite to v8.1.0 ([9116e3f](https://github.com/dachrisch/leaguesphere/commit/9116e3f44b1c9656187b7cd05ec2131e25c02386))
+* **deps:** update dependency vite to v8.1.0 ([85d80e8](https://github.com/dachrisch/leaguesphere/commit/85d80e8a73db85264a72f0d721ca8ee3ba10e4c8))
+* **deps:** update dependency vite to v8.1.0 ([0dc1377](https://github.com/dachrisch/leaguesphere/commit/0dc1377f8a41005c17454e417fa868eb7edff5e4))
+* **frontend:** output IIFE bundles for classic-script apps (vite 8.1.0 import.meta) ([4cc065f](https://github.com/dachrisch/leaguesphere/commit/4cc065fee04d49062eb6373bc9ebf42e701a4ea3))
+
+## [3.28.6](https://github.com/dachrisch/leaguesphere/compare/v3.28.5...v3.28.6) (2026-06-22)
+
+
+### Bug Fixes
+
+* **deps:** update dependency axios to v1.18.1 ([83f7f58](https://github.com/dachrisch/leaguesphere/commit/83f7f580ccdb029faceb5a06e98a0760ad7c87a2))
+* **deps:** update dependency axios to v1.18.1 ([bd31d0c](https://github.com/dachrisch/leaguesphere/commit/bd31d0cc43778e6367396062d5bf2233abc8ede8))
+* **deps:** update dependency axios to v1.18.1 ([#1371](https://github.com/dachrisch/leaguesphere/issues/1371)) ([1fdaaff](https://github.com/dachrisch/leaguesphere/commit/1fdaaff730669d9de2a62c287451e57ce740b135))
+* **deps:** update dependency globals to v17.7.0 ([a45538d](https://github.com/dachrisch/leaguesphere/commit/a45538db6df7989ebee7777cc6385dda5a6c7772))
+* **deps:** update dependency globals to v17.7.0 ([40bc8ec](https://github.com/dachrisch/leaguesphere/commit/40bc8ec17ff0ab46c57b52997e5baf6d925c6145))
+* **deps:** update typescript-eslint monorepo ([af8b2d9](https://github.com/dachrisch/leaguesphere/commit/af8b2d94c907bc868601d308ca98255881fb6ff5))
+* **deps:** update typescript-eslint monorepo ([436ada0](https://github.com/dachrisch/leaguesphere/commit/436ada0fe78a1ce0391d621dd24a8290f7ce567c))
+* identify scorecard gamelog team by id to stop first-entry 404 ([b3e6f50](https://github.com/dachrisch/leaguesphere/commit/b3e6f50f64cbb75512b979b0ffc3ae466fc3f8cd))
+* identify scorecard gamelog team by id to stop first-entry 404 ([df5bd88](https://github.com/dachrisch/leaguesphere/commit/df5bd88c2fb758423372d2b0d4e68f2a75173028))
+
+
+### Documentation
+
+* link LeagueSphere environments/deployment reference ([4e63788](https://github.com/dachrisch/leaguesphere/commit/4e63788e2f14c935a00ca6c2f062dd4c27147dcb))
+
+## [3.28.5](https://github.com/dachrisch/leaguesphere/compare/v3.28.4...v3.28.5) (2026-06-22)
+
+
+### Bug Fixes
+
+* **deps:** lock file maintenance ([c40429f](https://github.com/dachrisch/leaguesphere/commit/c40429ffafcdc323e7547a5c09ce72c0bf4290e2))
+* **deps:** lock file maintenance ([7cf73eb](https://github.com/dachrisch/leaguesphere/commit/7cf73eb994e3c01585d500573ccaf54006ab3360))
+* **deps:** update dependency numpy to v2.5.0 ([#1367](https://github.com/dachrisch/leaguesphere/issues/1367)) ([c3493bb](https://github.com/dachrisch/leaguesphere/commit/c3493bb2dffef5017547015fe8c618b8ae97005b))
+
 ## [3.28.4](https://github.com/dachrisch/leaguesphere/compare/v3.28.3...v3.28.4) (2026-06-20)
 
 
