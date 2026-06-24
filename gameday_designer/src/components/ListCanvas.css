@@ -11,7 +11,10 @@
   background-color: transparent;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* x clipped, y scrollable: this flex-clamped canvas must scroll its
+     overflowing content instead of hiding it (was `overflow: hidden`,
+     which clipped ~688px below the fold with no way to reach it). */
+  overflow: hidden auto;
 }
 
 .list-canvas__content {
