@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.29.1](https://github.com/dachrisch/leaguesphere/compare/v3.29.0...v3.29.1) (2026-06-24)
+
+
+### Bug Fixes
+
+* **gameday-designer:** list-canvas scrolls instead of clipping content ([f2f038e](https://github.com/dachrisch/leaguesphere/commit/f2f038e416194b6e4246460b5ea24159953a602a))
+
+## [3.29.0](https://github.com/dachrisch/leaguesphere/compare/v3.28.7...v3.29.0) (2026-06-23)
+
+
+### Features
+
+* **prod:** internal-only MariaDB db service + optional mariadb-backup user ([4c98a88](https://github.com/dachrisch/leaguesphere/commit/4c98a8847906bee3106b2ca30a580b2a041c72cc))
+
 ## [3.28.7](https://github.com/dachrisch/leaguesphere/compare/v3.28.6...v3.28.7) (2026-06-23)
 
 
