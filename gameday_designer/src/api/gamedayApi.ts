@@ -71,6 +71,7 @@ class GamedayApi {
    */
   async listGamedays(params?: {
     search?: string;
+    has_designer_state?: boolean;
   }): Promise<PaginatedResponse<GamedayListEntry>> {
     if (this.isDev && !this.forceClient) return mockGamedayService.list(params);
     const response = await this.client.get<PaginatedResponse<GamedayListEntry>>(

@@ -106,10 +106,11 @@ const GamedayDashboard: React.FC = () => {
   const loadGamedays = async () => {
     setLoading(true);
     try {
-      const response = await gamedayApi.listGamedays({ search: searchTerm });
-      // Filter: only show gamedays that have a designer state (created/opened via Designer)
-      const designerGamedays = response.results.filter(g => g.has_designer_state === true);
-      setGamedays(designerGamedays);
+      // Filter server-side: the list is paginated (page_size=100, date asc), so
+      // filtering a single page client-side drops designer gamedays that fall on
+      // later pages. The API returns only designer-state gamedays for this flag.
+      const response = await gamedayApi.listGamedays({ search: searchTerm, has_designer_state: true });
+      setGamedays(response.results);
     } catch (error) {
       console.error('Failed to load gamedays', error);
       addNotification(t('ui:notification.loadGamedaysFailed'), 'danger', t('ui:notification.title.error'));
