@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.29.3](https://github.com/dachrisch/leaguesphere/compare/v3.29.2...v3.29.3) (2026-06-24)
+
+
+### Bug Fixes
+
+* **prod:** keep db unwired — revert app network/depends_on changes ([#1390](https://github.com/dachrisch/leaguesphere/issues/1390)) ([1eae570](https://github.com/dachrisch/leaguesphere/commit/1eae57041e9dee8b613fc11e434a29c2711e5196))
+
 ## [3.29.2](https://github.com/dachrisch/leaguesphere/compare/v3.29.1...v3.29.2) (2026-06-24)
 
 
