@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.30.0](https://github.com/dachrisch/leaguesphere/compare/v3.29.3...v3.30.0) (2026-06-25)
+
+
+### Features
+
+* **db-guard:** auto-recover the DB-outage page when the database returns ([#1393](https://github.com/dachrisch/leaguesphere/issues/1393)) ([9af2a83](https://github.com/dachrisch/leaguesphere/commit/9af2a838b9e8fe33017a739b07c5a249ce7edafd))
+
 ## [3.29.3](https://github.com/dachrisch/leaguesphere/compare/v3.29.2...v3.29.3) (2026-06-24)
 
 
