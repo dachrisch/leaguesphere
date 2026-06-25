@@ -3,8 +3,10 @@ from django.http import HttpResponse
 from django.views.generic import TemplateView
 from django.conf import settings
 
+
 def homeview(request):
     return render(request, "homeview.html")
+
 
 def database_error_view(request):
     # Static response to avoid any context processors or database-dependent template rendering
@@ -13,6 +15,7 @@ def database_error_view(request):
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="refresh" content="10">
     <title>Datenbank nicht erreichbar - LeagueSphere</title>
     <link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -38,8 +41,10 @@ def database_error_view(request):
 </html>"""
     return HttpResponse(html, content_type="text/html", status=503)
 
+
 def robots_txt_view(request):
     return render(request, "robots.txt", content_type="text/plain")
+
 
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.core.cache import cache
@@ -48,6 +53,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from gamedays.service.team_repository_service import TeamRepositoryService
 
+
 class ClearCacheView(UserPassesTestMixin, View):
     def get(self, request):
         cache.clear()
@@ -55,11 +61,14 @@ class ClearCacheView(UserPassesTestMixin, View):
         if url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
             return redirect(referer)
         return redirect("/")
+
     def test_func(self):
         return self.request.user.is_staff
 
+
 class AllTeamListView(View):
     template_name = "team/all_teams_list.html"
+
     def get(self, request, **kwargs):
         all_teams = TeamRepositoryService.get_all_teams()
         context = {
@@ -68,36 +77,37 @@ class AllTeamListView(View):
         }
         return render(request, self.template_name, context)
 
+
 class DemoInfoView(TemplateView):
-    template_name = 'demo/demo_info.html'
+    template_name = "demo/demo_info.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['demo_mode'] = getattr(settings, 'DEMO_MODE', False)
-        context['demo_credentials'] = [
+        context["demo_mode"] = getattr(settings, "DEMO_MODE", False)
+        context["demo_credentials"] = [
             {
-                'username': 'admin@demo.local',
-                'password': 'DemoAdmin123!',
-                'role': 'Administrator',
-                'description': 'Full system access, user management',
+                "username": "admin@demo.local",
+                "password": "DemoAdmin123!",
+                "role": "Administrator",
+                "description": "Full system access, user management",
             },
             {
-                'username': 'referee@demo.local',
-                'password': 'DemoRef123!',
-                'role': 'Referee',
-                'description': 'Match officiating and scoring',
+                "username": "referee@demo.local",
+                "password": "DemoRef123!",
+                "role": "Referee",
+                "description": "Match officiating and scoring",
             },
             {
-                'username': 'manager@demo.local',
-                'password': 'DemoMgr123!',
-                'role': 'Team Manager',
-                'description': 'Team management and roster control',
+                "username": "manager@demo.local",
+                "password": "DemoMgr123!",
+                "role": "Team Manager",
+                "description": "Team management and roster control",
             },
             {
-                'username': 'user@demo.local',
-                'password': 'DemoUser123!',
-                'role': 'Regular User',
-                'description': 'Viewing standings and league information',
+                "username": "user@demo.local",
+                "password": "DemoUser123!",
+                "role": "Regular User",
+                "description": "Viewing standings and league information",
             },
         ]
         return context
