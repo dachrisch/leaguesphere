@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.29.3](https://github.com/dachrisch/leaguesphere/compare/v3.29.2...v3.29.3) (2026-06-24)
+
+
+### Bug Fixes
+
+* **prod:** keep db unwired — revert app network/depends_on changes ([#1390](https://github.com/dachrisch/leaguesphere/issues/1390)) ([1eae570](https://github.com/dachrisch/leaguesphere/commit/1eae57041e9dee8b613fc11e434a29c2711e5196))
+
+## [3.29.2](https://github.com/dachrisch/leaguesphere/compare/v3.29.1...v3.29.2) (2026-06-24)
+
+
+### Bug Fixes
+
+* **deps:** update dependency i18next to v26.3.2 ([#1386](https://github.com/dachrisch/leaguesphere/issues/1386)) ([7d827bb](https://github.com/dachrisch/leaguesphere/commit/7d827bb58f47905675126a4e397cd17907d001df))
+* **gameday-designer:** server-side has_designer_state filter so dashboard list isn't empty ([#1388](https://github.com/dachrisch/leaguesphere/issues/1388)) ([ca4d797](https://github.com/dachrisch/leaguesphere/commit/ca4d797060503378fc7cfcc22de3fdd49d91a9f3))
+
 ## [3.29.1](https://github.com/dachrisch/leaguesphere/compare/v3.29.0...v3.29.1) (2026-06-24)
 
 
