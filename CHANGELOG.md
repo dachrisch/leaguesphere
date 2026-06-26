@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.30.2](https://github.com/dachrisch/leaguesphere/compare/v3.30.1...v3.30.2) (2026-06-26)
+
+
+### Bug Fixes
+
+* **deps:** update dependency i18next to v26.3.3 ([#1398](https://github.com/dachrisch/leaguesphere/issues/1398)) ([9d9dca9](https://github.com/dachrisch/leaguesphere/commit/9d9dca9c99a536375e46cc7a25e084a019a04cd3))
+* **deps:** update dependency prettier to v3.8.5 ([#1399](https://github.com/dachrisch/leaguesphere/issues/1399)) ([33d8afa](https://github.com/dachrisch/leaguesphere/commit/33d8afa368c962aad27f6090bdcb432a47b6745c))
+* **deps:** update dependency webpack to v5.108.1 ([#1401](https://github.com/dachrisch/leaguesphere/issues/1401)) ([5a2e20d](https://github.com/dachrisch/leaguesphere/commit/5a2e20d7160409d48c8dc3ecaf489dd0586a8d92))
+* **deps:** update dependency webpack-cli to v7.1.0 ([#1402](https://github.com/dachrisch/leaguesphere/issues/1402)) ([1fb39da](https://github.com/dachrisch/leaguesphere/commit/1fb39da969a7e4e1c1f6d633ac0b1ec3cd2a84ce))
+
 ## [3.30.1](https://github.com/dachrisch/leaguesphere/compare/v3.30.0...v3.30.1) (2026-06-25)
 
 
