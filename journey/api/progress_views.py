@@ -1,5 +1,6 @@
 from datetime import timedelta
-from django.db.models import Prefetch, Q
+from django.db.models import Prefetch, F, ExpressionWrapper, DurationField
+from django.db.models.functions import Abs
 from django.utils import timezone
 from rest_framework import viewsets, filters
 from rest_framework.pagination import PageNumberPagination
@@ -25,7 +26,10 @@ class GameProgressViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
     pagination_class = GameProgressPagination
     filter_backends = [filters.OrderingFilter]
-    ordering = ['date']
+    # Default ordering surfaces the gamedays closest to "today" first (see
+    # `distance_from_today` annotation) so today's games land on the first page
+    # and aren't pushed off the end by the lookback window.
+    ordering = ['distance_from_today', 'date']
     ordering_fields = ['date', 'name']
 
     def get_queryset(self):
@@ -33,6 +37,9 @@ class GameProgressViewSet(viewsets.ReadOnlyModelViewSet):
         Return gamedays within the progress dashboard window:
         - Past: 7 days ago
         - Future: 14 days from today
+
+        Ordered by absolute distance from today (closest first) so the most
+        relevant gamedays appear on page 1; ties break by date ascending.
         """
         today = timezone.now().date()
         start_date = today - timedelta(days=7)
@@ -41,6 +48,10 @@ class GameProgressViewSet(viewsets.ReadOnlyModelViewSet):
         queryset = Gameday.objects.filter(
             date__gte=start_date,
             date__lte=end_date,
+        ).annotate(
+            distance_from_today=Abs(
+                ExpressionWrapper(F('date') - today, output_field=DurationField())
+            )
         )
 
         league = self.request.query_params.get('league')
