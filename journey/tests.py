@@ -667,3 +667,62 @@ class GamedayProgressSerializerTests(TestCase):
 
         # Should preserve the explicit DRAFT status
         self.assertEqual(data['status'], 'DRAFT')
+
+
+class GameProgressOrderingTests(APITestCase):
+    """The progress list must return gamedays closest to today first, so today's
+    games land on page 1 instead of being pushed off the end by the lookback
+    window (regression: only the oldest 20 gamedays were ever returned)."""
+
+    def setUp(self):
+        from gamedays.models import Season, League
+        self.author = User.objects.create_user(username='order-author', password='pass')
+        self.season = Season.objects.create(name='2026', slug='2026-order')
+        self.league = League.objects.create(name='Order League', slug='order-league')
+        self.today = timezone.now().date()
+
+    def _create_gameday(self, day_offset):
+        from gamedays.models import Gameday
+        from datetime import time
+        gameday_date = self.today + timedelta(days=day_offset)
+        return Gameday.objects.create(
+            name=f'GD {day_offset:+d}',
+            season=self.season,
+            league=self.league,
+            date=gameday_date,
+            start=time(10, 0),
+            author=self.author,
+            status='',
+        )
+
+    def test_orders_by_distance_from_today_closest_first(self):
+        # Create out of order; distance-from-today must drive the result order.
+        gd_minus5 = self._create_gameday(-5)
+        gd_plus10 = self._create_gameday(10)
+        gd_today = self._create_gameday(0)
+        gd_plus2 = self._create_gameday(2)
+        gd_minus1 = self._create_gameday(-1)
+
+        response = self.client.get('/api/game-progress/')
+        self.assertEqual(response.status_code, 200)
+
+        returned_ids = [row['id'] for row in response.data['results']]
+        expected_ids = [
+            gd_today.id,    # distance 0
+            gd_minus1.id,   # distance 1
+            gd_plus2.id,    # distance 2
+            gd_minus5.id,   # distance 5
+            gd_plus10.id,   # distance 10
+        ]
+        self.assertEqual(returned_ids, expected_ids)
+
+    def test_distance_ties_break_by_date_ascending(self):
+        # Equal distance (past vs future) must fall back to date ascending.
+        gd_minus2 = self._create_gameday(-2)
+        gd_plus2 = self._create_gameday(2)
+
+        response = self.client.get('/api/game-progress/')
+        self.assertEqual(response.status_code, 200)
+
+        returned_ids = [row['id'] for row in response.data['results']]
+        self.assertEqual(returned_ids, [gd_minus2.id, gd_plus2.id])
