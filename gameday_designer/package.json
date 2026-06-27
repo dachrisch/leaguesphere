@@ -1,6 +1,6 @@
 {
   "name": "gameday_designer",
-  "version": "3.29.3",
+  "version": "3.30.4",
   "private": true,
   "type": "module",
   "dependencies": {
@@ -8,7 +8,7 @@
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "axios": "1.18.1",
-    "i18next": "26.3.2",
+    "i18next": "26.3.3",
     "i18next-browser-languagedetector": "8.2.1",
     "i18next-resources-to-backend": "1.2.1",
     "react": "19.2.7",
@@ -61,7 +61,7 @@
     "@vitest/coverage-v8": "4.1.9",
     "@vitest/ui": "4.1.9",
     "esbuild": "^0.28.0",
-    "eslint": "10.5.0",
+    "eslint": "10.6.0",
     "eslint-formatter-junit": "9.0.1",
     "eslint-plugin-react-hooks": "7.1.1",
     "i18next-resources-for-ts": "2.1.0",

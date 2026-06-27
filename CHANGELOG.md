@@ -1,5 +1,43 @@
 # Changelog
 
+## [3.30.4](https://github.com/dachrisch/leaguesphere/compare/v3.30.3...v3.30.4) (2026-06-27)
+
+
+### Bug Fixes
+
+* **deps:** update dependency prettier to v3.9.0 ([#1405](https://github.com/dachrisch/leaguesphere/issues/1405)) ([f3e3f4f](https://github.com/dachrisch/leaguesphere/commit/f3e3f4f0d97fcb809566cbec7bacab660c3a8b30))
+
+## [3.30.3](https://github.com/dachrisch/leaguesphere/compare/v3.30.2...v3.30.3) (2026-06-26)
+
+
+### Bug Fixes
+
+* **deps:** update dependency eslint to v10.6.0 ([#1403](https://github.com/dachrisch/leaguesphere/issues/1403)) ([792d912](https://github.com/dachrisch/leaguesphere/commit/792d91251969187a869de063b310073a3edcbfaf))
+
+## [3.30.2](https://github.com/dachrisch/leaguesphere/compare/v3.30.1...v3.30.2) (2026-06-26)
+
+
+### Bug Fixes
+
+* **deps:** update dependency i18next to v26.3.3 ([#1398](https://github.com/dachrisch/leaguesphere/issues/1398)) ([9d9dca9](https://github.com/dachrisch/leaguesphere/commit/9d9dca9c99a536375e46cc7a25e084a019a04cd3))
+* **deps:** update dependency prettier to v3.8.5 ([#1399](https://github.com/dachrisch/leaguesphere/issues/1399)) ([33d8afa](https://github.com/dachrisch/leaguesphere/commit/33d8afa368c962aad27f6090bdcb432a47b6745c))
+* **deps:** update dependency webpack to v5.108.1 ([#1401](https://github.com/dachrisch/leaguesphere/issues/1401)) ([5a2e20d](https://github.com/dachrisch/leaguesphere/commit/5a2e20d7160409d48c8dc3ecaf489dd0586a8d92))
+* **deps:** update dependency webpack-cli to v7.1.0 ([#1402](https://github.com/dachrisch/leaguesphere/issues/1402)) ([1fb39da](https://github.com/dachrisch/leaguesphere/commit/1fb39da969a7e4e1c1f6d633ac0b1ec3cd2a84ce))
+
+## [3.30.1](https://github.com/dachrisch/leaguesphere/compare/v3.30.0...v3.30.1) (2026-06-25)
+
+
+### Bug Fixes
+
+* **deps:** update dependency webpack to v5.108.0 ([#1396](https://github.com/dachrisch/leaguesphere/issues/1396)) ([b4ca5c2](https://github.com/dachrisch/leaguesphere/commit/b4ca5c252d48010079f35d40573af3b2a3eb88f1))
+
+## [3.30.0](https://github.com/dachrisch/leaguesphere/compare/v3.29.3...v3.30.0) (2026-06-25)
+
+
+### Features
+
+* **db-guard:** auto-recover the DB-outage page when the database returns ([#1393](https://github.com/dachrisch/leaguesphere/issues/1393)) ([9af2a83](https://github.com/dachrisch/leaguesphere/commit/9af2a838b9e8fe33017a739b07c5a249ce7edafd))
+
 ## [3.29.3](https://github.com/dachrisch/leaguesphere/compare/v3.29.2...v3.29.3) (2026-06-24)
 
 

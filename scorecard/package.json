@@ -1,6 +1,6 @@
 {
   "name": "scorecard",
-  "version": "3.29.3",
+  "version": "3.30.4",
   "private": true,
   "main": "index.js",
   "directories": {
@@ -44,7 +44,7 @@
     "globals": "^17.6.0",
     "jsdom": "^29.1.1",
     "moxios": "^0.4.0",
-    "prettier": "3.8.4",
+    "prettier": "3.9.0",
     "redux-mock-store": "^1.5.5",
     "vite": "^8.0.12",
     "vitest": "^4.1.6"
