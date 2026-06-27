@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.30.5](https://github.com/dachrisch/leaguesphere/compare/v3.30.4...v3.30.5) (2026-06-27)
+
+
+### Bug Fixes
+
+* **game-progress:** show today's games by paginating through all pages ([#1406](https://github.com/dachrisch/leaguesphere/issues/1406)) ([0c79496](https://github.com/dachrisch/leaguesphere/commit/0c79496636bc2bb3f783261c2c20d59511b41d4f))
+
 ## [3.30.4](https://github.com/dachrisch/leaguesphere/compare/v3.30.3...v3.30.4) (2026-06-27)
 
 
