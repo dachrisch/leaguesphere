@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.30.9](https://github.com/dachrisch/leaguesphere/compare/v3.30.8...v3.30.9) (2026-06-28)
+
+
+### Bug Fixes
+
+* **game-progress:** serve paginated next URLs over https behind TLS proxy ([#1415](https://github.com/dachrisch/leaguesphere/issues/1415)) ([d6f98ea](https://github.com/dachrisch/leaguesphere/commit/d6f98ea8d123a407a3c7b18b0a835edce6887d0a))
+
 ## [3.30.8](https://github.com/dachrisch/leaguesphere/compare/v3.30.7...v3.30.8) (2026-06-28)
 
 
