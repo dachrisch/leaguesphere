@@ -109,9 +109,10 @@ describe('progressApi.list', () => {
 
     expect(result.map((g) => g.id)).toEqual([1, 2]);
     const secondCallUrl = mockFetch.mock.calls[1][0] as string;
-    // Must be fetched from the page origin, never the insecure http:// URL.
+    // Must be fetched from the page origin, never the cross-origin URL the
+    // proxy reported (compare the parsed host, not a URL substring).
     expect(secondCallUrl).toBe(`${window.location.origin}/api/game-progress/?page=2`);
-    expect(secondCallUrl.startsWith('http://leaguesphere.app')).toBe(false);
+    expect(new URL(secondCallUrl).host).toBe(window.location.host);
   });
 
   it('handles a non-paginated array response', async () => {
