@@ -78,12 +78,41 @@ describe('progressApi.list', () => {
 
     expect(result.map((g) => g.id)).toEqual([1, 2, 3, 4, 5]);
     expect(mockFetch).toHaveBeenCalledTimes(3);
-    // Page 2+ must be fetched from the server-provided `next` URL.
+    // Page 2+ must be fetched same-origin: the server `next` path is re-based
+    // onto the current page origin (not the raw absolute URL the server sent).
     expect(mockFetch).toHaveBeenNthCalledWith(
       2,
-      'https://leaguesphere.app/api/game-progress/?page=2',
+      `${window.location.origin}/api/game-progress/?page=2`,
       expect.objectContaining({ credentials: 'include' }),
     );
+  });
+
+  it('re-bases an insecure http next URL onto the (https) page origin', async () => {
+    // Regression: behind a TLS-terminating proxy DRF can emit an http:// `next`
+    // URL. Following it verbatim from an https page is blocked as mixed content
+    // ("Failed to fetch"). The client must re-base it onto the page origin.
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          results: [makeGameday(1)],
+          // Insecure scheme + (potentially) different host as reported by proxy.
+          next: 'http://leaguesphere.app/api/game-progress/?page=2',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ results: [makeGameday(2)], next: null }),
+      });
+
+    const result = await progressApi.list();
+
+    expect(result.map((g) => g.id)).toEqual([1, 2]);
+    const secondCallUrl = mockFetch.mock.calls[1][0] as string;
+    // Must be fetched from the page origin, never the cross-origin URL the
+    // proxy reported (compare the parsed host, not a URL substring).
+    expect(secondCallUrl).toBe(`${window.location.origin}/api/game-progress/?page=2`);
+    expect(new URL(secondCallUrl).host).toBe(window.location.host);
   });
 
   it('handles a non-paginated array response', async () => {
