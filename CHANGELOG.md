@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.30.6](https://github.com/dachrisch/leaguesphere/compare/v3.30.5...v3.30.6) (2026-06-28)
+
+
+### Bug Fixes
+
+* **deps:** update dependency prettier to v3.9.1 ([#1409](https://github.com/dachrisch/leaguesphere/issues/1409)) ([d3c5e5e](https://github.com/dachrisch/leaguesphere/commit/d3c5e5efb6c828907633e6341a5e7472d5732008))
+
 ## [3.30.5](https://github.com/dachrisch/leaguesphere/compare/v3.30.4...v3.30.5) (2026-06-27)
 
 
