@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.30.7](https://github.com/dachrisch/leaguesphere/compare/v3.30.6...v3.30.7) (2026-06-28)
+
+
+### Bug Fixes
+
+* **deps:** update dependency pandas to v3.0.4 ([#1411](https://github.com/dachrisch/leaguesphere/issues/1411)) ([d2368a8](https://github.com/dachrisch/leaguesphere/commit/d2368a806c3f008d6f0b3daa24da4b4e1d091f86))
+
 ## [3.30.6](https://github.com/dachrisch/leaguesphere/compare/v3.30.5...v3.30.6) (2026-06-28)
 
 
