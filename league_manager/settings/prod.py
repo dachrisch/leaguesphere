@@ -25,3 +25,11 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Sitemap domain for production
 SITEMAP_DOMAIN = "leaguesphere.app"
+
+# Trust X-Forwarded-Proto header from nginx proxy (which forwards Traefik's
+# value) so request.is_secure() is True behind TLS termination and Django emits
+# https:// absolute URLs (DRF pagination, sitemaps, emails, redirects).
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Trust X-Forwarded-Host header from reverse proxy chain (Traefik -> nginx)
+USE_X_FORWARDED_HOST = True

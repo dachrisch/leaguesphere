@@ -7,6 +7,16 @@ export interface ProgressApiParams {
   season?: string;
 }
 
+// DRF builds the paginated `next` URL as an absolute URL from the server's view
+// of the request. Behind a TLS-terminating proxy that can come back as http://,
+// which the browser blocks as mixed content on our https page ("Failed to
+// fetch"). Re-base the path+query onto the current page origin so every page is
+// fetched same-origin, regardless of how the proxy reports the scheme/host.
+function toSameOrigin(rawUrl: string): string {
+  const parsed = new URL(rawUrl, window.location.origin);
+  return new URL(parsed.pathname + parsed.search, window.location.origin).toString();
+}
+
 async function fetchPage(url: string): Promise<unknown> {
   const response = await fetch(url, {
     method: 'GET',
@@ -53,7 +63,7 @@ async function list(params?: ProgressApiParams): Promise<GamedayProgress[]> {
     if (data.results) {
       gamedays.push(...data.results);
     }
-    nextUrl = data.next ?? null;
+    nextUrl = data.next ? toSameOrigin(data.next) : null;
   }
 
   return gamedays;
