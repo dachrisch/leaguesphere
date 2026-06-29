@@ -157,21 +157,21 @@ export const AdoptionMetrics: React.FC<AdoptionMetricsProps> = ({ adoptionData }
                 </div>
               ))}
             </div>
+
+            {/* Game Creation Stats (Designer vs Legacy) belongs with Gameday Designer adoption */}
+            {feature.id === 'gameday' && gameCreationStatsData && !loading && (
+              <div className="game-creation-stats-section">
+                <GameCreationStats
+                  data={gameCreationStatsData}
+                  onTabChange={() => {
+                    // Optional: trigger re-fetch on tab change if needed
+                  }}
+                />
+              </div>
+            )}
           </div>
         ))}
       </div>
-
-      {/* Game Creation Stats - Designer vs Legacy */}
-      {gameCreationStatsData && !loading && (
-        <div className="game-creation-stats-section">
-          <GameCreationStats
-            data={gameCreationStatsData}
-            onTabChange={() => {
-              // Optional: trigger re-fetch on tab change if needed
-            }}
-          />
-        </div>
-      )}
     </div>
   );
 };
