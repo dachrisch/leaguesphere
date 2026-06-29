@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.30.14](https://github.com/dachrisch/leaguesphere/compare/v3.30.13...v3.30.14) (2026-06-29)
+
+
+### Bug Fixes
+
+* **deps:** update dependency typescript-eslint to v8.62.1 ([#1428](https://github.com/dachrisch/leaguesphere/issues/1428)) ([c264859](https://github.com/dachrisch/leaguesphere/commit/c26485926d765f5887bf07e828e062aa704631cd))
+
 ## [3.30.13](https://github.com/dachrisch/leaguesphere/compare/v3.30.12...v3.30.13) (2026-06-29)
 
 
