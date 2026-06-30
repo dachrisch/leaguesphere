@@ -37,3 +37,27 @@ export interface StatsResponse {
   total_events: number;
   unique_event_types: number;
 }
+
+/**
+ * Game creation statistics: designer vs legacy breakdown
+ */
+export interface TimePeriodStats {
+  designer: number;
+  legacy: number;
+  total: number;
+  designer_percentage: number;
+}
+
+export interface LeagueAdoptionStat {
+  league_name: string;
+  league_id: number;
+  designer: number;
+  legacy: number;
+  total: number;
+  designer_percentage: number;
+}
+
+export interface GameCreationStatsResponse {
+  summary: Record<string, TimePeriodStats>;  // "7" | "30" | "90"
+  by_league: Record<string, LeagueAdoptionStat[]>;  // "7" | "30" | "90"
+}

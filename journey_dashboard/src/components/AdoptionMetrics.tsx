@@ -1,5 +1,7 @@
-import React from 'react';
-import { GlobalAdoptionResponse, JourneyEvent } from '../types';
+import React, { useState, useEffect } from 'react';
+import { GlobalAdoptionResponse, JourneyEvent, GameCreationStatsResponse } from '../types';
+import { GameCreationStats } from './GameCreationStats';
+import { fetchGameCreationStats } from '../utils/api';
 import './AdoptionMetrics.css';
 
 /**
@@ -24,6 +26,24 @@ interface AdoptionMetricsProps {
  * Shows adoption stats for Gameday, Passcheck, and Scorecard
  */
 export const AdoptionMetrics: React.FC<AdoptionMetricsProps> = ({ adoptionData }) => {
+  const [gameCreationStatsData, setGameCreationStatsData] = useState<GameCreationStatsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadGameCreationStats = async () => {
+      try {
+        setLoading(true);
+        const creationStats = await fetchGameCreationStats();
+        setGameCreationStatsData(creationStats);
+      } catch (err) {
+        console.error('Failed to load game creation stats:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadGameCreationStats();
+  }, []);
+
   if (!adoptionData) {
     return (
       <div className="adoption-metrics-loading">
@@ -124,9 +144,9 @@ export const AdoptionMetrics: React.FC<AdoptionMetricsProps> = ({ adoptionData }
             </h3>
             <div className="metrics-grid">
               {feature.metrics.map((metric) => (
-                <div 
-                  key={metric.key} 
-                  className="metric-card" 
+                <div
+                  key={metric.key}
+                  className="metric-card"
                   style={{ borderLeftColor: feature.color }}
                 >
                   <div className="metric-value" style={{ color: feature.color }}>
@@ -137,6 +157,18 @@ export const AdoptionMetrics: React.FC<AdoptionMetricsProps> = ({ adoptionData }
                 </div>
               ))}
             </div>
+
+            {/* Game Creation Stats (Designer vs Legacy) belongs with Gameday Designer adoption */}
+            {feature.id === 'gameday' && gameCreationStatsData && !loading && (
+              <div className="game-creation-stats-section">
+                <GameCreationStats
+                  data={gameCreationStatsData}
+                  onTabChange={() => {
+                    // Optional: trigger re-fetch on tab change if needed
+                  }}
+                />
+              </div>
+            )}
           </div>
         ))}
       </div>
