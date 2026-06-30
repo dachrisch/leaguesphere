@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.31.0](https://github.com/dachrisch/leaguesphere/compare/v3.30.17...v3.31.0) (2026-06-30)
+
+
+### Features
+
+* **journey:** gameday creation-method adoption metrics ([#1427](https://github.com/dachrisch/leaguesphere/issues/1427)) ([8941a14](https://github.com/dachrisch/leaguesphere/commit/8941a14a832fb990e25b51aab1e4e80f38bad451))
+
+
+### Bug Fixes
+
+* **deps:** update dependency i18next to v26.3.4 ([#1436](https://github.com/dachrisch/leaguesphere/issues/1436)) ([adc5b9c](https://github.com/dachrisch/leaguesphere/commit/adc5b9ceafc8a5ea0e87d3d335b0ee9e38b4dad1))
+* **deps:** update dependency react-icons to v5.7.0 ([#1441](https://github.com/dachrisch/leaguesphere/issues/1441)) ([3dc8925](https://github.com/dachrisch/leaguesphere/commit/3dc8925a0ca6089c2eac763d883a5758df60d6e3))
+* **deps:** update dependency serialize-javascript to v7.0.7 ([#1438](https://github.com/dachrisch/leaguesphere/issues/1438)) ([f8feda6](https://github.com/dachrisch/leaguesphere/commit/f8feda6cffb8e7926cc9f6e5d8ed9dc05c5be215))
+* **deps:** update dependency vite to v8.1.1 ([#1439](https://github.com/dachrisch/leaguesphere/issues/1439)) ([d11be70](https://github.com/dachrisch/leaguesphere/commit/d11be7064c29331d358dbd6e824f57c6666d2a8a))
+* **deps:** update dependency vite to v8.1.1 ([#1440](https://github.com/dachrisch/leaguesphere/issues/1440)) ([a516bb7](https://github.com/dachrisch/leaguesphere/commit/a516bb7b5133314e6e95903e07b1653f1720e439))
+
 ## [3.30.17](https://github.com/dachrisch/leaguesphere/compare/v3.30.16...v3.30.17) (2026-06-30)
 
 
