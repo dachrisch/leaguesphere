@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.30.16](https://github.com/dachrisch/leaguesphere/compare/v3.30.15...v3.30.16) (2026-06-29)
+
+
+### Bug Fixes
+
+* **deps:** update dependency webpack to v5.108.3 ([#1431](https://github.com/dachrisch/leaguesphere/issues/1431)) ([0f0fc0f](https://github.com/dachrisch/leaguesphere/commit/0f0fc0f1392033dfb0cb524f1e2a99954190e180))
+
 ## [3.30.15](https://github.com/dachrisch/leaguesphere/compare/v3.30.14...v3.30.15) (2026-06-29)
 
 
