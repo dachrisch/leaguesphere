@@ -1,5 +1,33 @@
 # Changelog
 
+## [3.30.17](https://github.com/dachrisch/leaguesphere/compare/v3.30.16...v3.30.17) (2026-06-30)
+
+
+### Bug Fixes
+
+* **deps:** update dependency prettier to v3.9.4 ([#1434](https://github.com/dachrisch/leaguesphere/issues/1434)) ([8629b5f](https://github.com/dachrisch/leaguesphere/commit/8629b5f90488778fdf6b15a7426f8d8abb4cb7a3))
+
+## [3.30.16](https://github.com/dachrisch/leaguesphere/compare/v3.30.15...v3.30.16) (2026-06-29)
+
+
+### Bug Fixes
+
+* **deps:** update dependency webpack to v5.108.3 ([#1431](https://github.com/dachrisch/leaguesphere/issues/1431)) ([0f0fc0f](https://github.com/dachrisch/leaguesphere/commit/0f0fc0f1392033dfb0cb524f1e2a99954190e180))
+
+## [3.30.15](https://github.com/dachrisch/leaguesphere/compare/v3.30.14...v3.30.15) (2026-06-29)
+
+
+### Bug Fixes
+
+* **deps:** update dependency react-router-dom to v7.18.1 ([#1430](https://github.com/dachrisch/leaguesphere/issues/1430)) ([7c68fdd](https://github.com/dachrisch/leaguesphere/commit/7c68fdd1242a639fef030aa14e17868daefb6133))
+
+## [3.30.14](https://github.com/dachrisch/leaguesphere/compare/v3.30.13...v3.30.14) (2026-06-29)
+
+
+### Bug Fixes
+
+* **deps:** update dependency typescript-eslint to v8.62.1 ([#1428](https://github.com/dachrisch/leaguesphere/issues/1428)) ([c264859](https://github.com/dachrisch/leaguesphere/commit/c26485926d765f5887bf07e828e062aa704631cd))
+
 ## [3.30.13](https://github.com/dachrisch/leaguesphere/compare/v3.30.12...v3.30.13) (2026-06-29)
 
 
