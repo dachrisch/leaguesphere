@@ -41,7 +41,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.6.0",
     "jsdom": "^29.1.1",
-    "prettier": "3.9.3",
+    "prettier": "3.9.4",
     "redux-mock-store": "^1.5.5",
     "vite": "^8.0.12",
     "vitest": "^4.1.6"
