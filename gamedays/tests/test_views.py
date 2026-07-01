@@ -107,9 +107,19 @@ class TestGamedayDetailView(TestCase):
     def test_detail_view_with_empty_gameday(self):
         gameday = DBSetup().create_empty_gameday()
         resource_url = ResourceUrlFactory(gameday=gameday)
-        resp = self.client.get(
-            reverse(LEAGUE_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk})
-        )
+        ### NUM Queries
+        # 1. Gameday Details
+        # 2. ResourceUrls
+        # 3. GameInfos - for gameday
+        # 4. SeasonConfig - for statistics
+        # 5. OfficialsSignups - List of External Referees
+        # 6. SeasonConfig - for table tiebreaker
+        # 7. LeagueSlug
+        ###
+        with self.assertNumQueries(7):  # Exactly 1 query expected
+            resp = self.client.get(
+                reverse(LEAGUE_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk})
+            )
         assert resp.status_code == HTTPStatus.OK
         context = resp.context_data
         assert context["object"].pk == gameday.pk
