@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.31.3](https://github.com/dachrisch/leaguesphere/compare/v3.31.2...v3.31.3) (2026-07-01)
+
+
+### Bug Fixes
+
+* **deps:** update dependency pillow to v12.3.0 ([#1446](https://github.com/dachrisch/leaguesphere/issues/1446)) ([4645744](https://github.com/dachrisch/leaguesphere/commit/4645744015cdfd4f39c6e19b56f2386d9bdee5a6))
+
 ## [3.31.2](https://github.com/dachrisch/leaguesphere/compare/v3.31.1...v3.31.2) (2026-06-30)
 
 
