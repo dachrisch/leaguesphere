@@ -1,4 +1,4 @@
-import { Journey, JourneyEvent, StatsResponse, GlobalAdoptionResponse } from '../types';
+import { Journey, JourneyEvent, StatsResponse, GlobalAdoptionResponse, GameCreationStatsResponse } from '../types';
 
 const BASE_URL = '/api/journey';
 
@@ -91,4 +91,23 @@ export async function getGamedayEvents(userId: string): Promise<JourneyEvent[]> 
   return allEvents.filter((event: JourneyEvent) =>
     event.event_name.startsWith('gameday_') || event.event_name.startsWith('template_')
   );
+}
+
+export async function fetchGameCreationStats(
+  days?: string
+): Promise<GameCreationStatsResponse> {
+  const url = days
+    ? `${BASE_URL}/gameday-creation-stats/?days=${days}`
+    : `${BASE_URL}/gameday-creation-stats/`;
+
+  const res = await fetch(url, {
+    headers: getAuthHeader(),
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch game creation stats: ${res.statusText}`);
+  }
+
+  return res.json();
 }

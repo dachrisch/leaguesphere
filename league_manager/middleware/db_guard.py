@@ -7,15 +7,17 @@ from django.http import HttpResponse
 
 logger = logging.getLogger(__name__)
 
+
 class DatabaseGuardMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
-        self.db_status_cache_key = 'db_connection_status'
+        self.db_status_cache_key = "db_connection_status"
         self.error_html = """<!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="refresh" content="10">
     <title>Datenbank nicht erreichbar - LeagueSphere</title>
     <link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -43,17 +45,20 @@ class DatabaseGuardMiddleware:
     def __call__(self, request):
         # Determine error URL
         try:
-            error_url = reverse('database-error')
+            error_url = reverse("database-error")
         except:
-            error_url = '/database-error/'
+            error_url = "/database-error/"
 
         # Skip check for static/media files and robots/sitemap
-        if any(request.path.startswith(p) for p in ['/static/', '/media/', '/robots.txt', '/sitemap.xml']):
+        if any(
+            request.path.startswith(p)
+            for p in ["/static/", "/media/", "/robots.txt", "/sitemap.xml"]
+        ):
             return self.get_response(request)
 
         # Check DB status
         db_online = cache.get(self.db_status_cache_key)
-        
+
         if db_online is None:
             # Skip check for the error page itself during the active probe to avoid recursion if something goes wrong
             # but usually we want to know the status.
@@ -74,13 +79,20 @@ class DatabaseGuardMiddleware:
             # If we are on the error page, return the response directly to bypass the rest of the stack
             # (bypasses SessionMiddleware, AuthenticationMiddleware, and DebugToolbarMiddleware)
             if request.path.startswith(error_url):
-                return HttpResponse(self.error_html, content_type="text/html", status=503)
-            
+                return HttpResponse(
+                    self.error_html, content_type="text/html", status=503
+                )
+
             # Allow health check to proceed but with the db_online=False flag set
-            if request.path.startswith('/health/'):
+            if request.path.startswith("/health/"):
                 return self.get_response(request)
-                
+
             # For all other pages, redirect to the error page
             return redirect(error_url)
+
+        # DB is online. If the user is still parked on the error page (e.g. it
+        # auto-refreshed after the database recovered), send them back to the app.
+        if request.path.startswith(error_url):
+            return redirect("/")
 
         return self.get_response(request)

@@ -3,7 +3,6 @@ import JourneyLayout from './components/JourneyLayout';
 import GameProgressPage from './components/game-progress/GameProgressPage';
 import { AdoptionMetrics } from './components/AdoptionMetrics';
 import { TopActionsTable } from './components/TopActionsTable';
-import { UserTimeline } from './components/UserTimeline';
 import { fetchStats, fetchGlobalAdoption } from './utils/api';
 import { StatsResponse, GlobalAdoptionResponse } from './types';
 import './index.css';
@@ -69,7 +68,6 @@ function App() {
 
         <AdoptionMetrics adoptionData={adoptionData} />
         <TopActionsTable stats={stats} loading={loading} />
-        <UserTimeline />
       </div>
     </JourneyLayout>
   );

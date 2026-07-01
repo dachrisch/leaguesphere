@@ -50,11 +50,8 @@ services:
       DJANGO_SETTINGS_MODULE: league_manager.settings.prod
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}  # Default to false if not set
     networks:
-      - backend   # For www + db communication
-      - egress    # Outbound internet (external APIs etc.) — replaces the egress the removed `database` network provided
-    depends_on:
-      db:
-        condition: service_healthy
+      - backend   # For www communication
+      - database  # For external MySQL access
     restart: unless-stopped
     healthcheck:
       interval: 15s
@@ -90,10 +87,7 @@ services:
 networks:
   backend:
     internal: true
-  egress:
-    # Non-internal bridge: restores the app's outbound internet access that the
-    # removed `database` network (internal: false) used to provide. The `db`
-    # service stays isolated on the internal-only `backend` network.
-    driver: bridge
+  database:
+    internal: false  # Allow external connectivity for MySQL
   proxy:
     external: true

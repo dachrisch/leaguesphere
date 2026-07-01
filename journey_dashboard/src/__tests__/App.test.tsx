@@ -32,10 +32,6 @@ vi.mock('../components/TopActionsTable', () => ({
   TopActionsTable: () => <div data-testid="top-actions-table">Top Actions Table</div>,
 }));
 
-vi.mock('../components/UserTimeline', () => ({
-  UserTimeline: () => <div data-testid="user-timeline">User Timeline</div>,
-}));
-
 describe('App with JourneyLayout', () => {
   beforeEach(() => {
     // Clear localStorage before each test
@@ -65,7 +61,6 @@ describe('App with JourneyLayout', () => {
     await waitFor(() => {
       expect(screen.getByTestId('adoption-metrics')).toBeInTheDocument();
       expect(screen.getByTestId('top-actions-table')).toBeInTheDocument();
-      expect(screen.getByTestId('user-timeline')).toBeInTheDocument();
     });
   });
 });

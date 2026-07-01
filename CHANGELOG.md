@@ -1,5 +1,187 @@
 # Changelog
 
+## [3.31.2](https://github.com/dachrisch/leaguesphere/compare/v3.31.1...v3.31.2) (2026-06-30)
+
+
+### Bug Fixes
+
+* **deps:** update dependency vite to v8.1.2 ([#1443](https://github.com/dachrisch/leaguesphere/issues/1443)) ([0667efa](https://github.com/dachrisch/leaguesphere/commit/0667efa7aa031bcace7a3eebef4c14f44a3cf17a))
+
+## [3.31.1](https://github.com/dachrisch/leaguesphere/compare/v3.31.0...v3.31.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* **deps:** update dependency vite to v8.1.2 ([#1442](https://github.com/dachrisch/leaguesphere/issues/1442)) ([8b49b5f](https://github.com/dachrisch/leaguesphere/commit/8b49b5f2f37d98101afd360262ac392b227a44c2))
+
+## [3.31.0](https://github.com/dachrisch/leaguesphere/compare/v3.30.17...v3.31.0) (2026-06-30)
+
+
+### Features
+
+* **journey:** gameday creation-method adoption metrics ([#1427](https://github.com/dachrisch/leaguesphere/issues/1427)) ([8941a14](https://github.com/dachrisch/leaguesphere/commit/8941a14a832fb990e25b51aab1e4e80f38bad451))
+
+
+### Bug Fixes
+
+* **deps:** update dependency i18next to v26.3.4 ([#1436](https://github.com/dachrisch/leaguesphere/issues/1436)) ([adc5b9c](https://github.com/dachrisch/leaguesphere/commit/adc5b9ceafc8a5ea0e87d3d335b0ee9e38b4dad1))
+* **deps:** update dependency react-icons to v5.7.0 ([#1441](https://github.com/dachrisch/leaguesphere/issues/1441)) ([3dc8925](https://github.com/dachrisch/leaguesphere/commit/3dc8925a0ca6089c2eac763d883a5758df60d6e3))
+* **deps:** update dependency serialize-javascript to v7.0.7 ([#1438](https://github.com/dachrisch/leaguesphere/issues/1438)) ([f8feda6](https://github.com/dachrisch/leaguesphere/commit/f8feda6cffb8e7926cc9f6e5d8ed9dc05c5be215))
+* **deps:** update dependency vite to v8.1.1 ([#1439](https://github.com/dachrisch/leaguesphere/issues/1439)) ([d11be70](https://github.com/dachrisch/leaguesphere/commit/d11be7064c29331d358dbd6e824f57c6666d2a8a))
+* **deps:** update dependency vite to v8.1.1 ([#1440](https://github.com/dachrisch/leaguesphere/issues/1440)) ([a516bb7](https://github.com/dachrisch/leaguesphere/commit/a516bb7b5133314e6e95903e07b1653f1720e439))
+
+## [3.30.17](https://github.com/dachrisch/leaguesphere/compare/v3.30.16...v3.30.17) (2026-06-30)
+
+
+### Bug Fixes
+
+* **deps:** update dependency prettier to v3.9.4 ([#1434](https://github.com/dachrisch/leaguesphere/issues/1434)) ([8629b5f](https://github.com/dachrisch/leaguesphere/commit/8629b5f90488778fdf6b15a7426f8d8abb4cb7a3))
+
+## [3.30.16](https://github.com/dachrisch/leaguesphere/compare/v3.30.15...v3.30.16) (2026-06-29)
+
+
+### Bug Fixes
+
+* **deps:** update dependency webpack to v5.108.3 ([#1431](https://github.com/dachrisch/leaguesphere/issues/1431)) ([0f0fc0f](https://github.com/dachrisch/leaguesphere/commit/0f0fc0f1392033dfb0cb524f1e2a99954190e180))
+
+## [3.30.15](https://github.com/dachrisch/leaguesphere/compare/v3.30.14...v3.30.15) (2026-06-29)
+
+
+### Bug Fixes
+
+* **deps:** update dependency react-router-dom to v7.18.1 ([#1430](https://github.com/dachrisch/leaguesphere/issues/1430)) ([7c68fdd](https://github.com/dachrisch/leaguesphere/commit/7c68fdd1242a639fef030aa14e17868daefb6133))
+
+## [3.30.14](https://github.com/dachrisch/leaguesphere/compare/v3.30.13...v3.30.14) (2026-06-29)
+
+
+### Bug Fixes
+
+* **deps:** update dependency typescript-eslint to v8.62.1 ([#1428](https://github.com/dachrisch/leaguesphere/issues/1428)) ([c264859](https://github.com/dachrisch/leaguesphere/commit/c26485926d765f5887bf07e828e062aa704631cd))
+
+## [3.30.13](https://github.com/dachrisch/leaguesphere/compare/v3.30.12...v3.30.13) (2026-06-29)
+
+
+### Bug Fixes
+
+* **deps:** update dependency prettier to v3.9.3 ([#1423](https://github.com/dachrisch/leaguesphere/issues/1423)) ([7b263a0](https://github.com/dachrisch/leaguesphere/commit/7b263a045f3ad2616d96e8c90c362da53845f6ff))
+* **deps:** update dependency webpack to v5.108.2 ([#1425](https://github.com/dachrisch/leaguesphere/issues/1425)) ([92de015](https://github.com/dachrisch/leaguesphere/commit/92de015419109c34e1daba1af3136484eed0f2f8))
+
+## [3.30.12](https://github.com/dachrisch/leaguesphere/compare/v3.30.11...v3.30.12) (2026-06-29)
+
+
+### Bug Fixes
+
+* **deps:** lock file maintenance ([#1421](https://github.com/dachrisch/leaguesphere/issues/1421)) ([d082511](https://github.com/dachrisch/leaguesphere/commit/d082511c83f8dd901cf14686e650ccbc16b6fab3))
+
+## [3.30.11](https://github.com/dachrisch/leaguesphere/compare/v3.30.10...v3.30.11) (2026-06-29)
+
+
+### Bug Fixes
+
+* **deps:** lock file maintenance ([#1419](https://github.com/dachrisch/leaguesphere/issues/1419)) ([d2e3fc8](https://github.com/dachrisch/leaguesphere/commit/d2e3fc852096ba80b8dd964730ff3adc8a3b77a4))
+
+## [3.30.10](https://github.com/dachrisch/leaguesphere/compare/v3.30.9...v3.30.10) (2026-06-29)
+
+
+### Bug Fixes
+
+* **deps:** lock file maintenance ([#1417](https://github.com/dachrisch/leaguesphere/issues/1417)) ([adc62e0](https://github.com/dachrisch/leaguesphere/commit/adc62e0ddddbbc5e23914388bc4cfca9d635bf40))
+
+## [3.30.9](https://github.com/dachrisch/leaguesphere/compare/v3.30.8...v3.30.9) (2026-06-28)
+
+
+### Bug Fixes
+
+* **game-progress:** serve paginated next URLs over https behind TLS proxy ([#1415](https://github.com/dachrisch/leaguesphere/issues/1415)) ([d6f98ea](https://github.com/dachrisch/leaguesphere/commit/d6f98ea8d123a407a3c7b18b0a835edce6887d0a))
+
+## [3.30.8](https://github.com/dachrisch/leaguesphere/compare/v3.30.7...v3.30.8) (2026-06-28)
+
+
+### Bug Fixes
+
+* **deps:** update dependency postcss to v8.5.16 ([#1412](https://github.com/dachrisch/leaguesphere/issues/1412)) ([3c580b3](https://github.com/dachrisch/leaguesphere/commit/3c580b394bcd48a5a4543ca5b8170dc8806d30b2))
+
+## [3.30.7](https://github.com/dachrisch/leaguesphere/compare/v3.30.6...v3.30.7) (2026-06-28)
+
+
+### Bug Fixes
+
+* **deps:** update dependency pandas to v3.0.4 ([#1411](https://github.com/dachrisch/leaguesphere/issues/1411)) ([d2368a8](https://github.com/dachrisch/leaguesphere/commit/d2368a806c3f008d6f0b3daa24da4b4e1d091f86))
+
+## [3.30.6](https://github.com/dachrisch/leaguesphere/compare/v3.30.5...v3.30.6) (2026-06-28)
+
+
+### Bug Fixes
+
+* **deps:** update dependency prettier to v3.9.1 ([#1409](https://github.com/dachrisch/leaguesphere/issues/1409)) ([d3c5e5e](https://github.com/dachrisch/leaguesphere/commit/d3c5e5efb6c828907633e6341a5e7472d5732008))
+
+## [3.30.5](https://github.com/dachrisch/leaguesphere/compare/v3.30.4...v3.30.5) (2026-06-27)
+
+
+### Bug Fixes
+
+* **game-progress:** show today's games by paginating through all pages ([#1406](https://github.com/dachrisch/leaguesphere/issues/1406)) ([0c79496](https://github.com/dachrisch/leaguesphere/commit/0c79496636bc2bb3f783261c2c20d59511b41d4f))
+
+## [3.30.4](https://github.com/dachrisch/leaguesphere/compare/v3.30.3...v3.30.4) (2026-06-27)
+
+
+### Bug Fixes
+
+* **deps:** update dependency prettier to v3.9.0 ([#1405](https://github.com/dachrisch/leaguesphere/issues/1405)) ([f3e3f4f](https://github.com/dachrisch/leaguesphere/commit/f3e3f4f0d97fcb809566cbec7bacab660c3a8b30))
+
+## [3.30.3](https://github.com/dachrisch/leaguesphere/compare/v3.30.2...v3.30.3) (2026-06-26)
+
+
+### Bug Fixes
+
+* **deps:** update dependency eslint to v10.6.0 ([#1403](https://github.com/dachrisch/leaguesphere/issues/1403)) ([792d912](https://github.com/dachrisch/leaguesphere/commit/792d91251969187a869de063b310073a3edcbfaf))
+
+## [3.30.2](https://github.com/dachrisch/leaguesphere/compare/v3.30.1...v3.30.2) (2026-06-26)
+
+
+### Bug Fixes
+
+* **deps:** update dependency i18next to v26.3.3 ([#1398](https://github.com/dachrisch/leaguesphere/issues/1398)) ([9d9dca9](https://github.com/dachrisch/leaguesphere/commit/9d9dca9c99a536375e46cc7a25e084a019a04cd3))
+* **deps:** update dependency prettier to v3.8.5 ([#1399](https://github.com/dachrisch/leaguesphere/issues/1399)) ([33d8afa](https://github.com/dachrisch/leaguesphere/commit/33d8afa368c962aad27f6090bdcb432a47b6745c))
+* **deps:** update dependency webpack to v5.108.1 ([#1401](https://github.com/dachrisch/leaguesphere/issues/1401)) ([5a2e20d](https://github.com/dachrisch/leaguesphere/commit/5a2e20d7160409d48c8dc3ecaf489dd0586a8d92))
+* **deps:** update dependency webpack-cli to v7.1.0 ([#1402](https://github.com/dachrisch/leaguesphere/issues/1402)) ([1fb39da](https://github.com/dachrisch/leaguesphere/commit/1fb39da969a7e4e1c1f6d633ac0b1ec3cd2a84ce))
+
+## [3.30.1](https://github.com/dachrisch/leaguesphere/compare/v3.30.0...v3.30.1) (2026-06-25)
+
+
+### Bug Fixes
+
+* **deps:** update dependency webpack to v5.108.0 ([#1396](https://github.com/dachrisch/leaguesphere/issues/1396)) ([b4ca5c2](https://github.com/dachrisch/leaguesphere/commit/b4ca5c252d48010079f35d40573af3b2a3eb88f1))
+
+## [3.30.0](https://github.com/dachrisch/leaguesphere/compare/v3.29.3...v3.30.0) (2026-06-25)
+
+
+### Features
+
+* **db-guard:** auto-recover the DB-outage page when the database returns ([#1393](https://github.com/dachrisch/leaguesphere/issues/1393)) ([9af2a83](https://github.com/dachrisch/leaguesphere/commit/9af2a838b9e8fe33017a739b07c5a249ce7edafd))
+
+## [3.29.3](https://github.com/dachrisch/leaguesphere/compare/v3.29.2...v3.29.3) (2026-06-24)
+
+
+### Bug Fixes
+
+* **prod:** keep db unwired — revert app network/depends_on changes ([#1390](https://github.com/dachrisch/leaguesphere/issues/1390)) ([1eae570](https://github.com/dachrisch/leaguesphere/commit/1eae57041e9dee8b613fc11e434a29c2711e5196))
+
+## [3.29.2](https://github.com/dachrisch/leaguesphere/compare/v3.29.1...v3.29.2) (2026-06-24)
+
+
+### Bug Fixes
+
+* **deps:** update dependency i18next to v26.3.2 ([#1386](https://github.com/dachrisch/leaguesphere/issues/1386)) ([7d827bb](https://github.com/dachrisch/leaguesphere/commit/7d827bb58f47905675126a4e397cd17907d001df))
+* **gameday-designer:** server-side has_designer_state filter so dashboard list isn't empty ([#1388](https://github.com/dachrisch/leaguesphere/issues/1388)) ([ca4d797](https://github.com/dachrisch/leaguesphere/commit/ca4d797060503378fc7cfcc22de3fdd49d91a9f3))
+
+## [3.29.1](https://github.com/dachrisch/leaguesphere/compare/v3.29.0...v3.29.1) (2026-06-24)
+
+
+### Bug Fixes
+
+* **gameday-designer:** list-canvas scrolls instead of clipping content ([f2f038e](https://github.com/dachrisch/leaguesphere/commit/f2f038e416194b6e4246460b5ea24159953a602a))
+
 ## [3.29.0](https://github.com/dachrisch/leaguesphere/compare/v3.28.7...v3.29.0) (2026-06-23)
 
 

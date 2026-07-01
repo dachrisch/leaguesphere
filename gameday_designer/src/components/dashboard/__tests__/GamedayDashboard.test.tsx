@@ -152,8 +152,28 @@ describe('GamedayDashboard', () => {
     fireEvent.change(searchInput, { target: { value: 'season:2026' } });
 
     await waitFor(() => {
-      expect(gamedayApi.listGamedays).toHaveBeenCalledWith({ search: 'season:2026' });
+      expect(gamedayApi.listGamedays).toHaveBeenCalledWith({ search: 'season:2026', has_designer_state: true });
     });
+  });
+
+  it('requests only designer-state gamedays from the server on load', async () => {
+    await renderDashboard();
+    // Server-side filtering is required: the list is paginated, so filtering a
+    // single page client-side drops designer gamedays that fall on later pages.
+    expect(gamedayApi.listGamedays).toHaveBeenCalledWith({ search: '', has_designer_state: true });
+  });
+
+  it('renders gamedays from the server response without re-filtering client-side', async () => {
+    // The server already filtered to designer gamedays. The dashboard must not
+    // second-guess that by re-filtering on has_designer_state (the old bug).
+    (gamedayApi.listGamedays as ReturnType<typeof vi.fn>).mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [{ ...mockGamedays[0], id: 99, name: 'Server Filtered Gameday', has_designer_state: false }],
+    });
+    await renderDashboard();
+    expect(screen.getByText('Server Filtered Gameday')).toBeInTheDocument();
   });
 
   it('prevents deletion of published gamedays and shows info toast', async () => {
