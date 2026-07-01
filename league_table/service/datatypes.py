@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Dict, Any
 
+from gamedays.models import GamedayDesignerState
 from league_table.models import LeagueSeasonConfig, LeagueRuleset
 
 
@@ -74,14 +75,34 @@ class LeagueConfig:
     excluded_gameday_ids: list[int]
     leagues_for_league_points_ids: list[int]
     group_by_leagues: bool
+    collapse_standing_to_league: bool = False
 
     @classmethod
     def from_league_season_config(cls, league_season_config: LeagueSeasonConfig):
         ruleset = league_season_config.ruleset
+        excluded_gameday_ids = league_season_config.get_excluded_gameday_ids()
         return cls(
             ruleset=LeagueConfigRuleset.from_ruleset(ruleset),
             team_point_adjustments_map=league_season_config.get_team_point_adjustment_map(),
-            excluded_gameday_ids=league_season_config.get_excluded_gameday_ids(),
+            excluded_gameday_ids=excluded_gameday_ids,
             leagues_for_league_points_ids=league_season_config.leagues_for_league_points.values_list('pk'),
             group_by_leagues = league_season_config.group_by_leagues,
+            collapse_standing_to_league=cls._has_designer_gameday(
+                league_season_config, excluded_gameday_ids
+            ),
+        )
+
+    @staticmethod
+    def _has_designer_gameday(league_season_config, excluded_gameday_ids) -> bool:
+        """A Gameday-Designer–published gameday emits a unique per-game standing,
+        which would otherwise explode the league table into one band per game.
+        When any (non-excluded) gameday of this league-season is designer-published,
+        the table collapses its grouping to the league name instead."""
+        return (
+            GamedayDesignerState.objects.filter(
+                gameday__league=league_season_config.league,
+                gameday__season=league_season_config.season,
+            )
+            .exclude(gameday_id__in=excluded_gameday_ids)
+            .exists()
         )

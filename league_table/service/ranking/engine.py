@@ -194,7 +194,7 @@ class LeagueRankingEngine:
             }
         )
 
-        if self.league_config.group_by_leagues:
+        if self.league_config.group_by_leagues or self.league_config.collapse_standing_to_league:
             df_games[STANDING] = df_games[LEAGUE__NAME]
 
         team_stats = TeamStatsEngine(self.league_config.ruleset).build(df_games)
