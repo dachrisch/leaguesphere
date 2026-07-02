@@ -359,3 +359,23 @@ class Person(models.Model):
     year_of_birth = models.PositiveIntegerField(null=True, blank=True, default=None)
 
     objects: QuerySet["Person"] = models.Manager()
+
+
+class ResourceUrl(models.Model):
+    gameday = models.ForeignKey(
+        Gameday, null=False, blank=False, on_delete=models.CASCADE
+    )
+
+    url = models.URLField(
+        max_length=500,
+        help_text="URL welche auf der Gameday Seite sichtbar sein soll"
+    )
+    description = models.CharField(
+        max_length=50,
+        help_text="Beschreibung der URL"
+    )
+
+    objects: QuerySet["ResourceUrl"] = models.Manager()
+
+    def __str__(self):
+        return f"{self.gameday.pk}__{self.pk} - {self.description} -> {self.url}"

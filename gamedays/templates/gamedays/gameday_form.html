@@ -8,6 +8,53 @@
             {% include "partials/legend_with_cancel.html" with title=action_label cancel_url=cancel_url %}
             {{ form|crispy }}
         </fieldset>
+
+        <fieldset class="form-group">
+            <legend>Links</legend>
+            {{ url_formset.management_form }}
+
+            <div id="url-formset-rows">
+                {% for url_form in url_formset.forms %}
+                    <div class="resource-url-row border-bottom mb-3 pb-2">
+                        {{ url_form.id }}
+                        <div class="row">
+                            <div class="col-md-4">
+                                {{ url_form.description|as_crispy_field }}
+                            </div>
+                            <div class="col-md-8">
+                                {{ url_form.url|as_crispy_field }}
+                            </div>
+                        </div>
+                        {% if url_form.instance.pk %}
+                            <div class="form-check">
+                                {{ url_form.DELETE }}
+                                <label class="form-check-label" for="{{ url_form.DELETE.id_for_label }}">Löschen</label>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div id="empty-form-template" class="d-none">
+                <div class="resource-url-row border-bottom mb-3 pb-2">
+                    <div class="row">
+                        <div class="col-md-4">
+                            {{ url_formset.empty_form.description|as_crispy_field }}
+                        </div>
+                        <div class="col-md-8">
+                            {{ url_formset.empty_form.url|as_crispy_field }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </fieldset>
+        <div class="mt-2 mb-4">
+            <button type="button" id="add-url-row" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2 px-3">
+                <i class="bi bi-plus-lg"></i> URL hinzufügen
+            </button>
+        </div>
+
         <div class="form-group">
             {% if object %}
             <div class="d-flex gap-2">
@@ -31,4 +78,23 @@
         </div>
     </form>
 </div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const addBtn = document.getElementById("add-url-row");
+    const rowsContainer = document.getElementById("url-formset-rows");
+    const emptyTemplate = document.getElementById("empty-form-template");
+    const totalFormsInput = document.querySelector("[name='urls-TOTAL_FORMS']");
+
+    addBtn.addEventListener("click", function () {
+        const formIndex = parseInt(totalFormsInput.value, 10);
+        const newRowHtml = emptyTemplate.innerHTML.replace(/__prefix__/g, formIndex);
+
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = newRowHtml;
+        rowsContainer.appendChild(wrapper.firstElementChild);
+
+        totalFormsInput.value = formIndex + 1;
+    });
+});
+</script>
 {% endblock content %}

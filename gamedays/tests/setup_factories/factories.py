@@ -18,6 +18,7 @@ from gamedays.models import (
     GameSetup,
     TeamLog,
     Person,
+    ResourceUrl,
 )
 
 
@@ -103,6 +104,14 @@ class GamedayFactory(DjangoModelFactory):
     season = factory.SubFactory(SeasonFactory)
     league = factory.SubFactory(LeagueFactory)
     author = factory.SubFactory(UserFactory)
+
+class ResourceUrlFactory(DjangoModelFactory):
+    class Meta:
+        model = ResourceUrl
+
+    gameday = factory.SubFactory(GamedayFactory)
+    url = "https://leaguesphere.app"
+    description = "Leaguesphere"
 
 
 @factory.django.mute_signals(post_save)

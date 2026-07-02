@@ -3,9 +3,9 @@ from dataclasses import dataclass
 from dal import autocomplete
 from django import forms
 from django.contrib.auth.models import User
-from django.forms import modelformset_factory, BaseFormSet, formset_factory
+from django.forms import modelformset_factory, BaseFormSet, formset_factory, inlineformset_factory
 
-from gamedays.models import Season, League, Gameday, Gameinfo, Team, SeasonLeagueTeam
+from gamedays.models import Season, League, Gameday, Gameinfo, Team, SeasonLeagueTeam, ResourceUrl
 
 SCHEDULE_CUSTOM_CHOICE_C = "CUSTOM"
 SCHEDULE_MAP_GROUPS_C = "groups"
@@ -152,6 +152,17 @@ FORM_CONTROL = {"class": "form-control"}
 FORM_CONTROL_AUTO = {**FORM_CONTROL, "style": "width: auto"}
 FORM_CONTROL_REQUIRED_TRUE = {**FORM_CONTROL, "required": True}
 
+ResourceUrlFormSet = inlineformset_factory(
+    Gameday,
+    ResourceUrl,
+    fields=["url", "description"],
+    widgets={
+        "url": forms.URLInput(attrs=FORM_CONTROL),
+        "description": forms.TextInput(attrs=FORM_CONTROL),
+    },
+    extra=1,          # how many empty rows to show by default
+    can_delete=True,  # lets users remove existing URLs
+)
 
 @dataclass
 class GamedayFormContext:
