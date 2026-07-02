@@ -103,3 +103,16 @@ class GamedayViewSetTest(APITestCase):
             response.data["detail"]
             == "Published gamedays cannot be deleted. Please unlock the gameday first."
         )
+
+    def test_get_gameday_includes_resource_urls(self):
+        from gamedays.models import ResourceUrl
+        ResourceUrl.objects.create(
+            gameday=self.gameday1, url="https://example.com/a", description="Livestream"
+        )
+        response = self.client.get(f"/api/gamedays/{self.gameday1.id}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resource_urls"] == [
+            {"id": self.gameday1.resourceurl_set.first().id,
+             "url": "https://example.com/a",
+             "description": "Livestream"}
+        ]

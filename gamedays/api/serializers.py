@@ -12,6 +12,7 @@ from gamedays.models import (
     Season,
     League,
     Gameresult,
+    ResourceUrl,
 )
 from gamedays.service.placeholder_service import GamedayPlaceholderService
 
@@ -30,7 +31,19 @@ class LeagueSerializer(ModelSerializer):
         fields = ["id", "name"]
 
 
+class ResourceUrlSerializer(ModelSerializer):
+    id = IntegerField(required=False)
+
+    class Meta:
+        model = ResourceUrl
+        fields = ["id", "url", "description"]
+
+
 class GamedaySerializer(ModelSerializer):
+    resource_urls = ResourceUrlSerializer(
+        many=True, source="resourceurl_set", required=False
+    )
+
     class Meta:
         model = Gameday
         fields = "__all__"
