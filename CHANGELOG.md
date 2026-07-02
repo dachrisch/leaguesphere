@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.31.6](https://github.com/dachrisch/leaguesphere/compare/v3.31.5...v3.31.6) (2026-07-02)
+
+
+### Bug Fixes
+
+* **league-table:** collapse per-game standings for Gameday-Designer leagues ([#1448](https://github.com/dachrisch/leaguesphere/issues/1448)) ([e72a6f6](https://github.com/dachrisch/leaguesphere/commit/e72a6f6a67aa863e035c4307c08cdabda5c6eb02))
+
 ## [3.31.5](https://github.com/dachrisch/leaguesphere/compare/v3.31.4...v3.31.5) (2026-07-02)
 
 
