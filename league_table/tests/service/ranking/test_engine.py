@@ -17,6 +17,28 @@ from league_table.tests.setup_factories.db_setup_leaguetable import (
 BASE = pathlib.Path(__file__).parent / "testdata/tiebreak"
 
 
+def _designer_game_row(gameinfo, team_id, description, standing, *, pf, pa):
+    """A single finished-game row as produced upstream of the ranking engine,
+    with a unique per-game standing (as the Gameday Designer emits)."""
+    opponent = 2 if team_id == 1 else 1
+    return {
+        "gameinfo": gameinfo,
+        "team_id": team_id,
+        "team__description": description,
+        "fh": pf,
+        "sh": 0,
+        "pa": pa,
+        "isHome": team_id == 1,
+        "gameinfo__standing": standing,
+        "pf": pf,
+        "league_id": 18,
+        "opponent_team_id": opponent,
+        "opponent_league_id": 18,
+        "gameinfo__status": "beendet",
+        "league__name": "FF BL",
+    }
+
+
 class TestTieBreakEngine:
 
     @pytest.mark.parametrize(
@@ -192,3 +214,25 @@ class TestLeagueRankingEngine:
         engine = LeagueRankingEngine(LEAGUE_TABLE_TEST_LEAGUE_CONFIG)
         result = engine.compute_league_table(games)
         assert result.to_csv() == expected_result.to_csv()
+
+    def test_collapses_standing_to_league_name_when_flag_set(self):
+        league_config = LeagueConfig(
+            ruleset=LEAGUE_TABLE_TEST_RULESET,
+            team_point_adjustments_map=[],
+            excluded_gameday_ids=[],
+            leagues_for_league_points_ids=[],
+            group_by_leagues=False,
+            collapse_standing_to_league=True,
+        )
+        games = pd.DataFrame(
+            [
+                _designer_game_row(1, 1, "Team A", "Game 1", pf=20, pa=10),
+                _designer_game_row(1, 2, "Team B", "Game 1", pf=10, pa=20),
+                _designer_game_row(2, 1, "Team A", "Game 2", pf=15, pa=5),
+                _designer_game_row(2, 2, "Team B", "Game 2", pf=5, pa=15),
+            ]
+        )
+
+        result = LeagueRankingEngine(league_config).compute_league_table(games)
+
+        assert set(result["standing"].unique()) == {"FF BL"}

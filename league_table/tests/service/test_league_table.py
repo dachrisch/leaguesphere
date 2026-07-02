@@ -2,12 +2,61 @@ import pathlib
 
 import pandas as pd
 
+from league_table.service.league_table_service import LeagueTableService
+
 
 # ToDo extract method for reuseability
 def get_df_from_json(filename):
     return pd.read_json(
         pathlib.Path(__file__).parent / "testdata/{0}".format(filename), orient="table"
     )
+
+
+def _team_row(team_id):
+    return {
+        "team_id": team_id,
+        "league_id": 10,
+        "teams__id": team_id,
+        "teams__description": f"Team {team_id}",
+        "team__description": f"Team {team_id}",
+        "league__name": "League",
+    }
+
+
+def _result_row(team_id, is_home, fh, sh, pa):
+    return {
+        "gameinfo": 100,
+        "team_id": team_id,
+        "team__description": f"Team {team_id}",
+        "fh": fh,
+        "sh": sh,
+        "pa": pa,
+        "isHome": is_home,
+        "gameinfo__standing": "Gruppe 1",
+        "gameinfo__status": "beendet",
+    }
+
+
+def test_duplicate_team_memberships_do_not_inflate_game_rows():
+    """A team registered via multiple SeasonLeagueTeam rows for the same league
+    (see ff-bl s6) must not have its games fanned out by the team merge and the
+    opponent self-join (which otherwise multiplies games/points by ~4x)."""
+    # each team appears twice in the base list (duplicate membership)
+    team_and_league_ids = [_team_row(1), _team_row(1), _team_row(2), _team_row(2)]
+    # exactly one finished game between the two teams
+    results = [
+        _result_row(1, is_home=True, fh=10, sh=10, pa=0),
+        _result_row(2, is_home=False, fh=0, sh=0, pa=20),
+    ]
+
+    df = LeagueTableService(None)._get_games_with_results_as_dataframe(
+        results, team_and_league_ids
+    )
+
+    games_team_1 = df[(df["team_id"] == 1) & (df["gameinfo"].notna())]
+    games_team_2 = df[(df["team_id"] == 2) & (df["gameinfo"].notna())]
+    assert len(games_team_1) == 1
+    assert len(games_team_2) == 1
 
 
 # class TestLeagueTable(TestCase):

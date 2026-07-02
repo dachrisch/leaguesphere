@@ -26,7 +26,7 @@ if [[ "$FRESH_START" == true ]]; then
     ssh servyy-test.lxd "docker run -d --name mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=user -e MYSQL_DATABASE=test_db mariadb:lts"
     sleep 20
     echo "setup test db"
-    ssh servyy-test.lxd "docker exec -i mysql mariadb -puser -uroot "< test_user.sql
+    ssh servyy-test.lxd "docker exec -i mysql mariadb -puser -uroot "< "${0:A:h}/test_user.sql"
 else
     # Check if container exists
     if ssh servyy-test.lxd "docker ps -a --format '{{.Names}}' | grep -q '^mysql$'"; then
@@ -38,7 +38,7 @@ else
         ssh servyy-test.lxd "docker run -d --name mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=user -e MYSQL_DATABASE=test_db mariadb:lts"
         sleep 20
         echo "setup test db"
-        ssh servyy-test.lxd "docker exec -i mysql mariadb -puser -uroot "< test_user.sql
+        ssh servyy-test.lxd "docker exec -i mysql mariadb -puser -uroot "< "${0:A:h}/test_user.sql"
     fi
 fi
 
