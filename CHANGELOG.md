@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.31.7](https://github.com/dachrisch/leaguesphere/compare/v3.31.6...v3.31.7) (2026-07-02)
+
+
+### Documentation
+
+* add per-module CLAUDE.md guides for agent context ([16cfdee](https://github.com/dachrisch/leaguesphere/commit/16cfdee4499ea6caa0b32745ee741d5ff6f731f4))
+
 ## [3.31.6](https://github.com/dachrisch/leaguesphere/compare/v3.31.5...v3.31.6) (2026-07-02)
 
 
