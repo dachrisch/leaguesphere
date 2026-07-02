@@ -50,6 +50,35 @@ class GamedaySerializer(ModelSerializer):
         read_only_fields = ["author"]
         extra_kwargs = {"start": {"format": "%H:%M"}}
 
+    def update(self, instance, validated_data):
+        resource_urls = validated_data.pop("resourceurl_set", None)
+        gameday = super().update(instance, validated_data)
+        if resource_urls is not None:
+            self._sync_resource_urls(gameday, resource_urls)
+        return gameday
+
+    @staticmethod
+    def _sync_resource_urls(gameday, resource_urls):
+        existing = {ru.id: ru for ru in gameday.resourceurl_set.all()}
+        seen_ids = set()
+        for item in resource_urls:
+            ru_id = item.get("id")
+            if ru_id and ru_id in existing:
+                ru = existing[ru_id]
+                ru.url = item["url"]
+                ru.description = item["description"]
+                ru.save()
+                seen_ids.add(ru_id)
+            else:
+                ResourceUrl.objects.create(
+                    gameday=gameday,
+                    url=item["url"],
+                    description=item["description"],
+                )
+        for ru_id, ru in existing.items():
+            if ru_id not in seen_ids:
+                ru.delete()
+
 
 class GamedayListSerializer(ModelSerializer):
     season_display = SerializerMethodField()
