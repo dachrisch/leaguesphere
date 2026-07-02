@@ -47,3 +47,23 @@ would drop results), and re-verification of the ~6 classic multi-band tables.
 
 Revisit when the first Designer-published **tournament** (group + placement) is created for a league
 that also has a `LeagueSeasonConfig`.
+
+---
+
+# Follow-up: duplicate `SeasonLeagueTeam` data for ff-bl s6 (cleanup deferred)
+
+While verifying the collapse on stage, the ff-bl table showed inflated game totals (up to 72 for
+teams that really played ≤18). Root cause: **two `SeasonLeagueTeam` objects exist for
+(ff-bl, season 6)** — `id=324` (26 teams) and `id=398` (27 teams), overlapping — so nearly every
+team was registered twice. The league-table builder merged results onto that non-unique list,
+fanning each game out on the team merge and again on the opponent self-join (~4× inflation).
+
+**Code fix shipped** (`fix(league-table): dedupe team memberships…`): the builder now
+`drop_duplicates()` the team list, so duplicate memberships no longer inflate totals. This is a
+no-op for every other league-season (spread check: only ff-bl s6 has duplicates).
+
+**Deferred data cleanup:** decide which of the two `SeasonLeagueTeam` rows is the real roster for
+ff-bl s6 and remove the redundant one (likely keep `id=398` with all 27 teams). Understand *why*
+two were created (import/registration path?) to prevent recurrence. Not required for correctness —
+the code fix makes the table robust regardless — but the duplicate data is still misleading (e.g. in
+admin / roster views).
