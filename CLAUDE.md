@@ -113,6 +113,38 @@ All frontend apps communicate with Django via REST API (endpoints use `/api/` pr
 
 ---
 
+## 🗺 Module Guides (READ THE RELEVANT ONE FIRST)
+
+Each module has its own `CLAUDE.md` describing **that module's function, key files, models,
+API/routes, and gotchas**. Before working inside a module, open its guide — it will save you from
+getting lost or missing cross-module dependencies.
+
+**Core backend**
+- [gamedays/](gamedays/CLAUDE.md) — **core domain**: Season/League/Team/Gameday/Gameresult + scheduling & results logic (most apps depend on it)
+- [league_manager/](league_manager/CLAUDE.md) — Django **project config**: settings, root URLs, middleware, shared utils
+- [accounts/](accounts/CLAUDE.md) — authentication; issues the **Knox tokens** all API clients use
+- [league_table/](league_table/CLAUDE.md) — standings, rankings, tie-break rulesets
+- [officials/](officials/CLAUDE.md) — referees: licensing, signups, assignments (+ Moodle report)
+- [teammanager/](teammanager/CLAUDE.md) — team/club/roster CRUD (uses gamedays models)
+- [matchreport/](matchreport/CLAUDE.md) — per-game match report generation (service-only)
+- [journey/](journey/CLAUDE.md) — Game Progress dashboard **backend** (read-only progress API)
+- [dashboard/](dashboard/CLAUDE.md) — ⚠️ **legacy**, being phased out (prefer `journey`)
+
+**Hybrid (Django app + co-located React app in the same folder)**
+- [passcheck/](passcheck/CLAUDE.md) — player eligibility verification (TS, Context/hooks)
+- [gameday_designer/](gameday_designer/CLAUDE.md) — flowchart schedule-template builder (TS, React Flow)
+- [liveticker/](liveticker/CLAUDE.md) — real-time score display (JS, Redux)
+- [scorecard/](scorecard/CLAUDE.md) — on-field scoring entry (JS, Redux; thin backend)
+
+**Frontend-only**
+- [journey_dashboard/](journey_dashboard/CLAUDE.md) — React app for the `journey` progress dashboard (TS)
+
+> Note: `liveticker` and `scorecard` use **JavaScript + Redux**, while `passcheck`,
+> `gameday_designer`, and `journey_dashboard` use **TypeScript + Context/hooks** — check the
+> module guide before assuming a state pattern.
+
+---
+
 ## ⚡ Query Optimization & Caching Patterns
 
 **See [Performance Guide](docs/guides/performance-guide.md) for comprehensive standards and automated checking.**

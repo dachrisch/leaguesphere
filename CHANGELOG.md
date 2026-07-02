@@ -1,5 +1,33 @@
 # Changelog
 
+## [3.31.7](https://github.com/dachrisch/leaguesphere/compare/v3.31.6...v3.31.7) (2026-07-02)
+
+
+### Documentation
+
+* add per-module CLAUDE.md guides for agent context ([16cfdee](https://github.com/dachrisch/leaguesphere/commit/16cfdee4499ea6caa0b32745ee741d5ff6f731f4))
+
+## [3.31.6](https://github.com/dachrisch/leaguesphere/compare/v3.31.5...v3.31.6) (2026-07-02)
+
+
+### Bug Fixes
+
+* **league-table:** collapse per-game standings for Gameday-Designer leagues ([#1448](https://github.com/dachrisch/leaguesphere/issues/1448)) ([e72a6f6](https://github.com/dachrisch/leaguesphere/commit/e72a6f6a67aa863e035c4307c08cdabda5c6eb02))
+
+## [3.31.5](https://github.com/dachrisch/leaguesphere/compare/v3.31.4...v3.31.5) (2026-07-02)
+
+
+### Bug Fixes
+
+* **deps:** update dependency vite to v8.1.3 ([#1450](https://github.com/dachrisch/leaguesphere/issues/1450)) ([6e2f85b](https://github.com/dachrisch/leaguesphere/commit/6e2f85b6271779d84b4fccadfacc4caea0585c8a))
+
+## [3.31.4](https://github.com/dachrisch/leaguesphere/compare/v3.31.3...v3.31.4) (2026-07-02)
+
+
+### Bug Fixes
+
+* **deps:** update dependency vite to v8.1.3 ([#1449](https://github.com/dachrisch/leaguesphere/issues/1449)) ([e246dfd](https://github.com/dachrisch/leaguesphere/commit/e246dfdc32f59368f3e4b5fce4115f190a40f67a))
+
 ## [3.31.3](https://github.com/dachrisch/leaguesphere/compare/v3.31.2...v3.31.3) (2026-07-01)
 
 

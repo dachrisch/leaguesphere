@@ -92,6 +92,13 @@ class LeagueTableService:
         # teams_df = self._get_all_teams_df(team_and_league_ids)
         teams_df = pd.DataFrame(team_and_league_ids)
 
+        # A team can be registered via multiple SeasonLeagueTeam rows for the same
+        # league (observed for ff-bl s6). Left unchecked, each duplicate row fans out
+        # every game in the team merge below, and the opponent self-join fans it out
+        # again — inflating games/points (~4x). Keep one row per distinct membership.
+        if not teams_df.empty:
+            teams_df = teams_df.drop_duplicates(ignore_index=True)
+
         results_df = pd.DataFrame(list(results))
 
         if results_df.empty:
