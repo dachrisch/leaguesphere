@@ -62,8 +62,15 @@ fanning each game out on the team merge and again on the opponent self-join (~4�
 `drop_duplicates()` the team list, so duplicate memberships no longer inflate totals. This is a
 no-op for every other league-season (spread check: only ff-bl s6 has duplicates).
 
-**Deferred data cleanup:** decide which of the two `SeasonLeagueTeam` rows is the real roster for
-ff-bl s6 and remove the redundant one (likely keep `id=398` with all 27 teams). Understand *why*
-two were created (import/registration path?) to prevent recurrence. Not required for correctness —
-the code fix makes the table robust regardless — but the duplicate data is still misleading (e.g. in
-admin / roster views).
+**Deferred data cleanup — resolved which is true:** `id=324` (26 teams) is a **strict subset** of
+`id=398` (27 teams). The only difference is that `398` also contains **"Schloßberg Kings"**, a team
+that **actually played** finished games; `324` is missing it. All 22 teams that played are present in
+`398`. So:
+
+- **`id=398` is the true, complete roster — keep it.**
+- **`id=324` is a stale earlier version — delete it** (a new SLT was created with the added team
+  instead of updating the old one, which produced the duplicate).
+
+Also worth understanding *why* a second SLT was created rather than the first being edited, to
+prevent recurrence. Not required for correctness — the code fix makes the table robust regardless —
+but the duplicate data is still misleading (e.g. in admin / roster views).
