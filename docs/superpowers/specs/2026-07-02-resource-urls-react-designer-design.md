@@ -67,8 +67,11 @@ Rejected alternatives:
   - rows of description + URL inputs, a delete (trash) button per row, and an
     "URL hinzufügen" add button;
   - local list state seeded from the loaded gameday's `resource_urls`;
-  - save via `patchGameday(id, { resource_urls })` directly (not through the flow-state blob),
-    so URLs persist as real rows immediately;
+  - **save trigger:** the whole list is persisted via `patchGameday(id, { resource_urls })`
+    (not through the flow-state blob) when a row input **blurs** and immediately when a row is
+    **deleted**. A newly added row is not sent until it has a non-empty URL. This keeps URLs as
+    real DB rows without an extra "save" button, consistent with the accordion's blur-driven
+    feel.
   - editing disabled in `readOnly` mode.
 
 ## Data flow
@@ -76,7 +79,8 @@ Rejected alternatives:
 1. Designer loads gameday → `getGameday(id)` returns `resource_urls`.
 2. Accordion seeds local Links list state from `resource_urls`.
 3. User adds/edits/deletes rows in the Links section (local state only).
-4. On save (blur/explicit save), accordion calls `patchGameday(id, { resource_urls: [...] })`.
+4. On save (row blur, or immediately on delete), accordion calls
+   `patchGameday(id, { resource_urls: [...] })`.
 5. `GamedaySerializer.update()` reconciles the set; DB now reflects the edited list.
 
 ## Error handling
