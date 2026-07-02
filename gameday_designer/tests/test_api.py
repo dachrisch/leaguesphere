@@ -116,6 +116,9 @@ class TestTemplateDetailEndpoint:
 
     def test_detail_includes_nested_slots(self, api_client, template_with_slots, assert_num_queries):
         """Detail endpoint includes nested slots."""
+        # Warm request-path caches (maintenance-mode SiteConfiguration lookup + connection
+        # liveness check) so the query count is not order-dependent under parallel (xdist) runs.
+        api_client.get(f"/api/designer/templates/{template_with_slots.pk}/")
         with assert_num_queries(3):
             response = api_client.get(f"/api/designer/templates/{template_with_slots.pk}/")
 
@@ -144,6 +147,9 @@ class TestTemplateDetailEndpoint:
             update_rule=update_rule, role="home", standing="HF1", place=1
         )
 
+        # Warm request-path caches (maintenance-mode SiteConfiguration lookup + connection
+        # liveness check) so the query count is not order-dependent under parallel (xdist) runs.
+        api_client.get(f"/api/designer/templates/{template.pk}/")
         with assert_num_queries(4):
             response = api_client.get(f"/api/designer/templates/{template.pk}/")
 
