@@ -4,6 +4,7 @@ import { GamedayMetadata, FlowValidationResult, ValidationError, ValidationWarni
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import { ICONS } from '../utils/iconConstants';
 import { gamedayApi } from '../api/gamedayApi';
+import { ResourceUrl } from '../types/api';
 import './GamedayMetadataAccordion.css';
 
 /**
@@ -171,6 +172,12 @@ const CustomAccordionHeader: React.FC<{
 };
 interface GamedayMetadataAccordionProps {
   metadata: GamedayMetadata;
+  /**
+   * The gameday id from the route. The metadata loaded from the persisted
+   * designer-state JSON does not carry an id, so resource-URL load/save relies
+   * on this prop instead of metadata.id.
+   */
+  gamedayId?: number;
   onUpdate: (data: Partial<GamedayMetadata>) => void;
   onClearAll: () => void;
   onDelete: () => void;
@@ -185,8 +192,9 @@ interface GamedayMetadataAccordionProps {
   forceCollapsed?: boolean;
 }
 
-const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({ 
+const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
   metadata,
+  gamedayId,
   onUpdate,
   onClearAll,
   onDelete,
@@ -203,7 +211,13 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
   const { t, i18n } = useTypedTranslation(['ui', 'domain', 'validation']);
   const [seasons, setSeasons] = useState<{ id: number; name: string }[]>([]);
   const [leagues, setLeagues] = useState<{ id: number; name: string }[]>([]);
+  const [resourceUrls, setResourceUrls] = useState<ResourceUrl[]>([]);
+  const [urlSaveError, setUrlSaveError] = useState<string | null>(null);
   const [activeKey, setActiveKey] = useState<string | undefined>("0");
+  const isEditingUrlsRef = useRef(false);
+  // metadata.id is absent when loaded from persisted designer-state; prefer the
+  // route-provided gamedayId so resource URLs load and save reliably.
+  const resourceGamedayId = gamedayId ?? metadata.id;
 
   useEffect(() => {
     if (forceCollapsed && activeKey !== undefined) {
@@ -230,6 +244,19 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
     };
     fetchMetadata();
   }, []);
+
+  React.useEffect(() => {
+    const fetchResourceUrls = async () => {
+      if (!gamedayApi || !resourceGamedayId) return;
+      try {
+        const gd = await gamedayApi.getGameday(resourceGamedayId);
+        setResourceUrls(gd.resource_urls ?? []);
+      } catch (error) {
+        console.error('Failed to fetch resource URLs', error);
+      }
+    };
+    fetchResourceUrls();
+  }, [resourceGamedayId]);
 
   const [showValidationPopover, setShowValidationPopover] = useState(false);
   const validationBadgeRef = useRef<HTMLDivElement>(null);
@@ -261,6 +288,62 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
     if (readOnly) return;
     console.log('[MetadataAccordion] handleChange:', field, value);
     onUpdate({ [field]: value });
+  };
+
+  // Pull the human-readable validation messages out of a DRF error response,
+  // e.g. { resource_urls: [{ url: ['Enter a valid URL.'] }] }. Returns null when
+  // the error is not a field-validation error (network failure, 500, etc.).
+  const extractResourceUrlError = (error: unknown): string | null => {
+    const errs = (error as { response?: { data?: { resource_urls?: unknown } } })
+      ?.response?.data?.resource_urls;
+    if (!errs) return null;
+    const messages: string[] = [];
+    const collect = (val: unknown) => {
+      if (typeof val === 'string') messages.push(val);
+      else if (Array.isArray(val)) val.forEach(collect);
+      else if (val && typeof val === 'object') Object.values(val).forEach(collect);
+    };
+    collect(errs);
+    return messages.length ? messages.join(' ') : null;
+  };
+
+  const persistResourceUrls = async (urls: ResourceUrl[]) => {
+    if (readOnly || !resourceGamedayId) return;
+    const payload = urls.filter(
+      (u) => u.url.trim() !== '' && u.description.trim() !== ''
+    );
+    try {
+      const updated = await gamedayApi.patchGameday(resourceGamedayId, { resource_urls: payload });
+      setUrlSaveError(null);
+      if (!isEditingUrlsRef.current) {
+        setResourceUrls(updated.resource_urls ?? []);
+      }
+    } catch (error) {
+      console.error('Failed to save resource URLs', error);
+      const detail = extractResourceUrlError(error);
+      setUrlSaveError(detail ?? t('ui:error.saveUrlsFailed', 'Failed to save links'));
+    }
+  };
+
+  const handleAddUrl = () => {
+    if (readOnly) return;
+    setResourceUrls((prev) => [...prev, { url: '', description: '' }]);
+  };
+
+  const handleUrlChange = (index: number, field: 'url' | 'description', value: string) => {
+    if (readOnly) return;
+    setResourceUrls((prev) =>
+      prev.map((ru, i) => (i === index ? { ...ru, [field]: value } : ru))
+    );
+  };
+
+  const handleDeleteUrl = (index: number) => {
+    if (readOnly) return;
+    // Compute next list outside the state updater: the updater must be pure
+    // (React Strict Mode double-invokes it), so the async save runs separately.
+    const next = resourceUrls.filter((_, i) => i !== index);
+    setResourceUrls(next);
+    persistResourceUrls(next);
   };
 
   const formatDate = (dateString: string) => {
@@ -434,6 +517,71 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     ))}
                   </Form.Select>
                 </Form.Group>
+              </Col>
+            </Row>
+
+            <Row className="mb-3">
+              <Col md={12}>
+                <Form.Label className="d-block">{t('ui:label.links', 'Links')}</Form.Label>
+                {resourceUrls.map((ru, idx) => (
+                  <Row className="mb-2 align-items-end" key={ru.id ?? `new-${idx}`} data-testid="resource-url-row">
+                    <Col md={4}>
+                      <Form.Control
+                        type="text"
+                        value={ru.description}
+                        placeholder={t('ui:label.urlDescription', 'Description')}
+                        disabled={readOnly}
+                        onChange={(e) => handleUrlChange(idx, 'description', e.target.value)}
+                        onFocus={() => { isEditingUrlsRef.current = true; }}
+                        onBlur={() => { isEditingUrlsRef.current = false; persistResourceUrls(resourceUrls); }}
+                        maxLength={50}
+                        data-testid="resource-url-description"
+                      />
+                    </Col>
+                    <Col md={7}>
+                      <Form.Control
+                        type="url"
+                        value={ru.url}
+                        placeholder={t('ui:label.url', 'URL')}
+                        disabled={readOnly}
+                        onChange={(e) => handleUrlChange(idx, 'url', e.target.value)}
+                        onFocus={() => { isEditingUrlsRef.current = true; }}
+                        onBlur={() => { isEditingUrlsRef.current = false; persistResourceUrls(resourceUrls); }}
+                        maxLength={500}
+                        data-testid="resource-url-url"
+                      />
+                    </Col>
+                    <Col md={1}>
+                      {!readOnly && (
+                        <Button
+                          variant="outline-danger"
+                          size="sm"
+                          onClick={() => handleDeleteUrl(idx)}
+                          data-testid="resource-url-delete"
+                          aria-label={t('ui:button.deleteUrl', 'Delete')}
+                        >
+                          <i className={`bi ${ICONS.TRASH}`}></i>
+                        </Button>
+                      )}
+                    </Col>
+                  </Row>
+                ))}
+                {!readOnly && (
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    onClick={handleAddUrl}
+                    data-testid="resource-url-add"
+                  >
+                    <i className="bi bi-plus-lg me-1"></i>
+                    {t('ui:button.addUrl', 'Add URL')}
+                  </Button>
+                )}
+                {urlSaveError && (
+                  <div className="text-danger small mt-1" data-testid="resource-url-error">
+                    {urlSaveError}
+                  </div>
+                )}
               </Col>
             </Row>
 

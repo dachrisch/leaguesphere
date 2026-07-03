@@ -149,6 +149,12 @@ export interface League {
   name: string;
 }
 
+export interface ResourceUrl {
+  id?: number;
+  url: string;
+  description: string;
+}
+
 /**
  * Gameday metadata for high-level management.
  * Corresponds to Django Gameday model fields.
@@ -167,6 +173,7 @@ export interface GamedayMetadata {
   league: number;
   league_display?: string;
   status: string;
+  resource_urls?: ResourceUrl[];
 }
 
 /**

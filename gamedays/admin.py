@@ -13,6 +13,7 @@ from gamedays.models import (
     League,
     Season,
     SeasonLeagueTeam,
+    ResourceUrl,
 )
 
 admin.site.register(Gameday)
@@ -25,6 +26,7 @@ admin.site.register(Person)
 admin.site.register(Season)
 admin.site.register(Team)
 admin.site.register(TeamLog)
+admin.site.register(ResourceUrl)
 
 
 @admin.register(SeasonLeagueTeam)

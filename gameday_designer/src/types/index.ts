@@ -52,6 +52,7 @@ export type {
   TemplatePreview,
   TemplateUsage,
   GamedayMetadata,
+  ResourceUrl,
   GamedayListEntry,
   Gameday,
 } from './api';

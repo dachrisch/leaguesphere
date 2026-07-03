@@ -21,6 +21,7 @@ import './MetadataTeamPoolRow.css';
 export interface MetadataTeamPoolRowProps {
   // Metadata accordion props
   metadata: GamedayMetadata;
+  gamedayId?: number;
   onUpdateMetadata: (data: Partial<GamedayMetadata>) => void;
   onClearAll: () => void;
   onDeleteGameday: () => void;
@@ -54,6 +55,7 @@ export interface MetadataTeamPoolRowProps {
 const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
   // Metadata props
   metadata,
+  gamedayId,
   onUpdateMetadata,
   onClearAll,
   onDeleteGameday,
@@ -101,6 +103,7 @@ const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
       <div className="metadata-team-pool-row__metadata">
         <GamedayMetadataAccordion
           metadata={metadata}
+          gamedayId={gamedayId}
           onUpdate={onUpdateMetadata}
           onClearAll={onClearAll}
           onDelete={onDeleteGameday}

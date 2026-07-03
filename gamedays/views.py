@@ -43,9 +43,9 @@ from .forms import (
     GamedayFormatForm,
     GamedayFormContext,
     SCHEDULE_MAP,
-    SCHEDULE_CUSTOM_CHOICE_C,
+    SCHEDULE_CUSTOM_CHOICE_C, ResourceUrlFormSet,
 )
-from .models import Gameday, Gameinfo
+from .models import Gameday, Gameinfo, ResourceUrl
 from .service.builders import TableContextBuilder
 from .service.gameday_form_service import GamedayFormService
 from .service.gameday_service import GamedayService, GamedayGameService, EmptySchedule
@@ -153,7 +153,7 @@ class GamedayDetailView(DetailView):
     template_name = "gamedays/gameday_detail.html"
 
     def get_queryset(self):
-        return Gameday.objects.select_related('league', 'season')
+        return Gameday.objects.select_related('league', 'season').prefetch_related('resourceurl_set')
 
     def get_context_data(self, **kwargs):
         context = super(GamedayDetailView, self).get_context_data()
@@ -255,6 +255,13 @@ class GamedayDetailView(DetailView):
             "defense_table": gs.get_defense_player_statistic_table().to_html(
                 **render_configs
             ),
+            "external_urls": [
+                {
+                    "description": url.description,
+                    "url": url.url
+                }
+                for url in gameday.resourceurl_set.all()
+            ],
             "url_pattern_official": url_pattern_official,
             "url_pattern_official_signup": url_pattern_official_signup,
             "url_pattern_league_filter": UrlService.build_absolute_url(
@@ -277,6 +284,14 @@ class GamedayCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
         context = super().get_context_data(**kwargs)
         context["cancel_url"] = reverse(LEAGUE_GAMEDAY_LIST)
         context["action_label"] = "Spieltag erstellen"
+
+        if "url_formset" not in context:
+            if self.request.method == "POST":
+                context["url_formset"] = ResourceUrlFormSet(
+                    self.request.POST, prefix="urls"
+                )
+            else:
+                context["url_formset"] = ResourceUrlFormSet(prefix="urls")
         return context
 
     def get_form_kwargs(self):
@@ -286,8 +301,25 @@ class GamedayCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
         )
         return kwargs
 
-    def form_valid(self, form: GamedayForm):
-        return super(GamedayCreateView, self).form_valid(form)
+    def post(self, request, *args, **kwargs):
+        self.object = None
+        form = self.get_form()
+        url_formset = ResourceUrlFormSet(request.POST, prefix="urls")
+
+        if form.is_valid() and url_formset.is_valid():
+            return self.form_valid(form, url_formset)
+        return self.form_invalid(form, url_formset)
+
+    def form_valid(self, form: GamedayForm, url_formset):
+        self.object = form.save()
+        url_formset.instance = self.object
+        url_formset.save()
+        return redirect(self.get_success_url())
+
+    def form_invalid(self, form, url_formset):
+        return self.render_to_response(
+            self.get_context_data(form=form, url_formset=url_formset)
+        )
 
     def get_success_url(self):
         action_map = {
@@ -312,11 +344,21 @@ class GamedayUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        gameday = Gameday.objects.get(pk=self.kwargs["pk"])
+        gameday = self.object  # UpdateView already fetched this — no need to re-query
         context["cancel_url"] = reverse(
             LEAGUE_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk}
         )
         context["action_label"] = "Spieltag aktualisieren"
+
+        if "url_formset" not in context:
+            if self.request.method == "POST":
+                context["url_formset"] = ResourceUrlFormSet(
+                    self.request.POST, instance=gameday, prefix="urls"
+                )
+            else:
+                context["url_formset"] = ResourceUrlFormSet(
+                    instance=gameday, prefix="urls"
+                )
         return context
 
     def get_form_kwargs(self):
@@ -326,8 +368,26 @@ class GamedayUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         )
         return kwargs
 
-    def form_valid(self, form):
-        return super(GamedayUpdateView, self).form_valid(form)
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        url_formset = ResourceUrlFormSet(
+            request.POST, instance=self.object, prefix="urls"
+        )
+
+        if form.is_valid() and url_formset.is_valid():
+            return self.form_valid(form, url_formset)
+        return self.form_invalid(form, url_formset)
+
+    def form_valid(self, form, url_formset):
+        response = super().form_valid(form)  # saves GamedayForm, sets self.object
+        url_formset.save()
+        return response
+
+    def form_invalid(self, form, url_formset):
+        return self.render_to_response(
+            self.get_context_data(form=form, url_formset=url_formset)
+        )
 
     def get_success_url(self):
         return reverse("league-gameday-detail", kwargs={"pk": self.object.pk})

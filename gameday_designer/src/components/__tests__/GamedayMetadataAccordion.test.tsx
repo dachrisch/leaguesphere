@@ -35,6 +35,10 @@ describe('GamedayMetadataAccordion', () => {
   async function renderAccordion(extraProps: Partial<React.ComponentProps<typeof GamedayMetadataAccordion>> = {}) {
     vi.mocked(gamedayApi.listSeasons).mockResolvedValue([]);
     vi.mocked(gamedayApi.listLeagues).mockResolvedValue([]);
+    vi.mocked(gamedayApi.getGameday).mockResolvedValue({
+      ...mockMetadata,
+      resource_urls: extraProps.metadata?.resource_urls ?? [],
+    } as never);
 
     const result = render(
       <GamedayMetadataAccordion
@@ -124,6 +128,170 @@ describe('GamedayMetadataAccordion', () => {
     );
     // Must still be collapsed — scroll-back-up must not re-open the accordion
     expect(document.querySelector('.accordion-button')).toHaveClass('collapsed');
+  });
+
+  it('renders existing resource URLs from the loaded gameday', async () => {
+    vi.mocked(gamedayApi.getGameday).mockResolvedValueOnce({
+      ...mockMetadata,
+      resource_urls: [
+        { id: 5, url: 'https://twitch.tv/live', description: 'Livestream' },
+      ],
+    } as never);
+
+    await renderAccordion();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Livestream')).toBeInTheDocument();
+    });
+    expect(screen.getByDisplayValue('https://twitch.tv/live')).toBeInTheDocument();
+  });
+
+  it('adds a new URL row when the add button is clicked', async () => {
+    vi.mocked(gamedayApi.getGameday).mockResolvedValue({
+      ...mockMetadata, resource_urls: [],
+    } as never);
+    await renderAccordion();
+
+    await userEvent.click(screen.getByTestId('resource-url-add'));
+
+    expect(screen.getAllByTestId('resource-url-row')).toHaveLength(1);
+  });
+
+  it('saves the URL list via patchGameday on blur', async () => {
+    vi.mocked(gamedayApi.getGameday).mockResolvedValue({
+      ...mockMetadata, resource_urls: [],
+    } as never);
+    vi.mocked(gamedayApi.patchGameday).mockResolvedValue(mockMetadata as never);
+    await renderAccordion();
+
+    await userEvent.click(screen.getByTestId('resource-url-add'));
+    await userEvent.type(screen.getByTestId('resource-url-description'), 'Livestream');
+    await userEvent.type(screen.getByTestId('resource-url-url'), 'https://twitch.tv/live');
+    fireEvent.blur(screen.getByTestId('resource-url-url'));
+
+    await waitFor(() => {
+      expect(vi.mocked(gamedayApi.patchGameday)).toHaveBeenCalledWith(1, {
+        resource_urls: [{ url: 'https://twitch.tv/live', description: 'Livestream' }],
+      });
+    });
+  });
+
+  it('saves URLs using the gamedayId prop when metadata carries no id', async () => {
+    // In the real designer, metadata is loaded from the persisted designer-state
+    // JSON, which does not include the gameday id. The id comes from the route and
+    // is passed in via the gamedayId prop. Saving must use that prop, not metadata.id.
+    const metadataWithoutId = { ...mockMetadata, id: undefined } as unknown as GamedayMetadata;
+    vi.mocked(gamedayApi.getGameday).mockResolvedValue({
+      ...mockMetadata, resource_urls: [],
+    } as never);
+    vi.mocked(gamedayApi.patchGameday).mockResolvedValue(mockMetadata as never);
+
+    await renderAccordion({ metadata: metadataWithoutId, gamedayId: 634 });
+
+    await userEvent.click(screen.getByTestId('resource-url-add'));
+    await userEvent.type(screen.getByTestId('resource-url-description'), 'Livestream');
+    await userEvent.type(screen.getByTestId('resource-url-url'), 'https://twitch.tv/live');
+    fireEvent.blur(screen.getByTestId('resource-url-url'));
+
+    await waitFor(() => {
+      expect(vi.mocked(gamedayApi.patchGameday)).toHaveBeenCalledWith(634, {
+        resource_urls: [{ url: 'https://twitch.tv/live', description: 'Livestream' }],
+      });
+    });
+  });
+
+  it('deletes a URL row and persists the shorter list', async () => {
+    vi.mocked(gamedayApi.getGameday).mockResolvedValueOnce({
+      ...mockMetadata,
+      resource_urls: [{ id: 5, url: 'https://x.tv/a', description: 'A' }],
+    } as never);
+    vi.mocked(gamedayApi.patchGameday).mockResolvedValue(mockMetadata as never);
+    await renderAccordion();
+
+    await waitFor(() => expect(screen.getByDisplayValue('A')).toBeInTheDocument());
+    await userEvent.click(screen.getByTestId('resource-url-delete'));
+
+    await waitFor(() => {
+      expect(vi.mocked(gamedayApi.patchGameday)).toHaveBeenCalledWith(1, { resource_urls: [] });
+    });
+    expect(screen.queryByTestId('resource-url-row')).not.toBeInTheDocument();
+  });
+
+  it('does not allow editing URLs in readOnly mode', async () => {
+    vi.mocked(gamedayApi.getGameday).mockResolvedValueOnce({
+      ...mockMetadata,
+      resource_urls: [{ id: 5, url: 'https://x.tv/a', description: 'A' }],
+    } as never);
+    await renderAccordion({ readOnly: true });
+
+    await waitFor(() => expect(screen.getByDisplayValue('A')).toBeInTheDocument());
+    expect(screen.getByTestId('resource-url-url')).toBeDisabled();
+    expect(screen.getByTestId('resource-url-description')).toBeDisabled();
+    expect(screen.queryByTestId('resource-url-add')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('resource-url-delete')).not.toBeInTheDocument();
+  });
+
+  it('shows an error when saving URLs fails', async () => {
+    vi.mocked(gamedayApi.getGameday).mockResolvedValueOnce({
+      ...mockMetadata, resource_urls: [],
+    } as never);
+    vi.mocked(gamedayApi.patchGameday).mockRejectedValueOnce(new Error('boom'));
+    await renderAccordion();
+
+    await userEvent.click(screen.getByTestId('resource-url-add'));
+    await userEvent.type(screen.getByTestId('resource-url-description'), 'Livestream');
+    await userEvent.type(screen.getByTestId('resource-url-url'), 'https://twitch.tv/live');
+    fireEvent.blur(screen.getByTestId('resource-url-url'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('resource-url-error')).toBeInTheDocument();
+    });
+  });
+
+  it('displays the server validation message when a URL is rejected', async () => {
+    vi.mocked(gamedayApi.getGameday).mockResolvedValue({
+      ...mockMetadata, resource_urls: [],
+    } as never);
+    // DRF returns a per-entry, per-field error array for invalid URLs.
+    vi.mocked(gamedayApi.patchGameday).mockRejectedValueOnce({
+      response: { data: { resource_urls: [{ url: ['Enter a valid URL.'] }] } },
+    });
+    await renderAccordion();
+
+    await userEvent.click(screen.getByTestId('resource-url-add'));
+    await userEvent.type(screen.getByTestId('resource-url-description'), 'Stream');
+    await userEvent.type(screen.getByTestId('resource-url-url'), 'not-a-url');
+    fireEvent.blur(screen.getByTestId('resource-url-url'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('resource-url-error')).toHaveTextContent('Enter a valid URL.');
+    });
+  });
+
+  it('adopts the server id for a newly added URL after save', async () => {
+    vi.mocked(gamedayApi.getGameday).mockResolvedValueOnce({
+      ...mockMetadata, resource_urls: [],
+    } as never);
+    vi.mocked(gamedayApi.patchGameday).mockResolvedValue({
+      ...mockMetadata,
+      resource_urls: [{ id: 42, url: 'https://twitch.tv/live', description: 'Livestream' }],
+    } as never);
+    await renderAccordion();
+
+    await userEvent.click(screen.getByTestId('resource-url-add'));
+    await userEvent.type(screen.getByTestId('resource-url-description'), 'Livestream');
+    await userEvent.type(screen.getByTestId('resource-url-url'), 'https://twitch.tv/live');
+    fireEvent.blur(screen.getByTestId('resource-url-url'));
+
+    // After adoption, editing again and blurring should send the adopted id
+    await waitFor(() => expect(vi.mocked(gamedayApi.patchGameday)).toHaveBeenCalled());
+    fireEvent.blur(screen.getByTestId('resource-url-description'));
+    await waitFor(() => {
+      const lastCall = vi.mocked(gamedayApi.patchGameday).mock.calls.at(-1);
+      expect(lastCall?.[1]).toEqual({
+        resource_urls: [{ id: 42, url: 'https://twitch.tv/live', description: 'Livestream' }],
+      });
+    });
   });
 
   it('triggers unlock schedule when button is clicked', async () => {

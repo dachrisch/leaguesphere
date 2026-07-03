@@ -12,7 +12,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, CreateAPIView
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -95,6 +95,16 @@ class GamedayViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination
     queryset = Gameday.objects.all()
     permission_classes = [AllowAny]
+
+    # Reads stay public (public gameday pages / dashboards); mutating a gameday
+    # — including its resource URLs, which render on gameday pages — requires an
+    # authenticated user to prevent anonymous tampering / link injection.
+    WRITE_ACTIONS = ("create", "update", "partial_update", "destroy")
+
+    def get_permissions(self):
+        if self.action in self.WRITE_ACTIONS:
+            return [IsAuthenticated()]
+        return [AllowAny()]
 
     def get_serializer_class(self):
         if self.action == "list":

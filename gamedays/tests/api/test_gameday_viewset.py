@@ -103,3 +103,117 @@ class GamedayViewSetTest(APITestCase):
             response.data["detail"]
             == "Published gamedays cannot be deleted. Please unlock the gameday first."
         )
+
+    def test_get_gameday_includes_resource_urls(self):
+        from gamedays.models import ResourceUrl
+        ResourceUrl.objects.create(
+            gameday=self.gameday1, url="https://example.com/a", description="Livestream"
+        )
+        response = self.client.get(f"/api/gamedays/{self.gameday1.id}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["resource_urls"] == [
+            {"id": self.gameday1.resourceurl_set.first().id,
+             "url": "https://example.com/a",
+             "description": "Livestream"}
+        ]
+
+    def test_patch_adds_resource_url(self):
+        from gamedays.models import ResourceUrl
+        response = self.client.patch(
+            f"/api/gamedays/{self.gameday1.id}/",
+            {"resource_urls": [{"url": "https://example.com/x", "description": "X"}]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        urls = ResourceUrl.objects.filter(gameday=self.gameday1)
+        assert urls.count() == 1
+        assert urls.first().url == "https://example.com/x"
+        assert urls.first().description == "X"
+
+    def test_patch_updates_existing_resource_url(self):
+        from gamedays.models import ResourceUrl
+        ru = ResourceUrl.objects.create(
+            gameday=self.gameday1, url="https://example.com/old", description="Old"
+        )
+        response = self.client.patch(
+            f"/api/gamedays/{self.gameday1.id}/",
+            {"resource_urls": [
+                {"id": ru.id, "url": "https://example.com/new", "description": "New"}
+            ]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        ru.refresh_from_db()
+        assert ru.url == "https://example.com/new"
+        assert ru.description == "New"
+        assert ResourceUrl.objects.filter(gameday=self.gameday1).count() == 1
+
+    def test_patch_deletes_omitted_resource_url(self):
+        from gamedays.models import ResourceUrl
+        ru_keep = ResourceUrl.objects.create(
+            gameday=self.gameday1, url="https://example.com/keep", description="Keep"
+        )
+        ResourceUrl.objects.create(
+            gameday=self.gameday1, url="https://example.com/drop", description="Drop"
+        )
+        response = self.client.patch(
+            f"/api/gamedays/{self.gameday1.id}/",
+            {"resource_urls": [
+                {"id": ru_keep.id, "url": ru_keep.url, "description": ru_keep.description}
+            ]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        remaining = list(
+            ResourceUrl.objects.filter(gameday=self.gameday1)
+            .values_list("id", flat=True)
+        )
+        assert remaining == [ru_keep.id]
+
+    def test_patch_invalid_url_returns_400(self):
+        response = self.client.patch(
+            f"/api/gamedays/{self.gameday1.id}/",
+            {"resource_urls": [{"url": "not-a-url", "description": "Bad"}]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_patch_without_resource_urls_preserves_existing(self):
+        from gamedays.models import ResourceUrl
+        ResourceUrl.objects.create(
+            gameday=self.gameday1, url="https://example.com/keep", description="Keep"
+        )
+        response = self.client.patch(
+            f"/api/gamedays/{self.gameday1.id}/",
+            {"name": self.gameday1.name},  # no resource_urls key
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert ResourceUrl.objects.filter(gameday=self.gameday1).count() == 1
+
+    def test_patch_empty_description_returns_400(self):
+        response = self.client.patch(
+            f"/api/gamedays/{self.gameday1.id}/",
+            {"resource_urls": [{"url": "https://example.com/x", "description": ""}]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_anonymous_cannot_patch_gameday(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.patch(
+            f"/api/gamedays/{self.gameday1.id}/",
+            {"name": "Hacked"},
+            format="json",
+        )
+        assert response.status_code in (
+            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
+        )
+        self.gameday1.refresh_from_db()
+        assert self.gameday1.name != "Hacked"
+
+    def test_anonymous_can_still_read_gameday(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.get(f"/api/gamedays/{self.gameday1.id}/")
+        assert response.status_code == status.HTTP_200_OK
