@@ -427,6 +427,7 @@ const ListDesignerApp: React.FC = () => {
             </div>
           ) : (
             <ListCanvas
+              gamedayId={id ? parseInt(id) : undefined}
               nodes={flowState.nodes}
               edges={flowState.edges}
               globalTeams={flowState.globalTeams}

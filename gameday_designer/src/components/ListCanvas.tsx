@@ -17,6 +17,7 @@ import { ICONS } from '../utils/iconConstants';
 import './ListCanvas.css';
 
 export interface ListCanvasProps {
+  gamedayId?: number;
   nodes: FlowNode[];
   edges: FlowEdge[];
   globalTeams: GlobalTeam[];
@@ -71,6 +72,7 @@ export interface ListCanvasProps {
 
 const ListCanvas: React.FC<ListCanvasProps> = (props) => {
   const {
+    gamedayId,
     nodes,
     edges,
     globalTeams,
@@ -168,6 +170,7 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
         {/* Metadata + Team Pool Row */}
         <MetadataTeamPoolRow
           metadata={metadata}
+          gamedayId={gamedayId}
           onUpdateMetadata={onUpdateMetadata}
           onClearAll={onClearAll}
           onDeleteGameday={onDeleteGameday}

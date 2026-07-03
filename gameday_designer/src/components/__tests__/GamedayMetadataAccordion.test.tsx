@@ -176,6 +176,30 @@ describe('GamedayMetadataAccordion', () => {
     });
   });
 
+  it('saves URLs using the gamedayId prop when metadata carries no id', async () => {
+    // In the real designer, metadata is loaded from the persisted designer-state
+    // JSON, which does not include the gameday id. The id comes from the route and
+    // is passed in via the gamedayId prop. Saving must use that prop, not metadata.id.
+    const metadataWithoutId = { ...mockMetadata, id: undefined } as unknown as GamedayMetadata;
+    vi.mocked(gamedayApi.getGameday).mockResolvedValue({
+      ...mockMetadata, resource_urls: [],
+    } as never);
+    vi.mocked(gamedayApi.patchGameday).mockResolvedValue(mockMetadata as never);
+
+    await renderAccordion({ metadata: metadataWithoutId, gamedayId: 634 });
+
+    await userEvent.click(screen.getByTestId('resource-url-add'));
+    await userEvent.type(screen.getByTestId('resource-url-description'), 'Livestream');
+    await userEvent.type(screen.getByTestId('resource-url-url'), 'https://twitch.tv/live');
+    fireEvent.blur(screen.getByTestId('resource-url-url'));
+
+    await waitFor(() => {
+      expect(vi.mocked(gamedayApi.patchGameday)).toHaveBeenCalledWith(634, {
+        resource_urls: [{ url: 'https://twitch.tv/live', description: 'Livestream' }],
+      });
+    });
+  });
+
   it('deletes a URL row and persists the shorter list', async () => {
     vi.mocked(gamedayApi.getGameday).mockResolvedValueOnce({
       ...mockMetadata,

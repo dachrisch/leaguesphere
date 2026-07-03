@@ -172,6 +172,12 @@ const CustomAccordionHeader: React.FC<{
 };
 interface GamedayMetadataAccordionProps {
   metadata: GamedayMetadata;
+  /**
+   * The gameday id from the route. The metadata loaded from the persisted
+   * designer-state JSON does not carry an id, so resource-URL load/save relies
+   * on this prop instead of metadata.id.
+   */
+  gamedayId?: number;
   onUpdate: (data: Partial<GamedayMetadata>) => void;
   onClearAll: () => void;
   onDelete: () => void;
@@ -186,8 +192,9 @@ interface GamedayMetadataAccordionProps {
   forceCollapsed?: boolean;
 }
 
-const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({ 
+const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
   metadata,
+  gamedayId,
   onUpdate,
   onClearAll,
   onDelete,
@@ -208,6 +215,9 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
   const [urlSaveError, setUrlSaveError] = useState<string | null>(null);
   const [activeKey, setActiveKey] = useState<string | undefined>("0");
   const isEditingUrlsRef = useRef(false);
+  // metadata.id is absent when loaded from persisted designer-state; prefer the
+  // route-provided gamedayId so resource URLs load and save reliably.
+  const resourceGamedayId = gamedayId ?? metadata.id;
 
   useEffect(() => {
     if (forceCollapsed && activeKey !== undefined) {
@@ -237,16 +247,16 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
 
   React.useEffect(() => {
     const fetchResourceUrls = async () => {
-      if (!gamedayApi || !metadata.id) return;
+      if (!gamedayApi || !resourceGamedayId) return;
       try {
-        const gd = await gamedayApi.getGameday(metadata.id);
+        const gd = await gamedayApi.getGameday(resourceGamedayId);
         setResourceUrls(gd.resource_urls ?? []);
       } catch (error) {
         console.error('Failed to fetch resource URLs', error);
       }
     };
     fetchResourceUrls();
-  }, [metadata.id]);
+  }, [resourceGamedayId]);
 
   const [showValidationPopover, setShowValidationPopover] = useState(false);
   const validationBadgeRef = useRef<HTMLDivElement>(null);
@@ -281,12 +291,12 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
   };
 
   const persistResourceUrls = async (urls: ResourceUrl[]) => {
-    if (readOnly || !metadata.id) return;
+    if (readOnly || !resourceGamedayId) return;
     const payload = urls.filter(
       (u) => u.url.trim() !== '' && u.description.trim() !== ''
     );
     try {
-      const updated = await gamedayApi.patchGameday(metadata.id, { resource_urls: payload });
+      const updated = await gamedayApi.patchGameday(resourceGamedayId, { resource_urls: payload });
       setUrlSaveError(null);
       if (!isEditingUrlsRef.current) {
         setResourceUrls(updated.resource_urls ?? []);
