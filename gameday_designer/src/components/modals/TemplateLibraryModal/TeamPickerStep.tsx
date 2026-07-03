@@ -28,9 +28,18 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
   const [associationFilter, setAssociationFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [mockTeams, setMockTeams] = useState<boolean>(false);
+  const [isStaff, setIsStaff] = useState<boolean>(false);
 
   useEffect(() => {
-    designerApi.getConfig().then(config => setMockTeams(config.mock_teams)).catch(() => setMockTeams(false));
+    designerApi.getConfig()
+      .then(config => {
+        setMockTeams(config.mock_teams);
+        setIsStaff(config.is_staff);
+      })
+      .catch(() => {
+        setMockTeams(false);
+        setIsStaff(false);
+      });
   }, []);
 
   const allTeams = [...availableTeams, ...localTeams];
@@ -168,7 +177,7 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
           </div>
         )}
 
-        {onAutoGenerateTeams && selectedIds.length < requiredTeams && mockTeams && (
+        {onAutoGenerateTeams && selectedIds.length < requiredTeams && mockTeams && isStaff && (
           <Button
             size="sm"
             variant="outline-primary"

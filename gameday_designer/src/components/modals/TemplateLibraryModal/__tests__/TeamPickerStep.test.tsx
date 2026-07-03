@@ -21,7 +21,7 @@ const mockTeams = [
 describe('TeamPickerStep', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(designerApi.getConfig).mockResolvedValue({ mock_teams: true });
+    vi.mocked(designerApi.getConfig).mockResolvedValue({ mock_teams: true, is_staff: true });
   });
 
   it('shows required team count', () => {
@@ -101,5 +101,18 @@ describe('TeamPickerStep', () => {
     // Check that 4 teams are now selected (3 manual + 1 generated)
     const selectedButtons = screen.getAllByText(/^(Team [A-C]|New Team 1)$/).filter(b => b.closest('button')?.classList.contains('btn-primary'));
     expect(selectedButtons.length).toBe(4);
+  });
+
+  it('hides auto-generate button when is_staff is false', async () => {
+    vi.mocked(designerApi.getConfig).mockResolvedValue({ mock_teams: true, is_staff: false });
+    const onAutoGenerate = vi.fn();
+    render(<TeamPickerStep requiredTeams={4} availableTeams={mockTeams} onConfirm={vi.fn()} onBack={vi.fn()} onAutoGenerateTeams={onAutoGenerate} />);
+
+    // Wait for config to load
+    await waitFor(() => {
+      expect(designerApi.getConfig).toHaveBeenCalled();
+    });
+
+    expect(screen.queryByText(/auto-generate/i)).not.toBeInTheDocument();
   });
 });

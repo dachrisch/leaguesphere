@@ -5,6 +5,7 @@ import TemplatePreview, { TournamentConfig } from './TemplateLibraryModal/Templa
 import TeamPickerStep from './TemplateLibraryModal/TeamPickerStep';
 import SaveTemplateSheet from './TemplateLibraryModal/SaveTemplateSheet';
 import { designerApi } from '../../api/designerApi';
+import { useIsStaff } from '../../hooks/useIsStaff';
 import { GlobalTeam } from '../../types/flowchart';
 import { ScheduleTemplate } from '../../types/api';
 import { TournamentTemplate } from '../../utils/tournamentTemplates';
@@ -46,6 +47,7 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
   show, onHide, gamedayId, currentUserId,
   onGenerateFromBuiltin, onGenerateFromSavedTemplate, onSaveTemplate, onNotify,
 }) => {
+  const isStaff = useIsStaff();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedTemplate | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -235,9 +237,11 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
             <Modal.Header className="bg-dark text-white">
               <Modal.Title><i className="bi bi-book-half me-2"></i>Template Library</Modal.Title>
               <div className="ms-auto d-flex gap-2 align-items-center">
-                <Button size="sm" variant="success" onClick={() => setShowSave(true)}>
-                  <i className="bi bi-download me-2"></i>Save current as template
-                </Button>
+                {isStaff && (
+                  <Button size="sm" variant="success" onClick={() => setShowSave(true)}>
+                    <i className="bi bi-download me-2"></i>Save current as template
+                  </Button>
+                )}
                 <Button size="sm" variant="outline-light" onClick={handleHide} aria-label="Close" data-testid="close-template-library-button">
                   <i className="bi bi-x-lg"></i>
                 </Button>
@@ -280,6 +284,7 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
                   key={selectedId ?? 'none'}
                   selected={selected}
                   currentUserId={currentUserId}
+                  isStaff={isStaff}
                   onApply={handleApply}
                   onClone={handleClone}
                   onDelete={handleDelete}
