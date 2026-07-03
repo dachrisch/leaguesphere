@@ -207,6 +207,49 @@ describe('GamedayMetadataAccordion', () => {
     expect(screen.queryByTestId('resource-url-delete')).not.toBeInTheDocument();
   });
 
+  it('shows an error when saving URLs fails', async () => {
+    vi.mocked(gamedayApi.getGameday).mockResolvedValueOnce({
+      ...mockMetadata, resource_urls: [],
+    } as never);
+    vi.mocked(gamedayApi.patchGameday).mockRejectedValueOnce(new Error('boom'));
+    await renderAccordion();
+
+    await userEvent.click(screen.getByTestId('resource-url-add'));
+    await userEvent.type(screen.getByTestId('resource-url-description'), 'Livestream');
+    await userEvent.type(screen.getByTestId('resource-url-url'), 'https://twitch.tv/live');
+    fireEvent.blur(screen.getByTestId('resource-url-url'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('resource-url-error')).toBeInTheDocument();
+    });
+  });
+
+  it('adopts the server id for a newly added URL after save', async () => {
+    vi.mocked(gamedayApi.getGameday).mockResolvedValueOnce({
+      ...mockMetadata, resource_urls: [],
+    } as never);
+    vi.mocked(gamedayApi.patchGameday).mockResolvedValue({
+      ...mockMetadata,
+      resource_urls: [{ id: 42, url: 'https://twitch.tv/live', description: 'Livestream' }],
+    } as never);
+    await renderAccordion();
+
+    await userEvent.click(screen.getByTestId('resource-url-add'));
+    await userEvent.type(screen.getByTestId('resource-url-description'), 'Livestream');
+    await userEvent.type(screen.getByTestId('resource-url-url'), 'https://twitch.tv/live');
+    fireEvent.blur(screen.getByTestId('resource-url-url'));
+
+    // After adoption, editing again and blurring should send the adopted id
+    await waitFor(() => expect(vi.mocked(gamedayApi.patchGameday)).toHaveBeenCalled());
+    fireEvent.blur(screen.getByTestId('resource-url-description'));
+    await waitFor(() => {
+      const lastCall = vi.mocked(gamedayApi.patchGameday).mock.calls.at(-1);
+      expect(lastCall?.[1]).toEqual({
+        resource_urls: [{ id: 42, url: 'https://twitch.tv/live', description: 'Livestream' }],
+      });
+    });
+  });
+
   it('triggers unlock schedule when button is clicked', async () => {
     const user = userEvent.setup();
     const publishedMetadata = { ...mockMetadata, status: 'PUBLISHED' };

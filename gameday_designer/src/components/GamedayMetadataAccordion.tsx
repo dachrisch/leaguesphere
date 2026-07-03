@@ -205,7 +205,9 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
   const [seasons, setSeasons] = useState<{ id: number; name: string }[]>([]);
   const [leagues, setLeagues] = useState<{ id: number; name: string }[]>([]);
   const [resourceUrls, setResourceUrls] = useState<ResourceUrl[]>([]);
+  const [urlSaveError, setUrlSaveError] = useState<string | null>(null);
   const [activeKey, setActiveKey] = useState<string | undefined>("0");
+  const isEditingUrlsRef = useRef(false);
 
   useEffect(() => {
     if (forceCollapsed && activeKey !== undefined) {
@@ -280,11 +282,18 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
 
   const persistResourceUrls = async (urls: ResourceUrl[]) => {
     if (readOnly || !metadata.id) return;
-    const payload = urls.filter((u) => u.url.trim() !== '');
+    const payload = urls.filter(
+      (u) => u.url.trim() !== '' && u.description.trim() !== ''
+    );
     try {
-      await gamedayApi.patchGameday(metadata.id, { resource_urls: payload });
+      const updated = await gamedayApi.patchGameday(metadata.id, { resource_urls: payload });
+      setUrlSaveError(null);
+      if (!isEditingUrlsRef.current) {
+        setResourceUrls(updated.resource_urls ?? []);
+      }
     } catch (error) {
       console.error('Failed to save resource URLs', error);
+      setUrlSaveError(t('ui:error.saveUrlsFailed', 'Failed to save links'));
     }
   };
 
@@ -495,7 +504,9 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                         placeholder={t('ui:label.urlDescription', 'Description')}
                         disabled={readOnly}
                         onChange={(e) => handleUrlChange(idx, 'description', e.target.value)}
-                        onBlur={() => persistResourceUrls(resourceUrls)}
+                        onFocus={() => { isEditingUrlsRef.current = true; }}
+                        onBlur={() => { isEditingUrlsRef.current = false; persistResourceUrls(resourceUrls); }}
+                        maxLength={50}
                         data-testid="resource-url-description"
                       />
                     </Col>
@@ -506,7 +517,9 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                         placeholder={t('ui:label.url', 'URL')}
                         disabled={readOnly}
                         onChange={(e) => handleUrlChange(idx, 'url', e.target.value)}
-                        onBlur={() => persistResourceUrls(resourceUrls)}
+                        onFocus={() => { isEditingUrlsRef.current = true; }}
+                        onBlur={() => { isEditingUrlsRef.current = false; persistResourceUrls(resourceUrls); }}
+                        maxLength={500}
                         data-testid="resource-url-url"
                       />
                     </Col>
@@ -535,6 +548,11 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     <i className="bi bi-plus-lg me-1"></i>
                     {t('ui:button.addUrl', 'Add URL')}
                   </Button>
+                )}
+                {urlSaveError && (
+                  <div className="text-danger small mt-1" data-testid="resource-url-error">
+                    {urlSaveError}
+                  </div>
                 )}
               </Col>
             </Row>

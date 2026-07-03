@@ -179,7 +179,8 @@
   },
   "error": {
     "nameRequired": "Name ist erforderlich",
-    "gamedayNotFound": "Spieltag nicht gefunden"
+    "gamedayNotFound": "Spieltag nicht gefunden",
+    "saveUrlsFailed": "Links konnten nicht gespeichert werden"
   },
   "gameProgress": {
     "section": {

@@ -179,7 +179,8 @@
   },
   "error": {
     "nameRequired": "Name is required",
-    "gamedayNotFound": "Gameday not found"
+    "gamedayNotFound": "Gameday not found",
+    "saveUrlsFailed": "Failed to save links"
   },
   "gameProgress": {
     "section": {

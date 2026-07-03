@@ -190,3 +190,11 @@ class GamedayViewSetTest(APITestCase):
         )
         assert response.status_code == status.HTTP_200_OK
         assert ResourceUrl.objects.filter(gameday=self.gameday1).count() == 1
+
+    def test_patch_empty_description_returns_400(self):
+        response = self.client.patch(
+            f"/api/gamedays/{self.gameday1.id}/",
+            {"resource_urls": [{"url": "https://example.com/x", "description": ""}]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
