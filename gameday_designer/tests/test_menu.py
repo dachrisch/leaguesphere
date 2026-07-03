@@ -9,7 +9,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.test import RequestFactory
 
 from gamedays.menu import GamedaysMenuAdmin
-from gameday_designer.menu import Gameday_designerMenuOrgaEntry, Gameday_designerViewOnlyEntry
+from gameday_designer.menu import Gameday_designerMenuOrgaEntry, Gameday_designerMenuViewOnlyEntry
 
 
 @pytest.fixture
@@ -65,17 +65,17 @@ def test_designer_orga_entry_live_status_still_present(rf):
 
 
 # ---------------------------------------------------------------------------
-# Gameday_designerViewOnlyEntry — "Spieltage" group for non-staff
+# Gameday_designerMenuViewOnlyEntry — "Spieltage" group for non-staff
 # ---------------------------------------------------------------------------
 
 def test_view_only_entry_group_name():
-    assert Gameday_designerViewOnlyEntry().get_name() == "Spieltage"
+    assert Gameday_designerMenuViewOnlyEntry().get_name() == "Spieltage"
 
 
 def test_view_only_entry_shows_for_authenticated_non_staff(rf):
     req = rf.get("/")
     req.user = _make_user(is_staff=False, is_authenticated=True)
-    items = Gameday_designerViewOnlyEntry().get_menu_items(req)
+    items = Gameday_designerMenuViewOnlyEntry().get_menu_items(req)
     assert len(items) == 1
     assert items[0]["name"] == "Spieltag ansehen"
     assert items[0]["url"] == "/gamedays/gameday/design/"
@@ -84,12 +84,12 @@ def test_view_only_entry_shows_for_authenticated_non_staff(rf):
 def test_view_only_entry_hidden_for_staff(rf):
     req = rf.get("/")
     req.user = _make_user(is_staff=True, is_authenticated=True)
-    items = Gameday_designerViewOnlyEntry().get_menu_items(req)
+    items = Gameday_designerMenuViewOnlyEntry().get_menu_items(req)
     assert items == []
 
 
 def test_view_only_entry_hidden_for_anonymous(rf):
     req = rf.get("/")
     req.user = AnonymousUser()
-    items = Gameday_designerViewOnlyEntry().get_menu_items(req)
+    items = Gameday_designerMenuViewOnlyEntry().get_menu_items(req)
     assert items == []
