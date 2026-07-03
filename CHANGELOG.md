@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.32.0](https://github.com/dachrisch/leaguesphere/compare/v3.31.9...v3.32.0) (2026-07-03)
+
+
+### Features
+
+* **gameday:** ResourceURLs for Gameday Details ([#1374](https://github.com/dachrisch/leaguesphere/issues/1374)) ([142a285](https://github.com/dachrisch/leaguesphere/commit/142a285793222decfa32288d2c1379434fa2c6d6))
+
 ## [3.31.9](https://github.com/dachrisch/leaguesphere/compare/v3.31.8...v3.31.9) (2026-07-03)
 
 
