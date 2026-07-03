@@ -589,4 +589,5 @@ class ConfigView(APIView):
         from django.conf import settings
         return Response({
             "mock_teams": getattr(settings, "MOCK_TEAMS", False),
+            "is_staff": bool(request.user and request.user.is_staff),
         })

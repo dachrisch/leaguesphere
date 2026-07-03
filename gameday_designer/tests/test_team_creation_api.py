@@ -235,3 +235,16 @@ class TestTeamCreationGating:
         api_client.force_authenticate(user=association_user)
         r = api_client.post("/api/designer/teams/bulk/", {"count": 3}, format="json")
         assert r.status_code == 403
+
+
+@pytest.mark.django_db
+class TestConfigIsStaff:
+    URL = "/api/designer/config/"
+
+    def test_staff_sees_is_staff_true(self, api_client, staff_user):
+        api_client.force_authenticate(user=staff_user)
+        assert api_client.get(self.URL).data["is_staff"] is True
+
+    def test_non_staff_sees_is_staff_false(self, api_client, association_user):
+        api_client.force_authenticate(user=association_user)
+        assert api_client.get(self.URL).data["is_staff"] is False
