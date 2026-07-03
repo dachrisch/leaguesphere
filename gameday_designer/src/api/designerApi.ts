@@ -30,6 +30,7 @@ export interface TeamRecord {
  */
 class DesignerApi {
   private client: AxiosInstance;
+  private configPromise: Promise<{ mock_teams: boolean; is_staff: boolean }> | null = null;
 
   constructor() {
     this.client = axios.create({
@@ -270,9 +271,16 @@ class DesignerApi {
     return response.data;
   }
 
-  async getConfig(): Promise<{ mock_teams: boolean }> {
-    const response = await this.client.get<{ mock_teams: boolean }>('/config/');
-    return response.data;
+  async getConfig(): Promise<{ mock_teams: boolean; is_staff: boolean }> {
+    if (!this.configPromise) {
+      this.configPromise = this.client.get<{ mock_teams: boolean; is_staff: boolean }>('/config/')
+        .then(response => response.data)
+        .catch(err => {
+          this.configPromise = null;
+          throw err;
+        });
+    }
+    return this.configPromise;
   }
 }
 

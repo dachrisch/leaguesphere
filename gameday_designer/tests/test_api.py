@@ -24,15 +24,15 @@ from gameday_designer.models import (
 class TestTemplateListEndpoint:
     """Test GET /api/designer/templates/ (list)."""
 
-    def test_anonymous_can_list_templates(self, api_client, template, global_template):
-        """Anonymous users can list templates."""
+    def test_anonymous_cannot_list_templates(self, api_client, template, global_template):
+        """Anonymous users cannot list templates — IsStaffOrReadOnly requires authentication for reads."""
         response = api_client.get("/api/designer/templates/")
 
-        assert response.status_code == status.HTTP_200_OK
-        assert len(response.data["results"]) >= 2  # At least our two fixtures
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_list_returns_lightweight_serializer(self, api_client, template_with_slots):
+    def test_list_returns_lightweight_serializer(self, api_client, association_user, template_with_slots):
         """List endpoint uses lightweight serializer (no nested data)."""
+        api_client.force_authenticate(user=association_user)
         response = api_client.get("/api/designer/templates/")
 
         assert response.status_code == status.HTTP_200_OK
@@ -56,8 +56,9 @@ class TestTemplateListEndpoint:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 2
 
-    def test_filtering_by_association(self, api_client, template, global_template):
-        """Can filter templates by association."""
+    def test_filtering_by_association(self, api_client, association_user, template, global_template):
+        """Authenticated users can filter templates by association."""
+        api_client.force_authenticate(user=association_user)
         response = api_client.get(
             f"/api/designer/templates/?association={template.association.pk}"
         )
@@ -106,16 +107,15 @@ class TestTemplateListEndpoint:
 class TestTemplateDetailEndpoint:
     """Test GET /api/designer/templates/{id}/ (retrieve)."""
 
-    def test_anonymous_can_retrieve_template(self, api_client, template_with_slots):
-        """Anonymous users can retrieve template details."""
+    def test_anonymous_cannot_retrieve_template(self, api_client, template_with_slots):
+        """Anonymous users cannot retrieve template details — requires authentication."""
         response = api_client.get(f"/api/designer/templates/{template_with_slots.pk}/")
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["id"] == template_with_slots.pk
-        assert response.data["name"] == "Test Template"
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_detail_includes_nested_slots(self, api_client, template_with_slots, assert_num_queries):
+    def test_detail_includes_nested_slots(self, api_client, staff_user, template_with_slots, assert_num_queries):
         """Detail endpoint includes nested slots."""
+        api_client.force_authenticate(user=staff_user)
         # Warm request-path caches (maintenance-mode SiteConfiguration lookup + connection
         # liveness check) so the query count is not order-dependent under parallel (xdist) runs.
         api_client.get(f"/api/designer/templates/{template_with_slots.pk}/")
@@ -127,8 +127,9 @@ class TestTemplateDetailEndpoint:
         assert len(response.data["slots"]) == 2
         assert response.data["slots"][0]["slot_order"] == 1
 
-    def test_detail_includes_nested_update_rules(self, api_client, template, db, assert_num_queries):
+    def test_detail_includes_nested_update_rules(self, api_client, staff_user, template, db, assert_num_queries):
         """Detail endpoint includes nested update rules."""
+        api_client.force_authenticate(user=staff_user)
         slot = TemplateSlot.objects.create(
             template=template,
             field=1,
@@ -158,8 +159,9 @@ class TestTemplateDetailEndpoint:
         assert len(response.data["update_rules"]) == 1
         assert response.data["update_rules"][0]["pre_finished"] == "Halbfinale"
 
-    def test_retrieve_nonexistent_template_returns_404(self, api_client):
-        """Retrieving non-existent template returns 404."""
+    def test_retrieve_nonexistent_template_returns_404(self, api_client, association_user):
+        """Retrieving non-existent template returns 404 (when authenticated)."""
+        api_client.force_authenticate(user=association_user)
         response = api_client.get("/api/designer/templates/99999/")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -229,10 +231,10 @@ class TestTemplateCreateEndpoint:
         assert response.data["association"] is None
         assert response.data["association_name"] == "Global"
 
-    def test_association_user_can_create_template(
+    def test_association_user_cannot_create_template(
         self, api_client, association_user, association
     ):
-        """Association users can create templates."""
+        """Association users cannot create templates — write requires staff."""
         api_client.force_authenticate(user=association_user)
 
         data = {
@@ -247,8 +249,7 @@ class TestTemplateCreateEndpoint:
 
         response = api_client.post("/api/designer/templates/", data, format="json")
 
-        assert response.status_code == status.HTTP_201_CREATED
-        assert response.data["created_by"] == association_user.pk
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_create_validates_required_fields(self, api_client, staff_user):
         """Creating template validates required fields."""
@@ -326,10 +327,10 @@ class TestTemplateUpdateEndpoint:
         assert response.data["description"] == "Partially updated description"
         assert response.data["name"] == template.name  # Unchanged
 
-    def test_association_user_can_update_association_template(
+    def test_association_user_cannot_update_association_template(
         self, api_client, association_user, template
     ):
-        """Association users can update templates for their association."""
+        """Association users cannot update templates — write requires staff."""
         api_client.force_authenticate(user=association_user)
 
         data = {
@@ -346,8 +347,7 @@ class TestTemplateUpdateEndpoint:
             f"/api/designer/templates/{template.pk}/", data, format="json"
         )
 
-        # Permission allows this
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_association_user_cannot_update_global_template(
         self, api_client, association_user, global_template
@@ -466,10 +466,10 @@ class TestTemplateApplyEndpoint:
         assert "success" in response.data
         assert response.data["success"] is True
 
-    def test_association_user_can_apply_template(
+    def test_association_user_cannot_apply_template(
         self, api_client, association_user, template_with_slots, gameday, teams
     ):
-        """Association users can apply templates."""
+        """Association users cannot apply templates — apply requires staff."""
         api_client.force_authenticate(user=association_user)
 
         data = {
@@ -490,7 +490,7 @@ class TestTemplateApplyEndpoint:
             format="json",
         )
 
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_apply_validates_gameday_exists(
         self, api_client, staff_user, template_with_slots, teams
@@ -599,17 +599,17 @@ class TestTemplateCloneEndpoint:
         cloned_template = ScheduleTemplate.objects.get(pk=response.data["id"])
         assert cloned_template.slots.count() == original_slot_count
 
-    def test_association_user_can_clone_template(
+    def test_association_user_cannot_clone_template(
         self, api_client, association_user, template
     ):
-        """Association users can clone templates."""
+        """Association users cannot clone templates — clone is a write action requiring staff."""
         api_client.force_authenticate(user=association_user)
 
         response = api_client.post(
             f"/api/designer/templates/{template.pk}/clone/", format="json"
         )
 
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_clone_uses_new_name_from_request(self, api_client, staff_user, template):
         """Clone uses new_name from request body instead of hardcoded prefix."""
@@ -649,8 +649,9 @@ class TestTemplateCloneEndpoint:
 class TestTemplateValidateEndpoint:
     """Test GET /api/designer/templates/{id}/validate/ (custom action)."""
 
-    def test_anyone_can_validate_template(self, api_client, template_with_slots):
-        """Anyone can validate templates (even anonymous)."""
+    def test_authenticated_user_can_validate_template(self, api_client, association_user, template_with_slots):
+        """Any authenticated user can validate templates."""
+        api_client.force_authenticate(user=association_user)
         response = api_client.get(
             f"/api/designer/templates/{template_with_slots.pk}/validate/"
         )
@@ -660,8 +661,9 @@ class TestTemplateValidateEndpoint:
         assert "errors" in response.data
         assert "warnings" in response.data
 
-    def test_validate_returns_validation_result(self, api_client, template_with_slots):
+    def test_validate_returns_validation_result(self, api_client, association_user, template_with_slots):
         """Validate endpoint returns validation result from service."""
+        api_client.force_authenticate(user=association_user)
         response = api_client.get(
             f"/api/designer/templates/{template_with_slots.pk}/validate/"
         )
@@ -676,8 +678,9 @@ class TestTemplateValidateEndpoint:
 class TestTemplatePreviewEndpoint:
     """Test GET /api/designer/templates/{id}/preview/ (custom action)."""
 
-    def test_anyone_can_preview_template(self, api_client, template_with_slots):
-        """Anyone can preview template schedule."""
+    def test_authenticated_user_can_preview_template(self, api_client, association_user, template_with_slots):
+        """Any authenticated user can preview template schedule."""
+        api_client.force_authenticate(user=association_user)
         response = api_client.get(
             f"/api/designer/templates/{template_with_slots.pk}/preview/"
         )
@@ -686,8 +689,9 @@ class TestTemplatePreviewEndpoint:
         assert "slots" in response.data
         assert len(response.data["slots"]) == 2
 
-    def test_preview_includes_slot_details(self, api_client, template_with_slots):
+    def test_preview_includes_slot_details(self, api_client, association_user, template_with_slots):
         """Preview includes detailed slot information."""
+        api_client.force_authenticate(user=association_user)
         response = api_client.get(
             f"/api/designer/templates/{template_with_slots.pk}/preview/"
         )
@@ -705,8 +709,9 @@ class TestTemplatePreviewEndpoint:
 class TestTemplateUsageEndpoint:
     """Test GET /api/designer/templates/{id}/usage/ (custom action)."""
 
-    def test_anyone_can_view_usage_statistics(self, api_client, template):
-        """Anyone can view template usage statistics."""
+    def test_authenticated_user_can_view_usage_statistics(self, api_client, association_user, template):
+        """Any authenticated user can view template usage statistics."""
+        api_client.force_authenticate(user=association_user)
         response = api_client.get(f"/api/designer/templates/{template.pk}/usage/")
 
         assert response.status_code == status.HTTP_200_OK
@@ -714,9 +719,10 @@ class TestTemplateUsageEndpoint:
         assert "recent_applications" in response.data
 
     def test_usage_shows_application_count(
-        self, api_client, template, gameday, staff_user
+        self, api_client, association_user, template, gameday, staff_user
     ):
         """Usage endpoint shows number of applications."""
+        api_client.force_authenticate(user=association_user)
         # Create some applications
         TemplateApplication.objects.create(
             template=template, gameday=gameday, applied_by=staff_user, team_mapping={}
@@ -726,3 +732,29 @@ class TestTemplateUsageEndpoint:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["applications_count"] >= 1
+
+
+@pytest.mark.django_db
+class TestTemplateWriteGating:
+    URL = "/api/designer/templates/"
+
+    PAYLOAD = {
+        "name": "Gated Template",
+        "description": "x",
+        "num_teams": 6,
+        "num_fields": 2,
+        "num_groups": 1,
+        "game_duration": 70,
+    }
+
+    def test_non_staff_can_list(self, api_client, association_user):
+        api_client.force_authenticate(user=association_user)
+        assert api_client.get(self.URL).status_code == 200
+
+    def test_non_staff_cannot_create(self, api_client, association_user):
+        api_client.force_authenticate(user=association_user)
+        assert api_client.post(self.URL, self.PAYLOAD, format="json").status_code == 403
+
+    def test_staff_can_create(self, api_client, staff_user):
+        api_client.force_authenticate(user=staff_user)
+        assert api_client.post(self.URL, self.PAYLOAD, format="json").status_code == 201

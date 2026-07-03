@@ -1,4 +1,4 @@
-from gamedays.constants import LEAGUE_GAMEDAY_CREATE
+from gamedays.constants import LEAGUE_GAMEDAY_CREATE_CHOOSER
 from league_manager.base_menu import BaseMenu, MenuItem
 
 
@@ -13,7 +13,7 @@ class GamedaysMenuAdmin(BaseMenu):
         return [
             MenuItem.create(
                 name="Spieltag erstellen",
-                url=LEAGUE_GAMEDAY_CREATE,
+                url=LEAGUE_GAMEDAY_CREATE_CHOOSER,
             ),
             MenuItem.create(
                 name="Backend",

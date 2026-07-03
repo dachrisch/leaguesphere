@@ -673,3 +673,10 @@ class GameinfoDeleteView(StaffDeleteView):
         )
 
         return redirect(LEAGUE_GAMEDAY_DETAIL, pk=gameday.pk)
+
+
+class GamedayCreateChooserView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = "gamedays/gameday_create_chooser.html"
+
+    def test_func(self):
+        return self.request.user.is_staff

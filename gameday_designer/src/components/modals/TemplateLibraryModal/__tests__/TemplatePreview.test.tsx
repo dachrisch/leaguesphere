@@ -25,9 +25,9 @@ describe('TemplatePreview', () => {
     expect(screen.getByText(/select a template/i)).toBeInTheDocument();
   });
 
-  it('shows Apply button for built-in template', () => {
+  it('shows Apply button for built-in template when staff', () => {
     const selected: SelectedTemplate = { type: 'builtin', template: mockBuiltinTemplate as unknown as TournamentTemplate };
-    render(<TemplatePreview selected={selected} currentUserId={1} onApply={vi.fn()} onClone={vi.fn()} onDelete={vi.fn()} onSave={vi.fn()} />);
+    render(<TemplatePreview selected={selected} currentUserId={1} isStaff={true} onApply={vi.fn()} onClone={vi.fn()} onDelete={vi.fn()} onSave={vi.fn()} />);
     expect(screen.getByRole('button', { name: /apply/i })).toBeInTheDocument();
   });
 
@@ -46,7 +46,7 @@ describe('TemplatePreview', () => {
   it('calls onApply when Apply is clicked', () => {
     const onApply = vi.fn();
     const selected: SelectedTemplate = { type: 'saved', template: mockSavedTemplate };
-    render(<TemplatePreview selected={selected} currentUserId={1} onApply={onApply} onClone={vi.fn()} onDelete={vi.fn()} onSave={vi.fn()} />);
+    render(<TemplatePreview selected={selected} currentUserId={1} isStaff={true} onApply={onApply} onClone={vi.fn()} onDelete={vi.fn()} onSave={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: /apply/i }));
     expect(onApply).toHaveBeenCalledWith(selected, expect.objectContaining({
       startTime: '09:00',
@@ -54,6 +54,18 @@ describe('TemplatePreview', () => {
       breakDuration: 0,
       numFields: 2,
     }));
+  });
+
+  it('hides Apply button when isStaff is false', () => {
+    const selected: SelectedTemplate = { type: 'builtin', template: mockBuiltinTemplate as unknown as TournamentTemplate };
+    render(<TemplatePreview selected={selected} currentUserId={1} isStaff={false} onApply={vi.fn()} onClone={vi.fn()} onDelete={vi.fn()} onSave={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /apply/i })).not.toBeInTheDocument();
+  });
+
+  it('shows Apply button when isStaff is true', () => {
+    const selected: SelectedTemplate = { type: 'builtin', template: mockBuiltinTemplate as unknown as TournamentTemplate };
+    render(<TemplatePreview selected={selected} currentUserId={1} isStaff={true} onApply={vi.fn()} onClone={vi.fn()} onDelete={vi.fn()} onSave={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /apply/i })).toBeInTheDocument();
   });
 
   it('Number of fields input appears for both saved and builtin templates', () => {

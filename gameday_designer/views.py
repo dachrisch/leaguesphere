@@ -36,7 +36,7 @@ from gameday_designer.serializers import (
     ApplyTemplateRequestSerializer,
     TemplateApplicationSerializer,
 )
-from gameday_designer.permissions import IsAssociationMemberOrStaff, CanApplyTemplate
+from gameday_designer.permissions import IsStaffOrReadOnly
 from gameday_designer.service.template_validation_service import (
     TemplateValidationService,
 )
@@ -70,16 +70,11 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
     """
 
     queryset = ScheduleTemplate.objects.all()
-    permission_classes = [IsAssociationMemberOrStaff]
+    permission_classes = [IsStaffOrReadOnly]
     pagination_class = TemplatePagination
 
     def get_permissions(self):
-        """
-        Return appropriate permissions based on action.
-        """
-        if self.action == "apply":
-            return [CanApplyTemplate()]
-        return super().get_permissions()
+        return [IsStaffOrReadOnly()]
 
     def get_serializer_class(self):
         """
@@ -174,7 +169,6 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
     @action(
         detail=True,
         methods=["post"],
-        permission_classes=[CanApplyTemplate],
         serializer_class=ApplyTemplateRequestSerializer,
     )
     def apply(self, request, pk=None):
@@ -469,7 +463,7 @@ class TeamCreationView(APIView):
         400: {"error": "..."} — validation error
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStaffOrReadOnly]
 
     def post(self, request):
         name = request.data.get("name", "").strip()
@@ -506,7 +500,7 @@ class TeamBulkCreationView(APIView):
         400: {"error": "..."} — validation error
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStaffOrReadOnly]
 
     def post(self, request):
         count = request.data.get("count")
@@ -595,4 +589,5 @@ class ConfigView(APIView):
         from django.conf import settings
         return Response({
             "mock_teams": getattr(settings, "MOCK_TEAMS", False),
+            "is_staff": bool(request.user and request.user.is_staff),
         })

@@ -14,6 +14,7 @@ export interface TournamentConfig {
 interface TemplatePreviewProps {
   selected: SelectedTemplate | null;
   currentUserId: number;
+  isStaff?: boolean;
   onApply: (selected: SelectedTemplate, config?: TournamentConfig) => void;
   onClone: (selected: SelectedTemplate) => void;
   onDelete: (template: ScheduleTemplate) => void;
@@ -21,7 +22,7 @@ interface TemplatePreviewProps {
 }
 
 const TemplatePreview: React.FC<TemplatePreviewProps> = ({
-  selected, currentUserId, onApply, onClone, onDelete,
+  selected, currentUserId, isStaff = false, onApply, onClone, onDelete,
 }) => {
   const [startTime, setStartTime] = useState('09:00');
   const [gameDuration, setGameDuration] = useState(() => {
@@ -118,13 +119,15 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
       </div>
 
       <div className="p-3 border-top bg-light d-flex gap-2">
-        <Button
-          variant="primary"
-          data-testid="apply-template-button"
-          onClick={() => onApply(selected, { startTime, gameDuration, breakDuration, numFields })}
-        >
-          Apply to Gameday <i className="bi bi-arrow-right ms-2"></i>
-        </Button>
+        {isStaff && (
+          <Button
+            variant="primary"
+            data-testid="apply-template-button"
+            onClick={() => onApply(selected, { startTime, gameDuration, breakDuration, numFields })}
+          >
+            Apply to Gameday <i className="bi bi-arrow-right ms-2"></i>
+          </Button>
+        )}
         <Button variant="outline-secondary" onClick={() => onClone(selected)}>
           Clone &amp; Edit
         </Button>

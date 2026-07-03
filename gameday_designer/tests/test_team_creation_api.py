@@ -222,3 +222,29 @@ class TestLeagueTeamsView:
         response = api_client.get(self.url(gameday.pk))
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestTeamCreationGating:
+    def test_non_staff_cannot_create_team(self, api_client, association_user):
+        api_client.force_authenticate(user=association_user)
+        r = api_client.post("/api/designer/teams/", {"name": "X"}, format="json")
+        assert r.status_code == 403
+
+    def test_non_staff_cannot_bulk_create(self, api_client, association_user):
+        api_client.force_authenticate(user=association_user)
+        r = api_client.post("/api/designer/teams/bulk/", {"count": 3}, format="json")
+        assert r.status_code == 403
+
+
+@pytest.mark.django_db
+class TestConfigIsStaff:
+    URL = "/api/designer/config/"
+
+    def test_staff_sees_is_staff_true(self, api_client, staff_user):
+        api_client.force_authenticate(user=staff_user)
+        assert api_client.get(self.URL).data["is_staff"] is True
+
+    def test_non_staff_sees_is_staff_false(self, api_client, association_user):
+        api_client.force_authenticate(user=association_user)
+        assert api_client.get(self.URL).data["is_staff"] is False
