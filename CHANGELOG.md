@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.32.1](https://github.com/dachrisch/leaguesphere/compare/v3.32.0...v3.32.1) (2026-07-03)
+
+
+### Bug Fixes
+
+* **deps:** pin pandas 3.0.3 (3.0.4 was yanked) ([#1460](https://github.com/dachrisch/leaguesphere/issues/1460)) ([51b4fe7](https://github.com/dachrisch/leaguesphere/commit/51b4fe7ec00a1b839253e017fb95766e7cd9c181))
+
 ## [3.32.0](https://github.com/dachrisch/leaguesphere/compare/v3.31.9...v3.32.0) (2026-07-03)
 
 
