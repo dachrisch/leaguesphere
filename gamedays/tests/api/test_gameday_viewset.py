@@ -198,3 +198,22 @@ class GamedayViewSetTest(APITestCase):
             format="json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_anonymous_cannot_patch_gameday(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.patch(
+            f"/api/gamedays/{self.gameday1.id}/",
+            {"name": "Hacked"},
+            format="json",
+        )
+        assert response.status_code in (
+            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
+        )
+        self.gameday1.refresh_from_db()
+        assert self.gameday1.name != "Hacked"
+
+    def test_anonymous_can_still_read_gameday(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.get(f"/api/gamedays/{self.gameday1.id}/")
+        assert response.status_code == status.HTTP_200_OK
