@@ -177,3 +177,16 @@ class GamedayViewSetTest(APITestCase):
             format="json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_patch_without_resource_urls_preserves_existing(self):
+        from gamedays.models import ResourceUrl
+        ResourceUrl.objects.create(
+            gameday=self.gameday1, url="https://example.com/keep", description="Keep"
+        )
+        response = self.client.patch(
+            f"/api/gamedays/{self.gameday1.id}/",
+            {"name": self.gameday1.name},  # no resource_urls key
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert ResourceUrl.objects.filter(gameday=self.gameday1).count() == 1
