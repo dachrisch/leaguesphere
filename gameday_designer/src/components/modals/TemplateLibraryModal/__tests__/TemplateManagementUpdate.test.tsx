@@ -40,13 +40,14 @@ describe('TemplateManagementUpdate Reproduction', () => {
         template: mockBuiltinTemplate as unknown as TournamentTemplate 
     };
     
-    render(<TemplatePreview 
-        selected={selected} 
-        currentUserId={1} 
-        onApply={onApply} 
-        onClone={vi.fn()} 
-        onDelete={vi.fn()} 
-        onSave={vi.fn()} 
+    render(<TemplatePreview
+        selected={selected}
+        currentUserId={1}
+        isStaff={true}
+        onApply={onApply}
+        onClone={vi.fn()}
+        onDelete={vi.fn()}
+        onSave={vi.fn()}
     />);
 
     // Mock changing fields if it were visible
