@@ -146,6 +146,66 @@ describe('GamedayMetadataAccordion', () => {
     expect(screen.getByDisplayValue('https://twitch.tv/live')).toBeInTheDocument();
   });
 
+  it('adds a new URL row when the add button is clicked', async () => {
+    vi.mocked(gamedayApi.getGameday).mockResolvedValue({
+      ...mockMetadata, resource_urls: [],
+    } as never);
+    await renderAccordion();
+
+    await userEvent.click(screen.getByTestId('resource-url-add'));
+
+    expect(screen.getAllByTestId('resource-url-row')).toHaveLength(1);
+  });
+
+  it('saves the URL list via patchGameday on blur', async () => {
+    vi.mocked(gamedayApi.getGameday).mockResolvedValue({
+      ...mockMetadata, resource_urls: [],
+    } as never);
+    vi.mocked(gamedayApi.patchGameday).mockResolvedValue(mockMetadata as never);
+    await renderAccordion();
+
+    await userEvent.click(screen.getByTestId('resource-url-add'));
+    await userEvent.type(screen.getByTestId('resource-url-description'), 'Livestream');
+    await userEvent.type(screen.getByTestId('resource-url-url'), 'https://twitch.tv/live');
+    fireEvent.blur(screen.getByTestId('resource-url-url'));
+
+    await waitFor(() => {
+      expect(vi.mocked(gamedayApi.patchGameday)).toHaveBeenCalledWith(1, {
+        resource_urls: [{ url: 'https://twitch.tv/live', description: 'Livestream' }],
+      });
+    });
+  });
+
+  it('deletes a URL row and persists the shorter list', async () => {
+    vi.mocked(gamedayApi.getGameday).mockResolvedValueOnce({
+      ...mockMetadata,
+      resource_urls: [{ id: 5, url: 'https://x.tv/a', description: 'A' }],
+    } as never);
+    vi.mocked(gamedayApi.patchGameday).mockResolvedValue(mockMetadata as never);
+    await renderAccordion();
+
+    await waitFor(() => expect(screen.getByDisplayValue('A')).toBeInTheDocument());
+    await userEvent.click(screen.getByTestId('resource-url-delete'));
+
+    await waitFor(() => {
+      expect(vi.mocked(gamedayApi.patchGameday)).toHaveBeenCalledWith(1, { resource_urls: [] });
+    });
+    expect(screen.queryByTestId('resource-url-row')).not.toBeInTheDocument();
+  });
+
+  it('does not allow editing URLs in readOnly mode', async () => {
+    vi.mocked(gamedayApi.getGameday).mockResolvedValueOnce({
+      ...mockMetadata,
+      resource_urls: [{ id: 5, url: 'https://x.tv/a', description: 'A' }],
+    } as never);
+    await renderAccordion({ readOnly: true });
+
+    await waitFor(() => expect(screen.getByDisplayValue('A')).toBeInTheDocument());
+    expect(screen.getByTestId('resource-url-url')).toBeDisabled();
+    expect(screen.queryByTestId('resource-url-add')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('resource-url-delete')).not.toBeInTheDocument();
+  });
+
   it('triggers unlock schedule when button is clicked', async () => {
     const user = userEvent.setup();
     const publishedMetadata = { ...mockMetadata, status: 'PUBLISHED' };
