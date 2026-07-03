@@ -1,5 +1,6 @@
 import logging
 
+from django.db import transaction
 from rest_framework.fields import SerializerMethodField, IntegerField
 from rest_framework.serializers import ModelSerializer, Serializer
 
@@ -52,9 +53,10 @@ class GamedaySerializer(ModelSerializer):
 
     def update(self, instance, validated_data):
         resource_urls = validated_data.pop("resourceurl_set", None)
-        gameday = super().update(instance, validated_data)
-        if resource_urls is not None:
-            self._sync_resource_urls(gameday, resource_urls)
+        with transaction.atomic():
+            gameday = super().update(instance, validated_data)
+            if resource_urls is not None:
+                self._sync_resource_urls(gameday, resource_urls)
         return gameday
 
     @staticmethod
