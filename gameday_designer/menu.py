@@ -36,11 +36,29 @@ class Gameday_designerMenuOrgaEntry(BaseMenu):
 
         return [
             MenuItem.create(
-                name='<span class="badge bg-warning text-dark me-1" style="font-size: 0.65em; vertical-align: middle;">BETA</span> Spieltag designen',
-                url="gameday_designer_app:index",  # Reverses to /gamedays/gameday/design/
-            ),
-            MenuItem.create(
                 name='📊 Live Status',
                 url="game-progress-page",  # Reverses to /gamedays/progress/
+            ),
+        ]
+
+
+class Gameday_designerViewOnlyEntry(BaseMenu):
+    """
+    Show a view-only 'Spieltag ansehen' link to authenticated non-staff users.
+
+    Placed in a dedicated 'Spieltage' dropdown group that is invisible to
+    staff (who use the 'Orga' group) and anonymous users.
+    """
+
+    def get_name(self):
+        return "Spieltage"
+
+    def get_menu_items(self, request):
+        if not request.user.is_authenticated or request.user.is_staff:
+            return []
+        return [
+            MenuItem.create(
+                name="Spieltag ansehen",
+                url="gameday_designer_app:index",  # Reverses to /gamedays/gameday/design/
             ),
         ]
