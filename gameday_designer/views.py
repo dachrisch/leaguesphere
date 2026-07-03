@@ -463,7 +463,7 @@ class TeamCreationView(APIView):
         400: {"error": "..."} — validation error
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStaffOrReadOnly]
 
     def post(self, request):
         name = request.data.get("name", "").strip()
@@ -500,7 +500,7 @@ class TeamBulkCreationView(APIView):
         400: {"error": "..."} — validation error
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsStaffOrReadOnly]
 
     def post(self, request):
         count = request.data.get("count")
