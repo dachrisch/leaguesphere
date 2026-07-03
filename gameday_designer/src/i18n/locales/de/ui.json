@@ -38,7 +38,9 @@
     "saveResults": "Ergebnisse speichern",
     "saving": "Speichere...",
     "saveTemplate": "Vorlage speichern",
-    "saveAsTemplate": "Als Vorlage speichern"
+    "saveAsTemplate": "Als Vorlage speichern",
+    "addUrl": "URL hinzufügen",
+    "deleteUrl": "Löschen"
   },
   "label": {
     "dashboard": "Dashboard",
@@ -106,7 +108,10 @@
     "generatePlaceholders": "Platzhalter generieren",
     "autoAssignTeams": "Teams automatisch zuweisen",
     "builtInTemplates": "Vordefinierte Vorlagen",
-    "customTemplates": "Eigene Vorlagen"
+    "customTemplates": "Eigene Vorlagen",
+    "links": "Links",
+    "urlDescription": "Beschreibung",
+    "url": "URL"
   },
   "title": {
     "enterGameResult": "Ergebnis eingeben",

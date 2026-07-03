@@ -35,6 +35,10 @@ describe('GamedayMetadataAccordion', () => {
   async function renderAccordion(extraProps: Partial<React.ComponentProps<typeof GamedayMetadataAccordion>> = {}) {
     vi.mocked(gamedayApi.listSeasons).mockResolvedValue([]);
     vi.mocked(gamedayApi.listLeagues).mockResolvedValue([]);
+    vi.mocked(gamedayApi.getGameday).mockResolvedValue({
+      ...mockMetadata,
+      resource_urls: extraProps.metadata?.resource_urls ?? [],
+    } as never);
 
     const result = render(
       <GamedayMetadataAccordion
@@ -124,6 +128,22 @@ describe('GamedayMetadataAccordion', () => {
     );
     // Must still be collapsed — scroll-back-up must not re-open the accordion
     expect(document.querySelector('.accordion-button')).toHaveClass('collapsed');
+  });
+
+  it('renders existing resource URLs from the loaded gameday', async () => {
+    vi.mocked(gamedayApi.getGameday).mockResolvedValueOnce({
+      ...mockMetadata,
+      resource_urls: [
+        { id: 5, url: 'https://twitch.tv/live', description: 'Livestream' },
+      ],
+    } as never);
+
+    await renderAccordion();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Livestream')).toBeInTheDocument();
+    });
+    expect(screen.getByDisplayValue('https://twitch.tv/live')).toBeInTheDocument();
   });
 
   it('triggers unlock schedule when button is clicked', async () => {

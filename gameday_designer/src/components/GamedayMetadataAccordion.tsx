@@ -4,6 +4,7 @@ import { GamedayMetadata, FlowValidationResult, ValidationError, ValidationWarni
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import { ICONS } from '../utils/iconConstants';
 import { gamedayApi } from '../api/gamedayApi';
+import { ResourceUrl } from '../types/api';
 import './GamedayMetadataAccordion.css';
 
 /**
@@ -203,6 +204,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
   const { t, i18n } = useTypedTranslation(['ui', 'domain', 'validation']);
   const [seasons, setSeasons] = useState<{ id: number; name: string }[]>([]);
   const [leagues, setLeagues] = useState<{ id: number; name: string }[]>([]);
+  const [resourceUrls, setResourceUrls] = useState<ResourceUrl[]>([]);
   const [activeKey, setActiveKey] = useState<string | undefined>("0");
 
   useEffect(() => {
@@ -230,6 +232,19 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
     };
     fetchMetadata();
   }, []);
+
+  React.useEffect(() => {
+    const fetchResourceUrls = async () => {
+      if (!gamedayApi || !metadata.id) return;
+      try {
+        const gd = await gamedayApi.getGameday(metadata.id);
+        setResourceUrls(gd.resource_urls ?? []);
+      } catch (error) {
+        console.error('Failed to fetch resource URLs', error);
+      }
+    };
+    fetchResourceUrls();
+  }, [metadata.id]);
 
   const [showValidationPopover, setShowValidationPopover] = useState(false);
   const validationBadgeRef = useRef<HTMLDivElement>(null);
@@ -261,6 +276,37 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
     if (readOnly) return;
     console.log('[MetadataAccordion] handleChange:', field, value);
     onUpdate({ [field]: value });
+  };
+
+  const persistResourceUrls = async (urls: ResourceUrl[]) => {
+    if (readOnly || !metadata.id) return;
+    const payload = urls.filter((u) => u.url.trim() !== '');
+    try {
+      await gamedayApi.patchGameday(metadata.id, { resource_urls: payload });
+    } catch (error) {
+      console.error('Failed to save resource URLs', error);
+    }
+  };
+
+  const handleAddUrl = () => {
+    if (readOnly) return;
+    setResourceUrls((prev) => [...prev, { url: '', description: '' }]);
+  };
+
+  const handleUrlChange = (index: number, field: 'url' | 'description', value: string) => {
+    if (readOnly) return;
+    setResourceUrls((prev) =>
+      prev.map((ru, i) => (i === index ? { ...ru, [field]: value } : ru))
+    );
+  };
+
+  const handleDeleteUrl = (index: number) => {
+    if (readOnly) return;
+    setResourceUrls((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      persistResourceUrls(next);
+      return next;
+    });
   };
 
   const formatDate = (dateString: string) => {
@@ -434,6 +480,62 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     ))}
                   </Form.Select>
                 </Form.Group>
+              </Col>
+            </Row>
+
+            <Row className="mb-3">
+              <Col md={12}>
+                <Form.Label>{t('ui:label.links', 'Links')}</Form.Label>
+                {resourceUrls.map((ru, idx) => (
+                  <Row className="mb-2 align-items-end" key={ru.id ?? `new-${idx}`} data-testid="resource-url-row">
+                    <Col md={4}>
+                      <Form.Control
+                        type="text"
+                        value={ru.description}
+                        placeholder={t('ui:label.urlDescription', 'Description')}
+                        disabled={readOnly}
+                        onChange={(e) => handleUrlChange(idx, 'description', e.target.value)}
+                        onBlur={() => persistResourceUrls(resourceUrls)}
+                        data-testid="resource-url-description"
+                      />
+                    </Col>
+                    <Col md={7}>
+                      <Form.Control
+                        type="url"
+                        value={ru.url}
+                        placeholder={t('ui:label.url', 'URL')}
+                        disabled={readOnly}
+                        onChange={(e) => handleUrlChange(idx, 'url', e.target.value)}
+                        onBlur={() => persistResourceUrls(resourceUrls)}
+                        data-testid="resource-url-url"
+                      />
+                    </Col>
+                    <Col md={1}>
+                      {!readOnly && (
+                        <Button
+                          variant="outline-danger"
+                          size="sm"
+                          onClick={() => handleDeleteUrl(idx)}
+                          data-testid="resource-url-delete"
+                          aria-label={t('ui:button.deleteUrl', 'Delete')}
+                        >
+                          <i className={`bi ${ICONS.TRASH}`}></i>
+                        </Button>
+                      )}
+                    </Col>
+                  </Row>
+                ))}
+                {!readOnly && (
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    onClick={handleAddUrl}
+                    data-testid="resource-url-add"
+                  >
+                    <i className="bi bi-plus-lg me-1"></i>
+                    {t('ui:button.addUrl', 'Add URL')}
+                  </Button>
+                )}
               </Col>
             </Row>
 

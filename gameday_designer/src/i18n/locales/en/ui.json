@@ -38,7 +38,9 @@
     "saveResults": "Save Results",
     "saving": "Saving...",
     "saveTemplate": "Save Template",
-    "saveAsTemplate": "Save as Template"
+    "saveAsTemplate": "Save as Template",
+    "addUrl": "Add URL",
+    "deleteUrl": "Delete"
   },
   "label": {
     "dashboard": "Dashboard",
@@ -106,7 +108,10 @@
     "generatePlaceholders": "Generate teams automatically",
     "autoAssignTeams": "Auto-assign teams",
     "builtInTemplates": "Built-in Templates",
-    "customTemplates": "Custom Templates"
+    "customTemplates": "Custom Templates",
+    "links": "Links",
+    "urlDescription": "Description",
+    "url": "URL"
   },
   "title": {
     "enterGameResult": "Enter Game Result",
