@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.33.0](https://github.com/dachrisch/leaguesphere/compare/v3.32.1...v3.33.0) (2026-07-03)
+
+
+### Features
+
+* **designer:** promote designer and gate writes to staff ([#1462](https://github.com/dachrisch/leaguesphere/issues/1462)) ([80ff0ff](https://github.com/dachrisch/leaguesphere/commit/80ff0ffc6c50f71bc4e9509159c148b21802f705))
+
 ## [3.32.1](https://github.com/dachrisch/leaguesphere/compare/v3.32.0...v3.32.1) (2026-07-03)
 
 
