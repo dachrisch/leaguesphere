@@ -36,8 +36,9 @@ class TestRankingStageIntegration:
         assert len(response.data["slots"]) == 1
         assert response.data["slots"][0]["stage_type"] == "RANKING"
 
-    def test_default_stage_type_is_standard(self, api_client, template):
+    def test_default_stage_type_is_standard(self, api_client, staff_user, template):
         """Test that stage_type defaults to STANDARD."""
+        api_client.force_authenticate(user=staff_user)
         slot = TemplateSlot.objects.create(
             template=template,
             field=1,
