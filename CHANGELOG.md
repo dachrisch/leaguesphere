@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.31.9](https://github.com/dachrisch/leaguesphere/compare/v3.31.8...v3.31.9) (2026-07-03)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @emnapi/core to v1.11.2 ([#1455](https://github.com/dachrisch/leaguesphere/issues/1455)) ([ce00e11](https://github.com/dachrisch/leaguesphere/commit/ce00e11c5db6ae0e78f8219a13eba71b6f7d5e5c))
+
+## [3.31.8](https://github.com/dachrisch/leaguesphere/compare/v3.31.7...v3.31.8) (2026-07-03)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @emnapi/runtime to v1.11.2 ([#1456](https://github.com/dachrisch/leaguesphere/issues/1456)) ([80ad549](https://github.com/dachrisch/leaguesphere/commit/80ad549d16e5c073cab31977a2ffbf2fc1cac63e))
+
 ## [3.31.7](https://github.com/dachrisch/leaguesphere/compare/v3.31.6...v3.31.7) (2026-07-02)
 
 
