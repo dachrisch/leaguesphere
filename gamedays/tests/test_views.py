@@ -12,6 +12,7 @@ from gamedays.constants import (
     LEAGUE_GAMEDAY_DETAIL,
     LEAGUE_GAMEDAY_LIST,
     LEAGUE_GAMEDAY_CREATE,
+    LEAGUE_GAMEDAY_CREATE_CHOOSER,
     LEAGUE_GAMEDAY_DELETE,
     LEAGUE_GAMEDAY_UPDATE,
     LEAGUE_GAMEDAY_GAMEINFOS_UPDATE,
@@ -646,3 +647,19 @@ class TestGameinfoUpdateView(WebTest):
         assert gameinfo_wizard_page.request.path == reverse(
             LEAGUE_GAMEDAY_GAMEINFOS_WIZARD, kwargs={"pk": gameday.pk}
         )
+
+
+class TestGamedayCreateChooserView(WebTest):
+    def test_chooser_forbidden_for_non_staff(self):
+        user = UserFactory(is_staff=False)
+        self.app.set_user(user)
+        response = self.app.get(reverse(LEAGUE_GAMEDAY_CREATE_CHOOSER), status=403)
+        assert response.status_code == HTTPStatus.FORBIDDEN
+
+    def test_chooser_renders_for_staff_with_both_links(self):
+        staff_user = UserFactory(is_staff=True)
+        self.app.set_user(staff_user)
+        response = self.app.get(reverse(LEAGUE_GAMEDAY_CREATE_CHOOSER))
+        assert response.status_code == HTTPStatus.OK
+        assert b"/gamedays/gameday/design/" in response.content
+        assert b"/gamedays/gameday/new/" in response.content
