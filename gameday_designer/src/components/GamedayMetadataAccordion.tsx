@@ -302,11 +302,11 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
 
   const handleDeleteUrl = (index: number) => {
     if (readOnly) return;
-    setResourceUrls((prev) => {
-      const next = prev.filter((_, i) => i !== index);
-      persistResourceUrls(next);
-      return next;
-    });
+    // Compute next list outside the state updater: the updater must be pure
+    // (React Strict Mode double-invokes it), so the async save runs separately.
+    const next = resourceUrls.filter((_, i) => i !== index);
+    setResourceUrls(next);
+    persistResourceUrls(next);
   };
 
   const formatDate = (dateString: string) => {
