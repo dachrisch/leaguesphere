@@ -42,7 +42,7 @@ class Gameday_designerMenuOrgaEntry(BaseMenu):
         ]
 
 
-class Gameday_designerViewOnlyEntry(BaseMenu):
+class Gameday_designerMenuViewOnlyEntry(BaseMenu):
     """
     Show a view-only 'Spieltag ansehen' link to authenticated non-staff users.
 
