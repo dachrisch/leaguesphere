@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="content-section">
+  <h3 class="mb-1">Neuen Spieltag anlegen</h3>
+  <p class="text-muted mb-4">Wähle, wie du deinen Spieltag erstellen möchtest.</p>
+
+  <a href="{% url 'gameday_designer_app:index' %}"
+     class="card border-success text-decoration-none text-reset d-block mb-3">
+    <div class="card-body d-flex align-items-center">
+      <span class="me-3" style="font-size:2rem">🎨</span>
+      <span class="flex-grow-1">
+        <span class="fw-semibold">Spieltag designen
+          <span class="badge bg-success ms-1">Empfohlen</span>
+        </span><br>
+        <span class="text-muted">Visueller Designer mit Vorlagen, Teams &amp; Zeitplan.</span>
+      </span>
+      <span class="text-success fs-4">&rarr;</span>
+    </div>
+  </a>
+
+  <div class="text-center">
+    <a href="{% url 'league-gameday-create' %}" class="text-muted small">
+      …oder das klassische Formular verwenden &rarr;
+    </a>
+  </div>
+</div>
+{% endblock %}
