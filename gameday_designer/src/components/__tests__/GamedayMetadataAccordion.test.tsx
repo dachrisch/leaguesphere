@@ -248,6 +248,26 @@ describe('GamedayMetadataAccordion', () => {
     });
   });
 
+  it('displays the server validation message when a URL is rejected', async () => {
+    vi.mocked(gamedayApi.getGameday).mockResolvedValue({
+      ...mockMetadata, resource_urls: [],
+    } as never);
+    // DRF returns a per-entry, per-field error array for invalid URLs.
+    vi.mocked(gamedayApi.patchGameday).mockRejectedValueOnce({
+      response: { data: { resource_urls: [{ url: ['Enter a valid URL.'] }] } },
+    });
+    await renderAccordion();
+
+    await userEvent.click(screen.getByTestId('resource-url-add'));
+    await userEvent.type(screen.getByTestId('resource-url-description'), 'Stream');
+    await userEvent.type(screen.getByTestId('resource-url-url'), 'not-a-url');
+    fireEvent.blur(screen.getByTestId('resource-url-url'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('resource-url-error')).toHaveTextContent('Enter a valid URL.');
+    });
+  });
+
   it('adopts the server id for a newly added URL after save', async () => {
     vi.mocked(gamedayApi.getGameday).mockResolvedValueOnce({
       ...mockMetadata, resource_urls: [],

@@ -290,6 +290,23 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
     onUpdate({ [field]: value });
   };
 
+  // Pull the human-readable validation messages out of a DRF error response,
+  // e.g. { resource_urls: [{ url: ['Enter a valid URL.'] }] }. Returns null when
+  // the error is not a field-validation error (network failure, 500, etc.).
+  const extractResourceUrlError = (error: unknown): string | null => {
+    const errs = (error as { response?: { data?: { resource_urls?: unknown } } })
+      ?.response?.data?.resource_urls;
+    if (!errs) return null;
+    const messages: string[] = [];
+    const collect = (val: unknown) => {
+      if (typeof val === 'string') messages.push(val);
+      else if (Array.isArray(val)) val.forEach(collect);
+      else if (val && typeof val === 'object') Object.values(val).forEach(collect);
+    };
+    collect(errs);
+    return messages.length ? messages.join(' ') : null;
+  };
+
   const persistResourceUrls = async (urls: ResourceUrl[]) => {
     if (readOnly || !resourceGamedayId) return;
     const payload = urls.filter(
@@ -303,7 +320,8 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
       }
     } catch (error) {
       console.error('Failed to save resource URLs', error);
-      setUrlSaveError(t('ui:error.saveUrlsFailed', 'Failed to save links'));
+      const detail = extractResourceUrlError(error);
+      setUrlSaveError(detail ?? t('ui:error.saveUrlsFailed', 'Failed to save links'));
     }
   };
 
@@ -504,7 +522,7 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
 
             <Row className="mb-3">
               <Col md={12}>
-                <Form.Label>{t('ui:label.links', 'Links')}</Form.Label>
+                <Form.Label className="d-block">{t('ui:label.links', 'Links')}</Form.Label>
                 {resourceUrls.map((ru, idx) => (
                   <Row className="mb-2 align-items-end" key={ru.id ?? `new-${idx}`} data-testid="resource-url-row">
                     <Col md={4}>
