@@ -202,6 +202,7 @@ describe('GamedayMetadataAccordion', () => {
 
     await waitFor(() => expect(screen.getByDisplayValue('A')).toBeInTheDocument());
     expect(screen.getByTestId('resource-url-url')).toBeDisabled();
+    expect(screen.getByTestId('resource-url-description')).toBeDisabled();
     expect(screen.queryByTestId('resource-url-add')).not.toBeInTheDocument();
     expect(screen.queryByTestId('resource-url-delete')).not.toBeInTheDocument();
   });
