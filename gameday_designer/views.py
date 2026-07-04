@@ -73,9 +73,6 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
     permission_classes = [IsStaffOrReadOnly]
     pagination_class = TemplatePagination
 
-    def get_permissions(self):
-        return [IsStaffOrReadOnly()]
-
     def get_serializer_class(self):
         """
         Return appropriate serializer based on action.
