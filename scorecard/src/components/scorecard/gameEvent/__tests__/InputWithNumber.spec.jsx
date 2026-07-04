@@ -33,4 +33,12 @@ describe('InputWithNumber component', () => {
     });
     expect(updateFunc.mock.calls[2][1]).toBeFalsy();
   });
+  it('should not allow a decimal jersey number (#1465)', async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.type(screen.getByPlaceholderText('TestLabel - Nummer optional'), '5.5');
+    const lastCall = updateFunc.mock.calls[updateFunc.mock.calls.length - 1][0];
+    expect(lastCall.event[0].player).toBe('55');
+    expect(lastCall.event[0].player).not.toContain('.');
+  });
 });

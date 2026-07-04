@@ -25,7 +25,7 @@ describe('AddPoints component', () => {
     const user = userEvent.setup();
     setup();
     await user.click(screen.getByRole('radio', {name: 'Serie'}));
-    await user.type(screen.getByRole('spinbutton', {name: 'number'}), '19');
+    await user.type(screen.getByRole('textbox', {name: 'number'}), '19');
     await user.click(screen.getByRole('button', {name: 'Eintrag speichern'}));
   });
   it('should call callback, when input is submitted', async () => {

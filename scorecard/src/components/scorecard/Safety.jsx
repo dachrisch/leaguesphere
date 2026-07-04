@@ -1,6 +1,7 @@
 
 import React, {useState} from 'react';
 import PropTypes from 'prop-types';
+import {digitsOnly} from '../../util/sanitize';
 
 const Safety = (props) => {
   const {update} = props;
@@ -26,12 +27,14 @@ const Safety = (props) => {
               #
             </div>
             <input
-              type='number'
+              type='text'
+              inputMode='numeric'
+              pattern='[0-9]*'
               className='form-control'
               placeholder='Trikotnummer'
               aria-label='number'
               aria-describedby='btnGroupAddon'
-              onChange={(ev) => setPointsInput(ev.target.value)}
+              onChange={(ev) => setPointsInput(digitsOnly(ev.target.value))}
               required
               value={pointsInput}
             />

@@ -4,6 +4,7 @@ import PropTypes from 'prop-types';
 import {FaTrashAlt} from 'react-icons/fa';
 import {connect} from 'react-redux';
 import {getPenalties} from '../../../actions/config';
+import {digitsOnly} from '../../../util/sanitize';
 
 const Penalty = (props) => {
   const LIMIT_DISPLAYED_PENALTIES = 5;
@@ -64,12 +65,14 @@ const Penalty = (props) => {
             #
           </div>
           <input
-            type='number'
+            type='text'
+            inputMode='numeric'
+            pattern='[0-9]*'
             className='form-control'
             placeholder='Trikotnummer'
             aria-label='number'
             aria-describedby='penaltyGroup'
-            onChange={(ev) => setPlayerNumber(ev.target.value)}
+            onChange={(ev) => setPlayerNumber(digitsOnly(ev.target.value))}
             required
             value={playerNumber}
           />

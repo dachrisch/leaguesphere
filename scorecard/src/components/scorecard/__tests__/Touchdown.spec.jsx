@@ -23,8 +23,8 @@ describe('Touchdown component', () => {
   it('should call update function with pat1', async () => {
     const user = userEvent.setup();
     setup();
-    await user.type(screen.getByRole('spinbutton', {name: 'touchdown number'}), '19');
-    await user.type(screen.getByRole('spinbutton', {name: 'PAT number'}), '7');
+    await user.type(screen.getByRole('textbox', {name: 'touchdown number'}), '19');
+    await user.type(screen.getByRole('textbox', {name: 'PAT number'}), '7');
     expect(mockFunc.mock.calls[mockFunc.mock.calls.length-1][0]).toEqual({
       event: [
         {name: 'Touchdown', player: '19'},
@@ -36,8 +36,8 @@ describe('Touchdown component', () => {
   it('should call update function with pat2', async () => {
     const user = userEvent.setup();
     setup();
-    await user.type(screen.getByRole('spinbutton', {name: 'touchdown number'}), '19');
-    await user.type(screen.getByRole('spinbutton', {name: 'PAT number'}), '7');
+    await user.type(screen.getByRole('textbox', {name: 'touchdown number'}), '19');
+    await user.type(screen.getByRole('textbox', {name: 'PAT number'}), '7');
     await user.click(screen.getByRole('radio', {name: '2'}));
     expect(mockFunc.mock.calls[mockFunc.mock.calls.length-1][0]).toEqual({
       event: [
