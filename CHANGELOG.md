@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.33.1](https://github.com/dachrisch/leaguesphere/compare/v3.33.0...v3.33.1) (2026-07-04)
+
+
+### Bug Fixes
+
+* gameday detail 500 on finished games with null scores ([#1465](https://github.com/dachrisch/leaguesphere/issues/1465)) ([#1467](https://github.com/dachrisch/leaguesphere/issues/1467)) ([e95e95f](https://github.com/dachrisch/leaguesphere/commit/e95e95fbedf8d0b0a6bbe069903a44184a9cdd30))
+
 ## [3.33.0](https://github.com/dachrisch/leaguesphere/compare/v3.32.1...v3.33.0) (2026-07-03)
 
 
