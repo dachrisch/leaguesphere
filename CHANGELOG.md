@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.33.2](https://github.com/dachrisch/leaguesphere/compare/v3.33.1...v3.33.2) (2026-07-04)
+
+
+### Bug Fixes
+
+* **deps:** update dependency numpy to v2.5.1 ([#1469](https://github.com/dachrisch/leaguesphere/issues/1469)) ([b0d017c](https://github.com/dachrisch/leaguesphere/commit/b0d017cc1cd88fa4949528f6f91d21ee7cf8b52c))
+
 ## [3.33.1](https://github.com/dachrisch/leaguesphere/compare/v3.33.0...v3.33.1) (2026-07-04)
 
 
