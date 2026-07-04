@@ -67,6 +67,12 @@ class TeamStatsEngine:
 
         lp = self.ruleset.league_points
 
+        # A game may be marked finished before its score is entered (issue #1465),
+        # leaving pf/pa NULL. Treat a missing score as 0 so the win/draw/loss
+        # masks stay boolean instead of <NA>, which cannot be cast to int.
+        df[PF] = df[PF].fillna(0)
+        df[PA] = df[PA].fillna(0)
+
         finished_mask = df[STATUS] == FINISHED
         win_mask = (df[PF] > df[PA]) & finished_mask
         draw_mask = (df[PF] == df[PA]) & finished_mask
