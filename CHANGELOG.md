@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.33.4](https://github.com/dachrisch/leaguesphere/compare/v3.33.3...v3.33.4) (2026-07-04)
+
+
+### Bug Fixes
+
+* **deps:** update dependency webpack-cli to v7.2.1 ([#1471](https://github.com/dachrisch/leaguesphere/issues/1471)) ([3188ab5](https://github.com/dachrisch/leaguesphere/commit/3188ab535c545c2aafe0abb821156c1fff5698f8))
+
 ## [3.33.3](https://github.com/dachrisch/leaguesphere/compare/v3.33.2...v3.33.3) (2026-07-04)
 
 
