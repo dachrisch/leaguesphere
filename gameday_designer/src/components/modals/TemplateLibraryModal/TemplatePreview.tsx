@@ -128,9 +128,11 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
             Apply to Gameday <i className="bi bi-arrow-right ms-2"></i>
           </Button>
         )}
-        <Button variant="outline-secondary" onClick={() => onClone(selected)}>
-          Clone &amp; Edit
-        </Button>
+        {isStaff && (
+          <Button variant="outline-secondary" onClick={() => onClone(selected)}>
+            Clone &amp; Edit
+          </Button>
+        )}
         <div className="ms-auto">
           {canDelete && (
             <Button variant="outline-danger" onClick={() => onDelete(savedTemplate)}>

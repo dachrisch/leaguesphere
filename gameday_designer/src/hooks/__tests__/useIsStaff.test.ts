@@ -17,4 +17,14 @@ describe('useIsStaff', () => {
     const { result } = renderHook(() => useIsStaff());
     await waitFor(() => expect(result.current).toBe(false));
   });
+
+  it('defaults to false and does not throw when getConfig rejects', async () => {
+    vi.spyOn(designerApi, 'getConfig').mockRejectedValue(new Error('boom'));
+    const { result } = renderHook(() => useIsStaff());
+
+    // Let the rejected promise settle; the hook's .catch must handle it
+    // without throwing/rejecting, and must leave isStaff at false.
+    await waitFor(() => expect(designerApi.getConfig).toHaveBeenCalled());
+    await waitFor(() => expect(result.current).toBe(false));
+  });
 });

@@ -68,6 +68,18 @@ describe('TemplatePreview', () => {
     expect(screen.getByRole('button', { name: /apply/i })).toBeInTheDocument();
   });
 
+  it('shows Clone & Edit button when isStaff is true', () => {
+    const selected: SelectedTemplate = { type: 'builtin', template: mockBuiltinTemplate as unknown as TournamentTemplate };
+    render(<TemplatePreview selected={selected} currentUserId={1} isStaff={true} onApply={vi.fn()} onClone={vi.fn()} onDelete={vi.fn()} onSave={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /clone & edit/i })).toBeInTheDocument();
+  });
+
+  it('hides Clone & Edit button when isStaff is false', () => {
+    const selected: SelectedTemplate = { type: 'builtin', template: mockBuiltinTemplate as unknown as TournamentTemplate };
+    render(<TemplatePreview selected={selected} currentUserId={1} isStaff={false} onApply={vi.fn()} onClone={vi.fn()} onDelete={vi.fn()} onSave={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /clone & edit/i })).not.toBeInTheDocument();
+  });
+
   it('Number of fields input appears for both saved and builtin templates', () => {
     const selected: SelectedTemplate = { type: 'saved', template: mockSavedTemplate };
     const { rerender } = render(<TemplatePreview selected={selected} currentUserId={1} onApply={vi.fn()} onClone={vi.fn()} onDelete={vi.fn()} onSave={vi.fn()} />);
