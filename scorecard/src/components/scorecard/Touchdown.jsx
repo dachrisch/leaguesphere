@@ -1,6 +1,7 @@
 
 import React, {useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
+import {digitsOnly} from '../../util/sanitize';
 
  
 const Touchdown = (props) => {
@@ -28,20 +29,20 @@ const Touchdown = (props) => {
   return (
     <><div className="input-group mt-2">
       <div className="input-group-text" id="btnGroupAddon">#TD&nbsp;</div>
-      <input type="number"
+      <input type="text" inputMode="numeric" pattern="[0-9]*"
         className="form-control" placeholder="Trikotnummer TD"
         aria-label="touchdown number" aria-describedby="btnGroupAddon"
-        onChange={(ev) => setTdInput(ev.target.value)} required
+        onChange={(ev) => setTdInput(digitsOnly(ev.target.value))} required
         value={tdInput} />
     </div>
     <div className="row mt-1" role="toolbar" aria-label="PATbar">
       <div className="col-9">
         <div className="input-group">
           <div className="input-group-text" id="btnGroupAddon">#PAT</div>
-          <input type="number"
+          <input type="text" inputMode="numeric" pattern="[0-9]*"
             className="form-control" placeholder="Trikotnummer PAT"
             aria-label="PAT number" aria-describedby="btnGroupAddon"
-            onChange={(ev) => setPatInput(ev.target.value)}
+            onChange={(ev) => setPatInput(digitsOnly(ev.target.value))}
             value={patInput} />
         </div>
       </div>

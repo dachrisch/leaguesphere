@@ -48,7 +48,7 @@ describe('Penalty component', () => {
     await user.type(screen.getByPlaceholderText('Trikotnummer'), '42');
     await user.type(screen.getByPlaceholderText('Strafe eingeben und auswählen...'), 'ik');
     await user.click(screen.getByText('illegaler Kontakt Defense'));
-    const illegalContactText = screen.getByRole('textbox');
+    const illegalContactText = screen.getByDisplayValue('illegaler Kontakt Defense');
     expect(illegalContactText).toBeInTheDocument();
     const lastMockCall = updateMock.mock.calls.length - 1;
     expect(updateMock.mock.calls[lastMockCall][0]).toEqual({

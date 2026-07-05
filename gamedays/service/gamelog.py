@@ -7,6 +7,10 @@ from gamedays.service.utils import AsJsonEncoder
 
 EXCLUDED_EVENTS = ["Strafe", "Spielzeit", "Auszeit", "First Down"]
 
+# Valid range of TeamLog.player (PositiveSmallIntegerField). Enforced here
+# explicitly because SQLite does not range-check integer columns (#1465).
+PLAYER_MIN, PLAYER_MAX = 0, 32767
+
 
 class GameLogCreator(object):
     def __init__(self, gameinfo, team, event, user, half=1):
@@ -28,7 +32,7 @@ class GameLogCreator(object):
             teamlog.cop = entry.get("name") in ["Turnover", "Interception"]
             teamlog.event = entry.get("name")
             teamlog.input = entry.get("input")
-            teamlog.player = entry.get("player") if entry.get("player") != "" else None
+            teamlog.player = self._coerce_player(entry.get("player"))
             teamlog.value = (
                 self._getValue(entry.get("name")) if teamlog.player is not None else 0
             )
@@ -55,11 +59,24 @@ class GameLogCreator(object):
             return 2
         return 0
 
-    def _get_player(self, value):
-        try:
-            return value if value.isdigit() else None
-        except:
+    @staticmethod
+    def _coerce_player(value):
+        """Sanitise the jersey number that arrives raw from the client (#1465).
+
+        A decimal string such as ``'51.85'`` is truncated to an integer; any
+        value that is not a jersey number storable in ``TeamLog.player``
+        (non-numeric, out of the field's range) is dropped to ``None`` so
+        garbage can never reach the database.
+        """
+        if value is None or value == "":
             return None
+        try:
+            number = int(float(value))
+        except (TypeError, ValueError):
+            return None
+        if not PLAYER_MIN <= number <= PLAYER_MAX:
+            return None
+        return number
 
 
 class GameLog(object):

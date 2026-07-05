@@ -21,7 +21,7 @@ describe('Touchdown component', () => {
   it('should call update function with +1', async () => {
     const user = userEvent.setup();
     setup();
-    await user.type(screen.getByRole('spinbutton', {name: 'number'}), '19');
+    await user.type(screen.getByRole('textbox', {name: 'number'}), '19');
     await user.click(screen.getByRole('radio', {name: '1'}));
     expect(mockFunc.mock.calls[mockFunc.mock.calls.length-1][0]).toEqual({
       event: [
@@ -30,7 +30,7 @@ describe('Touchdown component', () => {
   it('should call update function with +2', async () => {
     const user = userEvent.setup();
     setup();
-    await user.type(screen.getByRole('spinbutton', {name: 'number'}), '19');
+    await user.type(screen.getByRole('textbox', {name: 'number'}), '19');
     expect(mockFunc.mock.calls[mockFunc.mock.calls.length-1][0]).toEqual({event: [
       {name: 'Safety (+2)', player: '19'}]});
   });

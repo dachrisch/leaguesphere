@@ -93,8 +93,8 @@ describe('Details component', () => {
     expect(awayButton).toBeChecked();
     expect(screen.getByText('Einträge Gast')).toBeInTheDocument();
     await user.click(screen.getByRole('radio', {name: 'Touchdown'}));
-    await user.type(screen.getByRole('spinbutton', {name: 'touchdown number'}), '19');
-    await user.type(screen.getByRole('spinbutton', {name: 'PAT number'}), '7');
+    await user.type(screen.getByRole('textbox', {name: 'touchdown number'}), '19');
+    await user.type(screen.getByRole('textbox', {name: 'PAT number'}), '7');
     await user.click(screen.getByRole('button', {name: 'Eintrag speichern'}));
     expect(homeButton).toBeChecked();
     expect(awayButton).not.toBeChecked();
@@ -130,8 +130,8 @@ describe('Details component', () => {
     const user = userEvent.setup();
     setup();
     await user.click(screen.getByRole('radio', {name: 'Touchdown'}));
-    await user.type(screen.getByRole('spinbutton', {name: 'touchdown number'}), '19');
-    await user.type(screen.getByRole('spinbutton', {name: 'PAT number'}), '7');
+    await user.type(screen.getByRole('textbox', {name: 'touchdown number'}), '19');
+    await user.type(screen.getByRole('textbox', {name: 'PAT number'}), '7');
     await user.click(screen.getByRole('button', {name: 'Eintrag speichern'}));
     expect(apiPost.mock.calls[0][0]).toBe(`/api/gamelog/${GAME_LOG_COMPLETE_GAME.gameId}`);
     expect(apiPost.mock.calls[0][1].half).toBe(2);
