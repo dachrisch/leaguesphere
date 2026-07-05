@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.33.5](https://github.com/dachrisch/leaguesphere/compare/v3.33.4...v3.33.5) (2026-07-05)
+
+
+### Bug Fixes
+
+* prevent non-integer jersey numbers from crashing gamelog writes ([#1465](https://github.com/dachrisch/leaguesphere/issues/1465)) ([#1466](https://github.com/dachrisch/leaguesphere/issues/1466)) ([52f5513](https://github.com/dachrisch/leaguesphere/commit/52f55134cf6382bfe7deac6aa285a387be254655))
+
 ## [3.33.4](https://github.com/dachrisch/leaguesphere/compare/v3.33.3...v3.33.4) (2026-07-04)
 
 
