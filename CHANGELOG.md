@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.33.9](https://github.com/dachrisch/leaguesphere/compare/v3.33.8...v3.33.9) (2026-07-06)
+
+
+### Bug Fixes
+
+* **deps:** lock file maintenance ([#1483](https://github.com/dachrisch/leaguesphere/issues/1483)) ([8fcf5e5](https://github.com/dachrisch/leaguesphere/commit/8fcf5e5e8953ece69f848975c8570a7a746ab2a5))
+
 ## [3.33.8](https://github.com/dachrisch/leaguesphere/compare/v3.33.7...v3.33.8) (2026-07-06)
 
 
