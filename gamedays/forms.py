@@ -27,7 +27,10 @@ SCHEDULE_CHOICES = (
     ("8_2", "8 Teams 2 Gruppen 2 Felder"),
     ("8_vfpd_2", "8 Teams 1 Gruppe 2 Felder nur Viertelfinale und Playdown"),
     ("8_doublevictory_2", "8 Teams 1 Gruppe 2 Felder - Double Victory"),
-    ("8_final8_3", "8 Teams 2 Gruppen 3 Felder - PD direkt - PO ab HF (Final8)"),
+    # ("8_final8_3", "8 Teams 2 Gruppen 3 Felder - PD direkt - PO ab HF (Final8)"),
+    # ("8_final8_2026", "8 Teams 2 Gruppen 2 Felder - keine PD - PO ab HF (Final8 2026)"),
+    ("8_2_final8_day1", "8 Teams 2 Gruppen 2 Felder nur Vorrunde (Final8 2026 Tag 1)"),
+    ("4_3_final8_day2", "4 Teams 2 Gruppen 3 Felder HF, P3, P1 (Final8 2026 Tag 2)"),
     ("8_doublevictory_2", "8 Teams 2 Felder Double Victory"),
     ("8_3", "8 Teams 2 Gruppen 3 Felder"),
     ("9_2", "9 Teams 3 Gruppen 2 Felder"),
@@ -143,6 +146,16 @@ SCHEDULE_MAP = {
     "8_final8_3": {
         "name": "8 Teams 2 Gruppen 3 Felder - PD direkt - PO ab HF (Final8)",
         "fields": 3,
+        SCHEDULE_MAP_GROUPS_C: [{SCHEDULE_MAP_TEAMS_C: 4}, {SCHEDULE_MAP_TEAMS_C: 4}],
+    },
+    "4_3_final8_day2": {
+        "name": "4 Teams 2 Gruppen 3 Felder HF, P3, P1 (Final8 2026 Tag 2)",
+        "fields": 3,
+        SCHEDULE_MAP_GROUPS_C: [{SCHEDULE_MAP_TEAMS_C: 2}, {SCHEDULE_MAP_TEAMS_C: 2}],
+    },
+    "8_2_final8_day1": {
+        "name": "8 Teams 2 Gruppen 2 Felder nur Vorrunde (Final8 2026 Tag 1)",
+        "fields": 2,
         SCHEDULE_MAP_GROUPS_C: [{SCHEDULE_MAP_TEAMS_C: 4}, {SCHEDULE_MAP_TEAMS_C: 4}],
     },
 }
