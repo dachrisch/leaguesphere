@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.33.15](https://github.com/dachrisch/leaguesphere/compare/v3.33.14...v3.33.15) (2026-07-07)
+
+
+### Bug Fixes
+
+* **frontend:** treat maintenance mode as healthy in healthcheck ([#1497](https://github.com/dachrisch/leaguesphere/issues/1497)) ([29e16ed](https://github.com/dachrisch/leaguesphere/commit/29e16ed0752514b12511051c7b1ec330c780cdbf))
+
 ## [3.33.14](https://github.com/dachrisch/leaguesphere/compare/v3.33.13...v3.33.14) (2026-07-07)
 
 
