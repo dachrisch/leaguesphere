@@ -1,8 +1,24 @@
 import pytest
+from django.conf import settings
 from django.urls import reverse
 from unittest.mock import patch
 from django.db import OperationalError
 from django.core.cache import cache
+
+
+def test_default_database_connect_timeout_is_bounded():
+    """The DB connection must fail fast so the guard can render the offline page.
+
+    Without a bounded connect_timeout, a degraded/unreachable host makes the
+    guard's `SELECT 1` probe hang until nginx returns a 504, so users never see
+    the "Datenbank nicht erreichbar" banner. The timeout must be short enough to
+    stay well under the upstream proxy timeout.
+    """
+    options = settings.DATABASES["default"].get("OPTIONS", {})
+    connect_timeout = options.get("connect_timeout")
+
+    assert connect_timeout is not None, "default DATABASES OPTIONS must set connect_timeout"
+    assert 0 < connect_timeout <= 5, f"connect_timeout must be short (got {connect_timeout})"
 
 
 @pytest.fixture(autouse=True)
