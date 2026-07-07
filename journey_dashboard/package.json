@@ -1,6 +1,6 @@
 {
   "name": "journey_dashboard",
-  "version": "3.33.15",
+  "version": "3.33.16",
   "private": true,
   "type": "module",
   "dependencies": {

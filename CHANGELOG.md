@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.33.16](https://github.com/dachrisch/leaguesphere/compare/v3.33.15...v3.33.16) (2026-07-07)
+
+
+### Documentation
+
+* design for moving prod migrations from CI to Watchtower re-pull ([#1499](https://github.com/dachrisch/leaguesphere/issues/1499)) ([77a4365](https://github.com/dachrisch/leaguesphere/commit/77a436547a5037879af8db113acadb2cbae91250))
+
 ## [3.33.15](https://github.com/dachrisch/leaguesphere/compare/v3.33.14...v3.33.15) (2026-07-07)
 
 
