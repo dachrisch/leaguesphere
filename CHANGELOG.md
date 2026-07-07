@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.33.12](https://github.com/dachrisch/leaguesphere/compare/v3.33.11...v3.33.12) (2026-07-07)
+
+
+### Bug Fixes
+
+* bound DB connect_timeout so the offline banner renders under DB outage ([#1491](https://github.com/dachrisch/leaguesphere/issues/1491)) ([6c453ca](https://github.com/dachrisch/leaguesphere/commit/6c453cae0caee2ec026b671b079ab12163afbd51))
+* **ci:** run check_migrations against an ephemeral internal DB ([#1493](https://github.com/dachrisch/leaguesphere/issues/1493)) ([55f1854](https://github.com/dachrisch/leaguesphere/commit/55f18544abfe2174d10675814a0fe36615221c03))
+
 ## [3.33.11](https://github.com/dachrisch/leaguesphere/compare/v3.33.10...v3.33.11) (2026-07-06)
 
 
