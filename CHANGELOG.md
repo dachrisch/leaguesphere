@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.33.13](https://github.com/dachrisch/leaguesphere/compare/v3.33.12...v3.33.13) (2026-07-07)
+
+
+### Bug Fixes
+
+* **deps:** update dependency django to v6.0.7 ([#1490](https://github.com/dachrisch/leaguesphere/issues/1490)) ([0b2eead](https://github.com/dachrisch/leaguesphere/commit/0b2eead50cf754f6432a4091f1f57270927494f0))
+
 ## [3.33.12](https://github.com/dachrisch/leaguesphere/compare/v3.33.11...v3.33.12) (2026-07-07)
 
 
