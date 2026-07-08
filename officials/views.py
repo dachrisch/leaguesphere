@@ -33,8 +33,28 @@ from officials.service.signup_service import (
     DuplicateSignupError,
     MaxSignupError,
 )
+from officials.service.remember_me import RememberMeService, REMEMBER_ME_MAX_AGE
 
 MOODLE_LOGGED_IN_USER = "moodle_logged_in_user"
+
+MOODLE_REMEMBER_COOKIE = "officials_remember"
+REMEMBER_COOKIE_PATH = "/officials/gameday/sign-up/"
+
+
+def _set_remember_cookie(response, value):
+    response.set_cookie(
+        MOODLE_REMEMBER_COOKIE,
+        value,
+        max_age=int(REMEMBER_ME_MAX_AGE.total_seconds()),
+        httponly=True,
+        secure=not settings.DEBUG,
+        samesite="Lax",
+        path=REMEMBER_COOKIE_PATH,
+    )
+
+
+def _delete_remember_cookie(response):
+    response.delete_cookie(MOODLE_REMEMBER_COOKIE, path=REMEMBER_COOKIE_PATH)
 
 
 class OfficialsTeamListView(View):
@@ -353,7 +373,12 @@ class MoodleLoginView(View):
 
                 from officials.urls import OFFICIALS_SIGN_UP_LIST
 
-                return redirect(reverse(OFFICIALS_SIGN_UP_LIST))
+                response = redirect(reverse(OFFICIALS_SIGN_UP_LIST))
+                if form.cleaned_data.get("remember_me"):
+                    _set_remember_cookie(
+                        response, RememberMeService.issue(official_id)
+                    )
+                return response
         except MoodleApiException as error:
             form.add_error("", f"{error}")
         return render(request, self.template_name, {"form": form})

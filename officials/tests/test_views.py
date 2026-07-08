@@ -25,7 +25,8 @@ from officials.urls import (
     OFFICIALS_SIGN_UP_LIST,
     OFFICIALS_SIGN_UP_FOR_GAMEDAY,
 )
-from officials.views import MOODLE_LOGGED_IN_USER
+from officials.views import MOODLE_LOGGED_IN_USER, MOODLE_REMEMBER_COOKIE
+from officials.service.remember_me import RememberMeService
 
 
 class TestOfficialListView(WebTest):
@@ -190,6 +191,29 @@ class TestMoodleLogin(WebTest):
         response = response.form.submit()
         assert response.client.session.get(MOODLE_LOGGED_IN_USER) == official_id
         assert response.url == reverse(OFFICIALS_SIGN_UP_LIST)
+
+    @patch.object(RememberMeService, "issue")
+    @patch.object(MoodleService, "login")
+    def test_login_with_remember_me_sets_cookie(
+        self, moodle_login_mock: MagicMock, issue_mock: MagicMock
+    ):
+        moodle_login_mock.return_value = 7
+        issue_mock.return_value = "selector:validator"
+        response = self.app.get(reverse(OFFICIALS_MOODLE_LOGIN))
+        response.form["username"] = "valid username"
+        response.form["password"] = "secret password"
+        response.form["remember_me"] = True
+        response = response.form.submit()
+        assert MOODLE_REMEMBER_COOKIE in response.client.cookies
+
+    @patch.object(MoodleService, "login")
+    def test_login_without_remember_me_sets_no_cookie(self, moodle_login_mock: MagicMock):
+        moodle_login_mock.return_value = 7
+        response = self.app.get(reverse(OFFICIALS_MOODLE_LOGIN))
+        response.form["username"] = "valid username"
+        response.form["password"] = "secret password"
+        response = response.form.submit()
+        assert MOODLE_REMEMBER_COOKIE not in response.client.cookies
 
 
 class TestOfficialSignUpListView(WebTest):
