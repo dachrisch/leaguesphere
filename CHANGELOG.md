@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.0](https://github.com/dachrisch/leaguesphere/compare/v3.33.20...v4.0.0) (2026-07-08)
+
+
+### Miscellaneous Chores
+
+* release 4.0.0 for MariaDB migration ([#1511](https://github.com/dachrisch/leaguesphere/issues/1511)) ([a8ecc08](https://github.com/dachrisch/leaguesphere/commit/a8ecc08c6b4da952d88fbfa0c348b549dbd35354))
+
 ## [3.33.20](https://github.com/dachrisch/leaguesphere/compare/v3.33.19...v3.33.20) (2026-07-08)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "scorecard",
-  "version": "3.33.20",
+  "version": "4.0.0",
   "private": true,
   "main": "index.js",
   "directories": {
