@@ -73,6 +73,7 @@ services:
     env_file: ls.env
     networks:
       - backend
+      - database
     healthcheck:
       test: ["CMD", "sh", "-c", "mariadb -h localhost --skip-ssl -u root -p$$MYSQL_ROOT_PASSWORD -e 'SELECT 1'"]
       interval: 15s
