@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.33.19](https://github.com/dachrisch/leaguesphere/compare/v3.33.18...v3.33.19) (2026-07-08)
+
+
+### Bug Fixes
+
+* **deps:** update astral-sh/setup-uv action to v8.3.2 ([#1506](https://github.com/dachrisch/leaguesphere/issues/1506)) ([f45f0d5](https://github.com/dachrisch/leaguesphere/commit/f45f0d5b0500ac7e943ff39ec71730609a1e1437))
+
 ## [3.33.18](https://github.com/dachrisch/leaguesphere/compare/v3.33.17...v3.33.18) (2026-07-08)
 
 
