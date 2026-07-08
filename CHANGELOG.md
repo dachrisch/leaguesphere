@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.33.20](https://github.com/dachrisch/leaguesphere/compare/v3.33.19...v3.33.20) (2026-07-08)
+
+
+### Bug Fixes
+
+* **db:** connect DB container to database network for external service access ([#1508](https://github.com/dachrisch/leaguesphere/issues/1508)) ([274482b](https://github.com/dachrisch/leaguesphere/commit/274482b402ddaf5312491e453a98fd0ac8418e5a))
+* **deps:** update dependency i18next to v26.3.5 ([#1510](https://github.com/dachrisch/leaguesphere/issues/1510)) ([1379a27](https://github.com/dachrisch/leaguesphere/commit/1379a27c129d251e3d221c7c342b86c124dc2ce3))
+
 ## [3.33.19](https://github.com/dachrisch/leaguesphere/compare/v3.33.18...v3.33.19) (2026-07-08)
 
 
