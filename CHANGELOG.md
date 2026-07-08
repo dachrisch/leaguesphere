@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.33.17](https://github.com/dachrisch/leaguesphere/compare/v3.33.16...v3.33.17) (2026-07-08)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @types/node to v25.9.5 ([#1503](https://github.com/dachrisch/leaguesphere/issues/1503)) ([985c50e](https://github.com/dachrisch/leaguesphere/commit/985c50ebb67df879927de236dcc870a7a9c420f2))
+
 ## [3.33.16](https://github.com/dachrisch/leaguesphere/compare/v3.33.15...v3.33.16) (2026-07-07)
 
 
