@@ -84,25 +84,6 @@ commands:
               docker push << parameters.registry_image_name >>:<< parameters.extra_tag >>
             fi
 
-  run_migrations_cmd:
-    parameters:
-      image_name:
-        type: string
-    steps:
-      - attach_workspace:
-          at: /tmp
-      - run:
-          name: Run Django Migrations
-          command: |
-            docker load -i /tmp/docker-images/<< parameters.image_name >>.tar
-            docker run --rm \
-              -e MYSQL_HOST="$MYSQL_HOST" \
-              -e MYSQL_DB_NAME="$MYSQL_DB_NAME" \
-              -e MYSQL_USER="$MYSQL_USER" \
-              -e MYSQL_PWD="$MYSQL_PWD" \
-              << parameters.image_name >>:latest \
-              bash -c "set -e && python manage.py migrate --noinput"
-
 jobs:
   python:
     docker:
@@ -581,15 +562,6 @@ jobs:
           command: circleci run release update "leaguesphere-prod" --status=FAILED 
           when: on_fail
 
-  run_migrations_production:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - setup_remote_docker:
-          version: 20.10.24
-      - run_migrations_cmd:
-          image_name: backend
-
   promote_to_prerelease:
     docker:
       - image: cimg/base:stable
@@ -768,17 +740,9 @@ workflows:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+$/
             branches:
               ignore: /.*/
-      - run_migrations_production:
-          context: production
-          requires:
-            - deploy_production
-          filters:
-            tags:
-              only: /^v?[0-9]+\.[0-9]+\.[0-9]+$/
-
       - create_production_release:
           requires:
-            - run_migrations_production
+            - deploy_production
           filters:
             tags:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+$/
