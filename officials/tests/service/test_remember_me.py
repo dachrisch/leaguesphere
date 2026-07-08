@@ -70,6 +70,7 @@ class TestRememberMeService(TestCase):
 
         rotated = MoodleRememberToken.objects.get(selector=selector)
         assert rotated.validator_hash != original_hash
+        assert rotated.expires_at > original.expires_at
         assert result.cookie_value != cookie
         assert result.cookie_value.split(":", 1)[0] == selector
         # the returned cookie must itself restore successfully

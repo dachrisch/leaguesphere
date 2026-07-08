@@ -15,7 +15,7 @@ def _hash(validator: str) -> str:
     return hashlib.sha256(validator.encode()).hexdigest()
 
 
-@dataclass
+@dataclass(frozen=True)
 class RestoreResult:
     official_id: int | None
     cookie_value: str | None
