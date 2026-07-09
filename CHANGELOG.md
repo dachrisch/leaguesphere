@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.5](https://github.com/dachrisch/leaguesphere/compare/v4.0.4...v4.0.5) (2026-07-09)
+
+
+### Bug Fixes
+
+* **deps:** update dependency django-formtools to v2.7 ([#1524](https://github.com/dachrisch/leaguesphere/issues/1524)) ([377d28f](https://github.com/dachrisch/leaguesphere/commit/377d28f3151c58c871127c168de756ea0112f546))
+
 ## [4.0.4](https://github.com/dachrisch/leaguesphere/compare/v4.0.3...v4.0.4) (2026-07-09)
 
 
