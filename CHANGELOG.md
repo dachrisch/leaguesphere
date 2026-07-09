@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.1.0](https://github.com/dachrisch/leaguesphere/compare/v4.0.6...v4.1.0) (2026-07-09)
+
+
+### Features
+
+* **officials:** remember-me for sign-up + fix unregistered-official 500 ([#1478](https://github.com/dachrisch/leaguesphere/issues/1478)) ([da549c9](https://github.com/dachrisch/leaguesphere/commit/da549c9c81817682c8bebb8eca3ba9a97ccfd673))
+
 ## [4.0.6](https://github.com/dachrisch/leaguesphere/compare/v4.0.5...v4.0.6) (2026-07-09)
 
 
