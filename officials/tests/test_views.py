@@ -24,6 +24,7 @@ from officials.urls import (
     OFFICIALS_MOODLE_LOGIN,
     OFFICIALS_SIGN_UP_LIST,
     OFFICIALS_SIGN_UP_FOR_GAMEDAY,
+    OFFICIALS_SIGN_OUT,
 )
 from officials.views import MOODLE_LOGGED_IN_USER, MOODLE_REMEMBER_COOKIE
 from officials.service.remember_me import RememberMeService
@@ -264,6 +265,27 @@ class TestOfficialSignUpListView(WebTest):
 
         assert response.url == reverse(OFFICIALS_MOODLE_LOGIN)
         # cookie deletion is signalled by an expired/empty Set-Cookie
+        assert response.cookies[MOODLE_REMEMBER_COOKIE].value == ""
+
+
+class TestOfficialSignOutView(TestCase):
+    def test_logout_revokes_token_and_clears_cookie_and_session(self):
+        DbSetupOfficials().create_officials_and_team()
+        official = Official.objects.first()
+        cookie = RememberMeService.issue(official.pk)
+        from officials.models import MoodleRememberToken
+        selector = cookie.split(":", 1)[0]
+        client = Client()
+        session = client.session
+        session[MOODLE_LOGGED_IN_USER] = official.pk
+        session.save()
+        client.cookies[MOODLE_REMEMBER_COOKIE] = cookie
+
+        response = client.get(reverse(OFFICIALS_SIGN_OUT))
+
+        assert response.url == reverse(OFFICIALS_MOODLE_LOGIN)
+        assert MoodleRememberToken.objects.filter(selector=selector).count() == 0
+        assert client.session.get(MOODLE_LOGGED_IN_USER) is None
         assert response.cookies[MOODLE_REMEMBER_COOKIE].value == ""
 
 

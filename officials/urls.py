@@ -13,6 +13,7 @@ from officials.views import (
     MoodleLoginView,
     OfficialSignUpView,
     OfficialSignUpCancelView,
+    OfficialSignOutView,
     LicenseCheckForOfficials,
 )
 
@@ -37,6 +38,7 @@ OFFICIALS_MOODLE_LOGIN = "view-officials-moodle-login"
 OFFICIALS_SIGN_UP_LIST = "view-officials-sign-up-list"
 OFFICIALS_SIGN_UP_FOR_GAMEDAY = "view-officials-sign-up-for-gameday"
 OFFICIALS_SIGN_UP_CANCEL_FOR_GAMEDAY = "view-officials-sign-up-cancel-for-gameday"
+OFFICIALS_SIGN_OUT = "view-officials-sign-out"
 
 urlpatterns = [
     path(
@@ -108,5 +110,10 @@ urlpatterns = [
         "gameday/sign-up/<int:gameday>/cancel/",
         OfficialSignUpCancelView.as_view(),
         name=OFFICIALS_SIGN_UP_CANCEL_FOR_GAMEDAY,
+    ),
+    path(
+        "gameday/sign-up/logout/",
+        OfficialSignOutView.as_view(),
+        name=OFFICIALS_SIGN_OUT,
     ),
 ]

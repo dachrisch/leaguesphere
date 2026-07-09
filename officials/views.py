@@ -431,6 +431,19 @@ class OfficialSignUpListView(View):
         return response
 
 
+class OfficialSignOutView(View):
+    def get(self, request, *args, **kwargs):
+        RememberMeService.revoke(request.COOKIES.get(MOODLE_REMEMBER_COOKIE))
+        request.session.pop(MOODLE_LOGGED_IN_USER, None)
+        messages.success(request, "Du wurdest abgemeldet.")
+
+        from officials.urls import OFFICIALS_MOODLE_LOGIN
+
+        response = redirect(reverse(OFFICIALS_MOODLE_LOGIN))
+        _delete_remember_cookie(response)
+        return response
+
+
 class CheckMoodleSessionMixin:
     def get_official_id(self, request):
         official_id = request.session.get(MOODLE_LOGGED_IN_USER)
