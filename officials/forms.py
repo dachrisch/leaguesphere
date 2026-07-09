@@ -19,3 +19,7 @@ class MoodleLoginForm(forms.Form):
     password = forms.CharField(
         label="Passwort", widget=forms.PasswordInput(attrs={"placeholder": "Passwort"})
     )
+    remember_me = forms.BooleanField(
+        required=False,
+        label="Angemeldet bleiben",
+    )

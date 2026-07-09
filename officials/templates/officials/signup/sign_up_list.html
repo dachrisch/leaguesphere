@@ -2,6 +2,11 @@
 {% block content %}
 <div class="content-section">
     <div class="media-body">
+        <div class="d-flex justify-content-end mb-2">
+            <a class="btn btn-outline-secondary btn-sm" href="{% url 'view-officials-sign-out' %}">
+                Abmelden
+            </a>
+        </div>
         <p>Ligenauswahl:</p>
         <ul class="nav nav-pills">
             {% with active_league=request.GET.league|urlize %}
