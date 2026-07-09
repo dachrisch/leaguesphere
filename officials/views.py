@@ -37,6 +37,11 @@ from officials.service.remember_me import RememberMeService, REMEMBER_ME_MAX_AGE
 
 MOODLE_LOGGED_IN_USER = "moodle_logged_in_user"
 
+NO_OFFICIAL_FOR_MOODLE_USER = (
+    "Für diesen Moodle-Account ist kein Official hinterlegt. "
+    "Bitte wende dich an die Turnierleitung."
+)
+
 MOODLE_REMEMBER_COOKIE = "officials_remember"
 REMEMBER_COOKIE_PATH = "/officials/gameday/sign-up/"
 
@@ -375,12 +380,12 @@ class MoodleLoginView(View):
 
                 response = redirect(reverse(OFFICIALS_SIGN_UP_LIST))
                 if form.cleaned_data.get("remember_me"):
-                    _set_remember_cookie(
-                        response, RememberMeService.issue(official_id)
-                    )
+                    _set_remember_cookie(response, RememberMeService.issue(official_id))
                 return response
         except MoodleApiException as error:
             form.add_error("", f"{error}")
+        except Official.DoesNotExist:
+            form.add_error("", NO_OFFICIAL_FOR_MOODLE_USER)
         return render(request, self.template_name, {"form": form})
 
 
@@ -416,6 +421,7 @@ class OfficialSignUpListView(View):
             OFFICIALS_SIGN_UP_LIST,
             OFFICIALS_SIGN_UP_CANCEL_FOR_GAMEDAY,
         )
+
         context = {
             **OfficialSignupService.get_signup_data(official_id, league),
             "official_id": official_id,

@@ -12,7 +12,9 @@ from rest_framework.reverse import reverse
 
 from gamedays.models import Gameinfo
 from gamedays.tests.setup_factories.db_setup import DBSetup
-from league_table.tests.setup_factories.factories_leaguetable import LeagueSeasonConfigFactory
+from league_table.tests.setup_factories.factories_leaguetable import (
+    LeagueSeasonConfigFactory,
+)
 from officials.models import Official, OfficialGamedaySignup
 from officials.service.moodle.moodle_api import MoodleApiException
 from officials.service.moodle.moodle_service import MoodleService
@@ -208,13 +210,37 @@ class TestMoodleLogin(WebTest):
         assert MOODLE_REMEMBER_COOKIE in response.client.cookies
 
     @patch.object(MoodleService, "login")
-    def test_login_without_remember_me_sets_no_cookie(self, moodle_login_mock: MagicMock):
+    def test_login_without_remember_me_sets_no_cookie(
+        self, moodle_login_mock: MagicMock
+    ):
         moodle_login_mock.return_value = 7
         response = self.app.get(reverse(OFFICIALS_MOODLE_LOGIN))
         response.form["username"] = "valid username"
         response.form["password"] = "secret password"
         response = response.form.submit()
         assert MOODLE_REMEMBER_COOKIE not in response.client.cookies
+
+    @patch.object(MoodleService, "login")
+    def test_login_of_moodle_user_without_official_shows_form_error(
+        self, moodle_login_mock: MagicMock
+    ):
+        # A valid Moodle account that has no matching Official must not 500.
+        moodle_login_mock.side_effect = Official.DoesNotExist
+
+        response: DjangoWebtestResponse = self.app.get(reverse(OFFICIALS_MOODLE_LOGIN))
+        response.form["username"] = "valid_moodle_user_without_official"
+        response.form["password"] = "secret password"
+        response = response.form.submit()
+
+        self.assertEqual(HTTPStatus.OK, response.status_code)
+        self.assertFormError(
+            response.context["form"],
+            None,
+            [
+                "Für diesen Moodle-Account ist kein Official hinterlegt. "
+                "Bitte wende dich an die Turnierleitung."
+            ],
+        )
 
 
 class TestOfficialSignUpListView(WebTest):
@@ -255,9 +281,10 @@ class TestOfficialSignUpListView(WebTest):
         from officials.models import MoodleRememberToken
         from django.utils import timezone
         from datetime import timedelta
-        MoodleRememberToken.objects.filter(
-            selector=cookie.split(":", 1)[0]
-        ).update(expires_at=timezone.now() - timedelta(seconds=1))
+
+        MoodleRememberToken.objects.filter(selector=cookie.split(":", 1)[0]).update(
+            expires_at=timezone.now() - timedelta(seconds=1)
+        )
         client = Client()
         client.cookies[MOODLE_REMEMBER_COOKIE] = cookie
 
@@ -274,6 +301,7 @@ class TestOfficialSignOutView(TestCase):
         official = Official.objects.first()
         cookie = RememberMeService.issue(official.pk)
         from officials.models import MoodleRememberToken
+
         selector = cookie.split(":", 1)[0]
         client = Client()
         session = client.session
