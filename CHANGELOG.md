@@ -1,5 +1,26 @@
 # Changelog
 
+## [4.0.2](https://github.com/dachrisch/leaguesphere/compare/v4.0.1...v4.0.2) (2026-07-09)
+
+
+### Bug Fixes
+
+* **deps:** update dependency vite to v8.1.4 ([#1516](https://github.com/dachrisch/leaguesphere/issues/1516)) ([caaf2cc](https://github.com/dachrisch/leaguesphere/commit/caaf2cc6f7c6f254e79b459ea4f3055c3eb11942))
+
+## [4.0.1](https://github.com/dachrisch/leaguesphere/compare/v4.0.0...v4.0.1) (2026-07-09)
+
+
+### Bug Fixes
+
+* **deps:** update dependency vite to v8.1.4 ([#1515](https://github.com/dachrisch/leaguesphere/issues/1515)) ([b2377d4](https://github.com/dachrisch/leaguesphere/commit/b2377d431ecff0ccc1865ef2023b0ed0f5db1a23))
+
+## [4.0.0](https://github.com/dachrisch/leaguesphere/compare/v3.33.20...v4.0.0) (2026-07-08)
+
+
+### Miscellaneous Chores
+
+* release 4.0.0 for MariaDB migration ([#1511](https://github.com/dachrisch/leaguesphere/issues/1511)) ([a8ecc08](https://github.com/dachrisch/leaguesphere/commit/a8ecc08c6b4da952d88fbfa0c348b549dbd35354))
+
 ## [3.33.20](https://github.com/dachrisch/leaguesphere/compare/v3.33.19...v3.33.20) (2026-07-08)
 
 
