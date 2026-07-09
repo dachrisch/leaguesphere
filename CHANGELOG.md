@@ -1,5 +1,19 @@
 # Changelog
 
+## [4.0.4](https://github.com/dachrisch/leaguesphere/compare/v4.0.3...v4.0.4) (2026-07-09)
+
+
+### Bug Fixes
+
+* **deps:** update dependency i18next to v26.3.6 ([#1519](https://github.com/dachrisch/leaguesphere/issues/1519)) ([79ff58c](https://github.com/dachrisch/leaguesphere/commit/79ff58c339583a68ceacbdbf47982038e159455f))
+
+## [4.0.3](https://github.com/dachrisch/leaguesphere/compare/v4.0.2...v4.0.3) (2026-07-09)
+
+
+### Bug Fixes
+
+* **deps:** update dependency prettier to v3.9.5 ([#1520](https://github.com/dachrisch/leaguesphere/issues/1520)) ([a5aa1c5](https://github.com/dachrisch/leaguesphere/commit/a5aa1c5c5b111e494c37b8eb97c81cee6e1208ea))
+
 ## [4.0.2](https://github.com/dachrisch/leaguesphere/compare/v4.0.1...v4.0.2) (2026-07-09)
 
 
