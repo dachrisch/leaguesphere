@@ -388,10 +388,23 @@ class OfficialSignUpListView(View):
     template_name = "officials/signup/sign_up_list.html"
 
     def get(self, request, *args, **kwargs):
+        from officials.urls import OFFICIALS_MOODLE_LOGIN
+
         official_id = request.session.get(MOODLE_LOGGED_IN_USER)
+        restored_cookie = None
         if official_id is None:
-            from officials.urls import OFFICIALS_MOODLE_LOGIN
-            return redirect(reverse(OFFICIALS_MOODLE_LOGIN))
+            result = RememberMeService.restore(
+                request.COOKIES.get(MOODLE_REMEMBER_COOKIE)
+            )
+            if result.official_id is not None:
+                official_id = result.official_id
+                request.session[MOODLE_LOGGED_IN_USER] = official_id
+                restored_cookie = result.cookie_value
+            else:
+                response = redirect(reverse(OFFICIALS_MOODLE_LOGIN))
+                if result.matched:
+                    _delete_remember_cookie(response)
+                return response
         if settings.DEBUG:
             request.session.set_expiry(600000)
         else:
@@ -412,7 +425,10 @@ class OfficialSignUpListView(View):
             "url_pattern_official": OFFICIALS_PROFILE_LICENSE,
             "url_pattern_signup_cancel": OFFICIALS_SIGN_UP_CANCEL_FOR_GAMEDAY,
         }
-        return render(request, self.template_name, context)
+        response = render(request, self.template_name, context)
+        if restored_cookie:
+            _set_remember_cookie(response, restored_cookie)
+        return response
 
 
 class CheckMoodleSessionMixin:

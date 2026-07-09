@@ -223,6 +223,49 @@ class TestOfficialSignUpListView(WebTest):
         )
         assert response.url == reverse(OFFICIALS_MOODLE_LOGIN)
 
+    def test_valid_cookie_restores_session_without_redirect(self):
+        DbSetupOfficials().create_officials_and_team()
+        official = Official.objects.first()
+        cookie = RememberMeService.issue(official.pk)
+        client = Client()
+        client.cookies[MOODLE_REMEMBER_COOKIE] = cookie
+
+        response = client.get(reverse(OFFICIALS_SIGN_UP_LIST))
+
+        assert response.status_code == HTTPStatus.OK
+        assert client.session.get(MOODLE_LOGGED_IN_USER) == official.pk
+
+    def test_valid_cookie_is_rotated_on_restore(self):
+        DbSetupOfficials().create_officials_and_team()
+        official = Official.objects.first()
+        cookie = RememberMeService.issue(official.pk)
+        client = Client()
+        client.cookies[MOODLE_REMEMBER_COOKIE] = cookie
+
+        response = client.get(reverse(OFFICIALS_SIGN_UP_LIST))
+
+        rotated = response.cookies[MOODLE_REMEMBER_COOKIE].value
+        assert rotated != cookie
+
+    def test_expired_cookie_redirects_and_clears_cookie(self):
+        DbSetupOfficials().create_officials_and_team()
+        official = Official.objects.first()
+        cookie = RememberMeService.issue(official.pk)
+        from officials.models import MoodleRememberToken
+        from django.utils import timezone
+        from datetime import timedelta
+        MoodleRememberToken.objects.filter(
+            selector=cookie.split(":", 1)[0]
+        ).update(expires_at=timezone.now() - timedelta(seconds=1))
+        client = Client()
+        client.cookies[MOODLE_REMEMBER_COOKIE] = cookie
+
+        response = client.get(reverse(OFFICIALS_SIGN_UP_LIST))
+
+        assert response.url == reverse(OFFICIALS_MOODLE_LOGIN)
+        # cookie deletion is signalled by an expired/empty Set-Cookie
+        assert response.cookies[MOODLE_REMEMBER_COOKIE].value == ""
+
 
 class TestOfficialSignUpView(TestCase):
     def test_official_id_not_found_in_session(self):
