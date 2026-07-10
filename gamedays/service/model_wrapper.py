@@ -221,11 +221,16 @@ class GamedayModelWrapper:
             "playerlist__player__person__last_name": "last_name",
         }
 
-        passcheck_players = pd.DataFrame(
+        passcheck_players = (pd.DataFrame(
             PlayerlistGameday.objects
                 .filter(gameday_id=self.gameday)
                 .values(*key_mapping.keys())
-        ).rename(columns=key_mapping).astype({
+        ))
+
+        if passcheck_players.empty:
+            return passcheck_players
+
+        passcheck_players = passcheck_players.rename(columns=key_mapping).astype({
             "gameday_id": int,
             "gameday_jersey": int,
             "team_id": int,
@@ -257,8 +262,7 @@ class GamedayModelWrapper:
         if safe_config := self.league_season_config:
             config = safe_config.get_gameday_statistic_settings()
 
-        if config.get(SHOW_PLAYER_NAMES, False):
-            passcheck_player_names_df = self._get_passcheck_player_jersey_number()
+        if config.get(SHOW_PLAYER_NAMES, False) and not (passcheck_player_names_df := self._get_passcheck_player_jersey_number()).empty:
             events["player"] = events.merge(
                 passcheck_player_names_df,
                 left_on=["player", TEAM_ID],
@@ -349,8 +353,7 @@ class GamedayModelWrapper:
         if safe_config := self.league_season_config:
             config = safe_config.get_gameday_statistic_settings()
 
-        if config.get(SHOW_PLAYER_NAMES, False):
-            passcheck_player_names_df = self._get_passcheck_player_jersey_number()
+        if config.get(SHOW_PLAYER_NAMES, False) and not (passcheck_player_names_df := self._get_passcheck_player_jersey_number()).empty:
             events["player"] = events.merge(
                 passcheck_player_names_df,
                 left_on=["player", TEAM_ID],
@@ -398,8 +401,7 @@ class GamedayModelWrapper:
         if safe_config := self.league_season_config:
             config = safe_config.get_gameday_statistic_settings()
 
-        if config.get(SHOW_PLAYER_NAMES, False):
-            passcheck_player_names_df = self._get_passcheck_player_jersey_number()
+        if config.get(SHOW_PLAYER_NAMES, False) and not (passcheck_player_names_df := self._get_passcheck_player_jersey_number()).empty:
             events["player"] = events.merge(
                 passcheck_player_names_df,
                 left_on=["player", TEAM_ID],

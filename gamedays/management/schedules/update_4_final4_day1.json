@@ -15,10 +15,7 @@
           "points": 0
         },
         "officials": {
-          "pre_finished": "Vorrunde",
-          "standing": "Spiel 1",
-          "place": 1,
-          "points": 2
+          "team_name": "Team für Offizielle ohne festes Team"
         }
       }
     ]
@@ -39,10 +36,7 @@
           "points": 2
         },
         "officials": {
-          "pre_finished": "Spiel 3",
-          "standing": "Spiel 3",
-          "place": 1,
-          "points": 0
+          "team_name": "Team für Offizielle ohne festes Team"
         }
       }
     ]
