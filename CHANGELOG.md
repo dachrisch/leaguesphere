@@ -1,5 +1,133 @@
 # Changelog
 
+## [4.1.0](https://github.com/dachrisch/leaguesphere/compare/v4.0.6...v4.1.0) (2026-07-09)
+
+
+### Features
+
+* **officials:** remember-me for sign-up + fix unregistered-official 500 ([#1478](https://github.com/dachrisch/leaguesphere/issues/1478)) ([da549c9](https://github.com/dachrisch/leaguesphere/commit/da549c9c81817682c8bebb8eca3ba9a97ccfd673))
+
+## [4.0.6](https://github.com/dachrisch/leaguesphere/compare/v4.0.5...v4.0.6) (2026-07-09)
+
+
+### Bug Fixes
+
+* **deps:** update dependency react-i18next to v17.0.9 ([#1523](https://github.com/dachrisch/leaguesphere/issues/1523)) ([6926620](https://github.com/dachrisch/leaguesphere/commit/6926620f8e22dc72c127ba002e8cb3cd21b61143))
+
+## [4.0.5](https://github.com/dachrisch/leaguesphere/compare/v4.0.4...v4.0.5) (2026-07-09)
+
+
+### Bug Fixes
+
+* **deps:** update dependency django-formtools to v2.7 ([#1524](https://github.com/dachrisch/leaguesphere/issues/1524)) ([377d28f](https://github.com/dachrisch/leaguesphere/commit/377d28f3151c58c871127c168de756ea0112f546))
+
+## [4.0.4](https://github.com/dachrisch/leaguesphere/compare/v4.0.3...v4.0.4) (2026-07-09)
+
+
+### Bug Fixes
+
+* **deps:** update dependency i18next to v26.3.6 ([#1519](https://github.com/dachrisch/leaguesphere/issues/1519)) ([79ff58c](https://github.com/dachrisch/leaguesphere/commit/79ff58c339583a68ceacbdbf47982038e159455f))
+
+## [4.0.3](https://github.com/dachrisch/leaguesphere/compare/v4.0.2...v4.0.3) (2026-07-09)
+
+
+### Bug Fixes
+
+* **deps:** update dependency prettier to v3.9.5 ([#1520](https://github.com/dachrisch/leaguesphere/issues/1520)) ([a5aa1c5](https://github.com/dachrisch/leaguesphere/commit/a5aa1c5c5b111e494c37b8eb97c81cee6e1208ea))
+
+## [4.0.2](https://github.com/dachrisch/leaguesphere/compare/v4.0.1...v4.0.2) (2026-07-09)
+
+
+### Bug Fixes
+
+* **deps:** update dependency vite to v8.1.4 ([#1516](https://github.com/dachrisch/leaguesphere/issues/1516)) ([caaf2cc](https://github.com/dachrisch/leaguesphere/commit/caaf2cc6f7c6f254e79b459ea4f3055c3eb11942))
+
+## [4.0.1](https://github.com/dachrisch/leaguesphere/compare/v4.0.0...v4.0.1) (2026-07-09)
+
+
+### Bug Fixes
+
+* **deps:** update dependency vite to v8.1.4 ([#1515](https://github.com/dachrisch/leaguesphere/issues/1515)) ([b2377d4](https://github.com/dachrisch/leaguesphere/commit/b2377d431ecff0ccc1865ef2023b0ed0f5db1a23))
+
+## [4.0.0](https://github.com/dachrisch/leaguesphere/compare/v3.33.20...v4.0.0) (2026-07-08)
+
+
+### Miscellaneous Chores
+
+* release 4.0.0 for MariaDB migration ([#1511](https://github.com/dachrisch/leaguesphere/issues/1511)) ([a8ecc08](https://github.com/dachrisch/leaguesphere/commit/a8ecc08c6b4da952d88fbfa0c348b549dbd35354))
+
+## [3.33.20](https://github.com/dachrisch/leaguesphere/compare/v3.33.19...v3.33.20) (2026-07-08)
+
+
+### Bug Fixes
+
+* **db:** connect DB container to database network for external service access ([#1508](https://github.com/dachrisch/leaguesphere/issues/1508)) ([274482b](https://github.com/dachrisch/leaguesphere/commit/274482b402ddaf5312491e453a98fd0ac8418e5a))
+* **deps:** update dependency i18next to v26.3.5 ([#1510](https://github.com/dachrisch/leaguesphere/issues/1510)) ([1379a27](https://github.com/dachrisch/leaguesphere/commit/1379a27c129d251e3d221c7c342b86c124dc2ce3))
+
+## [3.33.19](https://github.com/dachrisch/leaguesphere/compare/v3.33.18...v3.33.19) (2026-07-08)
+
+
+### Bug Fixes
+
+* **deps:** update astral-sh/setup-uv action to v8.3.2 ([#1506](https://github.com/dachrisch/leaguesphere/issues/1506)) ([f45f0d5](https://github.com/dachrisch/leaguesphere/commit/f45f0d5b0500ac7e943ff39ec71730609a1e1437))
+
+## [3.33.18](https://github.com/dachrisch/leaguesphere/compare/v3.33.17...v3.33.18) (2026-07-08)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @types/node to v25.9.5 ([#1502](https://github.com/dachrisch/leaguesphere/issues/1502)) ([17d464a](https://github.com/dachrisch/leaguesphere/commit/17d464a580d62e6f6214d6f35ba2ea7f5dbc8eda))
+
+## [3.33.17](https://github.com/dachrisch/leaguesphere/compare/v3.33.16...v3.33.17) (2026-07-08)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @types/node to v25.9.5 ([#1503](https://github.com/dachrisch/leaguesphere/issues/1503)) ([985c50e](https://github.com/dachrisch/leaguesphere/commit/985c50ebb67df879927de236dcc870a7a9c420f2))
+
+## [3.33.16](https://github.com/dachrisch/leaguesphere/compare/v3.33.15...v3.33.16) (2026-07-07)
+
+
+### Documentation
+
+* design for moving prod migrations from CI to Watchtower re-pull ([#1499](https://github.com/dachrisch/leaguesphere/issues/1499)) ([77a4365](https://github.com/dachrisch/leaguesphere/commit/77a436547a5037879af8db113acadb2cbae91250))
+
+## [3.33.15](https://github.com/dachrisch/leaguesphere/compare/v3.33.14...v3.33.15) (2026-07-07)
+
+
+### Bug Fixes
+
+* **frontend:** treat maintenance mode as healthy in healthcheck ([#1497](https://github.com/dachrisch/leaguesphere/issues/1497)) ([29e16ed](https://github.com/dachrisch/leaguesphere/commit/29e16ed0752514b12511051c7b1ec330c780cdbf))
+
+## [3.33.14](https://github.com/dachrisch/leaguesphere/compare/v3.33.13...v3.33.14) (2026-07-07)
+
+
+### Bug Fixes
+
+* **deps:** update astral-sh/setup-uv action to v8.3.1 ([#1489](https://github.com/dachrisch/leaguesphere/issues/1489)) ([4616ab8](https://github.com/dachrisch/leaguesphere/commit/4616ab8b55d1c7bc6989367607091c80e6c7aad4))
+
+## [3.33.13](https://github.com/dachrisch/leaguesphere/compare/v3.33.12...v3.33.13) (2026-07-07)
+
+
+### Bug Fixes
+
+* **deps:** update dependency django to v6.0.7 ([#1490](https://github.com/dachrisch/leaguesphere/issues/1490)) ([0b2eead](https://github.com/dachrisch/leaguesphere/commit/0b2eead50cf754f6432a4091f1f57270927494f0))
+
+## [3.33.12](https://github.com/dachrisch/leaguesphere/compare/v3.33.11...v3.33.12) (2026-07-07)
+
+
+### Bug Fixes
+
+* bound DB connect_timeout so the offline banner renders under DB outage ([#1491](https://github.com/dachrisch/leaguesphere/issues/1491)) ([6c453ca](https://github.com/dachrisch/leaguesphere/commit/6c453cae0caee2ec026b671b079ab12163afbd51))
+* **ci:** run check_migrations against an ephemeral internal DB ([#1493](https://github.com/dachrisch/leaguesphere/issues/1493)) ([55f1854](https://github.com/dachrisch/leaguesphere/commit/55f18544abfe2174d10675814a0fe36615221c03))
+
+## [3.33.11](https://github.com/dachrisch/leaguesphere/compare/v3.33.10...v3.33.11) (2026-07-06)
+
+
+### Bug Fixes
+
+* **deps:** update dependency typescript-eslint to v8.63.0 ([#1487](https://github.com/dachrisch/leaguesphere/issues/1487)) ([0d0d594](https://github.com/dachrisch/leaguesphere/commit/0d0d5942db47a3a749dfa5ec2ed1799bdb369004))
+
 ## [3.33.10](https://github.com/dachrisch/leaguesphere/compare/v3.33.9...v3.33.10) (2026-07-06)
 
 

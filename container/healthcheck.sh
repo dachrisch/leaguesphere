@@ -6,6 +6,22 @@ ORIGIN="${FRONTEND_URL:-https://leaguesphere.app}"
 
 # 0. Check if service is up
 UP_STATUS=$(curl -A healthcheck-status -s -o /dev/null -w "%{http_code}" "$URL")
+
+# Maintenance mode: the app redirects all real routes to /maintenance/. The
+# service is up and serving correctly, so report healthy and skip the deep
+# login flow below (which cannot pass while maintenance is active). Without this
+# the container is marked unhealthy during maintenance and the reverse proxy
+# stops routing to it.
+if [ "$UP_STATUS" -eq 302 ]; then
+  REDIRECT=$(curl -A healthcheck-status -s -o /dev/null -w "%{redirect_url}" "$URL")
+  case "$REDIRECT" in
+    */maintenance/*)
+      echo "Maintenance mode active (status=302 -> $REDIRECT) — healthy"
+      exit 0
+      ;;
+  esac
+fi
+
 if [ "$UP_STATUS" -ne 200 ]; then
   echo "Service not responding properly (status=$UP_STATUS)"
   exit 1

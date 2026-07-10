@@ -181,7 +181,11 @@ DATABASES = {
         "PORT": os.environ.get("MYSQL_PORT", "3306"),
         "CONN_MAX_AGE": 300,
         "OPTIONS": {
-            "init_command": "SET default_storage_engine=InnoDB;"  # SET foreign_key_checks = 0;',
+            "init_command": "SET default_storage_engine=InnoDB;",  # SET foreign_key_checks = 0;',
+            # Fail fast when the DB host is unreachable/degraded so the
+            # DatabaseGuardMiddleware probe can render the offline banner instead
+            # of hanging until nginx returns a 504.
+            "connect_timeout": 3,
         },
     },
 }

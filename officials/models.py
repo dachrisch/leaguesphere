@@ -2,6 +2,7 @@ import datetime
 from datetime import date
 
 from django.db import models
+from django.utils import timezone
 from django.db.models import (
     QuerySet,
     ExpressionWrapper,
@@ -37,6 +38,22 @@ class Official(models.Model):
             f"{self.pk} - {self.team.description}__{self.last_name}, {self.first_name} - ("
             f'{"NONE" if self.association is None else self.association.name})'
         )
+
+
+class MoodleRememberToken(models.Model):
+    selector = models.CharField(max_length=64, unique=True, db_index=True)
+    validator_hash = models.CharField(max_length=64)
+    official = models.ForeignKey(Official, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(db_index=True)
+
+    objects: QuerySet = models.Manager()
+
+    def is_expired(self) -> bool:
+        return self.expires_at <= timezone.now()
+
+    def __str__(self):
+        return f"MoodleRememberToken({self.selector[:8]}… -> official {self.official_id})"
 
 
 class OfficialGamedaySignup(models.Model):

@@ -33,8 +33,33 @@ from officials.service.signup_service import (
     DuplicateSignupError,
     MaxSignupError,
 )
+from officials.service.remember_me import RememberMeService, REMEMBER_ME_MAX_AGE
 
 MOODLE_LOGGED_IN_USER = "moodle_logged_in_user"
+
+NO_OFFICIAL_FOR_MOODLE_USER = (
+    "Für diesen Moodle-Account ist kein Official hinterlegt. "
+    "Bitte wende dich an die Turnierleitung."
+)
+
+MOODLE_REMEMBER_COOKIE = "officials_remember"
+REMEMBER_COOKIE_PATH = "/officials/gameday/sign-up/"
+
+
+def _set_remember_cookie(response, value):
+    response.set_cookie(
+        MOODLE_REMEMBER_COOKIE,
+        value,
+        max_age=int(REMEMBER_ME_MAX_AGE.total_seconds()),
+        httponly=True,
+        secure=not settings.DEBUG,
+        samesite="Lax",
+        path=REMEMBER_COOKIE_PATH,
+    )
+
+
+def _delete_remember_cookie(response):
+    response.delete_cookie(MOODLE_REMEMBER_COOKIE, path=REMEMBER_COOKIE_PATH)
 
 
 class OfficialsTeamListView(View):
@@ -353,9 +378,14 @@ class MoodleLoginView(View):
 
                 from officials.urls import OFFICIALS_SIGN_UP_LIST
 
-                return redirect(reverse(OFFICIALS_SIGN_UP_LIST))
+                response = redirect(reverse(OFFICIALS_SIGN_UP_LIST))
+                if form.cleaned_data.get("remember_me"):
+                    _set_remember_cookie(response, RememberMeService.issue(official_id))
+                return response
         except MoodleApiException as error:
             form.add_error("", f"{error}")
+        except Official.DoesNotExist:
+            form.add_error("", NO_OFFICIAL_FOR_MOODLE_USER)
         return render(request, self.template_name, {"form": form})
 
 
@@ -363,10 +393,23 @@ class OfficialSignUpListView(View):
     template_name = "officials/signup/sign_up_list.html"
 
     def get(self, request, *args, **kwargs):
+        from officials.urls import OFFICIALS_MOODLE_LOGIN
+
         official_id = request.session.get(MOODLE_LOGGED_IN_USER)
+        restored_cookie = None
         if official_id is None:
-            from officials.urls import OFFICIALS_MOODLE_LOGIN
-            return redirect(reverse(OFFICIALS_MOODLE_LOGIN))
+            result = RememberMeService.restore(
+                request.COOKIES.get(MOODLE_REMEMBER_COOKIE)
+            )
+            if result.official_id is not None:
+                official_id = result.official_id
+                request.session[MOODLE_LOGGED_IN_USER] = official_id
+                restored_cookie = result.cookie_value
+            else:
+                response = redirect(reverse(OFFICIALS_MOODLE_LOGIN))
+                if result.matched:
+                    _delete_remember_cookie(response)
+                return response
         if settings.DEBUG:
             request.session.set_expiry(600000)
         else:
@@ -378,6 +421,7 @@ class OfficialSignUpListView(View):
             OFFICIALS_SIGN_UP_LIST,
             OFFICIALS_SIGN_UP_CANCEL_FOR_GAMEDAY,
         )
+
         context = {
             **OfficialSignupService.get_signup_data(official_id, league),
             "official_id": official_id,
@@ -387,7 +431,23 @@ class OfficialSignUpListView(View):
             "url_pattern_official": OFFICIALS_PROFILE_LICENSE,
             "url_pattern_signup_cancel": OFFICIALS_SIGN_UP_CANCEL_FOR_GAMEDAY,
         }
-        return render(request, self.template_name, context)
+        response = render(request, self.template_name, context)
+        if restored_cookie:
+            _set_remember_cookie(response, restored_cookie)
+        return response
+
+
+class OfficialSignOutView(View):
+    def get(self, request, *args, **kwargs):
+        RememberMeService.revoke(request.COOKIES.get(MOODLE_REMEMBER_COOKIE))
+        request.session.pop(MOODLE_LOGGED_IN_USER, None)
+        messages.success(request, "Du wurdest abgemeldet.")
+
+        from officials.urls import OFFICIALS_MOODLE_LOGIN
+
+        response = redirect(reverse(OFFICIALS_MOODLE_LOGIN))
+        _delete_remember_cookie(response)
+        return response
 
 
 class CheckMoodleSessionMixin:

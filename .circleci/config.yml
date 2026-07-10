@@ -84,25 +84,6 @@ commands:
               docker push << parameters.registry_image_name >>:<< parameters.extra_tag >>
             fi
 
-  run_migrations_cmd:
-    parameters:
-      image_name:
-        type: string
-    steps:
-      - attach_workspace:
-          at: /tmp
-      - run:
-          name: Run Django Migrations
-          command: |
-            docker load -i /tmp/docker-images/<< parameters.image_name >>.tar
-            docker run --rm \
-              -e MYSQL_HOST="$MYSQL_HOST" \
-              -e MYSQL_DB_NAME="$MYSQL_DB_NAME" \
-              -e MYSQL_USER="$MYSQL_USER" \
-              -e MYSQL_PWD="$MYSQL_PWD" \
-              << parameters.image_name >>:latest \
-              bash -c "set -e && python manage.py migrate --noinput"
-
 jobs:
   python:
     docker:
@@ -404,16 +385,33 @@ jobs:
       - attach_workspace:
           at: /tmp
       - run:
-          name: Check Django Migrations
+          name: Check Django migrations against an ephemeral internal DB
           command: |
             docker load -i /tmp/docker-images/backend.tar
-            docker run --rm \
-              -e MYSQL_HOST="$MYSQL_HOST" \
-              -e MYSQL_DB_NAME="$MYSQL_DB_NAME" \
-              -e MYSQL_USER="$MYSQL_USER" \
-              -e MYSQL_PWD="$MYSQL_PWD" \
+            # Ephemeral MariaDB on an internal, CI-only docker network. It is never
+            # published to a host port, so nothing is exposed. The check validates
+            # OUR migrations against OUR schema — decoupled from any real/prod DB.
+            docker network create ls-ci-net || true
+            docker run -d --name ls-ci-db --network ls-ci-net \
+              -e MYSQL_ALLOW_EMPTY_PASSWORD=yes \
+              -e MYSQL_DATABASE=ci_check_db \
+              mariadb:latest \
+              --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+            # Wait for the DB to accept connections.
+            for i in $(seq 1 30); do
+              docker exec ls-ci-db mariadb-admin ping -uroot --silent 2>/dev/null && break
+              echo "waiting for ci db ($i)..."; sleep 2
+            done
+            # Run the real backend image against the fresh DB: verifies there are no
+            # missing migrations AND that the full set applies cleanly end-to-end.
+            docker run --rm --network ls-ci-net \
+              -e MYSQL_HOST=ls-ci-db \
+              -e MYSQL_DB_NAME=ci_check_db \
+              -e MYSQL_USER=root \
+              -e MYSQL_PWD="" \
               backend:latest \
-              bash -c "set -e && python manage.py check && python manage.py makemigrations --check --dry-run && python manage.py migrate --plan"
+              bash -c "set -e && python manage.py check && python manage.py makemigrations --check --dry-run && python manage.py migrate --no-input"
+            docker rm -f ls-ci-db || true
 
   test_compose_network:
     docker:
@@ -563,15 +561,6 @@ jobs:
           name: Update planned production deploy to FAILED
           command: circleci run release update "leaguesphere-prod" --status=FAILED 
           when: on_fail
-
-  run_migrations_production:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - setup_remote_docker:
-          version: 20.10.24
-      - run_migrations_cmd:
-          image_name: backend
 
   promote_to_prerelease:
     docker:
@@ -751,17 +740,9 @@ workflows:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+$/
             branches:
               ignore: /.*/
-      - run_migrations_production:
-          context: production
-          requires:
-            - deploy_production
-          filters:
-            tags:
-              only: /^v?[0-9]+\.[0-9]+\.[0-9]+$/
-
       - create_production_release:
           requires:
-            - run_migrations_production
+            - deploy_production
           filters:
             tags:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+$/

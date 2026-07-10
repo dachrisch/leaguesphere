@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "leaguesphere"
-version = "3.33.10"
+version = "4.1.0"
 requires-python = ">=3.12"
 dependencies = [
-    "Django==6.0.6",
+    "Django==6.0.7",
     "django-crispy-forms==2.6",
     "crispy-bootstrap5==2026.3",
     "numpy==2.5.1",
@@ -15,7 +15,7 @@ dependencies = [
     "django-pandas==0.6.7",
     "djangorestframework==3.17.1",
     "django-autocomplete-light==5.0.0",
-    "django-formtools==2.6.1",
+    "django-formtools==2.7",
     "Markdown==3.10.2",
     "django-cors-headers==4.9.0",
     "Pillow==12.3.0",

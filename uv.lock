@@ -263,16 +263,16 @@ wheels = [
 
 [[package]]
 name = "django"
-version = "6.0.6"
+version = "6.0.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asgiref" },
     { name = "sqlparse" },
     { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/78/29/ac41e16097af67066d97a7d5775c5d8e7efc5d0284f6b0a159e07b9adb92/django-6.0.6.tar.gz", hash = "sha256:ad03916ba59523d781ae5c3f631960c23d69a9d9c43cecda52fc23b47e953713", size = 10905525, upload-time = "2026-06-03T13:02:46.503Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/89/55/664f24ff81c9ea19cb7dfc851afeae1f3c2390c7aee01d4ded68b5c1580d/django-6.0.7.tar.gz", hash = "sha256:2998503fc083124fb58037084bfa00de323c7c743f05f1b4284e77bff0ab8890", size = 10921299, upload-time = "2026-07-07T13:51:26.485Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/eb/50/23f9dc45483419a3cc2085b498b25adfbf10642b2941c73e6d2dfaffc9ab/django-6.0.6-py3-none-any.whl", hash = "sha256:25148b1194c47c2e685e5f5e9c5d59c78b075dfd282cb9618861ba6c1708f4d2", size = 8373354, upload-time = "2026-06-03T13:02:41.72Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/ec/1ce5334b6a2c52ce619c23a0be8d366a57a0e080ebb2d88266e5c849157c/django-6.0.7-py3-none-any.whl", hash = "sha256:a037427c2288443a8c02a1b02295a31c239663aa682bc50b1976afb7cf6a769e", size = 8373344, upload-time = "2026-07-07T13:51:20.007Z" },
 ]
 
 [[package]]
@@ -327,14 +327,14 @@ wheels = [
 
 [[package]]
 name = "django-formtools"
-version = "2.6.1"
+version = "2.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7a/fe/0b3c56822d4ba217a169d5a6493b4e3610c6efcda3081d68dcbb2a3dd994/django_formtools-2.6.1.tar.gz", hash = "sha256:603ebc69a4b76b9bf38534f6e0245face007c7ed31bdfa073f8bf45cff5d7122", size = 91174, upload-time = "2026-05-16T13:30:07.26Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/40/fe/48cf5d38070577b83288f2bfd16a85aa864213d27d7dc7e8ec0feaa0a8ce/django_formtools-2.7.tar.gz", hash = "sha256:52b30c08571108023937e4b5d96a5cc35282ff0a2e51630aeea00e27d723d3ac", size = 92473, upload-time = "2026-07-09T16:06:34.341Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/b8/0f711b0953d8234c6084ab071108a73b755da81de445e1296d83f0261ab1/django_formtools-2.6.1-py3-none-any.whl", hash = "sha256:2848516dc66a7acde1cb595d225b30c1b837528948cad32bf0faafc6d8cc7af8", size = 157971, upload-time = "2026-05-16T13:30:06Z" },
+    { url = "https://files.pythonhosted.org/packages/c0/98/ea43bece0395668c88f7a5c80b4c027dc61306911109b6a4446561fcb74d/django_formtools-2.7-py3-none-any.whl", hash = "sha256:06e4ab1f9c999f5b2ec6670cb2d51b77117599f4f17c5855f38de158b1c7f247", size = 159553, upload-time = "2026-07-09T16:06:32.977Z" },
 ]
 
 [[package]]
@@ -541,7 +541,7 @@ wheels = [
 
 [[package]]
 name = "leaguesphere"
-version = "3.33.10"
+version = "4.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "crispy-bootstrap5" },
@@ -587,12 +587,12 @@ requires-dist = [
     { name = "black", marker = "extra == 'test'", specifier = "==26.5.1" },
     { name = "bump2version", marker = "extra == 'test'", specifier = "==1.0.1" },
     { name = "crispy-bootstrap5", specifier = "==2026.3" },
-    { name = "django", specifier = "==6.0.6" },
+    { name = "django", specifier = "==6.0.7" },
     { name = "django-autocomplete-light", specifier = "==5.0.0" },
     { name = "django-cors-headers", specifier = "==4.9.0" },
     { name = "django-crispy-forms", specifier = "==2.6" },
     { name = "django-debug-toolbar", marker = "extra == 'test'", specifier = "==7.0.0" },
-    { name = "django-formtools", specifier = "==2.6.1" },
+    { name = "django-formtools", specifier = "==2.7" },
     { name = "django-health-check", specifier = "==4.4.3" },
     { name = "django-pandas", specifier = "==0.6.7" },
     { name = "django-rest-knox", specifier = "==5.0.4" },
