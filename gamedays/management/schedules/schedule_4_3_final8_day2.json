@@ -3,11 +3,11 @@
     "field": "1",
     "games": [
       {
-        "stage": "Vorrunde",
+        "stage": "Finalrunde",
         "standing": "HF",
         "home": "P1 Gruppe 1",
         "away": "P2 Gruppe 2",
-        "official": "Team Officials"
+        "official": "P3 Gruppe 1"
       }
     ]
   },
@@ -15,11 +15,11 @@
     "field": "2",
     "games": [
       {
-        "stage": "Vorrunde",
+        "stage": "Finalrunde",
         "standing": "HF",
         "home": "P1 Gruppe 2",
         "away": "P2 Gruppe 1",
-        "official": "Team Officials"
+        "official": "P3 Gruppe 2"
       }
     ]
   },

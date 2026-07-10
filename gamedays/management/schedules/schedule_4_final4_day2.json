@@ -1,0 +1,21 @@
+[
+  {
+    "field": "3",
+    "games": [
+      {
+        "stage": "Vorrunde",
+        "standing": "HF/P3",
+        "home": "Gewinner Spiel 3",
+        "away": "Verlierer Spiel 4",
+        "official": "P4 Gruppe 1"
+      },
+      {
+        "stage": "Finalrunde",
+        "standing": "P1",
+        "home": "Gewinner Spiel 4",
+        "away": "Gewinner Spiel 5",
+        "official": "Team Officials"
+      }
+    ]
+  }
+]
