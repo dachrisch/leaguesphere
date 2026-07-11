@@ -1,0 +1,96 @@
+[
+  {
+    "field": 1,
+    "games": [
+      {
+        "stage": "Vorrunde",
+        "standing": "Gruppe 2",
+        "home": "1_0",
+        "away": "1_3",
+        "official": "Team Officials"
+      },
+      {
+        "stage": "Vorrunde",
+        "standing": "Gruppe 1",
+        "home": "0_0",
+        "away": "0_3",
+        "official": "Team Officials"
+      },
+      {
+        "stage": "Vorrunde",
+        "standing": "Gruppe 2",
+        "home": "1_0",
+        "away": "1_2",
+        "official": "Team Officials"
+      },
+      {
+        "stage": "Vorrunde",
+        "standing": "Gruppe 1",
+        "home": "0_0",
+        "away": "0_2",
+        "official": "Team Officials"
+      },
+      {
+        "stage": "Vorrunde",
+        "standing": "Gruppe 2",
+        "home": "1_0",
+        "away": "1_1",
+        "official": "Team Officials"
+      },
+      {
+        "stage": "Vorrunde",
+        "standing": "Gruppe 1",
+        "home": "0_0",
+        "away": "0_1",
+        "official": "Team Officials"
+      }
+    ]
+  },
+  {
+    "field": "2",
+    "games": [
+      {
+        "stage": "Vorrunde",
+        "standing": "Gruppe 2",
+        "home": "1_1",
+        "away": "1_2",
+        "official": "Team Officials"
+      },
+      {
+        "stage": "Vorrunde",
+        "standing": "Gruppe 1",
+        "home": "0_1",
+        "away": "0_2",
+        "official": "Team Officials"
+      },
+      {
+        "stage": "Vorrunde",
+        "standing": "Gruppe 2",
+        "home": "1_1",
+        "away": "1_3",
+        "official": "Team Officials"
+      },
+      {
+        "stage": "Vorrunde",
+        "standing": "Gruppe 1",
+        "home": "0_1",
+        "away": "0_3",
+        "official": "Team Officials"
+      },
+      {
+        "stage": "Vorrunde",
+        "standing": "Gruppe 2",
+        "home": "1_2",
+        "away": "1_3",
+        "official": "Team Officials"
+      },
+      {
+        "stage": "Vorrunde",
+        "standing": "Gruppe 1",
+        "home": "0_2",
+        "away": "0_3",
+        "official": "Team Officials"
+      }
+    ]
+  }
+]

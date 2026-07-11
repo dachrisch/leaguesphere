@@ -1,0 +1,45 @@
+[
+  {
+    "field": "1",
+    "games": [
+      {
+        "stage": "Finalrunde",
+        "standing": "HF",
+        "home": "P1 Gruppe 1",
+        "away": "P2 Gruppe 2",
+        "official": "P3 Gruppe 1"
+      }
+    ]
+  },
+  {
+    "field": "2",
+    "games": [
+      {
+        "stage": "Finalrunde",
+        "standing": "HF",
+        "home": "P1 Gruppe 2",
+        "away": "P2 Gruppe 1",
+        "official": "P3 Gruppe 2"
+      }
+    ]
+  },
+  {
+    "field": "3",
+    "games": [
+      {
+        "stage": "Finalrunde",
+        "standing": "P3",
+        "home": "Verlierer HF1",
+        "away": "Verlierer HF2",
+        "official": "Team Officials"
+      },
+      {
+        "stage": "Finalrunde",
+        "standing": "P1",
+        "home": "Gewinner HF1",
+        "away": "Gewinner HF2",
+        "official": "Team Officials"
+      }
+    ]
+  }
+]
