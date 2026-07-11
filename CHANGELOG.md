@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.2.0](https://github.com/dachrisch/leaguesphere/compare/v4.1.1...v4.2.0) (2026-07-11)
+
+
+### Features
+
+* finals 2026 templates ([#1528](https://github.com/dachrisch/leaguesphere/issues/1528)) ([e903691](https://github.com/dachrisch/leaguesphere/commit/e9036913c1584181d8e6362307febf5f2cdde738))
+
 ## [4.1.1](https://github.com/dachrisch/leaguesphere/compare/v4.1.0...v4.1.1) (2026-07-10)
 
 
