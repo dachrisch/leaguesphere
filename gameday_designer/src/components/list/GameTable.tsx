@@ -363,20 +363,13 @@ const GameTable: React.FC<GameTableProps> = memo(({
     if (!targetPath) return [];
 
     const targetStageOrder = targetPath.stage.data.order;
-    const targetStageId = targetPath.stage.id;
-    const targetNodeIndex = allNodes.findIndex(n => n.id === targetGame.id);
 
     return allNodes
       .filter((node): node is GameNode => {
         if (!isGameNode(node) || node.id === targetGame.id) return false;
         const path = getGamePath(node.id, allNodes);
         if (!path) return false;
-        if (path.stage.data.order < targetStageOrder) return true;
-        if (path.stage.id === targetStageId) {
-          const sourceNodeIndex = allNodes.findIndex(n => n.id === node.id);
-          return sourceNodeIndex >= 0 && sourceNodeIndex < targetNodeIndex;
-        }
-        return false;
+        return path.stage.data.order < targetStageOrder || path.stage.id === targetPath.stage.id;
       })
       .sort((a, b) => {
         const pathA = getGamePath(a.id, allNodes)!;
