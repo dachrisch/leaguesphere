@@ -19,6 +19,10 @@ from gamedays.models import (
     TeamLog,
     Person,
     ResourceUrl,
+    Tournament,
+    TournamentRow,
+    TournamentColumn,
+    TournamentColumnGame,
 )
 
 
@@ -54,6 +58,7 @@ class SeasonLeagueTeamFactory(DjangoModelFactory):
 
     season = factory.SubFactory(SeasonFactory)
     league = factory.SubFactory(LeagueFactory)
+
     @factory.post_generation
     def teams(self, create, extracted, **kwargs):
         if not create:
@@ -104,6 +109,7 @@ class GamedayFactory(DjangoModelFactory):
     season = factory.SubFactory(SeasonFactory)
     league = factory.SubFactory(LeagueFactory)
     author = factory.SubFactory(UserFactory)
+
 
 class ResourceUrlFactory(DjangoModelFactory):
     class Meta:
@@ -159,3 +165,35 @@ class PersonFactory(DjangoModelFactory):
     year_of_birth = factory.Faker("random_int", min=1900, max=2200)
     first_name = factory.Faker("first_name")
     last_name = factory.Faker("last_name")
+
+
+class TournamentFactory(DjangoModelFactory):
+    class Meta:
+        model = Tournament
+
+    name = factory.Sequence(lambda n: f"Tournament {n}")
+
+
+class TournamentRowFactory(DjangoModelFactory):
+    class Meta:
+        model = TournamentRow
+
+    tournament = factory.SubFactory(TournamentFactory)
+    order = 0
+
+
+class TournamentColumnFactory(DjangoModelFactory):
+    class Meta:
+        model = TournamentColumn
+
+    row = factory.SubFactory(TournamentRowFactory)
+    order = 0
+
+
+class TournamentColumnGameFactory(DjangoModelFactory):
+    class Meta:
+        model = TournamentColumnGame
+
+    column = factory.SubFactory(TournamentColumnFactory)
+    gameinfo = factory.SubFactory(GameinfoFactory)
+    order = 0

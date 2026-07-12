@@ -62,7 +62,7 @@ class SeasonLeagueTeam(models.Model):
     teams = models.ManyToManyField(Team)
 
     def __str__(self):
-        return f'{self.season.name} {self.league} -> {self.teams.count()} Teams'
+        return f"{self.season.name} {self.league} -> {self.teams.count()} Teams"
 
 
 class Gameday(models.Model):
@@ -265,7 +265,9 @@ class TeamLog(models.Model):
 
 class UserProfile(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    avatar = models.ImageField('Avatar', upload_to="media/teammanager/avatars", blank=True, null=True)
+    avatar = models.ImageField(
+        "Avatar", upload_to="media/teammanager/avatars", blank=True, null=True
+    )
     team = models.ForeignKey(Team, on_delete=models.PROTECT, null=True)
     firstname = models.CharField(max_length=20, null=True)
     lastname = models.CharField(max_length=20, null=True)
@@ -284,12 +286,12 @@ class UserProfile(models.Model):
         permisssions = self.get_permisions()
         is_teammanager = False
         for permission in permisssions:
-            if permission.permission.name == 'Teammanager':
+            if permission.permission.name == "Teammanager":
                 is_teammanager = True
         return is_teammanager
 
     def __str__(self):
-        return f'{self.team.name}: {self.firstname} {self.lastname}'
+        return f"{self.team.name}: {self.firstname} {self.lastname}"
 
 
 class Permissions(models.Model):
@@ -308,7 +310,7 @@ class UserPermissions(models.Model):
     objects: QuerySet = models.Manager()
 
     def __str__(self):
-        return f'{self.permission.name}: {self.user.firstname} {self.user.lastname}'
+        return f"{self.permission.name}: {self.user.firstname} {self.user.lastname}"
 
 
 class Achievement(models.Model):
@@ -367,15 +369,81 @@ class ResourceUrl(models.Model):
     )
 
     url = models.URLField(
-        max_length=500,
-        help_text="URL welche auf der Gameday Seite sichtbar sein soll"
+        max_length=500, help_text="URL welche auf der Gameday Seite sichtbar sein soll"
     )
-    description = models.CharField(
-        max_length=50,
-        help_text="Beschreibung der URL"
-    )
+    description = models.CharField(max_length=50, help_text="Beschreibung der URL")
 
     objects: QuerySet["ResourceUrl"] = models.Manager()
 
     def __str__(self):
         return f"{self.gameday.pk}__{self.pk} - {self.description} -> {self.url}"
+
+
+class Tournament(models.Model):
+    name = models.CharField(max_length=200)
+    title = models.CharField(max_length=200, blank=True, default="")
+    location = models.CharField(max_length=200, blank=True, default="")
+    description = models.TextField(blank=True, default="")
+
+    objects: QuerySet["Tournament"] = models.Manager()
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class TournamentRow(models.Model):
+    tournament = models.ForeignKey(
+        Tournament, on_delete=models.CASCADE, related_name="rows"
+    )
+    title = models.CharField(max_length=200, blank=True, default="")
+    order = models.PositiveIntegerField(default=0)
+
+    objects: QuerySet["TournamentRow"] = models.Manager()
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return (
+            f"{self.tournament.name} - Row {self.order}: {self.title or '(untitled)'}"
+        )
+
+
+class TournamentColumn(models.Model):
+    row = models.ForeignKey(
+        TournamentRow, on_delete=models.CASCADE, related_name="columns"
+    )
+    title = models.CharField(max_length=200, blank=True, default="")
+    order = models.PositiveIntegerField(default=0)
+
+    objects: QuerySet["TournamentColumn"] = models.Manager()
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"{self.row} / Col {self.order}: {self.title or '(untitled)'}"
+
+
+class TournamentColumnGame(models.Model):
+    column = models.ForeignKey(
+        TournamentColumn, on_delete=models.CASCADE, related_name="column_games"
+    )
+    gameinfo = models.ForeignKey(Gameinfo, on_delete=models.CASCADE)
+    order = models.PositiveIntegerField(default=0)
+
+    objects: QuerySet["TournamentColumnGame"] = models.Manager()
+
+    class Meta:
+        ordering = ["order", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["column", "gameinfo"], name="unique_gameinfo_per_column"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.column} -> Gameinfo #{self.gameinfo_id} (pos {self.order})"

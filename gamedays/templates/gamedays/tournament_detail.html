@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block og_title %}{{ tournament.title|default:tournament.name }}{% endblock %}
+{% block og_description %}{{ tournament.description|truncatewords:30 }}{% endblock %}
+{% block og_type %}website{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>{{ tournament.title|default:tournament.name }}</h1>
+</div>
+
+{% if tournament.location or tournament.description %}
+<div class="card mb-3">
+    <div class="card-body">
+        {% if tournament.location %}<p class="mb-1"><strong>Ort:</strong> {{ tournament.location }}</p>{% endif %}
+        {% if tournament.description %}<p class="mb-0">{{ tournament.description }}</p>{% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% for row in info.rows %}
+<div class="mb-4">
+    {% if row.title %}<h3>{{ row.title }}</h3>{% endif %}
+    <div class="row g-3">
+        {% for column in row.columns %}
+        <div class="{{ column.col_class }}">
+            <div class="card h-100">
+                {% if column.title %}
+                <div class="card-header"><h5 class="mb-0">{{ column.title }}</h5></div>
+                {% endif %}
+                <div class="card-body" style="overflow: auto">
+                    {% if column.table_html %}
+                        {{ column.table_html | safe }}
+                    {% else %}
+                        <p class="text-muted mb-0"><small><i class="bi bi-info-circle"></i> Keine Spiele</small></p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
