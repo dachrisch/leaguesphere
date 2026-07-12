@@ -19,7 +19,7 @@ import type {
 } from '../../types/flowchart';
 import { isGameNode, isStageNode } from '../../types/flowchart';
 import { isRankReference } from '../../types/designer';
-import { findSourceGameForReference, findSourceStageForReference, getGamePath } from '../../utils/edgeAnalysis';
+import { findSourceGameForReference, findSourceStageForReference, getGamePath, getEligibleSourceGames as computeEligibleSourceGames } from '../../utils/edgeAnalysis';
 import { getStageParticipants, getStageGroups, getGroupParticipants } from '../../utils/rankingEngine';
 import { isValidTimeFormat } from '../../utils/timeCalculation';
 import { ICONS } from '../../utils/iconConstants';
@@ -358,25 +358,11 @@ const GameTable: React.FC<GameTableProps> = memo(({
     [handleSaveEdit, handleCancelEdit]
   );
 
-  const getEligibleSourceGames = useCallback((targetGame: GameNode): GameNode[] => {
-    const targetPath = getGamePath(targetGame.id, allNodes);
-    if (!targetPath) return [];
-
-    const targetStageOrder = targetPath.stage.data.order;
-
-    return allNodes
-      .filter((node): node is GameNode => {
-        if (!isGameNode(node) || node.id === targetGame.id) return false;
-        const path = getGamePath(node.id, allNodes);
-        if (!path) return false;
-        return path.stage.data.order < targetStageOrder || path.stage.id === targetPath.stage.id;
-      })
-      .sort((a, b) => {
-        const pathA = getGamePath(a.id, allNodes)!;
-        const pathB = getGamePath(b.id, allNodes)!;
-        return pathA.stage.data.order - pathB.stage.data.order;
-      });
-  }, [allNodes]);
+  const getEligibleSourceGames = useCallback(
+    (targetGame: GameNode): GameNode[] =>
+      computeEligibleSourceGames(targetGame, allNodes, edges),
+    [allNodes, edges]
+  );
 
   const handleTeamChange = useCallback((gameId: string, slot: 'home' | 'away', value: string) => {
     onRemoveEdgeFromSlot(gameId, slot);

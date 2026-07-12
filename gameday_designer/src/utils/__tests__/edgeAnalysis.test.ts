@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   findSourceGameForReference,
   findTargetGamesForSource,
+  getDownstreamGameIds,
+  getEligibleSourceGames,
   getGamePath,
   areGamesInSameStage,
   areGamesInSameField,
@@ -570,6 +572,118 @@ describe('edgeAnalysis', () => {
 
       expect(result).toHaveLength(1);
       expect(result).toContainEqual(stage);
+    });
+  });
+
+  describe('getDownstreamGameIds', () => {
+    it('returns an empty set when the game feeds nothing', () => {
+      const result = getDownstreamGameIds('game1', []);
+
+      expect(result.size).toBe(0);
+    });
+
+    it('returns games directly fed by the game', () => {
+      const edges = [createEdge('e1', 'game1', 'game2', 'winner', 'home')];
+
+      const result = getDownstreamGameIds('game1', edges);
+
+      expect(result).toEqual(new Set(['game2']));
+    });
+
+    it('follows the chain transitively', () => {
+      const edges = [
+        createEdge('e1', 'game1', 'game2', 'winner', 'home'),
+        createEdge('e2', 'game2', 'game3', 'loser', 'away'),
+      ];
+
+      const result = getDownstreamGameIds('game1', edges);
+
+      expect(result).toEqual(new Set(['game2', 'game3']));
+    });
+
+    it('does not include upstream games that feed into it', () => {
+      const edges = [createEdge('e1', 'game1', 'game2', 'winner', 'home')];
+
+      const result = getDownstreamGameIds('game2', edges);
+
+      expect(result.size).toBe(0);
+    });
+
+    it('terminates on an existing cycle without infinite recursion', () => {
+      const edges = [
+        createEdge('e1', 'game1', 'game2', 'winner', 'home'),
+        createEdge('e2', 'game2', 'game1', 'winner', 'home'),
+      ];
+
+      const result = getDownstreamGameIds('game1', edges);
+
+      expect(result).toEqual(new Set(['game2', 'game1']));
+    });
+  });
+
+  describe('getEligibleSourceGames', () => {
+    // Two fields, a shared preliminary stage (order 0) spanning both fields,
+    // and a later final stage (order 1). This mirrors the customer's
+    // double-elimination layout where cross-field winner/loser references are
+    // needed.
+    const field1 = createField('field1', 'Field 1', 0);
+    const field2 = createField('field2', 'Field 2', 1);
+    const prelimF1 = createStage('prelim-f1', 'Prelims', 0, 'field1');
+    const prelimF2 = createStage('prelim-f2', 'Prelims', 0, 'field2');
+    const finalF1 = createStage('final-f1', 'Final', 1, 'field1');
+
+    const gameA = createGame('gameA', 'M1', 'prelim-f1'); // prelim, field 1
+    const gameB = createGame('gameB', 'M2', 'prelim-f2'); // prelim, field 2
+    const gameC = createGame('gameC', 'M3', 'prelim-f1'); // prelim, field 1
+    const gameFinal = createGame('gameFinal', 'Final', 'final-f1'); // final
+
+    const nodes: FlowNode[] = [
+      field1, field2, prelimF1, prelimF2, finalF1,
+      gameA, gameB, gameC, gameFinal,
+    ];
+
+    const idsOf = (games: GameNode[]) => games.map(g => g.id).sort();
+
+    it('includes earlier-stage games as sources for a later-stage game', () => {
+      const result = getEligibleSourceGames(gameFinal, nodes, []);
+
+      expect(idsOf(result)).toEqual(['gameA', 'gameB', 'gameC']);
+    });
+
+    it('includes same-stage games on a different field (cross-field)', () => {
+      // gameC (field 1, prelim) should be able to source gameB (field 2, prelim)
+      const result = getEligibleSourceGames(gameC, nodes, []);
+
+      expect(idsOf(result)).toContain('gameB');
+    });
+
+    it('excludes the target game itself', () => {
+      const result = getEligibleSourceGames(gameC, nodes, []);
+
+      expect(idsOf(result)).not.toContain('gameC');
+    });
+
+    it('excludes later-stage games (results flow forward)', () => {
+      const result = getEligibleSourceGames(gameA, nodes, []);
+
+      expect(idsOf(result)).not.toContain('gameFinal');
+    });
+
+    it('excludes a downstream game to prevent a cycle', () => {
+      // gameA already feeds gameC; offering gameC as a source for gameA would
+      // create A -> C -> A.
+      const edges = [createEdge('e1', 'gameA', 'gameC', 'winner', 'home')];
+
+      const result = getEligibleSourceGames(gameA, nodes, edges);
+
+      expect(idsOf(result)).not.toContain('gameC');
+    });
+
+    it('sorts eligible games by stage order', () => {
+      const result = getEligibleSourceGames(gameFinal, nodes, []);
+      const orders = result.map(g => getGamePath(g.id, nodes)!.stage.data.order);
+
+      expect(orders).toEqual([...orders].sort((a, b) => a - b));
     });
   });
 });

@@ -106,6 +106,93 @@ export function findTargetGamesForSource(
 }
 
 /**
+ * Get all games reachable downstream from a given game.
+ *
+ * Follows winner/loser (game-to-game) edges in the source -> target direction,
+ * returning every game the given game feeds into, directly or transitively.
+ *
+ * Cycle protection: a game must never draw a team from one of its own
+ * downstream games, because that connection would close a loop. This set is
+ * the list of games that are therefore ineligible as sources for the given
+ * game. Robust against pre-existing cycles (visited-guard prevents infinite
+ * recursion).
+ *
+ * @param gameId - ID of the game to start from
+ * @param edges - All edges in the flowchart
+ * @returns Set of downstream game IDs (the starting game is included only if it
+ *   is part of an existing cycle back to itself)
+ */
+export function getDownstreamGameIds(
+  gameId: string,
+  edges: FlowEdge[]
+): Set<string> {
+  const downstream = new Set<string>();
+  const queue: string[] = [gameId];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const { gameId: fedGameId } of findTargetGamesForSource(current, edges)) {
+      if (!downstream.has(fedGameId)) {
+        downstream.add(fedGameId);
+        queue.push(fedGameId);
+      }
+    }
+  }
+
+  return downstream;
+}
+
+/**
+ * Get the games that may act as a winner/loser source for a target game.
+ *
+ * A game is an eligible source when all of the following hold:
+ *  - it is a real game with a resolvable field > stage > game path;
+ *  - it is not the target game itself;
+ *  - it sits in the target's stage or an earlier one, because results only
+ *    flow forward through stages (a later game cannot feed an earlier one);
+ *  - feeding it into the target would not create a cycle — i.e. the target
+ *    does not already feed that game, directly or transitively.
+ *
+ * Same-stage games on other fields are eligible, which is what allows
+ * cross-field references (e.g. the winner of a game on field 1 playing a game
+ * on field 2). Results are sorted by stage order for stable display.
+ *
+ * @param targetGame - The game that would receive the team
+ * @param nodes - All nodes in the flowchart
+ * @param edges - All edges in the flowchart
+ * @returns Eligible source games, sorted by stage order
+ */
+export function getEligibleSourceGames(
+  targetGame: GameNode,
+  nodes: FlowNode[],
+  edges: FlowEdge[]
+): GameNode[] {
+  const targetPath = getGamePath(targetGame.id, nodes);
+  if (!targetPath) return [];
+
+  const downstreamOfTarget = getDownstreamGameIds(targetGame.id, edges);
+
+  const isInEarlierOrSameStage = (game: GameNode): boolean => {
+    const path = getGamePath(game.id, nodes);
+    return path !== null && path.stage.data.order <= targetPath.stage.data.order;
+  };
+
+  const wouldNotCreateCycle = (game: GameNode): boolean =>
+    !downstreamOfTarget.has(game.id);
+
+  return nodes
+    .filter(isGameNode)
+    .filter((game) => game.id !== targetGame.id)
+    .filter(isInEarlierOrSameStage)
+    .filter(wouldNotCreateCycle)
+    .sort((a, b) => {
+      const orderA = getGamePath(a.id, nodes)!.stage.data.order;
+      const orderB = getGamePath(b.id, nodes)!.stage.data.order;
+      return orderA - orderB;
+    });
+}
+
+/**
  * Get the container hierarchy path for a game.
  *
  * Returns the field, stage, and game nodes that make up
