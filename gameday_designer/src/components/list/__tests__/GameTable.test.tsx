@@ -318,4 +318,45 @@ describe('GameTable', () => {
       // For deeper coverage we might need to trigger the Select component.
     });
   });
+
+  describe('getEligibleSourceGames — same-stage cross-field', () => {
+    it('renders table with games from same stage on different fields without error', () => {
+      // Setup: two fields, same stage
+      const field1 = createFieldNode('field-1', { name: 'Field 1', order: 0 });
+      const field2 = createFieldNode('field-2', { name: 'Field 2', order: 1 });
+      const sharedStage = createStageNode('stage-1', 'field-1', { name: 'Prelims', category: 'preliminary', order: 0 });
+
+      const game1 = createGameNodeInStage('game-1', 'stage-1', { standing: 'M1', stage: 'Prelims' });
+      const game3 = createGameNodeInStage('game-3', 'stage-1', { standing: 'M3', stage: 'Prelims' });
+      const game2 = createGameNodeInStage('game-2', 'stage-1', { standing: 'M2', stage: 'Prelims' });
+
+      render(
+        <GamedayProvider>
+          <GameTable
+            games={[game2]}
+            edges={[]}
+            allNodes={[field1, field2, sharedStage, game1, game3, game2]}
+            globalTeams={[team1]}
+            globalTeamGroups={[teamGroup1]}
+            onUpdate={mockOnUpdate}
+            onDelete={mockOnDelete}
+            onSelectNode={mockOnSelectNode}
+            onHighlightElement={mockOnHighlightElement}
+            selectedNodeId={null}
+            onAssignTeam={mockOnAssignTeam}
+            onSwapTeams={mockOnSwapTeams}
+            onAddGameToGameEdge={mockOnAddGameToGameEdge}
+            onAddStageToGameEdge={mockOnAddStageToGameEdge}
+            onRemoveEdgeFromSlot={mockOnRemoveEdgeFromSlot}
+            onOpenResultModal={mockOnOpenResultModal}
+            onDynamicReferenceClick={mockOnDynamicReferenceClick}
+            onNotify={mockOnNotify}
+          />
+        </GamedayProvider>
+      );
+
+      // Should render without error — games from same stage on different fields are now eligible
+      expect(screen.getByText('M2')).toBeInTheDocument();
+    });
+  });
 });
