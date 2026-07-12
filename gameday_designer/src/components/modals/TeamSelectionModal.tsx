@@ -81,7 +81,6 @@ const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
       ) : (
         <TeamPickerStep
           requiredTeams={1}
-          maxTeams={mode === 'group' ? Infinity : 1}
           availableTeams={availableTeams}
           onConfirm={handleConfirm}
           onBack={onHide}
