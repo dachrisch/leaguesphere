@@ -11,13 +11,11 @@ interface TeamPickerStepProps {
   onAutoGenerateTeams?: (count: number) => Promise<GlobalTeam[]>;
   backButtonLabel?: string;
   preselectedTeams?: GlobalTeam[];
-  maxTeams?: number;
 }
 
 const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
   requiredTeams, availableTeams, onConfirm, onBack,
   onAutoGenerateTeams, backButtonLabel = 'Back to Library', preselectedTeams = [],
-  maxTeams,
 }) => {
   const [selectedIds, setSelectedIds] = useState<string[]>(() => {
     const preselectedNames = new Set(preselectedTeams.map(t => t.label.toLowerCase()));
@@ -208,8 +206,7 @@ const TeamPickerStep: React.FC<TeamPickerStepProps> = ({
           disabled={!canConfirm}
           onClick={() => {
             const teamMap = new Map(allTeams.map(t => [t.id, t]));
-            const limit = maxTeams ?? requiredTeams;
-            const selectedTeams = selectedIds.slice(0, limit)
+            const selectedTeams = selectedIds.slice(0, requiredTeams)
               .map(id => teamMap.get(id))
               .filter(Boolean) as GlobalTeam[];
             onConfirm(selectedTeams);

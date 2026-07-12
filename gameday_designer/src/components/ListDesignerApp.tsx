@@ -188,15 +188,13 @@ const ListDesignerApp: React.FC = () => {
   const lastSavedStateRef = useRef<string>('');
   const initialLoadRef = useRef(true);
   const isSavingRef = useRef(false);
-  const saveQueuedRef = useRef(false);
-  const pendingSaveRef = useRef<{ timer: NodeJS.Timeout | null }>({ timer: null });
-
+  const pendingSaveRef = useRef<{ timer: NodeJS.Timeout | null; data: unknown }>({ timer: null, data: null });
+  
   const latestStateRef = useRef<typeof flowState | null>(null);
   useEffect(() => {
     latestStateRef.current = flowState;
   }, [flowState]);
 
-  // Debounced auto-save with queue to prevent lost updates
   useEffect(() => {
     if (initialLoadRef.current) {
       initialLoadRef.current = false;
@@ -215,12 +213,8 @@ const ListDesignerApp: React.FC = () => {
     }
 
     pendingSaveRef.current.timer = setTimeout(async () => {
-      if (isSavingRef.current) {
-        // Queue a retry after the current save completes
-        saveQueuedRef.current = true;
-        return;
-      }
-
+      if (isSavingRef.current) return;
+      
       try {
         isSavingRef.current = true;
         const stateToSave = latestStateRef.current?.exportState() || currentState;
@@ -232,19 +226,6 @@ const ListDesignerApp: React.FC = () => {
       } finally {
         isSavingRef.current = false;
         pendingSaveRef.current.timer = null;
-
-        // If a save was queued during this one, trigger it now
-        if (saveQueuedRef.current) {
-          saveQueuedRef.current = false;
-          const queuedState = latestStateRef.current?.exportState();
-          if (queuedState) {
-            saveData(queuedState).then(() => {
-              lastSavedStateRef.current = JSON.stringify(queuedState);
-            }).catch(() => {
-              addNotification(t('ui:notification.autoSaveFailed'), 'warning', t('ui:notification.title.autoSave'));
-            });
-          }
-        }
       }
     }, 1500);
 
@@ -256,23 +237,6 @@ const ListDesignerApp: React.FC = () => {
       }
     };
   }, [flowState, saveData, isLocked, addNotification, t]);
-
-  // Flush pending save on page unload
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (pendingSaveRef.current.timer) {
-        clearTimeout(pendingSaveRef.current.timer);
-      }
-      if (!isSavingRef.current) {
-        const stateToSave = latestStateRef.current?.exportState();
-        if (stateToSave) {
-          saveData(stateToSave).catch(() => {});
-        }
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [saveData]);
 
   useEffect(() => {
     if (id) {
