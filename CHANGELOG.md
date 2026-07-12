@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.2.2](https://github.com/dachrisch/leaguesphere/compare/v4.2.1...v4.2.2) (2026-07-12)
+
+
+### Bug Fixes
+
+* **deps:** update dependency django-rest-knox to v5.1.0 ([#1539](https://github.com/dachrisch/leaguesphere/issues/1539)) ([dc0076f](https://github.com/dachrisch/leaguesphere/commit/dc0076fcc9c3b0f345e43a8dc4dc40107a0ac319))
+* **gameday-designer:** resolve customer-reported bugs ([#1535](https://github.com/dachrisch/leaguesphere/issues/1535)) ([6596269](https://github.com/dachrisch/leaguesphere/commit/6596269f9774b7d0ffd6f1ad3b8eacd8ce8121fd))
+
 ## [4.2.1](https://github.com/dachrisch/leaguesphere/compare/v4.2.0...v4.2.1) (2026-07-11)
 
 
