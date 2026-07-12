@@ -8,6 +8,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import GamedayMetadataAccordion from "../GamedayMetadataAccordion";
 import { GamedayMetadata } from "../types/flowchart";
 import i18n from "../../i18n/testConfig";
+import { gamedayApi } from "../../api/gamedayApi";
+
+// Mock the network layer so the component's mount effects (listSeasons/
+// listLeagues/getGameday) resolve instead of rejecting. Unmocked axios calls
+// reject asynchronously after the test finishes, and the resulting late
+// console.error lands during vitest worker teardown -> "Closing rpc while
+// onUserConsoleLog was pending" (flaky EnvironmentTeardownError).
+vi.mock("../../api/gamedayApi");
 
 describe('GamedayMetadataAccordion Coverage', () => {
   const mockMetadata: GamedayMetadata = {
@@ -26,6 +34,12 @@ describe('GamedayMetadataAccordion Coverage', () => {
     await i18n.changeLanguage('en');
     vi.clearAllMocks();
     vi.useRealTimers();
+    vi.mocked(gamedayApi.listSeasons).mockResolvedValue([]);
+    vi.mocked(gamedayApi.listLeagues).mockResolvedValue([]);
+    vi.mocked(gamedayApi.getGameday).mockResolvedValue({
+      ...mockMetadata,
+      resource_urls: [],
+    } as never);
   });
 
   afterEach(() => {
