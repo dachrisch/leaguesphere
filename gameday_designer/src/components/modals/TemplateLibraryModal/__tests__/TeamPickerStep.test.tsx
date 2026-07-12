@@ -115,4 +115,40 @@ describe('TeamPickerStep', () => {
 
     expect(screen.queryByText(/auto-generate/i)).not.toBeInTheDocument();
   });
+
+  it('passes all selected teams when maxTeams is Infinity', () => {
+    const onConfirm = vi.fn();
+    render(<TeamPickerStep requiredTeams={1} maxTeams={Infinity} availableTeams={mockTeams} onConfirm={onConfirm} onBack={vi.fn()} />);
+
+    // Select all three teams
+    fireEvent.click(screen.getByText('Team A'));
+    fireEvent.click(screen.getByText('Team B'));
+    fireEvent.click(screen.getByText('Team C'));
+
+    fireEvent.click(screen.getByRole('button', { name: /apply/i }));
+
+    expect(onConfirm).toHaveBeenCalledWith([
+      mockTeams[0],
+      mockTeams[1],
+      mockTeams[2],
+    ]);
+  });
+
+  it('respects maxTeams limit when set', () => {
+    const onConfirm = vi.fn();
+    render(<TeamPickerStep requiredTeams={1} maxTeams={2} availableTeams={mockTeams} onConfirm={onConfirm} onBack={vi.fn()} />);
+
+    // Select all three teams
+    fireEvent.click(screen.getByText('Team A'));
+    fireEvent.click(screen.getByText('Team B'));
+    fireEvent.click(screen.getByText('Team C'));
+
+    fireEvent.click(screen.getByRole('button', { name: /apply/i }));
+
+    // Only first 2 should be passed through
+    expect(onConfirm).toHaveBeenCalledWith([
+      mockTeams[0],
+      mockTeams[1],
+    ]);
+  });
 });
