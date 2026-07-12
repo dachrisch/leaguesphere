@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.2.3](https://github.com/dachrisch/leaguesphere/compare/v4.2.2...v4.2.3) (2026-07-12)
+
+
+### Bug Fixes
+
+* **deps:** update dependency postcss to v8.5.18 ([#1540](https://github.com/dachrisch/leaguesphere/issues/1540)) ([bba046a](https://github.com/dachrisch/leaguesphere/commit/bba046aa2a287cd7ae36885819ca941bd98f8636))
+* **gameday-designer:** revive [#1535](https://github.com/dachrisch/leaguesphere/issues/1535) — resolve customer-reported bugs ([#1538](https://github.com/dachrisch/leaguesphere/issues/1538)) ([59c82a0](https://github.com/dachrisch/leaguesphere/commit/59c82a049bbfcef3996cee87186d7358f020796d))
+
 ## [4.2.2](https://github.com/dachrisch/leaguesphere/compare/v4.2.1...v4.2.2) (2026-07-12)
 
 
