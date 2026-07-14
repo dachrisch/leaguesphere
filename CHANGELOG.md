@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.5.0](https://github.com/dachrisch/leaguesphere/compare/v4.4.0...v4.5.0) (2026-07-14)
+
+
+### Features
+
+* **admin:** add maintenance mode toggle to SiteConfiguration admin ([d64bf10](https://github.com/dachrisch/leaguesphere/commit/d64bf104054e04c14ace06a71b610db3596b2082))
+* **admin:** add maintenance mode toggle to SiteConfiguration admin ([#1555](https://github.com/dachrisch/leaguesphere/issues/1555)) ([a31b2fe](https://github.com/dachrisch/leaguesphere/commit/a31b2fea1ebacc07ed668b057b3ebcc74766a302))
+
 ## [4.4.0](https://github.com/dachrisch/leaguesphere/compare/v4.3.0...v4.4.0) (2026-07-14)
 
 
