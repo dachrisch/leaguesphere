@@ -184,6 +184,40 @@ class TestPublishCreatesGameinfos:
         assert response.status_code == 200
         assert Gameinfo.objects.filter(gameday=self.gameday).count() == 0
 
+    def test_republish_blocked_when_results_already_entered(self):
+        """Re-publishing a gameday that already has entered scores must be refused
+        and must NOT delete the existing games/results.
+
+        Regression guard: gd874 lost all entered results because unlock + re-publish
+        ran CanvasPublishService, which deletes every Gameinfo (CASCADE to Gameresult).
+        """
+        GamedayDesignerState.objects.create(
+            gameday=self.gameday, state_data=MINIMAL_CANVAS_STATE
+        )
+        # First publish → 1 Gameinfo + 2 Gameresults (no scores yet)
+        assert self._publish().status_code == 200
+        gi = Gameinfo.objects.get(gameday=self.gameday)
+
+        # A score gets entered for the played game
+        home = Gameresult.objects.get(gameinfo=gi, isHome=True)
+        home.fh, home.sh = 3, 4
+        home.save()
+
+        # Unlock back to DRAFT (mirrors the frontend unlock flow)
+        unlock = self.client.patch(
+            f"/api/gamedays/{self.gameday.id}/", {"status": "DRAFT"}, format="json"
+        )
+        assert unlock.status_code == 200
+
+        # Re-publish must be refused because entered results would be destroyed
+        resp = self._publish()
+        assert resp.status_code == 409
+
+        # Existing game and its entered score must be untouched
+        assert Gameinfo.objects.filter(gameday=self.gameday).count() == 1
+        home.refresh_from_db()
+        assert (home.fh, home.sh) == (3, 4)
+
     def test_publish_with_canvas_state_creates_gameinfos(self):
         GamedayDesignerState.objects.create(
             gameday=self.gameday, state_data=MINIMAL_CANVAS_STATE
