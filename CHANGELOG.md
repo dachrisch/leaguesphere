@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.2.4](https://github.com/dachrisch/leaguesphere/compare/v4.2.3...v4.2.4) (2026-07-14)
+
+
+### Bug Fixes
+
+* **deps:** update dependency typescript-eslint to v8.64.0 ([#1545](https://github.com/dachrisch/leaguesphere/issues/1545)) ([335f369](https://github.com/dachrisch/leaguesphere/commit/335f36964308c85ac8457f3cc80531fe92097e71))
+* **gamedays:** block re-publish when a gameday has entered results ([#1542](https://github.com/dachrisch/leaguesphere/issues/1542)) ([9db433f](https://github.com/dachrisch/leaguesphere/commit/9db433f77de0c53b4c2638925df55a5b6ec6c544))
+
 ## [4.2.3](https://github.com/dachrisch/leaguesphere/compare/v4.2.2...v4.2.3) (2026-07-12)
 
 
