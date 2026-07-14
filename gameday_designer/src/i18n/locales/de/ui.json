@@ -1,4 +1,7 @@
 {
+  "hint": {
+    "unlockBlockedResults": "Freischalten nicht möglich: Für diesen Spieltag wurden bereits Ergebnisse erfasst. Beim erneuten Veröffentlichen würde der Spielplan neu erzeugt und die Ergebnisse gelöscht."
+  },
   "button": {
     "addField": "Feld hinzufügen",
     "addStage": "Phase hinzufügen",

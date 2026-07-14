@@ -173,6 +173,9 @@ export interface GamedayMetadata {
   league: number;
   league_display?: string;
   status: string;
+  /** True when the gameday already has entered results (scores / finished games /
+   *  team logs). Regenerating the schedule would delete them, so unlock is blocked. */
+  has_results?: boolean;
   resource_urls?: ResourceUrl[];
 }
 

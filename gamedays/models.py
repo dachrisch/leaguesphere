@@ -104,6 +104,25 @@ class Gameday(models.Model):
     def __str__(self):
         return f"{self.pk}__{self.date} {self.name}"
 
+    def has_entered_results(self) -> bool:
+        """True if any game holds entered results — a score, a finished game, or a
+        team log. These rows are CASCADE-deleted when the schedule is regenerated,
+        so they gate the destructive actions (re-publish, unlock)."""
+        has_scores = (
+            Gameresult.objects.filter(gameinfo__gameday=self)
+            .filter(
+                models.Q(fh__isnull=False)
+                | models.Q(sh__isnull=False)
+                | models.Q(pa__isnull=False)
+            )
+            .exists()
+        )
+        if has_scores:
+            return True
+        if Gameinfo.objects.filter(gameday=self, gameFinished__isnull=False).exists():
+            return True
+        return TeamLog.objects.filter(gameinfo__gameday=self).exists()
+
 
 class GamedayDesignerState(models.Model):
     """Visual designer state for draft gamedays."""

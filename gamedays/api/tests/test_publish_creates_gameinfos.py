@@ -203,13 +203,12 @@ class TestPublishCreatesGameinfos:
         home.fh, home.sh = 3, 4
         home.save()
 
-        # Unlock back to DRAFT (mirrors the frontend unlock flow)
-        unlock = self.client.patch(
-            f"/api/gamedays/{self.gameday.id}/", {"status": "DRAFT"}, format="json"
-        )
-        assert unlock.status_code == 200
+        # The unlock endpoint now refuses this while results exist (see
+        # TestUnlockGuard); force DRAFT directly so this test isolates the publish
+        # guard as an independent second line of defence.
+        Gameday.objects.filter(id=self.gameday.id).update(status=Gameday.STATUS_DRAFT)
 
-        # Re-publish must be refused because entered results would be destroyed
+        # Re-publish must still be refused because entered results would be destroyed
         resp = self._publish()
         assert resp.status_code == 409
 

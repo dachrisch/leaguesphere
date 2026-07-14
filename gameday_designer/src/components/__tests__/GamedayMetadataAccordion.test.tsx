@@ -312,4 +312,26 @@ describe('GamedayMetadataAccordion', () => {
 
     expect(mockOnUnlock).toHaveBeenCalled();
   });
+
+  it('disables unlock and shows a hint when the gameday has results', async () => {
+    const user = userEvent.setup();
+    const lockedWithResults = { ...mockMetadata, status: 'PUBLISHED', has_results: true };
+    const mockOnUnlock = vi.fn();
+
+    vi.mocked(gamedayApi.listSeasons).mockResolvedValue([]);
+    vi.mocked(gamedayApi.listLeagues).mockResolvedValue([]);
+
+    renderAccordion({
+      metadata: lockedWithResults,
+      onUnlock: mockOnUnlock,
+    });
+
+    const unlockBtn = await screen.findByRole('button', { name: /Unlock Schedule/i });
+    expect(unlockBtn).toBeDisabled();
+    // hint is surfaced via the wrapping element's title
+    expect(screen.getByTitle(/Cannot unlock/i)).toBeInTheDocument();
+
+    await user.click(unlockBtn);
+    expect(mockOnUnlock).not.toHaveBeenCalled();
+  });
 });
