@@ -4,6 +4,7 @@ from collections import OrderedDict
 from datetime import datetime
 
 from django.conf import settings
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import condition
 from django.utils.decorators import method_decorator
@@ -33,6 +34,7 @@ from gamedays.models import (
     League,
     Gameresult,
     GamedayDesignerState,
+    TeamLog,
 )
 from gamedays.serializers.game_results import (
     GameResultsUpdateSerializer,
@@ -153,6 +155,27 @@ class GamedayViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(designer_state__isnull=not wants_state)
         return queryset
 
+    @staticmethod
+    def _has_entered_results(gameday) -> bool:
+        """True if the gameday holds played-game data that a re-publish would destroy.
+
+        Publishing runs CanvasPublishService, which deletes every Gameinfo for the
+        gameday (CASCADE to Gameresult / TeamLog / GameSetup). Guarding here prevents
+        an unlock + re-publish from silently wiping entered scores.
+        """
+        has_scores = (
+            Gameresult.objects.filter(gameinfo__gameday=gameday)
+            .filter(Q(fh__isnull=False) | Q(sh__isnull=False) | Q(pa__isnull=False))
+            .exists()
+        )
+        if has_scores:
+            return True
+        if Gameinfo.objects.filter(
+            gameday=gameday, gameFinished__isnull=False
+        ).exists():
+            return True
+        return TeamLog.objects.filter(gameinfo__gameday=gameday).exists()
+
     @action(detail=True, methods=["post"])
     def publish(self, request, pk=None):
         gameday = self.get_object()
@@ -160,6 +183,19 @@ class GamedayViewSet(viewsets.ModelViewSet):
             return Response(
                 {"detail": "Gameday is already published or completed."},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if self._has_entered_results(gameday):
+            return Response(
+                {
+                    "detail": (
+                        "Cannot re-publish: this gameday already has entered game "
+                        "results. Re-publishing regenerates the schedule and would "
+                        "delete them. Clear the results first if you really need to "
+                        "regenerate."
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
             )
 
         from django.utils import timezone
