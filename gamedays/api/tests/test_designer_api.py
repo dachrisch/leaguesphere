@@ -1,7 +1,7 @@
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.contrib.auth.models import User
-from gamedays.models import Gameday, GamedayDesignerState
+from gamedays.models import Gameday, Gameinfo, GamedayDesignerState
 from gamedays.tests.setup_factories.db_setup import DBSetup
 
 
@@ -42,6 +42,10 @@ class DesignerAPITest(APITestCase):
         assert metadata["status"] == self.gameday.status
 
     def test_publish_gameday(self):
+        # Publishing regenerates the schedule from the designer canvas, so it is
+        # only allowed when no results have been entered yet. The g62 fixture ships
+        # with scored games, so start this happy-path check from a clean slate.
+        Gameinfo.objects.filter(gameday=self.gameday).delete()
         self.gameday.status = Gameday.STATUS_DRAFT
         self.gameday.save()
         url = f"/api/gamedays/{self.gameday.id}/publish/"
