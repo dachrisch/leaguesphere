@@ -4,7 +4,6 @@ from collections import OrderedDict
 from datetime import datetime
 
 from django.conf import settings
-from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import condition
 from django.utils.decorators import method_decorator
@@ -131,6 +130,29 @@ class GamedayViewSet(viewsets.ModelViewSet):
             )
         return super().destroy(request, *args, **kwargs)
 
+    def update(self, request, *args, **kwargs):
+        # Unlocking (-> DRAFT) is what enables a destructive re-publish. Refuse it
+        # when the gameday already has entered results so those cannot be wiped.
+        instance = self.get_object()
+        new_status = request.data.get("status")
+        if (
+            instance.status != Gameday.STATUS_DRAFT
+            and new_status == Gameday.STATUS_DRAFT
+            and instance.has_entered_results()
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Cannot unlock: this gameday already has entered game "
+                        "results. Unlocking would allow the schedule to be "
+                        "regenerated and delete them. Clear the results first if "
+                        "you really need to unlock."
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return super().update(request, *args, **kwargs)
+
     def get_queryset(self):
         queryset = (
             Gameday.objects.all()
@@ -157,24 +179,10 @@ class GamedayViewSet(viewsets.ModelViewSet):
 
     @staticmethod
     def _has_entered_results(gameday) -> bool:
-        """True if the gameday holds played-game data that a re-publish would destroy.
-
-        Publishing runs CanvasPublishService, which deletes every Gameinfo for the
-        gameday (CASCADE to Gameresult / TeamLog / GameSetup). Guarding here prevents
-        an unlock + re-publish from silently wiping entered scores.
-        """
-        has_scores = (
-            Gameresult.objects.filter(gameinfo__gameday=gameday)
-            .filter(Q(fh__isnull=False) | Q(sh__isnull=False) | Q(pa__isnull=False))
-            .exists()
-        )
-        if has_scores:
-            return True
-        if Gameinfo.objects.filter(
-            gameday=gameday, gameFinished__isnull=False
-        ).exists():
-            return True
-        return TeamLog.objects.filter(gameinfo__gameday=gameday).exists()
+        """True if the gameday holds played-game data that regenerating the schedule
+        would destroy. Delegates to the model so publish, unlock and the serialized
+        ``has_results`` flag all share one definition."""
+        return gameday.has_entered_results()
 
     @action(detail=True, methods=["post"])
     def publish(self, request, pk=None):
@@ -216,8 +224,13 @@ class GamedayViewSet(viewsets.ModelViewSet):
             state, created = GamedayDesignerState.objects.get_or_create(gameday=gameday)
             state_data = dict(state.state_data) if state.state_data else {}
             metadata = state_data.get("metadata")
+            has_results = gameday.has_entered_results()
             if isinstance(metadata, dict):
-                state_data["metadata"] = {**metadata, "status": gameday.status}
+                state_data["metadata"] = {
+                    **metadata,
+                    "status": gameday.status,
+                    "has_results": has_results,
+                }
             else:
                 state_data["metadata"] = {
                     "name": gameday.name,
@@ -227,6 +240,7 @@ class GamedayViewSet(viewsets.ModelViewSet):
                     "season": gameday.season_id,
                     "league": gameday.league_id,
                     "status": gameday.status,
+                    "has_results": has_results,
                 }
             return Response({"state_data": state_data})
 
