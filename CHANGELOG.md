@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.3.0](https://github.com/dachrisch/leaguesphere/compare/v4.2.5...v4.3.0) (2026-07-14)
+
+
+### Features
+
+* **gamedays:** block unlocking a gameday that has entered results ([#1546](https://github.com/dachrisch/leaguesphere/issues/1546)) ([9ef88ed](https://github.com/dachrisch/leaguesphere/commit/9ef88ed9b35e59c48db0b663dc995fcb67a5e09d))
+
 ## [4.2.5](https://github.com/dachrisch/leaguesphere/compare/v4.2.4...v4.2.5) (2026-07-14)
 
 
