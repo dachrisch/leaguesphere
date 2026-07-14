@@ -64,6 +64,23 @@ def test_designer_orga_entry_live_status_still_present(rf):
     assert any("Live Status" in i["name"] for i in items)
 
 
+def test_designer_orga_entry_offers_designer_link(rf):
+    """Orga (staff) has a direct link to view the Gameday Designer index."""
+    req = rf.get("/")
+    req.user = _make_user(is_staff=True)
+    items = Gameday_designerMenuOrgaEntry().get_menu_items(req)
+    designer = next((i for i in items if "Designer" in i["name"]), None)
+    assert designer is not None
+    assert designer["url"] == "/gamedays/gameday/design/"
+
+
+def test_designer_orga_entry_hidden_for_non_staff(rf):
+    req = rf.get("/")
+    req.user = _make_user(is_staff=False)
+    items = Gameday_designerMenuOrgaEntry().get_menu_items(req)
+    assert items == []
+
+
 # ---------------------------------------------------------------------------
 # Gameday_designerMenuViewOnlyEntry — "Spieltage" group for non-staff
 # ---------------------------------------------------------------------------

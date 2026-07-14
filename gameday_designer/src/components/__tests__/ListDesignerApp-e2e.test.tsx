@@ -96,8 +96,9 @@ describe('ListDesignerApp - E2E CRUD Flow', () => {
     expect(await screen.findByText(/Game 1/i, {}, { timeout: 10000 })).toBeInTheDocument();
   });
 
-  it('verifies results entry mode toggle', async () => {
-    // Start in PUBLISHED state to show results button
+  it('does not expose a results-entry button — results are entered via scorecard', async () => {
+    // Even in PUBLISHED state (where the toggle used to appear), the designer
+    // must not offer a results-entry button.
     vi.mocked(gamedayApi.getGameday).mockResolvedValue({ ...mockGameday, status: 'PUBLISHED' });
     vi.mocked(gamedayApi.getDesignerState).mockResolvedValue({
       state_data: {
@@ -106,17 +107,11 @@ describe('ListDesignerApp - E2E CRUD Flow', () => {
       } as unknown as import('../../types/flowchart').FlowState,
     });
 
-    const { user } = await renderApp();
-    
-    const resultsModeBtn = await screen.findByTestId('results-mode-button');
-    await user.click(resultsModeBtn);
-    
-    // Verify results table is shown
-    await waitFor(() => expect(screen.getByText(/Game Results/i)).toBeInTheDocument());
-    
-    // Toggle back to designer
-    await user.click(resultsModeBtn);
+    await renderApp();
+
+    // The designer canvas is shown and no results-mode entry point exists.
+    expect(await screen.findByText(/^Fields$/)).toBeInTheDocument();
+    expect(screen.queryByTestId('results-mode-button')).not.toBeInTheDocument();
     expect(screen.queryByText(/Game Results/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/^Fields$/)).toBeInTheDocument();
   });
 });
