@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.4.0](https://github.com/dachrisch/leaguesphere/compare/v4.3.0...v4.4.0) (2026-07-14)
+
+
+### Features
+
+* **gamedays:** add restore_gameday command for scoped gameday recovery ([#1551](https://github.com/dachrisch/leaguesphere/issues/1551)) ([0627f38](https://github.com/dachrisch/leaguesphere/commit/0627f387ae806997ba07f49eed08bb4de9f06ca0))
+
 ## [4.3.0](https://github.com/dachrisch/leaguesphere/compare/v4.2.5...v4.3.0) (2026-07-14)
 
 
