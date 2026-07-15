@@ -1,5 +1,20 @@
 # Changelog
 
+## [4.5.0](https://github.com/dachrisch/leaguesphere/compare/v4.4.0...v4.5.0) (2026-07-14)
+
+
+### Features
+
+* **admin:** add maintenance mode toggle to SiteConfiguration admin ([d64bf10](https://github.com/dachrisch/leaguesphere/commit/d64bf104054e04c14ace06a71b610db3596b2082))
+* **admin:** add maintenance mode toggle to SiteConfiguration admin ([#1555](https://github.com/dachrisch/leaguesphere/issues/1555)) ([a31b2fe](https://github.com/dachrisch/leaguesphere/commit/a31b2fea1ebacc07ed668b057b3ebcc74766a302))
+
+## [4.4.0](https://github.com/dachrisch/leaguesphere/compare/v4.3.0...v4.4.0) (2026-07-14)
+
+
+### Features
+
+* **gamedays:** add restore_gameday command for scoped gameday recovery ([#1551](https://github.com/dachrisch/leaguesphere/issues/1551)) ([0627f38](https://github.com/dachrisch/leaguesphere/commit/0627f387ae806997ba07f49eed08bb4de9f06ca0))
+
 ## [4.3.0](https://github.com/dachrisch/leaguesphere/compare/v4.2.5...v4.3.0) (2026-07-14)
 
 
