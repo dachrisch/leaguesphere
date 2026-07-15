@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.6.0](https://github.com/dachrisch/leaguesphere/compare/v4.5.0...v4.6.0) (2026-07-15)
+
+
+### Features
+
+* **gameday-designer:** add Orga designer link, remove results-entry button ([#1553](https://github.com/dachrisch/leaguesphere/issues/1553)) ([2138f9d](https://github.com/dachrisch/leaguesphere/commit/2138f9dd22688f65e8ce086e354ff4b5caf4ac43))
+
 ## [4.5.0](https://github.com/dachrisch/leaguesphere/compare/v4.4.0...v4.5.0) (2026-07-14)
 
 
