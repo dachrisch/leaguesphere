@@ -211,3 +211,21 @@ class TournamentModelTests(TestCase):
         self.assertFalse(
             ResourceUrl.objects.filter(tournament_id=tournament_id).exists()
         )
+
+    def test_tournament_show_league_name_default_false(self):
+        tournament = TournamentFactory()
+        self.assertFalse(tournament.show_league_name)
+
+    def test_tournament_show_field_default_false(self):
+        tournament = TournamentFactory()
+        self.assertFalse(tournament.show_field)
+
+    def test_tournament_show_league_name_can_be_enabled(self):
+        tournament = TournamentFactory(show_league_name=True)
+        tournament.refresh_from_db()
+        self.assertTrue(tournament.show_league_name)
+
+    def test_tournament_show_field_can_be_enabled(self):
+        tournament = TournamentFactory(show_field=True)
+        tournament.refresh_from_db()
+        self.assertTrue(tournament.show_field)
