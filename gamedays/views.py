@@ -711,6 +711,7 @@ class TournamentDetailView(DetailView):
         return Tournament.objects.prefetch_related(
             "rows__columns__column_games__gameinfo__gameday",
             "rows__columns__column_games__gameinfo__gameresult_set__team",
+            "resourceurl_set",
         )
 
     def get_context_data(self, **kwargs):

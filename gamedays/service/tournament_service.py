@@ -149,4 +149,10 @@ class TournamentService:
                 )
             rows_context.append({"title": row.title, "columns": columns_context})
 
-        return {"rows": rows_context}
+        return {
+            "rows": rows_context,
+            "external_urls": [
+                {"description": u.description, "url": u.url}
+                for u in tournament.resourceurl_set.all()
+            ],
+        }

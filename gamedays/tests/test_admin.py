@@ -68,6 +68,21 @@ class TournamentAdminPageLoadTests(TestCase):
         response = self.client.get("/admin/gamedays/tournament/add/")
         self.assertEqual(response.status_code, 200)
 
+    def test_tournament_add_page_includes_resource_url_inline(self):
+        response = self.client.get("/admin/gamedays/tournament/add/")
+        self.assertEqual(response.status_code, 200)
+        # Check that ResourceUrl inline is present (look for the prefix used by inlines)
+        self.assertIn("resourceurl_set", response.content.decode())
+
+    def test_tournament_change_page_includes_resource_url_inline(self):
+        tournament = TournamentFactory(name="Test Tournament")
+        response = self.client.get(
+            f"/admin/gamedays/tournament/{tournament.id}/change/"
+        )
+        self.assertEqual(response.status_code, 200)
+        # Check that ResourceUrl inline is present
+        self.assertIn("resourceurl_set", response.content.decode())
+
     def test_tournament_row_add_page_loads(self):
         response = self.client.get("/admin/gamedays/tournamentrow/add/")
         self.assertEqual(response.status_code, 200)

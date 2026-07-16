@@ -116,6 +116,7 @@ class ResourceUrlFactory(DjangoModelFactory):
         model = ResourceUrl
 
     gameday = factory.SubFactory(GamedayFactory)
+    tournament = None
     url = "https://leaguesphere.app"
     description = "Leaguesphere"
 

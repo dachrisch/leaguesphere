@@ -1,7 +1,7 @@
 from django.db import IntegrityError
 from django.test import TestCase
 
-from gamedays.models import Gameday, Gameinfo, Gameresult, Team
+from gamedays.models import Gameday, Gameinfo, Gameresult, Team, ResourceUrl
 from gamedays.tests.setup_factories.factories import (
     LeagueFactory,
     SeasonFactory,
@@ -13,6 +13,7 @@ from gamedays.tests.setup_factories.factories import (
     TournamentRowFactory,
     TournamentColumnFactory,
     TournamentColumnGameFactory,
+    ResourceUrlFactory,
 )
 
 
@@ -164,3 +165,49 @@ class TournamentModelTests(TestCase):
         self.assertTrue(TournamentColumn.objects.filter(id=column.id).exists())
         self.assertTrue(TournamentRow.objects.filter(id=row.id).exists())
         self.assertTrue(Tournament.objects.filter(id=tournament.id).exists())
+
+    def test_resource_url_with_tournament(self):
+        tournament = TournamentFactory(name="Test Tournament")
+        resource_url = ResourceUrl.objects.create(
+            tournament=tournament,
+            gameday=None,
+            url="https://example.com",
+            description="Test Link",
+        )
+        self.assertEqual(resource_url.tournament.id, tournament.id)
+        self.assertIsNone(resource_url.gameday)
+
+    def test_resource_url_constraint_both_parents_raises_error(self):
+        tournament = TournamentFactory()
+        resource_url = ResourceUrl(
+            tournament=tournament,
+            gameday=self.gameday,
+            url="https://example.com",
+            description="Test Link",
+        )
+        with self.assertRaises(IntegrityError):
+            resource_url.save()
+
+    def test_resource_url_constraint_no_parents_raises_error(self):
+        resource_url = ResourceUrl(
+            tournament=None,
+            gameday=None,
+            url="https://example.com",
+            description="Test Link",
+        )
+        with self.assertRaises(IntegrityError):
+            resource_url.save()
+
+    def test_resource_url_cascade_delete_tournament(self):
+        tournament = TournamentFactory()
+        ResourceUrl.objects.create(
+            tournament=tournament,
+            gameday=None,
+            url="https://example.com",
+            description="Test Link",
+        )
+        tournament_id = tournament.id
+        tournament.delete()
+        self.assertFalse(
+            ResourceUrl.objects.filter(tournament_id=tournament_id).exists()
+        )

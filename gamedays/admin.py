@@ -74,6 +74,13 @@ class TournamentRowInline(admin.StackedInline):
     show_change_link = True
 
 
+class ResourceUrlInline(admin.TabularInline):
+    model = ResourceUrl
+    extra = 1
+    fields = ("url", "description")
+    ordering = ["id"]
+
+
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin):
     list_display = (
@@ -85,7 +92,7 @@ class TournamentAdmin(admin.ModelAdmin):
         "show_field",
     )
     search_fields = ("name", "title", "location")
-    inlines = [TournamentRowInline]
+    inlines = [TournamentRowInline, ResourceUrlInline]
 
     def row_count(self, obj):
         return obj.rows.count()

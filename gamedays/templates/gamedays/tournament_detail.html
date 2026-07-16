@@ -10,14 +10,77 @@
     <h1>{{ tournament.title|default:tournament.name }}</h1>
 </div>
 
-{% if tournament.location or tournament.description %}
-<div class="card mb-3">
-    <div class="card-body">
-        {% if tournament.location %}<p class="mb-1"><strong>Ort:</strong> {{ tournament.location }}</p>{% endif %}
-        {% if tournament.description %}<p class="mb-0">{{ tournament.description }}</p>{% endif %}
+<!-- METADATA AND EXTERNAL URLS SECTION -->
+<div class="row mb-3 g-3">
+    <!-- LEFT: METADATA BOX -->
+    <div class="col-12 col-lg-8">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Turnier Informationen</h5>
+            </div>
+            <div class="card-body">
+                {% if tournament.title %}
+                <div class="row mb-2">
+                    <div class="col-auto"><strong>Titel:</strong></div>
+                    <div class="col">{{ tournament.title }}</div>
+                </div>
+                {% endif %}
+                {% if tournament.description %}
+                <div class="row mb-2">
+                    <div class="col-auto"><strong>Beschreibung:</strong></div>
+                    <div class="col">{{ tournament.description }}</div>
+                </div>
+                {% endif %}
+                {% if tournament.location %}
+                <div class="row mb-0">
+                    <div class="col-auto"><strong>Ort:</strong></div>
+                    <div class="col">
+                        <a href="https://www.google.com/maps/search/?api=1&query={{ tournament.location }}" target="_blank">
+                            {{ tournament.location }}
+                            <i class="bi bi-box-arrow-up-right"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: EXTERNAL URLS BOX -->
+    <div class="col-12 col-lg-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-link-45deg"></i> Links</h5>
+            </div>
+            <div class="card-body">
+                {% if info.external_urls %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <tbody>
+                            {% for url_item in info.external_urls %}
+                            <tr>
+                                <td class="align-middle">
+                                    <small class="text-muted">{{ url_item.description }}</small>
+                                </td>
+                                <td class="align-middle text-end">
+                                    <a href="{{ url_item.url }}" target="_blank" class="btn btn-sm btn-outline-primary" title="{{ url_item.description }}">
+                                        <span class="d-none d-md-inline">Öffnen </span><i class="bi bi-box-arrow-up-right"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">
+                    <small><i class="bi bi-info-circle"></i> Keine Links verfügbar</small>
+                </p>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
-{% endif %}
 
 {% for row in info.rows %}
 <div class="mb-4">

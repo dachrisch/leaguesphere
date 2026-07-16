@@ -365,7 +365,10 @@ class Person(models.Model):
 
 class ResourceUrl(models.Model):
     gameday = models.ForeignKey(
-        Gameday, null=False, blank=False, on_delete=models.CASCADE
+        Gameday, null=True, blank=True, on_delete=models.CASCADE
+    )
+    tournament = models.ForeignKey(
+        "Tournament", null=True, blank=True, on_delete=models.CASCADE
     )
 
     url = models.URLField(
@@ -375,8 +378,21 @@ class ResourceUrl(models.Model):
 
     objects: QuerySet["ResourceUrl"] = models.Manager()
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(gameday__isnull=False, tournament__isnull=True)
+                    | models.Q(gameday__isnull=True, tournament__isnull=False)
+                ),
+                name="resourceurl_exactly_one_parent",
+            ),
+        ]
+
     def __str__(self):
-        return f"{self.gameday.pk}__{self.pk} - {self.description} -> {self.url}"
+        if self.gameday_id:
+            return f"{self.gameday.pk}__{self.pk} - {self.description} -> {self.url}"
+        return f"Tournament {self.tournament.pk}__{self.pk} - {self.description} -> {self.url}"
 
 
 class Tournament(models.Model):
