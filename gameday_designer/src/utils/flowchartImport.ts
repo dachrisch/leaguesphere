@@ -21,6 +21,7 @@ import {
 } from '../types/flowchart';
 import type { ScheduleJson } from '../types/designer';
 import { parseTeamReference } from './teamReference';
+import { getTeamColor } from './tournamentConstants';
 
 /**
  * Result of the import operation.
@@ -131,11 +132,13 @@ export function importFromScheduleJson(json: unknown): ImportResult {
             const teamId = `team-${uuidv4()}`;
             teamLabelMap.set(label, teamId);
 
+            const currentOrder = teamOrder++;
             const newTeam: GlobalTeam = {
               id: teamId,
               label,
               groupId: null,
-              order: teamOrder++,
+              order: currentOrder,
+              color: getTeamColor(currentOrder),
             };
             globalTeams.push(newTeam);
           }

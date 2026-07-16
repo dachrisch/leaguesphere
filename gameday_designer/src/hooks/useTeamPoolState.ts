@@ -7,7 +7,7 @@
  * - Team assignment tracking (usage)
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import type {
   FlowNode,
@@ -30,10 +30,16 @@ export function useTeamPoolState(
   /**
    * Add a new global team to the pool.
    */
+  const teamsCountRef = useRef(globalTeams.length);
+  useEffect(() => {
+    teamsCountRef.current = globalTeams.length;
+  }, [globalTeams.length]);
+
   const addGlobalTeam = useCallback(
     (label?: string, groupId?: string | null, databaseId?: number): GlobalTeam => {
       const id = databaseId ? `team-${databaseId}` : `team-${uuidv4()}`;
-      const order = globalTeams.length;
+      const order = teamsCountRef.current;
+      teamsCountRef.current += 1;
       const color = TEAM_COLORS[order % TEAM_COLORS.length];
 
       const newTeam: GlobalTeam = {
@@ -51,7 +57,7 @@ export function useTeamPoolState(
       });
       return newTeam;
     },
-    [globalTeams, setGlobalTeams]
+    [setGlobalTeams]
   );
 
   /**

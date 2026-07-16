@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.6.5](https://github.com/dachrisch/leaguesphere/compare/v4.6.4...v4.6.5) (2026-07-16)
+
+
+### Bug Fixes
+
+* **gameday-designer:** iterate team colors per team instead of per group ([#1575](https://github.com/dachrisch/leaguesphere/issues/1575)) ([#1577](https://github.com/dachrisch/leaguesphere/issues/1577)) ([c312ff5](https://github.com/dachrisch/leaguesphere/commit/c312ff5dda8a4c0462db8298f4986b0937570a1e))
+
 ## [4.6.4](https://github.com/dachrisch/leaguesphere/compare/v4.6.3...v4.6.4) (2026-07-16)
 
 
