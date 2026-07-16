@@ -1,4 +1,7 @@
 {
+  "hint": {
+    "unlockBlockedResults": "Cannot unlock: results have already been entered for this gameday. Re-publishing would regenerate the schedule and delete them."
+  },
   "button": {
     "addField": "Add Field",
     "addStage": "Add Stage",

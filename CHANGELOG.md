@@ -1,5 +1,86 @@
 # Changelog
 
+## [4.6.3](https://github.com/dachrisch/leaguesphere/compare/v4.6.2...v4.6.3) (2026-07-16)
+
+
+### Bug Fixes
+
+* **deps:** update dependency vite to v8.1.5 ([#1559](https://github.com/dachrisch/leaguesphere/issues/1559)) ([7cf36db](https://github.com/dachrisch/leaguesphere/commit/7cf36db61cf6983f60e2e584f12faf805a311d9c))
+
+## [4.6.2](https://github.com/dachrisch/leaguesphere/compare/v4.6.1...v4.6.2) (2026-07-16)
+
+
+### Bug Fixes
+
+* **deps:** update dependency vite to v8.1.5 ([#1560](https://github.com/dachrisch/leaguesphere/issues/1560)) ([43de90f](https://github.com/dachrisch/leaguesphere/commit/43de90fb720d224c5bb279891bd0be0f1c90ac8c))
+
+## [4.6.1](https://github.com/dachrisch/leaguesphere/compare/v4.6.0...v4.6.1) (2026-07-16)
+
+
+### Bug Fixes
+
+* **deps:** update dependency react-i18next to v17.0.10 ([#1557](https://github.com/dachrisch/leaguesphere/issues/1557)) ([5ee77de](https://github.com/dachrisch/leaguesphere/commit/5ee77def63747e630b6f5e0e85497e17acd8f691))
+
+## [4.6.0](https://github.com/dachrisch/leaguesphere/compare/v4.5.0...v4.6.0) (2026-07-15)
+
+
+### Features
+
+* **gameday-designer:** add Orga designer link, remove results-entry button ([#1553](https://github.com/dachrisch/leaguesphere/issues/1553)) ([2138f9d](https://github.com/dachrisch/leaguesphere/commit/2138f9dd22688f65e8ce086e354ff4b5caf4ac43))
+
+## [4.5.0](https://github.com/dachrisch/leaguesphere/compare/v4.4.0...v4.5.0) (2026-07-14)
+
+
+### Features
+
+* **admin:** add maintenance mode toggle to SiteConfiguration admin ([d64bf10](https://github.com/dachrisch/leaguesphere/commit/d64bf104054e04c14ace06a71b610db3596b2082))
+* **admin:** add maintenance mode toggle to SiteConfiguration admin ([#1555](https://github.com/dachrisch/leaguesphere/issues/1555)) ([a31b2fe](https://github.com/dachrisch/leaguesphere/commit/a31b2fea1ebacc07ed668b057b3ebcc74766a302))
+
+## [4.4.0](https://github.com/dachrisch/leaguesphere/compare/v4.3.0...v4.4.0) (2026-07-14)
+
+
+### Features
+
+* **gamedays:** add restore_gameday command for scoped gameday recovery ([#1551](https://github.com/dachrisch/leaguesphere/issues/1551)) ([0627f38](https://github.com/dachrisch/leaguesphere/commit/0627f387ae806997ba07f49eed08bb4de9f06ca0))
+
+## [4.3.0](https://github.com/dachrisch/leaguesphere/compare/v4.2.5...v4.3.0) (2026-07-14)
+
+
+### Features
+
+* **gamedays:** block unlocking a gameday that has entered results ([#1546](https://github.com/dachrisch/leaguesphere/issues/1546)) ([9ef88ed](https://github.com/dachrisch/leaguesphere/commit/9ef88ed9b35e59c48db0b663dc995fcb67a5e09d))
+
+## [4.2.5](https://github.com/dachrisch/leaguesphere/compare/v4.2.4...v4.2.5) (2026-07-14)
+
+
+### Bug Fixes
+
+* **deps:** update dependency postcss to v8.5.19 ([#1544](https://github.com/dachrisch/leaguesphere/issues/1544)) ([1000da9](https://github.com/dachrisch/leaguesphere/commit/1000da92d46c73184978bc6667979a828a97e888))
+
+## [4.2.4](https://github.com/dachrisch/leaguesphere/compare/v4.2.3...v4.2.4) (2026-07-14)
+
+
+### Bug Fixes
+
+* **deps:** update dependency typescript-eslint to v8.64.0 ([#1545](https://github.com/dachrisch/leaguesphere/issues/1545)) ([335f369](https://github.com/dachrisch/leaguesphere/commit/335f36964308c85ac8457f3cc80531fe92097e71))
+* **gamedays:** block re-publish when a gameday has entered results ([#1542](https://github.com/dachrisch/leaguesphere/issues/1542)) ([9db433f](https://github.com/dachrisch/leaguesphere/commit/9db433f77de0c53b4c2638925df55a5b6ec6c544))
+
+## [4.2.3](https://github.com/dachrisch/leaguesphere/compare/v4.2.2...v4.2.3) (2026-07-12)
+
+
+### Bug Fixes
+
+* **deps:** update dependency postcss to v8.5.18 ([#1540](https://github.com/dachrisch/leaguesphere/issues/1540)) ([bba046a](https://github.com/dachrisch/leaguesphere/commit/bba046aa2a287cd7ae36885819ca941bd98f8636))
+* **gameday-designer:** revive [#1535](https://github.com/dachrisch/leaguesphere/issues/1535) — resolve customer-reported bugs ([#1538](https://github.com/dachrisch/leaguesphere/issues/1538)) ([59c82a0](https://github.com/dachrisch/leaguesphere/commit/59c82a049bbfcef3996cee87186d7358f020796d))
+
+## [4.2.2](https://github.com/dachrisch/leaguesphere/compare/v4.2.1...v4.2.2) (2026-07-12)
+
+
+### Bug Fixes
+
+* **deps:** update dependency django-rest-knox to v5.1.0 ([#1539](https://github.com/dachrisch/leaguesphere/issues/1539)) ([dc0076f](https://github.com/dachrisch/leaguesphere/commit/dc0076fcc9c3b0f345e43a8dc4dc40107a0ac319))
+* **gameday-designer:** resolve customer-reported bugs ([#1535](https://github.com/dachrisch/leaguesphere/issues/1535)) ([6596269](https://github.com/dachrisch/leaguesphere/commit/6596269f9774b7d0ffd6f1ad3b8eacd8ce8121fd))
+
 ## [4.2.1](https://github.com/dachrisch/leaguesphere/compare/v4.2.0...v4.2.1) (2026-07-11)
 
 

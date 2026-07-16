@@ -590,15 +590,21 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
             <div className="d-flex justify-content-between align-items-center mt-3">
               <div className="d-flex gap-2">
                 {metadata.status !== 'DRAFT' && (
-                  <Button 
-                    variant="outline-warning" 
-                    size="sm"
-                    onClick={onUnlock}
-                    className="px-3"
+                  <span
+                    className="d-inline-block"
+                    title={metadata.has_results ? t('ui:hint.unlockBlockedResults') : undefined}
                   >
-                    <i className={`bi ${ICONS.UNLOCK} me-2`}></i>
-                    {t('ui:button.unlockSchedule')}
-                  </Button>
+                    <Button
+                      variant="outline-warning"
+                      size="sm"
+                      onClick={onUnlock}
+                      disabled={!!metadata.has_results}
+                      className="px-3"
+                    >
+                      <i className={`bi ${ICONS.UNLOCK} me-2`}></i>
+                      {t('ui:button.unlockSchedule')}
+                    </Button>
+                  </span>
                 )}
                 
                 <Button 

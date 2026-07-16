@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "leaguesphere"
-version = "4.2.2-rc.1"
+version = "4.6.3"
 requires-python = ">=3.12"
 dependencies = [
     "Django==6.0.7",
@@ -19,7 +19,7 @@ dependencies = [
     "Markdown==3.10.2",
     "django-cors-headers==4.9.0",
     "Pillow==12.3.0",
-    "django-rest-knox==5.0.4",
+    "django-rest-knox==5.1.0",
     "python-dotenv==1.2.2",
     "mysqlclient==2.2.8",
     "requests==2.34.2",
@@ -61,7 +61,7 @@ include = [
 ]
 
 [tool.bumpversion]
-current_version = "4.2.2-rc.1"
+current_version = "4.2.3-rc.2"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)(\\-rc\\.(?P<rc_build>\\d+))?"
 serialize = [
     "{major}.{minor}.{patch}-rc.{rc_build}",

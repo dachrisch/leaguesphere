@@ -216,6 +216,23 @@ create_draft_release() {
     fi
 }
 
+# Push a ref (branch or tag list) and abort loudly if it fails.
+#
+# Do NOT collapse this back into `git push A && git push B`: with `set -e`, a
+# failing command that is a non-final part of an && list is exempt from the
+# exit-on-error rule, so the script would sail past a rejected push and print
+# "✅ ... deployed/triggered" while nothing actually reached the remote (and any
+# tag-triggered CI never fires). Calling this per push makes a failure fatal.
+push_or_abort() {
+    if ! git push "$@"; then
+        echo "❌ ERROR: 'git push $*' failed — nothing was deployed." >&2
+        echo "   The remote was not updated (e.g. non-fast-forward). Resolve the" >&2
+        echo "   push failure (fetch/rebase, or force-with-lease if intended) and" >&2
+        echo "   re-run the deploy. No CI/staging deployment was triggered." >&2
+        exit 1
+    fi
+}
+
 # Parse flags
 BRANCH_MODE="current"
 TARGET_BRANCH=""
@@ -440,14 +457,15 @@ case "$VERSION_ARG" in
         git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
 
-        # Push commits and tags
+        # Push commits and tags (abort if either push is rejected)
         if [ $CREATE_RELEASE_BRANCH -eq 1 ]; then
-            if git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags; then
-                # Create PR for release branch (to PR_REMOTE, not REMOTE)
-                create_release_pr "$RELEASE_BRANCH" "$DEPLOY_BRANCH" "$REMOTE" "$PR_REMOTE" "$NEW_VERSION"
-            fi
+            push_or_abort -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH
+            push_or_abort $REMOTE --tags
+            # Create PR for release branch (to PR_REMOTE, not REMOTE)
+            create_release_pr "$RELEASE_BRANCH" "$DEPLOY_BRANCH" "$REMOTE" "$PR_REMOTE" "$NEW_VERSION"
         else
-            git push $REMOTE $DEPLOY_BRANCH && git push $REMOTE --tags
+            push_or_abort $REMOTE $DEPLOY_BRANCH
+            push_or_abort $REMOTE --tags
         fi
 
         # Mirror release-please: create a draft release for the tag so CI's
@@ -539,15 +557,16 @@ case "$VERSION_ARG" in
             git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         fi
 
-        # Push commits and tags
+        # Push commits and tags (abort if either push is rejected)
         if [ "$CREATE_RELEASE_BRANCH" -eq 1 ]; then
-            if git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags; then
-                # Create PR for release branch (to PR_REMOTE, not REMOTE)
-                NEW_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
-                create_release_pr "$RELEASE_BRANCH" "$DEPLOY_BRANCH" "$REMOTE" "$PR_REMOTE" "$NEW_VERSION"
-            fi
+            push_or_abort -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH
+            push_or_abort $REMOTE --tags
+            # Create PR for release branch (to PR_REMOTE, not REMOTE)
+            NEW_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
+            create_release_pr "$RELEASE_BRANCH" "$DEPLOY_BRANCH" "$REMOTE" "$PR_REMOTE" "$NEW_VERSION"
         else
-            git push $REMOTE $DEPLOY_BRANCH && git push $REMOTE --tags
+            push_or_abort $REMOTE $DEPLOY_BRANCH
+            push_or_abort $REMOTE --tags
         fi
 
         # Mirror release-please: create a draft release for the RC tag so CI's
@@ -628,15 +647,16 @@ case "$VERSION_ARG" in
             git tag -af "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
         fi
 
-        # Push commits and tags
+        # Push commits and tags (abort if either push is rejected)
         if [ "$CREATE_RELEASE_BRANCH" -eq 1 ]; then
-            if git push -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH && git push $REMOTE --tags; then
-                # Create PR for release branch (to PR_REMOTE, not REMOTE)
-                NEW_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
-                create_release_pr "$RELEASE_BRANCH" "$DEPLOY_BRANCH" "$REMOTE" "$PR_REMOTE" "$NEW_VERSION"
-            fi
+            push_or_abort -u $REMOTE HEAD:refs/heads/$RELEASE_BRANCH
+            push_or_abort $REMOTE --tags
+            # Create PR for release branch (to PR_REMOTE, not REMOTE)
+            NEW_VERSION=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
+            create_release_pr "$RELEASE_BRANCH" "$DEPLOY_BRANCH" "$REMOTE" "$PR_REMOTE" "$NEW_VERSION"
         else
-            git push $REMOTE $DEPLOY_BRANCH && git push $REMOTE --tags
+            push_or_abort $REMOTE $DEPLOY_BRANCH
+            push_or_abort $REMOTE --tags
         fi
 
         # Show new version

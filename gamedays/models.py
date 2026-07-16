@@ -92,6 +92,7 @@ class Gameday(models.Model):
         max_length=20, choices=STATUS_CHOICES, default=STATUS_DRAFT
     )
     published_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     objects: QuerySet["Gameday"] = models.Manager()
 
@@ -103,6 +104,37 @@ class Gameday(models.Model):
 
     def __str__(self):
         return f"{self.pk}__{self.date} {self.name}"
+
+    def save(self, *args, **kwargs):
+        # auto_now only fires for fields Django actually writes: on a full save
+        # that's every field, but a partial save() with update_fields=[...] skips
+        # any field not listed. Force it in here so callers that pass a narrow
+        # update_fields (e.g. syncing just name/date/start/address) still bump
+        # updated_at -- generate_gameday_list_etag() depends on it to detect
+        # changes to existing rows.
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            kwargs["update_fields"] = set(update_fields) | {"updated_at"}
+        super().save(*args, **kwargs)
+
+    def has_entered_results(self) -> bool:
+        """True if any game holds entered results — a score, a finished game, or a
+        team log. These rows are CASCADE-deleted when the schedule is regenerated,
+        so they gate the destructive actions (re-publish, unlock)."""
+        has_scores = (
+            Gameresult.objects.filter(gameinfo__gameday=self)
+            .filter(
+                models.Q(fh__isnull=False)
+                | models.Q(sh__isnull=False)
+                | models.Q(pa__isnull=False)
+            )
+            .exists()
+        )
+        if has_scores:
+            return True
+        if Gameinfo.objects.filter(gameday=self, gameFinished__isnull=False).exists():
+            return True
+        return TeamLog.objects.filter(gameinfo__gameday=self).exists()
 
 
 class GamedayDesignerState(models.Model):

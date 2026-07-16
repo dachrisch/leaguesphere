@@ -4,6 +4,7 @@ from collections import OrderedDict
 from datetime import datetime
 
 from django.conf import settings
+from django.db.models import Count, Max
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import condition
 from django.utils.decorators import method_decorator
@@ -33,6 +34,7 @@ from gamedays.models import (
     League,
     Gameresult,
     GamedayDesignerState,
+    TeamLog,
 )
 from gamedays.serializers.game_results import (
     GameResultsUpdateSerializer,
@@ -54,17 +56,22 @@ from gamedays.service.gameday_settings import (
 
 
 def generate_gameday_list_etag(request):
-    """Generate ETag for gameday list based on query parameters and latest gameday."""
+    """Generate ETag for gameday list based on query parameters and gameday state.
+
+    Must change whenever the list response would change: a new/deleted gameday
+    (count), or a field edit on an existing one -- name, status, league, season,
+    etc. (max updated_at). The pk of the newest row alone doesn't cover that last
+    case: publishing gameday N doesn't create a new row, so the pk-only ETag
+    stayed identical across the publish and clients kept serving their
+    pre-publish cached body via a stale 304.
+    """
     # Include query parameters in ETag
     etag_data = request.GET.urlencode() or "all"
 
-    # Include latest gameday pk to detect changes
-    try:
-        latest_gameday = Gameday.objects.values_list('pk', flat=True).order_by('-pk').first()
-        if latest_gameday:
-            etag_data += f":{latest_gameday}"
-    except Gameday.DoesNotExist:
-        pass
+    aggregate = Gameday.objects.aggregate(
+        count=Count("pk"), latest_update=Max("updated_at")
+    )
+    etag_data += f":{aggregate['count']}:{aggregate['latest_update']}"
 
     return f'"{hashlib.md5(etag_data.encode()).hexdigest()}"'
 
@@ -129,6 +136,29 @@ class GamedayViewSet(viewsets.ModelViewSet):
             )
         return super().destroy(request, *args, **kwargs)
 
+    def update(self, request, *args, **kwargs):
+        # Unlocking (-> DRAFT) is what enables a destructive re-publish. Refuse it
+        # when the gameday already has entered results so those cannot be wiped.
+        instance = self.get_object()
+        new_status = request.data.get("status")
+        if (
+            instance.status != Gameday.STATUS_DRAFT
+            and new_status == Gameday.STATUS_DRAFT
+            and instance.has_entered_results()
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Cannot unlock: this gameday already has entered game "
+                        "results. Unlocking would allow the schedule to be "
+                        "regenerated and delete them. Clear the results first if "
+                        "you really need to unlock."
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return super().update(request, *args, **kwargs)
+
     def get_queryset(self):
         queryset = (
             Gameday.objects.all()
@@ -153,6 +183,13 @@ class GamedayViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(designer_state__isnull=not wants_state)
         return queryset
 
+    @staticmethod
+    def _has_entered_results(gameday) -> bool:
+        """True if the gameday holds played-game data that regenerating the schedule
+        would destroy. Delegates to the model so publish, unlock and the serialized
+        ``has_results`` flag all share one definition."""
+        return gameday.has_entered_results()
+
     @action(detail=True, methods=["post"])
     def publish(self, request, pk=None):
         gameday = self.get_object()
@@ -160,6 +197,19 @@ class GamedayViewSet(viewsets.ModelViewSet):
             return Response(
                 {"detail": "Gameday is already published or completed."},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if self._has_entered_results(gameday):
+            return Response(
+                {
+                    "detail": (
+                        "Cannot re-publish: this gameday already has entered game "
+                        "results. Re-publishing regenerates the schedule and would "
+                        "delete them. Clear the results first if you really need to "
+                        "regenerate."
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
             )
 
         from django.utils import timezone
@@ -180,8 +230,13 @@ class GamedayViewSet(viewsets.ModelViewSet):
             state, created = GamedayDesignerState.objects.get_or_create(gameday=gameday)
             state_data = dict(state.state_data) if state.state_data else {}
             metadata = state_data.get("metadata")
+            has_results = gameday.has_entered_results()
             if isinstance(metadata, dict):
-                state_data["metadata"] = {**metadata, "status": gameday.status}
+                state_data["metadata"] = {
+                    **metadata,
+                    "status": gameday.status,
+                    "has_results": has_results,
+                }
             else:
                 state_data["metadata"] = {
                     "name": gameday.name,
@@ -191,6 +246,7 @@ class GamedayViewSet(viewsets.ModelViewSet):
                     "season": gameday.season_id,
                     "league": gameday.league_id,
                     "status": gameday.status,
+                    "has_results": has_results,
                 }
             return Response({"state_data": state_data})
 
@@ -207,6 +263,15 @@ class GamedayViewSet(viewsets.ModelViewSet):
                 if value is not None and value != "" and getattr(gameday, field) != value:
                     setattr(gameday, field, value)
                     update_fields.append(field)
+            # league/season are FKs: read/write the *_id attname directly so we
+            # compare and assign raw pks without loading the related objects.
+            # 0 is the designer's not-yet-loaded placeholder, not a real pk --
+            # skip it rather than pointing the gameday at a nonexistent row.
+            for field, attname in (("season", "season_id"), ("league", "league_id")):
+                value = metadata.get(field)
+                if value and getattr(gameday, attname) != value:
+                    setattr(gameday, attname, value)
+                    update_fields.append(attname)
             if update_fields:
                 gameday.save(update_fields=update_fields)
 
