@@ -11,6 +11,7 @@ from gamedays.api.game_views import (
     GamePossessionAPIView,
 )
 from gamedays.api.views import (
+    AutoAssignOfficialsView,
     GamedayListAPIView,
     GameinfoUpdateAPIView,
     GamedayRetrieveUpdate,
@@ -134,6 +135,11 @@ urlpatterns = [
         "game/<int:pk>/possession",
         GamePossessionAPIView.as_view(),
         name=API_GAME_POSSESSION,
+    ),
+    path(
+        "gameday/<int:pk>/auto-assign-officials/",
+        AutoAssignOfficialsView.as_view(),
+        name="api-gameday-auto-assign-officials",
     ),
     path(
         "config/scorecard/penalties",

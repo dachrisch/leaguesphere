@@ -54,6 +54,8 @@ export interface ListCanvasProps {
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
   onNotify?: (message: string, type: import('../types/designer').NotificationType, title?: string) => void;
+  onAutoAssignOfficials?: () => void;
+  isAutoAssigning?: boolean;
   onAddOfficials?: () => void;
   resultsMode?: boolean;
   gameResults?: import('../types/designer').GameResultsDisplay[];
@@ -109,6 +111,8 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
     highlightedSourceGameId,
     onDynamicReferenceClick,
     onNotify,
+    onAutoAssignOfficials,
+    isAutoAssigning = false,
     onAddOfficials,
     resultsMode = false,
     gameResults = [],
@@ -196,6 +200,8 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
           onReorderGlobalTeamGroup={onReorderGlobalTeamGroup}
           onShowTeamSelection={onShowTeamSelection}
           getTeamUsage={getTeamUsage}
+          onAutoAssignOfficials={onAutoAssignOfficials}
+          isAutoAssigning={isAutoAssigning}
           onAddOfficials={onAddOfficials}
         />
 

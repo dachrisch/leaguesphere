@@ -183,6 +183,8 @@ interface GamedayMetadataAccordionProps {
   onDelete: () => void;
   onPublish: () => void;
   onUnlock: () => void;
+  onAutoAssignOfficials?: () => void;
+  isAutoAssigning?: boolean;
   onHighlight: (id: string, type: HighlightedElement['type']) => void;
   validation: FlowValidationResult;
   highlightedElement?: HighlightedElement | null;
@@ -200,6 +202,8 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
   onDelete,
   onPublish,
   onUnlock,
+  onAutoAssignOfficials,
+  isAutoAssigning = false,
   onHighlight,
   validation,
   highlightedElement,
@@ -618,6 +622,20 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                   <i className={`bi ${ICONS.CLEAR} me-2`}></i>
                   {t('ui:button.clearSchedule')}
                 </Button>
+
+                {onAutoAssignOfficials && (
+                  <Button
+                    variant="outline-info"
+                    size="sm"
+                    onClick={onAutoAssignOfficials}
+                    disabled={!hasData || metadata.status !== 'DRAFT' || isAutoAssigning}
+                    className="px-3"
+                    data-testid="auto-assign-officials-button"
+                  >
+                    <i className="bi bi-people me-2"></i>
+                    {isAutoAssigning ? t('ui:message.loading') : t('ui:button.autoAssignOfficials')}
+                  </Button>
+                )}
 
               </div>
 

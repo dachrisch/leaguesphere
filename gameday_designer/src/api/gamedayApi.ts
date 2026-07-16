@@ -263,6 +263,12 @@ class GamedayApi {
     );
   }
 
+  async autoAssignOfficials(gamedayId: number): Promise<{ assigned_count: number; assignments: Record<string, number> }> {
+    if (this.isDev && !this.forceClient) return { assigned_count: 0, assignments: {} };
+    const response = await this.client.post(`/gameday/${gamedayId}/auto-assign-officials/`);
+    return response.data;
+  }
+
   /**
    * Search for teams in the database pool using DAL endpoint.
    */

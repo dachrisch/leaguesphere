@@ -39,6 +39,7 @@ from gamedays.serializers.game_results import (
     GameResultsUpdateSerializer,
     GameInfoSerializer,
 )
+from gamedays.service.auto_assign_officials_service import AutoAssignOfficialsService
 from gamedays.service.gameday_service import (
     GamedayService,
     TABLE_HEADERS,
@@ -457,6 +458,26 @@ class GameResultsListView(APIView):
         )
         serializer = GameInfoSerializer(games, many=True)
         return Response(serializer.data)
+
+
+class AutoAssignOfficialsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        gameday = get_object_or_404(Gameday, pk=pk)
+        if gameday.status != "DRAFT":
+            return Response(
+                {"error": "Gameday must be in DRAFT status"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            service = AutoAssignOfficialsService(pk)
+            assignments = service.assign()
+            return Response(
+                {"assigned_count": len(assignments), "assignments": assignments}
+            )
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class GameResultsUpdateView(APIView):

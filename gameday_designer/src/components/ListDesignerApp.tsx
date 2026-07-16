@@ -59,6 +59,7 @@ const ListDesignerApp: React.FC = () => {
   const [selectedGameForResult, setSelectedGameForResult] = useState<GameNode | null>(null);
   const [showTeamSelectionModal, setShowTeamSelectionModal] = useState(false);
   const [isRowCollapsed, setIsRowCollapsed] = useState(false);
+  const [isAutoAssigning, setIsAutoAssigning] = useState(false);
   const [teamSelectionContext, setTeamSelectionModalContext] = useState<{
     slotId: string;
     side: 'home' | 'away' | 'official' | 'group' | 'replace';
@@ -422,6 +423,23 @@ const ListDesignerApp: React.FC = () => {
     handleAddOfficialsGroup();
   }, [handleAddOfficialsGroup]);
 
+  const handleAutoAssignOfficials = useCallback(async () => {
+    if (!id) return;
+    setIsAutoAssigning(true);
+    try {
+      const result = await gamedayApi.autoAssignOfficials(parseInt(id));
+      addNotification(
+        t('ui:notification.officialsAssigned', { count: result.assigned_count }),
+        'success',
+        t('ui:notification.title.success')
+      );
+    } catch {
+      addNotification(t('ui:notification.officialsAssignFailed'), 'danger', t('ui:notification.title.error'));
+    } finally {
+      setIsAutoAssigning(false);
+    }
+  }, [id, addNotification, t]);
+
   const handleGetTeamUsage = useCallback((teamId: string) => {
     return flowState.nodes
       .filter(isGameNode)
@@ -501,6 +519,8 @@ const ListDesignerApp: React.FC = () => {
               onDynamicReferenceClick={handleDynamicReferenceClick}
               onNotify={addNotification}
               onAddOfficials={handleAddOfficialsLocal}
+              onAutoAssignOfficials={handleAutoAssignOfficials}
+              isAutoAssigning={isAutoAssigning}
               resultsMode={resultsMode}
               gameResults={gameResults}
               onSaveBulkResults={handleSaveBulkResults}
