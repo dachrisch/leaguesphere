@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.6.4](https://github.com/dachrisch/leaguesphere/compare/v4.6.3...v4.6.4) (2026-07-16)
+
+
+### Bug Fixes
+
+* gameday dashboard shows stale status + designer league/season not saved ([#1570](https://github.com/dachrisch/leaguesphere/issues/1570)) ([ad1b2eb](https://github.com/dachrisch/leaguesphere/commit/ad1b2eb29688c587ae7ebc390fdb15cae6d91244))
+
 ## [4.6.3](https://github.com/dachrisch/leaguesphere/compare/v4.6.2...v4.6.3) (2026-07-16)
 
 
