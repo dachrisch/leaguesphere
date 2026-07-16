@@ -3,6 +3,10 @@ from collections import defaultdict
 from gamedays.models import Gameday, Gameinfo
 
 
+class AutoAssignOfficialsError(Exception):
+    pass
+
+
 class AutoAssignOfficialsService:
     def __init__(self, gameday_id: int):
         self.gameday_id = gameday_id
@@ -10,7 +14,7 @@ class AutoAssignOfficialsService:
     def assign(self) -> dict[int, int]:
         gameday = Gameday.objects.get(pk=self.gameday_id)
         if gameday.status != "DRAFT":
-            raise ValueError("Gameday must be in DRAFT status")
+            raise AutoAssignOfficialsError("Gameday must be in DRAFT status")
 
         gameinfos = list(
             Gameinfo.objects.filter(gameday_id=self.gameday_id).prefetch_related(

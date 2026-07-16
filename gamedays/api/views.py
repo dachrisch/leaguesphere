@@ -39,7 +39,10 @@ from gamedays.serializers.game_results import (
     GameResultsUpdateSerializer,
     GameInfoSerializer,
 )
-from gamedays.service.auto_assign_officials_service import AutoAssignOfficialsService
+from gamedays.service.auto_assign_officials_service import (
+    AutoAssignOfficialsError,
+    AutoAssignOfficialsService,
+)
 from gamedays.service.gameday_service import (
     GamedayService,
     TABLE_HEADERS,
@@ -476,7 +479,7 @@ class AutoAssignOfficialsView(APIView):
             return Response(
                 {"assigned_count": len(assignments), "assignments": assignments}
             )
-        except ValueError as e:
+        except AutoAssignOfficialsError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 

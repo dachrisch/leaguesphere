@@ -2,7 +2,10 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 
 from gamedays.models import Gameday, Gameinfo, Gameresult, Season, League, Team
-from gamedays.service.auto_assign_officials_service import AutoAssignOfficialsService
+from gamedays.service.auto_assign_officials_service import (
+    AutoAssignOfficialsError,
+    AutoAssignOfficialsService,
+)
 from gamedays.tests.setup_factories.db_setup import DBSetup
 
 
@@ -142,7 +145,7 @@ class TestAutoAssignOfficialsService(TestCase):
         gameday.status = "PUBLISHED"
         gameday.save()
         service = AutoAssignOfficialsService(gameday.pk)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AutoAssignOfficialsError):
             service.assign()
 
     def test_empty_gameday_returns_empty(self):
