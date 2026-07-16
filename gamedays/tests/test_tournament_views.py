@@ -94,13 +94,15 @@ class TournamentDetailViewTests(TestCase):
         self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_tournament_detail_view_query_count_is_flat_large_tournament(self):
-        # NOTE: This test is disabled due to pre-existing N+1 query issues in the
-        # TournamentService template rendering (league queries scale with game count).
-        # The query structure itself is correct (prefetches are in place), but there are
-        # N+1 league lookups that need to be fixed at the template/service level.
-        # This is not related to the ResourceUrl changes.
-        # TODO: Fix the N+1 league queries in tournament_detail.html rendering
-        pass
+        tournament = self._create_tournament_with_games(rows=2, cols=3, games_per_col=5)
+
+        url = reverse(LEAGUE_TOURNAMENT_DETAIL, kwargs={"pk": tournament.pk})
+
+        # Query count should remain flat regardless of tournament size:
+        # Same 11 queries as the small tournament (league is now prefetched)
+        with self.assertNumQueries(11):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_tournament_detail_empty_column_shows_no_games_message(self):
         tournament = TournamentFactory(name="Finals")

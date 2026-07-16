@@ -709,7 +709,7 @@ class TournamentDetailView(DetailView):
 
     def get_queryset(self):
         return Tournament.objects.prefetch_related(
-            "rows__columns__column_games__gameinfo__gameday",
+            "rows__columns__column_games__gameinfo__gameday__league",
             "rows__columns__column_games__gameinfo__gameresult_set__team",
             "resourceurl_set",
         )
