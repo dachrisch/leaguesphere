@@ -84,12 +84,12 @@ class TournamentDetailViewTests(TestCase):
         # 4. ColumnGames prefetch
         # 5. Gameinfo prefetch
         # 6. Gameday prefetch (join through Gameinfo)
-        # 7. Gameresult prefetch
-        # 8. Team prefetch (join through Gameresult)
-        # 9. ResourceUrl prefetch
-        # 10-11. League queries (N+1 from template rendering - pre-existing)
-        # Expected: 11 queries, flat regardless of size
-        with self.assertNumQueries(11):
+        # 7. League prefetch (join through Gameday)
+        # 8. Gameresult prefetch
+        # 9. Team prefetch (join through Gameresult)
+        # 10. ResourceUrl prefetch
+        # Expected: 10 queries, flat regardless of tournament size
+        with self.assertNumQueries(10):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTPStatus.OK)
 
@@ -99,8 +99,9 @@ class TournamentDetailViewTests(TestCase):
         url = reverse(LEAGUE_TOURNAMENT_DETAIL, kwargs={"pk": tournament.pk})
 
         # Query count should remain flat regardless of tournament size:
-        # Same 11 queries as the small tournament (league is now prefetched)
-        with self.assertNumQueries(11):
+        # Same 10 queries as the small tournament (2 rows, 3 cols each, 5 games per col = 30 games)
+        # All relationships are prefetched, so no N+1 queries occur
+        with self.assertNumQueries(10):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTPStatus.OK)
 
