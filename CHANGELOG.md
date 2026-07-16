@@ -1,5 +1,26 @@
 # Changelog
 
+## [4.6.3](https://github.com/dachrisch/leaguesphere/compare/v4.6.2...v4.6.3) (2026-07-16)
+
+
+### Bug Fixes
+
+* **deps:** update dependency vite to v8.1.5 ([#1559](https://github.com/dachrisch/leaguesphere/issues/1559)) ([7cf36db](https://github.com/dachrisch/leaguesphere/commit/7cf36db61cf6983f60e2e584f12faf805a311d9c))
+
+## [4.6.2](https://github.com/dachrisch/leaguesphere/compare/v4.6.1...v4.6.2) (2026-07-16)
+
+
+### Bug Fixes
+
+* **deps:** update dependency vite to v8.1.5 ([#1560](https://github.com/dachrisch/leaguesphere/issues/1560)) ([43de90f](https://github.com/dachrisch/leaguesphere/commit/43de90fb720d224c5bb279891bd0be0f1c90ac8c))
+
+## [4.6.1](https://github.com/dachrisch/leaguesphere/compare/v4.6.0...v4.6.1) (2026-07-16)
+
+
+### Bug Fixes
+
+* **deps:** update dependency react-i18next to v17.0.10 ([#1557](https://github.com/dachrisch/leaguesphere/issues/1557)) ([5ee77de](https://github.com/dachrisch/leaguesphere/commit/5ee77def63747e630b6f5e0e85497e17acd8f691))
+
 ## [4.6.0](https://github.com/dachrisch/leaguesphere/compare/v4.5.0...v4.6.0) (2026-07-15)
 
 
