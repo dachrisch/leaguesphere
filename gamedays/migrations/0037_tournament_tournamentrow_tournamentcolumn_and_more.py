@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("gamedays", "0035_resourceurl"),
+        ("gamedays", "0036_gameday_updated_at"),
     ]
 
     operations = [
