@@ -20,6 +20,12 @@ class AutoAssignOfficialsService:
         if not gameinfos:
             return {}
 
+        all_teams_in_standing: dict[str, set[int]] = defaultdict(set)
+        for gi in gameinfos:
+            for gr in gi.gameresult_set.all():
+                if gr.team_id:
+                    all_teams_in_standing[gi.standing].add(gr.team_id)
+
         time_groups: dict[str, list[Gameinfo]] = defaultdict(list)
         for gi in gameinfos:
             time_groups[gi.scheduled.isoformat()].append(gi)
@@ -43,27 +49,14 @@ class AutoAssignOfficialsService:
             for gi in games_at_time:
                 groups[gi.standing].append(gi)
 
-            teams_in_standing: dict[str, set[int]] = {}
-            for standing, gis in groups.items():
-                teams = set()
-                for gi in gis:
-                    for gr in gi.gameresult_set.all():
-                        if gr.team_id:
-                            teams.add(gr.team_id)
-                teams_in_standing[standing] = teams
-
             for standing, gis in groups.items():
                 donor_pool: set[int] = set()
-                for other_standing, teams in teams_in_standing.items():
+                for other_standing, teams in all_teams_in_standing.items():
                     if other_standing != standing:
                         donor_pool |= teams
 
                 if not donor_pool:
-                    donor_pool = set()
-                    for gi in gis:
-                        for gr in gi.gameresult_set.all():
-                            if gr.team_id:
-                                donor_pool.add(gr.team_id)
+                    donor_pool = all_teams_in_standing[standing].copy()
 
                 eligible = [
                     t

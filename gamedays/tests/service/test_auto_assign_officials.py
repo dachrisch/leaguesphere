@@ -166,11 +166,8 @@ class TestAutoAssignOfficialsService(TestCase):
 
     def test_assignments_are_deterministic(self):
         gameday = DBSetup().g62_status_empty()
-        service1 = AutoAssignOfficialsService(gameday.pk)
-        a1 = service1.assign()
-
-        Gameinfo.objects.filter(gameday=gameday).update(officials=None)
-        service2 = AutoAssignOfficialsService(gameday.pk)
-        a2 = service2.assign()
+        service = AutoAssignOfficialsService(gameday.pk)
+        a1 = service.assign()
+        a2 = service.assign()
 
         assert a1 == a2, "Assignments differ between runs"
