@@ -49,8 +49,6 @@ export interface MetadataTeamPoolRowProps {
   onReorderGlobalTeamGroup: (groupId: string, direction: 'up' | 'down') => void;
   onShowTeamSelection: (id: string, mode?: 'group' | 'replace' | 'official') => void;
   getTeamUsage: (teamId: string) => { gameId: string; slot: 'home' | 'away' }[];
-  onAutoAssignOfficials?: () => void;
-  isAutoAssigning?: boolean;
   onAddOfficials?: () => void;
 }
 
@@ -85,8 +83,6 @@ const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
   onReorderGlobalTeamGroup,
   onShowTeamSelection,
   getTeamUsage,
-  onAutoAssignOfficials,
-  isAutoAssigning = false,
   onAddOfficials,
 }) => {
   const { t } = useTypedTranslation(['ui']);
@@ -115,8 +111,6 @@ const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
           onUnlock={onUnlockGameday}
           validation={validation}
           highlightedElement={highlightedElement}
-          onAutoAssignOfficials={onAutoAssignOfficials}
-          isAutoAssigning={isAutoAssigning}
           onHighlight={onHighlightElement}
           readOnly={readOnly}
           hasData={hasData}

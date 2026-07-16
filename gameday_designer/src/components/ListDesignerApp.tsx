@@ -433,12 +433,13 @@ const ListDesignerApp: React.FC = () => {
         'success',
         t('ui:notification.title.success')
       );
+      loadData();
     } catch {
       addNotification(t('ui:notification.officialsAssignFailed'), 'danger', t('ui:notification.title.error'));
     } finally {
       setIsAutoAssigning(false);
     }
-  }, [id, addNotification, t]);
+  }, [id, addNotification, t, loadData]);
 
   const handleGetTeamUsage = useCallback((teamId: string) => {
     return flowState.nodes

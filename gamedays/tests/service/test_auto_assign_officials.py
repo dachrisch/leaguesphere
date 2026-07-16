@@ -1,7 +1,15 @@
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from gamedays.models import Gameday, Gameinfo, Gameresult, Season, League, Team
+from gamedays.models import (
+    Gameday,
+    GamedayDesignerState,
+    Gameinfo,
+    Gameresult,
+    Season,
+    League,
+    Team,
+)
 from gamedays.service.auto_assign_officials_service import (
     AutoAssignOfficialsError,
     AutoAssignOfficialsService,
@@ -18,21 +26,22 @@ class TestAutoAssignOfficialsService(TestCase):
         )
 
     def _get_team_ids_for_game(self, gi: Gameinfo) -> list[int]:
-        return [
-            gr.team_id
-            for gr in Gameresult.objects.filter(gameinfo=gi)
-        ]
+        return [gr.team_id for gr in Gameresult.objects.filter(gameinfo=gi)]
 
     def _assert_no_self_referee(self, gameday: Gameday):
-        for gi in Gameinfo.objects.filter(gameday=gameday).prefetch_related("gameresult_set"):
+        for gi in Gameinfo.objects.filter(gameday=gameday).prefetch_related(
+            "gameresult_set"
+        ):
             playing_ids = {gr.team_id for gr in gi.gameresult_set.all()}
-            assert gi.officials_id not in playing_ids, (
-                f"Game {gi.pk}: team {gi.officials_id} is playing and refereeing"
-            )
+            assert (
+                gi.officials_id not in playing_ids
+            ), f"Game {gi.pk}: team {gi.officials_id} is playing and refereeing"
 
     def _assert_no_time_conflict(self, gameday: Gameday):
         games_at_time: dict[str, list[Gameinfo]] = {}
-        for gi in Gameinfo.objects.filter(gameday=gameday).prefetch_related("gameresult_set"):
+        for gi in Gameinfo.objects.filter(gameday=gameday).prefetch_related(
+            "gameresult_set"
+        ):
             key = gi.scheduled.isoformat()
             games_at_time.setdefault(key, []).append(gi)
         for scheduled, gis in games_at_time.items():
@@ -43,9 +52,7 @@ class TestAutoAssignOfficialsService(TestCase):
                         all_busy.add(gr.team_id)
             for gi in gis:
                 if gi.officials_id in all_busy:
-                    playing_for = [
-                        gr.team_id for gr in gi.gameresult_set.all()
-                    ]
+                    playing_for = [gr.team_id for gr in gi.gameresult_set.all()]
                     if gi.officials_id in playing_for:
                         continue
                     self.fail(
@@ -61,9 +68,7 @@ class TestAutoAssignOfficialsService(TestCase):
         if not counts:
             return
         values = list(counts.values())
-        assert max(values) - min(values) <= 1, (
-            f"Referee counts imbalanced: {counts}"
-        )
+        assert max(values) - min(values) <= 1, f"Referee counts imbalanced: {counts}"
 
     def test_cross_group_2x3_balanced(self):
         gameday = DBSetup().g62_status_empty()
@@ -111,8 +116,7 @@ class TestAutoAssignOfficialsService(TestCase):
             format="3_1",
         )
         teams = [
-            Team.objects.create(name=f"Team {i}", description=f"T{i}")
-            for i in range(3)
+            Team.objects.create(name=f"Team {i}", description=f"T{i}") for i in range(3)
         ]
         games_data = [
             ("10:00", teams[0], teams[1]),
@@ -163,9 +167,9 @@ class TestAutoAssignOfficialsService(TestCase):
         service.assign()
 
         for gi in Gameinfo.objects.filter(gameday=gameday):
-            assert gi.officials_id != wrong_team.pk, (
-                f"Game {gi.pk} still has wrong official"
-            )
+            assert (
+                gi.officials_id != wrong_team.pk
+            ), f"Game {gi.pk} still has wrong official"
 
     def test_assignments_are_deterministic(self):
         gameday = DBSetup().g62_status_empty()
@@ -174,3 +178,158 @@ class TestAutoAssignOfficialsService(TestCase):
         a2 = service.assign()
 
         assert a1 == a2, "Assignments differ between runs"
+
+
+class TestAutoAssignOfficialsServiceDesignerState(TestCase):
+    """
+    Covers gamedays that have never been published: games only exist as
+    JSON nodes in GamedayDesignerState.state_data, not as Gameinfo rows
+    (those are only materialized by CanvasPublishService at publish time).
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_superuser(
+            username="admin2", password="password", email="admin2@test.com"
+        )
+        self.season = Season.objects.create(name="2026")
+        self.league = League.objects.create(name="Test")
+
+    def _create_draft_gameday(self) -> Gameday:
+        return Gameday.objects.create(
+            name="Unpublished Draft",
+            season=self.season,
+            league=self.league,
+            date="2026-07-16",
+            start="10:00",
+            author=self.user,
+            status="DRAFT",
+            format="3_1",
+        )
+
+    def _game_node(
+        self,
+        node_id,
+        standing,
+        home_id,
+        away_id,
+        parent_id="stage-1",
+        start_time=None,
+        manual_time=False,
+    ):
+        data = {
+            "type": "game",
+            "stage": "Preliminary",
+            "stageType": "STANDARD",
+            "standing": standing,
+            "fieldId": None,
+            "official": None,
+            "breakAfter": 0,
+            "homeTeamId": home_id,
+            "awayTeamId": away_id,
+            "homeTeamDynamic": None,
+            "awayTeamDynamic": None,
+            "duration": 70,
+            "manualTime": manual_time,
+        }
+        if start_time is not None:
+            data["startTime"] = start_time
+        return {
+            "id": node_id,
+            "type": "game",
+            "parentId": parent_id,
+            "data": data,
+        }
+
+    def test_idle_team_in_pool_is_assigned_as_referee(self):
+        """Reproduces the reported bug: 3 registered teams, 1 game between
+        2 of them -- the 3rd, idle team should be assigned as referee."""
+        gameday = self._create_draft_gameday()
+        GamedayDesignerState.objects.create(
+            gameday=gameday,
+            state_data={
+                "nodes": [self._game_node("game-1", "Game 1", "team-a", "team-b")],
+                "globalTeams": [
+                    {"id": "team-a", "label": "A", "groupId": "group-1", "order": 0},
+                    {"id": "team-b", "label": "B", "groupId": "group-1", "order": 0},
+                    {"id": "team-c", "label": "C", "groupId": "group-1", "order": 0},
+                ],
+                "globalTeamGroups": [{"id": "group-1", "name": "Group 1", "order": 0}],
+            },
+        )
+
+        service = AutoAssignOfficialsService(gameday.pk)
+        assignments = service.assign()
+
+        assert assignments == {"game-1": "team-c"}
+
+        state = GamedayDesignerState.objects.get(gameday=gameday)
+        node = state.state_data["nodes"][0]
+        assert node["data"]["official"] == {"type": "static", "name": "team-c"}
+
+    def test_no_eligible_team_skips_game(self):
+        """Only the two playing teams are registered -- nobody is free to
+        referee, so the game is left unassigned rather than crashing."""
+        gameday = self._create_draft_gameday()
+        GamedayDesignerState.objects.create(
+            gameday=gameday,
+            state_data={
+                "nodes": [self._game_node("game-1", "Game 1", "team-a", "team-b")],
+                "globalTeams": [
+                    {"id": "team-a", "label": "A", "groupId": "group-1", "order": 0},
+                    {"id": "team-b", "label": "B", "groupId": "group-1", "order": 0},
+                ],
+                "globalTeamGroups": [{"id": "group-1", "name": "Group 1", "order": 0}],
+            },
+        )
+
+        service = AutoAssignOfficialsService(gameday.pk)
+        assert service.assign() == {}
+
+    def test_no_designer_state_returns_empty(self):
+        gameday = self._create_draft_gameday()
+        service = AutoAssignOfficialsService(gameday.pk)
+        assert service.assign() == {}
+
+    def test_no_game_nodes_returns_empty(self):
+        gameday = self._create_draft_gameday()
+        GamedayDesignerState.objects.create(
+            gameday=gameday,
+            state_data={"nodes": [], "globalTeams": [], "globalTeamGroups": []},
+        )
+        service = AutoAssignOfficialsService(gameday.pk)
+        assert service.assign() == {}
+
+    def test_cross_group_prefers_donor_not_yet_playing_over_widened_pool(self):
+        """With two standings, a team already playing in the other standing
+        is preferred over falling back to the full pool."""
+        gameday = self._create_draft_gameday()
+        GamedayDesignerState.objects.create(
+            gameday=gameday,
+            state_data={
+                "nodes": [
+                    self._game_node("game-1", "Game 1", "team-a", "team-b"),
+                    self._game_node(
+                        "game-2",
+                        "Game 2",
+                        "team-c",
+                        "team-d",
+                        start_time="11:00",
+                        manual_time=True,
+                    ),
+                ],
+                "globalTeams": [
+                    {"id": t, "label": t, "groupId": "group-1", "order": 0}
+                    for t in ("team-a", "team-b", "team-c", "team-d")
+                ],
+                "globalTeamGroups": [{"id": "group-1", "name": "Group 1", "order": 0}],
+            },
+        )
+
+        service = AutoAssignOfficialsService(gameday.pk)
+        assignments = service.assign()
+
+        assert set(assignments.keys()) == {"game-1", "game-2"}
+        # Game 1 (stage default time) draws from Game 2's teams (not busy then)
+        assert assignments["game-1"] in {"team-c", "team-d"}
+        # Game 2 has an explicit later time, so Game 1's teams are free too
+        assert assignments["game-2"] in {"team-a", "team-b"}

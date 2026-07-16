@@ -200,8 +200,6 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
           onReorderGlobalTeamGroup={onReorderGlobalTeamGroup}
           onShowTeamSelection={onShowTeamSelection}
           getTeamUsage={getTeamUsage}
-          onAutoAssignOfficials={onAutoAssignOfficials}
-          isAutoAssigning={isAutoAssigning}
           onAddOfficials={onAddOfficials}
         />
 
@@ -226,6 +224,18 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
                   <i className={`bi ${ICONS.ADD} me-2`} />
                   <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
                 </Button>
+                {onAutoAssignOfficials && (
+                  <Button
+                    size="sm"
+                    variant="outline-info"
+                    onClick={onAutoAssignOfficials}
+                    disabled={!(nodes.length > 0 || globalTeams.length > 0) || metadata.status !== 'DRAFT' || isAutoAssigning}
+                    data-testid="auto-assign-officials-button"
+                  >
+                    <i className="bi bi-people me-2" />
+                    {isAutoAssigning ? t('ui:message.loading') : t('ui:button.autoAssignOfficials')}
+                  </Button>
+                )}
               </div>
             )}
           </Card.Header>
