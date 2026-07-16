@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.7.0](https://github.com/dachrisch/leaguesphere/compare/v4.6.5...v4.7.0) (2026-07-16)
+
+
+### Features
+
+* auto-assign referees button in Gameday Designer ([#1572](https://github.com/dachrisch/leaguesphere/issues/1572)) ([d6e0354](https://github.com/dachrisch/leaguesphere/commit/d6e0354da64ee8626b91d61fd39c18eddde27de0))
+
 ## [4.6.5](https://github.com/dachrisch/leaguesphere/compare/v4.6.4...v4.6.5) (2026-07-16)
 
 
