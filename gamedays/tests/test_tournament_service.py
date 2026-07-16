@@ -27,10 +27,21 @@ class TournamentColumnServiceTests(TestCase):
         self.away_team = TeamFactory(name="Away Team", description="Away Team Desc")
 
     def test_empty_gameinfo_list_returns_empty_dataframe(self):
-        df = TournamentColumnService.get_games_dataframe([])
+        df = TournamentColumnService.get_games_dataframe(
+            [], show_league_name=True, show_field=True
+        )
         self.assertEqual(len(df), 0)
 
-        required_fields = ['Feld', 'Zeit', 'Heim', 'Pkt', 'Pkt', 'Gast', 'Status']
+        required_fields = [
+            "Zeit",
+            "Liga",
+            "Feld",
+            "Heim",
+            "Pkt",
+            "Pkt",
+            "Gast",
+            "Status",
+        ]
         for field in required_fields:
             self.assertIn(field, df.columns)
 
@@ -57,7 +68,7 @@ class TournamentColumnServiceTests(TestCase):
 
         # Pass in a deliberately scrambled order: gi2, gi1, gi3
         gameinfos = [gi2, gi1, gi3]
-        df = TournamentColumnService.get_games_dataframe(gameinfos)
+        df = TournamentColumnService.get_games_dataframe(gameinfos, show_field=True)
 
         # Check order is preserved
         self.assertEqual(df.iloc[0]["Feld"], 2)  # gi2 has field 2
@@ -71,9 +82,11 @@ class TournamentColumnServiceTests(TestCase):
         GameresultFactory(gameinfo=gi, team=self.home_team, isHome=True, fh=10, sh=7)
         GameresultFactory(gameinfo=gi, team=self.away_team, isHome=False, fh=3, sh=4)
 
-        df = TournamentColumnService.get_games_dataframe([gi])
+        df = TournamentColumnService.get_games_dataframe(
+            [gi], show_league_name=False, show_field=False
+        )
 
-        home, away = df.iloc[0]['Pkt']
+        home, away = df.iloc[0]["Pkt"]
 
         self.assertEqual(int(home), 17)  # 10 + 7
         self.assertEqual(int(away), 7)  # 3 + 4
@@ -89,12 +102,14 @@ class TournamentColumnServiceTests(TestCase):
             gameinfo=gi, team=self.away_team, isHome=False, fh=None, sh=None
         )
 
-        df = TournamentColumnService.get_games_dataframe([gi])
+        df = TournamentColumnService.get_games_dataframe(
+            [gi], show_league_name=False, show_field=False
+        )
 
-        home, away = df.iloc[0]['Pkt']
+        home, away = df.iloc[0]["Pkt"]
 
-        self.assertEqual(home, '')
-        self.assertEqual(away, '')
+        self.assertEqual(home, "")
+        self.assertEqual(away, "")
 
     def test_stale_gameinfo_reference_tolerated(self):
         gameday = GamedayFactory(season=self.season, league=self.league)
@@ -107,9 +122,67 @@ class TournamentColumnServiceTests(TestCase):
         # so we'll test tolerance via empty results instead)
         # In practice, the service filters out None entries via by_id.get()
         gameinfos = [gi]  # Just one gameinfo for now
-        df = TournamentColumnService.get_games_dataframe(gameinfos)
+        df = TournamentColumnService.get_games_dataframe(
+            gameinfos, show_league_name=False, show_field=False
+        )
 
         self.assertEqual(len(df), 1)
+
+    def test_default_no_league_no_field_columns(self):
+        gameday = GamedayFactory(season=self.season, league=self.league)
+        gi = GameinfoFactory(gameday=gameday)
+        GameresultFactory(gameinfo=gi, team=self.home_team, isHome=True, fh=10, sh=7)
+        GameresultFactory(gameinfo=gi, team=self.away_team, isHome=False, fh=3, sh=4)
+
+        df = TournamentColumnService.get_games_dataframe([gi])
+
+        self.assertNotIn("Liga", df.columns)
+        self.assertNotIn("Feld", df.columns)
+        self.assertIn("Zeit", df.columns)
+        self.assertIn("Heim", df.columns)
+
+    def test_show_league_name_only(self):
+        gameday = GamedayFactory(season=self.season, league=self.league)
+        gi = GameinfoFactory(gameday=gameday)
+        GameresultFactory(gameinfo=gi, team=self.home_team, isHome=True, fh=10, sh=7)
+        GameresultFactory(gameinfo=gi, team=self.away_team, isHome=False, fh=3, sh=4)
+
+        df = TournamentColumnService.get_games_dataframe(
+            [gi], show_league_name=True, show_field=False
+        )
+
+        self.assertIn("Liga", df.columns)
+        self.assertNotIn("Feld", df.columns)
+        self.assertEqual(df.iloc[0]["Liga"], "Division 1")
+
+    def test_show_field_only(self):
+        gameday = GamedayFactory(season=self.season, league=self.league)
+        gi = GameinfoFactory(gameday=gameday, field=5)
+        GameresultFactory(gameinfo=gi, team=self.home_team, isHome=True, fh=10, sh=7)
+        GameresultFactory(gameinfo=gi, team=self.away_team, isHome=False, fh=3, sh=4)
+
+        df = TournamentColumnService.get_games_dataframe(
+            [gi], show_league_name=False, show_field=True
+        )
+
+        self.assertNotIn("Liga", df.columns)
+        self.assertIn("Feld", df.columns)
+        self.assertEqual(df.iloc[0]["Feld"], 5)
+
+    def test_show_both_columns(self):
+        gameday = GamedayFactory(season=self.season, league=self.league)
+        gi = GameinfoFactory(gameday=gameday, field=3)
+        GameresultFactory(gameinfo=gi, team=self.home_team, isHome=True, fh=10, sh=7)
+        GameresultFactory(gameinfo=gi, team=self.away_team, isHome=False, fh=3, sh=4)
+
+        df = TournamentColumnService.get_games_dataframe(
+            [gi], show_league_name=True, show_field=True
+        )
+
+        self.assertIn("Liga", df.columns)
+        self.assertIn("Feld", df.columns)
+        self.assertEqual(df.iloc[0]["Liga"], "Division 1")
+        self.assertEqual(df.iloc[0]["Feld"], 3)
 
 
 class TournamentServiceTests(TestCase):
@@ -217,3 +290,35 @@ class TournamentServiceTests(TestCase):
         self.assertEqual(context["rows"][0]["columns"][0]["col_class"], "col-md-4")
         self.assertEqual(context["rows"][0]["columns"][1]["col_class"], "col-md-4")
         self.assertEqual(context["rows"][0]["columns"][2]["col_class"], "col-md-4")
+
+    def test_build_context_respects_show_flags(self):
+        season = SeasonFactory(name="2024")
+        league = LeagueFactory(name="Test League")
+        home_team = TeamFactory(name="Home Team", description="Home Team Desc")
+        away_team = TeamFactory(name="Away Team", description="Away Team Desc")
+
+        tournament = TournamentFactory(
+            name="Finals", show_league_name=True, show_field=True
+        )
+        gameday = GamedayFactory(season=season, league=league)
+        gi = GameinfoFactory(gameday=gameday, field=2)
+        GameresultFactory(gameinfo=gi, team=home_team, isHome=True, fh=10, sh=7)
+        GameresultFactory(gameinfo=gi, team=away_team, isHome=False, fh=3, sh=4)
+
+        row = TournamentRowFactory(tournament=tournament, title="Semifinals")
+        col = TournamentColumnFactory(row=row, title="Match 1")
+        TournamentColumnGameFactory(column=col, gameinfo=gi)
+
+        tournament = (
+            type(tournament)
+            .objects.prefetch_related(
+                "rows__columns__column_games__gameinfo__gameday",
+                "rows__columns__column_games__gameinfo__gameresult_set__team",
+            )
+            .get(pk=tournament.pk)
+        )
+        context = TournamentService.build_context(tournament)
+
+        table_html = context["rows"][0]["columns"][0]["table_html"]
+        self.assertIn("Liga", table_html)
+        self.assertIn("Feld", table_html)

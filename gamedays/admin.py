@@ -76,7 +76,14 @@ class TournamentRowInline(admin.StackedInline):
 
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin):
-    list_display = ("name", "title", "location", "row_count")
+    list_display = (
+        "name",
+        "title",
+        "location",
+        "row_count",
+        "show_league_name",
+        "show_field",
+    )
     search_fields = ("name", "title", "location")
     inlines = [TournamentRowInline]
 

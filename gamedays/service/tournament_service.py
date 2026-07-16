@@ -9,7 +9,7 @@ from gamedays.service.gameday_settings import (
     SCHEDULED,
     FIELD,
     STATUS,
-    LEAGUE__NAME
+    LEAGUE__NAME,
 )
 
 TOURNAMENT_COLUMN_HEADERS = {
@@ -26,19 +26,22 @@ TOURNAMENT_COLUMN_HEADERS = {
 
 class TournamentColumnService:
     @staticmethod
-    def get_games_dataframe(gameinfos: list[Gameinfo]) -> pd.DataFrame:
-        output_columns = [
-            SCHEDULED,
-            LEAGUE__NAME,
-            FIELD,
-            HOME,
-            POINTS_HOME,
-            POINTS_AWAY,
-            AWAY,
-            STATUS,
-        ]
+    def get_games_dataframe(
+        gameinfos: list[Gameinfo],
+        show_league_name: bool = False,
+        show_field: bool = False,
+    ) -> pd.DataFrame:
+        output_columns = [SCHEDULED]
+        if show_league_name:
+            output_columns.append(LEAGUE__NAME)
+        if show_field:
+            output_columns.append(FIELD)
+        output_columns += [HOME, POINTS_HOME, POINTS_AWAY, AWAY, STATUS]
+
         if not gameinfos:
-            return pd.DataFrame(columns=list(TOURNAMENT_COLUMN_HEADERS.values()))
+            return pd.DataFrame(
+                columns=[TOURNAMENT_COLUMN_HEADERS[c] for c in output_columns]
+            )
 
         rows = []
         for gi in gameinfos:
@@ -47,7 +50,7 @@ class TournamentColumnService:
                 (r for r in gi.gameresult_set.all() if not r.isHome), None
             )
 
-            home_points = ''
+            home_points = ""
             if (
                 home_result
                 and home_result.fh is not None
@@ -55,7 +58,7 @@ class TournamentColumnService:
             ):
                 home_points = str(home_result.fh + home_result.sh)
 
-            away_points = ''
+            away_points = ""
             if (
                 away_result
                 and away_result.fh is not None
@@ -118,7 +121,11 @@ class TournamentService:
             columns_context = []
             for column in row.columns.all():
                 gameinfos = [cg.gameinfo for cg in column.column_games.all()]
-                df = TournamentColumnService.get_games_dataframe(gameinfos)
+                df = TournamentColumnService.get_games_dataframe(
+                    gameinfos,
+                    show_league_name=tournament.show_league_name,
+                    show_field=tournament.show_field,
+                )
 
                 table_html = None
                 if not df.empty:

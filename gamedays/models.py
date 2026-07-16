@@ -384,6 +384,8 @@ class Tournament(models.Model):
     title = models.CharField(max_length=200, blank=True, default="")
     location = models.CharField(max_length=200, blank=True, default="")
     description = models.TextField(blank=True, default="")
+    show_league_name = models.BooleanField(default=False)
+    show_field = models.BooleanField(default=False)
 
     objects: QuerySet["Tournament"] = models.Manager()
 
