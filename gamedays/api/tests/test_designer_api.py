@@ -3,6 +3,7 @@ from rest_framework import status
 from django.contrib.auth.models import User
 from gamedays.models import Gameday, Gameinfo, GamedayDesignerState
 from gamedays.tests.setup_factories.db_setup import DBSetup
+from gamedays.tests.setup_factories.factories import LeagueFactory, SeasonFactory
 
 
 class DesignerAPITest(APITestCase):
@@ -40,6 +41,46 @@ class DesignerAPITest(APITestCase):
         assert metadata["name"] == self.gameday.name
         assert str(metadata["date"]) == str(self.gameday.date)
         assert metadata["status"] == self.gameday.status
+
+    def test_update_designer_state_syncs_league_and_season_to_gameday(self):
+        """Changing league/season in the designer must persist to the Gameday
+        model's FKs, not just the state_data JSON blob -- backend code that reads
+        gameday.league/gameday.season directly (schedule resolution, league
+        tables, passcheck, ...) would otherwise keep seeing the old value.
+        Regression test for #1565."""
+        new_league = LeagueFactory(name="e2e_test_league_2")
+        new_season = SeasonFactory(name=f"{self.gameday.season.name}-alt")
+        assert self.gameday.league_id != new_league.id
+        assert self.gameday.season_id != new_season.id
+
+        url = f"/api/gamedays/{self.gameday.id}/designer-state/"
+        data = {
+            "state_data": {
+                "metadata": {"league": new_league.id, "season": new_season.id}
+            }
+        }
+        response = self.client.put(url, data, format="json")
+        assert response.status_code == status.HTTP_200_OK
+
+        self.gameday.refresh_from_db()
+        assert self.gameday.league_id == new_league.id
+        assert self.gameday.season_id == new_season.id
+
+    def test_update_designer_state_ignores_placeholder_zero_league_and_season(self):
+        """The designer's initial (not-yet-loaded) local state defaults league
+        and season to 0, which is not a valid FK. A save racing ahead of the
+        real state must not attempt to point the gameday at League/Season pk 0."""
+        original_league_id = self.gameday.league_id
+        original_season_id = self.gameday.season_id
+
+        url = f"/api/gamedays/{self.gameday.id}/designer-state/"
+        data = {"state_data": {"metadata": {"league": 0, "season": 0}}}
+        response = self.client.put(url, data, format="json")
+        assert response.status_code == status.HTTP_200_OK
+
+        self.gameday.refresh_from_db()
+        assert self.gameday.league_id == original_league_id
+        assert self.gameday.season_id == original_season_id
 
     def test_publish_gameday(self):
         # Publishing regenerates the schedule from the designer canvas, so it is

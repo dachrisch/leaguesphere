@@ -4,6 +4,7 @@ from collections import OrderedDict
 from datetime import datetime
 
 from django.conf import settings
+from django.db.models import Count, Max
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import condition
 from django.utils.decorators import method_decorator
@@ -55,17 +56,22 @@ from gamedays.service.gameday_settings import (
 
 
 def generate_gameday_list_etag(request):
-    """Generate ETag for gameday list based on query parameters and latest gameday."""
+    """Generate ETag for gameday list based on query parameters and gameday state.
+
+    Must change whenever the list response would change: a new/deleted gameday
+    (count), or a field edit on an existing one -- name, status, league, season,
+    etc. (max updated_at). The pk of the newest row alone doesn't cover that last
+    case: publishing gameday N doesn't create a new row, so the pk-only ETag
+    stayed identical across the publish and clients kept serving their
+    pre-publish cached body via a stale 304.
+    """
     # Include query parameters in ETag
     etag_data = request.GET.urlencode() or "all"
 
-    # Include latest gameday pk to detect changes
-    try:
-        latest_gameday = Gameday.objects.values_list('pk', flat=True).order_by('-pk').first()
-        if latest_gameday:
-            etag_data += f":{latest_gameday}"
-    except Gameday.DoesNotExist:
-        pass
+    aggregate = Gameday.objects.aggregate(
+        count=Count("pk"), latest_update=Max("updated_at")
+    )
+    etag_data += f":{aggregate['count']}:{aggregate['latest_update']}"
 
     return f'"{hashlib.md5(etag_data.encode()).hexdigest()}"'
 
@@ -257,6 +263,15 @@ class GamedayViewSet(viewsets.ModelViewSet):
                 if value is not None and value != "" and getattr(gameday, field) != value:
                     setattr(gameday, field, value)
                     update_fields.append(field)
+            # league/season are FKs: read/write the *_id attname directly so we
+            # compare and assign raw pks without loading the related objects.
+            # 0 is the designer's not-yet-loaded placeholder, not a real pk --
+            # skip it rather than pointing the gameday at a nonexistent row.
+            for field, attname in (("season", "season_id"), ("league", "league_id")):
+                value = metadata.get(field)
+                if value and getattr(gameday, attname) != value:
+                    setattr(gameday, attname, value)
+                    update_fields.append(attname)
             if update_fields:
                 gameday.save(update_fields=update_fields)
 
