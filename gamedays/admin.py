@@ -21,24 +21,6 @@ from gamedays.models import (
 )
 
 admin.site.register(Gameday)
-
-
-@admin.register(Gameinfo)
-class GameinfoAdmin(admin.ModelAdmin):
-    list_display = (
-        "id",
-        "gameday",
-        "field",
-        "scheduled",
-        "stage",
-        "standing",
-        "status",
-    )
-    list_select_related = ("gameday",)
-    search_fields = ("id", "gameday__name", "stage", "standing")
-    list_filter = ("status", "stage")
-
-
 admin.site.register(Gameresult)
 admin.site.register(GameOfficial)
 admin.site.register(GameSetup)
@@ -79,6 +61,22 @@ class ResourceUrlInline(admin.TabularInline):
     extra = 1
     fields = ("url", "description")
     ordering = ["id"]
+
+
+@admin.register(Gameinfo)
+class GameinfoAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "gameday",
+        "field",
+        "scheduled",
+        "stage",
+        "standing",
+        "status",
+    )
+    list_select_related = ("gameday",)
+    search_fields = ("id", "gameday__name", "stage", "standing")
+    list_filter = ("status", "stage")
 
 
 @admin.register(Tournament)
