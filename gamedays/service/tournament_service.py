@@ -2,9 +2,6 @@ import pandas as pd
 
 from gamedays.models import Gameinfo
 from gamedays.service.gameday_settings import (
-    GAMEINFO_ID,
-    ID_HOME,
-    ID_AWAY,
     HOME,
     AWAY,
     POINTS_HOME,
@@ -12,15 +9,12 @@ from gamedays.service.gameday_settings import (
     SCHEDULED,
     FIELD,
     STATUS,
-    TEAM_DESCRIPTION,
-    IS_HOME,
-    FH,
-    SH,
-    PF,
+    LEAGUE__NAME
 )
 
 TOURNAMENT_COLUMN_HEADERS = {
     SCHEDULED: "Zeit",
+    LEAGUE__NAME: "Liga",
     FIELD: "Feld",
     HOME: "Heim",
     AWAY: "Gast",
@@ -35,6 +29,8 @@ class TournamentColumnService:
     def get_games_dataframe(gameinfos: list[Gameinfo]) -> pd.DataFrame:
         output_columns = [
             SCHEDULED,
+            LEAGUE__NAME,
+            FIELD,
             HOME,
             POINTS_HOME,
             POINTS_AWAY,
@@ -69,6 +65,7 @@ class TournamentColumnService:
 
             rows.append(
                 {
+                    LEAGUE__NAME: gi.gameday.league.name,
                     SCHEDULED: gi.scheduled,
                     FIELD: gi.field,
                     HOME: (
@@ -110,7 +107,7 @@ class TournamentService:
             "text-center",
         ],
         "border": 0,
-        "justify": "left",
+        "justify": "center",
         "escape": False,
     }
 

@@ -29,9 +29,10 @@ class TournamentColumnServiceTests(TestCase):
     def test_empty_gameinfo_list_returns_empty_dataframe(self):
         df = TournamentColumnService.get_games_dataframe([])
         self.assertEqual(len(df), 0)
-        self.assertIn("Zeit", df.columns)
-        self.assertIn("Feld", df.columns)
-        self.assertIn("Heim", df.columns)
+
+        required_fields = ['Feld', 'Zeit', 'Heim', 'Pkt', 'Pkt', 'Gast', 'Status']
+        for field in required_fields:
+            self.assertIn(field, df.columns)
 
     def test_cross_gameday_scrambled_order_preserved(self):
         gameday1 = GamedayFactory(
@@ -72,8 +73,10 @@ class TournamentColumnServiceTests(TestCase):
 
         df = TournamentColumnService.get_games_dataframe([gi])
 
-        self.assertEqual(df.iloc[0]["Punkte Heim"], 17)  # 10 + 7
-        self.assertEqual(df.iloc[0]["Punkte Gast"], 7)  # 3 + 4
+        home, away = df.iloc[0]['Pkt']
+
+        self.assertEqual(int(home), 17)  # 10 + 7
+        self.assertEqual(int(away), 7)  # 3 + 4
 
     def test_unplayed_game_returns_none_for_points(self):
         gameday = GamedayFactory(season=self.season, league=self.league)
@@ -88,8 +91,10 @@ class TournamentColumnServiceTests(TestCase):
 
         df = TournamentColumnService.get_games_dataframe([gi])
 
-        self.assertIsNone(df.iloc[0]["Punkte Heim"])
-        self.assertIsNone(df.iloc[0]["Punkte Gast"])
+        home, away = df.iloc[0]['Pkt']
+
+        self.assertEqual(home, '')
+        self.assertEqual(away, '')
 
     def test_stale_gameinfo_reference_tolerated(self):
         gameday = GamedayFactory(season=self.season, league=self.league)
