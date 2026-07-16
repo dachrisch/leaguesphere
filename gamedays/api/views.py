@@ -263,6 +263,15 @@ class GamedayViewSet(viewsets.ModelViewSet):
                 if value is not None and value != "" and getattr(gameday, field) != value:
                     setattr(gameday, field, value)
                     update_fields.append(field)
+            # league/season are FKs: read/write the *_id attname directly so we
+            # compare and assign raw pks without loading the related objects.
+            # 0 is the designer's not-yet-loaded placeholder, not a real pk --
+            # skip it rather than pointing the gameday at a nonexistent row.
+            for field, attname in (("season", "season_id"), ("league", "league_id")):
+                value = metadata.get(field)
+                if value and getattr(gameday, attname) != value:
+                    setattr(gameday, attname, value)
+                    update_fields.append(attname)
             if update_fields:
                 gameday.save(update_fields=update_fields)
 
