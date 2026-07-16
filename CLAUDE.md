@@ -151,11 +151,11 @@ getting lost or missing cross-module dependencies.
 
 ### HTTP-Level ETag Caching
 The `gamedays/api/views.py` implements ETag-based caching to reduce redundant data transfers:
-- **Gameday List**: Uses `@condition(etag_func=generate_gameday_list_etag)` decorator with query parameters + latest gameday pk
+- **Gameday List**: Uses `@condition(etag_func=generate_gameday_list_etag)` decorator with query parameters + row count + `Max(updated_at)` across all gamedays
 - **Gameday Games**: Uses `generate_gameday_games_etag()` based on latest gameresult pk
 - Returns HTTP 304 (Not Modified) when ETags match, preventing unnecessary response payload transfers
 
-**When to use:** Always use ETags for read-heavy endpoints that serve large data structures. Include relevant query parameters and latest object PKs in ETag generation.
+**When to use:** Always use ETags for read-heavy endpoints that serve large data structures. Include relevant query parameters, plus enough of the underlying state to change whenever the response would: a `Max(pk)`/count alone only detects rows being added or removed, not a field edit on an *existing* row (status flip, rename, etc.) — that silently served stale 304s for a gameday's Draft/Published badge after publishing (see `Gameday.updated_at`, `Gameday.save()`, and `gamedays/api/tests/test_gameday_list_etag_freshness.py`). Prefer a `Max(updated_at)` over an editable model, and make sure `save(update_fields=[...])` call sites don't quietly exclude it.
 
 ### Query Optimization with Prefetch & Select
 The `GameProgressViewSet` demonstrates the optimization pattern:
