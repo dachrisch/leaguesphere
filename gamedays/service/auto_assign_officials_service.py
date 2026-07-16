@@ -32,7 +32,6 @@ class AutoAssignOfficialsService:
 
         referee_count: dict[int, int] = defaultdict(int)
         assignments: dict[int, int] = {}
-        assigned_set: set[int] = set()
 
         scheduled_times = sorted(time_groups.keys())
 
@@ -49,6 +48,8 @@ class AutoAssignOfficialsService:
             for gi in games_at_time:
                 groups[gi.standing].append(gi)
 
+            slot_assigned: set[int] = set()
+
             for standing, gis in groups.items():
                 donor_pool: set[int] = set()
                 for other_standing, teams in all_teams_in_standing.items():
@@ -61,7 +62,7 @@ class AutoAssignOfficialsService:
                 eligible = [
                     t
                     for t in donor_pool
-                    if t not in busy_teams and t not in assigned_set
+                    if t not in busy_teams and t not in slot_assigned
                 ]
                 if not eligible:
                     continue
@@ -77,6 +78,6 @@ class AutoAssignOfficialsService:
                     gi.save(update_fields=["officials"])
                     referee_count[chosen] += 1
                     assignments[gi.pk] = chosen
-                    assigned_set.add(chosen)
+                    slot_assigned.add(chosen)
 
         return assignments
