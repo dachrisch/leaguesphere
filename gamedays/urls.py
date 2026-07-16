@@ -88,7 +88,7 @@ urlpatterns = [
         name=LEAGUE_GAMEDAY_GAMEINFOS_DELETE,
     ),
     path(
-        "gamedays/tournament/<int:pk>/",
+        "tournament/<int:pk>/",
         TournamentDetailView.as_view(),
         name=LEAGUE_TOURNAMENT_DETAIL,
     ),
