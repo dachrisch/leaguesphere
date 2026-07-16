@@ -83,6 +83,35 @@ class TournamentAdminPageLoadTests(TestCase):
         # Check that ResourceUrl inline is present
         self.assertIn("resourceurl_set", response.content.decode())
 
+    def test_tournament_list_displays_show_league_name_and_show_field(self):
+        tournament = TournamentFactory(
+            name="Test Tournament", show_league_name=True, show_field=True
+        )
+        response = self.client.get("/admin/gamedays/tournament/")
+        self.assertEqual(response.status_code, 200)
+        # Verify list_display includes the new fields
+        content = response.content.decode()
+        self.assertIn("show_league_name", content)
+        self.assertIn("show_field", content)
+
+    def test_tournament_change_page_includes_show_league_name_field(self):
+        tournament = TournamentFactory(name="Test Tournament")
+        response = self.client.get(
+            f"/admin/gamedays/tournament/{tournament.id}/change/"
+        )
+        self.assertEqual(response.status_code, 200)
+        # Check that show_league_name field is present
+        self.assertIn("show_league_name", response.content.decode())
+
+    def test_tournament_change_page_includes_show_field_field(self):
+        tournament = TournamentFactory(name="Test Tournament")
+        response = self.client.get(
+            f"/admin/gamedays/tournament/{tournament.id}/change/"
+        )
+        self.assertEqual(response.status_code, 200)
+        # Check that show_field field is present
+        self.assertIn("show_field", response.content.decode())
+
     def test_tournament_row_add_page_loads(self):
         response = self.client.get("/admin/gamedays/tournamentrow/add/")
         self.assertEqual(response.status_code, 200)
