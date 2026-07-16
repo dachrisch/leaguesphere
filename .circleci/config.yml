@@ -609,30 +609,44 @@ workflows:
     jobs:
       - python:
           filters:
+            branches:
+              ignore: /^release-please--.*/
             tags:
               only: /.*/
       - e2e:
           filters:
+            branches:
+              ignore: /^release-please--.*/
             tags:
               only: /.*/
       - scorecard_js:
           filters:
+            branches:
+              ignore: /^release-please--.*/
             tags:
               only: /.*/
       - liveticker_js:
           filters:
+            branches:
+              ignore: /^release-please--.*/
             tags:
               only: /.*/
       - passcheck_js:
           filters:
+            branches:
+              ignore: /^release-please--.*/
             tags:
               only: /.*/
       - gameday_designer_js:
           filters:
+            branches:
+              ignore: /^release-please--.*/
             tags:
               only: /.*/
       - journey_dashboard_js:
           filters:
+            branches:
+              ignore: /^release-please--.*/
             tags:
               only: /.*/
 
@@ -641,6 +655,8 @@ workflows:
             - python
             - e2e
           filters:
+            branches:
+              ignore: /^release-please--.*/
             tags:
               only: /.*/
       - build_frontend:
@@ -651,6 +667,8 @@ workflows:
             - gameday_designer_js
             - journey_dashboard_js
           filters:
+            branches:
+              ignore: /^release-please--.*/
             tags:
               only: /.*/
 
@@ -658,12 +676,16 @@ workflows:
           requires:
             - build_backend
           filters:
+            branches:
+              ignore: /^release-please--.*/
             tags:
               only: /.*/
       - test_frontend_image:
           requires:
             - build_frontend
           filters:
+            branches:
+              ignore: /^release-please--.*/
             tags:
               only: /.*/
       - check_migrations:
@@ -671,6 +693,8 @@ workflows:
           requires:
             - build_backend
           filters:
+            branches:
+              ignore: /^release-please--.*/
             tags:
               only: /.*/
       - test_compose_network:
@@ -681,6 +705,8 @@ workflows:
             - test_frontend_image
             - check_migrations
           filters:
+            branches:
+              ignore: /^release-please--.*/
             tags:
               only: /.*/
 

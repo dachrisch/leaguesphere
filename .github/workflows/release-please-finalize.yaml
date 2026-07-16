@@ -76,3 +76,19 @@ jobs:
               exit 1
             fi
           fi
+
+      - name: Trigger CircleCI pipeline
+        env:
+          CIRCLECI_TOKEN: ${{ secrets.CIRCLECI_TOKEN }}
+        run: |
+          # release-please branches are excluded from CircleCI's automatic
+          # branch-push trigger (see .circleci/config.yml) because release-please
+          # and this workflow each push a commit to the same branch seconds
+          # apart, guaranteeing one wasted full pipeline run per release.
+          # This step explicitly triggers the single run that should actually
+          # be tested: whatever is HEAD on this branch once finalize is done.
+          curl --fail -sS -X POST \
+            "https://circleci.com/api/v2/project/gh/dachrisch/leaguesphere/pipeline" \
+            -H "Circle-Token: ${CIRCLECI_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"branch\": \"${{ github.head_ref }}\"}"
