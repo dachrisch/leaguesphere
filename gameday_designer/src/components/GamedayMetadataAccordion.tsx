@@ -618,7 +618,6 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                   <i className={`bi ${ICONS.CLEAR} me-2`}></i>
                   {t('ui:button.clearSchedule')}
                 </Button>
-
               </div>
 
               <Button 

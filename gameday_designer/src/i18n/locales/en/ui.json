@@ -43,7 +43,9 @@
     "saveTemplate": "Save Template",
     "saveAsTemplate": "Save as Template",
     "addUrl": "Add URL",
-    "deleteUrl": "Delete"
+    "deleteUrl": "Delete",
+    "autoAssignOfficials": "Assign Referees",
+    "autoAssignOfficials_short": "Referees"
   },
   "label": {
     "dashboard": "Dashboard",
@@ -276,6 +278,8 @@
       "title": "Template exported"
     },
     "resultsSaved": "Results saved successfully",
-    "resultsSaveFailed": "Failed to save results"
+    "resultsSaveFailed": "Failed to save results",
+    "officialsAssigned": "Referees assigned to {{count}} games",
+    "officialsAssignFailed": "Failed to assign referees"
   }
 }

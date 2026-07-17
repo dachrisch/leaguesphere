@@ -43,7 +43,9 @@
     "saveTemplate": "Vorlage speichern",
     "saveAsTemplate": "Als Vorlage speichern",
     "addUrl": "URL hinzufügen",
-    "deleteUrl": "Löschen"
+    "deleteUrl": "Löschen",
+    "autoAssignOfficials": "Schiedsrichter zuweisen",
+    "autoAssignOfficials_short": "Schiedsrichter"
   },
   "label": {
     "dashboard": "Dashboard",
@@ -276,6 +278,8 @@
       "title": "Vorlage exportiert"
     },
     "resultsSaved": "Ergebnisse erfolgreich gespeichert",
-    "resultsSaveFailed": "Fehler beim Speichern der Ergebnisse"
+    "resultsSaveFailed": "Fehler beim Speichern der Ergebnisse",
+    "officialsAssigned": "Schiedsrichter für {{count}} Spiele zugewiesen",
+    "officialsAssignFailed": "Schiedsrichter-Zuweisung fehlgeschlagen"
   }
 }

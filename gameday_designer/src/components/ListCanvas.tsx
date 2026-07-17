@@ -54,6 +54,8 @@ export interface ListCanvasProps {
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
   onNotify?: (message: string, type: import('../types/designer').NotificationType, title?: string) => void;
+  onAutoAssignOfficials?: () => void;
+  isAutoAssigning?: boolean;
   onAddOfficials?: () => void;
   resultsMode?: boolean;
   gameResults?: import('../types/designer').GameResultsDisplay[];
@@ -109,6 +111,8 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
     highlightedSourceGameId,
     onDynamicReferenceClick,
     onNotify,
+    onAutoAssignOfficials,
+    isAutoAssigning = false,
     onAddOfficials,
     resultsMode = false,
     gameResults = [],
@@ -220,6 +224,18 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
                   <i className={`bi ${ICONS.ADD} me-2`} />
                   <span className="btn-label-adaptive">{t('ui:button.addField')}</span>
                 </Button>
+                {onAutoAssignOfficials && (
+                  <Button
+                    size="sm"
+                    variant="outline-info"
+                    onClick={onAutoAssignOfficials}
+                    disabled={!(nodes.length > 0 || globalTeams.length > 0) || metadata.status !== 'DRAFT' || isAutoAssigning}
+                    data-testid="auto-assign-officials-button"
+                  >
+                    <i className="bi bi-people me-2" />
+                    {isAutoAssigning ? t('ui:message.loading') : t('ui:button.autoAssignOfficials')}
+                  </Button>
+                )}
               </div>
             )}
           </Card.Header>
