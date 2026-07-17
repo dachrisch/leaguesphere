@@ -34,6 +34,7 @@ from .constants import (
     LEAGUE_GAMEDAY_GAMEINFOS_UPDATE,
     LEAGUE_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
     LEAGUE_GAMEDAY_LEAGUE_STATISTICS,
+    LEAGUE_TOURNAMENT_DETAIL,
 )
 from .forms import (
     GamedayForm,
@@ -43,14 +44,16 @@ from .forms import (
     GamedayFormatForm,
     GamedayFormContext,
     SCHEDULE_MAP,
-    SCHEDULE_CUSTOM_CHOICE_C, ResourceUrlFormSet,
+    SCHEDULE_CUSTOM_CHOICE_C,
+    ResourceUrlFormSet,
 )
-from .models import Gameday, Gameinfo, ResourceUrl
+from .models import Gameday, Gameinfo, ResourceUrl, Tournament
 from .service.builders import TableContextBuilder
 from .service.gameday_form_service import GamedayFormService
 from .service.gameday_service import GamedayService, GamedayGameService, EmptySchedule
 from .service.gameday_settings import ID
 from .service.league_statistics_service import LeagueStatisticsService
+from .service.tournament_service import TournamentService
 from .wizard import (
     FIELD_GROUP_STEP,
     GAMEDAY_FORMAT_STEP,
@@ -68,10 +71,20 @@ class GamedayListView(View):
         year = kwargs.get("season", datetime.today().year)
         show_all_games = request.GET.get("showAllGames") == "true"
         league = kwargs.get("league")
-        gamedays = Gameday.objects.select_related('league').filter(date__year=year).order_by("date", "name")
-        leagues = gamedays.values_list("league__name", flat=True).distinct().order_by("league__name")
+        gamedays = (
+            Gameday.objects.select_related("league")
+            .filter(date__year=year)
+            .order_by("date", "name")
+        )
+        leagues = (
+            gamedays.values_list("league__name", flat=True)
+            .distinct()
+            .order_by("league__name")
+        )
         # Include today's gamedays (date__gte instead of date__gt)
-        filtered_gamedays_by_today = gamedays.filter(date__gte=datetime.today()).order_by("date", "name")
+        filtered_gamedays_by_today = gamedays.filter(
+            date__gte=datetime.today()
+        ).order_by("date", "name")
         if filtered_gamedays_by_today.count() > 0 and not show_all_games:
             gamedays = filtered_gamedays_by_today
         gamedays_filtered_by_league = (
@@ -106,7 +119,9 @@ class GamedayLeagueStatisticView(TemplateView):
         context = {**context, **kwargs}
 
         try:
-            config = LeagueSeasonConfig.objects.get(league__name=self.kwargs["league"], season__name=self.kwargs["season"]).get_season_statistic_settings()
+            config = LeagueSeasonConfig.objects.get(
+                league__name=self.kwargs["league"], season__name=self.kwargs["season"]
+            ).get_season_statistic_settings()
         except LeagueSeasonConfig.DoesNotExist as e:
             config = dict()
 
@@ -124,7 +139,9 @@ class GamedayLeagueStatisticView(TemplateView):
             "escape": False,
         }
 
-        lss = LeagueStatisticsService.create(**kwargs, top_n_players=config.get(TOP_N_PLAYER, 10))
+        lss = LeagueStatisticsService.create(
+            **kwargs, top_n_players=config.get(TOP_N_PLAYER, 10)
+        )
 
         td_table = lss.get_touchdowns_table()
         int_table = lss.get_interception_table()
@@ -142,7 +159,7 @@ class GamedayLeagueStatisticView(TemplateView):
             "player_safety_table": safety_table.to_html(**render_configs),
             "player_scoring_table": scoring_players_table.to_html(**render_configs),
             "team_statistics_table": team_statistics_table.to_html(**render_configs),
-            "extended_info": config.get("show_player_names", False)
+            "extended_info": config.get("show_player_names", False),
         }
 
         return context
@@ -153,7 +170,9 @@ class GamedayDetailView(DetailView):
     template_name = "gamedays/gameday_detail.html"
 
     def get_queryset(self):
-        return Gameday.objects.select_related('league', 'season').prefetch_related('resourceurl_set')
+        return Gameday.objects.select_related("league", "season").prefetch_related(
+            "resourceurl_set"
+        )
 
     def get_context_data(self, **kwargs):
         context = super(GamedayDetailView, self).get_context_data()
@@ -161,7 +180,10 @@ class GamedayDetailView(DetailView):
         gs = GamedayService.create(gameday.pk)
 
         try:
-            config = LeagueSeasonConfig.objects.get(league__name=self.object.league.name, season__name=self.object.season.name).get_gameday_statistic_settings()
+            config = LeagueSeasonConfig.objects.get(
+                league__name=self.object.league.name,
+                season__name=self.object.season.name,
+            ).get_gameday_statistic_settings()
         except LeagueSeasonConfig.DoesNotExist as e:
             config = dict()
 
@@ -199,11 +221,13 @@ class GamedayDetailView(DetailView):
             url_pattern_official = OFFICIALS_PROFILE_LICENSE
             from officials.urls import OFFICIALS_SIGN_UP_LIST
 
-            url_pattern_official_signup = UrlService.build_absolute_url(OFFICIALS_SIGN_UP_LIST)
+            url_pattern_official_signup = UrlService.build_absolute_url(
+                OFFICIALS_SIGN_UP_LIST
+            )
         else:
             officials = []
-            url_pattern_official = ''
-            url_pattern_official_signup = ''
+            url_pattern_official = ""
+            url_pattern_official_signup = ""
 
         final_table = gs.get_final_table()
         if apps.is_installed("league_table"):
@@ -217,13 +241,19 @@ class GamedayDetailView(DetailView):
                     kwargs={"season": season_slug, "league": league_slug},
                 )
                 try:
-                    league_season_config = LeagueTableRepository.get_league_season_config_by_slug(league_slug, season_slug)
+                    league_season_config = (
+                        LeagueTableRepository.get_league_season_config_by_slug(
+                            league_slug, season_slug
+                        )
+                    )
                     try:
                         # if there is an override then check if officials are allowed
-                        if not league_season_config.overrideofficialgamedaysetting_set.get(gameday=gameday).allow_officials_to_register:
+                        if not league_season_config.overrideofficialgamedaysetting_set.get(
+                            gameday=gameday
+                        ).allow_officials_to_register:
                             officials = []
-                            url_pattern_official = ''
-                            url_pattern_official_signup = ''
+                            url_pattern_official = ""
+                            url_pattern_official_signup = ""
                     except OverrideOfficialGamedaySetting.DoesNotExist:
                         # there is obviously no override so use default league configs
                         if not league_season_config.allow_officials_to_register:
@@ -256,19 +286,17 @@ class GamedayDetailView(DetailView):
                 **render_configs
             ),
             "external_urls": [
-                {
-                    "description": url.description,
-                    "url": url.url
-                }
+                {"description": url.description, "url": url.url}
                 for url in gameday.resourceurl_set.all()
             ],
             "url_pattern_official": url_pattern_official,
             "url_pattern_official_signup": url_pattern_official_signup,
             "url_pattern_league_filter": UrlService.build_absolute_url(
-                LEAGUE_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE, {"season": gameday.season, "league": gameday.league}
+                LEAGUE_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
+                {"season": gameday.season, "league": gameday.league},
             ),
             "url_pattern_liveticker": f"{UrlService.build_absolute_url(LIVETICKER_HOME)}?league={gameday.league.slug}&gameday={gameday.pk}",
-            "extended_info": config.get("show_player_names", False)
+            "extended_info": config.get("show_player_names", False),
         }
 
         return context
@@ -405,7 +433,7 @@ class GamedayGameDetailView(DetailView):
     template_name = "gamedays/games/game_detail.html"
 
     def get_queryset(self):
-        return Gameinfo.objects.select_related('gameday')
+        return Gameinfo.objects.select_related("gameday")
 
     def get_context_data(self, **kwargs):
         context = super(GamedayGameDetailView, self).get_context_data()
@@ -673,6 +701,23 @@ class GameinfoDeleteView(StaffDeleteView):
         )
 
         return redirect(LEAGUE_GAMEDAY_DETAIL, pk=gameday.pk)
+
+
+class TournamentDetailView(DetailView):
+    model = Tournament
+    template_name = "gamedays/tournament_detail.html"
+
+    def get_queryset(self):
+        return Tournament.objects.prefetch_related(
+            "rows__columns__column_games__gameinfo__gameday__league",
+            "rows__columns__column_games__gameinfo__gameresult_set__team",
+            "resourceurl_set",
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["info"] = TournamentService.build_context(self.object)
+        return context
 
 
 class GamedayCreateChooserView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
