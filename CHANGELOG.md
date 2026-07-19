@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.8.1](https://github.com/dachrisch/leaguesphere/compare/v4.8.0...v4.8.1) (2026-07-19)
+
+
+### Bug Fixes
+
+* create GitHub release drafts in CI instead of deploy.sh ([#1583](https://github.com/dachrisch/leaguesphere/issues/1583)) ([5c8a402](https://github.com/dachrisch/leaguesphere/commit/5c8a402651a50d5f24dccf950b70847f4e759fad))
+
 ## [4.8.0](https://github.com/dachrisch/leaguesphere/compare/v4.7.0...v4.8.0) (2026-07-19)
 
 
