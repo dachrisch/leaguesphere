@@ -3,8 +3,8 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models.functions import ExtractYear
-from django.http import HttpResponseForbidden, HttpResponse
-from django.shortcuts import render, get_object_or_404
+from django.http import HttpResponseForbidden
+from django.shortcuts import render
 from django.views import View
 from django.views.generic import (
     DetailView,
@@ -12,7 +12,7 @@ from django.views.generic import (
 
 from .constants import (
     MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
-    MATCHREPORT_GAMEDAY_LIST_AND_YEAR,
+    MATCHREPORT_GAMEDAY_LIST_AND_YEAR
 )
 
 from gamedays.models import Gameday
@@ -25,16 +25,8 @@ class MatchreportGamedayListView(UserPassesTestMixin, View):
     def get(self, request, **kwargs):
         year = kwargs.get("season", datetime.today().year)
         league = kwargs.get("league")
-        gamedays = (
-            Gameday.objects.select_related("league")
-            .filter(date__year=year)
-            .order_by("date")
-        )
-        leagues = (
-            gamedays.values_list("league__name", flat=True)
-            .distinct()
-            .order_by("league__name")
-        )
+        gamedays = Gameday.objects.select_related('league').filter(date__year=year).order_by("date")
+        leagues = gamedays.values_list("league__name", flat=True).distinct().order_by("league__name")
         gamedays_filtered_by_league = (
             gamedays.filter(league__name=league) if league else gamedays
         )
@@ -57,7 +49,6 @@ class MatchreportGamedayListView(UserPassesTestMixin, View):
 
     def test_func(self):
         return self.request.user.is_staff
-
 
 class MatchreportGamedayDetailView(UserPassesTestMixin, DetailView):
     template_name = "matchreport/gameday_detail.html"
@@ -102,19 +93,17 @@ class MatchreportGamedayDetailView(UserPassesTestMixin, DetailView):
         else:
             officials = []
 
-        passcheck_info_table = (
-            """<p>Du hast keine Berechtigung diese Seite zu sehen!</p>"""
-        )
+        passcheck_info_table = """<p>Du hast keine Berechtigung diese Seite zu sehen!</p>"""
         passcheck_player_data = {}
         gameday_match_reports = []
         if is_staff:
             passcheck_info_table_df = ms.get_staff_passcheck_details()
-            passcheck_info_table = (
-                """<p>An diesem Spieltag gab es keine Passchecks</p>"""
-            )
+            passcheck_info_table = """<p>An diesem Spieltag gab es keine Passchecks</p>"""
 
             if not passcheck_info_table_df.empty:
-                passcheck_info_table = passcheck_info_table_df.to_html(**render_configs)
+                passcheck_info_table = passcheck_info_table_df.to_html(
+                    **render_configs
+                )
 
             passcheck_player_data = ms.get_passcheck_player_details(render_configs)
             gameday_match_reports = ms.get_gameday_match_reports(render_configs)
@@ -127,22 +116,6 @@ class MatchreportGamedayDetailView(UserPassesTestMixin, DetailView):
         }
 
         return context
-
-    def test_func(self):
-        return self.request.user.is_staff
-
-
-class MatchreportGamedayPasscheckDownloadView(UserPassesTestMixin, View):
-    def get(self, request, pk, *args, **kwargs):
-        gameday = get_object_or_404(Gameday, pk=pk)
-        player_list = MatchreportService.create(gameday.pk).get_passcheck_player_list()
-
-        csv_body = "﻿" + player_list.to_csv(index=False, sep=";")
-        response = HttpResponse(csv_body, content_type="text/csv; charset=utf-8")
-        response["Content-Disposition"] = (
-            f'attachment; filename="passcheck_spieler_{gameday.pk}.csv"'
-        )
-        return response
 
     def test_func(self):
         return self.request.user.is_staff
