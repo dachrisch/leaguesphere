@@ -710,16 +710,6 @@ workflows:
             tags:
               only: /.*/
 
-      - deploy_staging:
-          context: staging
-          requires:
-            - test_compose_network
-          filters:
-            tags:
-              only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$/
-            branches:
-              ignore: /.*/
-
       - ensure_draft_release:
           requires:
             - test_compose_network
@@ -729,10 +719,20 @@ workflows:
             branches:
               ignore: /.*/
 
+      - deploy_staging:
+          context: staging
+          requires:
+            - test_compose_network
+            - ensure_draft_release
+          filters:
+            tags:
+              only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+
       - promote_to_prerelease:
           requires:
             - deploy_staging
-            - ensure_draft_release
           filters:
             tags:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$/
@@ -753,6 +753,7 @@ workflows:
           type: approval
           requires:
             - test_compose_network
+            - ensure_draft_release
           filters:
             tags:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+$/
@@ -779,7 +780,6 @@ workflows:
       - create_production_release:
           requires:
             - deploy_production
-            - ensure_draft_release
           filters:
             tags:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+$/
