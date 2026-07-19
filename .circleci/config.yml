@@ -711,8 +711,6 @@ workflows:
               only: /.*/
 
       - ensure_draft_release:
-          requires:
-            - test_compose_network
           filters:
             tags:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$/
