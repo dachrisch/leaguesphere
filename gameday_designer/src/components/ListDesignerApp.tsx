@@ -159,6 +159,19 @@ const ListDesignerApp: React.FC = () => {
     return () => setReplayTourA(null);
   }, [replayTourA, setReplayTourA]);
 
+  // --- Onboarding Tour B (save template nudge) ---
+  const { seen: tourBSeen, loading: tourBLoading, markSeen: markTourBSeen } = useTourSeen('save_template');
+  const [runTourB, setRunTourB] = useState(false);
+
+  const handleTourBFinish = useCallback(() => {
+    setRunTourB(false);
+    markTourBSeen();
+  }, [markTourBSeen]);
+
+  const tourBSteps = [
+    { target: '[data-testid="open-template-library-button"]', content: t('ui:tour.save_template.nudge'), placement: 'left' as const },
+  ];
+
   const lastGamedayNameRef = useRef('');
   const lastIsLockedRef = useRef<boolean | null>(null);
 
@@ -444,11 +457,17 @@ const ListDesignerApp: React.FC = () => {
         stage_count: stageCount,
       });
 
+      // Trigger Tour B (save template nudge) if unseen
+      if (!tourBLoading && !tourBSeen) {
+        setRunTourB(true);
+        trackEvent('gd_tour_save_template_started', { replay: false });
+      }
+
       loadData();
     } catch {
       addNotification(t('ui:notification.publishFailed'), 'danger', t('ui:notification.title.error'));
     }
-  }, [id, addNotification, t, loadData, flowState.nodes]);
+  }, [id, addNotification, t, loadData, flowState.nodes, tourBLoading, tourBSeen]);
 
   const handleConfirmDelete = useCallback(async () => {
     setShowDeleteModal(false);
@@ -680,6 +699,13 @@ const ListDesignerApp: React.FC = () => {
         steps={tourASteps}
         run={runTourA}
         onFinish={handleTourAFinish}
+      />
+
+      <DesignerTour
+        tourId="save_template"
+        steps={tourBSteps}
+        run={runTourB}
+        onFinish={handleTourBFinish}
       />
     </div>
   );

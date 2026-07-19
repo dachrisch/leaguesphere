@@ -290,6 +290,9 @@
       "add_team": "Build your team pool — these are the teams that will be assigned to games.",
       "add_game": "Add a game to this stage. You can connect teams or use placeholders for later.",
       "toolbar": "Use these tools to import/export your schedule, undo/redo changes, and publish the gameday."
+    },
+    "save_template": {
+      "nudge": "Did you know you can save this schedule as a reusable template?"
     }
   }
 }

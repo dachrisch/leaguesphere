@@ -290,6 +290,9 @@
       "add_team": "Erstelle deinen Team-Pool — diese Teams werden den Spielen zugeordnet.",
       "add_game": "Füge ein Spiel zu dieser Phase hinzu. Du kannst Teams verbinden oder Platzhalter für später verwenden.",
       "toolbar": "Nutze diese Tools, um deinen Spielplan zu importieren/exportieren, Änderungen rückgängig zu machen und den Spieltag zu veröffentlichen."
+    },
+    "save_template": {
+      "nudge": "Wusstest du, dass du diesen Spielplan als wiederverwendbare Vorlage speichern kannst?"
     }
   }
 }
