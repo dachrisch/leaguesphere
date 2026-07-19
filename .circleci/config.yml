@@ -721,7 +721,6 @@ workflows:
           context: staging
           requires:
             - test_compose_network
-            - ensure_draft_release
           filters:
             tags:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$/
@@ -731,6 +730,7 @@ workflows:
       - promote_to_prerelease:
           requires:
             - deploy_staging
+            - ensure_draft_release
           filters:
             tags:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$/
@@ -751,7 +751,6 @@ workflows:
           type: approval
           requires:
             - test_compose_network
-            - ensure_draft_release
           filters:
             tags:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+$/
@@ -761,6 +760,7 @@ workflows:
       - deploy_production:
           context: production
           requires:
+            - ensure_draft_release
             - hold_production
           filters:
             tags:
