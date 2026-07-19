@@ -22,6 +22,8 @@ import { getAllTemplates } from '../utils/tournamentTemplates';
 import type { GenericTemplate } from '../utils/templateMapper';
 import type { TournamentTemplate } from '../types/tournament';
 import { trackEvent } from '../trackEvent';
+import { useTourSeen } from '../onboarding/useTourSeen';
+import DesignerTour from '../onboarding/DesignerTour';
 import './ListDesignerApp.css';
 
 const getSessionId = (): string => {
@@ -45,6 +47,7 @@ const ListDesignerApp: React.FC = () => {
     setToolbarProps,
     setIsLocked: setContextLocked,
     setOnOpenTemplates,
+    setReplayTourA,
     currentUserId,
     resultsMode,
     setResultsMode,
@@ -117,6 +120,44 @@ const ListDesignerApp: React.FC = () => {
   } = handlers;
 
   const isLocked = metadata?.status ? metadata.status !== 'DRAFT' : false;
+
+  // --- Onboarding Tour A (manual build) ---
+  const { seen: tourASeen, loading: tourALoading, markSeen: markTourASeen } = useTourSeen('manual_build');
+  const [runTourA, setRunTourA] = useState(false);
+  const [tourAKey, setTourAKey] = useState(0); // force re-mount for replay
+
+  const handleTourAFinish = useCallback(() => {
+    setRunTourA(false);
+    markTourASeen();
+  }, [markTourASeen]);
+
+  const replayTourA = useCallback(() => {
+    setTourAKey((k) => k + 1);
+    setRunTourA(true);
+    trackEvent('gd_tour_manual_build_started', { replay: true });
+  }, []);
+
+  const tourASteps = [
+    { target: '#add-field-button', content: t('ui:tour.manual_build.add_field'), placement: 'bottom' as const },
+    { target: '[data-testid="add-stage-button"]', content: t('ui:tour.manual_build.add_stage'), placement: 'bottom' as const },
+    { target: '[data-testid="add-team-button"]', content: t('ui:tour.manual_build.add_team'), placement: 'right' as const },
+    { target: '[data-testid="add-game-button"]', content: t('ui:tour.manual_build.add_game'), placement: 'bottom' as const },
+    { target: '[data-testid="flow-toolbar"]', content: t('ui:tour.manual_build.toolbar'), placement: 'bottom' as const },
+  ];
+
+  // Auto-start Tour A on first visit
+  useEffect(() => {
+    if (!tourALoading && !tourASeen && id && !runTourA) {
+      setRunTourA(true);
+      trackEvent('gd_tour_manual_build_started', { replay: false });
+    }
+  }, [tourALoading, tourASeen, id, runTourA]);
+
+  // Expose replayTourA via context for the header '?' button
+  useEffect(() => {
+    setReplayTourA(() => replayTourA);
+    return () => setReplayTourA(null);
+  }, [replayTourA, setReplayTourA]);
 
   const lastGamedayNameRef = useRef('');
   const lastIsLockedRef = useRef<boolean | null>(null);
@@ -631,6 +672,14 @@ const ListDesignerApp: React.FC = () => {
       />
 
       {ui?.isLoading && <LoadingOverlay message={t('ui:message.loading')} />}
+
+      <DesignerTour
+        key={tourAKey}
+        tourId="manual_build"
+        steps={tourASteps}
+        run={runTourA}
+        onFinish={handleTourAFinish}
+      />
     </div>
   );
 };

@@ -246,7 +246,8 @@
     "autoTimeHint": "Automatisch berechnet - Klicken zum Überschreiben",
     "manualTimeHint": "Manuell gesetzt - Klicken zum Bearbeiten",
     "renameField": "Feld umbenennen",
-    "duplicate": "Duplizieren"
+    "duplicate": "Duplizieren",
+    "replayTour": "Onboarding-Tour wiederholen"
   },
   "notification": {
     "gameResultSaved": "Spielergebnis gespeichert",
@@ -281,5 +282,14 @@
     "resultsSaveFailed": "Fehler beim Speichern der Ergebnisse",
     "officialsAssigned": "Schiedsrichter für {{count}} Spiele zugewiesen",
     "officialsAssignFailed": "Schiedsrichter-Zuweisung fehlgeschlagen"
+  },
+  "tour": {
+    "manual_build": {
+      "add_field": "Klicke hier, um ein Spielfeld hinzuzufügen, auf dem Spiele geplant werden.",
+      "add_stage": "Füge eine Phase innerhalb des Feldes hinzu, um Spiele in Runden oder Gruppen zu organisieren.",
+      "add_team": "Erstelle deinen Team-Pool — diese Teams werden den Spielen zugeordnet.",
+      "add_game": "Füge ein Spiel zu dieser Phase hinzu. Du kannst Teams verbinden oder Platzhalter für später verwenden.",
+      "toolbar": "Nutze diese Tools, um deinen Spielplan zu importieren/exportieren, Änderungen rückgängig zu machen und den Spieltag zu veröffentlichen."
+    }
   }
 }

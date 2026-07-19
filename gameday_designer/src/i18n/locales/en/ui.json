@@ -246,7 +246,8 @@
     "autoTimeHint": "Auto-calculated - click to override",
     "manualTimeHint": "Manually set - click to edit",
     "renameField": "Rename field",
-    "duplicate": "Duplicate"
+    "duplicate": "Duplicate",
+    "replayTour": "Replay onboarding tour"
   },
   "notification": {
     "gameResultSaved": "Game result saved",
@@ -281,5 +282,14 @@
     "resultsSaveFailed": "Failed to save results",
     "officialsAssigned": "Referees assigned to {{count}} games",
     "officialsAssignFailed": "Failed to assign referees"
+  },
+  "tour": {
+    "manual_build": {
+      "add_field": "Click here to add a playing field where games will be scheduled.",
+      "add_stage": "Add a stage within the field to organize games into rounds or groups.",
+      "add_team": "Build your team pool — these are the teams that will be assigned to games.",
+      "add_game": "Add a game to this stage. You can connect teams or use placeholders for later.",
+      "toolbar": "Use these tools to import/export your schedule, undo/redo changes, and publish the gameday."
+    }
   }
 }
