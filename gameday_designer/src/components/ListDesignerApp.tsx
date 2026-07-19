@@ -123,17 +123,27 @@ const ListDesignerApp: React.FC = () => {
 
   // --- Onboarding Tour A (manual build) ---
   const { seen: tourASeen, loading: tourALoading, markSeen: markTourASeen } = useTourSeen('manual_build');
-  const [runTourA, setRunTourA] = useState(false);
   const [tourAKey, setTourAKey] = useState(0); // force re-mount for replay
+  const [tourAStarted, setTourAStarted] = useState(false); // tracks manual replay
+  const autoStartRef = useRef(false);
+
+  const shouldRunTourA = !tourALoading && !tourASeen && id && !tourAStarted;
+
+  useEffect(() => {
+    if (shouldRunTourA && !autoStartRef.current) {
+      autoStartRef.current = true;
+      trackEvent('gd_tour_manual_build_started', { replay: false });
+    }
+  }, [shouldRunTourA]);
 
   const handleTourAFinish = useCallback(() => {
-    setRunTourA(false);
     markTourASeen();
   }, [markTourASeen]);
 
   const replayTourA = useCallback(() => {
     setTourAKey((k) => k + 1);
-    setRunTourA(true);
+    setTourAStarted(true);
+    autoStartRef.current = true;
     trackEvent('gd_tour_manual_build_started', { replay: true });
   }, []);
 
@@ -147,11 +157,11 @@ const ListDesignerApp: React.FC = () => {
 
   // Auto-start Tour A on first visit
   useEffect(() => {
-    if (!tourALoading && !tourASeen && id && !runTourA) {
-      setRunTourA(true);
+    if (shouldRunTourA && !autoStartRef.current) {
+      autoStartRef.current = true;
       trackEvent('gd_tour_manual_build_started', { replay: false });
     }
-  }, [tourALoading, tourASeen, id, runTourA]);
+  }, [shouldRunTourA]);
 
   // Expose replayTourA via context for the header '?' button
   useEffect(() => {
@@ -697,7 +707,7 @@ const ListDesignerApp: React.FC = () => {
         key={tourAKey}
         tourId="manual_build"
         steps={tourASteps}
-        run={runTourA}
+        run={shouldRunTourA || tourAStarted}
         onFinish={handleTourAFinish}
       />
 

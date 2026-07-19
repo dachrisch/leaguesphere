@@ -15,7 +15,7 @@ import '../ListDesignerApp.css';
  */
 const AppHeader: React.FC = () => {
   const { t } = useTypedTranslation(['ui']);
-  const { gamedayName, onOpenTemplates, toolbarProps, isLocked, replayTourA } = useGamedayContext();
+  const { gamedayName, onOpenTemplates, toolbarProps, replayTourA } = useGamedayContext();
   const { username, avatarUrl } = useCurrentUser();
   const navigate = useNavigate();
   const location = useLocation();

@@ -19,7 +19,6 @@ export function useTourSeen(tourId: string): TourSeenState {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
 
     const eventNames = [`gd_tour_${tourId}_completed`, `gd_tour_${tourId}_skipped`].join(',');
 
