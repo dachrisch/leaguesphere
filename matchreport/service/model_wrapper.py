@@ -26,19 +26,16 @@ PLAYER_PASSCHECK_COLUMN_MAPPING = {
 class MachtreportModelWrapper:
 
     def __init__(self, pk):
-        gameinfo = Gameinfo.objects.filter(gameday_id=pk)
-        if not gameinfo.exists():
-            raise Gameinfo.DoesNotExist
-        self.gameday = gameinfo.first().gameday
-        self._gameinfo: pd.DataFrame = pd.DataFrame(
-            gameinfo.values(
-                # select the fields which should be in the dataframe
-                *([f.name for f in Gameinfo._meta.local_fields] + ["officials__name"])
-            )
+        gameinfo_qs = Gameinfo.objects.filter(gameday_id=pk)
+        gameinfo_data = gameinfo_qs.values(
+            # select the fields which should be in the dataframe
+            *([f.name for f in Gameinfo._meta.local_fields] + ["officials__name"])
         )
+        self._gameinfo: pd.DataFrame = pd.DataFrame(gameinfo_data)
         if self._gameinfo.empty:
             raise Gameinfo.DoesNotExist
 
+        self.gameday_pk = self._gameinfo.iloc[0]["gameday"]
         self.passcheck_player_details_df = self._get_gameday_passcheck_details()
 
     def get_staff_passcheck_details(self):
@@ -51,7 +48,7 @@ class MachtreportModelWrapper:
         }
 
         passchecks = pd.DataFrame(
-            PasscheckVerification.objects.filter(gameday_id=self.gameday.pk).values(
+            PasscheckVerification.objects.filter(gameday_id=self.gameday_pk).values(
                 *column_mapping.keys()
             )
         )
@@ -82,7 +79,7 @@ class MachtreportModelWrapper:
     def _get_gameday_passcheck_details(self):
 
         pass_check_players = pd.DataFrame(
-            PlayerlistGameday.objects.filter(gameday_id=self.gameday.pk).values(
+            PlayerlistGameday.objects.filter(gameday_id=self.gameday_pk).values(
                 *PLAYER_PASSCHECK_COLUMN_MAPPING.keys()
             )
         )

@@ -191,8 +191,9 @@ class TestMatchreportService(TestCase):
                 },
             )
 
-        ms = MatchreportService.create(gameday.pk)
-        player_list = ms.get_passcheck_player_list()
+        with self.assertNumQueries(2):
+            ms = MatchreportService.create(gameday.pk)
+            player_list = ms.get_passcheck_player_list()
 
         expected_columns = list(
             {
@@ -209,8 +210,9 @@ class TestMatchreportService(TestCase):
         self.assertEqual(len(player_list), 3 * len(all_teams))
 
     def test_matchreport_service_empty_passcheck_player_list(self):
-        service = MatchreportService.create(0)
-        player_list = service.get_passcheck_player_list()
+        with self.assertNumQueries(1):
+            service = MatchreportService.create(0)
+            player_list = service.get_passcheck_player_list()
 
         expected_columns = list(
             {
