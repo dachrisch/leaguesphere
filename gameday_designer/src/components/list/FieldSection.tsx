@@ -205,6 +205,7 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
             onClick={handleAddStage}
             aria-label={t('ui:button.addStage')}
             title={t('ui:tooltip.addStage')}
+            data-testid="add-stage-button"
           >
             <i className={`bi ${ICONS.ADD} me-2`}></i>
             <span className="btn-label-adaptive">{t('ui:button.addStage')}</span>
