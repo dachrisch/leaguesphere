@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.8.0](https://github.com/dachrisch/leaguesphere/compare/v4.7.0...v4.8.0) (2026-07-19)
+
+
+### Features
+
+* **gamedays:** Tournament View ([#1573](https://github.com/dachrisch/leaguesphere/issues/1573)) ([6f19c2b](https://github.com/dachrisch/leaguesphere/commit/6f19c2bfd2a2dcbbb6ba893926a002fc46297888))
+
+
+### Bug Fixes
+
+* **deps:** update dependency postcss to v8.5.20 ([#1581](https://github.com/dachrisch/leaguesphere/issues/1581)) ([a47f36b](https://github.com/dachrisch/leaguesphere/commit/a47f36bc8e19df9026c86e1277c4c46eb1b1c6b2))
+
 ## [4.7.0](https://github.com/dachrisch/leaguesphere/compare/v4.6.5...v4.7.0) (2026-07-16)
 
 
