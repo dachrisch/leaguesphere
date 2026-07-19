@@ -562,6 +562,32 @@ jobs:
           command: circleci run release update "leaguesphere-prod" --status=FAILED 
           when: on_fail
 
+  ensure_draft_release:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - github-cli/install
+      - run:
+          name: Ensure Draft GitHub Release (idempotent)
+          command: |
+            TAG="${CIRCLE_TAG}"
+            REPO="${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
+
+            # release-please already creates a draft release for tags it produces.
+            # Skip creation when one exists so this step never fails on that path.
+            if gh release view "${TAG}" --repo "${REPO}" &> /dev/null; then
+              echo "Release ${TAG} already exists (release-please or a previous run) - skipping"
+              exit 0
+            fi
+
+            echo "Creating draft release ${TAG}"
+            gh release create "${TAG}" \
+              --repo "${REPO}" \
+              --draft --title "${TAG}" --generate-notes
+          env:
+            GH_TOKEN: ${GITHUB_TOKEN}
+
   promote_to_prerelease:
     docker:
       - image: cimg/base:stable
@@ -694,9 +720,19 @@ workflows:
             branches:
               ignore: /.*/
 
+      - ensure_draft_release:
+          requires:
+            - test_compose_network
+          filters:
+            tags:
+              only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+
       - promote_to_prerelease:
           requires:
             - deploy_staging
+            - ensure_draft_release
           filters:
             tags:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$/
@@ -743,6 +779,7 @@ workflows:
       - create_production_release:
           requires:
             - deploy_production
+            - ensure_draft_release
           filters:
             tags:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+$/
