@@ -231,10 +231,10 @@ class TestTemplateCreateEndpoint:
         assert response.data["association"] is None
         assert response.data["association_name"] == "Global"
 
-    def test_association_user_cannot_create_template(
+    def test_association_user_can_create_private_template(
         self, api_client, association_user, association
     ):
-        """Association users cannot create templates — write requires staff."""
+        """Association users can create PRIVATE templates."""
         api_client.force_authenticate(user=association_user)
 
         data = {
@@ -244,12 +244,14 @@ class TestTemplateCreateEndpoint:
             "num_fields": 2,
             "num_groups": 1,
             "game_duration": 70,
-            "association": association.pk,
+            "sharing": "PRIVATE",
         }
 
         response = api_client.post("/api/designer/templates/", data, format="json")
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["sharing"] == "PRIVATE"
+        assert response.data["created_by"] == association_user.id
 
     def test_create_validates_required_fields(self, api_client, staff_user):
         """Creating template validates required fields."""
@@ -599,17 +601,17 @@ class TestTemplateCloneEndpoint:
         cloned_template = ScheduleTemplate.objects.get(pk=response.data["id"])
         assert cloned_template.slots.count() == original_slot_count
 
-    def test_association_user_cannot_clone_template(
+    def test_association_user_can_clone_template(
         self, api_client, association_user, template
     ):
-        """Association users cannot clone templates — clone is a write action requiring staff."""
+        """Association users can clone templates — clone creates a new PRIVATE template."""
         api_client.force_authenticate(user=association_user)
 
         response = api_client.post(
             f"/api/designer/templates/{template.pk}/clone/", format="json"
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_201_CREATED
 
     def test_clone_uses_new_name_from_request(self, api_client, staff_user, template):
         """Clone uses new_name from request body instead of hardcoded prefix."""
@@ -751,9 +753,15 @@ class TestTemplateWriteGating:
         api_client.force_authenticate(user=association_user)
         assert api_client.get(self.URL).status_code == 200
 
-    def test_non_staff_cannot_create(self, api_client, association_user):
+    def test_non_staff_can_create_private(self, api_client, association_user):
         api_client.force_authenticate(user=association_user)
-        assert api_client.post(self.URL, self.PAYLOAD, format="json").status_code == 403
+        payload = {**self.PAYLOAD, "sharing": "PRIVATE"}
+        assert api_client.post(self.URL, payload, format="json").status_code == 201
+
+    def test_non_staff_cannot_create_global(self, api_client, association_user):
+        api_client.force_authenticate(user=association_user)
+        payload = {**self.PAYLOAD, "sharing": "GLOBAL"}
+        assert api_client.post(self.URL, payload, format="json").status_code == 400
 
     def test_staff_can_create(self, api_client, staff_user):
         api_client.force_authenticate(user=staff_user)
