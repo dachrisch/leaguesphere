@@ -5,7 +5,7 @@ import io
 
 import pytest
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 from django_webtest import WebTest
 from django_webtest.compat import is_authenticated
@@ -161,9 +161,12 @@ class TestMatchreportGamedayPasscheckDownloadView(TestCase):
                 },
             )
 
-        resp = self.client.get(
-            reverse(MATCHREPORT_GAMEDAY_PASSCHECK_DOWNLOAD, kwargs={"pk": gameday.pk})
-        )
+        with self.assertNumQueries(5):
+            resp = self.client.get(
+                reverse(
+                    MATCHREPORT_GAMEDAY_PASSCHECK_DOWNLOAD, kwargs={"pk": gameday.pk}
+                )
+            )
 
         assert resp.status_code == HTTPStatus.OK
         assert resp["Content-Type"].startswith("text/csv")
@@ -190,9 +193,12 @@ class TestMatchreportGamedayPasscheckDownloadView(TestCase):
         gameday = DBSetup().g62_with_tiebreak_finished()
         self.client.force_login(UserFactory(is_staff=True))
 
-        resp = self.client.get(
-            reverse(MATCHREPORT_GAMEDAY_PASSCHECK_DOWNLOAD, kwargs={"pk": gameday.pk})
-        )
+        with self.assertNumQueries(5):
+            resp = self.client.get(
+                reverse(
+                    MATCHREPORT_GAMEDAY_PASSCHECK_DOWNLOAD, kwargs={"pk": gameday.pk}
+                )
+            )
 
         assert resp.status_code == HTTPStatus.OK
         assert resp["Content-Type"].startswith("text/csv")
