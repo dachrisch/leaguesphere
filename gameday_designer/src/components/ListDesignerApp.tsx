@@ -634,6 +634,7 @@ const ListDesignerApp: React.FC = () => {
         onHide={() => setShowTemplateLibrary(false)}
         gamedayId={parseInt(id)}
         currentUserId={currentUserId}
+        isLocked={isLocked}
         onScheduleApplied={() => { void loadData(); }}
         onGenerateFromBuiltin={(config) => {
           const template = getAllTemplates().find(t => t.id === config.templateId);

@@ -80,7 +80,6 @@ const AppHeader: React.FC = () => {
                 onClick={onOpenTemplates}
                 size="sm"
                 className="btn-adaptive fw-bold shadow-sm"
-                disabled={isLocked}
                 data-testid="open-template-library-button"
               >
                 📚 Templates
