@@ -41,7 +41,13 @@ function DesignerTour({ tourId, steps, run, onFinish }: DesignerTourProps) {
       onEvent={handleJoyrideEvent}
       continuous
       options={{ buttons: ['back', 'close', 'skip', 'primary'], showProgress: true }}
-      locale={{ back: 'Zurück', next: 'Weiter', skip: 'Überspringen', last: 'Fertig' }}
+      locale={{
+        back: 'Zurück',
+        next: 'Weiter',
+        nextWithProgress: 'Weiter ({current} von {total})',
+        skip: 'Überspringen',
+        last: 'Fertig',
+      }}
     />
   );
 }
