@@ -13,7 +13,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, CreateAPIView
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -62,8 +62,13 @@ from gamedays.service.gameday_settings import (
 
 
 def _check_gameday_mutation_permission(request, gameday) -> bool:
-    """Return True if user is staff or the gameday's author."""
-    return request.user.is_staff or gameday.author == request.user
+    """Return True if user is staff or the gameday's author.
+
+    Delegates to IsAuthenticatedOrOwnerOrStaff so plain APIViews (which never
+    trigger DRF's automatic has_object_permission check) share one definition
+    of the ownership rule with the generic/viewset-based views.
+    """
+    return IsAuthenticatedOrOwnerOrStaff().has_object_permission(request, None, gameday)
 
 
 def generate_gameday_list_etag(request):
@@ -332,6 +337,11 @@ class GameOfficialCreateOrUpdateView(RetrieveUpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         pk = kwargs.get("pk")
+        gameinfo = get_object_or_404(Gameinfo, pk=pk)
+
+        if not _check_gameday_mutation_permission(request, gameinfo.gameday):
+            return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+
         response_data = []
         for item in request.data:
             official, _ = GameOfficial.objects.get_or_create(

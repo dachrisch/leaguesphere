@@ -10,7 +10,7 @@ from django_webtest import WebTest
 from rest_framework.reverse import reverse
 
 from gamedays.api.serializers import GamedaySerializer, GameinfoSerializer
-from gamedays.constants import API_GAMEDAY_WHISTLEGAMES, API_GAMEDAY_LIST
+from gamedays.constants import API_GAMEDAY_WHISTLEGAMES, API_GAMEDAY_LIST, API_GAME_OFFICIALS
 from gamedays.models import Team, Gameday, Gameinfo
 from gamedays.service.gameday_service import EmptySchedule, EmptyQualifyTable
 from gamedays.tests.setup_factories.db_setup import DBSetup
@@ -366,3 +366,52 @@ class TestStandaloneViewPermissions(WebTest):
         # The response may be 200 (success) or 400 (no designer state / validation error)
         # depending on the gameday setup — the point is it is NOT 401/403.
         assert response.status_code in (200, 400)
+
+    # ── GameOfficialCreateOrUpdateView (PUT /api/game/{id}/officials) ──
+
+    def test_anonymous_cannot_update_game_officials(self):
+        DBSetup().g62_status_empty()
+        gameinfo = Gameinfo.objects.first()
+        response = self.app.put_json(
+            reverse(API_GAME_OFFICIALS, kwargs={"pk": gameinfo.pk}),
+            [{"name": "Saskia", "position": "referee"}],
+            expect_errors=True,
+        )
+        assert response.status_code in (401, 403)
+
+    def test_non_staff_non_author_cannot_update_game_officials(self):
+        gameday = DBSetup().g62_status_empty()
+        gameday.author = DBSetup().create_new_user("go_author")
+        gameday.save()
+        gameinfo = Gameinfo.objects.first()
+        other_user = DBSetup().create_new_user("go_non_author")
+        response = self.app.put_json(
+            reverse(API_GAME_OFFICIALS, kwargs={"pk": gameinfo.pk}),
+            [{"name": "Saskia", "position": "referee"}],
+            headers=DBSetup().get_token_header(user=other_user),
+            expect_errors=True,
+        )
+        assert response.status_code == 403
+
+    def test_author_can_update_game_officials_for_own_gameday(self):
+        gameday = DBSetup().g62_status_empty()
+        gameday.author = DBSetup().create_new_user("go_author2")
+        gameday.save()
+        gameinfo = Gameinfo.objects.first()
+        response = self.app.put_json(
+            reverse(API_GAME_OFFICIALS, kwargs={"pk": gameinfo.pk}),
+            [{"name": "Saskia", "position": "referee"}],
+            headers=DBSetup().get_token_header(user=gameday.author),
+        )
+        assert response.status_code == 200
+
+    def test_staff_can_update_game_officials(self):
+        gameday = DBSetup().g62_status_empty()
+        gameinfo = Gameinfo.objects.first()
+        staff_user = DBSetup().create_new_user("go_staff", is_staff=True)
+        response = self.app.put_json(
+            reverse(API_GAME_OFFICIALS, kwargs={"pk": gameinfo.pk}),
+            [{"name": "Saskia", "position": "referee"}],
+            headers=DBSetup().get_token_header(user=staff_user),
+        )
+        assert response.status_code == 200
