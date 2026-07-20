@@ -285,11 +285,10 @@
   },
   "tour": {
     "manual_build": {
-      "add_field": "Click here to add a playing field where games will be scheduled.",
-      "add_stage": "Add a stage within the field to organize games into rounds or groups.",
-      "add_team": "Build your team pool — these are the teams that will be assigned to games.",
-      "add_game": "Add a game to this stage. You can connect teams or use placeholders for later.",
-      "toolbar": "Use these tools to import/export your schedule, undo/redo changes, and publish the gameday."
+      "metadata": "Give your gameday a name, date, and league — you can always change these later.",
+      "team_pool": "Add the teams that will play. Create a group, then add each team to it.",
+      "fields": "Add a field, then add stages and games inside it to build out your schedule.",
+      "publish": "Once your schedule is ready, publish it to make it visible to teams and officials."
     },
     "save_template": {
       "nudge": "Did you know you can save this schedule as a reusable template?"

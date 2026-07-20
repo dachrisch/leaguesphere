@@ -141,6 +141,7 @@ const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
                   onClick={handleAddGroupHeader}
                   className="btn-adaptive"
                   title={t('ui:tooltip.addGroup')}
+                  data-testid="add-team-group-button"
                 >
                   <i className={`bi ${ICONS.ADD} me-2`} />
                   <span className="btn-label-adaptive">{t('ui:button.addGroup')}</span>

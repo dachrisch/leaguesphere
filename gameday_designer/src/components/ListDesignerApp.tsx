@@ -138,6 +138,7 @@ const ListDesignerApp: React.FC = () => {
 
   const handleTourAFinish = useCallback(() => {
     markTourASeen();
+    localStorage.removeItem('gd_tour_manual_build_gameday_id');
   }, [markTourASeen]);
 
   const replayTourA = useCallback(() => {
@@ -148,11 +149,10 @@ const ListDesignerApp: React.FC = () => {
   }, []);
 
   const tourASteps = [
-    { target: '#add-field-button', content: t('ui:tour.manual_build.add_field'), placement: 'bottom' as const },
-    { target: '[data-testid="add-stage-button"]', content: t('ui:tour.manual_build.add_stage'), placement: 'bottom' as const },
-    { target: '[data-testid="add-team-button"]', content: t('ui:tour.manual_build.add_team'), placement: 'right' as const },
-    { target: '[data-testid="add-game-button"]', content: t('ui:tour.manual_build.add_game'), placement: 'bottom' as const },
-    { target: '[data-testid="flow-toolbar"]', content: t('ui:tour.manual_build.toolbar'), placement: 'bottom' as const },
+    { target: '[data-testid="gameday-metadata-header"]', content: t('ui:tour.manual_build.metadata'), placement: 'bottom' as const },
+    { target: '[data-testid="add-team-group-button"]', content: t('ui:tour.manual_build.team_pool'), placement: 'left' as const },
+    { target: '[data-testid="add-field-button"]', content: t('ui:tour.manual_build.fields'), placement: 'bottom' as const },
+    { target: '[data-testid="publish-schedule-button"]', content: t('ui:tour.manual_build.publish'), placement: 'left' as const },
   ];
 
   // Auto-start Tour A on first visit
