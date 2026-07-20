@@ -7,9 +7,10 @@ interface DesignerTourProps {
   steps: Step[];
   run: boolean;
   onFinish: () => void;
+  requireRealAction?: boolean;
 }
 
-function DesignerTour({ tourId, steps, run, onFinish }: DesignerTourProps) {
+function DesignerTour({ tourId, steps, run, onFinish, requireRealAction = false }: DesignerTourProps) {
   const handleJoyrideEvent = useCallback(
     (data: EventData) => {
       const { status, type, index } = data;
@@ -40,7 +41,10 @@ function DesignerTour({ tourId, steps, run, onFinish }: DesignerTourProps) {
       run={run}
       onEvent={handleJoyrideEvent}
       continuous
-      options={{ buttons: ['back', 'close', 'skip', 'primary'], showProgress: true }}
+      options={{
+        buttons: requireRealAction ? ['back', 'close', 'skip'] : ['back', 'close', 'skip', 'primary'],
+        showProgress: true,
+      }}
       locale={{
         back: 'Zurück',
         next: 'Weiter',

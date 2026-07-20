@@ -6,11 +6,13 @@ import { trackEvent } from '../../trackEvent';
 vi.mock('../../trackEvent', () => ({ trackEvent: vi.fn() }));
 
 let capturedCallback: ((data: unknown) => void) | undefined;
+let capturedOptions: { buttons?: string[] } | undefined;
 
 vi.mock('react-joyride', () => ({
   __esModule: true,
-  Joyride: (props: { onEvent: (data: unknown) => void }) => {
+  Joyride: (props: { onEvent: (data: unknown) => void; options?: { buttons?: string[] } }) => {
     capturedCallback = props.onEvent;
+    capturedOptions = props.options;
     return null;
   },
   STATUS: { FINISHED: 'finished', SKIPPED: 'skipped', RUNNING: 'running' },
@@ -20,6 +22,7 @@ describe('DesignerTour', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     capturedCallback = undefined;
+    capturedOptions = undefined;
   });
 
   it('tracks a step_complete event when step:after fires', () => {
@@ -89,5 +92,19 @@ describe('DesignerTour', () => {
       step_index: 0,
     });
     expect(onFinish).toHaveBeenCalledTimes(1);
+  });
+
+  it('omits the primary (Next) button when requireRealAction is true', () => {
+    render(
+      <DesignerTour
+        tourId="manual_build"
+        steps={[{ target: '[data-testid="create-gameday-button"]', content: 'Create one' }]}
+        run={true}
+        onFinish={() => {}}
+        requireRealAction
+      />
+    );
+
+    expect(capturedOptions?.buttons).toEqual(['back', 'close', 'skip']);
   });
 });
