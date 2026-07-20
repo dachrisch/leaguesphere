@@ -120,7 +120,13 @@ bookmark — in the latter case there's simply no dashboard step to skip).
 
 1. **Metadata** — target `[data-testid="gameday-metadata-header"]` (existing
    testid, `GamedayMetadataAccordion.tsx`)
-2. **Team Pool** — target `[data-testid="add-team-button"]` (existing)
+2. **Team Pool** — target new `[data-testid="add-team-group-button"]`, on the
+   always-rendered header "Add Group" button in `MetadataTeamPoolRow.tsx`. The
+   existing `add-team-button` testid (`TeamGroupCard.tsx`) only exists once at
+   least one team group has been created — `useFlowState`'s
+   `globalTeamGroups` defaults to `[]` for a gameday with no saved designer
+   state yet, so a brand-new gameday (the exact case this step needs to cover)
+   would have no matching element for that selector.
 3. **Fields** — target `#add-field-button` (existing); copy now covers
    fields/stages/games together instead of three separate steps
 4. **Publish** — target `[data-testid="publish-schedule-button"]` (existing,
@@ -139,6 +145,7 @@ Finishing (clicking "Last" on step 4) or skipping at any point:
 |---|---|
 | `src/components/dashboard/GamedayDashboard.tsx` | Add `data-testid="create-gameday-button"` to the header Create button; add resume-check effect + conditional single-step `DesignerTour` render; set `localStorage` id on successful tour-driven creation |
 | `src/onboarding/DesignerTour.tsx` | Add optional `requireRealAction?: boolean` prop, threading through to `options.buttons` |
+| `src/components/MetadataTeamPoolRow.tsx` | Add `data-testid="add-team-group-button"` to the header "Add Group" button |
 | `src/components/ListDesignerApp.tsx` | Replace `tourASteps` (5 steps) with the 4 consolidated steps/targets; clear the resume `localStorage` key in `handleTourAFinish` |
 | `src/i18n/locales/{de,en}/ui.json` | New copy for the create step + 4 consolidated steps; remove now-orphaned `add_stage`/`add_game`/`toolbar` keys |
 
