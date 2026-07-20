@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.10.1](https://github.com/dachrisch/leaguesphere/compare/v4.10.0...v4.10.1) (2026-07-20)
+
+
+### Bug Fixes
+
+* **gamedays:** enforce owner-or-staff permission on all mutating API endpoints ([#1596](https://github.com/dachrisch/leaguesphere/issues/1596)) ([d23e490](https://github.com/dachrisch/leaguesphere/commit/d23e49093356488a652fcf0b066073b1d3193774))
+
 ## [4.10.0](https://github.com/dachrisch/leaguesphere/compare/v4.9.0...v4.10.0) (2026-07-20)
 
 
