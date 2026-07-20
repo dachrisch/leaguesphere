@@ -217,3 +217,199 @@ class GamedayViewSetTest(APITestCase):
         self.client.force_authenticate(user=None)
         response = self.client.get(f"/api/gamedays/{self.gameday1.id}/")
         assert response.status_code == status.HTTP_200_OK
+
+
+class TestGamedayPermissions(APITestCase):
+    """Tests for the GamedayViewSet permission model:
+    - Reads: AllowAny (public)
+    - Writes: IsAuthenticated + (user.is_staff OR user is the author)
+    """
+
+    def setUp(self):
+        self.season = Season.objects.create(name="2026")
+        self.league = League.objects.create(name="DFFL")
+        self.author = User.objects.create_user(
+            username="author", password="password", email="author@test.com"
+        )
+        self.non_author = User.objects.create_user(
+            username="non_author", password="password", email="nonauthor@test.com"
+        )
+        self.staff_user = User.objects.create_user(
+            username="staff",
+            password="password",
+            email="staff@test.com",
+            is_staff=True,
+        )
+        self.gameday_author = Gameday.objects.create(
+            name="Author Gameday",
+            date=date(2026, 1, 18),
+            start="10:00",
+            season=self.season,
+            league=self.league,
+            status="DRAFT",
+            author=self.author,
+        )
+        self.gameday_other = Gameday.objects.create(
+            name="Other Gameday",
+            date=date(2026, 1, 19),
+            start="11:00",
+            season=self.season,
+            league=self.league,
+            status="DRAFT",
+            author=self.staff_user,
+        )
+
+    # ── Anonymous ────────────────────────────────────────────────
+
+    def test_anonymous_cannot_publish(self):
+        self.client.force_authenticate(user=None)
+        url = f"/api/gamedays/{self.gameday_author.id}/publish/"
+        response = self.client.post(url)
+        assert response.status_code in (
+            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_anonymous_cannot_update_designer_state(self):
+        self.client.force_authenticate(user=None)
+        url = f"/api/gamedays/{self.gameday_author.id}/designer-state/"
+        response = self.client.put(url, {"state_data": {}}, format="json")
+        assert response.status_code in (
+            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_anonymous_cannot_create_gameday(self):
+        self.client.force_authenticate(user=None)
+        url = "/api/gamedays/"
+        data = {
+            "name": "New Gameday",
+            "date": "2026-05-01",
+            "start": "09:00",
+            "season": self.season.id,
+            "league": self.league.id,
+        }
+        response = self.client.post(url, data)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_anonymous_cannot_update_gameday(self):
+        self.client.force_authenticate(user=None)
+        url = f"/api/gamedays/{self.gameday_author.id}/"
+        response = self.client.patch(url, {"name": "Hacked"}, format="json")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        self.gameday_author.refresh_from_db()
+        assert self.gameday_author.name != "Hacked"
+
+    def test_anonymous_cannot_delete_gameday(self):
+        self.client.force_authenticate(user=None)
+        url = f"/api/gamedays/{self.gameday_author.id}/"
+        response = self.client.delete(url)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert Gameday.objects.filter(id=self.gameday_author.id).exists()
+
+    # ── Non-staff, non-author ────────────────────────────────────
+
+    def test_non_staff_non_author_cannot_publish(self):
+        self.client.force_authenticate(user=self.non_author)
+        url = f"/api/gamedays/{self.gameday_author.id}/publish/"
+        response = self.client.post(url)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_non_staff_non_author_cannot_update_designer_state(self):
+        self.client.force_authenticate(user=self.non_author)
+        url = f"/api/gamedays/{self.gameday_author.id}/designer-state/"
+        response = self.client.put(url, {"state_data": {}}, format="json")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_non_staff_non_author_cannot_update_other_gameday(self):
+        self.client.force_authenticate(user=self.non_author)
+        url = f"/api/gamedays/{self.gameday_author.id}/"
+        response = self.client.patch(url, {"name": "Hacked"}, format="json")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        self.gameday_author.refresh_from_db()
+        assert self.gameday_author.name != "Hacked"
+
+    def test_non_staff_non_author_cannot_delete_other_gameday(self):
+        self.client.force_authenticate(user=self.non_author)
+        url = f"/api/gamedays/{self.gameday_author.id}/"
+        response = self.client.delete(url)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert Gameday.objects.filter(id=self.gameday_author.id).exists()
+
+    # ── Author (non-staff) on own gameday ────────────────────────
+
+    def test_author_can_publish_own_gameday(self):
+        self.client.force_authenticate(user=self.author)
+        url = f"/api/gamedays/{self.gameday_author.id}/publish/"
+        response = self.client.post(url)
+        assert response.status_code == status.HTTP_200_OK
+        self.gameday_author.refresh_from_db()
+        assert self.gameday_author.status == "PUBLISHED"
+
+    def test_author_can_update_designer_state_of_own_gameday(self):
+        self.client.force_authenticate(user=self.author)
+        url = f"/api/gamedays/{self.gameday_author.id}/designer-state/"
+        response = self.client.put(
+            url, {"state_data": {"test": True}}, format="json"
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_author_can_update_own_gameday(self):
+        self.client.force_authenticate(user=self.author)
+        url = f"/api/gamedays/{self.gameday_author.id}/"
+        response = self.client.patch(url, {"name": "Updated Name"}, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        self.gameday_author.refresh_from_db()
+        assert self.gameday_author.name == "Updated Name"
+
+    def test_author_can_delete_own_draft_gameday(self):
+        self.client.force_authenticate(user=self.author)
+        url = f"/api/gamedays/{self.gameday_author.id}/"
+        response = self.client.delete(url)
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert not Gameday.objects.filter(id=self.gameday_author.id).exists()
+
+    # ── Staff on any gameday ─────────────────────────────────────
+
+    def test_staff_can_publish_any_gameday(self):
+        self.client.force_authenticate(user=self.staff_user)
+        url = f"/api/gamedays/{self.gameday_author.id}/publish/"
+        response = self.client.post(url)
+        assert response.status_code == status.HTTP_200_OK
+        self.gameday_author.refresh_from_db()
+        assert self.gameday_author.status == "PUBLISHED"
+
+    def test_staff_can_update_designer_state_of_any_gameday(self):
+        self.client.force_authenticate(user=self.staff_user)
+        url = f"/api/gamedays/{self.gameday_author.id}/designer-state/"
+        response = self.client.put(
+            url, {"state_data": {"test": True}}, format="json"
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_staff_can_update_any_gameday(self):
+        self.client.force_authenticate(user=self.staff_user)
+        url = f"/api/gamedays/{self.gameday_author.id}/"
+        response = self.client.patch(url, {"name": "Staff Edit"}, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        self.gameday_author.refresh_from_db()
+        assert self.gameday_author.name == "Staff Edit"
+
+    def test_staff_can_delete_any_draft_gameday(self):
+        self.client.force_authenticate(user=self.staff_user)
+        url = f"/api/gamedays/{self.gameday_author.id}/"
+        response = self.client.delete(url)
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert not Gameday.objects.filter(id=self.gameday_author.id).exists()
+
+    # ── Reads stay public ────────────────────────────────────────
+
+    def test_anonymous_can_read_gameday_list(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.get("/api/gamedays/")
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_anonymous_can_read_single_gameday(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.get(f"/api/gamedays/{self.gameday_author.id}/")
+        assert response.status_code == status.HTTP_200_OK

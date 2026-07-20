@@ -171,3 +171,198 @@ class TestGamesToWhistleAPIView(WebTest):
             reverse(API_GAMEDAY_WHISTLEGAMES, kwargs={"pk": gameday.pk, "team": "*"})
         )
         assert len(response.json) == 10
+
+
+class TestStandaloneViewPermissions(WebTest):
+    """Permission tests for legacy standalone API views:
+    - Reads: AllowAny (public)
+    - Writes: IsAuthenticated + (user.is_staff OR user is the author)
+    """
+
+    def _create_gameday_with_author(self, username, is_staff=False):
+        """Create a gameday with a specific user as author and return (user, gameday)."""
+        from django.contrib.auth.models import User
+
+        user = User.objects.create_user(
+            username=username, password="password", is_staff=is_staff
+        )
+        gameday = DBSetup().create_empty_gameday()
+        gameday.author = user
+        gameday.save()
+        return user, gameday
+
+    # ── GamedayPublishAPIView (legacy: POST /api/gameday/{id}/publish/) ──
+
+    def test_anonymous_cannot_publish_via_legacy_endpoint(self):
+        _, gameday = self._create_gameday_with_author("pub_author")
+        response = self.app.post(
+            reverse("api-gameday-publish", kwargs={"pk": gameday.pk}),
+            expect_errors=True,
+        )
+        assert response.status_code in (401, 403)
+
+    def test_non_staff_non_author_cannot_publish_via_legacy_endpoint(self):
+        author, gameday = self._create_gameday_with_author("pub_author2")
+        other_user = DBSetup().create_new_user("pub_non_author")
+        response = self.app.post(
+            reverse("api-gameday-publish", kwargs={"pk": gameday.pk}),
+            headers=DBSetup().get_token_header(user=other_user),
+            expect_errors=True,
+        )
+        assert response.status_code == 403
+
+    def test_author_can_publish_via_legacy_endpoint(self):
+        author, gameday = self._create_gameday_with_author("pub_author3")
+        response = self.app.post(
+            reverse("api-gameday-publish", kwargs={"pk": gameday.pk}),
+            headers=DBSetup().get_token_header(user=author),
+        )
+        assert response.status_code == 200
+        gameday.refresh_from_db()
+        assert gameday.status == "PUBLISHED"
+
+    def test_staff_can_publish_via_legacy_endpoint(self):
+        author, gameday = self._create_gameday_with_author("pub_author4")
+        staff_user = DBSetup().create_new_user("pub_staff", is_staff=True)
+        response = self.app.post(
+            reverse("api-gameday-publish", kwargs={"pk": gameday.pk}),
+            headers=DBSetup().get_token_header(user=staff_user),
+        )
+        assert response.status_code == 200
+        gameday.refresh_from_db()
+        assert gameday.status == "PUBLISHED"
+
+    # ── GameinfoUpdateAPIView (PATCH /api/gameinfo/{id}/) ──
+
+    def test_anonymous_cannot_update_gameinfo(self):
+        gameday = DBSetup().g62_status_empty()
+        gameinfo = Gameinfo.objects.first()
+        response = self.app.patch_json(
+            reverse("api-gameinfo-retrieve-update", kwargs={"pk": gameinfo.pk}),
+            {"status": "gestartet"},
+            expect_errors=True,
+        )
+        assert response.status_code in (401, 403)
+
+    def test_non_staff_non_author_cannot_update_gameinfo(self):
+        gameday = DBSetup().g62_status_empty()
+        gameinfo = Gameinfo.objects.first()
+        other_user = DBSetup().create_new_user("gi_non_author")
+        response = self.app.patch_json(
+            reverse("api-gameinfo-retrieve-update", kwargs={"pk": gameinfo.pk}),
+            {"status": "gestartet"},
+            headers=DBSetup().get_token_header(user=other_user),
+            expect_errors=True,
+        )
+        assert response.status_code == 403
+
+    def test_author_can_update_gameinfo_for_own_gameday(self):
+        gameday = DBSetup().g62_status_empty()
+        gameday.author = DBSetup().create_new_user("gi_author")
+        gameday.save()
+        gameinfo = Gameinfo.objects.first()
+        response = self.app.patch_json(
+            reverse("api-gameinfo-retrieve-update", kwargs={"pk": gameinfo.pk}),
+            {"status": "gestartet"},
+            headers=DBSetup().get_token_header(user=gameday.author),
+        )
+        assert response.status_code == 200
+
+    def test_staff_can_update_gameinfo(self):
+        gameday = DBSetup().g62_status_empty()
+        gameinfo = Gameinfo.objects.first()
+        staff_user = DBSetup().create_new_user("gi_staff", is_staff=True)
+        response = self.app.patch_json(
+            reverse("api-gameinfo-retrieve-update", kwargs={"pk": gameinfo.pk}),
+            {"status": "gestartet"},
+            headers=DBSetup().get_token_header(user=staff_user),
+        )
+        assert response.status_code == 200
+
+    # ── GamedayRetrieveUpdate (PUT /api/gameday/{id}/) ──
+
+    def test_anonymous_cannot_update_gameday_retrieve_update(self):
+        author, gameday = self._create_gameday_with_author("ru_author")
+        response = self.app.put_json(
+            reverse("api-gameday-retrieve-update", kwargs={"pk": gameday.pk}),
+            {
+                "name": "Hacked", "date": str(gameday.date), "start": gameday.start,
+                "season": gameday.season_id, "league": gameday.league_id,
+            },
+            expect_errors=True,
+        )
+        assert response.status_code in (401, 403)
+
+    def test_non_staff_non_author_cannot_update_gameday_retrieve_update(self):
+        author, gameday = self._create_gameday_with_author("ru_author2")
+        other_user = DBSetup().create_new_user("ru_non_author")
+        response = self.app.put_json(
+            reverse("api-gameday-retrieve-update", kwargs={"pk": gameday.pk}),
+            {
+                "name": "Hacked", "date": str(gameday.date), "start": gameday.start,
+                "season": gameday.season_id, "league": gameday.league_id,
+            },
+            headers=DBSetup().get_token_header(user=other_user),
+            expect_errors=True,
+        )
+        assert response.status_code == 403
+
+    def test_author_can_update_own_gameday_via_retrieve_update(self):
+        author, gameday = self._create_gameday_with_author("ru_author3")
+        response = self.app.put_json(
+            reverse("api-gameday-retrieve-update", kwargs={"pk": gameday.pk}),
+            {
+                "name": "Updated Name", "date": str(gameday.date), "start": gameday.start,
+                "season": gameday.season_id, "league": gameday.league_id,
+            },
+            headers=DBSetup().get_token_header(user=author),
+        )
+        assert response.status_code == 200
+        gameday.refresh_from_db()
+        assert gameday.name == "Updated Name"
+
+    def test_staff_can_update_any_gameday_via_retrieve_update(self):
+        author, gameday = self._create_gameday_with_author("ru_author4")
+        staff_user = DBSetup().create_new_user("ru_staff", is_staff=True)
+        response = self.app.put_json(
+            reverse("api-gameday-retrieve-update", kwargs={"pk": gameday.pk}),
+            {
+                "name": "Staff Edit", "date": str(gameday.date), "start": gameday.start,
+                "season": gameday.season_id, "league": gameday.league_id,
+            },
+            headers=DBSetup().get_token_header(user=staff_user),
+        )
+        assert response.status_code == 200
+        gameday.refresh_from_db()
+        assert gameday.name == "Staff Edit"
+
+    # ── AutoAssignOfficialsView (POST /api/gameday/{id}/auto-assign-officials/) ──
+
+    def test_anonymous_cannot_auto_assign_officials(self):
+        author, gameday = self._create_gameday_with_author("aa_author")
+        response = self.app.post(
+            reverse("api-gameday-auto-assign-officials", kwargs={"pk": gameday.pk}),
+            expect_errors=True,
+        )
+        assert response.status_code in (401, 403)
+
+    def test_non_staff_non_author_cannot_auto_assign_officials(self):
+        author, gameday = self._create_gameday_with_author("aa_author2")
+        other_user = DBSetup().create_new_user("aa_non_author")
+        response = self.app.post(
+            reverse("api-gameday-auto-assign-officials", kwargs={"pk": gameday.pk}),
+            headers=DBSetup().get_token_header(user=other_user),
+            expect_errors=True,
+        )
+        assert response.status_code == 403
+
+    def test_staff_can_auto_assign_officials(self):
+        author, gameday = self._create_gameday_with_author("aa_author3")
+        staff_user = DBSetup().create_new_user("aa_staff", is_staff=True)
+        response = self.app.post(
+            reverse("api-gameday-auto-assign-officials", kwargs={"pk": gameday.pk}),
+            headers=DBSetup().get_token_header(user=staff_user),
+        )
+        # The response may be 200 (success) or 400 (no designer state / validation error)
+        # depending on the gameday setup — the point is it is NOT 401/403.
+        assert response.status_code in (200, 400)
