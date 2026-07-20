@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.9.0](https://github.com/dachrisch/leaguesphere/compare/v4.8.2...v4.9.0) (2026-07-20)
+
+
+### Features
+
+* **matchreport:** Added Passcheck Export in matchreport & gameday view ([#1586](https://github.com/dachrisch/leaguesphere/issues/1586)) ([e9c1b8a](https://github.com/dachrisch/leaguesphere/commit/e9c1b8ac91d5e3a28317351b93e7838d4b9316d6))
+
+
+### Bug Fixes
+
+* **deps:** update dependency @testing-library/jest-dom to v7 ([#1592](https://github.com/dachrisch/leaguesphere/issues/1592)) ([ab3bae1](https://github.com/dachrisch/leaguesphere/commit/ab3bae137825e167c35b6719c821e0964ecd72bd))
+
 ## [4.8.2](https://github.com/dachrisch/leaguesphere/compare/v4.8.1...v4.8.2) (2026-07-20)
 
 
