@@ -1,8 +1,9 @@
+import { useEffect } from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import AppHeader from '../AppHeader';
-import { GamedayProvider } from '../../../context/GamedayContext';
+import { GamedayProvider, useGamedayContext } from '../../../context/GamedayContext';
 import { designerApi } from '../../../api/designerApi';
 import i18n from '../../../i18n/testConfig';
 
@@ -83,5 +84,44 @@ describe('AppHeader', () => {
     const avatar = await screen.findByTestId('user-avatar-image');
     expect(avatar).toHaveAttribute('src', '/media/avatars/jdoe.png');
     await waitFor(() => expect(screen.getByText('jdoe')).toBeInTheDocument());
+  });
+
+  describe('replay tour button', () => {
+    const SetReplayHandler = () => {
+      const { setReplayTourA } = useGamedayContext();
+      useEffect(() => {
+        setReplayTourA(() => () => {});
+        return () => setReplayTourA(null);
+      }, [setReplayTourA]);
+      return null;
+    };
+
+    const renderHeaderWithReplayHandler = (path: string) => {
+      return render(
+        <MemoryRouter initialEntries={[path]}>
+          <GamedayProvider>
+            <SetReplayHandler />
+            <Routes>
+              <Route path="*" element={<AppHeader />} />
+            </Routes>
+          </GamedayProvider>
+        </MemoryRouter>
+      );
+    };
+
+    it('is hidden when no replay handler is registered', () => {
+      renderHeader('/');
+      expect(screen.queryByTestId('replay-tour-button')).not.toBeInTheDocument();
+    });
+
+    it('shows on the dashboard when a replay handler is registered', () => {
+      renderHeaderWithReplayHandler('/');
+      expect(screen.getByTestId('replay-tour-button')).toBeInTheDocument();
+    });
+
+    it('shows on the designer page when a replay handler is registered', () => {
+      renderHeaderWithReplayHandler('/designer/1');
+      expect(screen.getByTestId('replay-tour-button')).toBeInTheDocument();
+    });
   });
 });

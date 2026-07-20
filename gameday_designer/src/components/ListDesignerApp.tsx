@@ -129,6 +129,7 @@ const ListDesignerApp: React.FC = () => {
 
   const shouldRunTourA = !tourALoading && !tourASeen && id && !tourAStarted;
 
+  // Auto-start Tour A on first visit
   useEffect(() => {
     if (shouldRunTourA && !autoStartRef.current) {
       autoStartRef.current = true;
@@ -155,32 +156,42 @@ const ListDesignerApp: React.FC = () => {
     { target: '[data-testid="publish-schedule-button"]', content: t('ui:tour.manual_build.publish'), placement: 'left' as const },
   ];
 
-  // Auto-start Tour A on first visit
-  useEffect(() => {
-    if (shouldRunTourA && !autoStartRef.current) {
-      autoStartRef.current = true;
-      trackEvent('gd_tour_manual_build_started', { replay: false });
-    }
-  }, [shouldRunTourA]);
-
-  // Expose replayTourA via context for the header '?' button
-  useEffect(() => {
-    setReplayTourA(() => replayTourA);
-    return () => setReplayTourA(null);
-  }, [replayTourA, setReplayTourA]);
-
   // --- Onboarding Tour B (save template nudge) ---
   const { seen: tourBSeen, loading: tourBLoading, markSeen: markTourBSeen } = useTourSeen('save_template');
   const [runTourB, setRunTourB] = useState(false);
+  const [tourBKey, setTourBKey] = useState(0);
 
   const handleTourBFinish = useCallback(() => {
     setRunTourB(false);
     markTourBSeen();
   }, [markTourBSeen]);
 
+  const replayTourB = useCallback(() => {
+    setTourBKey((k) => k + 1);
+    setRunTourB(true);
+    trackEvent('gd_tour_save_template_started', { replay: true });
+  }, []);
+
   const tourBSteps = [
     { target: '[data-testid="open-template-library-button"]', content: t('ui:tour.save_template.nudge'), placement: 'left' as const },
   ];
+
+  // Expose the header '?' button's handler via context: replays Tour A on a
+  // draft gameday, or Tour B (save-as-template nudge) once published, since
+  // Tour A's steps target metadata/team-pool/fields actions that are disabled
+  // once locked.
+  const replayCurrentTour = useCallback(() => {
+    if (isLocked) {
+      replayTourB();
+    } else {
+      replayTourA();
+    }
+  }, [isLocked, replayTourA, replayTourB]);
+
+  useEffect(() => {
+    setReplayTourA(() => replayCurrentTour);
+    return () => setReplayTourA(null);
+  }, [replayCurrentTour, setReplayTourA]);
 
   const lastGamedayNameRef = useRef('');
   const lastIsLockedRef = useRef<boolean | null>(null);
@@ -712,6 +723,7 @@ const ListDesignerApp: React.FC = () => {
       />
 
       <DesignerTour
+        key={tourBKey}
         tourId="save_template"
         steps={tourBSteps}
         run={runTourB}

@@ -62,7 +62,7 @@ const AppHeader: React.FC = () => {
         <Navbar.Toggle aria-controls="header-navbar-nav" />
         <Navbar.Collapse id="header-navbar-nav" className="justify-content-end">
           <Nav className="align-items-center gap-3">
-            {isEditor && replayTourA && (
+            {replayTourA && (
               <Button
                 variant="outline-light"
                 size="sm"

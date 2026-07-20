@@ -3,7 +3,7 @@ import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import GamedayDashboard from '../GamedayDashboard';
-import { GamedayProvider } from '../../../context/GamedayContext';
+import { GamedayProvider, useGamedayContext } from '../../../context/GamedayContext';
 import i18n from '../../../i18n/testConfig';
 import { gamedayApi } from '../../../api/gamedayApi';
 import type { GamedayListEntry, PaginatedResponse, Gameday } from '../../../types';
@@ -51,6 +51,15 @@ const emptyResponse: PaginatedResponse<GamedayListEntry> = {
   results: [],
 };
 
+const ReplayTrigger = () => {
+  const { replayTourA } = useGamedayContext();
+  return replayTourA ? (
+    <button data-testid="test-replay-trigger" onClick={replayTourA}>
+      replay
+    </button>
+  ) : null;
+};
+
 const draftGameday: Gameday = {
   id: 42,
   name: 'Resumable Gameday',
@@ -82,6 +91,7 @@ describe('GamedayDashboard tour', () => {
     render(
       <MemoryRouter initialEntries={['/']}>
         <GamedayProvider>
+          <ReplayTrigger />
           <GamedayDashboard />
         </GamedayProvider>
       </MemoryRouter>
@@ -177,5 +187,42 @@ describe('GamedayDashboard tour', () => {
     });
 
     await waitFor(() => expect(capturedTourProps.run).toBe(false));
+  });
+
+  describe('manual replay', () => {
+    const seenFetchResponse = {
+      ok: true,
+      json: async () => [{ id: 1, event_name: 'gd_tour_manual_build_completed', metadata: {}, created_at: '2026-07-19T00:00:00Z' }],
+    };
+
+    it('exposes a replay handler via context', async () => {
+      await renderDashboard();
+      expect(screen.getByTestId('test-replay-trigger')).toBeInTheDocument();
+    });
+
+    it('force-shows the create-step tour on replay even after it was already seen', async () => {
+      vi.mocked(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(seenFetchResponse);
+
+      await renderDashboard();
+      await waitFor(() => expect(capturedTourProps.run).toBe(false));
+
+      fireEvent.click(screen.getByTestId('test-replay-trigger'));
+
+      await waitFor(() => expect(capturedTourProps.run).toBe(true));
+    });
+
+    it('tracks gd_tour_manual_build_started with replay: true', async () => {
+      const { trackEvent } = await import('../../../trackEvent');
+      vi.mocked(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(seenFetchResponse);
+
+      await renderDashboard();
+      await waitFor(() => expect(capturedTourProps.run).toBe(false));
+
+      fireEvent.click(screen.getByTestId('test-replay-trigger'));
+
+      await waitFor(() =>
+        expect(trackEvent).toHaveBeenCalledWith('gd_tour_manual_build_started', { replay: true })
+      );
+    });
   });
 });

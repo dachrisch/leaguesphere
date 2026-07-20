@@ -6,6 +6,7 @@ import { gamedayApi } from '../../api/gamedayApi';
 import { trackEvent } from '../../trackEvent';
 import { useTourSeen } from '../../onboarding/useTourSeen';
 import DesignerTour from '../../onboarding/DesignerTour';
+import { useGamedayContext } from '../../context/GamedayContext';
 import type { GamedayListEntry } from '../../types';
 import type { Notification, NotificationType } from '../../types/designer';
 import GamedayCard from './GamedayCard';
@@ -86,8 +87,23 @@ const GamedayDashboard: React.FC = () => {
   const timeoutRefs = useRef<Record<number, NodeJS.Timeout>>({});
   const gamedaysRef = useRef<GamedayListEntry[]>([]);
   const hasTriggeredInitialDelete = useRef(false);
+  const { setReplayTourA } = useGamedayContext();
   const { seen: tourASeen, loading: tourALoading, markSeen: markTourASeen } = useTourSeen('manual_build');
   const [showCreateTour, setShowCreateTour] = useState(false);
+  const [dashboardTourKey, setDashboardTourKey] = useState(0);
+  const [dashboardTourStarted, setDashboardTourStarted] = useState(false);
+
+  const replayCreateTour = useCallback(() => {
+    setDashboardTourKey((k) => k + 1);
+    setShowCreateTour(true);
+    setDashboardTourStarted(true);
+    trackEvent('gd_tour_manual_build_started', { replay: true });
+  }, []);
+
+  useEffect(() => {
+    setReplayTourA(() => replayCreateTour);
+    return () => setReplayTourA(null);
+  }, [replayCreateTour, setReplayTourA]);
 
   useEffect(() => {
     if (tourALoading || tourASeen) return;
@@ -405,9 +421,10 @@ const GamedayDashboard: React.FC = () => {
       </div>
       <NotificationToast notifications={notifications} onClose={dismissNotification} />
       <DesignerTour
+        key={dashboardTourKey}
         tourId="manual_build"
         steps={dashboardTourSteps}
-        run={showCreateTour && !tourASeen}
+        run={(showCreateTour && !tourASeen) || dashboardTourStarted}
         onFinish={markTourASeen}
         requireRealAction
       />

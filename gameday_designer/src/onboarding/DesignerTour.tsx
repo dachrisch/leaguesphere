@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { EventData, Joyride, STATUS, Step } from 'react-joyride';
 import { trackEvent } from '../trackEvent';
+import { useTypedTranslation } from '../i18n/useTypedTranslation';
 
 interface DesignerTourProps {
   tourId: string;
@@ -11,6 +12,8 @@ interface DesignerTourProps {
 }
 
 function DesignerTour({ tourId, steps, run, onFinish, requireRealAction = false }: DesignerTourProps) {
+  const { t } = useTypedTranslation(['ui']);
+
   const handleJoyrideEvent = useCallback(
     (data: EventData) => {
       const { status, type, index } = data;
@@ -44,13 +47,17 @@ function DesignerTour({ tourId, steps, run, onFinish, requireRealAction = false 
       options={{
         buttons: requireRealAction ? ['back', 'close', 'skip'] : ['back', 'close', 'skip', 'primary'],
         showProgress: true,
+        // AppHeader's navbar is fixed-top at z-index 1035 (Bootstrap's fixed
+        // scale); a step targeting an element inside it, e.g. the Templates
+        // button, would otherwise render its beacon/tooltip underneath it.
+        zIndex: 1040,
       }}
       locale={{
-        back: 'Zurück',
-        next: 'Weiter',
-        nextWithProgress: 'Weiter ({current} von {total})',
-        skip: 'Überspringen',
-        last: 'Fertig',
+        back: t('ui:tour.controls.back'),
+        next: t('ui:tour.controls.next'),
+        nextWithProgress: t('ui:tour.controls.nextWithProgress'),
+        skip: t('ui:tour.controls.skip'),
+        last: t('ui:tour.controls.last'),
       }}
     />
   );

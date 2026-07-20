@@ -1,10 +1,10 @@
-import { render } from '@testing-library/react';
+import { render, fireEvent, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
 import ListDesignerApp from '../ListDesignerApp';
 import { useDesignerController } from '../../hooks/useDesignerController';
 import { useFlowState } from '../../hooks/useFlowState';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { GamedayProvider } from '../../context/GamedayContext';
+import { GamedayProvider, useGamedayContext } from '../../context/GamedayContext';
 import i18n from '../../i18n/testConfig';
 import type { Step } from 'react-joyride';
 
@@ -38,13 +38,22 @@ vi.mock('../../trackEvent', () => ({
   trackEvent: vi.fn(),
 }));
 
-const capturedProps: Record<string, { steps: Step[]; onFinish: () => void }> = {};
+const capturedProps: Record<string, { steps: Step[]; onFinish: () => void; run: boolean }> = {};
 vi.mock('../../onboarding/DesignerTour', () => ({
-  default: (props: { tourId: string; steps: Step[]; onFinish: () => void }) => {
-    capturedProps[props.tourId] = { steps: props.steps, onFinish: props.onFinish };
+  default: (props: { tourId: string; steps: Step[]; onFinish: () => void; run: boolean }) => {
+    capturedProps[props.tourId] = { steps: props.steps, onFinish: props.onFinish, run: props.run };
     return null;
   },
 }));
+
+const ReplayTrigger = () => {
+  const { replayTourA } = useGamedayContext();
+  return replayTourA ? (
+    <button data-testid="test-replay-trigger" onClick={replayTourA}>
+      replay
+    </button>
+  ) : null;
+};
 
 const defaultFlowState = {
   nodes: [],
@@ -120,6 +129,7 @@ describe('ListDesignerApp tour', () => {
     render(
       <GamedayProvider>
         <MemoryRouter initialEntries={['/designer/1']}>
+          <ReplayTrigger />
           <Routes>
             <Route path="/designer/:id" element={<ListDesignerApp />} />
           </Routes>
@@ -143,5 +153,40 @@ describe('ListDesignerApp tour', () => {
     renderApp();
     capturedProps.manual_build.onFinish();
     expect(localStorage.getItem('gd_tour_manual_build_gameday_id')).toBeNull();
+  });
+
+  describe('"?" replay button', () => {
+    it('replays Tour A on a draft gameday', () => {
+      renderApp();
+      fireEvent.click(screen.getByTestId('test-replay-trigger'));
+      expect(capturedProps.manual_build.run).toBe(true);
+      expect(capturedProps.save_template.run).toBe(false);
+    });
+
+    it('replays Tour B, not Tour A, on a published gameday', () => {
+      (useDesignerController as Mock).mockReturnValue({
+        ...defaultMockReturn,
+        metadata: { ...defaultMockReturn.metadata, status: 'PUBLISHED' },
+      });
+
+      renderApp();
+      fireEvent.click(screen.getByTestId('test-replay-trigger'));
+
+      expect(capturedProps.save_template.run).toBe(true);
+      expect(capturedProps.manual_build.run).toBe(false);
+    });
+
+    it('tracks gd_tour_save_template_started with replay: true when replaying on a published gameday', async () => {
+      const { trackEvent } = await import('../../trackEvent');
+      (useDesignerController as Mock).mockReturnValue({
+        ...defaultMockReturn,
+        metadata: { ...defaultMockReturn.metadata, status: 'PUBLISHED' },
+      });
+
+      renderApp();
+      fireEvent.click(screen.getByTestId('test-replay-trigger'));
+
+      expect(trackEvent).toHaveBeenCalledWith('gd_tour_save_template_started', { replay: true });
+    });
   });
 });
