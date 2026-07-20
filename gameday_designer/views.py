@@ -22,6 +22,7 @@ import logging
 class TemplatePagination(PageNumberPagination):
     page_size = 1000
 
+
 from gamedays.models import Gameday, Team
 from gameday_designer.models import (
     ScheduleTemplate,
@@ -113,7 +114,9 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
 
                 try:
                     profile = UserProfile.objects.get(user=user)
-                    user_association = profile.team.association if profile.team else None
+                    user_association = (
+                        profile.team.association if profile.team else None
+                    )
                 except UserProfile.DoesNotExist:
                     user_association = None
 
@@ -123,13 +126,17 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
                 # Add association templates (restricted to user's association)
                 if user_association:
                     query |= Q(
-                        association=user_association, sharing=ScheduleTemplate.SHARING_ASSOCIATION
+                        association=user_association,
+                        sharing=ScheduleTemplate.SHARING_ASSOCIATION,
                     )
 
             # Support filtering by association if provided in query params
             assoc_id = self.request.query_params.get("association")
             if assoc_id:
-                query |= Q(association_id=assoc_id, sharing=ScheduleTemplate.SHARING_ASSOCIATION)
+                query |= Q(
+                    association_id=assoc_id,
+                    sharing=ScheduleTemplate.SHARING_ASSOCIATION,
+                )
 
             queryset = (
                 ScheduleTemplate.objects.filter(query)
@@ -204,10 +211,10 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
                 gameday=gameday,
                 team_mapping=team_mapping,
                 applied_by=request.user if request.user.is_authenticated else None,
-                start_time=serializer.validated_data['start_time'],
-                game_duration=serializer.validated_data['game_duration'],
-                break_duration=serializer.validated_data['break_duration'],
-                num_fields=serializer.validated_data['num_fields'],
+                start_time=serializer.validated_data["start_time"],
+                game_duration=serializer.validated_data["game_duration"],
+                break_duration=serializer.validated_data["break_duration"],
+                num_fields=serializer.validated_data["num_fields"],
             )
             result = service.apply()
 
@@ -432,7 +439,7 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
 
         applications = TemplateApplication.objects.filter(
             template=template
-        ).select_related('template', 'gameday', 'applied_by')
+        ).select_related("template", "gameday", "applied_by")
         applications_count = applications.count()
 
         # Get 10 most recent applications
@@ -480,7 +487,9 @@ class TeamCreationView(APIView):
             )
         except IntegrityError:
             return Response(
-                {"error": f"Could not create team '{name}': a team with similar name already exists."},
+                {
+                    "error": f"Could not create team '{name}': a team with similar name already exists."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -540,7 +549,9 @@ class TeamBulkCreationView(APIView):
                 )
             except IntegrityError:
                 return Response(
-                    {"error": f"Could not create team '{name}': a team with similar name already exists."},
+                    {
+                        "error": f"Could not create team '{name}': a team with similar name already exists."
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             teams.append({"id": team.pk, "name": team.name})
@@ -568,18 +579,24 @@ class LeagueTeamsView(APIView):
         if slt:
             teams = slt.teams.select_related("association").all()
         else:
-            teams = Team.objects.exclude(location="dummy").select_related("association").order_by("name")
+            teams = (
+                Team.objects.exclude(location="dummy")
+                .select_related("association")
+                .order_by("name")
+            )
 
-        return Response([
-            {
-                "id": t.pk,
-                "name": t.name,
-                "association_id": t.association_id,
-                "association_abbr": t.association.abbr if t.association else None,
-                "association_name": t.association.name if t.association else None,
-            }
-            for t in teams
-        ])
+        return Response(
+            [
+                {
+                    "id": t.pk,
+                    "name": t.name,
+                    "association_id": t.association_id,
+                    "association_abbr": t.association.abbr if t.association else None,
+                    "association_name": t.association.name if t.association else None,
+                }
+                for t in teams
+            ]
+        )
 
 
 class ConfigView(APIView):
@@ -587,7 +604,21 @@ class ConfigView(APIView):
 
     def get(self, request):
         from django.conf import settings
-        return Response({
-            "mock_teams": getattr(settings, "MOCK_TEAMS", False),
-            "is_staff": bool(request.user and request.user.is_staff),
-        })
+        from gamedays.models import UserProfile
+
+        avatar_url = None
+        try:
+            profile = UserProfile.objects.get(user=request.user)
+            if profile.avatar:
+                avatar_url = profile.avatar.url
+        except UserProfile.DoesNotExist:
+            pass
+
+        return Response(
+            {
+                "mock_teams": getattr(settings, "MOCK_TEAMS", False),
+                "is_staff": bool(request.user and request.user.is_staff),
+                "username": request.user.username,
+                "avatar_url": avatar_url,
+            }
+        )
