@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import AppHeader from '../AppHeader';
 import { GamedayProvider } from '../../../context/GamedayContext';
+import { designerApi } from '../../../api/designerApi';
 import i18n from '../../../i18n/testConfig';
 
 // Mock LanguageSelector since it's tested separately
@@ -13,6 +14,13 @@ vi.mock('../../../components/LanguageSelector', () => ({
 describe('AppHeader', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('en');
+    vi.restoreAllMocks();
+    vi.spyOn(designerApi, 'getConfig').mockResolvedValue({
+      mock_teams: false,
+      is_staff: false,
+      username: '',
+      avatar_url: null,
+    });
   });
 
   const renderHeader = (path = '/') => {
@@ -38,11 +46,6 @@ describe('AppHeader', () => {
   });
 
   it('renders gameday name when in designer and name is provided via props', () => {
-    // Note: In our implementation, we use GamedayContext, so we test that instead.
-    // However, AppHeader currently doesn't have a way to set the context from props in tests easily
-    // without wrapping it in a test component that sets the context.
-    
-    // Test with default placeholder when context is empty
     renderHeader('/designer/1');
     expect(screen.getByText(/New Gameday/i)).toBeInTheDocument();
   });
@@ -60,8 +63,25 @@ describe('AppHeader', () => {
     expect(screen.getByTestId('language-selector')).toBeInTheDocument();
   });
 
-  it('renders user profile placeholder', () => {
+  it('shows the fallback icon and "User" label when no avatar is set', async () => {
     renderHeader();
-    expect(screen.getByText(/User/i)).toBeInTheDocument();
+
+    expect(await screen.findByText('User')).toBeInTheDocument();
+    expect(screen.queryByTestId('user-avatar-image')).not.toBeInTheDocument();
+  });
+
+  it('shows the avatar image and real username once loaded', async () => {
+    vi.spyOn(designerApi, 'getConfig').mockResolvedValue({
+      mock_teams: false,
+      is_staff: false,
+      username: 'jdoe',
+      avatar_url: '/media/avatars/jdoe.png',
+    });
+
+    renderHeader();
+
+    const avatar = await screen.findByTestId('user-avatar-image');
+    expect(avatar).toHaveAttribute('src', '/media/avatars/jdoe.png');
+    await waitFor(() => expect(screen.getByText('jdoe')).toBeInTheDocument());
   });
 });
