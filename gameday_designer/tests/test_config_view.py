@@ -3,6 +3,7 @@ Tests for GET /api/designer/config/ (ConfigView).
 """
 
 import pytest
+from django.test import override_settings
 from rest_framework import status
 
 from gamedays.models import UserProfile
@@ -31,11 +32,21 @@ class TestConfigView:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["is_staff"] is False
 
-    def test_mock_teams_defaults_to_false(self, api_client, association_user):
+    @override_settings(MOCK_TEAMS=False)
+    def test_mock_teams_reflects_settings_when_false(
+        self, api_client, association_user
+    ):
         api_client.force_authenticate(user=association_user)
         response = api_client.get("/api/designer/config/")
 
         assert response.data["mock_teams"] is False
+
+    @override_settings(MOCK_TEAMS=True)
+    def test_mock_teams_reflects_settings_when_true(self, api_client, association_user):
+        api_client.force_authenticate(user=association_user)
+        response = api_client.get("/api/designer/config/")
+
+        assert response.data["mock_teams"] is True
 
     def test_username_matches_authenticated_user(self, api_client, association_user):
         api_client.force_authenticate(user=association_user)
