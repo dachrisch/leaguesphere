@@ -285,6 +285,7 @@
   },
   "tour": {
     "manual_build": {
+      "create": "Klicke auf „Spieltag erstellen“, um deinen ersten Spielplan einzurichten.",
       "metadata": "Gib deinem Spieltag einen Namen, ein Datum und eine Liga — du kannst das später jederzeit ändern.",
       "team_pool": "Füge die teilnehmenden Teams hinzu. Erstelle eine Gruppe und füge ihr die Teams hinzu.",
       "fields": "Füge ein Spielfeld hinzu und darin Phasen und Spiele, um deinen Spielplan aufzubauen.",

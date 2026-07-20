@@ -5,7 +5,7 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import GamedayDashboard from '../GamedayDashboard';
 import { GamedayProvider } from '../../../context/GamedayContext';
 import i18n from '../../../i18n/testConfig';
@@ -20,6 +20,7 @@ vi.mock('../../../api/gamedayApi', () => ({
     deleteGameday: vi.fn().mockResolvedValue({}),
     listSeasons: vi.fn().mockResolvedValue([]),
     listLeagues: vi.fn().mockResolvedValue([]),
+    getGameday: vi.fn(),
   },
 }));
 
@@ -80,9 +81,16 @@ describe('GamedayDashboard', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('en');
     vi.clearAllMocks();
+    localStorage.clear();
     (gamedayApi.listGamedays as ReturnType<typeof vi.fn>).mockResolvedValue(mockResponse);
     (gamedayApi.listSeasons as ReturnType<typeof vi.fn>).mockResolvedValue([{ id: 1, name: '2026' }]);
     (gamedayApi.listLeagues as ReturnType<typeof vi.fn>).mockResolvedValue([{ id: 1, name: 'DFFL' }]);
+    (gamedayApi.getGameday as ReturnType<typeof vi.fn>).mockResolvedValue({ ...mockGamedays[1] });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => [] }));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   const renderDashboard = async (initialEntries = ['/']) => {
