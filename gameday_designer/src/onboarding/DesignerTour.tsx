@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
+import { EventData, Joyride, STATUS, Step } from 'react-joyride';
 import { trackEvent } from '../trackEvent';
 
 interface DesignerTourProps {
@@ -10,8 +10,8 @@ interface DesignerTourProps {
 }
 
 function DesignerTour({ tourId, steps, run, onFinish }: DesignerTourProps) {
-  const handleJoyrideCallback = useCallback(
-    (data: CallBackProps) => {
+  const handleJoyrideEvent = useCallback(
+    (data: EventData) => {
       const { status, type, index } = data;
 
       if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
@@ -24,7 +24,7 @@ function DesignerTour({ tourId, steps, run, onFinish }: DesignerTourProps) {
         return;
       }
 
-      if (type === 'step:after' || type === 'target:after') {
+      if (type === 'step:after') {
         trackEvent(`gd_tour_${tourId}_step_completed`, {
           step_id: steps[index]?.target ?? '',
           step_index: index,
@@ -38,10 +38,9 @@ function DesignerTour({ tourId, steps, run, onFinish }: DesignerTourProps) {
     <Joyride
       steps={steps}
       run={run}
-      callback={handleJoyrideCallback}
+      onEvent={handleJoyrideEvent}
       continuous
-      showSkipButton
-      showProgress
+      options={{ buttons: ['back', 'close', 'skip', 'primary'], showProgress: true }}
       locale={{ back: 'Zurück', next: 'Weiter', skip: 'Überspringen', last: 'Fertig' }}
     />
   );

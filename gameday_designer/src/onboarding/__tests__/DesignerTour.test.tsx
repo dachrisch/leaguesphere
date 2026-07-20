@@ -9,8 +9,8 @@ let capturedCallback: ((data: unknown) => void) | undefined;
 
 vi.mock('react-joyride', () => ({
   __esModule: true,
-  default: (props: { callback: (data: unknown) => void }) => {
-    capturedCallback = props.callback;
+  Joyride: (props: { onEvent: (data: unknown) => void }) => {
+    capturedCallback = props.onEvent;
     return null;
   },
   STATUS: { FINISHED: 'finished', SKIPPED: 'skipped', RUNNING: 'running' },

@@ -8,6 +8,6 @@ import './i18n/testConfig';
 // Global mock for react-joyride (used by DesignerTour in ListDesignerApp)
 vi.mock('react-joyride', () => ({
   __esModule: true,
-  default: () => null,
+  Joyride: () => null,
   STATUS: { FINISHED: 'finished', SKIPPED: 'skipped', RUNNING: 'running' },
 }));
