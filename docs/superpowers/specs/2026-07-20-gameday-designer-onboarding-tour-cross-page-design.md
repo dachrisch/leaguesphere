@@ -127,8 +127,17 @@ bookmark — in the latter case there's simply no dashboard step to skip).
    `globalTeamGroups` defaults to `[]` for a gameday with no saved designer
    state yet, so a brand-new gameday (the exact case this step needs to cover)
    would have no matching element for that selector.
-3. **Fields** — target `#add-field-button` (existing); copy now covers
-   fields/stages/games together instead of three separate steps
+3. **Fields** — target `[data-testid="add-field-button"]` (`ListCanvas.tsx`);
+   copy now covers fields/stages/games together instead of three separate
+   steps. The current shipped tour uses `target: '#add-field-button'` — a CSS
+   *id* selector — but the button only has `data-testid="add-field-button"`,
+   no `id` attribute, so that selector has never matched. react-joyride
+   treats an unmatched target as `target_not_found` and silently auto-advances
+   to the next step (`node_modules/react-joyride/dist/index.mjs`, the
+   `elementExists`-false branch), so today's tour has always silently skipped
+   its first step with no visible error. Every new step target in this
+   redesign uses an attribute selector (`[data-testid="..."]`) rather than a
+   bare `#id`, to close off this whole class of bug.
 4. **Publish** — target `[data-testid="publish-schedule-button"]` (existing,
    `ListDesignerApp.tsx`), last step
 
