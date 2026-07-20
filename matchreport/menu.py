@@ -4,6 +4,7 @@ from league_manager.base_menu import BaseMenu, MenuItem
 
 from .constants import MATCHREPORT_GAMEDAY_LIST
 
+
 class MatchreportMenuAdmin(BaseMenu):
     @classmethod
     def get_name(cls):

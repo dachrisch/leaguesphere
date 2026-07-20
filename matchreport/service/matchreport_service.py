@@ -1,6 +1,12 @@
+import pandas as pd
+
 from gamedays.models import Gameinfo
 from gamedays.service.gameday_service import EMPTY_DATA
-from matchreport.service.model_wrapper import MachtreportModelWrapper
+from matchreport.service.model_wrapper import (
+    MachtreportModelWrapper,
+    PLAYER_PASSCHECK_COLUMN_MAPPING,
+)
+
 
 class EmptyPasscheckDetailsTable:
     def to_html(self, *args, **kwargs):
@@ -20,6 +26,9 @@ class EmptyMatchReportService:
     def get_gameday_match_reports(self, render_config):
         return []
 
+    def get_passcheck_player_list(self):
+        return pd.DataFrame([], columns=PLAYER_PASSCHECK_COLUMN_MAPPING.values())
+
 
 class MatchreportService:
     @classmethod
@@ -37,7 +46,9 @@ class MatchreportService:
         data = self.mmw.get_gameday_passcheck_team_players_dict()
 
         for key in data.keys():
-            data[key]["player_table"] = data[key]["player_table"].to_html(**render_config)
+            data[key]["player_table"] = data[key]["player_table"].to_html(
+                **render_config
+            )
 
         return data
 
@@ -47,3 +58,5 @@ class MatchreportService:
     def get_gameday_match_reports(self, render_config):
         return self.mmw.get_gameday_match_report(render_config=render_config)
 
+    def get_passcheck_player_list(self):
+        return self.mmw.get_gameday_passcheck_player_list()
