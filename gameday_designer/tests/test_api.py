@@ -56,6 +56,42 @@ class TestTemplateListEndpoint:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 2
 
+    def test_association_user_cannot_see_other_associations_shared_templates(
+        self, api_client, association_user, association, staff_user
+    ):
+        """A user must not see ASSOCIATION-tier templates belonging to a
+        different association than their own team's."""
+        from gamedays.models import UserProfile
+
+        own_team = Team.objects.create(
+            name="Own Team",
+            description="Own team desc",
+            location="Hometown",
+            association=association,
+        )
+        UserProfile.objects.create(user=association_user, team=own_team)
+
+        other_association = Association.objects.create(name="Other Association", abbr="OTH")
+        other_associations_template = ScheduleTemplate.objects.create(
+            name="Other Association Template",
+            description="Belongs to a different association",
+            num_teams=6,
+            num_fields=2,
+            num_groups=1,
+            game_duration=70,
+            sharing=ScheduleTemplate.SHARING_ASSOCIATION,
+            association=other_association,
+            created_by=staff_user,
+            updated_by=staff_user,
+        )
+
+        api_client.force_authenticate(user=association_user)
+        response = api_client.get("/api/designer/templates/")
+
+        assert response.status_code == status.HTTP_200_OK
+        returned_ids = [t["id"] for t in response.data["results"]]
+        assert other_associations_template.id not in returned_ids
+
     def test_filtering_by_association(self, api_client, association_user, template, global_template):
         """Authenticated users can filter templates by association."""
         api_client.force_authenticate(user=association_user)

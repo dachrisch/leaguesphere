@@ -87,6 +87,7 @@ def global_template(db, staff_user):
         num_fields=3,
         num_groups=2,
         game_duration=60,
+        sharing=ScheduleTemplate.SHARING_GLOBAL,
         association=None,
         created_by=staff_user,
         updated_by=staff_user,
@@ -230,7 +231,19 @@ class TestScheduleTemplateViewSetOwnership:
         association_template.refresh_from_db()
         assert association_template.name == "Renamed"
 
-    def test_non_staff_cannot_update_others_template(self, other_user, association_template):
+    def test_non_staff_cannot_update_others_template(self, other_user, association, association_template):
+        """other_user belongs to the same association as association_template
+        (so it's visible to them) but isn't its owner — write must still be denied."""
+        from gamedays.models import Team, UserProfile
+
+        same_association_team = Team.objects.create(
+            name="Other User's Team",
+            description="Other user's team desc",
+            location="Elsewhere",
+            association=association,
+        )
+        UserProfile.objects.create(user=other_user, team=same_association_team)
+
         client = self._client_as(other_user)
         response = client.patch(
             f"/api/designer/templates/{association_template.id}/",
