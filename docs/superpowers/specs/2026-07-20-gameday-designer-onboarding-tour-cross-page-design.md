@@ -86,20 +86,31 @@ Single step:
 ## Resume check (dashboard mount)
 
 On mount, if the tour is unseen and `localStorage['gd_tour_manual_build_gameday_id']`
-holds an id, validate it **against the gameday list `GamedayDashboard` already
-fetches for rendering the cards** — no extra network call:
-- Found, and `status === 'DRAFT'`: valid resume target. Navigate straight to
+holds an id, validate it with `gamedayApi.getGameday(id)` (existing method,
+`GET /gamedays/{id}/`):
+- Resolves, and `status === 'DRAFT'`: valid resume target. Navigate straight to
   `/designer/{id}`; no dashboard-step tour is rendered on this visit.
-- Not found (deleted), or found but no longer `DRAFT` (published): clear the
-  stored id immediately and render the create-step tour normally on this same
-  visit.
+- Rejects (deleted/404), or resolves but no longer `DRAFT` (published): clear
+  the stored id immediately and render the create-step tour normally on this
+  same visit.
 
-Validating against already-fetched data (rather than optimistically navigating
-and relying on the designer page to detect and unwind an invalid id) avoids a
-redirect loop: an optimistic redirect to a deleted gameday would bounce back to
-`/` via the designer page's existing load-failure handling, but nothing in that
-path clears the stored id, so the next dashboard mount would redirect into the
-same dead end again.
+This is a real network call, not a check against `GamedayDashboard`'s own
+`loadGamedays()` list — that list is fetched with `has_designer_state: true`
+(`GamedayCard`s only show gamedays that have actually been saved from the
+designer at least once). A tour-created gameday has no `GamedayDesignerState`
+row yet until the designer page's autosave fires on the first real change
+(1.5s debounce after fields/teams/metadata change) — so a user who creates a
+gameday via the tour and closes the tab immediately (the main case this
+resume feature exists for) would have a gameday that's real and resumable but
+invisible to that filtered list. `getGameday` checks gameday existence and
+status directly, independent of designer-state.
+
+Validating explicitly (rather than optimistically navigating and relying on
+the designer page to detect and unwind an invalid id) also avoids a redirect
+loop: an optimistic redirect to a deleted gameday would bounce back to `/` via
+the designer page's existing load-failure handling, but nothing in that path
+clears the stored id, so the next dashboard mount would redirect into the same
+dead end again.
 
 ## Designer-page steps (consolidated, replaces current 5)
 
