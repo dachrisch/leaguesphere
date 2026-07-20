@@ -25,12 +25,19 @@ export interface TeamRecord {
   association_name?: string | null;
 }
 
+export interface DesignerConfig {
+  mock_teams: boolean;
+  is_staff: boolean;
+  username: string;
+  avatar_url: string | null;
+}
+
 /**
  * API client class for Gameday Designer backend operations.
  */
 class DesignerApi {
   private client: AxiosInstance;
-  private configPromise: Promise<{ mock_teams: boolean; is_staff: boolean }> | null = null;
+  private configPromise: Promise<DesignerConfig> | null = null;
 
   constructor() {
     this.client = axios.create({
@@ -271,9 +278,9 @@ class DesignerApi {
     return response.data;
   }
 
-  async getConfig(): Promise<{ mock_teams: boolean; is_staff: boolean }> {
+  async getConfig(): Promise<DesignerConfig> {
     if (!this.configPromise) {
-      this.configPromise = this.client.get<{ mock_teams: boolean; is_staff: boolean }>('/config/')
+      this.configPromise = this.client.get<DesignerConfig>('/config/')
         .then(response => response.data)
         .catch(err => {
           this.configPromise = null;

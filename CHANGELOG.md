@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.10.0](https://github.com/dachrisch/leaguesphere/compare/v4.9.0...v4.10.0) (2026-07-20)
+
+
+### Features
+
+* show real user avatar and username in gameday designer header ([#1593](https://github.com/dachrisch/leaguesphere/issues/1593)) ([6ae66b9](https://github.com/dachrisch/leaguesphere/commit/6ae66b9452a1ea0bea6b50210556024856953519))
+
 ## [4.9.0](https://github.com/dachrisch/leaguesphere/compare/v4.8.2...v4.9.0) (2026-07-20)
 
 

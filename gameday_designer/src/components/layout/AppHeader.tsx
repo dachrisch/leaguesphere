@@ -5,6 +5,7 @@ import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import LanguageSelector from '../LanguageSelector';
 import FlowToolbar from '../FlowToolbar';
 import { useGamedayContext } from '../../context/GamedayContext';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
 import '../ListDesignerApp.css';
 
 /**
@@ -15,6 +16,7 @@ import '../ListDesignerApp.css';
 const AppHeader: React.FC = () => {
   const { t } = useTypedTranslation(['ui']);
   const { gamedayName, onOpenTemplates, toolbarProps, isLocked } = useGamedayContext();
+  const { username, avatarUrl } = useCurrentUser();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -84,8 +86,18 @@ const AppHeader: React.FC = () => {
             </div>
             
             <div className="d-flex align-items-center text-light border-start ps-3 ms-1" style={{ height: '24px' }}>
-              <i className="bi bi-person-circle me-2 fs-5"></i>
-              <span className="small fw-medium">{t('ui:label.user')}</span>
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={username || t('ui:label.user')}
+                  className="rounded-circle me-2"
+                  style={{ width: '20px', height: '20px', objectFit: 'cover' }}
+                  data-testid="user-avatar-image"
+                />
+              ) : (
+                <i className="bi bi-person-circle me-2 fs-5"></i>
+              )}
+              <span className="small fw-medium">{username || t('ui:label.user')}</span>
             </div>
           </Nav>
         </Navbar.Collapse>

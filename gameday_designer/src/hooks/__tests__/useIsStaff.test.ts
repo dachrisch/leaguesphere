@@ -7,13 +7,23 @@ describe('useIsStaff', () => {
   beforeEach(() => vi.restoreAllMocks());
 
   it('returns true when config.is_staff is true', async () => {
-    vi.spyOn(designerApi, 'getConfig').mockResolvedValue({ mock_teams: false, is_staff: true });
+    vi.spyOn(designerApi, 'getConfig').mockResolvedValue({
+      mock_teams: false,
+      is_staff: true,
+      username: 'staff',
+      avatar_url: null,
+    });
     const { result } = renderHook(() => useIsStaff());
     await waitFor(() => expect(result.current).toBe(true));
   });
 
   it('returns false when config.is_staff is false', async () => {
-    vi.spyOn(designerApi, 'getConfig').mockResolvedValue({ mock_teams: false, is_staff: false });
+    vi.spyOn(designerApi, 'getConfig').mockResolvedValue({
+      mock_teams: false,
+      is_staff: false,
+      username: 'regular',
+      avatar_url: null,
+    });
     const { result } = renderHook(() => useIsStaff());
     await waitFor(() => expect(result.current).toBe(false));
   });
