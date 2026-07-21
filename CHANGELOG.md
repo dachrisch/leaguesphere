@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.10.4](https://github.com/dachrisch/leaguesphere/compare/v4.10.3...v4.10.4) (2026-07-21)
+
+
+### Bug Fixes
+
+* **gameday_designer:** let non-staff users own their PRIVATE templates ([#1587](https://github.com/dachrisch/leaguesphere/issues/1587)) ([c6ab537](https://github.com/dachrisch/leaguesphere/commit/c6ab53791bf23ac276f04c0c9ec8f65ddf092589))
+
 ## [4.10.3](https://github.com/dachrisch/leaguesphere/compare/v4.10.2...v4.10.3) (2026-07-21)
 
 
