@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.10.2](https://github.com/dachrisch/leaguesphere/compare/v4.10.1...v4.10.2) (2026-07-21)
+
+
+### Bug Fixes
+
+* **deps:** update dependency postcss to v8.5.21 ([#1599](https://github.com/dachrisch/leaguesphere/issues/1599)) ([9fad533](https://github.com/dachrisch/leaguesphere/commit/9fad533a580684bbb351beb7a475b2531dc84ecb))
+
 ## [4.10.1](https://github.com/dachrisch/leaguesphere/compare/v4.10.0...v4.10.1) (2026-07-20)
 
 
