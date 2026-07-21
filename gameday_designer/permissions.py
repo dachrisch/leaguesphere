@@ -23,3 +23,16 @@ class IsStaffOrReadOnly(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
         return bool(request.user and request.user.is_staff)
+
+
+class IsOwnerOrStaff(permissions.BasePermission):
+    """Any authenticated user may attempt the request; write access to an
+    existing object is restricted to its creator or staff."""
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated)
+
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_staff:
+            return True
+        return obj.created_by_id == request.user.id
