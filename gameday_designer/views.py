@@ -383,6 +383,20 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+        num_teams = data["num_teams"]
+        num_fields = data["num_fields"]
+
+        if not isinstance(num_teams, int) or num_teams < 1:
+            return Response(
+                {"error": "num_teams must be a positive integer"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not isinstance(num_fields, int) or num_fields < 1:
+            return Response(
+                {"error": "num_fields must be a positive integer"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         sharing = data.get("sharing", ScheduleTemplate.SHARING_PRIVATE)
         if sharing not in (
             ScheduleTemplate.SHARING_PRIVATE,
@@ -400,8 +414,8 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
         template = ScheduleTemplate.objects.create(
             name=data["name"],
             description=data.get("description", ""),
-            num_teams=data["num_teams"],
-            num_fields=data["num_fields"],
+            num_teams=num_teams,
+            num_fields=num_fields,
             num_groups=data["num_groups"],
             game_duration=data.get("game_duration", 70),
             sharing=sharing,
