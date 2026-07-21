@@ -55,4 +55,32 @@ describe('TemplateList', () => {
     screen.getByText('Club Standard').click();
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ type: 'saved', template: expect.objectContaining({ id: 1 }) }));
   });
+
+  it('shows the creator username for global templates', async () => {
+    const mockTemplate = {
+      id: 2, name: 'Community Bracket', sharing: 'GLOBAL' as const,
+      num_teams: 8, num_fields: 4, num_groups: 2, game_duration: 70,
+      association: null, created_by: 5, created_by_username: 'jdoe', updated_by: 5, created_at: '', updated_at: '',
+    };
+    vi.mocked(designerApi.listTemplates).mockImplementation(async (params) => {
+      if (params?.sharing === 'global') return { results: [mockTemplate], count: 1, next: null, previous: null };
+      return mockEmptyResponse;
+    });
+    render(<TemplateList selectedId={null} onSelect={vi.fn()} searchQuery="" filterScope="all" />);
+    await waitFor(() => expect(screen.getByText('by jdoe')).toBeInTheDocument());
+  });
+
+  it('falls back to "unknown" when a global template has no creator username', async () => {
+    const mockTemplate = {
+      id: 3, name: 'Anonymous Bracket', sharing: 'GLOBAL' as const,
+      num_teams: 8, num_fields: 4, num_groups: 2, game_duration: 70,
+      association: null, created_by: null, updated_by: null, created_at: '', updated_at: '',
+    };
+    vi.mocked(designerApi.listTemplates).mockImplementation(async (params) => {
+      if (params?.sharing === 'global') return { results: [mockTemplate], count: 1, next: null, previous: null };
+      return mockEmptyResponse;
+    });
+    render(<TemplateList selectedId={null} onSelect={vi.fn()} searchQuery="" filterScope="all" />);
+    await waitFor(() => expect(screen.getByText('by unknown')).toBeInTheDocument());
+  });
 });
