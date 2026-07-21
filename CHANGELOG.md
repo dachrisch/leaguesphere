@@ -1,5 +1,14 @@
 # Changelog
 
+## [4.11.1](https://github.com/dachrisch/leaguesphere/compare/v4.11.0...v4.11.1) (2026-07-21)
+
+
+### Bug Fixes
+
+* align frontend field names with backend serializer ([#1604](https://github.com/dachrisch/leaguesphere/issues/1604)) ([#1613](https://github.com/dachrisch/leaguesphere/issues/1613)) ([e51c092](https://github.com/dachrisch/leaguesphere/commit/e51c092e1e30a85aa4f4c148f25ba49849562746))
+* **deps:** update react and react-dom to v19.2.8 ([#1614](https://github.com/dachrisch/leaguesphere/issues/1614)) ([fdebae9](https://github.com/dachrisch/leaguesphere/commit/fdebae979bbe0eed41c5cc09f690f20a7af8b0dc))
+* validate num_teams and num_fields are positive in save_from_designer ([#1612](https://github.com/dachrisch/leaguesphere/issues/1612)) ([54e31b9](https://github.com/dachrisch/leaguesphere/commit/54e31b9895d2d63654cbe97b5d89b4090047ad3c))
+
 ## [4.11.0](https://github.com/dachrisch/leaguesphere/compare/v4.10.4...v4.11.0) (2026-07-21)
 
 
