@@ -853,3 +853,38 @@ class TestTemplateSaveFromDesigner:
         payload = {**self.VALID_PAYLOAD, "num_fields": -1}
         response = api_client.post(self.URL, payload, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_non_integer_num_teams_returns_400(self, api_client, staff_user):
+        """A non-integer num_teams should return 400, not a 500 from a type error."""
+        api_client.force_authenticate(user=staff_user)
+        payload = {**self.VALID_PAYLOAD, "num_teams": "4"}
+        response = api_client.post(self.URL, payload, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_non_integer_num_fields_returns_400(self, api_client, staff_user):
+        """A non-integer num_fields should return 400, not a 500 from a type error."""
+        api_client.force_authenticate(user=staff_user)
+        payload = {**self.VALID_PAYLOAD, "num_fields": 2.5}
+        response = api_client.post(self.URL, payload, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_game_duration_too_short_returns_400(self, api_client, staff_user):
+        """game_duration below 30 should return 400, not 500 from the DB constraint."""
+        api_client.force_authenticate(user=staff_user)
+        payload = {**self.VALID_PAYLOAD, "game_duration": 10}
+        response = api_client.post(self.URL, payload, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_game_duration_too_long_returns_400(self, api_client, staff_user):
+        """game_duration above 120 should return 400, not 500 from the DB constraint."""
+        api_client.force_authenticate(user=staff_user)
+        payload = {**self.VALID_PAYLOAD, "game_duration": 200}
+        response = api_client.post(self.URL, payload, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_default_game_duration_is_used_when_omitted(self, api_client, staff_user):
+        """Omitting game_duration should fall back to the default of 70, not fail validation."""
+        api_client.force_authenticate(user=staff_user)
+        payload = {k: v for k, v in self.VALID_PAYLOAD.items() if k != "game_duration"}
+        response = api_client.post(self.URL, payload, format="json")
+        assert response.status_code == status.HTTP_201_CREATED

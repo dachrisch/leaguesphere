@@ -385,15 +385,25 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
 
         num_teams = data["num_teams"]
         num_fields = data["num_fields"]
+        game_duration = data.get("game_duration", 70)
 
-        if not isinstance(num_teams, int) or num_teams < 1:
+        if isinstance(num_teams, bool) or not isinstance(num_teams, int) or num_teams < 1:
             return Response(
                 {"error": "num_teams must be a positive integer"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if not isinstance(num_fields, int) or num_fields < 1:
+        if isinstance(num_fields, bool) or not isinstance(num_fields, int) or num_fields < 1:
             return Response(
                 {"error": "num_fields must be a positive integer"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if (
+            isinstance(game_duration, bool)
+            or not isinstance(game_duration, int)
+            or not (30 <= game_duration <= 120)
+        ):
+            return Response(
+                {"error": "game_duration must be an integer between 30 and 120"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -417,7 +427,7 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
             num_teams=num_teams,
             num_fields=num_fields,
             num_groups=data["num_groups"],
-            game_duration=data.get("game_duration", 70),
+            game_duration=game_duration,
             sharing=sharing,
             created_by=request.user if request.user.is_authenticated else None,
             updated_by=request.user if request.user.is_authenticated else None,
