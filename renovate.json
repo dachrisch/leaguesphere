@@ -32,6 +32,18 @@
       ],
       "automerge": true,
       "semanticCommitType": "fix"
+    },
+    {
+      "groupName": "react monorepo",
+      "matchPackageNames": [
+        "react",
+        "react-dom",
+        "@types/react",
+        "@types/react-dom"
+      ],
+      "automerge": true,
+      "semanticCommitType": "fix",
+      "semanticCommitScope": "deps"
     }
   ]
 }
