@@ -5,6 +5,7 @@ interface SaveTemplateSheetProps {
   show: boolean;
   onHide: () => void;
   onSave: (data: { name: string; description: string; sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL' }) => void;
+  isStaff?: boolean;
 }
 
 const SCOPE_OPTIONS = [
@@ -13,11 +14,15 @@ const SCOPE_OPTIONS = [
   { value: 'GLOBAL' as const, icon: <i className="bi bi-globe me-1"></i>, label: 'Global', desc: 'Visible to all users' },
 ];
 
-const SaveTemplateSheet: React.FC<SaveTemplateSheetProps> = ({ show, onHide, onSave }) => {
+const SaveTemplateSheet: React.FC<SaveTemplateSheetProps> = ({ show, onHide, onSave, isStaff = false }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [sharing, setSharing] = useState<'PRIVATE' | 'ASSOCIATION' | 'GLOBAL'>('PRIVATE');
   const [validated, setValidated] = useState(false);
+
+  // Non-staff users may only own PRIVATE templates — the backend rejects
+  // ASSOCIATION/GLOBAL sharing from non-staff, so those options aren't offered.
+  const scopeOptions = isStaff ? SCOPE_OPTIONS : SCOPE_OPTIONS.filter(opt => opt.value === 'PRIVATE');
 
   const handleSave = () => {
     setValidated(true);
@@ -64,7 +69,7 @@ const SaveTemplateSheet: React.FC<SaveTemplateSheetProps> = ({ show, onHide, onS
           <Form.Group>
             <Form.Label className="fw-semibold small text-uppercase">Visibility *</Form.Label>
             <div className="d-flex gap-2">
-              {SCOPE_OPTIONS.map(opt => (
+              {scopeOptions.map(opt => (
                 <div
                   key={opt.value}
                   className={`flex-fill border rounded p-2 text-center ${sharing === opt.value ? 'border-primary bg-primary bg-opacity-10' : ''}`}

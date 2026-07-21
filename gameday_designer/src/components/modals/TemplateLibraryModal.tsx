@@ -239,11 +239,9 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
             <Modal.Header className="bg-dark text-white">
               <Modal.Title><i className="bi bi-book-half me-2"></i>Template Library</Modal.Title>
               <div className="ms-auto d-flex gap-2 align-items-center">
-                {isStaff && (
-                  <Button size="sm" variant="success" onClick={() => setShowSave(true)} data-testid="save-current-as-template-button">
-                    <i className="bi bi-download me-2"></i>Save current as template
-                  </Button>
-                )}
+                <Button size="sm" variant="success" onClick={() => setShowSave(true)} data-testid="save-current-as-template-button">
+                  <i className="bi bi-download me-2"></i>Save current as template
+                </Button>
                 <Button size="sm" variant="outline-light" onClick={handleHide} aria-label="Close" data-testid="close-template-library-button">
                   <i className="bi bi-x-lg"></i>
                 </Button>
@@ -311,6 +309,7 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
         show={showSave}
         onHide={() => setShowSave(false)}
         onSave={handleSave}
+        isStaff={isStaff}
       />
 
       <Modal show={showCloneModal} onHide={() => setShowCloneModal(false)} centered>
