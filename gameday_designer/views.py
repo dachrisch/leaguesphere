@@ -37,7 +37,7 @@ from gameday_designer.serializers import (
     ApplyTemplateRequestSerializer,
     TemplateApplicationSerializer,
 )
-from gameday_designer.permissions import IsStaffOrReadOnly
+from gameday_designer.permissions import IsStaffOrReadOnly, IsOwnerOrStaff
 from gameday_designer.service.template_validation_service import (
     TemplateValidationService,
 )
@@ -75,6 +75,10 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
     pagination_class = TemplatePagination
 
     def get_permissions(self):
+        if self.action in ("create", "save_from_designer", "clone"):
+            return [IsAuthenticated()]
+        if self.action in ("update", "partial_update", "destroy"):
+            return [IsOwnerOrStaff()]
         return [IsStaffOrReadOnly()]
 
     def get_serializer_class(self):
@@ -108,7 +112,6 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
             # Base query: Global templates are ALWAYS visible
             query = Q(sharing=ScheduleTemplate.SHARING_GLOBAL)
 
-            # ASSOCIATION templates matching user's association
             if user and user.is_authenticated:
                 from gamedays.models import UserProfile
 
@@ -120,8 +123,8 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
                 except UserProfile.DoesNotExist:
                     user_association = None
 
-                # Add private templates owned by this user
-                query |= Q(created_by=user, sharing=ScheduleTemplate.SHARING_PRIVATE)
+                # Templates owned by this user are always visible, regardless of sharing tier
+                query |= Q(created_by=user)
 
                 # Add association templates (restricted to user's association)
                 if user_association:
@@ -387,6 +390,12 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
             ScheduleTemplate.SHARING_GLOBAL,
         ):
             sharing = ScheduleTemplate.SHARING_PRIVATE
+
+        if sharing != ScheduleTemplate.SHARING_PRIVATE and not request.user.is_staff:
+            return Response(
+                {"error": "Only staff can save templates as association or global."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         template = ScheduleTemplate.objects.create(
             name=data["name"],

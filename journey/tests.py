@@ -98,6 +98,44 @@ class JourneyAPITests(APITestCase):
             journey1.refresh_from_db()
             self.assertIsNotNone(journey1.ended_at, "Old journey should have ended_at set")
 
+    def test_filter_events_by_event_name(self):
+        journey = Journey.objects.create(user=self.user)
+        JourneyEvent.objects.create(journey=journey, event_name='gd_tour_manual_build_completed')
+        JourneyEvent.objects.create(journey=journey, event_name='gameday_published')
+
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token}')
+        response = self.client.get('/api/journey/events/?event_name=gd_tour_manual_build_completed')
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]['event_name'], 'gd_tour_manual_build_completed')
+
+    def test_filter_events_by_event_name_in(self):
+        journey = Journey.objects.create(user=self.user)
+        JourneyEvent.objects.create(journey=journey, event_name='gd_tour_manual_build_completed')
+        JourneyEvent.objects.create(journey=journey, event_name='gd_tour_manual_build_skipped')
+        JourneyEvent.objects.create(journey=journey, event_name='gameday_published')
+
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token}')
+        response = self.client.get(
+            '/api/journey/events/?event_name__in=gd_tour_manual_build_completed,gd_tour_manual_build_skipped'
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data), 2)
+        names = {e['event_name'] for e in data}
+        self.assertEqual(names, {'gd_tour_manual_build_completed', 'gd_tour_manual_build_skipped'})
+
+    def test_filter_events_by_event_name_scoped_to_requesting_user(self):
+        other_user = User.objects.create_user(username='otheruser', password='pass')
+        other_journey = Journey.objects.create(user=other_user)
+        JourneyEvent.objects.create(journey=other_journey, event_name='gd_tour_manual_build_completed')
+
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token}')
+        response = self.client.get('/api/journey/events/?event_name=gd_tour_manual_build_completed')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
+
 
 class GamedayEventPersistenceTests(APITestCase):
     """
@@ -474,19 +512,20 @@ class JourneyDashboardViewTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn('login', response.url)
 
+
 class JourneyPermissionTests(APITestCase):
     """Test cases for journey permissions and data visibility (staff vs regular user)"""
     def setUp(self):
         self.staff_user = User.objects.create_user(username='staff', password='pass', is_staff=True)
         self.regular_user = User.objects.create_user(username='regular', password='pass', is_staff=False)
         self.other_user = User.objects.create_user(username='other', password='pass', is_staff=False)
-        
+
         self.staff_token = AuthToken.objects.create(self.staff_user)[1]
         self.regular_token = AuthToken.objects.create(self.regular_user)[1]
-        
+
         self.journey_reg = Journey.objects.create(user=self.regular_user)
         self.journey_oth = Journey.objects.create(user=self.other_user)
-        
+
         JourneyEvent.objects.create(journey=self.journey_reg, event_name='gameday_designer_opened')
         JourneyEvent.objects.create(journey=self.journey_oth, event_name='passcheck_started')
 

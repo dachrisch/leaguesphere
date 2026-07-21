@@ -232,6 +232,15 @@ class ScheduleTemplateDetailSerializer(serializers.ModelSerializer):
             return obj.updated_by.username
         return "Unknown"
 
+    def validate_sharing(self, value):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if value != ScheduleTemplate.SHARING_PRIVATE and not (user and user.is_staff):
+            raise serializers.ValidationError(
+                "Only staff can set sharing to association or global."
+            )
+        return value
+
     def create(self, validated_data):
         """
         Create template, auto-populating created_by and updated_by from request.

@@ -59,7 +59,7 @@ class JourneyEventViewSet(viewsets.ModelViewSet):
             return Journey.objects.create(user=user)
 
     def get_queryset(self):
-        """Filter events by authenticated user and optionally by journey."""
+        """Filter events by authenticated user and optionally by journey/event_name."""
         if self.request.user.is_staff:
             qs = JourneyEvent.objects.all()
         else:
@@ -68,6 +68,15 @@ class JourneyEventViewSet(viewsets.ModelViewSet):
         journey_id = self.request.query_params.get('journey')
         if journey_id:
             qs = qs.filter(journey_id=journey_id)
+
+        event_name = self.request.query_params.get('event_name')
+        if event_name:
+            qs = qs.filter(event_name=event_name)
+
+        event_name_in = self.request.query_params.get('event_name__in')
+        if event_name_in:
+            qs = qs.filter(event_name__in=event_name_in.split(','))
+
         return qs.order_by('created_at')
 
     @action(detail=False, methods=['get'])
