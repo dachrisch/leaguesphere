@@ -1,5 +1,26 @@
 # Changelog
 
+## [4.10.3](https://github.com/dachrisch/leaguesphere/compare/v4.10.2...v4.10.3) (2026-07-21)
+
+
+### Bug Fixes
+
+* **deps:** update dependency prettier to v3.9.6 ([#1600](https://github.com/dachrisch/leaguesphere/issues/1600)) ([0bb60b5](https://github.com/dachrisch/leaguesphere/commit/0bb60b5a6f0733f1971234ad30e419b270547f92))
+
+## [4.10.2](https://github.com/dachrisch/leaguesphere/compare/v4.10.1...v4.10.2) (2026-07-21)
+
+
+### Bug Fixes
+
+* **deps:** update dependency postcss to v8.5.21 ([#1599](https://github.com/dachrisch/leaguesphere/issues/1599)) ([9fad533](https://github.com/dachrisch/leaguesphere/commit/9fad533a580684bbb351beb7a475b2531dc84ecb))
+
+## [4.10.1](https://github.com/dachrisch/leaguesphere/compare/v4.10.0...v4.10.1) (2026-07-20)
+
+
+### Bug Fixes
+
+* **gamedays:** enforce owner-or-staff permission on all mutating API endpoints ([#1596](https://github.com/dachrisch/leaguesphere/issues/1596)) ([d23e490](https://github.com/dachrisch/leaguesphere/commit/d23e49093356488a652fcf0b066073b1d3193774))
+
 ## [4.10.0](https://github.com/dachrisch/leaguesphere/compare/v4.9.0...v4.10.0) (2026-07-20)
 
 
