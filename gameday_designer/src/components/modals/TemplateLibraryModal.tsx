@@ -28,6 +28,7 @@ interface TemplateLibraryModalProps {
   onHide: () => void;
   gamedayId: number;
   currentUserId: number;
+  isLocked?: boolean;
   onScheduleApplied?: () => void;
   onGenerateFromBuiltin?: (config: {
     templateId: string;
@@ -44,7 +45,7 @@ interface TemplateLibraryModalProps {
 }
 
 const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
-  show, onHide, gamedayId, currentUserId,
+  show, onHide, gamedayId, currentUserId, isLocked = false,
   onGenerateFromBuiltin, onGenerateFromSavedTemplate, onSaveTemplate, onNotify,
 }) => {
   const isStaff = useIsStaff();
@@ -102,9 +103,10 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
   }, []);
 
   const handleApply = useCallback((item: SelectedTemplate, config?: TournamentConfig) => {
+    if (isLocked) return;
     setApplyConfig(config);
     setStep('team-picker');
-  }, []);
+  }, [isLocked]);
 
   const handleTeamConfirm = useCallback(async (selectedTeams: GlobalTeam[]) => {
     if (!selected) return;
@@ -238,7 +240,7 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
               <Modal.Title><i className="bi bi-book-half me-2"></i>Template Library</Modal.Title>
               <div className="ms-auto d-flex gap-2 align-items-center">
                 {isStaff && (
-                  <Button size="sm" variant="success" onClick={() => setShowSave(true)}>
+                  <Button size="sm" variant="success" onClick={() => setShowSave(true)} data-testid="save-current-as-template-button">
                     <i className="bi bi-download me-2"></i>Save current as template
                   </Button>
                 )}
@@ -285,6 +287,7 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
                   selected={selected}
                   currentUserId={currentUserId}
                   isStaff={isStaff}
+                  isLocked={isLocked}
                   onApply={handleApply}
                   onClone={handleClone}
                   onDelete={handleDelete}

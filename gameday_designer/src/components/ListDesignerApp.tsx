@@ -22,6 +22,8 @@ import { getAllTemplates } from '../utils/tournamentTemplates';
 import type { GenericTemplate } from '../utils/templateMapper';
 import type { TournamentTemplate } from '../types/tournament';
 import { trackEvent } from '../trackEvent';
+import { useTourSeen } from '../onboarding/useTourSeen';
+import DesignerTour from '../onboarding/DesignerTour';
 import './ListDesignerApp.css';
 
 const getSessionId = (): string => {
@@ -45,6 +47,7 @@ const ListDesignerApp: React.FC = () => {
     setToolbarProps,
     setIsLocked: setContextLocked,
     setOnOpenTemplates,
+    setReplayTourA,
     currentUserId,
     resultsMode,
     setResultsMode,
@@ -117,6 +120,78 @@ const ListDesignerApp: React.FC = () => {
   } = handlers;
 
   const isLocked = metadata?.status ? metadata.status !== 'DRAFT' : false;
+
+  // --- Onboarding Tour A (manual build) ---
+  const { seen: tourASeen, loading: tourALoading, markSeen: markTourASeen } = useTourSeen('manual_build');
+  const [tourAKey, setTourAKey] = useState(0); // force re-mount for replay
+  const [tourAStarted, setTourAStarted] = useState(false); // tracks manual replay
+  const autoStartRef = useRef(false);
+
+  const shouldRunTourA = !tourALoading && !tourASeen && id && !tourAStarted;
+
+  // Auto-start Tour A on first visit
+  useEffect(() => {
+    if (shouldRunTourA && !autoStartRef.current) {
+      autoStartRef.current = true;
+      trackEvent('gd_tour_manual_build_started', { replay: false });
+    }
+  }, [shouldRunTourA]);
+
+  const handleTourAFinish = useCallback(() => {
+    markTourASeen();
+    localStorage.removeItem('gd_tour_manual_build_gameday_id');
+  }, [markTourASeen]);
+
+  const replayTourA = useCallback(() => {
+    setTourAKey((k) => k + 1);
+    setTourAStarted(true);
+    autoStartRef.current = true;
+    trackEvent('gd_tour_manual_build_started', { replay: true });
+  }, []);
+
+  const tourASteps = [
+    { target: '[data-testid="gameday-metadata-header"]', content: t('ui:tour.manual_build.metadata'), placement: 'bottom' as const },
+    { target: '[data-testid="add-team-group-button"]', content: t('ui:tour.manual_build.team_pool'), placement: 'left' as const },
+    { target: '[data-testid="add-field-button"]', content: t('ui:tour.manual_build.fields'), placement: 'bottom' as const },
+    { target: '[data-testid="publish-schedule-button"]', content: t('ui:tour.manual_build.publish'), placement: 'left' as const },
+  ];
+
+  // --- Onboarding Tour B (save template nudge) ---
+  const { seen: tourBSeen, loading: tourBLoading, markSeen: markTourBSeen } = useTourSeen('save_template');
+  const [runTourB, setRunTourB] = useState(false);
+  const [tourBKey, setTourBKey] = useState(0);
+
+  const handleTourBFinish = useCallback(() => {
+    setRunTourB(false);
+    markTourBSeen();
+  }, [markTourBSeen]);
+
+  const replayTourB = useCallback(() => {
+    setTourBKey((k) => k + 1);
+    setRunTourB(true);
+    trackEvent('gd_tour_save_template_started', { replay: true });
+  }, []);
+
+  const tourBSteps = [
+    { target: '[data-testid="open-template-library-button"]', content: t('ui:tour.save_template.nudge'), placement: 'left' as const },
+  ];
+
+  // Expose the header '?' button's handler via context: replays Tour A on a
+  // draft gameday, or Tour B (save-as-template nudge) once published, since
+  // Tour A's steps target metadata/team-pool/fields actions that are disabled
+  // once locked.
+  const replayCurrentTour = useCallback(() => {
+    if (isLocked) {
+      replayTourB();
+    } else {
+      replayTourA();
+    }
+  }, [isLocked, replayTourA, replayTourB]);
+
+  useEffect(() => {
+    setReplayTourA(() => replayCurrentTour);
+    return () => setReplayTourA(null);
+  }, [replayCurrentTour, setReplayTourA]);
 
   const lastGamedayNameRef = useRef('');
   const lastIsLockedRef = useRef<boolean | null>(null);
@@ -403,11 +478,17 @@ const ListDesignerApp: React.FC = () => {
         stage_count: stageCount,
       });
 
+      // Trigger Tour B (save template nudge) if unseen
+      if (!tourBLoading && !tourBSeen) {
+        setRunTourB(true);
+        trackEvent('gd_tour_save_template_started', { replay: false });
+      }
+
       loadData();
     } catch {
       addNotification(t('ui:notification.publishFailed'), 'danger', t('ui:notification.title.error'));
     }
-  }, [id, addNotification, t, loadData, flowState.nodes]);
+  }, [id, addNotification, t, loadData, flowState.nodes, tourBLoading, tourBSeen]);
 
   const handleConfirmDelete = useCallback(async () => {
     setShowDeleteModal(false);
@@ -593,6 +674,7 @@ const ListDesignerApp: React.FC = () => {
         onHide={() => setShowTemplateLibrary(false)}
         gamedayId={parseInt(id)}
         currentUserId={currentUserId}
+        isLocked={isLocked}
         onScheduleApplied={() => { void loadData(); }}
         onGenerateFromBuiltin={(config) => {
           const template = getAllTemplates().find(t => t.id === config.templateId);
@@ -631,6 +713,22 @@ const ListDesignerApp: React.FC = () => {
       />
 
       {ui?.isLoading && <LoadingOverlay message={t('ui:message.loading')} />}
+
+      <DesignerTour
+        key={tourAKey}
+        tourId="manual_build"
+        steps={tourASteps}
+        run={shouldRunTourA || tourAStarted}
+        onFinish={handleTourAFinish}
+      />
+
+      <DesignerTour
+        key={tourBKey}
+        tourId="save_template"
+        steps={tourBSteps}
+        run={runTourB}
+        onFinish={handleTourBFinish}
+      />
     </div>
   );
 };

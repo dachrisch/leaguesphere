@@ -246,7 +246,8 @@
     "autoTimeHint": "Automatisch berechnet - Klicken zum Überschreiben",
     "manualTimeHint": "Manuell gesetzt - Klicken zum Bearbeiten",
     "renameField": "Feld umbenennen",
-    "duplicate": "Duplizieren"
+    "duplicate": "Duplizieren",
+    "replayTour": "Onboarding-Tour wiederholen"
   },
   "notification": {
     "gameResultSaved": "Spielergebnis gespeichert",
@@ -281,5 +282,24 @@
     "resultsSaveFailed": "Fehler beim Speichern der Ergebnisse",
     "officialsAssigned": "Schiedsrichter für {{count}} Spiele zugewiesen",
     "officialsAssignFailed": "Schiedsrichter-Zuweisung fehlgeschlagen"
+  },
+  "tour": {
+    "controls": {
+      "back": "Zurück",
+      "next": "Weiter",
+      "nextWithProgress": "Weiter ({current} von {total})",
+      "skip": "Überspringen",
+      "last": "Fertig"
+    },
+    "manual_build": {
+      "create": "Klicke auf „Spieltag erstellen“, um deinen ersten Spielplan einzurichten.",
+      "metadata": "Gib deinem Spieltag einen Namen, ein Datum und eine Liga. Du kannst das später jederzeit ändern.",
+      "team_pool": "Füge die teilnehmenden Teams hinzu. Erstelle eine Gruppe und füge ihr die Teams hinzu.",
+      "fields": "Füge ein Spielfeld hinzu und darin Phasen und Spiele, um deinen Spielplan aufzubauen.",
+      "publish": "Wenn dein Spielplan fertig ist, veröffentliche ihn, damit Teams und Offizielle ihn sehen können."
+    },
+    "save_template": {
+      "nudge": "Wusstest du, dass du diesen Spielplan als wiederverwendbare Vorlage speichern kannst?"
+    }
   }
 }

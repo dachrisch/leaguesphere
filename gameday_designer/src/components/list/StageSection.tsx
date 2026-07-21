@@ -285,11 +285,12 @@ const StageSection: React.FC<StageSectionProps> = memo(({
         )}
 
         {!readOnly && (
-          <button 
+          <button
             className="btn btn-sm btn-outline-primary btn-adaptive me-2"
-            onClick={handleAddGame} 
-            aria-label={t('ui:button.addGame')} 
+            onClick={handleAddGame}
+            aria-label={t('ui:button.addGame')}
             title={t('ui:tooltip.addGame')}
+            data-testid="add-game-button"
           >
             <i className={`bi ${ICONS.ADD} me-2`}></i>
             <span className="btn-label-adaptive">{t('ui:button.addGame')}</span>

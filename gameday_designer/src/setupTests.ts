@@ -4,3 +4,10 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 import './i18n/testConfig';
+
+// Global mock for react-joyride (used by DesignerTour in ListDesignerApp)
+vi.mock('react-joyride', () => ({
+  __esModule: true,
+  Joyride: () => null,
+  STATUS: { FINISHED: 'finished', SKIPPED: 'skipped', RUNNING: 'running' },
+}));

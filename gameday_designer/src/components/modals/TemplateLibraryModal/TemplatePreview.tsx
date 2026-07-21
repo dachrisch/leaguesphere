@@ -15,6 +15,7 @@ interface TemplatePreviewProps {
   selected: SelectedTemplate | null;
   currentUserId: number;
   isStaff?: boolean;
+  isLocked?: boolean;
   onApply: (selected: SelectedTemplate, config?: TournamentConfig) => void;
   onClone: (selected: SelectedTemplate) => void;
   onDelete: (template: ScheduleTemplate) => void;
@@ -22,7 +23,7 @@ interface TemplatePreviewProps {
 }
 
 const TemplatePreview: React.FC<TemplatePreviewProps> = ({
-  selected, currentUserId, isStaff = false, onApply, onClone, onDelete,
+  selected, currentUserId, isStaff = false, isLocked = false, onApply, onClone, onDelete,
 }) => {
   const [startTime, setStartTime] = useState('09:00');
   const [gameDuration, setGameDuration] = useState(() => {
@@ -124,11 +125,12 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
             variant="primary"
             data-testid="apply-template-button"
             onClick={() => onApply(selected, { startTime, gameDuration, breakDuration, numFields })}
+            disabled={isLocked}
           >
             Apply to Gameday <i className="bi bi-arrow-right ms-2"></i>
           </Button>
         )}
-        <Button variant="outline-secondary" onClick={() => onClone(selected)}>
+        <Button variant="outline-secondary" onClick={() => onClone(selected)} disabled={isLocked}>
           Clone &amp; Edit
         </Button>
         <div className="ms-auto">

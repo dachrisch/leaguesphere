@@ -15,7 +15,7 @@ import '../ListDesignerApp.css';
  */
 const AppHeader: React.FC = () => {
   const { t } = useTypedTranslation(['ui']);
-  const { gamedayName, onOpenTemplates, toolbarProps, isLocked } = useGamedayContext();
+  const { gamedayName, onOpenTemplates, toolbarProps, replayTourA } = useGamedayContext();
   const { username, avatarUrl } = useCurrentUser();
   const navigate = useNavigate();
   const location = useLocation();
@@ -62,13 +62,24 @@ const AppHeader: React.FC = () => {
         <Navbar.Toggle aria-controls="header-navbar-nav" />
         <Navbar.Collapse id="header-navbar-nav" className="justify-content-end">
           <Nav className="align-items-center gap-3">
+            {replayTourA && (
+              <Button
+                variant="outline-light"
+                size="sm"
+                onClick={replayTourA}
+                title={t('ui:tooltip.replayTour')}
+                data-testid="replay-tour-button"
+              >
+                ?
+              </Button>
+            )}
+
             {isEditor && onOpenTemplates && (
               <Button
                 variant="primary"
                 onClick={onOpenTemplates}
                 size="sm"
                 className="btn-adaptive fw-bold shadow-sm"
-                disabled={isLocked}
                 data-testid="open-template-library-button"
               >
                 📚 Templates

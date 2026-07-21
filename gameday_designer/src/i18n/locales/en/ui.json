@@ -246,7 +246,8 @@
     "autoTimeHint": "Auto-calculated - click to override",
     "manualTimeHint": "Manually set - click to edit",
     "renameField": "Rename field",
-    "duplicate": "Duplicate"
+    "duplicate": "Duplicate",
+    "replayTour": "Replay onboarding tour"
   },
   "notification": {
     "gameResultSaved": "Game result saved",
@@ -281,5 +282,24 @@
     "resultsSaveFailed": "Failed to save results",
     "officialsAssigned": "Referees assigned to {{count}} games",
     "officialsAssignFailed": "Failed to assign referees"
+  },
+  "tour": {
+    "controls": {
+      "back": "Back",
+      "next": "Next",
+      "nextWithProgress": "Next ({current} of {total})",
+      "skip": "Skip",
+      "last": "Done"
+    },
+    "manual_build": {
+      "create": "Click \"Create Gameday\" to set up your first schedule.",
+      "metadata": "Give your gameday a name, date, and league. You can always change these later.",
+      "team_pool": "Add the teams that will play. Create a group, then add each team to it.",
+      "fields": "Add a field, then add stages and games inside it to build out your schedule.",
+      "publish": "Once your schedule is ready, publish it to make it visible to teams and officials."
+    },
+    "save_template": {
+      "nudge": "Did you know you can save this schedule as a reusable template?"
+    }
   }
 }

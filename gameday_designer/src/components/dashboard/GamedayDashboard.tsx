@@ -4,12 +4,17 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import { gamedayApi } from '../../api/gamedayApi';
 import { trackEvent } from '../../trackEvent';
+import { useTourSeen } from '../../onboarding/useTourSeen';
+import DesignerTour from '../../onboarding/DesignerTour';
+import { useGamedayContext } from '../../context/GamedayContext';
 import type { GamedayListEntry } from '../../types';
 import type { Notification, NotificationType } from '../../types/designer';
 import GamedayCard from './GamedayCard';
 import NotificationToast from '../ui/NotificationToast';
 import { v4 as uuidv4 } from 'uuid';
 import { ProgressBar } from 'react-bootstrap';
+
+const RESUME_STORAGE_KEY = 'gd_tour_manual_build_gameday_id';
 
 /**
  * Placeholder component for a gameday card marked for deletion.
@@ -82,6 +87,55 @@ const GamedayDashboard: React.FC = () => {
   const timeoutRefs = useRef<Record<number, NodeJS.Timeout>>({});
   const gamedaysRef = useRef<GamedayListEntry[]>([]);
   const hasTriggeredInitialDelete = useRef(false);
+  const { setReplayTourA } = useGamedayContext();
+  const { seen: tourASeen, loading: tourALoading, markSeen: markTourASeen } = useTourSeen('manual_build');
+  const [showCreateTour, setShowCreateTour] = useState(false);
+  const [dashboardTourKey, setDashboardTourKey] = useState(0);
+  const [dashboardTourStarted, setDashboardTourStarted] = useState(false);
+
+  const replayCreateTour = useCallback(() => {
+    setDashboardTourKey((k) => k + 1);
+    setShowCreateTour(true);
+    setDashboardTourStarted(true);
+    trackEvent('gd_tour_manual_build_started', { replay: true });
+  }, []);
+
+  useEffect(() => {
+    setReplayTourA(() => replayCreateTour);
+    return () => setReplayTourA(null);
+  }, [replayCreateTour, setReplayTourA]);
+
+  useEffect(() => {
+    if (tourALoading || tourASeen) return;
+
+    const storedId = localStorage.getItem(RESUME_STORAGE_KEY);
+    if (!storedId) {
+      Promise.resolve().then(() => setShowCreateTour(true));
+      return;
+    }
+
+    let cancelled = false;
+    gamedayApi
+      .getGameday(parseInt(storedId, 10))
+      .then((gameday) => {
+        if (cancelled) return;
+        if (gameday.status === 'DRAFT') {
+          navigate(`/designer/${gameday.id}`);
+        } else {
+          localStorage.removeItem(RESUME_STORAGE_KEY);
+          setShowCreateTour(true);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        localStorage.removeItem(RESUME_STORAGE_KEY);
+        setShowCreateTour(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tourALoading, tourASeen, navigate]);
 
   useEffect(() => {
     gamedaysRef.current = gamedays;
@@ -152,6 +206,10 @@ const GamedayDashboard: React.FC = () => {
         season: seasons[0].id,
         league: leagues[0].id,
       });
+
+      if (showCreateTour && !tourASeen) {
+        localStorage.setItem(RESUME_STORAGE_KEY, String(newGameday.id));
+      }
 
       // Track gameday created event
       trackEvent('gameday_created', {
@@ -275,6 +333,10 @@ const GamedayDashboard: React.FC = () => {
     }
   }, [loading, gamedays, location.state, navigate, location.pathname, handleDelete]);
 
+  const dashboardTourSteps = [
+    { target: '[data-testid="create-gameday-button"]', content: t('ui:tour.manual_build.create'), placement: 'bottom' as const },
+  ];
+
   return (
     <Container fluid className="py-2 h-100 d-flex flex-column overflow-hidden">
       <div className="flex-shrink-0">
@@ -283,7 +345,7 @@ const GamedayDashboard: React.FC = () => {
             <p className="text-muted lead mb-0">{t('ui:message.dashboardSubtitle')}</p>
           </Col>
           <Col xs="auto">
-            <Button variant="primary" onClick={handleCreateGameday}>
+            <Button variant="primary" onClick={handleCreateGameday} data-testid="create-gameday-button">
               <i className="bi bi-plus-lg me-2"></i>
               {t('ui:button.createGameday')}
             </Button>
@@ -358,6 +420,14 @@ const GamedayDashboard: React.FC = () => {
         )}
       </div>
       <NotificationToast notifications={notifications} onClose={dismissNotification} />
+      <DesignerTour
+        key={dashboardTourKey}
+        tourId="manual_build"
+        steps={dashboardTourSteps}
+        run={(showCreateTour && !tourASeen) || dashboardTourStarted}
+        onFinish={markTourASeen}
+        requireRealAction
+      />
     </Container>
   );
 };

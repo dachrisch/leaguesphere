@@ -282,6 +282,7 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                   className="btn btn-outline-primary btn-adaptive px-4"
                   onClick={() => onShowTeamSelection(group.id, 'group')}
                   title={t('ui:tooltip.addFirstTeamToGroup')}
+                  data-testid="add-team-button"
                 >
                   <i className={`bi ${ICONS.ADD} me-2`}></i>
                   <span className="btn-label-adaptive">{t('ui:button.addTeam')}</span>
