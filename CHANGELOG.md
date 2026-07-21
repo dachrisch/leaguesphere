@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.11.0](https://github.com/dachrisch/leaguesphere/compare/v4.10.4...v4.11.0) (2026-07-21)
+
+
+### Features
+
+* **gameday_designer:** add onboarding tours for manual build and save-as-template ([#1598](https://github.com/dachrisch/leaguesphere/issues/1598)) ([242affe](https://github.com/dachrisch/leaguesphere/commit/242affe6dd35d515a8ee7c2016b6d72dc500fad8))
+
+
+### Bug Fixes
+
+* **gameday_designer:** let non-staff users reach template save flow ([#1605](https://github.com/dachrisch/leaguesphere/issues/1605)) ([ae1f402](https://github.com/dachrisch/leaguesphere/commit/ae1f40262629d19a1455aa3570fd831d89dd3b4b))
+
 ## [4.10.4](https://github.com/dachrisch/leaguesphere/compare/v4.10.3...v4.10.4) (2026-07-21)
 
 
