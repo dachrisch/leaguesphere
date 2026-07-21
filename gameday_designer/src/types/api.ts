@@ -73,11 +73,11 @@ export interface ScheduleTemplate {
   description?: string;
   sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL';
   association: number | null;
-  association_display?: string;
+  association_name?: string;
   created_by: number | null;
-  created_by_display?: string;
+  created_by_username?: string;
   updated_by: number | null;
-  updated_by_display?: string;
+  updated_by_username?: string;
   created_at: string;
   updated_at: string;
   slots?: TemplateSlot[];

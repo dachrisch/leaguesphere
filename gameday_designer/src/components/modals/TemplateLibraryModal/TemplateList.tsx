@@ -140,7 +140,7 @@ const TemplateList: React.FC<TemplateListProps> = ({ selectedId, onSelect, searc
                     {SCOPE_ICONS[scope]} <span>{t.name}</span>
                     <div className="text-muted" style={{ fontSize: 11 }}>
                       {scope === 'global'
-                        ? `by ${(t as ScheduleTemplate & { created_by_display?: string }).created_by_display ?? 'unknown'}`
+                        ? `by ${t.created_by_username ?? 'unknown'}`
                         : t.created_at?.split('T')[0]}
                     </div>
                   </ListGroup.Item>
