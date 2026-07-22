@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Subquery, OuterRef, Q
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.utils.decorators import method_decorator
@@ -70,14 +70,18 @@ class OfficialsTeamListView(View):
         team_id = kwargs.get("pk")
         year = kwargs.get("season", datetime.today().year)
         official_service = OfficialService()
-        return render(
-            request,
-            self.template_name,
-            official_service.get_all_officials_with_team_infos(
+        try:
+            context = official_service.get_all_officials_with_team_infos(
                 team_id,
                 year,
                 PermissionHelper.has_staff_or_user_permission(request, team_id),
-            ),
+            )
+        except Team.DoesNotExist:
+            raise Http404("Team does not exist.")
+        return render(
+            request,
+            self.template_name,
+            context,
         )
 
     def is_user_allowed_to_see_official_names(self, team_id):

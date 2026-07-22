@@ -33,6 +33,13 @@ from officials.service.remember_me import RememberMeService
 
 
 class TestOfficialListView(WebTest):
+    def test_unknown_team_returns_404(self):
+        response = self.app.get(
+            reverse(OFFICIALS_LIST_FOR_TEAM, kwargs={"pk": 99999}),
+            expect_errors=True,
+        )
+        assert response.status_code == HTTPStatus.NOT_FOUND
+
     def test_officials_names_are_obfuscated_for_anonymous_user(self):
         team = DbSetupOfficials().create_officials_full_setup()
         response = self.app.get(
