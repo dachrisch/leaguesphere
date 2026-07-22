@@ -70,26 +70,26 @@ export const apiPut = (url, body, successType, errorType) => async (
       });
 };
 
-export const apiGet = (url, successType) => async (dispatch, getState) => {
+export const apiGet = (url, successType, errorType) => async (dispatch, getState) => {
   await axios
       .get(url, tokenConfig(getState))
       .then((res) => {
-        console.log('res ...', res, successType);
         if (res.data) {
-          console.log('EMPTY ...', res, successType + '_EMPTY');
           dispatch({
-            type: successType + '_EMPTY',
+            type: successType,
             payload: res.data,
           });
         }
-        dispatch({
-          type: successType,
-          payload: res.data,
-        });
       })
-      .catch((err) =>
-        dispatch(returnErrors(err.response.data, err.response.status)),
-      );
+      .catch((err) => {
+        dispatch(returnErrors(err.response.data, err.response.status));
+        if (errorType) {
+          dispatch({
+            type: errorType,
+            payload: err.response?.data || err.message,
+          });
+        }
+      });
 };
 
 const tokenConfig = (getState) => {

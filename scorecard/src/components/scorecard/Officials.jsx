@@ -35,6 +35,13 @@ export const Officials = (props) => {
   const [sideJudge, setSideJudge] = useState({text: '', id: null});
   const dispatch = useDispatch();
 
+  if (props.teamOfficialsLoading) {
+    return <div className="container text-center mt-5"><div className="spinner-border" role="status"><span className="visually-hidden">Lade Offizielle...</span></div></div>;
+  }
+  if (props.teamOfficialsError) {
+    return <div className="container mt-3"><div className="alert alert-danger">Offizielle konnten nicht geladen werden.</div></div>;
+  }
+
   useEffect(() => {
     setTeamOfficials((props.teamOfficials).map((entry) => {
       return {
@@ -325,6 +332,8 @@ Officials.propTypes = {
   searchForOfficials: PropTypes.func.isRequired,
   searchOfficialsResult: PropTypes.array.isRequired,
   teamOfficials: PropTypes.array,
+  teamOfficialsLoading: PropTypes.bool,
+  teamOfficialsError: PropTypes.object,
   getGameLog: PropTypes.func.isRequired,
   updateTeamInPossession: PropTypes.func.isRequired,
 };
@@ -335,10 +344,8 @@ const mapStateToProps = (state) => ({
   gameSetup: state.gamesReducer.gameSetup,
   searchOfficialsResult: state.officialsReducer.searchOfficialsResult,
   teamOfficials: state.officialsReducer.teamOfficials,
-  // teamOfficials: [{id: 1, team: 'Augsburg Rooks', first_name: 'Chris', last_name: 'Kämpfe', external_id: '3'},
-  //   {id: 4, team: 'Augsburg Rooks', first_name: 'Andreas', last_name: 'Heidrich', external_id: null},
-  //   {id: 41, team: 'Augsburg Rooks', first_name: 'Niklas', last_name: 'Just', external_id: '117'},
-  // ],
+  teamOfficialsLoading: state.officialsReducer.teamOfficialsLoading,
+  teamOfficialsError: state.officialsReducer.teamOfficialsError,
 });
 
 export default connect(mapStateToProps,

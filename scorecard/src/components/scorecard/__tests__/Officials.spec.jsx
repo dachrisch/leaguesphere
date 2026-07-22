@@ -80,6 +80,8 @@ const setup = (isInitialEmpty=false, emptyTeamOfficials=false) => {
     },
     officialsReducer: {
       teamOfficials: initialTeamOfficials,
+      teamOfficialsLoading: false,
+      teamOfficialsError: null,
       searchOfficialsResult: [],
     },
   };
@@ -175,5 +177,53 @@ describe('Officials component', () => {
     await user.click(screen.getAllByText(/first_name first_last_name/i)[0]);
     await user.click(screen.getByPlaceholderText('Down Judge (Vorname Nachname)'));
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
+  });
+  it('should show loading spinner when team officials are loading', () => {
+    const initialState = {
+      gamesReducer: {
+        selectedGame: GAME_PAIR_1,
+        gameSetupOfficials: [],
+        gameSetup: {},
+      },
+      officialsReducer: {
+        teamOfficials: [],
+        teamOfficialsLoading: true,
+        teamOfficialsError: null,
+        searchOfficialsResult: [],
+      },
+    };
+    const store = testStore(initialState);
+    render(<Provider store={store}>
+      <Router initialEntries={[{pathname: '/officials'}]}>
+        <Routes>
+          <Route path={OFFICIALS_URL} element={<Officials store={store} />} />
+        </Routes>
+      </Router>
+    </Provider>);
+    expect(screen.getByRole('status')).toBeInTheDocument();
+  });
+  it('should show error alert when team officials fail to load', () => {
+    const initialState = {
+      gamesReducer: {
+        selectedGame: GAME_PAIR_1,
+        gameSetupOfficials: [],
+        gameSetup: {},
+      },
+      officialsReducer: {
+        teamOfficials: [],
+        teamOfficialsLoading: false,
+        teamOfficialsError: {msg: 'Not found'},
+        searchOfficialsResult: [],
+      },
+    };
+    const store = testStore(initialState);
+    render(<Provider store={store}>
+      <Router initialEntries={[{pathname: '/officials'}]}>
+        <Routes>
+          <Route path={OFFICIALS_URL} element={<Officials store={store} />} />
+        </Routes>
+      </Router>
+    </Provider>);
+    expect(screen.getByText('Offizielle konnten nicht geladen werden.')).toBeInTheDocument();
   });
 });
