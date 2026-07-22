@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.11.2](https://github.com/dachrisch/leaguesphere/compare/v4.11.1...v4.11.2) (2026-07-22)
+
+
+### Bug Fixes
+
+* **deps:** update react monorepo to v19.2.8 ([#1616](https://github.com/dachrisch/leaguesphere/issues/1616)) ([fc66b51](https://github.com/dachrisch/leaguesphere/commit/fc66b513ab051465646e4fb1d6300e7144d5a2ed))
+
 ## [4.11.1](https://github.com/dachrisch/leaguesphere/compare/v4.11.0...v4.11.1) (2026-07-21)
 
 
