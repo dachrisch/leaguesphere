@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.11.6](https://github.com/dachrisch/leaguesphere/compare/v4.11.5...v4.11.6) (2026-07-22)
+
+
+### Bug Fixes
+
+* return 404 when team does not exist in OfficialsTeamListView + Scorecard error UI ([#1624](https://github.com/dachrisch/leaguesphere/issues/1624)) ([5581148](https://github.com/dachrisch/leaguesphere/commit/5581148a92cf0f5d023cf8edf09971faa4f4b16d))
+
 ## [4.11.5](https://github.com/dachrisch/leaguesphere/compare/v4.11.4...v4.11.5) (2026-07-22)
 
 
