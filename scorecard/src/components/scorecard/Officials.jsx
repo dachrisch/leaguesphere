@@ -35,13 +35,6 @@ export const Officials = (props) => {
   const [sideJudge, setSideJudge] = useState({text: '', id: null});
   const dispatch = useDispatch();
 
-  if (props.teamOfficialsLoading) {
-    return <div className="container text-center mt-5"><div className="spinner-border" role="status"><span className="visually-hidden">Lade Offizielle...</span></div></div>;
-  }
-  if (props.teamOfficialsError) {
-    return <div className="container mt-3"><div className="alert alert-danger">Offizielle konnten nicht geladen werden.</div></div>;
-  }
-
   useEffect(() => {
     setTeamOfficials((props.teamOfficials).map((entry) => {
       return {
@@ -184,6 +177,12 @@ export const Officials = (props) => {
   if (isSuccessfulSubmitted) {
     const startId = fhPossession == selectedGame.away ? selectedGame.id_away : selectedGame.id_home;
     return <Navigate to={`${DETAILS_URL}?start=${startId}`} />;
+  }
+  if (props.teamOfficialsLoading) {
+    return <div className="container text-center mt-5"><div className="spinner-border" role="status"><span className="visually-hidden">Lade Offizielle...</span></div></div>;
+  }
+  if (props.teamOfficialsError) {
+    return <div className="container mt-3"><div className="alert alert-danger">Offizielle konnten nicht geladen werden.</div></div>;
   }
   const resetOfficialsSearch = () => {
     dispatch({
