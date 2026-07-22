@@ -1,5 +1,27 @@
 # Changelog
 
+## [4.11.5](https://github.com/dachrisch/leaguesphere/compare/v4.11.4...v4.11.5) (2026-07-22)
+
+
+### Bug Fixes
+
+* **deps:** update dependency web-vitals to v6 ([#1619](https://github.com/dachrisch/leaguesphere/issues/1619)) ([507a63d](https://github.com/dachrisch/leaguesphere/commit/507a63da72537098e5a9f4e1fa0b1b2db2110ebb))
+
+## [4.11.4](https://github.com/dachrisch/leaguesphere/compare/v4.11.3...v4.11.4) (2026-07-22)
+
+
+### Bug Fixes
+
+* **deps:** update dependency postcss to v8.5.22 ([#1625](https://github.com/dachrisch/leaguesphere/issues/1625)) ([d15b904](https://github.com/dachrisch/leaguesphere/commit/d15b904e0c1f60676e8bc735539232a1d4e5e630))
+
+## [4.11.3](https://github.com/dachrisch/leaguesphere/compare/v4.11.2...v4.11.3) (2026-07-22)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @vitejs/plugin-react to v6.0.4 ([#1620](https://github.com/dachrisch/leaguesphere/issues/1620)) ([d491925](https://github.com/dachrisch/leaguesphere/commit/d491925aec5a1deffdd26e85a9d4471bae1c50ec))
+* **deps:** update dependency @vitejs/plugin-react to v6.0.4 ([#1621](https://github.com/dachrisch/leaguesphere/issues/1621)) ([cb81497](https://github.com/dachrisch/leaguesphere/commit/cb8149750e62e5a24026f4749d905bd744f92558))
+
 ## [4.11.2](https://github.com/dachrisch/leaguesphere/compare/v4.11.1...v4.11.2) (2026-07-22)
 
 

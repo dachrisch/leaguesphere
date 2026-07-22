@@ -1,6 +1,6 @@
 {
   "name": "journey_dashboard",
-  "version": "4.11.2",
+  "version": "4.11.5",
   "private": true,
   "type": "module",
   "dependencies": {
@@ -18,7 +18,7 @@
     "react-router-dom": "7.18.1",
     "react-select": "5.10.2",
     "uuid": "14.0.1",
-    "web-vitals": "5.3.0"
+    "web-vitals": "6.0.0"
   },
   "scripts": {
     "start": "vite",
