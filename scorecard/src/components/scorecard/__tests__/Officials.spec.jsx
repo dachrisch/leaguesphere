@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, {act} from 'react';
 import {Provider} from 'react-redux';
 import {MemoryRouter as Router, Route, Routes} from 'react-router-dom';
 import {render, screen} from '@testing-library/react';
@@ -9,7 +9,7 @@ import {GAME_PAIR_1} from '../../../__tests__/testdata/gamesData';
 import Officials from '../Officials';
 import {DETAILS_URL, OFFICIALS_URL} from '../../common/urls';
 import {apiGet, apiPut, apiPost} from '../../../actions/utils/api';
-import {GET_GAME_OFFICIALS, GET_GAME_SETUP} from '../../../actions/types';
+import {GET_GAME_OFFICIALS, GET_GAME_SETUP, OFFICIALS_GET_TEAM_OFFICIALS} from '../../../actions/types';
 import {GAME_OFFICIALS} from '../../../__tests__/testdata/gameSetupData';
 import {OFFICIALS_TEAM_OFFICIALS} from '../../../__tests__/testdata/officialsData';
 import { vi } from 'vitest';
@@ -80,6 +80,8 @@ const setup = (isInitialEmpty=false, emptyTeamOfficials=false) => {
     },
     officialsReducer: {
       teamOfficials: initialTeamOfficials,
+      teamOfficialsLoading: false,
+      teamOfficialsError: null,
       searchOfficialsResult: [],
     },
   };
@@ -175,5 +177,89 @@ describe('Officials component', () => {
     await user.click(screen.getAllByText(/first_name first_last_name/i)[0]);
     await user.click(screen.getByPlaceholderText('Down Judge (Vorname Nachname)'));
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
+  });
+  it('should show loading spinner when team officials are loading', () => {
+    const initialState = {
+      gamesReducer: {
+        selectedGame: GAME_PAIR_1,
+        gameSetupOfficials: [],
+        gameSetup: {},
+      },
+      officialsReducer: {
+        teamOfficials: [],
+        teamOfficialsLoading: true,
+        teamOfficialsError: null,
+        searchOfficialsResult: [],
+      },
+    };
+    const store = testStore(initialState);
+    render(<Provider store={store}>
+      <Router initialEntries={[{pathname: '/officials'}]}>
+        <Routes>
+          <Route path={OFFICIALS_URL} element={<Officials store={store} />} />
+        </Routes>
+      </Router>
+    </Provider>);
+    expect(screen.getByRole('status')).toBeInTheDocument();
+  });
+  it('should not crash when officials finish loading while the component is already mounted', () => {
+    const initialState = {
+      gamesReducer: {
+        selectedGame: GAME_PAIR_1,
+        gameSetupOfficials: [],
+        gameSetup: {},
+      },
+      officialsReducer: {
+        teamOfficials: [],
+        teamOfficialsLoading: true,
+        teamOfficialsError: null,
+        searchOfficialsResult: [],
+      },
+    };
+    const store = testStore(initialState);
+    render(<Provider store={store}>
+      <Router initialEntries={[{pathname: '/officials'}]}>
+        <Routes>
+          <Route path={OFFICIALS_URL} element={<Officials store={store} />} />
+        </Routes>
+      </Router>
+    </Provider>);
+    expect(screen.getByRole('status')).toBeInTheDocument();
+
+    // Mirrors the real flow: SelectGame dispatches the LOADING action synchronously
+    // and navigates to /officials before the API response resolves, so the success
+    // action always arrives on an already-mounted Officials instance.
+    act(() => {
+      store.dispatch({type: OFFICIALS_GET_TEAM_OFFICIALS, payload: OFFICIALS_TEAM_OFFICIALS});
+    });
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading')).toHaveTextContent(
+        `${selectedGame.home} vs ${selectedGame.away}`,
+    );
+  });
+  it('should show error alert when team officials fail to load', () => {
+    const initialState = {
+      gamesReducer: {
+        selectedGame: GAME_PAIR_1,
+        gameSetupOfficials: [],
+        gameSetup: {},
+      },
+      officialsReducer: {
+        teamOfficials: [],
+        teamOfficialsLoading: false,
+        teamOfficialsError: {msg: 'Not found'},
+        searchOfficialsResult: [],
+      },
+    };
+    const store = testStore(initialState);
+    render(<Provider store={store}>
+      <Router initialEntries={[{pathname: '/officials'}]}>
+        <Routes>
+          <Route path={OFFICIALS_URL} element={<Officials store={store} />} />
+        </Routes>
+      </Router>
+    </Provider>);
+    expect(screen.getByText('Offizielle konnten nicht geladen werden.')).toBeInTheDocument();
   });
 });
