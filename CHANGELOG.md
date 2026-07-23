@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.11.10](https://github.com/dachrisch/leaguesphere/compare/v4.11.9...v4.11.10) (2026-07-23)
+
+
+### Bug Fixes
+
+* **e2e:** stop collapsing the already-open metadata accordion ([#1638](https://github.com/dachrisch/leaguesphere/issues/1638)) ([979cb3e](https://github.com/dachrisch/leaguesphere/commit/979cb3e3a3cfad682fb80e2e9e0f4f78f81ab946))
+
 ## [4.11.9](https://github.com/dachrisch/leaguesphere/compare/v4.11.8...v4.11.9) (2026-07-23)
 
 
