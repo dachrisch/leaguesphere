@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.11.9](https://github.com/dachrisch/leaguesphere/compare/v4.11.8...v4.11.9) (2026-07-23)
+
+
+### Bug Fixes
+
+* **gamedays:** drop staff/owner gate on game officials endpoint ([#1635](https://github.com/dachrisch/leaguesphere/issues/1635)) ([127d7de](https://github.com/dachrisch/leaguesphere/commit/127d7debd836d62034b2e8d814161e84d02a794b)), closes [#1634](https://github.com/dachrisch/leaguesphere/issues/1634)
+
 ## [4.11.8](https://github.com/dachrisch/leaguesphere/compare/v4.11.7...v4.11.8) (2026-07-22)
 
 
