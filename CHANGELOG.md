@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.11.11](https://github.com/dachrisch/leaguesphere/compare/v4.11.10...v4.11.11) (2026-07-23)
+
+
+### Bug Fixes
+
+* **deps:** update dependency webpack to v5.109.0 ([#1637](https://github.com/dachrisch/leaguesphere/issues/1637)) ([98b9cc5](https://github.com/dachrisch/leaguesphere/commit/98b9cc50250768b29d9556977505da48627f2ab0))
+
 ## [4.11.10](https://github.com/dachrisch/leaguesphere/compare/v4.11.9...v4.11.10) (2026-07-23)
 
 
