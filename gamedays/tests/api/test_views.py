@@ -379,7 +379,13 @@ class TestStandaloneViewPermissions(WebTest):
         )
         assert response.status_code in (401, 403)
 
-    def test_non_staff_non_author_cannot_update_game_officials(self):
+    def test_non_staff_non_author_can_update_game_officials(self):
+        # Officials are assigned on-site by whichever team/crew is running the
+        # scorecard for that game — not necessarily the gameday's staff/author.
+        # See #1634: PR #1596 (fixing #1591, which was about the unrelated
+        # gameday-designer publish/state endpoints) over-applied the
+        # staff-or-author gate to this endpoint too, blocking every non-staff
+        # scorecard operator in production.
         gameday = DBSetup().g62_status_empty()
         gameday.author = DBSetup().create_new_user("go_author")
         gameday.save()
@@ -389,9 +395,8 @@ class TestStandaloneViewPermissions(WebTest):
             reverse(API_GAME_OFFICIALS, kwargs={"pk": gameinfo.pk}),
             [{"name": "Saskia", "position": "referee"}],
             headers=DBSetup().get_token_header(user=other_user),
-            expect_errors=True,
         )
-        assert response.status_code == 403
+        assert response.status_code == 200
 
     def test_author_can_update_game_officials_for_own_gameday(self):
         gameday = DBSetup().g62_status_empty()

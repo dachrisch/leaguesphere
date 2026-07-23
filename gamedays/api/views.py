@@ -322,7 +322,12 @@ class GamedayRetrieveUpdate(RetrieveUpdateAPIView):
 
 
 class GameOfficialCreateOrUpdateView(RetrieveUpdateAPIView):
-    permission_classes = [IsAuthenticatedOrGamedayOwnerOrStaff]
+    # Deliberately no staff/gameday-author gate here (unlike other mutating
+    # views in this file): officials are assigned on-site by whichever
+    # team/crew is running the scorecard for that specific game, not
+    # necessarily the gameday's staff or author. Bare IsAuthenticatedOrReadOnly
+    # (the DRF default) matches the sibling GameSetupCreateOrUpdateView, which
+    # sets gameStarted via the same "Spiel starten" submit — see #1634.
     serializer_class = GameOfficialSerializer
     queryset = GameOfficial.objects.all()
 
@@ -337,10 +342,7 @@ class GameOfficialCreateOrUpdateView(RetrieveUpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         pk = kwargs.get("pk")
-        gameinfo = get_object_or_404(Gameinfo, pk=pk)
-
-        if not _check_gameday_mutation_permission(request, gameinfo.gameday):
-            return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+        get_object_or_404(Gameinfo, pk=pk)
 
         response_data = []
         for item in request.data:
