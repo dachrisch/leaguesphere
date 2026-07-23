@@ -55,8 +55,15 @@ def test_select_existing_teams_during_generation(live_server, page: Page):
     
     # 4. Fill Metadata (to ensure league/season matches)
     expect(page.get_by_test_id("gameday-metadata-accordion")).to_be_visible(timeout=15000)
-    page.get_by_test_id("gameday-metadata-toggle").click()
-    
+
+    # Open the metadata accordion only if it is currently collapsed. It is
+    # expanded by default, so an unconditional click here would collapse it
+    # and race the Bootstrap collapse animation against the fields below.
+    toggle = page.get_by_test_id("gameday-metadata-toggle")
+    if 'collapsed' in (toggle.get_attribute('class') or ''):
+        toggle.click()
+        expect(toggle).not_to_have_class(re.compile(r'collapsed'), timeout=5000)
+
     page.fill("#gamedayName", "Team Selection Test")
     
     # Wait for the season option "2026" to appear (async fetch inside accordion)
@@ -190,7 +197,15 @@ def test_add_team_to_pool_via_team_picker_dialog(live_server, page: Page):
 
     # Set league and season
     expect(page.get_by_test_id("gameday-metadata-accordion")).to_be_visible(timeout=15000)
-    page.get_by_test_id("gameday-metadata-toggle").click()
+
+    # Open the metadata accordion only if it is currently collapsed. It is
+    # expanded by default, so an unconditional click here would collapse it
+    # and race the Bootstrap collapse animation against the fields below.
+    toggle = page.get_by_test_id("gameday-metadata-toggle")
+    if 'collapsed' in (toggle.get_attribute('class') or ''):
+        toggle.click()
+        expect(toggle).not_to_have_class(re.compile(r'collapsed'), timeout=5000)
+
     page.fill("#gamedayName", "Team Pool Test")
     expect(page.locator("#gamedaySeason option", has_text="2026")).to_be_attached(timeout=10000)
     page.select_option("#gamedaySeason", label="2026")
