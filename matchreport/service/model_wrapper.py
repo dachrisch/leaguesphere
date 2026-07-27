@@ -29,13 +29,17 @@ class MachtreportModelWrapper:
         gameinfo_qs = Gameinfo.objects.filter(gameday_id=pk)
         gameinfo_data = gameinfo_qs.values(
             # select the fields which should be in the dataframe
-            *([f.name for f in Gameinfo._meta.local_fields] + ["officials__name"])
+            *(
+                [f.name for f in Gameinfo._meta.local_fields]
+                + ["officials__name", "gameday__date"]
+            )
         )
         self._gameinfo: pd.DataFrame = pd.DataFrame(gameinfo_data)
         if self._gameinfo.empty:
             raise Gameinfo.DoesNotExist
 
         self.gameday_pk = self._gameinfo.iloc[0]["gameday"]
+        self.gameday_year = self._gameinfo.iloc[0]["gameday__date"].year
         self.passcheck_player_details_df = self._get_gameday_passcheck_details()
 
     def get_staff_passcheck_details(self):
@@ -195,7 +199,12 @@ class MachtreportModelWrapper:
         }
 
         latest_license = (
-            OfficialLicenseHistory.objects.filter(official_id=OuterRef("official"))
+            OfficialLicenseHistory.objects.filter(
+                official_id=OuterRef("official"),
+                # A license obtained after the gameday took place must not be
+                # reported as if it were held on the day of the game.
+                created_at__year__lte=self.gameday_year,
+            )
             .order_by("-created_at__year", "license__name")
             .values("license__name")[:1]
         )
