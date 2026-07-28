@@ -44,3 +44,25 @@ class TestMatchreportOfficialsLicense(TestCase):
         officials_table = wrapper._get_game_officials_table(gameinfo.id)
 
         self.assertEqual(officials_table["Lizenz"].iloc[0], "F2 2022")
+
+    def test_official_license_hidden_once_expired_before_gameday(self):
+        gameday = GamedayFactory(date=date(2022, 5, 1))
+        gameinfo = GameinfoFactory(
+            gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
+        )
+
+        official = OfficialFactory(team=TeamFactory())
+        stale_license = OfficialLicenseFactory(name="F2 2019")
+
+        OfficialLicenseHistoryFactory(
+            official=official,
+            license=stale_license,
+            created_at=date(2019, 3, 1),
+        )
+
+        GameOfficialFactory(gameinfo=gameinfo, official=official, position="Referee")
+
+        wrapper = MachtreportModelWrapper(gameday.pk)
+        officials_table = wrapper._get_game_officials_table(gameinfo.id)
+
+        self.assertIsNone(officials_table["Lizenz"].iloc[0])
