@@ -99,11 +99,15 @@ class EmptyOfficialLicenseHistory:
 
 
 class OfficialLicenseHistoryQuerySet(QuerySet):
-    def order_by_rank(self):
+    def in_year(self, year):
+        return self.filter(created_at__year=year)
+
+    def order_by_rank(self, *fields):
         # License names sort alphabetically in rank order (F1 is the
         # highest license, F4 the lowest) - ascending order surfaces the
-        # highest-ranked license first.
-        return self.order_by("license__name")
+        # highest-ranked license first. Any fields passed in take priority
+        # (e.g. to sort by year before breaking ties on rank).
+        return self.order_by(*fields, "license__name")
 
 
 class OfficialLicenseHistory(models.Model):
