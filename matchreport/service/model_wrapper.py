@@ -200,8 +200,9 @@ class MachtreportModelWrapper:
 
         # Correlated subquery so every official's license is resolved in the
         # same query as the officials table, instead of one query per
-        # official (N+1). in_year()/order_by_rank() are the same rules used
-        # in officials/api/serializers.py, so they're defined once.
+        # official (N+1). order_by_rank() is the same rank-ordering rule
+        # used in officials/api/serializers.py, defined once there; in_year()
+        # is specific to this wrapper's gameday-year restriction.
         latest_license = (
             OfficialLicenseHistory.objects.filter(official_id=OuterRef("official"))
             .in_year(self.gameday_year)
