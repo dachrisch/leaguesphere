@@ -1,5 +1,3 @@
-from datetime import timedelta
-
 import pandas as pd
 from django.db.models import OuterRef, Subquery
 
@@ -41,7 +39,7 @@ class MachtreportModelWrapper:
             raise Gameinfo.DoesNotExist
 
         self.gameday_pk = self._gameinfo.iloc[0]["gameday"]
-        self.gameday_date = pd.Timestamp(self._gameinfo.iloc[0]["gameday__date"]).date()
+        self.gameday_year = self._gameinfo.iloc[0]["gameday__date"].year
         self.passcheck_player_details_df = self._get_gameday_passcheck_details()
 
     def get_staff_passcheck_details(self):
@@ -203,15 +201,12 @@ class MachtreportModelWrapper:
         latest_license = (
             OfficialLicenseHistory.objects.filter(
                 official_id=OuterRef("official"),
-                # A license is valid for roughly a year after it's obtained
-                # (see OfficialLicenseHistory.valid_until()). Only count a
-                # license that was both already obtained by the gameday and
-                # not yet expired on it - not one obtained after the gameday,
-                # and not a stale one the official never renewed.
-                created_at__lte=self.gameday_date,
-                created_at__gt=self.gameday_date - timedelta(days=365),
+                # Licenses are annual: an official who didn't renew in the
+                # gameday's year has no "current" license for that gameday,
+                # even if an older license was obtained in a prior year.
+                created_at__year=self.gameday_year,
             )
-            .order_by("-created_at", "license__name")
+            .order_by_rank()
             .values("license__name")[:1]
         )
 
