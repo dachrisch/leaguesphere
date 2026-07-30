@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import pandas as pd
 from django.db.models import OuterRef, Subquery
 
@@ -39,7 +41,7 @@ class MachtreportModelWrapper:
             raise Gameinfo.DoesNotExist
 
         self.gameday_pk = self._gameinfo.iloc[0]["gameday"]
-        self.gameday_year = self._gameinfo.iloc[0]["gameday__date"].year
+        self.gameday_date = pd.Timestamp(self._gameinfo.iloc[0]["gameday__date"]).date()
         self.passcheck_player_details_df = self._get_gameday_passcheck_details()
 
     def get_staff_passcheck_details(self):
@@ -200,13 +202,17 @@ class MachtreportModelWrapper:
 
         # Correlated subquery so every official's license is resolved in the
         # same query as the officials table, instead of one query per
-        # official (N+1). order_by_rank() is the same rank-ordering rule
-        # used in officials/api/serializers.py, defined once there; in_year()
-        # is specific to this wrapper's gameday-year restriction.
+        # official (N+1). A license is valid on the gameday if the gameday
+        # falls within the license validity period: training date (created_at)
+        # to approximately one year later (created_at + 365 days), as defined
+        # by OfficialLicenseHistory.valid_until().
         latest_license = (
-            OfficialLicenseHistory.objects.filter(official_id=OuterRef("official"))
-            .in_year(self.gameday_year)
-            .order_by_rank()
+            OfficialLicenseHistory.objects.filter(
+                official_id=OuterRef("official"),
+                created_at__lte=self.gameday_date,
+                created_at__gt=self.gameday_date - timedelta(days=365),
+            )
+            .order_by_rank("-created_at")
             .values("license__name")[:1]
         )
 
