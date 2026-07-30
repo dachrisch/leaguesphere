@@ -12,7 +12,6 @@ import {
   createStageNode,
   createGameNodeInStage,
   type FlowState,
-  type FlowField,
   type GlobalTeam,
   type GlobalTeamGroup,
 } from '../../types/flowchart';
@@ -178,14 +177,14 @@ describe('Flowchart Export - Container Hierarchy', () => {
       expect(frGame!.stage).toBe('Final');
     });
 
-    it('falls back to legacy FlowField when container hierarchy not present', () => {
+    it('falls back to the raw fieldId as the field name when no container field matches', () => {
       const group: GlobalTeamGroup = { id: 'group-1', name: 'Gruppe A', order: 0 };
       const teams: GlobalTeam[] = [
         { id: 'team-1', groupId: 'group-1', label: '0_0', order: 0 },
         { id: 'team-2', groupId: 'group-1', label: '0_1', order: 1 },
       ];
 
-      // Game with fieldId but no container parent (v1 model)
+      // Game with fieldId but no container parent (v1 model) and no matching field node
       const gameNode = {
         id: 'game-1',
         type: 'game' as const,
@@ -206,14 +205,10 @@ describe('Flowchart Export - Container Hierarchy', () => {
         },
       };
 
-      const legacyFields: FlowField[] = [
-        { id: 'legacy-field-1', name: 'Legacy Field', order: 0 },
-      ];
-
       const state: FlowState = {
         nodes: [gameNode],
         edges: [],
-        fields: legacyFields,
+        fields: [],
         globalTeams: teams,
         globalTeamGroups: [group],
       };
@@ -222,7 +217,7 @@ describe('Flowchart Export - Container Hierarchy', () => {
 
       expect(result.success).toBe(true);
       expect(result.data).toHaveLength(1);
-      expect(result.data![0].field).toBe('Legacy Field');
+      expect(result.data![0].field).toBe('legacy-field-1');
     });
   });
 
