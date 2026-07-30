@@ -37,7 +37,6 @@ describe('Flowchart Export Utility', () => {
       const state: FlowState = {
         nodes: [field, stage, game],
         edges: [],
-        fields: [],
         globalTeams: [team1, team2],
         globalTeamGroups: [group],
       };
@@ -89,7 +88,6 @@ describe('Flowchart Export Utility', () => {
           createGameToGameEdge('e5', 'game-hf1', 'winner', 'game-final', 'home'),
           createGameToGameEdge('e6', 'game-hf2', 'winner', 'game-final', 'away'),
         ],
-        fields: [],
         globalTeams: teams,
         globalTeamGroups: [group],
       };
@@ -137,7 +135,6 @@ describe('Flowchart Export Utility', () => {
           createGameToGameEdge('e5', 'game-hf1', 'loser', 'game-p3', 'home'),
           createGameToGameEdge('e6', 'game-hf2', 'loser', 'game-p3', 'away'),
         ],
-        fields: [],
         globalTeams: teams,
         globalTeamGroups: [group],
       };
@@ -168,7 +165,6 @@ describe('Flowchart Export Utility', () => {
       const state: FlowState = {
         nodes: [field, stage, game],
         edges: [],
-        fields: [],
         globalTeams: teams,
         globalTeamGroups: [group],
       };
@@ -195,7 +191,6 @@ describe('Flowchart Export Utility', () => {
       const state: FlowState = {
         nodes: [field, stage, game],
         edges: [],
-        fields: [],
         globalTeams: teams,
         globalTeamGroups: [group],
       };
@@ -237,7 +232,6 @@ describe('Flowchart Export Utility', () => {
       const state: FlowState = {
         nodes: [orphanGame],
         edges: [],
-        fields: [],
         globalTeams: teams,
         globalTeamGroups: [group],
       };
@@ -263,7 +257,6 @@ describe('Flowchart Export Utility', () => {
       const state: FlowState = {
         nodes: [field, stage, game],
         edges: [],
-        fields: [],
         globalTeams: teams,
         globalTeamGroups: [group],
       };
@@ -297,7 +290,6 @@ describe('Flowchart Export Utility', () => {
       const state: FlowState = {
         nodes: [field1, field2, stage1, stage2, game1, game2],
         edges: [],
-        fields: [],
         globalTeams: teams,
         globalTeamGroups: [group],
       };
@@ -330,7 +322,6 @@ describe('Flowchart Export Utility', () => {
       const state: FlowState = {
         nodes: [field, stage, game],
         edges: [],
-        fields: [],
         globalTeams: teams,
         globalTeamGroups: [group],
       };
@@ -363,7 +354,6 @@ describe('Flowchart Export Utility', () => {
       const state: FlowState = {
         nodes: [orphanGame],
         edges: [],
-        fields: [],
         globalTeams: [],
         globalTeamGroups: [],
       };
@@ -378,7 +368,6 @@ describe('Flowchart Export Utility', () => {
       const state: FlowState = {
         nodes: [field],
         edges: [],
-        fields: [],
         globalTeams: [],
         globalTeamGroups: [],
       };
@@ -395,7 +384,6 @@ describe('Flowchart Export Utility', () => {
       const state: FlowState = {
         nodes: [field, stage, game],
         edges: [],
-        fields: [],
         globalTeams: [],
         globalTeamGroups: [],
       };
@@ -419,7 +407,6 @@ describe('Flowchart Export Utility', () => {
       const state: FlowState = {
         nodes: [field, stage, game],
         edges: [],
-        fields: [],
         globalTeams: teams,
         globalTeamGroups: [group],
       };

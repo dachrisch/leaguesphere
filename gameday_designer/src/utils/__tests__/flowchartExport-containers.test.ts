@@ -37,7 +37,6 @@ describe('Flowchart Export - Container Hierarchy', () => {
       const state: FlowState = {
         nodes: [field, stage, game],
         edges: [],
-        fields: [], // Empty - using container hierarchy
         globalTeams: teams,
         globalTeamGroups: [group],
       };
@@ -69,7 +68,6 @@ describe('Flowchart Export - Container Hierarchy', () => {
       const state: FlowState = {
         nodes: [field, stage, game],
         edges: [],
-        fields: [],
         globalTeams: teams,
         globalTeamGroups: [group],
       };
@@ -108,7 +106,6 @@ describe('Flowchart Export - Container Hierarchy', () => {
       const state: FlowState = {
         nodes: [field1, field2, stage1, stage2, game1, game2],
         edges: [],
-        fields: [],
         globalTeams: teams,
         globalTeamGroups: [group],
       };
@@ -155,7 +152,6 @@ describe('Flowchart Export - Container Hierarchy', () => {
       const state: FlowState = {
         nodes: [field, preliminary, final, gameVr, gameFr],
         edges: [],
-        fields: [],
         globalTeams: teams,
         globalTeamGroups: [group],
       };
@@ -208,7 +204,6 @@ describe('Flowchart Export - Container Hierarchy', () => {
       const state: FlowState = {
         nodes: [gameNode],
         edges: [],
-        fields: [],
         globalTeams: teams,
         globalTeamGroups: [group],
       };
@@ -240,7 +235,6 @@ describe('Flowchart Export - Container Hierarchy', () => {
       const state: FlowState = {
         nodes: [field, stage, game],
         edges: [],
-        fields: [],
         globalTeams: teams,
         globalTeamGroups: [group],
       };
@@ -283,7 +277,6 @@ describe('Flowchart Export - Container Hierarchy', () => {
       const state: FlowState = {
         nodes: [orphanGame],
         edges: [],
-        fields: [],
         globalTeams: teams,
         globalTeamGroups: [group],
       };

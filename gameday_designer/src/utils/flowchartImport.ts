@@ -222,7 +222,6 @@ export function importFromScheduleJson(json: unknown): ImportResult {
     state: {
       nodes,
       edges,
-      fields: [],
       globalTeams,
       globalTeamGroups: [],
     },
