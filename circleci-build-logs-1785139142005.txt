@@ -1,4 +1,0 @@
-
-<<<SEPARATOR>>>
-Job: auto_approve_hold_production
-No steps found.
