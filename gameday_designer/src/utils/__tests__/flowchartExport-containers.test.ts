@@ -33,7 +33,6 @@ describe('Flowchart Export - Container Hierarchy', () => {
         { id: 'team-2', groupId: 'group-1', label: '0_1', order: 1 },
       ];
 
-      // No legacy FlowField needed - field derived from container hierarchy
       const state: FlowState = {
         nodes: [field, stage, game],
         edges: [],
