@@ -20,8 +20,6 @@ import type {
   FlowValidationError,
   FlowValidationWarning,
   GameNodeData,
-  TeamNodeData,
-  TeamNode,
   StageNode,
   GlobalTeam,
   GlobalTeamGroup,
@@ -31,6 +29,7 @@ import {
   isGameNode,
   isFieldNode,
   isStageNode,
+  isTeamNode,
   isTeamToGameEdge,
   isGameToGameEdge,
   isStageToGameEdge,
@@ -257,8 +256,8 @@ function checkOfficialPlaying(
     // Check if official matches home team (v1 edges)
     if (homeEdge && isTeamToGameEdge(homeEdge)) {
       const homeNode = nodes.find((n) => n.id === homeEdge.source);
-      if (homeNode) {
-        const homeData = homeNode.data as unknown as TeamNodeData;
+      if (homeNode && isTeamNode(homeNode)) {
+        const homeData = homeNode.data;
         const homeStr = formatTeamReference(homeData.reference);
         if (homeStr === officialStr) {
           errors.push({
@@ -279,8 +278,8 @@ function checkOfficialPlaying(
     // Check if official matches away team
     if (awayEdge && isTeamToGameEdge(awayEdge)) {
       const awayNode = nodes.find((n) => n.id === awayEdge.source);
-      if (awayNode) {
-        const awayData = awayNode.data as unknown as TeamNodeData;
+      if (awayNode && isTeamNode(awayNode)) {
+        const awayData = awayNode.data;
         const awayStr = formatTeamReference(awayData.reference);
         if (awayStr === officialStr) {
           errors.push({
@@ -348,12 +347,13 @@ function checkOrphanedTeams(
 ): FlowValidationWarning[] {
   const warnings: FlowValidationWarning[] = [];
 
-  for (const node of nodes) {
-    const teamNode = node as unknown as TeamNode;
-    const outgoingEdges = edges.filter((e) => e.source === teamNode.id);
+  const teamNodes = nodes.filter(isTeamNode);
+
+  for (const node of teamNodes) {
+    const data = node.data;
+    const outgoingEdges = edges.filter((e) => e.source === node.id);
 
     if (outgoingEdges.length === 0) {
-      const data = teamNode.data;
       warnings.push({
         id: `${node.id}_orphaned`,
         type: 'orphaned_team',
@@ -477,37 +477,38 @@ function checkGamesOutsideContainers(nodes: FlowNode[]): FlowValidationError[] {
 function checkTeamsOutsideContainers(nodes: FlowNode[]): FlowValidationError[] {
   const errors: FlowValidationError[] = [];
 
-  for (const node of nodes) {
-    const teamNode = node as unknown as TeamNode;
-    const data = teamNode.data;
+  const teamNodes = nodes.filter(isTeamNode);
+
+  for (const node of teamNodes) {
+    const data = node.data;
 
     // Team MUST have a parent stage
-    if (!teamNode.parentId) {
+    if (!node.parentId) {
       errors.push({
-        id: `${teamNode.id}_outside_container`,
+        id: `${node.id}_outside_container`,
         type: 'team_outside_container',
-        message: `Team "${data.label || teamNode.id}" must be inside a stage container`,
+        message: `Team "${data.label || node.id}" must be inside a stage container`,
         messageKey: 'team_outside_container',
         messageParams: {
-            team: data.label || teamNode.id
+            team: data.label || node.id
         },
-        affectedNodes: [teamNode.id],
+        affectedNodes: [node.id],
       });
       continue;
     }
 
     // Verify parent is actually a stage
-    const parent = nodes.find((n) => n.id === teamNode.parentId);
+    const parent = nodes.find((n) => n.id === node.parentId);
     if (!parent || !isStageNode(parent)) {
       errors.push({
-        id: `${teamNode.id}_outside_container`,
+        id: `${node.id}_outside_container`,
         type: 'team_outside_container',
-        message: `Team "${data.label || teamNode.id}" parent is not a valid stage`,
+        message: `Team "${data.label || node.id}" parent is not a valid stage`,
         messageKey: 'team_invalid_parent',
         messageParams: {
-            team: data.label || teamNode.id
+            team: data.label || node.id
         },
-        affectedNodes: [teamNode.id],
+        affectedNodes: [node.id],
       });
     }
   }

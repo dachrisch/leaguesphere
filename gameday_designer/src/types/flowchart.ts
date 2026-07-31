@@ -266,7 +266,7 @@ export interface StageNodeData {
 /**
  * Union type for all node data types.
  */
-export type FlowNodeData = GameNodeData | FieldNodeData | StageNodeData;
+export type FlowNodeData = GameNodeData | FieldNodeData | StageNodeData | TeamNodeData;
 
 /**
  * Team node type for React Flow.
@@ -294,7 +294,7 @@ export type StageNode = Node<StageNodeData, 'stage'>;
 /**
  * Union type for all node types used in the designer.
  */
-export type FlowNode = GameNode | FieldNode | StageNode;
+export type FlowNode = GameNode | FieldNode | StageNode | TeamNode;
 
 // ============================================================================
 // Edge Types
@@ -577,8 +577,8 @@ export function isFieldNode(node: FlowNode): node is FieldNode {
  * Type guard to check if a node is a TeamNode.
  * @deprecated Teams are now managed in the global team pool (v2)
  */
-export function isTeamNode(_node: FlowNode): _node is never {
-  return false;
+export function isTeamNode(node: FlowNode): node is TeamNode {
+  return node.type === 'team';
 }
 
 /**
