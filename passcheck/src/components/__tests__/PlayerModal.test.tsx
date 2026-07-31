@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import PlayerModal from '../PlayerModal';
-import { Player } from '../../common/types';
+import { Player, Roster } from '../../common/types';
+import type { BaseValidator } from '../../utils/validation';
 
 import { vi } from 'vitest';
 
@@ -21,9 +22,9 @@ vi.mock('../../utils/validation', () => {
 interface MockValidator {
   validateAndGetErrors: typeof mockValidateAndGetErrors;
   validateAndUpdate: typeof mockValidateAndUpdate;
-  validators: any[];
-  roster: any[];
-  addValidator: (...args: any[]) => void;
+  validators: BaseValidator[];
+  roster: Roster;
+  addValidator: (validator: BaseValidator) => void;
 }
 
 interface PlayerModalProps {
