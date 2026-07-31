@@ -158,11 +158,11 @@ describe('GamedayMetadataAccordion Coverage', () => {
       isValid: false,
       errors: [
         { id: 'err-1', type: 'stage_outside_field' as FlowValidationErrorType, message: 'Stage error', affectedNodes: ['stage-1'] },
-        { id: 'err-2', type: 'game_outside_container' as FlowValidationErrorType, message: 'Field error', affectedNodes: ['field-1'] },
-        { id: 'err-3', type: 'team_overlap' as FlowValidationErrorType, message: 'Team error', affectedNodes: ['team-1'] }
+        { id: 'err-2', type: 'team_outside_container' as FlowValidationErrorType, message: 'Team error', affectedNodes: ['team-1'] }
       ],
       warnings: [
-        { id: 'warn-1', type: 'broken_progression' as FlowValidationWarningType, message: 'Progression warning', affectedNodes: ['game-1'] }
+        { id: 'warn-1', type: 'unused_field' as FlowValidationWarningType, message: 'Field error', affectedNodes: ['field-1'] },
+        { id: 'warn-2', type: 'broken_progression' as FlowValidationWarningType, message: 'Progression warning', affectedNodes: ['game-1'] }
       ],
     };
 

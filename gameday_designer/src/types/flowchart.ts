@@ -125,6 +125,9 @@ export interface GameNodeData {
   /** Dynamic away team reference from GameToGameEdge (overrides awayTeamId) */
   awayTeamDynamic: TeamReference | null;
 
+  /** Optional group name the game belongs to (e.g. round-robin group letter) */
+  group?: string;
+
   /** Resolved home team label from backend (read-only) */
   resolvedHomeTeam?: string;
   /** Resolved away team label from backend (read-only) */

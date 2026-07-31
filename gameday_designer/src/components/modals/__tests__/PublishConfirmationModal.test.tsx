@@ -176,7 +176,7 @@ describe('PublishConfirmationModal', () => {
       mockOnHighlight.mockClear();
       const validation: FlowValidationResult = {
         isValid: false,
-        errors: [{ ...item, message: `Error ${item.id}`, type: 'field_overlap' as FlowValidationErrorType, affectedNodes: item.affectedNodes } as unknown as FlowValidationError],
+        errors: [{ ...item, message: `Error ${item.id}`, type: item.type as FlowValidationErrorType, affectedNodes: item.affectedNodes } as unknown as FlowValidationError],
         warnings: []
       };
       
