@@ -21,13 +21,14 @@ import type {
   FlowValidationWarning,
   GameNodeData,
   TeamNodeData,
+  TeamNode,
+  StageNode,
   GlobalTeam,
   GlobalTeamGroup,
   GamedayMetadata,
 } from '../types/flowchart';
 import {
   isGameNode,
-  isTeamNode,
   isFieldNode,
   isStageNode,
   isTeamToGameEdge,
@@ -256,8 +257,8 @@ function checkOfficialPlaying(
     // Check if official matches home team (v1 edges)
     if (homeEdge && isTeamToGameEdge(homeEdge)) {
       const homeNode = nodes.find((n) => n.id === homeEdge.source);
-      if (homeNode && isTeamNode(homeNode)) {
-        const homeData = homeNode.data as TeamNodeData;
+      if (homeNode) {
+        const homeData = homeNode.data as unknown as TeamNodeData;
         const homeStr = formatTeamReference(homeData.reference);
         if (homeStr === officialStr) {
           errors.push({
@@ -278,8 +279,8 @@ function checkOfficialPlaying(
     // Check if official matches away team
     if (awayEdge && isTeamToGameEdge(awayEdge)) {
       const awayNode = nodes.find((n) => n.id === awayEdge.source);
-      if (awayNode && isTeamNode(awayNode)) {
-        const awayData = awayNode.data as TeamNodeData;
+      if (awayNode) {
+        const awayData = awayNode.data as unknown as TeamNodeData;
         const awayStr = formatTeamReference(awayData.reference);
         if (awayStr === officialStr) {
           errors.push({
@@ -347,13 +348,12 @@ function checkOrphanedTeams(
 ): FlowValidationWarning[] {
   const warnings: FlowValidationWarning[] = [];
 
-  const teamNodes = nodes.filter(isTeamNode);
-
-  for (const node of teamNodes) {
-    const outgoingEdges = edges.filter((e) => e.source === node.id);
+  for (const node of nodes) {
+    const teamNode = node as unknown as TeamNode;
+    const outgoingEdges = edges.filter((e) => e.source === teamNode.id);
 
     if (outgoingEdges.length === 0) {
-      const data = node.data as TeamNodeData;
+      const data = teamNode.data;
       warnings.push({
         id: `${node.id}_orphaned`,
         type: 'orphaned_team',
@@ -477,38 +477,37 @@ function checkGamesOutsideContainers(nodes: FlowNode[]): FlowValidationError[] {
 function checkTeamsOutsideContainers(nodes: FlowNode[]): FlowValidationError[] {
   const errors: FlowValidationError[] = [];
 
-  const teamNodes = nodes.filter(isTeamNode);
-
-  for (const node of teamNodes) {
-    const data = node.data as TeamNodeData;
+  for (const node of nodes) {
+    const teamNode = node as unknown as TeamNode;
+    const data = teamNode.data;
 
     // Team MUST have a parent stage
-    if (!node.parentId) {
+    if (!teamNode.parentId) {
       errors.push({
-        id: `${node.id}_outside_container`,
+        id: `${teamNode.id}_outside_container`,
         type: 'team_outside_container',
-        message: `Team "${data.label || node.id}" must be inside a stage container`,
+        message: `Team "${data.label || teamNode.id}" must be inside a stage container`,
         messageKey: 'team_outside_container',
         messageParams: {
-            team: data.label || node.id
+            team: data.label || teamNode.id
         },
-        affectedNodes: [node.id],
+        affectedNodes: [teamNode.id],
       });
       continue;
     }
 
     // Verify parent is actually a stage
-    const parent = nodes.find((n) => n.id === node.parentId);
+    const parent = nodes.find((n) => n.id === teamNode.parentId);
     if (!parent || !isStageNode(parent)) {
       errors.push({
-        id: `${node.id}_outside_container`,
+        id: `${teamNode.id}_outside_container`,
         type: 'team_outside_container',
-        message: `Team "${data.label || node.id}" parent is not a valid stage`,
+        message: `Team "${data.label || teamNode.id}" parent is not a valid stage`,
         messageKey: 'team_invalid_parent',
         messageParams: {
-            team: data.label || node.id
+            team: data.label || teamNode.id
         },
-        affectedNodes: [node.id],
+        affectedNodes: [teamNode.id],
       });
     }
   }
@@ -591,7 +590,7 @@ function checkTimeOverlaps(
   };
 
   // Group games by field
-  const gamesByField = new Map<string, { id: string; start: number; end: number; standing: string }[]>();
+  const gamesByField = new Map<string, { id: string; start: number; end: number; standing: string; order: number }[]>();
 
   for (const node of gameNodes) {
     const data = node.data as GameNodeData;
@@ -784,7 +783,7 @@ function checkStageSequence(
   const stageNodes = nodes.filter(isStageNode);
 
   // Group stages by field
-  const stagesByField = new Map<string, FlowNode[]>();
+  const stagesByField = new Map<string, StageNode[]>();
   for (const node of stageNodes) {
     if (node.parentId) {
       const fieldStages = stagesByField.get(node.parentId) || [];
@@ -907,7 +906,7 @@ function checkProgressionIntegrity(
   const stageNodes = nodes.filter(isStageNode);
 
   // Map to find stage for each node
-  const nodeToStage = new Map<string, FlowNode>();
+  const nodeToStage = new Map<string, StageNode>();
   for (const node of gameNodes) {
     if (node.parentId) {
       const stage = stageNodes.find(s => s.id === node.parentId);
@@ -919,8 +918,8 @@ function checkProgressionIntegrity(
 
   // Check each edge for logical progression
   for (const edge of edges) {
-    let sourceStage: FlowNode | undefined;
-    let targetStage: FlowNode | undefined;
+    let sourceStage: StageNode | undefined;
+    let targetStage: StageNode | undefined;
     let sourceName: string = '';
     let targetName: string = '';
 

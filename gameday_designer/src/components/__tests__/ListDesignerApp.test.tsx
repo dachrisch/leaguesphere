@@ -410,7 +410,7 @@ describe('ListDesignerApp', () => {
         ...defaultFlowState,
         nodes: [
           { id: 'game-1', type: 'game', data: { name: 'Game 1' } },
-        ] as FlowNode[],
+        ] as unknown as FlowNode[],
       };
 
       (useFlowState as Mock).mockReturnValue(flowStateWithNodes);
@@ -447,7 +447,7 @@ describe('ListDesignerApp', () => {
 
       // Mock the API methods
       const mockPublish = vi.mocked(gamedayApi.publish);
-      mockPublish.mockResolvedValue({} as ReturnType<typeof gamedayApi.publish>);
+      mockPublish.mockResolvedValue({} as unknown as Awaited<ReturnType<typeof gamedayApi.publish>>);
       const mockLoadData = vi.fn().mockResolvedValue({});
 
       // Create flowState with multiple games and stages
@@ -460,7 +460,7 @@ describe('ListDesignerApp', () => {
           { id: 'stage-1', type: 'stage', data: { name: 'Stage 1' } },
           { id: 'stage-2', type: 'stage', data: { name: 'Stage 2' } },
           { id: 'field-1', type: 'field', data: { name: 'Field 1' } },
-        ] as FlowNode[],
+        ] as unknown as FlowNode[],
       };
 
       (useFlowState as Mock).mockReturnValue(flowStateWithNodes);

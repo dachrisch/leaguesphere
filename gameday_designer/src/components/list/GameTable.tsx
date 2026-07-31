@@ -6,10 +6,11 @@
 
 import React, { useState, useCallback, memo, useMemo } from 'react';
 import { Table, Form, Button } from 'react-bootstrap';
-import Select, { components, StylesConfig, GroupBase } from 'react-select';
+import Select, { components, StylesConfig, GroupBase, OptionProps, SingleValueProps } from 'react-select';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import type { 
   GameNode, 
+  StageNode,
   FlowEdge, 
   FlowNode, 
   GlobalTeam, 
@@ -18,7 +19,8 @@ import type {
   HighlightedElement
 } from '../../types/flowchart';
 import { isGameNode, isStageNode } from '../../types/flowchart';
-import { isRankReference } from '../../types/designer';
+import { isWinnerReference, isLoserReference, isRankReference } from '../../types/designer';
+import type { TeamReference, WinnerReference, LoserReference } from '../../types/designer';
 import { findSourceGameForReference, findSourceStageForReference, getGamePath, getEligibleSourceGames as computeEligibleSourceGames } from '../../utils/edgeAnalysis';
 import { getStageParticipants, getStageGroups, getGroupParticipants } from '../../utils/rankingEngine';
 import { isValidTimeFormat } from '../../utils/timeCalculation';
@@ -37,7 +39,7 @@ interface TeamOption {
 }
 
 // Custom Option component with colored dot for teams and stage headers
-const CustomOption = memo((props: { data: TeamOption; isDisabled?: boolean; children?: React.ReactNode; innerProps?: Record<string, unknown> }) => {
+const CustomOption = memo((props: OptionProps<TeamOption, false, GroupBase<TeamOption>>) => {
   const { data } = props;
 
   if (data.isStageHeader) {
@@ -87,7 +89,7 @@ const CustomOption = memo((props: { data: TeamOption; isDisabled?: boolean; chil
 });
 
 // Custom SingleValue component with colored dot for selected value
-const CustomSingleValue = memo((props: { data: TeamOption; children?: React.ReactNode }) => {
+const CustomSingleValue = memo((props: SingleValueProps<TeamOption, false, GroupBase<TeamOption>>) => {
   const { data } = props;
   return (
     <components.SingleValue {...props}>
@@ -105,7 +107,7 @@ const CustomSingleValue = memo((props: { data: TeamOption; children?: React.Reac
         )}
         <span className={data.isWinner ? 'fw-bold text-success' : ''}>
           {data.label}
-          {data.isWinner && <i className="bi bi-trophy-fill text-warning ms-2" title={t('ui:label.winner')} />}
+          {data.isWinner && <i className="bi bi-trophy-fill text-warning ms-2" title="Winner" />}
         </span>
       </div>
     </components.SingleValue>
@@ -220,7 +222,7 @@ export interface GameTableProps {
   globalTeams: GlobalTeam[];
   globalTeamGroups: GlobalTeamGroup[];
   highlightedElement?: HighlightedElement | null;
-  onUpdate: (nodeId: string, data: Partial<GameNode['data']>) => void;
+  onUpdate: (nodeId: string, data: Record<string, unknown>) => void;
   onDelete: (nodeId: string) => void;
   onSelectNode: (nodeId: string | null) => void;
   onHighlightElement: (id: string, type: HighlightedElement['type']) => void;
@@ -274,8 +276,8 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const sources = new Set<string>();
     const data = highlightedGame.data as GameNodeData;
     
-    if (data.homeTeamDynamic && !isRankReference(data.homeTeamDynamic)) sources.add(data.homeTeamDynamic.matchName);
-    if (data.awayTeamDynamic && !isRankReference(data.awayTeamDynamic)) sources.add(data.awayTeamDynamic.matchName);
+    if (data.homeTeamDynamic && (isWinnerReference(data.homeTeamDynamic) || isLoserReference(data.homeTeamDynamic))) sources.add(data.homeTeamDynamic.matchName);
+    if (data.awayTeamDynamic && (isWinnerReference(data.awayTeamDynamic) || isLoserReference(data.awayTeamDynamic))) sources.add(data.awayTeamDynamic.matchName);
     
     const official = data.official;
     if (official && typeof official !== 'string' && (official.type === 'winner' || official.type === 'loser')) {
@@ -534,7 +536,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
       if (official.type === 'static') {
         currentValue = official.name;
       } else if (official.type === 'winner' || official.type === 'loser') {
-         const sourceGame = findSourceGameForReference(game.id, 'official', edges, allNodes);
+         const sourceGame = findSourceGameForReference(game.id, 'official' as 'home' | 'away', edges, allNodes);
         if (sourceGame) {
           currentValue = `${official.type}:${sourceGame.id}`;
         }
@@ -664,7 +666,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
           className={`d-flex flex-column ${isReferencingUpstream ? 'referencing-highlight' : ''}`}
         >
           <span className="small text-muted mb-1">
-            {dynamicRef.type === 'winner' ? t('ui:label.winner') : t('ui:label.loser')} {dynamicRef.matchName}
+            {dynamicRef.type === 'winner' ? t('ui:label.winner') : t('ui:label.loser')} {(dynamicRef as WinnerReference | LoserReference).matchName}
           </span>
           {resolvedName ? (
             <div className={isWinner ? 'text-success d-flex align-items-center' : 'text-primary'}>

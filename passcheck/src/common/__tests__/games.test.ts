@@ -64,7 +64,7 @@ describe('games utilities', () => {
       const mockVerification = {
         teamId: 'team1',
         gamedayId: 'gameday1',
-        data: { players: [] },
+        data: { official_name: '', note: null, roster: [] },
       };
       vi.mocked(api.apiPut).mockResolvedValue(undefined);
 

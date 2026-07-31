@@ -70,7 +70,7 @@ export interface Node<T = Record<string, unknown>, U extends string = string> {
 /**
  * Base edge type (replaces React Flow Edge).
  */
-export interface Edge<T = Record<string, unknown>> {
+export interface Edge<T = any> {
   id: string;
   type?: string;
   source: string;
@@ -254,8 +254,8 @@ export interface StageNodeData {
   progressionConfig?: ProgressionConfig;
   /** Optional mapping for progression from source games */
   progressionMapping?: Record<string, {
-    home: { sourceIndex: number; type: 'winner' | 'loser' };
-    away: { sourceIndex: number; type: 'winner' | 'loser' };
+    home: { sourceIndex: number; type: 'winner' | 'loser' | 'rank'; sourceStageId?: string; sourceStageIndex?: number };
+    away: { sourceIndex: number; type: 'winner' | 'loser' | 'rank'; sourceStageId?: string; sourceStageIndex?: number };
   }>;
 }
 
@@ -311,7 +311,7 @@ export type TeamOutputHandle = 'output';
  * Handle IDs for stage node connections (Ranking Stages).
  * Format: rank-1, rank-2, etc.
  */
-export type RankOutputHandle = `rank-${number}`;
+export type RankOutputHandle = `rank-${number}` | `rank-${string}-${number}`;
 
 /**
  * Data for an edge connecting a team to a game input.
@@ -334,6 +334,7 @@ export interface GameToGameEdgeData {
 /**
  * Data for an edge connecting a stage rank to a game input.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface StageToGameEdgeData {
   /** Source rank on the source stage node (1-indexed) */
   sourceRank: number;
@@ -377,7 +378,7 @@ export interface StageToGameEdge extends Edge {
 /**
  * Union type for all edge types used in the designer.
  */
-export type FlowEdge = GameToGameEdge | StageToGameEdge;
+export type FlowEdge = TeamToGameEdge | GameToGameEdge | StageToGameEdge;
 
 // ============================================================================
 // Gameday Metadata
@@ -400,6 +401,9 @@ export interface GamedayMetadata {
   league: number;
   league_display?: string;
   status: string;
+  has_results?: boolean;
+  resource_urls?: import('./api').ResourceUrl[];
+  game_duration?: number;
 }
 
 // ============================================================================
@@ -475,7 +479,12 @@ export type FlowValidationWarningType =
   | 'unassigned_field'
   | 'stage_time_conflict'
   | 'stage_sequence_type'
-  | 'uneven_game_distribution';
+  | 'uneven_game_distribution'
+  | 'no_teams'
+  | 'no_games'
+  | 'team_without_games'
+  | 'unused_field'
+  | 'broken_progression';
 
 /**
  * Validation error for the flowchart.
@@ -530,13 +539,6 @@ export interface FlowValidationResult {
 // ============================================================================
 
 /**
- * Type guard to check if node data is TeamNodeData.
- */
-export function isTeamNodeData(data: FlowNodeData): data is TeamNodeData {
-  return data.type === 'team';
-}
-
-/**
  * Type guard to check if node data is GameNodeData.
  */
 export function isGameNodeData(data: FlowNodeData): data is GameNodeData {
@@ -558,13 +560,6 @@ export function isStageNodeData(data: FlowNodeData): data is StageNodeData {
 }
 
 /**
- * Type guard to check if a node is a TeamNode.
- */
-export function isTeamNode(node: FlowNode): node is TeamNode {
-  return node.type === 'team';
-}
-
-/**
  * Type guard to check if a node is a GameNode.
  */
 export function isGameNode(node: FlowNode): node is GameNode {
@@ -576,6 +571,21 @@ export function isGameNode(node: FlowNode): node is GameNode {
  */
 export function isFieldNode(node: FlowNode): node is FieldNode {
   return node.type === 'field';
+}
+
+/**
+ * Type guard to check if a node is a TeamNode.
+ * @deprecated Teams are now managed in the global team pool (v2)
+ */
+export function isTeamNode(_node: FlowNode): _node is never {
+  return false;
+}
+
+/**
+ * Type guard to check if an edge is a TeamToGameEdge.
+ */
+export function isTeamToGameEdge(edge: FlowEdge): edge is TeamToGameEdge {
+  return edge.type === 'teamToGame';
 }
 
 /**
@@ -599,13 +609,6 @@ export function isStageNode(node: FlowNode): node is StageNode {
  */
 export function isContainerNode(node: FlowNode): node is FieldNode | StageNode {
   return node.type === 'field' || node.type === 'stage';
-}
-
-/**
- * Type guard to check if an edge is a TeamToGameEdge.
- */
-export function isTeamToGameEdge(edge: FlowEdge): edge is TeamToGameEdge {
-  return edge.type === 'teamToGame';
 }
 
 /**

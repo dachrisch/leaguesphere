@@ -77,7 +77,7 @@ class JerseyNumberBetweenValidator extends BaseValidator {
     this.minimumNumber = minimumNumber;
     this.maximumNumber = maximumNumber;
   }
-  isValid(roster: Roster, player: Player | null): boolean {
+  isValid(_roster: Roster, player: Player | null): boolean {
     if (!player) {
       return false;
     }
