@@ -577,7 +577,6 @@ export function isFieldNode(node: FlowNode): node is FieldNode {
 
 /**
  * Type guard to check if a node is a TeamNode.
- * @deprecated Teams are now managed in the global team pool (v2)
  */
 export function isTeamNode(node: FlowNode): node is TeamNode {
   return node.type === 'team';

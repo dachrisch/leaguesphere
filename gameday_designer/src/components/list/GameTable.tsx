@@ -36,6 +36,7 @@ interface TeamOption {
   isStageHeader?: boolean;
   isDisabled?: boolean;
   isWinner?: boolean;
+  winnerLabel?: string;
 }
 
 // Custom Option component with colored dot for teams and stage headers
@@ -107,7 +108,7 @@ const CustomSingleValue = memo((props: SingleValueProps<TeamOption, false, Group
         )}
         <span className={data.isWinner ? 'fw-bold text-success' : ''}>
           {data.label}
-          {data.isWinner && <i className="bi bi-trophy-fill text-warning ms-2" title="Winner" />}
+          {data.isWinner && <i className="bi bi-trophy-fill text-warning ms-2" title={data.winnerLabel} />}
         </span>
       </div>
     </components.SingleValue>
@@ -536,7 +537,10 @@ const GameTable: React.FC<GameTableProps> = memo(({
       if (official.type === 'static') {
         currentValue = official.name;
       } else if (official.type === 'winner' || official.type === 'loser') {
-         const sourceGame = findSourceGameForReference(game.id, 'official' as 'home' | 'away', edges, allNodes);
+        // Officials aren't wired into game-to-game edges like home/away teams,
+        // so resolve the source game by matching `standing`, same as bracketResolution.ts
+        // and templateMapper.ts do for winner/loser references.
+        const sourceGame = allNodes.find((n) => isGameNode(n) && n.data.standing === official.matchName) as GameNode | undefined;
         if (sourceGame) {
           currentValue = `${official.type}:${sourceGame.id}`;
         }
@@ -703,7 +707,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
           classNamePrefix="react-select"
           value={(() => {
             const opt = options.find(opt => opt.value === currentValue) || options[0];
-            return isWinner ? { ...opt, isWinner: true } : opt;
+            return isWinner ? { ...opt, isWinner: true, winnerLabel: t('ui:label.winner') } : opt;
           })()}
           options={options}
           onChange={(newValue) => newValue && handleTeamChange(game.id, slot, newValue.value)}
