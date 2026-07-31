@@ -70,7 +70,7 @@ export interface Node<T = Record<string, unknown>, U extends string = string> {
 /**
  * Base edge type (replaces React Flow Edge).
  */
-export interface Edge<T = any> {
+export interface Edge<T = Record<string, unknown>> {
   id: string;
   type?: string;
   source: string;
@@ -337,7 +337,6 @@ export interface GameToGameEdgeData {
 /**
  * Data for an edge connecting a stage rank to a game input.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface StageToGameEdgeData {
   /** Source rank on the source stage node (1-indexed) */
   sourceRank: number;
@@ -351,7 +350,7 @@ export interface StageToGameEdgeData {
  * Edge connecting a team node to a game node.
  * @deprecated Teams are now assigned directly to games via GlobalTeam pool (v2)
  */
-export interface TeamToGameEdge extends Edge {
+export interface TeamToGameEdge extends Edge<TeamToGameEdgeData> {
   type: 'teamToGame';
   sourceHandle: TeamOutputHandle;
   targetHandle: GameInputHandle;
@@ -361,7 +360,7 @@ export interface TeamToGameEdge extends Edge {
 /**
  * Edge connecting a game output to another game input.
  */
-export interface GameToGameEdge extends Edge {
+export interface GameToGameEdge extends Edge<GameToGameEdgeData> {
   type: 'gameToGame';
   sourceHandle: GameOutputHandle;
   targetHandle: GameInputHandle;
@@ -371,7 +370,7 @@ export interface GameToGameEdge extends Edge {
 /**
  * Edge connecting a stage node (Ranking Stage) to a game node.
  */
-export interface StageToGameEdge extends Edge {
+export interface StageToGameEdge extends Edge<StageToGameEdgeData> {
   type: 'stageToGame';
   sourceHandle: RankOutputHandle;
   targetHandle: GameInputHandle;

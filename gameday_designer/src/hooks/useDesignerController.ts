@@ -404,8 +404,7 @@ export function useDesignerController(
         addNotification('Tournament generated successfully', 'success', 'Generation Success');
 
         // Derive template id for analytics
-        const cfgAny = config as any;
-        const resolvedTemplateId = cfgAny.customTemplate?.id ?? cfgAny.template?.id;
+        const resolvedTemplateId = config.template?.id;
 
         // Track template applied event
         trackEvent('template_applied', {

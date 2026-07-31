@@ -76,8 +76,10 @@ describe('GamedayApi Interceptors and Edge Cases', () => {
   it('response interceptor should handle 401 error', async () => {
     // Mock window.location.href
     const originalLocation = window.location;
-    delete (window as any).location;
-    (window as any).location = { ...originalLocation, href: '' };
+    const testWindow = window as unknown as { location: Location };
+    // @ts-expect-error - overriding window.location for test
+    delete testWindow.location;
+    testWindow.location = { ...originalLocation, href: '' } as Location;
 
     const interceptor = mockAxiosInstance.interceptors.response.getInterceptor();
     const error = {
@@ -90,10 +92,10 @@ describe('GamedayApi Interceptors and Edge Cases', () => {
       // Expected rejection
     }
 
-    expect((window as any).location.href).toBe('/accounts/login/');
+    expect(testWindow.location.href).toBe('/accounts/login/');
     
     // Restore window.location
-    (window as any).location = originalLocation;
+    testWindow.location = originalLocation;
   });
 
   it('updateGameResult should call PATCH /gameinfo/:id/result/', async () => {

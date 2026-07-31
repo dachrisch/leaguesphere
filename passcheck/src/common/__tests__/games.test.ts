@@ -72,7 +72,7 @@ describe('games utilities', () => {
 
       expect(api.apiPut).toHaveBeenCalledWith(
         '/api/passcheck/roster/team1/gameday/gameday1',
-        { players: [] }
+        { official_name: '', note: null, roster: [] }
       );
     });
   });
