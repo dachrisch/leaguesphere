@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.13.32](https://github.com/dachrisch/leaguesphere/compare/v4.13.31...v4.13.32) (2026-08-01)
+
+
+### Bug Fixes
+
+* broken composite project reference masking ~967 type errors in tsc --noEmit ([#1719](https://github.com/dachrisch/leaguesphere/issues/1719)) ([97c7a83](https://github.com/dachrisch/leaguesphere/commit/97c7a83f796852cb0aa113e35ecd7f5197dd0c6e))
+
 ## [4.13.31](https://github.com/dachrisch/leaguesphere/compare/v4.13.30...v4.13.31) (2026-08-01)
 
 
