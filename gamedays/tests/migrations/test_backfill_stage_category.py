@@ -96,3 +96,57 @@ class TestBackfillStageCategory(TestCase):
         gi_heuristic.refresh_from_db()
         assert gi_designer.stage_category == ""
         assert gi_heuristic.stage_category == ""
+
+    def test_falls_through_to_heuristic_when_designer_node_has_no_category_key(self):
+        # Pre-v2 designer states have stage nodes with a "name" but no "category"
+        # key at all — this must NOT default to "preliminary"; it must fall
+        # through to the legacy name-based heuristic pass instead.
+        gameday = DBSetup().create_empty_gameday()
+        gi = GameinfoFactory(gameday=gameday, stage="Finalrunde")
+        Gameinfo.objects.filter(pk=gi.pk).update(stage_category="")
+        GamedayDesignerState.objects.create(
+            gameday=gameday,
+            state_data={
+                "nodes": [
+                    {"type": "stage", "data": {"name": "Finalrunde"}},
+                ]
+            },
+        )
+
+        _migration.backfill_stage_category(apps_module=None, schema_editor=None)
+
+        gi.refresh_from_db()
+        assert gi.stage_category == "final"
+
+    def test_tolerates_stage_node_with_null_data(self):
+        # A stage node can have a literal "data": None (key present, value null).
+        # This must not raise and must not block backfilling other rows for the
+        # same gameday.
+        gameday = DBSetup().create_empty_gameday()
+        gi_null_data = GameinfoFactory(gameday=gameday, stage="Finalrunde")
+        gi_well_formed = GameinfoFactory(gameday=gameday, stage="Liga")
+        Gameinfo.objects.filter(pk__in=[gi_null_data.pk, gi_well_formed.pk]).update(
+            stage_category=""
+        )
+        GamedayDesignerState.objects.create(
+            gameday=gameday,
+            state_data={
+                "nodes": [
+                    {"type": "stage", "data": None},
+                    {
+                        "type": "stage",
+                        "data": {"name": "Liga", "category": "preliminary"},
+                    },
+                ]
+            },
+        )
+
+        _migration.backfill_stage_category(apps_module=None, schema_editor=None)
+
+        gi_null_data.refresh_from_db()
+        gi_well_formed.refresh_from_db()
+        # "Finalrunde" had no usable designer-state entry (its node's data was
+        # None), so it falls through to the legacy heuristic.
+        assert gi_null_data.stage_category == "final"
+        # "Liga" was resolved from the well-formed sibling node.
+        assert gi_well_formed.stage_category == "preliminary"

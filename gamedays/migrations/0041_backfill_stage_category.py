@@ -11,9 +11,11 @@ _LEGACY_STAGE_NAME_TO_CATEGORY = {
 def _category_map_from_designer_state(state_data) -> dict:
     nodes = (state_data or {}).get("nodes", [])
     return {
-        node["data"]["name"]: node["data"].get("category", "preliminary")
+        node["data"]["name"]: node["data"]["category"]
         for node in nodes
-        if node.get("type") == "stage" and node.get("data", {}).get("name")
+        if node.get("type") == "stage"
+        and (node.get("data") or {}).get("name")
+        and (node.get("data") or {}).get("category")
     }
 
 
