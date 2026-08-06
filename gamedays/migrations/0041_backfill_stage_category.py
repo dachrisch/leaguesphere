@@ -52,7 +52,12 @@ def backfill_stage_category(apps_module, schema_editor):
 
 
 def reverse_backfill_stage_category(apps_module, schema_editor):
-    Gameinfo = apps_module.get_model("gamedays", "Gameinfo")
+    if apps_module is not None:
+        Gameinfo = apps_module.get_model("gamedays", "Gameinfo")
+    else:
+        # Allows direct unit testing against the current models (see
+        # gamedays/tests/migrations/test_backfill_stage_category.py).
+        from gamedays.models import Gameinfo
     Gameinfo.objects.update(stage_category="")
 
 

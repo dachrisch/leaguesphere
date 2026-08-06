@@ -68,3 +68,31 @@ class TestBackfillStageCategory(TestCase):
 
         gi.refresh_from_db()
         assert gi.stage_category == "custom"
+
+    def test_reverse_resets_stage_category_to_blank(self):
+        gameday = DBSetup().create_empty_gameday()
+        gi_designer = GameinfoFactory(gameday=gameday, stage="Liga")
+        gi_heuristic = GameinfoFactory(gameday=gameday, stage="Hauptrunde")
+        Gameinfo.objects.filter(
+            pk__in=[gi_designer.pk, gi_heuristic.pk]
+        ).update(stage_category="")
+        GamedayDesignerState.objects.create(
+            gameday=gameday,
+            state_data={
+                "nodes": [
+                    {"type": "stage", "data": {"name": "Liga", "category": "preliminary"}}
+                ]
+            },
+        )
+        _migration.backfill_stage_category(apps_module=None, schema_editor=None)
+        gi_designer.refresh_from_db()
+        gi_heuristic.refresh_from_db()
+        assert gi_designer.stage_category == "preliminary"
+        assert gi_heuristic.stage_category == "preliminary"
+
+        _migration.reverse_backfill_stage_category(apps_module=None, schema_editor=None)
+
+        gi_designer.refresh_from_db()
+        gi_heuristic.refresh_from_db()
+        assert gi_designer.stage_category == ""
+        assert gi_heuristic.stage_category == ""
