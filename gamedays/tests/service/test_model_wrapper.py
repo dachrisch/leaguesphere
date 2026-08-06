@@ -239,8 +239,12 @@ class TestGamedayModelWrapper(TestCase):
             status="beendet",
             number_teams=3,
         )
+        Gameinfo.objects.filter(gameday=gameday, stage="Liga").update(
+            stage_category="preliminary"
+        )
         gmw = GamedayModelWrapper(gameday.pk)
         qualify_table = gmw.get_qualify_table()
+        assert len(qualify_table) > 0
         assert "win_points" in qualify_table.columns
 
     def test_get_table_uses_win_points_column(self):
