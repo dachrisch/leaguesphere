@@ -1,5 +1,19 @@
 # Changelog
 
+## [4.15.5](https://github.com/dachrisch/leaguesphere/compare/v4.15.4...v4.15.5) (2026-08-07)
+
+
+### Bug Fixes
+
+* **deps:** update dependency djangorestframework to v3.18.0 ([#1787](https://github.com/dachrisch/leaguesphere/issues/1787)) ([e84308e](https://github.com/dachrisch/leaguesphere/commit/e84308e81a56b92ed8ebad14701842dc55fce615))
+
+## [4.15.4](https://github.com/dachrisch/leaguesphere/compare/v4.15.3...v4.15.4) (2026-08-07)
+
+
+### Bug Fixes
+
+* **ci:** block out-of-sequence release builds from deploying ([#1785](https://github.com/dachrisch/leaguesphere/issues/1785)) ([8a567eb](https://github.com/dachrisch/leaguesphere/commit/8a567ebd19321ab1145813f73baf0e877f7f8522))
+
 ## [4.15.3](https://github.com/dachrisch/leaguesphere/compare/v4.15.2...v4.15.3) (2026-08-07)
 
 
