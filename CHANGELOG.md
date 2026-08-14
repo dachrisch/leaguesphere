@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.18.5](https://github.com/dachrisch/leaguesphere/compare/v4.18.4...v4.18.5) (2026-08-14)
+
+
+### Bug Fixes
+
+* **deps:** update astral-sh/setup-uv action to v10.0.1 ([#1834](https://github.com/dachrisch/leaguesphere/issues/1834)) ([d2a4d79](https://github.com/dachrisch/leaguesphere/commit/d2a4d797b7acdebad28d3cf4c7782a273eeab260))
+* **deps:** update dependency django-debug-toolbar to v7.1.1 ([#1835](https://github.com/dachrisch/leaguesphere/issues/1835)) ([e7452e8](https://github.com/dachrisch/leaguesphere/commit/e7452e8cc9edf2d2f5ec870d9075a488fe5716db))
+
 ## [4.18.4](https://github.com/dachrisch/leaguesphere/compare/v4.18.3...v4.18.4) (2026-08-14)
 
 
