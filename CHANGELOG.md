@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.18.4](https://github.com/dachrisch/leaguesphere/compare/v4.18.3...v4.18.4) (2026-08-14)
+
+
+### Bug Fixes
+
+* **maintenance:** shorten config cache TTL to bound cross-worker propagation ([#1832](https://github.com/dachrisch/leaguesphere/issues/1832)) ([391650d](https://github.com/dachrisch/leaguesphere/commit/391650d0e0f128e120ec7614f0be970c29de71af))
+
 ## [4.18.3](https://github.com/dachrisch/leaguesphere/compare/v4.18.2...v4.18.3) (2026-08-12)
 
 
