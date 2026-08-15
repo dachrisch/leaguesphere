@@ -277,6 +277,16 @@ class GameSetup(models.Model):
         return f"{self.gameinfo.pk}"
 
 
+def local_now_time():
+    """Current wall-clock time in the project's local time zone.
+
+    ``TeamLog.created_time`` is a ``TimeField``. A ``datetime`` (as returned
+    by ``timezone.now()``) is silently truncated to its raw UTC time component
+    by ``TimeField.to_python()``, so localize explicitly before assigning.
+    """
+    return timezone.localtime().time()
+
+
 class TeamLog(models.Model):
     gameinfo: Gameinfo = models.ForeignKey(Gameinfo, on_delete=models.CASCADE)
     team = models.ForeignKey(Team, on_delete=models.PROTECT, blank=True, null=True)
@@ -288,7 +298,7 @@ class TeamLog(models.Model):
     cop = models.BooleanField(default=False)
     half = models.PositiveSmallIntegerField()
     isDeleted = models.BooleanField(default=False)
-    created_time = models.TimeField(default=timezone.now)
+    created_time = models.TimeField(default=local_now_time)
     author = models.ForeignKey(User, on_delete=models.SET_DEFAULT, default=1)
 
     objects: QuerySet["TeamLog"] = models.Manager()

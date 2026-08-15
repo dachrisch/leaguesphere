@@ -1,7 +1,10 @@
 import json
+from datetime import UTC, datetime
+from unittest import mock
 
 from django.contrib.auth.models import User
 from django.test import TestCase
+from django.utils import timezone
 
 from gamedays.models import Team, Gameinfo, Gameresult, TeamLog
 from gamedays.service.gamelog import GameLog, GameLogObject, GameLogCreator
@@ -141,6 +144,20 @@ class TestGamelogCreator(TestCase):
         assert teamlog.input == "00:01"
         assert teamlog.value == 0
         assert teamlog.half == 1
+
+    def test_created_time_default_is_local_wall_clock_time(self):
+        DBSetup().g62_status_empty()
+        firstGame = Gameinfo.objects.first()
+        team = Team.objects.first()
+        user = User.objects.first()
+        # 2026-08-15 09:05 UTC == 11:05 Europe/Berlin (CEST, UTC+2)
+        utc_now = datetime(2026, 8, 15, 9, 5, 0, tzinfo=UTC)
+        with mock.patch("django.utils.timezone.now", return_value=utc_now):
+            GameLogCreator(
+                firstGame, team, [{"name": "Auszeit", "input": "00:01"}], user
+            ).create()
+        teamlog = TeamLog.objects.first()
+        assert teamlog.created_time == timezone.localtime(utc_now).time()
 
     def test_gamelog_with_penalty(self):
         DBSetup().g62_status_empty()
