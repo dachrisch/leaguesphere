@@ -89,6 +89,32 @@ describe('useGameProgress', () => {
     expect(result.current.today[0].isStale).toBe(true);
   });
 
+  it('should count games in 1. Halbzeit / 2. Halbzeit as live (live scoreboard statuses)', async () => {
+    const mockGameday: Partial<GamedayProgress> = {
+      id: 4,
+      name: 'Live Scoreboard Gameday',
+      date: '2026-05-24',
+      start: '10:00:00',
+      games: [
+        { id: 401, status: '1. Halbzeit', scheduled: '10:00:00', field: 1, gameStarted: null, gameFinished: null, gameresult: null },
+        { id: 402, status: '2. Halbzeit', scheduled: '10:30:00', field: 2, gameStarted: null, gameFinished: null, gameresult: null },
+        { id: 403, status: GameStatus.PLANNED, scheduled: '11:00:00', field: 3, gameStarted: null, gameFinished: null, gameresult: null },
+      ],
+    };
+
+    vi.mocked(progressApi.list).mockResolvedValue([mockGameday as GamedayProgress]);
+
+    const { result } = renderHook(() => useGameProgress());
+
+    await vi.waitFor(() => expect(result.current.loading).toBe(false), { timeout: 1000 });
+
+    expect(result.current.live).toHaveLength(1);
+    expect(result.current.live[0].stats.live).toBe(2);
+    expect(result.current.live[0].stats.pending).toBe(1);
+    expect(result.current.live[0].stats.played).toBe(0);
+    expect(result.current.live[0].isStale).toBe(false);
+  });
+
   it('should calculate totalPlayedGamesToday correctly', async () => {
     const mockGamedays: Partial<GamedayProgress>[] = [
       {
