@@ -152,6 +152,7 @@ class TestGamelogCreator(TestCase):
         # The TimeField default (timezone.now, an aware UTC datetime) must
         # persist the raw UTC time-of-day, not the local wall-clock time;
         # rendering to local time is the frontend's job.
+        user = User.objects.first()
         utc_now = datetime(2026, 8, 15, 9, 5, 0, tzinfo=UTC)
         created_time_field = TeamLog._meta.get_field("created_time")
         with mock.patch.object(created_time_field, "_get_default", new=lambda: utc_now):
@@ -163,6 +164,7 @@ class TestGamelogCreator(TestCase):
                     event="Auszeit",
                     input="00:01",
                     half=1,
+                    author=user,
                 )
         teamlog = TeamLog.objects.first()
         assert teamlog.created_time == utc_now.time()
