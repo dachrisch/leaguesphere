@@ -28,19 +28,19 @@ class GameinfoWrapper(object):
         self.gameinfo.save(update_fields=update_fields)
 
     def set_halftime_to_now(self) -> None:
-        now = timezone.localtime().time()
+        now = timezone.now()
         self.gameinfo.status = STATUS_HALFTIME
         self.gameinfo.gameHalftime = now
         self._save(update_fields=["status", "gameHalftime"])
 
     def set_gamestarted_to_now(self) -> None:
-        now = timezone.localtime().time()
+        now = timezone.now()
         self.gameinfo.status = STATUS_FIRST_HALF
         self.gameinfo.gameStarted = now
         self._save(update_fields=["status", "gameStarted"])
 
     def set_game_finished_to_now(self) -> None:
-        now = timezone.localtime().time()
+        now = timezone.now()
         self.gameinfo.status = STATUS_FINISHED
         self.gameinfo.gameFinished = now
         self._save(update_fields=["status", "gameFinished"])

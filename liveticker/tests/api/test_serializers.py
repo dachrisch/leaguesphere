@@ -1,6 +1,10 @@
 from datetime import datetime
 
-from liveticker.api.serializers import TeamlogSerializer, LivetickerSerializer
+from liveticker.api.serializers import (
+    TeamlogSerializer,
+    LivetickerSerializer,
+    _utc_time_as_iso,
+)
 
 
 class TestTeamlogSerializer:
@@ -30,13 +34,15 @@ class TestTeamlogSerializer:
         assert dict(serializer.data[0]) == {
             "team": "home",
             "text": "Touchdown: #7",
-            "time": now.strftime("%H:%M"),
+            "time": _utc_time_as_iso(now),
         }
 
     def test_team_is_none(self):
         now = datetime.now()
         teamlog_entries = [
-            TestTeamlogSerializer.create_some_teamlog(event="Spielzeit", input="1:05")
+            TestTeamlogSerializer.create_some_teamlog(
+                event="Spielzeit", input="1:05", created_time=now
+            )
         ]
         serializer = TeamlogSerializer(
             instance=teamlog_entries, home_team="name of team", many=True
@@ -44,7 +50,7 @@ class TestTeamlogSerializer:
         assert dict(serializer.data[0]) == {
             "team": None,
             "text": "Spielzeit - 1:05",
-            "time": now.strftime("%H:%M"),
+            "time": _utc_time_as_iso(now),
         }
 
     def test_get_text_for_pat(self):
@@ -169,4 +175,4 @@ class TestLivetickerSerializer:
             TestLivetickerSerializer.create_some_liveticker(gameStarted=now)
         ]
         serializer = LivetickerSerializer(instance=liveticker_entries, many=True)
-        assert serializer.data[0]["time"] == "07:07"
+        assert serializer.data[0]["time"] == _utc_time_as_iso(now)

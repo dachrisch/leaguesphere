@@ -3,7 +3,6 @@ from datetime import UTC, datetime
 from unittest import mock
 
 from django.test import TestCase
-from django.utils import timezone
 
 from gamedays.models import Gameinfo
 from gamedays.service.wrapper.gameinfo_wrapper import GameinfoWrapper
@@ -40,21 +39,34 @@ class TestGameinfoWrapper(TestCase):
         assert first_game.status == "beendet"
         assert re.match("^(0\d|1\d|2[0-3]):[0-5]\d", str(first_game.gameFinished))
 
-    def test_times_are_stored_in_local_wall_clock_time(self):
+    def test_times_are_stored_in_utc(self):
         DBSetup().g62_status_empty()
         first_game = Gameinfo.objects.first()
         # 2026-08-15 09:05 UTC == 11:05 Europe/Berlin (CEST, UTC+2)
+        # The TimeField must persist the raw UTC time-of-day, not the local
+        # wall-clock time; rendering to local time is the frontend's job.
+        utc_now = datetime(2026, 8, 15, 9, 5, 0, tzinfo=UTC)
+        gameinfo_wrapper = GameinfoWrapper.from_id(first_game.pk)
+        with self.assertNumQueries(1):
+            with mock.patch("django.utils.timezone.now", return_value=utc_now):
+                gameinfo_wrapper.set_gamestarted_to_now()
+        first_game: Gameinfo = Gameinfo.objects.first()
+        assert first_game.gameStarted == utc_now.time()
+
+    def test_halftime_and_finished_times_are_stored_in_utc(self):
+        # No assertNumQueries here: finishing a game ("beendet") fires the
+        # Gameinfo post_save signal, whose schedule resolution adds legitimate
+        # reads (see gamedays/service/signals.py).
+        DBSetup().g62_status_empty()
+        first_game = Gameinfo.objects.first()
         utc_now = datetime(2026, 8, 15, 9, 5, 0, tzinfo=UTC)
         gameinfo_wrapper = GameinfoWrapper.from_id(first_game.pk)
         with mock.patch("django.utils.timezone.now", return_value=utc_now):
-            gameinfo_wrapper.set_gamestarted_to_now()
             gameinfo_wrapper.set_halftime_to_now()
             gameinfo_wrapper.set_game_finished_to_now()
         first_game: Gameinfo = Gameinfo.objects.first()
-        expected = timezone.localtime(utc_now).time()
-        assert first_game.gameStarted == expected
-        assert first_game.gameHalftime == expected
-        assert first_game.gameFinished == expected
+        assert first_game.gameHalftime == utc_now.time()
+        assert first_game.gameFinished == utc_now.time()
 
     def test_team_in_possesion_is_updated(self):
         DBSetup().g62_status_empty()

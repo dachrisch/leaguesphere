@@ -4,7 +4,6 @@ from unittest import mock
 
 from django.contrib.auth.models import User
 from django.test import TestCase
-from django.utils import timezone
 
 from gamedays.models import Team, Gameinfo, Gameresult, TeamLog
 from gamedays.service.gamelog import GameLog, GameLogObject, GameLogCreator
@@ -145,19 +144,28 @@ class TestGamelogCreator(TestCase):
         assert teamlog.value == 0
         assert teamlog.half == 1
 
-    def test_created_time_default_is_local_wall_clock_time(self):
+    def test_created_time_default_is_utc(self):
         DBSetup().g62_status_empty()
         firstGame = Gameinfo.objects.first()
         team = Team.objects.first()
-        user = User.objects.first()
         # 2026-08-15 09:05 UTC == 11:05 Europe/Berlin (CEST, UTC+2)
+        # The TimeField default (timezone.now, an aware UTC datetime) must
+        # persist the raw UTC time-of-day, not the local wall-clock time;
+        # rendering to local time is the frontend's job.
         utc_now = datetime(2026, 8, 15, 9, 5, 0, tzinfo=UTC)
-        with mock.patch("django.utils.timezone.now", return_value=utc_now):
-            GameLogCreator(
-                firstGame, team, [{"name": "Auszeit", "input": "00:01"}], user
-            ).create()
+        created_time_field = TeamLog._meta.get_field("created_time")
+        with mock.patch.object(created_time_field, "_get_default", new=lambda: utc_now):
+            with self.assertNumQueries(1):
+                TeamLog.objects.create(
+                    gameinfo=firstGame,
+                    team=team,
+                    sequence=1,
+                    event="Auszeit",
+                    input="00:01",
+                    half=1,
+                )
         teamlog = TeamLog.objects.first()
-        assert teamlog.created_time == timezone.localtime(utc_now).time()
+        assert teamlog.created_time == utc_now.time()
 
     def test_gamelog_with_penalty(self):
         DBSetup().g62_status_empty()

@@ -1,5 +1,22 @@
+from datetime import UTC, datetime
+
+from django.utils import timezone
 from rest_framework.fields import CharField, SerializerMethodField, IntegerField
 from rest_framework.serializers import Serializer
+
+
+def _utc_time_as_iso(time_value) -> str:
+    """Serialize a stored UTC wall-clock time as an explicit UTC ISO-8601 timestamp.
+
+    ``TeamLog.created_time`` / ``Gameinfo.gameStarted`` are ``TimeField``s holding
+    the UTC time-of-day (they are written from ``timezone.now()``, whose time
+    component ``TimeField.to_python()`` keeps in UTC). Recombining that time with
+    the current date and the UTC offset makes the value self-describing, so the
+    frontend can render it in the viewer's local time.
+    """
+    if hasattr(time_value, "time"):
+        time_value = time_value.time()
+    return datetime.combine(timezone.now().date(), time_value, tzinfo=UTC).isoformat()
 
 
 class TeamlogSerializer(Serializer):
@@ -39,7 +56,7 @@ class TeamlogSerializer(Serializer):
         return "away"
 
     def get_time(self, obj: dict):
-        return obj[self.CREATED_TIME].strftime("%H:%M")
+        return _utc_time_as_iso(obj[self.CREATED_TIME])
 
 
 class LivetickerSerializer(Serializer):
@@ -84,10 +101,9 @@ class LivetickerSerializer(Serializer):
 
     def get_time(self, obj: dict):
         if obj.get(self.GAME_STARTED) is None:
-            time = obj[self.SCHEDULED]
-        else:
-            time = obj[self.GAME_STARTED]
-        return time.strftime("%H:%M")
+            # scheduled is human-entered local wall-clock time; display as-is.
+            return obj[self.SCHEDULED].strftime("%H:%M")
+        return _utc_time_as_iso(obj[self.GAME_STARTED])
 
     def get_home(self, obj: dict):
         return self._get_team_dict(
