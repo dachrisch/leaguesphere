@@ -20,7 +20,7 @@ dependencies = [
     "django-cors-headers==4.9.0",
     "Pillow==12.3.0",
     "django-rest-knox==5.1.0",
-    "python-dotenv==1.2.2",
+    "python-dotenv==1.2.3",
     "mysqlclient==2.2.8",
     "requests==2.34.2",
 ]
