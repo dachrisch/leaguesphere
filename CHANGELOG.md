@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.18.7](https://github.com/dachrisch/leaguesphere/compare/v4.18.6...v4.18.7) (2026-08-16)
+
+
+### Bug Fixes
+
+* **deps:** update dependency python-dotenv to v1.2.3 ([#1844](https://github.com/dachrisch/leaguesphere/issues/1844)) ([4c1f0b9](https://github.com/dachrisch/leaguesphere/commit/4c1f0b9158c6ac68e90f513cfe4caf8980ec4cfc))
+
 ## [4.18.6](https://github.com/dachrisch/leaguesphere/compare/v4.18.5...v4.18.6) (2026-08-15)
 
 
