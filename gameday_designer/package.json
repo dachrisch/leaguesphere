@@ -18,7 +18,7 @@
     "react-joyride": "^3.2.0",
     "react-router-dom": "7.18.2",
     "react-select": "5.10.2",
-    "uuid": "14.0.1",
+    "uuid": "14.0.2",
     "web-vitals": "6.1.1"
   },
   "scripts": {
