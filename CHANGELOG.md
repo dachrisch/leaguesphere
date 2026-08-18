@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.18.12](https://github.com/dachrisch/leaguesphere/compare/v4.18.11...v4.18.12) (2026-08-18)
+
+
+### Bug Fixes
+
+* **deps:** update dependency uuid to v14.0.2 ([#1854](https://github.com/dachrisch/leaguesphere/issues/1854)) ([e25ba2f](https://github.com/dachrisch/leaguesphere/commit/e25ba2fd82e49415d4eadbb332e696a657102d92))
+
 ## [4.18.11](https://github.com/dachrisch/leaguesphere/compare/v4.18.10...v4.18.11) (2026-08-18)
 
 
