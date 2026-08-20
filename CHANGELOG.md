@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.18.16](https://github.com/dachrisch/leaguesphere/compare/v4.18.15...v4.18.16) (2026-08-20)
+
+
+### Bug Fixes
+
+* **liveticker:** store game times as local wall-clock time ([#1842](https://github.com/dachrisch/leaguesphere/issues/1842)) ([f902b84](https://github.com/dachrisch/leaguesphere/commit/f902b849cfec8b2f8959bb3a69ef613606d97d1a))
+
 ## [4.18.15](https://github.com/dachrisch/leaguesphere/compare/v4.18.14...v4.18.15) (2026-08-20)
 
 
