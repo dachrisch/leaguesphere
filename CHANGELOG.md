@@ -1,5 +1,71 @@
 # Changelog
 
+## [4.18.14](https://github.com/dachrisch/leaguesphere/compare/v4.18.13...v4.18.14) (2026-08-20)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @vitejs/plugin-react to v6.1.0 ([#1859](https://github.com/dachrisch/leaguesphere/issues/1859)) ([ecd86ef](https://github.com/dachrisch/leaguesphere/commit/ecd86ef933d698664509a7e3812a669d82d44871))
+* **deps:** update dependency @vitejs/plugin-react to v6.1.0 ([#1860](https://github.com/dachrisch/leaguesphere/issues/1860)) ([2902c99](https://github.com/dachrisch/leaguesphere/commit/2902c99582885753363a63eec75ad5afd7f61e93))
+
+## [4.18.13](https://github.com/dachrisch/leaguesphere/compare/v4.18.12...v4.18.13) (2026-08-20)
+
+
+### Bug Fixes
+
+* **deps:** update dependency vite to v8.2.2 ([#1856](https://github.com/dachrisch/leaguesphere/issues/1856)) ([3df6607](https://github.com/dachrisch/leaguesphere/commit/3df66074158a3d5e4238730491e4db787bff5685))
+* **deps:** update dependency vite to v8.2.2 ([#1857](https://github.com/dachrisch/leaguesphere/issues/1857)) ([aaa3d3f](https://github.com/dachrisch/leaguesphere/commit/aaa3d3f44327af51f0adc03839b863ef72c0fc14))
+
+## [4.18.12](https://github.com/dachrisch/leaguesphere/compare/v4.18.11...v4.18.12) (2026-08-18)
+
+
+### Bug Fixes
+
+* **deps:** update dependency uuid to v14.0.2 ([#1854](https://github.com/dachrisch/leaguesphere/issues/1854)) ([e25ba2f](https://github.com/dachrisch/leaguesphere/commit/e25ba2fd82e49415d4eadbb332e696a657102d92))
+
+## [4.18.11](https://github.com/dachrisch/leaguesphere/compare/v4.18.10...v4.18.11) (2026-08-18)
+
+
+### Bug Fixes
+
+* **deps:** update vitest monorepo to v4.1.11 ([#1852](https://github.com/dachrisch/leaguesphere/issues/1852)) ([a9c9aab](https://github.com/dachrisch/leaguesphere/commit/a9c9aabc59c70edf6c40974e5d93fc7cd520017c))
+
+## [4.18.10](https://github.com/dachrisch/leaguesphere/compare/v4.18.9...v4.18.10) (2026-08-18)
+
+
+### Bug Fixes
+
+* **deps:** lock file maintenance ([#1848](https://github.com/dachrisch/leaguesphere/issues/1848)) ([1d738d6](https://github.com/dachrisch/leaguesphere/commit/1d738d6ef0cd3699b06e229132307f93897afe36))
+
+## [4.18.9](https://github.com/dachrisch/leaguesphere/compare/v4.18.8...v4.18.9) (2026-08-18)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @testing-library/user-event to v14.6.5 ([#1849](https://github.com/dachrisch/leaguesphere/issues/1849)) ([2461927](https://github.com/dachrisch/leaguesphere/commit/2461927b10587a5929b2651be0d63d2df3d4d076))
+
+## [4.18.8](https://github.com/dachrisch/leaguesphere/compare/v4.18.7...v4.18.8) (2026-08-17)
+
+
+### Bug Fixes
+
+* **deps:** lock file maintenance ([#1846](https://github.com/dachrisch/leaguesphere/issues/1846)) ([652104a](https://github.com/dachrisch/leaguesphere/commit/652104a603b42f0b46711c4222ccef6815294dfc))
+
+## [4.18.7](https://github.com/dachrisch/leaguesphere/compare/v4.18.6...v4.18.7) (2026-08-16)
+
+
+### Bug Fixes
+
+* **deps:** update dependency python-dotenv to v1.2.3 ([#1844](https://github.com/dachrisch/leaguesphere/issues/1844)) ([4c1f0b9](https://github.com/dachrisch/leaguesphere/commit/4c1f0b9158c6ac68e90f513cfe4caf8980ec4cfc))
+
+## [4.18.6](https://github.com/dachrisch/leaguesphere/compare/v4.18.5...v4.18.6) (2026-08-15)
+
+
+### Bug Fixes
+
+* **deps:** update dependency web-vitals to v6.1.1 ([#1837](https://github.com/dachrisch/leaguesphere/issues/1837)) ([ddca34a](https://github.com/dachrisch/leaguesphere/commit/ddca34a2ebfcc181b822fe86448d1e3c44a7a81e))
+* **deps:** update dependency web-vitals to v6.1.1 ([#1838](https://github.com/dachrisch/leaguesphere/issues/1838)) ([d6b8686](https://github.com/dachrisch/leaguesphere/commit/d6b8686cc2603ba3a653175300a03a33b9b1637b))
+
 ## [4.18.5](https://github.com/dachrisch/leaguesphere/compare/v4.18.4...v4.18.5) (2026-08-14)
 
 
