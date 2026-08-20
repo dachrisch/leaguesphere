@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.18.14](https://github.com/dachrisch/leaguesphere/compare/v4.18.13...v4.18.14) (2026-08-20)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @vitejs/plugin-react to v6.1.0 ([#1859](https://github.com/dachrisch/leaguesphere/issues/1859)) ([ecd86ef](https://github.com/dachrisch/leaguesphere/commit/ecd86ef933d698664509a7e3812a669d82d44871))
+* **deps:** update dependency @vitejs/plugin-react to v6.1.0 ([#1860](https://github.com/dachrisch/leaguesphere/issues/1860)) ([2902c99](https://github.com/dachrisch/leaguesphere/commit/2902c99582885753363a63eec75ad5afd7f61e93))
+
 ## [4.18.13](https://github.com/dachrisch/leaguesphere/compare/v4.18.12...v4.18.13) (2026-08-20)
 
 
