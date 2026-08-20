@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import toLocalTime from '../../utils/time';
 
 const Ticks = (props) => {
   const {entries, gameStatus} = props;
@@ -32,7 +33,7 @@ const Ticks = (props) => {
           {entries.map((entry, index) => (
             <li key={index} className={`list-group-item`}>
               <div className='text-center text-muted smaller'>
-                {entry.time} Uhr
+                {toLocalTime(entry.time)} Uhr
               </div>
               <div className={getAlignmentFor(entry.team)}>{entry.text}</div>
             </li>

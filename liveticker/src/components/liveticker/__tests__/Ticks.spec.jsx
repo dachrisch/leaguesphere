@@ -1,8 +1,16 @@
 import React from 'react';
+import {afterAll, beforeAll, vi} from 'vitest';
 import {render, screen} from '@testing-library/react';
 import Ticks from '../Ticks';
 import {LIVETICKER_DATA} from '../../../__tests__/testdata/livetickerData';
 
+beforeAll(() => {
+  vi.stubEnv('TZ', 'Europe/Berlin');
+});
+
+afterAll(() => {
+  vi.unstubAllEnvs();
+});
 
 const setup = () => {
   const ticks = LIVETICKER_DATA[0].ticks;
@@ -14,6 +22,6 @@ describe('Ticks component', () => {
     setup();
     expect(screen.getAllByRole('listitem')).toHaveLength(5);
     expect(screen.getByText('Turnover')).toBeInTheDocument();
-    expect(screen.getByText(new RegExp('12:05'))).toBeInTheDocument();
+    expect(screen.getByText(new RegExp('14:05'))).toBeInTheDocument();
   });
 });
