@@ -16,6 +16,7 @@ from gamedays.models import (
     ResourceUrl,
 )
 from gamedays.service.placeholder_service import GamedayPlaceholderService
+from gamedays.service.utils import utc_time_as_iso
 
 logger = logging.getLogger(__name__)
 
@@ -148,11 +149,18 @@ class GameinfoSerializer(ModelSerializer):
             "halftime_score",
             "final_score",
         ]
-        extra_kwargs = {
-            "gameStarted": {"format": "%H:%M"},
-            "gameHalftime": {"format": "%H:%M"},
-            "gameFinished": {"format": "%H:%M"},
-        }
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # The stored TimeField values are raw UTC wall-clock times; recombine
+        # them into self-describing UTC ISO-8601 timestamps so the mutation
+        # endpoint responses (game start/halftime/finish) render in the
+        # viewer's local time instead of showing the raw UTC clock.
+        for field in ("gameStarted", "gameHalftime", "gameFinished"):
+            value = getattr(instance, field, None)
+            if value is not None:
+                data[field] = utc_time_as_iso(value)
+        return data
 
     def _get_scores(self, obj):
         results = obj.gameresult_set.all()

@@ -1,9 +1,16 @@
 import React from 'react';
+import {afterAll, beforeAll, vi} from 'vitest';
 import {render, screen} from '@testing-library/react';
 import Ticks from '../Ticks';
 import {LIVETICKER_DATA} from '../../../__tests__/testdata/livetickerData';
 
-process.env.TZ = 'Europe/Berlin';
+beforeAll(() => {
+  vi.stubEnv('TZ', 'Europe/Berlin');
+});
+
+afterAll(() => {
+  vi.unstubAllEnvs();
+});
 
 const setup = () => {
   const ticks = LIVETICKER_DATA[0].ticks;

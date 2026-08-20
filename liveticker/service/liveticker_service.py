@@ -3,6 +3,7 @@ from typing import List
 
 from django.conf import settings
 from django.db.models import Subquery, OuterRef, F, Q
+from django.utils import timezone
 
 from gamedays.models import League, Gameday, Gameinfo, Gameresult, TeamLog
 from gamedays.service.gameday_settings import SCHEDULED
@@ -42,7 +43,11 @@ class LivetickerService:
             filter_conditions |= self._get_latest_slot_filter(gameday_id)
             next_games_list += self._get_all_live_games(filter_conditions)
         self._update_next_games_with_teamlog(next_games_list)
-        return LivetickerSerializer(instance=next_games_list, many=True).data
+        # One reference instant per response: every tick and gameStarted
+        # serializes against the same "now" for the UTC date resolution.
+        return LivetickerSerializer(
+            instance=next_games_list, many=True, ref_now=timezone.now()
+        ).data
 
     def _update_next_games_with_teamlog(self, next_games_list):
         game: dict

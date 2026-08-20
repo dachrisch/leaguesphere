@@ -1,6 +1,13 @@
+import {afterAll, beforeAll, describe, expect, it, vi} from 'vitest';
 import toLocalTime from '../time';
 
-process.env.TZ = 'Europe/Berlin';
+beforeAll(() => {
+  vi.stubEnv('TZ', 'Europe/Berlin');
+});
+
+afterAll(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('toLocalTime', () => {
   it('renders a UTC ISO timestamp in the local time zone', () => {

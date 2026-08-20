@@ -155,7 +155,7 @@ class TestGamelogCreator(TestCase):
         user = User.objects.first()
         utc_now = datetime(2026, 8, 15, 9, 5, 0, tzinfo=UTC)
         created_time_field = TeamLog._meta.get_field("created_time")
-        with mock.patch.object(created_time_field, "_get_default", new=lambda: utc_now):
+        with mock.patch.object(created_time_field, "get_default", return_value=utc_now):
             with self.assertNumQueries(1):
                 TeamLog.objects.create(
                     gameinfo=firstGame,

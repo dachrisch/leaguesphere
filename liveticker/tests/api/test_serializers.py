@@ -1,9 +1,8 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from liveticker.api.serializers import (
     TeamlogSerializer,
     LivetickerSerializer,
-    _utc_time_as_iso,
 )
 
 
@@ -23,34 +22,44 @@ class TestTeamlogSerializer:
         return defaults
 
     def test_default_works(self):
-        now = datetime.now()
+        ref_now = datetime(2026, 8, 15, 12, 0, 0, tzinfo=UTC)
+        created_time = datetime(2026, 8, 15, 8, 5, 0, tzinfo=UTC)
         teamlog_entries = [
-            TestTeamlogSerializer.create_some_teamlog(player=7, created_time=now),
-            TestTeamlogSerializer.create_some_teamlog(),
+            TestTeamlogSerializer.create_some_teamlog(
+                player=7, created_time=created_time
+            ),
+            TestTeamlogSerializer.create_some_teamlog(created_time=created_time),
         ]
         serializer = TeamlogSerializer(
-            instance=teamlog_entries, home_team="name of team", many=True
+            instance=teamlog_entries,
+            home_team="name of team",
+            ref_now=ref_now,
+            many=True,
         )
         assert dict(serializer.data[0]) == {
             "team": "home",
             "text": "Touchdown: #7",
-            "time": _utc_time_as_iso(now),
+            "time": "2026-08-15T08:05:00+00:00",
         }
 
     def test_team_is_none(self):
-        now = datetime.now()
+        ref_now = datetime(2026, 8, 15, 12, 0, 0, tzinfo=UTC)
+        created_time = datetime(2026, 8, 15, 8, 5, 0, tzinfo=UTC)
         teamlog_entries = [
             TestTeamlogSerializer.create_some_teamlog(
-                event="Spielzeit", input="1:05", created_time=now
+                event="Spielzeit", input="1:05", created_time=created_time
             )
         ]
         serializer = TeamlogSerializer(
-            instance=teamlog_entries, home_team="name of team", many=True
+            instance=teamlog_entries,
+            home_team="name of team",
+            ref_now=ref_now,
+            many=True,
         )
         assert dict(serializer.data[0]) == {
             "team": None,
             "text": "Spielzeit - 1:05",
-            "time": _utc_time_as_iso(now),
+            "time": "2026-08-15T08:05:00+00:00",
         }
 
     def test_get_text_for_pat(self):
@@ -170,9 +179,26 @@ class TestLivetickerSerializer:
         }
 
     def test_game_with_game_started_time(self):
-        now = datetime(2022, 1, 7, 7, 7, 7)
+        ref_now = datetime(2022, 1, 7, 12, 0, 0, tzinfo=UTC)
+        game_started = datetime(2022, 1, 7, 7, 7, 7, tzinfo=UTC)
         liveticker_entries = [
-            TestLivetickerSerializer.create_some_liveticker(gameStarted=now)
+            TestLivetickerSerializer.create_some_liveticker(gameStarted=game_started)
         ]
-        serializer = LivetickerSerializer(instance=liveticker_entries, many=True)
-        assert serializer.data[0]["time"] == _utc_time_as_iso(now)
+        serializer = LivetickerSerializer(
+            instance=liveticker_entries, many=True, ref_now=ref_now
+        )
+        assert serializer.data[0]["time"] == "2022-01-07T07:07:07+00:00"
+
+    def test_game_started_near_utc_midnight_uses_previous_day(self):
+        # A tick/game recorded at 23:50 UTC just before the DST-end instant
+        # must be attributed to the previous day, not to "today" — otherwise
+        # the frontend resolves the wrong DST offset (off by a full hour).
+        ref_now = datetime(2026, 10, 25, 0, 5, 0, tzinfo=UTC)
+        game_started = datetime(2026, 10, 24, 23, 50, 0, tzinfo=UTC)
+        liveticker_entries = [
+            TestLivetickerSerializer.create_some_liveticker(gameStarted=game_started)
+        ]
+        serializer = LivetickerSerializer(
+            instance=liveticker_entries, many=True, ref_now=ref_now
+        )
+        assert serializer.data[0]["time"] == "2026-10-24T23:50:00+00:00"

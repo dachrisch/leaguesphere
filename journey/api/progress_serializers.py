@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from gamedays.models import Gameday, Gameinfo, Gameresult
+from gamedays.service.utils import utc_time_as_iso
 
 
 class GameResultProgressSerializer(serializers.ModelSerializer):
@@ -28,6 +29,17 @@ class GameinfoProgressSerializer(serializers.ModelSerializer):
             'gameresult',
         ]
         read_only_fields = fields
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # gameStarted/gameFinished are stored UTC wall-clock times; emit them
+        # as self-describing UTC ISO-8601 timestamps. `scheduled` stays the
+        # human-entered local wall-clock time and is left untouched.
+        for field in ('gameStarted', 'gameFinished'):
+            value = getattr(instance, field, None)
+            if value is not None:
+                data[field] = utc_time_as_iso(value)
+        return data
 
     def get_gameresult(self, obj):
         """Return the home team gameresult if it exists."""

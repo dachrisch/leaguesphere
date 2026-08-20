@@ -1,22 +1,7 @@
-from datetime import UTC, datetime
-
-from django.utils import timezone
 from rest_framework.fields import CharField, SerializerMethodField, IntegerField
 from rest_framework.serializers import Serializer
 
-
-def _utc_time_as_iso(time_value) -> str:
-    """Serialize a stored UTC wall-clock time as an explicit UTC ISO-8601 timestamp.
-
-    ``TeamLog.created_time`` / ``Gameinfo.gameStarted`` are ``TimeField``s holding
-    the UTC time-of-day (they are written from ``timezone.now()``, whose time
-    component ``TimeField.to_python()`` keeps in UTC). Recombining that time with
-    the current date and the UTC offset makes the value self-describing, so the
-    frontend can render it in the viewer's local time.
-    """
-    if hasattr(time_value, "time"):
-        time_value = time_value.time()
-    return datetime.combine(timezone.now().date(), time_value, tzinfo=UTC).isoformat()
+from gamedays.service.utils import utc_time_as_iso
 
 
 class TeamlogSerializer(Serializer):
@@ -31,9 +16,10 @@ class TeamlogSerializer(Serializer):
     team = SerializerMethodField()
     time = SerializerMethodField()
 
-    def __init__(self, home_team, *args, **kwargs):
+    def __init__(self, home_team, ref_now=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.home_team = home_team
+        self.ref_now = ref_now
 
     def get_text(self, obj: dict):
         text = obj[self.EVENT]
@@ -56,7 +42,9 @@ class TeamlogSerializer(Serializer):
         return "away"
 
     def get_time(self, obj: dict):
-        return _utc_time_as_iso(obj[self.CREATED_TIME])
+        # created_time is the UTC instant of the tick, emitted as a
+        # self-describing UTC ISO timestamp.
+        return utc_time_as_iso(obj[self.CREATED_TIME], ref_now=self.ref_now)
 
 
 class LivetickerSerializer(Serializer):
@@ -94,16 +82,23 @@ class LivetickerSerializer(Serializer):
     away = SerializerMethodField()
     ticks = SerializerMethodField()
 
+    def __init__(self, ref_now=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ref_now = ref_now
+
     def get_ticks(self, obj: dict):
         return TeamlogSerializer(
-            instance=obj[self.TEAMLOG], home_team=obj[self.NAME_HOME], many=True
+            instance=obj[self.TEAMLOG],
+            home_team=obj[self.NAME_HOME],
+            ref_now=self.ref_now,
+            many=True,
         ).data
 
     def get_time(self, obj: dict):
         if obj.get(self.GAME_STARTED) is None:
             # scheduled is human-entered local wall-clock time; display as-is.
             return obj[self.SCHEDULED].strftime("%H:%M")
-        return _utc_time_as_iso(obj[self.GAME_STARTED])
+        return utc_time_as_iso(obj[self.GAME_STARTED], ref_now=self.ref_now)
 
     def get_home(self, obj: dict):
         return self._get_team_dict(
