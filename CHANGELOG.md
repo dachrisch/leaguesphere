@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.18.17](https://github.com/dachrisch/leaguesphere/compare/v4.18.16...v4.18.17) (2026-08-20)
+
+
+### Bug Fixes
+
+* **progress-dashboard:** treat 1./2. Halbzeit statuses as live ([#1843](https://github.com/dachrisch/leaguesphere/issues/1843)) ([4bf9f33](https://github.com/dachrisch/leaguesphere/commit/4bf9f33d26026bd22fbacd94d9d2fb6e12a02d22))
+
 ## [4.18.16](https://github.com/dachrisch/leaguesphere/compare/v4.18.15...v4.18.16) (2026-08-20)
 
 
