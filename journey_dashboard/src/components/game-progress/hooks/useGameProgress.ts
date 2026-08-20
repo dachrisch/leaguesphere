@@ -7,7 +7,7 @@ import { getLastGameTime } from '../utils/gameTimeUtils';
 function calculateStats(gameday: GamedayProgress): GamedayStats {
   const total = gameday.games.length;
   const played = gameday.games.filter((g) => g.status === GameStatus.COMPLETED).length;
-  const live = gameday.games.filter((g) => LIVE_STATUSES.includes(g.status)).length;
+  const live = gameday.games.filter((g) => LIVE_STATUSES.some((status) => status === g.status)).length;
   const pending = gameday.games.filter((g) => g.status === GameStatus.PLANNED).length;
 
   return {

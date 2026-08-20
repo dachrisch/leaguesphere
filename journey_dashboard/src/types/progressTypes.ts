@@ -74,10 +74,12 @@ export const GameStatus = {
   SECOND_HALF: '2. Halbzeit',
 } as const;
 
+type GameStatusValue = (typeof GameStatus)[keyof typeof GameStatus];
+
 // Statuses that mean a game is live right now. The live scoreboard flow
 // (GameinfoWrapper) writes '1. Halbzeit' / '2. Halbzeit', while the REST PATCH
 // flow writes 'Gestartet'. All three must be treated as in progress.
-export const LIVE_STATUSES: readonly string[] = [
+export const LIVE_STATUSES: readonly GameStatusValue[] = [
   GameStatus.IN_PROGRESS,
   GameStatus.FIRST_HALF,
   GameStatus.SECOND_HALF,

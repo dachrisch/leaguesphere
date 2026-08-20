@@ -96,8 +96,8 @@ describe('useGameProgress', () => {
       date: '2026-05-24',
       start: '10:00:00',
       games: [
-        { id: 401, status: '1. Halbzeit', scheduled: '10:00:00', field: 1, gameStarted: null, gameFinished: null, gameresult: null },
-        { id: 402, status: '2. Halbzeit', scheduled: '10:30:00', field: 2, gameStarted: null, gameFinished: null, gameresult: null },
+        { id: 401, status: GameStatus.FIRST_HALF, scheduled: '10:00:00', field: 1, gameStarted: null, gameFinished: null, gameresult: null },
+        { id: 402, status: GameStatus.SECOND_HALF, scheduled: '10:30:00', field: 2, gameStarted: null, gameFinished: null, gameresult: null },
         { id: 403, status: GameStatus.PLANNED, scheduled: '11:00:00', field: 3, gameStarted: null, gameFinished: null, gameresult: null },
       ],
     };
