@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.18.15](https://github.com/dachrisch/leaguesphere/compare/v4.18.14...v4.18.15) (2026-08-20)
+
+
+### Bug Fixes
+
+* **deps:** update dependency i18next to v26.4.0 ([#1863](https://github.com/dachrisch/leaguesphere/issues/1863)) ([98daaa2](https://github.com/dachrisch/leaguesphere/commit/98daaa25a89daeb95d8dcea052a9d6aa0a0bef8a))
+* **deps:** update dependency react-i18next to v17.0.12 ([#1862](https://github.com/dachrisch/leaguesphere/issues/1862)) ([570c2e5](https://github.com/dachrisch/leaguesphere/commit/570c2e5eaeedd98af40d02bceb321ca63ef3b38c))
+
 ## [4.18.14](https://github.com/dachrisch/leaguesphere/compare/v4.18.13...v4.18.14) (2026-08-20)
 
 
