@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.18.18](https://github.com/dachrisch/leaguesphere/compare/v4.18.17...v4.18.18) (2026-08-22)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @testing-library/user-event to v14.6.6 ([#1868](https://github.com/dachrisch/leaguesphere/issues/1868)) ([829446e](https://github.com/dachrisch/leaguesphere/commit/829446e8ba7000a22bbc942fe8f3a3a9a193189c))
+* **deps:** update dependency eslint to v10.9.0 ([#1867](https://github.com/dachrisch/leaguesphere/issues/1867)) ([b6f7276](https://github.com/dachrisch/leaguesphere/commit/b6f72760114fc00e1ea604b84e031487cca98d94))
+
 ## [4.18.17](https://github.com/dachrisch/leaguesphere/compare/v4.18.16...v4.18.17) (2026-08-20)
 
 
