@@ -167,6 +167,14 @@ class TestOfficialsStatisticsView(WebTest):
         gameinfo = GameinfoFactory(gameday=gameday)
         GameOfficialFactory(gameinfo=gameinfo, position=position, official=official)
 
+    @classmethod
+    def _game_officials(cls, gameday, position, official, count):
+        # The statistics page only shows officials with at least 10
+        # LeagueSphere games by default - use this to give a test
+        # official enough games to actually appear on the page.
+        for _ in range(count):
+            cls._game_official(gameday, position, official)
+
     def test_lists_officials_ranked_by_leaguesphere_games_for_selected_season(self):
         team = TeamFactory(name="Adler", description="Adler Hamburg")
         association = DBSetup().create_new_association()
@@ -186,9 +194,8 @@ class TestOfficialsStatisticsView(WebTest):
         )
 
         gameday_2024 = GamedayFactory(date="2024-05-01")
-        self._game_official(gameday_2024, "Referee", official_top)
-        self._game_official(gameday_2024, "Referee", official_top)
-        self._game_official(gameday_2024, "Referee", official_second)
+        self._game_officials(gameday_2024, "Referee", official_top, 12)
+        self._game_officials(gameday_2024, "Referee", official_second, 10)
 
         response = self.app.get(
             reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
@@ -231,7 +238,7 @@ class TestOfficialsStatisticsView(WebTest):
             external_id="1",
         )
         gameday_2024 = GamedayFactory(date="2024-05-01")
-        self._game_official(gameday_2024, "Referee", official)
+        self._game_officials(gameday_2024, "Referee", official, 10)
 
         response = self.app.get(
             reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
@@ -254,7 +261,7 @@ class TestOfficialsStatisticsView(WebTest):
             external_id="1",
         )
         gameday_2024 = GamedayFactory(date="2024-05-01")
-        self._game_official(gameday_2024, "Referee", official)
+        self._game_officials(gameday_2024, "Referee", official, 10)
         self.app.set_user(DBSetup().create_new_user("staff_user", is_staff=True))
 
         response = self.app.get(
@@ -282,7 +289,7 @@ class TestOfficialsStatisticsView(WebTest):
             created_at="2024-02-01",
         )
         gameday_2024 = GamedayFactory(date="2024-05-01")
-        self._game_official(gameday_2024, "Referee", official)
+        self._game_officials(gameday_2024, "Referee", official, 10)
 
         response = self.app.get(
             reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
@@ -307,7 +314,8 @@ class TestOfficialsStatisticsView(WebTest):
             external_id="1",
         )
         gameday_2024 = GamedayFactory(date="2024-05-01")
-        self._game_official(gameday_2024, "Referee", official)
+        # All 10 games on the same single Gameday - one Spieltag attended.
+        self._game_officials(gameday_2024, "Referee", official, 10)
 
         response = self.app.get(
             reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
@@ -329,7 +337,7 @@ class TestOfficialsStatisticsView(WebTest):
             external_id="1",
         )
         gameday_2024 = GamedayFactory(date="2024-05-01")
-        self._game_official(gameday_2024, "Referee", official)
+        self._game_officials(gameday_2024, "Referee", official, 10)
         OfficialExternalGamesFactory(
             official=official,
             number_games=6,
@@ -363,14 +371,16 @@ class TestOfficialsStatisticsView(WebTest):
         assert "display:none" in with_external.get("style", "")
         assert "display:none" not in without_external.get("style", "")
 
-        # "without_external" shows the LeagueSphere-only total (1); the
-        # combined total (1 + 6 = 7) only appears in the "with external"
-        # table. Compare exact text tokens (not raw HTML) since the
-        # markup has whitespace/newlines around each cell's value.
+        # "without_external" shows the LeagueSphere-only total (10); the
+        # combined total (10 + 6 = 16) only appears in the "with
+        # external" table. Compare exact text tokens (not raw HTML)
+        # since the markup has whitespace/newlines around each cell's
+        # value.
         without_external_values = list(without_external.stripped_strings)
         with_external_values = list(with_external.stripped_strings)
-        assert "7" not in without_external_values
-        assert "7" in with_external_values
+        assert "16" not in without_external_values
+        assert "16" in with_external_values
+        assert "10" in without_external_values
 
         assert "officials/js/statistics_toggle.js" in content
 

@@ -238,12 +238,15 @@ class OfficialsRepositoryService:
         """
         Two leaderboards of officials for `season`, built from a single
         fetched dataset - one query total, regardless of how many
-        officials or games exist:
-        - "without_external": ranked and cut off by LeagueSphere-only
+        officials or games exist. Each is the top `top_n` officials by
+        game count, intersected with a `minimum_games` floor (see
+        `_rank_and_cutoff`) - never more than `top_n` rows, and possibly
+        fewer if some of the top `top_n` don't clear the minimum:
+        - "without_external": ranked and filtered by LeagueSphere-only
           games (`total_games`); external games are shown but don't
           affect this ranking or its `minimum_games` threshold. This is
           the default view.
-        - "with_external": ranked and cut off the same way, but using
+        - "with_external": ranked and filtered the same way, but using
           LeagueSphere + external games combined (`total_games_with_external`).
         Both variants only include officials with at least one
         LeagueSphere game that season ("Scorecard Judge" is never one of
@@ -297,22 +300,18 @@ class OfficialsRepositoryService:
         """
         Sorts `officials` (already-fetched model instances, annotated
         with `sort_field`) descending by that field - last/first name as
-        a deterministic tie-break - then returns the top `top_n`,
-        extended to include every official with at least `minimum_games`
-        on `sort_field` even if that pushes the result past `top_n`
-        (since the list is sorted, that larger set is always exactly the
-        first `max(top_n, that count)` entries). Pure in-memory work, no
-        additional queries.
+        a deterministic tie-break - takes the top `top_n`, then filters
+        that slice down to officials with at least `minimum_games` on
+        `sort_field`. This is an intersection (top N AND at least the
+        minimum), never a union: the result never exceeds `top_n`
+        officials, and can be smaller than `top_n` if not all of them
+        clear the minimum. Pure in-memory work, no additional queries.
         """
         ordered = sorted(
             officials,
             key=lambda o: (-getattr(o, sort_field), o.last_name, o.first_name),
         )
-        meeting_minimum = sum(
-            1 for o in officials if getattr(o, sort_field) >= minimum_games
-        )
-        cutoff = max(top_n, meeting_minimum)
-        return ordered[:cutoff]
+        return [o for o in ordered[:top_n] if getattr(o, sort_field) >= minimum_games]
 
     @staticmethod
     def _current_license_name_subquery(as_of_year=None):

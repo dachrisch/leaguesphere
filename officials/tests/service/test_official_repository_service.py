@@ -239,9 +239,12 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
 
         service = OfficialsRepositoryService()
         # Both the "without_external" and "with_external" leaderboards
-        # are built from a single fetched dataset.
+        # are built from a single fetched dataset. minimum_games=0 here
+        # since this test is about the per-official counts, not the
+        # top-N/minimum-games cutoff (covered separately below) - both
+        # officials have fewer than the default 10 games.
         with self.assertNumQueries(1):
-            result = service.get_officials_statistics_for_season(2024)
+            result = service.get_officials_statistics_for_season(2024, minimum_games=0)
             officials = result["without_external"]
             # access .team inside the same query-count block to prove
             # select_related("team") prevents a follow-up query per row.
@@ -295,7 +298,9 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
         # A game on a different Spieltag - must increment the count.
         self._game_official(gameday_b, "Referee", official)
 
-        stats = OfficialsRepositoryService().get_officials_statistics_for_season(2024)
+        stats = OfficialsRepositoryService().get_officials_statistics_for_season(
+            2024, minimum_games=0
+        )
         official_stats = next(
             o for o in stats["without_external"] if o.pk == official.pk
         )
@@ -321,7 +326,9 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
         gameday_2024 = GamedayFactory(date="2024-05-01")
         self._game_official(gameday_2024, "Referee", official)
 
-        result = OfficialsRepositoryService().get_officials_statistics_for_season(2024)
+        result = OfficialsRepositoryService().get_officials_statistics_for_season(
+            2024, minimum_games=0
+        )
 
         assert result["without_external"][0].license_name is None
 
@@ -344,11 +351,13 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
         with self.assertNumQueries(1):
             service.get_officials_statistics_for_season(2024)
 
-    def test_returns_only_top_n_when_the_minimum_games_threshold_is_not_met(self):
+    def test_top_n_slice_is_filtered_out_entirely_when_none_meet_the_minimum(self):
+        # top_n and minimum_games intersect (AND), not a union: taking
+        # the top 3 by rank and then requiring >= 10 games each can leave
+        # fewer than 3 - here, zero, since none has anywhere near 10.
         association = DBSetup().create_new_association()
         gameday = GamedayFactory(date="2024-05-01")
         team = TeamFactory(name="Team A", description="Team A")
-        officials = []
         for i in range(5):
             official = OfficialFactory(
                 first_name=f"First{i}",
@@ -357,8 +366,6 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
                 association=association,
                 external_id=f"{i}",
             )
-            officials.append(official)
-            # One game each - below any minimum_games threshold used below.
             self._game_official(gameday, "Referee", official)
 
         service = OfficialsRepositoryService()
@@ -366,12 +373,15 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
             2024, top_n=3, minimum_games=10
         )
 
-        assert len(result["without_external"]) == 3
-        assert len(result["with_external"]) == 3
+        assert result["without_external"] == []
+        assert result["with_external"] == []
 
-    def test_extends_past_top_n_for_officials_meeting_the_minimum_games_threshold(
+    def test_result_never_exceeds_top_n_even_if_more_officials_meet_the_minimum(
         self,
     ):
+        # 5 officials all clear minimum_games=2, but top_n=3 must still
+        # cap the result at 3 - the old (wrong) "union" behavior would
+        # have extended this to all 5.
         association = DBSetup().create_new_association()
         gameday = GamedayFactory(date="2024-05-01")
         team = TeamFactory(name="Team A", description="Team A")
@@ -383,7 +393,6 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
                 association=association,
                 external_id=f"{i}",
             )
-            # Every official clears the minimum_games threshold used below.
             for _ in range(2):
                 self._game_official(gameday, "Referee", official)
 
@@ -392,10 +401,8 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
             2024, top_n=3, minimum_games=2
         )
 
-        # All 5 clear the minimum-games bar, so the top_n=3 cap must not
-        # cut any of them off.
-        assert len(result["without_external"]) == 5
-        assert len(result["with_external"]) == 5
+        assert len(result["without_external"]) == 3
+        assert len(result["with_external"]) == 3
 
     def test_with_external_variant_ranks_by_combined_totals(self):
         team = TeamFactory(name="Team A", description="Team A")
@@ -440,7 +447,10 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
         ).save()
 
         service = OfficialsRepositoryService()
-        result = service.get_officials_statistics_for_season(2024)
+        # minimum_games=0 isolates the ranking/ordering itself from the
+        # cutoff threshold (covered separately below) - both officials
+        # have fewer than the default 10 LeagueSphere games.
+        result = service.get_officials_statistics_for_season(2024, minimum_games=0)
 
         assert [o.pk for o in result["without_external"]] == [
             official_a.pk,
@@ -456,7 +466,14 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
         assert b_with_external.external_games_total == 20
         assert b_with_external.total_games_with_external == 23
 
-    def test_with_external_variant_extends_the_cutoff_using_combined_totals(self):
+    def test_with_external_variant_applies_the_minimum_games_threshold_differently(
+        self,
+    ):
+        # Same top_n for both variants, large enough to keep both
+        # officials in the ranked slice - but the minimum_games=10 floor
+        # is evaluated on a different total per variant, so it can keep
+        # an official in "with_external" while dropping them from
+        # "without_external".
         team = TeamFactory(name="Team A", description="Team A")
         association = DBSetup().create_new_association()
         gameday_2024 = GamedayFactory(date="2024-05-01")
@@ -471,10 +488,8 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
         for _ in range(15):
             self._game_official(gameday_2024, "Referee", official_a)
 
-        # Official B only clears the minimum-games bar once external
-        # games are added in (2 + 9 = 11 >= 10) - must appear in
-        # "with_external" but stay excluded from "without_external" when
-        # top_n is smaller than the population.
+        # Official B: 2 LeagueSphere games (below 10) + 9 external
+        # (2 + 9 = 11, above 10 once combined).
         official_b = OfficialFactory(
             first_name="Ben",
             last_name="Berlin",
@@ -500,7 +515,7 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
 
         service = OfficialsRepositoryService()
         result = service.get_officials_statistics_for_season(
-            2024, top_n=1, minimum_games=10
+            2024, top_n=2, minimum_games=10
         )
 
         without_external_pks = [o.pk for o in result["without_external"]]
@@ -508,4 +523,4 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
 
         assert without_external_pks == [official_a.pk]
         assert official_b.pk not in without_external_pks
-        assert official_b.pk in with_external_pks
+        assert with_external_pks == [official_a.pk, official_b.pk]
