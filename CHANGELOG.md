@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.19.1](https://github.com/dachrisch/leaguesphere/compare/v4.19.0...v4.19.1) (2026-08-23)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @types/react-dom to v19.2.5 ([#1873](https://github.com/dachrisch/leaguesphere/issues/1873)) ([5174d75](https://github.com/dachrisch/leaguesphere/commit/5174d75c2c88374aaefc6a1483df4b1be7200f23))
+
 ## [4.19.0](https://github.com/dachrisch/leaguesphere/compare/v4.18.18...v4.19.0) (2026-08-23)
 
 
