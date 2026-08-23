@@ -1,5 +1,6 @@
 from django.urls import path, re_path
 
+from officials.constants import OFFICIALS_STATISTICS, OFFICIALS_STATISTICS_FOR_SEASON
 from officials.views import (
     AllTeamsCardListView,
     OfficialsStatisticsView,
@@ -40,8 +41,11 @@ OFFICIALS_SIGN_UP_LIST = "view-officials-sign-up-list"
 OFFICIALS_SIGN_UP_FOR_GAMEDAY = "view-officials-sign-up-for-gameday"
 OFFICIALS_SIGN_UP_CANCEL_FOR_GAMEDAY = "view-officials-sign-up-cancel-for-gameday"
 OFFICIALS_SIGN_OUT = "view-officials-sign-out"
-OFFICIALS_STATISTICS = "view-officials-statistics"
-OFFICIALS_STATISTICS_FOR_SEASON = "view-officials-statistics-for-season"
+# OFFICIALS_STATISTICS / OFFICIALS_STATISTICS_FOR_SEASON live in
+# officials/constants.py (imported above) since OfficialsStatisticsView
+# also needs them and can't import from this module without a circular
+# import - re-exported here so existing `from officials.urls import
+# OFFICIALS_STATISTICS...` call sites keep working unchanged.
 
 urlpatterns = [
     path(

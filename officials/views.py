@@ -24,6 +24,7 @@ from officials.api.serializers import (
     OfficialSerializer,
     OfficialGamelistSerializer,
 )
+from officials.constants import OFFICIALS_STATISTICS_FOR_SEASON
 from officials.forms import AddInternalGameOfficialEntryForm, MoodleLoginForm
 from officials.models import Official, OfficialLicenseHistory
 from officials.service.boff_license_calculation import LicenseStrategy
@@ -95,7 +96,6 @@ class OfficialsStatisticsView(View):
                 is_staff, official.first_name, official.last_name
             )
         years = self._get_years()
-        from officials.urls import OFFICIALS_STATISTICS_FOR_SEASON
 
         return render(
             request,

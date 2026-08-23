@@ -8,7 +8,9 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.contrib.messages import get_messages
+from django.db import connection
 from django.test import TestCase, Client
+from django.test.utils import CaptureQueriesContext
 from django_webtest import WebTest, DjangoWebtestResponse
 from rest_framework.reverse import reverse
 
@@ -121,14 +123,7 @@ class TestAllTeamsCardListView(WebTest):
             official=official, license=license_f1, created_at="2021-01-01"
         )
 
-        # 5 queries: (1) maintenance-mode guard middleware, (2) a DB
-        # connectivity check, (3) TeamRepositoryService.get_all_teams()
-        # (cache cold - cleared in setUp), (4) the license breakdown
-        # (OfficialsRepositoryService.get_team_license_breakdown(), one
-        # query per its own docstring), (5) the site menu's league lookup -
-        # none of it caused by this view's own logic.
-        with self.assertNumQueries(5):
-            response = self.app.get(reverse(OFFICIALS_LIST_FOR_ALL_TEAMS))
+        response = self.app.get(reverse(OFFICIALS_LIST_FOR_ALL_TEAMS))
 
         assert response.status_code == HTTPStatus.OK
         template_names = [t.name for t in response.templates if t.name is not None]
@@ -159,16 +154,54 @@ class TestAllTeamsCardListView(WebTest):
             external_id="2",
         )
 
-        # See test_renders_new_card_template_with_search_and_cards above
-        # for the breakdown of these 5 queries.
-        with self.assertNumQueries(5):
-            response = self.app.get(reverse(OFFICIALS_LIST_FOR_ALL_TEAMS))
+        response = self.app.get(reverse(OFFICIALS_LIST_FOR_ALL_TEAMS))
 
         breakdown_by_team = {
             entry["team"].pk: entry["license_breakdown"]
             for entry in response.context["teams_with_breakdown"]
         }
         assert breakdown_by_team[team.pk]["total"] == 1
+
+    def test_query_count_does_not_scale_with_number_of_teams_or_officials(self):
+        # An absolute assertNumQueries() on the full response would also
+        # count maintenance/session/menu middleware queries unrelated to
+        # this view, making the number fragile to unrelated changes.
+        # Comparing query counts between a small and a large dataset
+        # instead isolates whether THIS view's own logic scales with row
+        # count - middleware overhead is constant either way, so it
+        # cancels out of the comparison - matching what CLAUDE.md's
+        # query-count policy actually requires ("query count must NOT
+        # increase with result set size").
+        def build_team_with_official(name):
+            team = TeamFactory(name=name, description=name)
+            association = DBSetup().create_new_association()
+            official = OfficialFactory(
+                first_name=name,
+                last_name=name,
+                team=team,
+                association=association,
+                external_id=name,
+            )
+            OfficialLicenseHistoryFactory(
+                official=official,
+                license=OfficialLicenseFactory(id=1, name="F1"),
+                created_at="2021-01-01",
+            )
+
+        build_team_with_official("Small")
+        cache.clear()  # keep both measurements at the same "cold cache" state
+        with CaptureQueriesContext(connection) as small_dataset:
+            self.app.get(reverse(OFFICIALS_LIST_FOR_ALL_TEAMS))
+
+        for i in range(20):
+            build_team_with_official(f"Extra{i}")
+        cache.clear()
+        with CaptureQueriesContext(connection) as large_dataset:
+            self.app.get(reverse(OFFICIALS_LIST_FOR_ALL_TEAMS))
+
+        assert len(large_dataset.captured_queries) == len(
+            small_dataset.captured_queries
+        )
 
 
 class TestOfficialsStatisticsView(WebTest):
@@ -215,16 +248,9 @@ class TestOfficialsStatisticsView(WebTest):
         self._game_officials(gameday_2024, "Referee", official_top, 12)
         self._game_officials(gameday_2024, "Referee", official_second, 10)
 
-        # 5 queries: (1) maintenance-mode guard middleware, (2) a DB
-        # connectivity check, (3) the statistics queryset itself (one
-        # query - see get_officials_statistics_for_season()'s docstring),
-        # (4) the (uncached-this-test) year-picker list, (5) the site
-        # menu's league lookup - none of it caused by this view's own
-        # logic.
-        with self.assertNumQueries(5):
-            response = self.app.get(
-                reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
-            )
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
 
         assert response.status_code == HTTPStatus.OK
         template_names = [t.name for t in response.templates if t.name is not None]
@@ -265,12 +291,9 @@ class TestOfficialsStatisticsView(WebTest):
         gameday_2024 = GamedayFactory(date="2024-05-01")
         self._game_officials(gameday_2024, "Referee", official, 10)
 
-        # See test_lists_officials_ranked_by_leaguesphere_games_for_selected_season
-        # above for the breakdown of these 5 queries.
-        with self.assertNumQueries(5):
-            response = self.app.get(
-                reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
-            )
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
 
         content = response.content.decode()
         assert "Maximilian Mustermann" not in content
@@ -292,15 +315,9 @@ class TestOfficialsStatisticsView(WebTest):
         self._game_officials(gameday_2024, "Referee", official, 10)
         self.app.set_user(DBSetup().create_new_user("staff_user", is_staff=True))
 
-        # 16 queries: the same 5 as an anonymous request (see
-        # test_lists_officials_ranked_by_leaguesphere_games_for_selected_season
-        # above), plus 11 from self.app.set_user()'s actual login flow (user
-        # lookup, session create/update, last_login update, and
-        # journey-tracking rows) - none of it caused by this view's own logic.
-        with self.assertNumQueries(16):
-            response = self.app.get(
-                reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
-            )
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
 
         assert "Maximilian Mustermann" in response.content.decode()
 
@@ -325,20 +342,14 @@ class TestOfficialsStatisticsView(WebTest):
         gameday_2024 = GamedayFactory(date="2024-05-01")
         self._game_officials(gameday_2024, "Referee", official, 10)
 
-        # See test_lists_officials_ranked_by_leaguesphere_games_for_selected_season
-        # above for the breakdown of these 5 queries.
-        with self.assertNumQueries(5):
-            response = self.app.get(
-                reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
-            )
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
 
         assert "F1" in response.content.decode()
 
     def test_defaults_to_current_year_when_no_season_given(self):
-        # See test_lists_officials_ranked_by_leaguesphere_games_for_selected_season
-        # above for the breakdown of these 5 queries.
-        with self.assertNumQueries(5):
-            response = self.app.get(reverse(OFFICIALS_STATISTICS))
+        response = self.app.get(reverse(OFFICIALS_STATISTICS))
 
         assert response.status_code == HTTPStatus.OK
         assert response.context["season"] == datetime.today().year
@@ -357,12 +368,9 @@ class TestOfficialsStatisticsView(WebTest):
         # All 10 games on the same single Gameday - one Spieltag attended.
         self._game_officials(gameday_2024, "Referee", official, 10)
 
-        # See test_lists_officials_ranked_by_leaguesphere_games_for_selected_season
-        # above for the breakdown of these 5 queries.
-        with self.assertNumQueries(5):
-            response = self.app.get(
-                reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
-            )
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
 
         content = response.content.decode()
         assert "Spieltage" in content
@@ -395,12 +403,9 @@ class TestOfficialsStatisticsView(WebTest):
             comment="",
         ).save()
 
-        # See test_lists_officials_ranked_by_leaguesphere_games_for_selected_season
-        # above for the breakdown of these 5 queries.
-        with self.assertNumQueries(5):
-            response = self.app.get(
-                reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
-            )
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
 
         assert response.status_code == HTTPStatus.OK
         content = response.content.decode()
@@ -429,6 +434,46 @@ class TestOfficialsStatisticsView(WebTest):
         assert "10" in without_external_values
 
         assert "officials/js/statistics_toggle.js" in content
+
+    def test_query_count_does_not_scale_with_number_of_officials_or_games(self):
+        # See TestAllTeamsCardListView's test of the same name: comparing
+        # query counts between a small and a large dataset (rather than
+        # asserting an absolute number) isolates whether THIS view's own
+        # logic scales with row count, without the assertion being
+        # fragile to unrelated maintenance/session/menu middleware
+        # changes.
+        team = TeamFactory(name="Team A", description="Team A")
+        association = DBSetup().create_new_association()
+        gameday = GamedayFactory(date="2024-05-01")
+
+        def build_official(name):
+            official = OfficialFactory(
+                first_name=name,
+                last_name=name,
+                team=team,
+                association=association,
+                external_id=name,
+            )
+            self._game_officials(gameday, "Referee", official, 10)
+
+        build_official("Small")
+        cache.clear()  # keep both measurements at the same "cold cache" state
+        with CaptureQueriesContext(connection) as small_dataset:
+            self.app.get(
+                reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+            )
+
+        for i in range(10):
+            build_official(f"Extra{i}")
+        cache.clear()
+        with CaptureQueriesContext(connection) as large_dataset:
+            self.app.get(
+                reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+            )
+
+        assert len(large_dataset.captured_queries) == len(
+            small_dataset.captured_queries
+        )
 
 
 class TestAddInternalGameOfficialUpdateView(WebTest):
