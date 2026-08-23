@@ -12,6 +12,20 @@ class Obfuscator:
                 obfuscated_text += current_arg[0] + 4 * "*"
         return obfuscated_text
 
+    @staticmethod
+    def reveal_unless_obfuscated(is_staff: bool, *args: str) -> str:
+        """
+        Staff-aware display helper: joins the given parts with a space
+        when `is_staff` is true, otherwise reduces them via `obfuscate()`.
+        Centralizes the "full value for staff, redacted otherwise" policy
+        so it has one implementation instead of being reimplemented at
+        each call site (e.g. OfficialSerializer.get_name() and the
+        officials statistics leaderboard).
+        """
+        if is_staff:
+            return " ".join(arg for arg in args if arg)
+        return Obfuscator.obfuscate(*args)
+
 
 class ObfuscatorSerializer(Serializer):
     def __init__(self, is_staff=None, *args, **kwargs):

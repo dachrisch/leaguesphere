@@ -1,11 +1,19 @@
 from datetime import datetime
 
 import pytest
+from django.core.cache import cache
 from django.test import TestCase
 
 from gamedays.models import Team
+from gamedays.tests.setup_factories.db_setup import DBSetup
+from gamedays.tests.setup_factories.factories import TeamFactory
 from officials.service.official_service import OfficialService
 from officials.tests.setup_factories.db_setup_officials import DbSetupOfficials
+from officials.tests.setup_factories.factories_officials import (
+    OfficialFactory,
+    OfficialLicenseFactory,
+    OfficialLicenseHistoryFactory,
+)
 
 
 class TestOfficialService(TestCase):
@@ -37,3 +45,63 @@ class TestOfficialService(TestCase):
         )
         assert len(result_list["officials_list"]) == 1
         assert result_list["season"] == 2020
+
+
+class TestGetAllTeamsWithLicenseBreakdown(TestCase):
+    def setUp(self):
+        # get_all_teams() caches under a fixed "all_teams" key for 24h -
+        # must be cleared so tests don't see stale/cross-test team lists.
+        cache.clear()
+
+    def tearDown(self):
+        cache.clear()
+
+    def test_combines_teams_with_their_license_breakdown(self):
+        team = TeamFactory(name="Team A")
+        association = DBSetup().create_new_association()
+        license_f1 = OfficialLicenseFactory(id=1, name="F1")
+        official = OfficialFactory(
+            first_name="A",
+            last_name="One",
+            team=team,
+            association=association,
+            external_id="1",
+        )
+        OfficialLicenseHistoryFactory(
+            official=official,
+            license=license_f1,
+            created_at="2021-06-01",
+        )
+
+        result = OfficialService().get_all_teams_with_license_breakdown()
+
+        entry = next(
+            e for e in result["teams_with_breakdown"] if e["team"].pk == team.pk
+        )
+        assert entry["license_breakdown"]["total"] == 1
+        assert entry["license_breakdown"]["F1"] == 1
+        assert result["license_levels"] == ["F1", "F2", "F3", "F4"]
+        assert "no_license_label" not in result
+
+    def test_team_with_no_officials_has_empty_breakdown(self):
+        team = TeamFactory(name="Empty Team")
+
+        result = OfficialService().get_all_teams_with_license_breakdown()
+
+        entry = next(
+            e for e in result["teams_with_breakdown"] if e["team"].pk == team.pk
+        )
+        assert entry["license_breakdown"] == {}
+
+    def test_reuses_all_teams_cache_across_calls(self):
+        TeamFactory(name="Team A")
+        service = OfficialService()
+
+        # Cold cache: 1 query for the team list, 1 for the license breakdown.
+        with self.assertNumQueries(2):
+            service.get_all_teams_with_license_breakdown()
+
+        # Warm cache: team list served from cache, only the (uncached)
+        # license breakdown query runs.
+        with self.assertNumQueries(1):
+            service.get_all_teams_with_license_breakdown()

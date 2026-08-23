@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import datetime, timedelta
 
 from django.db.models import (
@@ -13,7 +14,12 @@ from django.db.models import (
 )
 from django.db.models.functions import Coalesce
 
-from officials.models import Official, OfficialLicenseHistory, OfficialExternalGames
+from officials.models import (
+    Official,
+    OfficialLicenseHistory,
+    OfficialExternalGames,
+)
+from officials.service.boff_license_calculation import LicenseStrategy
 from officials.service.funcs import GroupConcat
 
 
@@ -111,7 +117,11 @@ class OfficialsRepositoryService:
 
     @staticmethod
     def _generic_games_subquery(
-        field: str, aggregation, query_filter: Q, exclude_scorecard_judge: bool = False
+        field: str,
+        aggregation,
+        query_filter: Q,
+        exclude_scorecard_judge: bool = False,
+        distinct: bool = False,
     ):
         """
         Helper method to generate subqueries for various game counts.
@@ -120,6 +130,8 @@ class OfficialsRepositoryService:
         :param aggregation: Aggregation function (Sum, Count, etc.)
         :param query_filter: The query filter to filter down the aggregation.
         :param exclude_scorecard_judge: Boolean indicating if Scorecard Judge positions should be excluded.
+        :param distinct: Passed through to the aggregation (e.g. Count(..., distinct=True)
+            to count distinct games rather than every matching row).
         :return: Subquery for the aggregated games count.
         """
         if exclude_scorecard_judge:
@@ -127,7 +139,12 @@ class OfficialsRepositoryService:
 
         return (
             Official.objects.filter(pk=OuterRef("pk"))
-            .annotate(games=Coalesce(aggregation(field, filter=query_filter), Value(0)))
+            .annotate(
+                games=Coalesce(
+                    aggregation(field, filter=query_filter, distinct=distinct),
+                    Value(0),
+                )
+            )
             .values("games")[:1]
         )
 
@@ -178,6 +195,184 @@ class OfficialsRepositoryService:
             aggregation=Count,
             exclude_scorecard_judge=True,
         )
+
+    @classmethod
+    def _position_games_subquery(cls, position: str, season: int):
+        return cls._generic_games_subquery(
+            field="gameofficial",
+            aggregation=Count,
+            query_filter=Q(
+                gameofficial__position=position,
+                gameofficial__gameinfo__gameday__date__year=season,
+            ),
+        )
+
+    @classmethod
+    def _external_games_total_subquery(cls, season: int):
+        return cls._generic_games_subquery_with_calculation(
+            query_filter=Q(officialexternalgames__date__year=season)
+        )
+
+    @classmethod
+    def _unique_gamedays_subquery(cls, season: int):
+        """
+        Distinct-Spieltag version of the position-summed counts above: an
+        official who works several games on the same tournament day (the
+        common case) or two positions in the same game (an unusual data
+        shape, but not prevented by the model) would otherwise be counted
+        once per game/position by `total_games`, inflating how many
+        distinct Spieltage they actually attended. "Scorecard Judge" is
+        excluded, matching every other count on this leaderboard.
+        """
+        return cls._generic_games_subquery(
+            field="gameofficial__gameinfo__gameday",
+            aggregation=Count,
+            query_filter=Q(gameofficial__gameinfo__gameday__date__year=season),
+            exclude_scorecard_judge=True,
+            distinct=True,
+        )
+
+    def get_officials_statistics_for_season(
+        self, season: int, top_n: int = 50, minimum_games: int = 10
+    ):
+        """
+        Two leaderboards of officials for `season`, built from a single
+        fetched dataset - one query total, regardless of how many
+        officials or games exist. Each is the top `top_n` officials by
+        game count, intersected with a `minimum_games` floor (see
+        `_rank_and_cutoff`) - never more than `top_n` rows, and possibly
+        fewer if some of the top `top_n` don't clear the minimum:
+        - "without_external": ranked and filtered by LeagueSphere-only
+          games (`total_games`); external games are shown but don't
+          affect this ranking or its `minimum_games` threshold. This is
+          the default view.
+        - "with_external": ranked and filtered the same way, but using
+          LeagueSphere + external games combined (`total_games_with_external`).
+        Both variants only include officials with at least one
+        LeagueSphere game that season ("Scorecard Judge" is never one of
+        the four counted positions, so it's implicitly excluded
+        everywhere here); which officials qualify for that base
+        population never depends on external games.
+        """
+        officials = list(
+            Official.objects.select_related("team")
+            .annotate(
+                referee_count=Subquery(
+                    self._position_games_subquery("Referee", season)
+                ),
+                down_judge_count=Subquery(
+                    self._position_games_subquery("Down Judge", season)
+                ),
+                field_judge_count=Subquery(
+                    self._position_games_subquery("Field Judge", season)
+                ),
+                side_judge_count=Subquery(
+                    self._position_games_subquery("Side Judge", season)
+                ),
+                unique_gamedays_count=Subquery(self._unique_gamedays_subquery(season)),
+                license_name=Subquery(
+                    self._current_license_name_subquery(season),
+                    output_field=CharField(),
+                ),
+                external_games_total=Subquery(
+                    self._external_games_total_subquery(season)
+                ),
+            )
+            # A second, chained annotate() so total_games can reference
+            # the count columns above via F() instead of re-running each
+            # of their 4 correlated subqueries a second time.
+            .annotate(
+                total_games=(
+                    F("referee_count")
+                    + F("down_judge_count")
+                    + F("field_judge_count")
+                    + F("side_judge_count")
+                )
+            )
+            .annotate(
+                total_games_with_external=F("total_games") + F("external_games_total")
+            )
+            .filter(total_games__gt=0)
+        )
+        return {
+            "without_external": self._rank_and_cutoff(
+                officials, "total_games", top_n, minimum_games
+            ),
+            "with_external": self._rank_and_cutoff(
+                officials, "total_games_with_external", top_n, minimum_games
+            ),
+        }
+
+    @staticmethod
+    def _rank_and_cutoff(officials, sort_field, top_n, minimum_games):
+        """
+        Sorts `officials` (already-fetched model instances, annotated
+        with `sort_field`) descending by that field - last/first name as
+        a deterministic tie-break - takes the top `top_n`, then filters
+        that slice down to officials with at least `minimum_games` on
+        `sort_field`. This is an intersection (top N AND at least the
+        minimum), never a union: the result never exceeds `top_n`
+        officials, and can be smaller than `top_n` if not all of them
+        clear the minimum. Pure in-memory work, no additional queries.
+        """
+        ordered = sorted(
+            officials,
+            key=lambda o: (-getattr(o, sort_field), o.last_name, o.first_name),
+        )
+        return [o for o in ordered[:top_n] if getattr(o, sort_field) >= minimum_games]
+
+    @staticmethod
+    def _current_license_name_subquery(as_of_year=None):
+        """
+        Subquery resolving the license an official currently holds: their
+        single most recent `OfficialLicenseHistory` entry by year
+        (excluding the "no license" sentinel), with rank breaking ties
+        within that year - the same logic
+        `OfficialSerializer._get_license_history()` already uses for the
+        working per-team "Lizenzstufe" column and official profile pages.
+        (An earlier version of this method instead shifted a license
+        forward by a full calendar year, copying the Moodle-eligibility-
+        specific `_license_name_subquery` by mistake - so e.g. a license
+        earned 2025-03-31 didn't count until season 2026, even for an
+        official whose games were all in season 2025.)
+        When `as_of_year` is given, only history up to and including that
+        year is considered, so a season's statistics never show a license
+        the official didn't hold yet at that point; there is otherwise no
+        expiration cutoff, matching the existing convention.
+        """
+        queryset = OfficialLicenseHistory.objects.filter(
+            official=OuterRef("pk")
+        ).exclude(license=LicenseStrategy.NO_LICENSE)
+        if as_of_year is not None:
+            queryset = queryset.filter(created_at__year__lte=as_of_year)
+        return queryset.order_by_rank("-created_at__year").values("license__name")[:1]
+
+    def get_team_license_breakdown(self) -> dict:
+        """
+        Returns `{team_id: {"total": n, <license name>: n, ...}}` for every
+        official excluding the "no team" placeholder (`Official.OHNE_TEAM_ID`).
+        An official's license is the one they currently hold (see
+        `_current_license_name_subquery`); officials with no license
+        history at all are counted only towards "total", not under any
+        license bucket. Exactly one query, regardless of how many teams or
+        officials exist.
+        """
+        rows = (
+            Official.objects.exclude(team_id=Official.OHNE_TEAM_ID)
+            .annotate(
+                license_name=Subquery(
+                    self._current_license_name_subquery(), output_field=CharField()
+                )
+            )
+            .values("team_id", "license_name")
+            .annotate(count=Count("id"))
+        )
+        breakdown = defaultdict(lambda: defaultdict(int))
+        for row in rows:
+            breakdown[row["team_id"]]["total"] += row["count"]
+            if row["license_name"]:
+                breakdown[row["team_id"]][row["license_name"]] += row["count"]
+        return {team_id: dict(counts) for team_id, counts in breakdown.items()}
 
     # noinspection PyMethodMayBeStatic
     def get_all_years_with_team_official_licenses(self, team):

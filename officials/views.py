@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
+from django.core.cache import cache
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Subquery, OuterRef, Q
 from django.http import Http404, HttpResponse
@@ -16,18 +17,21 @@ from django.views.decorators.cache import cache_page
 
 from gamedays.constants import LEAGUE_GAMEDAY_DETAIL
 from gamedays.models import Team, Gameinfo, GameOfficial, Gameresult
+from league_manager.utils.serializer_utils import Obfuscator
 from league_manager.utils.view_utils import PermissionHelper
 from officials.api.serializers import (
     GameOfficialAllInfoSerializer,
     OfficialSerializer,
     OfficialGamelistSerializer,
 )
+from officials.constants import OFFICIALS_STATISTICS_FOR_SEASON
 from officials.forms import AddInternalGameOfficialEntryForm, MoodleLoginForm
 from officials.models import Official, OfficialLicenseHistory
 from officials.service.boff_license_calculation import LicenseStrategy
 from officials.service.moodle.moodle_api import MoodleApiException
 from officials.service.moodle.moodle_service import MoodleService
 from officials.service.official_service import OfficialService
+from officials.service.officials_repository_service import OfficialsRepositoryService
 from officials.service.signup_service import (
     OfficialSignupService,
     DuplicateSignupError,
@@ -60,6 +64,70 @@ def _set_remember_cookie(response, value):
 
 def _delete_remember_cookie(response):
     response.delete_cookie(MOODLE_REMEMBER_COOKIE, path=REMEMBER_COOKIE_PATH)
+
+
+class AllTeamsCardListView(View):
+    template_name = "officials/all_teams_card_list.html"
+
+    def get(self, request, **kwargs):
+        context = OfficialService().get_all_teams_with_license_breakdown()
+        return render(request, self.template_name, context)
+
+
+class OfficialsStatisticsView(View):
+    template_name = "officials/statistics.html"
+    YEARS_CACHE_KEY = "officials_statistics_years"
+
+    def get(self, request, **kwargs):
+        season = kwargs.get("season", datetime.today().year)
+        is_staff = request.user.is_staff
+        officials_repository_service = OfficialsRepositoryService()
+        statistics = officials_repository_service.get_officials_statistics_for_season(
+            season
+        )
+        officials_without_external = statistics["without_external"]
+        officials_with_external = statistics["with_external"]
+
+        # An official can appear in both lists (they're the same
+        # underlying rows, just re-ranked/re-cut), so set this once per
+        # list rather than trying to de-duplicate - harmless either way.
+        for official in officials_without_external + officials_with_external:
+            official.display_name = Obfuscator.reveal_unless_obfuscated(
+                is_staff, official.first_name, official.last_name
+            )
+        years = self._get_years()
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "season": season,
+                "years": years,
+                "url_pattern": OFFICIALS_STATISTICS_FOR_SEASON,
+                "officials_list_without_external": officials_without_external,
+                "officials_list_with_external": officials_with_external,
+            },
+        )
+
+    @classmethod
+    def _get_years(cls):
+        """
+        Distinct years with at least one recorded GameOfficial - only
+        used to populate the year-picker, so it's cached at the query
+        level (not a full-page cache_page, since the page's content
+        itself varies by is_staff) to avoid an unfiltered full-table
+        scan on every single request to this public page.
+        """
+        years = cache.get(cls.YEARS_CACHE_KEY)
+        if years is None:
+            years = sorted(
+                GameOfficial.objects.all()
+                .values_list("gameinfo__gameday__date__year", flat=True)
+                .distinct(),
+                reverse=True,
+            )
+            cache.set(cls.YEARS_CACHE_KEY, years, timeout=60 * 60 * 24)
+        return years
 
 
 class OfficialsTeamListView(View):

@@ -148,9 +148,6 @@
         href="https://forms.gle/F9dSrMoodipfbys79" target="_blank">hier</a> nachmelden.<br/>
     Bei Fragen wende dich bitte an Chris: c.kaempfe@afvd.de
 </p>
-<script>
-    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
-    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
-</script>
+{% include 'utils/tooltip_init.html' %}
 {% endif %}
 {% endblock gamelist %}

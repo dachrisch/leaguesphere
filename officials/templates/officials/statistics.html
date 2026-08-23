@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block og_title %}Offizielle Statistik{% endblock %}
+{% block og_description %}Offizielle Statistik{% endblock %}
+
+{% block content %}
+<article class="media content-section">
+    <div class="media-body">
+        <h1>Officials Statistik {{ season }}</h1>
+        <p>
+            Gezählt werden nur Einsätze, die über LeagueSphere erfasst wurden (Referee, Down
+            Judge, Field Judge, Side Judge). Ein Einsatz als Scorecard Judge wird NICHT gewertet.
+            Gezeigt werden die 50 Offiziellen mit den meisten Spielen, welche
+            mindestens 10 Spiele haben.
+        </p>
+        {% include 'utils/year_filter.html' %}
+
+        <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="include-external-toggle">
+            <label class="form-check-label" for="include-external-toggle">
+                Externe Spiele in Wertung und Sortierung einbeziehen
+            </label>
+        </div>
+
+        {% include 'officials/_statistics_table.html' with table_id="statistics-table-without-external" officials_list=officials_list_without_external combined=False hidden=False season=season %}
+        {% include 'officials/_statistics_table.html' with table_id="statistics-table-with-external" officials_list=officials_list_with_external combined=True hidden=True season=season %}
+    </div>
+</article>
+<script src="{% static 'officials/js/statistics_toggle.js' %}"></script>
+{% include 'utils/tooltip_init.html' %}
+{% endblock content %}

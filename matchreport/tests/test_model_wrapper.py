@@ -96,3 +96,36 @@ class TestMatchreportOfficialsLicense(TestCase):
         officials_table = wrapper._get_game_officials_table(gameinfo.id)
 
         self.assertEqual(officials_table["Lizenz"].iloc[0], "F1 2027")
+
+    def test_official_license_picks_highest_ranked_among_two_both_valid_now(self):
+        # Both entries fall inside the one-year validity window as of the
+        # gameday - unlike the previous test, the *older* entry is now the
+        # higher-ranked one and the *newer* entry is lower-ranked. Sorting
+        # by created_at (even as a tie-breaker priority) would wrongly pick
+        # the newer, lower-ranked entry; only rank must decide.
+        gameday = GamedayFactory(date=date(2027, 5, 1))
+        gameinfo = GameinfoFactory(
+            gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
+        )
+
+        official = OfficialFactory(team=TeamFactory())
+        higher_license = OfficialLicenseFactory(name="F1 2027")
+        lower_license = OfficialLicenseFactory(name="F2 2027")
+
+        OfficialLicenseHistoryFactory(
+            official=official,
+            license=higher_license,
+            created_at=date(2026, 7, 1),  # older, still valid, higher rank
+        )
+        OfficialLicenseHistoryFactory(
+            official=official,
+            license=lower_license,
+            created_at=date(2027, 2, 1),  # newer, valid, lower rank
+        )
+
+        GameOfficialFactory(gameinfo=gameinfo, official=official, position="Referee")
+
+        wrapper = MachtreportModelWrapper(gameday.pk)
+        officials_table = wrapper._get_game_officials_table(gameinfo.id)
+
+        self.assertEqual(officials_table["Lizenz"].iloc[0], "F1 2027")

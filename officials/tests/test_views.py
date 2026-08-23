@@ -1,26 +1,47 @@
 import os
+from datetime import datetime
 from http import HTTPStatus
 from unittest.mock import patch, MagicMock
 
 import pytest
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.contrib.messages import get_messages
+from django.db import connection
 from django.test import TestCase, Client
+from django.test.utils import CaptureQueriesContext
 from django_webtest import WebTest, DjangoWebtestResponse
 from rest_framework.reverse import reverse
 
 from gamedays.models import Gameinfo
 from gamedays.tests.setup_factories.db_setup import DBSetup
+from league_manager.utils.serializer_utils import Obfuscator
 from league_table.tests.setup_factories.factories_leaguetable import (
     LeagueSeasonConfigFactory,
 )
 from officials.models import Official, OfficialGamedaySignup
 from officials.service.moodle.moodle_api import MoodleApiException
 from officials.service.moodle.moodle_service import MoodleService
+from gamedays.tests.setup_factories.factories import (
+    TeamFactory,
+    GamedayFactory,
+    GameinfoFactory,
+    GameOfficialFactory,
+)
 from officials.tests.setup_factories.db_setup_officials import DbSetupOfficials
+from officials.tests.setup_factories.factories_officials import (
+    OfficialFactory,
+    OfficialLicenseFactory,
+    OfficialLicenseHistoryFactory,
+    OfficialExternalGamesFactory,
+)
 from officials.urls import (
     OFFICIALS_LIST_FOR_TEAM,
+    OFFICIALS_LIST_FOR_ALL_TEAMS,
+    OFFICIALS_STATISTICS,
+    OFFICIALS_STATISTICS_FOR_SEASON,
+    OFFICIALS_PROFILE_GAMELIST,
     OFFICIALS_GAMEOFFICIAL_INTERNAL_CREATE,
     OFFICIALS_LICENSE_CHECK,
     OFFICIALS_MOODLE_LOGIN,
@@ -75,6 +96,384 @@ class TestOfficialListView(WebTest):
         officials_list = response.context["officials_list"]
         all_officials = Official.objects.all()
         assert len(officials_list) == len(all_officials)
+
+
+class TestAllTeamsCardListView(WebTest):
+    def setUp(self):
+        # get_all_teams() caches under a fixed "all_teams" key for 24h -
+        # must be cleared so tests don't see another test's stale team
+        # list (surfaces as flakiness under parallel/xdist runs).
+        cache.clear()
+
+    def tearDown(self):
+        cache.clear()
+
+    def test_renders_new_card_template_with_search_and_cards(self):
+        team = TeamFactory(name="Adler", description="Adler Hamburg")
+        association = DBSetup().create_new_association()
+        license_f1 = OfficialLicenseFactory(id=1, name="F1")
+        official = OfficialFactory(
+            first_name="A",
+            last_name="One",
+            team=team,
+            association=association,
+            external_id="1",
+        )
+        OfficialLicenseHistoryFactory(
+            official=official, license=license_f1, created_at="2021-01-01"
+        )
+
+        response = self.app.get(reverse(OFFICIALS_LIST_FOR_ALL_TEAMS))
+
+        assert response.status_code == HTTPStatus.OK
+        template_names = [t.name for t in response.templates if t.name is not None]
+        assert "officials/all_teams_card_list.html" in template_names
+        assert "team/all_teams_list.html" not in template_names
+        content = response.content.decode()
+        assert 'id="team-search"' in content
+        assert 'class="card' in content
+        assert f'data-team-name="{team.description.lower()}"' in content
+        assert "1 - Offizielle" in content
+
+    def test_officials_on_placeholder_team_do_not_inflate_other_team_counts(self):
+        team = TeamFactory(name="Adler", description="Adler Hamburg")
+        no_team = TeamFactory(pk=Official.OHNE_TEAM_ID, name="Ohne Team")
+        association = DBSetup().create_new_association()
+        OfficialFactory(
+            first_name="A",
+            last_name="One",
+            team=team,
+            association=association,
+            external_id="1",
+        )
+        OfficialFactory(
+            first_name="B",
+            last_name="Two",
+            team=no_team,
+            association=association,
+            external_id="2",
+        )
+
+        response = self.app.get(reverse(OFFICIALS_LIST_FOR_ALL_TEAMS))
+
+        breakdown_by_team = {
+            entry["team"].pk: entry["license_breakdown"]
+            for entry in response.context["teams_with_breakdown"]
+        }
+        assert breakdown_by_team[team.pk]["total"] == 1
+
+    def test_query_count_does_not_scale_with_number_of_teams_or_officials(self):
+        # An absolute assertNumQueries() on the full response would also
+        # count maintenance/session/menu middleware queries unrelated to
+        # this view, making the number fragile to unrelated changes.
+        # Comparing query counts between a small and a large dataset
+        # instead isolates whether THIS view's own logic scales with row
+        # count - middleware overhead is constant either way, so it
+        # cancels out of the comparison - matching what CLAUDE.md's
+        # query-count policy actually requires ("query count must NOT
+        # increase with result set size").
+        def build_team_with_official(name):
+            team = TeamFactory(name=name, description=name)
+            association = DBSetup().create_new_association()
+            official = OfficialFactory(
+                first_name=name,
+                last_name=name,
+                team=team,
+                association=association,
+                external_id=name,
+            )
+            OfficialLicenseHistoryFactory(
+                official=official,
+                license=OfficialLicenseFactory(id=1, name="F1"),
+                created_at="2021-01-01",
+            )
+
+        build_team_with_official("Small")
+        cache.clear()  # keep both measurements at the same "cold cache" state
+        with CaptureQueriesContext(connection) as small_dataset:
+            self.app.get(reverse(OFFICIALS_LIST_FOR_ALL_TEAMS))
+
+        for i in range(20):
+            build_team_with_official(f"Extra{i}")
+        cache.clear()
+        with CaptureQueriesContext(connection) as large_dataset:
+            self.app.get(reverse(OFFICIALS_LIST_FOR_ALL_TEAMS))
+
+        assert len(large_dataset.captured_queries) == len(
+            small_dataset.captured_queries
+        )
+
+
+class TestOfficialsStatisticsView(WebTest):
+    def setUp(self):
+        # _get_years() caches under a fixed key for 24h - must be
+        # cleared so tests don't see another test's stale year list.
+        cache.clear()
+
+    def tearDown(self):
+        cache.clear()
+
+    @staticmethod
+    def _game_official(gameday, position, official):
+        gameinfo = GameinfoFactory(gameday=gameday)
+        GameOfficialFactory(gameinfo=gameinfo, position=position, official=official)
+
+    @classmethod
+    def _game_officials(cls, gameday, position, official, count):
+        # The statistics page only shows officials with at least 10
+        # LeagueSphere games by default - use this to give a test
+        # official enough games to actually appear on the page.
+        for _ in range(count):
+            cls._game_official(gameday, position, official)
+
+    def test_lists_officials_ranked_by_leaguesphere_games_for_selected_season(self):
+        team = TeamFactory(name="Adler", description="Adler Hamburg")
+        association = DBSetup().create_new_association()
+        official_top = OfficialFactory(
+            first_name="Maximilian",
+            last_name="Mustermann",
+            team=team,
+            association=association,
+            external_id="1",
+        )
+        official_second = OfficialFactory(
+            first_name="Julia",
+            last_name="Jansen",
+            team=team,
+            association=association,
+            external_id="2",
+        )
+
+        gameday_2024 = GamedayFactory(date="2024-05-01")
+        self._game_officials(gameday_2024, "Referee", official_top, 12)
+        self._game_officials(gameday_2024, "Referee", official_second, 10)
+
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        template_names = [t.name for t in response.templates if t.name is not None]
+        assert "officials/statistics.html" in template_names
+
+        officials_list = list(response.context["officials_list_without_external"])
+        assert [o.pk for o in officials_list] == [
+            official_top.pk,
+            official_second.pk,
+        ]
+
+        content = response.content.decode()
+        # License number links to the official's profile for that season.
+        assert (
+            reverse(
+                OFFICIALS_PROFILE_GAMELIST,
+                kwargs={"pk": official_top.pk, "season": 2024},
+            )
+            in content
+        )
+        # Total games ("Gesamt") is the first of the numeric columns,
+        # ahead of the per-position counts - checked within the table
+        # header row, since the intro paragraph also mentions "Referee".
+        header_row = content[content.index("<thead>") : content.index("</thead>")]
+        assert header_row.index("Gesamt") < header_row.index("Referee")
+        assert header_row.index("Gesamt") < header_row.index("Down Judge")
+
+    def test_names_are_obfuscated_for_anonymous_users(self):
+        team = TeamFactory(name="Adler", description="Adler Hamburg")
+        association = DBSetup().create_new_association()
+        official = OfficialFactory(
+            first_name="Maximilian",
+            last_name="Mustermann",
+            team=team,
+            association=association,
+            external_id="1",
+        )
+        gameday_2024 = GamedayFactory(date="2024-05-01")
+        self._game_officials(gameday_2024, "Referee", official, 10)
+
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
+
+        content = response.content.decode()
+        assert "Maximilian Mustermann" not in content
+        # Same obfuscation mechanism as OfficialSerializer.get_name(): each
+        # name part reduced to its first letter + "****".
+        assert Obfuscator.obfuscate("Maximilian", "Mustermann") in content
+
+    def test_names_are_shown_in_full_for_staff_users(self):
+        team = TeamFactory(name="Adler", description="Adler Hamburg")
+        association = DBSetup().create_new_association()
+        official = OfficialFactory(
+            first_name="Maximilian",
+            last_name="Mustermann",
+            team=team,
+            association=association,
+            external_id="1",
+        )
+        gameday_2024 = GamedayFactory(date="2024-05-01")
+        self._game_officials(gameday_2024, "Referee", official, 10)
+        self.app.set_user(DBSetup().create_new_user("staff_user", is_staff=True))
+
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
+
+        assert "Maximilian Mustermann" in response.content.decode()
+
+    def test_shows_the_officials_current_license(self):
+        team = TeamFactory(name="Adler", description="Adler Hamburg")
+        association = DBSetup().create_new_association()
+        official = OfficialFactory(
+            first_name="Maximilian",
+            last_name="Mustermann",
+            team=team,
+            association=association,
+            external_id="1",
+        )
+        license_f1 = OfficialLicenseFactory(id=1, name="F1")
+        # A license taken earlier in the same season year still counts -
+        # matches official #2435's real bug report.
+        OfficialLicenseHistoryFactory(
+            official=official,
+            license=license_f1,
+            created_at="2024-02-01",
+        )
+        gameday_2024 = GamedayFactory(date="2024-05-01")
+        self._game_officials(gameday_2024, "Referee", official, 10)
+
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
+
+        assert "F1" in response.content.decode()
+
+    def test_defaults_to_current_year_when_no_season_given(self):
+        response = self.app.get(reverse(OFFICIALS_STATISTICS))
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.context["season"] == datetime.today().year
+
+    def test_shows_the_unique_gamedays_count(self):
+        team = TeamFactory(name="Adler", description="Adler Hamburg")
+        association = DBSetup().create_new_association()
+        official = OfficialFactory(
+            first_name="Maximilian",
+            last_name="Mustermann",
+            team=team,
+            association=association,
+            external_id="1",
+        )
+        gameday_2024 = GamedayFactory(date="2024-05-01")
+        # All 10 games on the same single Gameday - one Spieltag attended.
+        self._game_officials(gameday_2024, "Referee", official, 10)
+
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
+
+        content = response.content.decode()
+        assert "Spieltage" in content
+        officials_list = list(response.context["officials_list_without_external"])
+        assert officials_list[0].unique_gamedays_count == 1
+
+    def test_renders_both_tables_with_an_off_by_default_toggle(self):
+        team = TeamFactory(name="Adler", description="Adler Hamburg")
+        association = DBSetup().create_new_association()
+        official = OfficialFactory(
+            first_name="Maximilian",
+            last_name="Mustermann",
+            team=team,
+            association=association,
+            external_id="1",
+        )
+        gameday_2024 = GamedayFactory(date="2024-05-01")
+        self._game_officials(gameday_2024, "Referee", official, 10)
+        OfficialExternalGamesFactory(
+            official=official,
+            number_games=6,
+            date="2024-06-01",
+            notification_date="2024-06-01",
+            position="Referee",
+            association="External Association",
+            is_international=False,
+            has_clockcontrol=True,
+            halftime_duration=15,
+            reporter_name="reporter",
+            comment="",
+        ).save()
+
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        content = response.content.decode()
+
+        toggle = response.html.find("input", id="include-external-toggle")
+        assert toggle is not None
+        assert toggle.get("checked") is None  # off by default
+
+        without_external = response.html.find(id="statistics-table-without-external")
+        with_external = response.html.find(id="statistics-table-with-external")
+        assert without_external is not None
+        assert with_external is not None
+        # The "with external" table starts hidden.
+        assert "display:none" in with_external.get("style", "")
+        assert "display:none" not in without_external.get("style", "")
+
+        # "without_external" shows the LeagueSphere-only total (10); the
+        # combined total (10 + 6 = 16) only appears in the "with
+        # external" table. Compare exact text tokens (not raw HTML)
+        # since the markup has whitespace/newlines around each cell's
+        # value.
+        without_external_values = list(without_external.stripped_strings)
+        with_external_values = list(with_external.stripped_strings)
+        assert "16" not in without_external_values
+        assert "16" in with_external_values
+        assert "10" in without_external_values
+
+        assert "officials/js/statistics_toggle.js" in content
+
+    def test_query_count_does_not_scale_with_number_of_officials_or_games(self):
+        # See TestAllTeamsCardListView's test of the same name: comparing
+        # query counts between a small and a large dataset (rather than
+        # asserting an absolute number) isolates whether THIS view's own
+        # logic scales with row count, without the assertion being
+        # fragile to unrelated maintenance/session/menu middleware
+        # changes.
+        team = TeamFactory(name="Team A", description="Team A")
+        association = DBSetup().create_new_association()
+        gameday = GamedayFactory(date="2024-05-01")
+
+        def build_official(name):
+            official = OfficialFactory(
+                first_name=name,
+                last_name=name,
+                team=team,
+                association=association,
+                external_id=name,
+            )
+            self._game_officials(gameday, "Referee", official, 10)
+
+        build_official("Small")
+        cache.clear()  # keep both measurements at the same "cold cache" state
+        with CaptureQueriesContext(connection) as small_dataset:
+            self.app.get(
+                reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+            )
+
+        for i in range(10):
+            build_official(f"Extra{i}")
+        cache.clear()
+        with CaptureQueriesContext(connection) as large_dataset:
+            self.app.get(
+                reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+            )
+
+        assert len(large_dataset.captured_queries) == len(
+            small_dataset.captured_queries
+        )
 
 
 class TestAddInternalGameOfficialUpdateView(WebTest):

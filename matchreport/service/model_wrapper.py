@@ -205,14 +205,17 @@ class MachtreportModelWrapper:
         # official (N+1). A license is valid on the gameday if the gameday
         # falls within the license validity period: training date (created_at)
         # to approximately one year later (created_at + 365 days), as defined
-        # by OfficialLicenseHistory.valid_until().
+        # by OfficialLicenseHistory.valid_until(). When more than one license
+        # is valid at once, the highest-ranked one wins (F1 over F2 over
+        # F3...) - never whichever was issued more recently, so no date
+        # field is passed to order_by_rank() here.
         latest_license = (
             OfficialLicenseHistory.objects.filter(
                 official_id=OuterRef("official"),
                 created_at__lte=self.gameday_date,
                 created_at__gt=self.gameday_date - timedelta(days=365),
             )
-            .order_by_rank("-created_at")
+            .order_by_rank()
             .values("license__name")[:1]
         )
 
