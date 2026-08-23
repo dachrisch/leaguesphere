@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.19.0](https://github.com/dachrisch/leaguesphere/compare/v4.18.18...v4.19.0) (2026-08-23)
+
+
+### Features
+
+* **officials:** searchable team cards + referee statistics leaderboard ([#1871](https://github.com/dachrisch/leaguesphere/issues/1871)) ([e603bfb](https://github.com/dachrisch/leaguesphere/commit/e603bfbe47707edb1e37387bc4d7727354263db3))
+
 ## [4.18.18](https://github.com/dachrisch/leaguesphere/compare/v4.18.17...v4.18.18) (2026-08-23)
 
 
