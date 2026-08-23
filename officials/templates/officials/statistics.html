@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block og_title %}Offizielle Statistik{% endblock %}
 {% block og_description %}Rangliste der Offiziellen nach Anzahl der Spiele{% endblock %}
@@ -6,59 +7,28 @@
 {% block content %}
 <article class="media content-section">
     <div class="media-body">
-        <h1>Statistik {{ season }}</h1>
+        <h1>Officials Statistik {{ season }}</h1>
         <p>
             Gezählt werden nur Einsätze, die über LeagueSphere erfasst wurden (Referee, Down
             Judge, Field Judge, Side Judge). Ein Einsatz als Scorecard Judge wird NICHT gewertet.
-            Externe Einsätze werden nur informativ angezeigt und zählen nicht für die
-            Sortierung.
+            Gezeigt werden die 50 Offiziellen mit den meisten Spielen sowie alle weiteren mit
+            mindestens 10 Spielen - das ist eine reine Sortierung nach Einsatzzahl, keine
+            Wertung der "besten" oder "Top"-Offiziellen.
         </p>
         {% include 'utils/year_filter.html' %}
-        <table class="table table-hover">
-            <thead>
-            <tr>
-                <th scope="col">#</th>
-                <th scope="col">Name</th>
-                <th scope="col">Team</th>
-                <th scope="col">
-                    <div data-bs-title="Aktuell gültige Lizenzstufe" data-bs-toggle="tooltip">Lizenz
-                    </div>
-                </th>
-                <th scope="col">
-                    <div data-bs-title="Summe aller Spiele über LeagueSphere" data-bs-toggle="tooltip">Gesamt
-                    </div>
-                </th>
-                <th scope="col">Referee</th>
-                <th scope="col">Down Judge</th>
-                <th scope="col">Field Judge</th>
-                <th scope="col">Side Judge</th>
-                <th scope="col">
-                    <div data-bs-title="Zählt nicht für die Sortierung" data-bs-toggle="tooltip">Extern
-                    </div>
-                </th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for official in officials_list %}
-            <tr>
-                <th scope="row">
-                    <a href="{% url 'view-officials-profile-gamelist' pk=official.id season=season %}">{{ official.id }}</a>
-                </th>
-                <td>{{ official.display_name }}</td>
-                <td>{{ official.team.description }}</td>
-                <td>{{ official.license_name|default:"-" }}</td>
-                <td>{{ official.total_games|floatformat }}</td>
-                <td>{{ official.referee_count }}</td>
-                <td>{{ official.down_judge_count }}</td>
-                <td>{{ official.field_judge_count }}</td>
-                <td>{{ official.side_judge_count }}</td>
-                <td>{{ official.external_games_total|floatformat }}</td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+
+        <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="include-external-toggle">
+            <label class="form-check-label" for="include-external-toggle">
+                Externe Spiele in Wertung und Sortierung einbeziehen
+            </label>
+        </div>
+
+        {% include 'officials/_statistics_table.html' with table_id="statistics-table-without-external" officials_list=officials_list_without_external combined=False hidden=False season=season %}
+        {% include 'officials/_statistics_table.html' with table_id="statistics-table-with-external" officials_list=officials_list_with_external combined=True hidden=True season=season %}
     </div>
 </article>
+<script src="{% static 'officials/js/statistics_toggle.js' %}"></script>
 <script>
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))

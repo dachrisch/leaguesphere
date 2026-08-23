@@ -117,7 +117,11 @@ class OfficialsRepositoryService:
 
     @staticmethod
     def _generic_games_subquery(
-        field: str, aggregation, query_filter: Q, exclude_scorecard_judge: bool = False
+        field: str,
+        aggregation,
+        query_filter: Q,
+        exclude_scorecard_judge: bool = False,
+        distinct: bool = False,
     ):
         """
         Helper method to generate subqueries for various game counts.
@@ -126,6 +130,8 @@ class OfficialsRepositoryService:
         :param aggregation: Aggregation function (Sum, Count, etc.)
         :param query_filter: The query filter to filter down the aggregation.
         :param exclude_scorecard_judge: Boolean indicating if Scorecard Judge positions should be excluded.
+        :param distinct: Passed through to the aggregation (e.g. Count(..., distinct=True)
+            to count distinct games rather than every matching row).
         :return: Subquery for the aggregated games count.
         """
         if exclude_scorecard_judge:
@@ -133,7 +139,12 @@ class OfficialsRepositoryService:
 
         return (
             Official.objects.filter(pk=OuterRef("pk"))
-            .annotate(games=Coalesce(aggregation(field, filter=query_filter), Value(0)))
+            .annotate(
+                games=Coalesce(
+                    aggregation(field, filter=query_filter, distinct=distinct),
+                    Value(0),
+                )
+            )
             .values("games")[:1]
         )
 
@@ -202,27 +213,57 @@ class OfficialsRepositoryService:
             query_filter=Q(officialexternalgames__date__year=season)
         )
 
-    def get_officials_statistics_for_season(self, season: int):
+    @classmethod
+    def _unique_gamedays_subquery(cls, season: int):
         """
-        Sitewide leaderboard of officials by LeagueSphere-recorded games
-        ("Scorecard Judge" is never one of the four counted positions, so
-        it's implicitly excluded) for one season, ranked by total games
-        descending. External games are annotated for display only and do
-        not affect the ranking. Officials without any LeagueSphere game
-        that season are excluded. One query total.
+        Distinct-Spieltag version of the position-summed counts above: an
+        official who works several games on the same tournament day (the
+        common case) or two positions in the same game (an unusual data
+        shape, but not prevented by the model) would otherwise be counted
+        once per game/position by `total_games`, inflating how many
+        distinct Spieltage they actually attended. "Scorecard Judge" is
+        excluded, matching every other count on this leaderboard.
+        """
+        return cls._generic_games_subquery(
+            field="gameofficial__gameinfo__gameday",
+            aggregation=Count,
+            query_filter=Q(gameofficial__gameinfo__gameday__date__year=season),
+            exclude_scorecard_judge=True,
+            distinct=True,
+        )
+
+    def get_officials_statistics_for_season(
+        self, season: int, top_n: int = 50, minimum_games: int = 10
+    ):
+        """
+        Two leaderboards of officials for `season`, built from a single
+        fetched dataset - one query total, regardless of how many
+        officials or games exist:
+        - "without_external": ranked and cut off by LeagueSphere-only
+          games (`total_games`); external games are shown but don't
+          affect this ranking or its `minimum_games` threshold. This is
+          the default view.
+        - "with_external": ranked and cut off the same way, but using
+          LeagueSphere + external games combined (`total_games_with_external`).
+        Both variants only include officials with at least one
+        LeagueSphere game that season ("Scorecard Judge" is never one of
+        the four counted positions, so it's implicitly excluded
+        everywhere here); which officials qualify for that base
+        population never depends on external games.
         """
         referee_sq = self._position_games_subquery("Referee", season)
         down_judge_sq = self._position_games_subquery("Down Judge", season)
         field_judge_sq = self._position_games_subquery("Field Judge", season)
         side_judge_sq = self._position_games_subquery("Side Judge", season)
 
-        return (
+        officials = list(
             Official.objects.select_related("team")
             .annotate(
                 referee_count=Subquery(referee_sq),
                 down_judge_count=Subquery(down_judge_sq),
                 field_judge_count=Subquery(field_judge_sq),
                 side_judge_count=Subquery(side_judge_sq),
+                unique_gamedays_count=Subquery(self._unique_gamedays_subquery(season)),
                 license_name=Subquery(
                     self._current_license_name_subquery(season),
                     output_field=CharField(),
@@ -237,9 +278,41 @@ class OfficialsRepositoryService:
                     + Subquery(side_judge_sq)
                 ),
             )
+            .annotate(
+                total_games_with_external=F("total_games") + F("external_games_total")
+            )
             .filter(total_games__gt=0)
-            .order_by("-total_games", "last_name", "first_name")
         )
+        return {
+            "without_external": self._rank_and_cutoff(
+                officials, "total_games", top_n, minimum_games
+            ),
+            "with_external": self._rank_and_cutoff(
+                officials, "total_games_with_external", top_n, minimum_games
+            ),
+        }
+
+    @staticmethod
+    def _rank_and_cutoff(officials, sort_field, top_n, minimum_games):
+        """
+        Sorts `officials` (already-fetched model instances, annotated
+        with `sort_field`) descending by that field - last/first name as
+        a deterministic tie-break - then returns the top `top_n`,
+        extended to include every official with at least `minimum_games`
+        on `sort_field` even if that pushes the result past `top_n`
+        (since the list is sorted, that larger set is always exactly the
+        first `max(top_n, that count)` entries). Pure in-memory work, no
+        additional queries.
+        """
+        ordered = sorted(
+            officials,
+            key=lambda o: (-getattr(o, sort_field), o.last_name, o.first_name),
+        )
+        meeting_minimum = sum(
+            1 for o in officials if getattr(o, sort_field) >= minimum_games
+        )
+        cutoff = max(top_n, meeting_minimum)
+        return ordered[:cutoff]
 
     @staticmethod
     def _current_license_name_subquery(as_of_year=None):

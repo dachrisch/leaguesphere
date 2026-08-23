@@ -6,6 +6,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.contrib.messages import get_messages
 from django.test import TestCase, Client
 from django_webtest import WebTest, DjangoWebtestResponse
@@ -31,6 +32,7 @@ from officials.tests.setup_factories.factories_officials import (
     OfficialFactory,
     OfficialLicenseFactory,
     OfficialLicenseHistoryFactory,
+    OfficialExternalGamesFactory,
 )
 from officials.urls import (
     OFFICIALS_LIST_FOR_TEAM,
@@ -95,6 +97,15 @@ class TestOfficialListView(WebTest):
 
 
 class TestAllTeamsCardListView(WebTest):
+    def setUp(self):
+        # get_all_teams() caches under a fixed "all_teams" key for 24h -
+        # must be cleared so tests don't see another test's stale team
+        # list (surfaces as flakiness under parallel/xdist runs).
+        cache.clear()
+
+    def tearDown(self):
+        cache.clear()
+
     def test_renders_new_card_template_with_search_and_cards(self):
         team = TeamFactory(name="Adler", description="Adler Hamburg")
         association = DBSetup().create_new_association()
@@ -187,7 +198,7 @@ class TestOfficialsStatisticsView(WebTest):
         template_names = [t.name for t in response.templates if t.name is not None]
         assert "officials/statistics.html" in template_names
 
-        officials_list = list(response.context["officials_list"])
+        officials_list = list(response.context["officials_list_without_external"])
         assert [o.pk for o in officials_list] == [
             official_top.pk,
             official_second.pk,
@@ -284,6 +295,84 @@ class TestOfficialsStatisticsView(WebTest):
 
         assert response.status_code == HTTPStatus.OK
         assert response.context["season"] == datetime.today().year
+
+    def test_shows_the_unique_gamedays_count(self):
+        team = TeamFactory(name="Adler", description="Adler Hamburg")
+        association = DBSetup().create_new_association()
+        official = OfficialFactory(
+            first_name="Maximilian",
+            last_name="Mustermann",
+            team=team,
+            association=association,
+            external_id="1",
+        )
+        gameday_2024 = GamedayFactory(date="2024-05-01")
+        self._game_official(gameday_2024, "Referee", official)
+
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
+
+        content = response.content.decode()
+        assert "Spieltage" in content
+        officials_list = list(response.context["officials_list_without_external"])
+        assert officials_list[0].unique_gamedays_count == 1
+
+    def test_renders_both_tables_with_an_off_by_default_toggle(self):
+        team = TeamFactory(name="Adler", description="Adler Hamburg")
+        association = DBSetup().create_new_association()
+        official = OfficialFactory(
+            first_name="Maximilian",
+            last_name="Mustermann",
+            team=team,
+            association=association,
+            external_id="1",
+        )
+        gameday_2024 = GamedayFactory(date="2024-05-01")
+        self._game_official(gameday_2024, "Referee", official)
+        OfficialExternalGamesFactory(
+            official=official,
+            number_games=6,
+            date="2024-06-01",
+            notification_date="2024-06-01",
+            position="Referee",
+            association="External Association",
+            is_international=False,
+            has_clockcontrol=True,
+            halftime_duration=15,
+            reporter_name="reporter",
+            comment="",
+        ).save()
+
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        content = response.content.decode()
+
+        toggle = response.html.find("input", id="include-external-toggle")
+        assert toggle is not None
+        assert toggle.get("checked") is None  # off by default
+
+        without_external = response.html.find(id="statistics-table-without-external")
+        with_external = response.html.find(id="statistics-table-with-external")
+        assert without_external is not None
+        assert with_external is not None
+        # The "with external" table starts hidden.
+        assert "display:none" in with_external.get("style", "")
+        assert "display:none" not in without_external.get("style", "")
+
+        # "without_external" shows the LeagueSphere-only total (1); the
+        # combined total (1 + 6 = 7) only appears in the "with external"
+        # table. Compare exact text tokens (not raw HTML) since the
+        # markup has whitespace/newlines around each cell's value.
+        without_external_values = list(without_external.stripped_strings)
+        with_external_values = list(with_external.stripped_strings)
+        assert "7" not in without_external_values
+        assert "7" in with_external_values
+
+        assert "officials/js/statistics_toggle.js" in content
 
 
 class TestAddInternalGameOfficialUpdateView(WebTest):

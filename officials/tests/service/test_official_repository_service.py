@@ -238,8 +238,11 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
         self._game_official(gameday_2023, "Referee", official_c)
 
         service = OfficialsRepositoryService()
+        # Both the "without_external" and "with_external" leaderboards
+        # are built from a single fetched dataset.
         with self.assertNumQueries(1):
-            officials = list(service.get_officials_statistics_for_season(2024))
+            result = service.get_officials_statistics_for_season(2024)
+            officials = result["without_external"]
             # access .team inside the same query-count block to prove
             # select_related("team") prevents a follow-up query per row.
             team_descriptions = [official.team.description for official in officials]
@@ -253,6 +256,9 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
         assert stats_a.field_judge_count == 0
         assert stats_a.side_judge_count == 0
         assert stats_a.total_games == 5
+        # All 5 of A's counted games are separate Gameinfo rows but on the
+        # SAME single Gameday (gameday_2024) - one Spieltag attended.
+        assert stats_a.unique_gamedays_count == 1
         assert stats_a.external_games_total == 0
         assert stats_a.license_name == "F1"
 
@@ -262,8 +268,40 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
         assert stats_b.field_judge_count == 1
         assert stats_b.side_judge_count == 0
         assert stats_b.total_games == 3
+        assert stats_b.unique_gamedays_count == 1
         assert stats_b.external_games_total == 10
         assert stats_b.license_name is None
+
+    def test_unique_gamedays_count_counts_distinct_spieltage_not_games_or_positions(
+        self,
+    ):
+        team = TeamFactory(name="Team A", description="Team A")
+        association = DBSetup().create_new_association()
+        official = OfficialFactory(
+            first_name="Anna",
+            last_name="Aachen",
+            team=team,
+            association=association,
+            external_id="a",
+        )
+        gameday_a = GamedayFactory(date="2024-05-01")
+        gameday_b = GamedayFactory(date="2024-05-08")
+
+        # Two different games on the SAME Spieltag - must only count as
+        # one Spieltag attended, even though it's 2 distinct games.
+        self._game_official(gameday_a, "Referee", official)
+        self._game_official(gameday_a, "Down Judge", official)
+
+        # A game on a different Spieltag - must increment the count.
+        self._game_official(gameday_b, "Referee", official)
+
+        stats = OfficialsRepositoryService().get_officials_statistics_for_season(2024)
+        official_stats = next(
+            o for o in stats["without_external"] if o.pk == official.pk
+        )
+
+        assert official_stats.total_games == 3
+        assert official_stats.unique_gamedays_count == 2
 
     def test_license_from_a_later_year_does_not_leak_into_an_earlier_season(self):
         team = TeamFactory(name="Team A", description="Team A")
@@ -283,11 +321,9 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
         gameday_2024 = GamedayFactory(date="2024-05-01")
         self._game_official(gameday_2024, "Referee", official)
 
-        officials = list(
-            OfficialsRepositoryService().get_officials_statistics_for_season(2024)
-        )
+        result = OfficialsRepositoryService().get_officials_statistics_for_season(2024)
 
-        assert officials[0].license_name is None
+        assert result["without_external"][0].license_name is None
 
     def test_query_count_does_not_scale_with_number_of_officials_or_games(self):
         association = DBSetup().create_new_association()
@@ -306,4 +342,170 @@ class TestGetOfficialsStatisticsForSeason(TestCase):
 
         service = OfficialsRepositoryService()
         with self.assertNumQueries(1):
-            list(service.get_officials_statistics_for_season(2024))
+            service.get_officials_statistics_for_season(2024)
+
+    def test_returns_only_top_n_when_the_minimum_games_threshold_is_not_met(self):
+        association = DBSetup().create_new_association()
+        gameday = GamedayFactory(date="2024-05-01")
+        team = TeamFactory(name="Team A", description="Team A")
+        officials = []
+        for i in range(5):
+            official = OfficialFactory(
+                first_name=f"First{i}",
+                last_name=f"Last{i}",
+                team=team,
+                association=association,
+                external_id=f"{i}",
+            )
+            officials.append(official)
+            # One game each - below any minimum_games threshold used below.
+            self._game_official(gameday, "Referee", official)
+
+        service = OfficialsRepositoryService()
+        result = service.get_officials_statistics_for_season(
+            2024, top_n=3, minimum_games=10
+        )
+
+        assert len(result["without_external"]) == 3
+        assert len(result["with_external"]) == 3
+
+    def test_extends_past_top_n_for_officials_meeting_the_minimum_games_threshold(
+        self,
+    ):
+        association = DBSetup().create_new_association()
+        gameday = GamedayFactory(date="2024-05-01")
+        team = TeamFactory(name="Team A", description="Team A")
+        for i in range(5):
+            official = OfficialFactory(
+                first_name=f"First{i}",
+                last_name=f"Last{i}",
+                team=team,
+                association=association,
+                external_id=f"{i}",
+            )
+            # Every official clears the minimum_games threshold used below.
+            for _ in range(2):
+                self._game_official(gameday, "Referee", official)
+
+        service = OfficialsRepositoryService()
+        result = service.get_officials_statistics_for_season(
+            2024, top_n=3, minimum_games=2
+        )
+
+        # All 5 clear the minimum-games bar, so the top_n=3 cap must not
+        # cut any of them off.
+        assert len(result["without_external"]) == 5
+        assert len(result["with_external"]) == 5
+
+    def test_with_external_variant_ranks_by_combined_totals(self):
+        team = TeamFactory(name="Team A", description="Team A")
+        association = DBSetup().create_new_association()
+        official_a = OfficialFactory(
+            first_name="Anna",
+            last_name="Aachen",
+            team=team,
+            association=association,
+            external_id="a",
+        )
+        official_b = OfficialFactory(
+            first_name="Ben",
+            last_name="Berlin",
+            team=team,
+            association=association,
+            external_id="b",
+        )
+        gameday_2024 = GamedayFactory(date="2024-05-01")
+
+        # Official A: 8 LeagueSphere games, no external games.
+        for _ in range(8):
+            self._game_official(gameday_2024, "Referee", official_a)
+
+        # Official B: only 3 LeagueSphere games, but 20 external games -
+        # must NOT outrank A "without_external", but MUST outrank A once
+        # external games are added into "with_external".
+        for _ in range(3):
+            self._game_official(gameday_2024, "Referee", official_b)
+        OfficialExternalGamesFactory(
+            official=official_b,
+            number_games=20,
+            date="2024-06-01",
+            notification_date="2024-06-01",
+            position="Referee",
+            association="External Association",
+            is_international=False,
+            has_clockcontrol=True,
+            halftime_duration=15,
+            reporter_name="reporter",
+            comment="",
+        ).save()
+
+        service = OfficialsRepositoryService()
+        result = service.get_officials_statistics_for_season(2024)
+
+        assert [o.pk for o in result["without_external"]] == [
+            official_a.pk,
+            official_b.pk,
+        ]
+        assert [o.pk for o in result["with_external"]] == [
+            official_b.pk,
+            official_a.pk,
+        ]
+
+        b_with_external = result["with_external"][0]
+        assert b_with_external.total_games == 3
+        assert b_with_external.external_games_total == 20
+        assert b_with_external.total_games_with_external == 23
+
+    def test_with_external_variant_extends_the_cutoff_using_combined_totals(self):
+        team = TeamFactory(name="Team A", description="Team A")
+        association = DBSetup().create_new_association()
+        gameday_2024 = GamedayFactory(date="2024-05-01")
+
+        official_a = OfficialFactory(
+            first_name="Anna",
+            last_name="Aachen",
+            team=team,
+            association=association,
+            external_id="a",
+        )
+        for _ in range(15):
+            self._game_official(gameday_2024, "Referee", official_a)
+
+        # Official B only clears the minimum-games bar once external
+        # games are added in (2 + 9 = 11 >= 10) - must appear in
+        # "with_external" but stay excluded from "without_external" when
+        # top_n is smaller than the population.
+        official_b = OfficialFactory(
+            first_name="Ben",
+            last_name="Berlin",
+            team=team,
+            association=association,
+            external_id="b",
+        )
+        for _ in range(2):
+            self._game_official(gameday_2024, "Referee", official_b)
+        OfficialExternalGamesFactory(
+            official=official_b,
+            number_games=9,
+            date="2024-06-01",
+            notification_date="2024-06-01",
+            position="Referee",
+            association="External Association",
+            is_international=False,
+            has_clockcontrol=True,
+            halftime_duration=15,
+            reporter_name="reporter",
+            comment="",
+        ).save()
+
+        service = OfficialsRepositoryService()
+        result = service.get_officials_statistics_for_season(
+            2024, top_n=1, minimum_games=10
+        )
+
+        without_external_pks = [o.pk for o in result["without_external"]]
+        with_external_pks = [o.pk for o in result["with_external"]]
+
+        assert without_external_pks == [official_a.pk]
+        assert official_b.pk not in without_external_pks
+        assert official_b.pk in with_external_pks

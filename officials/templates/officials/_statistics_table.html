@@ -1,0 +1,56 @@
+{% load static %}
+<div id="{{ table_id }}" class="statistics-table"{% if hidden %} style="display:none;"{% endif %}>
+    <table class="table table-hover">
+        <thead>
+        <tr>
+            <th scope="col">#</th>
+            <th scope="col">Name</th>
+            <th scope="col">Team</th>
+            <th scope="col">
+                <div data-bs-title="Aktuell gültige Lizenzstufe" data-bs-toggle="tooltip">Lizenz
+                </div>
+            </th>
+            <th scope="col">
+                <div data-bs-title="{% if combined %}Summe aller Spiele über LeagueSphere inklusive externer Spiele{% else %}Summe aller Spiele über LeagueSphere{% endif %}"
+                     data-bs-toggle="tooltip">Gesamt
+                </div>
+            </th>
+            <th scope="col">
+                <div data-bs-title="Anzahl unterschiedlicher Spieltage (zählt einen Spieltag nur einmal, auch bei mehreren Spielen oder Positionen daran)"
+                     data-bs-toggle="tooltip">Spieltage
+                </div>
+            </th>
+            <th scope="col">Referee</th>
+            <th scope="col">Down Judge</th>
+            <th scope="col">Field Judge</th>
+            <th scope="col">Side Judge</th>
+            <th scope="col">
+                <div data-bs-title="{% if combined %}Bereits in der Gesamtsumme enthalten{% else %}Zählt nicht für die Sortierung{% endif %}"
+                     data-bs-toggle="tooltip">Extern
+                </div>
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for official in officials_list %}
+        <tr>
+            <th scope="row">
+                <a href="{% url 'view-officials-profile-gamelist' pk=official.id season=season %}">{{ official.id }}</a>
+            </th>
+            <td>{{ official.display_name }}</td>
+            <td>{{ official.team.description }}</td>
+            <td>{{ official.license_name|default:"-" }}</td>
+            <td>
+                {% if combined %}{{ official.total_games_with_external|floatformat }}{% else %}{{ official.total_games|floatformat }}{% endif %}
+            </td>
+            <td>{{ official.unique_gamedays_count }}</td>
+            <td>{{ official.referee_count }}</td>
+            <td>{{ official.down_judge_count }}</td>
+            <td>{{ official.field_judge_count }}</td>
+            <td>{{ official.side_judge_count }}</td>
+            <td>{{ official.external_games_total|floatformat }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>

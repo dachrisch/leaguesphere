@@ -79,10 +79,16 @@ class OfficialsStatisticsView(View):
         season = kwargs.get("season", datetime.today().year)
         is_staff = request.user.is_staff
         officials_repository_service = OfficialsRepositoryService()
-        officials_list = list(
-            officials_repository_service.get_officials_statistics_for_season(season)
+        statistics = officials_repository_service.get_officials_statistics_for_season(
+            season
         )
-        for official in officials_list:
+        officials_without_external = statistics["without_external"]
+        officials_with_external = statistics["with_external"]
+
+        # An official can appear in both lists (they're the same
+        # underlying rows, just re-ranked/re-cut), so set this once per
+        # list rather than trying to de-duplicate - harmless either way.
+        for official in officials_without_external + officials_with_external:
             # Same obfuscation mechanism as OfficialSerializer.get_name():
             # staff see full names, everyone else sees each name part
             # reduced to its first letter + "****".
@@ -105,7 +111,8 @@ class OfficialsStatisticsView(View):
                 "season": season,
                 "years": sorted(years, reverse=True),
                 "url_pattern": OFFICIALS_STATISTICS_FOR_SEASON,
-                "officials_list": officials_list,
+                "officials_list_without_external": officials_without_external,
+                "officials_list_with_external": officials_with_external,
             },
         )
 
