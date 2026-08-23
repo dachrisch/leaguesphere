@@ -16,6 +16,7 @@ from django.views.decorators.cache import cache_page
 
 from gamedays.constants import LEAGUE_GAMEDAY_DETAIL
 from gamedays.models import Team, Gameinfo, GameOfficial, Gameresult
+from league_manager.utils.serializer_utils import Obfuscator
 from league_manager.utils.view_utils import PermissionHelper
 from officials.api.serializers import (
     GameOfficialAllInfoSerializer,
@@ -28,6 +29,7 @@ from officials.service.boff_license_calculation import LicenseStrategy
 from officials.service.moodle.moodle_api import MoodleApiException
 from officials.service.moodle.moodle_service import MoodleService
 from officials.service.official_service import OfficialService
+from officials.service.officials_repository_service import OfficialsRepositoryService
 from officials.service.signup_service import (
     OfficialSignupService,
     DuplicateSignupError,
@@ -60,6 +62,52 @@ def _set_remember_cookie(response, value):
 
 def _delete_remember_cookie(response):
     response.delete_cookie(MOODLE_REMEMBER_COOKIE, path=REMEMBER_COOKIE_PATH)
+
+
+class AllTeamsCardListView(View):
+    template_name = "officials/all_teams_card_list.html"
+
+    def get(self, request, **kwargs):
+        context = OfficialService().get_all_teams_with_license_breakdown()
+        return render(request, self.template_name, context)
+
+
+class OfficialsStatisticsView(View):
+    template_name = "officials/statistics.html"
+
+    def get(self, request, **kwargs):
+        season = kwargs.get("season", datetime.today().year)
+        is_staff = request.user.is_staff
+        officials_repository_service = OfficialsRepositoryService()
+        officials_list = list(
+            officials_repository_service.get_officials_statistics_for_season(season)
+        )
+        for official in officials_list:
+            # Same obfuscation mechanism as OfficialSerializer.get_name():
+            # staff see full names, everyone else sees each name part
+            # reduced to its first letter + "****".
+            official.display_name = (
+                f"{official.first_name} {official.last_name}"
+                if is_staff
+                else Obfuscator.obfuscate(official.first_name, official.last_name)
+            )
+        years = (
+            GameOfficial.objects.all()
+            .values_list("gameinfo__gameday__date__year", flat=True)
+            .distinct()
+        )
+        from officials.urls import OFFICIALS_STATISTICS_FOR_SEASON
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "season": season,
+                "years": sorted(years, reverse=True),
+                "url_pattern": OFFICIALS_STATISTICS_FOR_SEASON,
+                "officials_list": officials_list,
+            },
+        )
 
 
 class OfficialsTeamListView(View):

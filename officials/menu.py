@@ -1,6 +1,7 @@
 from league_manager.base_menu import BaseMenu, MenuItem, MenuDivider
 from officials.urls import (
     OFFICIALS_LIST_FOR_ALL_TEAMS,
+    OFFICIALS_STATISTICS,
     OFFICIALS_GAME_OFFICIALS_APPEARANCE,
     OFFICIALS_GAMEOFFICIAL_INTERNAL_CREATE,
     OFFICIALS_LICENSE_CHECK,
@@ -16,6 +17,10 @@ class OfficialsMenu(BaseMenu):
             MenuItem.create(
                 name="Übersicht",
                 url=OFFICIALS_LIST_FOR_ALL_TEAMS,
+            ),
+            MenuItem.create(
+                name="Statistik",
+                url=OFFICIALS_STATISTICS,
             ),
             MenuItem.create(
                 name="Alle Einsätze",

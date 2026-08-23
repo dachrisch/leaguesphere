@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load static custom_filters %}
+
+{% block og_title %}Teams der Offiziellen{% endblock %}
+{% block og_description %}Übersicht aller Teams mit ihren Offiziellen und Lizenzen{% endblock %}
+
+{% block content %}
+<article class="media content-section">
+    <div class="media-body">
+        <h1>Teams</h1>
+        <p class="text-muted">
+            Bitte Team auswählen. Die Karten zeigen die Anzahl der Offiziellen je Team sowie
+            deren aktuelle Lizenzstufe.
+        </p>
+        <div class="mb-4">
+            <input type="search" id="team-search" class="form-control" autocomplete="off"
+                   placeholder="Team suchen …">
+        </div>
+
+        {% regroup teams_with_breakdown by team.description|first|upper as team_groups %}
+        {% for group in team_groups %}
+        <div class="team-letter-group mb-4">
+            <h3>{{ group.grouper }}</h3>
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+                {% for entry in group.list %}
+                <div class="col team-card" data-team-name="{{ entry.team.description|lower }}">
+                    <a href="{% url 'view-officials-list-for-team' pk=entry.team.pk %}"
+                       class="card h-100 text-decoration-none text-reset">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ entry.team.description }}</h5>
+                            <p class="card-text mb-1">
+                                {{ entry.license_breakdown|get_item:"total"|default:0 }} - Offizielle
+                            </p>
+                            <p class="card-text small text-muted mb-0">
+                                {% for level in license_levels %}
+                                {{ level }}: {{ entry.license_breakdown|get_item:level|default:0 }}{% if not forloop.last %} &middot; {% endif %}
+                                {% endfor %}
+                            </p>
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</article>
+<script src="{% static 'officials/js/all_teams_search.js' %}"></script>
+{% endblock content %}

@@ -1,7 +1,8 @@
 from django.urls import path, re_path
 
-from league_manager.views import AllTeamListView
 from officials.views import (
+    AllTeamsCardListView,
+    OfficialsStatisticsView,
     OfficialsTeamListView,
     GameOfficialListView,
     AddInternalGameOfficialUpdateView,
@@ -39,8 +40,20 @@ OFFICIALS_SIGN_UP_LIST = "view-officials-sign-up-list"
 OFFICIALS_SIGN_UP_FOR_GAMEDAY = "view-officials-sign-up-for-gameday"
 OFFICIALS_SIGN_UP_CANCEL_FOR_GAMEDAY = "view-officials-sign-up-cancel-for-gameday"
 OFFICIALS_SIGN_OUT = "view-officials-sign-out"
+OFFICIALS_STATISTICS = "view-officials-statistics"
+OFFICIALS_STATISTICS_FOR_SEASON = "view-officials-statistics-for-season"
 
 urlpatterns = [
+    path(
+        "statistics/",
+        OfficialsStatisticsView.as_view(),
+        name=OFFICIALS_STATISTICS,
+    ),
+    path(
+        "statistics/<int:season>/",
+        OfficialsStatisticsView.as_view(),
+        name=OFFICIALS_STATISTICS_FOR_SEASON,
+    ),
     path(
         "team/<int:pk>/list/",
         OfficialsTeamListView.as_view(),
@@ -53,9 +66,8 @@ urlpatterns = [
     ),
     path(
         "team/all/list/",
-        AllTeamListView.as_view(),
+        AllTeamsCardListView.as_view(),
         name=OFFICIALS_LIST_FOR_ALL_TEAMS,
-        kwargs={"app": "officials"},
     ),
     path(
         "einsaetze/",

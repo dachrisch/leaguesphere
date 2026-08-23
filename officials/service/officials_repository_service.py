@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import datetime, timedelta
 
 from django.db.models import (
@@ -13,7 +14,12 @@ from django.db.models import (
 )
 from django.db.models.functions import Coalesce
 
-from officials.models import Official, OfficialLicenseHistory, OfficialExternalGames
+from officials.models import (
+    Official,
+    OfficialLicenseHistory,
+    OfficialExternalGames,
+)
+from officials.service.boff_license_calculation import LicenseStrategy
 from officials.service.funcs import GroupConcat
 
 
@@ -178,6 +184,115 @@ class OfficialsRepositoryService:
             aggregation=Count,
             exclude_scorecard_judge=True,
         )
+
+    @classmethod
+    def _position_games_subquery(cls, position: str, season: int):
+        return cls._generic_games_subquery(
+            field="gameofficial",
+            aggregation=Count,
+            query_filter=Q(
+                gameofficial__position=position,
+                gameofficial__gameinfo__gameday__date__year=season,
+            ),
+        )
+
+    @classmethod
+    def _external_games_total_subquery(cls, season: int):
+        return cls._generic_games_subquery_with_calculation(
+            query_filter=Q(officialexternalgames__date__year=season)
+        )
+
+    def get_officials_statistics_for_season(self, season: int):
+        """
+        Sitewide leaderboard of officials by LeagueSphere-recorded games
+        ("Scorecard Judge" is never one of the four counted positions, so
+        it's implicitly excluded) for one season, ranked by total games
+        descending. External games are annotated for display only and do
+        not affect the ranking. Officials without any LeagueSphere game
+        that season are excluded. One query total.
+        """
+        referee_sq = self._position_games_subquery("Referee", season)
+        down_judge_sq = self._position_games_subquery("Down Judge", season)
+        field_judge_sq = self._position_games_subquery("Field Judge", season)
+        side_judge_sq = self._position_games_subquery("Side Judge", season)
+
+        return (
+            Official.objects.select_related("team")
+            .annotate(
+                referee_count=Subquery(referee_sq),
+                down_judge_count=Subquery(down_judge_sq),
+                field_judge_count=Subquery(field_judge_sq),
+                side_judge_count=Subquery(side_judge_sq),
+                license_name=Subquery(
+                    self._current_license_name_subquery(season),
+                    output_field=CharField(),
+                ),
+                external_games_total=Subquery(
+                    self._external_games_total_subquery(season)
+                ),
+                total_games=(
+                    Subquery(referee_sq)
+                    + Subquery(down_judge_sq)
+                    + Subquery(field_judge_sq)
+                    + Subquery(side_judge_sq)
+                ),
+            )
+            .filter(total_games__gt=0)
+            .order_by("-total_games", "last_name", "first_name")
+        )
+
+    @staticmethod
+    def _current_license_name_subquery(as_of_year=None):
+        """
+        Subquery resolving the license an official currently holds: their
+        single most recent `OfficialLicenseHistory` entry by year
+        (excluding the "no license" sentinel), with rank breaking ties
+        within that year - the same logic
+        `OfficialSerializer._get_license_history()` already uses for the
+        working per-team "Lizenzstufe" column and official profile pages.
+        (An earlier version of this method instead shifted a license
+        forward by a full calendar year, copying the Moodle-eligibility-
+        specific `_license_name_subquery` by mistake - so e.g. a license
+        earned 2025-03-31 didn't count until season 2026, even for an
+        official whose games were all in season 2025.)
+        When `as_of_year` is given, only history up to and including that
+        year is considered, so a season's statistics never show a license
+        the official didn't hold yet at that point; there is otherwise no
+        expiration cutoff, matching the existing convention.
+        """
+        queryset = OfficialLicenseHistory.objects.filter(
+            official=OuterRef("pk")
+        ).exclude(license=LicenseStrategy.NO_LICENSE)
+        if as_of_year is not None:
+            queryset = queryset.filter(created_at__year__lte=as_of_year)
+        return queryset.order_by_rank("-created_at__year").values("license__name")[:1]
+
+    def get_team_license_breakdown(self) -> dict:
+        """
+        Returns `{team_id: {"total": n, <license name>: n, ...}}` for every
+        official excluding the "no team" placeholder (`Official.OHNE_TEAM_ID`).
+        An official's license is the one they currently hold (see
+        `_current_license_name_subquery`); officials with no license
+        history at all are counted only towards "total", not under any
+        license bucket. Exactly one query, regardless of how many teams or
+        officials exist.
+        """
+        rows = (
+            Official.objects.exclude(team_id=Official.OHNE_TEAM_ID)
+            .annotate(
+                license_name=Subquery(
+                    self._current_license_name_subquery(), output_field=CharField()
+                )
+            )
+            .values("team_id", "license_name")
+            .annotate(count=Count("id"))
+        )
+        breakdown = defaultdict(lambda: defaultdict(int))
+        for row in rows:
+            breakdown[row["team_id"]]["total"] += row["count"]
+            if row["license_name"]:
+                breakdown[row["team_id"]][row["license_name"]] += row["count"]
+        return {team_id: dict(counts) for team_id, counts in breakdown.items()}
 
     # noinspection PyMethodMayBeStatic
     def get_all_years_with_team_official_licenses(self, team):

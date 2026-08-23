@@ -14,28 +14,55 @@ from officials.service.moodle.moodle_service import MoodleService
 from officials.service.officials_repository_service import OfficialsRepositoryService
 from officials.service.serializers import OfficialLicenseCheckSerializer
 
+# Closed set of license levels an official can hold, ordered highest to
+# lowest (mirrors LicenseStrategy.COURSE_MAPPING's F1..F4 course names).
+LICENSE_LEVELS = ["F1", "F2", "F3", "F4"]
+
 
 class OfficialService:
     def __init__(self):
         self.official_repository_service = OfficialsRepositoryService()
 
+    def get_all_teams_with_license_breakdown(self):
+        """
+        Combines the cached all-teams list (TeamRepositoryService.get_all_teams(),
+        reused as-is) with a fresh per-team license breakdown. The team list
+        may come from its existing 24h cache; the license breakdown is
+        never cached since it must reflect officials' current license data.
+        Officials without a currently valid license are only counted in
+        each breakdown's "total", not shown as their own bucket.
+        """
+        teams = TeamRepositoryService.get_all_teams()
+        breakdown = self.official_repository_service.get_team_license_breakdown()
+        return {
+            "teams_with_breakdown": [
+                {"team": team, "license_breakdown": breakdown.get(team.pk, {})}
+                for team in teams
+            ],
+            "license_levels": LICENSE_LEVELS,
+        }
+
     def get_all_officials_with_team_infos(self, team_id, season, is_staff):
         team_repository_service = TeamRepositoryService(team_id)
 
         game_official_prefetch = Prefetch(
-            'gameofficial_set',
+            "gameofficial_set",
             queryset=GameOfficial.objects.filter(
                 gameinfo__gameday__date__year=season
-            ).select_related('gameinfo__gameday')
+            ).select_related("gameinfo__gameday"),
         )
         external_games_prefetch = Prefetch(
-            'officialexternalgames_set',
-            queryset=OfficialExternalGames.objects.filter(date__year=season)
+            "officialexternalgames_set",
+            queryset=OfficialExternalGames.objects.filter(date__year=season),
         )
 
         all_team_officials = (
-            Official.objects.select_related('team')
-            .prefetch_related(game_official_prefetch, external_games_prefetch, 'officiallicensehistory_set')
+            Official.objects.select_related("team")
+            .prefetch_related(
+                game_official_prefetch,
+                external_games_prefetch,
+                "officiallicensehistory_set",
+            )
             .filter(
                 officiallicensehistory__created_at__gte=f"{season - 1}-10-01",
                 officiallicensehistory__created_at__lte=f"{season}-12-31",

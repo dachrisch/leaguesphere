@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from http import HTTPStatus
 from unittest.mock import patch, MagicMock
 
@@ -12,15 +13,31 @@ from rest_framework.reverse import reverse
 
 from gamedays.models import Gameinfo
 from gamedays.tests.setup_factories.db_setup import DBSetup
+from league_manager.utils.serializer_utils import Obfuscator
 from league_table.tests.setup_factories.factories_leaguetable import (
     LeagueSeasonConfigFactory,
 )
 from officials.models import Official, OfficialGamedaySignup
 from officials.service.moodle.moodle_api import MoodleApiException
 from officials.service.moodle.moodle_service import MoodleService
+from gamedays.tests.setup_factories.factories import (
+    TeamFactory,
+    GamedayFactory,
+    GameinfoFactory,
+    GameOfficialFactory,
+)
 from officials.tests.setup_factories.db_setup_officials import DbSetupOfficials
+from officials.tests.setup_factories.factories_officials import (
+    OfficialFactory,
+    OfficialLicenseFactory,
+    OfficialLicenseHistoryFactory,
+)
 from officials.urls import (
     OFFICIALS_LIST_FOR_TEAM,
+    OFFICIALS_LIST_FOR_ALL_TEAMS,
+    OFFICIALS_STATISTICS,
+    OFFICIALS_STATISTICS_FOR_SEASON,
+    OFFICIALS_PROFILE_GAMELIST,
     OFFICIALS_GAMEOFFICIAL_INTERNAL_CREATE,
     OFFICIALS_LICENSE_CHECK,
     OFFICIALS_MOODLE_LOGIN,
@@ -75,6 +92,198 @@ class TestOfficialListView(WebTest):
         officials_list = response.context["officials_list"]
         all_officials = Official.objects.all()
         assert len(officials_list) == len(all_officials)
+
+
+class TestAllTeamsCardListView(WebTest):
+    def test_renders_new_card_template_with_search_and_cards(self):
+        team = TeamFactory(name="Adler", description="Adler Hamburg")
+        association = DBSetup().create_new_association()
+        license_f1 = OfficialLicenseFactory(id=1, name="F1")
+        official = OfficialFactory(
+            first_name="A",
+            last_name="One",
+            team=team,
+            association=association,
+            external_id="1",
+        )
+        OfficialLicenseHistoryFactory(
+            official=official, license=license_f1, created_at="2021-01-01"
+        )
+
+        response = self.app.get(reverse(OFFICIALS_LIST_FOR_ALL_TEAMS))
+
+        assert response.status_code == HTTPStatus.OK
+        template_names = [t.name for t in response.templates if t.name is not None]
+        assert "officials/all_teams_card_list.html" in template_names
+        assert "team/all_teams_list.html" not in template_names
+        content = response.content.decode()
+        assert 'id="team-search"' in content
+        assert 'class="card' in content
+        assert f'data-team-name="{team.description.lower()}"' in content
+        assert "1 - Offizielle" in content
+
+    def test_officials_on_placeholder_team_do_not_inflate_other_team_counts(self):
+        team = TeamFactory(name="Adler", description="Adler Hamburg")
+        no_team = TeamFactory(pk=Official.OHNE_TEAM_ID, name="Ohne Team")
+        association = DBSetup().create_new_association()
+        OfficialFactory(
+            first_name="A",
+            last_name="One",
+            team=team,
+            association=association,
+            external_id="1",
+        )
+        OfficialFactory(
+            first_name="B",
+            last_name="Two",
+            team=no_team,
+            association=association,
+            external_id="2",
+        )
+
+        response = self.app.get(reverse(OFFICIALS_LIST_FOR_ALL_TEAMS))
+
+        breakdown_by_team = {
+            entry["team"].pk: entry["license_breakdown"]
+            for entry in response.context["teams_with_breakdown"]
+        }
+        assert breakdown_by_team[team.pk]["total"] == 1
+
+
+class TestOfficialsStatisticsView(WebTest):
+    @staticmethod
+    def _game_official(gameday, position, official):
+        gameinfo = GameinfoFactory(gameday=gameday)
+        GameOfficialFactory(gameinfo=gameinfo, position=position, official=official)
+
+    def test_lists_officials_ranked_by_leaguesphere_games_for_selected_season(self):
+        team = TeamFactory(name="Adler", description="Adler Hamburg")
+        association = DBSetup().create_new_association()
+        official_top = OfficialFactory(
+            first_name="Maximilian",
+            last_name="Mustermann",
+            team=team,
+            association=association,
+            external_id="1",
+        )
+        official_second = OfficialFactory(
+            first_name="Julia",
+            last_name="Jansen",
+            team=team,
+            association=association,
+            external_id="2",
+        )
+
+        gameday_2024 = GamedayFactory(date="2024-05-01")
+        self._game_official(gameday_2024, "Referee", official_top)
+        self._game_official(gameday_2024, "Referee", official_top)
+        self._game_official(gameday_2024, "Referee", official_second)
+
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        template_names = [t.name for t in response.templates if t.name is not None]
+        assert "officials/statistics.html" in template_names
+
+        officials_list = list(response.context["officials_list"])
+        assert [o.pk for o in officials_list] == [
+            official_top.pk,
+            official_second.pk,
+        ]
+
+        content = response.content.decode()
+        # License number links to the official's profile for that season.
+        assert (
+            reverse(
+                OFFICIALS_PROFILE_GAMELIST,
+                kwargs={"pk": official_top.pk, "season": 2024},
+            )
+            in content
+        )
+        # Total games ("Gesamt") is the first of the numeric columns,
+        # ahead of the per-position counts - checked within the table
+        # header row, since the intro paragraph also mentions "Referee".
+        header_row = content[content.index("<thead>") : content.index("</thead>")]
+        assert header_row.index("Gesamt") < header_row.index("Referee")
+        assert header_row.index("Gesamt") < header_row.index("Down Judge")
+
+    def test_names_are_obfuscated_for_anonymous_users(self):
+        team = TeamFactory(name="Adler", description="Adler Hamburg")
+        association = DBSetup().create_new_association()
+        official = OfficialFactory(
+            first_name="Maximilian",
+            last_name="Mustermann",
+            team=team,
+            association=association,
+            external_id="1",
+        )
+        gameday_2024 = GamedayFactory(date="2024-05-01")
+        self._game_official(gameday_2024, "Referee", official)
+
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
+
+        content = response.content.decode()
+        assert "Maximilian Mustermann" not in content
+        # Same obfuscation mechanism as OfficialSerializer.get_name(): each
+        # name part reduced to its first letter + "****".
+        assert Obfuscator.obfuscate("Maximilian", "Mustermann") in content
+
+    def test_names_are_shown_in_full_for_staff_users(self):
+        team = TeamFactory(name="Adler", description="Adler Hamburg")
+        association = DBSetup().create_new_association()
+        official = OfficialFactory(
+            first_name="Maximilian",
+            last_name="Mustermann",
+            team=team,
+            association=association,
+            external_id="1",
+        )
+        gameday_2024 = GamedayFactory(date="2024-05-01")
+        self._game_official(gameday_2024, "Referee", official)
+        self.app.set_user(DBSetup().create_new_user("staff_user", is_staff=True))
+
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
+
+        assert "Maximilian Mustermann" in response.content.decode()
+
+    def test_shows_the_officials_current_license(self):
+        team = TeamFactory(name="Adler", description="Adler Hamburg")
+        association = DBSetup().create_new_association()
+        official = OfficialFactory(
+            first_name="Maximilian",
+            last_name="Mustermann",
+            team=team,
+            association=association,
+            external_id="1",
+        )
+        license_f1 = OfficialLicenseFactory(id=1, name="F1")
+        # A license taken earlier in the same season year still counts -
+        # matches official #2435's real bug report.
+        OfficialLicenseHistoryFactory(
+            official=official,
+            license=license_f1,
+            created_at="2024-02-01",
+        )
+        gameday_2024 = GamedayFactory(date="2024-05-01")
+        self._game_official(gameday_2024, "Referee", official)
+
+        response = self.app.get(
+            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+        )
+
+        assert "F1" in response.content.decode()
+
+    def test_defaults_to_current_year_when_no_season_given(self):
+        response = self.app.get(reverse(OFFICIALS_STATISTICS))
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.context["season"] == datetime.today().year
 
 
 class TestAddInternalGameOfficialUpdateView(WebTest):

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block og_title %}Offizielle Statistik{% endblock %}
+{% block og_description %}Rangliste der Offiziellen nach Anzahl der Spiele{% endblock %}
+
+{% block content %}
+<article class="media content-section">
+    <div class="media-body">
+        <h1>Statistik {{ season }}</h1>
+        <p>
+            Gezählt werden nur Einsätze, die über LeagueSphere erfasst wurden (Referee, Down
+            Judge, Field Judge, Side Judge). Ein Einsatz als Scorecard Judge wird NICHT gewertet.
+            Externe Einsätze werden nur informativ angezeigt und zählen nicht für die
+            Sortierung.
+        </p>
+        {% include 'utils/year_filter.html' %}
+        <table class="table table-hover">
+            <thead>
+            <tr>
+                <th scope="col">#</th>
+                <th scope="col">Name</th>
+                <th scope="col">Team</th>
+                <th scope="col">
+                    <div data-bs-title="Aktuell gültige Lizenzstufe" data-bs-toggle="tooltip">Lizenz
+                    </div>
+                </th>
+                <th scope="col">
+                    <div data-bs-title="Summe aller Spiele über LeagueSphere" data-bs-toggle="tooltip">Gesamt
+                    </div>
+                </th>
+                <th scope="col">Referee</th>
+                <th scope="col">Down Judge</th>
+                <th scope="col">Field Judge</th>
+                <th scope="col">Side Judge</th>
+                <th scope="col">
+                    <div data-bs-title="Zählt nicht für die Sortierung" data-bs-toggle="tooltip">Extern
+                    </div>
+                </th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for official in officials_list %}
+            <tr>
+                <th scope="row">
+                    <a href="{% url 'view-officials-profile-gamelist' pk=official.id season=season %}">{{ official.id }}</a>
+                </th>
+                <td>{{ official.display_name }}</td>
+                <td>{{ official.team.description }}</td>
+                <td>{{ official.license_name|default:"-" }}</td>
+                <td>{{ official.total_games|floatformat }}</td>
+                <td>{{ official.referee_count }}</td>
+                <td>{{ official.down_judge_count }}</td>
+                <td>{{ official.field_judge_count }}</td>
+                <td>{{ official.side_judge_count }}</td>
+                <td>{{ official.external_games_total|floatformat }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</article>
+<script>
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+</script>
+{% endblock content %}
