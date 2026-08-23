@@ -161,6 +161,12 @@ class TestMatchreportGamedayPasscheckDownloadView(TestCase):
                 },
             )
 
+        # Warm request-path caches (maintenance-mode SiteConfiguration lookup) so the
+        # query count is not order-dependent under parallel (xdist) runs.
+        self.client.get(
+            reverse(MATCHREPORT_GAMEDAY_PASSCHECK_DOWNLOAD, kwargs={"pk": gameday.pk})
+        )
+
         with self.assertNumQueries(5):
             resp = self.client.get(
                 reverse(
@@ -192,6 +198,12 @@ class TestMatchreportGamedayPasscheckDownloadView(TestCase):
     def test_passcheck_download_csv_no_passchecks(self):
         gameday = DBSetup().g62_with_tiebreak_finished()
         self.client.force_login(UserFactory(is_staff=True))
+
+        # Warm request-path caches (maintenance-mode SiteConfiguration lookup) so the
+        # query count is not order-dependent under parallel (xdist) runs.
+        self.client.get(
+            reverse(MATCHREPORT_GAMEDAY_PASSCHECK_DOWNLOAD, kwargs={"pk": gameday.pk})
+        )
 
         with self.assertNumQueries(5):
             resp = self.client.get(
