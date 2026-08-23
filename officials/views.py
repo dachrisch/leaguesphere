@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
+from django.core.cache import cache
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Subquery, OuterRef, Q
 from django.http import Http404, HttpResponse
@@ -74,6 +75,7 @@ class AllTeamsCardListView(View):
 
 class OfficialsStatisticsView(View):
     template_name = "officials/statistics.html"
+    YEARS_CACHE_KEY = "officials_statistics_years"
 
     def get(self, request, **kwargs):
         season = kwargs.get("season", datetime.today().year)
@@ -89,19 +91,10 @@ class OfficialsStatisticsView(View):
         # underlying rows, just re-ranked/re-cut), so set this once per
         # list rather than trying to de-duplicate - harmless either way.
         for official in officials_without_external + officials_with_external:
-            # Same obfuscation mechanism as OfficialSerializer.get_name():
-            # staff see full names, everyone else sees each name part
-            # reduced to its first letter + "****".
-            official.display_name = (
-                f"{official.first_name} {official.last_name}"
-                if is_staff
-                else Obfuscator.obfuscate(official.first_name, official.last_name)
+            official.display_name = Obfuscator.reveal_unless_obfuscated(
+                is_staff, official.first_name, official.last_name
             )
-        years = (
-            GameOfficial.objects.all()
-            .values_list("gameinfo__gameday__date__year", flat=True)
-            .distinct()
-        )
+        years = self._get_years()
         from officials.urls import OFFICIALS_STATISTICS_FOR_SEASON
 
         return render(
@@ -109,12 +102,32 @@ class OfficialsStatisticsView(View):
             self.template_name,
             {
                 "season": season,
-                "years": sorted(years, reverse=True),
+                "years": years,
                 "url_pattern": OFFICIALS_STATISTICS_FOR_SEASON,
                 "officials_list_without_external": officials_without_external,
                 "officials_list_with_external": officials_with_external,
             },
         )
+
+    @classmethod
+    def _get_years(cls):
+        """
+        Distinct years with at least one recorded GameOfficial - only
+        used to populate the year-picker, so it's cached at the query
+        level (not a full-page cache_page, since the page's content
+        itself varies by is_staff) to avoid an unfiltered full-table
+        scan on every single request to this public page.
+        """
+        years = cache.get(cls.YEARS_CACHE_KEY)
+        if years is None:
+            years = sorted(
+                GameOfficial.objects.all()
+                .values_list("gameinfo__gameday__date__year", flat=True)
+                .distinct(),
+                reverse=True,
+            )
+            cache.set(cls.YEARS_CACHE_KEY, years, timeout=60 * 60 * 24)
+        return years
 
 
 class OfficialsTeamListView(View):

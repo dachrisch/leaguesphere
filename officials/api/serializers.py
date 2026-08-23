@@ -109,9 +109,9 @@ class OfficialSerializer(ModelSerializer):
         return date_is_valid and has_valid_license
 
     def get_name(self, obj):
-        if self.is_staff:
-            return f"{obj.first_name} {obj.last_name}"
-        return Obfuscator.obfuscate(obj.first_name, obj.last_name)
+        return Obfuscator.reveal_unless_obfuscated(
+            self.is_staff, obj.first_name, obj.last_name
+        )
 
     def get_valid_until(self, obj):
         newest_license = self._get_license_history(obj)

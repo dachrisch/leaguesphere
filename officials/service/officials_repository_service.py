@@ -254,18 +254,21 @@ class OfficialsRepositoryService:
         everywhere here); which officials qualify for that base
         population never depends on external games.
         """
-        referee_sq = self._position_games_subquery("Referee", season)
-        down_judge_sq = self._position_games_subquery("Down Judge", season)
-        field_judge_sq = self._position_games_subquery("Field Judge", season)
-        side_judge_sq = self._position_games_subquery("Side Judge", season)
-
         officials = list(
             Official.objects.select_related("team")
             .annotate(
-                referee_count=Subquery(referee_sq),
-                down_judge_count=Subquery(down_judge_sq),
-                field_judge_count=Subquery(field_judge_sq),
-                side_judge_count=Subquery(side_judge_sq),
+                referee_count=Subquery(
+                    self._position_games_subquery("Referee", season)
+                ),
+                down_judge_count=Subquery(
+                    self._position_games_subquery("Down Judge", season)
+                ),
+                field_judge_count=Subquery(
+                    self._position_games_subquery("Field Judge", season)
+                ),
+                side_judge_count=Subquery(
+                    self._position_games_subquery("Side Judge", season)
+                ),
                 unique_gamedays_count=Subquery(self._unique_gamedays_subquery(season)),
                 license_name=Subquery(
                     self._current_license_name_subquery(season),
@@ -274,12 +277,17 @@ class OfficialsRepositoryService:
                 external_games_total=Subquery(
                     self._external_games_total_subquery(season)
                 ),
+            )
+            # A second, chained annotate() so total_games can reference
+            # the count columns above via F() instead of re-running each
+            # of their 4 correlated subqueries a second time.
+            .annotate(
                 total_games=(
-                    Subquery(referee_sq)
-                    + Subquery(down_judge_sq)
-                    + Subquery(field_judge_sq)
-                    + Subquery(side_judge_sq)
-                ),
+                    F("referee_count")
+                    + F("down_judge_count")
+                    + F("field_judge_count")
+                    + F("side_judge_count")
+                )
             )
             .annotate(
                 total_games_with_external=F("total_games") + F("external_games_total")

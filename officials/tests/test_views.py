@@ -121,7 +121,14 @@ class TestAllTeamsCardListView(WebTest):
             official=official, license=license_f1, created_at="2021-01-01"
         )
 
-        response = self.app.get(reverse(OFFICIALS_LIST_FOR_ALL_TEAMS))
+        # 5 queries: (1) maintenance-mode guard middleware, (2) a DB
+        # connectivity check, (3) TeamRepositoryService.get_all_teams()
+        # (cache cold - cleared in setUp), (4) the license breakdown
+        # (OfficialsRepositoryService.get_team_license_breakdown(), one
+        # query per its own docstring), (5) the site menu's league lookup -
+        # none of it caused by this view's own logic.
+        with self.assertNumQueries(5):
+            response = self.app.get(reverse(OFFICIALS_LIST_FOR_ALL_TEAMS))
 
         assert response.status_code == HTTPStatus.OK
         template_names = [t.name for t in response.templates if t.name is not None]
@@ -152,7 +159,10 @@ class TestAllTeamsCardListView(WebTest):
             external_id="2",
         )
 
-        response = self.app.get(reverse(OFFICIALS_LIST_FOR_ALL_TEAMS))
+        # See test_renders_new_card_template_with_search_and_cards above
+        # for the breakdown of these 5 queries.
+        with self.assertNumQueries(5):
+            response = self.app.get(reverse(OFFICIALS_LIST_FOR_ALL_TEAMS))
 
         breakdown_by_team = {
             entry["team"].pk: entry["license_breakdown"]
@@ -162,6 +172,14 @@ class TestAllTeamsCardListView(WebTest):
 
 
 class TestOfficialsStatisticsView(WebTest):
+    def setUp(self):
+        # _get_years() caches under a fixed key for 24h - must be
+        # cleared so tests don't see another test's stale year list.
+        cache.clear()
+
+    def tearDown(self):
+        cache.clear()
+
     @staticmethod
     def _game_official(gameday, position, official):
         gameinfo = GameinfoFactory(gameday=gameday)
@@ -197,9 +215,16 @@ class TestOfficialsStatisticsView(WebTest):
         self._game_officials(gameday_2024, "Referee", official_top, 12)
         self._game_officials(gameday_2024, "Referee", official_second, 10)
 
-        response = self.app.get(
-            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
-        )
+        # 5 queries: (1) maintenance-mode guard middleware, (2) a DB
+        # connectivity check, (3) the statistics queryset itself (one
+        # query - see get_officials_statistics_for_season()'s docstring),
+        # (4) the (uncached-this-test) year-picker list, (5) the site
+        # menu's league lookup - none of it caused by this view's own
+        # logic.
+        with self.assertNumQueries(5):
+            response = self.app.get(
+                reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+            )
 
         assert response.status_code == HTTPStatus.OK
         template_names = [t.name for t in response.templates if t.name is not None]
@@ -240,9 +265,12 @@ class TestOfficialsStatisticsView(WebTest):
         gameday_2024 = GamedayFactory(date="2024-05-01")
         self._game_officials(gameday_2024, "Referee", official, 10)
 
-        response = self.app.get(
-            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
-        )
+        # See test_lists_officials_ranked_by_leaguesphere_games_for_selected_season
+        # above for the breakdown of these 5 queries.
+        with self.assertNumQueries(5):
+            response = self.app.get(
+                reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+            )
 
         content = response.content.decode()
         assert "Maximilian Mustermann" not in content
@@ -264,9 +292,15 @@ class TestOfficialsStatisticsView(WebTest):
         self._game_officials(gameday_2024, "Referee", official, 10)
         self.app.set_user(DBSetup().create_new_user("staff_user", is_staff=True))
 
-        response = self.app.get(
-            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
-        )
+        # 16 queries: the same 5 as an anonymous request (see
+        # test_lists_officials_ranked_by_leaguesphere_games_for_selected_season
+        # above), plus 11 from self.app.set_user()'s actual login flow (user
+        # lookup, session create/update, last_login update, and
+        # journey-tracking rows) - none of it caused by this view's own logic.
+        with self.assertNumQueries(16):
+            response = self.app.get(
+                reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+            )
 
         assert "Maximilian Mustermann" in response.content.decode()
 
@@ -291,14 +325,20 @@ class TestOfficialsStatisticsView(WebTest):
         gameday_2024 = GamedayFactory(date="2024-05-01")
         self._game_officials(gameday_2024, "Referee", official, 10)
 
-        response = self.app.get(
-            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
-        )
+        # See test_lists_officials_ranked_by_leaguesphere_games_for_selected_season
+        # above for the breakdown of these 5 queries.
+        with self.assertNumQueries(5):
+            response = self.app.get(
+                reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+            )
 
         assert "F1" in response.content.decode()
 
     def test_defaults_to_current_year_when_no_season_given(self):
-        response = self.app.get(reverse(OFFICIALS_STATISTICS))
+        # See test_lists_officials_ranked_by_leaguesphere_games_for_selected_season
+        # above for the breakdown of these 5 queries.
+        with self.assertNumQueries(5):
+            response = self.app.get(reverse(OFFICIALS_STATISTICS))
 
         assert response.status_code == HTTPStatus.OK
         assert response.context["season"] == datetime.today().year
@@ -317,9 +357,12 @@ class TestOfficialsStatisticsView(WebTest):
         # All 10 games on the same single Gameday - one Spieltag attended.
         self._game_officials(gameday_2024, "Referee", official, 10)
 
-        response = self.app.get(
-            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
-        )
+        # See test_lists_officials_ranked_by_leaguesphere_games_for_selected_season
+        # above for the breakdown of these 5 queries.
+        with self.assertNumQueries(5):
+            response = self.app.get(
+                reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+            )
 
         content = response.content.decode()
         assert "Spieltage" in content
@@ -352,9 +395,12 @@ class TestOfficialsStatisticsView(WebTest):
             comment="",
         ).save()
 
-        response = self.app.get(
-            reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
-        )
+        # See test_lists_officials_ranked_by_leaguesphere_games_for_selected_season
+        # above for the breakdown of these 5 queries.
+        with self.assertNumQueries(5):
+            response = self.app.get(
+                reverse(OFFICIALS_STATISTICS_FOR_SEASON, kwargs={"season": 2024})
+            )
 
         assert response.status_code == HTTPStatus.OK
         content = response.content.decode()
