@@ -29,6 +29,7 @@ import { Alert, Container } from 'react-bootstrap';
 import { v4 as uuidv4 } from 'uuid';
 import { gamedayApi } from '../../api/gamedayApi';
 import { applyGenericTemplate, GenericTemplate } from '../../utils/templateMapper';
+import { getTeamColor } from '../../utils/tournamentConstants';
 import type { FlowState, GlobalTeam, GlobalTeamGroup } from '../../types/flowchart';
 import type { MigrationPlan } from '../../types';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
@@ -64,6 +65,13 @@ function extractErrorDetail(error: unknown, fallback: string): string {
  * after the first gap, since applyGenericTemplate's getTeamId resolves a
  * team by *array position after sorting by order*, not by the index value
  * itself.
+ *
+ * Colors cycle through the same palette (getTeamColor, tournamentConstants.ts)
+ * every other team-seeding path in this app uses (flowchartImport.ts's JSON
+ * import, useTeamPoolState.ts, generateTeamsForTournament) -- a running index
+ * across the whole pool, not reset per group. Without this every migrated
+ * team falls back to useFlowState's flat gray default (`?? '#cccccc'`),
+ * which is indistinguishable team-to-team on the canvas.
  */
 function buildSeedTeams(plan: MigrationPlan): {
   globalTeams: GlobalTeam[];
@@ -86,6 +94,7 @@ function buildSeedTeams(plan: MigrationPlan): {
   }
 
   const globalTeams: GlobalTeam[] = [];
+  let colorIndex = 0;
   globalTeamGroups.forEach((group, groupIdx) => {
     const maxTeamIdx = maxTeamIndexByGroup.get(groupIdx) ?? -1;
     for (let teamIdx = 0; teamIdx <= maxTeamIdx; teamIdx++) {
@@ -93,6 +102,7 @@ function buildSeedTeams(plan: MigrationPlan): {
       globalTeams.push({
         id: uuidv4(),
         label: mapped ? mapped.label : 'TBD',
+        color: getTeamColor(colorIndex++),
         groupId: group.id,
         order: teamIdx,
       });

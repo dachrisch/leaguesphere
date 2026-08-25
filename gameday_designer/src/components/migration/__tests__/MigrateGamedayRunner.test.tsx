@@ -15,6 +15,7 @@ import i18n from '../../../i18n/testConfig';
 import { gamedayApi } from '../../../api/gamedayApi';
 import type { MigrationPlan } from '../../../types';
 import { isGameNode, type FlowState } from '../../../types/flowchart';
+import { getTeamColor } from '../../../utils/tournamentConstants';
 
 vi.mock('../../../api/gamedayApi', () => ({
   gamedayApi: {
@@ -135,6 +136,43 @@ describe('MigrateGamedayRunner', () => {
     // This is the critical assertion: away_team index 2 must resolve to the
     // real team at array position 2, not be shifted by the gap at index 1.
     expect(awayTeam?.label).toBe('Team Gamma');
+  });
+
+  it('assigns each seeded team (including placeholders) a distinct color from the shared palette, not the flat gray fallback', async () => {
+    (gamedayApi.getMigrationPlan as ReturnType<typeof vi.fn>).mockResolvedValue(gapPlan);
+
+    renderRunner('1');
+
+    await waitFor(() => expect(gamedayApi.updateDesignerState).toHaveBeenCalledTimes(1));
+
+    const [, state] = (gamedayApi.updateDesignerState as ReturnType<typeof vi.fn>).mock.calls[0] as [number, FlowState];
+
+    // Seeding order is group-by-group, index-by-index: Gruppe A produces
+    // [Team Alpha, TBD-placeholder, Team Gamma], then Gruppe B produces
+    // [Team X, Team Y] -- five teams total, colors cycling continuously
+    // across that whole run (not reset per group), matching every other
+    // team-seeding path in this app (flowchartImport.ts, useTeamPoolState.ts).
+    const orderedLabels = ['Team Alpha', 'TBD', 'Team Gamma', 'Team X', 'Team Y'];
+    const byLabelInOrder = orderedLabels.map((label) => {
+      // The gap placeholder's label ("TBD") isn't unique by construction if a
+      // real team were ever also named "TBD" -- disambiguate by group+order
+      // instead of a plain label lookup for that one entry.
+      if (label === 'TBD') {
+        const groupA = state.globalTeamGroups.find(g => g.name === 'Gruppe A')!;
+        return state.globalTeams.find(t => t.groupId === groupA.id && t.order === 1)!;
+      }
+      return state.globalTeams.find(t => t.label === label)!;
+    });
+
+    byLabelInOrder.forEach((team, i) => {
+      expect(team.color).toBe(getTeamColor(i));
+    });
+    // No team should have fallen through to useFlowState's gray default.
+    expect(state.globalTeams.every(t => t.color !== '#cccccc')).toBe(true);
+    // And no two teams should collide on the same color (palette has far
+    // more than 5 entries, so a real bug -- e.g. colorIndex not advancing --
+    // would show up as a duplicate here).
+    expect(new Set(state.globalTeams.map(t => t.color)).size).toBe(state.globalTeams.length);
   });
 
   it('shows the server error detail and a link back to the legacy gameday page when the plan cannot be loaded', async () => {
