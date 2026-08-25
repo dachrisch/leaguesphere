@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.19.4](https://github.com/dachrisch/leaguesphere/compare/v4.19.3...v4.19.4) (2026-08-24)
+
+
+### Bug Fixes
+
+* **tests:** warm request-path caches before tournament query-count assertions ([f864677](https://github.com/dachrisch/leaguesphere/commit/f864677be651a476cf6cf4ae9b13aa92bda3fdef))
+* **tests:** warm request-path caches before tournament query-count assertions ([1a9ba0f](https://github.com/dachrisch/leaguesphere/commit/1a9ba0f621373e10cbf8317371ff4a496ae5f1c6))
+
 ## [4.19.3](https://github.com/dachrisch/leaguesphere/compare/v4.19.2...v4.19.3) (2026-08-24)
 
 
