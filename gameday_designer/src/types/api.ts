@@ -8,7 +8,8 @@ import type {
   FlowNode,
   FlowEdge,
   GlobalTeam,
-  GlobalTeamGroup
+  GlobalTeamGroup,
+  StageCategory
 } from './flowchart';
 
 /**
@@ -197,6 +198,51 @@ export interface Gameday extends GamedayMetadata {
     globalTeams?: GlobalTeam[];
     globalTeamGroups?: GlobalTeamGroup[];
   };
+}
+
+/**
+ * A single slot in a migration plan, describing one game's field/stage
+ * placement and team assignments as reconstructed from a legacy gameday's
+ * real schedule. Structurally mirrors GenericTemplateSlot
+ * (utils/templateMapper.ts) plus the stage_category the migration endpoint
+ * always backfills server-side.
+ */
+export interface MigrationPlanSlot {
+  field: number;
+  slot_order: number;
+  stage: string;
+  stage_type: 'STANDARD' | 'RANKING';
+  stage_category: StageCategory;
+  standing: string;
+  home_group: number | null;
+  home_team: number | null;
+  home_reference: string;
+  away_group: number | null;
+  away_team: number | null;
+  away_reference: string;
+  official_group: number | null;
+  official_team: number | null;
+  official_reference: string;
+  break_after: number;
+}
+
+/**
+ * Response from GET /gamedays/<pk>/migration-plan/ -- a read-only
+ * reconstruction of how an existing (pre-Designer) gameday's real schedule
+ * maps onto a Designer canvas. Never persisted server-side; the frontend
+ * turns it into a GenericTemplate for templateMapper's applyGenericTemplate()
+ * and PUTs the result to the designer-state endpoint itself.
+ */
+export interface MigrationPlan {
+  template_id: number;
+  num_fields: number;
+  num_groups: number;
+  group_config: Array<{ name: string; team_count: number }>;
+  slots: MigrationPlanSlot[];
+  /** Key is `${group}_${team}` (both 0-based indices); label is the real Team.name string. */
+  team_mapping: Record<string, { id: number; label: string }>;
+  /** Human-readable notes about games that couldn't be reliably matched/mapped -- best-effort, not errors. */
+  warnings: string[];
 }
 
 /**

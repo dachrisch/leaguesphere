@@ -187,6 +187,15 @@
     "gamedayNotFound": "Spieltag nicht gefunden",
     "saveUrlsFailed": "Links konnten nicht gespeichert werden"
   },
+  "migration": {
+    "loading": "Spieltag wird zu Designer migriert…",
+    "errorTitle": "Migration fehlgeschlagen",
+    "backToGameday": "Zurück zum Spieltag",
+    "loadPlanFailedFallback": "Der Migrationsplan konnte nicht geladen werden. Bitte versuche es erneut.",
+    "saveFailed": "Der migrierte Spielplan konnte nicht gespeichert werden. Bitte versuche es erneut.",
+    "warningsTitle": "Mit Warnungen migriert",
+    "defaultTemplateName": "Migrierter Spielplan"
+  },
   "gameProgress": {
     "section": {
       "live": "● LIVE · {{count}} Spiele",

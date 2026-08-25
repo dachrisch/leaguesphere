@@ -187,6 +187,15 @@
     "gamedayNotFound": "Gameday not found",
     "saveUrlsFailed": "Failed to save links"
   },
+  "migration": {
+    "loading": "Migrating gameday to Designer…",
+    "errorTitle": "Migration failed",
+    "backToGameday": "Back to gameday",
+    "loadPlanFailedFallback": "Could not load the migration plan. Please try again.",
+    "saveFailed": "Failed to save the migrated schedule. Please try again.",
+    "warningsTitle": "Migrated with warnings",
+    "defaultTemplateName": "Migrated schedule"
+  },
   "gameProgress": {
     "section": {
       "live": "● LIVE · {{count}} Games",

@@ -14,6 +14,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ListDesignerApp from './components/ListDesignerApp';
 import GamedayDashboard from './components/dashboard/GamedayDashboard';
 import MainLayout from './components/layout/MainLayout';
+import MigrateGamedayRunner from './components/migration/MigrateGamedayRunner';
 import { GamedayProvider } from './context/GamedayContext';
 
 /**
@@ -30,6 +31,7 @@ const App: React.FC = () => {
           <Route path="/" element={<MainLayout />}>
             <Route index element={<GamedayDashboard />} />
             <Route path="designer/:id" element={<ListDesignerApp />} />
+            <Route path="migrate/:id" element={<MigrateGamedayRunner />} />
           </Route>
         </Routes>
       </GamedayProvider>

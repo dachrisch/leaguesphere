@@ -2,9 +2,49 @@ import pytest
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
-from gamedays.models import Gameday, Season, League
+from gamedays.models import Gameday, GamedayDesignerState, Season, League
+from gamedays.tests.setup_factories.factories import (
+    GameinfoFactory,
+    GameresultFactory,
+    TeamFactory,
+)
+from gameday_designer.models import ScheduleTemplate, TemplateApplication, TemplateSlot
 from django.contrib.auth.models import User
 from datetime import date
+
+
+def _attach_resolvable_migration_fixture(gameday):
+    """Attaches a minimal ScheduleTemplate + TemplateApplication + one real
+    Gameinfo/Gameresult to `gameday` so GamedayMigrationService.build_plan()
+    can succeed against it."""
+    template = ScheduleTemplate.objects.create(
+        name=f"Migration Endpoint Template {gameday.pk}",
+        num_teams=2,
+        num_fields=1,
+        num_groups=1,
+    )
+    TemplateSlot.objects.create(
+        template=template,
+        field=1,
+        slot_order=1,
+        stage="Vorrunde",
+        standing="Gruppe 1",
+        home_group=0,
+        home_team=0,
+    )
+    TemplateApplication.objects.create(
+        gameday=gameday, template=template, team_mapping={}
+    )
+    gi = GameinfoFactory(
+        gameday=gameday,
+        field=1,
+        scheduled="10:00",
+        stage="Vorrunde",
+        standing="Gruppe 1",
+        officials=TeamFactory(),
+    )
+    GameresultFactory(gameinfo=gi, team=TeamFactory(), isHome=True)
+    return template
 
 
 class GamedayViewSetTest(APITestCase):
@@ -106,19 +146,23 @@ class GamedayViewSetTest(APITestCase):
 
     def test_get_gameday_includes_resource_urls(self):
         from gamedays.models import ResourceUrl
+
         ResourceUrl.objects.create(
             gameday=self.gameday1, url="https://example.com/a", description="Livestream"
         )
         response = self.client.get(f"/api/gamedays/{self.gameday1.id}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["resource_urls"] == [
-            {"id": self.gameday1.resourceurl_set.first().id,
-             "url": "https://example.com/a",
-             "description": "Livestream"}
+            {
+                "id": self.gameday1.resourceurl_set.first().id,
+                "url": "https://example.com/a",
+                "description": "Livestream",
+            }
         ]
 
     def test_patch_adds_resource_url(self):
         from gamedays.models import ResourceUrl
+
         response = self.client.patch(
             f"/api/gamedays/{self.gameday1.id}/",
             {"resource_urls": [{"url": "https://example.com/x", "description": "X"}]},
@@ -132,14 +176,21 @@ class GamedayViewSetTest(APITestCase):
 
     def test_patch_updates_existing_resource_url(self):
         from gamedays.models import ResourceUrl
+
         ru = ResourceUrl.objects.create(
             gameday=self.gameday1, url="https://example.com/old", description="Old"
         )
         response = self.client.patch(
             f"/api/gamedays/{self.gameday1.id}/",
-            {"resource_urls": [
-                {"id": ru.id, "url": "https://example.com/new", "description": "New"}
-            ]},
+            {
+                "resource_urls": [
+                    {
+                        "id": ru.id,
+                        "url": "https://example.com/new",
+                        "description": "New",
+                    }
+                ]
+            },
             format="json",
         )
         assert response.status_code == status.HTTP_200_OK
@@ -150,6 +201,7 @@ class GamedayViewSetTest(APITestCase):
 
     def test_patch_deletes_omitted_resource_url(self):
         from gamedays.models import ResourceUrl
+
         ru_keep = ResourceUrl.objects.create(
             gameday=self.gameday1, url="https://example.com/keep", description="Keep"
         )
@@ -158,15 +210,22 @@ class GamedayViewSetTest(APITestCase):
         )
         response = self.client.patch(
             f"/api/gamedays/{self.gameday1.id}/",
-            {"resource_urls": [
-                {"id": ru_keep.id, "url": ru_keep.url, "description": ru_keep.description}
-            ]},
+            {
+                "resource_urls": [
+                    {
+                        "id": ru_keep.id,
+                        "url": ru_keep.url,
+                        "description": ru_keep.description,
+                    }
+                ]
+            },
             format="json",
         )
         assert response.status_code == status.HTTP_200_OK
         remaining = list(
-            ResourceUrl.objects.filter(gameday=self.gameday1)
-            .values_list("id", flat=True)
+            ResourceUrl.objects.filter(gameday=self.gameday1).values_list(
+                "id", flat=True
+            )
         )
         assert remaining == [ru_keep.id]
 
@@ -180,6 +239,7 @@ class GamedayViewSetTest(APITestCase):
 
     def test_patch_without_resource_urls_preserves_existing(self):
         from gamedays.models import ResourceUrl
+
         ResourceUrl.objects.create(
             gameday=self.gameday1, url="https://example.com/keep", description="Keep"
         )
@@ -349,9 +409,7 @@ class TestGamedayPermissions(APITestCase):
     def test_author_can_update_designer_state_of_own_gameday(self):
         self.client.force_authenticate(user=self.author)
         url = f"/api/gamedays/{self.gameday_author.id}/designer-state/"
-        response = self.client.put(
-            url, {"state_data": {"test": True}}, format="json"
-        )
+        response = self.client.put(url, {"state_data": {"test": True}}, format="json")
         assert response.status_code == status.HTTP_200_OK
 
     def test_author_can_update_own_gameday(self):
@@ -382,9 +440,7 @@ class TestGamedayPermissions(APITestCase):
     def test_staff_can_update_designer_state_of_any_gameday(self):
         self.client.force_authenticate(user=self.staff_user)
         url = f"/api/gamedays/{self.gameday_author.id}/designer-state/"
-        response = self.client.put(
-            url, {"state_data": {"test": True}}, format="json"
-        )
+        response = self.client.put(url, {"state_data": {"test": True}}, format="json")
         assert response.status_code == status.HTTP_200_OK
 
     def test_staff_can_update_any_gameday(self):
@@ -401,6 +457,58 @@ class TestGamedayPermissions(APITestCase):
         response = self.client.delete(url)
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Gameday.objects.filter(id=self.gameday_author.id).exists()
+
+    # ── Migration plan (GET, but gated like a write) ─────────────
+    # Unlike the rest of this viewset's reads, migration-plan exposes real
+    # team-to-slot mappings reconstructed from the gameday's actual results,
+    # so it deliberately does NOT get the SAFE_METHODS-are-public treatment.
+
+    def test_anonymous_cannot_read_migration_plan(self):
+        self.client.force_authenticate(user=None)
+        url = f"/api/gamedays/{self.gameday_author.id}/migration-plan/"
+        response = self.client.get(url)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_non_staff_non_author_cannot_read_migration_plan(self):
+        self.client.force_authenticate(user=self.non_author)
+        url = f"/api/gamedays/{self.gameday_author.id}/migration-plan/"
+        response = self.client.get(url)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_author_can_read_migration_plan_of_own_gameday(self):
+        template = _attach_resolvable_migration_fixture(self.gameday_author)
+        self.client.force_authenticate(user=self.author)
+        url = f"/api/gamedays/{self.gameday_author.id}/migration-plan/"
+        response = self.client.get(url)
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["template_id"] == template.pk
+        assert response.data["num_fields"] == 1
+        assert response.data["num_groups"] == 1
+        assert "team_mapping" in response.data
+        assert "slots" in response.data
+        assert "warnings" in response.data
+
+    def test_staff_can_read_migration_plan_of_any_gameday(self):
+        _attach_resolvable_migration_fixture(self.gameday_author)
+        self.client.force_authenticate(user=self.staff_user)
+        url = f"/api/gamedays/{self.gameday_author.id}/migration-plan/"
+        response = self.client.get(url)
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_migration_plan_returns_400_when_already_migrated(self):
+        _attach_resolvable_migration_fixture(self.gameday_author)
+        GamedayDesignerState.objects.create(gameday=self.gameday_author)
+        self.client.force_authenticate(user=self.author)
+        url = f"/api/gamedays/{self.gameday_author.id}/migration-plan/"
+        response = self.client.get(url)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_migration_plan_returns_400_when_no_template_resolves(self):
+        # gameday_author has no ScheduleTemplate/TemplateApplication at all.
+        self.client.force_authenticate(user=self.author)
+        url = f"/api/gamedays/{self.gameday_author.id}/migration-plan/"
+        response = self.client.get(url)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     # ── Reads stay public ────────────────────────────────────────
 
