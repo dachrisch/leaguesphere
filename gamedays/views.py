@@ -170,9 +170,9 @@ class GamedayDetailView(DetailView):
     template_name = "gamedays/gameday_detail.html"
 
     def get_queryset(self):
-        return Gameday.objects.select_related("league", "season").prefetch_related(
-            "resourceurl_set"
-        )
+        return Gameday.objects.select_related(
+            "league", "season", "author"
+        ).prefetch_related("resourceurl_set")
 
     def get_context_data(self, **kwargs):
         context = super(GamedayDetailView, self).get_context_data()
