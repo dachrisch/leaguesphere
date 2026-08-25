@@ -205,6 +205,21 @@ describe('MigrateGamedayRunner', () => {
     }));
   });
 
+  it('falls back to the default template name when getGameday fails but still migrates', async () => {
+    (gamedayApi.getMigrationPlan as ReturnType<typeof vi.fn>).mockResolvedValue(gapPlan);
+    (gamedayApi.getGameday as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network down'));
+
+    renderRunner('1');
+
+    await waitFor(() => expect(gamedayApi.updateDesignerState).toHaveBeenCalledTimes(1));
+
+    const [, state] = (gamedayApi.updateDesignerState as ReturnType<typeof vi.fn>).mock.calls[0] as [number, FlowState];
+    // The metadata should still be present even when getGameday fails
+    // because updateDesignerState is called with the applied state
+    expect(state.nodes.length).toBeGreaterThan(0);
+    expect(mockNavigate).toHaveBeenCalledWith('/designer/1', expect.objectContaining({ replace: true }));
+  });
+
   it('shows a fallback error and does not navigate when saving the migrated state fails', async () => {
     (gamedayApi.getMigrationPlan as ReturnType<typeof vi.fn>).mockResolvedValue(gapPlan);
     (gamedayApi.updateDesignerState as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network down'));

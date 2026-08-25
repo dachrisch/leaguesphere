@@ -445,6 +445,42 @@ class TestStageCategoryBackfill(TestCase):
         )
 
 
+class TestMissingTeamGracefulSkip(TestCase):
+    def test_gameresult_with_null_team_is_skipped_not_crashed(self):
+        gameday = GamedayFactory(format="migration_null_team")
+        template = ScheduleTemplate.objects.create(
+            name="Null Team Template", num_teams=2, num_fields=1, num_groups=1
+        )
+        slot = TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=1,
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            home_group=0,
+            home_team=0,
+        )
+        TemplateApplication.objects.create(
+            gameday=gameday, template=template, team_mapping={}
+        )
+
+        team = TeamFactory(name="Officials Team")
+        gi = GameinfoFactory(
+            gameday=gameday,
+            field=1,
+            scheduled="10:00",
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            officials=team,
+        )
+        GameresultFactory(gameinfo=gi, team=None, isHome=True)
+
+        plan = GamedayMigrationService(gameday).build_plan()
+
+        assert plan["warnings"] == []
+        assert "0_0" not in plan["team_mapping"]
+
+
 class TestZeroMutation(TestCase):
     @staticmethod
     def _snapshot_hash(gameday):
