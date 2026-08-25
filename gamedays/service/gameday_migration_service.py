@@ -141,9 +141,22 @@ class GamedayMigrationService:
         if existing is None:
             team_mapping[key] = {"id": team.pk, "label": team.name}
         elif existing["id"] != team.pk:
-            warnings.append(
-                f"Slot {key} has conflicting team assignments across games; "
-                "using the first one found."
+            # A real gameday's Gameinfo/Gameresult can drift from what the
+            # *currently* resolved template implies -- games get manually
+            # corrected over a season, or schedule_<format>.json itself
+            # changes after older gamedays were generated from it. If the
+            # same group/team slot maps to two different real teams
+            # depending on which game you look at, the whole reconstruction
+            # is unreliable: silently keeping "whichever came first" can
+            # scramble team identities across the entire canvas (observed on
+            # real prod data -- a team ends up playing itself). Refuse
+            # outright rather than produce a wrong-but-plausible-looking
+            # canvas.
+            raise GamedayMigrationError(
+                f"Slot {key} has conflicting team assignments across games "
+                f"({existing['label']!r} vs {team.name!r}); this gameday's "
+                "schedule no longer matches its template closely enough to "
+                "migrate reliably."
             )
 
     @staticmethod

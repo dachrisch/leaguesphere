@@ -1,6 +1,7 @@
 import hashlib
 import json
 
+import pytest
 from django.test import TestCase
 
 from gameday_designer.models import ScheduleTemplate, TemplateSlot, TemplateApplication
@@ -302,8 +303,8 @@ class TestOrphanedGameSkipped(TestCase):
         }
 
 
-class TestConflictingTeamAssignmentWarns(TestCase):
-    def test_conflicting_assignment_keeps_first_and_warns(self):
+class TestConflictingTeamAssignmentRaises(TestCase):
+    def test_conflicting_assignment_raises_migration_error(self):
         gameday = GamedayFactory(format="migration_conflict")
         template = ScheduleTemplate.objects.create(
             name="Conflict Template", num_teams=2, num_fields=1, num_groups=1
@@ -354,13 +355,17 @@ class TestConflictingTeamAssignmentWarns(TestCase):
         )
         GameresultFactory(gameinfo=gi2, team=team_y, isHome=True)
 
-        plan = GamedayMigrationService(gameday).build_plan()
-
-        assert plan["team_mapping"]["0_0"] == {"id": team_x.pk, "label": "Team X"}
-        assert (
-            "Slot 0_0 has conflicting team assignments across games; "
-            "using the first one found." in plan["warnings"]
-        )
+        # A real gameday's Gameinfo/Gameresult rows can drift from what the
+        # *current* resolved template would imply -- games get manually
+        # corrected over a season, or the schedule_<format>.json file itself
+        # changes after older gamedays were generated from it. When the same
+        # group/team slot maps to two different real teams depending on which
+        # game you look at, the reconstruction is unreliable: silently
+        # keeping "whichever came first" can scramble team identities across
+        # the whole canvas (observed on real prod data: a team ends up
+        # playing itself). Refusing outright is the safe behavior.
+        with pytest.raises(GamedayMigrationError, match="0_0"):
+            GamedayMigrationService(gameday).build_plan()
 
 
 class TestStageCategoryBackfill(TestCase):

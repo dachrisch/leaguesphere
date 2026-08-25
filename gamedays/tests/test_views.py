@@ -116,6 +116,11 @@ class TestGamedayDetailView(TestCase):
         # 5. OfficialsSignups - List of External Referees
         # 6. SeasonConfig - for table tiebreaker
         # 7. LeagueSlug
+        #
+        # (An anonymous request never sees the migrate button, so the
+        # can_migrate check in GamedayDetailView is skipped entirely here --
+        # see TestGamedayDetailViewCanMigrate for its query cost when a
+        # staff/author request actually triggers it.)
         ###
         with self.assertNumQueries(7):  # Exactly 1 query expected
             resp = self.client.get(
@@ -136,6 +141,69 @@ class TestGamedayDetailView(TestCase):
     def test_detail_view_gameday_not_available(self):
         resp = self.client.get(reverse(LEAGUE_GAMEDAY_DETAIL, args=[00]))
         assert resp.status_code == HTTPStatus.NOT_FOUND
+
+
+class TestGamedayDetailViewCanMigrate(TestCase):
+    """
+    Covers the "don't offer the button if we know we cannot migrate" gate:
+    GamedayDetailView.can_migrate reuses GamedayMigrationService.build_plan()
+    itself, so a gameday that would actually fail to migrate never shows the
+    button. build_plan()'s own success/failure cases (template resolution,
+    conflicting team assignments, etc.) are covered exhaustively in
+    gamedays/tests/service/test_gameday_migration_service.py -- this class
+    only checks that the view/template wire a success-or-raise outcome up to
+    context["can_migrate"] and the rendered button correctly, so it mocks
+    build_plan() directly rather than reconstructing realistic schedule data.
+    """
+
+    @patch(
+        "gamedays.service.gameday_migration_service.GamedayMigrationService.build_plan"
+    )
+    def test_button_shown_when_migratable(self, mock_build_plan):
+        mock_build_plan.return_value = {"slots": [], "team_mapping": {}, "warnings": []}
+        staff_user = UserFactory(is_staff=True)
+        self.client.force_login(staff_user)
+        gameday = DBSetup().create_empty_gameday()
+
+        resp = self.client.get(
+            reverse(LEAGUE_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk})
+        )
+
+        assert resp.context_data["can_migrate"] is True
+        assert "Zu Designer migrieren" in resp.content.decode()
+
+    @patch(
+        "gamedays.service.gameday_migration_service.GamedayMigrationService.build_plan"
+    )
+    def test_button_hidden_when_not_migratable(self, mock_build_plan):
+        from gamedays.service.gameday_migration_service import GamedayMigrationError
+
+        mock_build_plan.side_effect = GamedayMigrationError("no template")
+        staff_user = UserFactory(is_staff=True)
+        self.client.force_login(staff_user)
+        gameday = DBSetup().create_empty_gameday()
+
+        resp = self.client.get(
+            reverse(LEAGUE_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk})
+        )
+
+        assert resp.context_data["can_migrate"] is False
+        assert "Zu Designer migrieren" not in resp.content.decode()
+
+    @patch(
+        "gamedays.service.gameday_migration_service.GamedayMigrationService.build_plan"
+    )
+    def test_button_hidden_for_anonymous_even_when_migratable(self, mock_build_plan):
+        mock_build_plan.return_value = {"slots": [], "team_mapping": {}, "warnings": []}
+        gameday = DBSetup().create_empty_gameday()
+
+        resp = self.client.get(
+            reverse(LEAGUE_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk})
+        )
+
+        assert resp.context_data["can_migrate"] is False
+        assert "Zu Designer migrieren" not in resp.content.decode()
+        mock_build_plan.assert_not_called()
 
 
 class TestGamedayLeagueStatisticView(TestCase):

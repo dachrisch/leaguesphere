@@ -179,6 +179,30 @@ class GamedayDetailView(DetailView):
         gameday = context["gameday"]
         gs = GamedayService.create(gameday.pk)
 
+        # Only relevant pre-migration, and only for users who could ever see
+        # the button -- once a designer_state exists the template shows the
+        # "open in Designer" link instead, and anonymous/non-privileged
+        # visitors never see the migrate button at all, so skip the extra
+        # queries entirely for them. Reuses the real build_plan() logic
+        # (rather than a separate lightweight check) so this can never drift
+        # from what actually determines success/failure.
+        context["can_migrate"] = False
+        user = self.request.user
+        user_could_see_button = user.is_authenticated and (
+            user.is_staff or gameday.author == user
+        )
+        if user_could_see_button and not hasattr(gameday, "designer_state"):
+            from gamedays.service.gameday_migration_service import (
+                GamedayMigrationError,
+                GamedayMigrationService,
+            )
+
+            try:
+                GamedayMigrationService(gameday).build_plan()
+                context["can_migrate"] = True
+            except GamedayMigrationError:
+                context["can_migrate"] = False
+
         try:
             config = LeagueSeasonConfig.objects.get(
                 league__name=self.object.league.name,
