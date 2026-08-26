@@ -840,6 +840,17 @@ class TestUpdateRulesSerialization(TestCase):
             points=2,
         )
 
+        team = TeamFactory(name="T1")
+        gi = GameinfoFactory(
+            gameday=gameday,
+            field=1,
+            scheduled="10:00",
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            officials=team,
+        )
+        GameresultFactory(gameinfo=gi, team=team, isHome=True)
+
         plan = GamedayMigrationService(gameday).build_plan()
 
         assert len(plan["update_rules"]) == 1
