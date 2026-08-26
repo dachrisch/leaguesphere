@@ -37,7 +37,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { gamedayApi } from '../../api/gamedayApi';
 import { applyGenericTemplate, GenericTemplate } from '../../utils/templateMapper';
 import { getTeamColor } from '../../utils/tournamentConstants';
-import type { FlowState, GlobalTeam, GlobalTeamGroup } from '../../types/flowchart';
+import type { FlowState, GlobalTeam, GlobalTeamGroup, GameNode } from '../../types/flowchart';
+import { isGameNode, isStageNode } from '../../types/flowchart';
 import type { Gameday, MigrationPlan } from '../../types';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import LoadingOverlay from '../ui/LoadingOverlay';
@@ -174,6 +175,23 @@ const MigrateGamedayRunner: React.FC = () => {
           globalTeamGroups,
         });
 
+        // Carry each stage's start time over from its first game, so the
+        // field/stage start time survives the migration. Mirrors
+        // tournamentGenerator.generateTournament, where a stage's start time
+        // is its first game's start time.
+        const nodesWithStageTimes = applied.nodes.map((node) => {
+          if (!isStageNode(node)) return node;
+          const stageGameTimes = applied.nodes
+            .filter((n): n is GameNode => isGameNode(n) && n.parentId === node.id)
+            .map((n) => n.data.startTime)
+            .filter((t): t is string => Boolean(t));
+          if (stageGameTimes.length === 0) return node;
+          return {
+            ...node,
+            data: { ...node.data, startTime: stageGameTimes.sort()[0] },
+          };
+        });
+
         setGameday(fetchedGameday);
         setWarnings([...plan.warnings, ...applied.warnings]);
         setPreviewState({
@@ -193,7 +211,7 @@ const MigrateGamedayRunner: React.FC = () => {
               resource_urls: fetchedGameday.resource_urls,
             },
           }),
-          nodes: applied.nodes,
+          nodes: nodesWithStageTimes,
           edges: applied.edges,
           globalTeams: applied.globalTeams,
           globalTeamGroups: applied.globalTeamGroups,

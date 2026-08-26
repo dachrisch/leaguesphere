@@ -142,6 +142,10 @@ class GamedayMigrationService:
                 "official_team": official_idx,
                 "official_reference": "",
                 "break_after": 0,
+                "start_time": (
+                    gi.scheduled.strftime("%H:%M") if gi.scheduled else None
+                ),
+                "manual_time": True,
             })
 
         group_config = []
@@ -193,6 +197,10 @@ class GamedayMigrationService:
         # that were successfully matched to a real Gameinfo get an entry here;
         # everything else falls back to derive_legacy_stage_category(slot.stage).
         stage_category_by_slot_id: dict[int, str] = {}
+        # Backfilled scheduled time per matched TemplateSlot.pk, so the migrated
+        # canvas keeps each game's real start time (and the field start, as the
+        # first game's time) instead of falling back to the gameday default.
+        time_by_slot_id: dict[int, str] = {}
 
         for gi in gameinfos:
             slot = self._placeholder_service._find_slot_for_game(gi)
@@ -210,6 +218,7 @@ class GamedayMigrationService:
                 continue
 
             stage_category_by_slot_id[slot.pk] = gi.stage_category
+            time_by_slot_id[slot.pk] = gi.scheduled.strftime("%H:%M")
 
             self._record_slot_role(
                 team_mapping,
@@ -238,7 +247,7 @@ class GamedayMigrationService:
         )
 
         slots = [
-            self._serialize_slot(slot, stage_category_by_slot_id)
+            self._serialize_slot(slot, stage_category_by_slot_id, time_by_slot_id)
             for slot in all_slots
         ]
 
@@ -328,10 +337,16 @@ class GamedayMigrationService:
         ]
 
     @staticmethod
-    def _serialize_slot(slot: TemplateSlot, stage_category_by_slot_id: dict) -> dict:
+    def _serialize_slot(
+        slot: TemplateSlot,
+        stage_category_by_slot_id: dict,
+        time_by_slot_id: dict,
+    ) -> dict:
         stage_category = stage_category_by_slot_id.get(slot.pk)
         if not stage_category:
             stage_category = derive_legacy_stage_category(slot.stage)
+
+        start_time = time_by_slot_id.get(slot.pk)
 
         return {
             "field": slot.field,
@@ -350,6 +365,8 @@ class GamedayMigrationService:
             "official_team": slot.official_team,
             "official_reference": slot.official_reference,
             "break_after": slot.break_after,
+            "start_time": start_time,
+            "manual_time": bool(start_time),
         }
 
     @staticmethod

@@ -224,6 +224,10 @@ export interface MigrationPlanSlot {
   official_team: number | null;
   official_reference: string;
   break_after: number;
+  /** Scheduled start time (HH:MM) of the real game this slot reconstructs. */
+  start_time?: string;
+  /** True when start_time came from the real game and must not be auto-recalculated. */
+  manual_time?: boolean;
 }
 
 /**

@@ -198,10 +198,21 @@ class TestTeamMappingReconstruction(TestCase):
             "official_team": 1,
             "official_reference": "",
             "break_after": 0,
+            "start_time": "10:00",
+            "manual_time": True,
         }
         assert slot2_data["slot_order"] == 2
         assert slot2_data["home_group"] == 0
         assert slot2_data["home_team"] == 1
+
+    def test_slots_carry_real_game_start_times_as_manual(self):
+        plan = GamedayMigrationService(self.gameday).build_plan()
+
+        slot1_data, slot2_data = plan["slots"]
+        assert slot1_data["start_time"] == "10:00"
+        assert slot1_data["manual_time"] is True
+        assert slot2_data["start_time"] == "11:10"
+        assert slot2_data["manual_time"] is True
 
 
 class TestOrphanedGameSkipped(TestCase):
@@ -449,6 +460,12 @@ class TestStageCategoryBackfill(TestCase):
             == derive_legacy_stage_category("Finalrunde")
             == StageCategory.FINAL
         )
+        # Matched slots carry the real game time as manual; unmatched slots
+        # have no time at all (start_time stays None, manual_time False).
+        assert slots_by_order[1]["start_time"] == "10:00"
+        assert slots_by_order[1]["manual_time"] is True
+        assert slots_by_order[2]["start_time"] is None
+        assert slots_by_order[2]["manual_time"] is False
 
 
 class TestUnparseableReferenceWarnings(TestCase):
@@ -992,6 +1009,11 @@ class TestCustomGamedayMigration(TestCase):
         assert slot1["stage_category"] == StageCategory.PRELIMINARY
         assert slot1["home_group"] == 0
         assert slot1["away_group"] == 0
+        # Real game start times are carried over as manual times.
+        assert slot1["start_time"] == "10:00"
+        assert slot1["manual_time"] is True
+        assert slot2["start_time"] == "10:00"
+        assert slot2["manual_time"] is True
 
     def test_multi_group(self):
         gameday, _ = self._build_custom_gameday(

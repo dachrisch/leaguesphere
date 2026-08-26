@@ -66,6 +66,8 @@ const gapPlan: MigrationPlan = {
       official_team: 0,
       official_reference: '',
       break_after: 0,
+      start_time: '10:00',
+      manual_time: true,
     },
   ],
   team_mapping: {
@@ -225,6 +227,32 @@ describe('MigrateGamedayRunner', () => {
     // This is the critical assertion: away_team index 2 must resolve to the
     // real team at array position 2, not be shifted by the gap at index 1.
     expect(awayTeam?.label).toBe('Team Gamma');
+  });
+
+  it('carries the real game start times and the field/stage start time over from the plan', async () => {
+    (gamedayApi.getMigrationPlan as ReturnType<typeof vi.fn>).mockResolvedValue(gapPlan);
+
+    renderRunner('1');
+
+    await clickMigrate();
+    await waitFor(() => expect(gamedayApi.updateDesignerState).toHaveBeenCalledTimes(1));
+
+    const [, state] = (gamedayApi.updateDesignerState as ReturnType<typeof vi.fn>).mock.calls[0] as [number, FlowState];
+
+    const gameNode = state.nodes.find(n => isGameNode(n) && n.data.standing === 'A1');
+    expect(gameNode).toBeDefined();
+    if (!gameNode || !isGameNode(gameNode)) throw new Error('unreachable');
+
+    // The plan's per-slot start_time is written as a manual (locked) time so
+    // the designer's auto-recalc never shifts the migrated games.
+    expect(gameNode.data.startTime).toBe('10:00');
+    expect(gameNode.data.manualTime).toBe(true);
+
+    // The stage node picks up the field start time (its first game's time).
+    const stageNode = state.nodes.find(n => n.id === gameNode.parentId && n.type === 'stage');
+    expect(stageNode).toBeDefined();
+    if (!stageNode || stageNode.type !== 'stage') throw new Error('unreachable');
+    expect(stageNode.data.startTime).toBe('10:00');
   });
 
   it('assigns each seeded team (including placeholders) a distinct color from the shared palette, not the flat gray fallback', async () => {
