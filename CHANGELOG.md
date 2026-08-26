@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.19.6](https://github.com/dachrisch/leaguesphere/compare/v4.19.5...v4.19.6) (2026-08-26)
+
+
+### Documentation
+
+* add per-module AGENTS.md indexes to CLAUDE.md guides ([1b96eec](https://github.com/dachrisch/leaguesphere/commit/1b96eecd540e6592e884d037da7c7d1407f51a6f))
+
 ## [4.19.5](https://github.com/dachrisch/leaguesphere/compare/v4.19.4...v4.19.5) (2026-08-26)
 
 
