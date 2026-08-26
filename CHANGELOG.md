@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.19.5](https://github.com/dachrisch/leaguesphere/compare/v4.19.4...v4.19.5) (2026-08-26)
+
+
+### Bug Fixes
+
+* **deps:** update dependency axios to v1.20.0 ([#1884](https://github.com/dachrisch/leaguesphere/issues/1884)) ([1220fc4](https://github.com/dachrisch/leaguesphere/commit/1220fc4d6db842ce3009ab0113bcb1ecf7f50d2a))
+* **deps:** update dependency axios to v1.20.0 ([#1885](https://github.com/dachrisch/leaguesphere/issues/1885)) ([7ee809f](https://github.com/dachrisch/leaguesphere/commit/7ee809fe406cd0061fd4d3793c835f1444f7fb8a))
+
 ## [4.19.4](https://github.com/dachrisch/leaguesphere/compare/v4.19.3...v4.19.4) (2026-08-24)
 
 
