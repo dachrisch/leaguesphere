@@ -10,23 +10,24 @@
  * Flow:
  *  1. Fetch the migration plan (GET /gamedays/:id/migration-plan/) and the
  *     gameday itself. Both are read-only -- nothing is written yet.
- *  2. Show a confirmation dialog that spells out exactly what the migration
- *     will (and won't) do, summarizing the plan (games/fields/groups/teams)
- *     and surfacing any plan warnings. The migration does not start until
- *     the user explicitly confirms.
- *  3. On confirm: seed a GlobalTeam[]/GlobalTeamGroup[] pool from the plan's
- *     team_mapping (see buildSeedTeams below for the gap-filling rules this
- *     requires), hand that seed to the existing, already-tested
- *     applyGenericTemplate() to build nodes/edges -- this component never
- *     builds flow nodes itself.
- *  4. PUT the result to the existing designer-state endpoint.
+ *  2. Build the migrated Designer canvas in memory (seed a GlobalTeam[]/
+ *     GlobalTeamGroup[] pool from the plan's team_mapping -- see buildSeedTeams
+ *     below for the gap-filling rules this requires -- then hand that seed to
+ *     the existing, already-tested applyGenericTemplate() to build nodes/edges;
+ *     this component never builds flow nodes itself) and render it read-only in
+ *     the background, so the user already sees exactly what would be saved.
+ *  3. Show a confirmation dialog on top stating that no data will be changed
+ *     but that from now on the gameday will be edited in the Designer.
+ *  4. On confirm: PUT the in-memory state to the existing designer-state
+ *     endpoint. On cancel: the preview is thrown away and nothing is written.
  *  5. Only once that PUT has succeeded, navigate to /designer/:id (carrying
  *     any plan warnings along for the destination to surface).
  *
  * Ordering is critical: this must never GET the designer-state endpoint (or
  * navigate anywhere that would) before its own PUT succeeds -- that GET does
  * a get_or_create server-side and would silently create a blank
- * GamedayDesignerState row ahead of this write.
+ * GamedayDesignerState row ahead of this write. The background preview is
+ * therefore seeded from the in-memory state directly, never from the API.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -41,6 +42,7 @@ import type { Gameday, MigrationPlan } from '../../types';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import LoadingOverlay from '../ui/LoadingOverlay';
 import MigrateConfirmModal from '../modals/MigrateConfirmModal';
+import MigrateGamedayPreview from './MigrateGamedayPreview';
 
 /**
  * Pull a DRF-style `{ detail: "..." }` message out of a failed axios
@@ -123,10 +125,11 @@ const MigrateGamedayRunner: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTypedTranslation(['ui']);
-  const [plan, setPlan] = useState<MigrationPlan | null>(null);
+  const [previewState, setPreviewState] = useState<FlowState | null>(null);
   const [gameday, setGameday] = useState<Gameday | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isMigrating, setIsMigrating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const hasRunRef = useRef(false);
 
   useEffect(() => {
@@ -137,7 +140,7 @@ const MigrateGamedayRunner: React.FC = () => {
 
     (async () => {
       try {
-        const [fetchedPlan, fetchedGameday] = await Promise.all([
+        const [plan, fetchedGameday] = await Promise.all([
           gamedayApi.getMigrationPlan(gamedayId),
           // Best-effort only, for a friendlier template name and seed metadata --
           // this gameday's designer-relevant permissions were already verified
@@ -145,8 +148,56 @@ const MigrateGamedayRunner: React.FC = () => {
           // the migration itself.
           gamedayApi.getGameday(gamedayId).catch(() => null),
         ]);
-        setPlan(fetchedPlan);
+
+        const { globalTeams, globalTeamGroups } = buildSeedTeams(plan);
+
+        const genericTemplate: GenericTemplate = {
+          name: fetchedGameday?.name || t('ui:migration.defaultTemplateName'),
+          description: '',
+          // Not persisted anywhere -- applyGenericTemplate is used purely as a
+          // transient converter here, no ScheduleTemplate row is ever saved
+          // from this flow. Distinct (group, team) pairs actually resolved.
+          num_teams: Object.keys(plan.team_mapping).length,
+          num_fields: plan.num_fields,
+          num_groups: plan.num_groups,
+          game_duration: 70,
+          sharing: 'PRIVATE',
+          slots: plan.slots,
+          group_config: plan.group_config,
+          update_rules: plan.update_rules,
+        };
+
+        const applied = applyGenericTemplate(genericTemplate, {
+          nodes: [],
+          edges: [],
+          globalTeams,
+          globalTeamGroups,
+        });
+
         setGameday(fetchedGameday);
+        setWarnings([...plan.warnings, ...applied.warnings]);
+        setPreviewState({
+          ...(fetchedGameday && {
+            metadata: {
+              id: fetchedGameday.id,
+              name: fetchedGameday.name,
+              date: fetchedGameday.date,
+              start: fetchedGameday.start,
+              format: fetchedGameday.format,
+              author: fetchedGameday.author,
+              address: fetchedGameday.address,
+              season: fetchedGameday.season,
+              league: fetchedGameday.league,
+              status: fetchedGameday.status,
+              has_results: fetchedGameday.has_results,
+              resource_urls: fetchedGameday.resource_urls,
+            },
+          }),
+          nodes: applied.nodes,
+          edges: applied.edges,
+          globalTeams: applied.globalTeams,
+          globalTeamGroups: applied.globalTeamGroups,
+        });
       } catch (error) {
         setErrorMessage(extractErrorDetail(error, t('ui:migration.loadPlanFailedFallback')));
       }
@@ -154,74 +205,20 @@ const MigrateGamedayRunner: React.FC = () => {
   }, [id, navigate, t]);
 
   const handleConfirm = async () => {
-    if (!id || !plan) return;
-    setIsMigrating(true);
-
-    const gamedayId = parseInt(id, 10);
-    const { globalTeams, globalTeamGroups } = buildSeedTeams(plan);
-
-    const genericTemplate: GenericTemplate = {
-      name: gameday?.name || t('ui:migration.defaultTemplateName'),
-      description: '',
-      // Not persisted anywhere -- applyGenericTemplate is used purely as a
-      // transient converter here, no ScheduleTemplate row is ever saved
-      // from this flow. Distinct (group, team) pairs actually resolved.
-      num_teams: Object.keys(plan.team_mapping).length,
-      num_fields: plan.num_fields,
-      num_groups: plan.num_groups,
-      game_duration: 70,
-      sharing: 'PRIVATE',
-      slots: plan.slots,
-      group_config: plan.group_config,
-      update_rules: plan.update_rules,
-    };
-
-    const seedState: FlowState = {
-      nodes: [],
-      edges: [],
-      globalTeams,
-      globalTeamGroups,
-    };
-
-    const applied = applyGenericTemplate(genericTemplate, seedState);
-
-    const finalState: FlowState = {
-      ...(gameday && {
-        metadata: {
-          id: gameday.id,
-          name: gameday.name,
-          date: gameday.date,
-          start: gameday.start,
-          format: gameday.format,
-          author: gameday.author,
-          address: gameday.address,
-          season: gameday.season,
-          league: gameday.league,
-          status: gameday.status,
-          has_results: gameday.has_results,
-          resource_urls: gameday.resource_urls,
-        },
-      }),
-      nodes: applied.nodes,
-      edges: applied.edges,
-      globalTeams: applied.globalTeams,
-      globalTeamGroups: applied.globalTeamGroups,
-    };
+    if (!id || !previewState) return;
+    setIsSaving(true);
 
     try {
-      await gamedayApi.updateDesignerState(gamedayId, finalState);
+      await gamedayApi.updateDesignerState(parseInt(id, 10), previewState);
     } catch {
-      setIsMigrating(false);
+      setIsSaving(false);
       setErrorMessage(t('ui:migration.saveFailed'));
       return;
     }
 
     navigate(`/designer/${id}`, {
       replace: true,
-      state: (() => {
-        const allWarnings = [...plan.warnings, ...applied.warnings];
-        return allWarnings.length > 0 ? { migrationWarnings: allWarnings } : undefined;
-      })(),
+      state: warnings.length > 0 ? { migrationWarnings: warnings } : undefined,
     });
   };
 
@@ -247,16 +244,20 @@ const MigrateGamedayRunner: React.FC = () => {
   }
 
   return (
-    <Container className="py-5">
+    <div className="position-relative h-100 d-flex flex-column">
+      <div className="flex-grow-1 overflow-auto">
+        {previewState && <MigrateGamedayPreview state={previewState} />}
+        {previewState === null && <LoadingOverlay message={t('ui:migration.loading')} />}
+      </div>
+      {isSaving && <LoadingOverlay message={t('ui:migration.loading')} />}
       <MigrateConfirmModal
-        show={plan !== null && !isMigrating}
+        show={previewState !== null && !isSaving}
         onHide={handleCancel}
         onConfirm={handleConfirm}
         gamedayName={gameday?.name}
-        plan={plan}
+        warnings={warnings}
       />
-      {(plan === null || isMigrating) && <LoadingOverlay message={t('ui:migration.loading')} />}
-    </Container>
+    </div>
   );
 };
 

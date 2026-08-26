@@ -1,12 +1,12 @@
 /**
  * Tests for MigrateGamedayRunner
  *
- * Covers the /migrate/:id flow: fetch a migration plan, show a confirmation
- * dialog that explains what the migration will (and won't) do, and only after
- * the user confirms seed a team pool from the plan (including the gap-filling
- * rules that keep applyGenericTemplate's group/team-index lookups aligned),
- * PUT the resulting designer state *before* ever navigating to /designer/:id,
- * and surface errors/warnings.
+ * Covers the /migrate/:id flow: fetch a migration plan, build the migrated
+ * Designer canvas in memory and render it read-only in the background (so the
+ * user sees exactly what would be saved), show a confirmation dialog that
+ * states no data will be changed, and only after the user confirms PUT the
+ * in-memory state *before* ever navigating to /designer/:id. Cancelling throws
+ * the preview away without writing anything.
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
@@ -100,35 +100,37 @@ describe('MigrateGamedayRunner', () => {
     (gamedayApi.updateDesignerState as ReturnType<typeof vi.fn>).mockResolvedValue({});
   });
 
-  it('shows a confirmation dialog explaining the migration and does not write anything until confirmed', async () => {
+  it('renders the migrated canvas in the background behind the confirm dialog, writing nothing until confirmed', async () => {
     (gamedayApi.getMigrationPlan as ReturnType<typeof vi.fn>).mockResolvedValue(gapPlan);
 
     renderRunner('1');
 
-    // The dialog is shown with the "what will happen" description.
+    // The confirm dialog is shown on top of the rendered preview.
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByText(/existing games and results will NOT be changed/i)).toBeInTheDocument();
+    // The preview already shows the migrated canvas content (the field and a
+    // seeded team) without having written anything.
+    expect(screen.getByText('Feld 1')).toBeInTheDocument();
+    expect(screen.getAllByText('Team Alpha').length).toBeGreaterThan(0);
+
     // Nothing has been written and no navigation happened yet.
     expect(gamedayApi.updateDesignerState).not.toHaveBeenCalled();
     expect(gamedayApi.getDesignerState).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
 
-    // Confirming then triggers exactly the migration.
+    // Confirming then triggers exactly the save.
     await clickMigrate();
     await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
     expect(gamedayApi.updateDesignerState).toHaveBeenCalledTimes(1);
   });
 
-  it('summarizes the migration plan (games, fields, groups, teams) in the dialog', async () => {
+  it('confirmation dialog states that no data will be changed and that the gameday will be edited in the Designer from now on', async () => {
     (gamedayApi.getMigrationPlan as ReturnType<typeof vi.fn>).mockResolvedValue(gapPlan);
 
     renderRunner('1');
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByText('1 game')).toBeInTheDocument();
-    expect(screen.getByText('1 field')).toBeInTheDocument();
-    expect(screen.getByText('2 groups')).toBeInTheDocument();
-    expect(screen.getByText('4 teams')).toBeInTheDocument();
+    expect(screen.getByText(/No data will be changed/i)).toBeInTheDocument();
+    expect(screen.getByText(/edited in the Gameday Designer/i)).toBeInTheDocument();
   });
 
   it('surfaces plan warnings in the confirmation dialog before migrating', async () => {
@@ -145,7 +147,7 @@ describe('MigrateGamedayRunner', () => {
     expect(gamedayApi.updateDesignerState).not.toHaveBeenCalled();
   });
 
-  it('cancelling navigates back to the legacy gameday page without migrating', async () => {
+  it('cancelling throws the preview away and navigates back to the legacy gameday page without migrating', async () => {
     (gamedayApi.getMigrationPlan as ReturnType<typeof vi.fn>).mockResolvedValue(gapPlan);
 
     renderRunner('42');
@@ -158,7 +160,7 @@ describe('MigrateGamedayRunner', () => {
     expect(gamedayApi.getDesignerState).not.toHaveBeenCalled();
   });
 
-  it('PUTs a migrated designer state before navigating, and never GETs designer-state first', async () => {
+  it('PUTs the previewed designer state before navigating, and never GETs designer-state first', async () => {
     (gamedayApi.getMigrationPlan as ReturnType<typeof vi.fn>).mockResolvedValue(gapPlan);
 
     renderRunner('1');
@@ -176,7 +178,7 @@ describe('MigrateGamedayRunner', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/designer/1', expect.objectContaining({ replace: true }));
   });
 
-  it('fills the gap in team_mapping with a placeholder so later indices stay aligned', async () => {
+  it('saves the exact state that was previewed', async () => {
     (gamedayApi.getMigrationPlan as ReturnType<typeof vi.fn>).mockResolvedValue(gapPlan);
 
     renderRunner('1');
@@ -186,9 +188,10 @@ describe('MigrateGamedayRunner', () => {
 
     const [, state] = (gamedayApi.updateDesignerState as ReturnType<typeof vi.fn>).mock.calls[0] as [number, FlowState];
 
-    // Group 0 must be seeded as [real Team Alpha, placeholder TBD, real Team Gamma]
-    // -- NOT compacted to [Team Alpha, Team Gamma] -- so index 2 still resolves
-    // to the real team mapped at "0_2".
+    // The preview (rendered before confirmation) and the saved state share the
+    // same seeded teams -- group 0 is [Team Alpha, TBD, Team Gamma], not
+    // compacted to [Team Alpha, Team Gamma] -- so index 2 still resolves to the
+    // real team mapped at "0_2".
     const groupA = state.globalTeamGroups.find(g => g.name === 'Gruppe A')!;
     const groupATeams = state.globalTeams
       .filter(t => t.groupId === groupA.id)
@@ -325,8 +328,7 @@ describe('MigrateGamedayRunner', () => {
     await waitFor(() => expect(gamedayApi.updateDesignerState).toHaveBeenCalledTimes(1));
 
     const [, state] = (gamedayApi.updateDesignerState as ReturnType<typeof vi.fn>).mock.calls[0] as [number, FlowState];
-    // The metadata should still be present even when getGameday fails
-    // because updateDesignerState is called with the applied state
+    // The canvas is still built even when getGameday fails.
     expect(state.nodes.length).toBeGreaterThan(0);
     expect(mockNavigate).toHaveBeenCalledWith('/designer/1', expect.objectContaining({ replace: true }));
   });
