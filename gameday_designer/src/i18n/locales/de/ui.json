@@ -187,6 +187,23 @@
     "gamedayNotFound": "Spieltag nicht gefunden",
     "saveUrlsFailed": "Links konnten nicht gespeichert werden"
   },
+  "migration": {
+    "loading": "Spieltag wird zu Designer migriert…",
+    "errorTitle": "Migration fehlgeschlagen",
+    "backToGameday": "Zurück zum Spieltag",
+    "loadPlanFailedFallback": "Der Migrationsplan konnte nicht geladen werden. Bitte versuche es erneut.",
+    "saveFailed": "Der migrierte Spielplan konnte nicht gespeichert werden. Bitte versuche es erneut.",
+    "warningsTitle": "Mit Warnungen migriert",
+    "defaultTemplateName": "Migrierter Spielplan",
+    "confirmTitle": "Zu Designer migrieren?",
+    "confirmIntro": "Es werden keine Daten verändert – dieser Spieltag wird ab jetzt einfach im Gameday Designer bearbeitet.",
+    "confirmPointCanvas": "Der aktuelle Spielplan wird als neue Designer-Leinwand übernommen; es wird keine Vorlage gespeichert.",
+    "confirmPointUnchanged": "Spiele, Ergebnisse und Offizielle bleiben exakt wie sie sind – nichts wird gelöscht oder umgeschrieben.",
+    "confirmPointEditing": "Ab jetzt wird dieser Spieltag im Designer bearbeitet; der klassische Spielplan-Editor wird nicht mehr angezeigt.",
+    "confirmWarningsTitle": "Warnungen",
+    "cancelAction": "Nicht migrieren",
+    "confirmAction": "Migrieren"
+  },
   "gameProgress": {
     "section": {
       "live": "● LIVE · {{count}} Spiele",

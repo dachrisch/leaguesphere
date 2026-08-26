@@ -228,4 +228,38 @@ describe('GamedayApi', () => {
       expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/gamedays/1/');
     });
   });
+
+  describe('getMigrationPlan', () => {
+    it('should fetch a migration plan by gameday ID', async () => {
+      const mockPlan = {
+        template_id: 7,
+        num_fields: 1,
+        num_groups: 2,
+        group_config: [
+          { name: 'Gruppe A', team_count: 2 },
+          { name: 'Gruppe B', team_count: 2 },
+        ],
+        slots: [],
+        team_mapping: { '0_0': { id: 10, label: 'Team Alpha' } },
+        warnings: [],
+      };
+
+      mockAxiosInstance.get.mockResolvedValue({ data: mockPlan });
+
+      const result = await gamedayApi.getMigrationPlan(42);
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/gamedays/42/migration-plan/');
+      expect(result).toEqual(mockPlan);
+    });
+
+    it('should propagate errors from the migration plan endpoint', async () => {
+      mockAxiosInstance.get.mockRejectedValue({
+        response: { status: 403, data: { detail: 'Forbidden' } },
+      });
+
+      await expect(gamedayApi.getMigrationPlan(1)).rejects.toMatchObject({
+        response: { status: 403 },
+      });
+    });
+  });
 });

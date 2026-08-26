@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Container, Alert } from 'react-bootstrap';
 import { useDesignerController } from '../hooks/useDesignerController';
 import { useFlowState } from '../hooks/useFlowState';
@@ -40,6 +40,7 @@ const getSessionId = (): string => {
 const ListDesignerApp: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTypedTranslation(['ui', 'domain']);
   const {
     setGamedayName,
@@ -360,6 +361,20 @@ const ListDesignerApp: React.FC = () => {
     // Only run when ID changes. loadData is stable but we avoid any risk of loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Surface warnings handed off by MigrateGamedayRunner (games that couldn't
+  // be reliably matched/mapped during migration) as notifications, then clear
+  // the location state so they don't reappear on refresh.
+  useEffect(() => {
+    const state = location.state as { migrationWarnings?: string[] } | null;
+    if (state?.migrationWarnings && state.migrationWarnings.length > 0) {
+      state.migrationWarnings.forEach(warning => {
+        addNotification(warning, 'warning', t('ui:migration.warningsTitle'));
+      });
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   // Track designer opened event
   useEffect(() => {

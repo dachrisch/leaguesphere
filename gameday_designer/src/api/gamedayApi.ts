@@ -13,6 +13,7 @@ import type {
   Season,
   League,
   FlowState,
+  MigrationPlan,
 } from '../types';
 import { mockGamedayService } from './mockGamedayApi';
 
@@ -223,6 +224,17 @@ class GamedayApi {
 
   async getTemplateDetail(id: number): Promise<unknown> {
     const response = await this.client.get(`/designer/templates/${id}/`);
+    return response.data;
+  }
+
+  /**
+   * Fetch a read-only migration plan describing how an existing (pre-Designer)
+   * gameday's real schedule maps onto a Designer canvas. 403 if the caller
+   * isn't staff/the gameday's author; 400 if it's already migrated or has no
+   * resolvable schedule/games.
+   */
+  async getMigrationPlan(gamedayId: number): Promise<MigrationPlan> {
+    const response = await this.client.get<MigrationPlan>(`/gamedays/${gamedayId}/migration-plan/`);
     return response.data;
   }
 

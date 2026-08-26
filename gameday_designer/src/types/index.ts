@@ -57,4 +57,8 @@ export type {
   Gameday,
   Season,
   League,
+  MigrationPlan,
+  MigrationPlanSlot,
+  MigrationPlanUpdateRule,
+  MigrationPlanUpdateRuleTeam,
 } from './api';

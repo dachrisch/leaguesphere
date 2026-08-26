@@ -130,8 +130,19 @@
     >
         Spielplan
     </h2>
-        {% if user.is_staff %}
+        {% if user.is_staff or object.author == user %}
         <span>
+            {% if object.designer_state %}
+            <a href="/gamedays/gameday/design/designer/{{ object.pk }}/" class="btn btn-primary">
+                <i class="bi bi-diagram-3"></i> <span class="d-none d-md-inline">Im Designer bearbeiten</span>
+            </a>
+            {% else %}
+            {% if can_migrate %}
+            <a href="/gamedays/gameday/design/migrate/{{ object.pk }}/" class="btn btn-outline-primary me-2">
+                <i class="bi bi-arrow-repeat"></i> <span class="d-none d-md-inline">Zu Designer migrieren</span>
+            </a>
+            {% endif %}
+            {% if user.is_staff %}
             <a href="{% url 'league-gameday-gameinfos-update' pk=object.id%}" class="btn btn-primary">
                 <i class="bi bi-table"></i> <span class="d-none d-md-inline">Spielplan {% if info.schedule == None %}erstellen{% else %}bearbeiten{% endif %}</span>
             </a>
@@ -142,6 +153,8 @@
                     data-url="{% url 'league-gameday-gameinfos-delete' pk=object.pk %}" title="Spielplan löschen">
                 <i class="bi bi-trash"></i>
             </button>
+            {% endif %}
+            {% endif %}
             {% endif %}
         </span>
         {% endif %}

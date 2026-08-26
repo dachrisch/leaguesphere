@@ -219,5 +219,205 @@ describe('templateMapper', () => {
       expect(vf1.data.homeTeamDynamic).toBeNull();
       expect(result.edges.filter(e => e.targetHandle === 'home')).toHaveLength(0);
     });
+
+    it('returns a warning for an unresolvable winner reference', () => {
+      const template = {
+        name: 'Test', description: '', num_teams: 2, num_fields: 1, num_groups: 1,
+        game_duration: 15, sharing: 'PRIVATE' as const,
+        slots: [
+          { ...baseSlot, slot_order: 1, standing: 'VF 1', home_reference: 'Winner Game 1', home_group: null, home_team: null },
+        ],
+      };
+      const currentState: FlowState = {
+        nodes: [], edges: [], globalTeams: teams, globalTeamGroups: groups, metadata: null,
+      } as unknown as FlowState;
+
+      const result = applyGenericTemplate(template, currentState);
+
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0]).toContain('Winner Game 1');
+      expect(result.warnings[0]).toContain('VF 1');
+    });
+
+    it('returns a warning for an unresolvable loser reference', () => {
+      const template = {
+        name: 'Test', description: '', num_teams: 2, num_fields: 1, num_groups: 1,
+        game_duration: 15, sharing: 'PRIVATE' as const,
+        slots: [
+          { ...baseSlot, slot_order: 1, standing: 'P3', away_reference: 'Loser HF 1', away_group: null, away_team: null },
+        ],
+      };
+      const currentState: FlowState = {
+        nodes: [], edges: [], globalTeams: teams, globalTeamGroups: groups, metadata: null,
+      } as unknown as FlowState;
+
+      const result = applyGenericTemplate(template, currentState);
+
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0]).toContain('Loser HF 1');
+    });
+
+    it('returns no warnings when all references resolve', () => {
+      const template = {
+        name: 'Test', description: '', num_teams: 2, num_fields: 1, num_groups: 1,
+        game_duration: 15, sharing: 'PRIVATE' as const,
+        slots: [
+          { ...baseSlot, slot_order: 1, standing: 'AF 1' },
+          { ...baseSlot, slot_order: 2, standing: 'VF 1', home_reference: 'Winner AF 1', home_group: null, home_team: null },
+        ],
+      };
+      const currentState: FlowState = {
+        nodes: [], edges: [], globalTeams: teams, globalTeamGroups: groups, metadata: null,
+      } as unknown as FlowState;
+
+      const result = applyGenericTemplate(template, currentState);
+
+      expect(result.warnings).toHaveLength(0);
+    });
+  });
+
+  describe('structured update rules (migration bypass)', () => {
+    const groups: GlobalTeamGroup[] = [{ id: 'g1', name: 'Group A', order: 0 }];
+    const teams: GlobalTeam[] = [
+      { id: 't1', label: 'Team 1', groupId: 'g1', order: 0 },
+      { id: 't2', label: 'Team 2', groupId: 'g1', order: 1 },
+    ];
+
+    const baseSlot = {
+      field: 1, slot_order: 1, stage: 'Preliminary', stage_type: 'STANDARD' as const,
+      stage_category: 'preliminary' as const, break_after: 0,
+      home_group: 0, home_team: 0, home_reference: '',
+      away_group: 0, away_team: 1, away_reference: '',
+      official_group: null, official_team: null, official_reference: '',
+      start_time: '', manual_time: false,
+    };
+
+    it('creates a winner edge from structured rule when parseReference would fail', () => {
+      const template = {
+        name: 'Test', description: '', num_teams: 2, num_fields: 1, num_groups: 1,
+        game_duration: 15, sharing: 'PRIVATE' as const,
+        slots: [
+          { ...baseSlot, slot_order: 1, stage: 'Vorrunde', standing: 'Gruppe 1' },
+          {
+            ...baseSlot, slot_order: 2, stage: 'Finalrunde', standing: 'HF1',
+            home_reference: 'Gewinner Gruppe 1', home_group: null, home_team: null,
+          },
+        ],
+        update_rules: [{
+          slot_standing: 'HF1',
+          slot_field: 1,
+          pre_finished: 'Gruppe 1',
+          team_rules: [
+            { role: 'home' as const, standing: 'Gruppe 1', place: 1, points: null },
+          ],
+        }],
+      };
+      const currentState: FlowState = {
+        nodes: [], edges: [], globalTeams: teams, globalTeamGroups: groups, metadata: null,
+      } as unknown as FlowState;
+
+      const result = applyGenericTemplate(template, currentState);
+
+      // parseReference fails on "Gewinner Gruppe 1", but the structured rule
+      // should create the edge anyway
+      const hf1 = result.nodes.filter(isGameNode).find(n => n.data.standing === 'HF1')!;
+      expect(hf1).toBeDefined();
+      expect(result.edges).toHaveLength(1);
+      expect(result.edges[0].sourceHandle).toBe('winner');
+      expect(result.edges[0].targetHandle).toBe('home');
+    });
+
+    it('creates a loser edge from structured rule', () => {
+      const template = {
+        name: 'Test', description: '', num_teams: 2, num_fields: 1, num_groups: 1,
+        game_duration: 15, sharing: 'PRIVATE' as const,
+        slots: [
+          { ...baseSlot, slot_order: 1, stage: 'Vorrunde', standing: 'Gruppe 1' },
+          {
+            ...baseSlot, slot_order: 2, stage: 'Finalrunde', standing: 'P3',
+            away_reference: 'Verlierer Gruppe 1', away_group: null, away_team: null,
+          },
+        ],
+        update_rules: [{
+          slot_standing: 'P3',
+          slot_field: 1,
+          pre_finished: 'Gruppe 1',
+          team_rules: [
+            { role: 'away' as const, standing: 'Gruppe 1', place: 2, points: null },
+          ],
+        }],
+      };
+      const currentState: FlowState = {
+        nodes: [], edges: [], globalTeams: teams, globalTeamGroups: groups, metadata: null,
+      } as unknown as FlowState;
+
+      const result = applyGenericTemplate(template, currentState);
+
+      const p3 = result.nodes.filter(isGameNode).find(n => n.data.standing === 'P3')!;
+      expect(p3).toBeDefined();
+      expect(result.edges).toHaveLength(1);
+      expect(result.edges[0].sourceHandle).toBe('loser');
+      expect(result.edges[0].targetHandle).toBe('away');
+    });
+
+    it('skips points-filtered rules', () => {
+      const template = {
+        name: 'Test', description: '', num_teams: 2, num_fields: 1, num_groups: 1,
+        game_duration: 15, sharing: 'PRIVATE' as const,
+        slots: [
+          { ...baseSlot, slot_order: 1, stage: 'Vorrunde', standing: 'Gruppe 1' },
+          {
+            ...baseSlot, slot_order: 2, stage: 'Finalrunde', standing: 'P1',
+            home_reference: 'Gewinner Gruppe 1', home_group: null, home_team: null,
+          },
+        ],
+        update_rules: [{
+          slot_standing: 'P1',
+          slot_field: 1,
+          pre_finished: 'Gruppe 1',
+          team_rules: [
+            { role: 'home' as const, standing: 'Gruppe 1', place: 1, points: 2 },
+          ],
+        }],
+      };
+      const currentState: FlowState = {
+        nodes: [], edges: [], globalTeams: teams, globalTeamGroups: groups, metadata: null,
+      } as unknown as FlowState;
+
+      const result = applyGenericTemplate(template, currentState);
+
+      // Points-filtered rule should be skipped — no edge created
+      expect(result.edges).toHaveLength(0);
+    });
+
+    it('does not duplicate edges when parseReference already resolved', () => {
+      const template = {
+        name: 'Test', description: '', num_teams: 2, num_fields: 1, num_groups: 1,
+        game_duration: 15, sharing: 'PRIVATE' as const,
+        slots: [
+          { ...baseSlot, slot_order: 1, stage: 'Vorrunde', standing: 'AF 1' },
+          {
+            ...baseSlot, slot_order: 2, stage: 'Finalrunde', standing: 'VF 1',
+            home_reference: 'Winner AF 1', home_group: null, home_team: null,
+          },
+        ],
+        update_rules: [{
+          slot_standing: 'VF 1',
+          slot_field: 1,
+          pre_finished: 'AF 1',
+          team_rules: [
+            { role: 'home' as const, standing: 'AF 1', place: 1, points: null },
+          ],
+        }],
+      };
+      const currentState: FlowState = {
+        nodes: [], edges: [], globalTeams: teams, globalTeamGroups: groups, metadata: null,
+      } as unknown as FlowState;
+
+      const result = applyGenericTemplate(template, currentState);
+
+      // parseReference resolves "Winner AF 1" — structured rule should not add a duplicate
+      expect(result.edges).toHaveLength(1);
+    });
   });
 });

@@ -296,6 +296,48 @@ class GamedayViewSet(viewsets.ModelViewSet):
 
             return Response({"state_data": state.state_data})
 
+    @action(detail=True, methods=["get"], url_path="migration-plan")
+    def migration_plan(self, request, pk=None):
+        # Deliberately NOT gated via WRITE_ACTIONS/get_permissions: those
+        # allow SAFE_METHODS through unconditionally (public reads are the
+        # point for the rest of this viewset), but this plan exposes real
+        # team-to-slot mappings from the gameday's actual results, so it
+        # needs the write-style ownership check even though it's a GET.
+        gameday = self.get_object()
+        if not (
+            request.user.is_authenticated
+            and (request.user.is_staff or gameday.author == request.user)
+        ):
+            return Response(
+                {"detail": "You do not have permission to perform this action."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # hasattr (not the designer_state action's GET branch) so merely
+        # checking doesn't get_or_create a blank GamedayDesignerState row.
+        if hasattr(gameday, "designer_state"):
+            return Response(
+                {
+                    "detail": (
+                        "This gameday already has a Designer state; it has "
+                        "already been migrated."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from gamedays.service.gameday_migration_service import (
+            GamedayMigrationError,
+            GamedayMigrationService,
+        )
+
+        try:
+            plan = GamedayMigrationService(gameday).build_plan()
+        except GamedayMigrationError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(plan, status=status.HTTP_200_OK)
+
 
 class GamedayListAPIView(ListAPIView):
     serializer_class = GamedaySerializer
