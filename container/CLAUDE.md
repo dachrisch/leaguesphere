@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `container/` is the deployment/infrastructure subdirectory of the **leaguesphere** monorepo (Django backend + several React micro-frontends). In this multi-repo session, only `container/` is checked out — the rest of the monorepo (`league_manager/`, `gamedays/`, `gameday_designer/`, etc.) is not present.
 
-Several scripts here assume they run from inside a full leaguesphere checkout and `cd ..` to reach the repo root for that logic. That root doesn't exist in this session, so `deploy.sh` and the non-`--demo` path of `start_dev_server.sh` will not work end-to-end here — read them before running, and prefer a full checkout (e.g. `/home/cda/dev/leaguesphere`) if you need the app-root behavior.
+Several scripts here assume they run from inside a full leaguesphere checkout and `cd ..` to reach the repo root for that logic. That root doesn't exist in this session, so the non-`--demo` path of `start_dev_server.sh` will not work end-to-end here — read it before running, and prefer a full checkout (e.g. `/home/cda/dev/leaguesphere`) if you need the app-root behavior.
 
 ## What's here
 
@@ -16,20 +16,17 @@ Several scripts here assume they run from inside a full leaguesphere checkout an
 - `entrypoint.sh` — production container entrypoint; runs `manage.py migrate` only when `RUN_MIGRATIONS=true`.
 - `entrypoint.demo.sh` — demo-environment entrypoint; resets/seeds the demo DB from a snapshot once per UTC day via the `seed_demo_data` / `reset_demo_database` management commands.
 - `healthcheck.sh` — nginx-side healthcheck: treats an HTTP 302 to `/maintenance/` as healthy, otherwise performs a real CSRF-cookie + login POST against `/login/`.
-- `deploy.sh` — release automation (see below).
 - `spinup_test_db.sh` / `test_db_dump.sql` / `test_user.sql` — provisions the MariaDB test database used by the Django test suite, inside the `servyy-test` LXC container.
 - `start_dev_server.sh` — bootstraps a full local dev environment (test DB, env vars, Python deps, optionally hot-reloading builds of the React apps).
 
 ## `deploy.sh`
 
-Bumps versions across every sub-project in one commit + tag and pushes: `league_manager/__init__.py`, all five frontend `package.json`s, `pyproject.toml` (regenerating `uv.lock`), and `.release-please-manifest.json`.
+Thin wrapper around the `deploy.yaml` GitHub Actions workflow. Translates the old CLI interface to `gh workflow run deploy.yaml` calls. No version bump logic — that lives in the workflow.
 
-- `./deploy.sh major|minor|patch` — production: finalizes an in-progress RC (strips `-rc.N`) or bumps the stable version.
 - `./deploy.sh stage [major|minor|patch]` — staging: bumps/creates an `-rc.N` prerelease.
-- `./deploy.sh demo` — demo: bumps/creates a `+demo.N` build-metadata suffix.
-- `-b <branch>` deploys from a specific branch via a throwaway `git worktree` (auto-cleaned on exit); `-r`/`--pr-remote` control where the release branch and PR land (default `origin` / `upstream`).
+- `./deploy.sh demo [major|minor|patch]` — demo: bumps/creates a `+demo.N` build-metadata suffix.
 
-Requires a full leaguesphere checkout (it `cd ..`s when `../league_manager` exists) and push access to the target remote — this mutates shared branch/tag state, so confirm intent before running any non-`--help` invocation.
+Runs on the current branch via GitHub Actions. After completion, create a PR to `master` to trigger deployment.
 
 ## Test DB & dev server gotchas
 

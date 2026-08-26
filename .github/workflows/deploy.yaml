@@ -1,0 +1,116 @@
+name: Deploy (Stage / Demo)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - demo
+      bump_type:
+        description: "Semver bump (ignored when version is already an RC / demo)"
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Compute new version
+        id: version
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          BUMP_TYPE: ${{ inputs.bump_type }}
+        run: |
+          CURRENT=$(grep "__version__" league_manager/__init__.py | cut -d'"' -f2)
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+
+          if [ "$ENVIRONMENT" = "staging" ]; then
+            if [[ "$CURRENT" =~ -rc\.([0-9]+)$ ]]; then
+              RC_NUM="${BASH_REMATCH[1]}"
+              NEW_RC=$((RC_NUM + 1))
+              NEW_VERSION="${CURRENT%-rc.*}-rc.${NEW_RC}"
+            else
+              IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+              case "$BUMP_TYPE" in
+                major) NEW_VERSION="$((MAJOR + 1)).0.0-rc.1" ;;
+                minor) NEW_VERSION="${MAJOR}.$((MINOR + 1)).0-rc.1" ;;
+                patch) NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))-rc.1" ;;
+              esac
+            fi
+          else
+            if [[ "$CURRENT" =~ \+demo\.([0-9]+)$ ]]; then
+              DEMO_NUM="${BASH_REMATCH[1]}"
+              NEW_VERSION="${CURRENT%+demo.*}+demo.$((DEMO_NUM + 1))"
+            else
+              NEW_VERSION="${CURRENT}+demo.1"
+            fi
+          fi
+
+          echo "new=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $CURRENT → $NEW_VERSION"
+
+      - name: Bump version files
+        env:
+          NEW_VERSION: ${{ steps.version.outputs.new }}
+        run: |
+          sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" league_manager/__init__.py
+          for pkg in liveticker passcheck scorecard gameday_designer journey_dashboard; do
+            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" "$pkg/package.json"
+          done
+          sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
+          sed -i "s/current_version = \".*\"/current_version = \"$NEW_VERSION\"/" pyproject.toml
+
+      - name: Regenerate uv.lock
+        run: uv lock
+
+      - name: Commit, tag, and push
+        env:
+          NEW_VERSION: ${{ steps.version.outputs.new }}
+          CURRENT_VERSION: ${{ steps.version.outputs.current }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add league_manager/__init__.py \
+            liveticker/package.json passcheck/package.json \
+            scorecard/package.json gameday_designer/package.json \
+            journey_dashboard/package.json \
+            pyproject.toml uv.lock
+
+          git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
+          git tag -a "v$NEW_VERSION" -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
+
+          if ! git push origin "HEAD:$BRANCH" --follow-tags; then
+            echo "::error::Push failed — nothing was deployed."
+            exit 1
+          fi
+
+          echo "### Deployed :rocket:" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| | |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Version** | \`$NEW_VERSION\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Branch** | \`$BRANCH\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Tag** | \`v$NEW_VERSION\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Create a PR to \`master\` to trigger the deployment." >> "$GITHUB_STEP_SUMMARY"
