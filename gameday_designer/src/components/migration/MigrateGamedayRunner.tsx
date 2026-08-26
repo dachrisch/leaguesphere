@@ -224,7 +224,9 @@ const MigrateGamedayRunner: React.FC = () => {
 
   const handleCancel = () => {
     if (!id) return;
-    navigate(`/gamedays/gameday/${id}/`);
+    // The legacy gameday page lives outside this app's basename
+    // (/gamedays/gameday/design), so escape it with a full page navigation.
+    window.location.href = `/gamedays/gameday/${id}/`;
   };
 
   if (!id || errorMessage) {

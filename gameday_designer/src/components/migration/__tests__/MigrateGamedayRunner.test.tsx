@@ -89,7 +89,7 @@ const renderRunner = (id = '1') =>
 
 const clickMigrate = async () => {
   const user = userEvent.setup();
-  await user.click(await screen.findByRole('button', { name: /Migrate/i }));
+  await user.click(await screen.findByRole('button', { name: /^Migrate$/ }));
 };
 
 describe('MigrateGamedayRunner', () => {
@@ -130,7 +130,11 @@ describe('MigrateGamedayRunner', () => {
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText(/No data will be changed/i)).toBeInTheDocument();
-    expect(screen.getByText(/edited in the Gameday Designer/i)).toBeInTheDocument();
+    expect(screen.getByText(/legacy schedule editor/i)).toBeInTheDocument();
+    expect(screen.getByText(/games, results and officials stay exactly as they are/i)).toBeInTheDocument();
+    // Buttons are "Don't migrate" and "Migrate".
+    expect(screen.getByRole('button', { name: /^Don't migrate$/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Migrate$/ })).toBeInTheDocument();
   });
 
   it('surfaces plan warnings in the confirmation dialog before migrating', async () => {
@@ -147,17 +151,30 @@ describe('MigrateGamedayRunner', () => {
     expect(gamedayApi.updateDesignerState).not.toHaveBeenCalled();
   });
 
-  it('cancelling throws the preview away and navigates back to the legacy gameday page without migrating', async () => {
+  it('cancelling throws the preview away and returns to the legacy gameday page without migrating', async () => {
     (gamedayApi.getMigrationPlan as ReturnType<typeof vi.fn>).mockResolvedValue(gapPlan);
 
-    renderRunner('42');
+    const originalLocation = window.location;
+    const testWindow = window as unknown as { location: Location };
+    // @ts-expect-error - overriding window.location for test
+    delete testWindow.location;
+    testWindow.location = { ...originalLocation, href: '' } as Location;
 
-    const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: /Cancel/i }));
+    try {
+      renderRunner('42');
 
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/gamedays/gameday/42/'));
-    expect(gamedayApi.updateDesignerState).not.toHaveBeenCalled();
-    expect(gamedayApi.getDesignerState).not.toHaveBeenCalled();
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole('button', { name: /^Don't migrate$/ }));
+
+      // The legacy gameday page lives outside the app's basename, so cancel
+      // escapes it via a full page navigation (not a router navigate).
+      expect(testWindow.location.href).toBe('/gamedays/gameday/42/');
+      expect(gamedayApi.updateDesignerState).not.toHaveBeenCalled();
+      expect(gamedayApi.getDesignerState).not.toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
+    } finally {
+      testWindow.location = originalLocation;
+    }
   });
 
   it('PUTs the previewed designer state before navigating, and never GETs designer-state first', async () => {

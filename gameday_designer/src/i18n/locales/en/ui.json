@@ -196,8 +196,12 @@
     "warningsTitle": "Migrated with warnings",
     "defaultTemplateName": "Migrated schedule",
     "confirmTitle": "Migrate to Designer?",
-    "confirmDescription": "No data will be changed. From now on, this gameday will be edited in the Gameday Designer.",
+    "confirmIntro": "No data will be changed — this gameday will simply be edited in the Gameday Designer from now on.",
+    "confirmPointCanvas": "The current schedule is imported as a new Designer canvas; no template is stored.",
+    "confirmPointUnchanged": "Games, results and officials stay exactly as they are — nothing is deleted or rewritten.",
+    "confirmPointEditing": "From now on this gameday is edited in the Designer; the legacy schedule editor will no longer be shown.",
     "confirmWarningsTitle": "Warnings",
+    "cancelAction": "Don't migrate",
     "confirmAction": "Migrate"
   },
   "gameProgress": {
