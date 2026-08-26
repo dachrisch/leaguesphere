@@ -34,3 +34,10 @@ Refer to the specialized guides for detailed protocols:
 Refer to these files for instructions specific to your agent platform:
 - **Claude Code**: `CLAUDE.md`
 - **Gemini CLI**: `GEMINI.md`
+
+## 🗂 Per-Module Guides
+Each module directory has an `AGENTS.md` that is a quick index into its authoritative,
+kept-up-to-date `CLAUDE.md`. Read the relevant module guide before working in it:
+`accounts`, `container`, `dashboard`, `gameday_designer`, `gamedays`, `journey`,
+`journey_dashboard`, `league_manager`, `league_table`, `liveticker`, `matchreport`,
+`officials`, `passcheck`, `scorecard`, `teammanager`.
