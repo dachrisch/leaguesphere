@@ -4,7 +4,13 @@ import json
 import pytest
 from django.test import TestCase
 
-from gameday_designer.models import ScheduleTemplate, TemplateSlot, TemplateApplication
+from gameday_designer.models import (
+    ScheduleTemplate,
+    TemplateSlot,
+    TemplateApplication,
+    TemplateUpdateRule,
+    TemplateUpdateRuleTeam,
+)
 from gamedays.models import Gameday, Gameinfo, Gameresult, GameOfficial
 from gamedays.service.gameday_migration_service import (
     GamedayMigrationError,
@@ -445,6 +451,251 @@ class TestStageCategoryBackfill(TestCase):
         )
 
 
+class TestUnparseableReferenceWarnings(TestCase):
+    def test_german_winner_reference_triggers_warning(self):
+        gameday = GamedayFactory(format="migration_ref_warn")
+        template = ScheduleTemplate.objects.create(
+            name="Ref Warn Template", num_teams=2, num_fields=1, num_groups=1
+        )
+        TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=1,
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            home_group=0,
+            home_team=0,
+        )
+        TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=2,
+            stage="Finalrunde",
+            standing="HF1",
+            home_reference="Gewinner Gruppe 1",
+        )
+        TemplateApplication.objects.create(
+            gameday=gameday, template=template, team_mapping={}
+        )
+        team = TeamFactory(name="T1")
+        gi = GameinfoFactory(
+            gameday=gameday,
+            field=1,
+            scheduled="10:00",
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            officials=team,
+        )
+        GameresultFactory(gameinfo=gi, team=team, isHome=True)
+
+        plan = GamedayMigrationService(gameday).build_plan()
+
+        ref_warnings = [w for w in plan["warnings"] if "unparseable" in w]
+        assert len(ref_warnings) == 1
+        assert "Gewinner Gruppe 1" in ref_warnings[0]
+        assert "HF1" in ref_warnings[0]
+
+    def test_german_loser_reference_triggers_warning(self):
+        gameday = GamedayFactory(format="migration_ref_warn_loser")
+        template = ScheduleTemplate.objects.create(
+            name="Ref Warn Loser Template", num_teams=2, num_fields=1, num_groups=1
+        )
+        TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=1,
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            home_group=0,
+            home_team=0,
+        )
+        TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=2,
+            stage="Finalrunde",
+            standing="P3",
+            away_reference="Verlierer HF1",
+        )
+        TemplateApplication.objects.create(
+            gameday=gameday, template=template, team_mapping={}
+        )
+        team = TeamFactory(name="T1")
+        gi = GameinfoFactory(
+            gameday=gameday,
+            field=1,
+            scheduled="10:00",
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            officials=team,
+        )
+        GameresultFactory(gameinfo=gi, team=team, isHome=True)
+
+        plan = GamedayMigrationService(gameday).build_plan()
+
+        ref_warnings = [w for w in plan["warnings"] if "unparseable" in w]
+        assert len(ref_warnings) == 1
+        assert "Verlierer HF1" in ref_warnings[0]
+
+    def test_standing_shorthand_triggers_warning(self):
+        gameday = GamedayFactory(format="migration_ref_warn_standing")
+        template = ScheduleTemplate.objects.create(
+            name="Ref Warn Standing Template", num_teams=2, num_fields=1, num_groups=1
+        )
+        TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=1,
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            home_group=0,
+            home_team=0,
+        )
+        TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=2,
+            stage="Finalrunde",
+            standing="P5",
+            home_reference="P2 Gruppe 1",
+        )
+        TemplateApplication.objects.create(
+            gameday=gameday, template=template, team_mapping={}
+        )
+        team = TeamFactory(name="T1")
+        gi = GameinfoFactory(
+            gameday=gameday,
+            field=1,
+            scheduled="10:00",
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            officials=team,
+        )
+        GameresultFactory(gameinfo=gi, team=team, isHome=True)
+
+        plan = GamedayMigrationService(gameday).build_plan()
+
+        ref_warnings = [w for w in plan["warnings"] if "unparseable" in w]
+        assert len(ref_warnings) == 1
+        assert "P2 Gruppe 1" in ref_warnings[0]
+
+    def test_english_winner_reference_no_warning(self):
+        gameday = GamedayFactory(format="migration_ref_ok")
+        template = ScheduleTemplate.objects.create(
+            name="Ref OK Template", num_teams=2, num_fields=1, num_groups=1
+        )
+        TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=1,
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            home_group=0,
+            home_team=0,
+        )
+        TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=2,
+            stage="Finalrunde",
+            standing="HF1",
+            home_reference="Winner Gruppe 1",
+        )
+        TemplateApplication.objects.create(
+            gameday=gameday, template=template, team_mapping={}
+        )
+        team = TeamFactory(name="T1")
+        gi = GameinfoFactory(
+            gameday=gameday,
+            field=1,
+            scheduled="10:00",
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            officials=team,
+        )
+        GameresultFactory(gameinfo=gi, team=team, isHome=True)
+
+        plan = GamedayMigrationService(gameday).build_plan()
+
+        ref_warnings = [w for w in plan["warnings"] if "unparseable" in w]
+        assert ref_warnings == []
+
+    def test_english_rank_reference_no_warning(self):
+        gameday = GamedayFactory(format="migration_ref_ok_rank")
+        template = ScheduleTemplate.objects.create(
+            name="Ref OK Rank Template", num_teams=2, num_fields=1, num_groups=1
+        )
+        TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=1,
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            home_group=0,
+            home_team=0,
+        )
+        TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=2,
+            stage="Finalrunde",
+            standing="P5",
+            home_reference="Rank 2 from Vorrunde",
+        )
+        TemplateApplication.objects.create(
+            gameday=gameday, template=template, team_mapping={}
+        )
+        team = TeamFactory(name="T1")
+        gi = GameinfoFactory(
+            gameday=gameday,
+            field=1,
+            scheduled="10:00",
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            officials=team,
+        )
+        GameresultFactory(gameinfo=gi, team=team, isHome=True)
+
+        plan = GamedayMigrationService(gameday).build_plan()
+
+        ref_warnings = [w for w in plan["warnings"] if "unparseable" in w]
+        assert ref_warnings == []
+
+    def test_empty_reference_no_warning(self):
+        gameday = GamedayFactory(format="migration_ref_empty")
+        template = ScheduleTemplate.objects.create(
+            name="Ref Empty Template", num_teams=2, num_fields=1, num_groups=1
+        )
+        TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=1,
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            home_group=0,
+            home_team=0,
+            home_reference="",
+        )
+        TemplateApplication.objects.create(
+            gameday=gameday, template=template, team_mapping={}
+        )
+        team = TeamFactory(name="T1")
+        gi = GameinfoFactory(
+            gameday=gameday,
+            field=1,
+            scheduled="10:00",
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            officials=team,
+        )
+        GameresultFactory(gameinfo=gi, team=team, isHome=True)
+
+        plan = GamedayMigrationService(gameday).build_plan()
+
+        ref_warnings = [w for w in plan["warnings"] if "unparseable" in w]
+        assert ref_warnings == []
+
+
 class TestMissingTeamGracefulSkip(TestCase):
     def test_gameresult_with_null_team_is_skipped_not_crashed(self):
         gameday = GamedayFactory(format="migration_null_team")
@@ -479,6 +730,121 @@ class TestMissingTeamGracefulSkip(TestCase):
 
         assert plan["warnings"] == []
         assert "0_0" not in plan["team_mapping"]
+
+
+class TestUpdateRulesSerialization(TestCase):
+    def test_update_rules_included_when_present(self):
+        gameday = GamedayFactory(format="migration_update_rules")
+        template = ScheduleTemplate.objects.create(
+            name="Update Rules Template", num_teams=4, num_fields=1, num_groups=2
+        )
+        slot_vorrunde = TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=1,
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            home_group=0,
+            home_team=0,
+            away_group=1,
+            away_team=0,
+        )
+        slot_hf = TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=2,
+            stage="Finalrunde",
+            standing="HF1",
+            home_reference="Gewinner Gruppe 1",
+        )
+        TemplateApplication.objects.create(
+            gameday=gameday, template=template, team_mapping={}
+        )
+
+        # Create an update rule for the HF slot
+        rule = TemplateUpdateRule.objects.create(
+            template=template,
+            slot=slot_hf,
+            pre_finished="Gruppe 1",
+        )
+        TemplateUpdateRuleTeam.objects.create(
+            update_rule=rule,
+            role="home",
+            standing="Gruppe 1",
+            place=1,
+        )
+        TemplateUpdateRuleTeam.objects.create(
+            update_rule=rule,
+            role="away",
+            standing="Gruppe 1",
+            place=2,
+        )
+
+        team = TeamFactory(name="T1")
+        gi = GameinfoFactory(
+            gameday=gameday,
+            field=1,
+            scheduled="10:00",
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            officials=team,
+        )
+        GameresultFactory(gameinfo=gi, team=team, isHome=True)
+
+        plan = GamedayMigrationService(gameday).build_plan()
+
+        assert len(plan["update_rules"]) == 1
+        ur = plan["update_rules"][0]
+        assert ur["slot_standing"] == "HF1"
+        assert ur["slot_field"] == 1
+        assert ur["pre_finished"] == "Gruppe 1"
+        assert len(ur["team_rules"]) == 2
+        home_rule = next(t for t in ur["team_rules"] if t["role"] == "home")
+        assert home_rule["standing"] == "Gruppe 1"
+        assert home_rule["place"] == 1
+        assert home_rule["points"] is None
+
+    def test_update_rules_empty_when_no_rules(self):
+        gameday, template, *_ = _build_two_slot_scenario()
+
+        plan = GamedayMigrationService(gameday).build_plan()
+
+        assert plan["update_rules"] == []
+
+    def test_points_filtered_rule_included(self):
+        gameday = GamedayFactory(format="migration_points_rule")
+        template = ScheduleTemplate.objects.create(
+            name="Points Rule Template", num_teams=2, num_fields=1, num_groups=1
+        )
+        slot = TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=1,
+            stage="Finalrunde",
+            standing="P1",
+            home_reference="Gewinner HF1",
+        )
+        TemplateApplication.objects.create(
+            gameday=gameday, template=template, team_mapping={}
+        )
+        rule = TemplateUpdateRule.objects.create(
+            template=template,
+            slot=slot,
+            pre_finished="HF1",
+        )
+        TemplateUpdateRuleTeam.objects.create(
+            update_rule=rule,
+            role="home",
+            standing="HF1",
+            place=1,
+            points=2,
+        )
+
+        plan = GamedayMigrationService(gameday).build_plan()
+
+        assert len(plan["update_rules"]) == 1
+        ur = plan["update_rules"][0]
+        assert ur["team_rules"][0]["points"] == 2
 
 
 class TestZeroMutation(TestCase):

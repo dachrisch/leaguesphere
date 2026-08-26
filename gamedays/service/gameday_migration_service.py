@@ -12,12 +12,20 @@ GamedayDesignerState row is the frontend's job, via the existing
 """
 
 import logging
+import re
 from collections import defaultdict
 
 from gamedays.models import Gameday, Gameinfo, Gameresult
 from gamedays.service.placeholder_service import GamedayPlaceholderService
 from gamedays.service.stage_category import derive_legacy_stage_category
-from gameday_designer.models import TemplateSlot
+from gameday_designer.models import TemplateSlot, TemplateUpdateRule
+
+# Matches the reference patterns that the frontend's parseReference()
+# (templateMapper.ts) can resolve into graph edges. Anything that doesn't
+# match will silently produce empty dropdowns in the designer.
+_PARSEABLE_REF_RE = re.compile(
+    r"^(?:Winner|Loser) .+$|^Rank \d+(?: .+?)? from .+$"
+)
 
 logger = logging.getLogger(__name__)
 
@@ -105,17 +113,34 @@ class GamedayMigrationService:
             )
         )
 
+        slots = [
+            self._serialize_slot(slot, stage_category_by_slot_id)
+            for slot in all_slots
+        ]
+
+        # Detect reference strings that the frontend's parseReference()
+        # cannot resolve (e.g. legacy German "Gewinner HF1", "P2 Gruppe 2").
+        # These silently produce empty dropdowns — warn the user instead.
+        for slot_data in slots:
+            for ref_field in ("home_reference", "away_reference", "official_reference"):
+                ref = slot_data[ref_field]
+                if ref and not _PARSEABLE_REF_RE.match(ref):
+                    warnings.append(
+                        f"Slot '{slot_data['standing']}' (field "
+                        f"{slot_data['field']}) has an unparseable "
+                        f"{ref_field}: '{ref}'. This slot will show empty "
+                        "dropdowns in the designer — fill it manually."
+                    )
+
         return {
             "template_id": template.pk,
             "num_fields": template.num_fields,
             "num_groups": template.num_groups,
             "group_config": self._build_group_config(template, team_mapping),
-            "slots": [
-                self._serialize_slot(slot, stage_category_by_slot_id)
-                for slot in all_slots
-            ],
+            "slots": slots,
             "team_mapping": team_mapping,
             "warnings": warnings,
+            "update_rules": self._serialize_update_rules(all_slots),
         }
 
     def _record_slot_role(
@@ -202,3 +227,34 @@ class GamedayMigrationService:
             "official_reference": slot.official_reference,
             "break_after": slot.break_after,
         }
+
+    @staticmethod
+    def _serialize_update_rules(slots: list[TemplateSlot]) -> list[dict]:
+        """Serialize TemplateUpdateRule/TemplateUpdateRuleTeam data for slots
+        that have structured rules. This lets the frontend build bracket
+        edges directly by node ID, bypassing parseReference()'s string
+        vocabulary limitations."""
+        rules = []
+        for slot in slots:
+            try:
+                rule = TemplateUpdateRule.objects.get(slot=slot)
+            except TemplateUpdateRule.DoesNotExist:
+                continue
+
+            team_rules = []
+            for team_rule in rule.team_rules.all():
+                team_rules.append({
+                    "role": team_rule.role,
+                    "standing": team_rule.standing,
+                    "place": team_rule.place,
+                    "points": team_rule.points,
+                })
+
+            rules.append({
+                "slot_standing": slot.standing,
+                "slot_field": slot.field,
+                "pre_finished": rule.pre_finished,
+                "team_rules": team_rules,
+            })
+
+        return rules

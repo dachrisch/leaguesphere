@@ -42,6 +42,18 @@ export interface GenericTemplate {
   sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL';
   slots: GenericTemplateSlot[];
   group_config?: Array<{ name: string, team_count: number }>;
+  /** Structured bracket progression rules — migration-only, bypasses parseReference() string round-trip. */
+  update_rules?: Array<{
+    slot_standing: string;
+    slot_field: number;
+    pre_finished: string;
+    team_rules: Array<{
+      role: 'home' | 'away' | 'official';
+      standing: string;
+      place: number;
+      points: number | null;
+    }>;
+  }>;
 }
 
 export function genericizeFlowState(state: FlowState, name: string, description: string = '', sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL' = 'ASSOCIATION'): GenericTemplate {
@@ -216,12 +228,14 @@ export function applyGenericTemplate(template: GenericTemplate, currentState: Fl
   nodes: FlowNode[],
   edges: FlowEdge[],
   globalTeams: GlobalTeam[],
-  globalTeamGroups: GlobalTeamGroup[]
+  globalTeamGroups: GlobalTeamGroup[],
+  warnings: string[]
 } {
   const newNodes: FlowNode[] = [];
   const newEdges: FlowEdge[] = [];
   const newGroups = [...currentState.globalTeamGroups];
   const newTeams = [...currentState.globalTeams];
+  const newWarnings: string[] = [];
 
   // 1. Scaffold groups if missing
   if (newGroups.length === 0 && template.group_config) {
@@ -431,10 +445,77 @@ export function applyGenericTemplate(template: GenericTemplate, currentState: Fl
       // read this field directly and would otherwise show/export a phantom
       // "Winner of X" for a match that doesn't exist.
       if (!resolved) {
+        const refDesc = dynamicRef.type === 'winner' || dynamicRef.type === 'loser'
+          ? `${dynamicRef.type === 'winner' ? 'Winner' : 'Loser'} ${dynamicRef.matchName}`
+          : 'rank reference';
+        newWarnings.push(
+          `Reference '${refDesc}' on game '${targetGame.data.standing}' could not be resolved.`
+        );
         if (slot === 'home') {
           targetGame.data.homeTeamDynamic = null;
         } else {
           targetGame.data.awayTeamDynamic = null;
+        }
+      }
+    }
+  }
+
+  // 5. Apply structured update rules (migration-specific bypass).
+  //    For slots where parseReference() failed (German legacy strings like
+  //    "Gewinner HF1"), the structured rules let us build edges directly
+  //    by node ID — no string vocabulary round-trip needed.
+  if (template.update_rules && template.update_rules.length > 0) {
+    const fieldsList = getFieldNodes(newNodes);
+    for (const rule of template.update_rules) {
+      // Find the target game node by standing + field
+      const targetGame = allGameNodes.find(g => {
+        if (g.data.standing !== rule.slot_standing) return false;
+        const stage = newNodes.find(n => n.id === g.parentId);
+        const field = stage ? newNodes.find(n => n.id === stage.parentId) : null;
+        if (!field) return false;
+        const fieldIdx = fieldsList.findIndex(f => f.id === field.id);
+        return fieldIdx + 1 === rule.slot_field;
+      });
+      if (!targetGame) continue;
+
+      for (const teamRule of rule.team_rules) {
+        // Skip points-filtered rules — no clean edge equivalent
+        if (teamRule.points !== null) continue;
+
+        const handle = teamRule.role as 'home' | 'away';
+        // Skip if an edge already exists for this handle (from parseReference pass)
+        const existingEdge = newEdges.find(
+          e => e.target === targetGame.id && e.targetHandle === handle
+        );
+        if (existingEdge) continue;
+
+        if (teamRule.place === 1 || teamRule.place === 2) {
+          // Winner (place=1) or loser (place=2) of a game identified by standing
+          const sourceGame = allGameNodes.find(g => g.data.standing === teamRule.standing);
+          if (!sourceGame) continue;
+
+          const edgeType = teamRule.place === 1 ? 'winner' : 'loser';
+          newEdges.push(createGameToGameEdge(
+            uuidv4(),
+            sourceGame.id,
+            edgeType,
+            targetGame.id,
+            handle
+          ));
+        } else {
+          // Rank-based: Nth place from a stage
+          const sourceStage = newNodes.find(
+            n => isStageNode(n) && n.data.name === teamRule.standing
+          );
+          if (!sourceStage) continue;
+
+          newEdges.push(createStageToGameEdge(
+            uuidv4(),
+            sourceStage.id,
+            teamRule.place,
+            targetGame.id,
+            handle
+          ));
         }
       }
     }
@@ -445,6 +526,7 @@ export function applyGenericTemplate(template: GenericTemplate, currentState: Fl
     edges: newEdges,
     globalTeams: newTeams,
     globalTeamGroups: newGroups,
+    warnings: newWarnings,
   };
 }
 

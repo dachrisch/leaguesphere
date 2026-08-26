@@ -71,6 +71,7 @@ const gapPlan: MigrationPlan = {
     '1_1': { id: 21, label: 'Team Y' },
   },
   warnings: [],
+  update_rules: [],
 };
 
 const renderRunner = (id = '1') =>
@@ -165,6 +166,44 @@ describe('MigrateGamedayRunner', () => {
       replace: true,
       state: { migrationWarnings: ['Game 5 could not be reliably matched to a template slot; skipped.'] },
     }));
+  });
+
+  it('merges server warnings with frontend applyGenericTemplate warnings', async () => {
+    (gamedayApi.getMigrationPlan as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ...gapPlan,
+      slots: [
+        ...gapPlan.slots,
+        {
+          field: 1,
+          slot_order: 2,
+          stage: 'Finalrunde',
+          stage_type: 'STANDARD',
+          stage_category: 'final',
+          standing: 'HF1',
+          home_group: null,
+          home_team: null,
+          home_reference: 'Winner A1',
+          away_group: null,
+          away_team: null,
+          away_reference: '',
+          official_group: null,
+          official_team: null,
+          official_reference: '',
+          break_after: 0,
+        },
+      ],
+      warnings: ['Slot HF1 has an unparseable home_reference: Gewinner HF1.'],
+    });
+
+    renderRunner('1');
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
+
+    const navCall = mockNavigate.mock.calls[0];
+    const navState = navCall[1]?.state;
+    expect(navState?.migrationWarnings).toContain(
+      'Slot HF1 has an unparseable home_reference: Gewinner HF1.'
+    );
   });
 
   it('falls back to the default template name when getGameday fails but still migrates', async () => {

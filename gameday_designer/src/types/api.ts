@@ -227,6 +227,31 @@ export interface MigrationPlanSlot {
 }
 
 /**
+ * Structured team assignment rule within a migration plan update rule.
+ * Mirrors TemplateUpdateRuleTeam from the backend — the same data the
+ * production GamedayScheduleResolutionService uses to resolve bracket
+ * progression at runtime.
+ */
+export interface MigrationPlanUpdateRuleTeam {
+  role: 'home' | 'away' | 'official';
+  standing: string;
+  place: number;
+  points: number | null;
+}
+
+/**
+ * Structured update rule for a single Finalrunde slot in a migration plan.
+ * Maps a slot (by standing + field) to the team assignment rules that
+ * determine its home/away/official from completed stage standings.
+ */
+export interface MigrationPlanUpdateRule {
+  slot_standing: string;
+  slot_field: number;
+  pre_finished: string;
+  team_rules: MigrationPlanUpdateRuleTeam[];
+}
+
+/**
  * Response from GET /gamedays/<pk>/migration-plan/ -- a read-only
  * reconstruction of how an existing (pre-Designer) gameday's real schedule
  * maps onto a Designer canvas. Never persisted server-side; the frontend
@@ -243,6 +268,8 @@ export interface MigrationPlan {
   team_mapping: Record<string, { id: number; label: string }>;
   /** Human-readable notes about games that couldn't be reliably matched/mapped -- best-effort, not errors. */
   warnings: string[];
+  /** Structured bracket progression rules from TemplateUpdateRule/TemplateUpdateRuleTeam. */
+  update_rules: MigrationPlanUpdateRule[];
 }
 
 /**

@@ -59,4 +59,6 @@ export type {
   League,
   MigrationPlan,
   MigrationPlanSlot,
+  MigrationPlanUpdateRule,
+  MigrationPlanUpdateRuleTeam,
 } from './api';

@@ -145,6 +145,7 @@ const MigrateGamedayRunner: React.FC = () => {
         sharing: 'PRIVATE',
         slots: plan.slots,
         group_config: plan.group_config,
+        update_rules: plan.update_rules,
       };
 
       const seedState: FlowState = {
@@ -188,7 +189,10 @@ const MigrateGamedayRunner: React.FC = () => {
 
       navigate(`/designer/${id}`, {
         replace: true,
-        state: plan.warnings.length > 0 ? { migrationWarnings: plan.warnings } : undefined,
+        state: (() => {
+          const allWarnings = [...plan.warnings, ...applied.warnings];
+          return allWarnings.length > 0 ? { migrationWarnings: allWarnings } : undefined;
+        })(),
       });
     })();
   }, [id, navigate, t]);
