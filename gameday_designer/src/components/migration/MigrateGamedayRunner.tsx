@@ -41,6 +41,7 @@ import type { FlowState, GlobalTeam, GlobalTeamGroup, GameNode } from '../../typ
 import { isGameNode, isStageNode } from '../../types/flowchart';
 import type { Gameday, MigrationPlan } from '../../types';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
+import { trackEvent } from '../../trackEvent';
 import LoadingOverlay from '../ui/LoadingOverlay';
 import MigrateConfirmModal from '../modals/MigrateConfirmModal';
 import MigrateGamedayPreview from './MigrateGamedayPreview';
@@ -132,6 +133,7 @@ const MigrateGamedayRunner: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const hasRunRef = useRef(false);
+  const planTemplateIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!id || hasRunRef.current) return;
@@ -194,6 +196,7 @@ const MigrateGamedayRunner: React.FC = () => {
 
         setGameday(fetchedGameday);
         setWarnings([...plan.warnings, ...applied.warnings]);
+        planTemplateIdRef.current = plan.template_id;
         setPreviewState({
           ...(fetchedGameday && {
             metadata: {
@@ -216,6 +219,14 @@ const MigrateGamedayRunner: React.FC = () => {
           globalTeams: applied.globalTeams,
           globalTeamGroups: applied.globalTeamGroups,
         });
+
+        trackEvent('gameday_migration_previewed', {
+          gameday_id: gamedayId,
+          template_id: plan.template_id,
+          num_games: plan.slots.length,
+          num_fields: plan.num_fields,
+          num_groups: plan.num_groups,
+        });
       } catch (error) {
         setErrorMessage(extractErrorDetail(error, t('ui:migration.loadPlanFailedFallback')));
       }
@@ -233,6 +244,14 @@ const MigrateGamedayRunner: React.FC = () => {
       setErrorMessage(t('ui:migration.saveFailed'));
       return;
     }
+
+    trackEvent('gameday_migrated', {
+      gameday_id: parseInt(id, 10),
+      template_id: planTemplateIdRef.current,
+      num_games: previewState.nodes.filter((n) => isGameNode(n)).length,
+      num_fields: previewState.nodes.filter((n) => n.type === 'field').length,
+      num_groups: previewState.globalTeamGroups.length,
+    });
 
     navigate(`/designer/${id}`, {
       replace: true,

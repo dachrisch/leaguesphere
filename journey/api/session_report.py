@@ -23,6 +23,8 @@ JOURNEY_CATEGORIES = {
         'officials_group_added',
         'template_saved',
         'template_used',
+        'gameday_migration_previewed',
+        'gameday_migrated',
     },
     'edit': {
         'gameday_edited',

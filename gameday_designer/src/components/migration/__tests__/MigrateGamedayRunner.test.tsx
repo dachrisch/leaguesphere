@@ -29,6 +29,10 @@ vi.mock('../../../api/gamedayApi', () => ({
   },
 }));
 
+vi.mock('../../../trackEvent', () => ({
+  trackEvent: vi.fn(),
+}));
+
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>();
@@ -253,6 +257,31 @@ describe('MigrateGamedayRunner', () => {
     expect(stageNode).toBeDefined();
     if (!stageNode || stageNode.type !== 'stage') throw new Error('unreachable');
     expect(stageNode.data.startTime).toBe('10:00');
+  });
+
+  it('tracks migration usage for the journey dashboard', async () => {
+    (gamedayApi.getMigrationPlan as ReturnType<typeof vi.fn>).mockResolvedValue(gapPlan);
+
+    renderRunner('1');
+
+    await clickMigrate();
+    await waitFor(() => expect(gamedayApi.updateDesignerState).toHaveBeenCalledTimes(1));
+
+    const { trackEvent } = await import('../../../trackEvent');
+    expect(trackEvent).toHaveBeenCalledWith('gameday_migration_previewed', {
+      gameday_id: 1,
+      template_id: 7,
+      num_games: 1,
+      num_fields: 1,
+      num_groups: 2,
+    });
+    expect(trackEvent).toHaveBeenCalledWith('gameday_migrated', {
+      gameday_id: 1,
+      template_id: 7,
+      num_games: 1,
+      num_fields: 1,
+      num_groups: 2,
+    });
   });
 
   it('assigns each seeded team (including placeholders) a distinct color from the shared palette, not the flat gray fallback', async () => {

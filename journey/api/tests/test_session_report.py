@@ -29,6 +29,8 @@ class CategorizeEventTests(TestCase):
         self.assertEqual(categorize_event('officials_group_added'), 'create')
         self.assertEqual(categorize_event('template_saved'), 'create')
         self.assertEqual(categorize_event('template_used'), 'create')
+        self.assertEqual(categorize_event('gameday_migration_previewed'), 'create')
+        self.assertEqual(categorize_event('gameday_migrated'), 'create')
         self.assertEqual(categorize_event('gameday_edited'), 'edit')
         self.assertEqual(categorize_event('game_started'), 'live')
         self.assertEqual(categorize_event('possession_recorded'), 'live')
