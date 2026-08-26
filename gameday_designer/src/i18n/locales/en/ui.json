@@ -194,7 +194,20 @@
     "loadPlanFailedFallback": "Could not load the migration plan. Please try again.",
     "saveFailed": "Failed to save the migrated schedule. Please try again.",
     "warningsTitle": "Migrated with warnings",
-    "defaultTemplateName": "Migrated schedule"
+    "defaultTemplateName": "Migrated schedule",
+    "confirmTitle": "Migrate to Designer?",
+    "confirmDescription": "The gameday's existing schedule will be imported into the Gameday Designer. Existing games and results will NOT be changed — only a new Designer editor state is created for this gameday. Afterwards, this gameday will be edited in the Designer and the legacy schedule editor will no longer be shown.",
+    "confirmSummaryTitle": "What will be imported",
+    "summaryGames_one": "{{count}} game",
+    "summaryGames_other": "{{count}} games",
+    "summaryFields_one": "{{count}} field",
+    "summaryFields_other": "{{count}} fields",
+    "summaryGroups_one": "{{count}} group",
+    "summaryGroups_other": "{{count}} groups",
+    "summaryTeams_one": "{{count}} team",
+    "summaryTeams_other": "{{count}} teams",
+    "confirmWarningsTitle": "Warnings",
+    "confirmAction": "Migrate"
   },
   "gameProgress": {
     "section": {

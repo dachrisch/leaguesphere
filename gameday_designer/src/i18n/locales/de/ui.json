@@ -194,7 +194,20 @@
     "loadPlanFailedFallback": "Der Migrationsplan konnte nicht geladen werden. Bitte versuche es erneut.",
     "saveFailed": "Der migrierte Spielplan konnte nicht gespeichert werden. Bitte versuche es erneut.",
     "warningsTitle": "Mit Warnungen migriert",
-    "defaultTemplateName": "Migrierter Spielplan"
+    "defaultTemplateName": "Migrierter Spielplan",
+    "confirmTitle": "Zu Designer migrieren?",
+    "confirmDescription": "Der bestehende Spielplan dieses Spieltags wird in den Gameday Designer übernommen. Bestehende Spiele und Ergebnisse werden NICHT verändert – es wird lediglich ein neuer Designer-Zustand für diesen Spieltag angelegt. Danach wird dieser Spieltag im Designer bearbeitet und der klassische Spielplan-Editor wird ausgeblendet.",
+    "confirmSummaryTitle": "Was übernommen wird",
+    "summaryGames_one": "{{count}} Spiel",
+    "summaryGames_other": "{{count}} Spiele",
+    "summaryFields_one": "{{count}} Feld",
+    "summaryFields_other": "{{count}} Felder",
+    "summaryGroups_one": "{{count}} Gruppe",
+    "summaryGroups_other": "{{count}} Gruppen",
+    "summaryTeams_one": "{{count}} Team",
+    "summaryTeams_other": "{{count}} Teams",
+    "confirmWarningsTitle": "Warnungen",
+    "confirmAction": "Migrieren"
   },
   "gameProgress": {
     "section": {

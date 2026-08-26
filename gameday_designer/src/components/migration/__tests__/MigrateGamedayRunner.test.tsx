@@ -1,13 +1,16 @@
 /**
  * Tests for MigrateGamedayRunner
  *
- * Covers the /migrate/:id flow: fetch a migration plan, seed a team pool
- * from it (including the gap-filling rules that keep applyGenericTemplate's
- * group/team-index lookups aligned), PUT the resulting designer state
- * *before* ever navigating to /designer/:id, and surface errors/warnings.
+ * Covers the /migrate/:id flow: fetch a migration plan, show a confirmation
+ * dialog that explains what the migration will (and won't) do, and only after
+ * the user confirms seed a team pool from the plan (including the gap-filling
+ * rules that keep applyGenericTemplate's group/team-index lookups aligned),
+ * PUT the resulting designer state *before* ever navigating to /designer/:id,
+ * and surface errors/warnings.
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import MigrateGamedayRunner from '../MigrateGamedayRunner';
@@ -84,6 +87,11 @@ const renderRunner = (id = '1') =>
     </MemoryRouter>
   );
 
+const clickMigrate = async () => {
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole('button', { name: /Migrate/i }));
+};
+
 describe('MigrateGamedayRunner', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -92,11 +100,70 @@ describe('MigrateGamedayRunner', () => {
     (gamedayApi.updateDesignerState as ReturnType<typeof vi.fn>).mockResolvedValue({});
   });
 
+  it('shows a confirmation dialog explaining the migration and does not write anything until confirmed', async () => {
+    (gamedayApi.getMigrationPlan as ReturnType<typeof vi.fn>).mockResolvedValue(gapPlan);
+
+    renderRunner('1');
+
+    // The dialog is shown with the "what will happen" description.
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText(/existing games and results will NOT be changed/i)).toBeInTheDocument();
+    // Nothing has been written and no navigation happened yet.
+    expect(gamedayApi.updateDesignerState).not.toHaveBeenCalled();
+    expect(gamedayApi.getDesignerState).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    // Confirming then triggers exactly the migration.
+    await clickMigrate();
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
+    expect(gamedayApi.updateDesignerState).toHaveBeenCalledTimes(1);
+  });
+
+  it('summarizes the migration plan (games, fields, groups, teams) in the dialog', async () => {
+    (gamedayApi.getMigrationPlan as ReturnType<typeof vi.fn>).mockResolvedValue(gapPlan);
+
+    renderRunner('1');
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText('1 game')).toBeInTheDocument();
+    expect(screen.getByText('1 field')).toBeInTheDocument();
+    expect(screen.getByText('2 groups')).toBeInTheDocument();
+    expect(screen.getByText('4 teams')).toBeInTheDocument();
+  });
+
+  it('surfaces plan warnings in the confirmation dialog before migrating', async () => {
+    (gamedayApi.getMigrationPlan as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ...gapPlan,
+      warnings: ['Game 5 could not be reliably matched to a template slot; skipped.'],
+    });
+
+    renderRunner('1');
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText('Warnings')).toBeInTheDocument();
+    expect(screen.getByText('Game 5 could not be reliably matched to a template slot; skipped.')).toBeInTheDocument();
+    expect(gamedayApi.updateDesignerState).not.toHaveBeenCalled();
+  });
+
+  it('cancelling navigates back to the legacy gameday page without migrating', async () => {
+    (gamedayApi.getMigrationPlan as ReturnType<typeof vi.fn>).mockResolvedValue(gapPlan);
+
+    renderRunner('42');
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Cancel/i }));
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/gamedays/gameday/42/'));
+    expect(gamedayApi.updateDesignerState).not.toHaveBeenCalled();
+    expect(gamedayApi.getDesignerState).not.toHaveBeenCalled();
+  });
+
   it('PUTs a migrated designer state before navigating, and never GETs designer-state first', async () => {
     (gamedayApi.getMigrationPlan as ReturnType<typeof vi.fn>).mockResolvedValue(gapPlan);
 
     renderRunner('1');
 
+    await clickMigrate();
     await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
 
     expect(gamedayApi.getDesignerState).not.toHaveBeenCalled();
@@ -114,6 +181,7 @@ describe('MigrateGamedayRunner', () => {
 
     renderRunner('1');
 
+    await clickMigrate();
     await waitFor(() => expect(gamedayApi.updateDesignerState).toHaveBeenCalledTimes(1));
 
     const [, state] = (gamedayApi.updateDesignerState as ReturnType<typeof vi.fn>).mock.calls[0] as [number, FlowState];
@@ -144,6 +212,7 @@ describe('MigrateGamedayRunner', () => {
 
     renderRunner('1');
 
+    await clickMigrate();
     await waitFor(() => expect(gamedayApi.updateDesignerState).toHaveBeenCalledTimes(1));
 
     const [, state] = (gamedayApi.updateDesignerState as ReturnType<typeof vi.fn>).mock.calls[0] as [number, FlowState];
@@ -198,6 +267,7 @@ describe('MigrateGamedayRunner', () => {
 
     renderRunner('1');
 
+    await clickMigrate();
     await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
 
     expect(mockNavigate).toHaveBeenCalledWith('/designer/1', expect.objectContaining({
@@ -235,6 +305,7 @@ describe('MigrateGamedayRunner', () => {
 
     renderRunner('1');
 
+    await clickMigrate();
     await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
 
     const navCall = mockNavigate.mock.calls[0];
@@ -250,6 +321,7 @@ describe('MigrateGamedayRunner', () => {
 
     renderRunner('1');
 
+    await clickMigrate();
     await waitFor(() => expect(gamedayApi.updateDesignerState).toHaveBeenCalledTimes(1));
 
     const [, state] = (gamedayApi.updateDesignerState as ReturnType<typeof vi.fn>).mock.calls[0] as [number, FlowState];
@@ -265,6 +337,7 @@ describe('MigrateGamedayRunner', () => {
 
     renderRunner('1');
 
+    await clickMigrate();
     expect(await screen.findByText(/failed to save the migrated schedule/i)).toBeInTheDocument();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
