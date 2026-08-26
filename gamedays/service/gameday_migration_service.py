@@ -49,7 +49,131 @@ class GamedayMigrationService:
         self.gameday = gameday
         self._placeholder_service = GamedayPlaceholderService(gameday.pk)
 
+    _CUSTOM_FORMAT_RE = re.compile(r"_Gruppen(\d+)_Felder(\d+)$")
+
+    @staticmethod
+    def _is_custom_format(fmt: str) -> bool:
+        return bool(GamedayMigrationService._CUSTOM_FORMAT_RE.search(fmt))
+
+    @staticmethod
+    def _parse_custom_format(fmt: str) -> tuple[int, int]:
+        m = GamedayMigrationService._CUSTOM_FORMAT_RE.search(fmt)
+        if not m:
+            raise GamedayMigrationError(
+                f"Cannot parse custom format string {fmt!r}"
+            )
+        return int(m.group(1)), int(m.group(2))
+
+    def _build_custom_plan(self) -> dict:
+        num_groups, num_fields = self._parse_custom_format(self.gameday.format)
+
+        gameinfos = list(Gameinfo.objects.filter(gameday=self.gameday))
+        if not gameinfos:
+            raise GamedayMigrationError(
+                f"Gameday {self.gameday.pk} has no games; nothing to migrate."
+            )
+
+        gameinfos.sort(key=lambda gi: (gi.field, gi.scheduled or ""))
+
+        # Map standing labels (e.g. "Gruppe 1") to numeric group indices (0,1,...)
+        standing_to_group_idx: dict[str, int] = {}
+        group_team_index: dict[int, dict[int, dict]] = defaultdict(dict)
+        group_team_counter: dict[int, int] = defaultdict(int)
+        team_mapping: dict[str, dict] = {}
+        warnings: list[str] = []
+
+        def _resolve_group(standing: str) -> int:
+            if standing not in standing_to_group_idx:
+                idx = len(standing_to_group_idx)
+                standing_to_group_idx[standing] = idx
+            return standing_to_group_idx[standing]
+
+        def _ensure_team(group_idx: int, team_obj):
+            if team_obj is None:
+                return None
+            existing = group_team_index[group_idx]
+            for t_idx, entry in existing.items():
+                if entry["id"] == team_obj.pk:
+                    return t_idx
+            t_idx = group_team_counter[group_idx]
+            group_team_counter[group_idx] = t_idx + 1
+            existing[t_idx] = {"id": team_obj.pk, "label": team_obj.name}
+            team_mapping[f"{group_idx}_{t_idx}"] = existing[t_idx]
+            return t_idx
+
+        official_group = num_groups
+        field_game_counters: dict[int, int] = defaultdict(int)
+        slots = []
+
+        for gi in gameinfos:
+            home_result = Gameresult.objects.filter(
+                gameinfo=gi, isHome=True
+            ).first()
+            away_result = Gameresult.objects.filter(
+                gameinfo=gi, isHome=False
+            ).first()
+
+            home_team = home_result.team if home_result else None
+            away_team = away_result.team if away_result else None
+
+            standing_idx = _resolve_group(gi.standing)
+            home_idx = _ensure_team(standing_idx, home_team)
+            away_idx = _ensure_team(standing_idx, away_team)
+            official_idx = _ensure_team(official_group, gi.officials)
+
+            field_game_counters[gi.field] += 1
+            slot_order = field_game_counters[gi.field]
+
+            slots.append({
+                "field": gi.field,
+                "slot_order": slot_order,
+                "stage": gi.stage or "Hauptrunde",
+                "stage_type": "STANDARD",
+                "stage_category": gi.stage_category
+                or derive_legacy_stage_category(gi.stage or "Hauptrunde"),
+                "standing": gi.standing,
+                "home_group": standing_idx,
+                "home_team": home_idx,
+                "home_reference": "",
+                "away_group": standing_idx,
+                "away_team": away_idx,
+                "away_reference": "",
+                "official_group": official_group,
+                "official_team": official_idx,
+                "official_reference": "",
+                "break_after": 0,
+            })
+
+        group_config = []
+        for g_idx in range(num_groups):
+            standing_label = next(
+                s for s, i in standing_to_group_idx.items() if i == g_idx
+            )
+            team_count = len(group_team_index.get(g_idx, {}))
+            group_config.append({"name": standing_label, "team_count": team_count})
+
+        officials_in_plan = group_team_index.get(official_group, {})
+        if officials_in_plan:
+            group_config.append({
+                "name": "Offizielle",
+                "team_count": len(officials_in_plan),
+            })
+
+        return {
+            "template_id": None,
+            "num_fields": num_fields,
+            "num_groups": num_groups,
+            "group_config": group_config,
+            "slots": slots,
+            "team_mapping": team_mapping,
+            "warnings": warnings,
+            "update_rules": [],
+        }
+
     def build_plan(self) -> dict:
+        if self._is_custom_format(self.gameday.format):
+            return self._build_custom_plan()
+
         template = self._placeholder_service.get_template()
         if template is None:
             raise GamedayMigrationError(

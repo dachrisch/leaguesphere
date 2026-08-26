@@ -885,3 +885,232 @@ class TestZeroMutation(TestCase):
         after = self._snapshot_hash(gameday)
 
         assert before == after
+
+
+class TestCustomFormatDetection(TestCase):
+    def test_custom_format_detected(self):
+        assert GamedayMigrationService._is_custom_format(
+            "NRW U13_Gruppen1_Felder2"
+        )
+        assert GamedayMigrationService._is_custom_format(
+            "RL NRW_Gruppen2_Felder3"
+        )
+        assert GamedayMigrationService._is_custom_format(
+            "MyLeague_Gruppen4_Felder1"
+        )
+
+    def test_numeric_format_not_detected(self):
+        assert not GamedayMigrationService._is_custom_format("6_2")
+        assert not GamedayMigrationService._is_custom_format("8_3")
+        assert not GamedayMigrationService._is_custom_format("CUSTOM")
+
+    def test_parse_custom_format(self):
+        num_groups, num_fields = GamedayMigrationService._parse_custom_format(
+            "NRW U13_Gruppen1_Felder2"
+        )
+        assert num_groups == 1
+        assert num_fields == 2
+
+    def test_parse_custom_format_multi_group(self):
+        num_groups, num_fields = GamedayMigrationService._parse_custom_format(
+            "RL NRW_Gruppen3_Felder4"
+        )
+        assert num_groups == 3
+        assert num_fields == 4
+
+
+class TestCustomGamedayMigration(TestCase):
+    def _build_custom_gameday(self, format_str, games):
+        gameday = GamedayFactory(format=format_str)
+        created_games = []
+        for game in games:
+            officials = TeamFactory(name=game.get("officials", "Refs"))
+            gi = GameinfoFactory(
+                gameday=gameday,
+                field=game["field"],
+                scheduled=game["scheduled"],
+                stage=game.get("stage", "Hauptrunde"),
+                standing=game["standing"],
+                officials=officials,
+            )
+            GameresultFactory(
+                gameinfo=gi,
+                team=TeamFactory(name=game["home"]),
+                isHome=True,
+            )
+            GameresultFactory(
+                gameinfo=gi,
+                team=TeamFactory(name=game["away"]),
+                isHome=False,
+            )
+            created_games.append(gi)
+        return gameday, created_games
+
+    def test_single_group_two_fields(self):
+        gameday, (gi1, gi2) = self._build_custom_gameday(
+            "TestLeague_Gruppen1_Felder2",
+            [
+                {
+                    "field": 1,
+                    "scheduled": "10:00",
+                    "standing": "Gruppe 1",
+                    "home": "Team A",
+                    "away": "Team B",
+                    "officials": "Ref 1",
+                },
+                {
+                    "field": 2,
+                    "scheduled": "10:00",
+                    "standing": "Gruppe 1",
+                    "home": "Team C",
+                    "away": "Team D",
+                    "officials": "Ref 2",
+                },
+            ],
+        )
+
+        plan = GamedayMigrationService(gameday).build_plan()
+
+        assert plan["template_id"] is None
+        assert plan["num_fields"] == 2
+        assert plan["num_groups"] == 1
+        assert len(plan["slots"]) == 2
+        assert plan["update_rules"] == []
+        assert plan["warnings"] == []
+
+        assert plan["group_config"] == [
+            {"name": "Gruppe 1", "team_count": 4},
+            {"name": "Offizielle", "team_count": 2},
+        ]
+
+        slot1 = next(s for s in plan["slots"] if s["field"] == 1)
+        slot2 = next(s for s in plan["slots"] if s["field"] == 2)
+        assert slot1["slot_order"] == 1
+        assert slot2["slot_order"] == 1
+        assert slot1["standing"] == "Gruppe 1"
+        assert slot1["stage"] == "Hauptrunde"
+        assert slot1["stage_category"] == StageCategory.PRELIMINARY
+        assert slot1["home_group"] == 0
+        assert slot1["away_group"] == 0
+
+    def test_multi_group(self):
+        gameday, _ = self._build_custom_gameday(
+            "TestLeague_Gruppen2_Felder1",
+            [
+                {
+                    "field": 1,
+                    "scheduled": "10:00",
+                    "standing": "Gruppe 1",
+                    "home": "Team A",
+                    "away": "Team B",
+                },
+                {
+                    "field": 1,
+                    "scheduled": "11:00",
+                    "standing": "Gruppe 2",
+                    "home": "Team C",
+                    "away": "Team D",
+                },
+            ],
+        )
+
+        plan = GamedayMigrationService(gameday).build_plan()
+
+        assert plan["num_groups"] == 2
+        assert plan["group_config"][0] == {"name": "Gruppe 1", "team_count": 2}
+        assert plan["group_config"][1] == {"name": "Gruppe 2", "team_count": 2}
+
+        slot1 = plan["slots"][0]
+        slot2 = plan["slots"][1]
+        assert slot1["standing"] == "Gruppe 1"
+        assert slot2["standing"] == "Gruppe 2"
+
+    def test_team_mapping(self):
+        gameday, _ = self._build_custom_gameday(
+            "TestLeague_Gruppen1_Felder1",
+            [
+                {
+                    "field": 1,
+                    "scheduled": "10:00",
+                    "standing": "Gruppe 1",
+                    "home": "Eagles",
+                    "away": "Hawks",
+                    "officials": "Ref X",
+                },
+            ],
+        )
+
+        plan = GamedayMigrationService(gameday).build_plan()
+
+        team_labels = {
+            k: v["label"] for k, v in plan["team_mapping"].items()
+        }
+        assert "Eagles" in team_labels.values()
+        assert "Hawks" in team_labels.values()
+        # Keys use numeric group index (0), not standing label
+        assert "0_0" in plan["team_mapping"]
+        assert "0_1" in plan["team_mapping"]
+
+    def test_slot_order_per_field(self):
+        gameday, _ = self._build_custom_gameday(
+            "TestLeague_Gruppen1_Felder1",
+            [
+                {
+                    "field": 1,
+                    "scheduled": "10:00",
+                    "standing": "Gruppe 1",
+                    "home": "A",
+                    "away": "B",
+                },
+                {
+                    "field": 1,
+                    "scheduled": "11:00",
+                    "standing": "Gruppe 1",
+                    "home": "C",
+                    "away": "D",
+                },
+                {
+                    "field": 1,
+                    "scheduled": "12:00",
+                    "standing": "Gruppe 1",
+                    "home": "E",
+                    "away": "F",
+                },
+            ],
+        )
+
+        plan = GamedayMigrationService(gameday).build_plan()
+
+        orders = [s["slot_order"] for s in plan["slots"]]
+        assert orders == [1, 2, 3]
+
+    def test_raises_when_no_games(self):
+        gameday = GamedayFactory(format="TestLeague_Gruppen1_Felder1")
+
+        with self.assertRaises(GamedayMigrationError):
+            GamedayMigrationService(gameday).build_plan()
+
+    def test_no_warnings_for_simple_custom(self):
+        gameday, _ = self._build_custom_gameday(
+            "TestLeague_Gruppen1_Felder2",
+            [
+                {
+                    "field": 1,
+                    "scheduled": "10:00",
+                    "standing": "Gruppe 1",
+                    "home": "A",
+                    "away": "B",
+                },
+                {
+                    "field": 2,
+                    "scheduled": "10:00",
+                    "standing": "Gruppe 1",
+                    "home": "C",
+                    "away": "D",
+                },
+            ],
+        )
+
+        plan = GamedayMigrationService(gameday).build_plan()
+
+        assert plan["warnings"] == []
