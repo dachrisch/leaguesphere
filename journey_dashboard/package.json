@@ -1,13 +1,13 @@
 {
   "name": "journey_dashboard",
-  "version": "4.19.5-rc.5",
+  "version": "4.19.5",
   "private": true,
   "type": "module",
   "dependencies": {
     "@types/node": "25.9.5",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
-    "axios": "1.19.0",
+    "axios": "1.20.0",
     "i18next": "26.4.0",
     "i18next-browser-languagedetector": "8.2.1",
     "i18next-resources-to-backend": "1.2.3",

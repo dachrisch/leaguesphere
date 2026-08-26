@@ -114,16 +114,14 @@ LeagueSphere uses **release-please** for fully automated semantic versioning. **
 
 **Optional: Manual/Staging Release** (for RC testing):
 ```bash
-# Create release candidate
+# Create release candidate from your feature branch
 ./container/deploy.sh stage minor          # 3.21.0 → 3.22.0-rc.1
 
-# Test on staging.leaguesphere.app, then finalize
-./container/deploy.sh minor                # 3.22.0-rc.1 → 3.22.0
+# Test on staging.leaguesphere.app, then create PR to master
 ```
 
 **⚠️ Important**: 
 - Do NOT manually edit version files — they are automatically synchronized
-- Do NOT use `./container/deploy.sh major|minor|patch` for normal releases — only for manual/RC workflows
 - The finalize job automatically handles version sync after PR merge
 
 ### Feature Documentation
