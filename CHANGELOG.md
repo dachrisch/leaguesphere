@@ -1,5 +1,20 @@
 # Changelog
 
+## [4.19.7](https://github.com/dachrisch/leaguesphere/compare/v4.19.6...v4.19.7) (2026-08-26)
+
+
+### Bug Fixes
+
+* **deps:** update dependency web-vitals to v6.2.1 ([#1891](https://github.com/dachrisch/leaguesphere/issues/1891)) ([2a90205](https://github.com/dachrisch/leaguesphere/commit/2a90205e1648b209e1139ea58f3f6e7b60b34bff))
+* **deps:** update dependency web-vitals to v6.2.1 ([#1892](https://github.com/dachrisch/leaguesphere/issues/1892)) ([5d0a7b6](https://github.com/dachrisch/leaguesphere/commit/5d0a7b65fd486a296899b26184ab00b6a2470da5))
+
+## [4.19.6](https://github.com/dachrisch/leaguesphere/compare/v4.19.5...v4.19.6) (2026-08-26)
+
+
+### Documentation
+
+* add per-module AGENTS.md indexes to CLAUDE.md guides ([1b96eec](https://github.com/dachrisch/leaguesphere/commit/1b96eecd540e6592e884d037da7c7d1407f51a6f))
+
 ## [4.19.5](https://github.com/dachrisch/leaguesphere/compare/v4.19.4...v4.19.5) (2026-08-26)
 
 
