@@ -19,6 +19,15 @@ Several scripts here assume they run from inside a full leaguesphere checkout an
 - `spinup_test_db.sh` / `test_db_dump.sql` / `test_user.sql` — provisions the MariaDB test database used by the Django test suite, inside the `servyy-test` LXC container.
 - `start_dev_server.sh` — bootstraps a full local dev environment (test DB, env vars, Python deps, optionally hot-reloading builds of the React apps).
 
+## `deploy.sh`
+
+Thin wrapper around the `deploy.yaml` GitHub Actions workflow. Translates the old CLI interface to `gh workflow run deploy.yaml` calls. No version bump logic — that lives in the workflow.
+
+- `./deploy.sh stage [major|minor|patch]` — staging: bumps/creates an `-rc.N` prerelease.
+- `./deploy.sh demo [major|minor|patch]` — demo: bumps/creates a `+demo.N` build-metadata suffix.
+
+Runs on the current branch via GitHub Actions. After completion, create a PR to `master` to trigger deployment.
+
 ## Test DB & dev server gotchas
 
 - `spinup_test_db.sh` talks to real infrastructure: it runs `~/dev/infrastructure/container/scripts/setup_test_container.sh`, then SSHes into `servyy-test.lxd` to start/recreate a `mysql` (MariaDB) Docker container there. `--fresh` destroys and reseeds it from `test_db_dump.sql`; without it, an existing DB is reused/restarted. This needs the LXC container reachable — don't assume it's unavailable without checking.

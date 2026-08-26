@@ -114,15 +114,14 @@ LeagueSphere uses **release-please** for fully automated semantic versioning. **
 
 **Optional: Manual/Staging Release** (for RC testing):
 ```bash
-# Trigger staging deploy from your feature branch via GitHub Actions:
-gh workflow run deploy.yaml -f environment=staging -f bump_type=minor
-# This bumps 7 version files, commits, and tags on your branch.
-# Create a PR to master — once merged, CircleCI deploys to staging.
+# Create release candidate from your feature branch
+./container/deploy.sh stage minor          # 3.21.0 → 3.22.0-rc.1
+
+# Test on staging.leaguesphere.app, then create PR to master
 ```
 
 **⚠️ Important**: 
 - Do NOT manually edit version files — they are automatically synchronized
-- Do NOT use `./container/deploy.sh major|minor|patch` for normal releases — only for manual/RC workflows
 - The finalize job automatically handles version sync after PR merge
 
 ### Feature Documentation

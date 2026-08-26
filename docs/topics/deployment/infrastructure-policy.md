@@ -20,7 +20,7 @@ Staging provides a near-production environment for final validation before a rel
 
 - **URL**: [https://stage.leaguesphere.app](https://stage.leaguesphere.app)
 - **Automatic Deployment**: CI/CD pipelines push successful `:staging` images to the staging host.
-- **Manual Trigger**: Use the `deploy.yaml` GitHub Actions workflow to manually trigger a staging update.
+- **Manual Trigger**: Use `./container/deploy.sh stage` to manually trigger a staging update.
 - **Validation Requirement**: All changes MUST be validated on staging before merging into the `master` branch.
 
 ## 🚀 Release Management
@@ -30,4 +30,4 @@ Staging provides a near-production environment for final validation before a rel
 - **Standard path**: Developers use conventional commits → release-please auto-creates version bumps
 - **Manual approval**: After release PR merges, CircleCI waits at `hold_production` job (manual approval required)
 - **Version sync**: Finalize job automatically syncs all version files — do NOT edit manually
-- **RC testing**: Use the `deploy.yaml` GitHub Actions workflow for optional release candidate testing on staging
+- **RC testing**: Use `./container/deploy.sh stage` for optional release candidate testing on staging

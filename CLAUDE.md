@@ -230,7 +230,7 @@ Before marking a task complete:
 3. ✅ All frontend tests pass: `npm run test:run` (in each app)
 4. ✅ Format backend code: `black .`
 5. ✅ Lint frontend: `npm run eslint` (ZERO errors)
-6. ✅ Verify on staging: trigger `deploy.yaml` workflow, then test at [stage.leaguesphere.app](https://stage.leaguesphere.app)
+6. ✅ Verify on staging: `./container/deploy.sh stage`, then test at [stage.leaguesphere.app](https://stage.leaguesphere.app)
 
 ---
 
