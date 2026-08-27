@@ -85,6 +85,12 @@ export const AdoptionMetrics: React.FC<AdoptionMetricsProps> = ({ adoptionData }
           label: 'Templates',
           description: 'Pre-defined templates used',
         },
+        {
+          key: 'gd-migrations',
+          value: gameday.migrations || 0,
+          label: 'Migrations',
+          description: 'Legacy gamedays migrated to the designer',
+        },
       ],
     },
     {

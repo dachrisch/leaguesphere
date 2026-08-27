@@ -90,6 +90,16 @@ export const GameCreationStats: React.FC<GameCreationStatsProps> = ({
             ({100 - stats.designer_percentage}%)
           </div>
         </div>
+
+        <div className="stat-row">
+          <div className="stat-label">Migrated:</div>
+          <div className="stat-value" style={{ color: '#0dcaf0' }}>
+            {stats.migrations} games
+          </div>
+          <div className="stat-percentage">
+            ({stats.total > 0 ? ((stats.migrations / stats.total) * 100).toFixed(1) : '0.0'}%)
+          </div>
+        </div>
       </div>
 
       {/* Expand/Collapse League Breakdown */}

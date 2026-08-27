@@ -19,9 +19,9 @@ import { GameCreationStatsResponse } from '../../types';
 
 const mockData: GameCreationStatsResponse = {
   summary: {
-    '7': { designer: 2, legacy: 18, total: 20, designer_percentage: 10.0 },
-    '30': { designer: 12, legacy: 120, total: 132, designer_percentage: 9.1 },
-    '90': { designer: 45, legacy: 380, total: 425, designer_percentage: 10.6 },
+    '7': { designer: 2, legacy: 18, migrations: 1, total: 20, designer_percentage: 10.0 },
+    '30': { designer: 12, legacy: 120, migrations: 5, total: 132, designer_percentage: 9.1 },
+    '90': { designer: 45, legacy: 380, migrations: 12, total: 425, designer_percentage: 10.6 },
   },
   by_league: {
     '7': [{ league_name: 'FF BL', league_id: 1, designer: 2, legacy: 0, total: 2, designer_percentage: 100.0 }],
@@ -127,6 +127,32 @@ describe('GameCreationStats', () => {
 
     // Callback should have been called exactly twice
     expect(onTabChange).toHaveBeenCalledTimes(2);
+  });
+
+  it('test_displays_migrated_count', () => {
+    const { container } = render(React.createElement(GameCreationStats, { data: mockData }));
+
+    const text = container.textContent || '';
+
+    // 30-day tab is active by default, showing 5 migrations
+    expect(text).toContain('Migrated:');
+    expect(text).toContain('5 games');
+  });
+
+  it('test_displays_migrations_percentage', () => {
+    const { container } = render(React.createElement(GameCreationStats, { data: mockData }));
+
+    const text = container.textContent || '';
+
+    // 30-day migrations: 5 / 132 total = 3.8%
+    expect(text).toContain('(3.8%)');
+
+    const tabs = container.querySelectorAll('.time-window-tabs .tab');
+
+    // 7-day migrations: 1 / 20 total = 5.0%
+    fireEvent.click(tabs[0]);
+    const updatedText = container.textContent || '';
+    expect(updatedText).toContain('(5.0%)');
   });
 
   it('test_expands_and_collapses_league_breakdown', () => {

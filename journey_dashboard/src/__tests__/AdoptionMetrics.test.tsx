@@ -267,7 +267,7 @@ describe('calculateMetrics', () => {
 
 describe('AdoptionMetrics Component', () => {
   const mockAdoptionData = {
-    gameday: { opens: 10, published: 5, templates: 2 },
+    gameday: { opens: 10, published: 5, templates: 2, migrations: 3 },
     passcheck: { opens: 20, completed: 15 },
     scorecard: { opens: 30, matches: 25 },
   };
@@ -287,9 +287,9 @@ describe('AdoptionMetrics Component', () => {
   it('should render correct number of metric cards', () => {
     const { container } = render(React.createElement(AdoptionMetrics, { adoptionData: mockAdoptionData }));
 
-    // Gameday (4) + Passcheck (3) + Scorecard (2) = 9 cards
+    // Gameday (5) + Passcheck (3) + Scorecard (2) = 10 cards
     const cards = container.querySelectorAll('.metric-card');
-    expect(cards.length).toBe(9);
+    expect(cards.length).toBe(10);
   });
 
   it('should display correct values and labels', () => {
@@ -300,6 +300,8 @@ describe('AdoptionMetrics Component', () => {
     expect(text).toContain('10');
     // Gameday publish rate: 5/10 = 50%
     expect(text).toContain('50%');
+    // Gameday migrations
+    expect(text).toContain('3');
     // Passcheck opens
     expect(text).toContain('20');
     // Scorecard matches
