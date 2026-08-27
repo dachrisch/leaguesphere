@@ -5,6 +5,7 @@ from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from django.contrib.auth import get_user_model
 from gamedays.models import Gameday, GamedayDesignerState, League, Season
+from journey.models import Journey, JourneyEvent
 
 User = get_user_model()
 
@@ -45,6 +46,23 @@ class GameCreationStatsServiceTests(TestCase):
                 author=self.user
             )
 
+        # Create migration events (legacy gamedays migrated to the Designer)
+        journey = Journey.objects.create(user=self.user)
+        self._create_migration_event(journey, days_ago=3)
+        self._create_migration_event(journey, days_ago=5)
+        self._create_migration_event(journey, days_ago=20)
+
+    def _create_migration_event(self, journey, days_ago):
+        """Create a gameday_migrated event with a backdated created_at."""
+        event = JourneyEvent.objects.create(
+            journey=journey,
+            event_name='gameday_migrated',
+            metadata={'gameday_id': 1},
+        )
+        created_at = timezone.now() - timedelta(days=days_ago)
+        JourneyEvent.objects.filter(pk=event.pk).update(created_at=created_at)
+        return event
+
     def test_summary_stats_30_days(self):
         """Test summary calculation for 30-day window."""
         from journey.api.creation_stats import GameCreationStatsService
@@ -55,7 +73,20 @@ class GameCreationStatsServiceTests(TestCase):
         self.assertEqual(result_dict['summary']['30']['designer'], 2)
         self.assertEqual(result_dict['summary']['30']['legacy'], 5)
         self.assertEqual(result_dict['summary']['30']['total'], 7)
+        self.assertEqual(result_dict['summary']['30']['migrations'], 3)
         self.assertAlmostEqual(result_dict['summary']['30']['designer_percentage'], 28.6, places=1)
+
+    def test_summary_includes_migrations_for_time_window(self):
+        """Test migration count is scoped to the requested time window."""
+        from journey.api.creation_stats import GameCreationStatsService
+
+        stats = GameCreationStatsService.get_stats(days_list=[7, 30, 90])
+        result_dict = stats.to_dict()
+
+        # 2 events within the last 7 days, 3 within 30 and 90
+        self.assertEqual(result_dict['summary']['7']['migrations'], 2)
+        self.assertEqual(result_dict['summary']['30']['migrations'], 3)
+        self.assertEqual(result_dict['summary']['90']['migrations'], 3)
 
     def test_per_league_stats_30_days(self):
         """Test per-league breakdown for 30-day window."""

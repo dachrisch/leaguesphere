@@ -114,6 +114,7 @@ class JourneyEventViewSet(viewsets.ModelViewSet):
                 "opens": get_count("gameday_designer_opened"),
                 "published": get_count("gameday_published"),
                 "templates": get_count("template_used"),
+                "migrations": get_count("gameday_migrated"),
             },
             "passcheck": {
                 "opens": get_count("passcheck_started"),

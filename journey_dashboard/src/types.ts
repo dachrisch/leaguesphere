@@ -22,6 +22,7 @@ export interface AdoptionStats {
   opens: number;
   published?: number;
   templates?: number;
+  migrations?: number;
   completed?: number;
   matches?: number;
 }
@@ -82,6 +83,7 @@ export interface JourneySessionsResponse {
 export interface TimePeriodStats {
   designer: number;
   legacy: number;
+  migrations: number;
   total: number;
   designer_percentage: number;
 }

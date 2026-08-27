@@ -1,5 +1,5 @@
 import hashlib
-from datetime import timedelta
+from datetime import datetime, timedelta
 from django.utils import timezone
 from django.views.decorators.http import condition
 from django.utils.decorators import method_decorator
@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from gamedays.models import Gameday
+from journey.models import JourneyEvent
 
 
 class LeagueAdoptionSerializer:
@@ -40,12 +41,13 @@ class LeagueAdoptionSerializer:
 class TimePeriodStatsSerializer:
     """
     Serializes game creation statistics for a single time period (7, 30, or 90 days).
-    Fields: designer, legacy, total, designer_percentage
+    Fields: designer, legacy, migrations, total, designer_percentage
     """
 
-    def __init__(self, designer, legacy):
+    def __init__(self, designer, legacy, migrations):
         self.designer = designer
         self.legacy = legacy
+        self.migrations = migrations
         self.total = designer + legacy
         self.designer_percentage = (
             (designer / self.total * 100) if self.total > 0 else 0.0
@@ -55,6 +57,7 @@ class TimePeriodStatsSerializer:
         return {
             'designer': self.designer,
             'legacy': self.legacy,
+            'migrations': self.migrations,
             'total': self.total,
             'designer_percentage': round(self.designer_percentage, 1),
         }
@@ -135,8 +138,18 @@ class GameCreationStatsService:
             designer_count = queryset.filter(designer_state__isnull=False).count()
             legacy_count = queryset.filter(designer_state__isnull=True).count()
 
+            # Count legacy gamedays migrated to the Designer (journey events)
+            migrations_count = JourneyEvent.objects.filter(
+                event_name='gameday_migrated',
+                created_at__gte=timezone.make_aware(
+                    datetime.combine(start_date, datetime.min.time())
+                ),
+            ).count()
+
             # Create summary for this period
-            summary[str(days)] = TimePeriodStatsSerializer(designer_count, legacy_count)
+            summary[str(days)] = TimePeriodStatsSerializer(
+                designer_count, legacy_count, migrations_count
+            )
 
             # Get per-league breakdown
             league_stats = {}
