@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.20.0](https://github.com/dachrisch/leaguesphere/compare/v4.19.7...v4.20.0) (2026-08-26)
+
+
+### Features
+
+* **gamedays:** migrate legacy gamedays to the Gameday Designer ([#1883](https://github.com/dachrisch/leaguesphere/issues/1883)) ([1299809](https://github.com/dachrisch/leaguesphere/commit/1299809a502c04b29ee11555933b26972b99ea3f))
+
 ## [4.19.7](https://github.com/dachrisch/leaguesphere/compare/v4.19.6...v4.19.7) (2026-08-26)
 
 
