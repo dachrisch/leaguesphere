@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.20.1](https://github.com/dachrisch/leaguesphere/compare/v4.20.0...v4.20.1) (2026-08-27)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @testing-library/react to v16.3.3 ([#1895](https://github.com/dachrisch/leaguesphere/issues/1895)) ([a77915c](https://github.com/dachrisch/leaguesphere/commit/a77915c3b04d1b6d49141229b5699930e2f1baa9))
+* **deps:** update dependency webpack to v5.110.0 ([#1896](https://github.com/dachrisch/leaguesphere/issues/1896)) ([d231d1a](https://github.com/dachrisch/leaguesphere/commit/d231d1a19a78b3804663ecc08a897e0423a3c3a5))
+
 ## [4.20.0](https://github.com/dachrisch/leaguesphere/compare/v4.19.7...v4.20.0) (2026-08-26)
 
 
