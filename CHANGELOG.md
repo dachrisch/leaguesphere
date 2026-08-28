@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.21.1](https://github.com/dachrisch/leaguesphere/compare/v4.21.0...v4.21.1) (2026-08-28)
+
+
+### Bug Fixes
+
+* **deps:** update dependency jest to v30.5.0 ([#1904](https://github.com/dachrisch/leaguesphere/issues/1904)) ([765ade1](https://github.com/dachrisch/leaguesphere/commit/765ade1ac5cb30b77da43ab756cb39863db7a6ab))
+* **deps:** update dependency webpack-cli to v7.2.3 ([#1903](https://github.com/dachrisch/leaguesphere/issues/1903)) ([d33d2b7](https://github.com/dachrisch/leaguesphere/commit/d33d2b7d8715bdcc394d3820c5b062161a8c14de))
+
 ## [4.21.0](https://github.com/dachrisch/leaguesphere/compare/v4.20.1...v4.21.0) (2026-08-28)
 
 
