@@ -1,5 +1,19 @@
 # Changelog
 
+## [4.21.0](https://github.com/dachrisch/leaguesphere/compare/v4.20.1...v4.21.0) (2026-08-28)
+
+
+### Features
+
+* **journey:** add gameday migration adoption report ([#1898](https://github.com/dachrisch/leaguesphere/issues/1898)) ([4b6c73e](https://github.com/dachrisch/leaguesphere/commit/4b6c73e8156cc6f834bb95a9405b9ad41bd94321))
+
+
+### Bug Fixes
+
+* **deps:** update dependency @vitejs/plugin-react to v6.1.1 ([#1901](https://github.com/dachrisch/leaguesphere/issues/1901)) ([4e0f9d6](https://github.com/dachrisch/leaguesphere/commit/4e0f9d6b6f54fe2c21fa24e3ae6687f876d4d2cc))
+* **deps:** update dependency @vitejs/plugin-react to v6.1.1 ([#1902](https://github.com/dachrisch/leaguesphere/issues/1902)) ([332a623](https://github.com/dachrisch/leaguesphere/commit/332a6236d7f3aee39d163d7a73366f702d12e30d))
+* **deps:** update dependency webpack to v5.110.1 ([#1900](https://github.com/dachrisch/leaguesphere/issues/1900)) ([17f5af5](https://github.com/dachrisch/leaguesphere/commit/17f5af5039bf5b58840f2860a09446b5df400b65))
+
 ## [4.20.1](https://github.com/dachrisch/leaguesphere/compare/v4.20.0...v4.20.1) (2026-08-27)
 
 
