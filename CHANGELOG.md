@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.21.3](https://github.com/dachrisch/leaguesphere/compare/v4.21.2...v4.21.3) (2026-08-29)
+
+
+### Bug Fixes
+
+* **deps:** update dependency serialize-javascript to v7.1.1 ([#1908](https://github.com/dachrisch/leaguesphere/issues/1908)) ([75c8a99](https://github.com/dachrisch/leaguesphere/commit/75c8a99bc4e997943ea4deb781e5a5dec7214a98))
+
 ## [4.21.2](https://github.com/dachrisch/leaguesphere/compare/v4.21.1...v4.21.2) (2026-08-28)
 
 
