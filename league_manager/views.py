@@ -46,6 +46,18 @@ def robots_txt_view(request):
     return render(request, "robots.txt", content_type="text/plain")
 
 
+def llms_txt_view(request):
+    return render(request, "llms.txt", content_type="text/plain")
+
+
+def llms_full_txt_view(request):
+    return render(request, "llms-full.txt", content_type="text/plain")
+
+
+def security_txt_view(request):
+    return render(request, "security.txt", content_type="text/plain")
+
+
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.core.cache import cache
 from django.shortcuts import redirect

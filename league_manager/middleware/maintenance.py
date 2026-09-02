@@ -68,4 +68,10 @@ class MaintenanceModeMiddleware:
             or path.startswith("/media/")
             or path == "/health/"
             or path == "/database-error/"
+            # Static info files stay reachable during maintenance
+            or path == "/robots.txt"
+            or path == "/sitemap.xml"
+            or path == "/llms.txt"
+            or path == "/llms-full.txt"
+            or path.startswith("/.well-known/")
         )

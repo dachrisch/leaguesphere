@@ -49,10 +49,19 @@ class DatabaseGuardMiddleware:
         except:
             error_url = "/database-error/"
 
-        # Skip check for static/media files and robots/sitemap
+        # Skip check for static/media files, robots/sitemap and other static
+        # info files that must remain reachable during a database outage
         if any(
             request.path.startswith(p)
-            for p in ["/static/", "/media/", "/robots.txt", "/sitemap.xml"]
+            for p in [
+                "/static/",
+                "/media/",
+                "/robots.txt",
+                "/sitemap.xml",
+                "/llms.txt",
+                "/llms-full.txt",
+                "/.well-known/",
+            ]
         ):
             return self.get_response(request)
 

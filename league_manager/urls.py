@@ -59,7 +59,15 @@ class HealthCheckView(View):
         return JsonResponse({"status": "healthy", "maintenance_mode": maintenance_active})
 
 
-from league_manager.views import ClearCacheView, robots_txt_view, database_error_view, DemoInfoView
+from league_manager.views import (
+    ClearCacheView,
+    robots_txt_view,
+    llms_txt_view,
+    llms_full_txt_view,
+    security_txt_view,
+    database_error_view,
+    DemoInfoView,
+)
 from journey.progress_view import GameProgressPageView
 from league_manager.sitemaps import (
     StaticViewSitemap,
@@ -86,6 +94,9 @@ urlpatterns = [
         name="django.contrib.sitemaps.views.sitemap",
     ),
     path("robots.txt", robots_txt_view, name="robots-txt"),
+    path("llms.txt", llms_txt_view, name="llms-txt"),
+    path("llms-full.txt", llms_full_txt_view, name="llms-full-txt"),
+    path(".well-known/security.txt", security_txt_view, name="security-txt"),
     path(
         "maintenance/",
         TemplateView.as_view(template_name="league_manager/maintenance.html"),

@@ -1,0 +1,26 @@
+# LeagueSphere
+
+> LeagueSphere is a web platform for organizing flag-football league play: gameday schedules, live scores, league standings, team rosters, and officials assignments. Page content is primarily in German; this file and the JSON API use English labels.
+
+LeagueSphere serves amateur flag-football leagues. League administrators plan gamedays, referees report scores live via a liveticker, and fans follow results and league tables. Key facts:
+
+- Domain: leaguesphere.app
+- Sport: American flag football (Germany)
+- Core entities: seasons, leagues, gamedays, games, teams, officials
+- Live data: scores update in near real time during gamedays
+- Language: German UI, English API labels
+
+## Public pages
+
+- [Gameday overview](https://leaguesphere.app/gamedays/): all league gamedays with dates and status
+- [Liveticker](https://leaguesphere.app/liveticker/): live-updating scores for today's games
+- [League table](https://leaguesphere.app/leaguetable/): standings per league and season
+- [Gameday detail](https://leaguesphere.app/gamedays/gameday/{id}/): schedule, results, and progress of one gameday
+- [Team roster](https://leaguesphere.app/passcheck/team/{id}/list/): public roster of a single team
+- [Officials assignments](https://leaguesphere.app/officials/einsaetze/): referee assignments per gameday
+
+## Machine-readable data
+
+- [API: Liveticker](https://leaguesphere.app/api/liveticker/): JSON live scores, no authentication, cached ~60 seconds
+- [API: Gamedays](https://leaguesphere.app/api/gamedays/): JSON, paginated list of gamedays, no authentication
+- [Full reference](https://leaguesphere.app/llms-full.txt): extended descriptions of every page and API endpoint

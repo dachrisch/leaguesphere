@@ -1,0 +1,44 @@
+# LeagueSphere
+
+> LeagueSphere is a web platform for organizing flag-football league play: gameday schedules, live scores, league standings, team rosters, and officials assignments. Page content is primarily in German; this file and the JSON API use English labels.
+
+## About LeagueSphere
+
+LeagueSphere ("Leaguesphere") serves amateur flag-football leagues in Germany. The typical league runs several gamedays per season at a central venue. On a gameday, multiple games are scheduled on one or more fields with assigned officials (referees). Referees track each game in the liveticker: scores per half, touchdowns, extra points, timeouts.
+
+Core entities and their relationships:
+
+- **Season**: a yearly competition period; leagues and gamedays belong to a season.
+- **League**: a competition within a season, identified by a slug; standings are computed per league and season.
+- **Gameday**: a scheduled event day with games; statuses are DRAFT, PUBLISHED, IN_PROGRESS, COMPLETED. Only non-draft gamedays are public.
+- **Game**: part of a gameday; has a scheduled time, a field, a status (Geplant = scheduled, Gestartet = started, beendet = finished), and results per half (first half, second half).
+- **Team**: has a name, description, location, and optional logo; rosters are public per team.
+- **Officials**: referee assignments for games on a gameday.
+
+## Public pages (German UI)
+
+- [Gameday overview](https://leaguesphere.app/gamedays/): all league gamedays with dates and status. Landing page of the site.
+- [Liveticker](https://leaguesphere.app/liveticker/): live-updating scores for today's games, including the latest game events (touchdowns, extra points, timeouts). Best source for current in-play data.
+- [League table](https://leaguesphere.app/leaguetable/): standings per league and season, including points, wins/losses, score difference, and tie-break resolution.
+- [Gameday detail](https://leaguesphere.app/gamedays/gameday/{id}/): schedule of all games on a gameday with results and progress; finalized after the last game ends.
+- [Team roster](https://leaguesphere.app/passcheck/team/{id}/list/): public roster of a single team (players per season).
+- [Officials assignments](https://leaguesphere.app/officials/einsaetze/): which officiating team referees which games, per gameday.
+
+## Machine-readable data (JSON, no authentication)
+
+All API endpoints are read-only for anonymous callers and return JSON. They are served under `/api/` without a version prefix.
+
+- [API: Liveticker](https://leaguesphere.app/api/liveticker/): live scores for today's gamedays; cached for about 60 seconds; includes game status, current scores, and the latest ticker events.
+- [API: Gamedays](https://leaguesphere.app/api/gamedays/): paginated list of gamedays with metadata; supports search; includes an ETag for conditional requests.
+- [API: Gameday games](https://leaguesphere.app/api/gamedays/{id}/games/): all games of a gameday with halftime and final scores; ETag supported.
+- [API: Gameday schedule](https://leaguesphere.app/api/gameday/{id}/details/?get=schedule): the full schedule of one gameday as JSON.
+- [API: Seasons and leagues](https://leaguesphere.app/api/seasons/): enumerable lists of seasons and leagues.
+
+## Dynamic content policy
+
+Live data (liveticker, running games) changes in near real time during gamedays. Prefer the API endpoints for current data and respect their cache headers. A gameday's results are final once its games are "beendet" (finished); finalized gameday pages and the games endpoint are stable and safe to cite.
+
+## Contact
+
+- Security contact: /.well-known/security.txt
+- Crawler policy: /robots.txt (AI retrieval crawlers allowed; training-only crawlers blocked)
