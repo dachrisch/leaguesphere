@@ -5,7 +5,7 @@ Following TDD principles - these tests define the expected behavior
 before implementation.
 """
 
-from django.test import TestCase
+from django.test import TestCase, Client
 from django.urls import reverse
 
 from gamedays.models import Gameday, Gameinfo, Gameresult, SeasonLeagueTeam
@@ -14,8 +14,10 @@ from league_table.api.constants import (
     API_LEAGUE_TABLE_BY_LEAGUE,
     API_LEAGUE_TABLE_BY_SEASON,
 )
+from league_table.models import LeagueRulesetTieBreak
 from league_table.tests.setup_factories.factories_leaguetable import (
     LeagueSeasonConfigFactory,
+    TieBreakStepFactory,
 )
 
 
@@ -23,12 +25,19 @@ class LeagueTableApiTestBase(TestCase):
     def setUp(self):
         self.client = Client()
         self.config = LeagueSeasonConfigFactory()
-        self.season = self.config.season
+        self.season = self.season = self.config.season
         self.league = self.config.league
+        # The standing aggregation resolves team membership through the
+        # league-points league family; include the league itself.
+        self.config.leagues_for_league_points.add(self.league)
+        step = TieBreakStepFactory(key="win_quotient")
+        LeagueRulesetTieBreak.objects.create(
+            ruleset=self.config.ruleset, step=step, order=0
+        )
         self.officials = TeamFactory(name="Ref Crew")
 
-        self.team_a = TeamFactory(name="Titans")
-        self.team_b = TeamFactory(name="Sharks")
+        self.team_a = TeamFactory(name="Titans", description="Titans")
+        self.team_b = TeamFactory(name="Sharks", description="Sharks")
         membership = SeasonLeagueTeam.objects.create(season=self.season, league=self.league)
         membership.teams.add(self.team_a, self.team_b)
 
@@ -93,7 +102,7 @@ class TestLeagueTableApiPayload(LeagueTableApiTestBase):
         self.assertEqual(payload["league"]["slug"], self.league.slug)
         self.assertEqual(payload["league"]["name"], self.league.name)
         self.assertEqual(payload["season"]["slug"], self.season.slug)
-        self.assertEqual(payload["season"]["name"], self.season.name)
+        self.assertEqual(payload["season"]["name"], str(self.season.name))
 
     def test_standing_contains_team_names(self):
         response = self.client.get(self.url_season)
@@ -129,7 +138,7 @@ class TestLeagueTableApiPayload(LeagueTableApiTestBase):
         self.assertEqual(row["games_played"], 1)
 
     def test_team_without_games_is_serialized(self):
-        lonely = TeamFactory(name="Lone Wolves")
+        lonely = TeamFactory(name="Lone Wolves", description="Lone Wolves")
         membership = SeasonLeagueTeam.objects.create(season=self.season, league=self.league)
         membership.teams.add(lonely)
         response = self.client.get(self.url_season)

@@ -1,6 +1,6 @@
 import hashlib
 
-from django.db.models import Count, Max
+from django.db.models import Count, Max, Sum
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.views.decorators.http import condition
@@ -14,16 +14,25 @@ from liveticker.service.liveticker_service import LivetickerService
 def generate_liveticker_etag(request):
     """ETag for the liveticker response.
 
-    The payload changes whenever a game result is written or a new tick
-    (TeamLog event) arrives. Query parameters are part of the key because
-    league/gameday/game filters change the response body.
+    The payload changes whenever a game result is written or edited (score
+    updates patch existing rows in place, so value sums are included) or a
+    new tick (TeamLog event) arrives. Query parameters are part of the key
+    because league/gameday/game filters change the response body.
     """
     etag_data = request.GET.urlencode() or "all"
     results = Gameresult.objects.aggregate(
-        count=Count("pk"), latest=Max("pk")
+        count=Count("pk"),
+        latest=Max("pk"),
+        sum_fh=Sum("fh"),
+        sum_sh=Sum("sh"),
     )
-    ticks = TeamLog.objects.aggregate(latest=Max("pk"))
-    etag_data += f":{results['count']}:{results['latest']}:{ticks['latest']}"
+    ticks = TeamLog.objects.aggregate(
+        count=Count("pk"), latest=Max("pk"), sum_value=Sum("value")
+    )
+    etag_data += (
+        f":{results['count']}:{results['latest']}:{results['sum_fh']}:"
+        f"{results['sum_sh']}:{ticks['count']}:{ticks['latest']}:{ticks['sum_value']}"
+    )
     return f'"{hashlib.md5(etag_data.encode()).hexdigest()}"'
 
 

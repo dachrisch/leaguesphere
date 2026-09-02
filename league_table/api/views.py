@@ -51,7 +51,10 @@ class LeagueTableAPIView(APIView):
         return Response(
             {
                 "league": {"slug": league, "name": service.get_league_name()},
-                "season": {"slug": season, "name": service.get_season_name()},
+                "season": {
+                    "slug": service.get_season_slug(),
+                    "name": service.get_season_name(),
+                },
                 "standing": standing,
             }
         )

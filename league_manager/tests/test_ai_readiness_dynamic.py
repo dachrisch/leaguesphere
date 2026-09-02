@@ -8,14 +8,16 @@ before implementation.
 
 import json
 
-from django.test import TestCase
+from django.test import TestCase, Client
 from django.urls import reverse
 
-from gamedays.models import Gameinfo, Gameresult
+from gamedays.models import Gameday, Gameinfo, Gameresult, SeasonLeagueTeam
 from gamedays.tests.setup_factories.factories import GamedayFactory, TeamFactory
 from league_table.api.constants import API_LEAGUE_TABLE_BY_LEAGUE
+from league_table.models import LeagueRulesetTieBreak
 from league_table.tests.setup_factories.factories_leaguetable import (
     LeagueSeasonConfigFactory,
+    TieBreakStepFactory,
 )
 
 
@@ -100,8 +102,8 @@ class TestGameDetailJsonLd(TestCase):
     def setUp(self):
         self.client = Client()
         self.officials = TeamFactory(name="Ref Crew")
-        self.home = TeamFactory(name="Home Team")
-        self.away = TeamFactory(name="Away Team")
+        self.home = TeamFactory(name="Home Team", description="Home Team")
+        self.away = TeamFactory(name="Away Team", description="Away Team")
         self.gameday = GamedayFactory(status="PUBLISHED")
         self.game = Gameinfo.objects.create(
             gameday=self.gameday,
@@ -147,6 +149,42 @@ class TestLeagueTableJsonLd(TestCase):
     def setUp(self):
         self.client = Client()
         self.config = LeagueSeasonConfigFactory()
+        self.config.leagues_for_league_points.add(self.config.league)
+        # Production rulesets always define tie-break steps; without one the
+        # ranking engine crashes on empty tie-break columns.
+        LeagueRulesetTieBreak.objects.create(
+            ruleset=self.config.ruleset,
+            step=TieBreakStepFactory(key="win_quotient"),
+            order=0,
+        )
+        home = TeamFactory(name="Home Team", description="Home Team")
+        away = TeamFactory(name="Away Team", description="Away Team")
+        officials = TeamFactory(name="Ref Crew")
+        membership = SeasonLeagueTeam.objects.create(
+            season=self.config.season, league=self.config.league
+        )
+        membership.teams.add(home, away)
+        # A finished game so the standing has computed rows to serialize.
+        gameday = GamedayFactory(
+            season=self.config.season,
+            league=self.config.league,
+            status=Gameday.STATUS_PUBLISHED,
+        )
+        game = Gameinfo.objects.create(
+            gameday=gameday,
+            scheduled="10:00",
+            field=1,
+            officials=officials,
+            status=Gameinfo.STATUS_COMPLETED,
+            stage="Gruppe",
+            standing="Gruppe 1",
+        )
+        Gameresult.objects.create(
+            gameinfo=game, team=home, fh=10, sh=10, pa=0, isHome=True
+        )
+        Gameresult.objects.create(
+            gameinfo=game, team=away, fh=0, sh=0, pa=20, isHome=False
+        )
         self.url = reverse(
             API_LEAGUE_TABLE_BY_LEAGUE, kwargs={"league": self.config.league.slug}
         )
