@@ -44,6 +44,61 @@ def database_error_view(request):
     return HttpResponse(html, content_type="text/html", status=503)
 
 
+def agents_page_view(request):
+    return render(request, "league_manager/agents.html")
+
+
+def agent_card_json_view(request):
+    card = {
+        "name": "LeagueSphere Assistant",
+        "description": (
+            "Helps visitors find flag-football gamedays, live scores, league "
+            "standings, teams and officials assignments on LeagueSphere."
+        ),
+        "url": "https://leaguesphere.app",
+        "provider": {
+            "organization": "LeagueSphere",
+            "url": "https://leaguesphere.app",
+        },
+        "version": "1.0.0",
+        "protocolVersion": "1.0",
+        "preferredTransport": "HTTP",
+        "capabilities": {},
+        "defaultInputModes": ["text/plain"],
+        "defaultOutputModes": ["text/plain"],
+        "skills": [
+            {
+                "id": "live-scores",
+                "name": "Live scores",
+                "description": "Current scores and game status for today's gamedays",
+                "tags": ["scores", "liveticker", "live"],
+                "examples": ["What is the current score in league west?"],
+            },
+            {
+                "id": "league-table",
+                "name": "League standings",
+                "description": "Standings per league and season, including tie-breaks",
+                "tags": ["standings", "table", "league"],
+                "examples": ["Show the standings for ff-bl season 6"],
+            },
+            {
+                "id": "gameday-info",
+                "name": "Gameday information",
+                "description": "Schedules, results and progress for gamedays",
+                "tags": ["gameday", "schedule", "results"],
+                "examples": ["When is the next gameday?"],
+            },
+        ],
+        "documentation": {
+            "siteOverview": "/llms.txt",
+            "dynamicData": "/llms-dynamic.txt",
+            "facts": "/facts.json",
+            "security": "/.well-known/security.txt",
+        },
+    }
+    return JsonResponse(card)
+
+
 def facts_json_view(request):
     facts = {
         "name": "LeagueSphere",

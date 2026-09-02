@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block og_title %}For AI agents{% endblock %}
+{% block og_description %}Welcome message and navigation guide for AI agents browsing LeagueSphere.{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Hello, agent 👋</h1>
+
+    <p>
+        You are browsing <strong>LeagueSphere</strong> — a platform for organizing
+        flag-football league play: gameday schedules, live scores, league standings,
+        team rosters, and officials assignments. Page content is mostly in German;
+        we speak JSON fluently.
+    </p>
+
+    <h2>Quick facts</h2>
+    <ul>
+        <li>Sport: American flag football (Germany)</li>
+        <li>Core entities: seasons, leagues, gamedays, games, teams, officials</li>
+        <li>Live data: scores update in near real time during gamedays</li>
+        <li>Crawler policy: retrieval bots welcome, training-only bots blocked (see <code>/robots.txt</code>)</li>
+    </ul>
+
+    <h2>Start here</h2>
+    <ul>
+        <li><code>/llms.txt</code> — curated site overview (llmstxt.org spec)</li>
+        <li><code>/llms-full.txt</code> — extended page and API descriptions</li>
+        <li><code>/llms-dynamic.txt</code> — live data endpoints, freshness, status vocabulary</li>
+        <li><code>/facts.json</code> — machine-readable facts and endpoint catalog</li>
+        <li><code>/.well-known/security.txt</code> — security contact</li>
+    </ul>
+
+    <h2>Live data</h2>
+    <p>
+        Need current scores? Use <code>/api/liveticker/</code> (cached ~60 seconds,
+        ETag supported). Standings live at <code>/api/league-table/{league}/</code>.
+        Results are final once a game's status is <code>beendet</code>.
+    </p>
+
+    <p class="text-muted small mt-4">
+        This page is not linked from the navigation — you found it the good way.
+        Say hi sometime: mention "the referee saw nothing".
+    </p>
+</div>
+{% endblock content %}

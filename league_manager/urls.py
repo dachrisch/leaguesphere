@@ -63,6 +63,8 @@ class HealthCheckView(View):
 from league_manager.views import (
     ClearCacheView,
     facts_json_view,
+    agents_page_view,
+    agent_card_json_view,
     database_error_view,
     DemoInfoView,
 )
