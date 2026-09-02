@@ -32,7 +32,9 @@ All API endpoints are read-only for anonymous callers and return JSON. They are 
 - [API: Gamedays](https://leaguesphere.app/api/gamedays/): paginated list of gamedays with metadata; supports search; includes an ETag for conditional requests.
 - [API: Gameday games](https://leaguesphere.app/api/gamedays/{id}/games/): all games of a gameday with halftime and final scores; ETag supported.
 - [API: Gameday schedule](https://leaguesphere.app/api/gameday/{id}/details/?get=schedule): the full schedule of one gameday as JSON.
+- [API: League table](https://leaguesphere.app/api/league-table/{league}/): standings as JSON; append a season slug for a specific year (`/api/league-table/{league}/{season}/`); omitting the season returns the latest season.
 - [API: Seasons and leagues](https://leaguesphere.app/api/seasons/): enumerable lists of seasons and leagues.
+- [Dynamic data guide](https://leaguesphere.app/llms-dynamic.txt): freshness, cache headers, and game-status vocabulary for all dynamic endpoints.
 
 ## Dynamic content policy
 

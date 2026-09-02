@@ -62,6 +62,8 @@ class HealthCheckView(View):
 
 from league_manager.views import (
     ClearCacheView,
+    llms_dynamic_txt_view,
+    facts_json_view,
     database_error_view,
     DemoInfoView,
 )
@@ -111,6 +113,8 @@ urlpatterns = [
         TemplateView.as_view(template_name="security.txt", content_type="text/plain"),
         name="security-txt",
     ),
+    path("llms-dynamic.txt", llms_dynamic_txt_view, name="llms-dynamic-txt"),
+    path("facts.json", facts_json_view, name="facts-json"),
     path(
         "maintenance/",
         TemplateView.as_view(template_name="league_manager/maintenance.html"),
@@ -121,6 +125,7 @@ urlpatterns = [
     path("database-error/", database_error_view, name="database-error"),
     # ToDo: fix gameday urls
     path("api/", include("gamedays.api.urls")),
+    path("api/league-table/", include("league_table.api.urls")),
     path("api/designer/", include("gameday_designer.urls")),
     path("api/game-progress/", include("journey.api.progress_urls")),
     path("api/liveticker/", include("liveticker.api.urls")),

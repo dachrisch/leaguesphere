@@ -3,6 +3,10 @@
 {% block og_title %}{{ info.home_team }} vs. {{ info.away_team }}{% endblock %}
 {% block og_description %}Spielzusammenfassung vom {{ info.date | date:"D, j. F Y " }}{% endblock %}
 
+{% block ld_json %}
+<script type="application/ld+json">{{ sports_event_ld | safe }}</script>
+{% endblock %}
+
 {% load static %}
 {% block content %}
 {% if not request.GET.isExtern %}

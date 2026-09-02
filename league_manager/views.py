@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.generic import TemplateView
 from django.conf import settings
 
@@ -42,6 +42,70 @@ def database_error_view(request):
     return HttpResponse(html, content_type="text/html", status=503)
 
 
+def llms_dynamic_txt_view(request):
+    return render(request, "llms-dynamic.txt", content_type="text/plain")
+
+
+def facts_json_view(request):
+    facts = {
+        "name": "LeagueSphere",
+        "url": "https://leaguesphere.app",
+        "description": (
+            "Web platform for organizing flag-football league play: gameday "
+            "schedules, live scores, league standings, team rosters, and "
+            "officials assignments."
+        ),
+        "sport": "American flag football",
+        "locale": "de-DE",
+        "entities": ["Season", "League", "Gameday", "Game", "Team", "Official"],
+        "dynamicEndpoints": [
+            {
+                "url": "/api/liveticker/",
+                "description": "Live scores for today's gamedays",
+                "updateFrequency": "cached ~60 seconds; near real-time during games",
+                "auth": "none",
+            },
+            {
+                "url": "/api/gamedays/",
+                "description": "Paginated list of gamedays with metadata",
+                "updateFrequency": "changes when gamedays are created or updated",
+                "auth": "none",
+            },
+            {
+                "url": "/api/gamedays/{id}/games/",
+                "description": "Games of a gameday with halftime and final scores",
+                "updateFrequency": "changes on every score update of that gameday",
+                "auth": "none",
+            },
+            {
+                "url": "/api/league-table/{league}/",
+                "description": "League standings, optionally per season: /api/league-table/{league}/{season}/",
+                "updateFrequency": "changes when finished games or point adjustments change",
+                "auth": "none",
+            },
+            {
+                "url": "/api/game-progress/",
+                "description": "Gameday progress window (-7/+14 days)",
+                "updateFrequency": "daily",
+                "auth": "none",
+            },
+        ],
+        "snapshotPolicy": (
+            "A game is final once its status is 'beendet'; a gameday page is "
+            "final once all its games are finished. Finalized data is stable "
+            "and safe to cite. Use the API endpoints for current data."
+        ),
+        "agentDocumentation": [
+            "/llms.txt",
+            "/llms-full.txt",
+            "/llms-dynamic.txt",
+            "/.well-known/security.txt",
+        ],
+    }
+    return JsonResponse(facts)
+
+
+>>>>>>> 9ee00a72 (feat: dynamic-context layer for AI agents (standings API, ETags, docs))
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.core.cache import cache
 from django.shortcuts import redirect
