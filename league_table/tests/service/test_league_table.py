@@ -152,6 +152,14 @@ class TestLeagueTableService(TestCase):
         service = LeagueTableService(None)
         assert service.get_league_name() is None
 
+    def test_get_season_slug_with_none_config(self):
+        service = LeagueTableService(None)
+        assert service.get_season_slug() is None
+
+    def test_get_season_slug_with_valid_config(self):
+        service = LeagueTableService(self.league_season_config)
+        assert service.get_season_slug() == self.season.slug
+
     def test_get_league_name_uses_select_related(self):
         from league_table.service.leaguetable_repository import LeagueTableRepository
         config = LeagueTableRepository.get_league_season_config_by_slug(

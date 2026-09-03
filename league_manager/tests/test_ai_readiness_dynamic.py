@@ -120,6 +120,11 @@ class TestGameDetailJsonLd(TestCase):
         Gameresult.objects.create(
             gameinfo=self.game, team=self.away, fh=6, sh=0, pa=24, isHome=False
         )
+        # A result row without a team (legacy data) must be skipped by the
+        # JSON-LD builder, not crash or leak a null team into the payload.
+        Gameresult.objects.create(
+            gameinfo=self.game, team=None, fh=0, sh=0, pa=0, isHome=True
+        )
         self.url = reverse("league-gameday-game-detail", kwargs={"gameday_pk": self.gameday.pk, "pk": self.game.pk})
 
     def test_game_detail_contains_sports_event_json_ld(self):
@@ -139,6 +144,9 @@ class TestGameDetailJsonLd(TestCase):
         self.assertEqual(payload["homeTeam"]["score"], 24)
         self.assertEqual(payload["awayTeam"]["score"], 6)
         self.assertEqual(payload["eventStatus"], "https://schema.org/EventPassed")
+        # the anonymous result row must not appear as a team
+        self.assertEqual(set(payload.keys()) & {"homeTeam", "awayTeam"},
+                         {"homeTeam", "awayTeam"})
 
     def test_json_ld_contains_speakable(self):
         response = self.client.get(self.url)
