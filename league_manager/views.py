@@ -44,10 +44,6 @@ def database_error_view(request):
     return HttpResponse(html, content_type="text/html", status=503)
 
 
-def agents_page_view(request):
-    return render(request, "league_manager/agents.html")
-
-
 def agent_card_json_view(request):
     card = {
         "name": "LeagueSphere Assistant",
@@ -93,6 +89,7 @@ def agent_card_json_view(request):
             "siteOverview": STATIC_INFO_PATHS["llms"],
             "dynamicData": STATIC_INFO_PATHS["llms-dynamic"],
             "facts": STATIC_INFO_PATHS["facts"],
+            "agents": STATIC_INFO_PATHS["agents"],
             "security": STATIC_INFO_PATHS["security"],
         },
     }
@@ -152,6 +149,7 @@ def facts_json_view(request):
             STATIC_INFO_PATHS["llms"],
             STATIC_INFO_PATHS["llms-full"],
             STATIC_INFO_PATHS["llms-dynamic"],
+            STATIC_INFO_PATHS["agents"],
             STATIC_INFO_PATHS["security"],
         ],
     }

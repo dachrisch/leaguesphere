@@ -20,6 +20,7 @@ STATIC_INFO_PATHS = {
     "llms-full": "/llms-full.txt",
     "llms-dynamic": "/llms-dynamic.txt",
     "facts": "/facts.json",
+    "agents": "/agents.md",
     "security": "/.well-known/security.txt",
     "agent-card": "/.well-known/agent-card.json",
 }

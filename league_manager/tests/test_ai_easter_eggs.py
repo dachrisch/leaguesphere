@@ -1,6 +1,6 @@
 """
-Tests for the Tier-3 agent experience: /agents page, agent card, and the
-hidden easter eggs in the base template.
+Tests for the Tier-3 agent experience: the agents.md welcome file, the
+agent card, and the hidden easter eggs in the base template.
 
 Following TDD principles - these tests define the expected behavior
 before implementation.
@@ -11,28 +11,32 @@ import json
 from django.test import TestCase, Client
 
 
-class TestAgentsPage(TestCase):
+class TestAgentsMarkdownFile(TestCase):
     def setUp(self):
         self.client = Client()
 
-    def test_agents_page_is_accessible(self):
-        response = self.client.get("/agents/")
+    def test_agents_md_is_accessible(self):
+        response = self.client.get("/agents.md")
         self.assertEqual(response.status_code, 200)
 
-    def test_agents_page_welcomes_agents(self):
-        response = self.client.get("/agents/")
+    def test_agents_md_served_as_markdown(self):
+        response = self.client.get("/agents.md")
+        self.assertEqual(response["Content-Type"], "text/markdown")
+
+    def test_agents_md_welcomes_agents(self):
+        response = self.client.get("/agents.md")
         self.assertContains(response, "agent")
 
-    def test_agents_page_links_agent_files(self):
-        response = self.client.get("/agents/")
+    def test_agents_md_links_agent_files(self):
+        response = self.client.get("/agents.md")
         self.assertContains(response, "/llms.txt")
         self.assertContains(response, "/llms-dynamic.txt")
 
-    def test_agents_page_not_in_main_navigation(self):
-        """The page exists but is not linked from the base navigation."""
+    def test_legacy_agents_url_redirects(self):
+        """llms.txt linked /agents/ before the markdown file existed."""
         response = self.client.get("/agents/")
-        content = response.content.decode()
-        self.assertNotIn('href="/agents/"', content)
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response["Location"], "/agents.md")
 
 
 class TestAgentCardEndpoint(TestCase):
