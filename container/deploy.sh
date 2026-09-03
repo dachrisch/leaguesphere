@@ -56,8 +56,12 @@ if ! command -v gh &> /dev/null; then
     exit 1
 fi
 
-echo "Triggering $ENVIRONMENT deploy (bump: $BUMP_TYPE) on branch $(git rev-parse --abbrev-ref HEAD)..."
-gh workflow run deploy.yaml -f environment="$ENVIRONMENT" -f bump_type="$BUMP_TYPE"
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+echo "Triggering $ENVIRONMENT deploy (bump: $BUMP_TYPE) on branch $BRANCH..."
+# --ref is required: without it, `gh workflow run` dispatches workflow_dispatch
+# against the repo's default branch (master), not the current checkout, no
+# matter what branch this script itself runs from.
+gh workflow run deploy.yaml --ref "$BRANCH" -f environment="$ENVIRONMENT" -f bump_type="$BUMP_TYPE"
 
 echo ""
 echo "Workflow triggered. Track progress at:"
