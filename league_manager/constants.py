@@ -21,6 +21,7 @@ STATIC_INFO_PATHS = {
     "llms-dynamic": "/llms-dynamic.txt",
     "facts": "/facts.json",
     "security": "/.well-known/security.txt",
+    "agent-card": "/.well-known/agent-card.json",
 }
 
 # Prefix-based exemptions for static assets and the RFC 8615 well-known

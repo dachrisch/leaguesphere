@@ -25,4 +25,5 @@ LeagueSphere serves amateur flag-football leagues. League administrators plan ga
 - [API: Gamedays](https://leaguesphere.app/api/gamedays/): JSON, paginated list of gamedays, no authentication
 - [API: League table](https://leaguesphere.app/api/league-table/{league}/): JSON standings per league (and optional season)
 - [Dynamic data guide](https://leaguesphere.app/llms-dynamic.txt): how fresh each endpoint is, and when results are final
+- [For agents](https://leaguesphere.app/agents/): welcome page and navigation guide for AI agents
 - [Full reference](https://leaguesphere.app/llms-full.txt): extended descriptions of every page and API endpoint
