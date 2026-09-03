@@ -18,6 +18,8 @@ STATIC_INFO_PATHS = {
     "robots": "/robots.txt",
     "llms": "/llms.txt",
     "llms-full": "/llms-full.txt",
+    "llms-dynamic": "/llms-dynamic.txt",
+    "facts": "/facts.json",
     "security": "/.well-known/security.txt",
 }
 

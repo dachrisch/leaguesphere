@@ -92,6 +92,7 @@ urlpatterns = [
         {"sitemaps": sitemaps},
         name="django.contrib.sitemaps.views.sitemap",
     ),
+<<<<<<< HEAD
     # Static agent/crawler info files render straight from templates.
     path(
         static_info_url_pattern("robots"),
@@ -113,8 +114,16 @@ urlpatterns = [
         TemplateView.as_view(template_name="security.txt", content_type="text/plain"),
         name="security-txt",
     ),
-    path("llms-dynamic.txt", llms_dynamic_txt_view, name="llms-dynamic-txt"),
-    path("facts.json", facts_json_view, name="facts-json"),
+    path(
+        static_info_url_pattern("llms-dynamic"),
+        TemplateView.as_view(template_name="llms-dynamic.txt", content_type="text/plain"),
+        name="llms-dynamic-txt",
+    ),
+    path(
+        static_info_url_pattern("facts"),
+        facts_json_view,
+        name="facts-json",
+    ),
     path(
         "maintenance/",
         TemplateView.as_view(template_name="league_manager/maintenance.html"),

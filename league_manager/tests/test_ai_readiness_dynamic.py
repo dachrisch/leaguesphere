@@ -9,6 +9,7 @@ before implementation.
 import json
 
 from django.test import TestCase, Client
+from django.test.client import RequestFactory
 from django.urls import reverse
 
 from gamedays.models import Gameday, Gameinfo, Gameresult, SeasonLeagueTeam
@@ -83,6 +84,32 @@ class TestFactsJsonEndpoint(TestCase):
         payload = json.loads(self.client.get("/facts.json").content)
         self.assertIn("/llms.txt", payload["agentDocumentation"])
         self.assertIn("/llms-dynamic.txt", payload["agentDocumentation"])
+
+    def test_facts_json_documentation_matches_shared_constants(self):
+        """The advertised docs are the STATIC_INFO_PATHS subset for agents."""
+        from league_manager.constants import STATIC_INFO_PATHS
+
+        payload = json.loads(self.client.get("/facts.json").content)
+        self.assertEqual(
+            payload["agentDocumentation"],
+            [
+                STATIC_INFO_PATHS["llms"],
+                STATIC_INFO_PATHS["llms-full"],
+                STATIC_INFO_PATHS["llms-dynamic"],
+                STATIC_INFO_PATHS["security"],
+            ],
+        )
+
+    def test_facts_json_and_dynamic_txt_are_guaranteed_exempt(self):
+        """Both files are served without a database (STATIC_INFO_PATHS loop)."""
+        from league_manager.middleware.db_guard import DatabaseGuardMiddleware
+        from league_manager.middleware.maintenance import MaintenanceModeMiddleware
+
+        for path in ("/facts.json", "/llms-dynamic.txt"):
+            self.assertTrue(MaintenanceModeMiddleware._is_exempt(path))
+            request = RequestFactory().get(path)
+            DatabaseGuardMiddleware(lambda r: "ok")(request)
+            self.assertEqual(getattr(request, "db_online", "skipped"), "skipped")
 
 
 class TestLlmsTxtReferencesDynamicLayer(TestCase):

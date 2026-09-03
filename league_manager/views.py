@@ -3,6 +3,8 @@ from django.http import HttpResponse, JsonResponse
 from django.views.generic import TemplateView
 from django.conf import settings
 
+from league_manager.constants import STATIC_INFO_PATHS
+
 
 def homeview(request):
     return render(request, "homeview.html")
@@ -96,10 +98,10 @@ def facts_json_view(request):
             "and safe to cite. Use the API endpoints for current data."
         ),
         "agentDocumentation": [
-            "/llms.txt",
-            "/llms-full.txt",
-            "/llms-dynamic.txt",
-            "/.well-known/security.txt",
+            STATIC_INFO_PATHS["llms"],
+            STATIC_INFO_PATHS["llms-full"],
+            STATIC_INFO_PATHS["llms-dynamic"],
+            STATIC_INFO_PATHS["security"],
         ],
     }
     return JsonResponse(facts)
