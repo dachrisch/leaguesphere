@@ -174,6 +174,34 @@ class TestGameOfficialsViolations(TestCase):
         assert "F2" in violations[0]
         assert "1 von 2" in violations[0]
 
+    def test_f1_official_does_not_satisfy_an_f3_minimum_of_two(self):
+        gameday = GamedayFactory(date=GAMEDAY_DATE)
+        gameinfo = GameinfoFactory(gameday=gameday)
+        self._config(gameday, min_officials_f3_per_game=2)
+        _license_official(gameinfo, "F1")
+
+        status = compute_gameday_officials_compliance([gameday.pk])[gameday.pk]
+
+        violations = status.game_violations[gameinfo.id]
+        assert len(violations) == 1
+        assert "F3" in violations[0]
+        assert "1 von 2" in violations[0]
+
+    def test_f2_official_does_not_satisfy_an_f1_minimum(self):
+        # The cascade only goes one direction: F1 satisfies F2/F3/F4
+        # minimums, but F2 does not satisfy the (stricter) F1 minimum.
+        gameday = GamedayFactory(date=GAMEDAY_DATE)
+        gameinfo = GameinfoFactory(gameday=gameday)
+        self._config(gameday, min_officials_f1_per_game=1)
+        _license_official(gameinfo, "F2")
+
+        status = compute_gameday_officials_compliance([gameday.pk])[gameday.pk]
+
+        violations = status.game_violations[gameinfo.id]
+        assert len(violations) == 1
+        assert "F1" in violations[0]
+        assert "0 von 1" in violations[0]
+
     def test_total_and_f4_minimum_are_checked_independently(self):
         gameday = GamedayFactory(date=GAMEDAY_DATE)
         gameinfo = GameinfoFactory(gameday=gameday)
