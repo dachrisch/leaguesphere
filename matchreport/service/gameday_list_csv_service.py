@@ -1,8 +1,8 @@
-"""Builds the CSV export for the matchreport gameday-list "download" button
-- one row per game (Gameinfo) across whatever gamedays the list view is
-currently showing, with the officiating team, home/away teams, compliance
-violations, and each of the four refereed positions' currently valid
-license level.
+"""Builds the CSV export for the matchreport gameday-list "Download Referee
+Game Info" button - one row per game (Gameinfo) across whatever gamedays
+the list view is currently showing, with the gameday date, the officiating
+team, home/away teams, compliance violations, and each of the four
+refereed positions' currently valid license level.
 
 Query logic here stays bulk (constant query count regardless of how many
 gamedays/games are exported) by reusing the same building blocks the list
@@ -31,10 +31,11 @@ from officials.service.officials_compliance_service import (
 CSV_HEADER = [
     "gameday_id",
     "gameday name",
+    "gameday date",
     "gameinfo_id",
     "home",
     "away",
-    "referee game",
+    "game officials",
     "violations",
     "Referee license",
     "downjudge license",
@@ -47,6 +48,7 @@ def build_gameday_list_csv(gamedays) -> str:
     gamedays = list(gamedays)
     gameday_ids = [gd.pk for gd in gamedays]
     gameday_name_by_id = {gd.pk: gd.name for gd in gamedays}
+    gameday_date_by_id = {gd.pk: gd.date for gd in gamedays}
 
     gameinfos = list(
         Gameinfo.objects.filter(gameday_id__in=gameday_ids)
@@ -85,6 +87,7 @@ def build_gameday_list_csv(gamedays) -> str:
             [
                 gameday_id,
                 gameday_name_by_id.get(gameday_id, ""),
+                gameday_date_by_id.get(gameday_id, ""),
                 gameinfo_id,
                 home_team.get(gameinfo_id, ""),
                 away_team.get(gameinfo_id, ""),

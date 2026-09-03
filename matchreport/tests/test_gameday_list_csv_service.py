@@ -49,10 +49,11 @@ class TestBuildGamedayListCsv(TestCase):
         row = dict(zip(CSV_HEADER, rows[1]))
         assert row["gameday_id"] == str(gameday.pk)
         assert row["gameday name"] == "Spieltag 1"
+        assert row["gameday date"] == "2027-05-01"
         assert row["gameinfo_id"] == str(gameinfo.pk)
         assert row["home"] == "Home Team"
         assert row["away"] == "Away Team"
-        assert row["referee game"] == "Referee Crew"
+        assert row["game officials"] == "Referee Crew"
         assert row["violations"] == ""
 
     def test_violations_are_semicolon_joined(self):

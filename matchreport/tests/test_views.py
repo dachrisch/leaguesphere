@@ -402,10 +402,11 @@ class TestMatchreportGamedayListCsvDownloadView(TestCase):
         assert rows[0] == [
             "gameday_id",
             "gameday name",
+            "gameday date",
             "gameinfo_id",
             "home",
             "away",
-            "referee game",
+            "game officials",
             "violations",
             "Referee license",
             "downjudge license",
@@ -415,7 +416,8 @@ class TestMatchreportGamedayListCsvDownloadView(TestCase):
         assert len(rows) == 2
         assert rows[1][0] == str(gameday.pk)
         assert rows[1][1] == "Spieltag 1"
-        assert rows[1][2] == str(gameinfo.pk)
+        assert rows[1][2] == "2027-05-01"
+        assert rows[1][3] == str(gameinfo.pk)
 
     def test_csv_respects_only_violations_filter(self):
         league = LeagueFactory(name="DKB DFFL")

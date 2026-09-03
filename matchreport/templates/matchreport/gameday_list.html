@@ -7,12 +7,12 @@
     {% if selected_league %}
         <a href="{% url csv_download_url_pattern season=selected_season league=selected_league %}{% if only_violations %}?only_violations=1{% endif %}"
            class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-download"></i> CSV herunterladen
+            <i class="bi bi-download"></i> Download Referee Game Info
         </a>
     {% else %}
         <a href="{% url csv_download_url_pattern season=selected_season %}{% if only_violations %}?only_violations=1{% endif %}"
            class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-download"></i> CSV herunterladen
+            <i class="bi bi-download"></i> Download Referee Game Info
         </a>
     {% endif %}
     <form method="get" class="form-check ms-2">
