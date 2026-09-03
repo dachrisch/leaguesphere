@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.22.0](https://github.com/dachrisch/leaguesphere/compare/v4.21.4...v4.22.0) (2026-09-03)
+
+
+### Features
+
+* serve the agent welcome as /agents.md instead of /agents/ HTML ([#1918](https://github.com/dachrisch/leaguesphere/issues/1918)) ([7d96aad](https://github.com/dachrisch/leaguesphere/commit/7d96aad77da42d3b25fd455a786535db4e5c7e0d))
+
 ## [4.21.4](https://github.com/dachrisch/leaguesphere/compare/v4.21.3...v4.21.4) (2026-08-30)
 
 
