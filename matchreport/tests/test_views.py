@@ -133,9 +133,14 @@ class TestMatchreportGamedayDetailView(TestCase):
             min_officials_per_game=1,
         )
         self.client.force_login(UserFactory(is_staff=True))
-        resp = self.client.get(
-            reverse(MATCHREPORT_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk})
-        )
+        # Warm request-path caches so the query count is not order-dependent
+        # under parallel (xdist) runs.
+        self.client.get(reverse(MATCHREPORT_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk}))
+
+        with self.assertNumQueries(58):
+            resp = self.client.get(
+                reverse(MATCHREPORT_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk})
+            )
 
         assert resp.status_code == HTTPStatus.OK
         status = resp.context_data["info"]["officials_check_status"]
@@ -163,9 +168,14 @@ class TestMatchreportGamedayDetailView(TestCase):
             min_officials_per_game=1,
         )
         self.client.force_login(UserFactory(is_staff=True))
-        resp = self.client.get(
-            reverse(MATCHREPORT_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk})
-        )
+        # Warm request-path caches so the query count is not order-dependent
+        # under parallel (xdist) runs.
+        self.client.get(reverse(MATCHREPORT_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk}))
+
+        with self.assertNumQueries(56):
+            resp = self.client.get(
+                reverse(MATCHREPORT_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk})
+            )
 
         assert resp.status_code == HTTPStatus.OK
         status = resp.context_data["info"]["officials_check_status"]
@@ -187,13 +197,22 @@ class TestMatchreportGamedayListView(TestCase):
             min_officials_per_game=1,
         )
         self.client.force_login(UserFactory(is_staff=True))
-
-        resp = self.client.get(
+        # Warm request-path caches so the query count is not order-dependent
+        # under parallel (xdist) runs.
+        self.client.get(
             reverse(
                 MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
                 kwargs={"season": 2027, "league": "DKB DFFL"},
             )
         )
+
+        with self.assertNumQueries(11):
+            resp = self.client.get(
+                reverse(
+                    MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
+                    kwargs={"season": 2027, "league": "DKB DFFL"},
+                )
+            )
 
         assert resp.status_code == HTTPStatus.OK
         rows = resp.context["gameday_rows"]
@@ -207,13 +226,22 @@ class TestMatchreportGamedayListView(TestCase):
         gameday = GamedayFactory(date=date(2027, 5, 1), league=league, season=season)
         GameinfoFactory(gameday=gameday)
         self.client.force_login(UserFactory(is_staff=True))
-
-        resp = self.client.get(
+        # Warm request-path caches so the query count is not order-dependent
+        # under parallel (xdist) runs.
+        self.client.get(
             reverse(
                 MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
                 kwargs={"season": 2027, "league": "DKB DFFL"},
             )
         )
+
+        with self.assertNumQueries(8):
+            resp = self.client.get(
+                reverse(
+                    MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
+                    kwargs={"season": 2027, "league": "DKB DFFL"},
+                )
+            )
 
         assert resp.status_code == HTTPStatus.OK
         rows = resp.context["gameday_rows"]
@@ -251,14 +279,24 @@ class TestMatchreportGamedayListView(TestCase):
         GameinfoFactory(gameday=violating_gameday)
 
         self.client.force_login(UserFactory(is_staff=True))
-
-        resp = self.client.get(
+        # Warm request-path caches so the query count is not order-dependent
+        # under parallel (xdist) runs.
+        self.client.get(
             reverse(
                 MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
                 kwargs={"season": 2027, "league": "DKB DFFL"},
             ),
             {"only_violations": "1"},
         )
+
+        with self.assertNumQueries(12):
+            resp = self.client.get(
+                reverse(
+                    MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
+                    kwargs={"season": 2027, "league": "DKB DFFL"},
+                ),
+                {"only_violations": "1"},
+            )
 
         assert resp.status_code == HTTPStatus.OK
         rows = resp.context["gameday_rows"]

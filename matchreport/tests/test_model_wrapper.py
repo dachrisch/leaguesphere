@@ -203,6 +203,33 @@ class TestMatchreportOfficialsLicenseNumber(TestCase):
         # The F1-F4 level itself never carries a hyperlink.
         self.assertNotIn("<a ", officials_table["Lizenz"].iloc[0])
 
+    def test_license_number_is_html_escaped(self):
+        # Regression: Official.external_id is a free-text CharField with no
+        # format validation, and the whole officials table is rendered with
+        # escape=False and output via the `safe` template filter - a
+        # malicious external_id must not be able to inject markup.
+        gameday = GamedayFactory(date=date(2027, 5, 1))
+        gameinfo = GameinfoFactory(
+            gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
+        )
+
+        official = OfficialFactory(
+            team=TeamFactory(), external_id='"><script>alert(1)</script>'
+        )
+        OfficialLicenseHistoryFactory(
+            official=official,
+            license=OfficialLicenseFactory(name="F1"),
+            created_at=date(2027, 3, 1),
+        )
+        GameOfficialFactory(gameinfo=gameinfo, official=official, position="Referee")
+
+        wrapper = MachtreportModelWrapper(gameday.pk)
+        officials_table = wrapper._get_game_officials_table(gameinfo.id)
+
+        cell = officials_table["Lizenznummer"].iloc[0]
+        self.assertNotIn("<script>", cell)
+        self.assertIn("&lt;script&gt;", cell)
+
     def test_license_number_is_blank_when_official_has_none(self):
         gameday = GamedayFactory(date=date(2027, 5, 1))
         gameinfo = GameinfoFactory(

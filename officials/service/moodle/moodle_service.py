@@ -8,7 +8,6 @@ from typing import Any
 from django.conf import settings
 from django.db import connections
 from django.db.models import QuerySet
-from django.urls import reverse
 
 from gamedays.models import Association, Team
 from officials.models import OfficialLicenseHistory, Official
@@ -136,7 +135,12 @@ class MoodleService:
         )
         exams = self.moodle_api.get_exams_for_course(course.get_id())
         if exams.is_empty():
-            return set(), [], [], "Kurs hat kein Quiz (oder keine Ergenisse im Quiz) mit Namen 'Lizenzprüfung' oder 'Exam'."
+            return (
+                set(),
+                [],
+                [],
+                "Kurs hat kein Quiz (oder keine Ergenisse im Quiz) mit Namen 'Lizenzprüfung' oder 'Exam'.",
+            )
         self.set_exams(exams)
         missing_teams_list, missed_officials_list, result_list = (
             self.get_participants_from_relevant_course(course)
@@ -301,9 +305,9 @@ class MoodleService:
         return self._get_ahref(resource_id, self.MOODLE_PROFILE, text)
 
     def _get_ahref_for_profile(self, resource_id) -> str:
-        from officials.urls import OFFICIALS_PROFILE_LICENSE
+        from officials.service.official_profile import official_profile_url
 
-        return f'<a href="{reverse(OFFICIALS_PROFILE_LICENSE, kwargs={"pk": resource_id})}" target="_blank">{resource_id}</a>'
+        return f'<a href="{official_profile_url(resource_id)}" target="_blank">{resource_id}</a>'
 
     def _get_ahref_for_course(self, resource_id, text=None) -> str:
         return self._get_ahref(resource_id, self.MOODLE_COURSE, text)

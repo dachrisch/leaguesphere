@@ -16,8 +16,20 @@ Owns official-specific data and links officials to games (`GameOfficial` lives i
 
 ## Service layer (`service/`)
 - `official_service.py`, `officials_repository_service.py` — core logic + data access.
-- `signup_service.py` — gameday signup handling.
+- `signup_service.py` — gameday signup handling; already depends on `league_table.LeagueSeasonConfig`
+  for per-gameday officiating quotas (precedent for the dependency below).
 - `boff_license_calculation.py`, `game_official_entries.py` — license level calculation from duties.
+- `officials_compliance_service.py` — checks whether a game's assigned officials meet the
+  minimum-officials-per-license-level thresholds configured on `league_table.LeagueSeasonConfig`
+  (a *different* concern from `boff_license_calculation.py`: given already-recorded license
+  history, does the assigned staff meet a configured minimum). Reads `league_table.models`
+  directly; consumed by [matchreport](../matchreport/CLAUDE.md)'s gameday list/detail views, not
+  from within this app.
+- `license_validity.py` — shared license-validity-window logic (calendar-year rule matching
+  `OfficialLicenseHistory.valid_until()`), used by both `officials_compliance_service.py` and
+  matchreport's `model_wrapper.py` so the two can't independently drift.
+- `official_profile.py` — shared official-profile-URL helper, used by both `moodle/moodle_service.py`
+  and matchreport's `model_wrapper.py`.
 - `moodle/` — external Moodle license-report integration.
 
 ## API & routes

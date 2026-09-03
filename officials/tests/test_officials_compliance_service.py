@@ -15,6 +15,7 @@ from officials.service.officials_compliance_service import (
     REASON_DISABLED,
     REASON_EXCLUDED,
     REASON_NO_CONFIG,
+    REASON_NOT_FOUND,
     compute_gameday_officials_compliance,
 )
 from officials.tests.setup_factories.factories_officials import (
@@ -90,6 +91,21 @@ class TestGamedayComplianceStatusResolution(TestCase):
         assert status.is_checked is True
         assert status.reason_not_checked is None
 
+    def test_gameday_id_not_found_in_db_still_gets_an_entry(self):
+        # Regression: the function's own contract ("returns a dict mapping
+        # every requested gameday_id to a GamedayComplianceStatus") must
+        # hold even for an id that doesn't exist (e.g. deleted concurrently
+        # with the call) - callers index the result dict directly with no
+        # defensive .get()/try-except, so a silently-omitted key would
+        # raise an unhandled KeyError.
+        result = compute_gameday_officials_compliance([999999])
+
+        assert 999999 in result
+        status = result[999999]
+        assert status.is_checked is False
+        assert status.reason_not_checked == REASON_NOT_FOUND
+        assert status.violation_count == 0
+
 
 class TestGameOfficialsViolations(TestCase):
     def _config(self, gameday, **overrides):
@@ -117,6 +133,33 @@ class TestGameOfficialsViolations(TestCase):
 
         assert status.game_violations[gameinfo.id] == []
         assert status.violation_count == 0
+
+    def test_year_suffixed_license_name_is_still_recognized(self):
+        # Regression: OfficialLicense.name is a free CharField and this
+        # codebase's own established convention (see
+        # matchreport/tests/test_model_wrapper.py) suffixes it with a year,
+        # e.g. "F1 2027" - an exact-match filter against plain "F1".."F4"
+        # would silently treat every such license as nonexistent.
+        gameday = GamedayFactory(date=GAMEDAY_DATE)
+        gameinfo = GameinfoFactory(gameday=gameday)
+        self._config(gameday, min_officials_f1_per_game=1)
+        _license_official(gameinfo, "F1 2027")
+
+        status = compute_gameday_officials_compliance([gameday.pk])[gameday.pk]
+
+        assert status.game_violations[gameinfo.id] == []
+
+    def test_unrecognized_license_name_placeholder_never_counts(self):
+        # Real data includes a "-" placeholder license (no license held) -
+        # it must never resolve to a rank.
+        gameday = GamedayFactory(date=GAMEDAY_DATE)
+        gameinfo = GameinfoFactory(gameday=gameday)
+        self._config(gameday, min_officials_per_game=1)
+        _license_official(gameinfo, "-")
+
+        status = compute_gameday_officials_compliance([gameday.pk])[gameday.pk]
+
+        assert len(status.game_violations[gameinfo.id]) == 1
 
     def test_f1_official_does_not_satisfy_a_minimum_of_two(self):
         gameday = GamedayFactory(date=GAMEDAY_DATE)

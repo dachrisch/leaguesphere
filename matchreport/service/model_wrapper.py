@@ -1,5 +1,3 @@
-from datetime import timedelta
-
 import pandas as pd
 from django.db.models import OuterRef, Subquery
 
@@ -12,6 +10,7 @@ from gamedays.models import (
     TeamLog,
 )
 from officials.models import OfficialLicenseHistory
+from officials.service.license_validity import validity_lower_bound
 from passcheck.models import PasscheckVerification, PlayerlistGameday
 
 PLAYER_PASSCHECK_COLUMN_MAPPING = {
@@ -209,16 +208,20 @@ class MachtreportModelWrapper:
         # same query as the officials table, instead of one query per
         # official (N+1). A license is valid on the gameday if the gameday
         # falls within the license validity period: training date (created_at)
-        # to approximately one year later (created_at + 365 days), as defined
-        # by OfficialLicenseHistory.valid_until(). When more than one license
-        # is valid at once, the highest-ranked one wins (F1 over F2 over
-        # F3...) - never whichever was issued more recently, so no date
-        # field is passed to order_by_rank() here.
+        # through the same month/day one year later, as defined by
+        # OfficialLicenseHistory.valid_until() - validity_lower_bound()
+        # mirrors that exact calendar-year rule (shared with
+        # officials/service/officials_compliance_service.py, rather than
+        # each independently approximating it with a flat 365-day window,
+        # which is one day off across any Feb 29 the window crosses). When
+        # more than one license is valid at once, the highest-ranked one
+        # wins (F1 over F2 over F3...) - never whichever was issued more
+        # recently, so no date field is passed to order_by_rank() here.
         latest_license = (
             OfficialLicenseHistory.objects.filter(
                 official_id=OuterRef("official"),
                 created_at__lte=self.gameday_date,
-                created_at__gt=self.gameday_date - timedelta(days=365),
+                created_at__gt=validity_lower_bound(self.gameday_date),
             )
             .order_by_rank()
             .values("license__name")[:1]
@@ -271,14 +274,13 @@ class MachtreportModelWrapper:
         # Moodle-issued id DFFL uses as the license number, already
         # hyperlinked to the Moodle profile elsewhere in
         # officials/templates/officials/license_check.html), hyperlinked
-        # here to the official's profile page in this app instead -
-        # mirroring the identical link-building pattern in
-        # officials/service/moodle/moodle_service.py::_get_ahref_for_profile.
-        # Shown independently of whether the official currently holds a
-        # valid F1-F4 license (that's the separate "Lizenz" column) so staff
-        # can always click through to an assigned official's profile.
-        # Local imports avoid a hard officials<->matchreport import-order
-        # dependency at module load time.
+        # here to the official's profile page in this app instead, via the
+        # shared officials.service.official_profile helper (also used by
+        # officials/service/moodle/moodle_service.py::_get_ahref_for_profile
+        # so the two links can't drift apart). Shown independently of
+        # whether the official currently holds a valid F1-F4 license
+        # (that's the separate "Lizenz" column) so staff can always click
+        # through to an assigned official's profile.
         if pd.isna(official_id) or external_id is None or pd.isna(external_id):
             return None
 
@@ -288,14 +290,21 @@ class MachtreportModelWrapper:
         # regex ([0-9]+) rejects the "121.0" string a float would produce.
         official_id = int(official_id)
 
-        from django.urls import reverse
+        # Local import avoids a hard officials<->matchreport import-order
+        # dependency at module load time.
+        from django.utils.html import escape
 
-        from officials.urls import OFFICIALS_PROFILE_LICENSE
+        from officials.service.official_profile import official_profile_url
 
-        profile_url = reverse(OFFICIALS_PROFILE_LICENSE, kwargs={"pk": official_id})
+        profile_url = official_profile_url(official_id)
+        # external_id is a free-text CharField (officials/models.py) with no
+        # format validation, and this whole table is rendered with
+        # escape=False (`.to_html()`) and output via the `safe` template
+        # filter - escape it explicitly so it can never inject markup into
+        # the rendered report.
         return (
             f'<a href="{profile_url}" target="_blank" title="Zum Profil des Offiziellen">'
-            f"#{external_id}</a>"
+            f"#{escape(external_id)}</a>"
         )
 
     def get_gameday_match_report(self, render_config: dict):

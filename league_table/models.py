@@ -242,6 +242,18 @@ class LeagueSeasonConfig(models.Model):
     def __str__(self):
         return f"{self.league.name} - {self.season.name} -> {self.ruleset.name if self.ruleset else 'Keine Konfiguration'}"
 
+    class Meta:
+        # Compliance checking (officials/service/officials_compliance_service.py)
+        # and other config resolution look this up by (league, season) alone
+        # and assume at most one row - without this constraint, a duplicate
+        # would let whichever row the DB happens to return last silently win.
+        constraints = [
+            models.UniqueConstraint(
+                fields=["league", "season"],
+                name="unique_leagueseasonconfig_per_league_season",
+            )
+        ]
+
 
 class OverrideOfficialGamedaySetting(models.Model):
     league_season_config = models.ForeignKey(
