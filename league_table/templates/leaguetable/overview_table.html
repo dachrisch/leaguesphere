@@ -3,6 +3,10 @@
 {% block og_title %}{{ current_league_name }} {{ current_season }} Tabelle {% endblock %}
 {% block og_description %}Tabelle der {{ current_league_name }}{% endblock %}
 
+{% block ld_json %}
+<script type="application/ld+json">{{ league_ld | safe }}</script>
+{% endblock %}
+
 {% load static %}
 {% block content %}
 <div class="card" style="overflow: auto">

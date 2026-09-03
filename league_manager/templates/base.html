@@ -36,6 +36,7 @@
     {% load static %}
     <meta property="og:image" content="{% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% static 'teammanager/icons/football-og.jpg' %}{% endblock %}">
     <meta property="og:url" content="{% block og_url %}{{ request.scheme }}://{{ request.get_host }}{{ request.path }}{% endblock %}">
+    {% block ld_json %}{% endblock %}
 </head>
 <body>
 {% if DEMO_MODE %}

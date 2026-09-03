@@ -1,0 +1,59 @@
+# LeagueSphere — dynamic data reference for AI agents
+
+> How to access live and changing data on LeagueSphere: which endpoints exist, how fresh the data is, and when values are final. Static site overview: /llms.txt — full reference: /llms-full.txt
+
+## Current live data
+
+Use these JSON endpoints (no authentication) instead of fetching HTML pages when you need current values:
+
+### GET /api/liveticker/
+
+Live scores for today's gamedays. Includes each game's status, current score, and the latest ticker events (touchdowns, extra points, timeouts).
+
+- Freshness: near real-time during games; responses are cached for ~60 seconds (`Cache-Control: max-age=60`)
+- Parameters: `?league=<slug>` (comma-separated), `?gameday=<id>` (comma-separated), `?getAllTicksFor=<gameId>` for the full event list of one game
+- ETag supported: send `If-None-Match` to avoid re-downloading unchanged data
+
+### GET /api/gamedays/{id}/games/
+
+All games of one gameday with halftime and final scores.
+
+- Freshness: changes on every score update while the gameday runs
+- ETag supported
+
+### GET /api/league-table/{league}/
+
+League standings. Add a season for a specific year: `GET /api/league-table/{league}/{season}/` — omitting the season returns the latest season.
+
+- Freshness: changes when finished games or manual point adjustments change
+- Columns: standing, team__description (team name), wins, draws, losses, games_played, pf (points for), pa (points against), diff, win_points, win_quotient
+
+### GET /api/gamedays/
+
+Paginated gameday list with metadata (name, date, league, season, status). Supports `?search=` and `?page=`.
+
+### GET /api/gameday/{id}/details/?get=schedule
+
+Full schedule of one gameday as JSON (games, times, fields, statuses).
+
+### GET /api/game-progress/
+
+Gameday progress within a -7/+14 day window; excludes draft gamedays.
+
+## Status vocabulary
+
+Game status values are German strings:
+
+- `Geplant` — scheduled, not started
+- `Gestartet` — in progress (variants like `1. Halbzeit` / `2. Halbzeit` mark the current half)
+- `beendet` — finished; the result is final
+
+Gameday lifecycle statuses: `DRAFT` (not public), `PUBLISHED`, `IN_PROGRESS`, `COMPLETED`.
+
+## Data freshness and citation policy
+
+- Respect `Cache-Control` and `ETag` headers; they encode how fresh the data must be
+- Scores and standings change while a gameday is running — do not present in-play values as final
+- A game's result is **final** once its status is `beendet`
+- A gameday's results are **final** once all its games are `beendet`; finalized gameday pages and API responses are stable and safe to cite
+- Historical queries: prefer finalized gameday data over reconstructing history from live endpoints

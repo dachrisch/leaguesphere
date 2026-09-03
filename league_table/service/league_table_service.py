@@ -190,6 +190,11 @@ class LeagueTableService:
             return None
         return self.league_season_config.season.name
 
+    def get_season_slug(self):
+        if self.league_season_config is None:
+            return None
+        return self.league_season_config.season.slug
+
     def get_league_name(self):
         if self.league_season_config is None:
             return None
