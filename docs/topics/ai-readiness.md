@@ -11,6 +11,7 @@ LeagueSphere exposes static and dynamic signals so AI agents (ChatGPT, Perplexit
 | `/llms-full.txt` | Extended page + API descriptions |
 | `/llms-dynamic.txt` | Dynamic data guide: endpoints, freshness, status vocabulary, citation policy |
 | `/facts.json` | Machine-readable brand facts + endpoint catalog with update frequencies |
+| `/agents.md` | Welcome file and navigation guide for AI agents (`/agents/` redirects here) |
 | `/.well-known/security.txt` | RFC 9116 security contact |
 
 ## Dynamic context

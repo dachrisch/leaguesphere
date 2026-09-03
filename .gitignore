@@ -178,3 +178,4 @@ ngrok.sh
 .worktrees/
 test-reports/
 Testing release detection
+junit.xml

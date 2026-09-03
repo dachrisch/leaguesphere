@@ -63,7 +63,6 @@ class HealthCheckView(View):
 from league_manager.views import (
     ClearCacheView,
     facts_json_view,
-    agents_page_view,
     agent_card_json_view,
     database_error_view,
     DemoInfoView,
@@ -124,7 +123,13 @@ urlpatterns = [
         facts_json_view,
         name="facts-json",
     ),
-    path("agents/", agents_page_view, name="agents-page"),
+    path(
+        static_info_url_pattern("agents"),
+        TemplateView.as_view(template_name="agents.md", content_type="text/markdown"),
+        name="agents-md",
+    ),
+    # llms.txt linked /agents/ before the markdown file existed
+    path("agents/", RedirectView.as_view(pattern_name="agents-md", permanent=True)),
     path(
         static_info_url_pattern("agent-card"),
         agent_card_json_view,

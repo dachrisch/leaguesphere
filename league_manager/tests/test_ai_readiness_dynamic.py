@@ -96,6 +96,7 @@ class TestFactsJsonEndpoint(TestCase):
                 STATIC_INFO_PATHS["llms"],
                 STATIC_INFO_PATHS["llms-full"],
                 STATIC_INFO_PATHS["llms-dynamic"],
+                STATIC_INFO_PATHS["agents"],
                 STATIC_INFO_PATHS["security"],
             ],
         )
