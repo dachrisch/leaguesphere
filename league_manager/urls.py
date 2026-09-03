@@ -30,6 +30,7 @@ from league_manager.constants import (
     LEAGUE_MANAGER_MAINTENANCE,
     CLEAR_CACHE,
     MAINTENANCE_CONFIG_CACHE_KEY,
+    static_info_url_pattern,
 )
 from league_manager.models import SiteConfiguration
 
@@ -59,7 +60,13 @@ class HealthCheckView(View):
         return JsonResponse({"status": "healthy", "maintenance_mode": maintenance_active})
 
 
-from league_manager.views import ClearCacheView, robots_txt_view, database_error_view, DemoInfoView
+from league_manager.views import (
+    ClearCacheView,
+    facts_json_view,
+    agent_card_json_view,
+    database_error_view,
+    DemoInfoView,
+)
 from journey.progress_view import GameProgressPageView
 from league_manager.sitemaps import (
     StaticViewSitemap,
@@ -80,12 +87,54 @@ sitemaps = {
 
 urlpatterns = [
     path(
-        "sitemap.xml",
+        static_info_url_pattern("sitemap"),
         sitemap,
         {"sitemaps": sitemaps},
         name="django.contrib.sitemaps.views.sitemap",
     ),
-    path("robots.txt", robots_txt_view, name="robots-txt"),
+    # Static agent/crawler info files render straight from templates.
+    path(
+        static_info_url_pattern("robots"),
+        TemplateView.as_view(template_name="robots.txt", content_type="text/plain"),
+        name="robots-txt",
+    ),
+    path(
+        static_info_url_pattern("llms"),
+        TemplateView.as_view(template_name="llms.txt", content_type="text/plain"),
+        name="llms-txt",
+    ),
+    path(
+        static_info_url_pattern("llms-full"),
+        TemplateView.as_view(template_name="llms-full.txt", content_type="text/plain"),
+        name="llms-full-txt",
+    ),
+    path(
+        static_info_url_pattern("security"),
+        TemplateView.as_view(template_name="security.txt", content_type="text/plain"),
+        name="security-txt",
+    ),
+    path(
+        static_info_url_pattern("llms-dynamic"),
+        TemplateView.as_view(template_name="llms-dynamic.txt", content_type="text/plain"),
+        name="llms-dynamic-txt",
+    ),
+    path(
+        static_info_url_pattern("facts"),
+        facts_json_view,
+        name="facts-json",
+    ),
+    path(
+        static_info_url_pattern("agents"),
+        TemplateView.as_view(template_name="agents.md", content_type="text/markdown"),
+        name="agents-md",
+    ),
+    # llms.txt linked /agents/ before the markdown file existed
+    path("agents/", RedirectView.as_view(pattern_name="agents-md", permanent=True)),
+    path(
+        static_info_url_pattern("agent-card"),
+        agent_card_json_view,
+        name="agent-card",
+    ),
     path(
         "maintenance/",
         TemplateView.as_view(template_name="league_manager/maintenance.html"),
@@ -96,6 +145,7 @@ urlpatterns = [
     path("database-error/", database_error_view, name="database-error"),
     # ToDo: fix gameday urls
     path("api/", include("gamedays.api.urls")),
+    path("api/league-table/", include("league_table.api.urls")),
     path("api/designer/", include("gameday_designer.urls")),
     path("api/game-progress/", include("journey.api.progress_urls")),
     path("api/liveticker/", include("liveticker.api.urls")),

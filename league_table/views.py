@@ -1,3 +1,5 @@
+import json
+
 from django.shortcuts import render
 from django.views import View
 
@@ -25,7 +27,26 @@ class LeagueTableView(View):
             "seasons": league_table_service.get_seasons_for_league_slug(league_slug),
             "url_pattern": LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE,
         }
+        context["league_ld"] = self._build_league_ld(context)
         return render(request, self.template_name, context)
+
+    # noinspection PyMethodMayBeStatic
+    def _build_league_ld(self, context: dict) -> str:
+        """SportsOrganization JSON-LD so AI agents can cite league and teams."""
+        teams = []
+        for row in context["info"].get("table", []):
+            name = row.get("team__description")
+            if isinstance(name, str) and name:
+                teams.append({"@type": "SportsTeam", "name": name})
+        payload = {
+            "@context": "https://schema.org",
+            "@type": "SportsOrganization",
+            "name": context["current_league_name"] or context["current_league"],
+            "sport": "American Flag Football",
+        }
+        if teams:
+            payload["member"] = teams
+        return json.dumps(payload)
 
 
 class LeagueScheduleView(View):

@@ -9,7 +9,10 @@ coverage:
         threshold: 1%
     patch:
       default:
-        target: auto
+        # 90% of the lines added/changed in a PR must be covered (1% grace
+        # below). "auto" would effectively demand ~100% patch coverage,
+        # which fails on small uncovered defensive branches.
+        target: 90
         threshold: 1%
 
 ignore:

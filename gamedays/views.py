@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 import pandas as pd
@@ -47,7 +48,7 @@ from .forms import (
     SCHEDULE_CUSTOM_CHOICE_C,
     ResourceUrlFormSet,
 )
-from .models import Gameday, Gameinfo, ResourceUrl, Tournament
+from .models import Gameday, Gameinfo, Gameresult, ResourceUrl, Tournament
 from .service.builders import TableContextBuilder
 from .service.gameday_form_service import GamedayFormService
 from .service.gameday_service import GamedayService, GamedayGameService, EmptySchedule
@@ -508,7 +509,43 @@ class GamedayGameDetailView(DetailView):
             "split_score_table": split_score_table_html,
             "game_setup_details": game_setup_details,
         }
+        context["sports_event_ld"] = self._build_sports_event_ld(gameinfo, context["info"])
         return context
+
+    # noinspection PyMethodMayBeStatic
+    def _build_sports_event_ld(self, gameinfo: Gameinfo, info: dict) -> str:
+        """SportsEvent JSON-LD so AI agents can cite teams, status and score."""
+        event_status = (
+            "https://schema.org/EventPassed"
+            if gameinfo.status == Gameinfo.STATUS_COMPLETED
+            else "https://schema.org/EventScheduled"
+        )
+        scores = {}
+        for result in Gameresult.objects.filter(gameinfo=gameinfo).select_related("team"):
+            if result.team is None:
+                continue
+            side = "homeTeam" if result.isHome else "awayTeam"
+            scores[side] = {
+                "@type": "SportsTeam",
+                "name": result.team.description,
+                "score": (result.fh or 0) + (result.sh or 0),
+            }
+        payload = {
+            "@context": "https://schema.org",
+            "@type": "SportsEvent",
+            "name": f"{info['home_team']} vs. {info['away_team']}",
+            "sport": "American Flag Football",
+            "eventStatus": event_status,
+            "startDate": f"{gameinfo.gameday.date.isoformat()}T{gameinfo.scheduled.strftime('%H:%M')}:00Z",
+            "speakable": {
+                "@type": "SpeakableSpecification",
+                "cssSelector": ["h1"],
+            },
+        }
+        payload.update(
+            {side: team for side, team in scores.items() if side in ("homeTeam", "awayTeam")}
+        )
+        return json.dumps(payload)
 
 
 class GameinfoWizard(LoginRequiredMixin, UserPassesTestMixin, SessionWizardView):
