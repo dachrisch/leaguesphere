@@ -65,7 +65,10 @@ from league_table.tests.setup_factories.factories_leaguetable import (
 )
 from matchreport.constants import (
     MATCHREPORT_GAMEDAY_DETAIL,
+    MATCHREPORT_GAMEDAY_LIST_AND_YEAR,
     MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
+    MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD,
+    MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD_AND_LEAGUE,
     MATCHREPORT_GAMEDAY_PASSCHECK_DOWNLOAD,
 )
 from officials.tests.setup_factories.factories_officials import (
@@ -184,6 +187,23 @@ class TestMatchreportGamedayDetailView(TestCase):
 
 
 class TestMatchreportGamedayListView(TestCase):
+
+    def test_renders_without_a_league_selected(self):
+        # Regression: the CSV download link in the template must resolve to
+        # the no-league URL pattern (not crash with NoReverseMatch) when the
+        # page is reached via the bare "<year>/" route.
+        GamedayFactory(date=date(2027, 5, 1))
+        self.client.force_login(UserFactory(is_staff=True))
+
+        resp = self.client.get(
+            reverse(MATCHREPORT_GAMEDAY_LIST_AND_YEAR, kwargs={"season": 2027})
+        )
+
+        assert resp.status_code == HTTPStatus.OK
+        assert (
+            reverse(MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD, kwargs={"season": 2027})
+            in resp.content.decode()
+        )
 
     def test_list_shows_checked_and_violation_count(self):
         league = LeagueFactory(name="DKB DFFL")
@@ -337,6 +357,121 @@ class TestMatchreportGamedayListView(TestCase):
 
         assert resp.status_code == HTTPStatus.OK
         assert len(resp.context["gameday_rows"]) == 3
+
+
+class TestMatchreportGamedayListCsvDownloadPermissions(WebTest):
+
+    def test_csv_download_as_normal_user(self):
+        league = LeagueFactory(name="DKB DFFL")
+        season = SeasonFactory(name=2027)
+        resp = self.client.get(
+            reverse(
+                MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD_AND_LEAGUE,
+                kwargs={"season": 2027, "league": "DKB DFFL"},
+            )
+        )
+
+        assert resp.status_code == HTTPStatus.FOUND
+        assert "/login/" in resp.url
+
+
+class TestMatchreportGamedayListCsvDownloadView(TestCase):
+
+    def test_csv_contains_one_row_per_game(self):
+        league = LeagueFactory(name="DKB DFFL")
+        season = SeasonFactory(name=2027)
+        gameday = GamedayFactory(
+            date=date(2027, 5, 1), league=league, season=season, name="Spieltag 1"
+        )
+        gameinfo = GameinfoFactory(gameday=gameday)
+        self.client.force_login(UserFactory(is_staff=True))
+
+        resp = self.client.get(
+            reverse(
+                MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD_AND_LEAGUE,
+                kwargs={"season": 2027, "league": "DKB DFFL"},
+            )
+        )
+
+        assert resp.status_code == HTTPStatus.OK
+        assert resp["Content-Type"].startswith("text/csv")
+        assert "attachment" in resp["Content-Disposition"]
+
+        csv_body = resp.content.decode("utf-8-sig")
+        rows = list(csv.reader(io.StringIO(csv_body), delimiter=";"))
+        assert rows[0] == [
+            "gameday_id",
+            "gameday name",
+            "gameinfo_id",
+            "home",
+            "away",
+            "referee game",
+            "violations",
+            "Referee license",
+            "downjudge license",
+            "fieldjudge license",
+            "sidejudge license",
+        ]
+        assert len(rows) == 2
+        assert rows[1][0] == str(gameday.pk)
+        assert rows[1][1] == "Spieltag 1"
+        assert rows[1][2] == str(gameinfo.pk)
+
+    def test_csv_respects_only_violations_filter(self):
+        league = LeagueFactory(name="DKB DFFL")
+        season = SeasonFactory(name=2027)
+        LeagueSeasonConfigFactory(
+            league=league,
+            season=season,
+            check_officials_automatically=True,
+            min_officials_per_game=1,
+        )
+        compliant_gameday = GamedayFactory(
+            date=date(2027, 5, 1), league=league, season=season, name="Compliant"
+        )
+        compliant_gameinfo = GameinfoFactory(gameday=compliant_gameday)
+        official = OfficialFactory(team=TeamFactory())
+        OfficialLicenseHistoryFactory(
+            official=official,
+            license=OfficialLicenseFactory(name="F1"),
+            created_at=date(2027, 4, 1),
+        )
+        GameOfficialFactory(
+            gameinfo=compliant_gameinfo, official=official, position="Referee"
+        )
+        violating_gameday = GamedayFactory(
+            date=date(2027, 5, 8), league=league, season=season, name="Violating"
+        )
+        GameinfoFactory(gameday=violating_gameday)
+
+        self.client.force_login(UserFactory(is_staff=True))
+        resp = self.client.get(
+            reverse(
+                MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD_AND_LEAGUE,
+                kwargs={"season": 2027, "league": "DKB DFFL"},
+            ),
+            {"only_violations": "1"},
+        )
+
+        csv_body = resp.content.decode("utf-8-sig")
+        rows = list(csv.reader(io.StringIO(csv_body), delimiter=";"))
+        assert len(rows) == 2
+        assert rows[1][1] == "Violating"
+
+    def test_csv_download_without_league_selection(self):
+        season = SeasonFactory(name=2027)
+        gameday = GamedayFactory(date=date(2027, 5, 1), season=season)
+        GameinfoFactory(gameday=gameday)
+        self.client.force_login(UserFactory(is_staff=True))
+
+        resp = self.client.get(
+            reverse(MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD, kwargs={"season": 2027})
+        )
+
+        assert resp.status_code == HTTPStatus.OK
+        csv_body = resp.content.decode("utf-8-sig")
+        rows = list(csv.reader(io.StringIO(csv_body), delimiter=";"))
+        assert len(rows) == 2
 
 
 class TestMatchreportGamedayPasscheckDownloadPermissions(WebTest):

@@ -12,6 +12,8 @@ A thin **service/reporting app** with no models of its own. It wraps game data o
 ## Key files
 - `service/matchreport_service.py` — report assembly logic (start here).
 - `service/model_wrapper.py` — read-model wrapper over gamedays models.
+- `service/gameday_list_csv_service.py` — builds the gameday-list CSV export (one row per game;
+  see the "download" button next to the Season/League selector).
 - `views.py`, `urls.py`, `templates/` — report rendering + routing.
 - `menu.py`, `constants.py` — navigation entry and shared constants.
 

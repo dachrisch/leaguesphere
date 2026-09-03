@@ -1,3 +1,6 @@
+import re
+from typing import Optional
+
 from django.db.models import Sum, Prefetch, Q
 from django.db.models.functions import Coalesce
 
@@ -17,6 +20,26 @@ from officials.service.serializers import OfficialLicenseCheckSerializer
 # Closed set of license levels an official can hold, ordered highest to
 # lowest (mirrors LicenseStrategy.COURSE_MAPPING's F1..F4 course names).
 LICENSE_LEVELS = ["F1", "F2", "F3", "F4"]
+
+# OfficialLicense.name is a free CharField with no choices/enum, and the
+# established convention elsewhere in this codebase (see
+# matchreport/tests/test_model_wrapper.py) is to suffix it with a year, e.g.
+# "F1 2027" - so license levels are resolved by prefix, not exact match,
+# matching how OfficialLicenseHistoryQuerySet.order_by_rank() already
+# relies on plain alphabetical sorting rather than an exact-match filter.
+_LICENSE_LEVEL_PATTERN = re.compile(r"^(F[1-4])\b")
+
+
+def license_rank(license_name) -> Optional[int]:
+    """Resolves a license name (e.g. "F2" or "F2 2022") to its rank index
+    (0 = F1, the best, through 3 = F4), or None if it doesn't match a
+    recognized F1-F4 level at all (e.g. a "-"/no-license placeholder)."""
+    if not license_name:
+        return None
+    match = _LICENSE_LEVEL_PATTERN.match(license_name)
+    if not match:
+        return None
+    return LICENSE_LEVELS.index(match.group(1))
 
 
 class OfficialService:

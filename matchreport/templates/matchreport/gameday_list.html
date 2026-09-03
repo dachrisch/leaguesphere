@@ -4,6 +4,17 @@
 <div class="d-flex gap-2 mb-3 align-items-center">
     {% include 'utils/season_filter.html' with url_pattern=season_year_pattern  %}
     {% include 'utils/league_filter.html' with url_pattern=league_year_url_pattern  show_select_all_option=False %}
+    {% if selected_league %}
+        <a href="{% url csv_download_url_pattern season=selected_season league=selected_league %}{% if only_violations %}?only_violations=1{% endif %}"
+           class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-download"></i> CSV herunterladen
+        </a>
+    {% else %}
+        <a href="{% url csv_download_url_pattern season=selected_season %}{% if only_violations %}?only_violations=1{% endif %}"
+           class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-download"></i> CSV herunterladen
+        </a>
+    {% endif %}
     <form method="get" class="form-check ms-2">
         <input type="hidden" name="only_violations" value="0">
         <input class="form-check-input" type="checkbox" name="only_violations" value="1"
