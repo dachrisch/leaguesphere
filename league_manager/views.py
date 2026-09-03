@@ -42,10 +42,6 @@ def database_error_view(request):
     return HttpResponse(html, content_type="text/html", status=503)
 
 
-def robots_txt_view(request):
-    return render(request, "robots.txt", content_type="text/plain")
-
-
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.core.cache import cache
 from django.shortcuts import redirect

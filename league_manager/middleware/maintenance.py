@@ -12,6 +12,8 @@ from league_manager.constants import (
     MAINTENANCE_SCOPE_OFF,
     MAINTENANCE_SCOPE_CUSTOM,
     MAINTENANCE_SCOPE_WRITES_ONLY,
+    STATIC_INFO_PATHS,
+    STATIC_INFO_PREFIXES,
 )
 from league_manager.models import SiteConfiguration
 
@@ -64,8 +66,9 @@ class MaintenanceModeMiddleware:
         return (
             path.startswith(ADMIN_PREFIX)
             or path.startswith(MAINTENANCE_PREFIX)
-            or path.startswith("/static/")
-            or path.startswith("/media/")
+            # Static info files stay reachable during maintenance
+            or path.startswith(STATIC_INFO_PREFIXES)
+            or path in STATIC_INFO_PATHS.values()
             or path == "/health/"
             or path == "/database-error/"
         )
