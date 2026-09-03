@@ -90,10 +90,10 @@ def agent_card_json_view(request):
             },
         ],
         "documentation": {
-            "siteOverview": "/llms.txt",
-            "dynamicData": "/llms-dynamic.txt",
-            "facts": "/facts.json",
-            "security": "/.well-known/security.txt",
+            "siteOverview": STATIC_INFO_PATHS["llms"],
+            "dynamicData": STATIC_INFO_PATHS["llms-dynamic"],
+            "facts": STATIC_INFO_PATHS["facts"],
+            "security": STATIC_INFO_PATHS["security"],
         },
     }
     return JsonResponse(card)
