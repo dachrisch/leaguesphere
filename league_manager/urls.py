@@ -30,6 +30,7 @@ from league_manager.constants import (
     LEAGUE_MANAGER_MAINTENANCE,
     CLEAR_CACHE,
     MAINTENANCE_CONFIG_CACHE_KEY,
+    STATIC_INFO_PATHS,
 )
 from league_manager.models import SiteConfiguration
 
@@ -88,15 +89,15 @@ sitemaps = {
 
 urlpatterns = [
     path(
-        "sitemap.xml",
+        STATIC_INFO_PATHS["sitemap"].removeprefix("/"),
         sitemap,
         {"sitemaps": sitemaps},
         name="django.contrib.sitemaps.views.sitemap",
     ),
-    path("robots.txt", robots_txt_view, name="robots-txt"),
-    path("llms.txt", llms_txt_view, name="llms-txt"),
-    path("llms-full.txt", llms_full_txt_view, name="llms-full-txt"),
-    path(".well-known/security.txt", security_txt_view, name="security-txt"),
+    path(STATIC_INFO_PATHS["robots"].removeprefix("/"), robots_txt_view, name="robots-txt"),
+    path(STATIC_INFO_PATHS["llms"].removeprefix("/"), llms_txt_view, name="llms-txt"),
+    path(STATIC_INFO_PATHS["llms-full"].removeprefix("/"), llms_full_txt_view, name="llms-full-txt"),
+    path(STATIC_INFO_PATHS["security"].removeprefix("/"), security_txt_view, name="security-txt"),
     path(
         "maintenance/",
         TemplateView.as_view(template_name="league_manager/maintenance.html"),

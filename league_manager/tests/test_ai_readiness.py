@@ -9,6 +9,7 @@ before implementation.
 from django.test import TestCase, Client
 from django.test.client import RequestFactory
 
+from league_manager.constants import STATIC_INFO_PATHS
 from league_manager.middleware.db_guard import DatabaseGuardMiddleware
 from league_manager.middleware.maintenance import MaintenanceModeMiddleware
 
@@ -188,6 +189,11 @@ class TestMaintenanceModeExemptions(TestCase):
     def test_regular_page_not_exempt(self):
         self.assertFalse(self._is_exempt("/leaguetable/"))
 
+    def test_every_static_info_path_is_exempt(self):
+        """A new entry in STATIC_INFO_PATHS must be maintenance-exempt."""
+        for path in STATIC_INFO_PATHS.values():
+            self.assertTrue(self._is_exempt(path), path)
+
 
 class TestDatabaseGuardExemptions(TestCase):
     """AI/SEO files must be served without a DB probe during outages."""
@@ -215,3 +221,8 @@ class TestDatabaseGuardExemptions(TestCase):
         self.assertEqual(
             self._request_skips_db_check("/.well-known/security.txt"), "skipped"
         )
+
+    def test_every_static_info_path_skips_db_check(self):
+        """A new entry in STATIC_INFO_PATHS must skip the database probe."""
+        for path in STATIC_INFO_PATHS.values():
+            self.assertEqual(self._request_skips_db_check(path), "skipped")

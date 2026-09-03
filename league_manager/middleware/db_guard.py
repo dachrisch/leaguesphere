@@ -5,6 +5,8 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.http import HttpResponse
 
+from league_manager.constants import STATIC_INFO_PATHS, STATIC_INFO_PREFIXES
+
 logger = logging.getLogger(__name__)
 
 
@@ -49,20 +51,10 @@ class DatabaseGuardMiddleware:
         except:
             error_url = "/database-error/"
 
-        # Skip check for static/media files, robots/sitemap and other static
-        # info files that must remain reachable during a database outage
-        if any(
-            request.path.startswith(p)
-            for p in [
-                "/static/",
-                "/media/",
-                "/robots.txt",
-                "/sitemap.xml",
-                "/llms.txt",
-                "/llms-full.txt",
-                "/.well-known/",
-            ]
-        ):
+        # Skip check for static assets and static info files (robots.txt,
+        # sitemap.xml, llms*.txt, .well-known) that must remain reachable
+        # during a database outage
+        if request.path.startswith(STATIC_INFO_PREFIXES) or request.path in STATIC_INFO_PATHS.values():
             return self.get_response(request)
 
         # Check DB status
