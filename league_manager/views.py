@@ -44,10 +44,6 @@ def database_error_view(request):
     return HttpResponse(html, content_type="text/html", status=503)
 
 
-def llms_dynamic_txt_view(request):
-    return render(request, "llms-dynamic.txt", content_type="text/plain")
-
-
 def facts_json_view(request):
     facts = {
         "name": "LeagueSphere",
@@ -107,7 +103,6 @@ def facts_json_view(request):
     return JsonResponse(facts)
 
 
->>>>>>> 9ee00a72 (feat: dynamic-context layer for AI agents (standings API, ETags, docs))
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.core.cache import cache
 from django.shortcuts import redirect

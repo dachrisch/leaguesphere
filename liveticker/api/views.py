@@ -1,5 +1,3 @@
-import hashlib
-
 from django.db.models import Count, Max, Sum
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
@@ -8,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from gamedays.models import Gameresult, TeamLog
+from league_manager.utils.etag import build_etag
 from liveticker.service.liveticker_service import LivetickerService
 
 
@@ -29,11 +28,16 @@ def generate_liveticker_etag(request):
     ticks = TeamLog.objects.aggregate(
         count=Count("pk"), latest=Max("pk"), sum_value=Sum("value")
     )
-    etag_data += (
-        f":{results['count']}:{results['latest']}:{results['sum_fh']}:"
-        f"{results['sum_sh']}:{ticks['count']}:{ticks['latest']}:{ticks['sum_value']}"
+    return build_etag(
+        etag_data,
+        results["count"],
+        results["latest"],
+        results["sum_fh"],
+        results["sum_sh"],
+        ticks["count"],
+        ticks["latest"],
+        ticks["sum_value"],
     )
-    return f'"{hashlib.md5(etag_data.encode()).hexdigest()}"'
 
 
 class LivetickerAPIView(APIView):

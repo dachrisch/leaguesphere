@@ -62,7 +62,6 @@ class HealthCheckView(View):
 
 from league_manager.views import (
     ClearCacheView,
-    llms_dynamic_txt_view,
     facts_json_view,
     database_error_view,
     DemoInfoView,
@@ -92,7 +91,6 @@ urlpatterns = [
         {"sitemaps": sitemaps},
         name="django.contrib.sitemaps.views.sitemap",
     ),
-<<<<<<< HEAD
     # Static agent/crawler info files render straight from templates.
     path(
         static_info_url_pattern("robots"),

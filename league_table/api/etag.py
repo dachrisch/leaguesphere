@@ -1,9 +1,8 @@
-import hashlib
-
 from django.db.models import Max, Sum
 
-from league_table.models import LeagueSeasonConfig, TeamPointAdjustments
 from gamedays.models import Gameresult
+from league_manager.utils.etag import build_etag
+from league_table.models import LeagueSeasonConfig, TeamPointAdjustments
 
 
 def generate_etag(request, league=None, season=None):
@@ -41,8 +40,12 @@ def generate_etag(request, league=None, season=None):
         league_season_config=config
     ).aggregate(latest=Max("pk"), sum_points=Sum("sum_points"))
 
-    etag_data = (
-        f"{config.pk}:{results['latest']}:{results['sum_fh']}:{results['sum_sh']}:"
-        f"{results['sum_pa']}:{adjustment['latest']}:{adjustment['sum_points']}"
+    return build_etag(
+        config.pk,
+        results["latest"],
+        results["sum_fh"],
+        results["sum_sh"],
+        results["sum_pa"],
+        adjustment["latest"],
+        adjustment["sum_points"],
     )
-    return f'"{hashlib.md5(etag_data.encode()).hexdigest()}"'
