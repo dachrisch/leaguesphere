@@ -30,7 +30,7 @@ from league_manager.constants import (
     LEAGUE_MANAGER_MAINTENANCE,
     CLEAR_CACHE,
     MAINTENANCE_CONFIG_CACHE_KEY,
-    STATIC_INFO_PATHS,
+    static_info_url_pattern,
 )
 from league_manager.models import SiteConfiguration
 
@@ -62,10 +62,6 @@ class HealthCheckView(View):
 
 from league_manager.views import (
     ClearCacheView,
-    robots_txt_view,
-    llms_txt_view,
-    llms_full_txt_view,
-    security_txt_view,
     database_error_view,
     DemoInfoView,
 )
@@ -89,15 +85,32 @@ sitemaps = {
 
 urlpatterns = [
     path(
-        STATIC_INFO_PATHS["sitemap"].removeprefix("/"),
+        static_info_url_pattern("sitemap"),
         sitemap,
         {"sitemaps": sitemaps},
         name="django.contrib.sitemaps.views.sitemap",
     ),
-    path(STATIC_INFO_PATHS["robots"].removeprefix("/"), robots_txt_view, name="robots-txt"),
-    path(STATIC_INFO_PATHS["llms"].removeprefix("/"), llms_txt_view, name="llms-txt"),
-    path(STATIC_INFO_PATHS["llms-full"].removeprefix("/"), llms_full_txt_view, name="llms-full-txt"),
-    path(STATIC_INFO_PATHS["security"].removeprefix("/"), security_txt_view, name="security-txt"),
+    # Static agent/crawler info files render straight from templates.
+    path(
+        static_info_url_pattern("robots"),
+        TemplateView.as_view(template_name="robots.txt", content_type="text/plain"),
+        name="robots-txt",
+    ),
+    path(
+        static_info_url_pattern("llms"),
+        TemplateView.as_view(template_name="llms.txt", content_type="text/plain"),
+        name="llms-txt",
+    ),
+    path(
+        static_info_url_pattern("llms-full"),
+        TemplateView.as_view(template_name="llms-full.txt", content_type="text/plain"),
+        name="llms-full-txt",
+    ),
+    path(
+        static_info_url_pattern("security"),
+        TemplateView.as_view(template_name="security.txt", content_type="text/plain"),
+        name="security-txt",
+    ),
     path(
         "maintenance/",
         TemplateView.as_view(template_name="league_manager/maintenance.html"),

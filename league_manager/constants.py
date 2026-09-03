@@ -24,3 +24,9 @@ STATIC_INFO_PATHS = {
 # Prefix-based exemptions for static assets and the RFC 8615 well-known
 # directory (covers security.txt and agent-card.json).
 STATIC_INFO_PREFIXES = ("/static/", "/media/", "/.well-known/")
+
+
+def static_info_url_pattern(key: str) -> str:
+    """URL pattern for a STATIC_INFO_PATHS entry (paths carry a leading
+    slash for middleware matching; Django path() patterns must not)."""
+    return STATIC_INFO_PATHS[key].removeprefix("/")
