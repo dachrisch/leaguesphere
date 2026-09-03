@@ -16,6 +16,9 @@ from .constants import (
 )
 
 from gamedays.models import Gameday
+from officials.service.officials_compliance_service import (
+    compute_gameday_officials_compliance,
+)
 from .service.matchreport_service import MatchreportService
 
 
@@ -25,6 +28,7 @@ class MatchreportGamedayListView(UserPassesTestMixin, View):
     def get(self, request, **kwargs):
         year = kwargs.get("season", datetime.today().year)
         league = kwargs.get("league")
+        only_violations = request.GET.get("only_violations") == "1"
         gamedays = (
             Gameday.objects.select_related("league")
             .filter(date__year=year)
@@ -35,14 +39,25 @@ class MatchreportGamedayListView(UserPassesTestMixin, View):
             .distinct()
             .order_by("league__name")
         )
-        gamedays_filtered_by_league = (
+        gamedays_filtered_by_league = list(
             gamedays.filter(league__name=league) if league else gamedays
         )
+
+        compliance_by_gameday = compute_gameday_officials_compliance(
+            [gameday.pk for gameday in gamedays_filtered_by_league]
+        )
+        gameday_rows = [
+            {"gameday": gameday, "compliance": compliance_by_gameday[gameday.pk]}
+            for gameday in gamedays_filtered_by_league
+            if not only_violations
+            or compliance_by_gameday[gameday.pk].violation_count > 0
+        ]
+
         return render(
             request,
             self.template_name,
             {
-                "gamedays": gamedays_filtered_by_league,
+                "gameday_rows": gameday_rows,
                 "seasons": Gameday.objects.annotate(year=ExtractYear("date"))
                 .values_list("year", flat=True)
                 .distinct()
@@ -52,6 +67,7 @@ class MatchreportGamedayListView(UserPassesTestMixin, View):
                 "selected_league": league,
                 "season_year_pattern": MATCHREPORT_GAMEDAY_LIST_AND_YEAR,
                 "league_year_url_pattern": MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
+                "only_violations": only_violations,
             },
         )
 
@@ -107,6 +123,7 @@ class MatchreportGamedayDetailView(UserPassesTestMixin, DetailView):
         )
         passcheck_player_data = {}
         gameday_match_reports = []
+        officials_check_status = None
         if is_staff:
             passcheck_info_table_df = ms.get_staff_passcheck_details()
             passcheck_info_table = (
@@ -119,11 +136,20 @@ class MatchreportGamedayDetailView(UserPassesTestMixin, DetailView):
             passcheck_player_data = ms.get_passcheck_player_details(render_configs)
             gameday_match_reports = ms.get_gameday_match_reports(render_configs)
 
+            officials_check_status = compute_gameday_officials_compliance([gameday.pk])[
+                gameday.pk
+            ]
+            for game in gameday_match_reports:
+                game["officials_violations"] = (
+                    officials_check_status.game_violations.get(game["gameinfo_id"], [])
+                )
+
         context["info"] = {
             "officials": officials,
             "passcheck_info_table": passcheck_info_table,
             "passcheck_player_data": passcheck_player_data,
             "gameday_match_reports": gameday_match_reports,
+            "officials_check_status": officials_check_status,
         }
 
         return context

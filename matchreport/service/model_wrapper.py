@@ -198,7 +198,12 @@ class MachtreportModelWrapper:
             "name": "Name",
             "position": "Position",
             "latest_license": "Lizenz",
+            "license_number_cell": "Lizenznummer",
         }
+        # Not part of column_mapping directly - fetched alongside it but
+        # consumed by _license_number_cell() to build the "Lizenznummer"
+        # column, not rendered as columns of their own.
+        extra_fields = ["official_id", "official__external_id"]
 
         # Correlated subquery so every official's license is resolved in the
         # same query as the officials table, instead of one query per
@@ -227,20 +232,71 @@ class MachtreportModelWrapper:
             "Scorecard Judge": 4,
         }
 
+        # Raw DB fields to select - column_mapping's "license_number_cell"
+        # key is a computed column built below, not a real field, so it is
+        # deliberately left out of this values() call.
+        db_fields = [
+            "official__team__description",
+            "name",
+            "position",
+            "latest_license",
+        ]
+
         officials_df = pd.DataFrame(
             GameOfficial.objects.filter(gameinfo=gameinfo)
             .annotate(
                 latest_license=Subquery(latest_license),
             )
-            .values(*column_mapping.keys())
+            .values(*db_fields, *extra_fields)
         )
 
         if not officials_df.empty:
             officials_df["order"] = officials_df.position.apply(position_order.get)
             officials_df.sort_values("order", ascending=True, inplace=True)
             officials_df.drop(columns=["order"], inplace=True)
+            officials_df["license_number_cell"] = officials_df.apply(
+                lambda row: self._license_number_cell(
+                    row["official_id"],
+                    row["official__external_id"],
+                ),
+                axis=1,
+            )
+            officials_df.drop(columns=extra_fields, inplace=True)
 
         return officials_df.rename(columns=column_mapping)
+
+    @staticmethod
+    def _license_number_cell(official_id, external_id):
+        # The official's license number (Official.external_id - the
+        # Moodle-issued id DFFL uses as the license number, already
+        # hyperlinked to the Moodle profile elsewhere in
+        # officials/templates/officials/license_check.html), hyperlinked
+        # here to the official's profile page in this app instead -
+        # mirroring the identical link-building pattern in
+        # officials/service/moodle/moodle_service.py::_get_ahref_for_profile.
+        # Shown independently of whether the official currently holds a
+        # valid F1-F4 license (that's the separate "Lizenz" column) so staff
+        # can always click through to an assigned official's profile.
+        # Local imports avoid a hard officials<->matchreport import-order
+        # dependency at module load time.
+        if pd.isna(official_id) or external_id is None or pd.isna(external_id):
+            return None
+
+        # GameOfficial.official is nullable, so a column mixing real ids
+        # with missing values gets upcast by pandas to float64 (121 ->
+        # 121.0) - cast back to int before reverse(), whose int converter
+        # regex ([0-9]+) rejects the "121.0" string a float would produce.
+        official_id = int(official_id)
+
+        from django.urls import reverse
+
+        from officials.urls import OFFICIALS_PROFILE_LICENSE
+
+        profile_url = reverse(OFFICIALS_PROFILE_LICENSE, kwargs={"pk": official_id})
+        return (
+            f'<a href="{profile_url}" target="_blank" title="Zum Profil des Offiziellen">'
+            f"#{external_id}</a>"
+        )
 
     def get_gameday_match_report(self, render_config: dict):
         games = []

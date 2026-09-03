@@ -75,9 +75,11 @@ class LeagueRuleset(models.Model):
                 "key": league_ruleset_tiebreak.step.key,
                 "is_ascending": league_ruleset_tiebreak.sort_order == "ascending",
             }
-            for league_ruleset_tiebreak in self.leaguerulesettiebreak_set.select_related('step').all().order_by(
-                "order"
+            for league_ruleset_tiebreak in self.leaguerulesettiebreak_set.select_related(
+                "step"
             )
+            .all()
+            .order_by("order")
         ]
 
     def __str__(self):
@@ -162,6 +164,31 @@ class LeagueSeasonConfig(models.Model):
         help_text="Dieses Feld verliert gegenüber dem vorherigen Feld", default=0
     )
 
+    check_officials_automatically = models.BooleanField(
+        help_text="Schaltet die automatische Prüfung der Offiziellen-Besetzung pro Spiel "
+        "ein/aus. Die nachfolgenden Felder funktionieren nur, wenn dieses gecheckt ist",
+        default=False,
+    )
+    min_officials_per_game = models.PositiveSmallIntegerField(
+        help_text="Mindestanzahl an Offiziellen pro Spiel mit irgendeiner gültigen Lizenz (F1-F4)",
+        default=0,
+    )
+    min_officials_f4_per_game = models.PositiveSmallIntegerField(
+        help_text="Mindestanzahl an Offiziellen pro Spiel mit mindestens F4-Lizenz",
+        default=0,
+    )
+    min_officials_f3_per_game = models.PositiveSmallIntegerField(
+        help_text="Mindestanzahl an Offiziellen pro Spiel mit mindestens F3-Lizenz",
+        default=0,
+    )
+    min_officials_f2_per_game = models.PositiveSmallIntegerField(
+        help_text="Mindestanzahl an Offiziellen pro Spiel mit mindestens F2-Lizenz",
+        default=0,
+    )
+    min_officials_f1_per_game = models.PositiveSmallIntegerField(
+        help_text="Mindestanzahl an Offiziellen pro Spiel mit F1-Lizenz", default=0
+    )
+
     show_player_names_in_season_statistics = models.BooleanField(
         help_text="Wenn WAHR, dann werden die Klartext Namen der Spieler in der Saison Statistik angezeigt",
         default=False,
@@ -185,13 +212,13 @@ class LeagueSeasonConfig(models.Model):
     def get_gameday_statistic_settings(self):
         return {
             TOP_N_PLAYER: self.top_n_players_in_gameday_statistics,
-            SHOW_PLAYER_NAMES: self.show_player_names_in_gameday_statistics
+            SHOW_PLAYER_NAMES: self.show_player_names_in_gameday_statistics,
         }
 
     def get_season_statistic_settings(self):
         return {
             TOP_N_PLAYER: self.top_n_players_in_season_statistics,
-            SHOW_PLAYER_NAMES: self.show_player_names_in_season_statistics
+            SHOW_PLAYER_NAMES: self.show_player_names_in_season_statistics,
         }
 
     def get_team_point_adjustment_map(self):
@@ -217,7 +244,9 @@ class LeagueSeasonConfig(models.Model):
 
 
 class OverrideOfficialGamedaySetting(models.Model):
-    league_season_config = models.ForeignKey(LeagueSeasonConfig, on_delete=models.CASCADE)
+    league_season_config = models.ForeignKey(
+        LeagueSeasonConfig, on_delete=models.CASCADE
+    )
     gameday = models.OneToOneField(
         Gameday, on_delete=models.CASCADE, related_name="official_override"
     )

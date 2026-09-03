@@ -1,3 +1,4 @@
+from datetime import date
 from http import HTTPStatus
 from unittest.mock import patch
 import csv
@@ -50,12 +51,27 @@ from gamedays.service.gameday_service import (
 )
 from gamedays.tests.setup_factories.db_setup import DBSetup
 from gamedays.tests.setup_factories.factories import (
+    GamedayFactory,
+    GameinfoFactory,
+    GameOfficialFactory,
+    LeagueFactory,
+    SeasonFactory,
+    TeamFactory,
     UserFactory,
 )
 
+from league_table.tests.setup_factories.factories_leaguetable import (
+    LeagueSeasonConfigFactory,
+)
 from matchreport.constants import (
     MATCHREPORT_GAMEDAY_DETAIL,
+    MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
     MATCHREPORT_GAMEDAY_PASSCHECK_DOWNLOAD,
+)
+from officials.tests.setup_factories.factories_officials import (
+    OfficialFactory,
+    OfficialLicenseFactory,
+    OfficialLicenseHistoryFactory,
 )
 from passcheck.service.passcheck_service import PasscheckServicePlayers
 from passcheck.tests.setup_factories.db_setup_passcheck import DbSetupPasscheck
@@ -106,6 +122,183 @@ class TestMatchreportGamedayDetailView(TestCase):
         self.client.force_login(UserFactory(is_staff=True))
         resp = self.client.get(reverse(MATCHREPORT_GAMEDAY_DETAIL, kwargs={"pk": 0}))
         assert resp.status_code == HTTPStatus.NOT_FOUND
+
+    def test_matchreport_flags_game_missing_officials(self):
+        gameday = DBSetup().g62_with_tiebreak_finished()
+        num_games = len(gameday.gameinfo_set.all())
+        LeagueSeasonConfigFactory(
+            league=gameday.league,
+            season=gameday.season,
+            check_officials_automatically=True,
+            min_officials_per_game=1,
+        )
+        self.client.force_login(UserFactory(is_staff=True))
+        resp = self.client.get(
+            reverse(MATCHREPORT_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk})
+        )
+
+        assert resp.status_code == HTTPStatus.OK
+        status = resp.context_data["info"]["officials_check_status"]
+        assert status.is_checked is True
+        # None of this fixture's games have GameOfficial rows assigned.
+        assert status.violation_count == num_games
+        content = resp.content.decode()
+        assert "Nicht genug Offizielle mit Lizenz" in content
+        # Violations must be visible at the top level (Spiele section header
+        # and each game's always-visible card-header) without needing to
+        # expand every collapsed game card and switch to its Schiedsrichter
+        # tab.
+        assert f"{num_games} Spiel" in content
+        # "Offizielle unvollständig" appears once per game in the
+        # always-visible card-header badge, and once more in the alert box
+        # inside the (collapsed) Schiedsrichter tab pane.
+        assert content.count("Offizielle unvollständig") == 2 * num_games
+
+    def test_matchreport_does_not_flag_when_check_disabled(self):
+        gameday = DBSetup().g62_with_tiebreak_finished()
+        LeagueSeasonConfigFactory(
+            league=gameday.league,
+            season=gameday.season,
+            check_officials_automatically=False,
+            min_officials_per_game=1,
+        )
+        self.client.force_login(UserFactory(is_staff=True))
+        resp = self.client.get(
+            reverse(MATCHREPORT_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk})
+        )
+
+        assert resp.status_code == HTTPStatus.OK
+        status = resp.context_data["info"]["officials_check_status"]
+        assert status.is_checked is False
+        assert status.violation_count == 0
+
+
+class TestMatchreportGamedayListView(TestCase):
+
+    def test_list_shows_checked_and_violation_count(self):
+        league = LeagueFactory(name="DKB DFFL")
+        season = SeasonFactory(name=2027)
+        gameday = GamedayFactory(date=date(2027, 5, 1), league=league, season=season)
+        GameinfoFactory(gameday=gameday)
+        LeagueSeasonConfigFactory(
+            league=league,
+            season=season,
+            check_officials_automatically=True,
+            min_officials_per_game=1,
+        )
+        self.client.force_login(UserFactory(is_staff=True))
+
+        resp = self.client.get(
+            reverse(
+                MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
+                kwargs={"season": 2027, "league": "DKB DFFL"},
+            )
+        )
+
+        assert resp.status_code == HTTPStatus.OK
+        rows = resp.context["gameday_rows"]
+        assert len(rows) == 1
+        assert rows[0]["compliance"].is_checked is True
+        assert rows[0]["compliance"].violation_count == 1
+
+    def test_list_shows_not_checked_reason(self):
+        league = LeagueFactory(name="DKB DFFL")
+        season = SeasonFactory(name=2027)
+        gameday = GamedayFactory(date=date(2027, 5, 1), league=league, season=season)
+        GameinfoFactory(gameday=gameday)
+        self.client.force_login(UserFactory(is_staff=True))
+
+        resp = self.client.get(
+            reverse(
+                MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
+                kwargs={"season": 2027, "league": "DKB DFFL"},
+            )
+        )
+
+        assert resp.status_code == HTTPStatus.OK
+        rows = resp.context["gameday_rows"]
+        assert len(rows) == 1
+        assert rows[0]["compliance"].is_checked is False
+        assert rows[0]["compliance"].reason_not_checked == "Keine Konfiguration"
+
+    def test_only_violations_filter_excludes_compliant_gamedays(self):
+        league = LeagueFactory(name="DKB DFFL")
+        season = SeasonFactory(name=2027)
+        LeagueSeasonConfigFactory(
+            league=league,
+            season=season,
+            check_officials_automatically=True,
+            min_officials_per_game=1,
+        )
+
+        compliant_gameday = GamedayFactory(
+            date=date(2027, 5, 1), league=league, season=season, name="Compliant"
+        )
+        compliant_gameinfo = GameinfoFactory(gameday=compliant_gameday)
+        official = OfficialFactory(team=TeamFactory())
+        OfficialLicenseHistoryFactory(
+            official=official,
+            license=OfficialLicenseFactory(name="F1"),
+            created_at=date(2027, 4, 1),
+        )
+        GameOfficialFactory(
+            gameinfo=compliant_gameinfo, official=official, position="Referee"
+        )
+
+        violating_gameday = GamedayFactory(
+            date=date(2027, 5, 8), league=league, season=season, name="Violating"
+        )
+        GameinfoFactory(gameday=violating_gameday)
+
+        self.client.force_login(UserFactory(is_staff=True))
+
+        resp = self.client.get(
+            reverse(
+                MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
+                kwargs={"season": 2027, "league": "DKB DFFL"},
+            ),
+            {"only_violations": "1"},
+        )
+
+        assert resp.status_code == HTTPStatus.OK
+        rows = resp.context["gameday_rows"]
+        assert len(rows) == 1
+        assert rows[0]["gameday"].pk == violating_gameday.pk
+
+    def test_query_count_stays_constant_for_multiple_gamedays(self):
+        league = LeagueFactory(name="DKB DFFL")
+        season = SeasonFactory(name=2027)
+        LeagueSeasonConfigFactory(
+            league=league,
+            season=season,
+            check_officials_automatically=True,
+            min_officials_per_game=1,
+        )
+        for day in range(1, 4):
+            gameday = GamedayFactory(
+                date=date(2027, 5, day), league=league, season=season
+            )
+            GameinfoFactory(gameday=gameday)
+
+        self.client.force_login(UserFactory(is_staff=True))
+        # Warm request-path caches so the query count is not order-dependent.
+        self.client.get(
+            reverse(
+                MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
+                kwargs={"season": 2027, "league": "DKB DFFL"},
+            )
+        )
+
+        with self.assertNumQueries(11):
+            resp = self.client.get(
+                reverse(
+                    MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
+                    kwargs={"season": 2027, "league": "DKB DFFL"},
+                )
+            )
+
+        assert resp.status_code == HTTPStatus.OK
+        assert len(resp.context["gameday_rows"]) == 3
 
 
 class TestMatchreportGamedayPasscheckDownloadPermissions(WebTest):
