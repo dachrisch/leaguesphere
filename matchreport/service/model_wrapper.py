@@ -208,15 +208,14 @@ class MachtreportModelWrapper:
         # same query as the officials table, instead of one query per
         # official (N+1). A license is valid on the gameday if the gameday
         # falls within the license validity period: training date (created_at)
-        # through the same month/day one year later, as defined by
-        # OfficialLicenseHistory.valid_until() - validity_lower_bound()
-        # mirrors that exact calendar-year rule (shared with
-        # officials/service/officials_compliance_service.py, rather than
-        # each independently approximating it with a flat 365-day window,
-        # which is one day off across any Feb 29 the window crosses). When
-        # more than one license is valid at once, the highest-ranked one
-        # wins (F1 over F2 over F3...) - never whichever was issued more
-        # recently, so no date field is passed to order_by_rank() here.
+        # to approximately one year later (created_at + 365 days), as defined
+        # by OfficialLicenseHistory.valid_until() - validity_lower_bound()
+        # shares this window with
+        # officials/service/officials_compliance_service.py so the two can't
+        # independently drift apart. When more than one license is valid at
+        # once, the highest-ranked one wins (F1 over F2 over F3...) - never
+        # whichever was issued more recently, so no date field is passed to
+        # order_by_rank() here.
         latest_license = (
             OfficialLicenseHistory.objects.filter(
                 official_id=OuterRef("official"),

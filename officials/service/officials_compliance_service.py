@@ -61,11 +61,11 @@ class GamedayComplianceStatus:
 def _best_valid_rank(history_entries, on_date):
     """history_entries: list[(created_at, rank)] for already-recognized
     F1-F4 levels (see _license_rank). Returns the lowest (=best) rank among
-    entries valid on `on_date`, or None if none are currently valid. Uses
-    the same calendar-year validity rule as
-    `OfficialLicenseHistory.valid_until()`, shared via
-    officials.service.license_validity so this can't drift from the
-    correlated-subquery window used in `matchreport.service.model_wrapper`."""
+    entries valid on `on_date`, or None if none are currently valid. A
+    license is valid from its `created_at` date through approximately one
+    year later, shared via officials.service.license_validity so this can't
+    drift from the correlated-subquery window used in
+    `matchreport.service.model_wrapper`."""
     valid_ranks = [
         rank for created_at, rank in history_entries if is_valid_on(created_at, on_date)
     ]
