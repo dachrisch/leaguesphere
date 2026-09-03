@@ -122,6 +122,12 @@ urlpatterns = [
         facts_json_view,
         name="facts-json",
     ),
+    path("agents/", agents_page_view, name="agents-page"),
+    path(
+        static_info_url_pattern("agent-card"),
+        agent_card_json_view,
+        name="agent-card",
+    ),
     path(
         "maintenance/",
         TemplateView.as_view(template_name="league_manager/maintenance.html"),
