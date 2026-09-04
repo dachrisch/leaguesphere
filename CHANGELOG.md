@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.22.1](https://github.com/dachrisch/leaguesphere/compare/v4.22.0...v4.22.1) (2026-09-04)
+
+
+### Bug Fixes
+
+* **deploy:** pass current branch as --ref to gh workflow run ([#1923](https://github.com/dachrisch/leaguesphere/issues/1923)) ([401ff90](https://github.com/dachrisch/leaguesphere/commit/401ff90fc44108c933c4a62244073c7c012ba7ce))
+
 ## [4.22.0](https://github.com/dachrisch/leaguesphere/compare/v4.21.4...v4.22.0) (2026-09-03)
 
 
