@@ -19,6 +19,7 @@ import type {
 } from '../../types/flowchart';
 import { isGameNode } from '../../types/flowchart';
 import { ICONS } from '../../utils/iconConstants';
+import { getDraggedGameSourceStageId } from '../../utils/dragState';
 import './StageSection.css';
 
 export interface StageSectionProps {
@@ -44,6 +45,7 @@ export interface StageSectionProps {
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
   onNotify?: (message: string, type: import('../../types/designer').NotificationType, title?: string) => void;
+  onMoveGame?: (gameId: string, targetStageId: string) => void;
   readOnly?: boolean;
 }
 
@@ -71,6 +73,7 @@ const StageSection: React.FC<StageSectionProps> = memo(({
   highlightedSourceGameId,
   onDynamicReferenceClick,
   onNotify,
+  onMoveGame,
   readOnly = false,
 }) => {
   const { t } = useTypedTranslation(['ui', 'domain']);
@@ -78,6 +81,7 @@ const StageSection: React.FC<StageSectionProps> = memo(({
   const [editedName, setEditedName] = useState(stage.data.name);
   const [editedStageType, setEditedStageType] = useState(stage.data.stageType || 'STANDARD');
   const [localExpanded, setLocalExpanded] = useState(true);
+  const [isDragOver, setIsDragOver] = useState(false);
   const editZoneRef = useRef<HTMLDivElement>(null);
   
   // Combine local state with prop
@@ -173,10 +177,56 @@ const StageSection: React.FC<StageSectionProps> = memo(({
     onUpdate(stage.id, { color: e.target.value });
   }, [stage.id, onUpdate]);
 
+  const canAcceptDrop = !readOnly && !!onMoveGame;
+
+  const handleDragEnter = useCallback(
+    (e: React.DragEvent) => {
+      if (!canAcceptDrop) return;
+      if (getDraggedGameSourceStageId() === stage.id) return;
+      e.preventDefault();
+      setIsDragOver(true);
+    },
+    [canAcceptDrop, stage.id]
+  );
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      if (!canAcceptDrop) return;
+      if (getDraggedGameSourceStageId() === stage.id) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    },
+    [canAcceptDrop, stage.id]
+  );
+
+  const handleDragLeave = useCallback(() => {
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      setIsDragOver(false);
+      if (!canAcceptDrop || !onMoveGame) return;
+      const gameId = e.dataTransfer.getData('text/plain');
+      if (!gameId) return;
+      const game = allNodes.find((n) => isGameNode(n) && n.id === gameId);
+      if (!game || game.parentId === stage.id) return;
+      e.preventDefault();
+      onMoveGame(gameId, stage.id);
+    },
+    [canAcceptDrop, onMoveGame, allNodes, stage.id]
+  );
+
   return (
-    <Card 
+    <Card
       id={`stage-${stage.id}`}
-      className={`stage-section mb-2 ${isHighlighted ? 'element-highlighted' : ''}`}
+      data-testid={`stage-drop-target-${stage.id}`}
+      title={canAcceptDrop ? t('ui:tooltip.dropToMove') : undefined}
+      className={`stage-section mb-2 ${isHighlighted ? 'element-highlighted' : ''} ${isDragOver ? 'stage-drop-target' : ''}`}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       <Card.Header
         className={`stage-section__header d-flex align-items-center ${isEditing ? 'stage-section__header--editing' : ''}`}
@@ -365,6 +415,7 @@ const StageSection: React.FC<StageSectionProps> = memo(({
 
                   onDynamicReferenceClick={onDynamicReferenceClick}
                   onNotify={onNotify}
+                  onMoveGame={onMoveGame}
                   readOnly={readOnly}
                 />
               </>

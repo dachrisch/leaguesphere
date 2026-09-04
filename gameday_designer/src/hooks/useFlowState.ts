@@ -471,7 +471,6 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     matchNames,
     groupNames,
     addBulkGames,
-    moveNodeToStage: () => {}, // Placeholder
     // Explicitly export these from managers
     addFieldNode: nodesManager.addFieldNode,
     addStageNode: nodesManager.addStageNode,

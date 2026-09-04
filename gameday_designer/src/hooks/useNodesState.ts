@@ -33,6 +33,30 @@ import {
 import { recalculateStageGameTimes } from '../utils/timeCalculation';
 
 /**
+ * Recalculate start times for all (non-manual) games of a stage after a
+ * structural change. Returns the nodes array unchanged when the stage has
+ * no configured start time (same policy as updateNode).
+ */
+function recalcStageTimes(nodes: FlowNode[], stageId: string): FlowNode[] {
+  const stage = nodes.find((n): n is StageNode => n.id === stageId && isStageNode(n));
+  if (!stage || !stage.data.startTime) return nodes;
+
+  const games = nodes
+    .filter((n): n is GameNode => isGameNode(n) && n.parentId === stageId)
+    .sort((a, b) => (parseInt(a.data.standing) || 0) - (parseInt(b.data.standing) || 0));
+  if (games.length === 0) return nodes;
+
+  const timeUpdates = recalculateStageGameTimes(stage, games);
+  return nodes.map((node): FlowNode => {
+    const update = timeUpdates.find((u) => u.gameId === node.id);
+    if (update && isGameNode(node) && !node.data.manualTime) {
+      return { ...node, data: { ...node.data, startTime: update.startTime } } as FlowNode;
+    }
+    return node;
+  });
+}
+
+/**
  * Options for adding a field node.
  */
 export interface AddFieldOptions {
@@ -235,6 +259,72 @@ export function useNodesState(
   );
 
   /**
+   * Move a game node to another stage (Issue #1921).
+   *
+   * Handles moves within the same field and across fields. The game is
+   * re-parented, re-positioned below the target stage's existing games,
+   * and its stage metadata is synced from the target stage. Start times
+   * of both affected stages are recalculated (manually set times are kept).
+   *
+   * Returns true when the move was applied, false when it was rejected
+   * (unknown game/stage, or the game already belongs to the target stage).
+   */
+  const moveNodeToStage = useCallback(
+    (gameId: string, targetStageId: string): boolean => {
+      const game = nodes.find((n): n is GameNode => n.id === gameId && isGameNode(n));
+      const targetStage = nodes.find((n): n is StageNode => n.id === targetStageId && isStageNode(n));
+      if (!game || !targetStage || !targetStage.parentId) return false;
+      if (game.parentId === targetStageId) return false;
+      const sourceStageId = game.parentId;
+
+      setNodes((prevNodes) => {
+        const gamesInTarget = prevNodes.filter(
+          (n) => isGameNode(n) && n.parentId === targetStageId
+        );
+        const position = { x: 30, y: 50 + gamesInTarget.length * 120 };
+
+        // Remove the game, then re-insert it after the last game of the
+        // target stage so the list order stays stable.
+        const withoutGame = prevNodes.filter((n) => n.id !== gameId);
+        const movedGame: GameNode = {
+          ...game,
+          parentId: targetStageId,
+          position,
+          data: {
+            ...game.data,
+            stage: targetStage.data.name,
+            stageType: targetStage.data.stageType,
+          },
+        };
+
+        let insertIndex = withoutGame.length;
+        for (let i = withoutGame.length - 1; i >= 0; i--) {
+          if (isGameNode(withoutGame[i]) && withoutGame[i].parentId === targetStageId) {
+            insertIndex = i + 1;
+            break;
+          }
+        }
+
+        const updated = [
+          ...withoutGame.slice(0, insertIndex),
+          movedGame,
+          ...withoutGame.slice(insertIndex),
+        ];
+
+        // Recalculate start times of both affected stages to resolve
+        // timing collisions (conflict handling for the move).
+        const withTargetTimes = recalcStageTimes(updated, targetStageId);
+        return sourceStageId
+          ? recalcStageTimes(withTargetTimes, sourceStageId)
+          : withTargetTimes;
+      });
+
+      return true;
+    },
+    [nodes, setNodes]
+  );
+
+  /**
    * Update a node's data.
    */
   const updateNode = useCallback(
@@ -373,6 +463,8 @@ export function useNodesState(
 
       addGameNodeInStage,
 
+      moveNodeToStage,
+
       updateNode,
 
       deleteNode,
@@ -387,7 +479,7 @@ export function useNodesState(
 
       getGameStage,
 
-    }), [addFieldNode, addStageNode, addGameNodeInStage, updateNode, deleteNode, addBulkTournament, ensureContainerHierarchy, getTargetStage, getGameField, getGameStage]);
+    }), [addFieldNode, addStageNode, addGameNodeInStage, moveNodeToStage, updateNode, deleteNode, addBulkTournament, ensureContainerHierarchy, getTargetStage, getGameField, getGameStage]);
 
   }
 

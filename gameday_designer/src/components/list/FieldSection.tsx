@@ -46,6 +46,7 @@ export interface FieldSectionProps {
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
   onNotify?: (message: string, type: import('../../types/designer').NotificationType, title?: string) => void;
+  onMoveGame?: (gameId: string, targetStageId: string) => void;
   readOnly?: boolean;
 }
 
@@ -76,6 +77,7 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
   highlightedSourceGameId,
   onDynamicReferenceClick,
   onNotify,
+  onMoveGame,
   readOnly = false,
 }) => {
   const { t } = useTypedTranslation(['ui']);
@@ -283,6 +285,7 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
                   highlightedSourceGameId={highlightedSourceGameId}
                   onDynamicReferenceClick={onDynamicReferenceClick}
                   onNotify={onNotify}
+                  onMoveGame={onMoveGame}
                   readOnly={readOnly}
                 />
               ))}

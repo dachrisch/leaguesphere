@@ -5,20 +5,23 @@
  */
 
 import React, { useState, useCallback, memo, useMemo } from 'react';
-import { Table, Form, Button } from 'react-bootstrap';
+import { createPortal } from 'react-dom';
+import { Table, Form, Button, Dropdown } from 'react-bootstrap';
 import Select, { components, StylesConfig, GroupBase, OptionProps, SingleValueProps } from 'react-select';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
-import type { 
-  GameNode, 
+import type {
+  GameNode,
   StageNode,
-  FlowEdge, 
-  FlowNode, 
-  GlobalTeam, 
-  GlobalTeamGroup, 
+  FieldNode,
+  FlowEdge,
+  FlowNode,
+  GlobalTeam,
+  GlobalTeamGroup,
   GameNodeData,
   HighlightedElement
 } from '../../types/flowchart';
-import { isGameNode, isStageNode } from '../../types/flowchart';
+import { isGameNode, isStageNode, getFieldNodes } from '../../types/flowchart';
+import { setDraggedGameSourceStageId } from '../../utils/dragState';
 import { isWinnerReference, isLoserReference, isRankReference } from '../../types/designer';
 import type { TeamReference, WinnerReference, LoserReference } from '../../types/designer';
 import { findSourceGameForReference, findSourceStageForReference, getGamePath, getEligibleSourceGames as computeEligibleSourceGames } from '../../utils/edgeAnalysis';
@@ -239,6 +242,7 @@ export interface GameTableProps {
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
   onNotify?: (message: string, type: import('../../types/designer').NotificationType, title?: string) => void;
+  onMoveGame?: (gameId: string, targetStageId: string) => void;
   readOnly?: boolean;
 }
 
@@ -263,6 +267,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
   highlightedSourceGameId,
   onDynamicReferenceClick,
   onNotify,
+  onMoveGame,
   readOnly = false,
 }) => {
   const { t } = useTypedTranslation(['ui', 'domain', 'error']);
@@ -458,6 +463,43 @@ const GameTable: React.FC<GameTableProps> = memo(({
 
     return options;
   }, [allNodes, games, t]);
+
+  const moveTargets = useMemo(() => {
+    if (!onMoveGame) return [];
+    return getFieldNodes(allNodes)
+      .map((field: FieldNode) => ({
+        field,
+        stages: allNodes
+          .filter((n): n is StageNode => isStageNode(n) && n.parentId === field.id)
+          .sort((a, b) => a.data.order - b.data.order),
+      }))
+      .filter((entry) => entry.stages.length > 0);
+  }, [allNodes, onMoveGame]);
+
+  const getMoveTargetsForGame = useCallback(
+    (game: GameNode) =>
+      moveTargets
+        .map((entry) => ({
+          ...entry,
+          stages: entry.stages.filter((stage) => stage.id !== game.parentId),
+        }))
+        .filter((entry) => entry.stages.length > 0),
+    [moveTargets]
+  );
+
+  const handleGameDragStart = useCallback(
+    (e: React.DragEvent, game: GameNode) => {
+      if (readOnly) return;
+      e.dataTransfer?.setData('text/plain', game.id);
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+      setDraggedGameSourceStageId(game.parentId ?? null);
+    },
+    [readOnly]
+  );
+
+  const handleGameDragEnd = useCallback(() => {
+    setDraggedGameSourceStageId(null);
+  }, []);
 
   const renderTimeCell = (game: GameNode) => {
     const isEditingTime = editingGameId === game.id && editingField === 'time';
@@ -750,14 +792,17 @@ const GameTable: React.FC<GameTableProps> = memo(({
           const score = game.data.final_score ? `${game.data.final_score.home}:${game.data.final_score.away}` : (game.data.halftime_score ? `(${game.data.halftime_score.home}:${game.data.halftime_score.away})` : '--:--');
 
           return (
-            <tr 
-              key={game.id} 
-              id={`game-${game.id}`} 
-              onClick={() => handleRowClick(game.id)} 
+            <tr
+              key={game.id}
+              id={`game-${game.id}`}
+              onClick={() => handleRowClick(game.id)}
+              draggable={!readOnly}
+              onDragStart={(e) => handleGameDragStart(e, game)}
+              onDragEnd={handleGameDragEnd}
               className={`${isHighlighted ? 'element-highlighted' : ''} ${isSourceHighlighted ? 'source-highlighted' : ''} ${upstreamSourceMatchNames.has(game.data.standing) ? 'element-highlighted' : ''}`}
-              style={{ 
-                cursor: 'pointer', 
-                backgroundColor: selectedNodeId === game.id ? '#fff3cd' : undefined 
+              style={{
+                cursor: 'pointer',
+                backgroundColor: selectedNodeId === game.id ? '#fff3cd' : undefined
               }}
             >
               <td onClick={(e) => { e.stopPropagation(); onSelectNode(game.id); onHighlightElement(game.id, 'game'); }}>
@@ -815,7 +860,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
               </td>
               <td>
                 {readOnly ? (
-                  <button 
+                  <button
                     className="btn btn-sm btn-outline-success"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -829,13 +874,62 @@ const GameTable: React.FC<GameTableProps> = memo(({
                     <span>{t('ui:button.result')}</span>
                   </button>
                 ) : (
-                  <button 
-                    className="btn btn-sm btn-outline-danger btn-adaptive" 
-                    onClick={(e) => handleDelete(e, game.id)}
-                    title={t('ui:tooltip.deleteGame')}
-                  >
-                    <i className={`bi ${ICONS.DELETE}`} />
-                  </button>
+                  <div className="d-flex align-items-center gap-1">
+                    {onMoveGame && (
+                      <Dropdown
+                        align="end"
+                        onClick={(e) => e.stopPropagation()}
+                        data-testid={`move-dropdown-${game.id}`}
+                      >
+                        <Dropdown.Toggle
+                          variant="link"
+                          size="sm"
+                          className="p-0 text-muted"
+                          disabled={getMoveTargetsForGame(game).length === 0}
+                          title={
+                            getMoveTargetsForGame(game).length === 0
+                              ? t('ui:message.noMoveTargets')
+                              : t('ui:tooltip.moveGame')
+                          }
+                          data-testid={`move-game-${game.id}`}
+                        >
+                          <i className="bi bi-box-arrow-in-right" />
+                        </Dropdown.Toggle>
+                        {/* Portal the menu to <body> so it overlays instead of
+                            being cropped by scroll containers (e.g. the field
+                            card body), same approach as the react-selects. */}
+                        {createPortal(
+                          <Dropdown.Menu>
+                            {getMoveTargetsForGame(game).map((entry) => (
+                              <React.Fragment key={entry.field.id}>
+                                <Dropdown.Header>{entry.field.data.name}</Dropdown.Header>
+                                {entry.stages.map((targetStage) => (
+                                  <Dropdown.Item
+                                    key={targetStage.id}
+                                    data-testid={`move-target-${targetStage.id}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onMoveGame(game.id, targetStage.id);
+                                    }}
+                                  >
+                                    {targetStage.data.name}
+                                  </Dropdown.Item>
+                                ))}
+                              </React.Fragment>
+                            ))}
+                          </Dropdown.Menu>,
+                          document.body
+                        )}
+                      </Dropdown>
+                    )}
+                    <button
+                      className="btn btn-sm btn-outline-danger btn-adaptive"
+                      onClick={(e) => handleDelete(e, game.id)}
+                      title={t('ui:tooltip.deleteGame')}
+                    >
+                      <i className={`bi ${ICONS.DELETE}`} />
+                    </button>
+                  </div>
                 )}
               </td>
             </tr>
