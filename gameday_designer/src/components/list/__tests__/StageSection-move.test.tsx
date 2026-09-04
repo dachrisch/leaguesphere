@@ -7,10 +7,12 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import StageSection from '../StageSection';
 import { GamedayProvider } from '../../../context/GamedayContext';
 import i18n from '../../../i18n/testConfig';
+import { setDraggedGameSourceStageId } from '../../../utils/dragState';
 import type {
   StageNode,
   FlowNode,
@@ -68,6 +70,7 @@ describe('StageSection - move game drop target', () => {
     mockOnDynamicReferenceClick = vi.fn();
     mockOnNotify = vi.fn();
     mockOnMoveGame = vi.fn();
+    setDraggedGameSourceStageId(null);
   });
 
   const renderSection = (props = {}) => {
@@ -186,5 +189,40 @@ describe('StageSection - move game drop target', () => {
       dataTransfer: { getData: vi.fn(() => 'game-1') },
     });
     expect(target.className).not.toContain('stage-drop-target');
+  });
+
+  it('does not highlight a stage when the dragged game already belongs to it', () => {
+    // dataTransfer payload isn't readable on dragenter/dragover in real
+    // browsers, so drag source tracking goes through dragState instead.
+    setDraggedGameSourceStageId('stage-1');
+    renderSection();
+    const target = getDropTarget();
+
+    fireEvent.dragEnter(target, {
+      dataTransfer: { getData: vi.fn(() => '') },
+    });
+    expect(target.className).not.toContain('stage-drop-target');
+  });
+
+  it('does not prevent default on dragOver when hovering the game\'s own stage', () => {
+    setDraggedGameSourceStageId('stage-1');
+    renderSection();
+    const target = getDropTarget();
+
+    const canceled = fireEvent.dragOver(target, {
+      dataTransfer: { dropEffect: null, getData: vi.fn(() => '') },
+    });
+    expect(canceled).toBe(true);
+  });
+
+  it('renders a reachable move dropdown for games in this stage (regression: onMoveGame must reach GameTable)', async () => {
+    const user = userEvent.setup();
+    const gameInStage1 = createGameNodeInStage('game-inside', 'stage-1', { standing: 'X1' });
+    renderSection({ allNodes: [...allNodes, gameInStage1] });
+
+    await user.click(screen.getByTestId('move-game-game-inside'));
+    await user.click(screen.getByTestId('move-target-stage-2'));
+
+    expect(mockOnMoveGame).toHaveBeenCalledWith('game-inside', 'stage-2');
   });
 });
