@@ -446,6 +446,31 @@ export function useDesignerController(
     []
   );
 
+  const handleMoveGame = useCallback(
+    (gameId: string, targetStageId: string) => {
+      const fs = flowStateRef.current;
+      if (!fs) return;
+
+      const success = fs.moveNodeToStage(gameId, targetStageId);
+      if (success) {
+        const targetStage = fs.nodes.find(
+          (n) => n.id === targetStageId && n.type === 'stage'
+        );
+        const stageName = targetStage && targetStage.type === 'stage' ? targetStage.data.name : '';
+        addNotification(`Game moved to "${stageName}"`, 'success', 'Move Game');
+
+        trackEvent('game_moved', {
+          gameday_id: gamedayId,
+          game_id: gameId,
+          target_stage_id: targetStageId,
+        });
+      } else {
+        addNotification('Cannot move game to the selected stage', 'warning', 'Move Game');
+      }
+    },
+    [addNotification, gamedayId]
+  );
+
   const canExport = useMemo(() => {
     return (flowState?.nodes || []).some((n) => n.type === 'game') && getFieldNodes(flowState?.nodes || []).length > 0;
   }, [flowState?.nodes]);
@@ -515,6 +540,7 @@ export function useDesignerController(
       flowStateRef.current?.addGlobalTeam(team.text, groupId, team.id);
     },
     handleSwapTeams,
+    handleMoveGame,
     handleDeleteNode: (id: string) => flowStateRef.current?.deleteNode(id),
     handleSelectNode: (id: string | null) => flowStateRef.current?.selectNode(id),
     handleGenerateTournament,
@@ -556,7 +582,7 @@ export function useDesignerController(
   }), [
     loadData, saveData, expandField, expandStage, handleHighlightElement,
     handleDynamicReferenceClick, handleImport, handleExport, handleSaveTemplate,
-    handleSwapTeams, handleGenerateTournament, showTournamentModal,
+    handleSwapTeams, handleMoveGame, handleGenerateTournament, showTournamentModal,
     dismissNotification, addNotification, onMetadataHighlight, handleUpdateNode, gamedayId
   ]);
 

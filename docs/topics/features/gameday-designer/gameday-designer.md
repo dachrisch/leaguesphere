@@ -1,5 +1,8 @@
 This feature is a designer frontend for existing gameday creation logic based in json
 
+# Related
+- [Moving games between stages and fields](gameday-designer-move-games.md)
+
 # Reference 
 [schedule_manager.py](../gamedays/management/schedule_manager.py)
 [schedule_update.py](../gamedays/management/schedule_update.py)
