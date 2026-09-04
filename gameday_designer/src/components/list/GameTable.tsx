@@ -20,6 +20,7 @@ import type {
   HighlightedElement
 } from '../../types/flowchart';
 import { isGameNode, isStageNode, getFieldNodes } from '../../types/flowchart';
+import { setDraggedGameSourceStageId } from '../../utils/dragState';
 import { isWinnerReference, isLoserReference, isRankReference } from '../../types/designer';
 import type { TeamReference, WinnerReference, LoserReference } from '../../types/designer';
 import { findSourceGameForReference, findSourceStageForReference, getGamePath, getEligibleSourceGames as computeEligibleSourceGames } from '../../utils/edgeAnalysis';
@@ -490,9 +491,14 @@ const GameTable: React.FC<GameTableProps> = memo(({
       if (readOnly) return;
       e.dataTransfer?.setData('text/plain', game.id);
       if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+      setDraggedGameSourceStageId(game.parentId ?? null);
     },
     [readOnly]
   );
+
+  const handleGameDragEnd = useCallback(() => {
+    setDraggedGameSourceStageId(null);
+  }, []);
 
   const renderTimeCell = (game: GameNode) => {
     const isEditingTime = editingGameId === game.id && editingField === 'time';
@@ -791,6 +797,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
               onClick={() => handleRowClick(game.id)}
               draggable={!readOnly}
               onDragStart={(e) => handleGameDragStart(e, game)}
+              onDragEnd={handleGameDragEnd}
               className={`${isHighlighted ? 'element-highlighted' : ''} ${isSourceHighlighted ? 'source-highlighted' : ''} ${upstreamSourceMatchNames.has(game.data.standing) ? 'element-highlighted' : ''}`}
               style={{
                 cursor: 'pointer',

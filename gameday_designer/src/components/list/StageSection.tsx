@@ -19,6 +19,7 @@ import type {
 } from '../../types/flowchart';
 import { isGameNode } from '../../types/flowchart';
 import { ICONS } from '../../utils/iconConstants';
+import { getDraggedGameSourceStageId } from '../../utils/dragState';
 import './StageSection.css';
 
 export interface StageSectionProps {
@@ -181,19 +182,21 @@ const StageSection: React.FC<StageSectionProps> = memo(({
   const handleDragEnter = useCallback(
     (e: React.DragEvent) => {
       if (!canAcceptDrop) return;
+      if (getDraggedGameSourceStageId() === stage.id) return;
       e.preventDefault();
       setIsDragOver(true);
     },
-    [canAcceptDrop]
+    [canAcceptDrop, stage.id]
   );
 
   const handleDragOver = useCallback(
     (e: React.DragEvent) => {
       if (!canAcceptDrop) return;
+      if (getDraggedGameSourceStageId() === stage.id) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
     },
-    [canAcceptDrop]
+    [canAcceptDrop, stage.id]
   );
 
   const handleDragLeave = useCallback(() => {
@@ -412,6 +415,7 @@ const StageSection: React.FC<StageSectionProps> = memo(({
 
                   onDynamicReferenceClick={onDynamicReferenceClick}
                   onNotify={onNotify}
+                  onMoveGame={onMoveGame}
                   readOnly={readOnly}
                 />
               </>
