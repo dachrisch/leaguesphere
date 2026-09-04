@@ -56,8 +56,14 @@ if ! command -v gh &> /dev/null; then
     exit 1
 fi
 
-echo "Triggering $ENVIRONMENT deploy (bump: $BUMP_TYPE) on branch $(git rev-parse --abbrev-ref HEAD)..."
-gh workflow run deploy.yaml -f environment="$ENVIRONMENT" -f bump_type="$BUMP_TYPE"
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+if [[ "$BRANCH" == "HEAD" ]]; then
+    echo "Error: not on a branch (detached HEAD). Check out the branch you want to deploy."
+    exit 1
+fi
+
+echo "Triggering $ENVIRONMENT deploy (bump: $BUMP_TYPE) on branch $BRANCH..."
+gh workflow run deploy.yaml --ref "$BRANCH" -f environment="$ENVIRONMENT" -f bump_type="$BUMP_TYPE"
 
 echo ""
 echo "Workflow triggered. Track progress at:"
