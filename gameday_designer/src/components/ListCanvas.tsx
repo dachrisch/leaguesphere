@@ -53,6 +53,7 @@ export interface ListCanvasProps {
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
   onNotify?: (message: string, type: import('../types/designer').NotificationType, title?: string) => void;
+  onMoveGame?: (gameId: string, targetStageId: string) => void;
   onAutoAssignOfficials?: () => void;
   isAutoAssigning?: boolean;
   onAddOfficials?: () => void;
@@ -109,6 +110,7 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
     highlightedSourceGameId,
     onDynamicReferenceClick,
     onNotify,
+    onMoveGame,
     onAutoAssignOfficials,
     isAutoAssigning = false,
     onAddOfficials,
@@ -290,6 +292,7 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
                     highlightedSourceGameId={highlightedSourceGameId}
                     onDynamicReferenceClick={onDynamicReferenceClick}
                     onNotify={onNotify}
+                    onMoveGame={onMoveGame}
                     readOnly={readOnly}
                   />
                 ))}
