@@ -155,6 +155,7 @@
     "noStagesYet": "Noch keine Phasen",
     "noGamesYet": "Noch keine Spiele",
     "noGamesInStage": "Keine Spiele in dieser Phase",
+    "noMoveTargets": "Keine anderen Phasen vorhanden, in die dieses Spiel verschoben werden kann.",
     "noFieldsYet": "Noch keine Felder",
     "noGroupsYet": "Noch keine Gruppen",
     "createFirstField": "Klicken Sie auf \"Feld hinzufügen\" in der Toolbar, um Ihr erstes Spielfeld zu erstellen.",
@@ -264,7 +265,9 @@
     "manualTimeHint": "Manuell gesetzt - Klicken zum Bearbeiten",
     "renameField": "Feld umbenennen",
     "duplicate": "Duplizieren",
-    "replayTour": "Onboarding-Tour wiederholen"
+    "replayTour": "Onboarding-Tour wiederholen",
+    "moveGame": "Dieses Spiel in eine andere Phase oder auf ein anderes Feld verschieben (Drag & Drop oder Menü)",
+    "dropToMove": "Hier ablegen, um ein Spiel in diese Phase zu verschieben"
   },
   "notification": {
     "gameResultSaved": "Spielergebnis gespeichert",

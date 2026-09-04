@@ -155,6 +155,7 @@
     "noStagesYet": "No stages yet",
     "noGamesYet": "No games yet",
     "noGamesInStage": "No games in this stage",
+    "noMoveTargets": "No other stages available to move this game to.",
     "noFieldsYet": "No fields defined. Add a field above.",
     "noGroupsYet": "No groups yet",
     "createFirstField": "Click \"Add Field\" in the toolbar to create your first playing field.",
@@ -264,7 +265,9 @@
     "manualTimeHint": "Manually set - click to edit",
     "renameField": "Rename field",
     "duplicate": "Duplicate",
-    "replayTour": "Replay onboarding tour"
+    "replayTour": "Replay onboarding tour",
+    "moveGame": "Move this game to another stage or field (drag & drop or menu)",
+    "dropToMove": "Drop to move a game into this stage"
   },
   "notification": {
     "gameResultSaved": "Game result saved",
