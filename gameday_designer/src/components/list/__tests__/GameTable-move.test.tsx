@@ -128,6 +128,19 @@ describe('GameTable - move game', () => {
     expect(mockOnMoveGame).toHaveBeenCalledWith('game-1', 'stage-3');
   });
 
+  it('renders the menu into document.body so it overlays clipped containers', async () => {
+    const user = userEvent.setup();
+    const { container } = renderTable();
+
+    await user.click(screen.getByTestId('move-game-game-1'));
+
+    const menu = screen.getByTestId('move-target-stage-2').closest('.dropdown-menu');
+    expect(menu).not.toBeNull();
+    // Portaled to <body>, NOT nested inside the table/field card
+    expect(menu!.parentElement).toBe(document.body);
+    expect(container.querySelector('.dropdown-menu')).toBeNull();
+  });
+
   it('disables the move button when there are no other stages', () => {
     renderTable({ allNodes: [field1, stage1, game1] });
     expect(screen.getByTestId('move-game-game-1')).toBeDisabled();

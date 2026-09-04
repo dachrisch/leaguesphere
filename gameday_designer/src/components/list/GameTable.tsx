@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useCallback, memo, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Table, Form, Button, Dropdown } from 'react-bootstrap';
 import Select, { components, StylesConfig, GroupBase, OptionProps, SingleValueProps } from 'react-select';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
@@ -894,25 +895,31 @@ const GameTable: React.FC<GameTableProps> = memo(({
                         >
                           <i className="bi bi-box-arrow-in-right" />
                         </Dropdown.Toggle>
-                        <Dropdown.Menu>
-                          {getMoveTargetsForGame(game).map((entry) => (
-                            <React.Fragment key={entry.field.id}>
-                              <Dropdown.Header>{entry.field.data.name}</Dropdown.Header>
-                              {entry.stages.map((targetStage) => (
-                                <Dropdown.Item
-                                  key={targetStage.id}
-                                  data-testid={`move-target-${targetStage.id}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onMoveGame(game.id, targetStage.id);
-                                  }}
-                                >
-                                  {targetStage.data.name}
-                                </Dropdown.Item>
-                              ))}
-                            </React.Fragment>
-                          ))}
-                        </Dropdown.Menu>
+                        {/* Portal the menu to <body> so it overlays instead of
+                            being cropped by scroll containers (e.g. the field
+                            card body), same approach as the react-selects. */}
+                        {createPortal(
+                          <Dropdown.Menu>
+                            {getMoveTargetsForGame(game).map((entry) => (
+                              <React.Fragment key={entry.field.id}>
+                                <Dropdown.Header>{entry.field.data.name}</Dropdown.Header>
+                                {entry.stages.map((targetStage) => (
+                                  <Dropdown.Item
+                                    key={targetStage.id}
+                                    data-testid={`move-target-${targetStage.id}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onMoveGame(game.id, targetStage.id);
+                                    }}
+                                  >
+                                    {targetStage.data.name}
+                                  </Dropdown.Item>
+                                ))}
+                              </React.Fragment>
+                            ))}
+                          </Dropdown.Menu>,
+                          document.body
+                        )}
                       </Dropdown>
                     )}
                     <button
