@@ -145,3 +145,31 @@ class TestGetTeamOfficiatedGames(TestCase):
         games = get_team_officiated_games(team.pk, 2027, REPORT_TABLE_RENDER_CONFIG)
 
         assert games == []
+
+    def test_query_count_scales_with_distinct_gamedays_not_o1(self):
+        # Documents the deliberate, accepted tradeoff described in this
+        # module's docstring: get_team_officiated_games() reuses
+        # MachtreportModelWrapper per distinct gameday the team officiated,
+        # so its query count grows with the number of distinct gamedays
+        # (not O(1)) - this pins that growth so it's visible/expected
+        # rather than an unnoticed regression.
+        team = TeamFactory(name="team-a")
+        gameday_one = GamedayFactory(date=date(2027, 5, 1))
+        gameinfo_one = GameinfoFactory(gameday=gameday_one, officials=team)
+        GameresultFactory(gameinfo=gameinfo_one, isHome=True)
+        GameresultFactory(gameinfo=gameinfo_one, isHome=False)
+
+        with self.assertNumQueries(11):
+            get_team_officiated_games(team.pk, 2027, REPORT_TABLE_RENDER_CONFIG)
+
+        gameday_two = GamedayFactory(
+            date=date(2027, 5, 8),
+            league=gameday_one.league,
+            season=gameday_one.season,
+        )
+        gameinfo_two = GameinfoFactory(gameday=gameday_two, officials=team)
+        GameresultFactory(gameinfo=gameinfo_two, isHome=True)
+        GameresultFactory(gameinfo=gameinfo_two, isHome=False)
+
+        with self.assertNumQueries(17):
+            get_team_officiated_games(team.pk, 2027, REPORT_TABLE_RENDER_CONFIG)

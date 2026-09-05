@@ -1,4 +1,5 @@
 import re
+from collections import defaultdict
 from typing import Optional
 
 from django.db.models import Sum, Prefetch, Q
@@ -7,7 +8,7 @@ from django.db.models.functions import Coalesce
 from gamedays.models import GameOfficial
 from gamedays.service.team_repository_service import TeamRepositoryService
 from officials.api.serializers import OfficialGameCountSerializer
-from officials.models import Official, OfficialExternalGames
+from officials.models import Official, OfficialExternalGames, OfficialLicenseHistory
 from officials.service.game_official_entries import (
     InternalGameOfficialEntry,
     ExternalGameOfficialEntry,
@@ -40,6 +41,30 @@ def license_rank(license_name) -> Optional[int]:
     if not match:
         return None
     return LICENSE_LEVELS.index(match.group(1))
+
+
+def bulk_history_by_official(official_ids) -> dict:
+    """For each of the given official ids, resolves their full recognized
+    (F1-F4) license history as a list of (created_at, rank) tuples - the
+    shared shape officials_compliance_service.best_valid_rank() consumes to
+    pick the best currently-valid one. One query regardless of how many
+    official ids are passed in. Shared by
+    officials_compliance_service.compute_gameday_officials_compliance() and
+    game_official_licenses.resolve_game_official_licenses() so the two
+    can't independently drift on which history rows count."""
+    history_by_official = defaultdict(list)
+    if not official_ids:
+        return history_by_official
+
+    histories = OfficialLicenseHistory.objects.filter(
+        official_id__in=official_ids
+    ).values("official_id", "license__name", "created_at")
+    for h in histories:
+        rank = license_rank(h["license__name"])
+        if rank is None:
+            continue
+        history_by_official[h["official_id"]].append((h["created_at"], rank))
+    return history_by_official
 
 
 class OfficialService:

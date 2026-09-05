@@ -158,6 +158,22 @@ class TestOfficiatedGamesSection(TestCase):
         assert [game["gameinfo_id"] for game in games] == [gameinfo.id]
         assert "Geleitete Spiele" in response.content.decode()
 
+    def test_query_count_is_not_paid_when_section_is_hidden(self):
+        team, _ = self._team_with_officiated_game()
+        url = reverse(
+            OFFICIALS_LIST_FOR_TEAM_AND_YEAR,
+            kwargs={"pk": team.pk, "season": 2027},
+        )
+        # Warm request-path caches so the query count is not order-dependent
+        # under parallel (xdist) runs.
+        self.client.get(url)
+
+        with self.assertNumQueries(5):
+            response = self.client.get(url)
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.context["show_officiated_games"] is False
+
     def test_excludes_games_officiated_by_a_different_team(self):
         team, gameinfo = self._team_with_officiated_game()
         other_team = TeamFactory(name="other-team")

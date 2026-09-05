@@ -44,7 +44,13 @@ CSV_HEADER = [
 ]
 
 
-def build_gameday_list_csv(gamedays) -> str:
+def build_gameday_list_csv(gamedays, compliance_by_gameday=None) -> str:
+    """`compliance_by_gameday` lets a caller that already computed
+    compute_gameday_officials_compliance() for these same gameday ids (e.g.
+    MatchreportGamedayListCsvDownloadView, which needs it upfront anyway to
+    apply the "only violations" filter) pass it straight through instead of
+    this function silently recomputing the same bulk query batch a second
+    time. Standalone callers/tests that don't have it yet may omit it."""
     gamedays = list(gamedays)
     gameday_ids = [gd.pk for gd in gamedays]
     gameday_name_by_id = {gd.pk: gd.name for gd in gamedays}
@@ -66,7 +72,8 @@ def build_gameday_list_csv(gamedays) -> str:
             "team__description"
         ]
 
-    compliance_by_gameday = compute_gameday_officials_compliance(gameday_ids)
+    if compliance_by_gameday is None:
+        compliance_by_gameday = compute_gameday_officials_compliance(gameday_ids)
     licenses_by_gameinfo = resolve_game_official_licenses(gameinfo_ids)
 
     output = io.StringIO()

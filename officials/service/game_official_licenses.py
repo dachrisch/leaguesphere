@@ -4,17 +4,17 @@ official assigned to each of the four refereed positions, per game.
 Used by matchreport's gameday-list CSV export
 (matchreport/service/gameday_list_csv_service.py). Reuses the same
 rank-resolution building blocks as officials_compliance_service.py
-(license_rank, best_valid_rank) rather than re-deriving them, so the three
-consumers (this module, the compliance check, and matchreport's referee
-table) can't independently drift on what counts as "currently valid".
+(bulk_history_by_official, best_valid_rank) rather than re-deriving them,
+so the three consumers (this module, the compliance check, and
+matchreport's referee table) can't independently drift on what counts as
+"currently valid".
 """
 
 from collections import defaultdict
 from typing import Dict, Iterable, Optional
 
 from gamedays.models import Gameinfo, GameOfficial
-from officials.models import OfficialLicenseHistory
-from officials.service.official_service import LICENSE_LEVELS, license_rank
+from officials.service.official_service import LICENSE_LEVELS, bulk_history_by_official
 from officials.service.officials_compliance_service import best_valid_rank
 
 POSITION_REFEREE = "Referee"
@@ -57,17 +57,7 @@ def resolve_game_official_licenses(
         .values("id", "gameinfo_id", "official_id", "position")
     )
     official_ids = {go["official_id"] for go in game_officials}
-
-    history_by_official = defaultdict(list)
-    if official_ids:
-        histories = OfficialLicenseHistory.objects.filter(
-            official_id__in=official_ids
-        ).values("official_id", "license__name", "created_at")
-        for h in histories:
-            rank = license_rank(h["license__name"])
-            if rank is None:
-                continue
-            history_by_official[h["official_id"]].append((h["created_at"], rank))
+    history_by_official = bulk_history_by_official(official_ids)
 
     result: Dict[int, Dict[str, Optional[str]]] = defaultdict(dict)
     for go in game_officials:

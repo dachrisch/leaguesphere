@@ -5,6 +5,8 @@ from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models.functions import ExtractYear
 from django.http import HttpResponseForbidden, HttpResponse
 from django.shortcuts import render, get_object_or_404
+from django.urls import reverse
+from django.utils.text import get_valid_filename
 from django.views import View
 from django.views.generic import (
     DetailView,
@@ -74,6 +76,18 @@ class MatchreportGamedayListView(UserPassesTestMixin, View):
             for gameday in gamedays
         ]
 
+        if league:
+            csv_download_url = reverse(
+                MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD_AND_LEAGUE,
+                kwargs={"season": year, "league": league},
+            )
+        else:
+            csv_download_url = reverse(
+                MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD, kwargs={"season": year}
+            )
+        if only_violations:
+            csv_download_url += "?only_violations=1"
+
         return render(
             request,
             self.template_name,
@@ -88,11 +102,7 @@ class MatchreportGamedayListView(UserPassesTestMixin, View):
                 "selected_league": league,
                 "season_year_pattern": MATCHREPORT_GAMEDAY_LIST_AND_YEAR,
                 "league_year_url_pattern": MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
-                "csv_download_url_pattern": (
-                    MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD_AND_LEAGUE
-                    if league
-                    else MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD
-                ),
+                "csv_download_url": csv_download_url,
                 "only_violations": only_violations,
             },
         )
@@ -190,11 +200,18 @@ class MatchreportGamedayPasscheckDownloadView(UserPassesTestMixin, View):
 class MatchreportGamedayListCsvDownloadView(UserPassesTestMixin, View):
     def get(self, request, season, league=None):
         only_violations = request.GET.get("only_violations") == "1"
-        gamedays, _ = _filtered_gamedays(season, league, only_violations)
+        gamedays, compliance_by_gameday = _filtered_gamedays(
+            season, league, only_violations
+        )
 
-        csv_body = "﻿" + build_gameday_list_csv(gamedays)
+        csv_body = "﻿" + build_gameday_list_csv(gamedays, compliance_by_gameday)
         response = HttpResponse(csv_body, content_type="text/csv; charset=utf-8")
-        filename = f"spielberichte_{season}" + (f"_{league}" if league else "")
+        # get_valid_filename strips characters (e.g. a literal '"') that
+        # would otherwise break out of the quoted Content-Disposition
+        # filename - `league` comes straight from the URL path segment.
+        filename = get_valid_filename(
+            f"spielberichte_{season}" + (f"_{league}" if league else "")
+        )
         response["Content-Disposition"] = f'attachment; filename="{filename}.csv"'
         return response
 

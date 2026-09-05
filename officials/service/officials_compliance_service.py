@@ -14,9 +14,8 @@ from typing import Iterable, Optional
 
 from gamedays.models import Gameday, Gameinfo, GameOfficial
 from league_table.models import LeagueSeasonConfig
-from officials.models import OfficialLicenseHistory
 from officials.service.license_validity import is_valid_on
-from officials.service.official_service import license_rank
+from officials.service.official_service import bulk_history_by_official
 
 REASON_NO_CONFIG = "Keine Konfiguration"
 REASON_DISABLED = "Automatische Prüfung deaktiviert"
@@ -184,16 +183,7 @@ def compute_gameday_officials_compliance(
     for go in game_officials:
         game_officials_by_gameinfo[go["gameinfo_id"]].append(go["official_id"])
 
-    history_by_official = defaultdict(list)
-    if official_ids:
-        histories = OfficialLicenseHistory.objects.filter(
-            official_id__in=official_ids
-        ).values("official_id", "license__name", "created_at")
-        for h in histories:
-            rank = license_rank(h["license__name"])
-            if rank is None:
-                continue
-            history_by_official[h["official_id"]].append((h["created_at"], rank))
+    history_by_official = bulk_history_by_official(official_ids)
 
     for gi in gameinfos:
         gameinfo_id, gd_id = gi["id"], gi["gameday_id"]

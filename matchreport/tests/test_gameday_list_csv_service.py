@@ -92,3 +92,21 @@ class TestBuildGamedayListCsv(TestCase):
         assert row["downjudge license"] == ""
         assert row["fieldjudge license"] == ""
         assert row["sidejudge license"] == ""
+
+    def test_query_count_stays_constant_for_multiple_gamedays(self):
+        gameday_one = GamedayFactory(date=date(2027, 5, 1))
+        GameinfoFactory(gameday=gameday_one)
+
+        with self.assertNumQueries(6):
+            build_gameday_list_csv([gameday_one])
+
+        gameday_two = GamedayFactory(
+            date=date(2027, 5, 8),
+            league=gameday_one.league,
+            season=gameday_one.season,
+        )
+        GameinfoFactory(gameday=gameday_two)
+        GameinfoFactory(gameday=gameday_two)
+
+        with self.assertNumQueries(6):
+            build_gameday_list_csv([gameday_one, gameday_two])
