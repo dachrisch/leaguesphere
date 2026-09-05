@@ -16,11 +16,9 @@ class LeagueSeasonConfigForm(forms.ModelForm):
                 season=self.instance.season, league=self.instance.league
             )
 
-    # No custom clean() for the table_mode/table_mode_top_n consistency rule:
-    # `LeagueSeasonConfig.clean()` already enforces it, and ModelForm's
-    # `_post_clean()` calls `instance.clean()` and maps its ValidationError
-    # onto the matching form field automatically — a form-level copy of the
-    # same check would just be a second place to keep in sync.
+    # `table_mode` is now a FK to a named `LeagueTableMode` preset — the
+    # "N required unless default mode" rule lives entirely on that model's
+    # own `clean()` (enforced via its own admin form), not here.
 
 
 class OverrideOfficialGamedaySettingForm(forms.ModelForm):

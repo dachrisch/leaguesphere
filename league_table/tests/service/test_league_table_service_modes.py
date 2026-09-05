@@ -7,10 +7,11 @@ from django.test import TestCase
 
 from gamedays.models import Gameday, Gameinfo, Gameresult, SeasonLeagueTeam
 from gamedays.tests.setup_factories.factories import GamedayFactory, TeamFactory
-from league_table.models import LeagueRulesetTieBreak, LeagueSeasonConfig
+from league_table.models import LeagueRulesetTieBreak, LeagueTableMode
 from league_table.service.league_table_service import LeagueTableService
 from league_table.tests.setup_factories.factories_leaguetable import (
     LeagueSeasonConfigFactory,
+    LeagueTableModeFactory,
     TieBreakStepFactory,
 )
 
@@ -45,8 +46,9 @@ def _configure_win_quotient_tiebreak(ruleset):
 class TopNGamedaysModeCapsDisplayedStandings(TestCase):
     def setUp(self):
         self.config = LeagueSeasonConfigFactory(
-            table_mode=LeagueSeasonConfig.TABLE_MODE_TOP_N_GAMEDAYS,
-            table_mode_top_n=2,
+            table_mode=LeagueTableModeFactory(
+                mode=LeagueTableMode.TABLE_MODE_TOP_N_GAMEDAYS, top_n=2
+            ),
         )
         _configure_win_quotient_tiebreak(self.config.ruleset)
         self.league, self.season = self.config.league, self.config.season
@@ -95,7 +97,7 @@ class TopNGamedaysModeCapsDisplayedStandings(TestCase):
             league=self.league,
             season=self.season,
             ruleset=self.config.ruleset,
-            table_mode=LeagueSeasonConfig.TABLE_MODE_DEFAULT,
+            table_mode=LeagueTableModeFactory(mode=LeagueTableMode.TABLE_MODE_DEFAULT),
         )
         default_config.leagues_for_league_points.add(self.league)
 
@@ -109,8 +111,9 @@ class TopNGamedaysModeCapsDisplayedStandings(TestCase):
 class TopNGamesModeCapsDisplayedStandings(TestCase):
     def setUp(self):
         self.config = LeagueSeasonConfigFactory(
-            table_mode=LeagueSeasonConfig.TABLE_MODE_TOP_N_GAMES,
-            table_mode_top_n=1,
+            table_mode=LeagueTableModeFactory(
+                mode=LeagueTableMode.TABLE_MODE_TOP_N_GAMES, top_n=1
+            ),
         )
         _configure_win_quotient_tiebreak(self.config.ruleset)
         self.league, self.season = self.config.league, self.config.season
@@ -152,8 +155,9 @@ class TieBreakUsesUncappedGamesEvenInTopNMode(TestCase):
 
     def setUp(self):
         self.config = LeagueSeasonConfigFactory(
-            table_mode=LeagueSeasonConfig.TABLE_MODE_TOP_N_GAMEDAYS,
-            table_mode_top_n=1,
+            table_mode=LeagueTableModeFactory(
+                mode=LeagueTableMode.TABLE_MODE_TOP_N_GAMEDAYS, top_n=1
+            ),
         )
         self.league, self.season = self.config.league, self.config.season
         self.config.leagues_for_league_points.add(self.league)

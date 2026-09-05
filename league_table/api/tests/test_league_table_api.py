@@ -14,9 +14,10 @@ from league_table.api.constants import (
     API_LEAGUE_TABLE_BY_LEAGUE,
     API_LEAGUE_TABLE_BY_SEASON,
 )
-from league_table.models import LeagueRulesetTieBreak, LeagueSeasonConfig
+from league_table.models import LeagueRulesetTieBreak, LeagueTableMode
 from league_table.tests.setup_factories.factories_leaguetable import (
     LeagueSeasonConfigFactory,
+    LeagueTableModeFactory,
     TieBreakStepFactory,
 )
 
@@ -173,8 +174,9 @@ class TestLeagueTableApiEtag(LeagueTableApiTestBase):
         values (issue #1926) even though no Gameresult row is touched, so the
         etag must react to it too (see league_table/api/etag.py)."""
         etag = self.client.get(self.url_season)["ETag"]
-        self.config.table_mode = LeagueSeasonConfig.TABLE_MODE_TOP_N_GAMEDAYS
-        self.config.table_mode_top_n = 1
+        self.config.table_mode = LeagueTableModeFactory(
+            mode=LeagueTableMode.TABLE_MODE_TOP_N_GAMEDAYS, top_n=1
+        )
         self.config.save()
         response = self.client.get(self.url_season, HTTP_IF_NONE_MATCH=etag)
         self.assertEqual(response.status_code, 200)

@@ -129,7 +129,11 @@ class LeagueRulesetTieBreak(models.Model):
         return f"{self.ruleset.name}: {self.order} - {self.step.label} ({self.get_sort_order_display()})"
 
 
-class LeagueSeasonConfig(models.Model):
+class LeagueTableMode(models.Model):
+    """A named, reusable table-mode preset (mirrors `LeagueRuleset`) — define
+    e.g. "Top 3 Spieltage" once and select it from any number of
+    `LeagueSeasonConfig` rows."""
+
     TABLE_MODE_DEFAULT = "default"
     TABLE_MODE_TOP_N_GAMEDAYS = "top_n_gamedays"
     TABLE_MODE_TOP_N_GAMES = "top_n_games"
@@ -140,6 +144,36 @@ class LeagueSeasonConfig(models.Model):
         (TABLE_MODE_TOP_N_GAMES, "Top N Spiele je Team"),
     ]
 
+    name = models.CharField(max_length=50, unique=True)
+    mode = models.CharField(
+        max_length=20,
+        choices=TABLE_MODE_CHOICES,
+        default=TABLE_MODE_DEFAULT,
+        help_text="Wie die Tabelle berechnet wird. Standard berücksichtigt alle "
+        "(nicht ausgeschlossenen) Spieltage, wie bisher.",
+    )
+    top_n = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="Nur relevant, wenn mode ungleich Standard ist: Anzahl der "
+        "besten Spieltage/Spiele je Team.",
+    )
+
+    def clean(self):
+        super().clean()
+        if self.mode != self.TABLE_MODE_DEFAULT and not self.top_n:
+            raise ValidationError(
+                {
+                    "top_n": "Für diesen Tabellenmodus muss die Anzahl "
+                    "(N) gesetzt werden."
+                }
+            )
+
+    def __str__(self):
+        return self.name
+
+
+class LeagueSeasonConfig(models.Model):
     league = models.ForeignKey(
         League, on_delete=models.CASCADE, related_name="config_league"
     )
@@ -153,18 +187,12 @@ class LeagueSeasonConfig(models.Model):
         blank=True,
     )
 
-    table_mode = models.CharField(
-        max_length=20,
-        choices=TABLE_MODE_CHOICES,
-        default=TABLE_MODE_DEFAULT,
-        help_text="Wie die Tabelle berechnet wird. Standard berücksichtigt alle "
-        "(nicht ausgeschlossenen) Spieltage, wie bisher.",
-    )
-    table_mode_top_n = models.PositiveSmallIntegerField(
+    table_mode = models.ForeignKey(
+        LeagueTableMode,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        help_text="Nur relevant, wenn table_mode ungleich Standard ist: Anzahl der "
-        "besten Spieltage/Spiele je Team.",
+        help_text="Kein Eintrag = Standard (alle Spieltage zählen), wie bisher.",
     )
 
     updated_at = models.DateTimeField(auto_now=True)
@@ -241,15 +269,15 @@ class LeagueSeasonConfig(models.Model):
     def get_excluded_gameday_ids(self):
         return list(self.exclude_gamedays.values_list("id", flat=True))
 
-    def clean(self):
-        super().clean()
-        if self.table_mode != self.TABLE_MODE_DEFAULT and not self.table_mode_top_n:
-            raise ValidationError(
-                {
-                    "table_mode_top_n": "Für diesen Tabellenmodus muss die Anzahl "
-                    "(N) gesetzt werden."
-                }
-            )
+    def get_table_mode(self):
+        if self.table_mode_id is None:
+            return LeagueTableMode.TABLE_MODE_DEFAULT
+        return self.table_mode.mode
+
+    def get_table_mode_top_n(self):
+        if self.table_mode_id is None:
+            return None
+        return self.table_mode.top_n
 
     def __str__(self):
         return f"{self.league.name} - {self.season.name} -> {self.ruleset.name if self.ruleset else 'Keine Konfiguration'}"

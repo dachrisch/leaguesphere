@@ -9,7 +9,7 @@ from gamedays.service.gameday_settings import (
     SCHEDULED,
     TEAM_ID,
 )
-from league_table.models import LeagueSeasonConfig
+from league_table.models import LeagueTableMode
 from league_table.service.ranking.capping import (
     UNITS_COUNTED,
     UNITS_TOTAL,
@@ -50,7 +50,7 @@ class TestGameCappingEngineDefaultMode:
         games_df = pd.DataFrame([_game_row(1, 1, 1, pf=20, pa=10, date="2026-01-01")])
 
         capped, summary = GameCappingEngine(
-            LeagueSeasonConfig.TABLE_MODE_DEFAULT, None
+            LeagueTableMode.TABLE_MODE_DEFAULT, None
         ).cap(games_df)
 
         pd.testing.assert_frame_equal(capped, games_df)
@@ -59,7 +59,7 @@ class TestGameCappingEngineDefaultMode:
 
 class TestGameCappingEngineTopNGamedays:
     def _engine(self, top_n):
-        return GameCappingEngine(LeagueSeasonConfig.TABLE_MODE_TOP_N_GAMEDAYS, top_n)
+        return GameCappingEngine(LeagueTableMode.TABLE_MODE_TOP_N_GAMEDAYS, top_n)
 
     def test_team_with_fewer_gamedays_than_n_is_unchanged(self):
         games_df = pd.DataFrame(
@@ -140,7 +140,7 @@ class TestGameCappingEngineTopNGamedays:
 
 class TestGameCappingEngineTopNGames:
     def _engine(self, top_n):
-        return GameCappingEngine(LeagueSeasonConfig.TABLE_MODE_TOP_N_GAMES, top_n)
+        return GameCappingEngine(LeagueTableMode.TABLE_MODE_TOP_N_GAMES, top_n)
 
     def test_team_with_fewer_games_than_n_is_unchanged(self):
         games_df = pd.DataFrame([_game_row(1, 1, 1, pf=20, pa=10, date="2026-01-01")])
@@ -188,7 +188,7 @@ class TestGameCappingEngineEdgeCases:
         )
 
         capped, summary = GameCappingEngine(
-            LeagueSeasonConfig.TABLE_MODE_TOP_N_GAMEDAYS, 2
+            LeagueTableMode.TABLE_MODE_TOP_N_GAMEDAYS, 2
         ).cap(games_df)
 
         assert capped.empty

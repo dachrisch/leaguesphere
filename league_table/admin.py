@@ -8,6 +8,7 @@ from league_table.models import (
     LeagueGroup,
     LeagueRuleset,
     LeagueSeasonConfig,
+    LeagueTableMode,
     TeamPointAdjustments,
     LeagueRulesetTieBreak,
     TieBreakStep,
@@ -28,6 +29,11 @@ class LeagueRulesetTieBreakInline(admin.TabularInline):
 @admin.register(LeagueRuleset)
 class LeagueRulesetAdmin(admin.ModelAdmin):
     inlines = [LeagueRulesetTieBreakInline]
+
+
+@admin.register(LeagueTableMode)
+class LeagueTableModeAdmin(admin.ModelAdmin):
+    list_display = ("name", "mode", "top_n")
 
 
 @admin.register(OverrideOfficialGamedaySetting)

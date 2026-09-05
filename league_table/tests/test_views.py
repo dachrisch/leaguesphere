@@ -21,10 +21,11 @@ from gamedays.tests.setup_factories.factories import (
 )
 from gamedays.wizard import FIELD_GROUP_STEP
 from league_table.constants import LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE
-from league_table.models import LeagueRulesetTieBreak, LeagueSeasonConfig
+from league_table.models import LeagueRulesetTieBreak, LeagueTableMode
 from league_table.tests.setup_factories.factories_leaguetable import (
     LeagueGroupFactory,
     LeagueSeasonConfigFactory,
+    LeagueTableModeFactory,
     TieBreakStepFactory,
 )
 
@@ -101,15 +102,15 @@ class TestLeagueTableViewModeExplanation(WebTest):
         )
 
         assert (
-            response.context["current_table_mode"]
-            == LeagueSeasonConfig.TABLE_MODE_DEFAULT
+            response.context["current_table_mode"] == LeagueTableMode.TABLE_MODE_DEFAULT
         )
         assert "alert-info" not in response.text
 
     def test_explanation_box_shown_for_top_n_gamedays_mode(self):
         config = self._setup_league_with_one_game(
-            table_mode=LeagueSeasonConfig.TABLE_MODE_TOP_N_GAMEDAYS,
-            table_mode_top_n=3,
+            table_mode=LeagueTableModeFactory(
+                mode=LeagueTableMode.TABLE_MODE_TOP_N_GAMEDAYS, top_n=3
+            ),
         )
 
         response = self.app.get(
@@ -121,7 +122,7 @@ class TestLeagueTableViewModeExplanation(WebTest):
 
         assert (
             response.context["current_table_mode"]
-            == LeagueSeasonConfig.TABLE_MODE_TOP_N_GAMEDAYS
+            == LeagueTableMode.TABLE_MODE_TOP_N_GAMEDAYS
         )
         assert response.context["current_table_mode_top_n"] == 3
         assert "alert-info" in response.text

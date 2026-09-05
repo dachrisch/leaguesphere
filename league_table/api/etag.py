@@ -20,9 +20,9 @@ def generate_etag(request, league=None, season=None):
     `exclude_gamedays`, or switching `table_mode`/`table_mode_top_n` (issue
     #1926) — also bust the cached response instead of risking a stale 304.
     """
-    configs = LeagueSeasonConfig.objects.select_related("league", "season").filter(
-        league__slug=league
-    )
+    configs = LeagueSeasonConfig.objects.select_related(
+        "league", "season", "table_mode"
+    ).filter(league__slug=league)
     if season is None:
         config = configs.order_by("season__pk").last()
     else:
@@ -48,8 +48,8 @@ def generate_etag(request, league=None, season=None):
     return build_etag(
         config.pk,
         config.updated_at.isoformat(),
-        config.table_mode,
-        config.table_mode_top_n,
+        config.get_table_mode(),
+        config.get_table_mode_top_n(),
         results["latest"],
         results["sum_fh"],
         results["sum_sh"],

@@ -1,6 +1,6 @@
 import random
 
-from factory import SubFactory, LazyAttribute, post_generation
+from factory import SubFactory, LazyAttribute, Sequence, post_generation
 from factory.django import DjangoModelFactory
 
 from gamedays.tests.setup_factories.factories import (
@@ -13,6 +13,7 @@ from league_table.models import (
     LeagueGroup,
     LeagueRuleset,
     LeagueSeasonConfig,
+    LeagueTableMode,
     TeamPointAdjustments,
     TieBreakStep,
 )
@@ -32,6 +33,14 @@ class LeagueRulesetFactory(DjangoModelFactory):
         model = LeagueRuleset
 
     name = "Default RuleSet"
+
+
+class LeagueTableModeFactory(DjangoModelFactory):
+    class Meta:
+        model = LeagueTableMode
+
+    name = Sequence(lambda n: f"Table Mode {n}")
+    mode = LeagueTableMode.TABLE_MODE_DEFAULT
 
 
 class TieBreakStepFactory(DjangoModelFactory):

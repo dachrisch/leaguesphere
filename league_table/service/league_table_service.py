@@ -5,7 +5,7 @@ from django.db.models import QuerySet, F
 
 from gamedays.models import Gameresult, SeasonLeagueTeam
 from gamedays.service.gameday_settings import GAMEDAY_DATE, GAMEDAY_ID, SCHEDULED
-from league_table.models import LeagueSeasonConfig
+from league_table.models import LeagueSeasonConfig, LeagueTableMode
 from league_table.service.datatypes import LeagueConfig
 from league_table.service.leaguetable_repository import LeagueTableRepository
 from league_table.service.ranking.capping import GameCappingEngine
@@ -249,10 +249,10 @@ class LeagueTableService:
 
     def get_table_mode(self):
         if self.league_season_config is None:
-            return LeagueSeasonConfig.TABLE_MODE_DEFAULT
-        return self.league_season_config.table_mode
+            return LeagueTableMode.TABLE_MODE_DEFAULT
+        return self.league_season_config.get_table_mode()
 
     def get_table_mode_top_n(self):
         if self.league_season_config is None:
             return None
-        return self.league_season_config.table_mode_top_n
+        return self.league_season_config.get_table_mode_top_n()

@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Any
 
 from gamedays.models import GamedayDesignerState
-from league_table.models import LeagueSeasonConfig, LeagueRuleset
+from league_table.models import LeagueSeasonConfig, LeagueRuleset, LeagueTableMode
 
 
 @dataclass
@@ -76,7 +76,7 @@ class LeagueConfig:
     leagues_for_league_points_ids: list[int]
     group_by_leagues: bool
     collapse_standing_to_league: bool = False
-    table_mode: str = LeagueSeasonConfig.TABLE_MODE_DEFAULT
+    table_mode: str = LeagueTableMode.TABLE_MODE_DEFAULT
     table_mode_top_n: int | None = None
 
     @classmethod
@@ -94,8 +94,8 @@ class LeagueConfig:
             collapse_standing_to_league=cls._has_designer_gameday(
                 league_season_config, excluded_gameday_ids
             ),
-            table_mode=league_season_config.table_mode,
-            table_mode_top_n=league_season_config.table_mode_top_n,
+            table_mode=league_season_config.get_table_mode(),
+            table_mode_top_n=league_season_config.get_table_mode_top_n(),
         )
 
     @staticmethod

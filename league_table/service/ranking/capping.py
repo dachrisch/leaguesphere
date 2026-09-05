@@ -9,7 +9,7 @@ from gamedays.service.gameday_settings import (
     SCHEDULED,
     TEAM_ID,
 )
-from league_table.models import LeagueSeasonConfig
+from league_table.models import LeagueTableMode
 
 # Generic (mode-agnostic) column names for the per-team "accounted vs. total"
 # summary, so callers don't need to branch on which unit (gamedays or games)
@@ -33,7 +33,7 @@ class GameCappingEngine:
         self.top_n = top_n
 
     def cap(self, games_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame | None]:
-        if self.table_mode == LeagueSeasonConfig.TABLE_MODE_DEFAULT or games_df.empty:
+        if self.table_mode == LeagueTableMode.TABLE_MODE_DEFAULT or games_df.empty:
             return games_df, None
 
         # Teams without any (finished) game are represented by a synthetic
@@ -47,9 +47,9 @@ class GameCappingEngine:
         if played_df.empty:
             return games_df, None
 
-        if self.table_mode == LeagueSeasonConfig.TABLE_MODE_TOP_N_GAMEDAYS:
+        if self.table_mode == LeagueTableMode.TABLE_MODE_TOP_N_GAMEDAYS:
             capped_played, summary = self._cap_by_gameday(played_df)
-        elif self.table_mode == LeagueSeasonConfig.TABLE_MODE_TOP_N_GAMES:
+        elif self.table_mode == LeagueTableMode.TABLE_MODE_TOP_N_GAMES:
             capped_played, summary = self._cap_by_game(played_df)
         else:
             raise ValueError(f"Unknown table_mode: {self.table_mode}")
