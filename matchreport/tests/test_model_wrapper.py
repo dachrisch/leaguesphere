@@ -15,14 +15,23 @@ from officials.tests.setup_factories.factories_officials import (
     OfficialLicenseFactory,
     OfficialLicenseHistoryFactory,
 )
-from officials.urls import OFFICIALS_PROFILE_LICENSE
+from officials.urls import OFFICIALS_PROFILE_GAMELIST
 
 
-def _license_number_link(official_id, external_id):
-    profile_url = reverse(OFFICIALS_PROFILE_LICENSE, kwargs={"pk": official_id})
+def _license_number_link(official_id, external_id, season):
+    profile_url = reverse(
+        OFFICIALS_PROFILE_GAMELIST, kwargs={"pk": official_id, "season": season}
+    )
     return (
         f'<a href="{profile_url}" target="_blank" title="Zum Profil des Offiziellen">'
         f"#{external_id}</a>"
+    )
+
+
+def _expired_note(expired_on: date) -> str:
+    return (
+        f'<span class="text-muted fst-italic">'
+        f'abgelaufen seit {expired_on.strftime("%d.%m.%Y")}</span>'
     )
 
 
@@ -57,7 +66,7 @@ class TestMatchreportOfficialsLicense(TestCase):
         # hyperlink; only the separate "Lizenznummer" column does.
         self.assertEqual(officials_table["Lizenz"].iloc[0], "F2 2022")
 
-    def test_official_license_hidden_when_not_renewed_in_gameday_year(self):
+    def test_official_license_shows_expiry_note_when_not_renewed_in_gameday_year(self):
         gameday = GamedayFactory(date=date(2022, 5, 1))
         gameinfo = GameinfoFactory(
             gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
@@ -77,7 +86,10 @@ class TestMatchreportOfficialsLicense(TestCase):
         wrapper = MachtreportModelWrapper(gameday.pk)
         officials_table = wrapper._get_game_officials_table(gameinfo.id)
 
-        self.assertIsNone(officials_table["Lizenz"].iloc[0])
+        # created_at + 365 days = 2020-02-29 (2020 is a leap year).
+        self.assertEqual(
+            officials_table["Lizenz"].iloc[0], _expired_note(date(2020, 2, 29))
+        )
 
     def test_official_license_picks_highest_ranked_when_multiple_in_same_year(self):
         gameday = GamedayFactory(date=date(2027, 5, 1))
@@ -172,12 +184,97 @@ class TestMatchreportOfficialsLicense(TestCase):
         self.assertEqual(licensed_row["Lizenz"], "F1")
         self.assertEqual(
             licensed_row["Lizenznummer"],
-            _license_number_link(official.pk, "9001"),
+            _license_number_link(official.pk, "9001", 2027),
         )
 
 
+class TestMatchreportOfficialsLicenseExpiredNote(TestCase):
+    def test_shows_the_expiry_date_of_the_last_started_license(self):
+        gameday = GamedayFactory(date=date(2022, 5, 1))
+        gameinfo = GameinfoFactory(
+            gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
+        )
+
+        official = OfficialFactory(team=TeamFactory())
+        OfficialLicenseHistoryFactory(
+            official=official,
+            license=OfficialLicenseFactory(name="F2 2019"),
+            created_at=date(2019, 3, 1),
+        )
+        GameOfficialFactory(gameinfo=gameinfo, official=official, position="Referee")
+
+        wrapper = MachtreportModelWrapper(gameday.pk)
+        officials_table = wrapper._get_game_officials_table(gameinfo.id)
+
+        cell = officials_table["Lizenz"].iloc[0]
+        self.assertIn("abgelaufen seit 29.02.2020", cell)
+        self.assertIn("text-muted", cell)
+        self.assertIn("fst-italic", cell)
+
+    def test_uses_the_most_recently_started_license_not_the_highest_ranked(self):
+        # Two expired licenses - the more recent one (even though it's a
+        # lower rank) is "what they last held", so its expiry date wins,
+        # not the higher-ranked but older one's.
+        gameday = GamedayFactory(date=date(2025, 5, 1))
+        gameinfo = GameinfoFactory(
+            gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
+        )
+
+        official = OfficialFactory(team=TeamFactory())
+        OfficialLicenseHistoryFactory(
+            official=official,
+            license=OfficialLicenseFactory(name="F1 2019"),
+            created_at=date(2019, 3, 1),
+        )
+        OfficialLicenseHistoryFactory(
+            official=official,
+            license=OfficialLicenseFactory(name="F4 2021"),
+            created_at=date(2021, 6, 1),
+        )
+        GameOfficialFactory(gameinfo=gameinfo, official=official, position="Referee")
+
+        wrapper = MachtreportModelWrapper(gameday.pk)
+        officials_table = wrapper._get_game_officials_table(gameinfo.id)
+
+        cell = officials_table["Lizenz"].iloc[0]
+        self.assertIn("abgelaufen seit 01.06.2022", cell)
+
+    def test_blank_when_official_never_had_any_license(self):
+        gameday = GamedayFactory(date=date(2027, 5, 1))
+        gameinfo = GameinfoFactory(
+            gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
+        )
+        official = OfficialFactory(team=TeamFactory())
+        GameOfficialFactory(gameinfo=gameinfo, official=official, position="Referee")
+
+        wrapper = MachtreportModelWrapper(gameday.pk)
+        officials_table = wrapper._get_game_officials_table(gameinfo.id)
+
+        self.assertIsNone(officials_table["Lizenz"].iloc[0])
+
+    def test_blank_when_only_license_has_not_started_yet(self):
+        # The official's only license entry is dated after this gameday -
+        # nothing has "expired" yet, it just hasn't started, so no note.
+        gameday = GamedayFactory(date=date(2025, 3, 1))
+        gameinfo = GameinfoFactory(
+            gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
+        )
+        official = OfficialFactory(team=TeamFactory())
+        OfficialLicenseHistoryFactory(
+            official=official,
+            license=OfficialLicenseFactory(name="F1 2025"),
+            created_at=date(2025, 6, 1),
+        )
+        GameOfficialFactory(gameinfo=gameinfo, official=official, position="Referee")
+
+        wrapper = MachtreportModelWrapper(gameday.pk)
+        officials_table = wrapper._get_game_officials_table(gameinfo.id)
+
+        self.assertIsNone(officials_table["Lizenz"].iloc[0])
+
+
 class TestMatchreportOfficialsLicenseNumber(TestCase):
-    def test_license_number_is_a_separate_column_hyperlinked_to_the_profile(self):
+    def test_license_number_is_a_separate_column_hyperlinked_to_the_gamelist_page(self):
         gameday = GamedayFactory(date=date(2027, 5, 1))
         gameinfo = GameinfoFactory(
             gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
@@ -196,9 +293,13 @@ class TestMatchreportOfficialsLicenseNumber(TestCase):
 
         self.assertIn("Lizenznummer", officials_table.columns)
         self.assertEqual(officials_table["Lizenz"].iloc[0], "F1")
-        self.assertEqual(
-            officials_table["Lizenznummer"].iloc[0],
-            _license_number_link(official.pk, "1234"),
+        cell = officials_table["Lizenznummer"].iloc[0]
+        self.assertEqual(cell, _license_number_link(official.pk, "1234", 2027))
+        self.assertIn(
+            reverse(
+                OFFICIALS_PROFILE_GAMELIST, kwargs={"pk": official.pk, "season": 2027}
+            ),
+            cell,
         )
         # The F1-F4 level itself never carries a hyperlink.
         self.assertNotIn("<a ", officials_table["Lizenz"].iloc[0])
@@ -272,10 +373,10 @@ class TestMatchreportOfficialsLicenseNumber(TestCase):
         wrapper = MachtreportModelWrapper(gameday.pk)
         officials_table = wrapper._get_game_officials_table(gameinfo.id)
 
-        self.assertIsNone(officials_table["Lizenz"].iloc[0])
+        self.assertIn("abgelaufen seit", officials_table["Lizenz"].iloc[0])
         self.assertEqual(
             officials_table["Lizenznummer"].iloc[0],
-            _license_number_link(official.pk, "4242"),
+            _license_number_link(official.pk, "4242", 2022),
         )
 
     def test_license_number_column_uses_integer_pk_when_mixed_with_free_text_official(
@@ -300,5 +401,5 @@ class TestMatchreportOfficialsLicenseNumber(TestCase):
         licensed_row = officials_table[officials_table["Position"] == "Referee"].iloc[0]
         self.assertEqual(
             licensed_row["Lizenznummer"],
-            _license_number_link(official.pk, "777"),
+            _license_number_link(official.pk, "777", 2027),
         )

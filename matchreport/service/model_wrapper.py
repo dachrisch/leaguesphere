@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import pandas as pd
 from django.db.models import OuterRef, Subquery
 
@@ -196,12 +198,13 @@ class MachtreportModelWrapper:
             "official__team__description": "Team",
             "name": "Name",
             "position": "Position",
-            "latest_license": "Lizenz",
+            "license_cell": "Lizenz",
             "license_number_cell": "Lizenznummer",
         }
         # Not part of column_mapping directly - fetched alongside it but
-        # consumed by _license_number_cell() to build the "Lizenznummer"
-        # column, not rendered as columns of their own.
+        # consumed by _license_number_cell()/_license_cell() to build the
+        # "Lizenznummer"/"Lizenz" columns, not rendered as columns of their
+        # own.
         extra_fields = ["official_id", "official__external_id"]
 
         # Correlated subquery so every official's license is resolved in the
@@ -225,6 +228,19 @@ class MachtreportModelWrapper:
             .order_by_rank()
             .values("license__name")[:1]
         )
+        # When there's no currently valid license, this resolves the most
+        # recently *started* one as of the gameday (regardless of whether
+        # it's still valid) so the "Lizenz" cell can show when it expired,
+        # instead of just going blank. Ordered by recency, not rank - this
+        # is "what did they last hold", not "what's their best license".
+        last_started_license_date = (
+            OfficialLicenseHistory.objects.filter(
+                official_id=OuterRef("official"),
+                created_at__lte=self.gameday_date,
+            )
+            .order_by("-created_at")
+            .values("created_at")[:1]
+        )
 
         position_order = {
             "Referee": 0,
@@ -234,20 +250,23 @@ class MachtreportModelWrapper:
             "Scorecard Judge": 4,
         }
 
-        # Raw DB fields to select - column_mapping's "license_number_cell"
-        # key is a computed column built below, not a real field, so it is
-        # deliberately left out of this values() call.
+        # Raw DB fields to select - column_mapping's "license_cell"/
+        # "license_number_cell" keys are computed columns built below, not
+        # real fields, so they are deliberately left out of this values()
+        # call.
         db_fields = [
             "official__team__description",
             "name",
             "position",
             "latest_license",
+            "last_started_license_date",
         ]
 
         officials_df = pd.DataFrame(
             GameOfficial.objects.filter(gameinfo=gameinfo)
             .annotate(
                 latest_license=Subquery(latest_license),
+                last_started_license_date=Subquery(last_started_license_date),
             )
             .values(*db_fields, *extra_fields)
         )
@@ -256,30 +275,65 @@ class MachtreportModelWrapper:
             officials_df["order"] = officials_df.position.apply(position_order.get)
             officials_df.sort_values("order", ascending=True, inplace=True)
             officials_df.drop(columns=["order"], inplace=True)
+            officials_df["license_cell"] = officials_df.apply(
+                lambda row: self._license_cell(
+                    row["latest_license"], row["last_started_license_date"]
+                ),
+                axis=1,
+            )
             officials_df["license_number_cell"] = officials_df.apply(
                 lambda row: self._license_number_cell(
                     row["official_id"],
                     row["official__external_id"],
+                    self.gameday_date.year,
                 ),
                 axis=1,
             )
-            officials_df.drop(columns=extra_fields, inplace=True)
+            officials_df.drop(
+                columns=[*extra_fields, "latest_license", "last_started_license_date"],
+                inplace=True,
+            )
 
         return officials_df.rename(columns=column_mapping)
 
     @staticmethod
-    def _license_number_cell(official_id, external_id):
+    def _license_cell(license_name, last_started_license_date):
+        # Plain text, never a hyperlink (see _license_number_cell for the
+        # link, which lives in the separate "Lizenznummer" column).
+        if license_name is not None:
+            return license_name
+
+        # No currently valid license - if the official has ever held one
+        # that had already started as of this gameday, show when it expired
+        # (light grey, italic) instead of leaving the cell blank. This is
+        # only shown here, on the gameday detail screen - the CSV export
+        # (matchreport/service/gameday_list_csv_service.py, via
+        # officials/service/game_official_licenses.py) intentionally stays
+        # a separate, simpler implementation with no such note.
+        if last_started_license_date is None or pd.isna(last_started_license_date):
+            return None
+
+        expired_on = pd.Timestamp(last_started_license_date).date() + timedelta(
+            days=365
+        )
+        return (
+            f'<span class="text-muted fst-italic">'
+            f'abgelaufen seit {expired_on.strftime("%d.%m.%Y")}</span>'
+        )
+
+    @staticmethod
+    def _license_number_cell(official_id, external_id, season):
         # The official's license number (Official.external_id - the
         # Moodle-issued id DFFL uses as the license number, already
         # hyperlinked to the Moodle profile elsewhere in
         # officials/templates/officials/license_check.html), hyperlinked
-        # here to the official's profile page in this app instead, via the
+        # here to the official's per-season game list page instead, via the
         # shared officials.service.official_profile helper (also used by
         # officials/service/moodle/moodle_service.py::_get_ahref_for_profile
-        # so the two links can't drift apart). Shown independently of
-        # whether the official currently holds a valid F1-F4 license
-        # (that's the separate "Lizenz" column) so staff can always click
-        # through to an assigned official's profile.
+        # so the links can't drift apart). Shown independently of whether
+        # the official currently holds a valid F1-F4 license (that's the
+        # separate "Lizenz" column) so staff can always click through to an
+        # assigned official's profile.
         if pd.isna(official_id) or external_id is None or pd.isna(external_id):
             return None
 
@@ -293,9 +347,9 @@ class MachtreportModelWrapper:
         # dependency at module load time.
         from django.utils.html import escape
 
-        from officials.service.official_profile import official_profile_url
+        from officials.service.official_profile import official_profile_gamelist_url
 
-        profile_url = official_profile_url(official_id)
+        profile_url = official_profile_gamelist_url(official_id, season)
         # external_id is a free-text CharField (officials/models.py) with no
         # format validation, and this whole table is rendered with
         # escape=False (`.to_html()`) and output via the `safe` template

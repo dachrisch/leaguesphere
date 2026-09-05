@@ -18,3 +18,16 @@ def official_profile_url(official_id) -> str:
     from officials.urls import OFFICIALS_PROFILE_LICENSE
 
     return reverse(OFFICIALS_PROFILE_LICENSE, kwargs={"pk": official_id})
+
+
+def official_profile_gamelist_url(official_id, season) -> str:
+    """The official's per-season game list page - what matchreport's
+    referee table license-number link points to (rather than the license
+    profile page official_profile_url() returns)."""
+    from django.urls import reverse
+
+    from officials.urls import OFFICIALS_PROFILE_GAMELIST
+
+    return reverse(
+        OFFICIALS_PROFILE_GAMELIST, kwargs={"pk": official_id, "season": season}
+    )
