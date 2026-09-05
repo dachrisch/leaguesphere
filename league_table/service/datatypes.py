@@ -76,6 +76,8 @@ class LeagueConfig:
     leagues_for_league_points_ids: list[int]
     group_by_leagues: bool
     collapse_standing_to_league: bool = False
+    table_mode: str = LeagueSeasonConfig.TABLE_MODE_DEFAULT
+    table_mode_top_n: int | None = None
 
     @classmethod
     def from_league_season_config(cls, league_season_config: LeagueSeasonConfig):
@@ -85,11 +87,15 @@ class LeagueConfig:
             ruleset=LeagueConfigRuleset.from_ruleset(ruleset),
             team_point_adjustments_map=league_season_config.get_team_point_adjustment_map(),
             excluded_gameday_ids=excluded_gameday_ids,
-            leagues_for_league_points_ids=league_season_config.leagues_for_league_points.values_list('pk'),
-            group_by_leagues = league_season_config.group_by_leagues,
+            leagues_for_league_points_ids=league_season_config.leagues_for_league_points.values_list(
+                "pk"
+            ),
+            group_by_leagues=league_season_config.group_by_leagues,
             collapse_standing_to_league=cls._has_designer_gameday(
                 league_season_config, excluded_gameday_ids
             ),
+            table_mode=league_season_config.table_mode,
+            table_mode_top_n=league_season_config.table_mode_top_n,
         )
 
     @staticmethod

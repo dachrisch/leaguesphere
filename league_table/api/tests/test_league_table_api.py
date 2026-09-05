@@ -14,7 +14,7 @@ from league_table.api.constants import (
     API_LEAGUE_TABLE_BY_LEAGUE,
     API_LEAGUE_TABLE_BY_SEASON,
 )
-from league_table.models import LeagueRulesetTieBreak
+from league_table.models import LeagueRulesetTieBreak, LeagueSeasonConfig
 from league_table.tests.setup_factories.factories_leaguetable import (
     LeagueSeasonConfigFactory,
     TieBreakStepFactory,
@@ -38,7 +38,9 @@ class LeagueTableApiTestBase(TestCase):
 
         self.team_a = TeamFactory(name="Titans", description="Titans")
         self.team_b = TeamFactory(name="Sharks", description="Sharks")
-        membership = SeasonLeagueTeam.objects.create(season=self.season, league=self.league)
+        membership = SeasonLeagueTeam.objects.create(
+            season=self.season, league=self.league
+        )
         membership.teams.add(self.team_a, self.team_b)
 
         self.gameday = GamedayFactory(
@@ -111,9 +113,7 @@ class TestLeagueTableApiPayload(LeagueTableApiTestBase):
 
     def test_standing_contains_computed_columns(self):
         response = self.client.get(self.url_season)
-        row = next(
-            r for r in self.rows(response) if r["team__description"] == "Titans"
-        )
+        row = next(r for r in self.rows(response) if r["team__description"] == "Titans")
         self.assertEqual(row["wins"], 1)
         self.assertEqual(row["games_played"], 1)
         self.assertEqual(row["pf"], 20)
@@ -132,14 +132,14 @@ class TestLeagueTableApiPayload(LeagueTableApiTestBase):
             gameinfo=scheduled_game, team=self.team_a, fh=0, sh=0, pa=0, isHome=True
         )
         response = self.client.get(self.url_season)
-        row = next(
-            r for r in self.rows(response) if r["team__description"] == "Titans"
-        )
+        row = next(r for r in self.rows(response) if r["team__description"] == "Titans")
         self.assertEqual(row["games_played"], 1)
 
     def test_team_without_games_is_serialized(self):
         lonely = TeamFactory(name="Lone Wolves", description="Lone Wolves")
-        membership = SeasonLeagueTeam.objects.create(season=self.season, league=self.league)
+        membership = SeasonLeagueTeam.objects.create(
+            season=self.season, league=self.league
+        )
         membership.teams.add(lonely)
         response = self.client.get(self.url_season)
         self.assertEqual(response.status_code, 200)
@@ -165,5 +165,16 @@ class TestLeagueTableApiEtag(LeagueTableApiTestBase):
         result = Gameresult.objects.get(gameinfo=self.game, isHome=True)
         result.sh = 12
         result.save()
+        response = self.client.get(self.url_season, HTTP_IF_NONE_MATCH=etag)
+        self.assertEqual(response.status_code, 200)
+
+    def test_etag_changes_when_table_mode_changes(self):
+        """Switching table_mode changes the returned wins/pf/pa/games_played
+        values (issue #1926) even though no Gameresult row is touched, so the
+        etag must react to it too (see league_table/api/etag.py)."""
+        etag = self.client.get(self.url_season)["ETag"]
+        self.config.table_mode = LeagueSeasonConfig.TABLE_MODE_TOP_N_GAMEDAYS
+        self.config.table_mode_top_n = 1
+        self.config.save()
         response = self.client.get(self.url_season, HTTP_IF_NONE_MATCH=etag)
         self.assertEqual(response.status_code, 200)

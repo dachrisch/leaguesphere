@@ -26,6 +26,21 @@
             Tabelle wurde noch nicht erstellt.
             {% else %}
             {% include 'leaguetable/league_table.html' %}
+            {% if current_table_mode|default:"default" != "default" %}
+            <div class="alert alert-info mt-2" role="alert">
+                {% if current_table_mode == "top_n_gamedays" %}
+                Diese Tabelle berücksichtigt je Team nur die besten {{ current_table_mode_top_n }} Spieltage
+                (nach Siegen, erzielten und kassierten Punkten). Die gewertete und die
+                gesamte Anzahl an Spieltagen wird je Team angezeigt. Für den direkten
+                Vergleich (Tiebreaker) zählen weiterhin alle gespielten Spiele.
+                {% elif current_table_mode == "top_n_games" %}
+                Diese Tabelle berücksichtigt je Team nur die besten {{ current_table_mode_top_n }} Spiele
+                (nach erzielten und kassierten Punkten). Die gewertete und die gesamte
+                Anzahl an Spielen wird je Team angezeigt. Für den direkten Vergleich
+                (Tiebreaker) zählen weiterhin alle gespielten Spiele.
+                {% endif %}
+            </div>
+            {% endif %}
             {% endif %}
         </div>
     </div>

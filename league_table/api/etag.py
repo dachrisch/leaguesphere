@@ -14,6 +14,11 @@ def generate_etag(request, league=None, season=None):
     just new rows. Config selection mirrors
     LeagueTableService.from_league_and_season (latest season when no season
     slug is given); unknown slugs return an unmatchable etag.
+
+    `config.updated_at` is included so admin-only config changes that affect
+    the computed standing without touching a Gameresult row — toggling
+    `exclude_gamedays`, or switching `table_mode`/`table_mode_top_n` (issue
+    #1926) — also bust the cached response instead of risking a stale 304.
     """
     configs = LeagueSeasonConfig.objects.select_related("league", "season").filter(
         league__slug=league
@@ -42,6 +47,9 @@ def generate_etag(request, league=None, season=None):
 
     return build_etag(
         config.pk,
+        config.updated_at.isoformat(),
+        config.table_mode,
+        config.table_mode_top_n,
         results["latest"],
         results["sum_fh"],
         results["sum_sh"],

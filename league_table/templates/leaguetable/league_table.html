@@ -89,6 +89,14 @@
             <th>
                 Runde
             </th>
+            {% if current_table_mode|default:"default" != "default" %}
+            <th>
+                {% if current_table_mode == "top_n_gamedays" %}Spieltage gewertet{% else %}Spiele gewertet{% endif %}
+            </th>
+            <th>
+                {% if current_table_mode == "top_n_gamedays" %}Spieltage gesamt{% else %}Spiele gesamt{% endif %}
+            </th>
+            {% endif %}
             <template x-if="showTieBreakCols">
                 <th>
                     <span x-show="!showTableLong">LP</span>
@@ -153,6 +161,10 @@
             <td>{{ row.losses }}</td>
             <td>{{ row.games_played }}</td>
             <td>{{ row.standing }}</td>
+            {% if current_table_mode|default:"default" != "default" %}
+            <td>{{ row.units_counted|default_if_none:"" }}</td>
+            <td>{{ row.units_total|default_if_none:"" }}</td>
+            {% endif %}
             <template x-if="showTieBreakCols">
                 <td>{{ row.win_points }}</td>
             </template>

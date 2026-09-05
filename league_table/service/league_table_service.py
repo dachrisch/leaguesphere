@@ -4,9 +4,11 @@ import pandas as pd
 from django.db.models import QuerySet, F
 
 from gamedays.models import Gameresult, SeasonLeagueTeam
+from gamedays.service.gameday_settings import GAMEDAY_DATE, GAMEDAY_ID, SCHEDULED
 from league_table.models import LeagueSeasonConfig
 from league_table.service.datatypes import LeagueConfig
 from league_table.service.leaguetable_repository import LeagueTableRepository
+from league_table.service.ranking.capping import GameCappingEngine
 from league_table.service.ranking.engine import LeagueRankingEngine, TieBreakerEngine
 
 LEAGUE_TABLE_GAME_COLUMNS = [
@@ -19,9 +21,27 @@ LEAGUE_TABLE_GAME_COLUMNS = [
     "isHome",
     "gameinfo__standing",
     "gameinfo__status",
+    "gameinfo__gameday",
+    "gameinfo__gameday__date",
+    "gameinfo__scheduled",
 ]
 
-LEAGUE_TABLE_TEAM_AND_LEAGUE_COLUMNS = ["teams__id", "league_id", "teams__description", "league__name"]
+# Raw ORM column names above, mapped to the stable dataframe column names used
+# by the "top N" capping engine (league_table/service/ranking/capping.py).
+# Kept as a dict (not renamed via the queryset itself) so callers that build
+# `results` rows directly (unit tests) work unchanged when they omit them.
+_GAMEDAY_COLUMN_MAP = {
+    "gameinfo__gameday": GAMEDAY_ID,
+    "gameinfo__gameday__date": GAMEDAY_DATE,
+    "gameinfo__scheduled": SCHEDULED,
+}
+
+LEAGUE_TABLE_TEAM_AND_LEAGUE_COLUMNS = [
+    "teams__id",
+    "league_id",
+    "teams__description",
+    "league__name",
+]
 
 
 class LeagueTableService:
@@ -30,10 +50,14 @@ class LeagueTableService:
         self.league_season_config = league_season_config
 
     @classmethod
-    def from_league_and_season(cls, league_slug: str, season_slug: str) -> "LeagueTableService":
+    def from_league_and_season(
+        cls, league_slug: str, season_slug: str
+    ) -> "LeagueTableService":
         try:
-            league_season_config = LeagueTableRepository.get_league_season_config_by_slug(
-                league_slug, season_slug
+            league_season_config = (
+                LeagueTableRepository.get_league_season_config_by_slug(
+                    league_slug, season_slug
+                )
             )
             return cls(league_season_config)
         except LeagueSeasonConfig.DoesNotExist:
@@ -43,7 +67,9 @@ class LeagueTableService:
         try:
             if self.league_season_config is None:
                 raise LeagueSeasonConfig.DoesNotExist
-            league_config = LeagueConfig.from_league_season_config(self.league_season_config)
+            league_config = LeagueConfig.from_league_season_config(
+                self.league_season_config
+            )
             current_season = self.league_season_config.season
             results = (
                 Gameresult.objects.filter(
@@ -71,11 +97,24 @@ class LeagueTableService:
             games_with_results = self._get_games_with_results_as_dataframe(
                 results, team_and_league_ids
             )
+            capped_games, cap_summary = GameCappingEngine(
+                league_config.table_mode, league_config.table_mode_top_n
+            ).cap(games_with_results)
+
             engine = LeagueRankingEngine(league_config)
-            league_table = engine.compute_league_table(games_with_results)
+            league_table = engine.compute_league_table(capped_games)
 
             tb_engine = TieBreakerEngine(league_config.ruleset)
+            # Tiebreakers always consider every game a team played, even when
+            # the displayed standings above are capped to a team's best N
+            # gamedays/games (issue #1926) — so `games_with_results` (the
+            # uncapped frame), not `capped_games`, goes in here.
             final_league_table = tb_engine.rank(league_table, games_with_results)
+
+            if cap_summary is not None:
+                final_league_table = final_league_table.merge(
+                    cap_summary, on="team_id", how="left"
+                )
 
         except (SeasonLeagueTeam.DoesNotExist, LeagueSeasonConfig.DoesNotExist):
             final_league_table = pd.DataFrame()
@@ -114,6 +153,14 @@ class LeagueTableService:
         ).astype(int)
         results_df["pa"] = results_df["pa"].fillna(0).astype(int)
         results_df["diff"] = results_df["pf"] - results_df["pa"]
+
+        # Gameday identity, needed by the "top N gamedays/games" table modes
+        # (capping.py). Filled defensively so callers that build `results`
+        # rows directly (e.g. unit tests) without gameday linkage still work.
+        for raw_column, target_column in _GAMEDAY_COLUMN_MAP.items():
+            results_df[target_column] = (
+                results_df[raw_column] if raw_column in results_df.columns else pd.NA
+            )
 
         # Merge results ONTO teams
         merged = teams_df.merge(
@@ -161,6 +208,8 @@ class LeagueTableService:
         df["isHome"] = pd.NA
         df["gameinfo__status"] = "Initial"
         df["gameinfo__standing"] = "Initial"
+        for target_column in _GAMEDAY_COLUMN_MAP.values():
+            df[target_column] = pd.NA
 
         df["league__name"] = "Initial"
         df["opponent_team_id"] = df["team_id"]
@@ -181,9 +230,7 @@ class LeagueTableService:
         return []
 
     def get_seasons_for_league_slug(self, league_slug) -> list[str]:
-        return LeagueTableRepository.get_seasons_for_league_slug(
-            league_slug
-        )
+        return LeagueTableRepository.get_seasons_for_league_slug(league_slug)
 
     def get_season_name(self):
         if self.league_season_config is None:
@@ -199,3 +246,13 @@ class LeagueTableService:
         if self.league_season_config is None:
             return None
         return self.league_season_config.league.name
+
+    def get_table_mode(self):
+        if self.league_season_config is None:
+            return LeagueSeasonConfig.TABLE_MODE_DEFAULT
+        return self.league_season_config.table_mode
+
+    def get_table_mode_top_n(self):
+        if self.league_season_config is None:
+            return None
+        return self.league_season_config.table_mode_top_n

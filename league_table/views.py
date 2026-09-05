@@ -26,6 +26,8 @@ class LeagueTableView(View):
             "current_league_name": league_table_service.get_league_name(),
             "seasons": league_table_service.get_seasons_for_league_slug(league_slug),
             "url_pattern": LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE,
+            "current_table_mode": league_table_service.get_table_mode(),
+            "current_table_mode_top_n": league_table_service.get_table_mode_top_n(),
         }
         context["league_ld"] = self._build_league_ld(context)
         return render(request, self.template_name, context)

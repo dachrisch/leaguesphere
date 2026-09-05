@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from gamedays.models import League, Season, Gameday, Team
@@ -75,9 +76,11 @@ class LeagueRuleset(models.Model):
                 "key": league_ruleset_tiebreak.step.key,
                 "is_ascending": league_ruleset_tiebreak.sort_order == "ascending",
             }
-            for league_ruleset_tiebreak in self.leaguerulesettiebreak_set.select_related('step').all().order_by(
-                "order"
+            for league_ruleset_tiebreak in self.leaguerulesettiebreak_set.select_related(
+                "step"
             )
+            .all()
+            .order_by("order")
         ]
 
     def __str__(self):
@@ -127,6 +130,16 @@ class LeagueRulesetTieBreak(models.Model):
 
 
 class LeagueSeasonConfig(models.Model):
+    TABLE_MODE_DEFAULT = "default"
+    TABLE_MODE_TOP_N_GAMEDAYS = "top_n_gamedays"
+    TABLE_MODE_TOP_N_GAMES = "top_n_games"
+
+    TABLE_MODE_CHOICES = [
+        (TABLE_MODE_DEFAULT, "Standard (alle Spieltage zählen)"),
+        (TABLE_MODE_TOP_N_GAMEDAYS, "Top N Spieltage je Team"),
+        (TABLE_MODE_TOP_N_GAMES, "Top N Spiele je Team"),
+    ]
+
     league = models.ForeignKey(
         League, on_delete=models.CASCADE, related_name="config_league"
     )
@@ -139,6 +152,22 @@ class LeagueSeasonConfig(models.Model):
         related_name="excluded_in_configs",
         blank=True,
     )
+
+    table_mode = models.CharField(
+        max_length=20,
+        choices=TABLE_MODE_CHOICES,
+        default=TABLE_MODE_DEFAULT,
+        help_text="Wie die Tabelle berechnet wird. Standard berücksichtigt alle "
+        "(nicht ausgeschlossenen) Spieltage, wie bisher.",
+    )
+    table_mode_top_n = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="Nur relevant, wenn table_mode ungleich Standard ist: Anzahl der "
+        "besten Spieltage/Spiele je Team.",
+    )
+
+    updated_at = models.DateTimeField(auto_now=True)
     team_point_adjustments = models.ManyToManyField(
         Team, through="TeamPointAdjustments"
     )
@@ -185,13 +214,13 @@ class LeagueSeasonConfig(models.Model):
     def get_gameday_statistic_settings(self):
         return {
             TOP_N_PLAYER: self.top_n_players_in_gameday_statistics,
-            SHOW_PLAYER_NAMES: self.show_player_names_in_gameday_statistics
+            SHOW_PLAYER_NAMES: self.show_player_names_in_gameday_statistics,
         }
 
     def get_season_statistic_settings(self):
         return {
             TOP_N_PLAYER: self.top_n_players_in_season_statistics,
-            SHOW_PLAYER_NAMES: self.show_player_names_in_season_statistics
+            SHOW_PLAYER_NAMES: self.show_player_names_in_season_statistics,
         }
 
     def get_team_point_adjustment_map(self):
@@ -212,12 +241,24 @@ class LeagueSeasonConfig(models.Model):
     def get_excluded_gameday_ids(self):
         return list(self.exclude_gamedays.values_list("id", flat=True))
 
+    def clean(self):
+        super().clean()
+        if self.table_mode != self.TABLE_MODE_DEFAULT and not self.table_mode_top_n:
+            raise ValidationError(
+                {
+                    "table_mode_top_n": "Für diesen Tabellenmodus muss die Anzahl "
+                    "(N) gesetzt werden."
+                }
+            )
+
     def __str__(self):
         return f"{self.league.name} - {self.season.name} -> {self.ruleset.name if self.ruleset else 'Keine Konfiguration'}"
 
 
 class OverrideOfficialGamedaySetting(models.Model):
-    league_season_config = models.ForeignKey(LeagueSeasonConfig, on_delete=models.CASCADE)
+    league_season_config = models.ForeignKey(
+        LeagueSeasonConfig, on_delete=models.CASCADE
+    )
     gameday = models.OneToOneField(
         Gameday, on_delete=models.CASCADE, related_name="official_override"
     )

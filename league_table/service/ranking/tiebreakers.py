@@ -108,9 +108,7 @@ def compute_direct_wins(
         return pd.Series(0, index=df.index)
 
     subset = _subset_direct_games(games_df, tied_teams)
-    return _map_direct_metric(
-        df, subset, lambda g: 1 if (g[FH] + g[SH]) > g[PA] else 0
-    )
+    return _map_direct_metric(df, subset, lambda g: 1 if (g[FH] + g[SH]) > g[PA] else 0)
 
 
 @register_tiebreak("direct_point_diff")
@@ -141,14 +139,25 @@ def compute_direct_points_scored(
 def compute_overall_point_diff(
     df: pd.DataFrame, games_df: pd.DataFrame, tied_teams: list[int]
 ) -> pd.Series:
-    return df[PF] - df[PA]
+    """Sum of PF-PA across every game a team played (see `games_df`), not just
+    the (possibly capped) totals shown in the table — a top-N table mode caps
+    what's displayed/aggregated in `df`, but tiebreakers always consider all
+    games (issue #1926)."""
+    totals = (
+        (games_df[PF].fillna(0) - games_df[PA].fillna(0))
+        .groupby(games_df[TEAM_ID])
+        .sum()
+    )
+    return df[TEAM_ID].map(totals).fillna(0).astype(int)
 
 
 @register_tiebreak("overall_points_scored")
 def compute_overall_points_scored(
     df: pd.DataFrame, games_df: pd.DataFrame, tied_teams: list[int]
 ) -> pd.Series:
-    return df[PF]
+    """Sum of PF across every game a team played — see `compute_overall_point_diff`."""
+    totals = games_df[PF].fillna(0).groupby(games_df[TEAM_ID]).sum()
+    return df[TEAM_ID].map(totals).fillna(0).astype(int)
 
 
 @register_tiebreak(WIN_QUOTIENT)

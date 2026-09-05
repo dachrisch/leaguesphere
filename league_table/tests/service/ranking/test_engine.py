@@ -130,6 +130,61 @@ class TestTieBreakEngine:
         assert result.to_csv() == expected_result.to_csv()
 
 
+class TestOverallTiebreakUsesUncappedGames:
+    """`overall_point_diff`/`overall_points_scored` must reflect every game a
+    team played, not the (possibly capped) totals shown in `standings_df` —
+    required for the "Top N" table modes (issue #1926), where tiebreakers
+    always consider all games even though the displayed standings are capped.
+    """
+
+    def test_overall_point_diff_uses_full_games_df_not_capped_standings(self):
+        # Both teams show identical (capped) pf/pa in the standings, so they
+        # would stay tied on overall_point_diff/overall_points_scored if those
+        # steps read df["pf"]/df["pa"] instead of aggregating games_df.
+        standings_df = pd.DataFrame(
+            [
+                {
+                    "team_id": 1,
+                    "team__description": "Team A",
+                    "pf": 10,
+                    "pa": 5,
+                    "win_quotient": 0.5,
+                    "standing": "Gruppe 1",
+                },
+                {
+                    "team_id": 2,
+                    "team__description": "Team B",
+                    "pf": 10,
+                    "pa": 5,
+                    "win_quotient": 0.5,
+                    "standing": "Gruppe 1",
+                },
+            ]
+        )
+        # Uncapped: team A's real total point diff is far better than team
+        # B's, and the two teams never played each other (so direct_* steps
+        # fall through with no effect and overall_point_diff decides it).
+        games_df = pd.DataFrame(
+            [
+                {"gameinfo": 101, "team_id": 1, "pf": 20, "pa": 0},
+                {"gameinfo": 102, "team_id": 1, "pf": 10, "pa": 5},
+                {"gameinfo": 201, "team_id": 2, "pf": 5, "pa": 10},
+                {"gameinfo": 202, "team_id": 2, "pf": 5, "pa": 10},
+            ]
+        )
+
+        engine = TieBreakerEngine(LEAGUE_TABLE_TEST_RULESET)
+        result = engine.rank(standings_df, games_df)
+
+        team_a = result[result["team_id"] == 1].iloc[0]
+        team_b = result[result["team_id"] == 2].iloc[0]
+        assert team_a["overall_point_diff"] == 25
+        assert team_b["overall_point_diff"] == -10
+        assert team_a["overall_points_scored"] == 30
+        assert team_b["overall_points_scored"] == 10
+        assert team_a["rank"] < team_b["rank"]
+
+
 class TestLeagueRankingEngine:
     def test_league_ranking_engine_with_league_points(self):
         custom_ruleset = LeagueConfigRuleset(
