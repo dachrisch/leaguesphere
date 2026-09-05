@@ -15,6 +15,7 @@ from .constants import (
     MATCHREPORT_GAMEDAY_LIST_AND_YEAR,
     MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD,
     MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD_AND_LEAGUE,
+    REPORT_TABLE_RENDER_CONFIG,
 )
 
 from gamedays.models import Gameday
@@ -114,20 +115,7 @@ class MatchreportGamedayDetailView(UserPassesTestMixin, DetailView):
         context = super(MatchreportGamedayDetailView, self).get_context_data()
         gameday = context["gameday"]
         ms = MatchreportService.create(gameday.pk)
-        render_configs = {
-            "index": False,
-            "classes": [
-                "table",
-                "table-hover",
-                "table-condensed",
-                "table-responsive",
-                "text-center",
-            ],
-            "border": 0,
-            "justify": "center",
-            "escape": False,
-            "table_id": "schedule",
-        }
+        render_configs = REPORT_TABLE_RENDER_CONFIG
 
         is_staff = self.request.user.is_staff
 
