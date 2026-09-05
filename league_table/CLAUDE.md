@@ -15,6 +15,17 @@ web UI and exposed for export.
 `LeagueGroup`, `LeagueRuleset`, `TieBreakStep`, `LeagueRulesetTieBreak`, `LeagueSeasonConfig`,
 `OverrideOfficialGamedaySetting`, `TeamPointAdjustments`.
 
+`LeagueSeasonConfig` is `unique_together`-constrained on `(league, season)` — at most one row per
+league+season, since [officials](../officials/CLAUDE.md)'s
+`officials_compliance_service.py` and `signup_service.py` both resolve config by that pair alone
+and assume a single match.
+
+`LeagueSeasonConfig`'s `check_officials_automatically`/`min_officials_*` fields (and its
+`exclude_gamedays` M2M, reused as the exclusion list for this check too) are read by
+[officials](../officials/CLAUDE.md)'s `officials_compliance_service.py`, itself consumed by
+[matchreport](../matchreport/CLAUDE.md) — a cross-app dependency to keep in mind when changing
+this model's shape.
+
 ## Service layer (`service/`)
 Standings logic is centralized here so the web UI and exports stay consistent — **change ranking
 behavior here, not in views:**

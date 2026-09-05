@@ -13,10 +13,43 @@ from django.views.generic import (
 from .constants import (
     MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
     MATCHREPORT_GAMEDAY_LIST_AND_YEAR,
+    MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD,
+    MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD_AND_LEAGUE,
+    REPORT_TABLE_RENDER_CONFIG,
 )
 
 from gamedays.models import Gameday
+from officials.service.officials_compliance_service import (
+    compute_gameday_officials_compliance,
+)
+from .service.gameday_list_csv_service import build_gameday_list_csv
 from .service.matchreport_service import MatchreportService
+
+
+def _filtered_gamedays(year, league, only_violations):
+    """Shared by MatchreportGamedayListView and
+    MatchreportGamedayListCsvDownloadView so the CSV download always
+    reflects exactly the same year/league/only_violations selection
+    currently shown on the page."""
+    gamedays_qs = (
+        Gameday.objects.select_related("league")
+        .filter(date__year=year)
+        .order_by("date")
+    )
+    if league:
+        gamedays_qs = gamedays_qs.filter(league__name=league)
+    gamedays = list(gamedays_qs)
+
+    compliance_by_gameday = compute_gameday_officials_compliance(
+        [gameday.pk for gameday in gamedays]
+    )
+    if only_violations:
+        gamedays = [
+            gameday
+            for gameday in gamedays
+            if compliance_by_gameday[gameday.pk].violation_count > 0
+        ]
+    return gamedays, compliance_by_gameday
 
 
 class MatchreportGamedayListView(UserPassesTestMixin, View):
@@ -25,24 +58,27 @@ class MatchreportGamedayListView(UserPassesTestMixin, View):
     def get(self, request, **kwargs):
         year = kwargs.get("season", datetime.today().year)
         league = kwargs.get("league")
-        gamedays = (
-            Gameday.objects.select_related("league")
-            .filter(date__year=year)
-            .order_by("date")
-        )
+        only_violations = request.GET.get("only_violations") == "1"
+
         leagues = (
-            gamedays.values_list("league__name", flat=True)
+            Gameday.objects.filter(date__year=year)
+            .values_list("league__name", flat=True)
             .distinct()
             .order_by("league__name")
         )
-        gamedays_filtered_by_league = (
-            gamedays.filter(league__name=league) if league else gamedays
+        gamedays, compliance_by_gameday = _filtered_gamedays(
+            year, league, only_violations
         )
+        gameday_rows = [
+            {"gameday": gameday, "compliance": compliance_by_gameday[gameday.pk]}
+            for gameday in gamedays
+        ]
+
         return render(
             request,
             self.template_name,
             {
-                "gamedays": gamedays_filtered_by_league,
+                "gameday_rows": gameday_rows,
                 "seasons": Gameday.objects.annotate(year=ExtractYear("date"))
                 .values_list("year", flat=True)
                 .distinct()
@@ -52,6 +88,12 @@ class MatchreportGamedayListView(UserPassesTestMixin, View):
                 "selected_league": league,
                 "season_year_pattern": MATCHREPORT_GAMEDAY_LIST_AND_YEAR,
                 "league_year_url_pattern": MATCHREPORT_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
+                "csv_download_url_pattern": (
+                    MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD_AND_LEAGUE
+                    if league
+                    else MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD
+                ),
+                "only_violations": only_violations,
             },
         )
 
@@ -73,20 +115,7 @@ class MatchreportGamedayDetailView(UserPassesTestMixin, DetailView):
         context = super(MatchreportGamedayDetailView, self).get_context_data()
         gameday = context["gameday"]
         ms = MatchreportService.create(gameday.pk)
-        render_configs = {
-            "index": False,
-            "classes": [
-                "table",
-                "table-hover",
-                "table-condensed",
-                "table-responsive",
-                "text-center",
-            ],
-            "border": 0,
-            "justify": "center",
-            "escape": False,
-            "table_id": "schedule",
-        }
+        render_configs = REPORT_TABLE_RENDER_CONFIG
 
         is_staff = self.request.user.is_staff
 
@@ -107,6 +136,7 @@ class MatchreportGamedayDetailView(UserPassesTestMixin, DetailView):
         )
         passcheck_player_data = {}
         gameday_match_reports = []
+        officials_check_status = None
         if is_staff:
             passcheck_info_table_df = ms.get_staff_passcheck_details()
             passcheck_info_table = (
@@ -119,11 +149,20 @@ class MatchreportGamedayDetailView(UserPassesTestMixin, DetailView):
             passcheck_player_data = ms.get_passcheck_player_details(render_configs)
             gameday_match_reports = ms.get_gameday_match_reports(render_configs)
 
+            officials_check_status = compute_gameday_officials_compliance([gameday.pk])[
+                gameday.pk
+            ]
+            for game in gameday_match_reports:
+                game["officials_violations"] = (
+                    officials_check_status.game_violations.get(game["gameinfo_id"], [])
+                )
+
         context["info"] = {
             "officials": officials,
             "passcheck_info_table": passcheck_info_table,
             "passcheck_player_data": passcheck_player_data,
             "gameday_match_reports": gameday_match_reports,
+            "officials_check_status": officials_check_status,
         }
 
         return context
@@ -142,6 +181,21 @@ class MatchreportGamedayPasscheckDownloadView(UserPassesTestMixin, View):
         response["Content-Disposition"] = (
             f'attachment; filename="passcheck_spieler_{gameday.pk}.csv"'
         )
+        return response
+
+    def test_func(self):
+        return self.request.user.is_staff
+
+
+class MatchreportGamedayListCsvDownloadView(UserPassesTestMixin, View):
+    def get(self, request, season, league=None):
+        only_violations = request.GET.get("only_violations") == "1"
+        gamedays, _ = _filtered_gamedays(season, league, only_violations)
+
+        csv_body = "﻿" + build_gameday_list_csv(gamedays)
+        response = HttpResponse(csv_body, content_type="text/csv; charset=utf-8")
+        filename = f"spielberichte_{season}" + (f"_{league}" if league else "")
+        response["Content-Disposition"] = f'attachment; filename="{filename}.csv"'
         return response
 
     def test_func(self):

@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.23.0](https://github.com/dachrisch/leaguesphere/compare/v4.22.1...v4.23.0) (2026-09-04)
+
+
+### Features
+
+* **gameday_designer:** move games between stages and fields ([#1922](https://github.com/dachrisch/leaguesphere/issues/1922)) ([ca556ba](https://github.com/dachrisch/leaguesphere/commit/ca556ba927cc996524aaed6573201bab981ea115))
+
 ## [4.22.1](https://github.com/dachrisch/leaguesphere/compare/v4.22.0...v4.22.1) (2026-09-04)
 
 

@@ -1,9 +1,27 @@
 {% extends "base.html" %}
 {% block content %}
 <h2><span class="badge bg-warning text-dark me-1" style="font-size: 0.65em; vertical-align: middle;">BETA</span>Spielberichtsbogen Lite</h2>
-<div class="d-flex gap-2 mb-3">
+<div class="d-flex gap-2 mb-3 align-items-center">
     {% include 'utils/season_filter.html' with url_pattern=season_year_pattern  %}
     {% include 'utils/league_filter.html' with url_pattern=league_year_url_pattern  show_select_all_option=False %}
+    {% if selected_league %}
+        <a href="{% url csv_download_url_pattern season=selected_season league=selected_league %}{% if only_violations %}?only_violations=1{% endif %}"
+           class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-download"></i> Download Referee Game Info
+        </a>
+    {% else %}
+        <a href="{% url csv_download_url_pattern season=selected_season %}{% if only_violations %}?only_violations=1{% endif %}"
+           class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-download"></i> Download Referee Game Info
+        </a>
+    {% endif %}
+    <form method="get" class="form-check ms-2">
+        <input type="hidden" name="only_violations" value="0">
+        <input class="form-check-input" type="checkbox" name="only_violations" value="1"
+               id="only_violations" {% if only_violations %}checked{% endif %}
+               onchange="this.form.submit()">
+        <label class="form-check-label" for="only_violations">Nur Spieltage mit Verstößen</label>
+    </form>
 </div>
 <hr />
 <table class="table table-hover align-middle">
@@ -12,22 +30,44 @@
       <th>Spieltag</th>
       <th>Datum</th>
       <th>Liga</th>
+      <th>Automatische Prüfung</th>
+      <th>Verstöße</th>
       <th></th>
     </tr>
   </thead>
   <tbody>
-    {% for gameday in gamedays %}
+    {% for row in gameday_rows %}
     <tr>
-      <td>{{ gameday.name }}</td>
-      <td class="text-muted">{{ gameday.date }}</td>
-      <td><span class="badge bg-secondary">{{ gameday.league.name }}</span></td>
+      <td>{{ row.gameday.name }}</td>
+      <td class="text-muted">{{ row.gameday.date }}</td>
+      <td><span class="badge bg-secondary">{{ row.gameday.league.name }}</span></td>
+      <td>
+        {% if row.compliance.is_checked %}
+          <span class="badge bg-success">Aktiv</span>
+        {% else %}
+          <span class="badge bg-secondary" title="{{ row.compliance.reason_not_checked }}">
+            Nicht geprüft ({{ row.compliance.reason_not_checked }})
+          </span>
+        {% endif %}
+      </td>
+      <td>
+        {% if row.compliance.is_checked %}
+          {% if row.compliance.violation_count %}
+            <span class="badge bg-danger">{{ row.compliance.violation_count }}</span>
+          {% else %}
+            <span class="badge bg-success">0</span>
+          {% endif %}
+        {% else %}
+          <span class="text-muted">–</span>
+        {% endif %}
+      </td>
       <td class="text-end">
-        <a href="{% url 'matchreport-gameday-detail' gameday.id %}" class="btn btn-sm btn-outline-primary">Öffnen<i class="bi bi-chevron-right"></i></a>
+        <a href="{% url 'matchreport-gameday-detail' row.gameday.id %}" class="btn btn-sm btn-outline-primary">Öffnen<i class="bi bi-chevron-right"></i></a>
       </td>
     </tr>
     {% empty %}
     <tr>
-        <td colspan="4" class="text-center text-muted py-5">
+        <td colspan="6" class="text-center text-muted py-5">
             <i class="bi bi-calendar-x fs-2 d-block mb-2"></i>
             Keine Spieltage für diese Auswahl gefunden. Bitte wähle ein Jahr und eine Liga.
         </td>

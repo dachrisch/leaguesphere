@@ -28,6 +28,8 @@ from gamedays.tests.setup_factories.factories import (
     GamedayFactory,
     GameinfoFactory,
     GameOfficialFactory,
+    GameresultFactory,
+    UserFactory,
 )
 from officials.tests.setup_factories.db_setup_officials import DbSetupOfficials
 from officials.tests.setup_factories.factories_officials import (
@@ -38,6 +40,7 @@ from officials.tests.setup_factories.factories_officials import (
 )
 from officials.urls import (
     OFFICIALS_LIST_FOR_TEAM,
+    OFFICIALS_LIST_FOR_TEAM_AND_YEAR,
     OFFICIALS_LIST_FOR_ALL_TEAMS,
     OFFICIALS_STATISTICS,
     OFFICIALS_STATISTICS_FOR_SEASON,
@@ -96,6 +99,106 @@ class TestOfficialListView(WebTest):
         officials_list = response.context["officials_list"]
         all_officials = Official.objects.all()
         assert len(officials_list) == len(all_officials)
+
+
+class TestOfficiatedGamesSection(TestCase):
+    def _team_with_officiated_game(self, year=2027):
+        team = TeamFactory(name="officiating-team")
+        gameday = GamedayFactory(date=datetime(year, 5, 1).date(), name="Spieltag 1")
+        gameinfo = GameinfoFactory(gameday=gameday, officials=team)
+        GameOfficialFactory(gameinfo=gameinfo, official=None, position="Referee")
+        GameresultFactory(gameinfo=gameinfo, isHome=True)
+        GameresultFactory(gameinfo=gameinfo, isHome=False)
+        return team, gameinfo
+
+    def test_hidden_for_anonymous_user(self):
+        team, _ = self._team_with_officiated_game()
+
+        response = self.client.get(
+            reverse(
+                OFFICIALS_LIST_FOR_TEAM_AND_YEAR,
+                kwargs={"pk": team.pk, "season": 2027},
+            )
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.context["show_officiated_games"] is False
+        assert "Geleitete Spiele" not in response.content.decode()
+
+    def test_hidden_when_moodle_session_active(self):
+        team, _ = self._team_with_officiated_game()
+        self.client.force_login(UserFactory(username="some-user"))
+        session = self.client.session
+        session[MOODLE_LOGGED_IN_USER] = 1
+        session.save()
+
+        response = self.client.get(
+            reverse(
+                OFFICIALS_LIST_FOR_TEAM_AND_YEAR,
+                kwargs={"pk": team.pk, "season": 2027},
+            )
+        )
+
+        assert response.context["show_officiated_games"] is False
+
+    def test_visible_for_any_authenticated_user(self):
+        team, gameinfo = self._team_with_officiated_game()
+        self.client.force_login(UserFactory(username="some-user"))
+
+        response = self.client.get(
+            reverse(
+                OFFICIALS_LIST_FOR_TEAM_AND_YEAR,
+                kwargs={"pk": team.pk, "season": 2027},
+            )
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.context["show_officiated_games"] is True
+        games = response.context["officiated_games"]
+        assert [game["gameinfo_id"] for game in games] == [gameinfo.id]
+        assert "Geleitete Spiele" in response.content.decode()
+
+    def test_excludes_games_officiated_by_a_different_team(self):
+        team, gameinfo = self._team_with_officiated_game()
+        other_team = TeamFactory(name="other-team")
+        other_gameday = GamedayFactory(date=datetime(2027, 5, 8).date())
+        other_gameinfo = GameinfoFactory(gameday=other_gameday, officials=other_team)
+        GameOfficialFactory(gameinfo=other_gameinfo, official=None, position="Referee")
+        GameresultFactory(gameinfo=other_gameinfo, isHome=True)
+        GameresultFactory(gameinfo=other_gameinfo, isHome=False)
+        self.client.force_login(UserFactory(username="some-user"))
+
+        response = self.client.get(
+            reverse(
+                OFFICIALS_LIST_FOR_TEAM_AND_YEAR,
+                kwargs={"pk": team.pk, "season": 2027},
+            )
+        )
+
+        games = response.context["officiated_games"]
+        assert [game["gameinfo_id"] for game in games] == [gameinfo.id]
+
+    def test_violation_badge_renders_for_a_flagged_game(self):
+        team, gameinfo = self._team_with_officiated_game()
+        LeagueSeasonConfigFactory(
+            league=gameinfo.gameday.league,
+            season=gameinfo.gameday.season,
+            check_officials_automatically=True,
+            min_officials_per_game=1,
+        )
+        self.client.force_login(UserFactory(username="some-user"))
+
+        response = self.client.get(
+            reverse(
+                OFFICIALS_LIST_FOR_TEAM_AND_YEAR,
+                kwargs={"pk": team.pk, "season": 2027},
+            )
+        )
+
+        games = response.context["officiated_games"]
+        assert len(games[0]["officials_violations"]) == 1
+        content = response.content.decode()
+        assert 'class="badge bg-danger"' in content
 
 
 class TestAllTeamsCardListView(WebTest):
