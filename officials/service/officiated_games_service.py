@@ -5,8 +5,9 @@ compliance check - the data behind the "officiated games" section on
 This is a different concern from that page's main roster listing
 (OfficialService.get_all_officials_with_team_infos): that lists the
 officials who *belong* to a team's roster (Official.team); this module
-answers "which games did team X actually officiate", regardless of which
-team an individual official on the game happens to belong to.
+answers "which games did team X actually officiate" - scoped purely by the
+coarse Gameinfo.officials assignment on the game itself, not by which team
+any individually-recorded official happens to belong to.
 
 Reuses matchreport.service.model_wrapper.MachtreportModelWrapper (one
 instance per distinct gameday the team officiated) rather than a leaner,
@@ -21,9 +22,7 @@ team self-service page.
 
 from collections import defaultdict
 
-from django.db.models import Q
-
-from gamedays.models import Gameday, Gameinfo, GameOfficial
+from gamedays.models import Gameday, Gameinfo
 from matchreport.service.model_wrapper import MachtreportModelWrapper
 from officials.service.officials_compliance_service import (
     compute_gameday_officials_compliance,
@@ -31,30 +30,15 @@ from officials.service.officials_compliance_service import (
 
 
 def get_officiated_gameinfo_ids(team_id: int, season: int) -> list:
-    """Distinct Gameinfo ids TEAM team_id officiated in `season` - not games
-    this team's roster officials happen to have worked for other teams.
-
-    A game counts as officiated by team_id when either:
-    - the coarse Gameinfo.officials slot is team_id AND no individual
-      Official has been recorded yet (official=None) - once an individual
-      is recorded, their own Official.team is the authoritative source,
-      since it can legitimately differ from the coarse assignment (e.g. a
-      borrowed official filling in on a game nominally assigned elsewhere);
-      or
-    - an individually-recorded GameOfficial.official belongs to team_id,
-      regardless of which team the game's coarse assignment names.
-
-    Mirrors the identical, already-established query pattern in
-    officials/views.py::GameOfficialListView.
-    """
+    """Distinct Gameinfo ids where the coarse Gameinfo.officials assignment
+    is team_id, in `season` - not games this team's roster officials happen
+    to have worked for other teams, and not games where an individually
+    recorded official belongs to team_id but the game's own officiating
+    assignment names a different team."""
     return list(
-        GameOfficial.objects.filter(gameinfo__gameday__date__year=season)
-        .filter(
-            Q(gameinfo__officials__pk=team_id, official=None)
-            | Q(official__team__pk=team_id)
-        )
-        .values_list("gameinfo_id", flat=True)
-        .distinct()
+        Gameinfo.objects.filter(
+            gameday__date__year=season, officials_id=team_id
+        ).values_list("id", flat=True)
     )
 
 

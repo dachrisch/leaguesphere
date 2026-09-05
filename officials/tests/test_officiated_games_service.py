@@ -21,86 +21,49 @@ from officials.tests.setup_factories.factories_officials import OfficialFactory
 
 
 class TestGetOfficiatedGameinfoIds(TestCase):
-    def test_coarse_assignment_included_when_no_individual_official(self):
+    def test_coarse_assignment_included(self):
         team = TeamFactory(name="team-a")
         gameday = GamedayFactory(date=date(2027, 5, 1))
         gameinfo = GameinfoFactory(gameday=gameday, officials=team)
-        GameOfficialFactory(gameinfo=gameinfo, official=None, position="Referee")
 
         ids = get_officiated_gameinfo_ids(team.pk, 2027)
 
         assert ids == [gameinfo.id]
 
-    def test_individual_official_team_match_included(self):
+    def test_excludes_games_assigned_to_a_different_team(self):
         team = TeamFactory(name="team-a")
         other_team = TeamFactory(name="team-b")
-        official = OfficialFactory(team=team)
         gameday = GamedayFactory(date=date(2027, 5, 1))
-        # Coarse assignment belongs to a DIFFERENT team, but the individual
-        # official recorded on it belongs to `team` - the game is `team`'s.
-        gameinfo = GameinfoFactory(gameday=gameday, officials=other_team)
-        GameOfficialFactory(gameinfo=gameinfo, official=official, position="Referee")
+        GameinfoFactory(gameday=gameday, officials=other_team)
 
-        ids = get_officiated_gameinfo_ids(team.pk, 2027)
+        assert get_officiated_gameinfo_ids(team.pk, 2027) == []
 
-        assert ids == [gameinfo.id]
-
-    def test_coarse_assignment_excluded_when_individual_official_is_a_different_team(
-        self,
-    ):
+    def test_scoped_by_coarse_assignment_only_ignoring_individual_officials(self):
+        # Scoping is purely Gameinfo.officials == team_id - which team an
+        # individually-recorded official on the game happens to belong to
+        # (officials.Official.team) is irrelevant here.
         team = TeamFactory(name="team-a")
         other_team = TeamFactory(name="team-b")
-        other_official = OfficialFactory(team=other_team)
+        official_from_other_team = OfficialFactory(team=other_team)
         gameday = GamedayFactory(date=date(2027, 5, 1))
-        # Coarse assignment names `team`, but the individually-recorded
-        # official actually belongs to a different team - `team` did NOT
-        # officiate this game.
         gameinfo = GameinfoFactory(gameday=gameday, officials=team)
         GameOfficialFactory(
-            gameinfo=gameinfo, official=other_official, position="Referee"
+            gameinfo=gameinfo, official=official_from_other_team, position="Referee"
         )
 
-        ids = get_officiated_gameinfo_ids(team.pk, 2027)
-
-        assert ids == []
+        assert get_officiated_gameinfo_ids(team.pk, 2027) == [gameinfo.id]
+        assert get_officiated_gameinfo_ids(other_team.pk, 2027) == []
 
     def test_filters_by_season_year(self):
         team = TeamFactory(name="team-a")
         gameday_2027 = GamedayFactory(date=date(2027, 5, 1))
         gameinfo_2027 = GameinfoFactory(gameday=gameday_2027, officials=team)
-        GameOfficialFactory(gameinfo=gameinfo_2027, official=None, position="Referee")
 
         gameday_2026 = GamedayFactory(date=date(2026, 5, 1))
         gameinfo_2026 = GameinfoFactory(gameday=gameday_2026, officials=team)
-        GameOfficialFactory(gameinfo=gameinfo_2026, official=None, position="Referee")
 
         assert get_officiated_gameinfo_ids(team.pk, 2027) == [gameinfo_2027.id]
         assert get_officiated_gameinfo_ids(team.pk, 2026) == [gameinfo_2026.id]
-
-    def test_does_not_include_games_a_teams_roster_official_worked_for_another_team(
-        self,
-    ):
-        # Regression for the scope requirement: this must answer "which
-        # games did TEAM X officiate", not "which games did any official on
-        # team X's roster work, for whichever team". Covered again here at
-        # the service level even though it's the same case as
-        # test_coarse_assignment_excluded_when_individual_official_is_a_different_team,
-        # phrased from the "team roster" angle explicitly.
-        team = TeamFactory(name="team-a")
-        other_team = TeamFactory(name="team-b")
-        official_on_team_a_roster = OfficialFactory(team=team)
-        gameday = GamedayFactory(date=date(2027, 5, 1))
-        gameinfo = GameinfoFactory(gameday=gameday, officials=other_team)
-        GameOfficialFactory(
-            gameinfo=gameinfo, official=official_on_team_a_roster, position="Referee"
-        )
-
-        # This game IS officiated by team-a (via the individual official's
-        # own team), regardless of the coarse assignment naming team-b.
-        assert get_officiated_gameinfo_ids(team.pk, 2027) == [gameinfo.id]
-        # And it must NOT show up under team-b, despite team-b being the
-        # coarse assignment - the individual official overrides that.
-        assert get_officiated_gameinfo_ids(other_team.pk, 2027) == []
 
 
 class TestGetTeamOfficiatedGames(TestCase):
