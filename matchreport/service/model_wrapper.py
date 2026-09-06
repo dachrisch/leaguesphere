@@ -205,7 +205,7 @@ class MachtreportModelWrapper:
         # consumed by _license_number_cell()/_license_cell() to build the
         # "Lizenznummer"/"Lizenz" columns, not rendered as columns of their
         # own.
-        extra_fields = ["official_id", "official__external_id"]
+        extra_fields = ["official_id"]
 
         # Correlated subquery so every official's license is resolved in the
         # same query as the officials table, instead of one query per
@@ -284,7 +284,6 @@ class MachtreportModelWrapper:
             officials_df["license_number_cell"] = officials_df.apply(
                 lambda row: self._license_number_cell(
                     row["official_id"],
-                    row["official__external_id"],
                     self.gameday_date.year,
                 ),
                 axis=1,
@@ -300,7 +299,19 @@ class MachtreportModelWrapper:
     def _license_cell(license_name, last_started_license_date):
         # Plain text, never a hyperlink (see _license_number_cell for the
         # link, which lives in the separate "Lizenznummer" column).
-        if license_name is not None:
+        #
+        # pd.isna() rather than "is not None": pandas is pinned to 3.0.5,
+        # where pd.options.future.infer_string defaults to True, so an
+        # all-string column - like this one, sourced from a license__name
+        # CharField subquery - is inferred as pandas StringDtype, whose
+        # missing-value sentinel is pd.NA, not Python None or float('nan').
+        # `pd.NA is not None` evaluates True, so an "is not None" guard
+        # would wrongly treat "no currently valid license" (pd.NA) as a
+        # real license name and return pd.NA itself, which to_html() then
+        # renders as the literal text "NaN". pd.isna() is the one check
+        # that's True for pd.NA, NaN, and None alike, mirroring
+        # _license_number_cell()'s existing guard below.
+        if not pd.isna(license_name):
             return license_name
 
         # No currently valid license - if the official has ever held one
@@ -329,19 +340,30 @@ class MachtreportModelWrapper:
         )
 
     @staticmethod
-    def _license_number_cell(official_id, external_id, season):
-        # The official's license number (Official.external_id - the
-        # Moodle-issued id DFFL uses as the license number, already
-        # hyperlinked to the Moodle profile elsewhere in
-        # officials/templates/officials/license_check.html), hyperlinked
-        # here to the official's per-season game list page instead, via the
-        # shared officials.service.official_profile helper (also used by
-        # officials/service/moodle/moodle_service.py::_get_ahref_for_profile
+    def _license_number_cell(official_id, season):
+        # The official's license number is their own pk (Official.id) -
+        # matching the convention used everywhere else this is shown
+        # (officials/templates/officials/license_check.html's "Lizenznr"
+        # column, profile_license.html's "Lizenz: #{{official_info.id}}",
+        # officials_list.html, _statistics_table.html,
+        # association_list.html), and matching what
+        # officials/service/moodle/moodle_api.py's ApiUpdateUser writes back
+        # into Moodle's own license-number custom field
+        # (license_number = official.pk, asserted in
+        # officials/tests/service/moodle/test_moodle_service.py). This is
+        # NOT Official.external_id - that's a separate, free-text,
+        # Moodle-issued account id used only for Moodle account
+        # lookup/login mapping and the "External-ID" Moodle-profile-link
+        # column, a genuinely different purpose (see
+        # officials/service/moodle/moodle_service.py) - do not resurrect it
+        # here. Hyperlinked to the official's per-season game list page via
+        # the shared officials.service.official_profile helper (also used
+        # by officials/service/moodle/moodle_service.py::_get_ahref_for_profile
         # so the links can't drift apart). Shown independently of whether
         # the official currently holds a valid F1-F4 license (that's the
         # separate "Lizenz" column) so staff can always click through to an
         # assigned official's profile.
-        if pd.isna(official_id) or external_id is None or pd.isna(external_id):
+        if pd.isna(official_id):
             # "" rather than None - see the matching comment in
             # _license_cell() above.
             return ""
@@ -354,19 +376,16 @@ class MachtreportModelWrapper:
 
         # Local import avoids a hard officials<->matchreport import-order
         # dependency at module load time.
-        from django.utils.html import escape
-
         from officials.service.official_profile import official_profile_gamelist_url
 
         profile_url = official_profile_gamelist_url(official_id, season)
-        # external_id is a free-text CharField (officials/models.py) with no
-        # format validation, and this whole table is rendered with
-        # escape=False (`.to_html()`) and output via the `safe` template
-        # filter - escape it explicitly so it can never inject markup into
-        # the rendered report.
+        # No escaping needed here (unlike the external_id this replaced):
+        # official_id has just been through int(), so it can only ever be
+        # an integer's str() representation - there's no free-text input
+        # left to sanitize.
         return (
             f'<a href="{profile_url}" target="_blank" title="Zum Profil des Offiziellen">'
-            f"#{escape(external_id)}</a>"
+            f"#{official_id}</a>"
         )
 
     def get_gameday_match_report(self, render_config: dict):

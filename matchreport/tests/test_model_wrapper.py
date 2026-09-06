@@ -1,5 +1,6 @@
 from datetime import date
 
+import pandas as pd
 from django.test import TestCase
 from django.urls import reverse
 
@@ -19,13 +20,13 @@ from officials.tests.setup_factories.factories_officials import (
 from officials.urls import OFFICIALS_PROFILE_GAMELIST
 
 
-def _license_number_link(official_id, external_id, season):
+def _license_number_link(official_id, season):
     profile_url = reverse(
         OFFICIALS_PROFILE_GAMELIST, kwargs={"pk": official_id, "season": season}
     )
     return (
         f'<a href="{profile_url}" target="_blank" title="Zum Profil des Offiziellen">'
-        f"#{external_id}</a>"
+        f"#{official_id}</a>"
     )
 
 
@@ -169,7 +170,7 @@ class TestMatchreportOfficialsLicense(TestCase):
             gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
         )
 
-        official = OfficialFactory(team=TeamFactory(), external_id="9001")
+        official = OfficialFactory(team=TeamFactory())
         OfficialLicenseHistoryFactory(
             official=official,
             license=OfficialLicenseFactory(name="F1"),
@@ -185,8 +186,36 @@ class TestMatchreportOfficialsLicense(TestCase):
         self.assertEqual(licensed_row["Lizenz"], "F1")
         self.assertEqual(
             licensed_row["Lizenznummer"],
-            _license_number_link(official.pk, "9001", 2027),
+            _license_number_link(official.pk, 2027),
         )
+
+
+class TestLicenseCellPandasNaSentinel(TestCase):
+    # Regression for a pandas-3.0 bug: pd.options.future.infer_string
+    # (default True as of pandas 3.0) makes an all-string DataFrame column
+    # (like license__name) use pd.NA as its missing-value sentinel instead
+    # of None or float('nan'). `pd.NA is not None` evaluates True, so a
+    # naive "if license_name is not None" guard would wrongly treat pd.NA
+    # as a real license name and return it as-is, which then renders as the
+    # literal text "NaN" in the report. These call _license_cell directly
+    # so the fix is pinned regardless of whether a given pandas
+    # version/dtype-inference setting happens to produce pd.NA end-to-end.
+    def test_pd_na_with_a_last_started_license_date_shows_expiry_note(self):
+        cell = MachtreportModelWrapper._license_cell(pd.NA, date(2025, 2, 24))
+        self.assertEqual(cell, _expired_note(date(2026, 2, 24)))
+
+    def test_pd_na_with_no_last_started_license_date_is_blank(self):
+        self.assertEqual(MachtreportModelWrapper._license_cell(pd.NA, None), "")
+
+    def test_none_with_a_last_started_license_date_still_shows_expiry_note(self):
+        # Guards the existing None-sentinel path isn't broken by the fix.
+        cell = MachtreportModelWrapper._license_cell(None, date(2025, 2, 24))
+        self.assertEqual(cell, _expired_note(date(2026, 2, 24)))
+
+    def test_a_real_license_name_is_returned_unchanged(self):
+        # Guards the "valid license" case isn't broken by switching from
+        # "is not None" to pd.isna().
+        self.assertEqual(MachtreportModelWrapper._license_cell("F2", None), "F2")
 
 
 class TestMatchreportOfficialsLicenseExpiredNote(TestCase):
@@ -311,6 +340,39 @@ class TestMatchreportOfficialsLicenseExpiredNote(TestCase):
 
         self.assertEqual(officials_table["Lizenz"].iloc[0], "")
 
+    def test_expired_license_cell_renders_expiry_note_not_the_text_nan(self):
+        # Integration-level regression for the pd.NA/pandas-3.0 bug (see
+        # TestLicenseCellPandasNaSentinel for the focused unit tests) -
+        # reproduces the real production scenario (gameday 424 / gameinfo
+        # 5310 / official pk 316): an official whose most recently obtained
+        # license had already expired as of the gameday, resolved through a
+        # real license__name CharField subquery (the actual source of the
+        # pd.NA sentinel, not a synthetic one), asserting on the rendered
+        # to_html() output a viewer actually sees.
+        gameday = GamedayFactory(date=date(2025, 4, 5))
+        gameinfo = GameinfoFactory(
+            gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
+        )
+        official = OfficialFactory(team=TeamFactory())
+        OfficialLicenseHistoryFactory(
+            official=official,
+            license=OfficialLicenseFactory(name="F4"),
+            created_at=date(2022, 5, 1),
+        )
+        OfficialLicenseHistoryFactory(
+            official=official,
+            license=OfficialLicenseFactory(name="F3"),
+            created_at=date(2024, 2, 24),
+        )
+        GameOfficialFactory(gameinfo=gameinfo, official=official, position="Referee")
+
+        wrapper = MachtreportModelWrapper(gameday.pk)
+        officials_table = wrapper._get_game_officials_table(gameinfo.id)
+        rendered = officials_table.to_html(**REPORT_TABLE_RENDER_CONFIG)
+
+        self.assertIn("abgelaufen seit 23.02.2025", rendered)
+        self.assertNotIn("NaN", rendered)
+
 
 class TestMatchreportOfficialsLicenseNumber(TestCase):
     def test_license_number_is_a_separate_column_hyperlinked_to_the_gamelist_page(self):
@@ -319,7 +381,7 @@ class TestMatchreportOfficialsLicenseNumber(TestCase):
             gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
         )
 
-        official = OfficialFactory(team=TeamFactory(), external_id="1234")
+        official = OfficialFactory(team=TeamFactory())
         OfficialLicenseHistoryFactory(
             official=official,
             license=OfficialLicenseFactory(name="F1"),
@@ -333,7 +395,7 @@ class TestMatchreportOfficialsLicenseNumber(TestCase):
         self.assertIn("Lizenznummer", officials_table.columns)
         self.assertEqual(officials_table["Lizenz"].iloc[0], "F1")
         cell = officials_table["Lizenznummer"].iloc[0]
-        self.assertEqual(cell, _license_number_link(official.pk, "1234", 2027))
+        self.assertEqual(cell, _license_number_link(official.pk, 2027))
         self.assertIn(
             reverse(
                 OFFICIALS_PROFILE_GAMELIST, kwargs={"pk": official.pk, "season": 2027}
@@ -343,78 +405,41 @@ class TestMatchreportOfficialsLicenseNumber(TestCase):
         # The F1-F4 level itself never carries a hyperlink.
         self.assertNotIn("<a ", officials_table["Lizenz"].iloc[0])
 
-    def test_license_number_is_html_escaped(self):
-        # Regression: Official.external_id is a free-text CharField with no
-        # format validation, and the whole officials table is rendered with
-        # escape=False and output via the `safe` template filter - a
-        # malicious external_id must not be able to inject markup.
-        gameday = GamedayFactory(date=date(2027, 5, 1))
-        gameinfo = GameinfoFactory(
-            gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
-        )
-
-        official = OfficialFactory(
-            team=TeamFactory(), external_id='"><script>alert(1)</script>'
-        )
-        OfficialLicenseHistoryFactory(
-            official=official,
-            license=OfficialLicenseFactory(name="F1"),
-            created_at=date(2027, 3, 1),
-        )
-        GameOfficialFactory(gameinfo=gameinfo, official=official, position="Referee")
-
-        wrapper = MachtreportModelWrapper(gameday.pk)
-        officials_table = wrapper._get_game_officials_table(gameinfo.id)
-
-        cell = officials_table["Lizenznummer"].iloc[0]
-        self.assertNotIn("<script>", cell)
-        self.assertIn("&lt;script&gt;", cell)
-
     def test_license_number_is_blank_when_official_has_none(self):
+        # The only way a GameOfficial has no official_id to show a license
+        # number for is a free-text-only assignment (official=None) -
+        # unlike before this fix, a missing/None external_id no longer has
+        # any bearing on this cell.
         gameday = GamedayFactory(date=date(2027, 5, 1))
         gameinfo = GameinfoFactory(
             gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
         )
 
-        official = OfficialFactory(team=TeamFactory(), external_id=None)
-        OfficialLicenseHistoryFactory(
-            official=official,
-            license=OfficialLicenseFactory(name="F1"),
-            created_at=date(2027, 3, 1),
-        )
-        GameOfficialFactory(gameinfo=gameinfo, official=official, position="Referee")
+        GameOfficialFactory(gameinfo=gameinfo, official=None, position="Referee")
 
         wrapper = MachtreportModelWrapper(gameday.pk)
         officials_table = wrapper._get_game_officials_table(gameinfo.id)
 
-        self.assertEqual(officials_table["Lizenz"].iloc[0], "F1")
         self.assertEqual(officials_table["Lizenznummer"].iloc[0], "")
 
     def test_blank_lizenznummer_cell_does_not_render_as_the_text_nan(self):
         # Same regression as test_blank_lizenz_cell_does_not_render_as_the_text_nan,
-        # for the "Lizenznummer" column - an official with no external_id is
-        # meant to show a blank cell, not the literal text "NaN" (mixed with
-        # a numbered official in the same game, matching the real report).
+        # for the "Lizenznummer" column - a GameOfficial with no linked
+        # Official (free-text-only assignment) is meant to show a blank
+        # cell, not the literal text "NaN" (mixed with a linked official in
+        # the same game, matching the real report).
         gameday = GamedayFactory(date=date(2027, 5, 1))
         gameinfo = GameinfoFactory(
             gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
         )
-        numbered_official = OfficialFactory(team=TeamFactory(), external_id="4242")
-        OfficialLicenseHistoryFactory(
-            official=numbered_official,
-            license=OfficialLicenseFactory(name="F1"),
-            created_at=date(2027, 3, 1),
-        )
-        GameOfficialFactory(
-            gameinfo=gameinfo, official=numbered_official, position="Referee"
-        )
-        official = OfficialFactory(team=TeamFactory(), external_id=None)
+        official = OfficialFactory(team=TeamFactory())
         OfficialLicenseHistoryFactory(
             official=official,
             license=OfficialLicenseFactory(name="F1"),
             created_at=date(2027, 3, 1),
         )
-        GameOfficialFactory(gameinfo=gameinfo, official=official, position="Down Judge")
+        GameOfficialFactory(gameinfo=gameinfo, official=official, position="Referee")
+        GameOfficialFactory(gameinfo=gameinfo, official=None, position="Down Judge")
 
         wrapper = MachtreportModelWrapper(gameday.pk)
         officials_table = wrapper._get_game_officials_table(gameinfo.id)
@@ -424,17 +449,17 @@ class TestMatchreportOfficialsLicenseNumber(TestCase):
         self.assertNotIn(">None<", rendered)
 
     def test_license_number_still_shown_when_no_valid_current_license(self):
-        # The license number column reflects the official's own record
-        # (Official.external_id), independently of whether they currently
-        # hold a valid F1-F4 license - an official with a license number but
-        # an expired/absent license still shows a "Lizenznummer" link so
-        # staff can click through to check/update their profile.
+        # The license number column reflects the official's own pk,
+        # independently of whether they currently hold a valid F1-F4
+        # license - an official with an expired/absent license still shows
+        # a "Lizenznummer" link so staff can click through to check/update
+        # their profile.
         gameday = GamedayFactory(date=date(2022, 5, 1))
         gameinfo = GameinfoFactory(
             gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
         )
 
-        official = OfficialFactory(team=TeamFactory(), external_id="4242")
+        official = OfficialFactory(team=TeamFactory())
         OfficialLicenseHistoryFactory(
             official=official,
             license=OfficialLicenseFactory(name="F2 2019"),
@@ -448,7 +473,7 @@ class TestMatchreportOfficialsLicenseNumber(TestCase):
         self.assertIn("abgelaufen seit", officials_table["Lizenz"].iloc[0])
         self.assertEqual(
             officials_table["Lizenznummer"].iloc[0],
-            _license_number_link(official.pk, "4242", 2022),
+            _license_number_link(official.pk, 2022),
         )
 
     def test_license_number_column_uses_integer_pk_when_mixed_with_free_text_official(
@@ -463,7 +488,7 @@ class TestMatchreportOfficialsLicenseNumber(TestCase):
             gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
         )
 
-        official = OfficialFactory(team=TeamFactory(), external_id="777")
+        official = OfficialFactory(team=TeamFactory())
         GameOfficialFactory(gameinfo=gameinfo, official=official, position="Referee")
         GameOfficialFactory(gameinfo=gameinfo, official=None, position="Down Judge")
 
@@ -473,5 +498,5 @@ class TestMatchreportOfficialsLicenseNumber(TestCase):
         licensed_row = officials_table[officials_table["Position"] == "Referee"].iloc[0]
         self.assertEqual(
             licensed_row["Lizenznummer"],
-            _license_number_link(official.pk, "777", 2027),
+            _license_number_link(official.pk, 2027),
         )
