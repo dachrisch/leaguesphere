@@ -1,10 +1,14 @@
+import re
+from collections import defaultdict
+from typing import Optional
+
 from django.db.models import Sum, Prefetch, Q
 from django.db.models.functions import Coalesce
 
 from gamedays.models import GameOfficial
 from gamedays.service.team_repository_service import TeamRepositoryService
 from officials.api.serializers import OfficialGameCountSerializer
-from officials.models import Official, OfficialExternalGames
+from officials.models import Official, OfficialExternalGames, OfficialLicenseHistory
 from officials.service.game_official_entries import (
     InternalGameOfficialEntry,
     ExternalGameOfficialEntry,
@@ -17,6 +21,50 @@ from officials.service.serializers import OfficialLicenseCheckSerializer
 # Closed set of license levels an official can hold, ordered highest to
 # lowest (mirrors LicenseStrategy.COURSE_MAPPING's F1..F4 course names).
 LICENSE_LEVELS = ["F1", "F2", "F3", "F4"]
+
+# OfficialLicense.name is a free CharField with no choices/enum, and the
+# established convention elsewhere in this codebase (see
+# matchreport/tests/test_model_wrapper.py) is to suffix it with a year, e.g.
+# "F1 2027" - so license levels are resolved by prefix, not exact match,
+# matching how OfficialLicenseHistoryQuerySet.order_by_rank() already
+# relies on plain alphabetical sorting rather than an exact-match filter.
+_LICENSE_LEVEL_PATTERN = re.compile(r"^(F[1-4])\b")
+
+
+def license_rank(license_name) -> Optional[int]:
+    """Resolves a license name (e.g. "F2" or "F2 2022") to its rank index
+    (0 = F1, the best, through 3 = F4), or None if it doesn't match a
+    recognized F1-F4 level at all (e.g. a "-"/no-license placeholder)."""
+    if not license_name:
+        return None
+    match = _LICENSE_LEVEL_PATTERN.match(license_name)
+    if not match:
+        return None
+    return LICENSE_LEVELS.index(match.group(1))
+
+
+def bulk_history_by_official(official_ids) -> dict:
+    """For each of the given official ids, resolves their full recognized
+    (F1-F4) license history as a list of (created_at, rank) tuples - the
+    shared shape officials_compliance_service.best_valid_rank() consumes to
+    pick the best currently-valid one. One query regardless of how many
+    official ids are passed in. Shared by
+    officials_compliance_service.compute_gameday_officials_compliance() and
+    game_official_licenses.resolve_game_official_licenses() so the two
+    can't independently drift on which history rows count."""
+    history_by_official = defaultdict(list)
+    if not official_ids:
+        return history_by_official
+
+    histories = OfficialLicenseHistory.objects.filter(
+        official_id__in=official_ids
+    ).values("official_id", "license__name", "created_at")
+    for h in histories:
+        rank = license_rank(h["license__name"])
+        if rank is None:
+            continue
+        history_by_official[h["official_id"]].append((h["created_at"], rank))
+    return history_by_official
 
 
 class OfficialService:

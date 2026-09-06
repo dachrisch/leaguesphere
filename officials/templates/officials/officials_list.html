@@ -94,6 +94,71 @@
             {% endfor %}
             </tbody>
         </table>
+
+        {% if show_officiated_games %}
+        <h3 class="mt-4">Geleitete Spiele ({{ officiated_games|length }})</h3>
+        <table class="table table-hover align-middle">
+            <thead>
+            <tr>
+                <th scope="col">Datum</th>
+                <th scope="col">Spieltag</th>
+                <th scope="col">Heim</th>
+                <th scope="col">Auswärts</th>
+                <th scope="col">Verstöße</th>
+                <th scope="col"></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for game in officiated_games %}
+            <tr>
+                <td>{{ game.date }}</td>
+                <td>{{ game.gameday_name }}</td>
+                <td>{{ game.home.team_name }}</td>
+                <td>{{ game.away.team_name }}</td>
+                <td>
+                    {% if not game.is_checked %}
+                        <span class="badge bg-secondary">–</span>
+                    {% elif game.officials_violations %}
+                        <span class="badge bg-danger">{{ game.officials_violations|length }}</span>
+                    {% else %}
+                        <span class="badge bg-success">0</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary" type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#collapseOfficiatedGame{{ game.gameinfo_id }}"
+                            aria-expanded="false"
+                            aria-controls="collapseOfficiatedGame{{ game.gameinfo_id }}">
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                </td>
+            </tr>
+            <tr class="collapse" id="collapseOfficiatedGame{{ game.gameinfo_id }}">
+                <td colspan="6" class="p-0">
+                    <div class="p-3 bg-light">
+                        {% if game.officials_violations %}
+                        <div class="alert alert-danger py-2 mb-2">
+                            <strong>Offizielle unvollständig:</strong>
+                            <ul class="mb-0">
+                                {% for violation in game.officials_violations %}
+                                <li>{{ violation }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        {{ game.refs | safe }}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center text-muted py-4">Keine geleiteten Spiele in dieser Saison gefunden.</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
     </div>
 </article>
 {% include 'utils/tooltip_init.html' %}

@@ -146,6 +146,27 @@ class OfficialsTeamListView(View):
             )
         except Team.DoesNotExist:
             raise Http404("Team does not exist.")
+
+        # Officiated-games section: visible to any logged-in user other than
+        # someone in the middle of the separate Moodle-officials-login
+        # session flow (MOODLE_LOGGED_IN_USER) - no team-account matching,
+        # no staff exclusion. The (comparatively expensive - see
+        # officiated_games_service's module docstring) query work only runs
+        # when the section will actually be shown.
+        context["show_officiated_games"] = (
+            request.user.is_authenticated
+            and not request.session.get(MOODLE_LOGGED_IN_USER)
+        )
+        if context["show_officiated_games"]:
+            from matchreport.constants import REPORT_TABLE_RENDER_CONFIG
+            from officials.service.officiated_games_service import (
+                get_team_officiated_games,
+            )
+
+            context["officiated_games"] = get_team_officiated_games(
+                team_id, year, REPORT_TABLE_RENDER_CONFIG
+            )
+
         return render(
             request,
             self.template_name,

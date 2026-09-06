@@ -12,6 +12,7 @@ from gamedays.models import (
     TeamLog,
 )
 from officials.models import OfficialLicenseHistory
+from officials.service.license_validity import validity_lower_bound
 from passcheck.models import PasscheckVerification, PlayerlistGameday
 
 PLAYER_PASSCHECK_COLUMN_MAPPING = {
@@ -197,26 +198,48 @@ class MachtreportModelWrapper:
             "official__team__description": "Team",
             "name": "Name",
             "position": "Position",
-            "latest_license": "Lizenz",
+            "license_cell": "Lizenz",
+            "license_number_cell": "Lizenznummer",
         }
+        # Not part of column_mapping directly - fetched alongside it but
+        # consumed by _license_number_cell()/_license_cell() to build the
+        # "Lizenznummer"/"Lizenz" columns, not rendered as columns of their
+        # own.
+        extra_fields = ["official_id"]
 
         # Correlated subquery so every official's license is resolved in the
         # same query as the officials table, instead of one query per
         # official (N+1). A license is valid on the gameday if the gameday
         # falls within the license validity period: training date (created_at)
         # to approximately one year later (created_at + 365 days), as defined
-        # by OfficialLicenseHistory.valid_until(). When more than one license
-        # is valid at once, the highest-ranked one wins (F1 over F2 over
-        # F3...) - never whichever was issued more recently, so no date
-        # field is passed to order_by_rank() here.
+        # by OfficialLicenseHistory.valid_until() - validity_lower_bound()
+        # shares this window with
+        # officials/service/officials_compliance_service.py so the two can't
+        # independently drift apart. When more than one license is valid at
+        # once, the highest-ranked one wins (F1 over F2 over F3...) - never
+        # whichever was issued more recently, so no date field is passed to
+        # order_by_rank() here.
         latest_license = (
             OfficialLicenseHistory.objects.filter(
                 official_id=OuterRef("official"),
                 created_at__lte=self.gameday_date,
-                created_at__gt=self.gameday_date - timedelta(days=365),
+                created_at__gt=validity_lower_bound(self.gameday_date),
             )
             .order_by_rank()
             .values("license__name")[:1]
+        )
+        # When there's no currently valid license, this resolves the most
+        # recently *started* one as of the gameday (regardless of whether
+        # it's still valid) so the "Lizenz" cell can show when it expired,
+        # instead of just going blank. Ordered by recency, not rank - this
+        # is "what did they last hold", not "what's their best license".
+        last_started_license_date = (
+            OfficialLicenseHistory.objects.filter(
+                official_id=OuterRef("official"),
+                created_at__lte=self.gameday_date,
+            )
+            .order_by("-created_at")
+            .values("created_at")[:1]
         )
 
         position_order = {
@@ -227,20 +250,143 @@ class MachtreportModelWrapper:
             "Scorecard Judge": 4,
         }
 
+        # Raw DB fields to select - column_mapping's "license_cell"/
+        # "license_number_cell" keys are computed columns built below, not
+        # real fields, so they are deliberately left out of this values()
+        # call.
+        db_fields = [
+            "official__team__description",
+            "name",
+            "position",
+            "latest_license",
+            "last_started_license_date",
+        ]
+
         officials_df = pd.DataFrame(
             GameOfficial.objects.filter(gameinfo=gameinfo)
             .annotate(
                 latest_license=Subquery(latest_license),
+                last_started_license_date=Subquery(last_started_license_date),
             )
-            .values(*column_mapping.keys())
+            .values(*db_fields, *extra_fields)
         )
 
         if not officials_df.empty:
             officials_df["order"] = officials_df.position.apply(position_order.get)
             officials_df.sort_values("order", ascending=True, inplace=True)
             officials_df.drop(columns=["order"], inplace=True)
+            officials_df["license_cell"] = officials_df.apply(
+                lambda row: self._license_cell(
+                    row["latest_license"], row["last_started_license_date"]
+                ),
+                axis=1,
+            )
+            officials_df["license_number_cell"] = officials_df.apply(
+                lambda row: self._license_number_cell(
+                    row["official_id"],
+                    self.gameday_date.year,
+                ),
+                axis=1,
+            )
+            officials_df.drop(
+                columns=[*extra_fields, "latest_license", "last_started_license_date"],
+                inplace=True,
+            )
 
         return officials_df.rename(columns=column_mapping)
+
+    @staticmethod
+    def _license_cell(license_name, last_started_license_date):
+        # Plain text, never a hyperlink (see _license_number_cell for the
+        # link, which lives in the separate "Lizenznummer" column).
+        #
+        # pd.isna() rather than "is not None": pandas is pinned to 3.0.5,
+        # where pd.options.future.infer_string defaults to True, so an
+        # all-string column - like this one, sourced from a license__name
+        # CharField subquery - is inferred as pandas StringDtype, whose
+        # missing-value sentinel is pd.NA, not Python None or float('nan').
+        # `pd.NA is not None` evaluates True, so an "is not None" guard
+        # would wrongly treat "no currently valid license" (pd.NA) as a
+        # real license name and return pd.NA itself, which to_html() then
+        # renders as the literal text "NaN". pd.isna() is the one check
+        # that's True for pd.NA, NaN, and None alike, mirroring
+        # _license_number_cell()'s existing guard below.
+        if not pd.isna(license_name):
+            return license_name
+
+        # No currently valid license - if the official has ever held one
+        # that had already started as of this gameday, show when it expired
+        # (light grey, italic) instead of leaving the cell blank. This is
+        # only shown here, on the gameday detail screen - the CSV export
+        # (matchreport/service/gameday_list_csv_service.py, via
+        # officials/service/game_official_licenses.py) intentionally stays
+        # a separate, simpler implementation with no such note.
+        if last_started_license_date is None or pd.isna(last_started_license_date):
+            # "" rather than None: this column is rendered via
+            # DataFrame.to_html() (REPORT_TABLE_RENDER_CONFIG), which shows
+            # a bare None as the literal text "NaN" (once the column also
+            # holds a real license string) or "None" (when every official in
+            # the game lacks one) instead of a blank cell - see
+            # matchreport/tests/test_model_wrapper.py's
+            # *_does_not_render_as_the_text_nan regression tests.
+            return ""
+
+        expired_on = pd.Timestamp(last_started_license_date).date() + timedelta(
+            days=365
+        )
+        return (
+            f'<span class="text-muted fst-italic">'
+            f'abgelaufen seit {expired_on.strftime("%d.%m.%Y")}</span>'
+        )
+
+    @staticmethod
+    def _license_number_cell(official_id, season):
+        # The official's license number is their own pk (Official.id) -
+        # matching the convention used everywhere else this is shown
+        # (officials/templates/officials/license_check.html's "Lizenznr"
+        # column, profile_license.html's "Lizenz: #{{official_info.id}}",
+        # officials_list.html, _statistics_table.html,
+        # association_list.html), and matching what
+        # officials/service/moodle/moodle_api.py's ApiUpdateUser writes back
+        # into Moodle's own license-number custom field
+        # (license_number = official.pk, asserted in
+        # officials/tests/service/moodle/test_moodle_service.py). This is
+        # NOT Official.external_id - that's a separate, free-text,
+        # Moodle-issued account id used only for Moodle account
+        # lookup/login mapping and the "External-ID" Moodle-profile-link
+        # column, a genuinely different purpose (see
+        # officials/service/moodle/moodle_service.py) - do not resurrect it
+        # here. Hyperlinked to the official's per-season game list page via
+        # the shared officials.service.official_profile helper (also used
+        # by officials/service/moodle/moodle_service.py::_get_ahref_for_profile
+        # so the links can't drift apart). Shown independently of whether
+        # the official currently holds a valid F1-F4 license (that's the
+        # separate "Lizenz" column) so staff can always click through to an
+        # assigned official's profile.
+        if pd.isna(official_id):
+            # "" rather than None - see the matching comment in
+            # _license_cell() above.
+            return ""
+
+        # GameOfficial.official is nullable, so a column mixing real ids
+        # with missing values gets upcast by pandas to float64 (121 ->
+        # 121.0) - cast back to int before reverse(), whose int converter
+        # regex ([0-9]+) rejects the "121.0" string a float would produce.
+        official_id = int(official_id)
+
+        # Local import avoids a hard officials<->matchreport import-order
+        # dependency at module load time.
+        from officials.service.official_profile import official_profile_gamelist_url
+
+        profile_url = official_profile_gamelist_url(official_id, season)
+        # No escaping needed here (unlike the external_id this replaced):
+        # official_id has just been through int(), so it can only ever be
+        # an integer's str() representation - there's no free-text input
+        # left to sanitize.
+        return (
+            f'<a href="{profile_url}" target="_blank" title="Zum Profil des Offiziellen">'
+            f"#{official_id}</a>"
+        )
 
     def get_gameday_match_report(self, render_config: dict):
         games = []
