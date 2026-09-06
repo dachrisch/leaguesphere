@@ -175,7 +175,14 @@ def compute_gameday_officials_compliance(
     game_officials = list(
         GameOfficial.objects.filter(
             gameinfo_id__in=gameinfo_ids, official_id__isnull=False
-        ).values("gameinfo_id", "official_id")
+        )
+        # Scorecard Judge isn't a refereed position requiring an F1-F4
+        # license, so it never counts toward min_officials_per_game or any
+        # of the F1-F4 per-game minimums - same exclusion already applied
+        # elsewhere (officials/views.py, officials/api/serializers.py,
+        # officials_repository_service.py, game_official_licenses.py's
+        # TRACKED_POSITIONS).
+        .exclude(position="Scorecard Judge").values("gameinfo_id", "official_id")
     )
     official_ids = {go["official_id"] for go in game_officials}
 

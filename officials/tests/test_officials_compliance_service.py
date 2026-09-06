@@ -235,6 +235,29 @@ class TestGameOfficialsViolations(TestCase):
 
         assert len(status.game_violations[gameinfo.id]) == 1
 
+    def test_scorecard_judge_never_counts_toward_any_minimum(self):
+        # Scorecard Judge is excluded from every officials-compliance
+        # minimum (min_officials_per_game and all F1-F4 per-game minimums)
+        # - it isn't a refereed position that requires an F1-F4 license, and
+        # this matches the same exclusion already applied elsewhere
+        # (officials/views.py, officials/api/serializers.py,
+        # officials_repository_service.py,
+        # game_official_licenses.py's TRACKED_POSITIONS).
+        gameday = GamedayFactory(date=GAMEDAY_DATE)
+        gameinfo = GameinfoFactory(gameday=gameday)
+        self._config(
+            gameday,
+            min_officials_per_game=1,
+            min_officials_f1_per_game=1,
+        )
+        _license_official(gameinfo, "F1", position="Scorecard Judge")
+
+        status = compute_gameday_officials_compliance([gameday.pk])[gameday.pk]
+
+        violations = status.game_violations[gameinfo.id]
+        assert len(violations) == 2
+        assert any("0 von 1" in v for v in violations)
+
     def test_official_with_a_license_number_but_no_license_history_never_counts(self):
         # A real-world case: an official with a Moodle-issued license number
         # (Official.external_id) on file, and a proper GameOfficial FK link,
