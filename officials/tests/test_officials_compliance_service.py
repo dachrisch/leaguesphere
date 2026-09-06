@@ -235,6 +235,31 @@ class TestGameOfficialsViolations(TestCase):
 
         assert len(status.game_violations[gameinfo.id]) == 1
 
+    def test_official_with_a_license_number_but_no_license_history_never_counts(self):
+        # A real-world case: an official with a Moodle-issued license number
+        # (Official.external_id) on file, and a proper GameOfficial FK link,
+        # but zero OfficialLicenseHistory rows ever recorded for them - they
+        # must not count toward the minimum just because they have a license
+        # *number*. This is what surfaces on the matchreport gameday-detail
+        # table as a blank "Lizenz" cell for that official (previously
+        # rendered as the misleading literal text "NaN" - see
+        # matchreport/tests/test_model_wrapper.py).
+        gameday = GamedayFactory(date=GAMEDAY_DATE)
+        gameinfo = GameinfoFactory(gameday=gameday)
+        self._config(gameday, min_officials_per_game=3)
+        _license_official(gameinfo, "F1")
+        _license_official(gameinfo, "F2", position="Down Judge")
+        official = OfficialFactory(team=TeamFactory(), external_id="1123")
+        GameOfficialFactory(
+            gameinfo=gameinfo, official=official, position="Field Judge"
+        )
+
+        status = compute_gameday_officials_compliance([gameday.pk])[gameday.pk]
+
+        violations = status.game_violations[gameinfo.id]
+        assert len(violations) == 1
+        assert "2 von 3" in violations[0]
+
     def test_game_with_no_officials_at_all_is_a_violation(self):
         gameday = GamedayFactory(date=GAMEDAY_DATE)
         gameinfo = GameinfoFactory(gameday=gameday)

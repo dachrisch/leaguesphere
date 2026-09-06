@@ -29,4 +29,10 @@ REPORT_TABLE_RENDER_CONFIG = {
     "justify": "center",
     "escape": False,
     "table_id": "schedule",
+    # Several columns (officials Lizenz/Lizenznummer) use None to mean an
+    # intentionally blank cell. Without an explicit na_rep, pandas'
+    # to_html() default turns that into the literal text "NaN" (or, when a
+    # whole column is None, the literal word "None") - render both as an
+    # actual blank cell instead.
+    "na_rep": "",
 }

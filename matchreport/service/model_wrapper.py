@@ -311,7 +311,14 @@ class MachtreportModelWrapper:
         # officials/service/game_official_licenses.py) intentionally stays
         # a separate, simpler implementation with no such note.
         if last_started_license_date is None or pd.isna(last_started_license_date):
-            return None
+            # "" rather than None: this column is rendered via
+            # DataFrame.to_html() (REPORT_TABLE_RENDER_CONFIG), which shows
+            # a bare None as the literal text "NaN" (once the column also
+            # holds a real license string) or "None" (when every official in
+            # the game lacks one) instead of a blank cell - see
+            # matchreport/tests/test_model_wrapper.py's
+            # *_does_not_render_as_the_text_nan regression tests.
+            return ""
 
         expired_on = pd.Timestamp(last_started_license_date).date() + timedelta(
             days=365
@@ -335,7 +342,9 @@ class MachtreportModelWrapper:
         # separate "Lizenz" column) so staff can always click through to an
         # assigned official's profile.
         if pd.isna(official_id) or external_id is None or pd.isna(external_id):
-            return None
+            # "" rather than None - see the matching comment in
+            # _license_cell() above.
+            return ""
 
         # GameOfficial.official is nullable, so a column mixing real ids
         # with missing values gets upcast by pandas to float64 (121 ->
