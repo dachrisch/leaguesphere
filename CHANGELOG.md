@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.24.0](https://github.com/dachrisch/leaguesphere/compare/v4.23.0...v4.24.0) (2026-09-07)
+
+
+### Features
+
+* **matchreport:** automatic officials compliance check + license number display ([#1917](https://github.com/dachrisch/leaguesphere/issues/1917)) ([63fcf71](https://github.com/dachrisch/leaguesphere/commit/63fcf71817cf28a7dcab6dc1a74b572047670061))
+
+
+### Bug Fixes
+
+* **release:** restore 4.23.0 sequence after [#1925](https://github.com/dachrisch/leaguesphere/issues/1925) downgrade + add version guard ([#1927](https://github.com/dachrisch/leaguesphere/issues/1927)) ([439fd29](https://github.com/dachrisch/leaguesphere/commit/439fd298d941289d5809b7891a9b39ead75b8026))
+
 ## [4.23.0](https://github.com/dachrisch/leaguesphere/compare/v4.22.1...v4.23.0) (2026-09-04)
 
 
