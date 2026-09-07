@@ -522,6 +522,22 @@ jobs:
 
             echo "${TAG} is current. Proceeding."
 
+  check_version_sequence:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run:
+          name: Refuse backwards or desynced version bumps (PR time)
+          command: |
+            # Branch-side counterpart to check_release_sequence (which only
+            # runs on tag pipelines): blocks merges that would move
+            # .release-please-manifest.json backwards (e.g. #1925's
+            # 4.23.0 -> 4.15.3), desync version files from the manifest,
+            # or leak staging -rc/+demo versions or manifest/CHANGELOG
+            # edits from feature branches into master.
+            python3 scripts/check_version_sequence.py
+
   deploy_staging:
     docker:
       - image: cimg/base:stable
@@ -866,6 +882,11 @@ workflows:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$/
             branches:
               ignore: /.*/
+
+      # Branch-only guard (no tags filter on purpose: tag pipelines are
+      # covered by check_release_sequence, and comparing a tag checkout
+      # against origin/master would misfire on legitimately old tags).
+      - check_version_sequence
 
       - deploy_staging:
           context: staging
