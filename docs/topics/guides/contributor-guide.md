@@ -123,6 +123,9 @@ LeagueSphere uses **release-please** for fully automated semantic versioning. **
 **⚠️ Important**: 
 - Do NOT manually edit version files — they are automatically synchronized
 - The finalize job automatically handles version sync after PR merge
+- **Reset staging versions before merge**: `container/deploy.sh stage` bumps version files to `-rc.N` on your feature branch. Reset them to the master state (`git checkout origin/master -- pyproject.toml league_manager/__init__.py "*/package.json" uv.lock`) before merging — squash-merging `-rc` versions contaminates master and breaks release-please versioning.
+- **Never merge the release-please branch into a feature branch** — only release-please may change `.release-please-manifest.json` and `CHANGELOG.md`.
+- CI enforces this via `check_version_sequence` (branch pipelines) alongside `check_release_sequence` (tag pipelines): manifest downgrades, desynced version files, and `-rc`/`+demo` versions on release-please/master are blocked.
 
 ### Feature Documentation
 - Document progress in `docs/features/current/` for in-progress features
