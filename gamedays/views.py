@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pandas as pd
 from django.apps import apps
@@ -8,6 +8,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Max
 from django.db.models.functions import ExtractYear
 from django.shortcuts import render, get_object_or_404, redirect
+from django.templatetags.static import static
 from django.urls import reverse
 from django.utils.functional import cached_property
 from django.views import View
@@ -36,6 +37,7 @@ from .constants import (
     LEAGUE_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE,
     LEAGUE_GAMEDAY_LEAGUE_STATISTICS,
     LEAGUE_TOURNAMENT_DETAIL,
+    LEAGUE_GAMEDAY_GAME_DETAIL,
 )
 from .forms import (
     GamedayForm,
@@ -512,9 +514,14 @@ class GamedayGameDetailView(DetailView):
         context["sports_event_ld"] = self._build_sports_event_ld(gameinfo, context["info"])
         return context
 
-    # noinspection PyMethodMayBeStatic
+    # Games have no stored duration; used to derive an estimated endDate for
+    # the JSON-LD payload (matches ScheduleManager.DEFAULT_GAME_LENGTH).
+    DEFAULT_EVENT_DURATION_MINUTES = 70
+
     def _build_sports_event_ld(self, gameinfo: Gameinfo, info: dict) -> str:
-        """SportsEvent JSON-LD so AI agents can cite teams, status and score."""
+        """SportsEvent JSON-LD so AI agents (and Google's Events rich result) can
+        cite location, teams, status and score."""
+        gameday = gameinfo.gameday
         event_status = (
             "https://schema.org/EventPassed"
             if gameinfo.status == Gameinfo.STATUS_COMPLETED
@@ -530,21 +537,59 @@ class GamedayGameDetailView(DetailView):
                 "name": result.team.description,
                 "score": (result.fh or 0) + (result.sh or 0),
             }
+
+        start = datetime.combine(gameday.date, gameinfo.scheduled)
+        end = start + timedelta(minutes=self.DEFAULT_EVENT_DURATION_MINUTES)
+        game_url = self.request.build_absolute_uri(
+            reverse(
+                LEAGUE_GAMEDAY_GAME_DETAIL,
+                kwargs={"gameday_pk": gameday.pk, "pk": gameinfo.pk},
+            )
+        )
+
         payload = {
             "@context": "https://schema.org",
             "@type": "SportsEvent",
             "name": f"{info['home_team']} vs. {info['away_team']}",
+            "description": (
+                f"{info['home_team']} vs. {info['away_team']} – "
+                f"{gameday.league.name}, gespielt am {gameday.date.strftime('%d.%m.%Y')}."
+            ),
             "sport": "American Flag Football",
             "eventStatus": event_status,
-            "startDate": f"{gameinfo.gameday.date.isoformat()}T{gameinfo.scheduled.strftime('%H:%M')}:00Z",
+            "startDate": f"{start.date().isoformat()}T{start.strftime('%H:%M')}:00Z",
+            "endDate": f"{end.date().isoformat()}T{end.strftime('%H:%M')}:00Z",
+            "organizer": {
+                "@type": "Organization",
+                "name": gameday.league.name,
+            },
+            "offers": {
+                "@type": "Offer",
+                "url": game_url,
+                "price": "0",
+                "priceCurrency": "EUR",
+                "availability": "https://schema.org/InStock",
+            },
+            "image": self.request.build_absolute_uri(
+                static("teammanager/icons/football-og.jpg")
+            ),
             "speakable": {
                 "@type": "SpeakableSpecification",
                 "cssSelector": ["h1"],
             },
         }
+        if gameday.address:
+            payload["location"] = {
+                "@type": "Place",
+                "name": gameday.name,
+                "address": gameday.address,
+            }
         payload.update(
             {side: team for side, team in scores.items() if side in ("homeTeam", "awayTeam")}
         )
+        payload["performer"] = [
+            {"@type": "SportsTeam", "name": team["name"]} for team in scores.values()
+        ]
         return json.dumps(payload)
 
 

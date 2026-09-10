@@ -7,6 +7,7 @@ before implementation.
 """
 
 import json
+from datetime import datetime, timedelta
 
 from django.test import TestCase, Client
 from django.test.client import RequestFactory
@@ -179,6 +180,63 @@ class TestGameDetailJsonLd(TestCase):
     def test_json_ld_contains_speakable(self):
         response = self.client.get(self.url)
         self.assertContains(response, "SpeakableSpecification")
+
+    def _get_payload(self, url):
+        response = self.client.get(url)
+        content = response.content.decode()
+        ld_block = content.split('type="application/ld+json">')[1].split("</script>")[0]
+        return json.loads(ld_block)
+
+    def test_json_ld_omits_location_when_gameday_has_no_address(self):
+        payload = self._get_payload(self.url)
+        self.assertNotIn("location", payload)
+
+    def test_json_ld_contains_location_when_gameday_has_address(self):
+        gameday = GamedayFactory(status="PUBLISHED", address="Sportplatz 1, 70173 Stuttgart")
+        game = Gameinfo.objects.create(
+            gameday=gameday,
+            scheduled="10:00",
+            field=1,
+            officials=self.officials,
+            status=Gameinfo.STATUS_COMPLETED,
+            stage="Gruppe",
+            standing="Gruppe 1",
+        )
+        url = reverse("league-gameday-game-detail", kwargs={"gameday_pk": gameday.pk, "pk": game.pk})
+        payload = self._get_payload(url)
+        self.assertEqual(payload["location"]["@type"], "Place")
+        self.assertEqual(payload["location"]["address"], "Sportplatz 1, 70173 Stuttgart")
+
+    def test_json_ld_contains_end_date_after_start_date(self):
+        payload = self._get_payload(self.url)
+        start = datetime.fromisoformat(payload["startDate"].removesuffix("Z"))
+        end = datetime.fromisoformat(payload["endDate"].removesuffix("Z"))
+        self.assertEqual(end - start, timedelta(minutes=70))
+
+    def test_json_ld_contains_description_with_team_names(self):
+        payload = self._get_payload(self.url)
+        self.assertIn("Home Team", payload["description"])
+        self.assertIn("Away Team", payload["description"])
+
+    def test_json_ld_contains_default_image(self):
+        payload = self._get_payload(self.url)
+        self.assertTrue(payload["image"].endswith("teammanager/icons/football-og.jpg"))
+        self.assertTrue(payload["image"].startswith("http"))
+
+    def test_json_ld_contains_performer_with_both_teams(self):
+        payload = self._get_payload(self.url)
+        performer_names = {performer["name"] for performer in payload["performer"]}
+        self.assertEqual(performer_names, {"Home Team", "Away Team"})
+
+    def test_json_ld_contains_organizer_with_league_name(self):
+        payload = self._get_payload(self.url)
+        self.assertEqual(payload["organizer"]["name"], self.gameday.league.name)
+
+    def test_json_ld_contains_free_offer_with_game_url(self):
+        payload = self._get_payload(self.url)
+        self.assertEqual(payload["offers"]["price"], "0")
+        self.assertEqual(payload["offers"]["availability"], "https://schema.org/InStock")
+        self.assertTrue(payload["offers"]["url"].endswith(self.url))
 
 
 class TestLeagueTableJsonLd(TestCase):
