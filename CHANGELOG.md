@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.24.1](https://github.com/dachrisch/leaguesphere/compare/v4.24.0...v4.24.1) (2026-09-10)
+
+
+### Bug Fixes
+
+* **gamedays:** add missing SportsEvent JSON-LD fields for Events rich results ([#1932](https://github.com/dachrisch/leaguesphere/issues/1932)) ([0e1130b](https://github.com/dachrisch/leaguesphere/commit/0e1130b03e2d7824186c9b9986f6f40ae98d6e97))
+
 ## [4.24.0](https://github.com/dachrisch/leaguesphere/compare/v4.23.0...v4.24.0) (2026-09-07)
 
 
