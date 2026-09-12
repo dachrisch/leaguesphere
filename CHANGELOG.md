@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.24.2](https://github.com/dachrisch/leaguesphere/compare/v4.24.1...v4.24.2) (2026-09-12)
+
+
+### Bug Fixes
+
+* **gamedays:** resolve rank/groupRank dynamic refs and officials for canvas gamedays ([#1935](https://github.com/dachrisch/leaguesphere/issues/1935)) ([c0d272d](https://github.com/dachrisch/leaguesphere/commit/c0d272dc0d339f5900fd03a868159e85300b73e6))
+
 ## [4.24.1](https://github.com/dachrisch/leaguesphere/compare/v4.24.0...v4.24.1) (2026-09-10)
 
 
