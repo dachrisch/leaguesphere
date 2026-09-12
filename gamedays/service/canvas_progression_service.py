@@ -169,22 +169,3 @@ class CanvasBracketProgressionService:
             entry["win_points"] += 2
         elif points_for == points_against:
             entry["win_points"] += 1
-
-    def _try_update_rank(
-        self, ref, target_standing, is_home, stage_name, standings
-    ) -> None:
-        if not ref or not target_standing or ref.get("type") != "rank":
-            return
-        if ref.get("stageName") != stage_name:
-            return
-        place = ref.get("place")
-        if not place or place < 1 or place > len(standings):
-            return
-        team = standings[place - 1]
-        try:
-            gi = Gameinfo.objects.get(
-                gameday=self.game.gameday, standing=target_standing
-            )
-        except Gameinfo.DoesNotExist:
-            return
-        Gameresult.objects.filter(gameinfo=gi, isHome=is_home).update(team=team)
