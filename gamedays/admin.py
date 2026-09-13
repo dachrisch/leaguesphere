@@ -1,4 +1,5 @@
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.db.models import Case, IntegerField, Value, When
 
 from gamedays.forms import SeasonLeagueTeamForm
 from gamedays.models import (
@@ -21,15 +22,72 @@ from gamedays.models import (
 )
 
 admin.site.register(Gameday)
-admin.site.register(Gameresult)
 admin.site.register(GameOfficial)
 admin.site.register(GameSetup)
 admin.site.register(League)
 admin.site.register(Person)
 admin.site.register(Season)
-admin.site.register(Team)
 admin.site.register(TeamLog)
 admin.site.register(ResourceUrl)
+
+
+@admin.register(Team)
+class TeamAdmin(admin.ModelAdmin):
+    search_fields = ("name",)
+
+
+@admin.register(Gameresult)
+class GameresultAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "gameinfo",
+        "gameday_name",
+        "isHome",
+        "team",
+        "fh",
+        "sh",
+        "pa",
+    )
+    list_select_related = ("gameinfo", "gameinfo__gameday", "team")
+    search_fields = (
+        "gameinfo__gameday__name",
+        "gameinfo__standing",
+        "team__name",
+    )
+    list_filter = ("isHome",)
+
+    @admin.display(description="Gameday")
+    def gameday_name(self, obj):
+        return obj.gameinfo.gameday.name
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "team":
+            object_id = request.resolver_match.kwargs.get("object_id")
+            gameresult = (
+                Gameresult.objects.select_related("gameinfo")
+                .filter(pk=object_id)
+                .first()
+                if object_id
+                else None
+            )
+            if gameresult:
+                # Teams already appearing anywhere in this gameday's schedule are
+                # almost always the fix for a wrong/placeholder team assignment
+                # (see leaguesphere#1934) -- surface them first, but don't hide
+                # the rest of the Team table in case the real fix is elsewhere.
+                gameday_team_ids = list(
+                    Gameresult.objects.filter(
+                        gameinfo__gameday_id=gameresult.gameinfo.gameday_id
+                    ).values_list("team_id", flat=True)
+                )
+                kwargs["queryset"] = Team.objects.annotate(
+                    _in_gameday=Case(
+                        When(pk__in=gameday_team_ids, then=Value(0)),
+                        default=Value(1),
+                        output_field=IntegerField(),
+                    )
+                ).order_by("_in_gameday", "name")
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
 class TournamentColumnGameInline(admin.TabularInline):
@@ -77,6 +135,33 @@ class GameinfoAdmin(admin.ModelAdmin):
     list_select_related = ("gameday",)
     search_fields = ("id", "gameday__name", "stage", "standing")
     list_filter = ("status", "stage")
+    actions = ["resave_to_repropagate"]
+
+    @admin.action(description="Re-run propagation (re-save selected completed games)")
+    def resave_to_repropagate(self, request, queryset):
+        # A plain .save() re-fires post_save, which re-runs
+        # CanvasBracketProgressionService for completed games -- the same
+        # "resave the feeding games" recipe used to manually repair
+        # leaguesphere#1934, now doable from the UI instead of a shell.
+        resaved = 0
+        skipped = 0
+        for gameinfo in queryset:
+            if gameinfo.status == Gameinfo.STATUS_COMPLETED:
+                gameinfo.save()
+                resaved += 1
+            else:
+                skipped += 1
+        if resaved:
+            self.message_user(
+                request, f"Re-saved {resaved} completed game(s); propagation re-run."
+            )
+        if skipped:
+            self.message_user(
+                request,
+                f"Skipped {skipped} game(s) not marked '{Gameinfo.STATUS_COMPLETED}' "
+                "(propagation only runs for completed games).",
+                level=messages.WARNING,
+            )
 
 
 @admin.register(Tournament)
