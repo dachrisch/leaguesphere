@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { simulateProgression } from '../progressionSimulator';
-import type { FlowNode, FieldNode, StageNode, GameNode } from '../../types/flowchart';
+import type { FlowNode, FlowEdge, FieldNode, StageNode, GameNode } from '../../types/flowchart';
 import type { GlobalTeam } from '../../types/flowchart';
+import { createGameToGameEdge } from '../../types/flowchart';
 import type { TeamReference } from '../../types/designer';
 
 /**
@@ -219,6 +220,31 @@ describe('progressionSimulator', () => {
         sourceGameId: 'r4',
       });
     });
+
+    it('prefers the maintained GameToGameEdge over standing-name matching when both are present', () => {
+      const f = field('f1');
+      const s = stage('s1', 'f1', 'Preliminary', 0);
+      const teams: GlobalTeam[] = [team('t1', 'Team A'), team('t2', 'Team B')];
+      const sf = game('sf', 's1', 'Preliminary', 'HF1', {
+        homeTeamId: 't1',
+        awayTeamId: 't2',
+        status: 'Beendet',
+        final_score: { home: 21, away: 14 },
+      });
+      const final = game('final', 's1', 'Final', 'Finale', {
+        homeTeamDynamic: winnerRef('HF1'),
+      });
+      const edges: FlowEdge[] = [createGameToGameEdge('e1', 'sf', 'winner', 'final', 'home')];
+      const nodes: FlowNode[] = [f, s, sf, final];
+
+      const result = simulateProgression(nodes, edges, teams);
+
+      expect(result.cellsByGameId.get('final')!.home).toEqual({
+        teamLabel: 'Team A',
+        basis: 'actual',
+        sourceGameId: 'sf',
+      });
+    });
   });
 
   describe('official references', () => {
@@ -302,6 +328,21 @@ describe('progressionSimulator', () => {
 
       expect(result.findings.some((fd) => fd.type === 'dangling_reference')).toBe(true);
     });
+
+    it('reports a groupTeam reference type as dangling too (also unsupported in the live canvas graph)', () => {
+      const f = field('f1');
+      const s = stage('s1', 'f1', 'Final', 0);
+      const g = game('g1', 's1', 'Final', 'Finale', {
+        homeTeamDynamic: { type: 'groupTeam', group: 0, team: 1 },
+        awayTeamId: 't2',
+      });
+      const nodes: FlowNode[] = [f, s, g];
+      const teams: GlobalTeam[] = [team('t2', 'Team B')];
+
+      const result = simulateProgression(nodes, [], teams);
+
+      expect(result.findings.some((fd) => fd.type === 'dangling_reference')).toBe(true);
+    });
   });
 
   describe('cycles', () => {
@@ -323,6 +364,28 @@ describe('progressionSimulator', () => {
 
       expect(result.cellsByGameId.get('gA')!.home.teamLabel).toBeNull();
       expect(result.cellsByGameId.get('gB')!.home.teamLabel).toBeNull();
+      expect(result.findings.some((fd) => fd.type === 'unresolved_cycle')).toBe(true);
+    });
+
+    it('backtracks cleanly through an acyclic branch before finding the actual cycle', () => {
+      // gE depends on both gF (resolves fine, a plain leaf) and gA (cyclic
+      // with gB) — the cycle-detection DFS must fully explore gF's subgraph
+      // (finding no cycle there) before it reaches gA's cycle.
+      const f = field('f1');
+      const s = stage('s1', 'f1', 'Final', 0);
+      const teams: GlobalTeam[] = [team('t1', 'Team A')];
+      const gF = game('gF', 's1', 'Final', 'F', { homeTeamId: 't1', awayTeamId: 't1' });
+      const gA = game('gA', 's1', 'Final', 'A', { homeTeamDynamic: winnerRef('B'), awayTeamId: 't1' });
+      const gB = game('gB', 's1', 'Final', 'B', { homeTeamDynamic: winnerRef('A'), awayTeamId: 't1' });
+      const gE = game('gE', 's1', 'Final', 'E', {
+        homeTeamDynamic: winnerRef('F'),
+        awayTeamDynamic: winnerRef('A'),
+      });
+      const nodes: FlowNode[] = [f, s, gF, gA, gB, gE];
+
+      const result = simulateProgression(nodes, [], teams);
+
+      expect(result.cellsByGameId.get('gE')!.away.teamLabel).toBeNull();
       expect(result.findings.some((fd) => fd.type === 'unresolved_cycle')).toBe(true);
     });
   });
@@ -350,6 +413,45 @@ describe('progressionSimulator', () => {
       expect(result.findings.some((fd) => fd.type === 'undecided_tie' && fd.affectedNodes.includes('sf'))).toBe(
         true
       );
+    });
+
+    it('falls back to the game id in the tie message when the game has no standing label', () => {
+      const f = field('f1');
+      const s = stage('s1', 'f1', 'Preliminary', 0);
+      const teams: GlobalTeam[] = [team('t1', 'Team A'), team('t2', 'Team B')];
+      const sf = game('sf', 's1', 'Preliminary', '', {
+        homeTeamId: 't1',
+        awayTeamId: 't2',
+        status: 'Beendet',
+        final_score: { home: 14, away: 14 },
+      });
+      const final = game('final', 's1', 'Final', 'Finale', { homeTeamDynamic: winnerRef('placeholder') });
+      // Referenced via an edge (not standing-name matching), since this game has no standing.
+      const edges: FlowEdge[] = [createGameToGameEdge('e1', 'sf', 'winner', 'final', 'home')];
+      const nodes: FlowNode[] = [f, s, sf, final];
+
+      const result = simulateProgression(nodes, edges, teams);
+
+      const finding = result.findings.find((fd) => fd.type === 'undecided_tie');
+      expect(finding).toBeDefined();
+      expect(finding!.message).toContain('sf');
+    });
+
+    it('does not report an undecided-tie finding for a tied game nothing ever references', () => {
+      const f = field('f1');
+      const s = stage('s1', 'f1', 'Final', 0);
+      const teams: GlobalTeam[] = [team('t1', 'Team A'), team('t2', 'Team B')];
+      const g = game('g1', 's1', 'Final', 'Finale', {
+        homeTeamId: 't1',
+        awayTeamId: 't2',
+        status: 'Beendet',
+        final_score: { home: 7, away: 7 },
+      });
+      const nodes: FlowNode[] = [f, s, g];
+
+      const result = simulateProgression(nodes, [], teams);
+
+      expect(result.findings.some((fd) => fd.type === 'undecided_tie')).toBe(false);
     });
   });
 
@@ -452,9 +554,82 @@ describe('progressionSimulator', () => {
       expect(cell.home.teamLabel).toBe('Team A');
       expect(cell.away.teamLabel).toBe('Team C');
     });
+
+    it('falls back to matching by stageName when stageId is empty (e.g. a legacy parsed reference)', () => {
+      const f = field('f1');
+      const s = stage('s1', 'f1', 'Gruppe 1', 0, 'RANKING');
+      const teams: GlobalTeam[] = [team('t1', 'Team A'), team('t2', 'Team B')];
+      const g1 = game(
+        'g1',
+        's1',
+        'Gruppe 1',
+        'G1',
+        { homeTeamId: 't1', awayTeamId: 't2', status: 'Beendet', final_score: { home: 10, away: 0 } },
+        'RANKING'
+      );
+      const finalStage = stage('s2', 'f1', 'Final', 1);
+      const final = game('final', 's2', 'Final', 'Finale', {
+        // stageId is empty, as parseTeamReference produces for a string-parsed rank ref.
+        homeTeamDynamic: { type: 'rank', place: 1, stageId: '', stageName: 'Gruppe 1' },
+        awayTeamId: 't2',
+      });
+      const nodes: FlowNode[] = [f, s, finalStage, g1, final];
+
+      const result = simulateProgression(nodes, [], teams);
+
+      expect(result.cellsByGameId.get('final')!.home.teamLabel).toBe('Team A');
+    });
+
+    it('resolves to null when the requested place exceeds the number of ranked teams', () => {
+      const f = field('f1');
+      const s = stage('s1', 'f1', 'Gruppe 1', 0, 'RANKING');
+      const teams: GlobalTeam[] = [team('t1', 'Team A'), team('t2', 'Team B')];
+      const g1 = game(
+        'g1',
+        's1',
+        'Gruppe 1',
+        'G1',
+        { homeTeamId: 't1', awayTeamId: 't2', status: 'Beendet', final_score: { home: 10, away: 0 } },
+        'RANKING'
+      );
+      const finalStage = stage('s2', 'f1', 'Final', 1);
+      const final = game('final', 's2', 'Final', 'Finale', {
+        homeTeamDynamic: rankRef('s1', 'Gruppe 1', 5),
+        awayTeamId: 't2',
+      });
+      const nodes: FlowNode[] = [f, s, finalStage, g1, final];
+
+      const result = simulateProgression(nodes, [], teams);
+
+      expect(result.cellsByGameId.get('final')!.home.teamLabel).toBeNull();
+    });
   });
 
   describe('unreachable placeholders', () => {
+    it('flags a non-terminal RANKING stage whose placements nothing ever references', () => {
+      const f = field('f1');
+      const s1 = stage('s1', 'f1', 'Gruppe 1', 0, 'RANKING');
+      const s2 = stage('s2', 'f1', 'Final', 1);
+      const teams: GlobalTeam[] = [team('t1', 'Team A'), team('t2', 'Team B')];
+      const g1 = game(
+        'g1',
+        's1',
+        'Gruppe 1',
+        'G1',
+        { homeTeamId: 't1', awayTeamId: 't2', status: 'Beendet', final_score: { home: 10, away: 0 } },
+        'RANKING'
+      );
+      // The final's teams are statically assigned — s1's standings are never referenced.
+      const g2 = game('g2', 's2', 'Final', 'Finale', { homeTeamId: 't1', awayTeamId: 't2' });
+      const nodes: FlowNode[] = [f, s1, s2, g1, g2];
+
+      const result = simulateProgression(nodes, [], teams);
+
+      const finding = result.findings.find((fd) => fd.type === 'unreachable_placeholder');
+      expect(finding).toBeDefined();
+      expect(finding!.affectedNodes).toContain('s1');
+    });
+
     it('flags a non-terminal game whose result nothing ever consumes', () => {
       const f = field('f1');
       const s1 = stage('s1', 'f1', 'Preliminary', 0);
@@ -550,19 +725,38 @@ describe('progressionSimulator', () => {
       const fB = field('fB', 1);
       const sB1 = stage('sB1', 'fB', 'Preliminary', 0);
       const sB2 = stage('sB2', 'fB', 'Final', 1);
+      // Inserted after sB2 despite a lower order, so computing field B's max
+      // exercises both outcomes of "is this stage's order higher than the
+      // max seen so far" (not just always-increasing insertion order).
+      const sB0 = stage('sB0', 'fB', 'Also Preliminary', 0);
       const gB1 = game('gB1', 'sB1', 'Preliminary', 'HF1', { homeTeamId: 't1', awayTeamId: 't2' });
       const gB2 = game('gB2', 'sB2', 'Final', 'Finale', {
         homeTeamDynamic: winnerRef('HF1'),
         awayTeamId: 't2',
       });
 
-      const nodes: FlowNode[] = [fA, sA, gA, fB, sB1, sB2, gB1, gB2];
+      const nodes: FlowNode[] = [fA, sA, gA, fB, sB1, sB2, sB0, gB1, gB2];
 
       const result = simulateProgression(nodes, [], teams);
 
       expect(
         result.findings.some((fd) => fd.type === 'unreachable_placeholder' && fd.affectedNodes.includes('gA'))
       ).toBe(false);
+    });
+
+    it('treats a game with no parent stage as terminal (defensive default), never flagging it', () => {
+      const f = field('f1');
+      const orphan: GameNode = game('orphan', 'missing-stage', 'Preliminary', 'Spiel 1', {
+        homeTeamId: 't1',
+        awayTeamId: 't2',
+      });
+      delete (orphan as { parentId?: string }).parentId;
+      const teams: GlobalTeam[] = [team('t1', 'Team A'), team('t2', 'Team B')];
+      const nodes: FlowNode[] = [f, orphan];
+
+      const result = simulateProgression(nodes, [], teams);
+
+      expect(result.findings.some((fd) => fd.type === 'unreachable_placeholder')).toBe(false);
     });
   });
 

@@ -51,6 +51,100 @@ describe('ProgressionInspectorPanel', () => {
     expect(screen.getByTestId('progression-outcome-g1')).toHaveTextContent('Team B');
   });
 
+  it('marks a projected slot and shows TBD for an unresolved slot in the outcome tree', () => {
+    const progression: ProgressionSimulationResult = {
+      cellsByGameId: new Map([
+        [
+          'g1',
+          {
+            gameId: 'g1',
+            home: { teamLabel: 'Team A', basis: 'projected' },
+            away: { teamLabel: null, basis: null },
+            official: { teamLabel: null, basis: null },
+            findings: [],
+          },
+        ],
+      ]),
+      findings: [],
+    };
+
+    render(<ProgressionInspectorPanel nodes={nodes} progression={progression} onHighlightElement={onHighlightElement} />);
+
+    const row = screen.getByTestId('progression-outcome-g1');
+    expect(row).toHaveTextContent('Team A (projected)');
+    expect(row).toHaveTextContent('TBD');
+  });
+
+  it('renders a raw fallback message and highlights a stage for a stage-level finding without a messageKey', async () => {
+    const progression: ProgressionSimulationResult = {
+      cellsByGameId: new Map(),
+      findings: [
+        {
+          id: 'finding-stage',
+          type: 'undecided_tie',
+          message: 'raw fallback message, no key',
+          affectedNodes: ['s1'],
+        },
+      ],
+    };
+
+    const user = userEvent.setup();
+    render(<ProgressionInspectorPanel nodes={nodes} progression={progression} onHighlightElement={onHighlightElement} />);
+
+    expect(screen.getByText('raw fallback message, no key')).toBeInTheDocument();
+
+    await user.click(screen.getByTestId('progression-finding-finding-stage'));
+
+    expect(onHighlightElement).toHaveBeenCalledWith('s1', 'stage');
+  });
+
+  it('does not call onHighlightElement for a finding with no affected nodes', async () => {
+    const progression: ProgressionSimulationResult = {
+      cellsByGameId: new Map(),
+      findings: [
+        {
+          id: 'finding-empty',
+          type: 'dangling_reference',
+          message: 'no affected nodes',
+          affectedNodes: [],
+        },
+      ],
+    };
+
+    vi.mocked(onHighlightElement).mockClear();
+    const user = userEvent.setup();
+    render(<ProgressionInspectorPanel nodes={nodes} progression={progression} onHighlightElement={onHighlightElement} />);
+
+    await user.click(screen.getByTestId('progression-finding-finding-empty'));
+
+    expect(onHighlightElement).not.toHaveBeenCalled();
+  });
+
+  it('clicking an outcome row highlights the game', async () => {
+    const progression: ProgressionSimulationResult = {
+      cellsByGameId: new Map([
+        [
+          'g1',
+          {
+            gameId: 'g1',
+            home: { teamLabel: 'Team A', basis: 'actual' },
+            away: { teamLabel: 'Team B', basis: 'actual' },
+            official: { teamLabel: null, basis: null },
+            findings: [],
+          },
+        ],
+      ]),
+      findings: [],
+    };
+
+    const user = userEvent.setup();
+    render(<ProgressionInspectorPanel nodes={nodes} progression={progression} onHighlightElement={onHighlightElement} />);
+
+    await user.click(screen.getByTestId('progression-outcome-g1'));
+
+    expect(onHighlightElement).toHaveBeenCalledWith('g1', 'game');
+  });
+
   it('shows a findings badge and clicking a finding row highlights the affected node', async () => {
     const progression: ProgressionSimulationResult = {
       cellsByGameId: new Map([

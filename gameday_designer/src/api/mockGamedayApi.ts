@@ -45,7 +45,9 @@ const INITIAL_GAMEDAYS: Gameday[] = [
   }
 ];
 
-class MockGamedayService {
+// Exported (in addition to the singleton below) so tests can construct a
+// fresh instance to exercise storage error handling deterministically.
+export class MockGamedayService {
   private gamedays: Gameday[] = [];
 
   constructor() {

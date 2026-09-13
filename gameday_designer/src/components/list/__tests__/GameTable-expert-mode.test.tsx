@@ -80,6 +80,48 @@ describe('GameTable - Expert Mode indicator', () => {
     expect(homeIndicator.querySelector('.bi-check-circle-fill')).toBeInTheDocument();
   });
 
+  it('styles a projected (hypothetical) resolution differently from an actual one', () => {
+    const progressionByGameId = new Map<string, GameProgressionCellResult>([
+      [
+        'game-1',
+        {
+          gameId: 'game-1',
+          home: { teamLabel: 'Team A', basis: 'projected' },
+          away: { teamLabel: 'Team B', basis: 'actual' },
+          official: { teamLabel: null, basis: null },
+          findings: [],
+        },
+      ],
+    ]);
+
+    render(<GameTable {...baseProps} expertMode progressionByGameId={progressionByGameId} />);
+
+    const homeIndicator = screen.getByTestId('expert-mode-indicator-game-1-home');
+    expect(homeIndicator).toHaveClass('text-muted');
+    expect(homeIndicator).not.toHaveAttribute('title', '');
+  });
+
+  it('shows a neutral TBD state (no warning icon) when a slot is simply unresolved with no findings', () => {
+    const progressionByGameId = new Map<string, GameProgressionCellResult>([
+      [
+        'game-1',
+        {
+          gameId: 'game-1',
+          home: { teamLabel: null, basis: null },
+          away: { teamLabel: 'Team B', basis: 'actual' },
+          official: { teamLabel: null, basis: null },
+          findings: [],
+        },
+      ],
+    ]);
+
+    render(<GameTable {...baseProps} expertMode progressionByGameId={progressionByGameId} />);
+
+    const homeIndicator = screen.getByTestId('expert-mode-indicator-game-1-home');
+    expect(homeIndicator.querySelector('.bi-info-circle-fill')).toBeInTheDocument();
+    expect(homeIndicator.querySelector('.bi-exclamation-triangle-fill')).not.toBeInTheDocument();
+  });
+
   it('shows a warning icon when the cell has findings', () => {
     const progressionByGameId = new Map<string, GameProgressionCellResult>([
       [
