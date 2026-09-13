@@ -28,6 +28,7 @@ import { findSourceGameForReference, findSourceStageForReference, getGamePath, g
 import { getStageParticipants, getStageGroups, getGroupParticipants } from '../../utils/rankingEngine';
 import { isValidTimeFormat } from '../../utils/timeCalculation';
 import { ICONS } from '../../utils/iconConstants';
+import type { GameProgressionCellResult } from '../../types/progression';
 import './GameTable.css';
 
 // Type for select options
@@ -244,6 +245,15 @@ export interface GameTableProps {
   onNotify?: (message: string, type: import('../../types/designer').NotificationType, title?: string) => void;
   onMoveGame?: (gameId: string, targetStageId: string) => void;
   readOnly?: boolean;
+  /**
+   * Expert Mode (see `useExpertMode.ts`): when on, shows a small simulated
+   * resolved-team + correctness indicator next to each home/away cell,
+   * sourced from `progressionByGameId`. Off by default — no rendering cost
+   * for normal users.
+   */
+  expertMode?: boolean;
+  /** Per-game simulated progression, from `useProgressionInspection`. */
+  progressionByGameId?: Map<string, GameProgressionCellResult>;
 }
 
 const GameTable: React.FC<GameTableProps> = memo(({
@@ -269,8 +279,10 @@ const GameTable: React.FC<GameTableProps> = memo(({
   onNotify,
   onMoveGame,
   readOnly = false,
+  expertMode = false,
+  progressionByGameId,
 }) => {
-  const { t } = useTypedTranslation(['ui', 'domain', 'error']);
+  const { t } = useTypedTranslation(['ui', 'domain', 'error', 'validation']);
   const [editingGameId, setEditingGameId] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<'standing' | 'breakAfter' | 'time' | null>(null);
   const [editedValue, setEditedValue] = useState<string>('');
@@ -642,6 +654,53 @@ const GameTable: React.FC<GameTableProps> = memo(({
 
 
 
+  /**
+   * Expert Mode: a small inline indicator next to a home/away cell showing
+   * the SIMULATED resolved team (even for games that haven't been played
+   * yet — the "if this bracket ran its course" projection) plus an
+   * ok/warning icon summarizing any expert-only correctness findings for
+   * this game. Purely observational — see `progressionSimulator.ts`.
+   */
+  const getFindingMessage = (finding: GameProgressionCellResult['findings'][number]) =>
+    finding.messageKey ? t(`validation:${finding.messageKey}` as const, finding.messageParams) : finding.message;
+
+  const renderExpertModeIndicator = (game: GameNode, slot: 'home' | 'away') => {
+    const cell = progressionByGameId?.get(game.id);
+    if (!cell) return null;
+    const resolved = slot === 'home' ? cell.home : cell.away;
+    const findingMessages = cell.findings.map(getFindingMessage).join('\n');
+
+    if (resolved.teamLabel) {
+      const isProjected = resolved.basis === 'projected';
+      return (
+        <div
+          className={`small mt-1 d-flex align-items-center gap-1 ${isProjected ? 'text-muted' : 'text-success'}`}
+          title={
+            findingMessages ||
+            (isProjected
+              ? t('ui:label.expertModeProjected', { team: resolved.teamLabel })
+              : t('ui:label.expertModeActual', { team: resolved.teamLabel }))
+          }
+          data-testid={`expert-mode-indicator-${game.id}-${slot}`}
+        >
+          <i className={`bi ${findingMessages ? ICONS.WARNING : ICONS.VALID}`}></i>
+          <span>{resolved.teamLabel}</span>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className="small mt-1 d-flex align-items-center gap-1 text-muted"
+        title={findingMessages || t('ui:label.expertModeUnresolved')}
+        data-testid={`expert-mode-indicator-${game.id}-${slot}`}
+      >
+        <i className={`bi ${findingMessages ? ICONS.WARNING : ICONS.INFO}`}></i>
+        <span>{t('ui:label.expertModeTbd')}</span>
+      </div>
+    );
+  };
+
   const renderTeamCell = (game: GameNode, slot: 'home' | 'away') => {
     const data = game.data as GameNodeData;
     const dynamicRef = slot === 'home' ? data.homeTeamDynamic : data.awayTeamDynamic;
@@ -819,7 +878,10 @@ const GameTable: React.FC<GameTableProps> = memo(({
                 )}
               </td>
               {renderTimeCell(game)}
-              <td>{renderTeamCell(game, 'home')}</td>
+              <td>
+                {renderTeamCell(game, 'home')}
+                {expertMode && renderExpertModeIndicator(game, 'home')}
+              </td>
               {!readOnly && (
                 <td className="text-center align-middle px-0">
                   <Button 
@@ -836,7 +898,10 @@ const GameTable: React.FC<GameTableProps> = memo(({
                   </Button>
                 </td>
               )}
-              <td>{renderTeamCell(game, 'away')}</td>
+              <td>
+                {renderTeamCell(game, 'away')}
+                {expertMode && renderExpertModeIndicator(game, 'away')}
+              </td>
               {readOnly && (
                 <td className="text-center fw-bold">
                   <span className={game.data.final_score ? 'text-dark' : 'text-muted italic small'}>

@@ -116,7 +116,17 @@
     "customTemplates": "Custom Templates",
     "links": "Links",
     "urlDescription": "Description",
-    "url": "URL"
+    "url": "URL",
+    "expertMode": "Expert Mode",
+    "expertModeActual": "Resolved to {{team}}",
+    "expertModeProjected": "Projected winner (if this game were won by the home team): {{team}}",
+    "expertModeUnresolved": "Not yet resolved by the simulated progression",
+    "expertModeTbd": "TBD",
+    "progressionInspector": "Progression Inspector",
+    "progressionAllClear": "All clear",
+    "progressionFindings": "Findings",
+    "progressionOutcome": "Simulated outcome",
+    "expertModeProjectedShort": "projected"
   },
   "title": {
     "enterGameResult": "Enter Game Result",
@@ -181,7 +191,8 @@
     "autoAssignNote": "Teams will be assigned based on their order in the pool.",
     "manualAssignNote": "Placeholders will be created, you can assign teams manually later.",
     "autoClearTitle": "Existing Schedule",
-    "autoClearWarning": "Generating a new tournament will overwrite the current schedule."
+    "autoClearWarning": "Generating a new tournament will overwrite the current schedule.",
+    "progressionInspectorEmpty": "Add fields, stages and games to see a simulated progression here."
   },
   "error": {
     "nameRequired": "Name is required",
@@ -267,7 +278,8 @@
     "duplicate": "Duplicate",
     "replayTour": "Replay onboarding tour",
     "moveGame": "Move this game to another stage or field (drag & drop or menu)",
-    "dropToMove": "Drop to move a game into this stage"
+    "dropToMove": "Drop to move a game into this stage",
+    "expertMode": "Toggle Expert Mode: inspect the simulated progression and see correctness findings (never blocks saving)"
   },
   "notification": {
     "gameResultSaved": "Game result saved",

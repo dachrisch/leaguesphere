@@ -10,7 +10,7 @@
  */
 
 import React, { useRef } from 'react';
-import { Button, ButtonGroup, ButtonToolbar, Dropdown } from 'react-bootstrap';
+import { Button, ButtonGroup, ButtonToolbar, Dropdown, Form } from 'react-bootstrap';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import { ICONS } from '../utils/iconConstants';
 
@@ -46,6 +46,14 @@ export interface FlowToolbarProps {
   onResultsMode?: () => void;
   /** @deprecated See {@link onResultsMode}. */
   resultsMode?: boolean;
+  /**
+   * Expert Mode: per-user, local-only toggle that reveals the Progression
+   * Inspector (simulated bracket outcome + non-blocking correctness
+   * findings). Off by default — see `useExpertMode.ts`.
+   */
+  expertMode?: boolean;
+  /** Callback to toggle Expert Mode on/off. */
+  onToggleExpertMode?: (value: boolean) => void;
 }
 
 /**
@@ -63,6 +71,8 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
   canUndo = false,
   canRedo = false,
   canExport = false,
+  expertMode = false,
+  onToggleExpertMode,
 }) => {
   const { t } = useTypedTranslation(['ui']);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -162,6 +172,25 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
               <i className="bi bi-arrow-clockwise"></i>
             </Button>
           </ButtonGroup>
+        )}
+
+        {/* Expert Mode toggle — per-user, local-only; reveals the Progression Inspector */}
+        {onToggleExpertMode && (
+          <Form.Check
+            type="switch"
+            id="expert-mode-toggle"
+            className="flow-toolbar-expert-mode d-flex align-items-center"
+            label={
+              <span title={t('ui:tooltip.expertMode')}>
+                <i className={`bi ${ICONS.EXPERT_MODE} me-1`}></i>
+                {t('ui:label.expertMode')}
+              </span>
+            }
+            checked={expertMode}
+            onChange={(e) => onToggleExpertMode(e.target.checked)}
+            title={t('ui:tooltip.expertMode')}
+            data-testid="expert-mode-toggle"
+          />
         )}
       </ButtonToolbar>
 

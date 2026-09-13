@@ -53,22 +53,29 @@ class MockGamedayService {
   }
 
   private loadFromStorage() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY);
+      if (stored) {
         this.gamedays = JSON.parse(stored);
-      } catch (e) {
-        console.error('Failed to parse stored gamedays', e);
+      } else {
         this.gamedays = [...INITIAL_GAMEDAYS];
+        this.saveToStorage();
       }
-    } else {
+    } catch (e) {
+      // localStorage can be unavailable (private browsing, disabled storage,
+      // or a test environment without it) or hold unparsable data — fall
+      // back to the in-memory defaults rather than crash the mock service.
+      console.error('Failed to load stored gamedays', e);
       this.gamedays = [...INITIAL_GAMEDAYS];
-      this.saveToStorage();
     }
   }
 
   private saveToStorage() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.gamedays));
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(this.gamedays));
+    } catch (e) {
+      console.error('Failed to persist gamedays', e);
+    }
   }
 
   async list(params?: { search?: string; has_designer_state?: boolean }): Promise<PaginatedResponse<GamedayListEntry>> {

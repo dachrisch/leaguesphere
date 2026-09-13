@@ -5,9 +5,9 @@
 > Detailed agent notes also exist in `gameday_designer/GEMINI.md`.
 
 ## Purpose
-A **visual flowchart tool** for building, validating, and applying tournament **schedule
-templates**. Users wire up a bracket (Field > Stage > Game) with winner/loser progression paths,
-then apply it to generate real gamedays.
+A tool for building, validating, and applying tournament **schedule templates**. Users wire up a
+bracket (Field > Stage > Game) with winner/loser/rank progression paths, then apply it to generate
+real gamedays.
 
 ## Role in the system
 Produces schedules that become `Gameday`/`Gameinfo` records in [gamedays](../gamedays/CLAUDE.md)
@@ -33,11 +33,44 @@ Serializers in `serializers.py`; `permissions.py` guards access; `management/` h
 
 ---
 
-## Frontend (React — TypeScript, React Flow)
-- Entry: `src/index.tsx` → `src/App.tsx`. **React Flow** renders the bracket canvas.
+## Frontend (React — TypeScript)
+- Entry: `src/index.tsx` → `src/App.tsx`. The bracket editor is a **list/table UI**
+  (`ListDesignerApp.tsx` → `ListCanvas.tsx` → `list/FieldSection.tsx` → `list/StageSection.tsx` →
+  `list/GameTable.tsx`, nested Bootstrap cards/tables) — **not** a React Flow canvas; there is no
+  `reactflow`/`@xyflow/react` dependency. The domain model still speaks in node/edge terms
+  (`FlowNode`/`FlowEdge` in `src/types/flowchart.ts`, replacing what were originally React Flow
+  types) because the graph shape (Field > Stage > Game, winner/loser/rank wiring) is still exactly
+  a graph — only the rendering changed.
 - `src/api/` (backend calls), `src/context/` + `src/hooks/` (state — no Redux),
   `src/components/`, `src/types/`, `src/i18n/` (localized), `src/utils/`.
 - Built with Vite (`vite.config.mts`) into `static/`.
+
+### Expert Mode / Progression Inspector
+An opt-in, advanced view for inspecting how the current graph *would* resolve if played to
+completion, plus non-blocking correctness findings (dangling references, unreachable placeholders,
+unresolved cycles, undecided ties). Deliberately kept separate from the always-on
+`useFlowValidation`/`FlowValidationResult` system:
+- **Toggle**: `expertMode` in `GamedayContext.tsx`, backed by `useExpertMode.ts`
+  (`localStorage`, key `gd_expert_mode`) — **per-user, local-only, off by default**. It is never
+  sent to the backend and never appears in the saved `FlowState`.
+- **Engine**: `src/utils/progressionSimulator.ts` (`simulateProgression`) — a topological-fixpoint
+  simulator over `winner`/`loser`/`rank`/`groupRank` `TeamReference`s, distinguishing
+  `basis: 'actual'` (already happened) from `basis: 'projected'` (hypothetical, e.g. "if the home
+  team wins"). Its stage-standings tiebreak (win points, then point diff, then points-for) is
+  copied from `gamedays/service/canvas_progression_service.py::_compute_stage_standings` — keep
+  the two in sync if that backend logic changes.
+- **Hook**: `useProgressionInspection.ts`, wired into `useDesignerController.ts` as a value fully
+  separate from `validation` (different return type, never merged) — this is what makes the
+  "never blocks saving" guarantee structural rather than a convention to remember.
+- **UI**: a toolbar switch (`FlowToolbar.tsx`), a per-row indicator in `GameTable.tsx`, and the
+  `ProgressionInspectorPanel.tsx` summary panel (mounted only when `expertMode` is true — it
+  doesn't render at all when off).
+- **Do not** attach simulation output to `node.data` — `GameNodeData.resolvedHomeTeam`/
+  `resolvedAwayTeam` look like a precedent for that, but they're a pre-existing quirk: despite
+  being commented "non-persisted", they actually round-trip through `exportState()`/`saveData`
+  into the shared, saved `FlowState`. Expert Mode's simulation must stay in separate client-only
+  state (the `progressionByGameId` map) specifically so it can never leak into another
+  collaborator's session.
 
 ---
 

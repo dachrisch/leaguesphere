@@ -128,4 +128,31 @@ describe('FlowToolbar', () => {
       expect(redoButton).toHaveAttribute('title', 'Redo the previously undone action');
     });
   });
+
+  describe('Expert Mode toggle', () => {
+    it('does not render the toggle when onToggleExpertMode is not provided', () => {
+      render(<FlowToolbar {...defaultProps} />);
+      expect(screen.queryByTestId('expert-mode-toggle')).not.toBeInTheDocument();
+    });
+
+    it('renders unchecked by default when off', () => {
+      render(<FlowToolbar {...defaultProps} onToggleExpertMode={vi.fn()} />);
+      expect(screen.getByTestId('expert-mode-toggle')).not.toBeChecked();
+    });
+
+    it('renders checked when expertMode is true', () => {
+      render(<FlowToolbar {...defaultProps} expertMode onToggleExpertMode={vi.fn()} />);
+      expect(screen.getByTestId('expert-mode-toggle')).toBeChecked();
+    });
+
+    it('calls onToggleExpertMode with the new value when clicked', async () => {
+      const onToggleExpertMode = vi.fn();
+      const user = userEvent.setup();
+      render(<FlowToolbar {...defaultProps} onToggleExpertMode={onToggleExpertMode} />);
+
+      await user.click(screen.getByTestId('expert-mode-toggle'));
+
+      expect(onToggleExpertMode).toHaveBeenCalledWith(true);
+    });
+  });
 });

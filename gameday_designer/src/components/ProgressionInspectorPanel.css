@@ -1,0 +1,11 @@
+.progression-finding-row,
+.progression-outcome-row {
+  cursor: pointer;
+  border-radius: 4px;
+  padding-left: 0.25rem;
+}
+
+.progression-finding-row:hover,
+.progression-outcome-row:hover {
+  background-color: rgba(13, 110, 253, 0.08);
+}
