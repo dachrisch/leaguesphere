@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.24.3](https://github.com/dachrisch/leaguesphere/compare/v4.24.2...v4.24.3) (2026-09-13)
+
+
+### Bug Fixes
+
+* **gamedays:** let staff repair a wrong team slot on entered-results gamedays via admin ([#1937](https://github.com/dachrisch/leaguesphere/issues/1937)) ([b9ef508](https://github.com/dachrisch/leaguesphere/commit/b9ef5085fe129d4e279ca392289e9f8982537189))
+
 ## [4.24.2](https://github.com/dachrisch/leaguesphere/compare/v4.24.1...v4.24.2) (2026-09-12)
 
 
