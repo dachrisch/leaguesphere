@@ -71,5 +71,5 @@ def _parse_fields(block: str) -> dict[str, str]:
     return fields
 
 
-def load_storyboard(path: Path) -> list[Step]:
-    return parse_storyboard(path.read_text())
+def load_storyboard(path: Path | str) -> list[Step]:
+    return parse_storyboard(Path(path).read_text())

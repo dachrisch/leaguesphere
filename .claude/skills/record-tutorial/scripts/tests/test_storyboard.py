@@ -66,3 +66,9 @@ def test_load_storyboard_reads_file(tmp_path: Path):
     p = tmp_path / "story.md"
     p.write_text(VALID)
     assert load_storyboard(p) == parse_storyboard(VALID)
+
+
+def test_load_storyboard_accepts_string_path(tmp_path: Path):
+    p = tmp_path / "story.md"
+    p.write_text(VALID)
+    assert load_storyboard(str(p)) == parse_storyboard(VALID)
