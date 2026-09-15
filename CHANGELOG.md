@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.24.5](https://github.com/dachrisch/leaguesphere/compare/v4.24.4...v4.24.5) (2026-09-15)
+
+
+### Documentation
+
+* **record-tutorial:** extend association-cup storyboard with template reload proof ([#1942](https://github.com/dachrisch/leaguesphere/issues/1942)) ([673cedd](https://github.com/dachrisch/leaguesphere/commit/673ceddf508f55e93ae8cbe11c778a1b98d076ab))
+
 ## [4.24.4](https://github.com/dachrisch/leaguesphere/compare/v4.24.3...v4.24.4) (2026-09-15)
 
 
