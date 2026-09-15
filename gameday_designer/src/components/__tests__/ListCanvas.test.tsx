@@ -407,4 +407,22 @@ describe('ListCanvas - Inline Add Field Button Pattern', () => {
       expect(screen.getByText('Stage 2')).toBeInTheDocument();
     });
   });
+
+  describe('Expert Mode: Progression Inspector', () => {
+    it('does not mount the panel when expertMode is off', () => {
+      renderCanvas(createDefaultProps());
+      expect(screen.queryByTestId('progression-inspector-panel')).not.toBeInTheDocument();
+    });
+
+    it('mounts the panel when expertMode is on and progression data is provided', () => {
+      renderCanvas(
+        createDefaultProps({
+          expertMode: true,
+          progression: { cellsByGameId: new Map(), findings: [] },
+          onHighlightProgressionElement: vi.fn(),
+        })
+      );
+      expect(screen.getByTestId('progression-inspector-panel')).toBeInTheDocument();
+    });
+  });
 });

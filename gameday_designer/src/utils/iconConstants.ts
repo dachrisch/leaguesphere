@@ -31,6 +31,7 @@ export const ICONS = {
   LINK: 'bi-link-45deg',
   SEARCH: 'bi-search',
   BACK: 'bi-arrow-left',
+  EXPERT_MODE: 'bi-braces',
   
   // UI State
   EXPANDED: 'bi-chevron-down',

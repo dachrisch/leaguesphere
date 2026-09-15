@@ -116,7 +116,17 @@
     "customTemplates": "Eigene Vorlagen",
     "links": "Links",
     "urlDescription": "Beschreibung",
-    "url": "URL"
+    "url": "URL",
+    "expertMode": "Expertenmodus",
+    "expertModeActual": "Aufgelöst zu {{team}}",
+    "expertModeProjected": "Projizierter Sieger (falls das Heimteam gewinnt): {{team}}",
+    "expertModeUnresolved": "Noch nicht durch die simulierte Turnierverlaufsvorschau aufgelöst",
+    "expertModeTbd": "Offen",
+    "progressionInspector": "Turnierverlaufs-Inspektor",
+    "progressionAllClear": "Alles in Ordnung",
+    "progressionFindings": "Hinweise",
+    "progressionOutcome": "Simulierter Verlauf",
+    "expertModeProjectedShort": "projiziert"
   },
   "title": {
     "enterGameResult": "Ergebnis eingeben",
@@ -181,7 +191,8 @@
     "autoAssignNote": "Teams werden basierend auf ihrer Reihenfolge im Pool zugewiesen.",
     "manualAssignNote": "Platzhalter werden erstellt, Sie können Teams später manuell zuweisen.",
     "autoClearTitle": "Bestehender Spielplan",
-    "autoClearWarning": "Das Generieren eines neuen Turniers überschreibt den aktuellen Spielplan."
+    "autoClearWarning": "Das Generieren eines neuen Turniers überschreibt den aktuellen Spielplan.",
+    "progressionInspectorEmpty": "Füge Felder, Phasen und Spiele hinzu, um hier einen simulierten Turnierverlauf zu sehen."
   },
   "error": {
     "nameRequired": "Name ist erforderlich",
@@ -267,7 +278,8 @@
     "duplicate": "Duplizieren",
     "replayTour": "Onboarding-Tour wiederholen",
     "moveGame": "Dieses Spiel in eine andere Phase oder auf ein anderes Feld verschieben (Drag & Drop oder Menü)",
-    "dropToMove": "Hier ablegen, um ein Spiel in diese Phase zu verschieben"
+    "dropToMove": "Hier ablegen, um ein Spiel in diese Phase zu verschieben",
+    "expertMode": "Expertenmodus umschalten: die simulierte Turnierverlaufsvorschau und Korrektheitshinweise anzeigen (blockiert nie das Speichern)"
   },
   "notification": {
     "gameResultSaved": "Spielergebnis gespeichert",

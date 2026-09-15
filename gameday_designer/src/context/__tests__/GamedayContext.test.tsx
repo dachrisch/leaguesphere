@@ -14,3 +14,19 @@ describe('GamedayContext Results Mode', () => {
     expect(result.current.resultsMode).toBe(true);
   });
 });
+
+describe('GamedayContext Expert Mode', () => {
+  it('defaults to off and can be toggled', () => {
+    const { result } = renderHook(() => useGamedayContext(), {
+      wrapper: GamedayProvider,
+    });
+
+    expect(result.current.expertMode).toBe(false);
+
+    act(() => {
+      result.current.setExpertMode(true);
+    });
+
+    expect(result.current.expertMode).toBe(true);
+  });
+});

@@ -18,6 +18,7 @@ import type {
   HighlightedElement
 } from '../../types/flowchart';
 import { isGameNode } from '../../types/flowchart';
+import type { GameProgressionCellResult } from '../../types/progression';
 import { ICONS } from '../../utils/iconConstants';
 import { getDraggedGameSourceStageId } from '../../utils/dragState';
 import './StageSection.css';
@@ -47,6 +48,10 @@ export interface StageSectionProps {
   onNotify?: (message: string, type: import('../../types/designer').NotificationType, title?: string) => void;
   onMoveGame?: (gameId: string, targetStageId: string) => void;
   readOnly?: boolean;
+  /** Expert Mode (see `useExpertMode.ts`) — off by default. */
+  expertMode?: boolean;
+  /** Per-game simulated progression, from `useProgressionInspection`. */
+  progressionByGameId?: Map<string, GameProgressionCellResult>;
 }
 
 const StageSection: React.FC<StageSectionProps> = memo(({
@@ -75,6 +80,8 @@ const StageSection: React.FC<StageSectionProps> = memo(({
   onNotify,
   onMoveGame,
   readOnly = false,
+  expertMode = false,
+  progressionByGameId,
 }) => {
   const { t } = useTypedTranslation(['ui', 'domain']);
   const [isEditing, setIsEditing] = useState(false);
@@ -417,6 +424,8 @@ const StageSection: React.FC<StageSectionProps> = memo(({
                   onNotify={onNotify}
                   onMoveGame={onMoveGame}
                   readOnly={readOnly}
+                  expertMode={expertMode}
+                  progressionByGameId={progressionByGameId}
                 />
               </>
             )}

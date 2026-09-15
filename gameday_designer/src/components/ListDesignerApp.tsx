@@ -53,6 +53,8 @@ const ListDesignerApp: React.FC = () => {
     setResultsMode,
     gameResults,
     setGameResults,
+    expertMode,
+    setExpertMode,
   } = useGamedayContext();
 
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
@@ -74,13 +76,14 @@ const ListDesignerApp: React.FC = () => {
     metadata,
     ui,
     validation,
+    progression,
     handlers,
     canUndo,
     canRedo,
     undo,
     redo,
     stats,
-  } = useDesignerController(id, flowState);
+  } = useDesignerController(id, flowState, undefined, expertMode);
 
   const {
     loadData,
@@ -240,7 +243,9 @@ const ListDesignerApp: React.FC = () => {
       canRedo,
       stats,
       onResultsMode: resultsModeHandler,
-      resultsMode
+      resultsMode,
+      expertMode,
+      onToggleExpertMode: setExpertMode,
     };
 
     const propsStateStr = JSON.stringify({
@@ -249,7 +254,8 @@ const ListDesignerApp: React.FC = () => {
       canUndo: newProps.canUndo,
       canRedo: newProps.canRedo,
       stats: newProps.stats,
-      resultsMode: newProps.resultsMode
+      resultsMode: newProps.resultsMode,
+      expertMode: newProps.expertMode
     });
 
     if (propsStateStr !== lastToolbarPropsRef.current) {
@@ -258,8 +264,8 @@ const ListDesignerApp: React.FC = () => {
     }
   }, [
     handleImport, handleExport, metadata?.status, ui?.canExport,
-    addNotification, undo, redo, canUndo, canRedo, stats, resultsModeHandler, 
-    resultsMode, setToolbarProps
+    addNotification, undo, redo, canUndo, canRedo, stats, resultsModeHandler,
+    resultsMode, setToolbarProps, expertMode, setExpertMode
   ]);
 
   const lastSavedStateRef = useRef<string>('');
@@ -638,6 +644,9 @@ const ListDesignerApp: React.FC = () => {
               }}
               validation={validation}
               isRowCollapsed={isRowCollapsed}
+              expertMode={expertMode}
+              progression={progression}
+              onHighlightProgressionElement={handleHighlightElement}
             />
           )}
       </div>

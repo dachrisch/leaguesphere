@@ -10,7 +10,7 @@
  */
 
 import React, { useRef } from 'react';
-import { Button, ButtonGroup, ButtonToolbar, Dropdown } from 'react-bootstrap';
+import { Button, ButtonGroup, ButtonToolbar, Dropdown, Form } from 'react-bootstrap';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import { ICONS } from '../utils/iconConstants';
 
@@ -46,6 +46,14 @@ export interface FlowToolbarProps {
   onResultsMode?: () => void;
   /** @deprecated See {@link onResultsMode}. */
   resultsMode?: boolean;
+  /**
+   * Expert Mode: per-user, local-only toggle that reveals the Progression
+   * Inspector (simulated bracket outcome + non-blocking correctness
+   * findings). Off by default — see `useExpertMode.ts`.
+   */
+  expertMode?: boolean;
+  /** Callback to toggle Expert Mode on/off. */
+  onToggleExpertMode?: (value: boolean) => void;
 }
 
 /**
@@ -63,6 +71,8 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
   canUndo = false,
   canRedo = false,
   canExport = false,
+  expertMode = false,
+  onToggleExpertMode,
 }) => {
   const { t } = useTypedTranslation(['ui']);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -162,6 +172,37 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
               <i className="bi bi-arrow-clockwise"></i>
             </Button>
           </ButtonGroup>
+        )}
+
+        {/* Expert Mode toggle — per-user, local-only; reveals the Progression Inspector */}
+        {onToggleExpertMode && (
+          <>
+            <Form.Check
+              type="switch"
+              id="expert-mode-toggle"
+              className="flow-toolbar-expert-mode d-flex align-items-center"
+              // `title` on <Form.Check> only ever reaches the <label> (react-bootstrap
+              // renders it there, not on the wrapping <div> or the <input>) — fine as a
+              // native hover tooltip for sighted mouse users, but not something screen
+              // readers reliably treat as the control's description. The actual <input>
+              // gets its description via `aria-describedby` below instead (an unlisted
+              // prop here, so react-bootstrap forwards it straight onto the input).
+              title={t('ui:tooltip.expertMode')}
+              label={
+                <span>
+                  <i className={`bi ${ICONS.EXPERT_MODE} me-1`}></i>
+                  {t('ui:label.expertMode')}
+                </span>
+              }
+              checked={expertMode}
+              onChange={(e) => onToggleExpertMode(e.target.checked)}
+              aria-describedby="expert-mode-toggle-description"
+              data-testid="expert-mode-toggle"
+            />
+            <span id="expert-mode-toggle-description" className="visually-hidden">
+              {t('ui:tooltip.expertMode')}
+            </span>
+          </>
         )}
       </ButtonToolbar>
 

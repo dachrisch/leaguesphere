@@ -11,7 +11,9 @@ import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import FieldSection from './list/FieldSection';
 import { GameResultsTable, ScoreEdit } from './GameResultsTable';
 import MetadataTeamPoolRow from './MetadataTeamPoolRow';
+import ProgressionInspectorPanel from './ProgressionInspectorPanel';
 import type { FlowNode, FlowEdge, StageNode, GlobalTeam, GlobalTeamGroup, GamedayMetadata, FlowValidationResult, HighlightedElement } from '../types/flowchart';
+import type { ProgressionSimulationResult } from '../types/progression';
 import { isStageNode, getFieldNodes } from '../types/flowchart';
 import { ICONS } from '../utils/iconConstants';
 import './ListCanvas.css';
@@ -70,6 +72,12 @@ export interface ListCanvasProps {
   onUnlockGameday: () => Promise<void>;
   validation: FlowValidationResult;
   isRowCollapsed: boolean;
+  /** Expert Mode (see `useExpertMode.ts`) — off by default, per-user, local-only. */
+  expertMode?: boolean;
+  /** Simulated progression + findings, from `useProgressionInspection`. Only meaningful when `expertMode` is true. */
+  progression?: ProgressionSimulationResult;
+  /** Click-to-highlight for Progression Inspector findings/outcome rows. */
+  onHighlightProgressionElement?: (id: string, type: HighlightedElement['type']) => void;
 }
 
 const ListCanvas: React.FC<ListCanvasProps> = (props) => {
@@ -126,6 +134,9 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
     onUnlockGameday,
     validation,
     isRowCollapsed,
+    expertMode = false,
+    progression,
+    onHighlightProgressionElement,
   } = props;
 
   const { t } = useTypedTranslation(['ui']);
@@ -196,6 +207,15 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
           getTeamUsage={getTeamUsage}
           onAddOfficials={onAddOfficials}
         />
+
+        {/* Expert Mode: Progression Inspector — off by default, doesn't even mount when off */}
+        {expertMode && progression && onHighlightProgressionElement && (
+          <ProgressionInspectorPanel
+            nodes={nodes}
+            progression={progression}
+            onHighlightElement={onHighlightProgressionElement}
+          />
+        )}
 
         {/* Fields Card - Full width below team pool */}
         <Card
@@ -294,6 +314,8 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
                     onNotify={onNotify}
                     onMoveGame={onMoveGame}
                     readOnly={readOnly}
+                    expertMode={expertMode}
+                    progressionByGameId={progression?.cellsByGameId}
                   />
                 ))}
               </div>

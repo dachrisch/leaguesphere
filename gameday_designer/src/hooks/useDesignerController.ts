@@ -7,6 +7,7 @@
 
 import { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { useFlowValidation } from './useFlowValidation';
+import { useProgressionInspection } from './useProgressionInspection';
 import { downloadFlowchartAsJson, validateForExport } from '../utils/flowchartExport';
 import { importFromScheduleJson, validateScheduleJson } from '../utils/flowchartImport';
 import { scrollToElementWithExpansion } from '../utils/scrollHelpers';
@@ -37,7 +38,8 @@ import { trackEvent } from '../trackEvent';
 export function useDesignerController(
   gamedayId: string | undefined,
   flowState: UseFlowStateReturn,
-  onMetadataHighlight?: () => void
+  onMetadataHighlight?: () => void,
+  expertMode: boolean = false
 ) {
   const [isLoading, setIsLoading] = useState(false);
   const [showTournamentModal, setShowTournamentModal] = useState(false);
@@ -81,6 +83,17 @@ export function useDesignerController(
     flowState?.globalTeams || [],
     flowState?.globalTeamGroups || [],
     flowState?.metadata || {} as GamedayMetadata
+  );
+
+  // Expert-mode-only progression simulation — a deliberately SEPARATE value
+  // from `validation` above (never merged into it), so its findings are
+  // structurally unable to affect save/export gating. Only computes when
+  // `expertMode` is true (see `useProgressionInspection.ts`).
+  const progression = useProgressionInspection(
+    expertMode,
+    flowState?.nodes || [],
+    flowState?.edges || [],
+    flowState?.globalTeams || []
   );
 
   const addNotification = useCallback((message: string, type: NotificationType = 'info', title?: string, undoAction?: () => void, duration?: number) => {
@@ -593,6 +606,7 @@ export function useDesignerController(
     globalTeams: flowState?.globalTeams || [],
     globalTeamGroups: flowState?.globalTeamGroups || [],
     validation,
+    progression,
     notifications,
     updateMetadata: flowState?.updateMetadata,
     ui: uiInternal,
@@ -607,7 +621,7 @@ export function useDesignerController(
     flowState?.globalTeams, flowState?.globalTeamGroups, flowState?.canUndo,
     flowState?.canRedo, flowState?.undo, flowState?.redo, flowState?.stats,
     flowState?.updateMetadata,
-    validation, notifications, uiInternal, onMetadataHighlight
+    validation, progression, notifications, uiInternal, onMetadataHighlight
   ]);
 
   return useMemo(() => ({

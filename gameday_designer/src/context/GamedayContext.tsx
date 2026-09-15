@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 import { NotificationType, GameResultsDisplay } from '../types/designer';
+import { useExpertMode } from '../hooks/useExpertMode';
 
 interface GamedayContextType {
   gamedayName: string;
@@ -22,6 +23,8 @@ interface GamedayContextType {
       gameCount: number;
       teamCount: number;
     };
+    expertMode?: boolean;
+    onToggleExpertMode?: (value: boolean) => void;
   } | null;
   setToolbarProps: (props: GamedayContextType['toolbarProps']) => void;
   isLocked: boolean;
@@ -32,6 +35,13 @@ interface GamedayContextType {
   setGameResults: (results: GameResultsDisplay[]) => void;
   replayTourA: (() => void) | null;
   setReplayTourA: (handler: (() => void) | null) => void;
+  /**
+   * Expert Mode: per-user, local-only (localStorage) toggle that reveals the
+   * Progression Inspector — off by default, never persisted server-side or
+   * shared with collaborators. See `useExpertMode.ts`.
+   */
+  expertMode: boolean;
+  setExpertMode: (value: boolean) => void;
 }
 
 const GamedayContext = createContext<GamedayContextType | undefined>(undefined);
@@ -49,6 +59,7 @@ export const GamedayProvider: React.FC<GamedayProviderProps> = ({ children, curr
   const [resultsMode, setResultsMode] = useState(false);
   const [gameResults, setGameResultsInternal] = useState<GameResultsDisplay[]>([]);
   const [replayTourA, setReplayTourAInternal] = useState<(() => void) | null>(null);
+  const [expertMode, setExpertMode] = useExpertMode();
 
   const setGamedayNameCb = useCallback((name: string) => setGamedayName(name), []);
   const setOnOpenTemplates = useCallback((handler: (() => void) | null) => setOnOpenTemplatesInternal(handler), []);
@@ -76,7 +87,9 @@ export const GamedayProvider: React.FC<GamedayProviderProps> = ({ children, curr
     setGameResults,
     replayTourA,
     setReplayTourA,
-  }), [gamedayName, setGamedayNameCb, currentUserId, onOpenTemplates, setOnOpenTemplates, toolbarProps, setToolbarProps, isLocked, setIsLockedCb, resultsMode, gameResults, setGameResults, replayTourA, setReplayTourA]);
+    expertMode,
+    setExpertMode,
+  }), [gamedayName, setGamedayNameCb, currentUserId, onOpenTemplates, setOnOpenTemplates, toolbarProps, setToolbarProps, isLocked, setIsLockedCb, resultsMode, gameResults, setGameResults, replayTourA, setReplayTourA, expertMode, setExpertMode]);
 
   return (
     <GamedayContext.Provider value={value}>
