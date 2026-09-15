@@ -37,10 +37,9 @@
  */
 
 import type { FlowNode, FlowEdge, GameNode, StageNode, GlobalTeam } from '../types/flowchart';
-import { isGameNode, isStageNode } from '../types/flowchart';
+import { isGameNode, isStageNode, isGameToGameEdge } from '../types/flowchart';
 import type { TeamReference } from '../types/designer';
 import { getTeamReferenceDisplayName } from './teamReference';
-import { findSourceGameForReference } from './edgeAnalysis';
 import type {
   ProgressionSimulationResult,
   GameProgressionCellResult,
@@ -71,6 +70,12 @@ interface Stat {
   pf: number;
   pa: number;
 }
+
+/** A team's label paired with the stat line that earned it its rank. */
+type RankedEntry = [label: string, stat: Stat];
+
+/** True when two stat lines are indistinguishable by the tiebreak order below. */
+const sameStanding = (a: Stat, b: Stat): boolean => a.winPoints === b.winPoints && a.pf - a.pa === b.pf - b.pa && a.pf === b.pf;
 
 /**
  * Simulates the full bracket/schedule graph and returns, for every game, its
@@ -133,12 +138,32 @@ export function simulateProgression(
       case 'winner':
       case 'loser': {
         const bySlot = slot === 'home' || slot === 'away' ? slot : null;
-        const viaEdge = bySlot ? findSourceGameForReference(game.id, bySlot, edges, nodes) : null;
-        const sourceGame = viaEdge ?? standingToGames.get(ref.matchName)?.[0] ?? null;
+        const rawEdge = bySlot ? edges.find((e) => e.target === game.id && e.targetHandle === bySlot) : undefined;
+        const edge = rawEdge && isGameToGameEdge(rawEdge) ? rawEdge : undefined;
+        const viaEdgeGame = edge ? gameById.get(edge.source) : undefined;
+        const sourceGame = viaEdgeGame ?? standingToGames.get(ref.matchName)?.[0] ?? null;
         if (!sourceGame) {
           return { kind: 'dangling', refLabel: getTeamReferenceDisplayName(ref) };
         }
-        return { kind: 'gameRef', gameId: sourceGame.id, outputType: ref.type };
+        // When a maintained edge exists, its handle (what the user actually
+        // wired via winner/loser output) is authoritative — `ref.type` can go
+        // stale (e.g. edited outside the live UI) without the edge being
+        // updated to match, and silently trusting `ref.type` in that case
+        // would resolve the WRONG team. Flag the mismatch as a finding too,
+        // since it usually means the reference needs to be re-synced.
+        const edgeOutputType = viaEdgeGame && edge ? edge.sourceHandle : null;
+        const outputType = edgeOutputType ?? ref.type;
+        if (edgeOutputType && edgeOutputType !== ref.type) {
+          findings.push({
+            id: nextId('progression_mismatch'),
+            type: 'reference_mismatch',
+            message: `"${game.data.standing || game.id}" references the "${ref.type}" of "${sourceGame.data.standing}" for ${slot}, but it's actually wired to that game's "${edgeOutputType}" — the "${edgeOutputType}" is what will actually be used.`,
+            messageKey: 'reference_mismatch',
+            messageParams: { game: game.data.standing || game.id, refType: ref.type, actualType: edgeOutputType, slot },
+            affectedNodes: [game.id],
+          });
+        }
+        return { kind: 'gameRef', gameId: sourceGame.id, outputType };
       }
       case 'rank': {
         const stage = resolveStageForRef(ref);
@@ -219,8 +244,8 @@ export function simulateProgression(
   const resolvedGameIds = new Set<string>();
   const resolvedStageIds = new Set<string>();
   const gameOutcome = new Map<string, { winner: ResolvedSlot | null; loser: ResolvedSlot | null; tie: boolean }>();
-  const stageStandings = new Map<string, string[]>();
-  const stageGroupStandings = new Map<string, Map<string, string[]>>();
+  const stageStandings = new Map<string, RankedEntry[]>();
+  const stageGroupStandings = new Map<string, Map<string, RankedEntry[]>>();
   const stageBasis = new Map<string, ResolutionBasis>();
   const cells = new Map<string, GameProgressionCellResult>();
 
@@ -243,10 +268,32 @@ export function simulateProgression(
           : { teamLabel: null, basis: null, sourceGameId: dep.gameId };
       }
       case 'stageRef': {
-        const labels = dep.groupName
+        const entries = dep.groupName
           ? stageGroupStandings.get(dep.stageId)?.get(dep.groupName)
           : stageStandings.get(dep.stageId);
-        const label = labels?.[dep.place - 1] ?? null;
+        const entry = entries?.[dep.place - 1];
+        const label = entry?.[0] ?? null;
+        if (entries && entry) {
+          // The comparator used to sort `entries` (see `rank()`) returns 0 —
+          // "equal" — for two teams with identical win points, point diff,
+          // AND points-for, so a stable sort always keeps every such team
+          // contiguous; counting exact-stat matches anywhere therefore
+          // correctly finds the whole tied block this place falls in, not
+          // just its immediate neighbor. When more than one team shares it,
+          // which one actually landed at this exact place was an arbitrary
+          // (insertion-order) pick — surface that instead of resolving it silently.
+          const tiedCount = entries.filter(([, stat]) => sameStanding(stat, entry[1])).length;
+          if (tiedCount > 1) {
+            findings.push({
+              id: nextId('progression_ambiguous_standing'),
+              type: 'ambiguous_standing',
+              message: `"${game.data.standing || game.id}" references place ${dep.place}${dep.groupName ? ` of group "${dep.groupName}" in` : ' in'} stage standings, but ${tiedCount} teams are fully tied there (same win points, point difference, and points-for) — the team shown is an arbitrary pick.`,
+              messageKey: 'ambiguous_standing',
+              messageParams: { game: game.data.standing || game.id, place: dep.place, count: tiedCount },
+              affectedNodes: [game.id],
+            });
+          }
+        }
         return {
           teamLabel: label,
           basis: label ? stageBasis.get(dep.stageId) ?? null : null,
@@ -293,16 +340,31 @@ export function simulateProgression(
     resolvedGameIds.add(game.id);
   };
 
-  const rank = (stats: Map<string, Stat>): string[] =>
-    Array.from(stats.entries())
-      .sort(([, a], [, b]) => {
-        if (b.winPoints !== a.winPoints) return b.winPoints - a.winPoints;
-        const diffA = a.pf - a.pa;
-        const diffB = b.pf - b.pa;
-        if (diffB !== diffA) return diffB - diffA;
-        return b.pf - a.pf;
-      })
-      .map(([label]) => label);
+  /**
+   * Ranks teams by the tiebreak order documented on `computeStageStandings`
+   * below, returning each team's label paired with its stat line (rather
+   * than just the label) so callers can detect a genuine, complete tie —
+   * see `sameStanding` and its use in `resolveSlot`'s `stageRef` case.
+   *
+   * When two or more teams are fully tied (equal on every tiebreak
+   * criterion), this order falls back to `Map` iteration order — i.e.
+   * whichever team's game was processed first — which is arbitrary and not
+   * itself meaningful; it is never surfaced to the user as if it were a
+   * real tiebreak. `Array.prototype.sort` is stable (guaranteed since
+   * ES2019), so this fallback is at least deterministic given the same
+   * input, and — because the comparator is a valid total preorder — every
+   * group of fully-tied teams ends up contiguous in the result, which is
+   * what makes the simple "count exact-stat matches" tie check in
+   * `resolveSlot` correct without needing to scan for adjacency.
+   */
+  const rank = (stats: Map<string, Stat>): RankedEntry[] =>
+    Array.from(stats.entries()).sort(([, a], [, b]) => {
+      if (b.winPoints !== a.winPoints) return b.winPoints - a.winPoints;
+      const diffA = a.pf - a.pa;
+      const diffB = b.pf - b.pa;
+      if (diffB !== diffA) return diffB - diffA;
+      return b.pf - a.pf;
+    });
 
   const accumulate = (stats: Map<string, Stat>, label: string, forPts: number, againstPts: number) => {
     const s = stats.get(label) ?? { winPoints: 0, pf: 0, pa: 0 };
@@ -317,7 +379,10 @@ export function simulateProgression(
    * order (win points 2/1/0, then point diff, then points-for) is copied
    * verbatim from the backend's
    * `gamedays/service/canvas_progression_service.py::_compute_stage_standings`
-   * — keep these in sync if that logic ever changes.
+   * — keep these in sync if that logic ever changes. A place that falls on a
+   * genuine, complete tie (see `rank()`'s docstring) is flagged with an
+   * `ambiguous_standing` finding wherever it's actually referenced, rather
+   * than silently resolved.
    */
   const computeStageStandings = (stage: StageNode) => {
     const games = stageGames.get(stage.id) ?? [];
@@ -357,7 +422,7 @@ export function simulateProgression(
     }
 
     stageStandings.set(stage.id, rank(stats));
-    const groupRanked = new Map<string, string[]>();
+    const groupRanked = new Map<string, RankedEntry[]>();
     for (const [groupName, groupMap] of groupStats) groupRanked.set(groupName, rank(groupMap));
     stageGroupStandings.set(stage.id, groupRanked);
     stageBasis.set(stage.id, anyProjected || !anyContributed ? 'projected' : 'actual');
@@ -417,12 +482,22 @@ export function simulateProgression(
     if (visited.has(key)) return null;
     visited.add(key);
     inStack.add(key);
-    for (const dep of unitDeps.get(key) ?? []) {
-      const cycle = findCycle(dep, [...path, key]);
-      if (cycle) return cycle;
+    // `inStack` is shared across the whole scan (all root calls below), so it
+    // must be unwound on every exit path, not just the "no cycle found"
+    // fall-through — returning early on a found cycle without this left keys
+    // permanently stuck in `inStack`, which a later, unrelated root could
+    // then "find" via `inStack.has(key)` with that key nowhere in its own
+    // `path`, fabricating a bogus single-node self-cycle (`path.slice(-1)`
+    // on a -1 `indexOf`).
+    try {
+      for (const dep of unitDeps.get(key) ?? []) {
+        const cycle = findCycle(dep, [...path, key]);
+        if (cycle) return cycle;
+      }
+      return null;
+    } finally {
+      inStack.delete(key);
     }
-    inStack.delete(key);
-    return null;
   };
 
   for (const g of gameNodes) {

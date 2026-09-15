@@ -23,7 +23,9 @@ export type ProgressionFindingType =
   | 'dangling_reference'
   | 'unreachable_placeholder'
   | 'unresolved_cycle'
-  | 'undecided_tie';
+  | 'undecided_tie'
+  | 'reference_mismatch'
+  | 'ambiguous_standing';
 
 /**
  * A single expert-mode finding. Purely observational — see module docstring.

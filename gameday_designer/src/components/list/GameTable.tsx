@@ -29,6 +29,7 @@ import { getStageParticipants, getStageGroups, getGroupParticipants } from '../.
 import { isValidTimeFormat } from '../../utils/timeCalculation';
 import { ICONS } from '../../utils/iconConstants';
 import type { GameProgressionCellResult } from '../../types/progression';
+import { getProgressionFindingMessage } from '../../utils/progressionMessages';
 import './GameTable.css';
 
 // Type for select options
@@ -661,14 +662,11 @@ const GameTable: React.FC<GameTableProps> = memo(({
    * ok/warning icon summarizing any expert-only correctness findings for
    * this game. Purely observational — see `progressionSimulator.ts`.
    */
-  const getFindingMessage = (finding: GameProgressionCellResult['findings'][number]) =>
-    finding.messageKey ? t(`validation:${finding.messageKey}` as const, finding.messageParams) : finding.message;
-
   const renderExpertModeIndicator = (game: GameNode, slot: 'home' | 'away') => {
     const cell = progressionByGameId?.get(game.id);
     if (!cell) return null;
     const resolved = slot === 'home' ? cell.home : cell.away;
-    const findingMessages = cell.findings.map(getFindingMessage).join('\n');
+    const findingMessages = cell.findings.map((f) => getProgressionFindingMessage(f, t)).join('\n');
 
     if (resolved.teamLabel) {
       const isProjected = resolved.basis === 'projected';

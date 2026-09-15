@@ -176,21 +176,33 @@ const FlowToolbar: React.FC<FlowToolbarProps> = ({
 
         {/* Expert Mode toggle — per-user, local-only; reveals the Progression Inspector */}
         {onToggleExpertMode && (
-          <Form.Check
-            type="switch"
-            id="expert-mode-toggle"
-            className="flow-toolbar-expert-mode d-flex align-items-center"
-            label={
-              <span title={t('ui:tooltip.expertMode')}>
-                <i className={`bi ${ICONS.EXPERT_MODE} me-1`}></i>
-                {t('ui:label.expertMode')}
-              </span>
-            }
-            checked={expertMode}
-            onChange={(e) => onToggleExpertMode(e.target.checked)}
-            title={t('ui:tooltip.expertMode')}
-            data-testid="expert-mode-toggle"
-          />
+          <>
+            <Form.Check
+              type="switch"
+              id="expert-mode-toggle"
+              className="flow-toolbar-expert-mode d-flex align-items-center"
+              // `title` on <Form.Check> only ever reaches the <label> (react-bootstrap
+              // renders it there, not on the wrapping <div> or the <input>) — fine as a
+              // native hover tooltip for sighted mouse users, but not something screen
+              // readers reliably treat as the control's description. The actual <input>
+              // gets its description via `aria-describedby` below instead (an unlisted
+              // prop here, so react-bootstrap forwards it straight onto the input).
+              title={t('ui:tooltip.expertMode')}
+              label={
+                <span>
+                  <i className={`bi ${ICONS.EXPERT_MODE} me-1`}></i>
+                  {t('ui:label.expertMode')}
+                </span>
+              }
+              checked={expertMode}
+              onChange={(e) => onToggleExpertMode(e.target.checked)}
+              aria-describedby="expert-mode-toggle-description"
+              data-testid="expert-mode-toggle"
+            />
+            <span id="expert-mode-toggle-description" className="visually-hidden">
+              {t('ui:tooltip.expertMode')}
+            </span>
+          </>
         )}
       </ButtonToolbar>
 

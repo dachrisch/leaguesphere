@@ -35,6 +35,8 @@
     "unreachable_placeholder_stage": "Ranking stage \"{{stage}}\" computes placements that no game ever references",
     "unresolved_cycle": "Circular progression: {{chain}}",
     "undecided_tie": "\"{{game}}\" ended in a tie, so its winner/loser cannot be determined",
+    "reference_mismatch": "\"{{game}}\" references the \"{{refType}}\" of its source game for {{slot}}, but is actually wired to that game\u0027s \"{{actualType}}\" \u2014 the wiring is used",
+    "ambiguous_standing": "\"{{game}}\" references place {{place}} of the stage standings, but {{count}} teams are fully tied there \u2014 the team shown is an arbitrary pick",
     "metadataNameMissing": "Gameday Name is mandatory",
     "metadataDateMissing": "Gameday Date is mandatory",
     "metadataDateInPast": "Gameday date is in the past",

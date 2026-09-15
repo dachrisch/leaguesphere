@@ -48,8 +48,15 @@ Serializers in `serializers.py`; `permissions.py` guards access; `management/` h
 ### Expert Mode / Progression Inspector
 An opt-in, advanced view for inspecting how the current graph *would* resolve if played to
 completion, plus non-blocking correctness findings (dangling references, unreachable placeholders,
-unresolved cycles, undecided ties). Deliberately kept separate from the always-on
-`useFlowValidation`/`FlowValidationResult` system:
+unresolved cycles, undecided ties, reference/edge mismatches, ambiguous — fully tied — standings).
+Deliberately kept separate from the always-on `useFlowValidation`/`FlowValidationResult` system:
+- **Finding messages**: every `ProgressionFinding` `progressionSimulator.ts` produces sets both
+  `messageKey`/`messageParams` (for translation) and a plain-English `message`. Only the former
+  should ever reach a real user — `message` is a dev-only fallback for ad-hoc/test-constructed
+  findings; `getProgressionFindingMessage()` in `utils/progressionMessages.ts` (shared by
+  `ProgressionInspectorPanel.tsx` and `GameTable.tsx` — don't reimplement it per call site) logs a
+  warning if it ever has to fall back to `message`, since that means a finding was built without a
+  `messageKey`.
 - **Toggle**: `expertMode` in `GamedayContext.tsx`, backed by `useExpertMode.ts`
   (`localStorage`, key `gd_expert_mode`) — **per-user, local-only, off by default**. It is never
   sent to the backend and never appears in the saved `FlowState`.

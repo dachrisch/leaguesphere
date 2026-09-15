@@ -120,6 +120,28 @@ describe('ProgressionInspectorPanel', () => {
     expect(onHighlightElement).not.toHaveBeenCalled();
   });
 
+  it('does not call onHighlightElement for a finding whose node id matches neither a game nor a stage', async () => {
+    const progression: ProgressionSimulationResult = {
+      cellsByGameId: new Map(),
+      findings: [
+        {
+          id: 'finding-unknown',
+          type: 'dangling_reference',
+          message: 'references a node that no longer exists',
+          affectedNodes: ['deleted-node-id'],
+        },
+      ],
+    };
+
+    vi.mocked(onHighlightElement).mockClear();
+    const user = userEvent.setup();
+    render(<ProgressionInspectorPanel nodes={nodes} progression={progression} onHighlightElement={onHighlightElement} />);
+
+    await user.click(screen.getByTestId('progression-finding-finding-unknown'));
+
+    expect(onHighlightElement).not.toHaveBeenCalled();
+  });
+
   it('clicking an outcome row highlights the game', async () => {
     const progression: ProgressionSimulationResult = {
       cellsByGameId: new Map([
@@ -212,5 +234,84 @@ describe('ProgressionInspectorPanel', () => {
     await user.click(screen.getByText('Progression Inspector'));
 
     expect(collapseWrapper).not.toHaveClass('show');
+  });
+
+  describe('keyboard accessibility', () => {
+    const progression: ProgressionSimulationResult = {
+      cellsByGameId: new Map([
+        [
+          'g1',
+          {
+            gameId: 'g1',
+            home: { teamLabel: 'Team A', basis: 'actual' },
+            away: { teamLabel: 'Team B', basis: 'actual' },
+            official: { teamLabel: null, basis: null },
+            findings: [],
+          },
+        ],
+      ]),
+      findings: [
+        {
+          id: 'finding-1',
+          type: 'dangling_reference',
+          message: 'Dangling reference for g1',
+          affectedNodes: ['g1'],
+        },
+      ],
+    };
+
+    it('exposes the header as a keyboard-focusable, ARIA-expanded toggle button', () => {
+      render(<ProgressionInspectorPanel nodes={nodes} progression={progression} onHighlightElement={onHighlightElement} />);
+
+      const header = screen.getByTestId('progression-inspector-panel').querySelector('.card-header')!;
+      expect(header).toHaveAttribute('role', 'button');
+      expect(header).toHaveAttribute('tabIndex', '0');
+      expect(header).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    it('toggles the panel on Enter', async () => {
+      const user = userEvent.setup();
+      render(<ProgressionInspectorPanel nodes={nodes} progression={progression} onHighlightElement={onHighlightElement} />);
+
+      const header = screen.getByTestId('progression-inspector-panel').querySelector('.card-header') as HTMLElement;
+      const collapseWrapper = screen.getByTestId('progression-outcome-g1').closest('.collapse');
+      expect(collapseWrapper).toHaveClass('show');
+
+      header.focus();
+      await user.keyboard('{Enter}');
+
+      expect(collapseWrapper).not.toHaveClass('show');
+      expect(header).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('activates a finding row on Space', async () => {
+      vi.mocked(onHighlightElement).mockClear();
+      const user = userEvent.setup();
+      render(<ProgressionInspectorPanel nodes={nodes} progression={progression} onHighlightElement={onHighlightElement} />);
+
+      const row = screen.getByTestId('progression-finding-finding-1');
+      expect(row).toHaveAttribute('role', 'button');
+      expect(row).toHaveAttribute('tabIndex', '0');
+
+      row.focus();
+      await user.keyboard(' ');
+
+      expect(onHighlightElement).toHaveBeenCalledWith('g1', 'game');
+    });
+
+    it('activates an outcome row on Enter', async () => {
+      vi.mocked(onHighlightElement).mockClear();
+      const user = userEvent.setup();
+      render(<ProgressionInspectorPanel nodes={nodes} progression={progression} onHighlightElement={onHighlightElement} />);
+
+      const row = screen.getByTestId('progression-outcome-g1');
+      expect(row).toHaveAttribute('role', 'button');
+      expect(row).toHaveAttribute('tabIndex', '0');
+
+      row.focus();
+      await user.keyboard('{Enter}');
+
+      expect(onHighlightElement).toHaveBeenCalledWith('g1', 'game');
+    });
   });
 });

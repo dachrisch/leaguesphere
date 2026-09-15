@@ -42,6 +42,25 @@ describe('useProgressionInspection', () => {
     expect(result.current.cellsByGameId.get('g1')?.home.teamLabel).toBe('Team A');
   });
 
+  it('returns a referentially stable empty result across renders when off, even as nodes change', () => {
+    // Regression test: nodes/edges get new array identities on nearly every
+    // designer edit. When Expert Mode is off, the result (and its
+    // cellsByGameId Map) must still be the SAME object reference every time,
+    // or downstream React.memo'd components (FieldSection, StageSection,
+    // GameTable) re-render on every edit for users who never opted in.
+    const { result, rerender } = renderHook(
+      ({ nodes }: { nodes: FlowNode[] }) => useProgressionInspection(false, nodes, [], []),
+      { initialProps: { nodes: [] } }
+    );
+    const first = result.current;
+    const firstCells = first.cellsByGameId;
+
+    rerender({ nodes: [] }); // a brand-new array reference, same (empty) content
+
+    expect(result.current).toBe(first);
+    expect(result.current.cellsByGameId).toBe(firstCells);
+  });
+
   it('does not recompute when inputs are unchanged (memoized)', () => {
     const nodes: FlowNode[] = [];
     const edges: never[] = [];

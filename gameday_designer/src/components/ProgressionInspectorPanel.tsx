@@ -18,6 +18,7 @@ import type { FlowNode, HighlightedElement } from '../types/flowchart';
 import { isGameNode, isStageNode, getFieldNodes } from '../types/flowchart';
 import { getGamesInStage, getStagesInField } from '../utils/edgeAnalysis';
 import type { ProgressionFinding, ProgressionSimulationResult } from '../types/progression';
+import { getProgressionFindingMessage } from '../utils/progressionMessages';
 import { ICONS } from '../utils/iconConstants';
 import './ProgressionInspectorPanel.css';
 
@@ -38,24 +39,35 @@ const ProgressionInspectorPanel: React.FC<ProgressionInspectorPanelProps> = ({
   const gameById = useMemo(() => new Map(nodes.filter(isGameNode).map((n) => [n.id, n])), [nodes]);
   const stageById = useMemo(() => new Map(nodes.filter(isStageNode).map((n) => [n.id, n])), [nodes]);
 
+  // Returns null (rather than guessing 'game') when the id matches neither
+  // map — e.g. a stale finding whose node was deleted after the simulation
+  // ran. Guessing would send the click-to-highlight machinery looking for a
+  // game that was never there instead of simply doing nothing.
   const highlightTypeFor = useCallback(
-    (nodeId: string): HighlightedElement['type'] => (gameById.has(nodeId) ? 'game' : stageById.has(nodeId) ? 'stage' : 'game'),
+    (nodeId: string): HighlightedElement['type'] | null =>
+      gameById.has(nodeId) ? 'game' : stageById.has(nodeId) ? 'stage' : null,
     [gameById, stageById]
   );
 
-  const getFindingMessage = useCallback(
-    (finding: ProgressionFinding) =>
-      finding.messageKey ? t(`validation:${finding.messageKey}` as const, finding.messageParams) : finding.message,
-    [t]
-  );
+  const getFindingMessage = useCallback((finding: ProgressionFinding) => getProgressionFindingMessage(finding, t), [t]);
 
   const handleFindingClick = useCallback(
     (finding: ProgressionFinding) => {
       const nodeId = finding.affectedNodes[0];
-      if (nodeId) onHighlightElement(nodeId, highlightTypeFor(nodeId));
+      if (!nodeId) return;
+      const type = highlightTypeFor(nodeId);
+      if (type) onHighlightElement(nodeId, type);
     },
     [onHighlightElement, highlightTypeFor]
   );
+
+  /** Enter/Space activates a clickable row the same way a click would. */
+  const handleActivateKeyDown = useCallback((e: React.KeyboardEvent, activate: () => void) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      activate();
+    }
+  }, []);
 
   const fields = useMemo(() => getFieldNodes(nodes), [nodes]);
 
@@ -67,8 +79,12 @@ const ProgressionInspectorPanel: React.FC<ProgressionInspectorPanelProps> = ({
   return (
     <Card className="progression-inspector-panel mb-3" data-testid="progression-inspector-panel">
       <Card.Header
-        className="d-flex align-items-center"
+        className="progression-inspector-panel__header d-flex align-items-center"
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
         onClick={() => setIsExpanded((prev) => !prev)}
+        onKeyDown={(e) => handleActivateKeyDown(e, () => setIsExpanded((prev) => !prev))}
         style={{ cursor: 'pointer' }}
       >
         <i className={`bi ${isExpanded ? ICONS.EXPANDED : ICONS.COLLAPSED} me-2`}></i>
@@ -102,7 +118,10 @@ const ProgressionInspectorPanel: React.FC<ProgressionInspectorPanelProps> = ({
                         <li
                           key={finding.id}
                           className="progression-finding-row d-flex align-items-start gap-2 py-1"
+                          role="button"
+                          tabIndex={0}
                           onClick={() => handleFindingClick(finding)}
+                          onKeyDown={(e) => handleActivateKeyDown(e, () => handleFindingClick(finding))}
                           data-testid={`progression-finding-${finding.id}`}
                         >
                           <i className={`bi ${findingIconFor(finding.type)} mt-1`}></i>
@@ -133,11 +152,15 @@ const ProgressionInspectorPanel: React.FC<ProgressionInspectorPanelProps> = ({
                                   slot.teamLabel
                                     ? `${slot.teamLabel}${slot.basis === 'projected' ? ` (${t('ui:label.expertModeProjectedShort')})` : ''}`
                                     : t('ui:label.expertModeTbd');
+                                const highlightThisGame = () => onHighlightElement(game.id, 'game');
                                 return (
                                   <li
                                     key={game.id}
                                     className="progression-outcome-row small"
-                                    onClick={() => onHighlightElement(game.id, 'game')}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={highlightThisGame}
+                                    onKeyDown={(e) => handleActivateKeyDown(e, highlightThisGame)}
                                     data-testid={`progression-outcome-${game.id}`}
                                   >
                                     <strong>{game.data.standing}</strong>: {format(cell.home)} vs {format(cell.away)}

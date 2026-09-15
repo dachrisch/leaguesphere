@@ -245,6 +245,38 @@ describe('progressionSimulator', () => {
         sourceGameId: 'sf',
       });
     });
+
+    it('trusts the edge handle over a disagreeing ref.type, and reports the mismatch', () => {
+      // The edge says "loser" (what the user actually wired), but the ref
+      // data is stale and still says "winner" — the edge must win, and the
+      // disagreement must be surfaced rather than silently resolving the
+      // wrong team.
+      const f = field('f1');
+      const s = stage('s1', 'f1', 'Preliminary', 0);
+      const teams: GlobalTeam[] = [team('t1', 'Team A'), team('t2', 'Team B')];
+      const sf = game('sf', 's1', 'Preliminary', 'HF1', {
+        homeTeamId: 't1',
+        awayTeamId: 't2',
+        status: 'Beendet',
+        final_score: { home: 21, away: 14 },
+      });
+      const final = game('final', 's1', 'Final', 'Finale', {
+        homeTeamDynamic: winnerRef('HF1'),
+      });
+      const edges: FlowEdge[] = [createGameToGameEdge('e1', 'sf', 'loser', 'final', 'home')];
+      const nodes: FlowNode[] = [f, s, sf, final];
+
+      const result = simulateProgression(nodes, edges, teams);
+
+      expect(result.cellsByGameId.get('final')!.home).toEqual({
+        teamLabel: 'Team B',
+        basis: 'actual',
+        sourceGameId: 'sf',
+      });
+      const finding = result.findings.find((fd) => fd.type === 'reference_mismatch');
+      expect(finding).toBeDefined();
+      expect(finding!.affectedNodes).toContain('final');
+    });
   });
 
   describe('official references', () => {
@@ -387,6 +419,27 @@ describe('progressionSimulator', () => {
 
       expect(result.cellsByGameId.get('gE')!.away.teamLabel).toBeNull();
       expect(result.findings.some((fd) => fd.type === 'unresolved_cycle')).toBe(true);
+    });
+
+    it('does not fabricate a bogus self-cycle for a game merely downstream of a real cycle', () => {
+      // Regression test for a stale-`inStack` bug: gC only *depends on* the
+      // gA<->gB cycle (it never resolves either, since gA never does), but
+      // must never itself be reported as its own single-node cycle.
+      const f = field('f1');
+      const s = stage('s1', 'f1', 'Final', 0);
+      const teams: GlobalTeam[] = [team('t1', 'Team A')];
+      const gA = game('gA', 's1', 'Final', 'A', { homeTeamDynamic: winnerRef('B'), awayTeamId: 't1' });
+      const gB = game('gB', 's1', 'Final', 'B', { homeTeamDynamic: winnerRef('A'), awayTeamId: 't1' });
+      const gC = game('gC', 's1', 'Final', 'C', { homeTeamDynamic: winnerRef('A'), awayTeamId: 't1' });
+      const nodes: FlowNode[] = [f, s, gA, gB, gC];
+
+      const result = simulateProgression(nodes, [], teams);
+
+      expect(result.cellsByGameId.get('gC')!.home.teamLabel).toBeNull();
+      const cycleFindings = result.findings.filter((fd) => fd.type === 'unresolved_cycle');
+      expect(cycleFindings).toHaveLength(1);
+      expect(cycleFindings[0].affectedNodes.sort()).toEqual(['gA', 'gB']);
+      expect(cycleFindings.some((fd) => fd.affectedNodes.length === 1 && fd.affectedNodes[0] === 'gC')).toBe(false);
     });
   });
 
@@ -602,6 +655,90 @@ describe('progressionSimulator', () => {
       const result = simulateProgression(nodes, [], teams);
 
       expect(result.cellsByGameId.get('final')!.home.teamLabel).toBeNull();
+    });
+
+    it('flags a genuine tie for the referenced place with an ambiguous_standing finding', () => {
+      // Team A and Team C never play each other, but both go 1-0 with an
+      // identical +10 point difference and 10 points-for — a real,
+      // unresolvable tie for 1st place, not just a tie between two teams
+      // that played each other.
+      const f = field('f1');
+      const s = stage('s1', 'f1', 'Gruppe 1', 0, 'RANKING');
+      const teams: GlobalTeam[] = [
+        team('t1', 'Team A'),
+        team('t2', 'Team B'),
+        team('t3', 'Team C'),
+        team('t4', 'Team D'),
+      ];
+      const g1 = game(
+        'g1',
+        's1',
+        'Gruppe 1',
+        'G1',
+        { homeTeamId: 't1', awayTeamId: 't2', status: 'Beendet', final_score: { home: 10, away: 0 } },
+        'RANKING'
+      );
+      const g2 = game(
+        'g2',
+        's1',
+        'Gruppe 1',
+        'G2',
+        { homeTeamId: 't3', awayTeamId: 't4', status: 'Beendet', final_score: { home: 10, away: 0 } },
+        'RANKING'
+      );
+      const finalStage = stage('s2', 'f1', 'Final', 1);
+      const final = game('final', 's2', 'Final', 'Finale', {
+        homeTeamDynamic: rankRef('s1', 'Gruppe 1', 1),
+        awayTeamId: 't1',
+      });
+      const nodes: FlowNode[] = [f, s, finalStage, g1, g2, final];
+
+      const result = simulateProgression(nodes, [], teams);
+
+      const finding = result.findings.find((fd) => fd.type === 'ambiguous_standing');
+      expect(finding).toBeDefined();
+      expect(finding!.affectedNodes).toContain('final');
+      expect(finding!.messageParams).toMatchObject({ place: 1, count: 2 });
+    });
+
+    it('does not flag a place that is not part of any tie', () => {
+      const f = field('f1');
+      const s = stage('s1', 'f1', 'Gruppe 1', 0, 'RANKING');
+      const teams: GlobalTeam[] = [team('t1', 'Team A'), team('t2', 'Team B'), team('t3', 'Team C')];
+      const g1 = game(
+        'g1',
+        's1',
+        'Gruppe 1',
+        'G1',
+        { homeTeamId: 't1', awayTeamId: 't2', status: 'Beendet', final_score: { home: 20, away: 10 } },
+        'RANKING'
+      );
+      const g2 = game(
+        'g2',
+        's1',
+        'Gruppe 1',
+        'G2',
+        { homeTeamId: 't2', awayTeamId: 't3', status: 'Beendet', final_score: { home: 15, away: 5 } },
+        'RANKING'
+      );
+      const g3 = game(
+        'g3',
+        's1',
+        'Gruppe 1',
+        'G3',
+        { homeTeamId: 't1', awayTeamId: 't3', status: 'Beendet', final_score: { home: 25, away: 0 } },
+        'RANKING'
+      );
+      const finalStage = stage('s2', 'f1', 'Final', 1);
+      const final = game('final', 's2', 'Final', 'Finale', {
+        homeTeamDynamic: rankRef('s1', 'Gruppe 1', 1),
+        awayTeamId: 't1',
+      });
+      const nodes: FlowNode[] = [f, s, finalStage, g1, g2, g3, final];
+
+      const result = simulateProgression(nodes, [], teams);
+
+      expect(result.findings.some((fd) => fd.type === 'ambiguous_standing')).toBe(false);
     });
   });
 
