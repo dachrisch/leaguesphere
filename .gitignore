@@ -62,6 +62,7 @@ local_settings.py
 db.sqlite3
 db.sqlite3.bak
 db.sqlite3-journal
+db.demo.sqlite3
 test_db_shared.sqlite3
 .claude/scheduled_tasks.lock
 .static/
@@ -162,6 +163,12 @@ journey/static/journey_dashboard/*.css
 
 # Superpowers tooling artifacts
 .superpowers/
+
+# Local JS lint output
+**/js-lint-results-*.json
+
+# Opencode local install artifacts
+.opencode/package-lock.json
 
 league_manager/league_manager/
 
