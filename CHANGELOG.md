@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.24.4](https://github.com/dachrisch/leaguesphere/compare/v4.24.3...v4.24.4) (2026-09-15)
+
+
+### Documentation
+
+* **record-tutorial:** caption re-inject fix, association-cup storyboard, plans/history ([#1940](https://github.com/dachrisch/leaguesphere/issues/1940)) ([c51483d](https://github.com/dachrisch/leaguesphere/commit/c51483d08fc537dd75fc2494c1676bad6e057310))
+
 ## [4.24.3](https://github.com/dachrisch/leaguesphere/compare/v4.24.2...v4.24.3) (2026-09-13)
 
 
