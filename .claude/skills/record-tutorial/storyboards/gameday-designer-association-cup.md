@@ -2,8 +2,11 @@
 
 Start from a blank canvas, apply the built-in 8-team group format, add an extra
 "Championship Group" phase whose games reference the *winner*/*loser* of earlier
-group-stage games (indirect/dynamic team references) instead of fixed teams, then
-save the result as an association template.
+group-stage games (indirect/dynamic team references) instead of fixed teams, save
+the result as an association template, then load that template onto a second,
+brand-new gameday to prove the saved template still has freely selectable team
+slots for the group stage while the Championship Group's winner/loser progression
+carries over unchanged (not baked to fixed teams).
 
 Verified live against https://demo.leaguesphere.app (v4.24.3) on 2026-09-15.
 Pre-flight (off camera, per SKILL.md): log in as admin@demo.local, make sure no
@@ -16,6 +19,16 @@ viewport (`resize_page`) so fields and the bracket are fully visible.
   text ("8 Teams - 2 Groups of 4").
 - The demo's real team pool size varies; "Auto-generate N missing teams" always
   tops it up to the template's required count regardless of how many are real.
+- **Don't try to click the individual real-team buttons in the Select Teams
+  picker (RSF, UNC, etc.) to pre-select specific teams -- none of `.click()`,
+  the full pointerdown/mousedown/pointerup/mouseup/click sequence, or the real
+  `click` tool reliably registers a selection on them** (the `btn-primary` /
+  `btn-outline-primary` class toggles inconsistently, unrelated to actual
+  selection, and "Currently selected" stays at 0 regardless). Use
+  "Auto-generate N missing teams" to fill the roster instead -- it's fully
+  reliable -- and demonstrate real team reassignment afterward through the
+  already-placed games' Home/Away react-select dropdowns instead, which *are*
+  reliably automatable (see the react-select workaround below).
 - `fill` does NOT propagate into this app's React-controlled inputs: click the
   field to focus it first, then type real keystrokes (type_text), then verify
   the value stuck before saving.
@@ -164,3 +177,63 @@ viewport (`resize_page`) so fields and the bracket are fully visible.
 - action: wait
 - target: the Association tab showing the Association Group Cup entry
 - hold: 4
+
+## Step 22
+- caption: Now let's confirm it loads correctly on a brand new gameday
+- action: wait
+- target: back on the designer dashboard (empty list)
+- hold: 3
+
+## Step 23
+- caption: Create another gameday
+- action: click
+- target: [data-testid="create-gameday-button"]
+- hold: 3
+
+## Step 24
+- caption: Open the template library again
+- action: click
+- target: [data-testid="open-template-library-button"]
+- hold: 2.5
+
+## Step 25
+- caption: Switch to your Association templates
+- action: click
+- target: the "Association" filter tab in the Template Library
+- hold: 2.5
+
+## Step 26
+- caption: Pick the Association Group Cup template
+- action: click
+- target: the "Association Group Cup" entry in the Association tab list
+- hold: 3
+
+## Step 27
+- caption: Apply the saved template to this gameday
+- action: click
+- target: [data-testid="apply-template-button"]
+- hold: 3
+
+## Step 28
+- caption: Fill the group stage with teams
+- action: click
+- target: the "Auto-generate N missing teams" button in the Select Teams picker
+- hold: 3
+
+## Step 29
+- caption: Confirm the team selection
+- action: click
+- target: the Apply to Gameday button in the Select Teams picker
+- hold: 3
+
+## Step 30
+- caption: Every slot stays a selectable dropdown -- swap in a real team any time
+- action: click
+- target: Group Stage A Game 1's Home selector (react-select workaround) -> pick a different option from the list (e.g. "Team 1") in place of the auto-generated one
+- hold: 4
+
+## Step 31
+- caption: The Championship Group kept its winner/loser progression automatically
+- action: wait
+- target: the Championship Group stage, scrolled into view -- Home/Away still read "Winner of A Game 1" / "Loser of B Game 1" etc, unchanged and not requiring re-selection
+- hold: 5
