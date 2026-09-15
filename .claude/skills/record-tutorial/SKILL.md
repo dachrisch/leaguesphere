@@ -88,9 +88,11 @@ For each step in the storyboard, in order:
 2. Perform the step's `action` against `target` via the matching
    `chrome-devtools-mcp` tool (`navigate_page`, `click`, `fill`, `hover`, or
    `wait_for`).
-3. Hold for `hold` seconds before moving to the next step (so the caption is
+3. For `navigate` steps only: re-inject the same caption overlay again after
+   the navigation completes — navigation destroys the injected `<div>`, so
+   without this the new page shows no caption until the next step.
+4. Hold for `hold` seconds before moving to the next step (so the caption is
    readable and, if narrated later, has enough room).
-
 ### 3. Stop the capture
 
 ```bash
