@@ -116,8 +116,41 @@ describe('useFlowValidation - New Warnings', () => {
       expect(dup).toHaveLength(1);
       expect(dup[0]?.messageKey).toBe('duplicate_team_label');
       expect(dup[0]?.messageParams?.team).toBe('Lions');
+      expect(dup[0]?.messageParams?.count).toBe(1);
+      expect(dup[0]?.affectedNodes).toContain('team-orphan');
       // The orphan's generic warning must be replaced, not duplicated
       expect(result.current.warnings.filter(w => w.type === 'team_without_games')).toHaveLength(0);
+    });
+
+    it('should aggregate multiple orphans sharing a label into a single warning', () => {
+      const teams: GlobalTeam[] = [
+        { id: 'team-22', label: 'Lions', groupId: 'g1', order: 18 },
+        { id: 'team-orphan-1', label: 'Lions', groupId: null, order: 2 },
+        { id: 'team-orphan-2', label: 'Lions', groupId: null, order: 3 }
+      ];
+      const { result } = renderHook(() => useFlowValidation(makeNodes('team-22'), [], teams, [], validMetadata));
+
+      const dup = result.current.warnings.filter(w => w.type === 'duplicate_team_label');
+      expect(dup).toHaveLength(1);
+      expect(dup[0]?.messageParams?.team).toBe('Lions');
+      expect(dup[0]?.messageParams?.count).toBe(2);
+      expect(dup[0]?.messageParams?.unassignedCount).toBe(2);
+      expect(dup[0]?.messageParams?.assignedCount).toBe(1);
+      expect(dup[0]?.affectedNodes).toEqual(
+        expect.arrayContaining(['team-orphan-1', 'team-orphan-2'])
+      );
+      expect(result.current.warnings.filter(w => w.type === 'team_without_games')).toHaveLength(0);
+    });
+
+    it('should not warn when all duplicate entries are assigned', () => {
+      const teams: GlobalTeam[] = [
+        { id: 'team-a', label: 'Lions', groupId: 'g1', order: 0 },
+        { id: 'team-b', label: 'Lions', groupId: 'g1', order: 1 }
+      ];
+      const { result } = renderHook(() => useFlowValidation(makeNodes('team-a', 'team-b'), [], teams, [], validMetadata));
+
+      expect(result.current.warnings.filter(w => w.type === 'team_without_games')).toHaveLength(0);
+      expect(result.current.warnings.filter(w => w.type === 'duplicate_team_label')).toHaveLength(0);
     });
 
     it('should warn two team_without_games when duplicate labels are both unassigned', () => {
