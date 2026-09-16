@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📖 Contributor Guide
+    url: https://github.com/dachrisch/leaguesphere/blob/master/docs/guides/contributor-guide.md
+    about: Build, test, code style, and deployment-safety guidelines before you start.

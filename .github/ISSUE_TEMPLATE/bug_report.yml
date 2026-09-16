@@ -1,0 +1,102 @@
+name: 🐛 Bug report
+description: Something in LeagueSphere isn't working as expected
+title: "[Module] Short description"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. The more concrete the repro, the faster it
+        gets fixed — a gameday/team/user ID plus exact steps beats a general description.
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      description: Which app or module does this affect? See the module guides linked from the root CLAUDE.md.
+      options:
+        - gamedays (core scheduling)
+        - gameday_designer (flowchart schedule builder)
+        - accounts (auth / Knox tokens)
+        - league_table (standings)
+        - officials (referees / Moodle)
+        - teammanager (teams / clubs / rosters)
+        - matchreport
+        - journey / journey_dashboard (progress dashboard)
+        - passcheck (player eligibility)
+        - liveticker
+        - scorecard
+        - dashboard (legacy)
+        - infrastructure / deployment (container repo, Ansible)
+        - other / not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: Where did you see this?
+      options:
+        - Production (leaguesphere.app)
+        - Stage (stage.leaguesphere.app)
+        - Demo (demo.leaguesphere.app)
+        - Local / dev
+        - Not applicable
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What's broken? Include the URL, gameday/team/league ID, or screenshot if you have one.
+      placeholder: |
+        e.g. "Lions was assigned in the designer bracket but the validation panel says
+        Team 'Lions' is not assigned to any game — https://www.leaguesphere.app/.../903"
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps from a clean state.
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs. actual behavior
+      placeholder: |
+        Expected: ...
+        Actual: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence (logs, query results, screenshots)
+      description: >
+        Paste relevant `docker logs leaguesphere.app` output, Grafana/Loki links, DB query
+        output, or attach screenshots. Redact personal data (names, emails) that isn't needed
+        to explain the bug.
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this isn't a duplicate
+          required: true
+        - label: This is reproducible (not a one-off environmental blip)
+          required: false

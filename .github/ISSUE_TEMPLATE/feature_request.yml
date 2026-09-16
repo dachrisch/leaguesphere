@@ -1,0 +1,68 @@
+name: ✨ Feature request
+description: Propose a new capability or improvement for LeagueSphere
+title: "[Module] Short description"
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature requests that name the module and the concrete workflow they unblock get
+        picked up faster than general ideas.
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      description: Which app or module does this affect? See the module guides linked from the root CLAUDE.md.
+      options:
+        - gamedays (core scheduling)
+        - gameday_designer (flowchart schedule builder)
+        - accounts (auth / Knox tokens)
+        - league_table (standings)
+        - officials (referees / Moodle)
+        - teammanager (teams / clubs / rosters)
+        - matchreport
+        - journey / journey_dashboard (progress dashboard)
+        - passcheck (player eligibility)
+        - liveticker
+        - scorecard
+        - dashboard (legacy)
+        - infrastructure / deployment (container repo, Ansible)
+        - other / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What's the current pain point? Who runs into it, and how often?
+      placeholder: |
+        e.g. "League admins have to manually re-enter the officiating crew for every
+        gameday in a season — there's no way to copy last week's assignments forward."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should happen instead? Sketch the UI/API/workflow if you can.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you thought about, and why you didn't pick them.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this isn't a duplicate
+          required: true
