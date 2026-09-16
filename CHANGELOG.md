@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.25.0](https://github.com/dachrisch/leaguesphere/compare/v4.24.5...v4.25.0) (2026-09-16)
+
+
+### Features
+
+* **gameday_designer:** add Expert Mode progression inspector ([#1938](https://github.com/dachrisch/leaguesphere/issues/1938)) ([41a9b38](https://github.com/dachrisch/leaguesphere/commit/41a9b380f5354e6983fa263c67214844640268a9))
+
 ## [4.24.5](https://github.com/dachrisch/leaguesphere/compare/v4.24.4...v4.24.5) (2026-09-15)
 
 
