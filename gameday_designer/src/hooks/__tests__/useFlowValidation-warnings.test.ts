@@ -78,9 +78,64 @@ describe('useFlowValidation - New Warnings', () => {
         { id: 'g1', type: 'game', parentId: 's1', data: { standing: 'G1', homeTeamId: 't1', awayTeamId: 't2' } as GameNodeData, position: { x: 0, y: 0 } }
       ];
       const { result } = renderHook(() => useFlowValidation(nodes, [], teams, [], validMetadata));
-      
+
       const warning = result.current.warnings.find(w => w.type === 'team_without_games');
       expect(warning).toBeUndefined();
+    });
+
+    it('should emit duplicate_team_label when one of two same-labeled entries is assigned', () => {
+      const teams: GlobalTeam[] = [
+        { id: 'team-22', label: 'Lions', groupId: 'g1', order: 18 },
+        { id: 'team-orphan', label: 'Lions', groupId: null, order: 2 },
+        { id: 'team-9', label: 'Ingol', groupId: 'g1', order: 19 }
+      ];
+      const nodes: FlowNode[] = [
+        { id: 'f1', type: 'field', data: { name: 'F1', order: 0 } as FieldNodeData, position: { x: 0, y: 0 } },
+        { id: 's1', type: 'stage', parentId: 'f1', data: { name: 'S1', order: 0 } as StageNodeData, position: { x: 0, y: 0 } },
+        { id: 'g1', type: 'game', parentId: 's1', data: { standing: 'AF 2', homeTeamId: 'team-22', awayTeamId: 'team-9' } as GameNodeData, position: { x: 0, y: 0 } }
+      ];
+      const { result } = renderHook(() => useFlowValidation(nodes, [], teams, [], validMetadata));
+
+      const duplicates = result.current.warnings.filter(w => w.type === 'duplicate_team_label');
+      expect(duplicates).toHaveLength(1);
+      expect(duplicates[0].messageKey).toBe('duplicate_team_label');
+      expect(duplicates[0].messageParams?.team).toBe('Lions');
+      expect(duplicates[0].affectedNodes).toContain('team-orphan');
+      // Neither Lions entry gets the generic warning
+      expect(result.current.warnings.filter(w => w.type === 'team_without_games')).toHaveLength(0);
+    });
+
+    it('should keep two team_without_games warnings when duplicate labels are both unassigned', () => {
+      const teams: GlobalTeam[] = [
+        { id: 'team-a', label: 'Lions', groupId: 'g1', order: 0 },
+        { id: 'team-b', label: 'Lions', groupId: null, order: 1 }
+      ];
+      const nodes: FlowNode[] = [
+        { id: 'f1', type: 'field', data: { name: 'F1', order: 0 } as FieldNodeData, position: { x: 0, y: 0 } },
+        { id: 's1', type: 'stage', parentId: 'f1', data: { name: 'S1', order: 0 } as StageNodeData, position: { x: 0, y: 0 } },
+        { id: 'g1', type: 'game', parentId: 's1', data: { standing: 'G1', homeTeamId: 'team-x', awayTeamId: 'team-y' } as GameNodeData, position: { x: 0, y: 0 } }
+      ];
+      const { result } = renderHook(() => useFlowValidation(nodes, [], teams, [], validMetadata));
+
+      const generic = result.current.warnings.filter(w => w.type === 'team_without_games');
+      expect(generic).toHaveLength(2);
+      expect(result.current.warnings.filter(w => w.type === 'duplicate_team_label')).toHaveLength(0);
+    });
+
+    it('should not warn when all duplicate entries are assigned', () => {
+      const teams: GlobalTeam[] = [
+        { id: 'team-a', label: 'Lions', groupId: 'g1', order: 0 },
+        { id: 'team-b', label: 'Lions', groupId: 'g1', order: 1 }
+      ];
+      const nodes: FlowNode[] = [
+        { id: 'f1', type: 'field', data: { name: 'F1', order: 0 } as FieldNodeData, position: { x: 0, y: 0 } },
+        { id: 's1', type: 'stage', parentId: 'f1', data: { name: 'S1', order: 0 } as StageNodeData, position: { x: 0, y: 0 } },
+        { id: 'g1', type: 'game', parentId: 's1', data: { standing: 'G1', homeTeamId: 'team-a', awayTeamId: 'team-b' } as GameNodeData, position: { x: 0, y: 0 } }
+      ];
+      const { result } = renderHook(() => useFlowValidation(nodes, [], teams, [], validMetadata));
+
+      expect(result.current.warnings.filter(w => w.type === 'team_without_games')).toHaveLength(0);
+      expect(result.current.warnings.filter(w => w.type === 'duplicate_team_label')).toHaveLength(0);
     });
   });
 

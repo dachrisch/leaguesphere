@@ -12,7 +12,7 @@
  * - Shows team usage count across games
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Button } from 'react-bootstrap';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import type { GlobalTeam, GlobalTeamGroup, FlowNode, HighlightedElement } from '../../types/flowchart';
@@ -199,6 +199,20 @@ const GlobalTeamTable: React.FC<GlobalTeamTableProps> = ({
   //   [onUpdate]
   // );
 
+  // Labels shared by more than one pool entry (e.g. a JSON-import placeholder
+  // left behind after the game was repointed at the database-linked team).
+  // Computed from ALL teams — including ungrouped ones not rendered below —
+  // so visible entries warn that a hidden duplicate exists.
+  const duplicateLabels = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const team of teams) {
+      counts.set(team.label, (counts.get(team.label) ?? 0) + 1);
+    }
+    return new Set(
+      [...counts.entries()].filter(([, count]) => count > 1).map(([label]) => label)
+    );
+  }, [teams]);
+
   // Sort groups by order
   const sortedGroups = [...groups].sort((a, b) => a.order - b.order);
 
@@ -271,6 +285,7 @@ const GlobalTeamTable: React.FC<GlobalTeamTableProps> = ({
                 index={index}
                 totalGroups={sortedGroups.length}
                 readOnly={readOnly}
+                duplicateLabels={duplicateLabels}
               />
             );
           })}

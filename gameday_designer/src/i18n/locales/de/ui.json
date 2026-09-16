@@ -172,6 +172,7 @@
     "placeFrom": "{{place}}. Platz aus {{stage}}",
     "ungrouped": "Ungruppiert",
     "assignedGamesCount": "Anzahl der Spiele, denen dieses Team zugewiesen ist",
+    "duplicateTeamName": "Doppelter Teamname \"{{label}}\" ({{id}}) — ein weiterer Pool-Eintrag teilt diesen Namen",
     "confirmDeleteGameday": "Möchten Sie \"{{name}}\" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
     "enterBothHalves": "Spiel {{id}}: Geben Sie beide Halbzeiten für {{team}} ein",
     "loading": "Lade...",

@@ -48,6 +48,8 @@ export interface TeamGroupCardProps {
   totalGroups: number;
   /** Whether the designer is in read-only mode */
   readOnly?: boolean;
+  /** Labels shared by more than one pool entry (computed across all teams) */
+  duplicateLabels?: ReadonlySet<string>;
 }
 
 /**
@@ -70,6 +72,7 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
   index,
   totalGroups,
   readOnly = false,
+  duplicateLabels,
 }) => {
   const { t } = useTypedTranslation(['ui']);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -345,6 +348,17 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                       </span>
                     )}
                   </div>
+
+                  {/* Duplicate-label indicator */}
+                  {duplicateLabels?.has(team.label) && (
+                    <span
+                      className="me-1 flex-shrink-0 text-warning"
+                      title={t('ui:message.duplicateTeamName', { label: team.label, id: team.id })}
+                      data-testid={`duplicate-label-badge-${team.id}`}
+                    >
+                      <i className="bi bi-exclamation-triangle-fill" aria-hidden="true" />
+                    </span>
+                  )}
 
                   {/* Usage count */}
                   <div className="me-2 flex-shrink-0">

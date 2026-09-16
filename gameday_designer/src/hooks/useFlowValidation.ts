@@ -1119,6 +1119,13 @@ function checkNoGames(nodes: FlowNode[]): FlowValidationWarning[] {
 
 /**
  * Check for teams in the pool that are not assigned to any game.
+ *
+ * Deduplicate-aware: when several pool entries share the same label and at
+ * least one of them is assigned to a game while at least one other is not
+ * (e.g. a JSON-import placeholder left behind after the game was repointed
+ * at the database-linked team), a single `duplicate_team_label` warning is
+ * emitted for that label instead of per-team `team_without_games` warnings
+ * that read like false positives.
  */
 function checkTeamsWithoutGames(
   nodes: FlowNode[],
@@ -1134,7 +1141,46 @@ function checkTeamsWithoutGames(
     if (data.awayTeamId) assignedTeamIds.add(data.awayTeamId);
   }
 
+  // Group pool entries by label to detect duplicate-named teams.
+  const teamsByLabel = new Map<string, GlobalTeam[]>();
   for (const team of globalTeams) {
+    const entries = teamsByLabel.get(team.label) ?? [];
+    entries.push(team);
+    teamsByLabel.set(team.label, entries);
+  }
+
+  // Team ids already covered by an aggregated duplicate-label warning.
+  const handledTeamIds = new Set<string>();
+
+  for (const [label, entries] of teamsByLabel) {
+    if (entries.length < 2) continue;
+    const unassigned = entries.filter((t) => !assignedTeamIds.has(t.id));
+    const assignedCount = entries.length - unassigned.length;
+    // Only aggregate when the label is split: at least one entry is
+    // assigned and at least one is not. If none is assigned, each entry
+    // keeps its regular `team_without_games` warning below.
+    if (assignedCount === 0 || unassigned.length === 0) continue;
+    for (const team of entries) handledTeamIds.add(team.id);
+    warnings.push({
+      id: `duplicate_team_label_${label}`,
+      type: 'duplicate_team_label',
+      message:
+        unassigned.length === 1
+          ? `Duplicate team name "${label}" — one entry is assigned to a game, but a second entry with the same name is not`
+          : `Duplicate team name "${label}" — one entry is assigned to a game, but ${unassigned.length} entries with the same name are not`,
+      messageKey: 'duplicate_team_label',
+      messageParams: {
+        team: label,
+        count: unassigned.length,
+        assignedCount,
+        unassignedCount: unassigned.length,
+      },
+      affectedNodes: unassigned.map((t) => t.id),
+    });
+  }
+
+  for (const team of globalTeams) {
+    if (handledTeamIds.has(team.id)) continue;
     if (!assignedTeamIds.has(team.id)) {
       warnings.push({
         id: `unused_team_${team.id}`,

@@ -187,6 +187,23 @@ describe('GlobalTeamTable', () => {
     expect(groupAUpButton).toBeDisabled();
   });
 
+  it('shows a duplicate-label badge for teams sharing a label', () => {
+    renderTable({
+      teams: [
+        { id: 'team-22', label: 'Lions', groupId: 'group-1', order: 0 },
+        { id: 'team-orphan', label: 'Lions', groupId: null, order: 1 },
+      ],
+    });
+    const badge = screen.getByTestId('duplicate-label-badge-team-22');
+    expect(badge).toBeInTheDocument();
+    expect(badge.getAttribute('title')).toContain('Lions');
+  });
+
+  it('shows no duplicate-label badge for unique labels', () => {
+    renderTable();
+    expect(screen.queryByTestId('duplicate-label-badge-team-1')).not.toBeInTheDocument();
+  });
+
   describe('Refactored behavior - teams must be in groups', () => {
     it('does not render "Ungrouped Teams" section', () => {
       renderTable({ teams: mockTeams.filter(t => t.groupId !== null) });
