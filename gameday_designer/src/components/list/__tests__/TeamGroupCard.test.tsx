@@ -230,4 +230,29 @@ describe('TeamGroupCard', () => {
     render(<TeamGroupCard {...getDefaultProps()} teams={[]} />);
     expect(screen.getByText(/No teams in this group/i)).toBeInTheDocument();
   });
+
+  describe('duplicate team labels', () => {
+    it('badges entries whose label appears more than once in the pool', () => {
+      const dupes = new Set(['Team 1']);
+      render(<TeamGroupCard {...getDefaultProps()} duplicateLabels={dupes} />);
+      expect(screen.getByTestId('duplicate-label-icon-team-1')).toBeInTheDocument();
+      expect(screen.getByTestId('duplicate-label-id-team-1')).toBeInTheDocument();
+      expect(screen.queryByTestId('duplicate-label-icon-team-2')).not.toBeInTheDocument();
+    });
+
+    it('derives duplicates from allTeams when duplicateLabels is not provided', () => {
+      const allTeams: GlobalTeam[] = [
+        ...mockTeams,
+        { id: 'team-hidden', label: 'Team 1', groupId: null, order: 2 },
+      ];
+      render(<TeamGroupCard {...getDefaultProps()} allTeams={allTeams} />);
+      expect(screen.getByTestId('duplicate-label-icon-team-1')).toBeInTheDocument();
+    });
+
+    it('shows no badge when all labels are unique', () => {
+      render(<TeamGroupCard {...getDefaultProps()} />);
+      expect(screen.queryByTestId('duplicate-label-icon-team-1')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('duplicate-label-icon-team-2')).not.toBeInTheDocument();
+    });
+  });
 });

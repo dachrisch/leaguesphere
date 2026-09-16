@@ -485,6 +485,7 @@ export type FlowValidationWarningType =
   | 'no_teams'
   | 'no_games'
   | 'team_without_games'
+  | 'duplicate_team_label'
   | 'unused_field'
   | 'broken_progression';
 

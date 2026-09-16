@@ -84,6 +84,56 @@ describe('useFlowValidation - New Warnings', () => {
     });
   });
 
+  describe('Duplicate Team Label Warnings', () => {
+    const makeNodes = (homeTeamId: string | null, awayTeamId: string | null = null): FlowNode[] => [
+      { id: 'f1', type: 'field', data: { name: 'F1', order: 0 } as FieldNodeData, position: { x: 0, y: 0 } },
+      { id: 's1', type: 'stage', parentId: 'f1', data: { name: 'S1', order: 0 } as StageNodeData, position: { x: 0, y: 0 } },
+      { id: 'g1', type: 'game', parentId: 's1', data: { standing: 'G1', homeTeamId, awayTeamId } as GameNodeData, position: { x: 0, y: 0 } }
+    ];
+
+    it('should warn team_without_games for a unique unassigned team label', () => {
+      const teams: GlobalTeam[] = [
+        { id: 'team-22', label: 'Lions', groupId: 'g1', order: 18 },
+        { id: 'team-orphan', label: 'Fursty', groupId: null, order: 2 }
+      ];
+      const { result } = renderHook(() => useFlowValidation(makeNodes('team-22'), [], teams, [], validMetadata));
+
+      const warnings = result.current.warnings.filter(w => w.type === 'team_without_games');
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]?.messageKey).toBe('team_without_games');
+      expect(warnings[0]?.messageParams?.team).toBe('Fursty');
+      expect(result.current.warnings.find(w => w.type === 'duplicate_team_label')).toBeUndefined();
+    });
+
+    it('should warn duplicate_team_label when one entry of a duplicate label is assigned', () => {
+      const teams: GlobalTeam[] = [
+        { id: 'team-22', label: 'Lions', groupId: 'g1', order: 18 },
+        { id: 'team-orphan', label: 'Lions', groupId: null, order: 2 }
+      ];
+      const { result } = renderHook(() => useFlowValidation(makeNodes('team-22'), [], teams, [], validMetadata));
+
+      const dup = result.current.warnings.filter(w => w.type === 'duplicate_team_label');
+      expect(dup).toHaveLength(1);
+      expect(dup[0]?.messageKey).toBe('duplicate_team_label');
+      expect(dup[0]?.messageParams?.team).toBe('Lions');
+      // The orphan's generic warning must be replaced, not duplicated
+      expect(result.current.warnings.filter(w => w.type === 'team_without_games')).toHaveLength(0);
+    });
+
+    it('should warn two team_without_games when duplicate labels are both unassigned', () => {
+      const teams: GlobalTeam[] = [
+        { id: 'team-a', label: 'Lions', groupId: 'g1', order: 1 },
+        { id: 'team-b', label: 'Lions', groupId: null, order: 2 },
+        { id: 'team-c', label: 'Tigers', groupId: 'g1', order: 3 }
+      ];
+      const { result } = renderHook(() => useFlowValidation(makeNodes('team-c'), [], teams, [], validMetadata));
+
+      const unassigned = result.current.warnings.filter(w => w.type === 'team_without_games');
+      expect(unassigned).toHaveLength(2);
+      expect(result.current.warnings.find(w => w.type === 'duplicate_team_label')).toBeUndefined();
+    });
+  });
+
   describe('Unused Fields Warning', () => {
     it('should warn when a field has no games but another field does', () => {
       const nodes: FlowNode[] = [

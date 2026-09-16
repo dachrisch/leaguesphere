@@ -28,6 +28,7 @@
     "no_teams": "No teams have been added to the team pool",
     "no_games": "No games have been added to the schedule",
     "team_without_games": "Team \"{{team}}\" is not assigned to any game",
+    "duplicate_team_label": "Duplicate team label \"{{team}}\" — one entry is assigned to a game, but this unused entry shares the same name",
     "unused_field": "Field \"{{field}}\" has no games assigned",
     "broken_progression": "Game \"{{game}}\" references non-existent standing \"{{target}}\" for {{slot}}",
     "dangling_reference": "\"{{game}}\" references \"{{target}}\" for {{slot}}, but nothing in the schedule produces it",

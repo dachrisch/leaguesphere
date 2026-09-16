@@ -1119,6 +1119,12 @@ function checkNoGames(nodes: FlowNode[]): FlowValidationWarning[] {
 
 /**
  * Check for teams in the pool that are not assigned to any game.
+ *
+ * Deduplicate-aware: when an unassigned team's label is shared with another
+ * pool entry that IS assigned, emit a distinct `duplicate_team_label` warning
+ * so the designer can tell the warning refers to a hidden orphan entry, not
+ * the visibly assigned team. Unique unassigned labels (or duplicate labels
+ * where no entry is assigned) keep the generic `team_without_games` warning.
  */
 function checkTeamsWithoutGames(
   nodes: FlowNode[],
@@ -1134,18 +1140,42 @@ function checkTeamsWithoutGames(
     if (data.awayTeamId) assignedTeamIds.add(data.awayTeamId);
   }
 
+  const labelCounts = new Map<string, number>();
+  for (const team of globalTeams) {
+    labelCounts.set(team.label, (labelCounts.get(team.label) ?? 0) + 1);
+  }
+  const assignedLabels = new Set<string>();
+  for (const team of globalTeams) {
+    if (assignedTeamIds.has(team.id)) assignedLabels.add(team.label);
+  }
+
   for (const team of globalTeams) {
     if (!assignedTeamIds.has(team.id)) {
-      warnings.push({
-        id: `unused_team_${team.id}`,
-        type: 'team_without_games',
-        message: `Team "${team.label}" is not assigned to any game`,
-        messageKey: 'team_without_games',
-        messageParams: {
-          team: team.label,
-        },
-        affectedNodes: [],
-      });
+      const isDuplicateLabel = (labelCounts.get(team.label) ?? 0) > 1;
+      const siblingAssigned = assignedLabels.has(team.label);
+      if (isDuplicateLabel && siblingAssigned) {
+        warnings.push({
+          id: `duplicate_team_${team.id}`,
+          type: 'duplicate_team_label',
+          message: `Duplicate team label "${team.label}" — one entry is assigned to a game, but this unused entry shares the same name`,
+          messageKey: 'duplicate_team_label',
+          messageParams: {
+            team: team.label,
+          },
+          affectedNodes: [],
+        });
+      } else {
+        warnings.push({
+          id: `unused_team_${team.id}`,
+          type: 'team_without_games',
+          message: `Team "${team.label}" is not assigned to any game`,
+          messageKey: 'team_without_games',
+          messageParams: {
+            team: team.label,
+          },
+          affectedNodes: [],
+        });
+      }
     }
   }
 
