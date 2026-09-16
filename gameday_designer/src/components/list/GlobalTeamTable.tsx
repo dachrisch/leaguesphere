@@ -217,6 +217,19 @@ const GlobalTeamTable: React.FC<GlobalTeamTableProps> = ({
     teamsByGroup.set(team.groupId, list);
   }
 
+  // Duplicate labels across the whole pool (including ungrouped orphans, which
+  // are otherwise invisible) — used to badge ambiguous entries in the UI.
+  const duplicateLabels = new Set<string>();
+  {
+    const counts = new Map<string, number>();
+    for (const team of teams) {
+      counts.set(team.label, (counts.get(team.label) ?? 0) + 1);
+    }
+    for (const [label, count] of counts) {
+      if (count > 1) duplicateLabels.add(label);
+    }
+  }
+
 
 
   return (
@@ -258,6 +271,8 @@ const GlobalTeamTable: React.FC<GlobalTeamTableProps> = ({
                 group={group}
                 teams={teamsInGroup}
                 allGroups={sortedGroups}
+                allTeams={teams}
+                duplicateLabels={duplicateLabels}
                 highlightedElement={highlightedElement}
                 onUpdateGroup={onUpdateGroup}
                 onDeleteGroup={onDeleteGroup}

@@ -276,6 +276,7 @@
     "manualTimeHint": "Manually set - click to edit",
     "renameField": "Rename field",
     "duplicate": "Duplicate",
+    "duplicateTeamLabel": "Duplicate team label \"{{label}}\" — another pool entry shares this name; check the validation warnings",
     "replayTour": "Replay onboarding tour",
     "moveGame": "Move this game to another stage or field (drag & drop or menu)",
     "dropToMove": "Drop to move a game into this stage",

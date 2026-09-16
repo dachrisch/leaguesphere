@@ -276,6 +276,7 @@
     "manualTimeHint": "Manuell gesetzt - Klicken zum Bearbeiten",
     "renameField": "Feld umbenennen",
     "duplicate": "Duplizieren",
+    "duplicateTeamLabel": "Doppelter Teamname \"{{label}}\" — ein weiterer Pool-Eintrag teilt diesen Namen; siehe Validierungshinweise",
     "replayTour": "Onboarding-Tour wiederholen",
     "moveGame": "Dieses Spiel in eine andere Phase oder auf ein anderes Feld verschieben (Drag & Drop oder Menü)",
     "dropToMove": "Hier ablegen, um ein Spiel in diese Phase zu verschieben",

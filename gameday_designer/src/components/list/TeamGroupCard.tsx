@@ -22,6 +22,10 @@ export interface TeamGroupCardProps {
   teams: GlobalTeam[];
   /** All groups (for move dropdown) */
   allGroups: GlobalTeamGroup[];
+  /** All pool teams (for duplicate-label detection across groups) */
+  allTeams?: GlobalTeam[];
+  /** Labels that appear more than once in the pool */
+  duplicateLabels?: Set<string>;
   /** Currently highlighted element */
   highlightedElement?: HighlightedElement | null;
   /** Callback to update group data */
@@ -57,6 +61,8 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
   group,
   teams,
   allGroups,
+  allTeams,
+  duplicateLabels,
   highlightedElement,
   onUpdateGroup,
   onDeleteGroup,
@@ -166,6 +172,20 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
   );
 
   const isGroupHighlighted = highlightedElement?.id === group.id;
+
+  const effectiveDuplicateLabels: Set<string> = React.useMemo(() => {
+    if (duplicateLabels) return duplicateLabels;
+    const source = allTeams ?? teams;
+    const counts = new Map<string, number>();
+    for (const team of source) {
+      counts.set(team.label, (counts.get(team.label) ?? 0) + 1);
+    }
+    const dupes = new Set<string>();
+    for (const [label, count] of counts) {
+      if (count > 1) dupes.add(label);
+    }
+    return dupes;
+  }, [duplicateLabels, allTeams, teams]);
 
   return (
     <Card className={`team-group-card ${isGroupHighlighted ? 'is-highlighted' : ''}`} id={`group-${group.id}`}>
@@ -295,6 +315,7 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
               const isEditing = editingTeamId === team.id;
               const usages = getTeamUsage(team.id);
               const isHighlighted = highlightedElement?.id === team.id && highlightedElement?.type === 'team';
+              const isDuplicateLabel = effectiveDuplicateLabels.has(team.label);
 
               return (
                 <div
@@ -342,6 +363,23 @@ const TeamGroupCard: React.FC<TeamGroupCardProps> = ({
                         className="text-truncate d-block"
                       >
                         {team.label}
+                        {isDuplicateLabel && (
+                          <>
+                            {' '}
+                            <i
+                              className="bi bi-exclamation-triangle-fill text-warning"
+                              title={t('ui:tooltip.duplicateTeamLabel', { label: team.label })}
+                              data-testid={`duplicate-label-icon-${team.id}`}
+                            />
+                            <small
+                              className="text-muted ms-1"
+                              title={team.id}
+                              data-testid={`duplicate-label-id-${team.id}`}
+                            >
+                              #{team.id.slice(-8)}
+                            </small>
+                          </>
+                        )}
                       </span>
                     )}
                   </div>
