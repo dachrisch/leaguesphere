@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.25.2](https://github.com/dachrisch/leaguesphere/compare/v4.25.1...v4.25.2) (2026-09-16)
+
+
+### Bug Fixes
+
+* **gameday_designer:** aggregate duplicate-label team warnings with plural strings ([#1949](https://github.com/dachrisch/leaguesphere/issues/1949)) ([20aa44a](https://github.com/dachrisch/leaguesphere/commit/20aa44addaaa6a4fded56f2c738ca17ea9b56793))
+
 ## [4.25.1](https://github.com/dachrisch/leaguesphere/compare/v4.25.0...v4.25.1) (2026-09-16)
 
 
