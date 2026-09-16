@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.25.1](https://github.com/dachrisch/leaguesphere/compare/v4.25.0...v4.25.1) (2026-09-16)
+
+
+### Bug Fixes
+
+* **gameday_designer:** deduplicate-aware team-without-games warnings ([#1946](https://github.com/dachrisch/leaguesphere/issues/1946)) ([89bd93e](https://github.com/dachrisch/leaguesphere/commit/89bd93e8e034402947004b69d9f26f96a88093d2)), closes [#1945](https://github.com/dachrisch/leaguesphere/issues/1945)
+
 ## [4.25.0](https://github.com/dachrisch/leaguesphere/compare/v4.24.5...v4.25.0) (2026-09-16)
 
 
