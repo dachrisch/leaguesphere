@@ -17,6 +17,7 @@ import type {
   GlobalTeamGroup,
   HighlightedElement
 } from '../../types/flowchart';
+import type { GameProgressionCellResult } from '../../types/progression';
 import { ICONS } from '../../utils/iconConstants';
 import './FieldSection.css';
 
@@ -48,6 +49,10 @@ export interface FieldSectionProps {
   onNotify?: (message: string, type: import('../../types/designer').NotificationType, title?: string) => void;
   onMoveGame?: (gameId: string, targetStageId: string) => void;
   readOnly?: boolean;
+  /** Expert Mode (see `useExpertMode.ts`) — off by default. */
+  expertMode?: boolean;
+  /** Per-game simulated progression, from `useProgressionInspection`. */
+  progressionByGameId?: Map<string, GameProgressionCellResult>;
 }
 
 const FieldSection: React.FC<FieldSectionProps> = memo(({
@@ -79,6 +84,8 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
   onNotify,
   onMoveGame,
   readOnly = false,
+  expertMode = false,
+  progressionByGameId,
 }) => {
   const { t } = useTypedTranslation(['ui']);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -287,6 +294,8 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
                   onNotify={onNotify}
                   onMoveGame={onMoveGame}
                   readOnly={readOnly}
+                  expertMode={expertMode}
+                  progressionByGameId={progressionByGameId}
                 />
               ))}
             </>

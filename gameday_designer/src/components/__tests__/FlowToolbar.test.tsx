@@ -128,4 +128,52 @@ describe('FlowToolbar', () => {
       expect(redoButton).toHaveAttribute('title', 'Redo the previously undone action');
     });
   });
+
+  describe('Expert Mode toggle', () => {
+    it('does not render the toggle when onToggleExpertMode is not provided', () => {
+      render(<FlowToolbar {...defaultProps} />);
+      expect(screen.queryByTestId('expert-mode-toggle')).not.toBeInTheDocument();
+    });
+
+    it('renders unchecked by default when off', () => {
+      render(<FlowToolbar {...defaultProps} onToggleExpertMode={vi.fn()} />);
+      expect(screen.getByTestId('expert-mode-toggle')).not.toBeChecked();
+    });
+
+    it('renders checked when expertMode is true', () => {
+      render(<FlowToolbar {...defaultProps} expertMode onToggleExpertMode={vi.fn()} />);
+      expect(screen.getByTestId('expert-mode-toggle')).toBeChecked();
+    });
+
+    it('calls onToggleExpertMode with the new value when clicked', async () => {
+      const onToggleExpertMode = vi.fn();
+      const user = userEvent.setup();
+      render(<FlowToolbar {...defaultProps} onToggleExpertMode={onToggleExpertMode} />);
+
+      await user.click(screen.getByTestId('expert-mode-toggle'));
+
+      expect(onToggleExpertMode).toHaveBeenCalledWith(true);
+    });
+
+    it('associates the visible "Expert Mode" label with the switch programmatically', () => {
+      render(<FlowToolbar {...defaultProps} onToggleExpertMode={vi.fn()} />);
+
+      // getByLabelText only succeeds via a real <label for>/aria-labelledby
+      // association — not just visually-adjacent text — so this is the
+      // actual accessible-name check a screen reader would rely on.
+      const toggle = screen.getByLabelText('Expert Mode');
+      expect(toggle).toBe(screen.getByTestId('expert-mode-toggle'));
+    });
+
+    it('describes the switch for assistive tech via aria-describedby, not just a title on the label', () => {
+      render(<FlowToolbar {...defaultProps} onToggleExpertMode={vi.fn()} />);
+
+      const toggle = screen.getByTestId('expert-mode-toggle');
+      const describedById = toggle.getAttribute('aria-describedby');
+      expect(describedById).toBeTruthy();
+      expect(document.getElementById(describedById!)).toHaveTextContent(
+        'Toggle Expert Mode: inspect the simulated progression and see correctness findings (never blocks saving)'
+      );
+    });
+  });
 });
