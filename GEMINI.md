@@ -35,5 +35,6 @@ Refer to these specialized guides for detailed protocols:
 - **[Architecture Overview](docs/arch/architecture-overview.md)**: System design and tech stack.
 - **[Coding Standards](docs/guides/coding-standards.md)**: Python (Django) and TypeScript (React) conventions.
 - **[Infrastructure Policy](docs/guides/infrastructure-policy.md)**: Deployment safety and Ansible rules.
+- **[Scoped CI](docs/topics/deployment/scoped-ci.md)**: Path-scoped CircleCI pipeline. CI changes require updating `.circleci/scope-mapping.txt`/`scope-exclude.txt` (runs `scripts/check_scope_coverage.py` safety net); dependency/build changes may widen the tests a push runs.
 - **[Setup Guide](docs/guides/setup-guide.md)**: Local environment configuration.
 - **[Git Operations](docs/guides/contributor-guide.md#2-git--branching-protocol)**: PR and branching rules.

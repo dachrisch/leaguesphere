@@ -218,3 +218,4 @@ This repository maintains agent-specific guides. Always consult the relevant one
   - [Coding Standards](docs/topics/guides/coding-standards.md) — Python & TypeScript conventions
   - [Setup Guide](docs/topics/guides/setup-guide.md) — Local environment configuration
   - [Infrastructure Policy](docs/topics/guides/infrastructure-policy.md) — Deployment safety
+  - [Scoped CI](docs/topics/deployment/scoped-ci.md) — Path-scoped CircleCI pipeline; update `.circleci/scope-mapping.txt`/`scope-exclude.txt` when adding files or CI rules (safety net: `scripts/check_scope_coverage.py`)

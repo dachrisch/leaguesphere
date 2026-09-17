@@ -54,3 +54,8 @@ Owns official-specific data and links officials to games (`GameOfficial` lives i
 ```bash
 cd leaguesphere && pytest officials
 ```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **python-officials (pytest officials/tests/).** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).

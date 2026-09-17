@@ -61,7 +61,7 @@ k6 run load-test-k6.js
 # https://monitor.lehel.xyz/ → k6 Load Testing dashboard
 ```
 
-See **[Infrastructure Performance Policy](docs/guides/infrastructure-performance-policy.md)** for performance standards and automated checking. See **[Infrastructure Policy](docs/guides/infrastructure-policy.md)** and **[Contributor Guide § Version Management](docs/guides/contributor-guide.md#-version-management-automated-via-release-please)** for deployment and release workflows.
+See **[Infrastructure Performance Policy](docs/guides/infrastructure-performance-policy.md)** for performance standards and automated checking. See **[Infrastructure Policy](docs/guides/infrastructure-policy.md)** and **[Contributor Guide § Version Management](docs/guides/contributor-guide.md#-version-management-automated-via-release-please)** for deployment and release workflows. CI is path-scoped (runs only affected tests) — see **[Scoped CI](docs/topics/deployment/scoped-ci.md)**.
 
 ### First-Time Frontend Setup (Any React App)
 ```bash
@@ -230,7 +230,8 @@ Before marking a task complete:
 3. ✅ All frontend tests pass: `npm run test:run` (in each app)
 4. ✅ Format backend code: `black .`
 5. ✅ Lint frontend: `npm run eslint` (ZERO errors)
-6. ✅ Verify on staging: `./container/deploy.sh stage`, then test at [stage.leaguesphere.app](https://stage.leaguesphere.app)
+6. ✅ Scoped CI coverage passes: `python3 scripts/check_scope_coverage.py` (update `.circleci/scope-mapping.txt`/`scope-exclude.txt` when adding files or CI rules — see [Scoped CI](docs/topics/deployment/scoped-ci.md))
+7. ✅ Verify on staging: `./container/deploy.sh stage`, then test at [stage.leaguesphere.app](https://stage.leaguesphere.app)
 
 ---
 

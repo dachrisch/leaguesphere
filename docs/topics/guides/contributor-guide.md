@@ -86,9 +86,14 @@ Before reporting a task as finished, you MUST pass all of the following:
     - **Frontend**: `npm run eslint` — Code MUST pass ESLint with ZERO errors
     - **Details**: See **[Coding Standards § Linting Standards](coding-standards.md#-linting-standards)** for all enforced rules and examples
 
-3.  **Staging Validation**: Verify the fix on [stage.leaguesphere.app](https://stage.leaguesphere.app).
+3.  **Scoped CI coverage**: If you add files or change path→job rules, update
+    `.circleci/scope-mapping.txt` / `.circleci/scope-exclude.txt` and verify
+    `python3 scripts/check_scope_coverage.py` passes. See
+    **[Scoped CI](../deployment/scoped-ci.md)**.
 
-4.  **Production Approval**: Manually approve the `hold_production` job in the CircleCI dashboard to complete the deployment.
+4.  **Staging Validation**: Verify the fix on [stage.leaguesphere.app](https://stage.leaguesphere.app).
+
+5.  **Production Approval**: Manually approve the `hold_production` job in the CircleCI dashboard to complete the deployment.
 
 ## 🛠 Maintenance
 

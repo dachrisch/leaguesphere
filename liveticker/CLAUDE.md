@@ -41,3 +41,8 @@ cd leaguesphere && pytest liveticker          # backend (needs LXC test DB)
 cd leaguesphere/liveticker && npm run test:run # frontend
 cd leaguesphere/liveticker && npm run eslint   # ZERO errors — CI blocks merge
 ```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **python-live backend shard (pytest liveticker/tests/) + liveticker_js frontend job (npm --prefix liveticker/).** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).

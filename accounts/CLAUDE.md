@@ -31,3 +31,8 @@ on subsequent `/api/` calls. It has **no models of its own** — it builds on Dj
 ```bash
 cd leaguesphere && pytest accounts/tests/test_views.py -v
 ```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **python-officials shard scope (accounts has only an empty tests stub).** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).

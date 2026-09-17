@@ -41,3 +41,8 @@ to the backend; results land in [gamedays](../gamedays/CLAUDE.md) models and are
 cd leaguesphere/scorecard && npm run test:run # frontend (primary)
 cd leaguesphere/scorecard && npm run eslint   # ZERO errors — CI blocks merge
 ```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **python-live backend shard (pytest scorecard/tests.py) + scorecard_js frontend job (npm --prefix scorecard/) + e2e.** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).

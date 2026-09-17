@@ -93,3 +93,8 @@ cd leaguesphere && pytest gameday_designer          # backend (needs LXC test DB
 cd leaguesphere/gameday_designer && npm run test:run # frontend
 cd leaguesphere/gameday_designer && npm run eslint   # ZERO errors — CI blocks merge
 ```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **python-designer backend shard (pytest gameday_designer/tests/) + gameday_designer_js frontend job (npm --prefix gameday_designer/) + e2e.** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).

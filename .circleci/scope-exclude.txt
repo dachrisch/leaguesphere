@@ -1,0 +1,55 @@
+# Scope exclusions: tracked paths that need no CI job.
+# One pattern per line, matched against the full repo-relative path
+# (the orb anchors each line as ^...$; same in check_scope_coverage.py).
+# Every entry must match at least one tracked file or the coverage
+# check fails — prune stale entries instead of accumulating them.
+
+# --- docs (never affect builds or tests) ---
+.*\.md
+docs/.*
+
+# --- manual / exploratory (not built or tested in CI) ---
+conductor/.*
+history/.*
+coverage-reports/.*
+locust_testing/.*
+load-test-k6\.js
+e2e-game-test\.js
+find-game-id\.js
+setup-gameday-for-today\.js
+step1-find-game\.js
+capture_screenshot\.sh
+
+# --- legacy / dead code (not installed, not built) ---
+fe_template/.*
+
+# --- deactivated CI / editor and agent metadata ---
+\.github/.*
+\.claude/.*
+\.opencode/.*
+\.qwen/.*
+(.*/)?\.gitignore
+\.pre-commit-config\.yaml
+\.codecov\.yml
+renovate\.json
+release-please-config\.json
+\.release-please-manifest\.json
+LICENSE
+package-lock\.json
+
+# --- local-only helpers, fixtures, and sample envs ---
+\.env\.demo
+\.env_template
+container/spinup_test_db\.sh
+container/start_dev_server\.sh
+container/deploy\.sh
+container/test_db_dump\.sql
+container/test_user\.sql
+deployed/mysql-init/.*
+
+# --- committed test artifacts (regenerated locally, not source) ---
+(.*/)?junit\.xml
+(.*/)?junit-reports/.*
+
+# --- editor config ---
+(.*/)?\.vscode/.*

@@ -35,3 +35,8 @@ here and applies globally.
 ```bash
 cd leaguesphere && pytest league_manager/tests
 ```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **python-core (pytest league_manager/tests/) — settings/urls/middleware changes.** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).
