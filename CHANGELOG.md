@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.26.3](https://github.com/dachrisch/leaguesphere/compare/v4.26.2...v4.26.3) (2026-09-17)
+
+
+### Bug Fixes
+
+* **ci:** decouple e2e from image builds, dedupe deploy requires ([#1957](https://github.com/dachrisch/leaguesphere/issues/1957)) ([4e8fbb0](https://github.com/dachrisch/leaguesphere/commit/4e8fbb0b493fd8e43ded1f5278c6155dd218955b))
+
 ## [4.26.2](https://github.com/dachrisch/leaguesphere/compare/v4.26.1...v4.26.2) (2026-09-17)
 
 
