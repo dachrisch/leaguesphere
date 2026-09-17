@@ -972,12 +972,20 @@ workflows:
     jobs:
       # Scoped test jobs: no `requires` (they fan out in parallel) and
       # an expression filter each, driven by the pipeline parameters the
-      # scope job sets in config.yml. The image builds still `require`
-      # the relevant test jobs so tests always gate builds (skipped
-      # jobs don't block — a job whose filter is false is absent from
-      # the workflow, so its dependents simply don't wait on it).
-      # Deploys additionally `require` the full scoped test matrix, so
-      # a scoping misfire can never ship untested code. (Job-level
+      # scope job sets in config.yml. The image builds `require` their
+      # directly-relevant unit/lint shards so tests always gate builds
+      # (skipped jobs don't block — a job whose filter is false is
+      # absent from the workflow, so its dependents simply don't wait
+      # on it). e2e needs neither image and runs fully in parallel with
+      # the shards and the builds; it instead gates the post-build
+      # image smoke tests (test_backend_image/test_frontend_image), so
+      # a slow browser suite never delays kicking off a docker build.
+      # Deploys `require` test_compose_network rather than re-listing
+      # every shard: test_compose_network already transitively requires
+      # both builds, both image tests, and check_migrations, so it
+      # covers the full scoped test matrix (e2e included) by
+      # construction — the same chain branch pipelines already use, no
+      # separate duplicated list to drift out of sync. (Job-level
       # `when` is not valid in 2.1; expression filters are the
       # documented job-level equivalent.) Tag pipelines resolve a full
       # run because release version files match shared + every app's
@@ -1016,7 +1024,6 @@ workflows:
             - python-live
             - python-designer
             - python-cross
-            - e2e
       - build_frontend:
           filters: "(pipeline.parameters.run-build-frontend == true or pipeline.parameters.run-compose == true)"
           requires:
@@ -1030,10 +1037,12 @@ workflows:
           filters: "(pipeline.parameters.run-build-backend == true or pipeline.parameters.run-migrations == true or pipeline.parameters.run-compose == true)"
           requires:
             - build_backend
+            - e2e
       - test_frontend_image:
           filters: "(pipeline.parameters.run-build-frontend == true or pipeline.parameters.run-compose == true)"
           requires:
             - build_frontend
+            - e2e
       - check_migrations:
           context: staging
           filters: "(pipeline.parameters.run-migrations == true or pipeline.parameters.run-build-backend == true or pipeline.parameters.run-compose == true)"
@@ -1071,26 +1080,15 @@ workflows:
       - scope_coverage
 
       # Deploy jobs run on tag pipelines only, where the scope resolves
-      # to a full run — but since test jobs no longer gate the builds,
-      # deploys require the scoped test jobs explicitly so no untested
-      # code can ship even if scoping ever misfires.
+      # to a full run. They require test_compose_network (see the fan-out
+      # comment above for why that alone covers the full test matrix)
+      # instead of re-listing every shard, so tag and branch pipelines
+      # share one gating chain.
       - deploy_staging:
           context: staging
           requires:
             - test_compose_network
             - check_release_sequence
-            - python-core
-            - python-gamedays
-            - python-officials
-            - python-live
-            - python-designer
-            - python-cross
-            - e2e
-            - scorecard_js
-            - liveticker_js
-            - passcheck_js
-            - gameday_designer_js
-            - journey_dashboard_js
           filters:
             tags:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$/
@@ -1111,18 +1109,6 @@ workflows:
           context: demo
           requires:
             - test_compose_network
-            - python-core
-            - python-gamedays
-            - python-officials
-            - python-live
-            - python-designer
-            - python-cross
-            - e2e
-            - scorecard_js
-            - liveticker_js
-            - passcheck_js
-            - gameday_designer_js
-            - journey_dashboard_js
           filters:
             tags:
               only: /.*\+demo\.[0-9]+$/
@@ -1134,18 +1120,6 @@ workflows:
           requires:
             - test_compose_network
             - check_release_sequence
-            - python-core
-            - python-gamedays
-            - python-officials
-            - python-live
-            - python-designer
-            - python-cross
-            - e2e
-            - scorecard_js
-            - liveticker_js
-            - passcheck_js
-            - gameday_designer_js
-            - journey_dashboard_js
           filters:
             tags:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+$/
@@ -1158,18 +1132,6 @@ workflows:
           context: production
           requires:
             - test_compose_network
-            - python-core
-            - python-gamedays
-            - python-officials
-            - python-live
-            - python-designer
-            - python-cross
-            - e2e
-            - scorecard_js
-            - liveticker_js
-            - passcheck_js
-            - gameday_designer_js
-            - journey_dashboard_js
           filters:
             tags:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+$/

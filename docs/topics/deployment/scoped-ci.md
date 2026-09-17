@@ -19,8 +19,13 @@ into two files driven by the `circleci/path-filtering` orb:
    boolean pipeline parameters (`run-python-core`, `run-scorecard`, …).
 3. The pipeline continues with `continue.yml`, where each test job is
    gated by an expression filter on its parameter. Only relevant jobs run.
-4. Deploys still explicitly `require` **all** test shards, so a scoping
-   misfire can never ship untested code — worst case, extra tests run.
+4. `e2e` runs standalone in parallel with the shards and the image
+   builds (it needs neither image); it gates `test_backend_image` and
+   `test_frontend_image` instead. Deploys `require` `test_compose_network`,
+   which already transitively requires both builds, both image tests,
+   and `check_migrations` — covering the full scoped test matrix without
+   a separately duplicated list, so tag and branch pipelines share one
+   gating chain.
 
 ### Guarantees
 
