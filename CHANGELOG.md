@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.26.0](https://github.com/dachrisch/leaguesphere/compare/v4.25.2...v4.26.0) (2026-09-17)
+
+
+### Features
+
+* **ci:** scope CI by changed paths with fanned-out python shards ([#1951](https://github.com/dachrisch/leaguesphere/issues/1951)) ([bc9134c](https://github.com/dachrisch/leaguesphere/commit/bc9134c655994a1d1558b600ee2a3d064836263e))
+
 ## [4.25.2](https://github.com/dachrisch/leaguesphere/compare/v4.25.1...v4.25.2) (2026-09-16)
 
 
