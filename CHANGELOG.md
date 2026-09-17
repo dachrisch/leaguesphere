@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.26.2](https://github.com/dachrisch/leaguesphere/compare/v4.26.1...v4.26.2) (2026-09-17)
+
+
+### Bug Fixes
+
+* **ci:** add missing tags filter on path-filtering setup job ([#1955](https://github.com/dachrisch/leaguesphere/issues/1955)) ([ff988f1](https://github.com/dachrisch/leaguesphere/commit/ff988f1bb53c4e980e06a09da736be329d6edf89))
+
 ## [4.26.1](https://github.com/dachrisch/leaguesphere/compare/v4.26.0...v4.26.1) (2026-09-17)
 
 
