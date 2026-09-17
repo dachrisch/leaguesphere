@@ -972,9 +972,12 @@ workflows:
     jobs:
       # Scoped test jobs: no `requires` (they fan out in parallel) and
       # an expression filter each, driven by the pipeline parameters the
-      # scope job sets in config.yml. Test results gate deploys
-      # explicitly via the deploy jobs' `requires` below, so dropping
-      # the old tests → builds edges only parallelizes. (Job-level
+      # scope job sets in config.yml. The image builds still `require`
+      # the relevant test jobs so tests always gate builds (skipped
+      # jobs don't block — a job whose filter is false is absent from
+      # the workflow, so its dependents simply don't wait on it).
+      # Deploys additionally `require` the full scoped test matrix, so
+      # a scoping misfire can never ship untested code. (Job-level
       # `when` is not valid in 2.1; expression filters are the
       # documented job-level equivalent.) Tag pipelines resolve a full
       # run because release version files match shared + every app's
@@ -1006,8 +1009,22 @@ workflows:
 
       - build_backend:
           filters: "(pipeline.parameters.run-build-backend == true or pipeline.parameters.run-migrations == true or pipeline.parameters.run-compose == true)"
+          requires:
+            - python-core
+            - python-gamedays
+            - python-officials
+            - python-live
+            - python-designer
+            - python-cross
+            - e2e
       - build_frontend:
           filters: "(pipeline.parameters.run-build-frontend == true or pipeline.parameters.run-compose == true)"
+          requires:
+            - scorecard_js
+            - liveticker_js
+            - passcheck_js
+            - gameday_designer_js
+            - journey_dashboard_js
 
       - test_backend_image:
           filters: "(pipeline.parameters.run-build-backend == true or pipeline.parameters.run-migrations == true or pipeline.parameters.run-compose == true)"
