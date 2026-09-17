@@ -21,6 +21,12 @@ version: 2.1
 #
 # NOTE: "Enable dynamic config using setup workflows" must be turned
 # on in CircleCI project settings for this to take effect.
+#
+# NOTE: the job below needs its own `filters.tags` — CircleCI never
+# runs a job against a tag-only ref unless the job opts in, regardless
+# of what filters exist on the continued (child) config. Without this,
+# every tag pipeline (releases included) is created but never runs
+# anything: no setup job, no continuation, no deploy.
 
 setup: true
 
@@ -87,3 +93,6 @@ workflows:
           config-path: .circleci/continue.yml
           mapping: .circleci/scope-mapping.txt
           exclude: .circleci/scope-exclude.txt
+          filters:
+            tags:
+              only: /.*/
