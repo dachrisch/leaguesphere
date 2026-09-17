@@ -35,3 +35,8 @@ exposes the template view and read-only API, the frontend renders it. It reads g
 ```bash
 cd leaguesphere && pytest journey
 ```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **python-designer shard (pytest journey/tests.py journey/api/tests/).** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).

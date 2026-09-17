@@ -9,6 +9,8 @@ Testing strategies for different components:
 - Integration test documentation
 - Performance testing approaches
 
+CI test execution is path-scoped — see **[Scoped CI](../deployment/scoped-ci.md)**.
+
 ## Overview
 
 This section documents testing approaches and test cases for the application.

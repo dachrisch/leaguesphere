@@ -54,3 +54,8 @@ cd leaguesphere && pytest passcheck          # backend (needs LXC test DB)
 cd leaguesphere/passcheck && npm run test:run # frontend
 cd leaguesphere/passcheck && npm run eslint   # ZERO errors — CI blocks merge
 ```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **python-designer backend shard (pytest passcheck/tests/) + passcheck_js frontend job (npm --prefix passcheck/).** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).

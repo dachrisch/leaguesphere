@@ -32,3 +32,8 @@ A thin **service/reporting app** with no models of its own. It wraps game data o
 ```bash
 cd leaguesphere && pytest matchreport
 ```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **python-designer shard (pytest matchreport/tests/).** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).

@@ -35,3 +35,8 @@ Runs on the current branch via GitHub Actions. After completion, create a PR to 
 - `start_dev_server.sh --hot [app]` builds the React micro-frontends in watch mode instead of one-shot (apps: `gameday_designer`, `passcheck`, `liveticker`, `scorecard`, `journey_dashboard`); omit `[app]` to watch all of them.
 
 The global deployment-safety policy (test-first, no manual prod edits, Ansible-only infra changes) applies here — see the user-level CLAUDE.md.
+
+
+## CI scope (scoped CI)
+
+Changes here run: **container/ build files trigger image builds; local-only helpers (deploy.sh, spinup_test_db.sh, dumps) are scope-excluded.** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).

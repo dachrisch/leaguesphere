@@ -24,3 +24,8 @@ Provided the main admin dashboard for league managers to oversee gamedays, teams
 ```bash
 cd leaguesphere && pytest dashboard
 ```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **docs-only module — triggers no CI jobs.** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).

@@ -30,3 +30,8 @@ season via query params. There is **no Django app in this folder** (no `apps.py`
 cd leaguesphere/journey_dashboard && npm run test:run
 cd leaguesphere/journey_dashboard && npm run eslint
 ```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **journey_dashboard_js frontend job (npm --prefix journey_dashboard/); FE-only, no Python tests.** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).

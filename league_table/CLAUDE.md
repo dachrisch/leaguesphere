@@ -48,3 +48,8 @@ behavior here, not in views:**
 ```bash
 cd leaguesphere && pytest league_table
 ```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **python-gamedays (pytest gamedays/ league_table/) — coupled with gamedays.** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).

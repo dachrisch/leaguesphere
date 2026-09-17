@@ -1,5 +1,11 @@
 # CircleCI Implementation: Tag-Driven Release Management
 
+> **⚠️ HISTORICAL DOCUMENT** — This is a design/analysis document from an
+> earlier release-flow iteration and does **not** reflect the current
+> pipeline (job names, workflow graph, and gates have changed). The
+> pipeline is now documented in **[Scoped CI](docs/topics/deployment/scoped-ci.md)**;
+> release mechanics: Contributor Guide § Version Management.
+
 ## Changes Required
 
 ### 0. Configure release-please to Skip GitHub Release

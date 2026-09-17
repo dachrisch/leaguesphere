@@ -49,3 +49,8 @@ endpoints return HTTP 304 via `@condition(...)`; keep new list/detail endpoints 
 ```bash
 cd leaguesphere && pytest gamedays          # requires the LXC MariaDB test DB
 ```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **python-gamedays (pytest gamedays/ league_table/) — coupled with league_table.** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).
