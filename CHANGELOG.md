@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.26.1](https://github.com/dachrisch/leaguesphere/compare/v4.26.0...v4.26.1) (2026-09-17)
+
+
+### Bug Fixes
+
+* **ci:** run tests before image builds ([#1953](https://github.com/dachrisch/leaguesphere/issues/1953)) ([79bb0a5](https://github.com/dachrisch/leaguesphere/commit/79bb0a5d5ecd83c9d6dd5b105fafb2c2898e7924))
+
 ## [4.26.0](https://github.com/dachrisch/leaguesphere/compare/v4.25.2...v4.26.0) (2026-09-17)
 
 
