@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.28.0](https://github.com/dachrisch/leaguesphere/compare/v4.27.1...v4.28.0) (2026-09-18)
+
+
+### Features
+
+* **league-manager:** add sitewide Organization/WebSite JSON-LD to base.html ([8bdd7d5](https://github.com/dachrisch/leaguesphere/commit/8bdd7d5a08a925c59159ef2803a489ef70f1597a))
+
 ## [4.27.1](https://github.com/dachrisch/leaguesphere/compare/v4.27.0...v4.27.1) (2026-09-18)
 
 
