@@ -19,19 +19,26 @@ into two files driven by the `circleci/path-filtering` orb:
    boolean pipeline parameters (`run-python-core`, `run-scorecard`, …).
 3. The pipeline continues with `continue.yml`, where each test job is
    gated by an expression filter on its parameter. Only relevant jobs run.
-4. `e2e` runs standalone in parallel with the shards and the image
-   builds (it needs neither image); it gates `test_backend_image` and
-   `test_frontend_image` instead. `build_backend` and `build_frontend`
-   share `test_compose_network`'s exact filter (not just their own
-   narrower one), since a `requires` entry silently drops out when its
-   own filter is false — with independent filters, a partial-scope
-   pipeline could schedule `test_compose_network` (which unconditionally
-   loads both images) without one of them ever having been built.
-   Deploys `require` `test_compose_network`, which — thanks to that
-   shared filter — transitively requires both builds, both image tests,
-   and `check_migrations`, covering the full scoped test matrix without
-   a separately duplicated list, so tag and branch pipelines share one
-   gating chain.
+4. The image builds `require` their directly-relevant test shards so
+   tests always gate builds — plus the always-run `scope_anchor` noop:
+   a job whose entire `requires` list is filtered out is itself skipped
+   even when its own filter is true, so without the anchor a
+   backend-only change would skip `build_frontend` (all five `*_js`
+   jobs filtered) and `test_compose_network` (which unconditionally
+   loads both images) would hard-fail on `docker load` (pipelines 5503,
+   5525). The anchor guarantees at least one requirement always
+   remains. `build_backend` and `build_frontend` also share
+   `test_compose_network`'s exact filter (not just their own narrower
+   one), so both images always exist whenever the compose test runs.
+   `e2e` runs standalone in parallel with the shards and the builds (it
+   needs neither image); it gates `test_backend_image` and
+   `test_frontend_image` instead. Deploys `require`
+   `test_compose_network`, which transitively requires both builds,
+   both image tests, and `check_migrations`, covering the full scoped
+   test matrix without a separately duplicated list, so tag and branch
+   pipelines share one gating chain. On tag pipelines all shards run
+   (full run via version files), making the anchor redundant but
+   harmless there.
 
 ### Guarantees
 
