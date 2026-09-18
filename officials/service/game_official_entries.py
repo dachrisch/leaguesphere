@@ -9,6 +9,15 @@ from officials.models import Official, OfficialExternalGames
 # ChoiceFields, so the allowed values can't drift between the two.
 ALLOWED_POSITIONS = ("Referee", "Down Judge", "Field Judge", "Side Judge")
 
+# The "außerhalb DFFL" self-report branch additionally accepts "Mix" -
+# a referee reporting having worked multiple positions across an
+# external tournament, which has no single-slot equivalent the way an
+# internal game's fixed 4-position crew does. ExternalGameOfficialEntry
+# itself never validates position (OfficialExternalGames.position is an
+# unconstrained CharField) - this only affects preview classification
+# and the review-formset's ChoiceField, both updated to match.
+EXTERNAL_ALLOWED_POSITIONS = ALLOWED_POSITIONS + ("Mix",)
+
 
 class AmbiguousGameOfficialError(Exception):
     """Raised when a correction targets a (gameinfo, position) pair that

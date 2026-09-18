@@ -8,7 +8,10 @@ from officials.forms import (
     InternalFixSuggestionForm,
     InternalFixSuggestionFormSet,
 )
-from officials.service.game_official_entries import ALLOWED_POSITIONS
+from officials.service.game_official_entries import (
+    ALLOWED_POSITIONS,
+    EXTERNAL_ALLOWED_POSITIONS,
+)
 
 
 class TestGameOfficialImportUploadForm(TestCase):
@@ -81,6 +84,26 @@ class TestExternalGameSuggestionForm(TestCase):
         assert form.is_valid(), form.errors
         assert form.cleaned_data["include"] is False
 
+    def test_position_choices_include_mix(self):
+        form = ExternalGameSuggestionForm()
+        choice_values = [choice[0] for choice in form.fields["position"].choices]
+        for position in EXTERNAL_ALLOWED_POSITIONS:
+            assert position in choice_values
+
+    def test_accepts_position_mix(self):
+        form = ExternalGameSuggestionForm(
+            data={
+                "official_id": "1",
+                "number_games": "2",
+                "date": "2024-05-01",
+                "position": "Mix",
+                "association": "Hamburg",
+                "halftime_duration": "20",
+            }
+        )
+        assert form.is_valid(), form.errors
+        assert form.cleaned_data["position"] == "Mix"
+
 
 class TestInternalFixSuggestionForm(TestCase):
     def test_has_expected_fields(self):
@@ -101,6 +124,21 @@ class TestInternalFixSuggestionForm(TestCase):
         choice_values = [choice[0] for choice in form.fields["position"].choices]
         for position in ALLOWED_POSITIONS:
             assert position in choice_values
+
+    def test_rejects_position_mix(self):
+        # Regression guard: "Mix" is only a valid position on the
+        # external branch's ChoiceField (see
+        # TestExternalGameSuggestionForm.test_accepts_position_mix) - the
+        # internal-fix branch must keep the strict 4-value choice list.
+        form = InternalFixSuggestionForm(
+            data={
+                "gameinfo_id": "7",
+                "official_id": "1",
+                "position": "Mix",
+            }
+        )
+        assert not form.is_valid()
+        assert "position" in form.errors
 
 
 class TestSuggestionFormSets(TestCase):

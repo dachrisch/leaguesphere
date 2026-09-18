@@ -12,6 +12,7 @@ from gamedays.models import Gameinfo, GameOfficial
 from gamedays.tests.setup_factories.db_setup import DBSetup
 from gamedays.tests.setup_factories.factories import TeamFactory
 from officials.models import Official, OfficialExternalGames
+from officials.service.game_official_entries import EXTERNAL_ALLOWED_POSITIONS
 from officials.service.game_official_import import (
     BRANCH_COLUMN,
     EXTERNAL_COLUMNS,
@@ -20,6 +21,7 @@ from officials.service.game_official_import import (
     _parse_date_flexible,
     _to_date,
     _to_notification_date,
+    _to_position,
     build_import_result,
     parse_uploaded_file,
 )
@@ -391,6 +393,30 @@ class TestDateParsingRejectsImplausibleYears(TestCase):
         )
 
 
+class TestToPosition(TestCase):
+    def test_default_allowed_accepts_the_four_canonical_positions(self):
+        for position in ("Referee", "Down Judge", "Field Judge", "Side Judge"):
+            errors = []
+            assert _to_position(position, errors) == position
+            assert errors == []
+
+    def test_default_allowed_rejects_mix(self):
+        errors = []
+
+        result = _to_position("Mix", errors)
+
+        assert result == "Mix"
+        assert errors == ["Ungültige Position: 'Mix'."]
+
+    def test_external_allowed_positions_accepts_mix(self):
+        errors = []
+
+        result = _to_position("Mix", errors, allowed=EXTERNAL_ALLOWED_POSITIONS)
+
+        assert result == "Mix"
+        assert errors == []
+
+
 class TestExternalClassification(TestCase):
     def test_valid_row_is_ready_and_included_by_default(self):
         team = TeamFactory(name="Test Team")
@@ -494,6 +520,27 @@ class TestExternalClassification(TestCase):
         suggestion = result.external[0]
         assert suggestion.status == "duplicate"
         assert suggestion.include_default is False
+
+    def test_position_mix_is_ready(self):
+        team = TeamFactory(name="Test Team")
+        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
+        row = _external_row(
+            official_id=official.pk,
+            number_games="2",
+            event_date="01.05.2024",
+            position="Mix",
+            association="Hamburg",
+            halftime_duration="20",
+        )
+        upload = _csv_upload([row])
+        df = parse_uploaded_file(upload)
+
+        result = build_import_result(df)
+
+        suggestion = result.external[0]
+        assert suggestion.status == "ready"
+        assert suggestion.include_default is True
+        assert suggestion.position == "Mix"
 
     def test_same_official_different_number_games_is_not_a_duplicate(self):
         team = TeamFactory(name="Test Team")
@@ -641,6 +688,30 @@ class TestInternalFixClassification(TestCase):
         suggestion = result.internal_fix[0]
         assert suggestion.status == "needs_attention"
         assert suggestion.include_default is False
+
+    def test_position_mix_is_rejected_as_needs_attention(self):
+        # Regression guard: "Mix" is only valid on the "außerhalb DFFL"
+        # external branch (see TestExternalClassification.
+        # test_position_mix_is_ready) - the internal-fix branch maps onto
+        # GameOfficial.position's fixed 4-slot crew and must keep
+        # rejecting anything outside ALLOWED_POSITIONS.
+        DBSetup().g62_status_empty()
+        gameinfo = Gameinfo.objects.first()
+        official = (
+            DbSetupOfficials().create_officials_and_team() and Official.objects.first()
+        )
+        row = _internal_fix_row(
+            gameinfo_id=gameinfo.pk, official_id=official.pk, position="Mix"
+        )
+        upload = _csv_upload([row])
+        df = parse_uploaded_file(upload)
+
+        result = build_import_result(df)
+
+        suggestion = result.internal_fix[0]
+        assert suggestion.status == "needs_attention"
+        assert suggestion.include_default is False
+        assert "Ungültige Position: 'Mix'." in suggestion.reason
 
 
 class TestQueryCountDoesNotScaleWithRowCount(TestCase):

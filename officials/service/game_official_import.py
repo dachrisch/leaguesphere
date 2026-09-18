@@ -24,7 +24,8 @@ import pandas as pd
 from gamedays.models import GameOfficial
 from officials.models import Official, OfficialExternalGames
 from officials.service.game_official_entries import (
-    check_for_allowed_value,
+    ALLOWED_POSITIONS,
+    EXTERNAL_ALLOWED_POSITIONS,
     classify_match_count,
 )
 
@@ -179,13 +180,12 @@ def _to_int(raw_value, label, errors) -> Optional[int]:
         return None
 
 
-def _to_position(raw_value, errors) -> str:
+def _to_position(raw_value, errors, allowed=ALLOWED_POSITIONS) -> str:
     stripped = _clean_str(raw_value)
-    try:
-        return check_for_allowed_value(stripped)
-    except ValueError:
-        errors.append(f"Ungültige Position: '{stripped}'.")
+    if stripped in allowed:
         return stripped
+    errors.append(f"Ungültige Position: '{stripped}'.")
+    return stripped
 
 
 def _to_bool(raw_value, label, errors) -> bool:
@@ -270,7 +270,11 @@ def _parse_external_row(row_number, raw: dict) -> dict:
             raw.get(EXTERNAL_COLUMNS["number_games"]), "Anzahl Spiele", errors
         ),
         "date": _to_date(raw.get(EXTERNAL_COLUMNS["date"]), "Einsatzdatum", errors),
-        "position": _to_position(raw.get(EXTERNAL_COLUMNS["position"]), errors),
+        "position": _to_position(
+            raw.get(EXTERNAL_COLUMNS["position"]),
+            errors,
+            allowed=EXTERNAL_ALLOWED_POSITIONS,
+        ),
         "association": _clean_str(raw.get(EXTERNAL_COLUMNS["association"])),
         "halftime_duration": _to_int(
             raw.get(EXTERNAL_COLUMNS["halftime_duration"]),

@@ -8,6 +8,7 @@ from officials.models import Official, OfficialExternalGames
 from officials.service.game_official_entries import (
     ALLOWED_POSITIONS,
     AmbiguousGameOfficialError,
+    EXTERNAL_ALLOWED_POSITIONS,
     ExternalGameOfficialEntry,
     GameOfficialCorrectionEntry,
     InternalGameOfficialEntry,
@@ -53,6 +54,9 @@ class TestAllowedPositions(TestCase):
             "Field Judge",
             "Side Judge",
         )
+
+    def test_external_allowed_positions_add_mix_to_the_four_official_roles(self):
+        assert EXTERNAL_ALLOWED_POSITIONS == ALLOWED_POSITIONS + ("Mix",)
 
 
 class TestExternalGameOfficialEntry(TestCase):

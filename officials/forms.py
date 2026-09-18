@@ -2,9 +2,15 @@ import os
 
 from django import forms
 
-from officials.service.game_official_entries import ALLOWED_POSITIONS
+from officials.service.game_official_entries import (
+    ALLOWED_POSITIONS,
+    EXTERNAL_ALLOWED_POSITIONS,
+)
 
 POSITION_CHOICES = [(position, position) for position in ALLOWED_POSITIONS]
+EXTERNAL_POSITION_CHOICES = [
+    (position, position) for position in EXTERNAL_ALLOWED_POSITIONS
+]
 
 IMPORT_UPLOAD_ALLOWED_EXTENSIONS = (".csv", ".xlsx", ".xls")
 
@@ -76,7 +82,7 @@ class ExternalGameSuggestionForm(forms.Form):
     number_games = forms.IntegerField(label="Anzahl Spiele", required=False)
     date = forms.DateField(label="Datum des Einsatzes", required=False)
     position = forms.ChoiceField(
-        choices=POSITION_CHOICES, label="Position", required=False
+        choices=EXTERNAL_POSITION_CHOICES, label="Position", required=False
     )
     association = forms.CharField(label="Verband", required=False)
     halftime_duration = forms.IntegerField(
