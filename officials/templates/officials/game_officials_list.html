@@ -40,7 +40,7 @@
                 <td>{{official.gameday_date}}</td>
                 <td>{{official.gameday_name}}</td>
                 <td>
-                    <a href="{% url url_pattern pk=official.team_official_id season=season %}">{{official.team_name}}</a>
+                    <a href="{% url 'view-officials-game-officials-appearance-for-team-and-year' pk=official.team_official_id season=season %}">{{official.team_name}}</a>
                 </td>
                 <td>{{official.name}}</td>
                 <td>{{official.position}}</td>

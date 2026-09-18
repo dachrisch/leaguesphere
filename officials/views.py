@@ -244,14 +244,21 @@ class GameOfficialListView(View):
             home=self._get_subquery(is_home=True),
             away=self._get_subquery(is_home=False),
         )
-        from officials.urls import OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_TEAM_AND_YEAR
+        from officials.urls import (
+            OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_TEAM_AND_YEAR,
+            OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_YEAR,
+        )
 
         context = {
             "season": year,
             "team": team,
             "team_id": team_id,
             "years": sorted(years, reverse=True),
-            "url_pattern": OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_TEAM_AND_YEAR,
+            "url_pattern": (
+                OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_TEAM_AND_YEAR
+                if team_id
+                else OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_YEAR
+            ),
             "pk": team_id,
             "object_list": GameOfficialAllInfoSerializer(
                 instance=game_officials_object_list.values(

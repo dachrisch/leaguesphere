@@ -1,4 +1,4 @@
-from django.urls import path, re_path
+from django.urls import path
 
 from officials.constants import OFFICIALS_STATISTICS, OFFICIALS_STATISTICS_FOR_SEASON
 from officials.views import (
@@ -27,6 +27,9 @@ OFFICIALS_LIST_FOR_TEAM_AND_YEAR = "view-officials-list-for-team-and-year"
 OFFICIALS_LIST_FOR_ALL_TEAMS = "view-officials-list-for-all-teams"
 OFFICIALS_LIST_FOR_ALL_TEAMS_AND_YEAR = "view-officials-list-for-all-teams-and-year"
 OFFICIALS_GAME_OFFICIALS_APPEARANCE = "view-officials-game-officials-appearance"
+OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_YEAR = (
+    "view-officials-game-officials-appearance-for-year"
+)
 OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_TEAM = (
     "view-officials-game-officials-appearance-for-team"
 )
@@ -84,8 +87,18 @@ urlpatterns = [
         GameOfficialListView.as_view(),
         name=OFFICIALS_GAME_OFFICIALS_APPEARANCE,
     ),
-    re_path(
-        r"team/(?P<pk>\w+)?/gamelist/(?P<season>\d+)?/",
+    path(
+        "einsaetze/<int:season>/",
+        GameOfficialListView.as_view(),
+        name=OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_YEAR,
+    ),
+    path(
+        "team/<int:pk>/gamelist/",
+        GameOfficialListView.as_view(),
+        name=OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_TEAM,
+    ),
+    path(
+        "team/<int:pk>/gamelist/<int:season>/",
         GameOfficialListView.as_view(),
         name=OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_TEAM_AND_YEAR,
     ),
