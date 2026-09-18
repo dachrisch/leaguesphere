@@ -7,6 +7,7 @@ before implementation.
 """
 
 import json
+import re
 from datetime import datetime, timedelta
 
 from django.test import TestCase, Client
@@ -291,6 +292,138 @@ class TestLeagueTableJsonLd(TestCase):
         self.assertContains(response, "application/ld+json")
         self.assertContains(response, "SportsOrganization")
         self.assertContains(response, "SportsTeam")
+
+
+class TestBaseJsonLd(TestCase):
+    """Sitewide Organization + WebSite JSON-LD rendered by base.html."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def _ld_blocks(self, content):
+        return re.findall(
+            r'<script type="application/ld\+json">(.*?)</script>',
+            content,
+            re.DOTALL,
+        )
+
+    def _sitewide_payload(self, content):
+        for block in self._ld_blocks(content):
+            payload = json.loads(block)
+            if isinstance(payload, dict) and "@graph" in payload:
+                return payload
+        self.fail("No sitewide @graph JSON-LD block found")
+
+    def test_landing_page_contains_organization_and_website_json_ld(self):
+        from gamedays.constants import LEAGUE_GAMEDAY_LIST
+
+        response = self.client.get(reverse(LEAGUE_GAMEDAY_LIST))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "application/ld+json")
+        self.assertContains(response, '"@type": "Organization"')
+        self.assertContains(response, '"@type": "WebSite"')
+
+    def test_sitewide_json_ld_is_valid_graph_with_absolute_urls(self):
+        from gamedays.constants import LEAGUE_GAMEDAY_LIST
+
+        content = self.client.get(reverse(LEAGUE_GAMEDAY_LIST)).content.decode()
+        # every emitted block must parse as valid JSON
+        blocks = self._ld_blocks(content)
+        self.assertGreaterEqual(len(blocks), 1)
+        for block in blocks:
+            json.loads(block)
+        payload = self._sitewide_payload(content)
+        self.assertEqual(payload["@context"], "https://schema.org")
+        by_type = {node["@type"]: node for node in payload["@graph"]}
+        self.assertEqual(by_type["Organization"]["name"], "LeagueSphere")
+        self.assertEqual(by_type["WebSite"]["name"], "LeagueSphere")
+        for node in payload["@graph"]:
+            for key in ("url", "logo"):
+                if key in node:
+                    self.assertTrue(
+                        node[key].startswith("http"),
+                        f"{node['@type']}.{key} must be absolute: {node[key]}",
+                    )
+        self.assertTrue(
+            by_type["Organization"]["logo"].endswith(
+                "teammanager/icons/football-og.jpg"
+            )
+        )
+
+    def test_game_detail_coexists_with_sitewide_json_ld(self):
+        officials = TeamFactory(name="Ref Crew")
+        home = TeamFactory(name="Home Team", description="Home Team")
+        away = TeamFactory(name="Away Team", description="Away Team")
+        gameday = GamedayFactory(status="PUBLISHED")
+        game = Gameinfo.objects.create(
+            gameday=gameday,
+            scheduled="10:00",
+            field=1,
+            officials=officials,
+            status=Gameinfo.STATUS_COMPLETED,
+            stage="Gruppe",
+            standing="Gruppe 1",
+        )
+        Gameresult.objects.create(
+            gameinfo=game, team=home, fh=10, sh=14, pa=6, isHome=True
+        )
+        Gameresult.objects.create(
+            gameinfo=game, team=away, fh=6, sh=0, pa=24, isHome=False
+        )
+        url = reverse(
+            "league-gameday-game-detail",
+            kwargs={"gameday_pk": gameday.pk, "pk": game.pk},
+        )
+        content = self.client.get(url).content.decode()
+        self.assertIn("SportsEvent", content)
+        payload = self._sitewide_payload(content)
+        by_type = {node["@type"]: node for node in payload["@graph"]}
+        self.assertIn("Organization", by_type)
+        self.assertIn("WebSite", by_type)
+
+    def test_league_table_coexists_with_sitewide_json_ld(self):
+        config = LeagueSeasonConfigFactory()
+        config.leagues_for_league_points.add(config.league)
+        LeagueRulesetTieBreak.objects.create(
+            ruleset=config.ruleset,
+            step=TieBreakStepFactory(key="win_quotient"),
+            order=0,
+        )
+        home = TeamFactory(name="Home Team", description="Home Team")
+        away = TeamFactory(name="Away Team", description="Away Team")
+        officials = TeamFactory(name="Ref Crew")
+        membership = SeasonLeagueTeam.objects.create(
+            season=config.season, league=config.league
+        )
+        membership.teams.add(home, away)
+        gameday = GamedayFactory(
+            season=config.season,
+            league=config.league,
+            status=Gameday.STATUS_PUBLISHED,
+        )
+        game = Gameinfo.objects.create(
+            gameday=gameday,
+            scheduled="10:00",
+            field=1,
+            officials=officials,
+            status=Gameinfo.STATUS_COMPLETED,
+            stage="Gruppe",
+            standing="Gruppe 1",
+        )
+        Gameresult.objects.create(
+            gameinfo=game, team=home, fh=10, sh=10, pa=0, isHome=True
+        )
+        Gameresult.objects.create(
+            gameinfo=game, team=away, fh=0, sh=0, pa=20, isHome=False
+        )
+        content = self.client.get(
+            f"/leaguetable/{config.league.slug}/"
+        ).content.decode()
+        self.assertIn("SportsOrganization", content)
+        payload = self._sitewide_payload(content)
+        by_type = {node["@type"]: node for node in payload["@graph"]}
+        self.assertIn("Organization", by_type)
+        self.assertIn("WebSite", by_type)
 
 
 class TestApiThrottleConfiguration(TestCase):
