@@ -990,6 +990,23 @@ workflows:
       # documented job-level equivalent.) Tag pipelines resolve a full
       # run because release version files match shared + every app's
       # mapping rules.
+      #
+      # build_backend and build_frontend intentionally share
+      # test_compose_network's exact filter (rather than each having its
+      # own narrower one) even though that means a backend-only or
+      # frontend-only change now builds both images: test_compose_network
+      # unconditionally loads both backend.tar and frontend.tar to spin up
+      # the full compose stack, and a `requires` entry silently drops out
+      # when its own filter is false (see above) — so with narrower,
+      # independent filters a partial-scope pipeline could schedule
+      # test_compose_network with only one image ever built, hard-failing
+      # on `docker load` (observed on pipeline 5503:
+      # https://app.circleci.com/pipelines/github/dachrisch/leaguesphere/5503).
+      # The "extra" build this forces is cheap in practice: both jobs use
+      # docker_layer_caching, and build_docker_image already does
+      # `--cache-from=leaguesphere/<image>:latest` against the last
+      # pushed image, so the side that didn't actually change resolves as
+      # a cache hit rather than a full rebuild.
       - python-core:
           filters: "(pipeline.parameters.run-python-core == true)"
       - python-gamedays:
@@ -1016,7 +1033,7 @@ workflows:
           filters: "(pipeline.parameters.run-journey == true)"
 
       - build_backend:
-          filters: "(pipeline.parameters.run-build-backend == true or pipeline.parameters.run-migrations == true or pipeline.parameters.run-compose == true)"
+          filters: "(pipeline.parameters.run-compose == true or pipeline.parameters.run-build-backend == true or pipeline.parameters.run-build-frontend == true or pipeline.parameters.run-migrations == true)"
           requires:
             - python-core
             - python-gamedays
@@ -1025,7 +1042,7 @@ workflows:
             - python-designer
             - python-cross
       - build_frontend:
-          filters: "(pipeline.parameters.run-build-frontend == true or pipeline.parameters.run-compose == true)"
+          filters: "(pipeline.parameters.run-compose == true or pipeline.parameters.run-build-backend == true or pipeline.parameters.run-build-frontend == true or pipeline.parameters.run-migrations == true)"
           requires:
             - scorecard_js
             - liveticker_js
