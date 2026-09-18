@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import date, datetime
 from http import HTTPStatus
 from unittest.mock import patch, MagicMock
 
@@ -13,14 +13,15 @@ from django.test import TestCase, Client
 from django.test.utils import CaptureQueriesContext
 from django_webtest import WebTest, DjangoWebtestResponse
 from rest_framework.reverse import reverse
+from webtest import Upload
 
-from gamedays.models import Gameinfo
+from gamedays.models import Gameinfo, GameOfficial
 from gamedays.tests.setup_factories.db_setup import DBSetup
 from league_manager.utils.serializer_utils import Obfuscator
 from league_table.tests.setup_factories.factories_leaguetable import (
     LeagueSeasonConfigFactory,
 )
-from officials.models import Official, OfficialGamedaySignup
+from officials.models import Official, OfficialExternalGames, OfficialGamedaySignup
 from officials.service.moodle.moodle_api import MoodleApiException
 from officials.service.moodle.moodle_service import MoodleService
 from gamedays.tests.setup_factories.factories import (
@@ -46,6 +47,8 @@ from officials.urls import (
     OFFICIALS_STATISTICS_FOR_SEASON,
     OFFICIALS_PROFILE_GAMELIST,
     OFFICIALS_GAMEOFFICIAL_INTERNAL_CREATE,
+    OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD,
+    OFFICIALS_GAMEOFFICIAL_IMPORT_PREVIEW,
     OFFICIALS_LICENSE_CHECK,
     OFFICIALS_MOODLE_LOGIN,
     OFFICIALS_SIGN_UP_LIST,
@@ -872,3 +875,257 @@ class TestOfficialSignUpView(TestCase):
             messages[0].message
             == "Du bist bereits für den Spieltag gemeldet: Test Spieltag"
         )
+
+
+IMPORT_HEADERS = [
+    "Zeitstempel",
+    "E-Mail für Rückfragen",
+    "Für welchen Bereich möchtest du einen Einsatz melden?",
+    "Wie ist die ID des fehlerhaften Spiels?",
+    "Wie ist deine Lizenznummer?",
+    "Welche Position?",
+    "Sonstiges",
+    "Lizenznummer",
+    "Anzahl Spiele",
+    "Wann hat der Einsatz stattgefunden?",
+    "Welche Position?",
+    "Unter welchem Verband hat der Einsatz stattgefunden?",
+    "Internationales Turnier",
+    "Dauer einer Halbzeit?",
+    "Mit Clock Control?",
+    "Anmerkung - Turniername",
+    "Name",
+    "E-Mail-Adresse",
+]
+
+
+def _import_csv_bytes(rows):
+    lines = [",".join(f'"{h}"' for h in IMPORT_HEADERS)]
+    for row in rows:
+        lines.append(",".join(f'"{value}"' for value in row))
+    return "\n".join(lines).encode("utf-8")
+
+
+def _empty_import_row():
+    return [""] * len(IMPORT_HEADERS)
+
+
+def _external_import_row(
+    official_id, number_games, event_date, position, association, halftime_duration
+):
+    row = _empty_import_row()
+    row[2] = "außerhalb DFFL"
+    row[7] = str(official_id)
+    row[8] = str(number_games)
+    row[9] = event_date
+    row[10] = position
+    row[11] = association
+    row[13] = str(halftime_duration)
+    return row
+
+
+def _internal_fix_import_row(gameinfo_id, official_id, position):
+    row = _empty_import_row()
+    row[2] = "DFFL"
+    row[3] = str(gameinfo_id)
+    row[4] = str(official_id)
+    row[5] = position
+    return row
+
+
+class TestGameOfficialImportUploadView(WebTest):
+    def test_non_staff_denied(self):
+        user = DBSetup().create_new_user("some user")
+        self.app.set_user(user)
+        self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD), status=403)
+
+    def test_upload_missing_columns_shows_form_error(self):
+        user = DBSetup().create_new_user("staff", is_staff=True)
+        self.app.set_user(user)
+        response = self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD))
+        headers = [h for h in IMPORT_HEADERS if h != "Anzahl Spiele"]
+        row = [
+            v
+            for i, v in enumerate(
+                _external_import_row(1, 2, "01.05.2024", "Referee", "Hamburg", 20)
+            )
+            if IMPORT_HEADERS[i] != "Anzahl Spiele"
+        ]
+        content = "\n".join(
+            [
+                ",".join(f'"{h}"' for h in headers),
+                ",".join(f'"{v}"' for v in row),
+            ]
+        ).encode("utf-8")
+        form = response.forms[1]
+        form["file"] = Upload("import.csv", content, "text/csv")
+        response = form.submit()
+
+        assert response.status_code == HTTPStatus.OK
+        assert "Anzahl Spiele" in response.content.decode()
+
+    def test_valid_csv_upload_redirects_to_preview(self):
+        team = TeamFactory(name="Test Team")
+        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
+        user = DBSetup().create_new_user("staff", is_staff=True)
+        self.app.set_user(user)
+        response = self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD))
+        form = response.forms[1]
+        content = _import_csv_bytes(
+            [
+                _external_import_row(
+                    official.pk, 2, "01.05.2024", "Referee", "Hamburg", 20
+                )
+            ]
+        )
+        form["file"] = Upload("import.csv", content, "text/csv")
+        response = form.submit()
+
+        assert response.url == reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_PREVIEW)
+
+    def test_valid_xlsx_upload_redirects_to_preview(self):
+        team = TeamFactory(name="Test Team")
+        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
+        user = DBSetup().create_new_user("staff", is_staff=True)
+        self.app.set_user(user)
+        response = self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD))
+        form = response.forms[1]
+
+        import io
+
+        import openpyxl
+
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        sheet.append(IMPORT_HEADERS)
+        sheet.append(
+            _external_import_row(official.pk, 2, "01.05.2024", "Referee", "Hamburg", 20)
+        )
+        buffer = io.BytesIO()
+        workbook.save(buffer)
+        form["file"] = Upload(
+            "import.xlsx",
+            buffer.getvalue(),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response = form.submit()
+
+        assert response.url == reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_PREVIEW)
+
+
+class TestGameOfficialImportPreviewView(WebTest):
+    def _upload(self, rows):
+        user = DBSetup().create_new_user("staff", is_staff=True)
+        self.app.set_user(user)
+        response = self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD))
+        form = response.forms[1]
+        form["file"] = Upload("import.csv", _import_csv_bytes(rows), "text/csv")
+        response = form.submit()
+        return response.follow()
+
+    def test_non_staff_denied(self):
+        user = DBSetup().create_new_user("some user")
+        self.app.set_user(user)
+        self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_PREVIEW), status=403)
+
+    def test_duplicate_and_ambiguous_rows_default_unchecked(self):
+        team = TeamFactory(name="Test Team")
+        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
+        OfficialExternalGamesFactory(
+            official=official,
+            number_games=2,
+            date=date(2024, 5, 1),
+            notification_date=date(2024, 5, 1),
+            position="Referee",
+            association="Hamburg",
+            halftime_duration=20,
+            has_clockcontrol=False,
+            is_international=False,
+            reporter_name="",
+            comment="",
+        ).save()
+
+        response = self._upload(
+            [
+                _external_import_row(
+                    official.pk, 2, "01.05.2024", "Referee", "Hamburg", 20
+                )
+            ]
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        external_formset = response.context["external_formset"]
+        assert external_formset.forms[0].initial["status"] == "duplicate"
+        assert external_formset.forms[0].initial["include"] is False
+
+    def test_confirm_commits_only_checked_rows(self):
+        team = TeamFactory(name="Test Team")
+        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
+        DBSetup().g62_status_empty()
+        gameinfo = Gameinfo.objects.first()
+
+        response = self._upload(
+            [
+                _external_import_row(
+                    official.pk, 2, "01.05.2024", "Referee", "Hamburg", 20
+                ),
+                _internal_fix_import_row(gameinfo.pk, official.pk, "Side Judge"),
+            ]
+        )
+        form = response.forms[1]
+        assert form["external-0-include"].checked is True
+        assert form["internalfix-0-include"].checked is True
+        # Uncheck the internal-fix row - only the external row should
+        # actually get created.
+        form["internalfix-0-include"] = False
+
+        response = form.submit()
+
+        assert OfficialExternalGames.objects.filter(official=official).exists()
+        assert not GameOfficial.objects.filter(
+            gameinfo=gameinfo, position="Side Judge", official=official
+        ).exists()
+
+    def test_official_deleted_between_preview_and_confirm_surfaces_per_row_error(self):
+        team = TeamFactory(name="Test Team")
+        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
+        official_pk = official.pk
+
+        response = self._upload(
+            [
+                _external_import_row(
+                    official.pk, 2, "01.05.2024", "Referee", "Hamburg", 20
+                )
+            ]
+        )
+        form = response.forms[1]
+        official.delete()
+
+        response = form.submit()
+
+        assert response.status_code == HTTPStatus.OK
+        assert not OfficialExternalGames.objects.filter(
+            official_id=official_pk
+        ).exists()
+        content = response.content.decode()
+        assert "nicht gefunden" in content or "existiert nicht" in content.lower()
+
+    def test_manual_entry_with_no_upload_creates_a_row(self):
+        team = TeamFactory(name="Test Team")
+        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
+        user = DBSetup().create_new_user("staff", is_staff=True)
+        self.app.set_user(user)
+
+        response = self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_PREVIEW))
+        form = response.forms[1]
+        form["external-0-include"] = True
+        form["external-0-official_id"] = str(official.pk)
+        form["external-0-number_games"] = "2"
+        form["external-0-date"] = "2024-05-01"
+        form["external-0-position"].select(text="Referee")
+        form["external-0-association"] = "Hamburg"
+        form["external-0-halftime_duration"] = "20"
+
+        response = form.submit()
+
+        assert OfficialExternalGames.objects.filter(official=official).exists()

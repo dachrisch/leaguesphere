@@ -4,9 +4,10 @@ import pytest
 from django.core.cache import cache
 from django.test import TestCase
 
-from gamedays.models import Team
+from gamedays.models import Gameinfo, GameOfficial, Team
 from gamedays.tests.setup_factories.db_setup import DBSetup
 from gamedays.tests.setup_factories.factories import TeamFactory
+from officials.models import Official, OfficialExternalGames
 from officials.service.official_service import OfficialService
 from officials.tests.setup_factories.db_setup_officials import DbSetupOfficials
 from officials.tests.setup_factories.factories_officials import (
@@ -105,3 +106,43 @@ class TestGetAllTeamsWithLicenseBreakdown(TestCase):
         # license breakdown query runs.
         with self.assertNumQueries(1):
             service.get_all_teams_with_license_breakdown()
+
+
+class TestCreateExternalOfficialEntry(TestCase):
+    def test_creates_an_official_external_games_row_from_a_dict(self):
+        team = TeamFactory(name="Test Team")
+        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
+
+        message = OfficialService().create_external_official_entry(
+            {
+                "official_id": official.pk,
+                "number_games": 2,
+                "date": "2024-05-01",
+                "position": "Referee",
+                "association": "Hamburg",
+                "halftime_duration": 20,
+            }
+        )
+
+        assert OfficialExternalGames.objects.count() == 1
+        assert "Franzi Fedora" in message or "Fedora" in message
+
+
+class TestCreateInternalFixEntry(TestCase):
+    def test_creates_a_game_official_row_when_no_match_exists(self):
+        DBSetup().g62_status_empty()
+        gameinfo = Gameinfo.objects.first()
+        DbSetupOfficials().create_officials_and_team()
+        official = Official.objects.first()
+
+        OfficialService().create_internal_fix_entry(
+            {
+                "gameinfo_id": gameinfo.pk,
+                "official_id": official.pk,
+                "position": "Referee",
+            }
+        )
+
+        assert GameOfficial.objects.filter(
+            gameinfo=gameinfo, position="Referee", official=official
+        ).exists()

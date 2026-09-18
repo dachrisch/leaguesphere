@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block content %}
+<div class="content-section">
+    <form method="POST" id="import-preview-form">
+        {% csrf_token %}
+
+        <fieldset class="form-group">
+            <legend class="border-bottom mb-4">Außerhalb DFFL - neue Einsätze</legend>
+            {{ external_formset.management_form }}
+            {% if external_formset.non_form_errors %}
+                <div class="alert alert-danger">{{ external_formset.non_form_errors }}</div>
+            {% endif %}
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Übernehmen</th>
+                            <th>Official-ID</th>
+                            <th>Spiele</th>
+                            <th>Datum</th>
+                            <th>Position</th>
+                            <th>Verband</th>
+                            <th>HZ-Dauer</th>
+                            <th>Clock Control</th>
+                            <th>International</th>
+                            <th>Name</th>
+                            <th>Zeitstempel</th>
+                            <th>Anmerkung</th>
+                        </tr>
+                    </thead>
+                    <tbody id="external-formset-rows">
+                        {% for form in external_formset.forms %}
+                        <tr class="external-row">
+                            <td>
+                                {{ form.row_number }}{{ form.status }}{{ form.reason }}
+                                {% if form.status.value == "duplicate" %}
+                                    <span class="badge bg-warning text-dark">Duplikat</span>
+                                {% elif form.status.value == "needs_attention" %}
+                                    <span class="badge bg-danger">Prüfen</span>
+                                {% elif form.status.value == "ready" %}
+                                    <span class="badge bg-success">Bereit</span>
+                                {% endif %}
+                                {% if form.reason.value %}
+                                    <div class="small text-muted">{{ form.reason.value }}</div>
+                                {% endif %}
+                                {% if form.non_field_errors %}
+                                    <div class="text-danger small">{{ form.non_field_errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>{{ form.include }}</td>
+                            <td>{{ form.official_id }}</td>
+                            <td>{{ form.number_games }}</td>
+                            <td>{{ form.date }}</td>
+                            <td>{{ form.position }}</td>
+                            <td>{{ form.association }}</td>
+                            <td>{{ form.halftime_duration }}</td>
+                            <td>{{ form.has_clockcontrol }}</td>
+                            <td>{{ form.is_international }}</td>
+                            <td>{{ form.reporter_name }}</td>
+                            <td>{{ form.notification_date }}</td>
+                            <td>{{ form.comment }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <table style="display:none;">
+                <tbody id="external-empty-form-template">
+                    <tr class="external-row">
+                        <td>
+                            {{ external_formset.empty_form.row_number }}
+                            {{ external_formset.empty_form.status }}
+                            {{ external_formset.empty_form.reason }}
+                        </td>
+                        <td>{{ external_formset.empty_form.include }}</td>
+                        <td>{{ external_formset.empty_form.official_id }}</td>
+                        <td>{{ external_formset.empty_form.number_games }}</td>
+                        <td>{{ external_formset.empty_form.date }}</td>
+                        <td>{{ external_formset.empty_form.position }}</td>
+                        <td>{{ external_formset.empty_form.association }}</td>
+                        <td>{{ external_formset.empty_form.halftime_duration }}</td>
+                        <td>{{ external_formset.empty_form.has_clockcontrol }}</td>
+                        <td>{{ external_formset.empty_form.is_international }}</td>
+                        <td>{{ external_formset.empty_form.reporter_name }}</td>
+                        <td>{{ external_formset.empty_form.notification_date }}</td>
+                        <td>{{ external_formset.empty_form.comment }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <button type="button" id="add-external-row" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2 px-3 mt-2">
+                <i class="bi bi-plus-lg"></i> Zeile hinzufügen
+            </button>
+        </fieldset>
+
+        <fieldset class="form-group mt-4">
+            <legend class="border-bottom mb-4">DFFL - bestehendes Spiel korrigieren</legend>
+            {{ internal_fix_formset.management_form }}
+            {% if internal_fix_formset.non_form_errors %}
+                <div class="alert alert-danger">{{ internal_fix_formset.non_form_errors }}</div>
+            {% endif %}
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Übernehmen</th>
+                            <th>Spiel-ID</th>
+                            <th>Official-ID</th>
+                            <th>Position</th>
+                            <th>Aktion</th>
+                            <th>Aktuell zugewiesen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="internalfix-formset-rows">
+                        {% for form in internal_fix_formset.forms %}
+                        <tr class="internalfix-row">
+                            <td>
+                                {{ form.row_number }}
+                                {{ form.status }}
+                                {{ form.reason }}
+                                {% if form.status.value == "needs_attention" %}
+                                    <span class="badge bg-danger">Prüfen</span>
+                                {% elif form.status.value == "ready" %}
+                                    <span class="badge bg-success">Bereit</span>
+                                {% endif %}
+                                {% if form.reason.value %}
+                                    <div class="small text-muted">{{ form.reason.value }}</div>
+                                {% endif %}
+                                {% if form.non_field_errors %}
+                                    <div class="text-danger small">{{ form.non_field_errors }}</div>
+                                {% endif %}
+                            </td>
+                            <td>{{ form.include }}</td>
+                            <td>{{ form.gameinfo_id }}</td>
+                            <td>{{ form.official_id }}</td>
+                            <td>{{ form.position }}</td>
+                            <td>
+                                {{ form.action }}
+                                {{ form.action.value }}
+                            </td>
+                            <td>
+                                {{ form.current_official_display }}
+                                {{ form.current_official_display.value }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <table style="display:none;">
+                <tbody id="internalfix-empty-form-template">
+                    <tr class="internalfix-row">
+                        <td>
+                            {{ internal_fix_formset.empty_form.row_number }}
+                            {{ internal_fix_formset.empty_form.status }}
+                            {{ internal_fix_formset.empty_form.reason }}
+                        </td>
+                        <td>{{ internal_fix_formset.empty_form.include }}</td>
+                        <td>{{ internal_fix_formset.empty_form.gameinfo_id }}</td>
+                        <td>{{ internal_fix_formset.empty_form.official_id }}</td>
+                        <td>{{ internal_fix_formset.empty_form.position }}</td>
+                        <td>
+                            {{ internal_fix_formset.empty_form.action }}
+                        </td>
+                        <td>
+                            {{ internal_fix_formset.empty_form.current_official_display }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <button type="button" id="add-internalfix-row" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2 px-3 mt-2">
+                <i class="bi bi-plus-lg"></i> Zeile hinzufügen
+            </button>
+        </fieldset>
+
+        {% if unclassified %}
+        <fieldset class="form-group mt-4">
+            <legend class="border-bottom mb-4">Nicht zuordenbare Zeilen</legend>
+            <p class="text-muted">
+                Diese Zeilen konnten keinem der beiden Bereiche zugeordnet werden und wurden
+                nicht übernommen.
+            </p>
+            <table class="table table-sm">
+                <thead>
+                    <tr><th>Zeile</th><th>Grund</th></tr>
+                </thead>
+                <tbody>
+                    {% for row in unclassified %}
+                    <tr>
+                        <td>{{ row.row_number }}</td>
+                        <td>{{ row.reason }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </fieldset>
+        {% endif %}
+
+        <div class="form-group mt-3">
+            <button class="btn btn-primary" type="submit">Bestätigen</button>
+        </div>
+    </form>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    function wireAddRow(buttonId, rowsContainerId, templateId, totalFormsName) {
+        var addBtn = document.getElementById(buttonId);
+        var rowsContainer = document.getElementById(rowsContainerId);
+        var emptyTemplate = document.getElementById(templateId);
+        var totalFormsInput = document.querySelector("[name='" + totalFormsName + "']");
+        if (!addBtn || !rowsContainer || !emptyTemplate || !totalFormsInput) {
+            return;
+        }
+        addBtn.addEventListener("click", function () {
+            var formIndex = parseInt(totalFormsInput.value, 10);
+            var newRowHtml = emptyTemplate.innerHTML.replace(/__prefix__/g, formIndex);
+            var wrapper = document.createElement("tbody");
+            wrapper.innerHTML = newRowHtml;
+            rowsContainer.appendChild(wrapper.firstElementChild);
+            totalFormsInput.value = formIndex + 1;
+        });
+    }
+    wireAddRow(
+        "add-external-row",
+        "external-formset-rows",
+        "external-empty-form-template",
+        "external-TOTAL_FORMS"
+    );
+    wireAddRow(
+        "add-internalfix-row",
+        "internalfix-formset-rows",
+        "internalfix-empty-form-template",
+        "internalfix-TOTAL_FORMS"
+    );
+});
+</script>
+{% endblock content %}

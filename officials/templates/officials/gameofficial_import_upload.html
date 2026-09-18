@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block content %}
+<div class="content-section">
+    <fieldset class="form-group">
+        <legend class="border-bottom mb-4">Einsätze aus Google-Sheet importieren</legend>
+        <p class="text-muted">
+            Lade den .csv- oder .xlsx-Export der Selbstmelde-Tabelle hoch. Du kannst auf der
+            nächsten Seite jeden Vorschlag noch prüfen, bearbeiten und einzeln bestätigen -
+            oder, ohne Datei, direkt eine Zeile von Hand anlegen.
+        </p>
+    </fieldset>
+    <form method="POST" enctype="multipart/form-data" id="import-upload-form">
+        {% csrf_token %}
+        <label id="import-drop-zone" class="d-block border border-2 border-dashed rounded p-5 text-center mb-3" style="cursor: pointer;">
+            <i class="bi bi-cloud-arrow-up-fill" style="font-size: 2rem;"></i>
+            <p class="mb-0">Datei hierher ziehen oder klicken, um eine Datei auszuwählen.</p>
+            {{ form|crispy }}
+        </label>
+        <div class="form-group">
+            <button class="btn btn-outline-info" type="submit">Hochladen</button>
+            <a class="btn btn-outline-secondary" href="{% url 'view-officials-gameofficial-import-preview' %}">
+                Ohne Datei manuell eintragen
+            </a>
+        </div>
+    </form>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var dropZone = document.getElementById("import-drop-zone");
+    var fileInput = document.getElementById("id_file");
+    if (!dropZone || !fileInput) {
+        return;
+    }
+    ["dragover", "dragleave", "drop"].forEach(function (eventName) {
+        dropZone.addEventListener(eventName, function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        });
+    });
+    dropZone.addEventListener("drop", function (event) {
+        if (event.dataTransfer && event.dataTransfer.files.length) {
+            fileInput.files = event.dataTransfer.files;
+        }
+    });
+});
+</script>
+{% endblock content %}

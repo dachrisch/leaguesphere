@@ -4,6 +4,7 @@ from officials.urls import (
     OFFICIALS_STATISTICS,
     OFFICIALS_GAME_OFFICIALS_APPEARANCE,
     OFFICIALS_GAMEOFFICIAL_INTERNAL_CREATE,
+    OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD,
     OFFICIALS_LICENSE_CHECK,
 )
 
@@ -32,6 +33,12 @@ class OfficialsMenu(BaseMenu):
                 MenuItem.create(
                     name="Offizielle Internal Eintrag",
                     url=OFFICIALS_GAMEOFFICIAL_INTERNAL_CREATE,
+                )
+            )
+            items.append(
+                MenuItem.create(
+                    name="Einsätze importieren",
+                    url=OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD,
                 )
             )
             items.append(

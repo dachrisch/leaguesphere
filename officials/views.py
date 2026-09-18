@@ -25,9 +25,21 @@ from officials.api.serializers import (
     OfficialGamelistSerializer,
 )
 from officials.constants import OFFICIALS_STATISTICS_FOR_SEASON
-from officials.forms import AddInternalGameOfficialEntryForm, MoodleLoginForm
+from officials.forms import (
+    AddInternalGameOfficialEntryForm,
+    ExternalGameSuggestionFormSet,
+    GameOfficialImportUploadForm,
+    InternalFixSuggestionFormSet,
+    MoodleLoginForm,
+)
 from officials.models import Official, OfficialLicenseHistory
 from officials.service.boff_license_calculation import LicenseStrategy
+from officials.service.game_official_entries import AmbiguousGameOfficialError
+from officials.service.game_official_import import (
+    ImportColumnError,
+    build_import_result,
+    parse_uploaded_file,
+)
 from officials.service.moodle.moodle_api import MoodleApiException
 from officials.service.moodle.moodle_service import MoodleService
 from officials.service.official_service import OfficialService
@@ -310,6 +322,246 @@ class AddInternalGameOfficialUpdateView(LoginRequiredMixin, UserPassesTestMixin,
 
     def test_func(self):
         return self.request.user.is_staff
+
+
+OFFICIALS_IMPORT_SESSION_KEY = "officials_import"
+
+
+def _external_suggestion_to_initial(suggestion) -> dict:
+    return {
+        "row_number": suggestion.row_number,
+        "status": suggestion.status,
+        "reason": suggestion.reason,
+        "include": suggestion.include_default,
+        "official_id": suggestion.official_id,
+        "number_games": suggestion.number_games,
+        "date": suggestion.date.isoformat() if suggestion.date else None,
+        "position": suggestion.position,
+        "association": suggestion.association,
+        "halftime_duration": suggestion.halftime_duration,
+        "has_clockcontrol": suggestion.has_clockcontrol,
+        "is_international": suggestion.is_international,
+        "reporter_name": suggestion.reporter_name,
+        "notification_date": (
+            suggestion.notification_date.isoformat()
+            if suggestion.notification_date
+            else None
+        ),
+        "comment": suggestion.comment,
+    }
+
+
+def _internal_fix_suggestion_to_initial(suggestion) -> dict:
+    return {
+        "row_number": suggestion.row_number,
+        "status": suggestion.status,
+        "reason": suggestion.reason,
+        "action": suggestion.action,
+        "current_official_display": suggestion.current_official_display,
+        "include": suggestion.include_default,
+        "gameinfo_id": suggestion.gameinfo_id,
+        "official_id": suggestion.official_id,
+        "position": suggestion.position,
+    }
+
+
+def _entry_error_message(error: Exception) -> str:
+    """Maps the exceptions ExternalGameOfficialEntry/
+    GameOfficialCorrectionEntry.save() can raise to a per-row message,
+    mirroring AddInternalGameOfficialUpdateView's existing (gameinfo_id
+    nicht gefunden! / official_id nicht gefunden!) conventions so both
+    entry points read consistently to staff."""
+    if isinstance(error, Gameinfo.DoesNotExist):
+        return "gameinfo_id nicht gefunden!"
+    if isinstance(error, Official.DoesNotExist):
+        return "official_id nicht gefunden!"
+    if error.args:
+        return str(error.args[0])
+    return str(error)
+
+
+class GameOfficialImportUploadView(LoginRequiredMixin, UserPassesTestMixin, View):
+    """Step 1 of the officials self-report import: staff drop a .csv/.xlsx
+    export of the Google Sheet (or nothing, for the manual-entry-only
+    path), it's parsed into suggestions, and the result is stashed in the
+    session for GameOfficialImportPreviewView (POST-redirect-GET)."""
+
+    form_class = GameOfficialImportUploadForm
+    template_name = "officials/gameofficial_import_upload.html"
+
+    def test_func(self):
+        return self.request.user.is_staff
+
+    def get(self, request):
+        return render(request, self.template_name, {"form": self.form_class()})
+
+    def post(self, request):
+        form = self.form_class(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                dataframe = parse_uploaded_file(form.cleaned_data["file"])
+                result = build_import_result(dataframe)
+            except ImportColumnError as error:
+                form.add_error("file", str(error))
+                return render(request, self.template_name, {"form": form})
+
+            request.session[OFFICIALS_IMPORT_SESSION_KEY] = {
+                "external": [
+                    _external_suggestion_to_initial(suggestion)
+                    for suggestion in result.external
+                ],
+                "internal_fix": [
+                    _internal_fix_suggestion_to_initial(suggestion)
+                    for suggestion in result.internal_fix
+                ],
+                "unclassified": [
+                    {"row_number": row.row_number, "reason": row.reason}
+                    for row in result.unclassified
+                ],
+            }
+            from officials.urls import OFFICIALS_GAMEOFFICIAL_IMPORT_PREVIEW
+
+            return redirect(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_PREVIEW))
+        return render(request, self.template_name, {"form": form})
+
+
+class GameOfficialImportPreviewView(LoginRequiredMixin, UserPassesTestMixin, View):
+    """Step 2: review/edit the suggestions from step 1 (or, with nothing
+    uploaded, just the one blank manual-entry row each formset's extra=1
+    always provides) and confirm. Every checked, valid row is re-validated
+    and saved from scratch via ExternalGameOfficialEntry /
+    GameOfficialCorrectionEntry - never from the preview-time
+    status/reason - so staleness between preview and confirm (an Official
+    deleted, a second GameOfficial added, ...) surfaces as a per-row error
+    instead of a stale write or a crash."""
+
+    template_name = "officials/gameofficial_import_preview.html"
+
+    def test_func(self):
+        return self.request.user.is_staff
+
+    def get(self, request):
+        session_data = request.session.get(OFFICIALS_IMPORT_SESSION_KEY, {})
+        context = self._context(
+            external_formset=ExternalGameSuggestionFormSet(
+                initial=session_data.get("external", []), prefix="external"
+            ),
+            internal_fix_formset=InternalFixSuggestionFormSet(
+                initial=session_data.get("internal_fix", []), prefix="internalfix"
+            ),
+            unclassified=session_data.get("unclassified", []),
+        )
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        external_formset = ExternalGameSuggestionFormSet(
+            request.POST, prefix="external"
+        )
+        internal_fix_formset = InternalFixSuggestionFormSet(
+            request.POST, prefix="internalfix"
+        )
+        unclassified = request.session.get(OFFICIALS_IMPORT_SESSION_KEY, {}).get(
+            "unclassified", []
+        )
+
+        official_service = OfficialService()
+        created_entries = []
+        any_row_error = not external_formset.is_valid()
+        if not any_row_error:
+            any_row_error = self._save_external_rows(
+                external_formset, official_service, created_entries
+            )
+
+        internal_fix_error = not internal_fix_formset.is_valid()
+        if not internal_fix_error:
+            internal_fix_error = self._save_internal_fix_rows(
+                internal_fix_formset, official_service, created_entries
+            )
+        any_row_error = any_row_error or internal_fix_error
+
+        if not any_row_error:
+            request.session.pop(OFFICIALS_IMPORT_SESSION_KEY, None)
+            if created_entries:
+                summary = "Folgende Einträge erzeugt: <br>" + "<br>".join(
+                    created_entries
+                )
+                messages.success(request, mark_safe(summary))
+            from officials.urls import OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD
+
+            return redirect(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD))
+
+        context = self._context(
+            external_formset=external_formset,
+            internal_fix_formset=internal_fix_formset,
+            unclassified=unclassified,
+        )
+        return render(request, self.template_name, context)
+
+    @staticmethod
+    def _save_external_rows(formset, official_service, created_entries) -> bool:
+        any_error = False
+        for form in formset:
+            cleaned = form.cleaned_data
+            if not cleaned or not cleaned.get("include"):
+                continue
+            try:
+                created_entries.append(
+                    official_service.create_external_official_entry(
+                        {
+                            "official_id": cleaned.get("official_id"),
+                            "number_games": cleaned.get("number_games"),
+                            "date": cleaned.get("date"),
+                            "position": cleaned.get("position"),
+                            "association": cleaned.get("association") or "",
+                            "halftime_duration": cleaned.get("halftime_duration"),
+                            "has_clockcontrol": bool(cleaned.get("has_clockcontrol")),
+                            "is_international": bool(cleaned.get("is_international")),
+                            "reporter_name": cleaned.get("reporter_name") or "",
+                            "notification_date": cleaned.get("notification_date"),
+                            "comment": cleaned.get("comment") or "",
+                        }
+                    )
+                )
+            except (TypeError, ValueError, Official.DoesNotExist) as error:
+                any_error = True
+                form.add_error(None, _entry_error_message(error))
+        return any_error
+
+    @staticmethod
+    def _save_internal_fix_rows(formset, official_service, created_entries) -> bool:
+        any_error = False
+        for form in formset:
+            cleaned = form.cleaned_data
+            if not cleaned or not cleaned.get("include"):
+                continue
+            try:
+                created_entries.append(
+                    official_service.create_internal_fix_entry(
+                        {
+                            "gameinfo_id": cleaned.get("gameinfo_id"),
+                            "official_id": cleaned.get("official_id"),
+                            "position": cleaned.get("position"),
+                        }
+                    )
+                )
+            except (
+                TypeError,
+                ValueError,
+                Gameinfo.DoesNotExist,
+                Official.DoesNotExist,
+                AmbiguousGameOfficialError,
+            ) as error:
+                any_error = True
+                form.add_error(None, _entry_error_message(error))
+        return any_error
+
+    @staticmethod
+    def _context(external_formset, internal_fix_formset, unclassified) -> dict:
+        return {
+            "external_formset": external_formset,
+            "internal_fix_formset": internal_fix_formset,
+            "unclassified": unclassified,
+        }
 
 
 class LicenseCheckForOfficials(LoginRequiredMixin, UserPassesTestMixin, View):
