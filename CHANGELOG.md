@@ -1,5 +1,14 @@
 # Changelog
 
+## [4.27.1](https://github.com/dachrisch/leaguesphere/compare/v4.27.0...v4.27.1) (2026-09-18)
+
+
+### Bug Fixes
+
+* **ci:** anchor scoped build requires with always-run noop ([e6cfe93](https://github.com/dachrisch/leaguesphere/commit/e6cfe938b2105931bc331ca4bea16e9b6f9dde59))
+* **ci:** anchor scoped build requires with always-run noop ([7b47a36](https://github.com/dachrisch/leaguesphere/commit/7b47a36555e55902aa9a016fc43f64cf71d8c736))
+* **ci:** build images without test requires, gate compose on all shards ([eb7ff51](https://github.com/dachrisch/leaguesphere/commit/eb7ff5127a7c47f3563cfbe297d6ab18c5974e19))
+
 ## [4.27.0](https://github.com/dachrisch/leaguesphere/compare/v4.26.3...v4.27.0) (2026-09-18)
 
 
