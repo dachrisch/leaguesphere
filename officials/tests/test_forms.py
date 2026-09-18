@@ -1,17 +1,7 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
-from officials.forms import (
-    ExternalGameSuggestionForm,
-    ExternalGameSuggestionFormSet,
-    GameOfficialImportUploadForm,
-    InternalFixSuggestionForm,
-    InternalFixSuggestionFormSet,
-)
-from officials.service.game_official_entries import (
-    ALLOWED_POSITIONS,
-    EXTERNAL_ALLOWED_POSITIONS,
-)
+from officials.forms import AddExternalGameOfficialEntryForm, GameOfficialImportUploadForm
 
 
 class TestGameOfficialImportUploadForm(TestCase):
@@ -42,123 +32,17 @@ class TestGameOfficialImportUploadForm(TestCase):
         assert not form.is_valid()
 
 
-class TestExternalGameSuggestionForm(TestCase):
-    def test_has_expected_fields(self):
-        form = ExternalGameSuggestionForm()
-        expected = {
-            "row_number",
-            "status",
-            "reason",
-            "include",
-            "official_id",
-            "number_games",
-            "date",
-            "position",
-            "association",
-            "halftime_duration",
-            "has_clockcontrol",
-            "is_international",
-            "reporter_name",
-            "notification_date",
-            "comment",
-        }
-        assert expected <= set(form.fields.keys())
+class TestAddExternalGameOfficialEntryForm(TestCase):
+    def test_has_entries_field(self):
+        form = AddExternalGameOfficialEntryForm()
+        assert "entries" in form.fields
 
-    def test_position_choices_are_allowed_positions(self):
-        form = ExternalGameSuggestionForm()
-        choice_values = [choice[0] for choice in form.fields["position"].choices]
-        for position in ALLOWED_POSITIONS:
-            assert position in choice_values
-
-    def test_include_is_not_required(self):
-        form = ExternalGameSuggestionForm(
-            data={
-                "official_id": "1",
-                "number_games": "2",
-                "date": "2024-05-01",
-                "position": "Referee",
-                "association": "Hamburg",
-                "halftime_duration": "20",
-            }
-        )
-        assert form.is_valid(), form.errors
-        assert form.cleaned_data["include"] is False
-
-    def test_position_choices_include_mix(self):
-        form = ExternalGameSuggestionForm()
-        choice_values = [choice[0] for choice in form.fields["position"].choices]
-        for position in EXTERNAL_ALLOWED_POSITIONS:
-            assert position in choice_values
-
-    def test_accepts_position_mix(self):
-        form = ExternalGameSuggestionForm(
-            data={
-                "official_id": "1",
-                "number_games": "2",
-                "date": "2024-05-01",
-                "position": "Mix",
-                "association": "Hamburg",
-                "halftime_duration": "20",
-            }
-        )
-        assert form.is_valid(), form.errors
-        assert form.cleaned_data["position"] == "Mix"
-
-
-class TestInternalFixSuggestionForm(TestCase):
-    def test_has_expected_fields(self):
-        form = InternalFixSuggestionForm()
-        expected = {
-            "row_number",
-            "status",
-            "reason",
-            "include",
-            "gameinfo_id",
-            "official_id",
-            "position",
-        }
-        assert expected <= set(form.fields.keys())
-
-    def test_position_choices_are_allowed_positions(self):
-        form = InternalFixSuggestionForm()
-        choice_values = [choice[0] for choice in form.fields["position"].choices]
-        for position in ALLOWED_POSITIONS:
-            assert position in choice_values
-
-    def test_rejects_position_mix(self):
-        # Regression guard: "Mix" is only a valid position on the
-        # external branch's ChoiceField (see
-        # TestExternalGameSuggestionForm.test_accepts_position_mix) - the
-        # internal-fix branch must keep the strict 4-value choice list.
-        form = InternalFixSuggestionForm(
-            data={
-                "gameinfo_id": "7",
-                "official_id": "1",
-                "position": "Mix",
-            }
-        )
+    def test_missing_entries_is_invalid(self):
+        form = AddExternalGameOfficialEntryForm(data={})
         assert not form.is_valid()
-        assert "position" in form.errors
 
-
-class TestSuggestionFormSets(TestCase):
-    def test_external_formset_with_no_initial_renders_one_blank_manual_row(self):
-        formset = ExternalGameSuggestionFormSet(initial=[])
-        assert len(formset.forms) == 1
-
-    def test_external_formset_with_initial_renders_initial_plus_one_blank_row(self):
-        formset = ExternalGameSuggestionFormSet(
-            initial=[
-                {
-                    "row_number": 2,
-                    "official_id": 1,
-                    "number_games": 2,
-                    "position": "Referee",
-                }
-            ]
+    def test_valid_with_entries(self):
+        form = AddExternalGameOfficialEntryForm(
+            data={"entries": "1, 2, 2024-05-01, Referee, Hamburg, 20"}
         )
-        assert len(formset.forms) == 2
-
-    def test_internal_fix_formset_with_no_initial_renders_one_blank_manual_row(self):
-        formset = InternalFixSuggestionFormSet(initial=[])
-        assert len(formset.forms) == 1
+        assert form.is_valid(), form.errors

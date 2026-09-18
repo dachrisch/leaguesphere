@@ -47,8 +47,9 @@ from officials.urls import (
     OFFICIALS_STATISTICS_FOR_SEASON,
     OFFICIALS_PROFILE_GAMELIST,
     OFFICIALS_GAMEOFFICIAL_INTERNAL_CREATE,
+    OFFICIALS_GAMEOFFICIAL_EXTERNAL_CREATE,
     OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD,
-    OFFICIALS_GAMEOFFICIAL_IMPORT_PREVIEW,
+    OFFICIALS_GAMEOFFICIAL_IMPORT_CONFIRM,
     OFFICIALS_LICENSE_CHECK,
     OFFICIALS_MOODLE_LOGIN,
     OFFICIALS_SIGN_UP_LIST,
@@ -939,7 +940,7 @@ class TestGameOfficialImportUploadView(WebTest):
         self.app.set_user(user)
         self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD), status=403)
 
-    def test_upload_missing_columns_shows_form_error(self):
+    def test_upload_missing_columns_returns_json_error(self):
         user = DBSetup().create_new_user("staff", is_staff=True)
         self.app.set_user(user)
         response = self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD))
@@ -959,12 +960,12 @@ class TestGameOfficialImportUploadView(WebTest):
         ).encode("utf-8")
         form = response.forms[1]
         form["file"] = Upload("import.csv", content, "text/csv")
-        response = form.submit()
+        response = form.submit(expect_errors=True)
 
-        assert response.status_code == HTTPStatus.OK
-        assert "Anzahl Spiele" in response.content.decode()
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert "Anzahl Spiele" in response.json["errors"]["file"][0]
 
-    def test_valid_csv_upload_redirects_to_preview(self):
+    def test_valid_csv_upload_returns_grouped_json(self):
         team = TeamFactory(name="Test Team")
         official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
         user = DBSetup().create_new_user("staff", is_staff=True)
@@ -981,9 +982,17 @@ class TestGameOfficialImportUploadView(WebTest):
         form["file"] = Upload("import.csv", content, "text/csv")
         response = form.submit()
 
-        assert response.url == reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_PREVIEW)
+        data = response.json
+        assert len(data["external"]["new"]) == 1
+        row = data["external"]["new"][0]
+        assert row["official_display"] == "Franzi Fedora"
+        assert row["include_default"] is True
+        assert data["external"]["duplicate"] == []
+        assert data["external"]["conflict"] == []
+        assert data["internal_fix"] == {"new": [], "duplicate": [], "conflict": []}
+        assert data["unclassified"] == []
 
-    def test_valid_xlsx_upload_redirects_to_preview(self):
+    def test_valid_xlsx_upload_returns_grouped_json(self):
         team = TeamFactory(name="Test Team")
         official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
         user = DBSetup().create_new_user("staff", is_staff=True)
@@ -1010,25 +1019,9 @@ class TestGameOfficialImportUploadView(WebTest):
         )
         response = form.submit()
 
-        assert response.url == reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_PREVIEW)
+        assert len(response.json["external"]["new"]) == 1
 
-
-class TestGameOfficialImportPreviewView(WebTest):
-    def _upload(self, rows):
-        user = DBSetup().create_new_user("staff", is_staff=True)
-        self.app.set_user(user)
-        response = self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD))
-        form = response.forms[1]
-        form["file"] = Upload("import.csv", _import_csv_bytes(rows), "text/csv")
-        response = form.submit()
-        return response.follow()
-
-    def test_non_staff_denied(self):
-        user = DBSetup().create_new_user("some user")
-        self.app.set_user(user)
-        self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_PREVIEW), status=403)
-
-    def test_duplicate_and_ambiguous_rows_default_unchecked(self):
+    def test_duplicate_rows_default_unchecked(self):
         team = TeamFactory(name="Test Team")
         official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
         OfficialExternalGamesFactory(
@@ -1044,30 +1037,74 @@ class TestGameOfficialImportPreviewView(WebTest):
             reporter_name="",
             comment="",
         ).save()
-
-        response = self._upload(
-            [
-                _external_import_row(
-                    official.pk, 2, "01.05.2024", "Referee", "Hamburg", 20
-                )
-            ]
+        user = DBSetup().create_new_user("staff", is_staff=True)
+        self.app.set_user(user)
+        response = self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD))
+        form = response.forms[1]
+        form["file"] = Upload(
+            "import.csv",
+            _import_csv_bytes(
+                [
+                    _external_import_row(
+                        official.pk, 2, "01.05.2024", "Referee", "Hamburg", 20
+                    )
+                ]
+            ),
+            "text/csv",
         )
+        response = form.submit()
 
-        assert response.status_code == HTTPStatus.OK
-        external_formset = response.context["external_formset"]
-        assert external_formset.forms[0].initial["status"] == "duplicate"
-        assert external_formset.forms[0].initial["include"] is False
+        data = response.json
+        assert data["external"]["new"] == []
+        assert len(data["external"]["duplicate"]) == 1
+        assert data["external"]["duplicate"][0]["include_default"] is False
 
-    def test_confirm_commits_only_checked_rows(self):
+
+class TestGameOfficialImportConfirmView(WebTest):
+    def _upload(self, rows):
+        user = DBSetup().create_new_user("staff", is_staff=True)
+        self.app.set_user(user)
+        response = self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD))
+        form = response.forms[1]
+        form["file"] = Upload("import.csv", _import_csv_bytes(rows), "text/csv")
+        return form.submit().json
+
+    def _confirm(self, **row_number_lists):
+        """The confirm form is submitted by JS (see the template) as one
+        comma-joined string per branch, not one field per row (a real
+        import can select thousands of rows at once, which hit Django's
+        DATA_UPLOAD_MAX_NUMBER_FIELDS ceiling as separate fields) - so
+        this joins each kwarg's list before posting. Also adds the CSRF
+        token by hand, since this isn't a fetched-and-filled-in WebTest
+        form - self._upload() already rendered a page with
+        {% csrf_token %} on it, which sets the cookie this reads."""
+        params = {
+            field_name: ",".join(row_numbers)
+            for field_name, row_numbers in row_number_lists.items()
+        }
+        params.setdefault("csrfmiddlewaretoken", self.app.cookies["csrftoken"])
+        return self.app.post(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_CONFIRM), params=params)
+
+    def test_non_staff_denied(self):
+        user = DBSetup().create_new_user("some user")
+        self.app.set_user(user)
+        self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_CONFIRM), status=403)
+
+    def test_get_redirects_to_upload(self):
+        user = DBSetup().create_new_user("staff", is_staff=True)
+        self.app.set_user(user)
+        response = self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_CONFIRM))
+        assert response.url == reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD)
+
+    def test_confirm_commits_only_selected_rows(self):
         team = TeamFactory(name="Test Team")
         official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
         DBSetup().g62_status_empty()
         gameinfo = Gameinfo.objects.first()
         # Two pre-existing assignments for the same (gameinfo, position),
-        # made by *other* officials, put the internal-fix suggestion below
-        # into "needs_attention" (ambiguous) - so it stays in the review
-        # formset, unlike the "ready" external row, which is bulk-committed
-        # automatically and has no checkbox at all.
+        # made by *other* officials, put the internal-fix suggestion into
+        # "conflict" (ambiguous) - its include_default is False, unlike
+        # the "new" external row.
         other_team = TeamFactory(name="Other Team")
         existing_1 = OfficialFactory(
             first_name="Existing", last_name="One", team=other_team
@@ -1082,7 +1119,7 @@ class TestGameOfficialImportPreviewView(WebTest):
             gameinfo=gameinfo, official=existing_2, position="Side Judge"
         )
 
-        response = self._upload(
+        data = self._upload(
             [
                 _external_import_row(
                     official.pk, 2, "01.05.2024", "Referee", "Hamburg", 20
@@ -1090,26 +1127,28 @@ class TestGameOfficialImportPreviewView(WebTest):
                 _internal_fix_import_row(gameinfo.pk, official.pk, "Side Judge"),
             ]
         )
-        form = response.forms[1]
-        # The ready external row isn't form-backed - internalfix-0 is the
-        # only review row (the ambiguous ones default unchecked).
-        assert form["internalfix-0-include"].checked is False
+        external_row = data["external"]["new"][0]
+        internal_row = data["internal_fix"]["conflict"][0]
+        assert internal_row["include_default"] is False
 
-        response = form.submit()
+        # Only confirm the external row - leave the ambiguous internal-fix
+        # row unselected, exactly as its include_default suggests.
+        response = self._confirm(external_rows=[str(external_row["row_number"])])
 
+        assert response.status_code == HTTPStatus.FOUND
         assert OfficialExternalGames.objects.filter(official=official).exists()
         assert not GameOfficial.objects.filter(
             gameinfo=gameinfo, position="Side Judge", official=official
         ).exists()
 
-    def test_official_deleted_between_preview_and_confirm_surfaces_per_row_error(self):
+    def test_official_deleted_between_upload_and_confirm_surfaces_per_row_error(self):
         team = TeamFactory(name="Test Team")
         official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
         official_pk = official.pk
         other_official_1 = OfficialFactory(first_name="A", last_name="One", team=team)
         other_official_2 = OfficialFactory(first_name="B", last_name="Two", team=team)
 
-        response = self._upload(
+        data = self._upload(
             [
                 _external_import_row(
                     official.pk, 2, "01.05.2024", "Referee", "Hamburg", 20
@@ -1122,14 +1161,13 @@ class TestGameOfficialImportPreviewView(WebTest):
                 ),
             ]
         )
-        form = response.forms[1]
+        row_numbers = [str(row["row_number"]) for row in data["external"]["new"]]
         official.delete()
 
-        response = form.submit()
+        response = self._confirm(external_rows=row_numbers)
 
-        # All three rows are "ready" (bulk-committed, no formset involved).
-        # The stale one's failure is isolated per row and doesn't block the
-        # PRG redirect or abort the rest of the batch.
+        # The stale row's failure is isolated per row and doesn't block
+        # the PRG redirect or abort the rest of the batch.
         assert response.status_code == HTTPStatus.FOUND
         response = response.follow()
         assert not OfficialExternalGames.objects.filter(
@@ -1141,179 +1179,96 @@ class TestGameOfficialImportPreviewView(WebTest):
         assert "1 Fehler" in content
         assert "nicht gefunden" in content or "existiert nicht" in content.lower()
 
-    def test_manual_entry_with_no_upload_creates_a_row(self):
-        team = TeamFactory(name="Test Team")
-        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
-        user = DBSetup().create_new_user("staff", is_staff=True)
-        self.app.set_user(user)
+    def test_large_upload_groups_all_rows_and_confirm_commits_them(self):
+        """Regression coverage for the original DOM-scale bug: a real
+        import file has thousands of rows. The server now only ever
+        returns JSON (no per-row template rendering at all), so there's
+        no DOM-node ceiling to hit - this just proves a large batch still
+        classifies and commits correctly end-to-end."""
 
-        response = self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_PREVIEW))
-        form = response.forms[1]
-        form["external-0-include"] = True
-        form["external-0-official_id"] = str(official.pk)
-        form["external-0-number_games"] = "2"
-        form["external-0-date"] = "2024-05-01"
-        form["external-0-position"].select(text="Referee")
-        form["external-0-association"] = "Hamburg"
-        form["external-0-halftime_duration"] = "20"
-
-        response = form.submit()
-
-        assert OfficialExternalGames.objects.filter(official=official).exists()
-
-
-def _count_tbody_rows(html: str, tbody_id: str) -> int:
-    """Counts <tr> elements inside the <tbody id="tbody_id"> ... </tbody>
-    that appears first in html - used to bound how many rows a formset or
-    a read-only sample table actually rendered, without depending on
-    field-by-field markup details."""
-    marker = f'id="{tbody_id}"'
-    start = html.index(marker)
-    tbody_open_end = html.index(">", start) + 1
-    tbody_close = html.index("</tbody>", tbody_open_end)
-    return html.count("<tr", tbody_open_end, tbody_close)
-
-
-class TestGameOfficialImportPreviewViewBulkReady(WebTest):
-    """Regression coverage for the DOM-scale bug: a real import file has
-    thousands of "ready" rows (no conflict, nothing to review) mixed with
-    only a handful that actually need staff attention. Rendering every
-    "ready" row as an editable formset row produced a ~23MB page with
-    150k+ DOM nodes that no browser could render. Ready rows must be
-    bulk-committed on confirm and shown only as a capped, read-only
-    sample - never as form fields."""
-
-    READY_ROW_COUNT = 300
-
-    def _upload(self, rows):
-        user = DBSetup().create_new_user("staff", is_staff=True)
-        self.app.set_user(user)
-        response = self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD))
-        form = response.forms[1]
-        form["file"] = Upload("import.csv", _import_csv_bytes(rows), "text/csv")
-        response = form.submit()
-        return response.follow()
-
-    def test_ready_rows_are_not_rendered_as_formset_fields(self):
+        row_count = 300
         team = TeamFactory(name="Test Team")
         official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
         rows = [
             _external_import_row(
                 official.pk, number_games, "01.05.2024", "Referee", "Hamburg", 20
             )
-            for number_games in range(1, self.READY_ROW_COUNT + 1)
+            for number_games in range(1, row_count + 1)
         ]
-        # Two rows that can't resolve an official land in the small
-        # "review" bucket alongside the 300 ready ones above.
-        unresolvable_official_id = official.pk + 1_000_000
-        rows.append(
-            _external_import_row(
-                unresolvable_official_id, 9001, "01.05.2024", "Referee", "Hamburg", 20
-            )
-        )
-        rows.append(
-            _external_import_row(
-                unresolvable_official_id, 9002, "01.05.2024", "Referee", "Hamburg", 20
-            )
-        )
 
-        response = self._upload(rows)
+        data = self._upload(rows)
 
-        assert response.status_code == HTTPStatus.OK
-        assert response.context["ready_external_count"] == self.READY_ROW_COUNT
-        assert len(response.context["ready_external_sample"]) <= 25
-        assert (
-            len(response.context["external_formset"].forms) == 3
-        )  # 2 review + extra=1
+        assert len(data["external"]["new"]) == row_count
+        row_numbers = [str(row["row_number"]) for row in data["external"]["new"]]
 
-        content = response.content.decode()
-        # Nowhere near 300 rows worth of form fields: only the 2
-        # needs_attention rows plus the formset's one extra=1 blank row.
-        assert content.count('name="external-') < 100
-        assert _count_tbody_rows(content, "external-formset-rows") == 3
-
-        assert f"{self.READY_ROW_COUNT} Einträge sind bereit" in content
-        sample_rows = _count_tbody_rows(content, "ready-external-sample-rows")
-        assert 0 < sample_rows <= 25
-
-    def test_confirming_review_rows_also_commits_all_ready_rows(self):
-        team = TeamFactory(name="Test Team")
-        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
-        # Two pre-existing entries so the matching uploaded rows below
-        # become "duplicate" (review bucket) instead of "ready".
-        for number_games in (9001, 9002):
-            OfficialExternalGamesFactory(
-                official=official,
-                number_games=number_games,
-                date=date(2024, 5, 1),
-                notification_date=date(2024, 5, 1),
-                position="Referee",
-                association="Hamburg",
-                halftime_duration=20,
-                has_clockcontrol=False,
-                is_international=False,
-                reporter_name="",
-                comment="",
-            ).save()
-
-        rows = [
-            _external_import_row(
-                official.pk, number_games, "01.05.2024", "Referee", "Hamburg", 20
-            )
-            for number_games in range(1, self.READY_ROW_COUNT + 1)
-        ]
-        rows.append(
-            _external_import_row(
-                official.pk, 9001, "01.05.2024", "Referee", "Hamburg", 20
-            )
-        )
-        rows.append(
-            _external_import_row(
-                official.pk, 9002, "01.05.2024", "Referee", "Hamburg", 20
-            )
-        )
-
-        preview_response = self._upload(rows)
-
-        form = preview_response.forms[1]
-        # Leave the 300 ready rows alone entirely - they're not
-        # form-backed - and only confirm the two review (duplicate) rows.
-        form["external-0-include"] = True
-        form["external-1-include"] = True
-
-        response = form.submit()
+        response = self._confirm(external_rows=row_numbers)
 
         assert response.status_code == HTTPStatus.FOUND
         response = response.follow()
         assert (
             OfficialExternalGames.objects.filter(official=official).count()
-            == self.READY_ROW_COUNT + 2 + 2  # ready + pre-existing + confirmed dupes
+            == row_count
         )
-
         content = response.content.decode()
-        assert f"{self.READY_ROW_COUNT + 2} externe Einsätze erstellt" in content
+        assert f"{row_count} externe Einsätze erstellt" in content
         # Counts, not one line per created row.
         assert content.count("ID: ") == 0
 
-    def test_ready_internal_fix_rows_are_bulk_committed_without_formset(self):
-        team = TeamFactory(name="Test Team")
-        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
-        DBSetup().g62_status_empty()
-        gameinfo = Gameinfo.objects.first()
 
-        response = self._upload(
-            [_internal_fix_import_row(gameinfo.pk, official.pk, "Side Judge")]
+class TestAddExternalGameOfficialUpdateView(WebTest):
+    def test_non_staff_denied(self):
+        user = DBSetup().create_new_user("some user")
+        self.app.set_user(user)
+        self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_EXTERNAL_CREATE), status=403)
+
+    def test_official_id_not_found(self):
+        user = DBSetup().create_new_user("staff", is_staff=True)
+        self.app.set_user(user)
+        response = self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_EXTERNAL_CREATE))
+        form = response.forms[1]
+        form["entries"] = "9999, 2, 2024-05-01, Referee, Hamburg, 20"
+        response = form.submit()
+        self.assertFormError(
+            response.context["form"], "entries", ["official_id nicht gefunden!"]
         )
 
-        assert response.context["ready_internal_count"] == 1
-        # Only the always-present extra=1 blank row - the ready row isn't
-        # form-backed.
-        assert len(response.context["internal_fix_formset"].forms) == 1
-
+    def test_number_games_not_a_number(self):
+        team = TeamFactory(name="Test Team")
+        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
+        user = DBSetup().create_new_user("staff", is_staff=True)
+        self.app.set_user(user)
+        response = self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_EXTERNAL_CREATE))
         form = response.forms[1]
+        form["entries"] = f"{official.pk}, viel, 2024-05-01, Referee, Hamburg, 20"
         response = form.submit()
+        self.assertFormError(
+            response.context["form"], "entries", ["number_games muss eine Zahl sein!"]
+        )
 
-        assert response.status_code == HTTPStatus.FOUND
-        assert GameOfficial.objects.filter(
-            gameinfo=gameinfo, position="Side Judge", official=official
-        ).exists()
+    def test_wrong_field_count(self):
+        user = DBSetup().create_new_user("staff", is_staff=True)
+        self.app.set_user(user)
+        response = self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_EXTERNAL_CREATE))
+        form = response.forms[1]
+        form["entries"] = "1, 2, 2024-05-01"
+        response = form.submit()
+        self.assertFormError(
+            response.context["form"],
+            "entries",
+            ["Zeile muss genau 6 Werte haben!"],
+        )
+
+    def test_entry_successful(self):
+        team = TeamFactory(name="Test Team")
+        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
+        user = DBSetup().create_new_user("staff", is_staff=True)
+        self.app.set_user(user)
+        response = self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_EXTERNAL_CREATE))
+        form = response.forms[1]
+        form["entries"] = f"{official.pk}, 2, 2024-05-01, Referee, Hamburg, 20"
+        response = form.submit()
+        assert (
+            "Franzi Fedora als Referee"
+            in response.html.find_all("div", {"class": "alert-success"})[0].text
+        )
+        assert OfficialExternalGames.objects.filter(official=official).exists()

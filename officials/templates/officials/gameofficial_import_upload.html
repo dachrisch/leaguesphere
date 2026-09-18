@@ -2,46 +2,653 @@
 {% load crispy_forms_tags %}
 {% block content %}
 <div class="content-section">
-    <fieldset class="form-group">
-        <legend class="border-bottom mb-4">Einsätze aus Google-Sheet importieren</legend>
-        <p class="text-muted">
-            Lade den .csv- oder .xlsx-Export der Selbstmelde-Tabelle hoch. Du kannst auf der
-            nächsten Seite jeden Vorschlag noch prüfen, bearbeiten und einzeln bestätigen -
-            oder, ohne Datei, direkt eine Zeile von Hand anlegen.
-        </p>
-    </fieldset>
-    <form method="POST" enctype="multipart/form-data" id="import-upload-form">
-        {% csrf_token %}
-        <label id="import-drop-zone" class="d-block border border-2 border-dashed rounded p-5 text-center mb-3" style="cursor: pointer;">
-            <i class="bi bi-cloud-arrow-up-fill" style="font-size: 2rem;"></i>
-            <p class="mb-0">Datei hierher ziehen oder klicken, um eine Datei auszuwählen.</p>
-            {{ form|crispy }}
-        </label>
-        <div class="form-group">
-            <button class="btn btn-outline-info" type="submit">Hochladen</button>
-            <a class="btn btn-outline-secondary" href="{% url 'view-officials-gameofficial-import-preview' %}">
-                Ohne Datei manuell eintragen
-            </a>
+    <div id="import-upload-section">
+        <fieldset class="form-group">
+            <legend class="border-bottom mb-4">Einsätze aus Google-Sheet importieren</legend>
+            <p class="text-muted">
+                Lade den .csv- oder .xlsx-Export der Selbstmelde-Tabelle hoch. Die Einträge werden
+                automatisch in Neu / Duplikate / Konflikte einsortiert - du wählst pro Kategorie aus,
+                was übernommen werden soll.
+            </p>
+        </fieldset>
+        <form method="POST" enctype="multipart/form-data" id="import-upload-form">
+            {% csrf_token %}
+            <label id="import-drop-zone" class="d-block border border-2 border-dashed rounded p-5 text-center mb-3" style="cursor: pointer;">
+                <i class="bi bi-cloud-arrow-up-fill" style="font-size: 2rem;"></i>
+                <p class="mb-0">Datei hierher ziehen oder klicken, um eine Datei auszuwählen.</p>
+                {{ form|crispy }}
+            </label>
+            <div class="form-group">
+                <button class="btn btn-outline-info" type="submit" id="import-upload-btn">Hochladen</button>
+                <a class="btn btn-outline-secondary" href="{% url 'view-officials-gameofficial-external-create' %}">
+                    Extern ohne Datei manuell eintragen
+                </a>
+                <a class="btn btn-outline-secondary" href="{% url 'view-officials-gameofficial-internal-create' %}">
+                    Intern ohne Datei manuell eintragen
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div id="import-summary-bar" class="alert alert-light border d-flex justify-content-between align-items-center d-none">
+        <span>📄 <strong id="import-filename"></strong></span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="import-reset-btn">Andere Datei hochladen</button>
+    </div>
+
+    <div id="import-spinner" class="text-center my-5 d-none">
+        <div class="spinner-border text-info" role="status">
+            <span class="visually-hidden">Wird geladen ...</span>
         </div>
-    </form>
+        <p class="mt-2 text-muted">Datei wird verarbeitet ...</p>
+    </div>
+
+    <div id="import-error" class="alert alert-danger d-none" role="alert"></div>
+
+    <div id="import-results" class="d-none">
+        <ul class="nav nav-tabs mb-3" id="import-branch-tabs"></ul>
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted small text-uppercase">Filter</span>
+                <div class="btn-group" role="group" id="import-stepper"></div>
+            </div>
+            <div class="d-flex align-items-center gap-2" id="import-pagination"></div>
+        </div>
+
+        <div class="input-group mb-2">
+            <input type="text" class="form-control" id="import-search-input"
+                   placeholder='Suche... (z.B. "mix" oder position:mix datum:heute)'>
+            <button class="btn btn-outline-secondary d-none" type="button" id="import-search-clear"
+                    title="Suche löschen">✕</button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle">
+                <thead>
+                    <tr id="import-table-head"></tr>
+                </thead>
+                <tbody id="import-table-body"></tbody>
+            </table>
+        </div>
+        <div id="import-unclassified" class="alert alert-warning d-none"></div>
+        <form method="POST" action="{% url 'view-officials-gameofficial-import-confirm' %}" id="import-confirm-form" class="mt-3">
+            {% csrf_token %}
+            <div id="import-confirm-hidden-inputs"></div>
+            <button type="submit" class="btn btn-success">
+                Bestätigen (<span id="import-selected-count">0</span> ausgewählt)
+            </button>
+        </form>
+    </div>
 </div>
+<style>
+#import-stepper .btn.step-new.active { background-color: #198754; border-color: #198754; color: #fff; }
+#import-stepper .btn.step-new:not(.active) { color: #198754; border-color: #198754; }
+#import-stepper .btn.step-duplicate.active { background-color: #6c757d; border-color: #6c757d; color: #fff; }
+#import-stepper .btn.step-duplicate:not(.active) { color: #6c757d; border-color: #6c757d; }
+#import-stepper .btn.step-conflict.active { background-color: #dc3545; border-color: #dc3545; color: #fff; }
+#import-stepper .btn.step-conflict:not(.active) { color: #dc3545; border-color: #dc3545; }
+</style>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     var dropZone = document.getElementById("import-drop-zone");
     var fileInput = document.getElementById("id_file");
-    if (!dropZone || !fileInput) {
-        return;
-    }
-    ["dragover", "dragleave", "drop"].forEach(function (eventName) {
-        dropZone.addEventListener(eventName, function (event) {
-            event.preventDefault();
-            event.stopPropagation();
+    if (dropZone && fileInput) {
+        ["dragover", "dragleave", "drop"].forEach(function (eventName) {
+            dropZone.addEventListener(eventName, function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            });
         });
+        dropZone.addEventListener("drop", function (event) {
+            if (event.dataTransfer && event.dataTransfer.files.length) {
+                fileInput.files = event.dataTransfer.files;
+            }
+        });
+    }
+
+    var PAGE_SIZE = 25;
+    var STATUS_LABELS = {new: "Neu", duplicate: "Duplikate", conflict: "Konflikte"};
+    var STATUS_CSS_CLASS = {new: "step-new", duplicate: "step-duplicate", conflict: "step-conflict"};
+    var BRANCH_LABELS = {external: "Externe Einsätze", internal_fix: "Interne Korrekturen"};
+    var BRANCH_STEPS = {
+        external: ["new", "duplicate", "conflict"],
+        internal_fix: ["new", "conflict"],
+    };
+    var EXTERNAL_COLUMNS = [
+        {key: "official_display", label: "Official"},
+        {key: "date", label: "Datum"},
+        {key: "position", label: "Position"},
+        {key: "association", label: "Verband"},
+        {key: "number_games", label: "Spiele"},
+        {key: "comment", label: "Anmerkung"},
+        {key: "reason", label: "Grund"},
+    ];
+    var INTERNAL_COLUMNS = [
+        {key: "gameinfo_id", label: "Spiel-ID"},
+        {key: "official_display", label: "Meldender Official"},
+        {key: "position", label: "Position"},
+        {key: "action", label: "Aktion"},
+        {key: "current_official_display", label: "Aktuell"},
+        {key: "reason", label: "Grund"},
+    ];
+    // Search-bar tag keys (both German and English spellings accepted)
+    // mapped onto the actual row field they filter.
+    var FIELD_ALIASES = {
+        official: "official_display", meldender: "official_display",
+        position: "position",
+        verband: "association", association: "association",
+        datum: "date", date: "date",
+        grund: "reason", reason: "reason",
+        spiele: "number_games", games: "number_games",
+        anmerkung: "comment", comment: "comment",
+        aktion: "action", action: "action",
+        aktuell: "current_official_display",
+        spiel: "gameinfo_id", spielid: "gameinfo_id", gameinfo: "gameinfo_id",
+    };
+
+    var uploadSection = document.getElementById("import-upload-section");
+    var uploadForm = document.getElementById("import-upload-form");
+    var uploadBtn = document.getElementById("import-upload-btn");
+    var summaryBar = document.getElementById("import-summary-bar");
+    var spinner = document.getElementById("import-spinner");
+    var errorBox = document.getElementById("import-error");
+    var resultsBox = document.getElementById("import-results");
+    var unclassifiedBox = document.getElementById("import-unclassified");
+
+    var state = null;
+    var selected = {external: new Set(), internal_fix: new Set()};
+    var activeBranch = "external";
+    var activeStep = "new";
+    var currentPage = 1;
+    var searchQuery = "";
+
+    uploadForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+        errorBox.classList.add("d-none");
+        resultsBox.classList.add("d-none");
+        spinner.classList.remove("d-none");
+        uploadBtn.disabled = true;
+
+        var fileName = fileInput.files.length ? fileInput.files[0].name : "";
+        var formData = new FormData(uploadForm);
+        fetch(window.location.href, {
+            method: "POST",
+            body: formData,
+            headers: {"X-Requested-With": "XMLHttpRequest"},
+        })
+            .then(function (response) {
+                return response.json().then(function (data) {
+                    return {ok: response.ok, data: data};
+                });
+            })
+            .then(function (result) {
+                spinner.classList.add("d-none");
+                uploadBtn.disabled = false;
+                if (!result.ok) {
+                    var messagesList = [];
+                    var errors = result.data.errors || {};
+                    Object.keys(errors).forEach(function (field) {
+                        errors[field].forEach(function (msg) { messagesList.push(msg); });
+                    });
+                    errorBox.textContent = messagesList.join(" ") || "Fehler beim Verarbeiten der Datei.";
+                    errorBox.classList.remove("d-none");
+                    return;
+                }
+                onDataLoaded(result.data, fileName);
+            })
+            .catch(function () {
+                spinner.classList.add("d-none");
+                uploadBtn.disabled = false;
+                errorBox.textContent = "Netzwerkfehler beim Hochladen.";
+                errorBox.classList.remove("d-none");
+            });
     });
-    dropZone.addEventListener("drop", function (event) {
-        if (event.dataTransfer && event.dataTransfer.files.length) {
-            fileInput.files = event.dataTransfer.files;
+
+    document.getElementById("import-reset-btn").addEventListener("click", function () {
+        state = null;
+        resultsBox.classList.add("d-none");
+        summaryBar.classList.add("d-none");
+        uploadSection.classList.remove("d-none");
+        uploadForm.reset();
+    });
+
+    // Single search bar: typing only re-renders the BODY, so the input
+    // itself (outside the table) is never rebuilt and never loses focus.
+    function updateSearchClear() {
+        var hasQuery = searchQuery && searchQuery.length > 0;
+        document.getElementById("import-search-clear").classList.toggle("d-none", !hasQuery);
+    }
+    document.getElementById("import-search-input").addEventListener("input", function (event) {
+        searchQuery = event.target.value;
+        currentPage = 1;
+        updateSearchClear();
+        renderTableBody();
+    });
+    // Clearing keeps the results visible - it only resets the query,
+    // unlike the "Andere Datei hochladen" button above which discards
+    // the whole import.
+    document.getElementById("import-search-clear").addEventListener("click", function () {
+        searchQuery = "";
+        currentPage = 1;
+        document.getElementById("import-search-input").value = "";
+        updateSearchClear();
+        renderTableBody();
+        document.getElementById("import-search-input").focus();
+    });
+    document.getElementById("import-search-input").addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+            searchQuery = "";
+            currentPage = 1;
+            event.target.value = "";
+            updateSearchClear();
+            renderTableBody();
         }
+    });
+
+    function onDataLoaded(data, fileName) {
+        state = data;
+        selected = {external: new Set(), internal_fix: new Set()};
+        ["external", "internal_fix"].forEach(function (branch) {
+            BRANCH_STEPS[branch].forEach(function (step) {
+                (state[branch][step] || []).forEach(function (row) {
+                    if (row.include_default) {
+                        selected[branch].add(row.row_number);
+                    }
+                });
+            });
+        });
+        activeBranch = "external";
+        activeStep = "new";
+        resetSearch();
+
+        if (state.unclassified && state.unclassified.length) {
+            unclassifiedBox.textContent = state.unclassified.length + " Zeile(n) konnten keinem Bereich zugeordnet werden und werden ignoriert.";
+            unclassifiedBox.classList.remove("d-none");
+        } else {
+            unclassifiedBox.classList.add("d-none");
+        }
+
+        // The drop zone / upload chooser is only useful before there's
+        // something to review - once results exist it's just noise
+        // taking up space above the thing the staff actually needs.
+        uploadSection.classList.add("d-none");
+        document.getElementById("import-filename").textContent = fileName || "(manuell)";
+        summaryBar.classList.remove("d-none");
+
+        resultsBox.classList.remove("d-none");
+        renderBranchTabs();
+        renderStepper();
+        renderTable();
+        updateConfirmButton();
+    }
+
+    function branchTotal(branch) {
+        return BRANCH_STEPS[branch].reduce(function (sum, step) {
+            return sum + (state[branch][step] || []).length;
+        }, 0);
+    }
+
+    function renderBranchTabs() {
+        var container = document.getElementById("import-branch-tabs");
+        container.innerHTML = "";
+        Object.keys(BRANCH_LABELS).forEach(function (branch) {
+            var li = document.createElement("li");
+            li.className = "nav-item";
+            var a = document.createElement("a");
+            a.href = "#";
+            a.className = "nav-link" + (branch === activeBranch ? " active" : "");
+            a.textContent = BRANCH_LABELS[branch] + " (" + branchTotal(branch) + ")";
+            a.addEventListener("click", function (event) {
+                event.preventDefault();
+                activeBranch = branch;
+                activeStep = "new";
+                currentPage = 1;
+                resetSearch();
+                renderBranchTabs();
+                renderStepper();
+                renderTableHead();
+                renderTableBody();
+            });
+            li.appendChild(a);
+            container.appendChild(li);
+        });
+    }
+
+    function renderStepper() {
+        var container = document.getElementById("import-stepper");
+        container.innerHTML = "";
+        BRANCH_STEPS[activeBranch].forEach(function (step) {
+            var count = (state[activeBranch][step] || []).length;
+            var selectedCount = (state[activeBranch][step] || []).filter(function (row) {
+                return selected[activeBranch].has(row.row_number);
+            }).length;
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "btn btn-sm " + STATUS_CSS_CLASS[step] + (step === activeStep ? " active" : "");
+            btn.textContent = STATUS_LABELS[step] + " (" + selectedCount + "/" + count + ")";
+            btn.addEventListener("click", function () {
+                activeStep = step;
+                currentPage = 1;
+                resetSearch();
+                renderStepper();
+                renderTableHead();
+                renderTableBody();
+            });
+            container.appendChild(btn);
+        });
+    }
+
+    function currentRows() {
+        return state[activeBranch][activeStep] || [];
+    }
+
+    function columnsFor() {
+        return activeBranch === "external" ? EXTERNAL_COLUMNS : INTERNAL_COLUMNS;
+    }
+
+    function resetSearch() {
+        searchQuery = "";
+        currentPage = 1;
+        var input = document.getElementById("import-search-input");
+        if (input) {
+            input.value = "";
+        }
+        updateSearchClear();
+    }
+
+    function localISODate(d) {
+        return d.getFullYear() + "-"
+            + String(d.getMonth() + 1).padStart(2, "0") + "-"
+            + String(d.getDate()).padStart(2, "0");
+    }
+
+    function tokenizeSearch(query) {
+        // Multi-word date ranges contain a space ("last week"), which a
+        // naive split-on-spaces would tear into two tokens
+        // ("date:last" + "week"). Normalize the known phrases to a
+        // single token first so they work with or without quotes.
+        var normalized = (query || "")
+            .replace(/letzte\s+woche/gi, "letzte-woche")
+            .replace(/letzter\s+monat/gi, "letzter-monat")
+            .replace(/last\s+week/gi, "last-week")
+            .replace(/last\s+month/gi, "last-month");
+        var tokens = [];
+        var re = /"([^"]+)"|(\S+)/g;
+        var m;
+        while ((m = re.exec(normalized)) !== null) {
+            tokens.push(m[1] !== undefined ? m[1] : m[2]);
+        }
+        return tokens;
+    }
+
+    function matchDateValue(rowDateStr, filterValue) {
+        var needle = (filterValue || "").trim().toLowerCase();
+        if (!needle) {
+            return true;
+        }
+        var today = new Date();
+        var todayISO = localISODate(today);
+        var yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        var yesterdayISO = localISODate(yesterday);
+        // Relative keywords (German + English). Week/month mean the
+        // trailing 7/30 days including today; year means the current
+        // calendar year.
+        if (needle === "today" || needle === "heute") {
+            return rowDateStr === todayISO;
+        }
+        if (needle === "yesterday" || needle === "gestern") {
+            return rowDateStr === yesterdayISO;
+        }
+        if (needle === "week" || needle === "woche" || needle === "this-week"
+                || needle === "thisweek" || needle === "diesewoche"
+                || needle === "last" || needle === "letzte"
+                || needle === "last-week" || needle === "lastweek"
+                || needle === "letzte-woche") {
+            var weekAgo = new Date(today);
+            weekAgo.setDate(weekAgo.getDate() - 6);
+            return rowDateStr >= localISODate(weekAgo);
+        }
+        if (needle === "month" || needle === "monat"
+                || needle === "last-month" || needle === "lastmonth"
+                || needle === "letzter-monat" || needle === "30d") {
+            var monthAgo = new Date(today);
+            monthAgo.setDate(monthAgo.getDate() - 29);
+            return rowDateStr >= localISODate(monthAgo);
+        }
+        if (needle === "year" || needle === "jahr" || needle === "this-year"
+                || needle === "thisyear" || needle === "diesesjahr"
+                || needle === "dieses-jahr") {
+            return (rowDateStr || "").slice(0, 4) === todayISO.slice(0, 4);
+        }
+        // Explicit date: match against ISO ("2026-09-18", "2026-09",
+        // "2026") and German ("18.09.2026", "18.09") spellings.
+        var iso = rowDateStr || "";
+        var german = "";
+        var parts = iso.split("-");
+        if (parts.length === 3) {
+            german = parts[2] + "." + parts[1] + "." + parts[0];
+        }
+        return iso.toLowerCase().indexOf(needle) !== -1
+            || german.toLowerCase().indexOf(needle) !== -1;
+    }
+
+    function rowMatchesToken(row, columns, token) {
+        var colon = token.indexOf(":");
+        if (colon > 0) {
+            var alias = token.slice(0, colon).trim().toLowerCase();
+            var rawValue = token.slice(colon + 1).trim().toLowerCase()
+                .replace(/^"|"$/g, "");
+            var field = FIELD_ALIASES[alias];
+            if (field && rawValue) {
+                var value = row[field];
+                if (value === null || value === undefined) {
+                    return false;
+                }
+                if (field === "date") {
+                    return matchDateValue(String(value), rawValue);
+                }
+                return String(value).toLowerCase().indexOf(rawValue) !== -1;
+            }
+            // Unknown "key:" prefix - fall through to free-text match
+            // on the whole token so nothing silently matches nothing.
+        }
+        var needle = token.trim().toLowerCase().replace(/^"|"$/g, "");
+        if (!needle) {
+            return true;
+        }
+        return columns.some(function (col) {
+            var value = row[col.key];
+            if (value === null || value === undefined) {
+                return false;
+            }
+            return String(value).toLowerCase().indexOf(needle) !== -1;
+        });
+    }
+
+    function filteredRows() {
+        var rows = currentRows();
+        var tokens = tokenizeSearch(searchQuery);
+        if (!tokens.length) {
+            return rows;
+        }
+        var columns = columnsFor();
+        return rows.filter(function (row) {
+            return tokens.every(function (token) {
+                return rowMatchesToken(row, columns, token);
+            });
+        });
+    }
+
+    // Header holds only the column labels + the Gmail-style select-all
+    // checkbox. The single search bar above the table is intentionally
+    // NOT part of the table, so re-rendering the body (on every
+    // keystroke, page turn, or checkbox toggle) can never steal focus
+    // from the input - the per-column-filter focus-loss bug this
+    // replaces came from rebuilding <input> elements on each keystroke.
+    // renderTableHead() only runs on branch/step switches; everything
+    // else calls renderTableBody().
+    function renderTableHead() {
+        var columns = columnsFor();
+
+        var headRow = document.getElementById("import-table-head");
+        headRow.innerHTML = "";
+        var selectAllTh = document.createElement("th");
+        var selectAllCheckbox = document.createElement("input");
+        selectAllCheckbox.type = "checkbox";
+        selectAllCheckbox.className = "form-check-input";
+        selectAllCheckbox.id = "import-select-all-checkbox";
+        selectAllCheckbox.title = "Alle sichtbaren (gefilterten) Zeilen auswählen/abwählen";
+        selectAllCheckbox.addEventListener("change", function () {
+            var rows = filteredRows();
+            if (selectAllCheckbox.checked) {
+                rows.forEach(function (row) {
+                    selected[activeBranch].add(row.row_number);
+                });
+            } else {
+                rows.forEach(function (row) {
+                    selected[activeBranch].delete(row.row_number);
+                });
+            }
+            renderStepper();
+            renderTableBody();
+            updateConfirmButton();
+        });
+        selectAllTh.appendChild(selectAllCheckbox);
+        headRow.appendChild(selectAllTh);
+        columns.forEach(function (col) {
+            var th = document.createElement("th");
+            th.textContent = col.label;
+            headRow.appendChild(th);
+        });
+    }
+
+    function renderTable() {
+        renderTableHead();
+        renderTableBody();
+    }
+
+    function updateSelectAllCheckboxState(rows) {
+        var checkbox = document.getElementById("import-select-all-checkbox");
+        if (!checkbox) {
+            return;
+        }
+        var selectedInFiltered = rows.filter(function (row) { return selected[activeBranch].has(row.row_number); }).length;
+        checkbox.checked = rows.length > 0 && selectedInFiltered === rows.length;
+        checkbox.indeterminate = selectedInFiltered > 0 && selectedInFiltered < rows.length;
+    }
+
+    function renderTableBody() {
+        var allRows = currentRows();
+        var rows = filteredRows();
+        var totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+        if (currentPage > totalPages) {
+            currentPage = totalPages;
+        }
+        var start = (currentPage - 1) * PAGE_SIZE;
+        var pageRows = rows.slice(start, start + PAGE_SIZE);
+        var columns = columnsFor();
+
+        updateSelectAllCheckboxState(rows);
+
+        var body = document.getElementById("import-table-body");
+        body.innerHTML = "";
+        if (!pageRows.length) {
+            var emptyRow = document.createElement("tr");
+            var emptyCell = document.createElement("td");
+            emptyCell.colSpan = columns.length + 1;
+            emptyCell.className = "text-muted text-center";
+            emptyCell.textContent = allRows.length ? "Keine Einträge passen zum Filter." : "Keine Einträge in dieser Kategorie.";
+            emptyRow.appendChild(emptyCell);
+            body.appendChild(emptyRow);
+        }
+        pageRows.forEach(function (row) {
+            var tr = document.createElement("tr");
+            var tdCheck = document.createElement("td");
+            var checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.className = "form-check-input";
+            checkbox.checked = selected[activeBranch].has(row.row_number);
+            checkbox.addEventListener("change", function () {
+                if (checkbox.checked) {
+                    selected[activeBranch].add(row.row_number);
+                } else {
+                    selected[activeBranch].delete(row.row_number);
+                }
+                renderStepper();
+                updateSelectAllCheckboxState(rows);
+                updateConfirmButton();
+            });
+            tdCheck.appendChild(checkbox);
+            tr.appendChild(tdCheck);
+            columns.forEach(function (col) {
+                var td = document.createElement("td");
+                var value = row[col.key];
+                if (typeof value === "boolean") {
+                    value = value ? "Ja" : "Nein";
+                }
+                td.textContent = (value === null || value === undefined) ? "" : value;
+                tr.appendChild(td);
+            });
+            body.appendChild(tr);
+        });
+
+        renderPagination(totalPages, rows.length, allRows.length);
+    }
+
+    function renderPagination(totalPages, filteredCount, totalCount) {
+        var container = document.getElementById("import-pagination");
+        container.innerHTML = "";
+        var info = document.createElement("span");
+        info.className = "text-muted small";
+        info.textContent = filteredCount === totalCount
+            ? "Seite " + currentPage + " von " + totalPages + " (" + totalCount + " Einträge)"
+            : "Seite " + currentPage + " von " + totalPages + " (" + filteredCount + " von " + totalCount + " Einträgen gefiltert)";
+        var prev = document.createElement("button");
+        prev.type = "button";
+        prev.className = "btn btn-sm btn-outline-secondary";
+        prev.textContent = "‹";
+        prev.disabled = currentPage <= 1;
+        prev.addEventListener("click", function () {
+            currentPage -= 1;
+            renderTable();
+        });
+        var next = document.createElement("button");
+        next.type = "button";
+        next.className = "btn btn-sm btn-outline-secondary";
+        next.textContent = "›";
+        next.disabled = currentPage >= totalPages;
+        next.addEventListener("click", function () {
+            currentPage += 1;
+            renderTable();
+        });
+        container.appendChild(prev);
+        container.appendChild(info);
+        container.appendChild(next);
+    }
+
+    function updateConfirmButton() {
+        var total = selected.external.size + selected.internal_fix.size;
+        document.getElementById("import-selected-count").textContent = total;
+    }
+
+    document.getElementById("import-confirm-form").addEventListener("submit", function () {
+        // One field per branch with all selected row_numbers joined by
+        // comma - not one hidden <input> per row. A real import can have
+        // thousands of rows selected at once, and one field per row hits
+        // Django's DATA_UPLOAD_MAX_NUMBER_FIELDS ceiling well before that.
+        var container = document.getElementById("import-confirm-hidden-inputs");
+        container.innerHTML = "";
+        var externalInput = document.createElement("input");
+        externalInput.type = "hidden";
+        externalInput.name = "external_rows";
+        externalInput.value = Array.from(selected.external).join(",");
+        container.appendChild(externalInput);
+        var internalInput = document.createElement("input");
+        internalInput.type = "hidden";
+        internalInput.name = "internal_rows";
+        internalInput.value = Array.from(selected.internal_fix).join(",");
+        container.appendChild(internalInput);
     });
 });
 </script>

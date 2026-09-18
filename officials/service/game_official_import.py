@@ -10,7 +10,7 @@ Bereich möchtest du einen Einsatz melden?" question distinguishes:
 
 This module only produces suggestions (ParsedImportResult) - it never
 writes to the database itself. The views layer re-validates and saves each
-checked row from scratch at confirm time (see GameOfficialImportPreviewView),
+checked row from scratch at confirm time (see GameOfficialImportConfirmView),
 so staleness between preview and confirm is handled there, not here.
 """
 
