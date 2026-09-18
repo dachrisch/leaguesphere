@@ -1,0 +1,22 @@
+{% load static %}
+{# Sitewide brand identity markup. Rendered on every page via base.html, #}
+{# outside the page-specific {% block ld_json %} so SportsEvent / #}
+{# SportsOrganization overrides keep working alongside it. #}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "name": "LeagueSphere",
+      "url": "{{ request.scheme }}://{{ request.get_host }}",
+      "logo": "{{ request.scheme }}://{{ request.get_host }}{% static 'teammanager/icons/football-og.jpg' %}"
+    },
+    {
+      "@type": "WebSite",
+      "name": "LeagueSphere",
+      "url": "{{ request.scheme }}://{{ request.get_host }}"
+    }
+  ]
+}
+</script>
