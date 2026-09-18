@@ -16,7 +16,7 @@ so staleness between preview and confirm is handled there, not here.
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date
 from typing import Optional
 
 import pandas as pd
@@ -198,16 +198,52 @@ def _to_bool(raw_value, label, errors) -> bool:
     return False
 
 
+def _parse_date_flexible(stripped: str) -> Optional[date]:
+    """Parses a date/datetime cell value that may come from either a
+    .csv export (German display-format strings like "10.06.2023" /
+    "10.06.2023 03:31:19") or an .xlsx export, where the source columns
+    are native Excel date/datetime cells that parse_uploaded_file()'s
+    dtype=str read stringifies via Python's default
+    str(datetime)/str(Timestamp) representation - "2023-06-10 00:00:00"
+    or "2023-09-05 03:31:19.233000" (variable microsecond precision).
+
+    ISO-shaped strings are tried first with a strict ISO8601 parse.
+    This matters because pandas' dayfirst=True flexible parser - needed
+    to correctly resolve the German DD.MM.YYYY format - also
+    reinterprets unambiguous "YYYY-MM-DD" strings as "YYYY-DD-MM"
+    whenever both components are <=12 (e.g. it would silently turn
+    "2023-06-10" into 2023-10-06). Only when the strict ISO8601 parse
+    fails do we fall back to the dayfirst=True flexible parse, which
+    correctly handles the German display format.
+
+    The real production spreadsheet also contains a handful of rows with
+    corrupted year values left over from years of manual data entry, e.g.
+    "1/21/0023" or "5/25/0225" instead of "1/21/2023"/"5/25/2025". The
+    dayfirst=True fallback "successfully" parses these to nonsensical
+    years (23, 225, ...) rather than raising, which would let obviously
+    corrupt data through as a clean result. Since every genuine date in
+    this domain falls within 2023-2026, any parsed year below 2000 is
+    treated the same as an unparseable value.
+    """
+    parsed = pd.to_datetime(stripped, format="ISO8601", errors="coerce")
+    if pd.isna(parsed):
+        parsed = pd.to_datetime(stripped, dayfirst=True, errors="coerce")
+    if pd.isna(parsed):
+        return None
+    if parsed.year < 2000:
+        return None
+    return parsed.date()
+
+
 def _to_date(raw_value, label, errors) -> Optional[date]:
     stripped = _clean_str(raw_value)
     if not stripped:
         errors.append(f"{label} fehlt.")
         return None
-    try:
-        return datetime.strptime(stripped, "%d.%m.%Y").date()
-    except ValueError:
+    parsed = _parse_date_flexible(stripped)
+    if parsed is None:
         errors.append(f"{label} hat ein unbekanntes Format: '{stripped}'.")
-        return None
+    return parsed
 
 
 def _to_notification_date(raw_value, errors) -> Optional[date]:
@@ -217,13 +253,10 @@ def _to_notification_date(raw_value, errors) -> Optional[date]:
     stripped = _clean_str(raw_value)
     if not stripped:
         return None
-    for fmt in ("%d.%m.%Y %H:%M:%S", "%d.%m.%Y"):
-        try:
-            return datetime.strptime(stripped, fmt).date()
-        except ValueError:
-            continue
-    errors.append(f"Zeitstempel hat ein unbekanntes Format: '{stripped}'.")
-    return None
+    parsed = _parse_date_flexible(stripped)
+    if parsed is None:
+        errors.append(f"Zeitstempel hat ein unbekanntes Format: '{stripped}'.")
+    return parsed
 
 
 def _parse_external_row(row_number, raw: dict) -> dict:

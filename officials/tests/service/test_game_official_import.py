@@ -1,5 +1,5 @@
 import io
-from datetime import date
+from datetime import date, datetime
 
 import openpyxl
 import pytest
@@ -17,6 +17,9 @@ from officials.service.game_official_import import (
     EXTERNAL_COLUMNS,
     INTERNAL_FIX_COLUMNS,
     ImportColumnError,
+    _parse_date_flexible,
+    _to_date,
+    _to_notification_date,
     build_import_result,
     parse_uploaded_file,
 )
@@ -265,6 +268,129 @@ class TestImportColumnError(TestCase):
             build_import_result(df)
 
 
+class TestDateParsingHandlesXlsxNativeDates(TestCase):
+    """.xlsx exports store "Wann hat der Einsatz stattgefunden?" and
+    "Zeitstempel" as native Excel date/datetime cells, not the German
+    display-format text .csv exports use. parse_uploaded_file() reads
+    with dtype=str, which stringifies those cells via Python's default
+    str(datetime)/str(Timestamp) representation - "YYYY-MM-DD HH:MM:SS"
+    (and "...ffffff" when there are microseconds) - not "DD.MM.YYYY".
+    These are the two real values pulled from a production .xlsx export
+    that a plain "%d.%m.%Y" strptime format list can't parse."""
+
+    def test_to_date_parses_xlsx_stringified_date_cell(self):
+        errors = []
+
+        result = _to_date("2023-06-10 00:00:00", "Einsatzdatum", errors)
+
+        assert result == date(2023, 6, 10)
+        assert errors == []
+
+    def test_to_notification_date_parses_xlsx_stringified_timestamp_with_microseconds(
+        self,
+    ):
+        errors = []
+
+        result = _to_notification_date("2023-09-05 03:31:19.233000", errors)
+
+        assert result == date(2023, 9, 5)
+        assert errors == []
+
+    def test_to_date_still_parses_german_display_format(self):
+        # Regression: the .csv-export format that already worked must
+        # keep working once ISO-shaped strings are also accepted.
+        errors = []
+
+        result = _to_date("10.06.2023", "Einsatzdatum", errors)
+
+        assert result == date(2023, 6, 10)
+        assert errors == []
+
+    def test_to_notification_date_still_parses_german_display_format_with_time(self):
+        errors = []
+
+        result = _to_notification_date("05.09.2023 03:31:19", errors)
+
+        assert result == date(2023, 9, 5)
+        assert errors == []
+
+    def test_to_date_empty_value_appends_error(self):
+        errors = []
+
+        result = _to_date("", "Einsatzdatum", errors)
+
+        assert result is None
+        assert "Einsatzdatum fehlt." in errors
+
+    def test_to_notification_date_empty_value_returns_none_without_error(self):
+        errors = []
+
+        result = _to_notification_date("", errors)
+
+        assert result is None
+        assert errors == []
+
+    def test_to_date_unparseable_value_appends_error(self):
+        errors = []
+
+        result = _to_date("not a date", "Einsatzdatum", errors)
+
+        assert result is None
+        assert any("Einsatzdatum" in error for error in errors)
+
+    def test_to_notification_date_unparseable_value_appends_error(self):
+        errors = []
+
+        result = _to_notification_date("not a date", errors)
+
+        assert result is None
+        assert any("Zeitstempel" in error for error in errors)
+
+
+class TestDateParsingRejectsImplausibleYears(TestCase):
+    """The production spreadsheet (5,334 rows, 3 years of history) has 13
+    rows with genuinely corrupted year values, e.g. "1/21/0023" instead of
+    "1/21/2023". pandas' dayfirst=True fallback parses these "successfully"
+    to nonsensical years (23, 225, 26, ...) rather than raising - which
+    would let obviously-corrupt data reach status="ready" and get bulk-
+    committed. All genuine dates in the real dataset fall in 2023-2026, so
+    any parsed year below 2000 is treated as unparsed instead."""
+
+    def test_parse_date_flexible_rejects_two_digit_year_from_corrupted_slash_date(
+        self,
+    ):
+        result = _parse_date_flexible("1/21/0023")
+
+        assert result is None
+
+    def test_parse_date_flexible_rejects_three_digit_year_from_corrupted_slash_date(
+        self,
+    ):
+        result = _parse_date_flexible("5/25/0225")
+
+        assert result is None
+
+    def test_parse_date_flexible_rejects_another_two_digit_year_from_corrupted_slash_date(
+        self,
+    ):
+        result = _parse_date_flexible("2/28/0026")
+
+        assert result is None
+
+    def test_to_date_with_implausible_year_appends_unbekanntes_format_error(self):
+        # Confirms the guard is wired through to row-level classification,
+        # not just the low-level helper - one example is enough since the
+        # other corrupted values all exercise the same code path.
+        errors = []
+
+        result = _to_date("1/21/0023", "Einsatzdatum", errors)
+
+        assert result is None
+        assert any(
+            "Einsatzdatum hat ein unbekanntes Format" in error for error in errors
+        )
+
+
 class TestExternalClassification(TestCase):
     def test_valid_row_is_ready_and_included_by_default(self):
         team = TeamFactory(name="Test Team")
@@ -399,6 +525,46 @@ class TestExternalClassification(TestCase):
         result = build_import_result(df)
 
         assert result.external[0].status == "ready"
+
+
+class TestExternalClassificationWithXlsxNativeDateCells(TestCase):
+    """Regression test for the bug where .xlsx exports store the date
+    columns as native Excel date/datetime cells rather than text.
+    Unlike the other xlsx-shaped tests in this file, which pass plain
+    strings that openpyxl writes as text cells regardless of file
+    format, this builds a workbook with genuine datetime.date /
+    datetime.datetime typed cells - the shape that reproduced the
+    production bug and that the previous test suite never exercised."""
+
+    def test_row_with_native_date_and_datetime_cells_is_ready(self):
+        team = TeamFactory(name="Test Team")
+        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
+        row = _external_row(
+            official_id=official.pk,
+            number_games="2",
+            position="Referee",
+            association="Hamburg",
+            halftime_duration="20",
+            is_international="Ja",
+            has_clockcontrol="Nein",
+        )
+        # Overwrite with real date/datetime objects (not string
+        # literals) so openpyxl writes them as native Excel date cells,
+        # exactly like the real Google Sheet .xlsx export.
+        row[ALL_HEADERS.index("Wann hat der Einsatz stattgefunden?")] = date(
+            2023, 6, 10
+        )
+        row[ALL_HEADERS.index("Zeitstempel")] = datetime(2023, 9, 5, 3, 31, 19, 233000)
+        upload = _xlsx_upload([row])
+        df = parse_uploaded_file(upload)
+
+        result = build_import_result(df)
+
+        suggestion = result.external[0]
+        assert suggestion.status == "ready"
+        assert suggestion.reason == ""
+        assert suggestion.date == date(2023, 6, 10)
+        assert suggestion.notification_date == date(2023, 9, 5)
 
 
 class TestInternalFixClassification(TestCase):
