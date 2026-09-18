@@ -685,6 +685,16 @@ jobs:
 
             echo "${TAG} is current. Proceeding."
 
+  scope_anchor:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run:
+          name: Scope anchor (keeps scoped requires lists non-empty)
+          command: |
+            echo "scope anchor — always runs so image builds are never skipped when all test shards are filtered out"
+            echo "(see the build_test_deploy comment on requires + path-filtered jobs)"
+
   scope_coverage:
     docker:
       - image: cimg/python:3.14.7
@@ -972,30 +982,33 @@ workflows:
     jobs:
       # Scoped test jobs: no `requires` (they fan out in parallel) and
       # an expression filter each, driven by the pipeline parameters the
-      # scope job sets in config.yml. The image builds deliberately have
-      # NO `requires` on the test shards: a job whose `requires` list is
-      # entirely filtered out is itself skipped (even when its own filter
-      # is true), so gating build_frontend on the five *_js jobs means a
-      # backend-only change skips the frontend build and test_compose_network
-      # then hard-fails on `docker load` of the missing frontend.tar
-      # (observed on pipelines 5503 and 5525). Only jobs with no `requires`
-      # (the test shards + e2e below) can be safely path-filtered; builds
-      # run in parallel with the tests, gated only by their filter. e2e
-      # needs neither image and runs fully in parallel with the shards and
-      # the builds; it instead gates the post-build image smoke tests
+      # scope job sets in config.yml. The image builds `require` their
+      # directly-relevant unit/lint shards so tests always gate builds —
+      # plus the always-run `scope_anchor` noop: a job whose `requires`
+      # list is entirely filtered out is itself skipped (even when its
+      # own filter is true), so without the anchor a backend-only change
+      # would skip build_frontend (all five *_js jobs filtered) and
+      # test_compose_network would then hard-fail on `docker load` of the
+      # missing frontend.tar (observed on pipelines 5503 and 5525). The
+      # anchor guarantees at least one requirement always remains, so a
+      # build waits for whichever tests run and never skips. Only the
+      # test shards + e2e below are path-filtered; everything downstream
+      # keeps its `requires`. e2e needs neither image and runs fully in
+      # parallel with the shards and the builds; it instead gates the
+      # post-build image smoke tests
       # (test_backend_image/test_frontend_image), so a slow browser suite
       # never delays kicking off a docker build. Deploys `require`
-      # test_compose_network, which fans in on every test shard plus both
-      # builds, both image tests, and check_migrations — so a failing test
-      # still blocks the deploy even though the builds no longer wait for
-      # tests. (A `requires` entry whose own filter is false silently drops
-      # out, so skipped shards are simply ignored by test_compose_network;
-      # the builds always run whenever test_compose_network does thanks to
-      # the shared filter below, so it can never be auto-skipped itself.)
-      # Job-level `when` is not valid in 2.1; expression filters are the
-      # documented job-level equivalent. Tag pipelines resolve a full
-      # run because release version files match shared + every app's
-      # mapping rules.
+      # test_compose_network rather than re-listing every shard:
+      # test_compose_network already transitively requires both builds,
+      # both image tests, and check_migrations, so it covers the full
+      # scoped test matrix (e2e included) by construction — the same
+      # chain branch pipelines already use, no separate duplicated list
+      # to drift out of sync. (Job-level `when` is not valid in 2.1;
+      # expression filters are the documented job-level equivalent.) Tag
+      # pipelines resolve a full run because release version files match
+      # shared + every app's mapping rules (on tags all shards run, so
+      # the anchor is redundant there but harmless — it simply has no
+      # filters and stays branch-only like scope_coverage).
       #
       # build_backend and build_frontend intentionally share
       # test_compose_network's exact filter (rather than each having its
@@ -1040,8 +1053,23 @@ workflows:
 
       - build_backend:
           filters: "(pipeline.parameters.run-compose == true or pipeline.parameters.run-build-backend == true or pipeline.parameters.run-build-frontend == true or pipeline.parameters.run-migrations == true)"
+          requires:
+            - scope_anchor
+            - python-core
+            - python-gamedays
+            - python-officials
+            - python-live
+            - python-designer
+            - python-cross
       - build_frontend:
           filters: "(pipeline.parameters.run-compose == true or pipeline.parameters.run-build-backend == true or pipeline.parameters.run-build-frontend == true or pipeline.parameters.run-migrations == true)"
+          requires:
+            - scope_anchor
+            - scorecard_js
+            - liveticker_js
+            - passcheck_js
+            - gameday_designer_js
+            - journey_dashboard_js
 
       - test_backend_image:
           filters: "(pipeline.parameters.run-build-backend == true or pipeline.parameters.run-migrations == true or pipeline.parameters.run-compose == true)"
@@ -1066,18 +1094,6 @@ workflows:
             - test_backend_image
             - test_frontend_image
             - check_migrations
-            - python-core
-            - python-gamedays
-            - python-officials
-            - python-live
-            - python-designer
-            - python-cross
-            - e2e
-            - scorecard_js
-            - liveticker_js
-            - passcheck_js
-            - gameday_designer_js
-            - journey_dashboard_js
 
       - ensure_draft_release:
           filters:
@@ -1100,6 +1116,9 @@ workflows:
 
       # Scope safety net (never path-scoped itself).
       - scope_coverage
+
+      # Always-run anchor keeping scoped build requires non-empty.
+      - scope_anchor
 
       # Deploy jobs run on tag pipelines only, where the scope resolves
       # to a full run. They require test_compose_network (see the fan-out

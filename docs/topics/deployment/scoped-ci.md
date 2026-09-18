@@ -19,25 +19,26 @@ into two files driven by the `circleci/path-filtering` orb:
    boolean pipeline parameters (`run-python-core`, `run-scorecard`, …).
 3. The pipeline continues with `continue.yml`, where each test job is
    gated by an expression filter on its parameter. Only relevant jobs run.
-4. Only jobs with **no** `requires` (the test shards + `e2e`) are
-   path-filtered: when every job in a `requires` list is filtered out,
-   CircleCI skips the downstream job even if its own filter is true —
-   so gating `build_frontend` on the five `*_js` jobs skipped the
-   frontend build on backend-only changes, and `test_compose_network`
-   (which unconditionally loads both images) then hard-failed on
-   `docker load` (pipelines 5503, 5525). The image builds therefore run
-   in parallel with the tests, gated only by their filter, and both
-   builds share `test_compose_network`'s exact filter (not just their
-   own narrower one) so both `backend.tar` and `frontend.tar` always
-   exist whenever the compose test runs. `e2e` runs standalone in
-   parallel with the shards and the builds (it needs neither image);
-   it gates `test_backend_image` and `test_frontend_image` instead.
-   `test_compose_network` fans in on every test shard plus both builds,
-   both image tests, and `check_migrations` — skipped shards drop out
-   of its `requires`, but any running shard that fails still blocks it.
-   Deploys `require` `test_compose_network`, covering the full scoped
+4. The image builds `require` their directly-relevant test shards so
+   tests always gate builds — plus the always-run `scope_anchor` noop:
+   a job whose entire `requires` list is filtered out is itself skipped
+   even when its own filter is true, so without the anchor a
+   backend-only change would skip `build_frontend` (all five `*_js`
+   jobs filtered) and `test_compose_network` (which unconditionally
+   loads both images) would hard-fail on `docker load` (pipelines 5503,
+   5525). The anchor guarantees at least one requirement always
+   remains. `build_backend` and `build_frontend` also share
+   `test_compose_network`'s exact filter (not just their own narrower
+   one), so both images always exist whenever the compose test runs.
+   `e2e` runs standalone in parallel with the shards and the builds (it
+   needs neither image); it gates `test_backend_image` and
+   `test_frontend_image` instead. Deploys `require`
+   `test_compose_network`, which transitively requires both builds,
+   both image tests, and `check_migrations`, covering the full scoped
    test matrix without a separately duplicated list, so tag and branch
-   pipelines share one gating chain.
+   pipelines share one gating chain. On tag pipelines all shards run
+   (full run via version files), making the anchor redundant but
+   harmless there.
 
 ### Guarantees
 
