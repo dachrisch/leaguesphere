@@ -12,6 +12,7 @@ from officials.models import Official, OfficialExternalGames, OfficialLicenseHis
 from officials.service.game_official_entries import (
     InternalGameOfficialEntry,
     ExternalGameOfficialEntry,
+    GameOfficialCorrectionEntry,
 )
 from officials.service.moodle.moodle_api import ApiCourse
 from officials.service.moodle.moodle_service import MoodleService
@@ -163,8 +164,12 @@ class OfficialService:
         entry = InternalGameOfficialEntry(*result)
         return entry.save()
 
-    def create_external_official_entry(self, result) -> str:
-        entry = ExternalGameOfficialEntry(*result)
+    def create_external_official_entry(self, data: dict) -> str:
+        entry = ExternalGameOfficialEntry(**data)
+        return entry.save()
+
+    def create_internal_fix_entry(self, data: dict) -> str:
+        entry = GameOfficialCorrectionEntry(**data)
         return entry.save()
 
     def get_game_count_for_license(self, course_id: int) -> tuple[dict, ApiCourse]:

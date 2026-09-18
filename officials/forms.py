@@ -1,4 +1,10 @@
+import os
+
 from django import forms
+
+from officials.service.game_official_entries import EXTERNAL_ALLOWED_POSITIONS
+
+IMPORT_UPLOAD_ALLOWED_EXTENSIONS = (".csv", ".xlsx", ".xls")
 
 
 class AddInternalGameOfficialEntryForm(forms.Form):
@@ -22,4 +28,37 @@ class MoodleLoginForm(forms.Form):
     remember_me = forms.BooleanField(
         required=False,
         label="Angemeldet bleiben",
+    )
+
+
+class GameOfficialImportUploadForm(forms.Form):
+    file = forms.FileField(
+        label="Datei (Google-Sheet-Export)",
+        help_text="Export der Selbstmelde-Tabelle als .csv oder .xlsx.",
+    )
+
+    def clean_file(self):
+        uploaded_file = self.cleaned_data["file"]
+        _, extension = os.path.splitext(uploaded_file.name.lower())
+        if extension not in IMPORT_UPLOAD_ALLOWED_EXTENSIONS:
+            raise forms.ValidationError(
+                "Nicht unterstütztes Dateiformat - bitte eine .csv- oder "
+                ".xlsx-Datei hochladen."
+            )
+        return uploaded_file
+
+
+class AddExternalGameOfficialEntryForm(forms.Form):
+    """Manual, no-upload fallback for the "außerhalb DFFL" branch -
+    mirrors AddInternalGameOfficialEntryForm's one-line-per-entry
+    convention (already familiar to staff) instead of inventing a new
+    one, just with the additional comma-separated fields
+    ExternalGameOfficialEntry needs."""
+
+    entries = forms.CharField(
+        widget=forms.Textarea,
+        label="Einsätze",
+        help_text="Einträge in der folgenden Reihenfolge jeweils mit Komma separiert: "
+        "official_id, Anzahl Spiele, Datum (YYYY-MM-DD), Position "
+        f"({', '.join(EXTERNAL_ALLOWED_POSITIONS)}), Verband, Dauer einer Halbzeit",
     )

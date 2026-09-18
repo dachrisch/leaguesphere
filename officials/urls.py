@@ -6,7 +6,10 @@ from officials.views import (
     OfficialsStatisticsView,
     OfficialsTeamListView,
     GameOfficialListView,
+    AddExternalGameOfficialUpdateView,
     AddInternalGameOfficialUpdateView,
+    GameOfficialImportUploadView,
+    GameOfficialImportConfirmView,
     MoodleReportView,
     OfficialProfileLicenseView,
     OfficialAssociationListView,
@@ -31,6 +34,9 @@ OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_TEAM_AND_YEAR = (
     "view-officials-game-officials-appearance-for-team-and-year"
 )
 OFFICIALS_GAMEOFFICIAL_INTERNAL_CREATE = "view-officials-gameofficial-internal-create"
+OFFICIALS_GAMEOFFICIAL_EXTERNAL_CREATE = "view-officials-gameofficial-external-create"
+OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD = "view-officials-gameofficial-import-upload"
+OFFICIALS_GAMEOFFICIAL_IMPORT_CONFIRM = "view-officials-gameofficial-import-confirm"
 OFFICIALS_LICENSE_CHECK = "view-officials-license-check"
 OFFICIALS_MOODLE_REPORT = "view-officials-moodle-report"
 OFFICIALS_PROFILE_LICENSE = "view-officials-profile-license"
@@ -87,6 +93,21 @@ urlpatterns = [
         "gameofficial/internal/create/",
         AddInternalGameOfficialUpdateView.as_view(),
         name=OFFICIALS_GAMEOFFICIAL_INTERNAL_CREATE,
+    ),
+    path(
+        "gameofficial/external/create/",
+        AddExternalGameOfficialUpdateView.as_view(),
+        name=OFFICIALS_GAMEOFFICIAL_EXTERNAL_CREATE,
+    ),
+    path(
+        "gameofficial/import/upload/",
+        GameOfficialImportUploadView.as_view(),
+        name=OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD,
+    ),
+    path(
+        "gameofficial/import/confirm/",
+        GameOfficialImportConfirmView.as_view(),
+        name=OFFICIALS_GAMEOFFICIAL_IMPORT_CONFIRM,
     ),
     path(
         "licensecheck/<int:course_id>/",

@@ -3,7 +3,7 @@ from officials.urls import (
     OFFICIALS_LIST_FOR_ALL_TEAMS,
     OFFICIALS_STATISTICS,
     OFFICIALS_GAME_OFFICIALS_APPEARANCE,
-    OFFICIALS_GAMEOFFICIAL_INTERNAL_CREATE,
+    OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD,
     OFFICIALS_LICENSE_CHECK,
 )
 
@@ -28,10 +28,14 @@ class OfficialsMenu(BaseMenu):
             ),
         ]
         if request.user.is_superuser:
+            # Single entry point for all official entries - the upload
+            # page itself offers the file upload plus both manual-entry
+            # fallbacks (internal/external without file), so the two
+            # separate manual menu items were redundant.
             items.append(
                 MenuItem.create(
-                    name="Offizielle Internal Eintrag",
-                    url=OFFICIALS_GAMEOFFICIAL_INTERNAL_CREATE,
+                    name="Offizielle Einträge",
+                    url=OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD,
                 )
             )
             items.append(
