@@ -1,5 +1,21 @@
 # Changelog
 
+## [4.27.0](https://github.com/dachrisch/leaguesphere/compare/v4.26.3...v4.27.0) (2026-09-18)
+
+
+### Features
+
+* **officials:** add staff UI to import self-reported referee games ([f7ae815](https://github.com/dachrisch/leaguesphere/commit/f7ae8158144cbe47b9fb6209d7961b1a3d224d47))
+* **officials:** add staff UI to import self-reported referee games ([b40d2e4](https://github.com/dachrisch/leaguesphere/commit/b40d2e49a561d3398caaea3beb6469306c186804))
+* **officials:** async import review UI with tag search and consolidated menu ([a9c4db2](https://github.com/dachrisch/leaguesphere/commit/a9c4db2098fd94da3c6dbe821403d09ccd7f93cb))
+
+
+### Bug Fixes
+
+* **officials:** accept "Mix" as a valid external-branch position ([6646cf1](https://github.com/dachrisch/leaguesphere/commit/6646cf11b1d763840fde2cb29d8aa82c22af743b))
+* **officials:** parse xlsx-native date cells and reject implausible years ([2a782db](https://github.com/dachrisch/leaguesphere/commit/2a782db39ae03b0ac55496e965e61f236dfe9ee6))
+* **officials:** stop rendering every import row as an editable field ([0f7e588](https://github.com/dachrisch/leaguesphere/commit/0f7e58807dd9056a4e125287508f5861679ed68f))
+
 ## [4.26.3](https://github.com/dachrisch/leaguesphere/compare/v4.26.2...v4.26.3) (2026-09-17)
 
 
