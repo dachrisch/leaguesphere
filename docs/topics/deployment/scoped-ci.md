@@ -19,19 +19,25 @@ into two files driven by the `circleci/path-filtering` orb:
    boolean pipeline parameters (`run-python-core`, `run-scorecard`, …).
 3. The pipeline continues with `continue.yml`, where each test job is
    gated by an expression filter on its parameter. Only relevant jobs run.
-4. `e2e` runs standalone in parallel with the shards and the image
-   builds (it needs neither image); it gates `test_backend_image` and
-   `test_frontend_image` instead. `build_backend` and `build_frontend`
-   share `test_compose_network`'s exact filter (not just their own
-   narrower one), since a `requires` entry silently drops out when its
-   own filter is false — with independent filters, a partial-scope
-   pipeline could schedule `test_compose_network` (which unconditionally
-   loads both images) without one of them ever having been built.
-   Deploys `require` `test_compose_network`, which — thanks to that
-   shared filter — transitively requires both builds, both image tests,
-   and `check_migrations`, covering the full scoped test matrix without
-   a separately duplicated list, so tag and branch pipelines share one
-   gating chain.
+4. Only jobs with **no** `requires` (the test shards + `e2e`) are
+   path-filtered: when every job in a `requires` list is filtered out,
+   CircleCI skips the downstream job even if its own filter is true —
+   so gating `build_frontend` on the five `*_js` jobs skipped the
+   frontend build on backend-only changes, and `test_compose_network`
+   (which unconditionally loads both images) then hard-failed on
+   `docker load` (pipelines 5503, 5525). The image builds therefore run
+   in parallel with the tests, gated only by their filter, and both
+   builds share `test_compose_network`'s exact filter (not just their
+   own narrower one) so both `backend.tar` and `frontend.tar` always
+   exist whenever the compose test runs. `e2e` runs standalone in
+   parallel with the shards and the builds (it needs neither image);
+   it gates `test_backend_image` and `test_frontend_image` instead.
+   `test_compose_network` fans in on every test shard plus both builds,
+   both image tests, and `check_migrations` — skipped shards drop out
+   of its `requires`, but any running shard that fails still blocks it.
+   Deploys `require` `test_compose_network`, covering the full scoped
+   test matrix without a separately duplicated list, so tag and branch
+   pipelines share one gating chain.
 
 ### Guarantees
 
