@@ -21,9 +21,15 @@ into two files driven by the `circleci/path-filtering` orb:
    gated by an expression filter on its parameter. Only relevant jobs run.
 4. `e2e` runs standalone in parallel with the shards and the image
    builds (it needs neither image); it gates `test_backend_image` and
-   `test_frontend_image` instead. Deploys `require` `test_compose_network`,
-   which already transitively requires both builds, both image tests,
-   and `check_migrations` — covering the full scoped test matrix without
+   `test_frontend_image` instead. `build_backend` and `build_frontend`
+   share `test_compose_network`'s exact filter (not just their own
+   narrower one), since a `requires` entry silently drops out when its
+   own filter is false — with independent filters, a partial-scope
+   pipeline could schedule `test_compose_network` (which unconditionally
+   loads both images) without one of them ever having been built.
+   Deploys `require` `test_compose_network`, which — thanks to that
+   shared filter — transitively requires both builds, both image tests,
+   and `check_migrations`, covering the full scoped test matrix without
    a separately duplicated list, so tag and branch pipelines share one
    gating chain.
 
