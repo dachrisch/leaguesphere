@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.28.1](https://github.com/dachrisch/leaguesphere/compare/v4.28.0...v4.28.1) (2026-09-18)
+
+
+### Bug Fixes
+
+* split officials gamelist route to remove double-slash 404s ([a723e9a](https://github.com/dachrisch/leaguesphere/commit/a723e9abf99a6601463a3a4c2d46211dad584def))
+* split officials gamelist route to remove double-slash 404s ([fb6a349](https://github.com/dachrisch/leaguesphere/commit/fb6a349b17f14f52663a4726337645661b825f13))
+
 ## [4.28.0](https://github.com/dachrisch/leaguesphere/compare/v4.27.1...v4.28.0) (2026-09-18)
 
 
