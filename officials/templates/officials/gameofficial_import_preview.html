@@ -7,6 +7,47 @@
 
         <fieldset class="form-group">
             <legend class="border-bottom mb-4">Außerhalb DFFL - neue Einsätze</legend>
+            {% if ready_external_count %}
+            <div class="alert alert-success">
+                {{ ready_external_count }} Einträge sind bereit und werden ohne weitere Prüfung importiert.
+            </div>
+            <div class="table-responsive mb-3">
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Official-ID</th>
+                            <th>Spiele</th>
+                            <th>Datum</th>
+                            <th>Position</th>
+                            <th>Verband</th>
+                            <th>HZ-Dauer</th>
+                            <th>Clock Control</th>
+                            <th>International</th>
+                            <th>Name</th>
+                            <th>Zeitstempel</th>
+                            <th>Anmerkung</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ready-external-sample-rows">
+                        {% for row in ready_external_sample %}
+                        <tr>
+                            <td>{{ row.official_id }}</td>
+                            <td>{{ row.number_games }}</td>
+                            <td>{{ row.date }}</td>
+                            <td>{{ row.position }}</td>
+                            <td>{{ row.association }}</td>
+                            <td>{{ row.halftime_duration }}</td>
+                            <td>{{ row.has_clockcontrol }}</td>
+                            <td>{{ row.is_international }}</td>
+                            <td>{{ row.reporter_name }}</td>
+                            <td>{{ row.notification_date }}</td>
+                            <td>{{ row.comment }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
             {{ external_formset.management_form }}
             {% if external_formset.non_form_errors %}
                 <div class="alert alert-danger">{{ external_formset.non_form_errors }}</div>
@@ -96,6 +137,35 @@
 
         <fieldset class="form-group mt-4">
             <legend class="border-bottom mb-4">DFFL - bestehendes Spiel korrigieren</legend>
+            {% if ready_internal_count %}
+            <div class="alert alert-success">
+                {{ ready_internal_count }} Einträge sind bereit und werden ohne weitere Prüfung importiert.
+            </div>
+            <div class="table-responsive mb-3">
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Spiel-ID</th>
+                            <th>Official-ID</th>
+                            <th>Position</th>
+                            <th>Aktion</th>
+                            <th>Aktuell zugewiesen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ready-internal-sample-rows">
+                        {% for row in ready_internal_sample %}
+                        <tr>
+                            <td>{{ row.gameinfo_id }}</td>
+                            <td>{{ row.official_id }}</td>
+                            <td>{{ row.position }}</td>
+                            <td>{{ row.action }}</td>
+                            <td>{{ row.current_official_display }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
             {{ internal_fix_formset.management_form }}
             {% if internal_fix_formset.non_form_errors %}
                 <div class="alert alert-danger">{{ internal_fix_formset.non_form_errors }}</div>

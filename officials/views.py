@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from django.conf import settings
 from django.contrib import messages
@@ -425,6 +425,73 @@ class GameOfficialImportUploadView(LoginRequiredMixin, UserPassesTestMixin, View
         return render(request, self.template_name, {"form": form})
 
 
+READY_STATUS = "ready"
+
+# A real import file has a handful of rows needing staff attention and
+# thousands that don't - so the read-only "ready" preview only ever shows
+# a small sample, not the full list (see GameOfficialImportPreviewView).
+READY_SAMPLE_LIMIT = 25
+
+# Bulk-committing thousands of "ready" rows can produce a handful of
+# per-row failures (e.g. a stale Official deleted since parse time) - cap
+# how many reasons get spelled out in the summary message so that, unlike
+# the ready rows themselves, a pathological file can't turn the message
+# itself into another unbounded-size response.
+IMPORT_ERROR_MESSAGE_LIMIT = 20
+
+
+def _split_ready_and_review(suggestions: list) -> tuple:
+    """Splits a branch's stored suggestion dicts (as written to the
+    session by GameOfficialImportUploadView.post()) into the "ready"
+    bucket - no conflict, nothing for staff to decide, bulk-committed on
+    confirm without ever becoming a form field - and the "review" bucket
+    (needs_attention/duplicate), which keeps going through the editable
+    formset exactly as before. Splitting on the stored status is safe
+    here (unlike at save time) because this only decides what gets
+    *rendered*/bulk-attempted, not whether a row is trusted to be
+    valid - every row, ready or not, is still fully re-validated by its
+    own entry class before anything is written."""
+    ready = [item for item in suggestions if item.get("status") == READY_STATUS]
+    review = [item for item in suggestions if item.get("status") != READY_STATUS]
+    return ready, review
+
+
+def _ready_external_row_data(item: dict) -> dict:
+    """Rebuilds the ExternalGameOfficialEntry kwargs from a stored "ready"
+    suggestion dict - the same shape _save_external_rows() builds from a
+    review form's cleaned_data, just sourced from the raw session dict
+    (whose date/notification_date are ISO strings, see
+    _external_suggestion_to_initial) since a bulk-committed ready row was
+    never bound to a Django form."""
+    return {
+        "official_id": item.get("official_id"),
+        "number_games": item.get("number_games"),
+        "date": _parse_iso_date(item.get("date")),
+        "position": item.get("position"),
+        "association": item.get("association") or "",
+        "halftime_duration": item.get("halftime_duration"),
+        "has_clockcontrol": bool(item.get("has_clockcontrol")),
+        "is_international": bool(item.get("is_international")),
+        "reporter_name": item.get("reporter_name") or "",
+        "notification_date": _parse_iso_date(item.get("notification_date")),
+        "comment": item.get("comment") or "",
+    }
+
+
+def _ready_internal_row_data(item: dict) -> dict:
+    """GameOfficialCorrectionEntry kwargs from a stored "ready" internal
+    fix suggestion dict - see _ready_external_row_data()'s docstring."""
+    return {
+        "gameinfo_id": item.get("gameinfo_id"),
+        "official_id": item.get("official_id"),
+        "position": item.get("position"),
+    }
+
+
+def _parse_iso_date(value):
+    return date.fromisoformat(value) if value else None
+
+
 class GameOfficialImportPreviewView(LoginRequiredMixin, UserPassesTestMixin, View):
     """Step 2: review/edit the suggestions from step 1 (or, with nothing
     uploaded, just the one blank manual-entry row each formset's extra=1
@@ -433,7 +500,14 @@ class GameOfficialImportPreviewView(LoginRequiredMixin, UserPassesTestMixin, Vie
     GameOfficialCorrectionEntry - never from the preview-time
     status/reason - so staleness between preview and confirm (an Official
     deleted, a second GameOfficial added, ...) surfaces as a per-row error
-    instead of a stale write or a crash."""
+    instead of a stale write or a crash.
+
+    Only rows that actually need a human decision ("needs_attention" or
+    "duplicate") become editable formset rows. "ready" rows - the
+    overwhelming majority for a real import file - are never rendered as
+    form fields (a few thousand of them made the page ~23MB with 150k+ DOM
+    nodes); they're shown as a capped, read-only sample and bulk-committed
+    on confirm instead. See _split_ready_and_review()."""
 
     template_name = "officials/gameofficial_import_preview.html"
 
@@ -442,60 +516,95 @@ class GameOfficialImportPreviewView(LoginRequiredMixin, UserPassesTestMixin, Vie
 
     def get(self, request):
         session_data = request.session.get(OFFICIALS_IMPORT_SESSION_KEY, {})
+        ready_external, review_external = _split_ready_and_review(
+            session_data.get("external", [])
+        )
+        ready_internal, review_internal = _split_ready_and_review(
+            session_data.get("internal_fix", [])
+        )
         context = self._context(
             external_formset=ExternalGameSuggestionFormSet(
-                initial=session_data.get("external", []), prefix="external"
+                initial=review_external, prefix="external"
             ),
             internal_fix_formset=InternalFixSuggestionFormSet(
-                initial=session_data.get("internal_fix", []), prefix="internalfix"
+                initial=review_internal, prefix="internalfix"
             ),
             unclassified=session_data.get("unclassified", []),
+            ready_external_count=len(ready_external),
+            ready_internal_count=len(ready_internal),
+            ready_external_sample=ready_external[:READY_SAMPLE_LIMIT],
+            ready_internal_sample=ready_internal[:READY_SAMPLE_LIMIT],
         )
         return render(request, self.template_name, context)
 
     def post(self, request):
+        session_data = request.session.get(OFFICIALS_IMPORT_SESSION_KEY, {})
+        ready_external, review_external = _split_ready_and_review(
+            session_data.get("external", [])
+        )
+        ready_internal, review_internal = _split_ready_and_review(
+            session_data.get("internal_fix", [])
+        )
+        unclassified = session_data.get("unclassified", [])
+
         external_formset = ExternalGameSuggestionFormSet(
             request.POST, prefix="external"
         )
         internal_fix_formset = InternalFixSuggestionFormSet(
             request.POST, prefix="internalfix"
         )
-        unclassified = request.session.get(OFFICIALS_IMPORT_SESSION_KEY, {}).get(
-            "unclassified", []
-        )
 
         official_service = OfficialService()
-        created_entries = []
+        review_external_created = []
+        review_internal_created = []
         any_row_error = not external_formset.is_valid()
         if not any_row_error:
             any_row_error = self._save_external_rows(
-                external_formset, official_service, created_entries
+                external_formset, official_service, review_external_created
             )
 
         internal_fix_error = not internal_fix_formset.is_valid()
         if not internal_fix_error:
             internal_fix_error = self._save_internal_fix_rows(
-                internal_fix_formset, official_service, created_entries
+                internal_fix_formset, official_service, review_internal_created
             )
         any_row_error = any_row_error or internal_fix_error
 
-        if not any_row_error:
-            request.session.pop(OFFICIALS_IMPORT_SESSION_KEY, None)
-            if created_entries:
-                summary = "Folgende Einträge erzeugt: <br>" + "<br>".join(
-                    created_entries
-                )
-                messages.success(request, mark_safe(summary))
-            from officials.urls import OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD
+        if any_row_error:
+            context = self._context(
+                external_formset=external_formset,
+                internal_fix_formset=internal_fix_formset,
+                unclassified=unclassified,
+                ready_external_count=len(ready_external),
+                ready_internal_count=len(ready_internal),
+                ready_external_sample=ready_external[:READY_SAMPLE_LIMIT],
+                ready_internal_sample=ready_internal[:READY_SAMPLE_LIMIT],
+            )
+            return render(request, self.template_name, context)
 
-            return redirect(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD))
-
-        context = self._context(
-            external_formset=external_formset,
-            internal_fix_formset=internal_fix_formset,
-            unclassified=unclassified,
+        ready_external_created, ready_external_errors = self._bulk_save_ready(
+            ready_external,
+            official_service.create_external_official_entry,
+            _ready_external_row_data,
         )
-        return render(request, self.template_name, context)
+        ready_internal_created, ready_internal_errors = self._bulk_save_ready(
+            ready_internal,
+            official_service.create_internal_fix_entry,
+            _ready_internal_row_data,
+        )
+
+        request.session.pop(OFFICIALS_IMPORT_SESSION_KEY, None)
+        self._report_results(
+            request,
+            external_created_count=len(review_external_created)
+            + len(ready_external_created),
+            internal_created_count=len(review_internal_created)
+            + len(ready_internal_created),
+            errors=ready_external_errors + ready_internal_errors,
+        )
+        from officials.urls import OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD
+
+        return redirect(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD))
 
     @staticmethod
     def _save_external_rows(formset, official_service, created_entries) -> bool:
@@ -556,11 +665,72 @@ class GameOfficialImportPreviewView(LoginRequiredMixin, UserPassesTestMixin, Vie
         return any_error
 
     @staticmethod
-    def _context(external_formset, internal_fix_formset, unclassified) -> dict:
+    def _bulk_save_ready(items, save_entry, build_row_data) -> tuple:
+        """Commits every "ready" row's entry from scratch, exactly like
+        _save_external_rows()/_save_internal_fix_rows() do for a checked
+        review row - except there's no form to attach a per-row error to,
+        so each failure (e.g. an Official deleted since parse time) is
+        isolated in its own try/except and collected as a plain message
+        instead, letting the rest of the batch keep going."""
+        created = []
+        errors = []
+        for item in items:
+            try:
+                created.append(save_entry(build_row_data(item)))
+            except (
+                TypeError,
+                ValueError,
+                Gameinfo.DoesNotExist,
+                Official.DoesNotExist,
+                AmbiguousGameOfficialError,
+            ) as error:
+                errors.append(
+                    f"Zeile {item.get('row_number')}: {_entry_error_message(error)}"
+                )
+        return created, errors
+
+    @staticmethod
+    def _report_results(
+        request, external_created_count, internal_created_count, errors
+    ) -> None:
+        """Reports the outcome as counts, not one message line per created
+        row - a bulk import can create thousands of rows, and joining a
+        line per row (the AddInternalGameOfficialUpdateView-style pattern
+        used for small manual batches) would just recreate an
+        unbounded-size response in the success message itself."""
+        summary = (
+            f"{external_created_count} externe Einsätze erstellt, "
+            f"{internal_created_count} Korrekturen angewendet, "
+            f"{len(errors)} Fehler."
+        )
+        if not errors:
+            messages.success(request, summary)
+            return
+        capped = errors[:IMPORT_ERROR_MESSAGE_LIMIT]
+        remaining = len(errors) - len(capped)
+        detail = "; ".join(capped)
+        if remaining > 0:
+            detail += f" (und {remaining} weitere)"
+        messages.warning(request, mark_safe(f"{summary}<br>{detail}"))
+
+    @staticmethod
+    def _context(
+        external_formset,
+        internal_fix_formset,
+        unclassified,
+        ready_external_count=0,
+        ready_internal_count=0,
+        ready_external_sample=None,
+        ready_internal_sample=None,
+    ) -> dict:
         return {
             "external_formset": external_formset,
             "internal_fix_formset": internal_fix_formset,
             "unclassified": unclassified,
+            "ready_external_count": ready_external_count,
+            "ready_internal_count": ready_internal_count,
+            "ready_external_sample": ready_external_sample or [],
+            "ready_internal_sample": ready_internal_sample or [],
         }
 
 
