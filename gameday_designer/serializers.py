@@ -342,3 +342,26 @@ class TemplateApplicationSerializer(serializers.ModelSerializer):
         if obj.applied_by:
             return obj.applied_by.username
         return "Unknown"
+
+
+class SwissSetupRequestSerializer(serializers.Serializer):
+    """
+    Serializer for Swiss tournament setup
+    (POST /api/designer/gamedays/<gameday_id>/swiss/setup/).
+
+    seed_team_ids is the pre-tournament rank order (best first); it stays
+    fixed while pairings change each round. Ranges mirror the setup screen
+    (rounds 2-8, fields 1-4, duration 15-60 min).
+    """
+
+    seed_team_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1), min_length=2
+    )
+    rounds = serializers.IntegerField(min_value=2, max_value=8)
+    fields = serializers.IntegerField(min_value=1, max_value=4)
+    game_duration = serializers.IntegerField(min_value=15, max_value=60)
+    round_start_overrides = serializers.DictField(
+        child=serializers.RegexField(regex=r"^\d{2}:\d{2}$"),
+        required=False,
+        default=dict,
+    )

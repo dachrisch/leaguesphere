@@ -8,7 +8,16 @@ Note: Frontend app view is in app_urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from gameday_designer.views import ScheduleTemplateViewSet, TeamCreationView, TeamBulkCreationView, LeagueTeamsView, ConfigView
+from gameday_designer.views import (
+    ScheduleTemplateViewSet,
+    TeamCreationView,
+    TeamBulkCreationView,
+    LeagueTeamsView,
+    ConfigView,
+    SwissSetupView,
+    SwissGenerateRoundView,
+    SwissStandingsView,
+)
 
 # Create router for ViewSets (for API)
 router = DefaultRouter()
@@ -22,5 +31,24 @@ urlpatterns = [
     path("config/", ConfigView.as_view(), name="config"),
     path("teams/", TeamCreationView.as_view(), name="team-create"),
     path("teams/bulk/", TeamBulkCreationView.as_view(), name="team-bulk-create"),
-    path("gamedays/<int:gameday_id>/league-teams/", LeagueTeamsView.as_view(), name="league-teams"),
+    path(
+        "gamedays/<int:gameday_id>/league-teams/",
+        LeagueTeamsView.as_view(),
+        name="league-teams",
+    ),
+    path(
+        "gamedays/<int:gameday_id>/swiss/setup/",
+        SwissSetupView.as_view(),
+        name="swiss-setup",
+    ),
+    path(
+        "gamedays/<int:gameday_id>/swiss/generate-round/",
+        SwissGenerateRoundView.as_view(),
+        name="swiss-generate-round",
+    ),
+    path(
+        "gamedays/<int:gameday_id>/swiss/standings/",
+        SwissStandingsView.as_view(),
+        name="swiss-standings",
+    ),
 ]
