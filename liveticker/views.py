@@ -8,6 +8,10 @@ from gameday_designer.service.swiss_tournament_service import (
 from gamedays.models import Gameday
 
 
+class LivetickerView(TemplateView):
+    template_name = "liveticker/index.html"
+
+
 class SwissStandingsPublicView(TemplateView):
     """
     Public round-standings page for a Swiss gameday (no sign-in).
@@ -29,8 +33,9 @@ class SwissStandingsPublicView(TemplateView):
             # Reachable for gamedays without a Swiss setup (or whose canvas
             # was reset): prefer a friendly "no standings yet" page over a 500.
             return self.render_to_response(
-                self.get_context_data(gameday=gameday, standings=None,
-                                      rounds_completed=0, rounds_total=0)
+                self.get_context_data(
+                    gameday=gameday, standings=None, rounds_completed=0, rounds_total=0
+                )
             )
         return self.render_to_response(
             self.get_context_data(
