@@ -68,35 +68,44 @@ export function resolveSwissRound(
   const floaters: string[] = [];
   let carry: string[] = [];
 
-  orderedGroups.forEach((group, groupIdx) => {
-    const isLastGroup = groupIdx === orderedGroups.length - 1;
+  for (const group of orderedGroups) {
     let pool = [...carry, ...group].sort(
       (a, b) => (seedIndex.get(a) ?? seedOrder.length) - (seedIndex.get(b) ?? seedOrder.length),
     );
     carry = [];
 
     if (pool.length % 2 === 1) {
-      if (isLastGroup) {
-        const fallback = pickBye(pool, compareRank, teamsWithBye);
-        if (bye === null) bye = fallback;
-        pool = pool.filter((t) => t !== fallback);
-      } else {
-        const floater = pool.reduce((worst, t) =>
-          (seedIndex.get(t) ?? seedOrder.length) > (seedIndex.get(worst) ?? seedOrder.length)
-            ? t
-            : worst,
-        );
-        pool = pool.filter((t) => t !== floater);
-        floaters.push(floater);
-        carry = [floater];
-      }
+      // Float the lowest seed (worst seed = highest index) down. This can
+      // only fire on a non-last group: the upfront global bye guarantees
+      // `active` is even, and by induction every group's pool has the same
+      // parity as the running total, so the last group's pool is always
+      // even (see the invariant check below for what happens if that ever
+      // stops holding).
+      const floater = pool.reduce((worst, t) =>
+        (seedIndex.get(t) ?? seedOrder.length) > (seedIndex.get(worst) ?? seedOrder.length)
+          ? t
+          : worst,
+      );
+      pool = pool.filter((t) => t !== floater);
+      floaters.push(floater);
+      carry = [floater];
     }
 
     const half = Math.floor(pool.length / 2);
     for (let i = 0; i < half; i++) {
       pairings.push([pool[i], pool[half + i]]);
     }
-  });
+  }
+
+  if (carry.length > 0) {
+    // A floater left over after the last group means the even-active-count
+    // invariant above was violated. Fail loudly instead of silently
+    // dropping the team or re-assigning an existing bye.
+    throw new Error(
+      `floater(s) ${JSON.stringify(carry)} left over with no group to join; ` +
+        'the even-active-count invariant was violated',
+    );
+  }
 
   return { pairings: avoidRematches(pairings, previousPairings, pairKey), bye, floaters };
 }
