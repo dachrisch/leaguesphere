@@ -3,9 +3,11 @@
 **Status:** exploratory design notes, not an implementation plan. Written while scoping #1970;
 several decisions below are still open and need a ruling before implementation starts.
 
-**Mock:** an interactive click-through prototype of the flow described here:
-<https://claude.ai/artifact/2VBwY4Y2rjcsEeTWKCcvYn>. It's a private Claude artifact — ask the
-author to share it if you can't open the link.
+**Mock:** a self-contained, dependency-free click-through prototype of the flow described here is
+in this PR at `docs/plans/2026-09-20-swiss-system-1970-mock/` — open `index.html` in any browser,
+no server or account needed. The same flow also lives as a richer interactive Claude artifact:
+<https://claude.ai/artifact/2VBwY4Y2rjcsEeTWKCcvYn> (private — ask the author to share it if you
+can't open the link).
 
 ## What #1970 asks for
 
@@ -126,3 +128,29 @@ v1 rulings on the open questions above:
 
 Still open: setup step (seeds + rounds + fields + duration), slot pre-creation,
 "generate next round" action gating, and the public `liveticker` standings view.
+
+## Decisions confirmed (2026-09-21)
+
+Reviewed the v1 implementation (hand-traced both `resolve_round` and `resolveSwissRound` against
+the AFCV-verified rules — both correctly reproduce the mock's 10-team scenario) and ratified the
+open-question rulings above:
+
+1. **Bye schema:** standings-only adjustment, as implemented. No synthetic `Gameinfo` row.
+2. **Tie-breaks:** points then seed, as implemented. No Buchholz/Sonneborn-Berger.
+3. **Rematch avoidance:** best-effort adjacent swap, as implemented. Not worth a
+   backtracking search for a rule the source doesn't even confirm is required.
+4. **PR scope:** #1971 also carries an unrelated opencode-bot commit (a matchreport
+   flaky-test fix, `c10d0c35`). Decision: leave it merged together rather than
+   splitting it out — small, already correct, not worth the extra git surgery.
+
+One real bug found and fixed during review: `resolve_round`/`resolveSwissRound` each had an
+`is_last_group`/`isLastGroup` branch handling an odd-sized pool at the last points group by
+re-picking a bye. That state is mathematically unreachable (the upfront global bye keeps the
+active-team count even, and induction over the floater carry shows the last group's pool parity
+always matches it) — confirmed by hand-tracing both implementations — but the two "mirrored"
+files handled the impossible case inconsistently (Python silently overwrote an already-assigned
+bye; TS silently dropped a team from pairing with no record at all). Replaced both with a
+post-loop invariant check that raises/throws instead of silently misbehaving if that assumption
+is ever violated by a future change. Also dropped an unused `swapped` flag and an unused
+`bye_points` parameter that had already drifted out of the TS mirror. All 14 existing tests
+(7 Python + 7 TypeScript) still pass unchanged.
