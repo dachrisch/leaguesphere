@@ -99,3 +99,30 @@ playoff's TBD semifinal slot works today. `startTime` also already supports a `m
 
 This is scoping, not a task breakdown. Before writing an implementation plan we need answers to
 the open questions above, in particular the bye/schema question since it affects the data model.
+
+## Implementation status (v1, #1971)
+
+Round-pairing engine implemented, no data-model or UI changes yet:
+
+- Backend: `gameday_designer/service/swiss_round_resolver.py` (`SwissRoundResolver.resolve_round`,
+  `SwissRoundResult(pairings, bye, floaters)`), tested in
+  `gameday_designer/tests/test_swiss_round_resolver.py`.
+- Frontend mirror: `gameday_designer/src/utils/swissRoundResolver.ts` (`resolveSwissRound`,
+  `SWISS_BYE_POINTS`), tested in `src/utils/__tests__/swissRoundResolver.test.ts`.
+- Type integration: `ProgressionMode` gains `'swiss'` with a `SwissConfig`
+  (`{ rounds, seedOrder, byePoints }`) in `src/types/flowchart.ts`. Existing
+  `round_robin`/`placement` branches are untouched — swiss stages carry no static
+  `progressionMapping`; the resolver fills `homeTeamDynamic`/`awayTeamDynamic` on
+  pre-created slots instead.
+
+v1 rulings on the open questions above:
+
+1. Bye is a standings-only adjustment returned separately (`bye`, worth
+   `BYE_POINTS = 2`); no synthetic `Gameinfo` row is created.
+2. Rematch avoidance is best-effort adjacent swap (deterministic, no randomness);
+   final-ranking tie-breaks stay out of scope (ordering is points, then seed).
+3. Round start-time UI still open — `manualTime` override already covers per-game
+   nudges; no new control added in v1.
+
+Still open: setup step (seeds + rounds + fields + duration), slot pre-creation,
+"generate next round" action gating, and the public `liveticker` standings view.
