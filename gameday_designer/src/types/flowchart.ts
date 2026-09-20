@@ -443,6 +443,33 @@ export interface FlowState {
   globalTeams: GlobalTeam[];
   /** Global team groups - for organizing teams into sections */
   globalTeamGroups: GlobalTeamGroup[];
+  /**
+   * Swiss-system tournament config (#1970). Stored alongside the canvas so a
+   * designer save never wipes it — importState/exportState must round-trip
+   * it untouched. Shape mirrors the backend SwissTournamentService config.
+   */
+  swiss?: SwissTournamentState;
+}
+
+/**
+ * Swiss-system tournament state persisted on the gameday's designer state.
+ * Mirrors `SwissTournamentService.setup()` output on the backend.
+ */
+export interface SwissTournamentState {
+  /** Pre-tournament rank order (best first) as backend Team PKs */
+  seedOrder: number[];
+  /** Total rounds to play */
+  rounds: number;
+  /** Number of fields */
+  fields: number;
+  /** Game duration in minutes */
+  gameDuration: number;
+  /** Planned start time per round ("HH:MM", keys are 1-based round numbers) */
+  roundStartTimes: Record<string, string>;
+  /** Generated rounds with their Gameinfo rows and bye */
+  completedRounds: Array<{ round: number; gameIds: number[]; bye: number | null }>;
+  /** Bye history: team PK (as string) -> round number */
+  byes: Record<string, number>;
 }
 
 // ============================================================================

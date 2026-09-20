@@ -15,7 +15,7 @@ import '../ListDesignerApp.css';
  */
 const AppHeader: React.FC = () => {
   const { t } = useTypedTranslation(['ui']);
-  const { gamedayName, onOpenTemplates, toolbarProps, replayTourA } = useGamedayContext();
+  const { gamedayName, onOpenTemplates, onOpenSwissControl, toolbarProps, replayTourA } = useGamedayContext();
   const { username, avatarUrl } = useCurrentUser();
   const navigate = useNavigate();
   const location = useLocation();
@@ -83,6 +83,19 @@ const AppHeader: React.FC = () => {
                 data-testid="open-template-library-button"
               >
                 📚 Templates
+              </Button>
+            )}
+
+            {isEditor && onOpenSwissControl && (
+              <Button
+                variant="outline-light"
+                onClick={onOpenSwissControl}
+                size="sm"
+                className="btn-adaptive fw-bold shadow-sm"
+                data-testid="open-swiss-control-button"
+                title={t('ui:button.swissControl')}
+              >
+                🏁 {t('ui:button.swissControl')}
               </Button>
             )}
 
