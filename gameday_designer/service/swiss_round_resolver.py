@@ -8,9 +8,11 @@ Implements the JLT Flag 2026 pairing rules scoped in
 - Within each group, teams are ordered by the pre-tournament seed list and
   the top half plays the bottom half (``top[i] vs bottom[i]``).
 - Odd-sized groups float their lowest seed down into the next-lower points
-  group. A leftover odd team in the bottom group receives a bye.
-- Byes go to the lowest-ranked team (points, then seed) that has not had one
-  yet and are worth ``BYE_POINTS`` (2) points.
+  group.
+- Exactly one bye per round when the active-team count is odd, assigned
+  upfront to the lowest-ranked team (points, then seed) that has not had one
+  yet, worth ``BYE_POINTS`` (2) points. This keeps every group's pool even
+  through the floater cascade — see the invariant check in ``resolve_round``.
 - Score margins don't affect pairings; only points + seed order matter.
 - Rematch avoidance is best-effort: a repeated pairing is swapped with the
   adjacent pairing's away team when that resolves both without creating a
@@ -46,9 +48,9 @@ class SwissRoundResolver:
         points: Optional[Dict[str, float]] = None,
         teams_with_bye: Optional[Set[str]] = None,
         previous_pairings: Optional[Set[FrozenSet[str]]] = None,
-        bye_points: float = BYE_POINTS,
     ) -> SwissRoundResult:
-        _ = bye_points  # value applied by standings query, not by pairing itself
+        # Bye point value (BYE_POINTS) is applied by the standings query, not
+        # by pairing itself — resolve_round only decides *who* gets the bye.
         points = dict(points or {})
         teams_with_bye = set(teams_with_bye or set())
         previous_pairings = set(previous_pairings or set())
@@ -81,8 +83,7 @@ class SwissRoundResolver:
         floaters: List[str] = []
         carry: List[str] = []
 
-        for group_idx, group in enumerate(ordered_groups):
-            is_last_group = group_idx == len(ordered_groups) - 1
+        for group in ordered_groups:
             # Carried floaters join the pool, re-sorted by seed for determinism.
             pool = sorted(
                 list(carry) + list(group),
@@ -91,19 +92,29 @@ class SwissRoundResolver:
             carry = []
 
             if len(pool) % 2 == 1:
-                if is_last_group:
-                    bye = SwissRoundResolver._pick_bye(pool, rank_key, teams_with_bye)
-                    pool = [t for t in pool if t != bye]
-                else:
-                    # Float the lowest seed (worst seed = highest index) down.
-                    floater = max(
-                        pool, key=lambda t: seed_index.get(t, len(seed_order))
-                    )
-                    pool = [t for t in pool if t != floater]
-                    floaters.append(floater)
-                    carry = [floater]
+                # Float the lowest seed (worst seed = highest index) down.
+                # This can only fire on a non-last group: the upfront global
+                # bye guarantees `active` is even, and by induction every
+                # group's pool has the same parity as the running total, so
+                # the last group's pool is always even (see the invariant
+                # check below for what happens if that ever stops holding).
+                floater = max(
+                    pool, key=lambda t: seed_index.get(t, len(seed_order))
+                )
+                pool = [t for t in pool if t != floater]
+                floaters.append(floater)
+                carry = [floater]
 
             pairings.extend(SwissRoundResolver._pair_group(pool))
+
+        if carry:
+            # A floater left over after the last group means the even-active-
+            # count invariant above was violated. Fail loudly instead of
+            # silently dropping the team or re-assigning an existing bye.
+            raise AssertionError(
+                f"floater(s) {carry!r} left over with no group to join; "
+                "the even-active-count invariant was violated"
+            )
 
         pairings = SwissRoundResolver._avoid_rematches(pairings, previous_pairings)
         return SwissRoundResult(pairings=pairings, bye=bye, floaters=floaters)
@@ -133,7 +144,6 @@ class SwissRoundResolver:
         for i, (home, away) in enumerate(result):
             if frozenset({home, away}) not in previous_pairings:
                 continue
-            swapped = False
             for j in (i + 1, i - 1):
                 if 0 <= j < len(result):
                     other_home, other_away = result[j]
@@ -145,7 +155,5 @@ class SwissRoundResolver:
                     ):
                         result[i] = (home, other_away)
                         result[j] = (other_home, away)
-                        swapped = True
                         break
-            _ = swapped
         return result
