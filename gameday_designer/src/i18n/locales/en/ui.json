@@ -21,6 +21,7 @@
     "confirm": "Confirm",
     "generate": "Generate",
     "generateTournament": "Generate Tournament",
+    "swissControl": "Swiss Control",
     "replaceTeam": "Replace Team",
     "moveUp": "Move up",
     "moveDown": "Move down",
@@ -298,6 +299,10 @@
     "unlockSuccess": "Schedule unlocked for editing",
     "unlockFailed": "Failed to unlock schedule",
     "invalidTimeFormat": "Invalid time format. Use HH:MM (24-hour)",
+    "swissSetupSuccess": "Swiss tournament created — Round 1 generated",
+    "swissSetupFailed": "Failed to set up the Swiss tournament",
+    "swissRoundGenerated": "Round {{n}} generated",
+    "swissRoundFailed": "Failed to generate the next round",
     "title": {
       "success": "Success",
       "error": "Error",
