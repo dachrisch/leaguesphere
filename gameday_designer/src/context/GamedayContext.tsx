@@ -8,6 +8,8 @@ interface GamedayContextType {
   currentUserId: number;
   onOpenTemplates: (() => void) | null;
   setOnOpenTemplates: (handler: (() => void) | null) => void;
+  onOpenSwissControl: (() => void) | null;
+  setOnOpenSwissControl: (handler: (() => void) | null) => void;
   toolbarProps: {
     onImport: (json: unknown) => void;
     onExport: () => void;
@@ -54,6 +56,7 @@ interface GamedayProviderProps {
 export const GamedayProvider: React.FC<GamedayProviderProps> = ({ children, currentUserId = 0 }) => {
   const [gamedayName, setGamedayName] = useState('');
   const [onOpenTemplates, setOnOpenTemplatesInternal] = useState<(() => void) | null>(null);
+  const [onOpenSwissControl, setOnOpenSwissControlInternal] = useState<(() => void) | null>(null);
   const [toolbarProps, setToolbarPropsInternal] = useState<GamedayContextType['toolbarProps']>(null);
   const [isLocked, setIsLocked] = useState(false);
   const [resultsMode, setResultsMode] = useState(false);
@@ -63,6 +66,7 @@ export const GamedayProvider: React.FC<GamedayProviderProps> = ({ children, curr
 
   const setGamedayNameCb = useCallback((name: string) => setGamedayName(name), []);
   const setOnOpenTemplates = useCallback((handler: (() => void) | null) => setOnOpenTemplatesInternal(handler), []);
+  const setOnOpenSwissControl = useCallback((handler: (() => void) | null) => setOnOpenSwissControlInternal(handler), []);
   const setToolbarProps = useCallback((props: GamedayContextType['toolbarProps']) => setToolbarPropsInternal(props), []);
   const setIsLockedCb = useCallback((locked: boolean) => setIsLocked(locked), []);
   const setGameResults = useCallback(
@@ -77,6 +81,8 @@ export const GamedayProvider: React.FC<GamedayProviderProps> = ({ children, curr
     currentUserId,
     onOpenTemplates,
     setOnOpenTemplates,
+    onOpenSwissControl,
+    setOnOpenSwissControl,
     toolbarProps,
     setToolbarProps,
     isLocked,
@@ -89,7 +95,7 @@ export const GamedayProvider: React.FC<GamedayProviderProps> = ({ children, curr
     setReplayTourA,
     expertMode,
     setExpertMode,
-  }), [gamedayName, setGamedayNameCb, currentUserId, onOpenTemplates, setOnOpenTemplates, toolbarProps, setToolbarProps, isLocked, setIsLockedCb, resultsMode, gameResults, setGameResults, replayTourA, setReplayTourA, expertMode, setExpertMode]);
+  }), [gamedayName, setGamedayNameCb, currentUserId, onOpenTemplates, setOnOpenTemplates, onOpenSwissControl, setOnOpenSwissControl, toolbarProps, setToolbarProps, isLocked, setIsLockedCb, resultsMode, gameResults, setGameResults, replayTourA, setReplayTourA, expertMode, setExpertMode]);
 
   return (
     <GamedayContext.Provider value={value}>

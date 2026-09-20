@@ -41,5 +41,39 @@
     "placeholder": "Search by team name...",
     "noResults": "No teams found matching your search.",
     "hint": "Enter at least 2 characters to search."
+  },
+  "swissSetup": {
+    "title": "Configure Tournament — Swiss System",
+    "subtitle": "Rank the teams once by seed, then fix rounds, fields and game duration. Round 1 generates automatically from here.",
+    "seedTitle": "Seed the teams",
+    "seedHint": "Seeds stay fixed for the whole tournament — only the pairings change each round.",
+    "setupTitle": "Tournament setup",
+    "rounds": "Number of rounds",
+    "fields": "Number of fields",
+    "gameDuration": "Game duration",
+    "minutesUnit": "min",
+    "scheduleTitle": "Schedule — reserved now",
+    "scheduleHint": "Auto-calculated from rounds, fields and duration. Round times stay adjustable per round later.",
+    "roundLabel": "Round {{n}}",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "back": "Back",
+    "confirm": "Generate Round 1 →"
+  },
+  "swissControl": {
+    "title": "Swiss Tournament Control",
+    "standingsTitle": "Standings",
+    "roundTitle": "Round {{n}}",
+    "byeLabel": "Bye (2 pts)",
+    "generateNext": "Generate Round {{n}}",
+    "allRoundsComplete": "All {{count}} rounds are complete.",
+    "confirmResultsHint": "Confirm all results of the current round (via score entry) before generating the next one.",
+    "close": "Close",
+    "teamColumn": "Team",
+    "playedColumn": "P",
+    "winsColumn": "W",
+    "drawsColumn": "D",
+    "lossesColumn": "L",
+    "pointsColumn": "Pts"
   }
 }

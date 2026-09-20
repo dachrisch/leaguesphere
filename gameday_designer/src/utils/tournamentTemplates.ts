@@ -146,10 +146,43 @@ export const TEMPLATE_F8_2_3: TournamentTemplate = {
 };
 
 /**
+ * SWISS Format: Swiss-system rounds for any team count (#1970, JLT Flag 2026 rules).
+ *
+ * Structure:
+ * - No fixed bracket: pairings resolve per round from the seed list + live
+ *   standings via SwissRoundResolver (top half vs bottom half per points
+ *   group, lowest-seed floaters, bye to lowest-ranked team without one).
+ * - Setup (seeds + rounds + fields + duration) and round generation run
+ *   through the Swiss API, not the static node generator — this entry only
+ *   makes the format discoverable in the template library.
+ */
+export const TEMPLATE_SWISS: TournamentTemplate = {
+  id: 'SWISS',
+  name: 'Swiss System',
+  teamCount: { min: 4, max: 16 },
+  fieldOptions: [1, 2, 3, 4],
+  stages: [
+    {
+      name: 'Swiss Rounds',
+      category: 'preliminary',
+      stageType: 'STANDARD',
+      progressionMode: 'swiss',
+      config: { mode: 'swiss', rounds: 4, seedOrder: [], byePoints: 2 },
+      fieldAssignment: 'all',
+    },
+  ],
+  timing: {
+    firstGameStartTime: DEFAULT_START_TIME,
+    defaultGameDuration: 30,
+    defaultBreakBetweenGames: 10,
+  },
+};
+
+/**
  * Get all available tournament templates
  */
 export function getAllTemplates(): TournamentTemplate[] {
-  return [TEMPLATE_F6_2_2, TEMPLATE_F8_2_3];
+  return [TEMPLATE_F6_2_2, TEMPLATE_F8_2_3, TEMPLATE_SWISS];
 }
 
 /**

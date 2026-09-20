@@ -124,4 +124,43 @@ describe('AppHeader', () => {
       expect(screen.getByTestId('replay-tour-button')).toBeInTheDocument();
     });
   });
+
+  describe('swiss control button', () => {
+    const SetSwissHandler = () => {
+      const { setOnOpenSwissControl } = useGamedayContext();
+      useEffect(() => {
+        setOnOpenSwissControl(() => () => {});
+        return () => setOnOpenSwissControl(null);
+      }, [setOnOpenSwissControl]);
+      return null;
+    };
+
+    const renderHeaderWithSwissHandler = (path: string) => {
+      return render(
+        <MemoryRouter initialEntries={[path]}>
+          <GamedayProvider>
+            <SetSwissHandler />
+            <Routes>
+              <Route path="*" element={<AppHeader />} />
+            </Routes>
+          </GamedayProvider>
+        </MemoryRouter>
+      );
+    };
+
+    it('is hidden when no swiss handler is registered', () => {
+      renderHeader('/designer/1');
+      expect(screen.queryByTestId('open-swiss-control-button')).not.toBeInTheDocument();
+    });
+
+    it('shows on the designer page when a swiss handler is registered', () => {
+      renderHeaderWithSwissHandler('/designer/1');
+      expect(screen.getByTestId('open-swiss-control-button')).toBeInTheDocument();
+    });
+
+    it('stays hidden off the designer page even with a handler', () => {
+      renderHeaderWithSwissHandler('/');
+      expect(screen.queryByTestId('open-swiss-control-button')).not.toBeInTheDocument();
+    });
+  });
 });
