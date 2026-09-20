@@ -558,4 +558,78 @@ describe('DesignerApi', () => {
       );
     });
   });
+
+  describe('setupSwissTournament', () => {
+    it('should post the swiss setup for a gameday', async () => {
+      const setup = {
+        seed_team_ids: [11, 22, 33, 44],
+        rounds: 3,
+        fields: 2,
+        game_duration: 30,
+      };
+      const config = {
+        seedOrder: [11, 22, 33, 44],
+        rounds: 3,
+        fields: 2,
+        gameDuration: 30,
+        roundStartTimes: { '1': '09:00', '2': '10:20', '3': '11:40' },
+        completedRounds: [],
+        byes: {},
+      };
+      mockAxiosInstance.post.mockResolvedValue({ data: { success: true, config } });
+
+      const result = await designerApi.setupSwissTournament(42, setup);
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+        '/gamedays/42/swiss/setup/',
+        setup,
+      );
+      expect(result).toEqual({ success: true, config });
+    });
+  });
+
+  describe('generateSwissRound', () => {
+    it('should post a round-generation request and return pairings', async () => {
+      const generated = {
+        success: true,
+        round: 1,
+        pairings: [{ home_team_id: 11, away_team_id: 33 }],
+        bye_team_id: null,
+        game_ids: [101],
+      };
+      mockAxiosInstance.post.mockResolvedValue({ data: generated });
+
+      const result = await designerApi.generateSwissRound(42);
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+        '/gamedays/42/swiss/generate-round/',
+        {},
+      );
+      expect(result).toEqual(generated);
+    });
+  });
+
+  describe('getSwissStandings', () => {
+    it('should fetch the standings table for a gameday', async () => {
+      const standings = {
+        standings: [
+          {
+            team_id: 11, team_name: 'A', seed: 0, played: 1, wins: 1,
+            draws: 0, losses: 0, points_for: 10, points_against: 5,
+            byes: 0, points: 2,
+          },
+        ],
+        rounds_completed: 1,
+        rounds_total: 3,
+      };
+      mockAxiosInstance.get.mockResolvedValue({ data: standings });
+
+      const result = await designerApi.getSwissStandings(42);
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        '/gamedays/42/swiss/standings/',
+      );
+      expect(result).toEqual(standings);
+    });
+  });
 });

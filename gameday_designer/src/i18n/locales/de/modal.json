@@ -41,5 +41,39 @@
     "placeholder": "Nach Teamname suchen...",
     "noResults": "Keine passenden Teams gefunden.",
     "hint": "Geben Sie mindestens 2 Zeichen ein, um zu suchen."
+  },
+  "swissSetup": {
+    "title": "Turnier konfigurieren — Schweizer System",
+    "subtitle": "Reihen Sie die Teams einmalig nach Setzposition und legen Sie Runden, Felder und Spieldauer fest. Runde 1 wird von hier aus automatisch generiert.",
+    "seedTitle": "Teams setzen",
+    "seedHint": "Die Setzreihenfolge gilt für das gesamte Turnier — nur die Paarungen ändern sich pro Runde.",
+    "setupTitle": "Turnier-Setup",
+    "rounds": "Anzahl Runden",
+    "fields": "Anzahl Felder",
+    "gameDuration": "Spieldauer",
+    "minutesUnit": "Min",
+    "scheduleTitle": "Zeitplan — jetzt reserviert",
+    "scheduleHint": "Automatisch aus Runden, Feldern und Dauer berechnet. Rundenzeiten bleiben später pro Runde anpassbar.",
+    "roundLabel": "Runde {{n}}",
+    "moveUp": "Nach oben",
+    "moveDown": "Nach unten",
+    "back": "Zurück",
+    "confirm": "Runde 1 generieren →"
+  },
+  "swissControl": {
+    "title": "Schweizer System — Turniersteuerung",
+    "standingsTitle": "Tabelle",
+    "roundTitle": "Runde {{n}}",
+    "byeLabel": "Spielfrei (2 P.)",
+    "generateNext": "Runde {{n}} generieren",
+    "allRoundsComplete": "Alle {{count}} Runden sind abgeschlossen.",
+    "confirmResultsHint": "Bestätigen Sie alle Ergebnisse der laufenden Runde (über die Ergebniseingabe), bevor Sie die nächste generieren.",
+    "close": "Schließen",
+    "teamColumn": "Team",
+    "playedColumn": "Sp",
+    "winsColumn": "S",
+    "drawsColumn": "U",
+    "lossesColumn": "N",
+    "pointsColumn": "Pkte"
   }
 }

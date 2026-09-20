@@ -3,6 +3,7 @@ import { Modal, Button, Form, InputGroup } from 'react-bootstrap';
 import TemplateList, { SelectedTemplate } from './TemplateLibraryModal/TemplateList';
 import TemplatePreview, { TournamentConfig } from './TemplateLibraryModal/TemplatePreview';
 import TeamPickerStep from './TemplateLibraryModal/TeamPickerStep';
+import SwissSetupStep from './TemplateLibraryModal/SwissSetupStep';
 import SaveTemplateSheet from './TemplateLibraryModal/SaveTemplateSheet';
 import { designerApi } from '../../api/designerApi';
 import { useIsStaff } from '../../hooks/useIsStaff';
@@ -14,7 +15,7 @@ import { getTeamColor } from '../../utils/tournamentConstants';
 import { trackEvent } from '../../trackEvent';
 
 type FilterScope = 'all' | 'personal' | 'association' | 'global';
-type Step = 'library' | 'team-picker';
+type Step = 'library' | 'team-picker' | 'swiss-setup';
 
 const PILLS: { scope: FilterScope; label: React.ReactNode }[] = [
   { scope: 'all', label: 'All' },
@@ -40,13 +41,21 @@ interface TemplateLibraryModalProps {
     generateTeams: boolean;
   }) => void;
   onGenerateFromSavedTemplate?: (templateId: number, config: TournamentConfig | undefined, selectedTeams: GlobalTeam[]) => void;
+  onGenerateSwiss?: (config: {
+    seedTeamIds: number[];
+    rounds: number;
+    fields: number;
+    gameDuration: number;
+  }) => void;
+  dayStartTime?: string;
   onSaveTemplate?: (name: string, description: string, sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL') => Promise<void>;
   onNotify?: (message: string, type: NotificationType, title?: string, onConfirm?: () => void, timeout?: number) => void;
 }
 
 const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
   show, onHide, gamedayId, currentUserId, isLocked = false,
-  onGenerateFromBuiltin, onGenerateFromSavedTemplate, onSaveTemplate, onNotify,
+  onGenerateFromBuiltin, onGenerateFromSavedTemplate, onGenerateSwiss, dayStartTime,
+  onSaveTemplate, onNotify,
 }) => {
   const isStaff = useIsStaff();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -60,11 +69,13 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
   const [cloneItem, setCloneItem] = useState<SelectedTemplate | null>(null);
   const [applyConfig, setApplyConfig] = useState<TournamentConfig | undefined>();
   const [leagueTeams, setLeagueTeams] = useState<GlobalTeam[]>([]);
+  const [swissTeams, setSwissTeams] = useState<GlobalTeam[]>([]);
 
   const handleHide = useCallback(() => {
     setStep('library');
     setSelected(null);
     setSelectedId(null);
+    setSwissTeams([]);
     onHide();
   }, [onHide]);
 
@@ -114,6 +125,11 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
     try {
       if (selected.type === 'builtin') {
         const builtin = selected.template as TournamentTemplate;
+        if (builtin.id === 'SWISS') {
+          setSwissTeams(selectedTeams);
+          setStep('swiss-setup');
+          return;
+        }
         trackEvent('template_used', {
           gameday_id: gamedayId,
           template_name: builtin.name,
@@ -144,6 +160,16 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
       onNotify?.('Failed to apply template', 'danger');
     }
   }, [selected, applyConfig, gamedayId, handleHide, onGenerateFromBuiltin, onGenerateFromSavedTemplate, onNotify]);
+
+  const handleSwissConfirm = useCallback((config: {
+    seedTeamIds: number[];
+    rounds: number;
+    fields: number;
+    gameDuration: number;
+  }) => {
+    onGenerateSwiss?.(config);
+    handleHide();
+  }, [onGenerateSwiss, handleHide]);
 
   const handleAutoGenerateTeams = useCallback(async (count: number): Promise<GlobalTeam[]> => {
     try {
@@ -223,12 +249,15 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
   const requiredTeams = selected?.type === 'builtin'
     ? (selected.template as TournamentTemplate).teamCount.min
     : (selected?.template as ScheduleTemplate)?.num_teams ?? 0;
+  const maxTeams = selected?.type === 'builtin'
+    ? (selected.template as TournamentTemplate).teamCount.max
+    : undefined;
 
   return (
     <>
       <Modal
         show={show}
-        onHide={step === 'team-picker' ? () => setStep('library') : handleHide}
+        onHide={step === 'swiss-setup' ? () => setStep('team-picker') : step === 'team-picker' ? () => setStep('library') : handleHide}
         size={step === 'library' ? 'xl' : undefined}
         fullscreen={step === 'library' ? 'lg-down' : undefined}
         centered
@@ -294,9 +323,17 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
               </div>
             </Modal.Body>
           </>
+        ) : step === 'swiss-setup' ? (
+          <SwissSetupStep
+            teams={swissTeams}
+            dayStartTime={dayStartTime}
+            onBack={() => setStep('team-picker')}
+            onConfirm={handleSwissConfirm}
+          />
         ) : (
           <TeamPickerStep
             requiredTeams={requiredTeams}
+            maxTeams={maxTeams}
             availableTeams={leagueTeams}
             onBack={() => setStep('library')}
             onConfirm={handleTeamConfirm}
