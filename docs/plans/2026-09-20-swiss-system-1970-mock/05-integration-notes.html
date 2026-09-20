@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Swiss System — engineering integration notes</title>
+<style>
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#f1f3f5}
+  a{color:inherit;text-decoration:none}
+  code{font-family:"SF Mono",Consolas,Menlo,monospace;background:#f1f3f5;border-radius:4px;padding:1px 5px;font-size:12px;}
+  .back:hover{text-decoration:underline}
+  .page{min-height:100vh;box-sizing:border-box;background:#f1f3f5;display:flex;flex-direction:column;font-size:14px;color:#212529;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div style="height:56px;flex:0 0 56px;background:#ffffff;border-bottom:1px solid #dee2e6;display:flex;align-items:center;padding:0 28px;gap:12px;">
+    <div style="font-weight:700;font-size:17px;color:#0d6efd;">LeagueSphere</div>
+    <div style="width:1px;height:20px;background:#dee2e6;"></div>
+    <div style="font-size:14px;color:#495057;">Gameday Designer</div>
+    <div style="flex-grow:1;"></div>
+    <div style="font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#0d6efd;background:#e7f1ff;border-radius:999px;padding:4px 10px;">Mock · screen 5 / 6</div>
+    <div style="width:30px;height:30px;border-radius:50%;background:#dee2e6;"></div>
+  </div>
+
+  <div style="flex-grow:1;display:flex;justify-content:center;padding:28px;">
+    <div style="width:1140px;max-width:100%;display:flex;flex-direction:column;gap:16px;">
+      <a class="back" href="04-standings-round2.html" style="font-size:12.5px;color:#0d6efd;font-weight:600;">← Round 2</a>
+
+      <div>
+        <div style="font-size:19px;font-weight:600;">Where issue #1970 plugs in</div>
+        <div style="font-size:13px;color:#6c757d;margin-top:4px;">Grounded in the current codebase — not a finished design, a starting point for scoping.</div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;background:#eafaf1;border:1px solid #b8e6c9;border-radius:9px;padding:10px 16px;font-size:12.5px;color:#0f5132;">
+        <span style="font-weight:700;">✓ Rule check</span>
+        <span>Pairing, floater direction (lowest seed drops down) and bye value (2 pts, never twice) verified against the official JLT Flag 2026 page (AFCV NRW) — the generic Wikipedia Swiss-system article is chess-oriented and doesn't specify either.</span>
+      </div>
+
+      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:320px;background:#ffffff;border:1px solid #dee2e6;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;">
+          <div style="font-size:12px;font-weight:700;color:#868e96;text-transform:uppercase;letter-spacing:0.03em;">Today · static templates</div>
+          <div style="font-size:12.5px;line-height:1.7;color:#495057;">
+            <code>gamedays/wizard/gameday_format.py</code> + <code>SCHEDULE_MAP</code> pick one fixed pairing table by team count, once, before the gameday starts.
+          </div>
+          <div style="font-size:12.5px;line-height:1.7;color:#495057;">
+            The newer <code>gameday_designer</code> models a template as <code>stages[]</code>, each with a <code>progressionMode</code> (<code>round_robin</code>, <code>placement</code>) and a <code>progressionMapping</code> of fixed <code>sourceIndex</code> winner/loser refs — resolved once, when the template is authored.
+          </div>
+          <div style="font-size:12.5px;line-height:1.7;color:#dc3545;">
+            Neither model fits Swiss: pairings can't be known until a round's results exist.
+          </div>
+        </div>
+
+        <div style="flex:1;min-width:320px;background:#f5f9ff;border:1px solid #cfe2ff;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;">
+          <div style="font-size:12px;font-weight:700;color:#0a4fb5;text-transform:uppercase;letter-spacing:0.03em;">Proposed · swiss resolver</div>
+          <div style="font-size:12.5px;line-height:1.7;color:#22406f;">
+            New <code>progressionMode: 'swiss'</code> stage type. Instead of a static <code>progressionMapping</code>, a <code>SwissRoundResolver</code> runs <strong>after</strong> a round's results are confirmed and generates the next round's games from the seed list + live standings.
+          </div>
+          <div style="font-size:12.5px;line-height:1.7;color:#22406f;">
+            Config needs <code>{ rounds, fields, gameDuration, seedOrder }</code> — no upfront bracket shape, since nothing about who-plays-whom past Round 1 can be precomputed. Slot count and timing can, though: see below.
+          </div>
+          <div style="font-size:12.5px;line-height:1.7;color:#22406f;">
+            New entry in <code>tournamentTemplates.ts</code> / <code>TemplateLibraryModal</code>, same as any built-in template.
+          </div>
+          <div style="font-size:12.5px;line-height:1.7;color:#22406f;">
+            Net effect: for this stage type, the designer stops being "author a flow, then run it" and becomes a control loop — enter teams + round count once, then repeatedly generate → play → confirm → generate.
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:flex-start;gap:10px;background:#f5f9ff;border:1px solid #cfe2ff;border-radius:9px;padding:12px 16px;font-size:12.5px;">
+        <span style="font-weight:700;color:#0a4fb5;white-space:nowrap;">💡 Schema already splits this</span>
+        <span style="color:#22406f;line-height:1.65;">A game node already separates <code>fieldId</code> / <code>startTime</code> / <code>duration</code> / <code>breakAfter</code> (the reservation) from <code>homeTeamDynamic</code> / <code>awayTeamDynamic</code> (the pairing — <code>null</code> until resolved), the same way a playoff's TBD semifinal slot works today. Fields + duration at setup only need to pre-create every round's slots through the existing auto-time-calc engine ("Phase 1" scheduling); <code>SwissRoundResolver</code> then just fills the two dynamic refs per slot, once that round's results allow it.</span>
+      </div>
+
+      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:220px;background:#ffffff;border:1px solid #dee2e6;border-radius:10px;padding:16px 20px;">
+          <div style="font-size:12.5px;font-weight:700;color:#198754;margin-bottom:8px;">Reuses as-is</div>
+          <div style="font-size:12px;line-height:1.75;color:#495057;">
+            · <code>GameResultModal</code> for score entry — a Swiss game is scored exactly like any other<br>
+            · the existing auto-time-calc engine for slot start times<br>
+            · <code>TeamSelectionModal</code> for the team pool<br>
+            · <code>LeagueRuleset</code> for point values — win/bye = 2 is a ruleset variant, not bespoke Swiss math
+          </div>
+        </div>
+        <div style="flex:1;min-width:220px;background:#ffffff;border:1px solid #dee2e6;border-radius:10px;padding:16px 20px;">
+          <div style="font-size:12.5px;font-weight:700;color:#0d6efd;margin-bottom:8px;">New</div>
+          <div style="font-size:12px;line-height:1.75;color:#495057;">
+            · Seeding + rounds/fields/duration step (screen 2)<br>
+            · pre-create all rounds' slots (field + time) upfront, teams left <code>null</code><br>
+            · <code>SwissRoundResolver</code>: grouping, top/bottom split, floater cascade, bye assignment<br>
+            · "Generate next round" action, gated on the current round's results being in
+          </div>
+        </div>
+        <div style="flex:1;min-width:220px;background:#fffbea;border:1px solid #ffe8a1;border-radius:10px;padding:16px 20px;">
+          <div style="font-size:12.5px;font-weight:700;color:#8a6d1a;margin-bottom:8px;">Open questions</div>
+          <div style="font-size:12px;line-height:1.7;color:#6b5511;">
+            · A bye isn't a game — synthetic <code>Gameinfo</code> row, or standings-only adjustment?<br>
+            · Rematch avoidance and final tie-breaks aren't specified in the AFCV source (only chess-Swiss convention gives Buchholz/Sonneborn-Berger) — needs a ruling before Round 3+
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#ffffff;border:1px solid #dee2e6;border-radius:10px;padding:16px 20px;display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+        <div style="font-size:12.5px;font-weight:700;color:#495057;white-space:nowrap;">Two surfaces, one query</div>
+        <div style="font-size:12px;line-height:1.7;color:#495057;">
+          The round table (screen 4) and the public standings page (screen 6) read the same standings data — one lives in <code>gameday_designer</code> for organizers, the other renders through <code>liveticker</code>, the app already serving public gameday state with no sign-in. No parallel table needed.
+        </div>
+      </div>
+
+      <div style="font-size:11.5px;color:#868e96;">
+        See <code>docs/plans/2026-09-20-swiss-system-1970-design.md</code> for the full write-up, including which of these open questions were subsequently ruled on for v1.
+      </div>
+
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Swiss System — Round 1 pairings</title>
+<style>
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#f1f3f5}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer}
+  .team-btn{border:none;background:transparent;width:100%;text-align:left;padding:9px 12px;border-radius:7px;display:flex;align-items:center;gap:9px;}
+  .team-btn:hover{background:#f1f3f5}
+  .cta:hover{background:#0b5ed7}
+  .back:hover{text-decoration:underline}
+  .page{min-height:100vh;box-sizing:border-box;background:#f1f3f5;display:flex;flex-direction:column;font-size:14px;color:#212529;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div style="height:56px;flex:0 0 56px;background:#ffffff;border-bottom:1px solid #dee2e6;display:flex;align-items:center;padding:0 28px;gap:12px;">
+    <div style="font-weight:700;font-size:17px;color:#0d6efd;">LeagueSphere</div>
+    <div style="width:1px;height:20px;background:#dee2e6;"></div>
+    <div style="font-size:14px;color:#495057;">Gameday Designer</div>
+    <div style="flex-grow:1;"></div>
+    <div style="font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#0d6efd;background:#e7f1ff;border-radius:999px;padding:4px 10px;">Mock · screen 3 / 6</div>
+    <div style="width:30px;height:30px;border-radius:50%;background:#dee2e6;"></div>
+  </div>
+
+  <div style="flex-grow:1;display:flex;justify-content:center;padding:26px;gap:20px;flex-wrap:wrap;">
+
+    <div style="width:800px;max-width:100%;display:flex;flex-direction:column;gap:14px;">
+      <a class="back" href="02-configure.html" style="font-size:12.5px;color:#0d6efd;font-weight:600;">← Seeding</a>
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-size:19px;font-weight:600;">Control Panel · Round 1 of 4</div>
+          <div style="display:flex;gap:5px;">
+            <div style="width:9px;height:9px;border-radius:50%;background:#0d6efd;"></div>
+            <div style="width:9px;height:9px;border-radius:50%;background:#dee2e6;"></div>
+            <div style="width:9px;height:9px;border-radius:50%;background:#dee2e6;"></div>
+            <div style="width:9px;height:9px;border-radius:50%;background:#dee2e6;"></div>
+          </div>
+          <div style="font-size:11px;color:#868e96;">🕐 auto-scheduled · organizer can still nudge times</div>
+        </div>
+        <div style="font-size:13px;color:#6c757d;margin-top:4px;">Generated automatically: seeds 1–5 (top half) vs. seeds 6–10 (bottom half). Click a team to mark the winner — same interaction as the existing score modal.</div>
+      </div>
+
+      <div id="games" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;"></div>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+        <a class="cta" href="04-standings-round2.html" style="background:#0d6efd;color:#fff;border-radius:8px;padding:10px 20px;font-size:13.5px;font-weight:600;">Confirm results &amp; continue →</a>
+      </div>
+    </div>
+
+    <div style="width:320px;max-width:100%;background:#f5f9ff;border:1px solid #cfe2ff;border-radius:12px;padding:20px 22px;height:fit-content;display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:13px;font-weight:700;color:#0a4fb5;">Pairing rule</div>
+        <div style="font-size:10px;font-weight:700;color:#198754;background:#eafaf1;border-radius:5px;padding:2px 6px;">✓ verified vs. source</div>
+      </div>
+      <div style="font-size:12.5px;color:#22406f;line-height:1.65;">
+        Group all teams by current points. Within a group, sort by seed and pair the top half against the bottom half.
+      </div>
+      <div style="font-size:12.5px;color:#22406f;line-height:1.65;">
+        Round 1 has one group (everyone at 0 pts), so it's simply seeds 1–5 vs. 6–10 — no results needed yet.
+      </div>
+      <div style="font-size:12.5px;color:#22406f;line-height:1.65;">
+        A bye is worth 2 pts, given to the lowest seed in its group that hasn't had one — no team sits out twice.
+      </div>
+      <div style="font-size:11.5px;color:#5b7ba8;line-height:1.6;padding-top:4px;border-top:1px solid #dce9fc;">
+        Matches the official JLT Flag 2026 rules (AFCV NRW) exactly, including bye and floater direction — not the generic chess-Swiss article, which doesn't specify either.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  var GAMES = [
+    { field: 'Field 1', time: '09:00', a: { seed: 1, name: 'Rhein Fire', color: '#0d6efd' }, b: { seed: 6, name: 'Timberline Wolves', color: '#20c997' }, winner: 'A' },
+    { field: 'Field 2', time: '09:00', a: { seed: 2, name: 'Ember Dragons', color: '#6f42c1' }, b: { seed: 7, name: 'Blackwing Ravens', color: '#198754' }, winner: 'B' },
+    { field: 'Field 1', time: '09:40', a: { seed: 3, name: 'Ironclad Razorbacks', color: '#d63384' }, b: { seed: 8, name: 'Comet Athletics', color: '#0dcaf0' }, winner: 'A' },
+    { field: 'Field 2', time: '09:40', a: { seed: 4, name: 'Harbor Islanders', color: '#dc3545' }, b: { seed: 9, name: 'Iron Titans', color: '#6610f2' }, winner: 'B' },
+    { field: 'Field 1', time: '10:20', a: { seed: 5, name: 'Northgate Sentinels', color: '#fd7e14' }, b: { seed: 10, name: 'Fjord Vikings', color: '#6c757d' }, winner: 'A' }
+  ];
+
+  function pick(gameIdx, side) {
+    GAMES[gameIdx].winner = side;
+    render();
+  }
+
+  function teamRow(gameIdx, side, team, isWinner, otherIsWinner) {
+    var bg = isWinner ? '#eafaf1' : '#ffffff';
+    var weight = isWinner ? '700' : '400';
+    var color = isWinner ? '#0f5132' : (otherIsWinner ? '#adb5bd' : '#212529');
+    return '<button class="team-btn" onclick="pick(' + gameIdx + ',\'' + side + '\')" style="background:' + bg + ';">' +
+      '<div style="width:22px;height:22px;border-radius:50%;background:' + team.color + ';color:#fff;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 22px;">' + team.seed + '</div>' +
+      '<div style="flex-grow:1;font-size:13.5px;font-weight:' + weight + ';color:' + color + ';">' + team.name + '</div>' +
+      (isWinner ? '<span style="color:#198754;font-size:13px;font-weight:700;">✓ W</span>' : '') +
+    '</button>';
+  }
+
+  function render() {
+    var html = '';
+    GAMES.forEach(function (g, i) {
+      html += '<div style="background:#ffffff;border:1px solid #dee2e6;border-radius:10px;padding:14px 14px 10px 14px;display:flex;flex-direction:column;gap:6px;">' +
+        '<div style="display:flex;justify-content:space-between;font-size:11px;color:#868e96;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;padding:0 4px;"><span>' + g.field + '</span><span>' + g.time + '</span></div>' +
+        teamRow(i, 'A', g.a, g.winner === 'A', g.winner === 'B') +
+        teamRow(i, 'B', g.b, g.winner === 'B', g.winner === 'A') +
+      '</div>';
+    });
+    document.getElementById('games').innerHTML = html;
+  }
+
+  render();
+</script>
+</body>
+</html>
