@@ -25,6 +25,7 @@
     "confirm": "Bestätigen",
     "generate": "Generieren",
     "generateTournament": "Turnier generieren",
+    "swissControl": "Swiss-Steuerung",
     "replaceTeam": "Team auswechseln",
     "moveUp": "Nach oben",
     "moveDown": "Nach unten",
@@ -311,6 +312,10 @@
     "unlockSuccess": "Spielplan zur Bearbeitung freigeschaltet",
     "unlockFailed": "Spielplan konnte nicht freigeschaltet werden",
     "invalidTimeFormat": "Ungültiges Zeitformat. Verwenden Sie HH:MM (24-Stunden)",
+    "swissSetupSuccess": "Schweizer Turnier erstellt — Runde 1 generiert",
+    "swissSetupFailed": "Schweizer Turnier konnte nicht eingerichtet werden",
+    "swissRoundGenerated": "Runde {{n}} generiert",
+    "swissRoundFailed": "Die nächste Runde konnte nicht generiert werden",
     "title": {
       "success": "Erfolg",
       "error": "Fehler",

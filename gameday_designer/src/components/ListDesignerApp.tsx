@@ -12,6 +12,8 @@ import TeamSelectionModal from './modals/TeamSelectionModal';
 import NotificationToast from './ui/NotificationToast';
 import LoadingOverlay from './ui/LoadingOverlay';
 import TemplateLibraryModal from './modals/TemplateLibraryModal';
+import SwissControlModal from './modals/SwissControlModal';
+import { designerApi } from '../api/designerApi';
 import { useGamedayContext } from '../context/GamedayContext';
 import type { GameNode } from '../types/flowchart';
 import { isGameNode, GlobalTeam } from '../types/flowchart';
@@ -47,6 +49,7 @@ const ListDesignerApp: React.FC = () => {
     setToolbarProps,
     setIsLocked: setContextLocked,
     setOnOpenTemplates,
+    setOnOpenSwissControl,
     setReplayTourA,
     currentUserId,
     resultsMode,
@@ -58,6 +61,7 @@ const ListDesignerApp: React.FC = () => {
   } = useGamedayContext();
 
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
+  const [showSwissControl, setShowSwissControl] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
@@ -127,6 +131,36 @@ const ListDesignerApp: React.FC = () => {
   } = handlers;
 
   const isLocked = metadata?.status ? metadata.status !== 'DRAFT' : false;
+
+  const handleGenerateSwiss = useCallback(async (config: {
+    seedTeamIds: number[];
+    rounds: number;
+    fields: number;
+    gameDuration: number;
+  }) => {
+    if (!id) return;
+    const gamedayId = parseInt(id);
+    try {
+      await designerApi.setupSwissTournament(gamedayId, {
+        seed_team_ids: config.seedTeamIds,
+        rounds: config.rounds,
+        fields: config.fields,
+        game_duration: config.gameDuration,
+      });
+      const generated = await designerApi.generateSwissRound(gamedayId);
+      trackEvent('swiss_round_generated', { gameday_id: gamedayId, round: generated.round });
+      addNotification(t('ui:notification.swissSetupSuccess'), 'success', t('ui:notification.title.success'));
+      await loadData();
+      setShowSwissControl(true);
+    } catch (e) {
+      const backend = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      addNotification(
+        backend ?? t('ui:notification.swissSetupFailed'),
+        'danger',
+        t('ui:notification.title.error'),
+      );
+    }
+  }, [id, addNotification, t, loadData]);
 
   // --- Onboarding Tour A (manual build) ---
   const { seen: tourASeen, loading: tourALoading, markSeen: markTourASeen } = useTourSeen('manual_build');
@@ -219,6 +253,15 @@ const ListDesignerApp: React.FC = () => {
     setOnOpenTemplates(() => () => setShowTemplateLibrary(true));
     return () => setOnOpenTemplates(null);
   }, [setOnOpenTemplates]);
+
+  useEffect(() => {
+    if (flowState.swiss) {
+      setOnOpenSwissControl(() => () => setShowSwissControl(true));
+    } else {
+      setOnOpenSwissControl(null);
+    }
+    return () => setOnOpenSwissControl(null);
+  }, [setOnOpenSwissControl, flowState.swiss]);
 
   const resultsModeHandler = useCallback(async () => {
     if (!id) return;
@@ -734,8 +777,16 @@ const ListDesignerApp: React.FC = () => {
             selectedTeams,
           });
         }}
+        onGenerateSwiss={handleGenerateSwiss}
+        dayStartTime={metadata?.start}
         onNotify={addNotification}
         onSaveTemplate={handleSaveTemplate}
+      />
+
+      <SwissControlModal
+        show={showSwissControl}
+        onHide={() => setShowSwissControl(false)}
+        gamedayId={parseInt(id)}
       />
 
       <NotificationToast
