@@ -36,8 +36,13 @@ from gameday_designer.serializers import (
     ScheduleTemplateDetailSerializer,
     ApplyTemplateRequestSerializer,
     TemplateApplicationSerializer,
+    SwissSetupRequestSerializer,
 )
 from gameday_designer.permissions import IsStaffOrReadOnly, IsOwnerOrStaff
+from gameday_designer.service.swiss_tournament_service import (
+    SwissTournamentError,
+    SwissTournamentService,
+)
 from gameday_designer.service.template_validation_service import (
     TemplateValidationService,
 )
@@ -387,12 +392,20 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
         num_fields = data["num_fields"]
         game_duration = data.get("game_duration", 70)
 
-        if isinstance(num_teams, bool) or not isinstance(num_teams, int) or num_teams < 1:
+        if (
+            isinstance(num_teams, bool)
+            or not isinstance(num_teams, int)
+            or num_teams < 1
+        ):
             return Response(
                 {"error": "num_teams must be a positive integer"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if isinstance(num_fields, bool) or not isinstance(num_fields, int) or num_fields < 1:
+        if (
+            isinstance(num_fields, bool)
+            or not isinstance(num_fields, int)
+            or num_fields < 1
+        ):
             return Response(
                 {"error": "num_fields must be a positive integer"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -662,5 +675,91 @@ class ConfigView(APIView):
                 "is_staff": bool(request.user and request.user.is_staff),
                 "username": request.user.username,
                 "avatar_url": avatar_url,
+            }
+        )
+
+
+class SwissSetupView(APIView):
+    """
+    POST /api/designer/gamedays/<gameday_id>/swiss/setup/
+    Body: {seed_team_ids: [int], rounds: int, fields: int,
+           game_duration: int, round_start_overrides?: {round: "HH:MM"}}
+
+    Persists the Swiss tournament config on the gameday's designer state.
+
+    Returns:
+        200: {success: true, config: {...}}
+        400: {error: str}
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, gameday_id):
+        gameday = get_object_or_404(Gameday, pk=gameday_id)
+        serializer = SwissSetupRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            config = SwissTournamentService(gameday).setup(**serializer.validated_data)
+        except SwissTournamentError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"success": True, "config": config})
+
+
+class SwissGenerateRoundView(APIView):
+    """
+    POST /api/designer/gamedays/<gameday_id>/swiss/generate-round/
+
+    Resolves the next round via SwissRoundResolver and materializes it as
+    Gameinfo/Gameresult rows. Round 1 needs no prior results; later rounds
+    require every game of the previous round to be completed, and generation
+    stops after the configured round count.
+
+    Returns:
+        200: {success: true, round: int, pairings: [...],
+              bye_team_id: int | None, game_ids: [int]}
+        400: {error: str}
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, gameday_id):
+        gameday = get_object_or_404(Gameday, pk=gameday_id)
+        try:
+            generated = SwissTournamentService(gameday).generate_round()
+        except SwissTournamentError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"success": True, **generated})
+
+
+class SwissStandingsView(APIView):
+    """
+    GET /api/designer/gamedays/<gameday_id>/swiss/standings/
+
+    Live table from completed Swiss games (win=2/draw=1) plus 2 pts per bye,
+    ordered by points then seed. Read by the organizer's round control panel
+    (the public liveticker view reuses the same query in slice 3).
+
+    Returns:
+        200: {standings: [...], rounds_completed: int, rounds_total: int}
+        400: {error: str} (no Swiss setup on this gameday)
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, gameday_id):
+        gameday = get_object_or_404(Gameday, pk=gameday_id)
+        service = SwissTournamentService(gameday)
+        try:
+            standings = service.standings()
+            config = service.get_config()
+        except SwissTournamentError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                "standings": standings,
+                "rounds_completed": len(config.get("completedRounds") or []),
+                "rounds_total": config["rounds"],
             }
         )
