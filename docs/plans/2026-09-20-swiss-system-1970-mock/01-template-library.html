@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Template Library — Swiss System entry</title>
+<style>
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#f1f3f5}
+  a{color:inherit;text-decoration:none}
+  .card-link:hover{border-color:#0d6efd;box-shadow:0 4px 10px rgba(13,110,253,0.12)}
+  .pill:hover{background:#e9ecef}
+  .page{min-height:100vh;box-sizing:border-box;background:#f1f3f5;display:flex;flex-direction:column;font-size:14px;color:#212529;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div style="height:56px;flex:0 0 56px;background:#ffffff;border-bottom:1px solid #dee2e6;display:flex;align-items:center;padding:0 28px;gap:12px;">
+    <div style="font-weight:700;font-size:17px;color:#0d6efd;">LeagueSphere</div>
+    <div style="width:1px;height:20px;background:#dee2e6;"></div>
+    <div style="font-size:14px;color:#495057;">Gameday Designer</div>
+    <div style="flex-grow:1;"></div>
+    <div style="font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#0d6efd;background:#e7f1ff;border-radius:999px;padding:4px 10px;">Mock · screen 1 / 6</div>
+    <div style="width:30px;height:30px;border-radius:50%;background:#dee2e6;"></div>
+  </div>
+
+  <div style="flex-grow:1;display:flex;justify-content:center;padding:28px;">
+    <div style="width:1180px;max-width:100%;background:#ffffff;border:1px solid #dee2e6;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.08);display:flex;flex-direction:column;overflow:hidden;">
+
+      <div style="padding:22px 28px 16px 28px;border-bottom:1px solid #eef0f2;display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+          <div style="font-size:19px;font-weight:600;">Template Library</div>
+          <div style="width:340px;max-width:100%;border:1px solid #ced4da;border-radius:8px;padding:7px 12px;color:#868e96;font-size:13px;">Search templates…</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div class="pill" style="background:#0d6efd;color:#fff;border-radius:999px;padding:6px 14px;font-size:13px;font-weight:500;">All</div>
+          <div class="pill" style="background:#f1f3f5;border-radius:999px;padding:6px 14px;font-size:13px;">My templates</div>
+          <div class="pill" style="background:#f1f3f5;border-radius:999px;padding:6px 14px;font-size:13px;">Association</div>
+          <div class="pill" style="background:#f1f3f5;border-radius:999px;padding:6px 14px;font-size:13px;">Community</div>
+        </div>
+      </div>
+
+      <div style="padding:22px 28px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;">
+
+        <div style="border:1px solid #eef0f2;border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px;">
+          <div style="font-size:12px;font-weight:600;color:#868e96;text-transform:uppercase;letter-spacing:0.03em;">Built-in</div>
+          <div style="font-size:15px;font-weight:600;">6 Teams — 2 Groups of 3</div>
+          <div style="font-size:12.5px;color:#495057;line-height:1.5;">Round robin groups, top 2 advance to single-elim playoffs + 3rd place.</div>
+          <div style="font-size:11.5px;color:#adb5bd;margin-top:auto;">6 teams · 2 fields</div>
+        </div>
+
+        <div style="border:1px solid #eef0f2;border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px;">
+          <div style="font-size:12px;font-weight:600;color:#868e96;text-transform:uppercase;letter-spacing:0.03em;">Built-in</div>
+          <div style="font-size:15px;font-weight:600;">8 Teams — Single Elimination</div>
+          <div style="font-size:12.5px;color:#495057;line-height:1.5;">Straight knockout bracket, quarterfinals through final.</div>
+          <div style="font-size:11.5px;color:#adb5bd;margin-top:auto;">8 teams · 1 field</div>
+        </div>
+
+        <a class="card-link" href="02-configure.html" style="border:1.5px solid #0d6efd;border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px;background:#f5f9ff;transition:all 0.15s ease;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:12px;font-weight:600;color:#0d6efd;text-transform:uppercase;letter-spacing:0.03em;">Built-in</div>
+            <div style="font-size:10.5px;font-weight:700;letter-spacing:0.04em;color:#fff;background:#0d6efd;border-radius:5px;padding:2px 7px;">NEW</div>
+          </div>
+          <div style="font-size:15px;font-weight:700;">Swiss System (Seeded)</div>
+          <div style="font-size:12.5px;color:#334155;line-height:1.5;">Points-based pairing across N rounds — inspired by the JLT Flag 2026 format. Seed teams once; pairings regenerate every round.</div>
+          <div style="font-size:11.5px;color:#0d6efd;margin-top:auto;font-weight:600;">8+ teams · multi-round · click to configure →</div>
+        </a>
+
+        <div style="border:1px solid #eef0f2;border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px;">
+          <div style="font-size:12px;font-weight:600;color:#868e96;text-transform:uppercase;letter-spacing:0.03em;">Built-in</div>
+          <div style="font-size:15px;font-weight:600;">4 Teams — Round Robin</div>
+          <div style="font-size:12.5px;color:#495057;line-height:1.5;">Every team plays every other team once, single field.</div>
+          <div style="font-size:11.5px;color:#adb5bd;margin-top:auto;">4 teams · 1 field</div>
+        </div>
+
+        <div style="border:1px solid #eef0f2;border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#868e96;text-transform:uppercase;letter-spacing:0.03em;">Association</div>
+          <div style="font-size:15px;font-weight:600;">AFCV NRW — Standard Cup</div>
+          <div style="font-size:12.5px;color:#495057;line-height:1.5;">Shared by your association for regular-season cup days.</div>
+          <div style="font-size:11.5px;color:#adb5bd;margin-top:auto;">10 teams · 2 fields</div>
+        </div>
+
+        <div style="border:1px dashed #ced4da;border-radius:10px;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#adb5bd;">
+          <div style="font-size:22px;">+</div>
+          <div style="font-size:12.5px;">Save current flow as template</div>
+        </div>
+
+      </div>
+
+      <div style="margin-top:auto;padding:16px 28px;border-top:1px solid #eef0f2;display:flex;justify-content:flex-end;gap:10px;">
+        <div style="padding:8px 16px;border-radius:8px;border:1px solid #ced4da;font-size:13.5px;color:#495057;">Cancel</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</body>
+</html>
