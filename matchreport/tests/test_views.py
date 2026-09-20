@@ -510,7 +510,7 @@ class TestMatchreportGamedayPasscheckDownloadView(TestCase):
 
             roster = [
                 {
-                    "id": playerlist_entry.player.id,
+                    "id": playerlist_entry.id,  # Playerlist PK: roster ids address playerlist rows (see RosterSerializer), not Player rows
                     "first_name": playerlist_entry.player.person.first_name,
                     "last_name": playerlist_entry.player.person.last_name,
                     "jersey_number": 4,
