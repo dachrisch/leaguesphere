@@ -12,6 +12,44 @@ export interface SwissAdjustTeamOption {
   name: string;
 }
 
+/**
+ * Build adjust-modal team options from the authoritative Swiss seedOrder
+ * (backend Team PKs) joined to the designer team pool for display labels.
+ *
+ * Pool ids are never bare numbers (`team-<dbId>` from useTeamPoolState,
+ * `team-<uuid>`, or numeric strings from template flows), so only numeric
+ * suffixes / numeric strings resolve to a label. Seed ids missing from the
+ * pool fall back to `Team {id}`; pool teams outside seedOrder are dropped
+ * (pool membership != tournament membership — offering them yields a
+ * backend 400 unknown team).
+ */
+export function buildSwissAdjustTeamOptions(
+  seedOrder: number[],
+  pool: Array<{ id: string; label: string }>,
+): SwissAdjustTeamOption[] {
+  const labelById = new Map<number, string>();
+  for (const team of pool) {
+    const numericId = parsePoolTeamId(team.id);
+    if (numericId === null) continue;
+    if (!labelById.has(numericId)) {
+      labelById.set(numericId, team.label);
+    }
+  }
+  return seedOrder.map((id) => ({ id, name: labelById.get(id) ?? `Team ${id}` }));
+}
+
+function parsePoolTeamId(id: string): number | null {
+  const trimmed = id.trim();
+  if (/^\d+$/.test(trimmed)) {
+    return parseInt(trimmed, 10);
+  }
+  const match = /^team-(\d+)$/.exec(trimmed);
+  if (match) {
+    return parseInt(match[1], 10);
+  }
+  return null;
+}
+
 interface SwissRoundAdjustModalProps {
   show: boolean;
   onHide: () => void;

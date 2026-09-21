@@ -13,7 +13,7 @@ import NotificationToast from './ui/NotificationToast';
 import LoadingOverlay from './ui/LoadingOverlay';
 import TemplateLibraryModal from './modals/TemplateLibraryModal';
 import SwissControlModal from './modals/SwissControlModal';
-import SwissRoundAdjustModal, { SwissAdjustTeamOption } from './modals/SwissRoundAdjustModal';
+import SwissRoundAdjustModal, { SwissAdjustTeamOption, buildSwissAdjustTeamOptions } from './modals/SwissRoundAdjustModal';
 import { designerApi, SwissRoundPreview, SwissGenerateOverrides } from '../api/designerApi';
 import { useGamedayContext } from '../context/GamedayContext';
 import type { GameNode } from '../types/flowchart';
@@ -163,9 +163,10 @@ const ListDesignerApp: React.FC = () => {
     }
   }, [id, addNotification, t, loadData]);
 
-  const swissTeamOptions: SwissAdjustTeamOption[] = flowState.globalTeams
-    .map((team) => ({ id: parseInt(team.id, 10), name: team.label }))
-    .filter((team) => !Number.isNaN(team.id));
+  const swissTeamOptions: SwissAdjustTeamOption[] = buildSwissAdjustTeamOptions(
+    flowState.swiss?.seedOrder ?? [],
+    flowState.globalTeams,
+  );
 
   const handleProgressSwissRound = useCallback(async (roundNumber: number) => {
     if (!id) return;
