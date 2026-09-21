@@ -12,6 +12,7 @@ import FieldSection from './list/FieldSection';
 import { GameResultsTable, ScoreEdit } from './GameResultsTable';
 import MetadataTeamPoolRow from './MetadataTeamPoolRow';
 import ProgressionInspectorPanel from './ProgressionInspectorPanel';
+import SwissStandingsPanel from './SwissStandingsPanel';
 import type { FlowNode, FlowEdge, StageNode, GlobalTeam, GlobalTeamGroup, GamedayMetadata, FlowValidationResult, HighlightedElement, SwissTournamentState } from '../types/flowchart';
 import type { ProgressionSimulationResult } from '../types/progression';
 import { isStageNode, getFieldNodes } from '../types/flowchart';
@@ -183,6 +184,11 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
   return (
     <div className="list-canvas px-3">
       <div className="list-canvas__content">
+        {/* Swiss standings — embedded panel (Task 7), visible with the canvas */}
+        {swiss && gamedayId !== undefined && (
+          <SwissStandingsPanel gamedayId={gamedayId} />
+        )}
+
         {/* Metadata + Team Pool Row */}
         <MetadataTeamPoolRow
           metadata={metadata}
