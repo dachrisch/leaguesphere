@@ -12,7 +12,6 @@ import TeamSelectionModal from './modals/TeamSelectionModal';
 import NotificationToast from './ui/NotificationToast';
 import LoadingOverlay from './ui/LoadingOverlay';
 import TemplateLibraryModal from './modals/TemplateLibraryModal';
-import SwissControlModal from './modals/SwissControlModal';
 import SwissRoundAdjustModal, { SwissAdjustTeamOption, buildSwissAdjustTeamOptions } from './modals/SwissRoundAdjustModal';
 import { designerApi, SwissRoundPreview, SwissGenerateOverrides } from '../api/designerApi';
 import { useGamedayContext } from '../context/GamedayContext';
@@ -50,7 +49,6 @@ const ListDesignerApp: React.FC = () => {
     setToolbarProps,
     setIsLocked: setContextLocked,
     setOnOpenTemplates,
-    setOnOpenSwissControl,
     setReplayTourA,
     currentUserId,
     resultsMode,
@@ -62,7 +60,6 @@ const ListDesignerApp: React.FC = () => {
   } = useGamedayContext();
 
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
-  const [showSwissControl, setShowSwissControl] = useState(false);
   const [showSwissAdjust, setShowSwissAdjust] = useState(false);
   const [swissAdjustPreview, setSwissAdjustPreview] = useState<SwissRoundPreview | null>(null);
   const [swissAdjustRound, setSwissAdjustRound] = useState(1);
@@ -155,7 +152,6 @@ const ListDesignerApp: React.FC = () => {
       trackEvent('swiss_round_generated', { gameday_id: gamedayId, round: generated.round });
       addNotification(t('ui:notification.swissSetupSuccess'), 'success', t('ui:notification.title.success'));
       await loadData();
-      setShowSwissControl(true);
     } catch (e) {
       const backend = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
       addNotification(
@@ -306,15 +302,6 @@ const ListDesignerApp: React.FC = () => {
     setOnOpenTemplates(() => () => setShowTemplateLibrary(true));
     return () => setOnOpenTemplates(null);
   }, [setOnOpenTemplates]);
-
-  useEffect(() => {
-    if (flowState.swiss) {
-      setOnOpenSwissControl(() => () => setShowSwissControl(true));
-    } else {
-      setOnOpenSwissControl(null);
-    }
-    return () => setOnOpenSwissControl(null);
-  }, [setOnOpenSwissControl, flowState.swiss]);
 
   const resultsModeHandler = useCallback(async () => {
     if (!id) return;
@@ -836,12 +823,6 @@ const ListDesignerApp: React.FC = () => {
         dayStartTime={metadata?.start}
         onNotify={addNotification}
         onSaveTemplate={handleSaveTemplate}
-      />
-
-      <SwissControlModal
-        show={showSwissControl}
-        onHide={() => setShowSwissControl(false)}
-        gamedayId={parseInt(id)}
       />
 
       {swissAdjustPreview && (
