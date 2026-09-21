@@ -489,3 +489,263 @@ class TestSwissGenerateRound:
                     home_score=10,
                     away_score=0,
                 )
+
+
+@pytest.mark.django_db
+class TestSwissGenerateRoundOverrides:
+    """generate_round(overrides) honors full-manual overrides and materializes
+    designer Game nodes (issue #1970, designer-first task 3)."""
+
+    def _setup(self, n=5, rounds=3, fields=2, name="Swiss Overrides"):
+        gameday = make_gameday(name=name)
+        teams = make_teams(n, prefix=name.replace(" ", ""))
+        service = SwissTournamentService(gameday)
+        service.setup(
+            seed_team_ids=[t.pk for t in teams],
+            rounds=rounds,
+            fields=fields,
+            game_duration=30,
+        )
+        return gameday, teams, service
+
+    @staticmethod
+    def _nodes(gameday):
+        state = GamedayDesignerState.objects.get(gameday=gameday)
+        return state.state_data["nodes"]
+
+    def test_overrides_honored_in_gameinfo_and_nodes(self):
+        gameday, teams, service = self._setup()
+        t0, t1, t2, t3, t4 = teams
+        overrides = {
+            "pairings": [
+                {
+                    "home_team_id": t0.pk,
+                    "away_team_id": t1.pk,
+                    "field": 2,
+                    "start_time": "11:15",
+                },
+                {"home_team_id": t2.pk, "away_team_id": t3.pk},
+            ],
+            "bye_team_id": t4.pk,
+        }
+
+        generated = service.generate_round(overrides=overrides)
+
+        assert generated["round"] == 1
+        assert generated["pairings"] == [
+            {"home_team_id": t0.pk, "away_team_id": t1.pk},
+            {"home_team_id": t2.pk, "away_team_id": t3.pk},
+        ]
+        assert generated["bye_team_id"] == t4.pk
+        assert len(generated["game_ids"]) == 2
+
+        games = {
+            tuple(
+                sorted(
+                    r.team_id
+                    for r in Gameresult.objects.filter(gameinfo=game)
+                )
+            ): game
+            for game in Gameinfo.objects.filter(pk__in=generated["game_ids"])
+        }
+        custom = games[tuple(sorted((t0.pk, t1.pk)))]
+        assert custom.field == 2
+        assert custom.scheduled.strftime("%H:%M") == "11:15"
+        default = games[tuple(sorted((t2.pk, t3.pk)))]
+        assert default.field == 2  # round-robin default: game 2 of 2 fields
+        assert default.scheduled.strftime("%H:%M") == "09:00"
+
+        nodes = self._nodes(gameday)
+        stage_id = "swiss-round-1"
+        round_games = [
+            n
+            for n in nodes
+            if n.get("type") == "game" and n.get("parentId") == stage_id
+        ]
+        assert sorted(n["id"] for n in round_games) == ["swiss-r1-g1", "swiss-r1-g2"]
+        by_standing = {n["data"]["standing"]: n for n in round_games}
+        first = by_standing["Swiss R1-G1"]
+        assert first["data"]["homeTeamId"] == str(t0.pk)
+        assert first["data"]["awayTeamId"] == str(t1.pk)
+        assert first["data"]["fieldId"] == "swiss-field-2"
+        assert first["data"]["startTime"] == "11:15"
+        second = by_standing["Swiss R1-G2"]
+        assert second["data"]["homeTeamId"] == str(t2.pk)
+        assert second["data"]["awayTeamId"] == str(t3.pk)
+        assert second["data"]["startTime"] == "09:00"
+
+        ids = [n["id"] for n in nodes]
+        assert len(ids) == len(set(ids))
+        # Later-round placeholders are untouched.
+        later = [
+            n
+            for n in nodes
+            if n.get("type") == "game"
+            and str(n.get("parentId", "")).startswith("swiss-round-")
+            and n.get("parentId") != stage_id
+        ]
+        assert later
+        assert all(n["data"].get("homeTeamId") is None for n in later)
+
+        config = service.get_config()
+        assert config["byes"] == {str(t4.pk): 1}
+
+    def test_generate_without_overrides_materializes_nodes(self):
+        gameday, teams, service = self._setup(n=4, name="Swiss ResolverNodes")
+
+        generated = service.generate_round()
+
+        assert generated["round"] == 1
+        nodes = self._nodes(gameday)
+        round_games = [
+            n
+            for n in nodes
+            if n.get("type") == "game" and n.get("parentId") == "swiss-round-1"
+        ]
+        assert len(round_games) == 2
+        for node in round_games:
+            assert node["id"].startswith("swiss-r1-g")
+            assert node["data"]["homeTeamId"] is not None
+            assert node["data"]["awayTeamId"] is not None
+        paired = {
+            (n["data"]["homeTeamId"], n["data"]["awayTeamId"]) for n in round_games
+        }
+        expected = {
+            (str(p["home_team_id"]), str(p["away_team_id"]))
+            for p in generated["pairings"]
+        }
+        assert paired == expected
+        ids = [n["id"] for n in nodes]
+        assert len(ids) == len(set(ids))
+
+    def test_overrides_reject_duplicate_team(self):
+        gameday, teams, service = self._setup()
+        t0, t1, t2, t3, t4 = teams
+
+        with pytest.raises(SwissTournamentError):
+            service.generate_round(
+                overrides={
+                    "pairings": [
+                        {"home_team_id": t0.pk, "away_team_id": t1.pk},
+                        {"home_team_id": t0.pk, "away_team_id": t2.pk},
+                    ],
+                    "bye_team_id": t4.pk,
+                }
+            )
+
+    def test_overrides_reject_bye_team_also_paired(self):
+        gameday, teams, service = self._setup()
+        t0, t1, t2, t3, t4 = teams
+
+        with pytest.raises(SwissTournamentError):
+            service.generate_round(
+                overrides={
+                    "pairings": [
+                        {"home_team_id": t0.pk, "away_team_id": t1.pk},
+                        {"home_team_id": t2.pk, "away_team_id": t3.pk},
+                    ],
+                    "bye_team_id": t0.pk,
+                }
+            )
+
+    def test_overrides_reject_field_out_of_range(self):
+        gameday, teams, service = self._setup()
+        t0, t1, t2, t3, t4 = teams
+
+        with pytest.raises(SwissTournamentError):
+            service.generate_round(
+                overrides={
+                    "pairings": [
+                        {
+                            "home_team_id": t0.pk,
+                            "away_team_id": t1.pk,
+                            "field": 99,
+                        },
+                        {"home_team_id": t2.pk, "away_team_id": t3.pk},
+                    ],
+                    "bye_team_id": t4.pk,
+                }
+            )
+
+    def test_overrides_reject_bad_time_format(self):
+        gameday, teams, service = self._setup()
+        t0, t1, t2, t3, t4 = teams
+
+        with pytest.raises(SwissTournamentError):
+            service.generate_round(
+                overrides={
+                    "pairings": [
+                        {
+                            "home_team_id": t0.pk,
+                            "away_team_id": t1.pk,
+                            "start_time": "25:99",
+                        },
+                        {"home_team_id": t2.pk, "away_team_id": t3.pk},
+                    ],
+                    "bye_team_id": t4.pk,
+                }
+            )
+
+    def test_overrides_reject_unknown_team(self):
+        gameday, teams, service = self._setup()
+        t0, t1, t2, t3, t4 = teams
+
+        with pytest.raises(SwissTournamentError):
+            service.generate_round(
+                overrides={
+                    "pairings": [
+                        {"home_team_id": t0.pk, "away_team_id": 424242},
+                        {"home_team_id": t2.pk, "away_team_id": t3.pk},
+                    ],
+                    "bye_team_id": t4.pk,
+                }
+            )
+        with pytest.raises(SwissTournamentError):
+            service.generate_round(
+                overrides={
+                    "pairings": [
+                        {"home_team_id": t1.pk, "away_team_id": t2.pk},
+                        {"home_team_id": t3.pk, "away_team_id": t0.pk},
+                    ],
+                    "bye_team_id": 424242,
+                }
+            )
+
+    def test_odd_team_count_replaces_phantom_placeholder(self):
+        gameday, teams, service = self._setup(rounds=2)
+        # 5 teams seed ceil(5/2) = 3 placeholders for round 2.
+        placeholders = [
+            n
+            for n in self._nodes(gameday)
+            if n.get("parentId") == "swiss-round-2"
+        ]
+        assert len(placeholders) == 3
+
+        first = service.generate_round()
+        for game_id in first["game_ids"]:
+            complete_game(Gameinfo.objects.get(pk=game_id), 10, 0)
+        second = service.generate_round()
+
+        assert second["round"] == 2
+        assert len(second["game_ids"]) == 2  # floor(5/2) real games + bye
+        nodes = self._nodes(gameday)
+        round_two = [
+            n for n in nodes if n.get("parentId") == "swiss-round-2"
+        ]
+        assert sorted(n["id"] for n in round_two) == ["swiss-r2-g1", "swiss-r2-g2"]
+        assert all(n["data"].get("homeTeamId") is not None for n in round_two)
+        ids = [n["id"] for n in nodes]
+        assert len(ids) == len(set(ids))
+
+    def test_stage_seed_order_is_strings(self):
+        gameday, teams, service = self._setup(n=4, name="Swiss SeedStrings")
+
+        nodes = self._nodes(gameday)
+
+        stages = [n for n in nodes if n.get("type") == "stage"]
+        assert stages
+        for stage in stages:
+            seed_order = stage["data"]["progressionConfig"]["seedOrder"]
+            assert seed_order == [str(t.pk) for t in teams]
+            assert all(isinstance(t, str) for t in seed_order)
+        assert service.get_config()["seedOrder"] == [t.pk for t in teams]

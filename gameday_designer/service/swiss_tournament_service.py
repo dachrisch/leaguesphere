@@ -12,9 +12,11 @@ Runs the organizer control loop on top of real gameday data:
   per bye recorded in the state. Bye stays a standings-only adjustment; no
   synthetic ``Gameinfo`` row is created.
 - ``generate_round()`` resolves the next round via ``SwissRoundResolver``
-  and materializes it as ``Gameinfo``/``Gameresult`` rows. Round 1 needs no
-  prior results; later rounds are gated on every game of the previous round
-  being COMPLETED, and generation stops after the configured round count.
+  (or a validated full-manual ``overrides`` envelope) and materializes it
+  as ``Gameinfo``/``Gameresult`` rows plus designer Game nodes under
+  ``swiss-round-{n}``. Round 1 needs no prior results; later rounds are
+  gated on every game of the previous round being COMPLETED, and generation
+  stops after the configured round count.
 
 Team identity inside the resolver is the ``str``-ified ``Team`` PK; the
 service maps back to rows at the boundary.
@@ -229,26 +231,43 @@ class SwissTournamentService:
         }
 
     @transaction.atomic
-    def generate_round(self) -> dict:
-        """Resolve and materialize the next round; gated on confirmed results."""
+    def generate_round(self, overrides: Optional[dict] = None) -> dict:
+        """Resolve and materialize the next round; gated on confirmed results.
+
+        Without overrides the round comes from ``SwissRoundResolver`` via
+        ``preview_round()``. With overrides (the operator-confirmed pairings
+        from the adjust dialog) the round is built from
+        ``{"pairings": [{home_team_id, away_team_id, field?, start_time?}],
+        bye_team_id?}`` after validating team coverage, field range, and
+        times. Either way the round is written as ``Gameinfo``/``Gameresult``
+        rows plus designer Game nodes under ``swiss-round-{n}``.
+        """
         preview = self.preview_round()
         config = self._require_config()
         completed = config.get("completedRounds") or []
         next_round = preview["round"]
-        # floaters from SwissRoundResult are intentionally discarded at the
-        # service boundary because _materialize_round only needs pairings/bye.
-        result = SwissRoundResult(
-            pairings=[
-                (str(p["home_team_id"]), str(p["away_team_id"]))
-                for p in preview["pairings"]
-            ],
-            bye=(
-                str(preview["bye_team_id"])
-                if preview["bye_team_id"] is not None
-                else None
-            ),
-        )
-        return self._materialize_round(config, completed, next_round, result)
+        if overrides:
+            pairings, bye, per_game = self._validate_generate_overrides(
+                overrides, config
+            )
+            result = SwissRoundResult(pairings=pairings, bye=bye)
+        else:
+            # floaters from SwissRoundResult are intentionally discarded at the
+            # service boundary because _materialize_round only needs
+            # pairings/bye.
+            result = SwissRoundResult(
+                pairings=[
+                    (str(p["home_team_id"]), str(p["away_team_id"]))
+                    for p in preview["pairings"]
+                ],
+                bye=(
+                    str(preview["bye_team_id"])
+                    if preview["bye_team_id"] is not None
+                    else None
+                ),
+            )
+            per_game = None
+        return self._materialize_round(config, completed, next_round, result, per_game)
 
     # -- internals ----------------------------------------------------------
 
@@ -375,7 +394,7 @@ class SwissTournamentService:
                         "progressionConfig": {
                             "mode": "swiss",
                             "rounds": rounds,
-                            "seedOrder": list(seed_team_ids),
+                            "seedOrder": [str(t) for t in seed_team_ids],
                             "byePoints": SwissRoundResolver.BYE_POINTS,
                         },
                         "startTime": round_start_times[str(round_no)],
@@ -447,16 +466,112 @@ class SwissTournamentService:
                 pairings.add(frozenset(team_ids))
         return pairings
 
+    @staticmethod
+    def _parse_override_time(value) -> str:
+        try:
+            hour, minute = (int(part) for part in str(value).split(":"))
+            return dtime(hour, minute).strftime("%H:%M")
+        except (ValueError, TypeError, AttributeError) as exc:
+            raise SwissTournamentError(
+                f"invalid start_time {value!r} (expected HH:MM)"
+            ) from exc
+
+    @staticmethod
+    def _validate_generate_overrides(
+        overrides: dict, config: dict
+    ) -> tuple:
+        """Validate a full-manual override envelope against the tournament.
+
+        Returns ``(pairings, bye, per_game)`` with str team ids, where
+        ``per_game`` aligns with ``pairings`` as
+        ``{"field": int | None, "start_time": "HH:MM" | None}``.
+        """
+        raw_pairings = (overrides or {}).get("pairings") or []
+        if not raw_pairings:
+            raise SwissTournamentError("overrides must include at least one pairing")
+        seed_set = set(config["seedOrder"])
+        try:
+            bye = overrides.get("bye_team_id")
+            bye_id = int(bye) if bye is not None else None
+        except (TypeError, ValueError) as exc:
+            raise SwissTournamentError(
+                f"invalid bye_team_id {bye!r} in overrides"
+            ) from exc
+        if bye_id is not None and bye_id not in seed_set:
+            raise SwissTournamentError(
+                f"unknown bye team in overrides: {bye_id}"
+            )
+        if len(seed_set) % 2 == 0:
+            if bye_id is not None:
+                raise SwissTournamentError(
+                    "even team count needs no bye; drop bye_team_id"
+                )
+        elif bye_id is None:
+            raise SwissTournamentError(
+                "odd team count needs a bye_team_id in overrides"
+            )
+        pairings = []
+        per_game: List[dict] = []
+        seen: List[int] = []
+        for entry in raw_pairings:
+            try:
+                home = int(entry["home_team_id"])
+                away = int(entry["away_team_id"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise SwissTournamentError(
+                    f"invalid pairing in overrides: {entry!r}"
+                ) from exc
+            for tid in (home, away):
+                if tid not in seed_set:
+                    raise SwissTournamentError(
+                        f"unknown team in overrides: {tid}"
+                    )
+            seen.extend([home, away])
+            field = entry.get("field")
+            if field is not None:
+                try:
+                    field = int(field)
+                except (TypeError, ValueError) as exc:
+                    raise SwissTournamentError(
+                        f"invalid field {field!r} in overrides"
+                    ) from exc
+                if not 1 <= field <= config["fields"]:
+                    raise SwissTournamentError(
+                        f"field {field} out of range 1..{config['fields']}"
+                    )
+            start_time = entry.get("start_time")
+            if start_time is not None:
+                start_time = SwissTournamentService._parse_override_time(start_time)
+            pairings.append((str(home), str(away)))
+            per_game.append({"field": field, "start_time": start_time})
+        if len(set(seen)) != len(seen):
+            dupes = sorted({tid for tid in seen if seen.count(tid) > 1})
+            raise SwissTournamentError(
+                f"overrides contain duplicate teams: {dupes}"
+            )
+        if bye_id is not None and bye_id in seen:
+            raise SwissTournamentError(
+                f"bye team {bye_id} is also paired in overrides"
+            )
+        covered = set(seen)
+        if bye_id is not None:
+            covered.add(bye_id)
+        if covered != seed_set:
+            missing = sorted(seed_set - covered)
+            raise SwissTournamentError(
+                f"overrides do not cover all teams: missing {missing}"
+            )
+        return pairings, str(bye_id) if bye_id is not None else None, per_game
+
     def _materialize_round(
         self,
         config: dict,
         completed: List[dict],
         next_round: int,
         result: SwissRoundResult,
+        per_game: Optional[List[dict]] = None,
     ) -> dict:
-        start_time = config["roundStartTimes"][str(next_round)]
-        hour, minute = (int(part) for part in start_time.split(":"))
-        scheduled = dtime(hour, minute)
+        default_start = config["roundStartTimes"][str(next_round)]
         officials, _ = Team.objects.get_or_create(
             name=OFFICIALS_PLACEHOLDER,
             defaults={"description": OFFICIALS_PLACEHOLDER, "location": ""},
@@ -469,11 +584,22 @@ class SwissTournamentService:
         }
         pairings = []
         game_ids = []
+        game_fields = []
+        game_times = []
         for idx, (home_id, away_id) in enumerate(result.pairings, start=1):
+            detail = (per_game[idx - 1] if per_game else None) or {}
+            field = (
+                detail.get("field")
+                if detail.get("field") is not None
+                else ((idx - 1) % config["fields"]) + 1
+            )
+            start_time = detail.get("start_time") or default_start
+            hour, minute = (int(part) for part in start_time.split(":"))
+            scheduled = dtime(hour, minute)
             game = Gameinfo.objects.create(
                 gameday=self.gameday,
                 scheduled=scheduled,
-                field=((idx - 1) % config["fields"]) + 1,
+                field=field,
                 stage=SWISS_STAGE,
                 standing=f"Swiss R{next_round}-G{idx}",
                 officials=officials,
@@ -489,6 +615,8 @@ class SwissTournamentService:
                 {"home_team_id": int(home_id), "away_team_id": int(away_id)}
             )
             game_ids.append(game.pk)
+            game_fields.append(field)
+            game_times.append(start_time)
 
         bye_team_id = int(result.bye) if result.bye is not None else None
         completed.append({"round": next_round, "gameIds": game_ids, "bye": bye_team_id})
@@ -501,6 +629,45 @@ class SwissTournamentService:
         state = GamedayDesignerState.objects.get(gameday=self.gameday)
         state_data = dict(state.state_data or {})
         state_data["swiss"] = config
+        stage_id = f"{SWISS_NODE_PREFIX}round-{next_round}"
+        round_prefix = f"{SWISS_NODE_PREFIX}r{next_round}-g"
+        nodes = [
+            node
+            for node in (state_data.get("nodes") or [])
+            if not (
+                node.get("parentId") == stage_id
+                and str(node.get("id", "")).startswith(round_prefix)
+            )
+        ]
+        for idx, ((home_id, away_id), field, start_time) in enumerate(
+            zip(result.pairings, game_fields, game_times), start=1
+        ):
+            manual = bool(per_game and (per_game[idx - 1] or {}).get("start_time"))
+            nodes.append(
+                {
+                    "id": f"{round_prefix}{idx}",
+                    "type": "game",
+                    "parentId": stage_id,
+                    "position": {"x": 30, "y": 50},
+                    "data": {
+                        "type": "game",
+                        "stage": f"Round {next_round}",
+                        "stageType": "STANDARD",
+                        "standing": f"Swiss R{next_round}-G{idx}",
+                        "fieldId": f"{SWISS_NODE_PREFIX}field-{field}",
+                        "official": None,
+                        "breakAfter": 0,
+                        "homeTeamId": str(home_id),
+                        "awayTeamId": str(away_id),
+                        "homeTeamDynamic": None,
+                        "awayTeamDynamic": None,
+                        "duration": config["gameDuration"],
+                        "startTime": start_time,
+                        "manualTime": manual,
+                    },
+                }
+            )
+        state_data["nodes"] = nodes
         state.state_data = state_data
         state.save()
 
