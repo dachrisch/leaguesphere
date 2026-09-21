@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ListCanvas from '../ListCanvas';
 import type { ListCanvasProps } from '../ListCanvas';
@@ -130,5 +130,24 @@ describe('ListCanvas Swiss embedded standings', () => {
 
     expect(screen.queryByTestId('swiss-standings-panel')).not.toBeInTheDocument();
     expect(designerApi.getSwissStandings).not.toHaveBeenCalled();
+  });
+
+  it('refetches standings when results are saved without a new round (results version bump)', async () => {
+    const { rerender } = render(
+      <GamedayProvider>
+        <ListCanvas {...createProps({ swiss: SWISS })} swissResultsVersion={0} />
+      </GamedayProvider>,
+    );
+
+    expect(await screen.findByTestId('swiss-standings-table')).toBeInTheDocument();
+    expect(designerApi.getSwissStandings).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <GamedayProvider>
+        <ListCanvas {...createProps({ swiss: SWISS })} swissResultsVersion={1} />
+      </GamedayProvider>,
+    );
+
+    await waitFor(() => expect(designerApi.getSwissStandings).toHaveBeenCalledTimes(2));
   });
 });

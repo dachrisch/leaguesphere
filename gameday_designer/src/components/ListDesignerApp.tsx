@@ -60,6 +60,9 @@ const ListDesignerApp: React.FC = () => {
   } = useGamedayContext();
 
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
+  // Bumped after each successful game-result save so the embedded Swiss
+  // standings panel refetches (points change with no new round generated).
+  const [swissResultsVersion, setSwissResultsVersion] = useState(0);
   const [showSwissAdjust, setShowSwissAdjust] = useState(false);
   const [swissAdjustPreview, setSwissAdjustPreview] = useState<SwissRoundPreview | null>(null);
   const [swissAdjustRound, setSwissAdjustRound] = useState(1);
@@ -500,6 +503,7 @@ const ListDesignerApp: React.FC = () => {
 
       setShowResultModal(false);
       setSelectedGameForResult(null);
+      setSwissResultsVersion((v) => v + 1);
       addNotification(t('ui:notification.gameResultSaved'), 'success', t('ui:notification.title.success'));
 
       // Track game result saved event
@@ -557,7 +561,8 @@ const ListDesignerApp: React.FC = () => {
       
       const updatedGames = await gamedayApi.getGamedayGames(parseInt(id));
       setGameResults(updatedGames);
-      
+      setSwissResultsVersion((v) => v + 1);
+
       addNotification(t('ui:notification.resultsSaved'), 'success', t('ui:notification.title.success'));
     } catch (error) {
       console.error('Failed to save bulk results', error);
@@ -731,6 +736,7 @@ const ListDesignerApp: React.FC = () => {
               progression={progression}
               onHighlightProgressionElement={handleHighlightElement}
               swiss={flowState.swiss}
+              swissResultsVersion={swissResultsVersion}
               onProgressSwissRound={handleProgressSwissRound}
             />
           )}
