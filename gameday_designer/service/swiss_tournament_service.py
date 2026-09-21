@@ -41,6 +41,8 @@ from gameday_designer.service.time_service import TimeService
 
 SWISS_STAGE = "Swiss"
 
+SWISS_NODE_PREFIX = "swiss-"
+
 MIN_ROUNDS = 2
 MAX_ROUNDS = 8
 MIN_FIELDS = 1
@@ -71,7 +73,15 @@ class SwissTournamentService:
         game_duration: int,
         round_start_overrides: Optional[Dict[int, str]] = None,
     ) -> dict:
-        """Persist the tournament config; return it with round start times."""
+        """Persist the tournament config; return it with round start times.
+
+        Also seeds the designer canvas (``state_data["nodes"]``) with Field
+        nodes ``1..F``, Stage nodes ``Round 1..N`` (``progressionMode:
+        'swiss'``) and placeholder Game nodes ``Swiss R{r}-G{i}`` for rounds
+        ``2..N``. Round 1 games are materialized later by ``generate_round``.
+        Unrelated nodes are merged by id, never wiped; prior ``swiss-*``
+        nodes are replaced so re-running setup stays duplicate-free.
+        """
         self._validate_setup(seed_team_ids, rounds, fields, game_duration)
         overrides = self._validate_overrides(round_start_overrides or {}, rounds)
         state, _ = GamedayDesignerState.objects.get_or_create(gameday=self.gameday)
@@ -88,6 +98,18 @@ class SwissTournamentService:
             "byes": {},
         }
         state_data["swiss"] = config
+        kept = [
+            node
+            for node in (state_data.get("nodes") or [])
+            if not str(node.get("id", "")).startswith(SWISS_NODE_PREFIX)
+        ]
+        state_data["nodes"] = kept + self._swiss_canvas_nodes(
+            seed_team_ids=list(seed_team_ids),
+            rounds=rounds,
+            fields=fields,
+            game_duration=game_duration,
+            round_start_times=config["roundStartTimes"],
+        )
         state.state_data = state_data
         state.save()
         return config
@@ -304,6 +326,92 @@ class SwissTournamentService:
                     start, (round_no - 1) * round_length
                 ).strftime("%H:%M")
         return times
+
+    @staticmethod
+    def _swiss_canvas_nodes(
+        seed_team_ids: List[int],
+        rounds: int,
+        fields: int,
+        game_duration: int,
+        round_start_times: Dict[str, str],
+    ) -> List[dict]:
+        """Build Field/Stage/placeholder-Game nodes matching frontend shapes.
+
+        Shapes mirror ``createFieldNode``/``createStageNode``/
+        ``createGameNodeInStage`` in ``gameday_designer/src/types/flowchart.ts``
+        (``Field > Stage > Game`` via ``parentId``), which is what
+        ``ListCanvas``/``FieldSection``/``StageSection`` render.
+        """
+        nodes: List[dict] = []
+        for field_no in range(1, fields + 1):
+            nodes.append(
+                {
+                    "id": f"{SWISS_NODE_PREFIX}field-{field_no}",
+                    "type": "field",
+                    "position": {"x": 50, "y": 50},
+                    "data": {
+                        "type": "field",
+                        "name": f"Feld {field_no}",
+                        "order": field_no - 1,
+                    },
+                }
+            )
+        games_per_round = (len(seed_team_ids) + 1) // 2
+        for round_no in range(1, rounds + 1):
+            stage_id = f"{SWISS_NODE_PREFIX}round-{round_no}"
+            nodes.append(
+                {
+                    "id": stage_id,
+                    "type": "stage",
+                    "parentId": f"{SWISS_NODE_PREFIX}field-1",
+                    "position": {"x": 20, "y": 60},
+                    "data": {
+                        "type": "stage",
+                        "name": f"Round {round_no}",
+                        "category": "preliminary",
+                        "stageType": "STANDARD",
+                        "order": round_no - 1,
+                        "progressionMode": "swiss",
+                        "progressionConfig": {
+                            "mode": "swiss",
+                            "rounds": rounds,
+                            "seedOrder": list(seed_team_ids),
+                            "byePoints": SwissRoundResolver.BYE_POINTS,
+                        },
+                        "startTime": round_start_times[str(round_no)],
+                        "defaultGameDuration": game_duration,
+                        "defaultBreakBetweenGames": BREAK_MINUTES,
+                    },
+                }
+            )
+            if round_no == 1:
+                continue
+            for game_no in range(1, games_per_round + 1):
+                nodes.append(
+                    {
+                        "id": f"{SWISS_NODE_PREFIX}r{round_no}-g{game_no}",
+                        "type": "game",
+                        "parentId": stage_id,
+                        "position": {"x": 30, "y": 50},
+                        "data": {
+                            "type": "game",
+                            "stage": f"Round {round_no}",
+                            "stageType": "STANDARD",
+                            "standing": f"Swiss R{round_no}-G{game_no}",
+                            "fieldId": None,
+                            "official": None,
+                            "breakAfter": 0,
+                            "homeTeamId": None,
+                            "awayTeamId": None,
+                            "homeTeamDynamic": None,
+                            "awayTeamDynamic": None,
+                            "duration": game_duration,
+                            "startTime": round_start_times[str(round_no)],
+                            "manualTime": False,
+                        },
+                    }
+                )
+        return nodes
 
     @staticmethod
     def _accumulate(entry: dict, scored: int, conceded: int) -> None:
