@@ -286,7 +286,9 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     });
     setGlobalTeams(migratedTeams);
     setGlobalTeamGroups(state.globalTeamGroups || []);
-    setSwiss(state.swiss);
+    if ('swiss' in state) {
+      setSwiss(state.swiss);
+    }
     setSelection({ nodeIds: [], edgeIds: [] });
     handleStateChange();
   }, [handleStateChange]);

@@ -193,7 +193,7 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
       <div className="list-canvas__content">
         {/* Swiss standings — embedded panel (Task 7), visible with the canvas */}
         {swiss && gamedayId !== undefined && (
-          <SwissStandingsPanel gamedayId={gamedayId} refreshKey={swiss.completedRounds.length + swissResultsVersion} />
+          <SwissStandingsPanel gamedayId={gamedayId} refreshKey={(swiss.completedRounds?.length ?? 0) + swissResultsVersion} />
         )}
 
         {/* Metadata + Team Pool Row */}

@@ -150,4 +150,11 @@ describe('ListCanvas Swiss embedded standings', () => {
 
     await waitFor(() => expect(designerApi.getSwissStandings).toHaveBeenCalledTimes(2));
   });
+
+  it('renders the standings panel when completedRounds is missing (defensive refreshKey)', async () => {
+    const legacySwiss = { ...SWISS, completedRounds: undefined } as unknown as SwissTournamentState;
+    renderCanvas(createProps({ swiss: legacySwiss }));
+
+    expect(await screen.findByTestId('swiss-standings-panel')).toBeInTheDocument();
+  });
 });
