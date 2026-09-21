@@ -58,4 +58,39 @@ describe('useFlowState swiss round-trip (#1970)', () => {
 
     expect(result.current.swiss).toEqual(SWISS);
   });
+
+  it('preserves existing swiss when the imported payload lacks the swiss key', () => {
+    const { result } = renderHook(() => useFlowState());
+
+    act(() => {
+      result.current.importState({ ...emptyState(), swiss: SWISS });
+    });
+    act(() => {
+      result.current.importState(emptyState());
+    });
+
+    expect(result.current.swiss).toEqual(SWISS);
+    expect(result.current.exportState().swiss).toEqual(SWISS);
+  });
+
+  it('takes the new swiss config when the imported payload includes the swiss key', () => {
+    const NEXT: SwissTournamentState = {
+      ...SWISS,
+      rounds: 4,
+      completedRounds: [
+        ...SWISS.completedRounds,
+        { round: 2, gameIds: [201, 202], bye: null },
+      ],
+    };
+    const { result } = renderHook(() => useFlowState());
+
+    act(() => {
+      result.current.importState({ ...emptyState(), swiss: SWISS });
+    });
+    act(() => {
+      result.current.importState({ ...emptyState(), swiss: NEXT });
+    });
+
+    expect(result.current.swiss).toEqual(NEXT);
+  });
 });

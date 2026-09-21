@@ -312,7 +312,8 @@ export function useDesignerController(
                 nodes: timedNodes,
                 edges: imported.edges,
                 globalTeams: imported.globalTeams,
-                globalTeamGroups: imported.globalTeamGroups
+                globalTeamGroups: imported.globalTeamGroups,
+                swiss: fs.swiss
             });
             
             setShowTournamentModal(false);
@@ -403,6 +404,7 @@ export function useDesignerController(
           edges: [], // Edges will be added by assignTeamsToTournament if needed
           globalTeams: teamsToUse,
           globalTeamGroups: allGroups,
+          swiss: fs.swiss,
         });
 
         fs.setSelection({ nodeIds: [], edgeIds: [] });
