@@ -173,6 +173,18 @@ class TestSwissGenerateRoundEndpoint:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
+    def test_generate_round_dry_run_creates_nothing(self, api_client, staff_user):
+        gameday, _teams = self._setup(api_client, staff_user)
+
+        response = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/generate-round/?dry_run=true"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["round"] == 1
+        assert len(response.data["pairings"]) > 0
+        assert Gameinfo.objects.filter(gameday=gameday).count() == 0
+
 
 @pytest.mark.django_db
 class TestSwissStandingsEndpoint:

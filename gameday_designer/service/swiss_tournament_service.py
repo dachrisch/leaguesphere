@@ -162,9 +162,8 @@ class SwissTournamentService:
 
     # -- round generation --------------------------------------------------
 
-    @transaction.atomic
-    def generate_round(self) -> dict:
-        """Resolve and materialize the next round; gated on confirmed results."""
+    def preview_round(self) -> dict:
+        """Resolve the next round without writing anything."""
         config = self._require_config()
         completed = config.get("completedRounds") or []
         next_round = len(completed) + 1
@@ -196,6 +195,34 @@ class SwissTournamentService:
             points=points,
             teams_with_bye=teams_with_bye,
             previous_pairings=previous_pairings,
+        )
+        return {
+            "round": next_round,
+            "pairings": [
+                {"home_team_id": int(home_id), "away_team_id": int(away_id)}
+                for home_id, away_id in result.pairings
+            ],
+            "bye_team_id": int(result.bye) if result.bye is not None else None,
+            "game_ids": [],
+        }
+
+    @transaction.atomic
+    def generate_round(self) -> dict:
+        """Resolve and materialize the next round; gated on confirmed results."""
+        preview = self.preview_round()
+        config = self._require_config()
+        completed = config.get("completedRounds") or []
+        next_round = preview["round"]
+        result = SwissRoundResult(
+            pairings=[
+                (str(p["home_team_id"]), str(p["away_team_id"]))
+                for p in preview["pairings"]
+            ],
+            bye=(
+                str(preview["bye_team_id"])
+                if preview["bye_team_id"] is not None
+                else None
+            ),
         )
         return self._materialize_round(config, completed, next_round, result)
 
