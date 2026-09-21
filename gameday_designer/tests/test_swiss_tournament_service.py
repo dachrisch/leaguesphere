@@ -171,6 +171,37 @@ class TestSwissSetup:
                 game_duration=30,
             )
 
+    def test_setup_refuses_after_round_generated(self):
+        gameday = make_gameday()
+        teams = make_teams(4)
+        service = SwissTournamentService(gameday)
+        kwargs = dict(
+            seed_team_ids=[t.pk for t in teams],
+            rounds=2,
+            fields=2,
+            game_duration=30,
+        )
+        service.setup(**kwargs)
+        generated = service.generate_round()
+
+        with pytest.raises(SwissTournamentError, match="already has generated rounds"):
+            service.setup(**kwargs)
+
+        # Failed setup touches nothing: games stay, round-1 nodes stay,
+        # completedRounds still records round 1.
+        assert (
+            Gameinfo.objects.filter(gameday=gameday, stage="Swiss").count()
+            == len(generated["game_ids"])
+        )
+        state = GamedayDesignerState.objects.get(gameday=gameday)
+        round_nodes = [
+            n
+            for n in state.state_data["nodes"]
+            if n.get("parentId") == "swiss-round-1"
+        ]
+        assert len(round_nodes) == len(generated["game_ids"])
+        assert len(state.state_data["swiss"]["completedRounds"]) == 1
+
 
 @pytest.mark.django_db
 class TestSwissSetupSeedsCanvasNodes:

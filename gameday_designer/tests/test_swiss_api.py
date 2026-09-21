@@ -97,6 +97,35 @@ class TestSwissSetupEndpoint:
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
+    def test_setup_refused_after_round_generated(self, api_client, staff_user):
+        gameday = make_gameday()
+        teams = make_teams(4)
+        api_client.force_authenticate(user=staff_user)
+        payload = setup_payload(teams, rounds=2)
+        assert (
+            api_client.post(
+                f"/api/designer/gamedays/{gameday.pk}/swiss/setup/",
+                payload,
+                format="json",
+            ).status_code
+            == status.HTTP_200_OK
+        )
+        assert (
+            api_client.post(
+                f"/api/designer/gamedays/{gameday.pk}/swiss/generate-round/"
+            ).status_code
+            == status.HTTP_200_OK
+        )
+
+        response = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/setup/",
+            payload,
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "error" in response.data
+
 
 @pytest.mark.django_db
 class TestSwissGenerateRoundEndpoint:

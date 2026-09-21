@@ -83,11 +83,20 @@ class SwissTournamentService:
         ``2..N``. Round 1 games are materialized later by ``generate_round``.
         Unrelated nodes are merged by id, never wiped; prior ``swiss-*``
         nodes are replaced so re-running setup stays duplicate-free.
+        Re-running setup after rounds were generated is refused: generated
+        Swiss games are materialized rows, so setup raises instead of
+        orphaning them (delete/reset the rounds before re-running setup).
         """
         self._validate_setup(seed_team_ids, rounds, fields, game_duration)
         overrides = self._validate_overrides(round_start_overrides or {}, rounds)
         state, _ = GamedayDesignerState.objects.get_or_create(gameday=self.gameday)
         state_data = dict(state.state_data or {})
+        existing = state_data.get("swiss") or {}
+        if existing.get("completedRounds"):
+            raise SwissTournamentError(
+                "Swiss tournament already has generated rounds; "
+                "delete/reset the rounds before re-running setup"
+            )
         config = {
             "seedOrder": list(seed_team_ids),
             "rounds": rounds,
