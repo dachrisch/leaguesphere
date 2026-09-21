@@ -132,7 +132,7 @@ const SwissRoundAdjustModal: React.FC<SwissRoundAdjustModalProps> = ({
       await onConfirm(overrides);
     } catch (err) {
       // Parent rethrows so the modal stays open; surface the backend message
-      // inline (same extraction as SwissControlModal).
+      // inline (same extraction as SwissStandingsPanel).
       setError(apiErrorMessage(err, t('ui:notification.swissRoundFailed')));
     } finally {
       setGenerating(false);
