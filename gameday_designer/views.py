@@ -729,7 +729,7 @@ class SwissGenerateRoundView(APIView):
         try:
             if request.query_params.get("dry_run") == "true":
                 preview = SwissTournamentService(gameday).preview_round()
-                return Response(preview)
+                return Response({"success": True, **preview})
             generated = SwissTournamentService(gameday).generate_round()
         except SwissTournamentError as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
