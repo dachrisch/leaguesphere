@@ -231,3 +231,126 @@ class TestSwissStandingsEndpoint:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
+class TestSwissGenerateRoundOverridesEndpoint:
+    def _setup(self, api_client, staff_user, n=5, **overrides):
+        gameday = make_gameday(name=f"Swiss API Overrides {n}")
+        teams = make_teams(n, prefix=f"AO{n}")
+        api_client.force_authenticate(user=staff_user)
+        response = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/setup/",
+            setup_payload(teams, **overrides),
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        return gameday, teams
+
+    def _overrides(self, teams, **kw):
+        t0, t1, t2, t3, t4 = teams
+        payload = {
+            "pairings": [
+                {
+                    "home_team_id": t0.pk,
+                    "away_team_id": t1.pk,
+                    "field": 2,
+                    "start_time": "11:15",
+                },
+                {"home_team_id": t2.pk, "away_team_id": t3.pk},
+            ],
+            "bye_team_id": t4.pk,
+        }
+        payload.update(kw)
+        return payload
+
+    def test_overrides_envelope_accepted(self, api_client, staff_user):
+        gameday, teams = self._setup(api_client, staff_user)
+
+        response = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/generate-round/",
+            self._overrides(teams),
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["success"] is True
+        assert response.data["round"] == 1
+        assert response.data["bye_team_id"] == teams[4].pk
+        assert response.data["pairings"] == [
+            {"home_team_id": teams[0].pk, "away_team_id": teams[1].pk},
+            {"home_team_id": teams[2].pk, "away_team_id": teams[3].pk},
+        ]
+        state = GamedayDesignerState.objects.get(gameday=gameday)
+        round_games = [
+            n
+            for n in state.state_data["nodes"]
+            if n.get("type") == "game" and n.get("parentId") == "swiss-round-1"
+        ]
+        assert len(round_games) == 2
+        assert round_games[0]["data"]["startTime"] == "11:15"
+
+    @pytest.mark.parametrize(
+        "mutate",
+        [
+            # duplicate team across pairings
+            {"dup": True},
+            # bye team also paired
+            {"bye_to": 0},
+            # field out of 1..F
+            {"field": 99},
+            # bad time format
+            {"start_time": "9am"},
+            # unknown team id
+            {"away_to": 424242},
+        ],
+    )
+    def test_override_validation_errors_are_400(
+        self, api_client, staff_user, mutate
+    ):
+        gameday, teams = self._setup(api_client, staff_user)
+        payload = self._overrides(teams)
+        if mutate.get("dup"):
+            payload["pairings"][1] = {
+                "home_team_id": teams[0].pk,
+                "away_team_id": teams[2].pk,
+            }
+        if "bye_to" in mutate:
+            payload["bye_team_id"] = teams[mutate["bye_to"]].pk
+        if "field" in mutate:
+            payload["pairings"][0]["field"] = mutate["field"]
+        if "start_time" in mutate:
+            payload["pairings"][0]["start_time"] = mutate["start_time"]
+        if "away_to" in mutate:
+            payload["pairings"][0]["away_team_id"] = mutate["away_to"]
+
+        response = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/generate-round/",
+            payload,
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "error" in response.data
+
+    def test_overrides_keep_prior_round_gate(self, api_client, staff_user):
+        gameday, teams = self._setup(api_client, staff_user, n=4)
+        first = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/generate-round/"
+        )
+        assert first.status_code == status.HTTP_200_OK
+        payload = {
+            "pairings": [
+                {"home_team_id": teams[0].pk, "away_team_id": teams[1].pk},
+                {"home_team_id": teams[2].pk, "away_team_id": teams[3].pk},
+            ]
+        }
+
+        response = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/generate-round/",
+            payload,
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "error" in response.data
