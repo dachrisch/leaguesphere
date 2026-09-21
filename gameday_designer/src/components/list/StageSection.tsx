@@ -382,10 +382,11 @@ const StageSection: React.FC<StageSectionProps> = memo(({
           <>
             {swiss.status === 'waiting' && (
               <span
+                id={`swiss-progress-hint-text-${swiss.roundNumber}`}
                 className="text-muted small me-2"
                 data-testid={`swiss-progress-hint-${swiss.roundNumber}`}
               >
-                Waiting for results
+                {t('ui:swiss.waitingForResults')}
               </span>
             )}
             <Button
@@ -393,11 +394,19 @@ const StageSection: React.FC<StageSectionProps> = memo(({
               variant={swiss.status === 'generatable' ? 'primary' : 'outline-secondary'}
               onClick={handleSwissProgress}
               disabled={swiss.status !== 'generatable'}
-              title={swiss.status === 'generatable' ? `Generate Round ${swiss.roundNumber}` : 'Waiting for results'}
+              title={swiss.status === 'generatable'
+                ? t('ui:swiss.generateRound', { n: swiss.roundNumber })
+                : t('ui:swiss.waitingForResults')}
+              aria-label={swiss.status === 'generatable'
+                ? t('ui:swiss.generateRound', { n: swiss.roundNumber })
+                : t('ui:swiss.waitingForResults')}
+              aria-describedby={swiss.status === 'waiting'
+                ? `swiss-progress-hint-text-${swiss.roundNumber}`
+                : undefined}
               data-testid={`swiss-progress-${swiss.roundNumber}`}
               className="me-2"
             >
-              Generate Round {swiss.roundNumber}
+              {t('ui:swiss.generateRound', { n: swiss.roundNumber })}
             </Button>
           </>
         )}

@@ -2,6 +2,10 @@
   "hint": {
     "unlockBlockedResults": "Cannot unlock: results have already been entered for this gameday. Re-publishing would regenerate the schedule and delete them."
   },
+  "swiss": {
+    "waitingForResults": "Waiting for results",
+    "generateRound": "Generate Round {{n}}"
+  },
   "button": {
     "addField": "Add Field",
     "addStage": "Add Stage",

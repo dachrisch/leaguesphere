@@ -60,6 +60,20 @@
     "back": "Back",
     "confirm": "Generate Round 1 →"
   },
+  "swissAdjust": {
+    "title": "Adjust Round {{n}}",
+    "description": "Review the proposed pairings and adjust them before generating. You can swap teams, change the bye team, field or start time.",
+    "pairingsTitle": "Proposed pairings",
+    "homeLabel": "Home",
+    "awayLabel": "Away",
+    "fieldLabel": "Field",
+    "autoField": "Auto",
+    "startTimeLabel": "Start",
+    "byeLabel": "Bye team",
+    "noBye": "No bye",
+    "confirm": "Generate Round {{n}}",
+    "generating": "Generating…"
+  },
   "swissControl": {
     "title": "Swiss Tournament Control",
     "standingsTitle": "Standings",
