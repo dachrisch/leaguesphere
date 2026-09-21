@@ -15,6 +15,12 @@ import { useTypedTranslation } from '../i18n/useTypedTranslation';
 
 interface SwissStandingsPanelProps {
   gamedayId: number;
+  /**
+   * Refresh signal: bump to refetch standings without remounting. ListCanvas
+   * passes `swiss.completedRounds.length`, which changes on every round
+   * generation (and on setup) while gamedayId stays stable.
+   */
+  refreshKey?: number;
 }
 
 function apiErrorMessage(error: unknown, fallback: string): string {
@@ -24,7 +30,7 @@ function apiErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({ gamedayId }) => {
+const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({ gamedayId, refreshKey = 0 }) => {
   const { t } = useTypedTranslation(['modal', 'ui']);
   const [standings, setStandings] = useState<SwissStandings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,9 +39,11 @@ const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({ gamedayId }) 
 
   useEffect(() => {
     let active = true;
-    // No synchronous setState here (react-hooks/set-state-in-effect) — the
-    // initial loading state covers the first render, and every standings
-    // update happens asynchronously below.
+    // Re-arm loading/error on every fetch (mount + refreshKey bumps) so a
+    // refetch after round generation never flashes the stale table/error.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-status reset on refetch signal
+    setLoading(true);
+    setError(null);
     designerApi
       .getSwissStandings(gamedayId)
       .then((data) => {
@@ -57,7 +65,7 @@ const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({ gamedayId }) 
     return () => {
       active = false;
     };
-  }, [gamedayId, t]);
+  }, [gamedayId, refreshKey, t]);
 
   const complete = standings !== null && standings.rounds_completed >= standings.rounds_total;
 
@@ -81,9 +89,10 @@ const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({ gamedayId }) 
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           aria-controls="swiss-standings-panel-body"
+          aria-label={t('modal:swissControl.toggleStandings')}
           data-testid="swiss-standings-toggle"
         >
-          <i className={`bi ${open ? 'bi-chevron-up' : 'bi-chevron-down'}`} />
+          <i className={`bi ${open ? 'bi-chevron-up' : 'bi-chevron-down'}`} aria-hidden="true" />
         </Button>
       </Card.Header>
       <Collapse in={open} unmountOnExit>
