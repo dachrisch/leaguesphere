@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import SwissStandingsPanel from '../SwissStandingsPanel';
 import { designerApi } from '../../api/designerApi';
@@ -83,6 +83,27 @@ describe('SwissStandingsPanel', () => {
     render(<SwissStandingsPanel gamedayId={42} />);
 
     expect(await screen.findByTestId('swiss-standings-error')).toHaveTextContent('boom');
+  });
+
+  it('refetches standings when refreshKey changes (new round generated)', async () => {
+    const round1: SwissStandings = { ...TABLE, rounds_completed: 1 };
+    const round2: SwissStandings = { ...TABLE, rounds_completed: 2 };
+    const spy = vi
+      .spyOn(designerApi, 'getSwissStandings')
+      .mockResolvedValueOnce(round1)
+      .mockResolvedValueOnce(round2);
+
+    const { rerender } = render(<SwissStandingsPanel gamedayId={42} refreshKey={1} />);
+    expect(await screen.findByTestId('swiss-standings-table')).toBeInTheDocument();
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('swiss-rounds-indicator')).toHaveTextContent('1');
+
+    rerender(<SwissStandingsPanel gamedayId={42} refreshKey={2} />);
+
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.getByTestId('swiss-rounds-indicator')).toHaveTextContent('2'),
+    );
   });
 
   it('collapses and expands via the toggle', async () => {

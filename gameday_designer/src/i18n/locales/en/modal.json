@@ -84,6 +84,7 @@
     "winsColumn": "W",
     "drawsColumn": "D",
     "lossesColumn": "L",
-    "pointsColumn": "Pts"
+    "pointsColumn": "Pts",
+    "toggleStandings": "Toggle standings"
   }
 }

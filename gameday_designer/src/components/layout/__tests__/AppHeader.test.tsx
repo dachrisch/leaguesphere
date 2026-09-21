@@ -125,7 +125,7 @@ describe('AppHeader', () => {
     });
   });
 
-  describe('swiss control button', () => {
+  describe('swiss control button absence', () => {
     // Task 7 retired the SwissControlModal: standings live embedded in the
     // designer canvas, so the header no longer offers a 🏁 control button.
     it('never renders a swiss control button on the designer page', () => {

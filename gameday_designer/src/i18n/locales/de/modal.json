@@ -84,6 +84,7 @@
     "winsColumn": "S",
     "drawsColumn": "U",
     "lossesColumn": "N",
-    "pointsColumn": "Pkte"
+    "pointsColumn": "Pkte",
+    "toggleStandings": "Tabelle ein-/ausblenden"
   }
 }
