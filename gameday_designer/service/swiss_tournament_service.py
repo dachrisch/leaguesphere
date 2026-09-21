@@ -213,6 +213,8 @@ class SwissTournamentService:
         config = self._require_config()
         completed = config.get("completedRounds") or []
         next_round = preview["round"]
+        # floaters from SwissRoundResult are intentionally discarded at the
+        # service boundary because _materialize_round only needs pairings/bye.
         result = SwissRoundResult(
             pairings=[
                 (str(p["home_team_id"]), str(p["away_team_id"]))
