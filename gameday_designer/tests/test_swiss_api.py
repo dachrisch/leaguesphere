@@ -10,7 +10,7 @@ Endpoints (mounted at /api/designer/):
 import pytest
 from rest_framework import status
 
-from gamedays.models import Gameday, Gameinfo, Gameresult
+from gamedays.models import Gameday, GamedayDesignerState, Gameinfo, Gameresult
 from gameday_designer.tests.test_swiss_tournament_service import (
     complete_game,
     make_gameday,
@@ -181,9 +181,13 @@ class TestSwissGenerateRoundEndpoint:
         )
 
         assert response.status_code == status.HTTP_200_OK
+        assert response.data["success"] is True
         assert response.data["round"] == 1
         assert len(response.data["pairings"]) > 0
         assert Gameinfo.objects.filter(gameday=gameday).count() == 0
+        swiss = GamedayDesignerState.objects.get(gameday=gameday).state_data["swiss"]
+        assert swiss["completedRounds"] == []
+        assert swiss["byes"] == {}
 
 
 @pytest.mark.django_db
