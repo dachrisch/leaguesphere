@@ -12,7 +12,7 @@ import FieldSection from './list/FieldSection';
 import { GameResultsTable, ScoreEdit } from './GameResultsTable';
 import MetadataTeamPoolRow from './MetadataTeamPoolRow';
 import ProgressionInspectorPanel from './ProgressionInspectorPanel';
-import type { FlowNode, FlowEdge, StageNode, GlobalTeam, GlobalTeamGroup, GamedayMetadata, FlowValidationResult, HighlightedElement } from '../types/flowchart';
+import type { FlowNode, FlowEdge, StageNode, GlobalTeam, GlobalTeamGroup, GamedayMetadata, FlowValidationResult, HighlightedElement, SwissTournamentState } from '../types/flowchart';
 import type { ProgressionSimulationResult } from '../types/progression';
 import { isStageNode, getFieldNodes } from '../types/flowchart';
 import { ICONS } from '../utils/iconConstants';
@@ -78,6 +78,10 @@ export interface ListCanvasProps {
   progression?: ProgressionSimulationResult;
   /** Click-to-highlight for Progression Inspector findings/outcome rows. */
   onHighlightProgressionElement?: (id: string, type: HighlightedElement['type']) => void;
+  /** Swiss tournament state — drives per-round Progress buttons in swiss stages. */
+  swiss?: SwissTournamentState;
+  /** Called with the round number when a swiss Progress button is clicked. */
+  onProgressSwissRound?: (roundNumber: number) => void;
 }
 
 const ListCanvas: React.FC<ListCanvasProps> = (props) => {
@@ -137,6 +141,8 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
     expertMode = false,
     progression,
     onHighlightProgressionElement,
+    swiss,
+    onProgressSwissRound,
   } = props;
 
   const { t } = useTypedTranslation(['ui']);
@@ -316,6 +322,8 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
                     readOnly={readOnly}
                     expertMode={expertMode}
                     progressionByGameId={progression?.cellsByGameId}
+                    swiss={swiss}
+                    onProgressSwissRound={onProgressSwissRound}
                   />
                 ))}
               </div>
