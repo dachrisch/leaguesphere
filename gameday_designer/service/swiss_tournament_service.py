@@ -640,6 +640,9 @@ class SwissTournamentService:
         state_data["swiss"] = config
         stage_id = f"{SWISS_NODE_PREFIX}round-{next_round}"
         round_prefix = f"{SWISS_NODE_PREFIX}r{next_round}-g"
+        existing_ids = {
+            str(node.get("id", "")) for node in (state_data.get("nodes") or [])
+        }
         nodes = [
             node
             for node in (state_data.get("nodes") or [])
@@ -648,6 +651,23 @@ class SwissTournamentService:
                 and str(node.get("id", "")).startswith(round_prefix)
             )
         ]
+        # Legacy states may carry swiss config + completedRounds but zero
+        # canvas nodes (pre-designer-first tournaments). Backfill the missing
+        # Field/Stage containers so the generated games have parents to
+        # render under. Only missing containers are added; existing nodes
+        # (including other rounds' games/placeholders) are left untouched.
+        for container in self._swiss_canvas_nodes(
+            seed_team_ids=list(config["seedOrder"]),
+            rounds=config["rounds"],
+            fields=config["fields"],
+            game_duration=config["gameDuration"],
+            round_start_times=config["roundStartTimes"],
+        ):
+            if container["type"] not in ("field", "stage"):
+                continue
+            if container["id"] not in existing_ids:
+                nodes.append(container)
+                existing_ids.add(container["id"])
         for idx, ((home_id, away_id), field, start_time) in enumerate(
             zip(result.pairings, game_fields, game_times), start=1
         ):

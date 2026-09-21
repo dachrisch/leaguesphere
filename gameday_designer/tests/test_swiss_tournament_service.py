@@ -780,3 +780,97 @@ class TestSwissGenerateRoundOverrides:
             assert seed_order == [str(t.pk) for t in teams]
             assert all(isinstance(t, str) for t in seed_order)
         assert service.get_config()["seedOrder"] == [t.pk for t in teams]
+
+
+@pytest.mark.django_db
+class TestSwissGenerateBackfillsLegacyContainers:
+    """generate_round backfills Field/Stage containers for legacy states
+    (swiss config + completedRounds but zero canvas nodes)."""
+
+    def test_generate_backfills_containers_without_duplicates(self):
+        gameday = make_gameday(name="Swiss Legacy Backfill")
+        teams = make_teams(4, prefix="Legacy")
+        service = SwissTournamentService(gameday)
+        service.setup(
+            seed_team_ids=[t.pk for t in teams],
+            rounds=3,
+            fields=2,
+            game_duration=30,
+        )
+        first = service.generate_round()
+
+        # Simulate a pre-designer-first state: rounds exist, nodes wiped.
+        state = GamedayDesignerState.objects.get(gameday=gameday)
+        state.state_data = {**state.state_data, "nodes": []}
+        state.save()
+
+        for game_id in first["game_ids"]:
+            complete_game(Gameinfo.objects.get(pk=game_id), 10, 0)
+
+        second = service.generate_round()
+
+        assert second["round"] == 2
+        nodes = GamedayDesignerState.objects.get(gameday=gameday).state_data[
+            "nodes"
+        ]
+        by_id = {n["id"]: n for n in nodes}
+        assert "swiss-field-1" in by_id
+        assert "swiss-round-2" in by_id
+        round_two = [n for n in nodes if n.get("parentId") == "swiss-round-2"]
+        assert len(round_two) == len(second["game_ids"])
+        ids = [n["id"] for n in nodes]
+        assert len(ids) == len(set(ids))
+
+        # Second backfill path stays duplicate-free: complete round 2 and
+        # generate round 3 — containers are reused, not duplicated.
+        for game_id in second["game_ids"]:
+            complete_game(Gameinfo.objects.get(pk=game_id), 10, 0)
+        third = service.generate_round()
+        assert third["round"] == 3
+        nodes = GamedayDesignerState.objects.get(gameday=gameday).state_data[
+            "nodes"
+        ]
+        ids = [n["id"] for n in nodes]
+        assert len(ids) == len(set(ids))
+        assert ids.count("swiss-field-1") == 1
+        assert ids.count("swiss-round-3") == 1
+        assert [n for n in nodes if n.get("parentId") == "swiss-round-3"]
+
+    def test_generate_keeps_existing_containers_and_other_rounds_games(self):
+        gameday = make_gameday(name="Swiss Legacy Keep")
+        teams = make_teams(4, prefix="Keep")
+        service = SwissTournamentService(gameday)
+        service.setup(
+            seed_team_ids=[t.pk for t in teams],
+            rounds=3,
+            fields=1,
+            game_duration=30,
+        )
+        first = service.generate_round()
+        for game_id in first["game_ids"]:
+            complete_game(Gameinfo.objects.get(pk=game_id), 10, 0)
+
+        before = {
+            n["id"]: n
+            for n in GamedayDesignerState.objects.get(
+                gameday=gameday
+            ).state_data["nodes"]
+        }
+        round_one_ids = sorted(
+            n["id"] for n in before.values() if n.get("parentId") == "swiss-round-1"
+        )
+        assert round_one_ids
+
+        service.generate_round()
+
+        nodes = GamedayDesignerState.objects.get(gameday=gameday).state_data[
+            "nodes"
+        ]
+        ids = [n["id"] for n in nodes]
+        assert len(ids) == len(set(ids))
+        assert ids.count("swiss-field-1") == 1
+        assert ids.count("swiss-round-2") == 1
+        # Round 1 games untouched by the round-2 materialization.
+        assert sorted(
+            n["id"] for n in nodes if n.get("parentId") == "swiss-round-1"
+        ) == round_one_ids
