@@ -78,6 +78,7 @@
     "title": "Swiss Tournament Control",
     "standingsTitle": "Standings",
     "roundTitle": "Round {{n}}",
+    "roundProgress": "Round {{done}} of {{total}}",
     "byeLabel": "Bye (2 pts)",
     "generateNext": "Generate Round {{n}}",
     "allRoundsComplete": "All {{count}} rounds are complete.",
