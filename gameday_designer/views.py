@@ -37,6 +37,7 @@ from gameday_designer.serializers import (
     ApplyTemplateRequestSerializer,
     TemplateApplicationSerializer,
     SwissSetupRequestSerializer,
+    SwissGenerateOverridesSerializer,
 )
 from gameday_designer.permissions import IsStaffOrReadOnly, IsOwnerOrStaff
 from gameday_designer.service.swiss_tournament_service import (
@@ -712,9 +713,14 @@ class SwissGenerateRoundView(APIView):
     POST /api/designer/gamedays/<gameday_id>/swiss/generate-round/
 
     Resolves the next round via SwissRoundResolver and materializes it as
-    Gameinfo/Gameresult rows. Round 1 needs no prior results; later rounds
-    require every game of the previous round to be completed, and generation
-    stops after the configured round count.
+    Gameinfo/Gameresult rows plus designer Game nodes. Round 1 needs no
+    prior results; later rounds require every game of the previous round to
+    be completed, and generation stops after the configured round count.
+
+    An optional full-manual override envelope replaces the resolver result:
+    {pairings: [{home_team_id, away_team_id, field?, start_time?}],
+     bye_team_id?}. It is validated (team coverage, field range, HH:MM)
+    and any failure returns 400 {error}.
 
     Returns:
         200: {success: true, round: int, pairings: [...],
@@ -730,10 +736,29 @@ class SwissGenerateRoundView(APIView):
             if request.query_params.get("dry_run") == "true":
                 preview = SwissTournamentService(gameday).preview_round()
                 return Response({"success": True, **preview})
-            generated = SwissTournamentService(gameday).generate_round()
+            overrides = None
+            if request.data:
+                serializer = SwissGenerateOverridesSerializer(data=request.data)
+                if not serializer.is_valid():
+                    return Response(
+                        {"error": self._flatten_errors(serializer.errors)},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                overrides = serializer.validated_data
+            generated = SwissTournamentService(gameday).generate_round(
+                overrides=overrides
+            )
         except SwissTournamentError as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"success": True, **generated})
+
+    @staticmethod
+    def _flatten_errors(errors) -> str:
+        parts = []
+        for field, field_errors in errors.items():
+            details = "; ".join(str(err) for err in field_errors)
+            parts.append(f"{field}: {details}")
+        return "; ".join(parts) or "invalid overrides"
 
 
 class SwissStandingsView(APIView):
