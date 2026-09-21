@@ -60,6 +60,20 @@
     "back": "Zurück",
     "confirm": "Runde 1 generieren →"
   },
+  "swissAdjust": {
+    "title": "Runde {{n}} anpassen",
+    "description": "Prüfen Sie die vorgeschlagenen Paarungen und passen Sie sie vor dem Generieren an. Sie können Teams tauschen sowie spielfreies Team, Feld oder Startzeit ändern.",
+    "pairingsTitle": "Vorgeschlagene Paarungen",
+    "homeLabel": "Heim",
+    "awayLabel": "Gast",
+    "fieldLabel": "Feld",
+    "autoField": "Auto",
+    "startTimeLabel": "Beginn",
+    "byeLabel": "Spielfreies Team",
+    "noBye": "Kein Spielfrei",
+    "confirm": "Runde {{n}} generieren",
+    "generating": "Wird generiert…"
+  },
   "swissControl": {
     "title": "Schweizer System — Turniersteuerung",
     "standingsTitle": "Tabelle",

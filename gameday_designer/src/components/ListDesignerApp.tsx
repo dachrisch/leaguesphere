@@ -13,7 +13,8 @@ import NotificationToast from './ui/NotificationToast';
 import LoadingOverlay from './ui/LoadingOverlay';
 import TemplateLibraryModal from './modals/TemplateLibraryModal';
 import SwissControlModal from './modals/SwissControlModal';
-import { designerApi } from '../api/designerApi';
+import SwissRoundAdjustModal, { SwissAdjustTeamOption } from './modals/SwissRoundAdjustModal';
+import { designerApi, SwissRoundPreview, SwissGenerateOverrides } from '../api/designerApi';
 import { useGamedayContext } from '../context/GamedayContext';
 import type { GameNode } from '../types/flowchart';
 import { isGameNode, GlobalTeam } from '../types/flowchart';
@@ -62,6 +63,9 @@ const ListDesignerApp: React.FC = () => {
 
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
   const [showSwissControl, setShowSwissControl] = useState(false);
+  const [showSwissAdjust, setShowSwissAdjust] = useState(false);
+  const [swissAdjustPreview, setSwissAdjustPreview] = useState<SwissRoundPreview | null>(null);
+  const [swissAdjustRound, setSwissAdjustRound] = useState(1);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
@@ -156,6 +160,54 @@ const ListDesignerApp: React.FC = () => {
         'danger',
         t('ui:notification.title.error'),
       );
+    }
+  }, [id, addNotification, t, loadData]);
+
+  const swissTeamOptions: SwissAdjustTeamOption[] = flowState.globalTeams
+    .map((team) => ({ id: parseInt(team.id, 10), name: team.label }))
+    .filter((team) => !Number.isNaN(team.id));
+
+  const handleProgressSwissRound = useCallback(async (roundNumber: number) => {
+    if (!id) return;
+    const gamedayId = parseInt(id);
+    try {
+      const preview = await designerApi.previewSwissRound(gamedayId);
+      setSwissAdjustRound(preview.round || roundNumber);
+      setSwissAdjustPreview(preview);
+      setShowSwissAdjust(true);
+    } catch (e) {
+      const backend = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      addNotification(
+        backend ?? t('ui:notification.swissRoundFailed'),
+        'danger',
+        t('ui:notification.title.error'),
+      );
+    }
+  }, [id, addNotification, t]);
+
+  const handleConfirmSwissAdjust = useCallback(async (overrides: SwissGenerateOverrides) => {
+    if (!id) return;
+    const gamedayId = parseInt(id);
+    try {
+      const generated = await designerApi.generateSwissRound(gamedayId, overrides);
+      trackEvent('swiss_round_generated', { gameday_id: gamedayId, round: generated.round });
+      addNotification(
+        t('ui:notification.swissRoundGenerated', { n: generated.round }),
+        'success',
+        t('ui:notification.title.success'),
+      );
+      setShowSwissAdjust(false);
+      setSwissAdjustPreview(null);
+      await loadData();
+    } catch (e) {
+      const backend = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      addNotification(
+        backend ?? t('ui:notification.swissRoundFailed'),
+        'danger',
+        t('ui:notification.title.error'),
+      );
+      // Rethrow so the adjust modal stays open and shows the error inline.
+      throw e;
     }
   }, [id, addNotification, t, loadData]);
 
@@ -691,10 +743,7 @@ const ListDesignerApp: React.FC = () => {
               progression={progression}
               onHighlightProgressionElement={handleHighlightElement}
               swiss={flowState.swiss}
-              onProgressSwissRound={() => {
-                // TODO Task 6: previewSwissRound() -> SwissRoundAdjustModal ->
-                // generateSwissRound(id, overrides) -> loadData().
-              }}
+              onProgressSwissRound={handleProgressSwissRound}
             />
           )}
       </div>
@@ -787,6 +836,20 @@ const ListDesignerApp: React.FC = () => {
         onHide={() => setShowSwissControl(false)}
         gamedayId={parseInt(id)}
       />
+
+      {swissAdjustPreview && (
+        <SwissRoundAdjustModal
+          key={`swiss-adjust-${swissAdjustRound}-${showSwissAdjust}`}
+          show={showSwissAdjust}
+          onHide={() => setShowSwissAdjust(false)}
+          gamedayId={parseInt(id)}
+          roundNumber={swissAdjustRound}
+          preview={swissAdjustPreview}
+          teamOptions={swissTeamOptions}
+          fieldCount={flowState.swiss?.fields ?? 0}
+          onConfirm={handleConfirmSwissAdjust}
+        />
+      )}
 
       <NotificationToast
         notifications={ui?.notifications || []}
