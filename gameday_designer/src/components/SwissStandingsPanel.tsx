@@ -17,8 +17,9 @@ interface SwissStandingsPanelProps {
   gamedayId: number;
   /**
    * Refresh signal: bump to refetch standings without remounting. ListCanvas
-   * passes `swiss.completedRounds.length`, which changes on every round
-   * generation (and on setup) while gamedayId stays stable.
+   * passes `swiss.completedRounds.length + swissResultsVersion`, which moves
+   * on every round generation (and setup) and on every game-result save
+   * while gamedayId stays stable.
    */
   refreshKey?: number;
 }

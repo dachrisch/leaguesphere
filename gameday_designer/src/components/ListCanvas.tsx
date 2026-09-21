@@ -90,6 +90,12 @@ export interface ListCanvasProps {
   swiss?: SwissTournamentState;
   /** Called with the round number when a swiss Progress button is clicked. */
   onProgressSwissRound?: (roundNumber: number) => void;
+  /**
+   * Results-save signal: bumped by ListDesignerApp after each successful game
+   * result save (single + bulk). Added to completedRounds.length so the
+   * standings panel refetches on points changes that add no new round.
+   */
+  swissResultsVersion?: number;
 }
 
 const ListCanvas: React.FC<ListCanvasProps> = (props) => {
@@ -154,6 +160,7 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
     onHighlightProgressionElement,
     swiss,
     onProgressSwissRound,
+    swissResultsVersion = 0,
   } = props;
 
   const { t } = useTypedTranslation(['ui']);
@@ -200,7 +207,7 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
       <div className="list-canvas__content">
         {/* Swiss standings — embedded panel (Task 7), visible with the canvas */}
         {swiss && gamedayId !== undefined && (
-          <SwissStandingsPanel gamedayId={gamedayId} refreshKey={swiss.completedRounds.length} />
+          <SwissStandingsPanel gamedayId={gamedayId} refreshKey={swiss.completedRounds.length + swissResultsVersion} />
         )}
 
         {/* Metadata + Team Pool Row */}
