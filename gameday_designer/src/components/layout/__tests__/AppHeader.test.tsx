@@ -126,40 +126,10 @@ describe('AppHeader', () => {
   });
 
   describe('swiss control button', () => {
-    const SetSwissHandler = () => {
-      const { setOnOpenSwissControl } = useGamedayContext();
-      useEffect(() => {
-        setOnOpenSwissControl(() => () => {});
-        return () => setOnOpenSwissControl(null);
-      }, [setOnOpenSwissControl]);
-      return null;
-    };
-
-    const renderHeaderWithSwissHandler = (path: string) => {
-      return render(
-        <MemoryRouter initialEntries={[path]}>
-          <GamedayProvider>
-            <SetSwissHandler />
-            <Routes>
-              <Route path="*" element={<AppHeader />} />
-            </Routes>
-          </GamedayProvider>
-        </MemoryRouter>
-      );
-    };
-
-    it('is hidden when no swiss handler is registered', () => {
+    // Task 7 retired the SwissControlModal: standings live embedded in the
+    // designer canvas, so the header no longer offers a 🏁 control button.
+    it('never renders a swiss control button on the designer page', () => {
       renderHeader('/designer/1');
-      expect(screen.queryByTestId('open-swiss-control-button')).not.toBeInTheDocument();
-    });
-
-    it('shows on the designer page when a swiss handler is registered', () => {
-      renderHeaderWithSwissHandler('/designer/1');
-      expect(screen.getByTestId('open-swiss-control-button')).toBeInTheDocument();
-    });
-
-    it('stays hidden off the designer page even with a handler', () => {
-      renderHeaderWithSwissHandler('/');
       expect(screen.queryByTestId('open-swiss-control-button')).not.toBeInTheDocument();
     });
   });

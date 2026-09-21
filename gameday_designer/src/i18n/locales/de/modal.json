@@ -78,6 +78,7 @@
     "title": "Schweizer System — Turniersteuerung",
     "standingsTitle": "Tabelle",
     "roundTitle": "Runde {{n}}",
+    "roundProgress": "Runde {{done}} von {{total}}",
     "byeLabel": "Spielfrei (2 P.)",
     "generateNext": "Runde {{n}} generieren",
     "allRoundsComplete": "Alle {{count}} Runden sind abgeschlossen.",
