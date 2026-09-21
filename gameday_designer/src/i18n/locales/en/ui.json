@@ -6,6 +6,10 @@
     "multiFieldStageRuns": "Runs across multiple fields, all feeding one combined table",
     "dayOffset": "0 = gameday's own date, 1 = the day after, etc."
   },
+  "swiss": {
+    "waitingForResults": "Waiting for results",
+    "generateRound": "Generate Round {{n}}"
+  },
   "button": {
     "addField": "Add Field",
     "addStage": "Add Stage",

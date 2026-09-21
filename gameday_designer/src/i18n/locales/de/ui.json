@@ -6,6 +6,10 @@
     "multiFieldStageRuns": "Läuft über mehrere Felder, alle in einer gemeinsamen Tabelle",
     "dayOffset": "0 = Datum des Spieltags, 1 = der Tag danach usw."
   },
+  "swiss": {
+    "waitingForResults": "Warten auf Ergebnisse",
+    "generateRound": "Runde {{n}} generieren"
+  },
   "button": {
     "addField": "Feld hinzufügen",
     "addStage": "Phase hinzufügen",
