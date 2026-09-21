@@ -607,6 +607,56 @@ describe('DesignerApi', () => {
       );
       expect(result).toEqual(generated);
     });
+
+    it('should post the overrides envelope as body when provided', async () => {
+      const overrides = {
+        pairings: [
+          { home_team_id: 11, away_team_id: 22, field: 2, start_time: '10:20' },
+          { home_team_id: 33, away_team_id: 44 },
+        ],
+        bye_team_id: 55,
+      };
+      const generated = {
+        success: true,
+        round: 2,
+        pairings: [
+          { home_team_id: 11, away_team_id: 22 },
+          { home_team_id: 33, away_team_id: 44 },
+        ],
+        bye_team_id: 55,
+        game_ids: [201, 202],
+      };
+      mockAxiosInstance.post.mockResolvedValue({ data: generated });
+
+      const result = await designerApi.generateSwissRound(42, overrides);
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+        '/gamedays/42/swiss/generate-round/',
+        overrides,
+      );
+      expect(result).toEqual(generated);
+    });
+  });
+
+  describe('previewSwissRound', () => {
+    it('should post a dry_run request and resolve the preview shape', async () => {
+      const preview = {
+        success: true,
+        round: 2,
+        pairings: [{ home_team_id: 11, away_team_id: 22 }],
+        bye_team_id: 33,
+        game_ids: [],
+      };
+      mockAxiosInstance.post.mockResolvedValue({ data: preview });
+
+      const result = await designerApi.previewSwissRound(42);
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+        '/gamedays/42/swiss/generate-round/?dry_run=true',
+        {},
+      );
+      expect(result).toEqual(preview);
+    });
   });
 
   describe('getSwissStandings', () => {

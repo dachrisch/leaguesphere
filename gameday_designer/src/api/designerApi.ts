@@ -63,6 +63,26 @@ export interface SwissGeneratedRound {
   game_ids: number[];
 }
 
+export interface SwissRoundPreview {
+  success: boolean;
+  round: number;
+  pairings: SwissPairing[];
+  bye_team_id: number | null;
+  game_ids: number[];
+}
+
+export interface SwissGeneratePairingOverride {
+  home_team_id: number;
+  away_team_id: number;
+  field?: number;
+  start_time?: string;
+}
+
+export interface SwissGenerateOverrides {
+  pairings: SwissGeneratePairingOverride[];
+  bye_team_id?: number | null;
+}
+
 export interface SwissStandingRow {
   team_id: number;
   team_name: string;
@@ -370,10 +390,28 @@ class DesignerApi {
   /**
    * Generate the next Swiss round (round 1 needs no prior results; later
    * rounds require every game of the previous round to be completed).
+   *
+   * @param gamedayId - Backend gameday PK
+   * @param overrides - Optional edited pairings envelope (per-game field /
+   * start_time plus bye_team_id) to materialize instead of the default draw
    */
-  async generateSwissRound(gamedayId: number): Promise<SwissGeneratedRound> {
+  async generateSwissRound(
+    gamedayId: number,
+    overrides?: SwissGenerateOverrides,
+  ): Promise<SwissGeneratedRound> {
     const response = await this.client.post<SwissGeneratedRound>(
       `/gamedays/${gamedayId}/swiss/generate-round/`,
+      overrides ?? {},
+    );
+    return response.data;
+  }
+
+  /**
+   * Preview the next Swiss round without materializing games.
+   */
+  async previewSwissRound(gamedayId: number): Promise<SwissRoundPreview> {
+    const response = await this.client.post<SwissRoundPreview>(
+      `/gamedays/${gamedayId}/swiss/generate-round/?dry_run=true`,
       {},
     );
     return response.data;
