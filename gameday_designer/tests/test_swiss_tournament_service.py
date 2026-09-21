@@ -123,7 +123,8 @@ class TestSwissSetup:
         )
 
         state = GamedayDesignerState.objects.get(gameday=gameday)
-        assert state.state_data["nodes"] == [{"id": "n1"}]
+        # Unrelated nodes are merged by id, never wiped; Swiss nodes are added.
+        assert {"id": "n1"} in state.state_data["nodes"]
         assert "swiss" in state.state_data
 
     def test_setup_rejects_unknown_team(self):
@@ -169,6 +170,115 @@ class TestSwissSetup:
                 fields=1,
                 game_duration=30,
             )
+
+
+@pytest.mark.django_db
+class TestSwissSetupSeedsCanvasNodes:
+    """setup() seeds Field/Stage/Game canvas nodes (issue #1970, designer-first)."""
+
+    def test_setup_seeds_fields_stages_and_placeholders(self):
+        gameday = make_gameday()
+        teams = make_teams(6)
+        service = SwissTournamentService(gameday)
+
+        service.setup(
+            seed_team_ids=[t.pk for t in teams],
+            rounds=3,
+            fields=2,
+            game_duration=30,
+        )
+
+        state = GamedayDesignerState.objects.get(gameday=gameday)
+        nodes = state.state_data["nodes"]
+
+        swiss_fields = [
+            n for n in nodes if n.get("type") == "field" and n["id"].startswith("swiss-")
+        ]
+        assert len(swiss_fields) == 2
+
+        swiss_stages = [
+            n for n in nodes if n.get("type") == "stage" and n["id"].startswith("swiss-")
+        ]
+        ordered = sorted(swiss_stages, key=lambda s: s["data"]["order"])
+        assert [s["data"]["name"] for s in ordered] == ["Round 1", "Round 2", "Round 3"]
+        for stage in swiss_stages:
+            assert stage["data"].get("progressionMode") == "swiss"
+
+        # Round 1 has zero Game nodes yet (generate_round materializes them).
+        round_one = next(s for s in swiss_stages if s["data"]["name"] == "Round 1")
+        assert [
+            n
+            for n in nodes
+            if n.get("type") == "game" and n.get("parentId") == round_one["id"]
+        ] == []
+
+        # Rounds 2..N each hold placeholder slots with no teams assigned.
+        games_per_round = (len(teams) + 1) // 2
+        for round_no in (2, 3):
+            stage = next(
+                s for s in swiss_stages if s["data"]["name"] == f"Round {round_no}"
+            )
+            games = [
+                n
+                for n in nodes
+                if n.get("type") == "game" and n.get("parentId") == stage["id"]
+            ]
+            assert len(games) == games_per_round
+            assert sorted(g["data"]["standing"] for g in games) == [
+                f"Swiss R{round_no}-G{i}" for i in range(1, games_per_round + 1)
+            ]
+            for game in games:
+                assert game["data"].get("homeTeamId") is None
+                assert game["data"].get("awayTeamId") is None
+
+        # Swiss config behavior is untouched.
+        assert state.state_data["swiss"]["rounds"] == 3
+        assert state.state_data["swiss"]["completedRounds"] == []
+
+    def test_setup_keeps_unrelated_nodes(self):
+        gameday = make_gameday()
+        teams = make_teams(4)
+        GamedayDesignerState.objects.create(
+            gameday=gameday, state_data={"nodes": [{"id": "n1", "type": "field"}]}
+        )
+
+        SwissTournamentService(gameday).setup(
+            seed_team_ids=[t.pk for t in teams],
+            rounds=2,
+            fields=1,
+            game_duration=30,
+        )
+
+        state = GamedayDesignerState.objects.get(gameday=gameday)
+        by_id = {n["id"]: n for n in state.state_data["nodes"]}
+        assert by_id["n1"] == {"id": "n1", "type": "field"}
+        assert any(n["id"].startswith("swiss-") for n in state.state_data["nodes"])
+
+    def test_setup_rerun_replaces_swiss_nodes_without_duplicates(self):
+        gameday = make_gameday()
+        teams = make_teams(6)
+        service = SwissTournamentService(gameday)
+        kwargs = dict(
+            seed_team_ids=[t.pk for t in teams],
+            fields=2,
+            game_duration=30,
+        )
+
+        service.setup(rounds=3, **kwargs)
+        service.setup(rounds=2, **kwargs)
+
+        state = GamedayDesignerState.objects.get(gameday=gameday)
+        nodes = state.state_data["nodes"]
+        ids = [n["id"] for n in nodes]
+        assert len(ids) == len(set(ids))
+        swiss_stages = [
+            n for n in nodes if n.get("type") == "stage" and n["id"].startswith("swiss-")
+        ]
+        assert sorted(s["data"]["name"] for s in swiss_stages) == [
+            "Round 1",
+            "Round 2",
+        ]
+        assert state.state_data["swiss"]["rounds"] == 2
 
 
 @pytest.mark.django_db
