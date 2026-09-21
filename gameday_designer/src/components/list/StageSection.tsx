@@ -23,6 +23,15 @@ import { ICONS } from '../../utils/iconConstants';
 import { getDraggedGameSourceStageId } from '../../utils/dragState';
 import './StageSection.css';
 
+export type SwissProgressStatus = 'generatable' | 'waiting' | 'complete';
+
+/** Per-round Swiss progress control, derived from `flowState.swiss` upstream. */
+export interface StageSwissProgress {
+  roundNumber: number;
+  status: SwissProgressStatus;
+  onProgress: () => void;
+}
+
 export interface StageSectionProps {
   stage: StageNode;
   allNodes: FlowNode[];
@@ -52,6 +61,8 @@ export interface StageSectionProps {
   expertMode?: boolean;
   /** Per-game simulated progression, from `useProgressionInspection`. */
   progressionByGameId?: Map<string, GameProgressionCellResult>;
+  /** Swiss per-round Progress control (rounds only; derived from `flowState.swiss`). */
+  swiss?: StageSwissProgress;
 }
 
 const StageSection: React.FC<StageSectionProps> = memo(({
@@ -82,6 +93,7 @@ const StageSection: React.FC<StageSectionProps> = memo(({
   readOnly = false,
   expertMode = false,
   progressionByGameId,
+  swiss,
 }) => {
   const { t } = useTypedTranslation(['ui', 'domain']);
   const [isEditing, setIsEditing] = useState(false);
@@ -172,6 +184,18 @@ const StageSection: React.FC<StageSectionProps> = memo(({
     },
     [stage.id, onAddGame]
   );
+
+  const handleSwissProgress = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      swiss?.onProgress();
+    },
+    [swiss]
+  );
+
+  // Swiss per-round Progress control: only for swiss round stages, never in readOnly.
+  // waiting shows an inline hint (not just a toast); complete renders nothing.
+  const showSwissProgress = !!swiss && !readOnly && swiss.status !== 'complete';
 
   const handleTimeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
@@ -352,6 +376,30 @@ const StageSection: React.FC<StageSectionProps> = memo(({
             <i className={`bi ${ICONS.ADD} me-2`}></i>
             <span className="btn-label-adaptive">{t('ui:button.addGame')}</span>
           </button>
+        )}
+
+        {showSwissProgress && swiss && (
+          <>
+            {swiss.status === 'waiting' && (
+              <span
+                className="text-muted small me-2"
+                data-testid={`swiss-progress-hint-${swiss.roundNumber}`}
+              >
+                Waiting for results
+              </span>
+            )}
+            <Button
+              size="sm"
+              variant={swiss.status === 'generatable' ? 'primary' : 'outline-secondary'}
+              onClick={handleSwissProgress}
+              disabled={swiss.status !== 'generatable'}
+              title={swiss.status === 'generatable' ? `Generate Round ${swiss.roundNumber}` : 'Waiting for results'}
+              data-testid={`swiss-progress-${swiss.roundNumber}`}
+              className="me-2"
+            >
+              Generate Round {swiss.roundNumber}
+            </Button>
+          </>
         )}
 
         <input

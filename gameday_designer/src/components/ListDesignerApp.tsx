@@ -690,6 +690,11 @@ const ListDesignerApp: React.FC = () => {
               expertMode={expertMode}
               progression={progression}
               onHighlightProgressionElement={handleHighlightElement}
+              swiss={flowState.swiss}
+              onProgressSwissRound={() => {
+                // TODO Task 6: previewSwissRound() -> SwissRoundAdjustModal ->
+                // generateSwissRound(id, overrides) -> loadData().
+              }}
             />
           )}
       </div>
