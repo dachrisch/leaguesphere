@@ -17,6 +17,8 @@ import type {
   GlobalTeamGroup,
   HighlightedElement
 } from '../../types/flowchart';
+import type { SwissTournamentState } from '../../types/flowchart';
+import type { StageSwissProgress } from './StageSection';
 import type { GameProgressionCellResult } from '../../types/progression';
 import { ICONS } from '../../utils/iconConstants';
 import './FieldSection.css';
@@ -61,6 +63,42 @@ export interface FieldSectionProps {
   progressionByGameId?: Map<string, GameProgressionCellResult>;
   /** Shows a per-game "Day" selector when the gameday is multi-day (see `GamedayMetadata.multiDayEnabled`). */
   multiDayEnabled?: boolean;
+  /** Swiss tournament state (rounds_total, completedRounds) — drives per-round Progress buttons. */
+  swiss?: SwissTournamentState;
+  /** Called with the round number when a swiss Progress button is clicked. */
+  onProgressSwissRound?: (roundNumber: number) => void;
+}
+
+/**
+ * Round number for a Swiss round stage (`swiss-round-{n}` seeded by setup()).
+ * Falls back to order+1 for swiss-mode stages with non-standard ids; null for
+ * non-swiss stages.
+ */
+function getSwissRoundNumber(stage: StageNode): number | null {
+  const match = /^swiss-round-(\d+)$/.exec(stage.id);
+  if (match) return parseInt(match[1], 10);
+  if (stage.data.progressionMode === 'swiss') return stage.data.order + 1;
+  return null;
+}
+
+/**
+ * Derive the per-stage Swiss Progress control from the tournament state.
+ * Next round (completedRounds.length + 1) is generatable, later rounds wait
+ * for results, past rounds are complete. Returns undefined for non-swiss
+ * stages or when no swiss state / callback is available.
+ */
+function getSwissProgressForStage(
+  stage: StageNode,
+  swissState: SwissTournamentState | undefined,
+  onProgress: ((roundNumber: number) => void) | undefined
+): StageSwissProgress | undefined {
+  if (!swissState || !onProgress) return undefined;
+  const roundNumber = getSwissRoundNumber(stage);
+  if (roundNumber === null) return undefined;
+  const nextRound = (swissState.completedRounds?.length ?? 0) + 1;
+  const status =
+    roundNumber < nextRound ? 'complete' : roundNumber === nextRound ? 'generatable' : 'waiting';
+  return { roundNumber, status, onProgress: () => onProgress(roundNumber) };
 }
 
 const FieldSection: React.FC<FieldSectionProps> = memo(({
@@ -98,6 +136,8 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
   expertMode = false,
   progressionByGameId,
   multiDayEnabled = false,
+  swiss,
+  onProgressSwissRound,
 }) => {
   const { t } = useTypedTranslation(['ui']);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -313,6 +353,7 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
                   expertMode={expertMode}
                   progressionByGameId={progressionByGameId}
                   multiDayEnabled={multiDayEnabled}
+                  swiss={getSwissProgressForStage(stage, swiss, onProgressSwissRound)}
                 />
               ))}
             </>
