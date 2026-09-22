@@ -412,6 +412,17 @@ class SwissTournamentService:
         return times
 
     @staticmethod
+    def _slot_start_time(round_start: dtime, slot: int, duration: int) -> dtime:
+        """Start time of a within-round slot on one field.
+
+        Slot ``0`` is the round start itself; each further slot adds one
+        ``duration + BREAK_MINUTES`` step. Shared by materialization and
+        placeholder nodes so both stay slot-consistent with
+        ``_round_start_times`` round spacing.
+        """
+        return TimeService.add_minutes(round_start, slot * (duration + BREAK_MINUTES))
+
+    @staticmethod
     def _swiss_stage_id(round_no: int, field_no: int) -> str:
         return f"{SWISS_NODE_PREFIX}round-{round_no}-field-{field_no}"
 
@@ -497,8 +508,11 @@ class SwissTournamentService:
                 )
             if round_no == 1:
                 continue
+            _rh, _rm = (int(part) for part in round_start_times[str(round_no)].split(":"))
+            _round_start = dtime(_rh, _rm)
             for game_no in range(1, games_per_round + 1):
                 field_no = ((game_no - 1) % fields) + 1
+                slot = (game_no - 1) // fields
                 nodes.append(
                     {
                         "id": f"{SWISS_NODE_PREFIX}r{round_no}-g{game_no}",
@@ -520,7 +534,9 @@ class SwissTournamentService:
                             "homeTeamDynamic": None,
                             "awayTeamDynamic": None,
                             "duration": game_duration,
-                            "startTime": round_start_times[str(round_no)],
+                            "startTime": SwissTournamentService._slot_start_time(
+                                _round_start, slot, game_duration
+                            ).strftime("%H:%M"),
                             "manualTime": False,
                         },
                     }
@@ -667,6 +683,8 @@ class SwissTournamentService:
         per_game: Optional[List[dict]] = None,
     ) -> dict:
         default_start = config["roundStartTimes"][str(next_round)]
+        _dh, _dm = (int(part) for part in default_start.split(":"))
+        default_dtime = dtime(_dh, _dm)
         officials, _ = Team.objects.get_or_create(
             name=OFFICIALS_PLACEHOLDER,
             defaults={"description": OFFICIALS_PLACEHOLDER, "location": ""},
@@ -688,7 +706,13 @@ class SwissTournamentService:
                 if detail.get("field") is not None
                 else ((idx - 1) % config["fields"]) + 1
             )
-            start_time = detail.get("start_time") or default_start
+            if detail.get("start_time"):
+                start_time = detail["start_time"]
+            else:
+                slot = (idx - 1) // config["fields"]
+                start_time = self._slot_start_time(
+                    default_dtime, slot, config["gameDuration"]
+                ).strftime("%H:%M")
             hour, minute = (int(part) for part in start_time.split(":"))
             scheduled = dtime(hour, minute)
             game = Gameinfo.objects.create(
