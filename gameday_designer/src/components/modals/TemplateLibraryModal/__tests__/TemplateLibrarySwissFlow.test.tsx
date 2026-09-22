@@ -64,16 +64,48 @@ describe('TemplateLibraryModal swiss flow (#1970)', () => {
     expect(screen.getByTestId('swiss-setup-confirm')).toBeInTheDocument();
   });
 
-  it('confirms with seed ids in picked order plus rounds/fields/duration', async () => {
+  it('confirms with seed ids in picked order plus page-1 Configure defaults', async () => {
     const onGenerateSwiss = await reachSwissSetup();
 
+    fireEvent.click(screen.getByTestId('swiss-setup-confirm'));
+
+    // SWISS Configure defaults: fieldOptions[0] = 1 field, 30 min/game.
+    expect(onGenerateSwiss).toHaveBeenCalledWith({
+      seedTeamIds: [138, 522, 711, 904],
+      rounds: 4,
+      fields: 1,
+      gameDuration: 30,
+      teams: expectedSwissTeams,
+    });
+  });
+
+  it('carries edited page-1 Configure fields/duration into the swiss setup confirm', async () => {
+    const onGenerateSwiss = vi.fn();
+    render(
+      <TemplateLibraryModal
+        show
+        onHide={vi.fn()}
+        gamedayId={1}
+        currentUserId={1}
+        onGenerateSwiss={onGenerateSwiss}
+      />,
+    );
+    fireEvent.click(await screen.findByTestId('builtin-template-SWISS'));
+    fireEvent.change(screen.getByTestId('configure-game-duration'), { target: { value: '45' } });
+    fireEvent.change(screen.getByTestId('configure-num-fields'), { target: { value: '3' } });
+    fireEvent.click(await screen.findByTestId('apply-template-button'));
+    for (const team of leagueTeams) {
+      fireEvent.click(await screen.findByRole('button', { name: team.name }));
+    }
+    fireEvent.click(screen.getByRole('button', { name: /apply to gameday/i }));
+    await screen.findByTestId('swiss-seed-list');
     fireEvent.click(screen.getByTestId('swiss-setup-confirm'));
 
     expect(onGenerateSwiss).toHaveBeenCalledWith({
       seedTeamIds: [138, 522, 711, 904],
       rounds: 4,
-      fields: 2,
-      gameDuration: 30,
+      fields: 3,
+      gameDuration: 45,
       teams: expectedSwissTeams,
     });
   });
