@@ -236,8 +236,11 @@ const StageSection: React.FC<StageSectionProps> = memo(({
     // plan for future rounds, so POST first and only apply locally on
     // success. Generated rounds never reach here (input disabled).
     if (swissRound != null && gamedayId !== undefined && swissCompletedRounds !== undefined) {
+      // An empty round time is never valid: ignore the clear (revert to the
+      // previous value) — no POST, no local apply — so siblings and
+      // placeholders stay in sync with the backend plan.
       if (!value) {
-        onUpdate(stage.id, { startTime: undefined });
+        e.target.value = stage.data.startTime || '';
         return;
       }
       void (async () => {
@@ -277,7 +280,7 @@ const StageSection: React.FC<StageSectionProps> = memo(({
       return;
     }
     onUpdate(stage.id, { startTime: value || undefined });
-  }, [stage.id, onUpdate, swissRound, gamedayId, swissCompletedRounds, allNodes, onNotify, t]);
+  }, [stage.id, stage.data.startTime, onUpdate, swissRound, gamedayId, swissCompletedRounds, allNodes, onNotify, t]);
 
   const handleColorChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
@@ -691,6 +694,7 @@ const StageSection: React.FC<StageSectionProps> = memo(({
                   expertMode={expertMode}
                   progressionByGameId={progressionByGameId}
                   multiDayEnabled={multiDayEnabled}
+                  lockTimeEdits={swissLocked}
                 />
               </>
             )}
