@@ -173,36 +173,50 @@ const ListDesignerApp: React.FC = () => {
           // "No groups yet" when groups is empty and never shows ungrouped
           // teams), so seeds imported with groupId null would be invisible
           // there. Choice: when the pool has zero groups AND the incoming
-          // seeds are all ungrouped, create ONE stable group and assign all
-          // seed teams to it. When groups already exist, the user's
-          // organization is left alone — except a previously auto-created
-          // Swiss group is reused for ungrouped seeds (re-apply before
-          // Round 1 must not duplicate it). Otherwise missing seeds keep
-          // groupId null (still resolvable in game dropdowns; the user can
-          // group them manually).
-          const SWISS_SEED_GROUP_ID = 'group-swiss';
+          // seeds are all ungrouped, create TWO stable groups and split the
+          // seeds in halves by seed order (first half Gruppe A, second half
+          // Gruppe B; odd count → extra team to A). Ids/names match the
+          // hardcoded `Gruppe ${String.fromCharCode(65 + i)}` scaffold
+          // convention in useDesignerController (no i18n key exists for it).
+          // When groups already exist, the user's organization is left
+          // alone — except previously auto-created Swiss groups are reused
+          // for ungrouped seeds by id (re-apply before Round 1 must not
+          // duplicate them). Otherwise missing seeds keep groupId null
+          // (still resolvable in game dropdowns; the user can group them
+          // manually).
+          const SWISS_SEED_GROUP_A_ID = 'group-swiss-a';
+          const SWISS_SEED_GROUP_B_ID = 'group-swiss-b';
           const currentGroups = current.globalTeamGroups ?? [];
-          const incomingIds = new Set(incoming.map((seed) => seed.id));
-          const existingSwiss = currentGroups.find((g) => g.id === SWISS_SEED_GROUP_ID);
           let nextGroups = currentGroups;
-          let swissGroupId: string | null = null;
-          if (existingSwiss) {
-            swissGroupId = existingSwiss.id;
-          } else if (currentGroups.length === 0 && incoming.every((seed) => !seed.groupId)) {
+          if (
+            !currentGroups.some((g) => g.id === SWISS_SEED_GROUP_A_ID) &&
+            !currentGroups.some((g) => g.id === SWISS_SEED_GROUP_B_ID) &&
+            currentGroups.length === 0 &&
+            incoming.every((seed) => !seed.groupId)
+          ) {
             nextGroups = [
               ...currentGroups,
-              { id: SWISS_SEED_GROUP_ID, name: t('ui:label.teams'), order: currentGroups.length },
+              { id: SWISS_SEED_GROUP_A_ID, name: 'Gruppe A', order: currentGroups.length },
+              { id: SWISS_SEED_GROUP_B_ID, name: 'Gruppe B', order: currentGroups.length + 1 },
             ];
-            swissGroupId = SWISS_SEED_GROUP_ID;
           }
-          const nextTeams = swissGroupId
+          const groupA = nextGroups.find((g) => g.id === SWISS_SEED_GROUP_A_ID) ?? null;
+          const groupB = nextGroups.find((g) => g.id === SWISS_SEED_GROUP_B_ID) ?? null;
+          const seedOrderIds = config.seedTeamIds.map((pk) => String(pk));
+          const groupAIds = new Set(seedOrderIds.slice(0, Math.ceil(seedOrderIds.length / 2)));
+          const groupFor = (teamId: string): string | null => {
+            if (groupAIds.has(teamId)) return groupA ? groupA.id : null;
+            return groupB ? groupB.id : null;
+          };
+          const incomingIds = new Set(incoming.map((seed) => seed.id));
+          const nextTeams = (groupA || groupB)
             ? [
-                ...current.globalTeams.map((team) =>
-                  incomingIds.has(team.id) && !team.groupId
-                    ? { ...team, groupId: swissGroupId as string }
-                    : team,
-                ),
-                ...missing.map((team) => ({ ...team, groupId: team.groupId ?? (swissGroupId as string) })),
+                ...current.globalTeams.map((team) => {
+                  if (!incomingIds.has(team.id) || team.groupId) return team;
+                  const target = groupFor(team.id);
+                  return target ? { ...team, groupId: target } : team;
+                }),
+                ...missing.map((team) => ({ ...team, groupId: team.groupId ?? groupFor(team.id) })),
               ]
             : [...current.globalTeams, ...missing];
           // Build the merged pool ONCE and reuse the same object for both

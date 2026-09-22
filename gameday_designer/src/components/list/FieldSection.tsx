@@ -61,6 +61,10 @@ export interface FieldSectionProps {
   progressionByGameId?: Map<string, GameProgressionCellResult>;
   /** Shows a per-game "Day" selector when the gameday is multi-day (see `GamedayMetadata.multiDayEnabled`). */
   multiDayEnabled?: boolean;
+  /** Backend gameday PK — forwarded to StageSection for Swiss round times. */
+  gamedayId?: number;
+  /** Generated Swiss round count — forwarded to StageSection (bare number). */
+  swissCompletedRounds?: number;
 }
 
 const FieldSection: React.FC<FieldSectionProps> = memo(({
@@ -98,6 +102,8 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
   expertMode = false,
   progressionByGameId,
   multiDayEnabled = false,
+  gamedayId,
+  swissCompletedRounds,
 }) => {
   const { t } = useTypedTranslation(['ui']);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -313,6 +319,8 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
                   expertMode={expertMode}
                   progressionByGameId={progressionByGameId}
                   multiDayEnabled={multiDayEnabled}
+                  gamedayId={gamedayId}
+                  swissCompletedRounds={swissCompletedRounds}
                 />
               ))}
             </>

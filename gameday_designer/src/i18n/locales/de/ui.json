@@ -8,7 +8,8 @@
   },
   "swiss": {
     "waitingForResults": "Warten auf Ergebnisse",
-    "generateRound": "Runde {{n}} generieren"
+    "generateRound": "Runde {{n}} generieren",
+    "roundTimeLocked": "Generierte Runden behalten ihre Spielzeiten"
   },
   "button": {
     "addField": "Feld hinzufügen",
@@ -319,6 +320,7 @@
     "swissSetupFailed": "Schweizer Turnier konnte nicht eingerichtet werden",
     "swissRoundGenerated": "Runde {{n}} generiert",
     "swissRoundFailed": "Die nächste Runde konnte nicht generiert werden",
+    "swissRoundTimeFailed": "Die Rundenstartzeit konnte nicht aktualisiert werden",
     "title": {
       "success": "Erfolg",
       "error": "Fehler",

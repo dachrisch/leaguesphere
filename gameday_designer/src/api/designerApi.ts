@@ -426,6 +426,35 @@ class DesignerApi {
     );
     return response.data;
   }
+
+  /**
+   * Full reset of the Swiss tournament: deletes the ``swiss`` config and
+   * all Swiss-stage games so setup can run again from scratch.
+   */
+  async resetSwissTournament(
+    gamedayId: number,
+  ): Promise<{ success: boolean; deleted_games: number }> {
+    const response = await this.client.post<{ success: boolean; deleted_games: number }>(
+      `/gamedays/${gamedayId}/swiss/reset/`,
+      {},
+    );
+    return response.data;
+  }
+
+  /**
+   * Update planned start times for not-yet-generated Swiss rounds.
+   * Already-generated games keep their scheduled times (future-only).
+   */
+  async updateSwissRoundTimes(
+    gamedayId: number,
+    overrides: Record<string, string>,
+  ): Promise<{ success: boolean; roundStartTimes: Record<string, string> }> {
+    const response = await this.client.post<{ success: boolean; roundStartTimes: Record<string, string> }>(
+      `/gamedays/${gamedayId}/swiss/round-times/`,
+      { round_start_overrides: overrides },
+    );
+    return response.data;
+  }
 }
 
 /**
