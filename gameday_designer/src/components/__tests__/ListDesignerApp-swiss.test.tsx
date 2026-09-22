@@ -151,6 +151,25 @@ describe('ListDesignerApp handleGenerateSwiss (staging gameday 917)', () => {
     // Aachen already in the canvas pool; Antwerp is missing.
     pool = [{ ...AACHEN }];
 
+    // Snapshot-based export mock: captures a FROZEN copy of the pre-import
+    // pool once. A stale same-tick re-export after importState() therefore
+    // does NOT see the import (mirrors React async setState), so a test
+    // asserting on saved content FAILS on the stale pattern and passes only
+    // when saveData receives the merged object directly.
+    const frozenSnapshot: FlowState = Object.freeze({
+      metadata: null as unknown as FlowState['metadata'],
+      nodes: [],
+      edges: [],
+      globalTeams: Object.freeze([{ ...AACHEN }]) as unknown as FlowState['globalTeams'],
+      globalTeamGroups: [],
+      swiss: undefined,
+    } as FlowState);
+    const flowExportState = vi.fn((): FlowState => frozenSnapshot);
+    const flowImportState = vi.fn((state: FlowState) => {
+      order.push('import');
+      pool.length = 0;
+      pool.push(...state.globalTeams);
+    });
     (useFlowState as Mock).mockReturnValue({
       nodes: [] as FlowNode[],
       edges: [] as FlowEdge[],
@@ -162,19 +181,8 @@ describe('ListDesignerApp handleGenerateSwiss (staging gameday 917)', () => {
       canUndo: false,
       canRedo: false,
       stats: { fieldCount: 0, gameCount: 0, teamCount: 0 },
-      exportState: vi.fn((): FlowState => ({
-        metadata: null as unknown as FlowState['metadata'],
-        nodes: [],
-        edges: [],
-        globalTeams: [...pool],
-        globalTeamGroups: [],
-        swiss: undefined,
-      })),
-      importState: vi.fn((state: FlowState) => {
-        order.push('import');
-        pool.length = 0;
-        pool.push(...state.globalTeams);
-      }),
+      exportState: flowExportState,
+      importState: flowImportState,
     });
     (useDesignerController as Mock).mockReturnValue(defaultMockReturn);
     vi.mocked(designerApi.setupSwissTournament).mockImplementation(async () => {
@@ -224,7 +232,26 @@ describe('ListDesignerApp handleGenerateSwiss (staging gameday 917)', () => {
 
     expect(order).toEqual(['import', 'save', 'setup', 'generate', 'load']);
     const savedState = mockHandlers.saveData.mock.calls[0][0] as FlowState;
+    // Content assertion (not just call order): the saved pool must contain
+    // the newly imported team. With a snapshot-frozen export mock, the stale
+    // import-then-re-export pattern would save the team-less snapshot and
+    // fail here.
     expect(savedState.globalTeams.map((t) => t.id).sort()).toEqual(['138', '522']);
+    expect(savedState.globalTeams.find((t) => t.id === '522')).toMatchObject({
+      label: 'Antwerp',
+      color: '#3498db',
+      order: 1,
+    });
+    // The merged state object is built ONCE and shared by import + save.
+    const flowMock = vi.mocked(useFlowState).mock.results[0].value as {
+      exportState: Mock;
+      importState: Mock;
+    };
+    expect(flowMock.exportState).toHaveBeenCalledTimes(1);
+    expect(flowMock.importState).toHaveBeenCalledTimes(1);
+    expect(mockHandlers.saveData.mock.calls[0][0]).toBe(
+      flowMock.importState.mock.calls[0][0],
+    );
     expect(designerApi.setupSwissTournament).toHaveBeenCalledWith(1, {
       seed_team_ids: [138, 522],
       rounds: 4,
