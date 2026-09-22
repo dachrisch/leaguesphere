@@ -73,6 +73,12 @@ export function useDesignerController(
       await gamedayApi.updateDesignerState(parseInt(gamedayId), state);
     } catch (error) {
       console.error('Failed to save designer state', error);
+      // Rethrow (not boolean): audited all 3 production callers in
+      // ListDesignerApp — autosave try/catch + queued .catch, beforeunload
+      // .catch(()=>{}), handleGenerateSwiss try/catch — all handle rejection,
+      // so no unhandled-rejection risk and the abort-on-save-failure path
+      // stays reachable.
+      throw error;
     }
   }, [gamedayId]);
 
