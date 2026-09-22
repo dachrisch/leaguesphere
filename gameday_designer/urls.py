@@ -17,6 +17,8 @@ from gameday_designer.views import (
     SwissSetupView,
     SwissGenerateRoundView,
     SwissStandingsView,
+    SwissResetView,
+    SwissRoundTimesView,
 )
 
 # Create router for ViewSets (for API)
@@ -50,5 +52,15 @@ urlpatterns = [
         "gamedays/<int:gameday_id>/swiss/standings/",
         SwissStandingsView.as_view(),
         name="swiss-standings",
+    ),
+    path(
+        "gamedays/<int:gameday_id>/swiss/reset/",
+        SwissResetView.as_view(),
+        name="swiss-reset",
+    ),
+    path(
+        "gamedays/<int:gameday_id>/swiss/round-times/",
+        SwissRoundTimesView.as_view(),
+        name="swiss-round-times",
     ),
 ]

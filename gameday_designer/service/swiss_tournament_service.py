@@ -134,6 +134,60 @@ class SwissTournamentService:
             return None
         return (state.state_data or {}).get("swiss")
 
+    @transaction.atomic
+    def reset(self) -> int:
+        """Delete the Swiss config and all Swiss-stage games of this gameday.
+
+        Raises ``SwissTournamentError`` when no Swiss config exists (the
+        views map it to 400, like the sibling endpoints). Canvas nodes are
+        intentionally left untouched: node clearing is frontend-owned via
+        saveData, which overwrites ``state_data["nodes"]`` on the next
+        canvas save — deleting nodes here would race that write path.
+        Only games with ``stage == SWISS_STAGE`` are deleted (cascade
+        removes their ``Gameresult`` rows); other stages are untouched.
+        Returns the number of deleted games.
+        """
+        self._require_config()
+        state = GamedayDesignerState.objects.get(gameday=self.gameday)
+        state_data = dict(state.state_data or {})
+        state_data.pop("swiss", None)
+        state.state_data = state_data
+        state.save()
+        swiss_games = Gameinfo.objects.filter(
+            gameday=self.gameday, stage=SWISS_STAGE
+        )
+        # Count first: delete() reports cascaded Gameresult rows as well.
+        deleted_games = swiss_games.count()
+        swiss_games.delete()
+        return deleted_games
+
+    @transaction.atomic
+    def update_round_times(
+        self, round_start_overrides: Optional[Dict[int, str]] = None
+    ) -> dict:
+        """Update per-round start times without touching generated games.
+
+        Validates via ``_validate_overrides`` (round 1..rounds_total, real
+        HH:MM clock) and rewrites only ``config["roundStartTimes"]``.
+        Already-generated ``Gameinfo`` rows keep their scheduled times:
+        generation consumes the plan at materialize time, and later rounds
+        are the user's explicit future-rounds-only decision.
+        """
+        config = self._require_config()
+        validated = self._validate_overrides(
+            round_start_overrides or {}, config["rounds"]
+        )
+        times = dict(config.get("roundStartTimes") or {})
+        for round_no, start_time in validated.items():
+            times[str(round_no)] = start_time
+        config["roundStartTimes"] = times
+        state = GamedayDesignerState.objects.get(gameday=self.gameday)
+        state_data = dict(state.state_data or {})
+        state_data["swiss"] = config
+        state.state_data = state_data
+        state.save()
+        return times
+
     # -- standings --------------------------------------------------------
 
     def standings(self) -> List[dict]:

@@ -382,6 +382,21 @@ class SwissGenerateOverridePairingSerializer(serializers.Serializer):
     start_time = serializers.RegexField(regex=r"^\d{2}:\d{2}$", required=False)
 
 
+class SwissRoundTimesRequestSerializer(serializers.Serializer):
+    """
+    Round start-time updates
+    (POST /api/designer/gamedays/<gameday_id>/swiss/round-times/).
+
+    Light shape validation only (HH:MM pattern per entry); semantic checks
+    (round 1..rounds_total, real clock time) live in
+    SwissTournamentService, which knows the tournament config.
+    """
+
+    round_start_overrides = serializers.DictField(
+        child=serializers.RegexField(regex=r"^\d{2}:\d{2}$"),
+    )
+
+
 class SwissGenerateOverridesSerializer(serializers.Serializer):
     """
     Full-manual round override envelope
