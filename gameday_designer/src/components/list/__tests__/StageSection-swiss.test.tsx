@@ -173,6 +173,106 @@ describe('StageSection Swiss round start times', () => {
     );
   });
 
+  it('locks per-game time-pencil edits for games in a generated Swiss round', () => {
+    const onUpdate = vi.fn();
+    const stage = swissStage('swiss-round-1-field-1', 1, 1, '09:00');
+    const game = placeholderGame('swiss-r1-g1', stage.id, '09:00');
+
+    const { container } = renderStage(
+      createProps({
+        stage,
+        allNodes: [stage, game],
+        onUpdate,
+        gamedayId: 42,
+        swissCompletedRounds: 1,
+      }),
+    );
+
+    // No per-game time pencil, and clicking the time opens no editor —
+    // only the stage Start input (a single time input) exists.
+    expect(container.querySelector('[data-testid="game-time-edit-swiss-r1-g1"]')).toBeNull();
+    fireEvent.click(screen.getByText('09:00'));
+    expect(container.querySelectorAll('input[type="time"]')).toHaveLength(1);
+    expect(onUpdate).not.toHaveBeenCalled();
+    // Team/result editing stays live: the home-team select is still enabled.
+    expect(container.querySelector('.react-select__control')).toBeInTheDocument();
+  });
+
+  it('keeps per-game time-pencil edits live for an ungenerated Swiss round', () => {
+    const stage = swissStage('swiss-round-2-field-1', 2, 1, '10:00');
+    const game = placeholderGame('swiss-r2-g1', stage.id, '10:00');
+
+    const { container } = renderStage(
+      createProps({
+        stage,
+        allNodes: [stage, game],
+        gamedayId: 42,
+        swissCompletedRounds: 1,
+      }),
+    );
+
+    expect(container.querySelector('[data-testid="game-time-edit-swiss-r2-g1"]')).not.toBeNull();
+    fireEvent.click(screen.getByText('10:00'));
+    // Stage Start input + the opened per-game time editor.
+    expect(container.querySelectorAll('input[type="time"]')).toHaveLength(2);
+  });
+
+  it('ignores an empty Start clear for Swiss rounds (no POST, no local apply)', () => {
+    const onUpdate = vi.fn();
+    const updateSpy = vi.spyOn(designerApi, 'updateSwissRoundTimes');
+    const stage = swissStage('swiss-round-2-field-1', 2, 1, '10:00');
+
+    renderStage(
+      createProps({
+        stage,
+        allNodes: [stage],
+        onUpdate,
+        gamedayId: 42,
+        swissCompletedRounds: 1,
+      }),
+    );
+
+    fireEvent.change(startInput(stage.id), { target: { value: '' } });
+
+    // An empty round time is never valid: revert, don't POST, don't apply.
+    expect(updateSpy).not.toHaveBeenCalled();
+    expect(onUpdate).not.toHaveBeenCalled();
+    expect(startInput(stage.id).value).toBe('10:00');
+  });
+
+  it('notifies danger and applies nothing when the round-times POST fails', async () => {
+    const onUpdate = vi.fn();
+    const onNotify = vi.fn();
+    vi.spyOn(designerApi, 'updateSwissRoundTimes').mockRejectedValue(new Error('nope'));
+    const stage = swissStage('swiss-round-2-field-1', 2, 1, '10:00');
+    const sibling = swissStage('swiss-round-2-field-2', 2, 2, '10:00');
+    const placeholder = placeholderGame('swiss-r2-g1', stage.id, '10:00');
+    const siblingPlaceholder = placeholderGame('swiss-r2-g2', sibling.id, '10:00');
+
+    renderStage(
+      createProps({
+        stage,
+        allNodes: [stage, sibling, placeholder, siblingPlaceholder],
+        onUpdate,
+        onNotify,
+        gamedayId: 42,
+        swissCompletedRounds: 1,
+      }),
+    );
+
+    fireEvent.change(startInput(stage.id), { target: { value: '10:30' } });
+
+    await waitFor(() =>
+      expect(onNotify).toHaveBeenCalledWith(
+        'Failed to update the round start time',
+        'danger',
+        'Error',
+      ),
+    );
+    // Stage + siblings + placeholders unchanged.
+    expect(onUpdate).not.toHaveBeenCalled();
+  });
+
   it('keeps the plain stage-time path for non-Swiss stages', () => {
     const onUpdate = vi.fn();
     const updateSpy = vi.spyOn(designerApi, 'updateSwissRoundTimes');
