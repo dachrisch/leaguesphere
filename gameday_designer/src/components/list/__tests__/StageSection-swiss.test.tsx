@@ -37,7 +37,7 @@ function swissStage(id: string, round: number, field: number, startTime: string)
   } as StageNode;
 }
 
-function placeholderGame(id: string, stageId: string, startTime: string): GameNode {
+function placeholderGame(id: string, stageId: string, startTime?: string | null): GameNode {
   return {
     id,
     type: 'game',
@@ -151,6 +151,71 @@ describe('StageSection Swiss round start times', () => {
     expect(playedCalls).toHaveLength(0);
     const sameRoundPlayedCalls = onUpdate.mock.calls.filter(([id]) => id === playedSameRound.id);
     expect(sameRoundPlayedCalls).toHaveLength(0);
+  });
+
+  it('preserves stagger offsets when retiming a round (R2 11:20 -> 12:00)', async () => {
+    const onUpdate = vi.fn();
+    const stage = swissStage('swiss-round-2-field-1', 2, 1, '11:20');
+    const sibling = swissStage('swiss-round-2-field-2', 2, 2, '11:20');
+    const g1 = placeholderGame('swiss-r2-g1', stage.id, '11:20');
+    const g2 = placeholderGame('swiss-r2-g2', sibling.id, '11:20');
+    const g3 = placeholderGame('swiss-r2-g3', stage.id, '12:00');
+    vi.spyOn(designerApi, 'updateSwissRoundTimes').mockResolvedValue({
+      success: true,
+      roundStartTimes: { '2': '12:00' },
+    });
+
+    renderStage(
+      createProps({
+        stage,
+        allNodes: [stage, sibling, g1, g2, g3],
+        onUpdate,
+        gamedayId: 42,
+        swissCompletedRounds: 1,
+      }),
+    );
+
+    fireEvent.change(startInput(stage.id), { target: { value: '12:00' } });
+
+    await waitFor(() =>
+      expect(designerApi.updateSwissRoundTimes).toHaveBeenCalledWith(42, { '2': '12:00' }),
+    );
+    // Sibling stages retime to newStart identically.
+    expect(onUpdate).toHaveBeenCalledWith(stage.id, { startTime: '12:00' });
+    expect(onUpdate).toHaveBeenCalledWith(sibling.id, { startTime: '12:00' });
+    // Placeholder offsets (0 / 0 / +40) preserved from node times.
+    expect(onUpdate).toHaveBeenCalledWith(g1.id, { startTime: '12:00' });
+    expect(onUpdate).toHaveBeenCalledWith(g2.id, { startTime: '12:00' });
+    expect(onUpdate).toHaveBeenCalledWith(g3.id, { startTime: '12:40' });
+  });
+
+  it('falls back to newStart for a placeholder missing a time', async () => {
+    const onUpdate = vi.fn();
+    const stage = swissStage('swiss-round-2-field-1', 2, 1, '11:20');
+    const timed = placeholderGame('swiss-r2-g1', stage.id, '11:20');
+    const untimed = placeholderGame('swiss-r2-gx', stage.id, null);
+    vi.spyOn(designerApi, 'updateSwissRoundTimes').mockResolvedValue({
+      success: true,
+      roundStartTimes: { '2': '12:00' },
+    });
+
+    renderStage(
+      createProps({
+        stage,
+        allNodes: [stage, timed, untimed],
+        onUpdate,
+        gamedayId: 42,
+        swissCompletedRounds: 1,
+      }),
+    );
+
+    fireEvent.change(startInput(stage.id), { target: { value: '12:00' } });
+
+    await waitFor(() =>
+      expect(designerApi.updateSwissRoundTimes).toHaveBeenCalledWith(42, { '2': '12:00' }),
+    );
+    expect(onUpdate).toHaveBeenCalledWith(timed.id, { startTime: '12:00' });
+    expect(onUpdate).toHaveBeenCalledWith(untimed.id, { startTime: '12:00' });
   });
 
   it('disables the Start input with a localized hint for an already-generated round', () => {
