@@ -141,10 +141,41 @@ const ListDesignerApp: React.FC = () => {
     rounds: number;
     fields: number;
     gameDuration: number;
+    teams?: GlobalTeam[];
   }) => {
     if (!id) return;
     const gamedayId = parseInt(id);
     try {
+      // Import the selected league teams into the canvas pool first. The
+      // backend never writes globalTeams, so without this the loadData()
+      // below would overwrite the pool with the team-less persisted state
+      // and the GameTable would render "-- Select Team --".
+      // NOTE: flowState.addGlobalTeam can't be reused here — it mints
+      // `team-<pk>` ids and auto-assigns colors, while the backend writes
+      // node refs as bare String(pk) (e.g. "138"). The importState merge
+      // below (same mechanism as the normal template path) preserves each
+      // team's id/label/color/order exactly.
+      const incoming = config.teams ?? [];
+      if (incoming.length > 0) {
+        const seen = new Set(flowState.globalTeams.map((t) => t.id));
+        const missing = incoming.filter((t) => {
+          if (seen.has(t.id)) return false;
+          seen.add(t.id);
+          return true;
+        });
+        if (missing.length > 0) {
+          const current = flowState.exportState();
+          flowState.importState({
+            ...current,
+            globalTeams: [...current.globalTeams, ...missing],
+          });
+        }
+      }
+      // Persist BEFORE setup/generate: those calls rewrite the backend
+      // nodes, and loadData() overwrites frontend state from the backend.
+      // A save failure aborts via the catch below (swissSetupFailed) before
+      // any team-less tournament is set up.
+      await saveData(flowState.exportState());
       await designerApi.setupSwissTournament(gamedayId, {
         seed_team_ids: config.seedTeamIds,
         rounds: config.rounds,
@@ -163,7 +194,7 @@ const ListDesignerApp: React.FC = () => {
         t('ui:notification.title.error'),
       );
     }
-  }, [id, addNotification, t, loadData]);
+  }, [id, addNotification, t, loadData, flowState, saveData]);
 
   const swissTeamOptions: SwissAdjustTeamOption[] = buildSwissAdjustTeamOptions(
     flowState.swiss?.seedOrder ?? [],
