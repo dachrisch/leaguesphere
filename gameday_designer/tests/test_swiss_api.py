@@ -314,7 +314,8 @@ class TestSwissGenerateRoundOverridesEndpoint:
         round_games = [
             n
             for n in state.state_data["nodes"]
-            if n.get("type") == "game" and n.get("parentId") == "swiss-round-1"
+            if n.get("type") == "game"
+            and str(n.get("id", "")).startswith("swiss-r1-g")
         ]
         assert len(round_games) == 2
         assert round_games[0]["data"]["startTime"] == "11:15"
