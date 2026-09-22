@@ -13,8 +13,8 @@ Runs the organizer control loop on top of real gameday data:
   synthetic ``Gameinfo`` row is created.
 - ``generate_round()`` resolves the next round via ``SwissRoundResolver``
   (or a validated full-manual ``overrides`` envelope) and materializes it
-  as ``Gameinfo``/``Gameresult`` rows plus designer Game nodes under
-  ``swiss-round-{n}``. Round 1 needs no prior results; later rounds are
+  as ``Gameinfo``/``Gameresult`` rows plus designer Game nodes under the
+  round's per-field stages ``swiss-round-{n}-field-{f}``. Round 1 needs no prior results; later rounds are
   gated on every game of the previous round being COMPLETED, and generation
   stops after the configured round count.
 
@@ -78,8 +78,9 @@ class SwissTournamentService:
         """Persist the tournament config; return it with round start times.
 
         Also seeds the designer canvas (``state_data["nodes"]``) with Field
-        nodes ``1..F``, Stage nodes ``Round 1..N`` (``progressionMode:
-        'swiss'``) and placeholder Game nodes ``Swiss R{r}-G{i}`` for rounds
+        nodes ``1..F``, per-field Stage nodes ``Round N`` on every field
+        (``progressionMode: 'swiss'`` plus explicit ``swissRound``/``swissField``)
+        and placeholder Game nodes ``Swiss R{r}-G{i}`` for rounds
         ``2..N``. Round 1 games are materialized later by ``generate_round``.
         Unrelated nodes are merged by id, never wiped; prior ``swiss-*``
         nodes are replaced so re-running setup stays duplicate-free.
@@ -248,8 +249,9 @@ class SwissTournamentService:
         from the adjust dialog) the round is built from
         ``{"pairings": [{home_team_id, away_team_id, field?, start_time?}],
         bye_team_id?}`` after validating team coverage, field range, and
-        times. Either way the round is written as ``Gameinfo``/``Gameresult``
-        rows plus designer Game nodes under ``swiss-round-{n}``.
+        times.         Either way the round is written as ``Gameinfo``/``Gameresult``
+        rows plus designer Game nodes under the round's per-field stages
+        ``swiss-round-{n}-field-{f}``.
         """
         preview = self.preview_round()
         config = self._require_config()
@@ -356,6 +358,47 @@ class SwissTournamentService:
         return times
 
     @staticmethod
+    def _swiss_stage_id(round_no: int, field_no: int) -> str:
+        return f"{SWISS_NODE_PREFIX}round-{round_no}-field-{field_no}"
+
+    @staticmethod
+    def _swiss_stage_node(
+        seed_team_ids: List[int],
+        rounds: int,
+        fields: int,
+        game_duration: int,
+        round_start_times: Dict[str, str],
+        round_no: int,
+        field_no: int,
+    ) -> dict:
+        stage_id = SwissTournamentService._swiss_stage_id(round_no, field_no)
+        return {
+            "id": stage_id,
+            "type": "stage",
+            "parentId": f"{SWISS_NODE_PREFIX}field-{field_no}",
+            "position": {"x": 20, "y": 60},
+            "data": {
+                "type": "stage",
+                "name": f"Round {round_no}",
+                "category": "preliminary",
+                "stageType": "STANDARD",
+                "order": round_no - 1,
+                "progressionMode": "swiss",
+                "progressionConfig": {
+                    "mode": "swiss",
+                    "rounds": rounds,
+                    "seedOrder": [str(t) for t in seed_team_ids],
+                    "byePoints": SwissRoundResolver.BYE_POINTS,
+                },
+                "startTime": round_start_times[str(round_no)],
+                "defaultGameDuration": game_duration,
+                "defaultBreakBetweenGames": BREAK_MINUTES,
+                "swissRound": round_no,
+                "swissField": field_no,
+            },
+        }
+
+    @staticmethod
     def _swiss_canvas_nodes(
         seed_team_ids: List[int],
         rounds: int,
@@ -386,40 +429,29 @@ class SwissTournamentService:
             )
         games_per_round = (len(seed_team_ids) + 1) // 2
         for round_no in range(1, rounds + 1):
-            stage_id = f"{SWISS_NODE_PREFIX}round-{round_no}"
-            nodes.append(
-                {
-                    "id": stage_id,
-                    "type": "stage",
-                    "parentId": f"{SWISS_NODE_PREFIX}field-1",
-                    "position": {"x": 20, "y": 60},
-                    "data": {
-                        "type": "stage",
-                        "name": f"Round {round_no}",
-                        "category": "preliminary",
-                        "stageType": "STANDARD",
-                        "order": round_no - 1,
-                        "progressionMode": "swiss",
-                        "progressionConfig": {
-                            "mode": "swiss",
-                            "rounds": rounds,
-                            "seedOrder": [str(t) for t in seed_team_ids],
-                            "byePoints": SwissRoundResolver.BYE_POINTS,
-                        },
-                        "startTime": round_start_times[str(round_no)],
-                        "defaultGameDuration": game_duration,
-                        "defaultBreakBetweenGames": BREAK_MINUTES,
-                    },
-                }
-            )
+            for field_no in range(1, fields + 1):
+                nodes.append(
+                    SwissTournamentService._swiss_stage_node(
+                        seed_team_ids=list(seed_team_ids),
+                        rounds=rounds,
+                        fields=fields,
+                        game_duration=game_duration,
+                        round_start_times=round_start_times,
+                        round_no=round_no,
+                        field_no=field_no,
+                    )
+                )
             if round_no == 1:
                 continue
             for game_no in range(1, games_per_round + 1):
+                field_no = ((game_no - 1) % fields) + 1
                 nodes.append(
                     {
                         "id": f"{SWISS_NODE_PREFIX}r{round_no}-g{game_no}",
                         "type": "game",
-                        "parentId": stage_id,
+                        "parentId": SwissTournamentService._swiss_stage_id(
+                            round_no, field_no
+                        ),
                         "position": {"x": 30, "y": 50},
                         "data": {
                             "type": "game",
@@ -638,7 +670,10 @@ class SwissTournamentService:
         state = GamedayDesignerState.objects.get(gameday=self.gameday)
         state_data = dict(state.state_data or {})
         state_data["swiss"] = config
-        stage_id = f"{SWISS_NODE_PREFIX}round-{next_round}"
+        round_stage_ids = {
+            self._swiss_stage_id(next_round, field_no)
+            for field_no in range(1, config["fields"] + 1)
+        }
         round_prefix = f"{SWISS_NODE_PREFIX}r{next_round}-g"
         existing_ids = {
             str(node.get("id", "")) for node in (state_data.get("nodes") or [])
@@ -647,15 +682,17 @@ class SwissTournamentService:
             node
             for node in (state_data.get("nodes") or [])
             if not (
-                node.get("parentId") == stage_id
+                node.get("parentId") in round_stage_ids
                 and str(node.get("id", "")).startswith(round_prefix)
             )
         ]
         # Legacy states may carry swiss config + completedRounds but zero
-        # canvas nodes (pre-designer-first tournaments). Backfill the missing
-        # Field/Stage containers so the generated games have parents to
-        # render under. Only missing containers are added; existing nodes
-        # (including other rounds' games/placeholders) are left untouched.
+        # canvas nodes (pre-designer-first tournaments), or OLD single
+        # ``swiss-round-{n}`` stages from before the per-field layout.
+        # Backfill the missing Field/per-field-Stage containers so the
+        # generated games have parents to render under. Only missing
+        # containers are added; existing nodes (including legacy single
+        # stages and other rounds' games/placeholders) are left untouched.
         for container in self._swiss_canvas_nodes(
             seed_team_ids=list(config["seedOrder"]),
             rounds=config["rounds"],
@@ -676,7 +713,7 @@ class SwissTournamentService:
                 {
                     "id": f"{round_prefix}{idx}",
                     "type": "game",
-                    "parentId": stage_id,
+                    "parentId": self._swiss_stage_id(next_round, field),
                     "position": {"x": 30, "y": 50},
                     "data": {
                         "type": "game",

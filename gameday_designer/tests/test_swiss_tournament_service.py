@@ -197,7 +197,8 @@ class TestSwissSetup:
         round_nodes = [
             n
             for n in state.state_data["nodes"]
-            if n.get("parentId") == "swiss-round-1"
+            if n.get("parentId")
+            in ("swiss-round-1-field-1", "swiss-round-1-field-2")
         ]
         assert len(round_nodes) == len(generated["game_ids"])
         assert len(state.state_data["swiss"]["completedRounds"]) == 1
@@ -230,37 +231,66 @@ class TestSwissSetupSeedsCanvasNodes:
         swiss_stages = [
             n for n in nodes if n.get("type") == "stage" and n["id"].startswith("swiss-")
         ]
+        # Every field gets its own Round N stage per round.
+        assert len(swiss_stages) == 3 * 2
+        for round_no in (1, 2, 3):
+            for field_no in (1, 2):
+                stage = next(
+                    s
+                    for s in swiss_stages
+                    if s["id"] == f"swiss-round-{round_no}-field-{field_no}"
+                )
+                assert stage["parentId"] == f"swiss-field-{field_no}"
+                assert stage["data"]["name"] == f"Round {round_no}"
+                assert stage["data"].get("progressionMode") == "swiss"
+                assert stage["data"].get("swissRound") == round_no
+                assert stage["data"].get("swissField") == field_no
         ordered = sorted(swiss_stages, key=lambda s: s["data"]["order"])
-        assert [s["data"]["name"] for s in ordered] == ["Round 1", "Round 2", "Round 3"]
-        for stage in swiss_stages:
-            assert stage["data"].get("progressionMode") == "swiss"
+        assert [s["data"]["name"] for s in ordered] == [
+            "Round 1",
+            "Round 1",
+            "Round 2",
+            "Round 2",
+            "Round 3",
+            "Round 3",
+        ]
 
-        # Round 1 has zero Game nodes yet (generate_round materializes them).
-        round_one = next(s for s in swiss_stages if s["data"]["name"] == "Round 1")
-        assert [
-            n
-            for n in nodes
-            if n.get("type") == "game" and n.get("parentId") == round_one["id"]
-        ] == []
-
-        # Rounds 2..N each hold placeholder slots with no teams assigned.
-        games_per_round = (len(teams) + 1) // 2
-        for round_no in (2, 3):
-            stage = next(
-                s for s in swiss_stages if s["data"]["name"] == f"Round {round_no}"
-            )
-            games = [
+        # Round 1 stages exist with zero Game nodes yet (generate_round
+        # materializes them).
+        for field_no in (1, 2):
+            assert [
                 n
                 for n in nodes
-                if n.get("type") == "game" and n.get("parentId") == stage["id"]
+                if n.get("type") == "game"
+                and n.get("parentId") == f"swiss-round-1-field-{field_no}"
+            ] == []
+
+        # Rounds 2..N each hold placeholder slots with no teams assigned,
+        # split across the round's per-field stages by ((i-1) % F) + 1.
+        games_per_round = (len(teams) + 1) // 2
+        for round_no in (2, 3):
+            round_games = [
+                n
+                for n in nodes
+                if n.get("type") == "game"
+                and str(n.get("id", "")).startswith(f"swiss-r{round_no}-g")
             ]
-            assert len(games) == games_per_round
-            assert sorted(g["data"]["standing"] for g in games) == [
+            assert len(round_games) == games_per_round
+            assert sorted(g["data"]["standing"] for g in round_games) == [
                 f"Swiss R{round_no}-G{i}" for i in range(1, games_per_round + 1)
             ]
-            for game in games:
+            for game in round_games:
                 assert game["data"].get("homeTeamId") is None
                 assert game["data"].get("awayTeamId") is None
+            for i in range(1, games_per_round + 1):
+                game = next(
+                    g for g in round_games if g["id"] == f"swiss-r{round_no}-g{i}"
+                )
+                expected_field = ((i - 1) % 2) + 1
+                assert (
+                    game["parentId"]
+                    == f"swiss-round-{round_no}-field-{expected_field}"
+                )
 
         # Swiss config behavior is untouched.
         assert state.state_data["swiss"]["rounds"] == 3
@@ -305,11 +335,72 @@ class TestSwissSetupSeedsCanvasNodes:
         swiss_stages = [
             n for n in nodes if n.get("type") == "stage" and n["id"].startswith("swiss-")
         ]
-        assert sorted(s["data"]["name"] for s in swiss_stages) == [
-            "Round 1",
-            "Round 2",
+        assert sorted(s["id"] for s in swiss_stages) == [
+            "swiss-round-1-field-1",
+            "swiss-round-1-field-2",
+            "swiss-round-2-field-1",
+            "swiss-round-2-field-2",
         ]
         assert state.state_data["swiss"]["rounds"] == 2
+
+    def test_setup_two_rounds_two_fields_contract(self):
+        """Contract check: 6 teams, rounds=2, fields=2."""
+        gameday = make_gameday(name="Swiss Contract")
+        teams = make_teams(6, prefix="Contract")
+        SwissTournamentService(gameday).setup(
+            seed_team_ids=[t.pk for t in teams],
+            rounds=2,
+            fields=2,
+            game_duration=30,
+        )
+
+        state = GamedayDesignerState.objects.get(gameday=gameday)
+        nodes = state.state_data["nodes"]
+        by_id = {n["id"]: n for n in nodes}
+
+        assert by_id["swiss-field-1"]["type"] == "field"
+        assert by_id["swiss-field-2"]["type"] == "field"
+
+        stages = [
+            n for n in nodes if n.get("type") == "stage" and n["id"].startswith("swiss-")
+        ]
+        assert len(stages) == 4
+        for round_no in (1, 2):
+            for field_no in (1, 2):
+                stage_id = f"swiss-round-{round_no}-field-{field_no}"
+                stage = by_id[stage_id]
+                assert stage["parentId"] == f"swiss-field-{field_no}"
+                assert stage["data"]["name"] == f"Round {round_no}"
+                assert stage["data"]["progressionMode"] == "swiss"
+                assert stage["data"]["swissRound"] == round_no
+                assert stage["data"]["swissField"] == field_no
+                assert isinstance(stage["data"]["swissRound"], int)
+                assert isinstance(stage["data"]["swissField"], int)
+
+        # R1 stages exist with zero games.
+        for field_no in (1, 2):
+            assert [
+                n
+                for n in nodes
+                if n.get("parentId") == f"swiss-round-1-field-{field_no}"
+            ] == []
+
+        # R2 placeholders (3 for 6 teams) split across both field stages.
+        placeholders = [
+            n
+            for n in nodes
+            if str(n.get("id", "")).startswith("swiss-r2-g")
+        ]
+        assert sorted(n["id"] for n in placeholders) == [
+            "swiss-r2-g1",
+            "swiss-r2-g2",
+            "swiss-r2-g3",
+        ]
+        assert by_id["swiss-r2-g1"]["parentId"] == "swiss-round-2-field-1"
+        assert by_id["swiss-r2-g2"]["parentId"] == "swiss-round-2-field-2"
+        assert by_id["swiss-r2-g3"]["parentId"] == "swiss-round-2-field-1"
+        assert all(n["data"].get("homeTeamId") is None for n in placeholders)
+        assert all(n["data"].get("awayTeamId") is None for n in placeholders)
 
 
 @pytest.mark.django_db
@@ -587,13 +678,18 @@ class TestSwissGenerateRoundOverrides:
         assert default.scheduled.strftime("%H:%M") == "09:00"
 
         nodes = self._nodes(gameday)
-        stage_id = "swiss-round-1"
         round_games = [
             n
             for n in nodes
-            if n.get("type") == "game" and n.get("parentId") == stage_id
+            if n.get("type") == "game"
+            and str(n.get("id", "")).startswith("swiss-r1-g")
         ]
         assert sorted(n["id"] for n in round_games) == ["swiss-r1-g1", "swiss-r1-g2"]
+        # Parent is the per-field stage of each game's assigned field:
+        # custom field 2 for G1, round-robin default field 2 for G2.
+        assert all(
+            n["parentId"] == "swiss-round-1-field-2" for n in round_games
+        )
         by_standing = {n["data"]["standing"]: n for n in round_games}
         first = by_standing["Swiss R1-G1"]
         assert first["data"]["homeTeamId"] == str(t0.pk)
@@ -612,8 +708,8 @@ class TestSwissGenerateRoundOverrides:
             n
             for n in nodes
             if n.get("type") == "game"
-            and str(n.get("parentId", "")).startswith("swiss-round-")
-            and n.get("parentId") != stage_id
+            and str(n.get("id", "")).startswith("swiss-r")
+            and not str(n.get("id", "")).startswith("swiss-r1-g")
         ]
         assert later
         assert all(n["data"].get("homeTeamId") is None for n in later)
@@ -631,9 +727,14 @@ class TestSwissGenerateRoundOverrides:
         round_games = [
             n
             for n in nodes
-            if n.get("type") == "game" and n.get("parentId") == "swiss-round-1"
+            if n.get("type") == "game"
+            and str(n.get("id", "")).startswith("swiss-r1-g")
         ]
         assert len(round_games) == 2
+        # Round-robin default fields: game 1 -> field 1, game 2 -> field 2.
+        by_id = {n["id"]: n for n in round_games}
+        assert by_id["swiss-r1-g1"]["parentId"] == "swiss-round-1-field-1"
+        assert by_id["swiss-r1-g2"]["parentId"] == "swiss-round-1-field-2"
         for node in round_games:
             assert node["id"].startswith("swiss-r1-g")
             assert node["data"]["homeTeamId"] is not None
@@ -744,13 +845,18 @@ class TestSwissGenerateRoundOverrides:
 
     def test_odd_team_count_replaces_phantom_placeholder(self):
         gameday, teams, service = self._setup(rounds=2)
-        # 5 teams seed ceil(5/2) = 3 placeholders for round 2.
+        # 5 teams seed ceil(5/2) = 3 placeholders for round 2, split
+        # across the round's per-field stages.
         placeholders = [
             n
             for n in self._nodes(gameday)
-            if n.get("parentId") == "swiss-round-2"
+            if str(n.get("id", "")).startswith("swiss-r2-g")
         ]
         assert len(placeholders) == 3
+        by_id = {n["id"]: n for n in placeholders}
+        assert by_id["swiss-r2-g1"]["parentId"] == "swiss-round-2-field-1"
+        assert by_id["swiss-r2-g2"]["parentId"] == "swiss-round-2-field-2"
+        assert by_id["swiss-r2-g3"]["parentId"] == "swiss-round-2-field-1"
 
         first = service.generate_round()
         for game_id in first["game_ids"]:
@@ -761,10 +867,56 @@ class TestSwissGenerateRoundOverrides:
         assert len(second["game_ids"]) == 2  # floor(5/2) real games + bye
         nodes = self._nodes(gameday)
         round_two = [
-            n for n in nodes if n.get("parentId") == "swiss-round-2"
+            n
+            for n in nodes
+            if str(n.get("id", "")).startswith("swiss-r2-g")
         ]
         assert sorted(n["id"] for n in round_two) == ["swiss-r2-g1", "swiss-r2-g2"]
         assert all(n["data"].get("homeTeamId") is not None for n in round_two)
+        # Materialized games sit under their assigned field's stage:
+        # game 1 -> field 1, game 2 -> field 2 (round-robin defaults).
+        parents = {n["id"]: n["parentId"] for n in round_two}
+        assert parents == {
+            "swiss-r2-g1": "swiss-round-2-field-1",
+            "swiss-r2-g2": "swiss-round-2-field-2",
+        }
+        ids = [n["id"] for n in nodes]
+        assert len(ids) == len(set(ids))
+
+    def test_generate_round_one_parents_games_per_field(self):
+        gameday = make_gameday(name="Swiss PerField R1")
+        teams = make_teams(6, prefix="PerField")
+        service = SwissTournamentService(gameday)
+        service.setup(
+            seed_team_ids=[t.pk for t in teams],
+            rounds=2,
+            fields=2,
+            game_duration=30,
+        )
+
+        generated = service.generate_round()
+
+        assert generated["round"] == 1
+        assert len(generated["game_ids"]) == 3
+        nodes = self._nodes(gameday)
+        by_id = {n["id"]: n for n in nodes}
+        # Round-robin default fields: games 1,2,3 -> fields 1,2,1.
+        assert by_id["swiss-r1-g1"]["parentId"] == "swiss-round-1-field-1"
+        assert by_id["swiss-r1-g2"]["parentId"] == "swiss-round-1-field-2"
+        assert by_id["swiss-r1-g3"]["parentId"] == "swiss-round-1-field-1"
+        # No placeholders left for R1; R2 placeholders intact.
+        assert not [
+            n
+            for n in nodes
+            if n.get("type") == "game"
+            and n["id"].startswith("swiss-r1-g")
+            and n["data"].get("homeTeamId") is None
+        ]
+        r2_placeholders = [
+            n for n in nodes if n["id"].startswith("swiss-r2-g")
+        ]
+        assert len(r2_placeholders) == 3
+        assert all(n["data"].get("homeTeamId") is None for n in r2_placeholders)
         ids = [n["id"] for n in nodes]
         assert len(ids) == len(set(ids))
 
@@ -815,8 +967,13 @@ class TestSwissGenerateBackfillsLegacyContainers:
         ]
         by_id = {n["id"]: n for n in nodes}
         assert "swiss-field-1" in by_id
-        assert "swiss-round-2" in by_id
-        round_two = [n for n in nodes if n.get("parentId") == "swiss-round-2"]
+        assert "swiss-round-2-field-1" in by_id
+        assert "swiss-round-2-field-2" in by_id
+        round_two = [
+            n
+            for n in nodes
+            if str(n.get("id", "")).startswith("swiss-r2-g")
+        ]
         assert len(round_two) == len(second["game_ids"])
         ids = [n["id"] for n in nodes]
         assert len(ids) == len(set(ids))
@@ -833,8 +990,13 @@ class TestSwissGenerateBackfillsLegacyContainers:
         ids = [n["id"] for n in nodes]
         assert len(ids) == len(set(ids))
         assert ids.count("swiss-field-1") == 1
-        assert ids.count("swiss-round-3") == 1
-        assert [n for n in nodes if n.get("parentId") == "swiss-round-3"]
+        assert ids.count("swiss-round-3-field-1") == 1
+        assert ids.count("swiss-round-3-field-2") == 1
+        assert [
+            n
+            for n in nodes
+            if str(n.get("id", "")).startswith("swiss-r3-g")
+        ]
 
     def test_generate_keeps_existing_containers_and_other_rounds_games(self):
         gameday = make_gameday(name="Swiss Legacy Keep")
@@ -857,7 +1019,9 @@ class TestSwissGenerateBackfillsLegacyContainers:
             ).state_data["nodes"]
         }
         round_one_ids = sorted(
-            n["id"] for n in before.values() if n.get("parentId") == "swiss-round-1"
+            n["id"]
+            for n in before.values()
+            if str(n.get("id", "")).startswith("swiss-r1-g")
         )
         assert round_one_ids
 
@@ -869,8 +1033,78 @@ class TestSwissGenerateBackfillsLegacyContainers:
         ids = [n["id"] for n in nodes]
         assert len(ids) == len(set(ids))
         assert ids.count("swiss-field-1") == 1
-        assert ids.count("swiss-round-2") == 1
+        assert ids.count("swiss-round-2-field-1") == 1
         # Round 1 games untouched by the round-2 materialization.
         assert sorted(
-            n["id"] for n in nodes if n.get("parentId") == "swiss-round-1"
+            n["id"] for n in nodes if str(n.get("id", "")).startswith("swiss-r1-g")
         ) == round_one_ids
+
+    def test_generate_creates_per_field_stages_for_legacy_single_stage(self):
+        """Legacy states with OLD single swiss-round-{n} stages keep them
+        untouched; generate creates per-field stages + games, no duplicates."""
+        gameday = make_gameday(name="Swiss Legacy Single")
+        teams = make_teams(4, prefix="LegacySingle")
+        service = SwissTournamentService(gameday)
+        service.setup(
+            seed_team_ids=[t.pk for t in teams],
+            rounds=3,
+            fields=2,
+            game_duration=30,
+        )
+        first = service.generate_round()
+        for game_id in first["game_ids"]:
+            complete_game(Gameinfo.objects.get(pk=game_id), 10, 0)
+
+        # Simulate a legacy single-stage state: keep config + completedRounds
+        # but replace per-field R1 stages/games with old single-stage nodes.
+        state = GamedayDesignerState.objects.get(gameday=gameday)
+        state_data = dict(state.state_data or {})
+        legacy_round_one = [
+            n
+            for n in state_data.get("nodes", [])
+            if str(n.get("id", "")).startswith("swiss-r1-g")
+        ]
+        kept = [
+            n
+            for n in state_data.get("nodes", [])
+            if not str(n.get("id", "")).startswith("swiss-r1-g")
+            and n.get("id") not in ("swiss-round-1-field-1", "swiss-round-1-field-2")
+        ]
+        legacy_stage = {
+            "id": "swiss-round-1",
+            "type": "stage",
+            "parentId": "swiss-field-1",
+            "position": {"x": 20, "y": 60},
+            "data": {"type": "stage", "name": "Round 1", "progressionMode": "swiss"},
+        }
+        legacy_games = [
+            {**n, "parentId": "swiss-round-1"} for n in legacy_round_one
+        ]
+        state_data["nodes"] = kept + [legacy_stage] + legacy_games
+        state.state_data = state_data
+        state.save()
+
+        second = service.generate_round()
+
+        assert second["round"] == 2
+        nodes = GamedayDesignerState.objects.get(gameday=gameday).state_data["nodes"]
+        by_id = {n["id"]: n for n in nodes}
+        # Legacy nodes untouched.
+        assert by_id["swiss-round-1"] == legacy_stage
+        for game in legacy_games:
+            assert by_id[game["id"]] == game
+        # Per-field stages + games created for round 2.
+        assert by_id["swiss-round-2-field-1"]["parentId"] == "swiss-field-1"
+        assert by_id["swiss-round-2-field-2"]["parentId"] == "swiss-field-2"
+        assert by_id["swiss-round-2-field-1"]["data"]["swissRound"] == 2
+        assert by_id["swiss-round-2-field-2"]["data"]["swissField"] == 2
+        round_two = [
+            n
+            for n in nodes
+            if str(n.get("id", "")).startswith("swiss-r2-g")
+        ]
+        assert len(round_two) == len(second["game_ids"])
+        assert by_id["swiss-r2-g1"]["parentId"] == "swiss-round-2-field-1"
+        assert by_id["swiss-r2-g2"]["parentId"] == "swiss-round-2-field-2"
+        ids = [n["id"] for n in nodes]
+        assert len(ids) == len(set(ids))
