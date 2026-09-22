@@ -165,17 +165,28 @@ const ListDesignerApp: React.FC = () => {
         });
         if (missing.length > 0) {
           const current = flowState.exportState();
-          flowState.importState({
+          // Build the merged pool ONCE and reuse the same object for both
+          // import + save. A second exportState() after importState() would
+          // re-export the pre-import pool (React setState is async), so the
+          // save would persist team-less state and loadData() would wipe
+          // the import.
+          const merged = {
             ...current,
             globalTeams: [...current.globalTeams, ...missing],
-          });
+          };
+          flowState.importState(merged);
+          // Persist BEFORE setup/generate: those calls rewrite the backend
+          // nodes, and loadData() overwrites frontend state from the backend.
+          // A save failure aborts via the catch below (swissSetupFailed)
+          // before any team-less tournament is set up. saveData rethrows
+          // (see useDesignerController) so the abort path is reachable.
+          await saveData(merged);
+        } else {
+          await saveData(flowState.exportState());
         }
+      } else {
+        await saveData(flowState.exportState());
       }
-      // Persist BEFORE setup/generate: those calls rewrite the backend
-      // nodes, and loadData() overwrites frontend state from the backend.
-      // A save failure aborts via the catch below (swissSetupFailed) before
-      // any team-less tournament is set up.
-      await saveData(flowState.exportState());
       await designerApi.setupSwissTournament(gamedayId, {
         seed_team_ids: config.seedTeamIds,
         rounds: config.rounds,
