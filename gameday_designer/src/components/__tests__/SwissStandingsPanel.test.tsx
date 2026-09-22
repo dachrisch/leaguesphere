@@ -13,6 +13,7 @@ import '@testing-library/jest-dom';
 import SwissStandingsPanel from '../SwissStandingsPanel';
 import { designerApi } from '../../api/designerApi';
 import type { SwissStandings } from '../../api/designerApi';
+import type { SwissTournamentState } from '../../types/flowchart';
 import i18n from '../../i18n/testConfig';
 
 const TABLE: SwissStandings = {
@@ -104,6 +105,83 @@ describe('SwissStandingsPanel', () => {
     await waitFor(() =>
       expect(screen.getByTestId('swiss-rounds-indicator')).toHaveTextContent('2'),
     );
+  });
+
+  describe('panel-owned round generation', () => {
+    const SWISS: SwissTournamentState = {
+      seedOrder: [11, 22, 33, 44],
+      rounds: 3,
+      fields: 2,
+      gameDuration: 30,
+      roundStartTimes: { '1': '09:00', '2': '10:00', '3': '11:00' },
+      completedRounds: [{ round: 1, gameIds: [101], bye: null }],
+      byes: {},
+    };
+
+    it('renders a Generate Round N button for the next round and calls onGenerateNext on click', async () => {
+      vi.spyOn(designerApi, 'getSwissStandings').mockResolvedValue(TABLE);
+      const onGenerateNext = vi.fn();
+
+      render(<SwissStandingsPanel gamedayId={42} swiss={SWISS} onGenerateNext={onGenerateNext} />);
+
+      const button = await screen.findByTestId('swiss-generate-next');
+      expect(button).toHaveTextContent('Generate Round 2');
+      expect(button).toBeEnabled();
+      fireEvent.click(button);
+      expect(onGenerateNext).toHaveBeenCalledTimes(1);
+    });
+
+    it('hides the generate button when all rounds are complete', async () => {
+      vi.spyOn(designerApi, 'getSwissStandings').mockResolvedValue({
+        ...TABLE,
+        rounds_completed: 3,
+      });
+
+      render(
+        <SwissStandingsPanel
+          gamedayId={42}
+          swiss={{ ...SWISS, completedRounds: [1, 2, 3].map((round) => ({ round, gameIds: [], bye: null })) }}
+          onGenerateNext={vi.fn()}
+        />,
+      );
+
+      expect(await screen.findByTestId('swiss-all-complete')).toBeInTheDocument();
+      expect(screen.queryByTestId('swiss-generate-next')).not.toBeInTheDocument();
+    });
+
+    it('disables the button with an inline hint when the prior round is incomplete', async () => {
+      vi.spyOn(designerApi, 'getSwissStandings').mockResolvedValue({
+        ...TABLE,
+        rounds_completed: 0,
+      });
+
+      render(<SwissStandingsPanel gamedayId={42} swiss={SWISS} onGenerateNext={vi.fn()} />);
+
+      const button = await screen.findByTestId('swiss-generate-next');
+      expect(button).toBeDisabled();
+      expect(screen.getByTestId('swiss-generate-hint')).toBeInTheDocument();
+    });
+
+    it('disables the button and shows a generating label while generating', async () => {
+      vi.spyOn(designerApi, 'getSwissStandings').mockResolvedValue(TABLE);
+
+      render(
+        <SwissStandingsPanel gamedayId={42} swiss={SWISS} onGenerateNext={vi.fn()} generating />,
+      );
+
+      const button = await screen.findByTestId('swiss-generate-next');
+      expect(button).toBeDisabled();
+      expect(button).toHaveTextContent('Generating');
+    });
+
+    it('renders no generate button without swiss state (read-only panel)', async () => {
+      vi.spyOn(designerApi, 'getSwissStandings').mockResolvedValue(TABLE);
+
+      render(<SwissStandingsPanel gamedayId={42} />);
+
+      expect(await screen.findByTestId('swiss-standings-table')).toBeInTheDocument();
+      expect(screen.queryByTestId('swiss-generate-next')).not.toBeInTheDocument();
+    });
   });
 
   it('collapses and expands via the toggle', async () => {
