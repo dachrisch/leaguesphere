@@ -277,6 +277,14 @@ export interface StageNodeData {
     home: { sourceIndex: number; type: 'winner' | 'loser' | 'rank'; sourceStageId?: string; sourceStageIndex?: number };
     away: { sourceIndex: number; type: 'winner' | 'loser' | 'rank'; sourceStageId?: string; sourceStageIndex?: number };
   }>;
+  /**
+   * Swiss round number (1-based) for stages materialized by
+   * SwissTournamentService (`swiss-round-{n}-field-{f}`). Absent on
+   * manually built stages.
+   */
+  swissRound?: number;
+  /** Field number within the Swiss round (1-based). */
+  swissField?: number;
 }
 
 // ============================================================================

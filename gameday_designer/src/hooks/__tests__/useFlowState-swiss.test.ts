@@ -93,4 +93,20 @@ describe('useFlowState swiss round-trip (#1970)', () => {
 
     expect(result.current.swiss).toEqual(NEXT);
   });
+
+  it('clears the swiss config on clearAll (no-op for non-Swiss)', () => {
+    const { result } = renderHook(() => useFlowState());
+
+    act(() => {
+      result.current.importState({ ...emptyState(), swiss: SWISS });
+    });
+    expect(result.current.swiss).toEqual(SWISS);
+
+    act(() => {
+      result.current.clearAll();
+    });
+
+    expect(result.current.swiss).toBeUndefined();
+    expect(result.current.exportState().swiss).toBeUndefined();
+  });
 });

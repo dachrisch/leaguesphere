@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ListCanvas from '../ListCanvas';
 import type { ListCanvasProps } from '../ListCanvas';
@@ -130,6 +130,23 @@ describe('ListCanvas Swiss embedded standings', () => {
 
     expect(screen.queryByTestId('swiss-standings-panel')).not.toBeInTheDocument();
     expect(designerApi.getSwissStandings).not.toHaveBeenCalled();
+  });
+
+  it('renders the standings panel inside a sticky side callout below the header row', async () => {
+    renderCanvas(createProps({ swiss: SWISS }));
+
+    const callout = await screen.findByTestId('swiss-side-callout');
+    expect(callout).toBeInTheDocument();
+    expect(within(callout).getByTestId('swiss-standings-panel')).toBeInTheDocument();
+    // Header (metadata + team pool row) stays above the side callout.
+    const header = screen.getByTestId('gameday-metadata-header');
+    expect(header.compareDocumentPosition(callout) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('shows no side callout when there is no swiss config', () => {
+    renderCanvas(createProps({ swiss: undefined }));
+
+    expect(screen.queryByTestId('swiss-side-callout')).not.toBeInTheDocument();
   });
 
   it('refetches standings when results are saved without a new round (results version bump)', async () => {
