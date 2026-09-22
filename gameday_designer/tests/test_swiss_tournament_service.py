@@ -1108,3 +1108,148 @@ class TestSwissGenerateBackfillsLegacyContainers:
         assert by_id["swiss-r2-g2"]["parentId"] == "swiss-round-2-field-2"
         ids = [n["id"] for n in nodes]
         assert len(ids) == len(set(ids))
+
+
+@pytest.mark.django_db
+class TestSwissSlotStagger:
+    """Same-field games in a round start in sequential slots (slot stagger).
+
+    6 teams / 2 fields / 30min + 10min break, R1 at 10:00:
+    G1 F1@10:00, G2 F2@10:00, G3 F1@10:40 (slot = (idx-1) // fields).
+    """
+
+    @staticmethod
+    def _gameday_at(teams_n, start, prefix):
+        import datetime as _dt
+
+        gameday = make_gameday(name=prefix)
+        gameday.start = _dt.time(*start)
+        gameday.save()
+        teams = make_teams(teams_n, prefix=prefix.replace(" ", ""))
+        return gameday, teams
+
+    @staticmethod
+    def _nodes(gameday):
+        state = GamedayDesignerState.objects.get(gameday=gameday)
+        return state.state_data["nodes"]
+
+    def test_materialized_games_stagger_by_slot(self):
+        gameday, teams = self._gameday_at(6, (10, 0), "Swiss Stagger R1")
+        service = SwissTournamentService(gameday)
+        service.setup(
+            seed_team_ids=[t.pk for t in teams],
+            rounds=2,
+            fields=2,
+            game_duration=30,
+        )
+
+        generated = service.generate_round()
+
+        assert len(generated["game_ids"]) == 3
+        games = list(
+            Gameinfo.objects.filter(pk__in=generated["game_ids"]).order_by("pk")
+        )
+        assert [g.field for g in games] == [1, 2, 1]
+        assert [g.scheduled.strftime("%H:%M") for g in games] == [
+            "10:00",
+            "10:00",
+            "10:40",
+        ]
+
+        by_id = {n["id"]: n for n in self._nodes(gameday)}
+        assert by_id["swiss-r1-g1"]["data"]["startTime"] == "10:00"
+        assert by_id["swiss-r1-g2"]["data"]["startTime"] == "10:00"
+        assert by_id["swiss-r1-g3"]["data"]["startTime"] == "10:40"
+
+    def test_placeholders_stagger_by_slot(self):
+        gameday, teams = self._gameday_at(6, (10, 0), "Swiss Stagger PH")
+        SwissTournamentService(gameday).setup(
+            seed_team_ids=[t.pk for t in teams],
+            rounds=2,
+            fields=2,
+            game_duration=30,
+        )
+
+        by_id = {n["id"]: n for n in self._nodes(gameday)}
+        # R2 starts 80 min after R1 (2 slots x (30 + 10)): 10:00 -> 11:20.
+        # Same slot pattern as materialized games: slot 0, slot 0, slot 1.
+        assert by_id["swiss-r2-g1"]["data"]["startTime"] == "11:20"
+        assert by_id["swiss-r2-g2"]["data"]["startTime"] == "11:20"
+        assert by_id["swiss-r2-g3"]["data"]["startTime"] == "12:00"
+
+    def test_explicit_override_start_time_wins(self):
+        gameday, teams = self._gameday_at(6, (10, 0), "Swiss Stagger OR")
+        service = SwissTournamentService(gameday)
+        service.setup(
+            seed_team_ids=[t.pk for t in teams],
+            rounds=2,
+            fields=2,
+            game_duration=30,
+        )
+        t = teams
+        generated = service.generate_round(
+            overrides={
+                "pairings": [
+                    {
+                        "home_team_id": t[0].pk,
+                        "away_team_id": t[1].pk,
+                        "start_time": "11:15",
+                    },
+                    {"home_team_id": t[2].pk, "away_team_id": t[3].pk},
+                    {"home_team_id": t[4].pk, "away_team_id": t[5].pk},
+                ]
+            }
+        )
+
+        games = list(
+            Gameinfo.objects.filter(pk__in=generated["game_ids"]).order_by("pk")
+        )
+        assert [g.scheduled.strftime("%H:%M") for g in games] == [
+            "11:15",
+            "10:00",
+            "10:40",
+        ]
+        by_id = {n["id"]: n for n in self._nodes(gameday)}
+        assert by_id["swiss-r1-g1"]["data"]["startTime"] == "11:15"
+        assert by_id["swiss-r1-g2"]["data"]["startTime"] == "10:00"
+        assert by_id["swiss-r1-g3"]["data"]["startTime"] == "10:40"
+
+    def test_four_teams_two_fields_no_stagger(self):
+        gameday, teams = self._gameday_at(4, (10, 0), "Swiss Stagger Even")
+        service = SwissTournamentService(gameday)
+        service.setup(
+            seed_team_ids=[t.pk for t in teams],
+            rounds=2,
+            fields=2,
+            game_duration=30,
+        )
+
+        generated = service.generate_round()
+
+        games = list(
+            Gameinfo.objects.filter(pk__in=generated["game_ids"]).order_by("pk")
+        )
+        assert [g.scheduled.strftime("%H:%M") for g in games] == ["10:00", "10:00"]
+        by_id = {n["id"]: n for n in self._nodes(gameday)}
+        assert by_id["swiss-r1-g1"]["data"]["startTime"] == "10:00"
+        assert by_id["swiss-r1-g2"]["data"]["startTime"] == "10:00"
+
+    def test_odd_teams_bye_unaffected(self):
+        gameday, teams = self._gameday_at(5, (10, 0), "Swiss Stagger Bye")
+        service = SwissTournamentService(gameday)
+        service.setup(
+            seed_team_ids=[t.pk for t in teams],
+            rounds=2,
+            fields=2,
+            game_duration=30,
+        )
+
+        generated = service.generate_round()
+
+        assert generated["bye_team_id"] is not None
+        assert len(generated["game_ids"]) == 2
+        games = list(
+            Gameinfo.objects.filter(pk__in=generated["game_ids"]).order_by("pk")
+        )
+        # Both real games sit in slot 0 -> uniform round-start times.
+        assert [g.scheduled.strftime("%H:%M") for g in games] == ["10:00", "10:00"]
