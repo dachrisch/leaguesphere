@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ListCanvas from '../ListCanvas';
 import type { ListCanvasProps } from '../ListCanvas';
@@ -156,5 +156,28 @@ describe('ListCanvas Swiss embedded standings', () => {
     renderCanvas(createProps({ swiss: legacySwiss }));
 
     expect(await screen.findByTestId('swiss-standings-panel')).toBeInTheDocument();
+  });
+
+  it('wires the panel generate button to onProgressSwissRound with the next round', async () => {
+    const onProgressSwissRound = vi.fn();
+    renderCanvas(createProps({ swiss: SWISS, onProgressSwissRound }));
+
+    const button = await screen.findByTestId('swiss-generate-next');
+    expect(button).toHaveTextContent('Generate Round 2');
+    fireEvent.click(button);
+    expect(onProgressSwissRound).toHaveBeenCalledWith(2);
+  });
+
+  it('forwards the generating state to the panel button', async () => {
+    renderCanvas(createProps({ swiss: SWISS, onProgressSwissRound: vi.fn(), swissGenerating: true }));
+
+    expect(await screen.findByTestId('swiss-generate-next')).toBeDisabled();
+  });
+
+  it('shows no panel generate button in readOnly mode', async () => {
+    renderCanvas(createProps({ swiss: SWISS, onProgressSwissRound: vi.fn(), readOnly: true }));
+
+    expect(await screen.findByTestId('swiss-standings-panel')).toBeInTheDocument();
+    expect(screen.queryByTestId('swiss-generate-next')).not.toBeInTheDocument();
   });
 });
