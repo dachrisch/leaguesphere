@@ -3,9 +3,11 @@
  *
  * Shared chrome + collapse pattern for the designer top-row cards (Team Pool,
  * Swiss control), mirroring the metadata (masterdata) card
- * (GamedayMetadataAccordion): an Accordion.Item with a status-tinted
- * `accordion-button` header. Collapsing unmounts the whole card body
- * (Accordion collapse via activeKey) instead of leaving an empty Card frame.
+ * (GamedayMetadataAccordion): an Accordion.Item with a plain
+ * `accordion-button` header. The yellow status tint is reserved for the
+ * metadata card only — pool + control headers render plain. Collapsing
+ * unmounts the whole card body (Accordion collapse via activeKey) instead of
+ * leaving an empty Card frame.
  *
  * Each card keeps independent collapse state; the scroll-driven
  * `forceCollapsed` prop collapses like metadata's (and never auto-reopens).
@@ -14,26 +16,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { Accordion, AccordionContext, Collapse, useAccordionButton } from 'react-bootstrap';
 import './TopRowAccordionCard.css';
-
-/**
- * Maps a gameday status to the header tint class. Same mapping as
- * GamedayMetadataAccordion's getStatusColor (copied classNames — metadata is
- * the reference, this helper only mirrors it).
- */
-export function topRowStatusHeaderClass(status?: string): string {
-  switch (status) {
-    case 'DRAFT':
-      return 'header-status-warning';
-    case 'PUBLISHED':
-      return 'header-status-success';
-    case 'IN_PROGRESS':
-      return 'header-status-primary';
-    case 'COMPLETED':
-      return 'header-status-secondary';
-    default:
-      return 'header-status-light';
-  }
-}
 
 const EVENT_KEY = '0';
 
@@ -73,8 +55,6 @@ export interface TopRowAccordionCardProps {
   title: React.ReactNode;
   /** Optional badge next to the title (e.g. the Swiss round indicator). */
   badge?: React.ReactNode;
-  /** Gameday status driving the header tint — same classes as metadata. */
-  status?: string;
   /** Header action buttons (rendered outside the toggle, like metadata's publish button). */
   actions?: React.ReactNode;
   /** Scroll-driven collapse from the parent row (mirrors metadata forceCollapsed). */
@@ -90,7 +70,6 @@ const TopRowAccordionCard: React.FC<TopRowAccordionCardProps> = ({
   iconClass,
   title,
   badge,
-  status,
   actions,
   forceCollapsed = false,
   highlighted = false,
@@ -125,7 +104,7 @@ const TopRowAccordionCard: React.FC<TopRowAccordionCardProps> = ({
       >
         <Accordion.Item eventKey={EVENT_KEY}>
           <h2
-            className={`accordion-header ${topRowStatusHeaderClass(status)} position-relative`}
+            className="accordion-header position-relative"
             data-testid={headerTestId}
           >
             <CardHeaderToggle iconClass={iconClass} title={title} badge={badge} />

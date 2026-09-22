@@ -124,7 +124,6 @@ const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
           headerTestId="team-pool-header"
           iconClass={ICONS.TEAM}
           title={t('ui:label.teamPool')}
-          status={metadata.status}
           forceCollapsed={isCollapsed}
           highlighted={highlightedElement?.id === 'team-pool'}
           actions={
