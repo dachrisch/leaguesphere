@@ -2,16 +2,28 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import TemplateLibraryModal from '../../TemplateLibraryModal';
 import { designerApi } from '../../../../api/designerApi';
+import { getTeamColor } from '../../../../utils/tournamentConstants';
 
 vi.mock('../../../../api/designerApi');
 
 const mockEmpty = { results: [], count: 0, next: null, previous: null };
+// Realistic backend PKs (non-sequential) so id-format bugs can't hide
+// behind coincidental 1..N fixtures.
 const leagueTeams = [
-  { id: 1, name: 'Alpha' },
-  { id: 2, name: 'Beta' },
-  { id: 3, name: 'Gamma' },
-  { id: 4, name: 'Delta' },
+  { id: 138, name: 'Aachen' },
+  { id: 522, name: 'Antwerp' },
+  { id: 711, name: 'Bamberg' },
+  { id: 904, name: 'Chemnitz' },
 ];
+
+const expectedSwissTeams = leagueTeams.map((t, i) => ({
+  id: String(t.id),
+  label: t.name,
+  groupId: null,
+  order: i,
+  color: getTeamColor(i),
+  associationAbbr: null,
+}));
 
 describe('TemplateLibraryModal swiss flow (#1970)', () => {
   beforeEach(() => {
@@ -58,10 +70,11 @@ describe('TemplateLibraryModal swiss flow (#1970)', () => {
     fireEvent.click(screen.getByTestId('swiss-setup-confirm'));
 
     expect(onGenerateSwiss).toHaveBeenCalledWith({
-      seedTeamIds: [1, 2, 3, 4],
+      seedTeamIds: [138, 522, 711, 904],
       rounds: 4,
       fields: 2,
       gameDuration: 30,
+      teams: expectedSwissTeams,
     });
   });
 

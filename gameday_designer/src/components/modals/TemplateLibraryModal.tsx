@@ -46,6 +46,7 @@ interface TemplateLibraryModalProps {
     rounds: number;
     fields: number;
     gameDuration: number;
+    teams: GlobalTeam[];
   }) => void;
   dayStartTime?: string;
   onSaveTemplate?: (name: string, description: string, sharing: 'PRIVATE' | 'ASSOCIATION' | 'GLOBAL') => Promise<void>;
@@ -167,9 +168,9 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
     fields: number;
     gameDuration: number;
   }) => {
-    onGenerateSwiss?.(config);
+    onGenerateSwiss?.({ ...config, teams: swissTeams });
     handleHide();
-  }, [onGenerateSwiss, handleHide]);
+  }, [onGenerateSwiss, handleHide, swissTeams]);
 
   const handleAutoGenerateTeams = useCallback(async (count: number): Promise<GlobalTeam[]> => {
     try {
