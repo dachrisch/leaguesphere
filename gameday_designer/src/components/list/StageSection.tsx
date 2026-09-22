@@ -24,6 +24,7 @@ import type { GameProgressionCellResult } from '../../types/progression';
 import { ICONS } from '../../utils/iconConstants';
 import { getDraggedGameSourceStageId, getDraggedGameSourceFieldId } from '../../utils/dragState';
 import { designerApi } from '../../api/designerApi';
+import { parseTime, formatTime, isValidTimeFormat } from '../../utils/timeCalculation';
 import './StageSection.css';
 
 export interface StageSectionProps {
@@ -256,6 +257,11 @@ const StageSection: React.FC<StageSectionProps> = memo(({
         // time pencil uses, minus manualTime — this is plan-driven, so a
         // later plan edit must still win). Games with results keep theirs.
         // Committed handlers feed the debounced autosave; no explicit save.
+        // Offset-preserving: each placeholder keeps its offset from the
+        // stage's previous start (robust to any backend staggering, e.g.
+        // same-field games staggered by slot). Missing/invalid times fall
+        // back to newStart (no crash, no NaN).
+        const oldRoundStart = stage.data.startTime;
         const roundStageIds = new Set(
           allNodes
             .filter((n) => isStageNode(n) && n.data.swissRound === swissRound)
@@ -273,7 +279,22 @@ const StageSection: React.FC<StageSectionProps> = memo(({
             !game.data.final_score &&
             !game.data.halftime_score
           ) {
-            onUpdate(game.id, { startTime: value });
+            let newGameTime = value;
+            try {
+              if (
+                game.data.startTime &&
+                oldRoundStart &&
+                isValidTimeFormat(game.data.startTime) &&
+                isValidTimeFormat(oldRoundStart) &&
+                isValidTimeFormat(value)
+              ) {
+                const offset = parseTime(game.data.startTime) - parseTime(oldRoundStart);
+                newGameTime = formatTime(parseTime(value) + offset);
+              }
+            } catch {
+              newGameTime = value;
+            }
+            onUpdate(game.id, { startTime: newGameTime });
           }
         }
       })();
