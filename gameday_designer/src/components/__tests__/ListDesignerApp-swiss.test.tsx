@@ -289,7 +289,7 @@ const sixSeedPayload = {
   teams: SEEDS,
 };
 
-describe('ListDesignerApp handleGenerateSwiss pool group (group-swiss)', () => {
+describe('ListDesignerApp handleGenerateSwiss pool groups (group-swiss-a/b)', () => {
   const order: string[] = [];
   let pool: GlobalTeam[] = [];
   let poolGroups: GlobalTeamGroup[] = [];
@@ -432,20 +432,20 @@ describe('ListDesignerApp handleGenerateSwiss pool group (group-swiss)', () => {
     });
   };
 
-  it('creates group-swiss on an empty pool and assigns all 6 seeds to it', async () => {
+  it('splits 6 seeds into Gruppe A / Gruppe B halves on an empty pool', async () => {
     await setupHarness([], []);
     await generateSwiss();
 
     expect(order).toEqual(['import', 'save', 'setup', 'generate', 'load']);
     const savedState = mockHandlers.saveData.mock.calls[0][0] as FlowState;
-    expect(savedState.globalTeamGroups).toHaveLength(1);
-    expect(savedState.globalTeamGroups[0]).toMatchObject({ id: 'group-swiss', name: 'Teams', order: 0 });
-    expect(savedState.globalTeams.map((t) => t.id).sort()).toEqual(
-      ['138', '1660', '41', '522', '73', '907'].sort(),
-    );
-    for (const team of savedState.globalTeams) {
-      expect(team.groupId).toBe('group-swiss');
-    }
+    expect(savedState.globalTeamGroups).toHaveLength(2);
+    expect(savedState.globalTeamGroups[0]).toMatchObject({ id: 'group-swiss-a', name: 'Gruppe A', order: 0 });
+    expect(savedState.globalTeamGroups[1]).toMatchObject({ id: 'group-swiss-b', name: 'Gruppe B', order: 1 });
+    // First half of the seed order [138, 522, 907, ...] → A, rest → B.
+    const byGroup = (groupId: string) =>
+      savedState.globalTeams.filter((t) => t.groupId === groupId).map((t) => t.id).sort();
+    expect(byGroup('group-swiss-a')).toEqual(['138', '522', '907']);
+    expect(byGroup('group-swiss-b')).toEqual(['1660', '41', '73']);
     // The merged state object is built ONCE and shared by import + save.
     const flowMock = vi.mocked(useFlowState).mock.results[0].value as {
       exportState: Mock;
@@ -459,16 +459,40 @@ describe('ListDesignerApp handleGenerateSwiss pool group (group-swiss)', () => {
     );
   });
 
-  it('re-apply before Round 1 does not duplicate group-swiss', async () => {
-    const grouped = SEEDS.map((t) => ({ ...t, groupId: 'group-swiss' }));
-    await setupHarness(grouped, [{ id: 'group-swiss', name: 'Teams', order: 0 }]);
+  it('gives the extra team to Gruppe A on odd counts (5 → 3/2)', async () => {
+    await setupHarness([], []);
+    const five = SEEDS.slice(0, 5);
+    await generateSwiss({
+      ...sixSeedPayload,
+      seedTeamIds: [138, 522, 907, 41, 1660],
+      teams: five,
+    });
+
+    const savedState = mockHandlers.saveData.mock.calls[0][0] as FlowState;
+    expect(savedState.globalTeamGroups).toHaveLength(2);
+    const byGroup = (groupId: string) =>
+      savedState.globalTeams.filter((t) => t.groupId === groupId).map((t) => t.id).sort();
+    expect(byGroup('group-swiss-a')).toEqual(['138', '522', '907']);
+    expect(byGroup('group-swiss-b')).toEqual(['1660', '41']);
+  });
+
+  it('re-apply before Round 1 reuses the existing a/b groups without duplicating', async () => {
+    const grouped = SEEDS.map((t, i) => ({
+      ...t,
+      groupId: i < 3 ? 'group-swiss-a' : 'group-swiss-b',
+    }));
+    await setupHarness(grouped, [
+      { id: 'group-swiss-a', name: 'Gruppe A', order: 0 },
+      { id: 'group-swiss-b', name: 'Gruppe B', order: 1 },
+    ]);
     await generateSwiss();
 
     // All seeds already present: no merge, the persisted snapshot still
-    // carries exactly one group-swiss.
+    // carries exactly the two swiss groups.
     const savedState = mockHandlers.saveData.mock.calls[0][0] as FlowState;
-    expect(savedState.globalTeamGroups).toHaveLength(1);
-    expect(savedState.globalTeamGroups[0]).toMatchObject({ id: 'group-swiss' });
+    expect(savedState.globalTeamGroups).toHaveLength(2);
+    expect(savedState.globalTeamGroups[0]).toMatchObject({ id: 'group-swiss-a' });
+    expect(savedState.globalTeamGroups[1]).toMatchObject({ id: 'group-swiss-b' });
     const flowMock = vi.mocked(useFlowState).mock.results[0].value as {
       exportState: Mock;
       importState: Mock;
@@ -476,22 +500,25 @@ describe('ListDesignerApp handleGenerateSwiss pool group (group-swiss)', () => {
     expect(flowMock.importState).not.toHaveBeenCalled();
   });
 
-  it('reuses an existing group-swiss for newly missing seeds', async () => {
+  it('reuses existing a/b groups for newly missing seeds by seed half', async () => {
     await setupHarness(
-      [{ ...SEEDS[0], groupId: 'group-swiss' }],
-      [{ id: 'group-swiss', name: 'Teams', order: 0 }],
+      [{ ...SEEDS[0], groupId: 'group-swiss-a' }],
+      [
+        { id: 'group-swiss-a', name: 'Gruppe A', order: 0 },
+        { id: 'group-swiss-b', name: 'Gruppe B', order: 1 },
+      ],
     );
     await generateSwiss({ ...sixSeedPayload, seedTeamIds: [138, 522], teams: [SEEDS[0], SEEDS[1]] });
 
     const savedState = mockHandlers.saveData.mock.calls[0][0] as FlowState;
-    expect(savedState.globalTeamGroups).toHaveLength(1);
-    expect(savedState.globalTeamGroups[0]).toMatchObject({ id: 'group-swiss' });
+    expect(savedState.globalTeamGroups).toHaveLength(2);
+    // 522 is in the second half of [138, 522] → Gruppe B.
     expect(savedState.globalTeams.find((t) => t.id === '522')).toMatchObject({
       label: 'Antwerp',
-      groupId: 'group-swiss',
+      groupId: 'group-swiss-b',
     });
     expect(savedState.globalTeams.find((t) => t.id === '138')).toMatchObject({
-      groupId: 'group-swiss',
+      groupId: 'group-swiss-a',
     });
   });
 

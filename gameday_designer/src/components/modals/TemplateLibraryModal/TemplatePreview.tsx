@@ -50,6 +50,10 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
   }
 
   const isBuiltin = selected.type === 'builtin';
+  // Builtin SWISS configures rounds/fields/duration in SwissSetupStep (the
+  // single source of truth — handleTeamConfirm routes SWISS to swiss-setup
+  // discarding applyConfig), so the generic Configure inputs are hidden.
+  const isSwiss = isBuiltin && (selected.template as TournamentTemplate).id === 'SWISS';
   const name = isBuiltin
     ? (selected.template as TournamentTemplate).name
     : (selected.template as ScheduleTemplate).name;
@@ -88,6 +92,7 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
           <p className="text-muted small mb-3">{savedTemplate.description}</p>
         )}
 
+        {isSwiss ? null : (
         <div 
           className="bg-light border rounded p-3 mb-3" 
           style={{ 
@@ -117,6 +122,7 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
             </Col>
           </Row>
         </div>
+        )}
       </div>
 
       <div className="p-3 border-top bg-light d-flex gap-2">

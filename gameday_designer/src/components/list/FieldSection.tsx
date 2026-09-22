@@ -53,6 +53,10 @@ export interface FieldSectionProps {
   expertMode?: boolean;
   /** Per-game simulated progression, from `useProgressionInspection`. */
   progressionByGameId?: Map<string, GameProgressionCellResult>;
+  /** Backend gameday PK — forwarded to StageSection for Swiss round times. */
+  gamedayId?: number;
+  /** Generated Swiss round count — forwarded to StageSection (bare number). */
+  swissCompletedRounds?: number;
 }
 
 const FieldSection: React.FC<FieldSectionProps> = memo(({
@@ -86,6 +90,8 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
   readOnly = false,
   expertMode = false,
   progressionByGameId,
+  gamedayId,
+  swissCompletedRounds,
 }) => {
   const { t } = useTypedTranslation(['ui']);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -296,6 +302,8 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
                   readOnly={readOnly}
                   expertMode={expertMode}
                   progressionByGameId={progressionByGameId}
+                  gamedayId={gamedayId}
+                  swissCompletedRounds={swissCompletedRounds}
                 />
               ))}
             </>
