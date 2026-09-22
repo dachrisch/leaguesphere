@@ -278,7 +278,8 @@ describe('ListCanvas - Inline Add Field Button Pattern', () => {
     it('Global Team Pool appears before Fields section', () => {
       const { container } = renderCanvas(createDefaultProps());
 
-      const sections = container.querySelectorAll('.card');
+      // Top-row cards share the metadata Accordion chrome; Fields stays a Card.
+      const sections = container.querySelectorAll('.accordion-item, .card');
       const sectionTexts = Array.from(sections).map((s) => s.textContent || "");
 
       // Team Pool should come before Fields
@@ -293,26 +294,27 @@ describe('ListCanvas - Inline Add Field Button Pattern', () => {
     it('renders team pool card when expanded', () => {
       renderCanvas(createDefaultProps({ isRowCollapsed: false }));
 
-      // Find the team pool header
-      const teamPoolHeader = screen.getByText(i18n.t('ui:label.teamPool')).closest('.card-header');
+      // Team pool shares the metadata Accordion chrome now.
+      const teamPoolHeader = screen.getByTestId('team-pool-header');
       expect(teamPoolHeader).toBeInTheDocument();
+      expect(teamPoolHeader).toHaveClass('accordion-header');
 
       // Card body should be visible when not collapsed
-      const teamPoolCard = teamPoolHeader?.closest('.team-pool-card');
-      const cardBody = teamPoolCard?.querySelector('.card-body');
+      const teamPoolCard = screen.getByTestId('team-pool-card');
+      const cardBody = teamPoolCard?.querySelector('.accordion-body');
       expect(cardBody).toBeInTheDocument();
     });
 
     it('hides team pool card body when collapsed', () => {
       renderCanvas(createDefaultProps({ isRowCollapsed: true }));
 
-      // Find the team pool header
-      const teamPoolHeader = screen.getByText(i18n.t('ui:label.teamPool')).closest('.card-header');
+      // Team pool shares the metadata Accordion chrome now.
+      const teamPoolHeader = screen.getByTestId('team-pool-header');
       expect(teamPoolHeader).toBeInTheDocument();
 
       // Card body should not be visible when collapsed
-      const teamPoolCard = teamPoolHeader?.closest('.team-pool-card');
-      const cardBody = teamPoolCard?.querySelector('.card-body');
+      const teamPoolCard = screen.getByTestId('team-pool-card');
+      const cardBody = teamPoolCard?.querySelector('.accordion-body');
       expect(cardBody).not.toBeInTheDocument();
     });
 
