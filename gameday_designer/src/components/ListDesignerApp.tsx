@@ -66,6 +66,10 @@ const ListDesignerApp: React.FC = () => {
   const [showSwissAdjust, setShowSwissAdjust] = useState(false);
   const [swissAdjustPreview, setSwissAdjustPreview] = useState<SwissRoundPreview | null>(null);
   const [swissAdjustRound, setSwissAdjustRound] = useState(1);
+  // True while the next Swiss round is being previewed — disables the
+  // panel-owned Generate button (same convention as the adjust modal's local
+  // `generating` flag, lifted here so the canvas stays in sync).
+  const [swissGenerating, setSwissGenerating] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
@@ -249,6 +253,7 @@ const ListDesignerApp: React.FC = () => {
   const handleProgressSwissRound = useCallback(async (roundNumber: number) => {
     if (!id) return;
     const gamedayId = parseInt(id);
+    setSwissGenerating(true);
     try {
       const preview = await designerApi.previewSwissRound(gamedayId);
       setSwissAdjustRound(preview.round || roundNumber);
@@ -261,6 +266,8 @@ const ListDesignerApp: React.FC = () => {
         'danger',
         t('ui:notification.title.error'),
       );
+    } finally {
+      setSwissGenerating(false);
     }
   }, [id, addNotification, t]);
 
@@ -816,6 +823,7 @@ const ListDesignerApp: React.FC = () => {
               onHighlightProgressionElement={handleHighlightElement}
               swiss={flowState.swiss}
               swissResultsVersion={swissResultsVersion}
+              swissGenerating={swissGenerating}
               onProgressSwissRound={handleProgressSwissRound}
             />
           )}
