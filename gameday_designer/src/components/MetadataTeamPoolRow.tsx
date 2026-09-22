@@ -8,10 +8,11 @@
  * Receives collapsed state from parent (ListDesignerApp controls scroll-triggered collapse).
  */
 
-import React, { useCallback, useState } from 'react';
-import { Card, Button, Collapse } from 'react-bootstrap';
+import React, { useCallback } from 'react';
+import { Button } from 'react-bootstrap';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import GamedayMetadataAccordion from './GamedayMetadataAccordion';
+import TopRowAccordionCard from './TopRowAccordionCard';
 import GlobalTeamTable from './list/GlobalTeamTable';
 import type { GamedayMetadata, FlowValidationResult, HighlightedElement } from '../types/flowchart';
 import type { FlowNode, GlobalTeam, GlobalTeamGroup } from '../types/flowchart';
@@ -49,6 +50,9 @@ export interface MetadataTeamPoolRowProps {
   onShowTeamSelection: (id: string, mode: 'group' | 'replace' | 'official' | 'home' | 'away') => void;
   getTeamUsage: (teamId: string) => { gameId: string; slot: 'home' | 'away' }[];
   onAddOfficials?: () => void;
+
+  // Optional third top-row card (e.g. the Swiss standings/control panel).
+  swissPanel?: React.ReactNode;
 }
 
 const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
@@ -82,18 +86,14 @@ const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
   onShowTeamSelection,
   getTeamUsage,
   onAddOfficials,
+  swissPanel,
 }) => {
   const { t } = useTypedTranslation(['ui']);
-  const [isManuallyCollapsed, setIsManuallyCollapsed] = useState(false);
 
   const handleAddGroupHeader = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     onAddGlobalTeamGroup();
   }, [onAddGlobalTeamGroup]);
-
-  const handleTeamPoolHeaderClick = useCallback(() => {
-    setIsManuallyCollapsed(!isManuallyCollapsed);
-  }, [isManuallyCollapsed]);
 
   return (
     <div className="metadata-team-pool-row">
@@ -116,23 +116,19 @@ const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
         />
       </div>
 
-      {/* Team Pool Card */}
+      {/* Team Pool Card — same Accordion chrome + whole-card collapse as metadata */}
       <div className="metadata-team-pool-row__team-pool">
-        <Card
+        <TopRowAccordionCard
           id="team-pool"
-          className={`team-pool-card ${highlightedElement?.id === 'team-pool' ? 'is-highlighted' : ''}`}
-          data-testid="team-pool-card"
-        >
-          <Card.Header
-            className="d-flex align-items-center"
-            style={{ cursor: 'pointer' }}
-            onClick={handleTeamPoolHeaderClick}
-          >
-            <i className={`bi ${isManuallyCollapsed || isCollapsed ? 'bi-chevron-right' : 'bi-chevron-down'} me-2`} />
-            <i className={`bi ${ICONS.TEAM} me-2`} />
-            <strong>{t('ui:label.teamPool')}</strong>
-            {!readOnly && (
-              <div className="ms-auto d-flex gap-2">
+          testId="team-pool-card"
+          headerTestId="team-pool-header"
+          iconClass={ICONS.TEAM}
+          title={t('ui:label.teamPool')}
+          forceCollapsed={isCollapsed}
+          highlighted={highlightedElement?.id === 'team-pool'}
+          actions={
+            !readOnly && (
+              <>
                 <Button
                   size="sm"
                   variant="outline-primary"
@@ -159,32 +155,36 @@ const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
                     <i className="bi bi-person-badge" />
                   </Button>
                 )}
-              </div>
-            )}
-          </Card.Header>
-          <Collapse in={!isCollapsed && !isManuallyCollapsed} unmountOnExit>
-            <Card.Body>
-              <GlobalTeamTable
-                teams={globalTeams}
-                groups={globalTeamGroups}
-                highlightedElement={highlightedElement}
-                onAddGroup={onAddGlobalTeamGroup}
-                onUpdateGroup={onUpdateGlobalTeamGroup}
-                onDeleteGroup={onDeleteGlobalTeamGroup}
-                onReorderGroup={onReorderGlobalTeamGroup}
-                onAddTeam={onAddGlobalTeam}
-                onUpdate={onUpdateGlobalTeam}
-                onDelete={onDeleteGlobalTeam}
-                onReorder={onReorderGlobalTeam}
-                onShowTeamSelection={onShowTeamSelection}
-                getTeamUsage={getTeamUsage}
-                allNodes={allNodes}
-                readOnly={readOnly}
-              />
-            </Card.Body>
-          </Collapse>
-        </Card>
+              </>
+            )
+          }
+        >
+          <GlobalTeamTable
+            teams={globalTeams}
+            groups={globalTeamGroups}
+            highlightedElement={highlightedElement}
+            onAddGroup={onAddGlobalTeamGroup}
+            onUpdateGroup={onUpdateGlobalTeamGroup}
+            onDeleteGroup={onDeleteGlobalTeamGroup}
+            onReorderGroup={onReorderGlobalTeamGroup}
+            onAddTeam={onAddGlobalTeam}
+            onUpdate={onUpdateGlobalTeam}
+            onDelete={onDeleteGlobalTeam}
+            onReorder={onReorderGlobalTeam}
+            onShowTeamSelection={onShowTeamSelection}
+            getTeamUsage={getTeamUsage}
+            allNodes={allNodes}
+            readOnly={readOnly}
+          />
+        </TopRowAccordionCard>
       </div>
+
+      {/* Swiss control Card — third top-row card after metadata + team pool */}
+      {swissPanel && (
+        <div className="metadata-team-pool-row__swiss" data-testid="swiss-top-row-card">
+          {swissPanel}
+        </div>
+      )}
     </div>
   );
 };

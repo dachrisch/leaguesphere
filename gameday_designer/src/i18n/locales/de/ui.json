@@ -2,6 +2,11 @@
   "hint": {
     "unlockBlockedResults": "Freischalten nicht möglich: Für diesen Spieltag wurden bereits Ergebnisse erfasst. Beim erneuten Veröffentlichen würde der Spielplan neu erzeugt und die Ergebnisse gelöscht."
   },
+  "swiss": {
+    "waitingForResults": "Warten auf Ergebnisse",
+    "generateRound": "Runde {{n}} generieren",
+    "roundTimeLocked": "Generierte Runden behalten ihre Spielzeiten"
+  },
   "button": {
     "addField": "Feld hinzufügen",
     "addStage": "Phase hinzufügen",
@@ -298,6 +303,11 @@
     "unlockSuccess": "Spielplan zur Bearbeitung freigeschaltet",
     "unlockFailed": "Spielplan konnte nicht freigeschaltet werden",
     "invalidTimeFormat": "Ungültiges Zeitformat. Verwenden Sie HH:MM (24-Stunden)",
+    "swissSetupSuccess": "Schweizer Turnier erstellt — Runde 1 generiert",
+    "swissSetupFailed": "Schweizer Turnier konnte nicht eingerichtet werden",
+    "swissRoundGenerated": "Runde {{n}} generiert",
+    "swissRoundFailed": "Die nächste Runde konnte nicht generiert werden",
+    "swissRoundTimeFailed": "Die Rundenstartzeit konnte nicht aktualisiert werden",
     "title": {
       "success": "Erfolg",
       "error": "Fehler",

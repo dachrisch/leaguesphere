@@ -2,6 +2,11 @@
   "hint": {
     "unlockBlockedResults": "Cannot unlock: results have already been entered for this gameday. Re-publishing would regenerate the schedule and delete them."
   },
+  "swiss": {
+    "waitingForResults": "Waiting for results",
+    "generateRound": "Generate Round {{n}}",
+    "roundTimeLocked": "Generated rounds keep their scheduled times"
+  },
   "button": {
     "addField": "Add Field",
     "addStage": "Add Stage",
@@ -298,6 +303,11 @@
     "unlockSuccess": "Schedule unlocked for editing",
     "unlockFailed": "Failed to unlock schedule",
     "invalidTimeFormat": "Invalid time format. Use HH:MM (24-hour)",
+    "swissSetupSuccess": "Swiss tournament created — Round 1 generated",
+    "swissSetupFailed": "Failed to set up the Swiss tournament",
+    "swissRoundGenerated": "Round {{n}} generated",
+    "swissRoundFailed": "Failed to generate the next round",
+    "swissRoundTimeFailed": "Failed to update the round start time",
     "title": {
       "success": "Success",
       "error": "Error",

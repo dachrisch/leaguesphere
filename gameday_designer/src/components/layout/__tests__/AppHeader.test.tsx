@@ -124,4 +124,13 @@ describe('AppHeader', () => {
       expect(screen.getByTestId('replay-tour-button')).toBeInTheDocument();
     });
   });
+
+  describe('swiss control button absence', () => {
+    // Task 7 retired the SwissControlModal: standings live embedded in the
+    // designer canvas, so the header no longer offers a 🏁 control button.
+    it('never renders a swiss control button on the designer page', () => {
+      renderHeader('/designer/1');
+      expect(screen.queryByTestId('open-swiss-control-button')).not.toBeInTheDocument();
+    });
+  });
 });

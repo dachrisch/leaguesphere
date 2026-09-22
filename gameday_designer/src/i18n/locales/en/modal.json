@@ -41,5 +41,50 @@
     "placeholder": "Search by team name...",
     "noResults": "No teams found matching your search.",
     "hint": "Enter at least 2 characters to search."
+  },
+  "swissSetup": {
+    "title": "Configure Tournament — Swiss System",
+    "subtitle": "Rank the teams once by seed, then fix rounds, fields and game duration. Round 1 generates automatically from here.",
+    "seedTitle": "Seed the teams",
+    "seedHint": "Seeds stay fixed for the whole tournament — only the pairings change each round.",
+    "setupTitle": "Tournament setup",
+    "rounds": "Number of rounds",
+    "fields": "Number of fields",
+    "gameDuration": "Game duration",
+    "minutesUnit": "min",
+    "scheduleTitle": "Schedule — reserved now",
+    "scheduleHint": "Auto-calculated from rounds, fields and duration. Round times stay adjustable per round later.",
+    "roundLabel": "Round {{n}}",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "back": "Back",
+    "confirm": "Generate Round 1 →"
+  },
+  "swissAdjust": {
+    "title": "Adjust Round {{n}}",
+    "description": "Review the proposed pairings and adjust them before generating. You can swap teams, change the bye team, field or start time.",
+    "pairingsTitle": "Proposed pairings",
+    "homeLabel": "Home",
+    "awayLabel": "Away",
+    "fieldLabel": "Field",
+    "autoField": "Auto",
+    "startTimeLabel": "Start",
+    "byeLabel": "Bye team",
+    "noBye": "No bye",
+    "confirm": "Generate Round {{n}}",
+    "generating": "Generating…"
+  },
+  "swissControl": {
+    "title": "Swiss Tournament Control",
+    "roundProgress": "Round {{done}} of {{total}}",
+    "byeLabel": "Bye (2 pts)",
+    "allRoundsComplete": "All {{count}} rounds are complete.",
+    "teamColumn": "Team",
+    "playedColumn": "P",
+    "winsColumn": "W",
+    "drawsColumn": "D",
+    "lossesColumn": "L",
+    "pointsColumn": "Pts",
+    "toggleStandings": "Toggle standings"
   }
 }
