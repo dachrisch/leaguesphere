@@ -1441,8 +1441,16 @@ function checkMetadataWarnings(metadata?: GamedayMetadata): FlowValidationWarnin
   const warnings: FlowValidationWarning[] = [];
   if (!metadata) return [];
 
-  // NOTE: an empty venue (address) intentionally emits no warning —
-  // venue is optional by design.
+  if (!metadata.address || !metadata.address.trim()) {
+    warnings.push({
+      id: 'metadata_venue_missing',
+      type: 'unassigned_field',
+      message: 'Gameday Venue is missing',
+      messageKey: 'metadataVenueMissing',
+      affectedNodes: ['metadata-gamedayVenue'],
+    });
+  }
+
   if (metadata.date) {
     const now = new Date();
     // Manually construct YYYY-MM-DD in LOCAL time to match user input
