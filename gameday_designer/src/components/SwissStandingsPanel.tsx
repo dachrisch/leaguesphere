@@ -8,11 +8,11 @@
  * and error patterns are cloned from the retired SwissControlModal.
  */
 
-import React, { useContext, useEffect, useState } from 'react';
-import { AccordionContext, Alert, Button, Spinner, Table, useAccordionButton } from 'react-bootstrap';
+import React, { useEffect, useState } from 'react';
+import { Alert, Button, Spinner, Table } from 'react-bootstrap';
 import { designerApi, SwissStandings } from '../api/designerApi';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
-import TopRowAccordionCard, { TOP_ROW_EVENT_KEY } from './TopRowAccordionCard';
+import TopRowAccordionCard from './TopRowAccordionCard';
 import type { SwissTournamentState } from '../types/flowchart';
 
 interface SwissStandingsPanelProps {
@@ -35,41 +35,11 @@ interface SwissStandingsPanelProps {
   /** True while the next round is being previewed/generated — disables the button with a generating label. */
   generating?: boolean;
   /**
-   * Gameday status driving the header tint — same classes as the metadata
-   * (masterdata) card. Defaults to DRAFT.
-   */
-  status?: string;
-  /**
    * Scroll-driven collapse from the parent row (mirrors metadata
    * forceCollapsed via the shared top-row card).
    */
   forceCollapsed?: boolean;
 }
-
-/**
- * Header collapse toggle for the Swiss card. Uses the same Accordion
- * mechanism as the metadata card header; open state derives from the shared
- * top-row Accordion context so the button and the header toggle stay in sync.
- */
-const SwissCollapseToggle: React.FC<{ label: string }> = ({ label }) => {
-  const { activeEventKey } = useContext(AccordionContext);
-  const onClick = useAccordionButton(TOP_ROW_EVENT_KEY);
-  const open = activeEventKey === TOP_ROW_EVENT_KEY;
-
-  return (
-    <Button
-      variant="outline-secondary"
-      size="sm"
-      onClick={onClick}
-      aria-expanded={open}
-      aria-controls="swiss-standings-panel-body"
-      aria-label={label}
-      data-testid="swiss-standings-toggle"
-    >
-      <i className={`bi ${open ? 'bi-chevron-up' : 'bi-chevron-down'}`} aria-hidden="true" />
-    </Button>
-  );
-};
 function apiErrorMessage(error: unknown, fallback: string): string {
   const backend = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
   if (backend) return backend;
@@ -83,7 +53,6 @@ const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({
   swiss,
   onGenerateNext,
   generating = false,
-  status = 'DRAFT',
   forceCollapsed = false,
 }) => {
   const { t } = useTypedTranslation(['modal', 'ui']);
@@ -149,9 +118,7 @@ const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({
           </span>
         )
       }
-      status={status}
       forceCollapsed={forceCollapsed}
-      actions={<SwissCollapseToggle label={t('modal:swissControl.toggleStandings')} />}
     >
       <div id="swiss-standings-panel-body">
         {loading && (
