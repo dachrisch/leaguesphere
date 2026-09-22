@@ -160,6 +160,10 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
 
   const fields = useMemo(() => getFieldNodes(nodes), [nodes]);
 
+  // Generated Swiss round count for StageSection (bare number, not the
+  // whole swiss object): rounds at/below it keep their game times.
+  const swissCompletedRounds = swiss?.completedRounds?.length ?? 0;
+
   const getFieldStagesMap = useMemo(() => {
     const map = new Map<string, StageNode[]>();
     nodes.filter(isStageNode).forEach(stage => {
@@ -194,21 +198,6 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
   return (
     <div className="list-canvas px-3">
       <div className="list-canvas__content">
-        {/* Swiss standings — embedded panel, visible with the canvas; owns round generation */}
-        {swiss && gamedayId !== undefined && (
-          <SwissStandingsPanel
-            gamedayId={gamedayId}
-            refreshKey={(swiss.completedRounds?.length ?? 0) + swissResultsVersion}
-            swiss={swiss}
-            onGenerateNext={
-              readOnly || !onProgressSwissRound
-                ? undefined
-                : () => onProgressSwissRound((swiss.completedRounds?.length ?? 0) + 1)
-            }
-            generating={swissGenerating}
-          />
-        )}
-
         {/* Metadata + Team Pool Row */}
         <MetadataTeamPoolRow
           metadata={metadata}
@@ -249,6 +238,9 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
           />
         )}
 
+        {/* Canvas body: fields column + Swiss side callout (stacks on narrow screens) */}
+        <div className="list-canvas__body">
+        <div className="list-canvas__main">
         {/* Fields Card - Full width below team pool */}
         <Card
           id="field-fields-card"
@@ -348,12 +340,33 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
                     readOnly={readOnly}
                     expertMode={expertMode}
                     progressionByGameId={progression?.cellsByGameId}
+                    gamedayId={gamedayId}
+                    swissCompletedRounds={swissCompletedRounds}
                   />
                 ))}
               </div>
             )}
           </Card.Body>
         </Card>
+        </div>
+
+        {/* Swiss standings — side callout alongside the fields column; owns round generation */}
+        {swiss && gamedayId !== undefined && (
+          <aside className="swiss-side-callout" data-testid="swiss-side-callout">
+            <SwissStandingsPanel
+              gamedayId={gamedayId}
+              refreshKey={(swiss.completedRounds?.length ?? 0) + swissResultsVersion}
+              swiss={swiss}
+              onGenerateNext={
+                readOnly || !onProgressSwissRound
+                  ? undefined
+                  : () => onProgressSwissRound((swiss.completedRounds?.length ?? 0) + 1)
+              }
+              generating={swissGenerating}
+            />
+          </aside>
+        )}
+        </div>
       </div>
     </div>
   );

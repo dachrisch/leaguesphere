@@ -246,6 +246,7 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     setEdges([]);
     setGlobalTeams([]);
     setGlobalTeamGroups([]);
+    setSwiss(undefined);
     setSelection({ nodeIds: [], edgeIds: [] });
     // When clearing everything, we should also allow re-initialization of officials group if needed
     hasInitializedOfficials.current = false;

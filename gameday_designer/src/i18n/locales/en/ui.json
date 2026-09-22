@@ -4,7 +4,8 @@
   },
   "swiss": {
     "waitingForResults": "Waiting for results",
-    "generateRound": "Generate Round {{n}}"
+    "generateRound": "Generate Round {{n}}",
+    "roundTimeLocked": "Generated rounds keep their scheduled times"
   },
   "button": {
     "addField": "Add Field",
@@ -306,6 +307,7 @@
     "swissSetupFailed": "Failed to set up the Swiss tournament",
     "swissRoundGenerated": "Round {{n}} generated",
     "swissRoundFailed": "Failed to generate the next round",
+    "swissRoundTimeFailed": "Failed to update the round start time",
     "title": {
       "success": "Success",
       "error": "Error",

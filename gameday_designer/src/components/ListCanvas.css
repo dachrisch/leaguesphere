@@ -27,7 +27,39 @@
   width: 100%;
 }
 
-/* Fields Card */
+/* Canvas body: fields column + Swiss side callout */
+.list-canvas__body {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 1600px;
+}
+
+.list-canvas__main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Swiss standings side callout: sticky alongside the fields column */
+.swiss-side-callout {
+  flex: 0 0 360px;
+  width: 360px;
+  position: sticky;
+  top: 1rem;
+}
+
+@media (max-width: 991.98px) {
+  .list-canvas__body {
+    flex-direction: column;
+  }
+
+  .swiss-side-callout {
+    width: 100%;
+    flex: 1 1 auto;
+    position: static;
+  }
+}
 .fields-card {
   border: none;
   border-radius: 8px;
