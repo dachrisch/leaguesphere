@@ -184,6 +184,28 @@ describe('SwissStandingsPanel', () => {
     });
   });
 
+  it('uses the metadata accordion chrome and collapses the whole card via header toggle', async () => {
+    vi.spyOn(designerApi, 'getSwissStandings').mockResolvedValue(TABLE);
+
+    render(<SwissStandingsPanel gamedayId={42} status="DRAFT" />);
+
+    const panel = await screen.findByTestId('swiss-standings-panel');
+    // Same structural Accordion chrome as the metadata (masterdata) card.
+    expect(panel.querySelector('.accordion-item')).toBeInTheDocument();
+    expect(panel.querySelector('.accordion-header')).toBeInTheDocument();
+    expect(panel.querySelector('.accordion-header')).toHaveClass('header-status-warning');
+    const headerToggle = panel.querySelector('.accordion-button') as HTMLElement | null;
+    expect(headerToggle).toBeInTheDocument();
+
+    // Whole-card collapse mirrors metadata: header toggle gains `collapsed`,
+    // the Accordion.Body unmounts (after the exit transition).
+    fireEvent.click(headerToggle as HTMLElement);
+    expect(headerToggle).toHaveClass('collapsed');
+    await waitFor(() => {
+      expect(panel.querySelector('.accordion-body')).toBeNull();
+    });
+  });
+
   it('collapses and expands via the toggle', async () => {
     vi.spyOn(designerApi, 'getSwissStandings').mockResolvedValue(TABLE);
 
