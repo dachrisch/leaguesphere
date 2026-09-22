@@ -241,6 +241,21 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
           onShowTeamSelection={onShowTeamSelection}
           getTeamUsage={getTeamUsage}
           onAddOfficials={onAddOfficials}
+          swissPanel={
+            swiss && gamedayId !== undefined ? (
+              <SwissStandingsPanel
+                gamedayId={gamedayId}
+                refreshKey={(swiss.completedRounds?.length ?? 0) + swissResultsVersion}
+                swiss={swiss}
+                onGenerateNext={
+                  readOnly || !onProgressSwissRound
+                    ? undefined
+                    : () => onProgressSwissRound((swiss.completedRounds?.length ?? 0) + 1)
+                }
+                generating={swissGenerating}
+              />
+            ) : undefined
+          }
         />
 
         {/* Always available -- every stage and who plays in it, independent of the field layout below */}
@@ -259,9 +274,6 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
           />
         )}
 
-        {/* Canvas body: fields column + Swiss side callout (stacks on narrow screens) */}
-        <div className="list-canvas__body">
-        <div className="list-canvas__main">
         {/* Fields Card - Full width below team pool */}
         <Card
           id="field-fields-card"
@@ -373,25 +385,6 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
             )}
           </Card.Body>
         </Card>
-        </div>
-
-        {/* Swiss standings — side callout alongside the fields column; owns round generation */}
-        {swiss && gamedayId !== undefined && (
-          <aside className="swiss-side-callout" data-testid="swiss-side-callout">
-            <SwissStandingsPanel
-              gamedayId={gamedayId}
-              refreshKey={(swiss.completedRounds?.length ?? 0) + swissResultsVersion}
-              swiss={swiss}
-              onGenerateNext={
-                readOnly || !onProgressSwissRound
-                  ? undefined
-                  : () => onProgressSwissRound((swiss.completedRounds?.length ?? 0) + 1)
-              }
-              generating={swissGenerating}
-            />
-          </aside>
-        )}
-        </div>
       </div>
     </div>
   );

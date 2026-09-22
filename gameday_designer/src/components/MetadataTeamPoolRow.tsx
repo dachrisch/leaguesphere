@@ -49,6 +49,9 @@ export interface MetadataTeamPoolRowProps {
   onShowTeamSelection: (id: string, mode: 'group' | 'replace' | 'official' | 'home' | 'away') => void;
   getTeamUsage: (teamId: string) => { gameId: string; slot: 'home' | 'away' }[];
   onAddOfficials?: () => void;
+
+  // Optional third top-row card (e.g. the Swiss standings/control panel).
+  swissPanel?: React.ReactNode;
 }
 
 const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
@@ -82,6 +85,7 @@ const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
   onShowTeamSelection,
   getTeamUsage,
   onAddOfficials,
+  swissPanel,
 }) => {
   const { t } = useTypedTranslation(['ui']);
   const [isManuallyCollapsed, setIsManuallyCollapsed] = useState(false);
@@ -185,6 +189,13 @@ const MetadataTeamPoolRow: React.FC<MetadataTeamPoolRowProps> = ({
           </Collapse>
         </Card>
       </div>
+
+      {/* Swiss control Card — third top-row card after metadata + team pool */}
+      {swissPanel && (
+        <div className="metadata-team-pool-row__swiss" data-testid="swiss-top-row-card">
+          {swissPanel}
+        </div>
+      )}
     </div>
   );
 };
