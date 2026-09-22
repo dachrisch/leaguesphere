@@ -327,6 +327,8 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
         ) : step === 'swiss-setup' ? (
           <SwissSetupStep
             teams={swissTeams}
+            fields={applyConfig?.numFields ?? (selected?.type === 'builtin' ? (selected.template as TournamentTemplate).fieldOptions[0] : undefined) ?? 2}
+            gameDuration={applyConfig?.gameDuration ?? 30}
             dayStartTime={dayStartTime}
             onBack={() => setStep('team-picker')}
             onConfirm={handleSwissConfirm}

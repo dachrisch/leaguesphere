@@ -132,21 +132,30 @@ describe('ListCanvas Swiss embedded standings', () => {
     expect(designerApi.getSwissStandings).not.toHaveBeenCalled();
   });
 
-  it('renders the standings panel inside a sticky side callout below the header row', async () => {
-    renderCanvas(createProps({ swiss: SWISS }));
+  it('renders the standings panel as third top-row card after metadata and team pool', async () => {
+    const { container } = renderCanvas(createProps({ swiss: SWISS }));
 
-    const callout = await screen.findByTestId('swiss-side-callout');
-    expect(callout).toBeInTheDocument();
-    expect(within(callout).getByTestId('swiss-standings-panel')).toBeInTheDocument();
-    // Header (metadata + team pool row) stays above the side callout.
+    const panel = await screen.findByTestId('swiss-standings-panel');
+    expect(panel).toBeInTheDocument();
+    // Panel lives inside the top header row next to metadata + team pool.
+    const topRow = container.querySelector('.metadata-team-pool-row');
+    expect(topRow).toBeInTheDocument();
+    expect(within(topRow as HTMLElement).getByTestId('swiss-standings-panel')).toBeInTheDocument();
+    // DOM order: metadata → team pool → swiss control.
     const header = screen.getByTestId('gameday-metadata-header');
-    expect(header.compareDocumentPosition(callout) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const pool = screen.getByTestId('team-pool-card');
+    expect(header.compareDocumentPosition(pool) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(pool.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The old sticky side callout is gone.
+    expect(screen.queryByTestId('swiss-side-callout')).not.toBeInTheDocument();
   });
 
-  it('shows no side callout when there is no swiss config', () => {
+  it('shows no top-row control card when there is no swiss config', () => {
     renderCanvas(createProps({ swiss: undefined }));
 
+    expect(screen.queryByTestId('swiss-standings-panel')).not.toBeInTheDocument();
     expect(screen.queryByTestId('swiss-side-callout')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('swiss-top-row-card')).not.toBeInTheDocument();
   });
 
   it('refetches standings when results are saved without a new round (results version bump)', async () => {
