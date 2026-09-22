@@ -23,6 +23,7 @@ import { getAllTemplates } from '../utils/tournamentTemplates';
 import type { GenericTemplate } from '../utils/templateMapper';
 import type { TournamentTemplate } from '../types/tournament';
 import { trackEvent } from '../trackEvent';
+import { buildMergedSwissPool } from '../utils/swissSeedPool';
 import { useTourSeen } from '../onboarding/useTourSeen';
 import DesignerTour from '../onboarding/DesignerTour';
 import './ListDesignerApp.css';
@@ -158,74 +159,14 @@ const ListDesignerApp: React.FC = () => {
       // team's id/label/color/order exactly.
       const incoming = config.teams ?? [];
       if (incoming.length > 0) {
-        const seen = new Set(flowState.globalTeams.map((t) => t.id));
-        const missing = incoming.filter((t) => {
-          if (seen.has(t.id)) return false;
-          seen.add(t.id);
-          return true;
-        });
-        if (missing.length > 0) {
-          const current = flowState.exportState();
-          // The Team Pool panel only lists groups (GlobalTeamTable renders
-          // "No groups yet" when groups is empty and never shows ungrouped
-          // teams), so seeds imported with groupId null would be invisible
-          // there. Choice: when the pool has zero groups AND the incoming
-          // seeds are all ungrouped, create TWO stable groups and split the
-          // seeds in halves by seed order (first half Gruppe A, second half
-          // Gruppe B; odd count → extra team to A). Ids/names match the
-          // hardcoded `Gruppe ${String.fromCharCode(65 + i)}` scaffold
-          // convention in useDesignerController (no i18n key exists for it).
-          // When groups already exist, the user's organization is left
-          // alone — except previously auto-created Swiss groups are reused
-          // for ungrouped seeds by id (re-apply before Round 1 must not
-          // duplicate them). Otherwise missing seeds keep groupId null
-          // (still resolvable in game dropdowns; the user can group them
-          // manually).
-          const SWISS_SEED_GROUP_A_ID = 'group-swiss-a';
-          const SWISS_SEED_GROUP_B_ID = 'group-swiss-b';
-          const currentGroups = current.globalTeamGroups ?? [];
-          let nextGroups = currentGroups;
-          if (
-            !currentGroups.some((g) => g.id === SWISS_SEED_GROUP_A_ID) &&
-            !currentGroups.some((g) => g.id === SWISS_SEED_GROUP_B_ID) &&
-            currentGroups.length === 0 &&
-            incoming.every((seed) => !seed.groupId)
-          ) {
-            nextGroups = [
-              ...currentGroups,
-              { id: SWISS_SEED_GROUP_A_ID, name: 'Gruppe A', order: currentGroups.length },
-              { id: SWISS_SEED_GROUP_B_ID, name: 'Gruppe B', order: currentGroups.length + 1 },
-            ];
-          }
-          const groupA = nextGroups.find((g) => g.id === SWISS_SEED_GROUP_A_ID) ?? null;
-          const groupB = nextGroups.find((g) => g.id === SWISS_SEED_GROUP_B_ID) ?? null;
-          const seedOrderIds = config.seedTeamIds.map((pk) => String(pk));
-          const groupAIds = new Set(seedOrderIds.slice(0, Math.ceil(seedOrderIds.length / 2)));
-          const groupFor = (teamId: string): string | null => {
-            if (groupAIds.has(teamId)) return groupA ? groupA.id : null;
-            return groupB ? groupB.id : null;
-          };
-          const incomingIds = new Set(incoming.map((seed) => seed.id));
-          const nextTeams = (groupA || groupB)
-            ? [
-                ...current.globalTeams.map((team) => {
-                  if (!incomingIds.has(team.id) || team.groupId) return team;
-                  const target = groupFor(team.id);
-                  return target ? { ...team, groupId: target } : team;
-                }),
-                ...missing.map((team) => ({ ...team, groupId: team.groupId ?? groupFor(team.id) })),
-              ]
-            : [...current.globalTeams, ...missing];
+        const current = flowState.exportState();
+        const { merged, didMerge } = buildMergedSwissPool(current, incoming, config.seedTeamIds);
+        if (didMerge) {
           // Build the merged pool ONCE and reuse the same object for both
           // import + save. A second exportState() after importState() would
           // re-export the pre-import pool (React setState is async), so the
           // save would persist team-less state and loadData() would wipe
           // the import.
-          const merged = {
-            ...current,
-            globalTeams: nextTeams,
-            globalTeamGroups: nextGroups,
-          };
           flowState.importState(merged);
           // Persist BEFORE setup/generate: those calls rewrite the backend
           // nodes, and loadData() overwrites frontend state from the backend.
@@ -234,7 +175,9 @@ const ListDesignerApp: React.FC = () => {
           // (see useDesignerController) so the abort path is reachable.
           await saveData(merged);
         } else {
-          await saveData(flowState.exportState());
+          // Nothing new to import — persist the snapshot as-is (same object
+          // buildMergedSwissPool returned, no second export needed).
+          await saveData(merged);
         }
       } else {
         await saveData(flowState.exportState());
