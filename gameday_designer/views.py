@@ -38,6 +38,7 @@ from gameday_designer.serializers import (
     TemplateApplicationSerializer,
     SwissSetupRequestSerializer,
     SwissGenerateOverridesSerializer,
+    SwissRoundTimesRequestSerializer,
 )
 from gameday_designer.permissions import IsStaffOrReadOnly, IsOwnerOrStaff
 from gameday_designer.service.swiss_tournament_service import (
@@ -791,3 +792,75 @@ class SwissStandingsView(APIView):
                 "rounds_total": config["rounds"],
             }
         )
+
+
+class SwissResetView(APIView):
+    """
+    POST /api/designer/gamedays/<gameday_id>/swiss/reset/
+
+    Full reset of the Swiss tournament: deletes the ``swiss`` config from
+    the designer state and all Swiss-stage games (cascade removes their
+    results) so setup can run again from scratch. Non-Swiss-stage games
+    are untouched.
+
+    Returns:
+        200: {success: true, deleted_games: int}
+        400: {error: str} (no Swiss setup on this gameday)
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, gameday_id):
+        gameday = get_object_or_404(Gameday, pk=gameday_id)
+        try:
+            deleted_games = SwissTournamentService(gameday).reset()
+        except SwissTournamentError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"success": True, "deleted_games": deleted_games})
+
+
+class SwissRoundTimesView(APIView):
+    """
+    POST /api/designer/gamedays/<gameday_id>/swiss/round-times/
+    Body: {round_start_overrides: {round: "HH:MM"}}
+
+    Updates only ``config["roundStartTimes"]``; already-generated games keep
+    their scheduled times (future-rounds-only: generation consumes the plan
+    at materialize time).
+
+    Returns:
+        200: {success: true, roundStartTimes: {...}}
+        400: {error: str} (no Swiss setup, unknown round, or bad time)
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, gameday_id):
+        gameday = get_object_or_404(Gameday, pk=gameday_id)
+        serializer = SwissRoundTimesRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {"error": self._flatten_errors(serializer.errors)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            times = SwissTournamentService(gameday).update_round_times(
+                **serializer.validated_data
+            )
+        except SwissTournamentError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"success": True, "roundStartTimes": times})
+
+    @staticmethod
+    def _flatten_errors(errors) -> str:
+        parts = []
+        for field, field_errors in errors.items():
+            if isinstance(field_errors, dict):
+                details = "; ".join(
+                    f"{key}: {', '.join(str(err) for err in errs)}"
+                    for key, errs in field_errors.items()
+                )
+            else:
+                details = "; ".join(str(err) for err in field_errors)
+            parts.append(f"{field}: {details}")
+        return "; ".join(parts) or "invalid round times"
