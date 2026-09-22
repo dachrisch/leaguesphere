@@ -83,13 +83,17 @@ export function useDesignerController(
     }
   }, [gamedayId]);
 
-  // Validate the current flowchart
+  // Validate the current flowchart.
+  // Swiss-aware: games in ungenerated Swiss rounds (round >
+  // swiss.completedRounds.length) are placeholders without teams by design
+  // and skip team-connection blocking errors.
   const validation = useFlowValidation(
     flowState?.nodes || [],
     flowState?.edges || [],
     flowState?.globalTeams || [],
     flowState?.globalTeamGroups || [],
-    flowState?.metadata || {} as GamedayMetadata
+    flowState?.metadata || {} as GamedayMetadata,
+    flowState?.swiss?.completedRounds?.length
   );
 
   // Expert-mode-only progression simulation — a deliberately SEPARATE value

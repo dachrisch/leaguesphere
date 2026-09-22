@@ -37,16 +37,16 @@ describe('useFlowValidation - Metadata', () => {
     expect(result.isValid).toBe(false);
   });
 
-  it('should return a warning for empty venue (address)', () => {
+  it('does NOT warn for empty venue (address) — venue is optional by design', () => {
     const metadataWithoutVenue: GamedayMetadata = {
       ...validMetadata,
       address: '',
     };
 
     const result = validateFlowchart([], [], [], [], metadataWithoutVenue);
-    
+
     const warningIds = result.warnings.map(w => w.id);
-    expect(warningIds).toContain('metadata_venue_missing');
+    expect(warningIds).not.toContain('metadata_venue_missing');
   });
 
   it('should return a warning for a date in the past', () => {
