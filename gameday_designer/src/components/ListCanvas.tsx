@@ -86,10 +86,12 @@ export interface ListCanvasProps {
   progression?: ProgressionSimulationResult;
   /** Click-to-highlight for Progression Inspector findings/outcome rows. */
   onHighlightProgressionElement?: (id: string, type: HighlightedElement['type']) => void;
-  /** Swiss tournament state — drives per-round Progress buttons in swiss stages. */
+  /** Swiss tournament state — drives the panel-owned Generate Round control. */
   swiss?: SwissTournamentState;
-  /** Called with the round number when a swiss Progress button is clicked. */
+  /** Called with the round number when the panel Generate Round button is clicked. */
   onProgressSwissRound?: (roundNumber: number) => void;
+  /** True while the next swiss round is being previewed/generated — disables the panel button. */
+  swissGenerating?: boolean;
   /**
    * Results-save signal: bumped by ListDesignerApp after each successful game
    * result save (single + bulk). Added to completedRounds.length so the
@@ -160,6 +162,7 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
     onHighlightProgressionElement,
     swiss,
     onProgressSwissRound,
+    swissGenerating = false,
     swissResultsVersion = 0,
   } = props;
 
@@ -205,9 +208,19 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
   return (
     <div className="list-canvas px-3">
       <div className="list-canvas__content">
-        {/* Swiss standings — embedded panel (Task 7), visible with the canvas */}
+        {/* Swiss standings — embedded panel, visible with the canvas; owns round generation */}
         {swiss && gamedayId !== undefined && (
-          <SwissStandingsPanel gamedayId={gamedayId} refreshKey={(swiss.completedRounds?.length ?? 0) + swissResultsVersion} />
+          <SwissStandingsPanel
+            gamedayId={gamedayId}
+            refreshKey={(swiss.completedRounds?.length ?? 0) + swissResultsVersion}
+            swiss={swiss}
+            onGenerateNext={
+              readOnly || !onProgressSwissRound
+                ? undefined
+                : () => onProgressSwissRound((swiss.completedRounds?.length ?? 0) + 1)
+            }
+            generating={swissGenerating}
+          />
         )}
 
         {/* Metadata + Team Pool Row */}
@@ -360,8 +373,6 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
                     expertMode={expertMode}
                     progressionByGameId={progression?.cellsByGameId}
                     multiDayEnabled={metadata.multiDayEnabled}
-                    swiss={swiss}
-                    onProgressSwissRound={onProgressSwissRound}
                   />
                 ))}
               </div>

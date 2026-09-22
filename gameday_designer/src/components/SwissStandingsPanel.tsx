@@ -1,17 +1,18 @@
 /**
  * SwissStandingsPanel Component
  *
- * Designer-embedded Swiss standings (Task 7): renders the live standings
- * table next to the canvas so table + schedule are visible together. Table,
- * loading, and error patterns are cloned from the retired SwissControlModal;
- * round progression now lives in the per-round Progress buttons (Task 5) and
- * the adjust modal (Task 6), so this panel is read-only.
+ * Designer-embedded Swiss standings: renders the live standings table next
+ * to the canvas so table + schedule are visible together, and owns the
+ * single "Generate Round N" control (next = swiss.completedRounds.length + 1;
+ * the preview→adjust-modal→generate flow stays upstream). Table, loading,
+ * and error patterns are cloned from the retired SwissControlModal.
  */
 
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, Card, Collapse, Spinner, Table } from 'react-bootstrap';
 import { designerApi, SwissStandings } from '../api/designerApi';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
+import type { SwissTournamentState } from '../types/flowchart';
 
 interface SwissStandingsPanelProps {
   gamedayId: number;
@@ -22,6 +23,16 @@ interface SwissStandingsPanelProps {
    * while gamedayId stays stable.
    */
   refreshKey?: number;
+  /**
+   * Swiss tournament state (rounds, completedRounds) — owns the single
+   * "Generate Round N" control (next = completedRounds.length + 1). Omit to
+   * render the read-only standings table with no generate control.
+   */
+  swiss?: SwissTournamentState;
+  /** Called when the Generate Round N button is clicked (preview→adjust→generate flow stays upstream). */
+  onGenerateNext?: () => void;
+  /** True while the next round is being previewed/generated — disables the button with a generating label. */
+  generating?: boolean;
 }
 
 function apiErrorMessage(error: unknown, fallback: string): string {
@@ -31,7 +42,13 @@ function apiErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({ gamedayId, refreshKey = 0 }) => {
+const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({
+  gamedayId,
+  refreshKey = 0,
+  swiss,
+  onGenerateNext,
+  generating = false,
+}) => {
   const { t } = useTypedTranslation(['modal', 'ui']);
   const [standings, setStandings] = useState<SwissStandings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,6 +86,16 @@ const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({ gamedayId, re
   }, [gamedayId, refreshKey, t]);
 
   const complete = standings !== null && standings.rounds_completed >= standings.rounds_total;
+
+  // Panel-owned generation: next round derives from the swiss prop
+  // (completedRounds), the Round N of M indicator from API standings.
+  const generatedCount = swiss?.completedRounds?.length ?? 0;
+  const nextRound = generatedCount + 1;
+  const totalRounds = swiss?.rounds ?? standings?.rounds_total ?? 0;
+  // Gated while the latest generated round still lacks results: generated
+  // rounds outrun rounds_completed from the standings.
+  const priorIncomplete = standings !== null && standings.rounds_completed < generatedCount;
+  const showGenerate = !complete && swiss !== undefined && onGenerateNext !== undefined && nextRound <= totalRounds;
 
   return (
     <Card className="shadow-sm mb-3" data-testid="swiss-standings-panel">
@@ -146,6 +173,44 @@ const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({ gamedayId, re
                     ))}
                   </tbody>
                 </Table>
+
+                {showGenerate && (
+                  <div className="d-flex align-items-center gap-2 mt-2">
+                    {priorIncomplete && (
+                      <span
+                        id="swiss-generate-hint-text"
+                        className="text-muted small"
+                        data-testid="swiss-generate-hint"
+                      >
+                        {t('ui:swiss.waitingForResults')}
+                      </span>
+                    )}
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={onGenerateNext}
+                      disabled={generating || priorIncomplete}
+                      title={
+                        generating
+                          ? t('modal:swissAdjust.generating')
+                          : priorIncomplete
+                            ? t('ui:swiss.waitingForResults')
+                            : t('ui:swiss.generateRound', { n: nextRound })
+                      }
+                      aria-label={
+                        generating
+                          ? t('modal:swissAdjust.generating')
+                          : t('ui:swiss.generateRound', { n: nextRound })
+                      }
+                      aria-describedby={priorIncomplete ? 'swiss-generate-hint-text' : undefined}
+                      data-testid="swiss-generate-next"
+                    >
+                      {generating
+                        ? t('modal:swissAdjust.generating')
+                        : t('ui:swiss.generateRound', { n: nextRound })}
+                    </Button>
+                  </div>
+                )}
 
                 {complete && (
                   <Alert variant="success" data-testid="swiss-all-complete">

@@ -20,7 +20,7 @@ import type {
   GameNodeData,
   HighlightedElement
 } from '../../types/flowchart';
-import { isGameNode, isStageNode, isFieldNode, getFieldNodes } from '../../types/flowchart';
+import { isGameNode, isStageNode, getFieldNodes } from '../../types/flowchart';
 import { setDraggedGameSourceStageId, setDraggedGameSourceFieldId } from '../../utils/dragState';
 import { isWinnerReference, isLoserReference, isRankReference } from '../../types/designer';
 import type { TeamReference, WinnerReference, LoserReference } from '../../types/designer';
@@ -540,23 +540,6 @@ const GameTable: React.FC<GameTableProps> = memo(({
     setDraggedGameSourceFieldId(null);
   }, []);
 
-  const renderSwissFieldBadge = (game: GameNode) => {
-    // Swiss games carry their own assigned field (backend-owned allocation);
-    // all other games inherit the field from the parent hierarchy and render
-    // exactly as before (no badge). Unknown fieldId renders nothing.
-    const fieldId = game.data.fieldId;
-    if (!fieldId) return null;
-    const fieldNode = allNodes.find((n): n is FieldNode => isFieldNode(n) && n.id === fieldId);
-    if (!fieldNode) return null;
-    return (
-      <div>
-        <span className="badge bg-secondary mt-1" data-testid={`swiss-game-field-${game.id}`}>
-          {fieldNode.data.name}
-        </span>
-      </div>
-    );
-  };
-
   const renderTimeCell = (game: GameNode) => {
     const isEditingTime = editingGameId === game.id && editingField === 'time';
     const timeValue = game.data.startTime || '';
@@ -918,7 +901,6 @@ const GameTable: React.FC<GameTableProps> = memo(({
                     {game.data.standing}
                   </span>
                 )}
-                {renderSwissFieldBadge(game)}
               </td>
               {multiDayEnabled && (
                 <td onClick={(e) => e.stopPropagation()}>
