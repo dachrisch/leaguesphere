@@ -187,13 +187,15 @@ describe('SwissStandingsPanel', () => {
   it('uses the metadata accordion chrome and collapses the whole card via header toggle', async () => {
     vi.spyOn(designerApi, 'getSwissStandings').mockResolvedValue(TABLE);
 
-    render(<SwissStandingsPanel gamedayId={42} status="DRAFT" />);
+    render(<SwissStandingsPanel gamedayId={42} />);
 
     const panel = await screen.findByTestId('swiss-standings-panel');
     // Same structural Accordion chrome as the metadata (masterdata) card.
     expect(panel.querySelector('.accordion-item')).toBeInTheDocument();
     expect(panel.querySelector('.accordion-header')).toBeInTheDocument();
-    expect(panel.querySelector('.accordion-header')).toHaveClass('header-status-warning');
+    // Plain header: yellow status tint is reserved for the metadata card only.
+    const headerClass = panel.querySelector('.accordion-header')?.className ?? '';
+    expect(headerClass).not.toMatch(/header-status-/);
     const headerToggle = panel.querySelector('.accordion-button') as HTMLElement | null;
     expect(headerToggle).toBeInTheDocument();
 
@@ -206,22 +208,27 @@ describe('SwissStandingsPanel', () => {
     });
   });
 
-  it('collapses and expands via the toggle', async () => {
+  it('has a single collapse toggle: the header caret only, no extra toggle button', async () => {
     vi.spyOn(designerApi, 'getSwissStandings').mockResolvedValue(TABLE);
 
     render(<SwissStandingsPanel gamedayId={42} />);
 
     await screen.findByTestId('swiss-standings-table');
-    const toggle = screen.getByTestId('swiss-standings-toggle');
-    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    // The old extra SwissCollapseToggle is gone …
+    expect(screen.queryByTestId('swiss-standings-toggle')).not.toBeInTheDocument();
+    // … the shared header caret is the single toggle and a real <button>
+    // (keyboard accessible).
+    const header = screen.getByTestId('swiss-standings-header');
+    const buttons = header.querySelectorAll('button');
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].tagName).toBe('BUTTON');
+    expect(buttons[0]).toHaveClass('accordion-button');
 
-    // The animated Collapse keeps exiting children mounted in jsdom, so
-    // assert on the toggle state we own rather than DOM absence.
-    fireEvent.click(toggle);
-    expect(screen.getByTestId('swiss-standings-toggle')).toHaveAttribute('aria-expanded', 'false');
-
-    fireEvent.click(screen.getByTestId('swiss-standings-toggle'));
-    expect(screen.getByTestId('swiss-standings-toggle')).toHaveAttribute('aria-expanded', 'true');
-    expect(await screen.findByTestId('swiss-standings-table')).toBeInTheDocument();
+    // … and it still collapses/expands the whole card.
+    fireEvent.click(buttons[0]);
+    expect(buttons[0]).toHaveClass('collapsed');
+    await waitFor(() => {
+      expect(screen.getByTestId('swiss-standings-panel').querySelector('.accordion-body')).toBeNull();
+    });
   });
 });
