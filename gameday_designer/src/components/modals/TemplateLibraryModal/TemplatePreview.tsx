@@ -50,10 +50,6 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
   }
 
   const isBuiltin = selected.type === 'builtin';
-  // Builtin SWISS configures rounds/fields/duration in SwissSetupStep (the
-  // single source of truth — handleTeamConfirm routes SWISS to swiss-setup
-  // discarding applyConfig), so the generic Configure inputs are hidden.
-  const isSwiss = isBuiltin && (selected.template as TournamentTemplate).id === 'SWISS';
   const name = isBuiltin
     ? (selected.template as TournamentTemplate).name
     : (selected.template as ScheduleTemplate).name;
@@ -92,10 +88,9 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
           <p className="text-muted small mb-3">{savedTemplate.description}</p>
         )}
 
-        {isSwiss ? null : (
-        <div 
-          className="bg-light border rounded p-3 mb-3" 
-          style={{ 
+        <div
+          className="bg-light border rounded p-3 mb-3"
+          style={{
             borderLeft: '4px solid #0d6efd',
             borderColor: '#dee2e6'
           }}
@@ -106,23 +101,22 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
           <Row className="g-2">
             <Col xs={12} sm={3}>
               <Form.Label className="small fw-semibold">Start time</Form.Label>
-              <Form.Control type="time" size="sm" value={startTime} onChange={e => setStartTime(e.target.value)} />
+              <Form.Control type="time" size="sm" value={startTime} onChange={e => setStartTime(e.target.value)} data-testid="configure-start-time" />
             </Col>
             <Col xs={12} sm={3}>
               <Form.Label className="small fw-semibold">Game duration (min)</Form.Label>
-              <Form.Control type="number" size="sm" min={5} max={90} value={gameDuration} onChange={e => setGameDuration(+e.target.value)} />
+              <Form.Control type="number" size="sm" min={5} max={90} value={gameDuration} onChange={e => setGameDuration(+e.target.value)} data-testid="configure-game-duration" />
             </Col>
             <Col xs={12} sm={3}>
               <Form.Label className="small fw-semibold">Break after (min)</Form.Label>
-              <Form.Control type="number" size="sm" min={0} max={30} value={breakDuration} onChange={e => setBreakDuration(+e.target.value)} />
+              <Form.Control type="number" size="sm" min={0} max={30} value={breakDuration} onChange={e => setBreakDuration(+e.target.value)} data-testid="configure-break-duration" />
             </Col>
             <Col xs={12} sm={3}>
               <Form.Label htmlFor="num-fields-input" className="small fw-semibold">Number of fields</Form.Label>
-              <Form.Control id="num-fields-input" type="number" size="sm" min={1} max={10} value={numFields} onChange={e => setNumFields(+e.target.value)} />
+              <Form.Control id="num-fields-input" type="number" size="sm" min={1} max={10} value={numFields} onChange={e => setNumFields(+e.target.value)} data-testid="configure-num-fields" />
             </Col>
           </Row>
         </div>
-        )}
       </div>
 
       <div className="p-3 border-top bg-light d-flex gap-2">

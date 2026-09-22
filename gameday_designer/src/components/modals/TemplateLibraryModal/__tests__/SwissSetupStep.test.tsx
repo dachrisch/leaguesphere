@@ -18,9 +18,17 @@ function makeTeams(): GlobalTeam[] {
   }));
 }
 
+const baseProps = {
+  teams: [] as GlobalTeam[],
+  fields: 2,
+  gameDuration: 30,
+  onBack: () => {},
+  onConfirm: () => {},
+};
+
 describe('SwissSetupStep', () => {
   it('renders seeds in picked order with schedule preview', () => {
-    render(<SwissSetupStep teams={makeTeams()} onBack={vi.fn()} onConfirm={vi.fn()} />);
+    render(<SwissSetupStep {...baseProps} teams={makeTeams()} onBack={vi.fn()} onConfirm={vi.fn()} />);
 
     const list = screen.getByTestId('swiss-seed-list');
     const rows = within(list).getAllByRole('listitem');
@@ -33,7 +41,7 @@ describe('SwissSetupStep', () => {
   });
 
   it('reorders seeds with up/down buttons', () => {
-    render(<SwissSetupStep teams={makeTeams()} onBack={vi.fn()} onConfirm={vi.fn()} />);
+    render(<SwissSetupStep {...baseProps} teams={makeTeams()} onBack={vi.fn()} onConfirm={vi.fn()} />);
 
     fireEvent.click(screen.getByTestId('swiss-seed-down-11'));
 
@@ -45,8 +53,18 @@ describe('SwissSetupStep', () => {
     expect(restored.textContent).toContain('Team 11');
   });
 
-  it('clamps steppers to the valid ranges', () => {
-    render(<SwissSetupStep teams={makeTeams()} onBack={vi.fn()} onConfirm={vi.fn()} />);
+  it('offers only the rounds stepper — fields and duration come from page-1 Configure', () => {
+    render(<SwissSetupStep {...baseProps} teams={makeTeams()} onBack={vi.fn()} onConfirm={vi.fn()} />);
+
+    expect(screen.getByTestId('swiss-rounds')).toHaveTextContent('4');
+    expect(screen.queryByTestId('swiss-fields')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('swiss-fields-increase')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('swiss-duration')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('swiss-duration-increase')).not.toBeInTheDocument();
+  });
+
+  it('clamps the rounds stepper to the valid range', () => {
+    render(<SwissSetupStep {...baseProps} teams={makeTeams()} onBack={vi.fn()} onConfirm={vi.fn()} />);
 
     const roundsDecrease = screen.getByTestId('swiss-rounds-decrease');
     fireEvent.click(roundsDecrease);
@@ -54,16 +72,21 @@ describe('SwissSetupStep', () => {
     fireEvent.click(roundsDecrease);
     expect(screen.getByTestId('swiss-rounds')).toHaveTextContent('2');
 
-    const fieldsIncrease = screen.getByTestId('swiss-fields-increase');
-    for (let i = 0; i < 10; i++) fireEvent.click(fieldsIncrease);
-    expect(screen.getByTestId('swiss-fields')).toHaveTextContent('4');
-
     expect(screen.getByTestId('swiss-schedule-preview').children).toHaveLength(2);
   });
 
-  it('confirms with parsed team ids and current setup values', () => {
+  it('confirms with parsed team ids, rounds state, and fields/duration props', () => {
     const onConfirm = vi.fn();
-    render(<SwissSetupStep teams={makeTeams()} onBack={vi.fn()} onConfirm={onConfirm} />);
+    render(
+      <SwissSetupStep
+        {...baseProps}
+        teams={makeTeams()}
+        fields={3}
+        gameDuration={45}
+        onBack={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    );
 
     fireEvent.click(screen.getByTestId('swiss-seed-down-11'));
     fireEvent.click(screen.getByTestId('swiss-rounds-increase'));
@@ -72,14 +95,14 @@ describe('SwissSetupStep', () => {
     expect(onConfirm).toHaveBeenCalledWith({
       seedTeamIds: [22, 11, 33, 44],
       rounds: 5,
-      fields: 2,
-      gameDuration: 30,
+      fields: 3,
+      gameDuration: 45,
     });
   });
 
   it('calls onBack', () => {
     const onBack = vi.fn();
-    render(<SwissSetupStep teams={makeTeams()} onBack={onBack} onConfirm={vi.fn()} />);
+    render(<SwissSetupStep {...baseProps} teams={makeTeams()} onBack={onBack} onConfirm={vi.fn()} />);
 
     fireEvent.click(screen.getByText('modal:swissSetup.back'));
     expect(onBack).toHaveBeenCalled();

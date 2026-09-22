@@ -1,13 +1,10 @@
 /**
- * TemplatePreview Swiss dedup (#1970).
+ * TemplatePreview Swiss Configure (#1970).
  *
- * For builtin SWISS the generic Configure block (start time, game
- * duration, break, number of fields) duplicates SwissSetupStep's
- * Tournament setup — and its values are ignored for Swiss
- * (handleTeamConfirm routes SWISS to swiss-setup discarding applyConfig).
- * SwissSetupStep stays the single source of truth: the Configure inputs
- * are hidden for SWISS (title/description/Apply stay), other builtins
- * like F6-2-2 keep them.
+ * The generic Configure block (start time, game duration, break, number
+ * of fields) stays on page 1 for SWISS exactly like every other template;
+ * its values flow into SwissSetupStep (fields + game duration props).
+ * SwissSetupStep keeps only the Swiss-specific config: seed order + rounds.
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -26,16 +23,16 @@ const baseProps = {
   onSave: vi.fn(),
 };
 
-describe('TemplatePreview Swiss Configure dedup', () => {
-  it('shows no Configure inputs for builtin SWISS but keeps title and Apply', () => {
+describe('TemplatePreview Swiss Configure', () => {
+  it('shows the Configure inputs for builtin SWISS like any other template', () => {
     render(<TemplatePreview {...baseProps} selected={{ type: 'builtin', template: TEMPLATE_SWISS }} />);
 
     expect(screen.getByText(TEMPLATE_SWISS.name)).toBeInTheDocument();
-    expect(screen.queryByText('Configure')).not.toBeInTheDocument();
-    expect(screen.queryByText('Start time')).not.toBeInTheDocument();
-    expect(screen.queryByText('Game duration (min)')).not.toBeInTheDocument();
-    expect(screen.queryByText('Break after (min)')).not.toBeInTheDocument();
-    expect(screen.queryByText('Number of fields')).not.toBeInTheDocument();
+    expect(screen.getByText('Configure')).toBeInTheDocument();
+    expect(screen.getByText('Start time')).toBeInTheDocument();
+    expect(screen.getByText('Game duration (min)')).toBeInTheDocument();
+    expect(screen.getByText('Break after (min)')).toBeInTheDocument();
+    expect(screen.getByText('Number of fields')).toBeInTheDocument();
     expect(screen.getByTestId('apply-template-button')).toBeInTheDocument();
   });
 

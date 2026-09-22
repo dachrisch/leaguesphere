@@ -13,6 +13,14 @@ export interface SwissSetupConfig {
 
 interface SwissSetupStepProps {
   teams: GlobalTeam[];
+  /**
+   * Fields + game duration come from the page-1 Configure block
+   * (TemplatePreview applyConfig) — this step keeps only seed order +
+   * rounds. Out-of-range values fail at confirm with the backend message;
+   * no additional client-side validation here.
+   */
+  fields: number;
+  gameDuration: number;
   dayStartTime?: string;
   onBack: () => void;
   onConfirm: (config: SwissSetupConfig) => void;
@@ -20,11 +28,6 @@ interface SwissSetupStepProps {
 
 export const SWISS_MIN_ROUNDS = 2;
 export const SWISS_MAX_ROUNDS = 8;
-export const SWISS_MIN_FIELDS = 1;
-export const SWISS_MAX_FIELDS = 4;
-export const SWISS_MIN_DURATION = 15;
-export const SWISS_MAX_DURATION = 60;
-export const SWISS_DURATION_STEP = 5;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -32,6 +35,8 @@ function clamp(value: number, min: number, max: number): number {
 
 const SwissSetupStep: React.FC<SwissSetupStepProps> = ({
   teams,
+  fields,
+  gameDuration,
   dayStartTime = '09:00',
   onBack,
   onConfirm,
@@ -39,8 +44,6 @@ const SwissSetupStep: React.FC<SwissSetupStepProps> = ({
   const { t } = useTypedTranslation(['modal']);
   const [seedIds, setSeedIds] = useState<string[]>(teams.map((team) => team.id));
   const [rounds, setRounds] = useState(4);
-  const [fields, setFields] = useState(2);
-  const [gameDuration, setGameDuration] = useState(30);
 
   const moveSeed = (index: number, delta: -1 | 1) => {
     setSeedIds((prev) => {
@@ -157,20 +160,6 @@ const SwissSetupStep: React.FC<SwissSetupStepProps> = ({
           () => setRounds((v) => clamp(v - 1, SWISS_MIN_ROUNDS, SWISS_MAX_ROUNDS)),
           () => setRounds((v) => clamp(v + 1, SWISS_MIN_ROUNDS, SWISS_MAX_ROUNDS)),
           'swiss-rounds',
-        )}
-        {stepper(
-          t('modal:swissSetup.fields'),
-          String(fields),
-          () => setFields((v) => clamp(v - 1, SWISS_MIN_FIELDS, SWISS_MAX_FIELDS)),
-          () => setFields((v) => clamp(v + 1, SWISS_MIN_FIELDS, SWISS_MAX_FIELDS)),
-          'swiss-fields',
-        )}
-        {stepper(
-          t('modal:swissSetup.gameDuration'),
-          `${gameDuration} ${t('modal:swissSetup.minutesUnit')}`,
-          () => setGameDuration((v) => clamp(v - SWISS_DURATION_STEP, SWISS_MIN_DURATION, SWISS_MAX_DURATION)),
-          () => setGameDuration((v) => clamp(v + SWISS_DURATION_STEP, SWISS_MIN_DURATION, SWISS_MAX_DURATION)),
-          'swiss-duration',
         )}
 
         <h6 className="mt-4">{t('modal:swissSetup.scheduleTitle')}</h6>

@@ -7,7 +7,7 @@
   place-items: center;
 }
 
-/* At 1600px+: 2-column layout with equal heights */
+/* At 1600px+: 2-column layout with equal heights (3 columns with swiss card) */
 @media (min-width: 1600px) {
   .metadata-team-pool-row {
     grid-template-columns: 1fr 1fr;
@@ -15,10 +15,16 @@
     grid-auto-rows: 1fr;
     align-items: stretch;
   }
+
+  .metadata-team-pool-row:has(.metadata-team-pool-row__swiss) {
+    grid-template-columns: 1fr 1fr 1fr;
+    max-width: 1980px;
+  }
 }
 
 .metadata-team-pool-row__metadata,
-.metadata-team-pool-row__team-pool {
+.metadata-team-pool-row__team-pool,
+.metadata-team-pool-row__swiss {
   width: 100%;
   max-width: 600px;
   display: flex;
@@ -27,7 +33,8 @@
 
 @media (min-width: 1600px) {
   .metadata-team-pool-row__metadata > *,
-  .metadata-team-pool-row__team-pool > * {
+  .metadata-team-pool-row__team-pool > *,
+  .metadata-team-pool-row__swiss > * {
     flex: 1;
   }
 }
