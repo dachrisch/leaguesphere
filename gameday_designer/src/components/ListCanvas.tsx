@@ -247,6 +247,8 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
                 gamedayId={gamedayId}
                 refreshKey={(swiss.completedRounds?.length ?? 0) + swissResultsVersion}
                 swiss={swiss}
+                status={metadata.status}
+                forceCollapsed={isRowCollapsed}
                 onGenerateNext={
                   readOnly || !onProgressSwissRound
                     ? undefined

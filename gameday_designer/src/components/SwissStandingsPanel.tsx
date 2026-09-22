@@ -8,10 +8,11 @@
  * and error patterns are cloned from the retired SwissControlModal.
  */
 
-import React, { useEffect, useState } from 'react';
-import { Alert, Button, Card, Collapse, Spinner, Table } from 'react-bootstrap';
+import React, { useContext, useEffect, useState } from 'react';
+import { AccordionContext, Alert, Button, Spinner, Table, useAccordionButton } from 'react-bootstrap';
 import { designerApi, SwissStandings } from '../api/designerApi';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
+import TopRowAccordionCard, { TOP_ROW_EVENT_KEY } from './TopRowAccordionCard';
 import type { SwissTournamentState } from '../types/flowchart';
 
 interface SwissStandingsPanelProps {
@@ -33,8 +34,42 @@ interface SwissStandingsPanelProps {
   onGenerateNext?: () => void;
   /** True while the next round is being previewed/generated — disables the button with a generating label. */
   generating?: boolean;
+  /**
+   * Gameday status driving the header tint — same classes as the metadata
+   * (masterdata) card. Defaults to DRAFT.
+   */
+  status?: string;
+  /**
+   * Scroll-driven collapse from the parent row (mirrors metadata
+   * forceCollapsed via the shared top-row card).
+   */
+  forceCollapsed?: boolean;
 }
 
+/**
+ * Header collapse toggle for the Swiss card. Uses the same Accordion
+ * mechanism as the metadata card header; open state derives from the shared
+ * top-row Accordion context so the button and the header toggle stay in sync.
+ */
+const SwissCollapseToggle: React.FC<{ label: string }> = ({ label }) => {
+  const { activeEventKey } = useContext(AccordionContext);
+  const onClick = useAccordionButton(TOP_ROW_EVENT_KEY);
+  const open = activeEventKey === TOP_ROW_EVENT_KEY;
+
+  return (
+    <Button
+      variant="outline-secondary"
+      size="sm"
+      onClick={onClick}
+      aria-expanded={open}
+      aria-controls="swiss-standings-panel-body"
+      aria-label={label}
+      data-testid="swiss-standings-toggle"
+    >
+      <i className={`bi ${open ? 'bi-chevron-up' : 'bi-chevron-down'}`} aria-hidden="true" />
+    </Button>
+  );
+};
 function apiErrorMessage(error: unknown, fallback: string): string {
   const backend = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
   if (backend) return backend;
@@ -48,12 +83,13 @@ const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({
   swiss,
   onGenerateNext,
   generating = false,
+  status = 'DRAFT',
+  forceCollapsed = false,
 }) => {
   const { t } = useTypedTranslation(['modal', 'ui']);
   const [standings, setStandings] = useState<SwissStandings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -98,47 +134,39 @@ const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({
   const showGenerate = !complete && swiss !== undefined && onGenerateNext !== undefined && nextRound <= totalRounds;
 
   return (
-    <Card className="shadow-sm mb-3" data-testid="swiss-standings-panel">
-      <Card.Header className="d-flex align-items-center bg-white">
-        <i className="bi bi-trophy me-2" />
-        <strong>{t('modal:swissControl.title')}</strong>
-        {standings && (
+    <TopRowAccordionCard
+      testId="swiss-standings-panel"
+      headerTestId="swiss-standings-header"
+      iconClass="bi-trophy"
+      title={t('modal:swissControl.title')}
+      badge={
+        standings && (
           <span className="badge bg-secondary ms-2" data-testid="swiss-rounds-indicator">
             {t('modal:swissControl.roundProgress', {
               done: standings.rounds_completed,
               total: standings.rounds_total,
             })}
           </span>
+        )
+      }
+      status={status}
+      forceCollapsed={forceCollapsed}
+      actions={<SwissCollapseToggle label={t('modal:swissControl.toggleStandings')} />}
+    >
+      <div id="swiss-standings-panel-body">
+        {loading && (
+          <div className="text-center py-4">
+            <Spinner animation="border" role="status" data-testid="swiss-standings-loading" />
+          </div>
         )}
-        <Button
-          variant="outline-secondary"
-          size="sm"
-          className="ms-auto"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          aria-controls="swiss-standings-panel-body"
-          aria-label={t('modal:swissControl.toggleStandings')}
-          data-testid="swiss-standings-toggle"
-        >
-          <i className={`bi ${open ? 'bi-chevron-up' : 'bi-chevron-down'}`} aria-hidden="true" />
-        </Button>
-      </Card.Header>
-      <Collapse in={open} unmountOnExit>
-        <div id="swiss-standings-panel-body">
-          <Card.Body>
-            {loading && (
-              <div className="text-center py-4">
-                <Spinner animation="border" role="status" data-testid="swiss-standings-loading" />
-              </div>
-            )}
-            {error && (
-              <Alert variant="danger" data-testid="swiss-standings-error">
-                {error}
-              </Alert>
-            )}
-            {!loading && standings && (
-              <>
-                <Table striped bordered hover size="sm" data-testid="swiss-standings-table">
+        {error && (
+          <Alert variant="danger" data-testid="swiss-standings-error">
+            {error}
+          </Alert>
+        )}
+        {!loading && standings && (
+          <>
+            <Table striped bordered hover size="sm" data-testid="swiss-standings-table">
                   <thead>
                     <tr>
                       <th>#</th>
@@ -219,11 +247,9 @@ const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({
                 )}
               </>
             )}
-          </Card.Body>
-        </div>
-      </Collapse>
-    </Card>
-  );
-};
+          </div>
+        </TopRowAccordionCard>
+      );
+    };
 
 export default SwissStandingsPanel;

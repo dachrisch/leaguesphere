@@ -1,0 +1,67 @@
+/**
+ * TopRowAccordionCard Styles
+ *
+ * Shared chrome for the designer top-row cards (Team Pool, Swiss control),
+ * mirroring the metadata (masterdata) card's Accordion header. Status tint
+ * classNames are copied from GamedayMetadataAccordion.css so all three
+ * headers render identically for the same gameday status.
+ */
+
+.top-row-accordion {
+  width: 100%;
+}
+
+.top-row-accordion .accordion-header .accordion-button {
+  transition: background-color 0.2s;
+}
+
+.top-row-accordion .header-status-warning .accordion-button {
+  background-color: #fff3cd !important;
+  color: #664d03;
+}
+
+.top-row-accordion .header-status-success .accordion-button {
+  background-color: #d1e7dd !important;
+  color: #0f5132;
+}
+
+.top-row-accordion .header-status-primary .accordion-button {
+  background-color: #cfe2ff !important;
+  color: #084298;
+}
+
+.top-row-accordion .header-status-secondary .accordion-button {
+  background-color: #e2e3e5 !important;
+  color: #41464b;
+}
+
+.top-row-accordion .header-status-light .accordion-button {
+  background-color: #f8f9fa !important;
+}
+
+/* Match metadata: no button-in-button focus ring on the header toggle. */
+.top-row-accordion .accordion-button:focus {
+  box-shadow: none;
+  border-color: rgba(0, 0, 0, 0.125);
+}
+
+.top-row-accordion .accordion-header {
+  position: relative;
+}
+
+/* Header actions sit outside the toggle area but inside the header container,
+ * mirroring metadata's publish-button-container. */
+.top-row-accordion .top-row-card-actions {
+  position: absolute;
+  right: 60px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.top-row-accordion.is-highlighted .accordion-item {
+  border-color: var(--bs-info);
+  background-color: rgba(13, 110, 253, 0.05);
+}
