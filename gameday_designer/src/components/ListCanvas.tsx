@@ -235,7 +235,12 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
                 swiss={swiss}
                 forceCollapsed={isRowCollapsed}
                 onGenerateNext={
-                  readOnly || !onProgressSwissRound
+                  // Swiss progression (results + next round) is allowed when
+                  // published; structural edits stay behind readOnly. The
+                  // backend draft-gates setup/reset/round-times while
+                  // generate/standings stay open, so passing the handler here
+                  // is safe for locked gamedays.
+                  !onProgressSwissRound
                     ? undefined
                     : () => onProgressSwissRound((swiss.completedRounds?.length ?? 0) + 1)
                 }

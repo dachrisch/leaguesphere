@@ -200,8 +200,18 @@ describe('ListCanvas Swiss embedded standings', () => {
     expect(await screen.findByTestId('swiss-generate-next')).toBeDisabled();
   });
 
-  it('shows no panel generate button in readOnly mode', async () => {
-    renderCanvas(createProps({ swiss: SWISS, onProgressSwissRound: vi.fn(), readOnly: true }));
+  it('keeps the panel generate button when published (readOnly): Swiss progression stays available', async () => {
+    const onProgressSwissRound = vi.fn();
+    renderCanvas(createProps({ swiss: SWISS, onProgressSwissRound, readOnly: true }));
+
+    const button = await screen.findByTestId('swiss-generate-next');
+    expect(button).toHaveTextContent('Generate Round 2');
+    fireEvent.click(button);
+    expect(onProgressSwissRound).toHaveBeenCalledWith(2);
+  });
+
+  it('shows no panel generate button in readOnly mode without a progress handler', async () => {
+    renderCanvas(createProps({ swiss: SWISS, onProgressSwissRound: undefined, readOnly: true }));
 
     expect(await screen.findByTestId('swiss-standings-panel')).toBeInTheDocument();
     expect(screen.queryByTestId('swiss-generate-next')).not.toBeInTheDocument();

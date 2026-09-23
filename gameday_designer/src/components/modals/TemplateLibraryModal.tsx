@@ -168,9 +168,13 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
     fields: number;
     gameDuration: number;
   }) => {
+    // Defense in depth: Swiss setup is draft-only (the backend rejects it
+    // when published). handleApply already gates entry, but a modal left
+    // open on the swiss-setup step across publish could still confirm.
+    if (isLocked) return;
     onGenerateSwiss?.({ ...config, teams: swissTeams });
     handleHide();
-  }, [onGenerateSwiss, handleHide, swissTeams]);
+  }, [onGenerateSwiss, handleHide, swissTeams, isLocked]);
 
   const handleAutoGenerateTeams = useCallback(async (count: number): Promise<GlobalTeam[]> => {
     try {
@@ -330,6 +334,7 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
             fields={applyConfig?.numFields ?? (selected?.type === 'builtin' ? (selected.template as TournamentTemplate).fieldOptions[0] : undefined) ?? 2}
             gameDuration={applyConfig?.gameDuration ?? 30}
             dayStartTime={dayStartTime}
+            disabled={isLocked}
             onBack={() => setStep('team-picker')}
             onConfirm={handleSwissConfirm}
           />

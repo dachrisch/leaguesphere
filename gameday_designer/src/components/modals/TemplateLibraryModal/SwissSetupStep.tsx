@@ -22,6 +22,8 @@ interface SwissSetupStepProps {
   fields: number;
   gameDuration: number;
   dayStartTime?: string;
+  /** Draft-only: Swiss setup is rejected when published (backend 400). */
+  disabled?: boolean;
   onBack: () => void;
   onConfirm: (config: SwissSetupConfig) => void;
 }
@@ -38,6 +40,7 @@ const SwissSetupStep: React.FC<SwissSetupStepProps> = ({
   fields,
   gameDuration,
   dayStartTime = '09:00',
+  disabled = false,
   onBack,
   onConfirm,
 }) => {
@@ -180,7 +183,7 @@ const SwissSetupStep: React.FC<SwissSetupStepProps> = ({
         <Button
           variant="primary"
           onClick={handleConfirm}
-          disabled={seededTeams.length < 2}
+          disabled={seededTeams.length < 2 || disabled}
           data-testid="swiss-setup-confirm"
         >
           {t('modal:swissSetup.confirm')}

@@ -533,15 +533,41 @@ const ListDesignerApp: React.FC = () => {
   const handleSaveResult = useCallback(async (data: { halftime_score: { home: number; away: number }; final_score: { home: number; away: number } }) => {
     if (!selectedGameForResult) return;
 
+    const patch = {
+      halftime_score: data.halftime_score,
+      final_score: data.final_score,
+    };
     try {
-      handleUpdateNode(selectedGameForResult.id, {
-        halftime_score: data.halftime_score,
-        final_score: data.final_score,
-      });
+      handleUpdateNode(selectedGameForResult.id, patch);
 
       const dbIdPart = selectedGameForResult.id.split('-').pop();
       if (dbIdPart && !isNaN(parseInt(dbIdPart))) {
         await gamedayApi.updateGameResult(parseInt(dbIdPart), { halftime_score: data.halftime_score, final_score: data.final_score });
+      }
+
+      // Explicit persist (works when published): the debounced auto-save
+      // skips locked gamedays, so without this the node-level scores would
+      // revert on the next loadData(). Built synchronously from the same
+      // patch because handleUpdateNode applies via async setState.
+      // A failure here is explicit (not a silent success): the Gameinfo
+      // rows are already written, but the canvas copy is stale — keep the
+      // modal open and report failure so the user retries.
+      try {
+        const current = flowState.exportState();
+        const patched = {
+          ...current,
+          nodes: current.nodes.map((n) =>
+            n.id === selectedGameForResult.id && isGameNode(n)
+              ? { ...n, data: { ...n.data, ...patch } }
+              : n
+          ),
+        };
+        await saveData(patched);
+        lastSavedStateRef.current = JSON.stringify(patched);
+      } catch (persistError) {
+        console.error('Failed to persist game result to canvas', persistError);
+        addNotification(t('ui:notification.autoSaveFailed'), 'danger', t('ui:notification.title.error'));
+        return;
       }
 
       setShowResultModal(false);
@@ -560,7 +586,7 @@ const ListDesignerApp: React.FC = () => {
       console.error('Failed to save result', error);
       addNotification(t('ui:notification.saveResultFailed'), 'danger', t('ui:notification.title.error'));
     }
-  }, [selectedGameForResult, handleUpdateNode, addNotification, t, id]);
+  }, [selectedGameForResult, handleUpdateNode, addNotification, t, id, flowState, saveData]);
 
   const handleShowTeamSelection = useCallback((slotId: string, side: 'home' | 'away' | 'official' | 'group' | 'replace') => {
     setTeamSelectionModalContext({ slotId, side });
