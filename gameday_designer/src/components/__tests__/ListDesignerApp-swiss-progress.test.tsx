@@ -512,6 +512,34 @@ describe('ListDesignerApp handleGenerateSwiss error branches', () => {
     expect(mockHandlers.loadData).toHaveBeenCalled();
   });
 
+  it('persists without import when the call carries no teams at all', async () => {
+    await setup({ globalTeams: [] });
+    vi.mocked(designerApi.setupSwissTournament).mockResolvedValueOnce({ success: true, config: {} as never });
+    vi.mocked(designerApi.generateSwissRound).mockResolvedValueOnce({
+      success: true,
+      round: 1,
+      pairings: [],
+      bye_team_id: null,
+      game_ids: [],
+    });
+    const template = templateCapture.props as unknown as {
+      onGenerateSwiss: (c: unknown) => Promise<void>;
+    };
+
+    await act(async () => {
+      await template.onGenerateSwiss({
+        seedTeamIds: [138, 522],
+        rounds: 4,
+        fields: 2,
+        gameDuration: 30,
+      });
+    });
+
+    expect(mockHandlers.saveData).toHaveBeenCalledTimes(1);
+    expect(designerApi.setupSwissTournament).toHaveBeenCalled();
+    expect(mockHandlers.loadData).toHaveBeenCalled();
+  });
+
   it('shows the backend error when setup fails and skips generate', async () => {
     await setup({ globalTeams: [] });
     vi.mocked(designerApi.setupSwissTournament).mockRejectedValueOnce({
@@ -592,13 +620,19 @@ describe('ListDesignerApp Swiss progression when published', () => {
   });
 
   it('persists node scores explicitly when published (auto-save is locked)', async () => {
+    const otherNode = {
+      id: 'game-8',
+      type: 'game',
+      position: { x: 0, y: 0 },
+      data: { type: 'game', homeTeamId: '138', awayTeamId: '522' },
+    } as unknown as FlowNode;
     const exportState = vi.fn(() => ({
-      nodes: [gameNode],
+      nodes: [gameNode, otherNode],
       edges: [],
       globalTeams: [AACHEN, ANTWERP],
       globalTeamGroups: [],
     }));
-    await setup({ nodes: [gameNode], exportState }, 'PUBLISHED');
+    await setup({ nodes: [gameNode, otherNode], exportState }, 'PUBLISHED');
     expect(canvasProps().swissResultsVersion).toBe(0);
 
     await saveResult();
@@ -634,6 +668,40 @@ describe('ListDesignerApp Swiss progression when published', () => {
     const kinds = vi.mocked(mockHandlers.addNotification).mock.calls.map((c) => c[1]);
     expect(kinds).not.toContain('success');
     expect(canvasProps().swissResultsVersion).toBe(0);
+  });
+
+  it('skips the Gameinfo write for placeholder ids without a numeric suffix', async () => {
+    const placeholder = {
+      id: 'swiss-r2-g1',
+      type: 'game',
+      position: { x: 0, y: 0 },
+      data: { type: 'game', homeTeamId: '138', awayTeamId: '522' },
+    } as unknown as FlowNode;
+    const exportState = vi.fn(() => ({
+      nodes: [placeholder],
+      edges: [],
+      globalTeams: [AACHEN, ANTWERP],
+      globalTeamGroups: [],
+    }));
+    await setup({ nodes: [placeholder], exportState }, 'PUBLISHED');
+
+    await act(async () => {
+      canvasProps().onOpenResultModal('swiss-r2-g1');
+    });
+    const modal = resultModalCapture.props as unknown as {
+      onSave: (data: { halftime_score: { home: number; away: number }; final_score: { home: number; away: number } }) => Promise<void>;
+    };
+    await act(async () => {
+      await modal.onSave({
+        halftime_score: { home: 0, away: 0 },
+        final_score: { home: 1, away: 1 },
+      });
+    });
+
+    // No numeric DB id to write through — canvas persist still happens.
+    expect(vi.mocked(gamedayApi.updateGameResult)).not.toHaveBeenCalled();
+    expect(mockHandlers.saveData).toHaveBeenCalledTimes(1);
+    expect(canvasProps().swissResultsVersion).toBe(1);
   });
 
   it('surfaces the draft-only backend error when generating setup while published', async () => {
