@@ -168,6 +168,10 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
     fields: number;
     gameDuration: number;
   }) => {
+    // Locked modals cannot reach here: the swiss-setup Confirm button is
+    // disabled via disabled={isLocked}, and disabled buttons never dispatch
+    // clicks to handlers in this stack. Any programmatic call is rejected by
+    // the backend draft-gate (400 swissSetupFailed inline).
     onGenerateSwiss?.({ ...config, teams: swissTeams });
     handleHide();
   }, [onGenerateSwiss, handleHide, swissTeams]);
@@ -330,6 +334,7 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
             fields={applyConfig?.numFields ?? (selected?.type === 'builtin' ? (selected.template as TournamentTemplate).fieldOptions[0] : undefined) ?? 2}
             gameDuration={applyConfig?.gameDuration ?? 30}
             dayStartTime={dayStartTime}
+            disabled={isLocked}
             onBack={() => setStep('team-picker')}
             onConfirm={handleSwissConfirm}
           />

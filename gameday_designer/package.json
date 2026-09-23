@@ -1,6 +1,6 @@
 {
   "name": "gameday_designer",
-  "version": "4.28.1",
+  "version": "4.28.2-rc.4",
   "private": true,
   "type": "module",
   "dependencies": {
