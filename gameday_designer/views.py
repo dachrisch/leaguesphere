@@ -698,6 +698,11 @@ class SwissSetupView(APIView):
 
     def post(self, request, gameday_id):
         gameday = get_object_or_404(Gameday, pk=gameday_id)
+        if gameday.status != Gameday.STATUS_DRAFT:
+            return Response(
+                {"error": "Swiss setup is only available in draft status"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         serializer = SwissSetupRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -812,6 +817,11 @@ class SwissResetView(APIView):
 
     def post(self, request, gameday_id):
         gameday = get_object_or_404(Gameday, pk=gameday_id)
+        if gameday.status != Gameday.STATUS_DRAFT:
+            return Response(
+                {"error": "Swiss reset is only available in draft status"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         try:
             deleted_games = SwissTournamentService(gameday).reset()
         except SwissTournamentError as exc:
@@ -837,6 +847,11 @@ class SwissRoundTimesView(APIView):
 
     def post(self, request, gameday_id):
         gameday = get_object_or_404(Gameday, pk=gameday_id)
+        if gameday.status != Gameday.STATUS_DRAFT:
+            return Response(
+                {"error": "Swiss round times can only be changed in draft status"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         serializer = SwissRoundTimesRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(

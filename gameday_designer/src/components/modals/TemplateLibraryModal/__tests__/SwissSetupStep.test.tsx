@@ -107,4 +107,34 @@ describe('SwissSetupStep', () => {
     fireEvent.click(screen.getByText('modal:swissSetup.back'));
     expect(onBack).toHaveBeenCalled();
   });
+
+  it('disables confirm when locked (draft-only Swiss setup)', () => {
+    const onConfirm = vi.fn();
+    render(
+      <SwissSetupStep
+        {...baseProps}
+        teams={makeTeams()}
+        disabled
+        onBack={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    expect(screen.getByTestId('swiss-setup-confirm')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('swiss-setup-confirm'));
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('leaves confirm enabled by default', () => {
+    render(
+      <SwissSetupStep
+        {...baseProps}
+        teams={makeTeams()}
+        onBack={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('swiss-setup-confirm')).not.toBeDisabled();
+  });
 });
