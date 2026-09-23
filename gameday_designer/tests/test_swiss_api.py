@@ -578,3 +578,116 @@ class TestSwissRoundTimesEndpoint:
         )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def publish(gameday):
+    gameday.status = Gameday.STATUS_PUBLISHED
+    gameday.save(update_fields=["status"])
+    return gameday
+
+
+@pytest.mark.django_db
+class TestSwissPublishedStatus:
+    """Swiss progression stays available once published; structural
+    endpoints (setup/reset/round-times) are draft-only (#1972 follow-up)."""
+
+    def _setup(self, api_client, staff_user, n=6, name="Swiss API Published"):
+        gameday = make_gameday(name=name)
+        teams = make_teams(n, prefix="PUB")
+        api_client.force_authenticate(user=staff_user)
+        response = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/setup/",
+            setup_payload(teams),
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        return publish(gameday), teams
+
+    def test_setup_when_published_is_400(self, api_client, staff_user):
+        gameday = make_gameday(name="Swiss API Published Setup")
+        teams = make_teams(4, prefix="PS")
+        api_client.force_authenticate(user=staff_user)
+        publish(gameday)
+
+        response = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/setup/",
+            setup_payload(teams),
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "error" in response.data
+
+    def test_reset_when_published_is_400(self, api_client, staff_user):
+        gameday, _teams = self._setup(api_client, staff_user)
+
+        response = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/reset/"
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "error" in response.data
+        # Config survives the refused reset.
+        assert GamedayDesignerState.objects.get(gameday=gameday).state_data.get("swiss")
+
+    def test_round_times_when_published_is_400(self, api_client, staff_user):
+        gameday, _teams = self._setup(api_client, staff_user)
+
+        response = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/round-times/",
+            {"round_start_overrides": {"2": "10:30"}},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "error" in response.data
+
+    def test_generate_round_when_published_is_200(self, api_client, staff_user):
+        gameday, _teams = self._setup(api_client, staff_user)
+
+        response = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/generate-round/"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["success"] is True
+        assert response.data["round"] == 1
+        assert len(response.data["game_ids"]) > 0
+
+    def test_generate_round_dry_run_when_published_is_200(self, api_client, staff_user):
+        gameday, _teams = self._setup(api_client, staff_user)
+
+        response = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/generate-round/?dry_run=true"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["success"] is True
+        assert response.data["round"] == 1
+        assert len(response.data["pairings"]) > 0
+        assert Gameinfo.objects.filter(gameday=gameday).count() == 0
+
+    def test_standings_when_published_is_200(self, api_client, staff_user):
+        gameday, _teams = self._setup(api_client, staff_user)
+
+        response = api_client.get(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/standings/"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["rounds_total"] == 3
+
+    def test_second_round_when_published_after_results(self, api_client, staff_user):
+        gameday, _teams = self._setup(api_client, staff_user)
+        generated = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/generate-round/"
+        ).data
+        for game_id in generated["game_ids"]:
+            complete_game(Gameinfo.objects.get(pk=game_id), home_score=10, away_score=0)
+
+        response = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/generate-round/"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["round"] == 2
