@@ -168,13 +168,13 @@ const TemplateLibraryModal: React.FC<TemplateLibraryModalProps> = ({
     fields: number;
     gameDuration: number;
   }) => {
-    // Defense in depth: Swiss setup is draft-only (the backend rejects it
-    // when published). handleApply already gates entry, but a modal left
-    // open on the swiss-setup step across publish could still confirm.
-    if (isLocked) return;
+    // Locked modals cannot reach here: the swiss-setup Confirm button is
+    // disabled via disabled={isLocked}, and disabled buttons never dispatch
+    // clicks to handlers in this stack. Any programmatic call is rejected by
+    // the backend draft-gate (400 swissSetupFailed inline).
     onGenerateSwiss?.({ ...config, teams: swissTeams });
     handleHide();
-  }, [onGenerateSwiss, handleHide, swissTeams, isLocked]);
+  }, [onGenerateSwiss, handleHide, swissTeams]);
 
   const handleAutoGenerateTeams = useCallback(async (count: number): Promise<GlobalTeam[]> => {
     try {
