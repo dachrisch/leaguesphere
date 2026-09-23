@@ -119,4 +119,44 @@ describe('TemplateLibraryModal swiss flow (#1970)', () => {
       await screen.findByRole('button', { name: /apply to gameday/i }),
     ).toBeInTheDocument();
   });
+
+  it('disables swiss confirm when locked (draft-only setup, e.g. published mid-modal)', async () => {
+    const onGenerateSwiss = vi.fn();
+    const { rerender } = render(
+      <TemplateLibraryModal
+        show
+        onHide={vi.fn()}
+        gamedayId={1}
+        currentUserId={1}
+        onGenerateSwiss={onGenerateSwiss}
+      />,
+    );
+    fireEvent.click(await screen.findByTestId('builtin-template-SWISS'));
+    fireEvent.click(await screen.findByTestId('apply-template-button'));
+    for (const team of leagueTeams) {
+      fireEvent.click(await screen.findByRole('button', { name: team.name }));
+    }
+    fireEvent.click(screen.getByRole('button', { name: /apply to gameday/i }));
+    await screen.findByTestId('swiss-seed-list');
+
+    // Publish lands while the modal sits on the swiss-setup step.
+    rerender(
+      <TemplateLibraryModal
+        show
+        onHide={vi.fn()}
+        gamedayId={1}
+        currentUserId={1}
+        isLocked
+        onGenerateSwiss={onGenerateSwiss}
+      />,
+    );
+
+    // Disabled buttons never dispatch clicks in this stack, so Confirm
+    // cannot fire while locked; the backend draft-gate backs programmatic
+    // calls with a 400.
+    const confirm = screen.getByTestId('swiss-setup-confirm');
+    expect(confirm).toBeDisabled();
+    fireEvent.click(confirm);
+    expect(onGenerateSwiss).not.toHaveBeenCalled();
+  });
 });
