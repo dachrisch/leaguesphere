@@ -128,6 +128,62 @@ describe('StageSection', () => {
     expect(mockOnDelete).toHaveBeenCalledWith('stage-1');
   });
 
+  it('shows a fields multi-select in edit mode when more than one field exists', () => {
+    const field1 = { id: 'field-1', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 1', order: 0 } };
+    const field2 = { id: 'field-2', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 2', order: 1 } };
+
+    renderStage(
+      createDefaultProps({
+        stage: sampleStage,
+        allNodes: [field1, field2, sampleStage, sampleGame],
+      })
+    );
+
+    fireEvent.click(screen.getByTitle(i18n.t('ui:tooltip.editStageName')));
+
+    expect(screen.getByLabelText(/fields/i)).toBeInTheDocument();
+    expect(screen.getByText('Feld 1')).toBeInTheDocument();
+    expect(screen.getByText('Feld 2')).toBeInTheDocument();
+  });
+
+  it('calls onUpdate with fieldIds when multiple fields are selected', () => {
+    const mockOnUpdate = vi.fn();
+    const field1 = { id: 'field-1', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 1', order: 0 } };
+    const field2 = { id: 'field-2', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 2', order: 1 } };
+
+    renderStage(
+      createDefaultProps({
+        stage: sampleStage,
+        allNodes: [field1, field2, sampleStage, sampleGame],
+        onUpdate: mockOnUpdate,
+      })
+    );
+
+    fireEvent.click(screen.getByTitle(i18n.t('ui:tooltip.editStageName')));
+
+    const select = screen.getByLabelText(/fields/i) as HTMLSelectElement;
+    const options = Array.from(select.options);
+    options.forEach((o) => { o.selected = true; });
+    fireEvent.change(select);
+
+    expect(mockOnUpdate).toHaveBeenCalledWith('stage-1', { fieldIds: ['field-1', 'field-2'] });
+  });
+
+  it('does not show a fields multi-select when only one field exists', () => {
+    const field1 = { id: 'field-1', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 1', order: 0 } };
+
+    renderStage(
+      createDefaultProps({
+        stage: sampleStage,
+        allNodes: [field1, sampleStage, sampleGame],
+      })
+    );
+
+    fireEvent.click(screen.getByTitle(i18n.t('ui:tooltip.editStageName')));
+
+    expect(screen.queryByLabelText(/fields/i)).not.toBeInTheDocument();
+  });
+
   it('shows correct stage name for different stages', () => {
     const finalStage: StageNode = {
       ...sampleStage,

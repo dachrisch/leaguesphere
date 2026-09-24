@@ -227,6 +227,13 @@ export interface GameTableProps {
   games: GameNode[];
   edges: FlowEdge[];
   allNodes: FlowNode[];
+  /**
+   * When the containing stage spans more than one field (StageNodeData.fieldIds),
+   * the fields it may distribute its games across -- shows a per-row field
+   * selector bound to GameNodeData.fieldId. Undefined for a normal
+   * single-field stage, where no such selector is shown.
+   */
+  stageFieldOptions?: FieldNode[];
   globalTeams: GlobalTeam[];
   globalTeamGroups: GlobalTeamGroup[];
   highlightedElement?: HighlightedElement | null;
@@ -255,12 +262,15 @@ export interface GameTableProps {
   expertMode?: boolean;
   /** Per-game simulated progression, from `useProgressionInspection`. */
   progressionByGameId?: Map<string, GameProgressionCellResult>;
+  /** Shows a per-game "Day" selector when the gameday is multi-day (see `GamedayMetadata.multiDayEnabled`). */
+  multiDayEnabled?: boolean;
 }
 
 const GameTable: React.FC<GameTableProps> = memo(({
   games,
   edges,
   allNodes,
+  stageFieldOptions,
   globalTeams,
   globalTeamGroups,
   highlightedElement,
@@ -282,6 +292,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
   readOnly = false,
   expertMode = false,
   progressionByGameId,
+  multiDayEnabled = false,
 }) => {
   const { t } = useTypedTranslation(['ui', 'domain', 'error', 'validation']);
   const [editingGameId, setEditingGameId] = useState<string | null>(null);
@@ -832,6 +843,8 @@ const GameTable: React.FC<GameTableProps> = memo(({
       <thead>
         <tr>
           <th>{t('ui:label.standing')}</th>
+          {stageFieldOptions && <th>{t('ui:label.field', 'Field')}</th>}
+          {multiDayEnabled && <th>{t('ui:label.day', 'Day')}</th>}
           <th>{t('ui:label.time')}</th>
           <th>{t('ui:label.home')}</th>
           {!readOnly && <th style={{ width: '40px' }}></th>}
@@ -875,6 +888,37 @@ const GameTable: React.FC<GameTableProps> = memo(({
                   </span>
                 )}
               </td>
+              {stageFieldOptions && (
+                <td onClick={(e) => e.stopPropagation()}>
+                  <Form.Select
+                    size="sm"
+                    value={game.data.fieldId ?? ''}
+                    onChange={(e) => onUpdate(game.id, { fieldId: e.target.value || null })}
+                    disabled={readOnly}
+                    isInvalid={!game.data.fieldId}
+                    style={{ fontSize: '0.875rem' }}
+                  >
+                    <option value="">{t('ui:placeholder.selectField', '-- Select field --')}</option>
+                    {stageFieldOptions.map((f) => (
+                      <option key={f.id} value={f.id}>{f.data.name}</option>
+                    ))}
+                  </Form.Select>
+                </td>
+              )}
+              {multiDayEnabled && (
+                <td onClick={(e) => e.stopPropagation()}>
+                  <Form.Control
+                    type="number"
+                    size="sm"
+                    min={0}
+                    value={game.data.dayOffset ?? 0}
+                    onChange={(e) => onUpdate(game.id, { dayOffset: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                    disabled={readOnly}
+                    style={{ fontSize: '0.875rem', width: '70px' }}
+                    title={t('ui:hint.dayOffset', "0 = gameday's own date, 1 = the day after, etc.")}
+                  />
+                </td>
+              )}
               {renderTimeCell(game)}
               <td>
                 {renderTeamCell(game, 'home')}

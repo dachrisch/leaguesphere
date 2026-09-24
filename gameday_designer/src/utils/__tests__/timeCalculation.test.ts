@@ -250,6 +250,49 @@ describe('timeCalculation - calculateGameTimes', () => {
       expect(result[5].data.startTime).toBe('12:40');
     });
 
+    it('schedules a single stage spanning multiple fields in parallel per game.data.fieldId', () => {
+      const field1Id = 'field-1';
+      const field2Id = 'field-2';
+      const stageId = 'stage-placement';
+
+      const fields = [
+        createFieldNode(field1Id, { name: 'Feld 1', order: 0 }),
+        createFieldNode(field2Id, { name: 'Feld 2', order: 1 }),
+      ];
+
+      const stage = createStageNode(stageId, field1Id, {
+        name: 'Platzierung',
+        category: 'preliminary',
+        order: 0,
+        startTime: DEFAULT_START_TIME,
+        defaultGameDuration: DEFAULT_GAME_DURATION,
+        fieldIds: [field1Id, field2Id],
+      });
+
+      const gameOnHomeField = createMockGameNode('game-1', stageId, 'Game 1', DEFAULT_GAME_DURATION);
+      const gameOnSecondField = {
+        ...createMockGameNode('game-2', stageId, 'Game 2', DEFAULT_GAME_DURATION),
+        data: { ...createMockGameNode('game-2', stageId, 'Game 2', DEFAULT_GAME_DURATION).data, fieldId: field2Id },
+      };
+      const secondGameOnHomeField = createMockGameNode('game-3', stageId, 'Game 3', DEFAULT_GAME_DURATION);
+
+      const result = calculateGameTimes(
+        fields,
+        [stage],
+        [gameOnHomeField, gameOnSecondField, secondGameOnHomeField],
+        DEFAULT_GAME_DURATION,
+        10
+      );
+
+      const byId = new Map(result.map((g) => [g.id, g]));
+      // game-2 is on a different field than game-1, so it starts in parallel
+      // rather than waiting for game-1 to finish.
+      expect(byId.get('game-1')!.data.startTime).toBe(DEFAULT_START_TIME);
+      expect(byId.get('game-2')!.data.startTime).toBe(DEFAULT_START_TIME);
+      // game-3 shares field-1 with game-1, so it must wait for game-1 to end.
+      expect(byId.get('game-3')!.data.startTime).toBe('11:20');
+    });
+
     it('should handle subsequent stages starting after previous stage finishes', () => {
       const field1Id = 'field-1';
       const field2Id = 'field-2';

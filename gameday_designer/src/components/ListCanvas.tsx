@@ -316,6 +316,7 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
                     readOnly={readOnly}
                     expertMode={expertMode}
                     progressionByGameId={progression?.cellsByGameId}
+                    multiDayEnabled={metadata.multiDayEnabled}
                   />
                 ))}
               </div>

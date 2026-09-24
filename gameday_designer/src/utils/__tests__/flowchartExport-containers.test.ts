@@ -51,6 +51,48 @@ describe('Flowchart Export - Container Hierarchy', () => {
       expect(data![0].games[0].stage).toBe('Preliminary');
     });
 
+    it('groups a multi-field stage\'s games by each game\'s own fieldId', () => {
+      const field1 = createFieldNode('field-1', { name: 'Feld 1', order: 0 });
+      const field2 = createFieldNode('field-2', { name: 'Feld 2', order: 1 });
+      const stage = createStageNode('stage-1', 'field-1', {
+        name: 'Platzierung',
+        fieldIds: ['field-1', 'field-2'],
+      });
+      const gameOnHomeField = createGameNodeInStage('game-1', 'stage-1', {
+        standing: 'G1',
+        homeTeamId: 'team-1',
+        awayTeamId: 'team-2',
+      });
+      const gameOnSecondField = createGameNodeInStage('game-2', 'stage-1', {
+        standing: 'G2',
+        fieldId: 'field-2',
+        homeTeamId: 'team-1',
+        awayTeamId: 'team-2',
+      });
+
+      const group: GlobalTeamGroup = { id: 'group-1', name: 'Gruppe A', order: 0 };
+      const teams: GlobalTeam[] = [
+        { id: 'team-1', groupId: 'group-1', label: '0_0', order: 0 },
+        { id: 'team-2', groupId: 'group-1', label: '0_1', order: 1 },
+      ];
+
+      const state: FlowState = {
+        nodes: [field1, field2, stage, gameOnHomeField, gameOnSecondField],
+        edges: [],
+        globalTeams: teams,
+        globalTeamGroups: [group],
+      };
+
+      const result = exportToScheduleJson(state);
+      const data = result.data as ScheduleJson[] | undefined;
+
+      expect(result.success).toBe(true);
+      const field1Schedule = data!.find((s) => s.field === 'Feld 1')!;
+      const field2Schedule = data!.find((s) => s.field === 'Feld 2')!;
+      expect(field1Schedule.games.map((g) => g.standing)).toEqual(['G1']);
+      expect(field2Schedule.games.map((g) => g.standing)).toEqual(['G2']);
+    });
+
     it('derives stage name from parent stage node', () => {
       const field = createFieldNode('field-1', { name: 'Field A' });
       const stage = createStageNode('stage-1', 'field-1', { name: 'Final', category: 'final' });

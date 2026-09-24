@@ -154,9 +154,14 @@ function getGameStage(node: FlowNode, nodes: FlowNode[]): FlowNode | null {
  * Traverses game -> stage -> field.
  */
 function getGameField(node: FlowNode, nodes: FlowNode[]): FlowNode | null {
+  // A game normally plays on its stage's home field, but a stage spanning
+  // multiple fields (StageNodeData.fieldIds) lets each game pick its actual
+  // field individually via GameNodeData.fieldId.
+  const gameFieldId = isGameNode(node) ? node.data.fieldId : null;
   const stage = getGameStage(node, nodes);
-  if (!stage || !stage.parentId) return null;
-  const field = nodes.find((n) => n.id === stage.parentId);
+  const resolvedFieldId = gameFieldId ?? (stage ? stage.parentId : undefined);
+  if (!resolvedFieldId) return null;
+  const field = nodes.find((n) => n.id === resolvedFieldId);
   if (field && isFieldNode(field)) return field;
   return null;
 }

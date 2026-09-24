@@ -17,7 +17,7 @@ import type {
   GlobalTeamGroup,
   HighlightedElement
 } from '../../types/flowchart';
-import { isGameNode } from '../../types/flowchart';
+import { isGameNode, getFieldNodes, getStageFieldIds } from '../../types/flowchart';
 import type { GameProgressionCellResult } from '../../types/progression';
 import { ICONS } from '../../utils/iconConstants';
 import { getDraggedGameSourceStageId } from '../../utils/dragState';
@@ -52,6 +52,8 @@ export interface StageSectionProps {
   expertMode?: boolean;
   /** Per-game simulated progression, from `useProgressionInspection`. */
   progressionByGameId?: Map<string, GameProgressionCellResult>;
+  /** Shows a per-game "Day" selector when the gameday is multi-day (see `GamedayMetadata.multiDayEnabled`). */
+  multiDayEnabled?: boolean;
 }
 
 const StageSection: React.FC<StageSectionProps> = memo(({
@@ -82,6 +84,7 @@ const StageSection: React.FC<StageSectionProps> = memo(({
   readOnly = false,
   expertMode = false,
   progressionByGameId,
+  multiDayEnabled = false,
 }) => {
   const { t } = useTypedTranslation(['ui', 'domain']);
   const [isEditing, setIsEditing] = useState(false);
@@ -184,6 +187,18 @@ const StageSection: React.FC<StageSectionProps> = memo(({
     onUpdate(stage.id, { color: e.target.value });
   }, [stage.id, onUpdate]);
 
+  const allFields = useMemo(() => getFieldNodes(allNodes), [allNodes]);
+  const stageFieldIds = useMemo(() => getStageFieldIds(stage), [stage]);
+
+  const handleFieldsChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      e.stopPropagation();
+      const selected = Array.from(e.target.selectedOptions, (o) => o.value);
+      onUpdate(stage.id, { fieldIds: selected.length > 0 ? selected : undefined });
+    },
+    [stage.id, onUpdate]
+  );
+
   const canAcceptDrop = !readOnly && !!onMoveGame;
 
   const handleDragEnter = useCallback(
@@ -279,6 +294,26 @@ const StageSection: React.FC<StageSectionProps> = memo(({
                 <option value="RANKING">{t('domain:stageTypeRanking')}</option>
               </Form.Select>
             </div>
+            {allFields.length > 1 && (
+              <div className="d-flex align-items-center gap-2 me-2">
+                <Form.Label htmlFor={`stage-fields-${stage.id}`} className="mb-0 text-muted small">
+                  {t('ui:label.fields', 'Fields')}:
+                </Form.Label>
+                <Form.Select
+                  id={`stage-fields-${stage.id}`}
+                  size="sm"
+                  multiple
+                  value={stageFieldIds}
+                  onChange={handleFieldsChange}
+                  title={t('ui:hint.multiFieldStage', 'Select multiple fields to spread this stage\'s games across them')}
+                  style={{ width: '160px', minHeight: '60px' }}
+                >
+                  {allFields.map((f) => (
+                    <option key={f.id} value={f.id}>{f.data.name}</option>
+                  ))}
+                </Form.Select>
+              </div>
+            )}
             <div className="flex-grow-1 d-flex align-items-center gap-2">
               <input
                 type="text"
@@ -324,6 +359,12 @@ const StageSection: React.FC<StageSectionProps> = memo(({
               )}
             </div>
             <strong className="me-2">{stage.data.name}</strong>
+            {stageFieldIds.length > 1 && (
+              <span className="badge bg-light text-dark border me-2" style={{ fontSize: '0.8rem' }} title={t('ui:hint.multiFieldStage', 'Select multiple fields to spread this stage\'s games across them')}>
+                <i className="bi bi-grid-3x3-gap me-1"></i>
+                {stageFieldIds.length}
+              </span>
+            )}
             {!readOnly && (
               <Button 
                 size="sm" 
@@ -404,6 +445,7 @@ const StageSection: React.FC<StageSectionProps> = memo(({
                   games={games}
                   edges={edges}
                   allNodes={allNodes}
+                  stageFieldOptions={stageFieldIds.length > 1 ? allFields.filter((f) => stageFieldIds.includes(f.id)) : undefined}
                   globalTeams={globalTeams}
                   globalTeamGroups={globalTeamGroups}
                   highlightedElement={highlightedElement}
@@ -426,6 +468,7 @@ const StageSection: React.FC<StageSectionProps> = memo(({
                   readOnly={readOnly}
                   expertMode={expertMode}
                   progressionByGameId={progressionByGameId}
+                  multiDayEnabled={multiDayEnabled}
                 />
               </>
             )}

@@ -76,7 +76,8 @@ export interface AddStageOptions {
 export function useNodesState(
   nodes: FlowNode[],
   setNodes: React.Dispatch<React.SetStateAction<FlowNode[]>>,
-  onNodesDeleted?: (nodeIds: string[]) => void
+  onNodesDeleted?: (nodeIds: string[]) => void,
+  defaultGameDuration?: number
 ) {
   /**
    * Add a new field container node.
@@ -92,7 +93,7 @@ export function useNodesState(
 
       if (includeStage) {
         const stageId = `stage-${uuidv4()}`;
-        const newStage = createStageNode(stageId, id, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0 });
+        const newStage = createStageNode(stageId, id, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0, defaultGameDuration });
         setNodes((nds) => [...nds, newField, newStage]);
       } else {
         setNodes((nds) => [...nds, newField]);
@@ -100,7 +101,7 @@ export function useNodesState(
 
       return newField;
     },
-    [nodes, setNodes]
+    [nodes, setNodes, defaultGameDuration]
   );
 
   /**
@@ -130,12 +131,12 @@ export function useNodesState(
       const stageType = options?.stageType ?? 'STANDARD';
       const position = { x: 20, y: 60 + stageCount * 180 };
 
-      const newStage = createStageNode(id, fieldId, { name, category, stageType, order: stageCount }, position);
+      const newStage = createStageNode(id, fieldId, { name, category, stageType, order: stageCount, defaultGameDuration }, position);
       setNodes((nds) => [...nds, newStage]);
 
       return newStage;
     },
-    [nodes, setNodes]
+    [nodes, setNodes, defaultGameDuration]
   );
 
   /**
@@ -186,7 +187,7 @@ export function useNodesState(
       if (selected && isFieldNode(selected)) {
         const fieldId = selected.id;
         const stageId = `stage-${uuidv4()}`;
-        const newStage = createStageNode(stageId, fieldId, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0 });
+        const newStage = createStageNode(stageId, fieldId, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0, defaultGameDuration });
         setNodes((nds) => [...nds, newStage]);
         return { fieldId, stageId };
       }
@@ -201,7 +202,7 @@ export function useNodesState(
         }
         // Create stage in existing field
         const stageId = `stage-${uuidv4()}`;
-        const newStage = createStageNode(stageId, firstField.id, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0 });
+        const newStage = createStageNode(stageId, firstField.id, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0, defaultGameDuration });
         setNodes((nds) => [...nds, newStage]);
         return { fieldId: firstField.id, stageId };
       }
@@ -212,13 +213,13 @@ export function useNodesState(
       const fieldCount = nodes.filter(isFieldNode).length;
 
       const newField = createFieldNode(fieldId, { name: `Feld ${fieldCount + 1}`, order: fieldCount });
-      const newStage = createStageNode(stageId, fieldId, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0 });
+      const newStage = createStageNode(stageId, fieldId, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0, defaultGameDuration });
 
       setNodes((nds) => [...nds, newField, newStage]);
 
       return { fieldId, stageId };
     },
-    [nodes, setNodes, getTargetStage]
+    [nodes, setNodes, getTargetStage, defaultGameDuration]
   );
 
   /**
@@ -435,11 +436,15 @@ export function useNodesState(
 
   const getGameField = useCallback(
     (gameId: string): FieldNode | null => {
-      const game = nodes.find((n) => n.id === gameId && isGameNode(n));
-      if (!game?.parentId) return null;
-      const stage = nodes.find((n) => n.id === game.parentId && isStageNode(n));
-      if (!stage?.parentId) return null;
-      const field = nodes.find((n) => n.id === stage.parentId && isFieldNode(n));
+      const game = nodes.find((n) => n.id === gameId && isGameNode(n)) as GameNode | undefined;
+      if (!game) return null;
+      // A game normally plays on its stage's home field, but a stage
+      // spanning multiple fields (StageNodeData.fieldIds) lets each game
+      // pick its actual field individually via GameNodeData.fieldId.
+      const resolvedFieldId = game.data.fieldId
+        ?? (nodes.find((n) => n.id === game.parentId && isStageNode(n)) as StageNode | undefined)?.parentId;
+      if (!resolvedFieldId) return null;
+      const field = nodes.find((n) => n.id === resolvedFieldId && isFieldNode(n));
       return (field as FieldNode) || null;
     },
     [nodes]

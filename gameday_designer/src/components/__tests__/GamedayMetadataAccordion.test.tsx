@@ -95,6 +95,28 @@ describe('GamedayMetadataAccordion', () => {
     expect(mockOnUpdate).toHaveBeenCalledWith({ name: 'Updated Name' });
   });
 
+  it('defaults the game duration input to 70 when metadata.game_duration is unset', async () => {
+    await renderAccordion();
+    const durationInput = screen.getByLabelText('Default game duration (min)') as HTMLInputElement;
+    expect(durationInput.value).toBe('70');
+  });
+
+  it('calls onUpdate with game_duration when the default duration field changes', async () => {
+    await renderAccordion({ onUpdate: mockOnUpdate });
+    const durationInput = screen.getByLabelText('Default game duration (min)');
+    fireEvent.change(durationInput, { target: { value: '60' } });
+
+    expect(mockOnUpdate).toHaveBeenCalledWith({ game_duration: 60 });
+  });
+
+  it('calls onUpdate with multiDayEnabled when the multi-day switch is toggled', async () => {
+    await renderAccordion({ onUpdate: mockOnUpdate });
+    const toggle = screen.getByLabelText('Multi-day gameday');
+    fireEvent.click(toggle);
+
+    expect(mockOnUpdate).toHaveBeenCalledWith({ multiDayEnabled: true });
+  });
+
   it('collapses when forceCollapsed becomes true', async () => {
     const { rerender } = await renderAccordion({ forceCollapsed: false });
     expect(document.querySelector('.accordion-button')).not.toHaveClass('collapsed');

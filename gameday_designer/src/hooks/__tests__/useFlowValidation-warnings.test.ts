@@ -222,4 +222,45 @@ describe('useFlowValidation - New Warnings', () => {
       expect(warning).toBeUndefined();
     });
   });
+
+  describe('Multi-field Stage Warning', () => {
+    it('warns when a game in a multi-field stage has no fieldId chosen', () => {
+      const nodes: FlowNode[] = [
+        { id: 'f1', type: 'field', data: { name: 'Feld 1', order: 0 } as FieldNodeData, position: { x: 0, y: 0 } },
+        { id: 'f2', type: 'field', data: { name: 'Feld 2', order: 1 } as FieldNodeData, position: { x: 0, y: 0 } },
+        { id: 's1', type: 'stage', parentId: 'f1', data: { name: 'Platzierung', order: 0, fieldIds: ['f1', 'f2'] } as StageNodeData, position: { x: 0, y: 0 } },
+        { id: 'g1', type: 'game', parentId: 's1', data: { standing: 'G1', fieldId: null, homeTeamId: 't1', awayTeamId: 't2' } as GameNodeData, position: { x: 0, y: 0 } },
+      ];
+      const { result } = renderHook(() => useFlowValidation(nodes, [], [], [], validMetadata));
+
+      const warning = result.current.warnings.find(w => w.affectedNodes.includes('g1') && w.type === 'unassigned_field');
+      expect(warning).toBeDefined();
+      expect(warning?.messageKey).toBe('unassigned_field_multi_field_stage');
+    });
+
+    it('does not warn when a game in a multi-field stage has picked a field', () => {
+      const nodes: FlowNode[] = [
+        { id: 'f1', type: 'field', data: { name: 'Feld 1', order: 0 } as FieldNodeData, position: { x: 0, y: 0 } },
+        { id: 'f2', type: 'field', data: { name: 'Feld 2', order: 1 } as FieldNodeData, position: { x: 0, y: 0 } },
+        { id: 's1', type: 'stage', parentId: 'f1', data: { name: 'Platzierung', order: 0, fieldIds: ['f1', 'f2'] } as StageNodeData, position: { x: 0, y: 0 } },
+        { id: 'g1', type: 'game', parentId: 's1', data: { standing: 'G1', fieldId: 'f2', homeTeamId: 't1', awayTeamId: 't2' } as GameNodeData, position: { x: 0, y: 0 } },
+      ];
+      const { result } = renderHook(() => useFlowValidation(nodes, [], [], [], validMetadata));
+
+      const warning = result.current.warnings.find(w => w.affectedNodes.includes('g1') && w.type === 'unassigned_field');
+      expect(warning).toBeUndefined();
+    });
+
+    it('does not warn for a single-field stage (no fieldIds set)', () => {
+      const nodes: FlowNode[] = [
+        { id: 'f1', type: 'field', data: { name: 'Feld 1', order: 0 } as FieldNodeData, position: { x: 0, y: 0 } },
+        { id: 's1', type: 'stage', parentId: 'f1', data: { name: 'Vorrunde', order: 0 } as StageNodeData, position: { x: 0, y: 0 } },
+        { id: 'g1', type: 'game', parentId: 's1', data: { standing: 'G1', fieldId: null, homeTeamId: 't1', awayTeamId: 't2' } as GameNodeData, position: { x: 0, y: 0 } },
+      ];
+      const { result } = renderHook(() => useFlowValidation(nodes, [], [], [], validMetadata));
+
+      const warning = result.current.warnings.find(w => w.affectedNodes.includes('g1') && w.type === 'unassigned_field');
+      expect(warning).toBeUndefined();
+    });
+  });
 });

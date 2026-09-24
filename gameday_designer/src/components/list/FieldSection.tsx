@@ -53,6 +53,8 @@ export interface FieldSectionProps {
   expertMode?: boolean;
   /** Per-game simulated progression, from `useProgressionInspection`. */
   progressionByGameId?: Map<string, GameProgressionCellResult>;
+  /** Shows a per-game "Day" selector when the gameday is multi-day (see `GamedayMetadata.multiDayEnabled`). */
+  multiDayEnabled?: boolean;
 }
 
 const FieldSection: React.FC<FieldSectionProps> = memo(({
@@ -86,6 +88,7 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
   readOnly = false,
   expertMode = false,
   progressionByGameId,
+  multiDayEnabled = false,
 }) => {
   const { t } = useTypedTranslation(['ui']);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -296,6 +299,7 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
                   readOnly={readOnly}
                   expertMode={expertMode}
                   progressionByGameId={progressionByGameId}
+                  multiDayEnabled={multiDayEnabled}
                 />
               ))}
             </>

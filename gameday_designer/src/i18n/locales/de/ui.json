@@ -1,6 +1,8 @@
 {
   "hint": {
-    "unlockBlockedResults": "Freischalten nicht möglich: Für diesen Spieltag wurden bereits Ergebnisse erfasst. Beim erneuten Veröffentlichen würde der Spielplan neu erzeugt und die Ergebnisse gelöscht."
+    "unlockBlockedResults": "Freischalten nicht möglich: Für diesen Spieltag wurden bereits Ergebnisse erfasst. Beim erneuten Veröffentlichen würde der Spielplan neu erzeugt und die Ergebnisse gelöscht.",
+    "multiFieldStage": "Mehrere Felder auswählen, um die Spiele dieser Phase darauf zu verteilen",
+    "dayOffset": "0 = Datum des Spieltags, 1 = der Tag danach usw."
   },
   "button": {
     "addField": "Feld hinzufügen",
@@ -56,6 +58,8 @@
     "english": "Englisch",
     "stage": "Phase",
     "standing": "Platzierung",
+    "field": "Feld",
+    "day": "Tag",
     "time": "Zeit",
     "home": "Heim",
     "away": "Gast",
@@ -94,6 +98,8 @@
     "gamedayName": "Spieltagsname",
     "gamedayDate": "Spieltagsdatum",
     "gamedayStartTime": "Startzeit",
+    "defaultGameDuration": "Standard-Spieldauer (Min.)",
+    "multiDayEnabled": "Mehrtägiger Spieltag",
     "season": "Saison",
     "league": "Liga",
     "venue": "Austragungsort",
@@ -154,6 +160,7 @@
     "selectSeason": "Saison wählen",
     "selectLeague": "Liga wählen",
     "fieldName": "Neuer Feldname...",
+    "selectField": "-- Feld wählen --",
     "match": "z.B. HF1, Finale",
     "teamOfficials": "z.B. Team-Schiedsrichter",
     "templateName": "z.B. 6 Teams - 2 Felder - MyFormat",

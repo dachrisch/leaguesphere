@@ -5,6 +5,7 @@ import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import { ICONS } from '../utils/iconConstants';
 import { gamedayApi } from '../api/gamedayApi';
 import { ResourceUrl } from '../types/api';
+import { DEFAULT_GAME_DURATION } from '../utils/tournamentConstants';
 import './GamedayMetadataAccordion.css';
 
 /**
@@ -467,6 +468,35 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     className={isFieldHighlighted('start') ? 'is-highlighted' : ''}
                   />
                 </Form.Group>
+              </Col>
+            </Row>
+            <Row className="mb-3">
+              <Col md={3}>
+                <Form.Group controlId="gamedayDefaultDuration">
+                  <Form.Label>{t('ui:label.defaultGameDuration', 'Default game duration (min)')}</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min={1}
+                    value={metadata.game_duration ?? DEFAULT_GAME_DURATION}
+                    onChange={(e) => handleChange('game_duration', parseInt(e.target.value, 10))}
+                    disabled={readOnly}
+                    className={isFieldHighlighted('defaultDuration') ? 'is-highlighted' : ''}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4} className="d-flex align-items-end">
+                <Form.Check
+                  type="switch"
+                  id="gamedayMultiDayEnabled"
+                  label={t('ui:label.multiDayEnabled', 'Multi-day gameday')}
+                  checked={!!metadata.multiDayEnabled}
+                  onChange={(e) => {
+                    if (readOnly) return;
+                    onUpdate({ multiDayEnabled: e.target.checked });
+                  }}
+                  disabled={readOnly}
+                  className="mb-2"
+                />
               </Col>
             </Row>
             <Row className="mb-3">

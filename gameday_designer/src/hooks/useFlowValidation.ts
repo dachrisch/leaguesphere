@@ -379,6 +379,7 @@ function checkUnassignedFields(nodes: FlowNode[]): FlowValidationWarning[] {
   const warnings: FlowValidationWarning[] = [];
 
   const gameNodes = nodes.filter(isGameNode);
+  const stageNodes = nodes.filter(isStageNode);
 
   for (const node of gameNodes) {
     const data = node.data as GameNodeData;
@@ -397,6 +398,26 @@ function checkUnassignedFields(nodes: FlowNode[]): FlowValidationWarning[] {
         messageKey: 'unassigned_field',
         messageParams: {
             game: data.standing || node.id
+        },
+        affectedNodes: [node.id],
+      });
+      continue;
+    }
+
+    // A stage spanning multiple fields requires each of its games to pick
+    // its actual field explicitly -- the stage's own parentId is no longer
+    // a sufficient default once there's more than one field to choose from.
+    const parentStage = stageNodes.find((s) => s.id === node.parentId) as StageNode | undefined;
+    const fieldIds = parentStage?.data.fieldIds;
+    if (parentStage && fieldIds && fieldIds.length > 1 && !data.fieldId) {
+      warnings.push({
+        id: `${node.id}_unassigned_field`,
+        type: 'unassigned_field',
+        message: `Game "${data.standing || node.id}" must pick a field -- its stage "${parentStage.data.name}" spans multiple fields`,
+        messageKey: 'unassigned_field_multi_field_stage',
+        messageParams: {
+          game: data.standing || node.id,
+          stage: parentStage.data.name,
         },
         affectedNodes: [node.id],
       });

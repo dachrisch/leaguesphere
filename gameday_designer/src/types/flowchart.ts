@@ -108,7 +108,13 @@ export interface GameNodeData {
   stageType: 'STANDARD' | 'RANKING';
   /** Standing/match identifier: e.g., "HF1", "P1", "Spiel 3" */
   standing: string;
-  /** Assigned field ID (null if unassigned) - deprecated in v2, use parentId hierarchy */
+  /**
+   * Actual field this game is played on, when its stage spans more than one
+   * field (StageNodeData.fieldIds). Overrides the field derived from the
+   * stage's own parentId. Unused (and safe to leave null) for a normal
+   * single-field stage, where the field always comes from the parentId
+   * hierarchy instead.
+   */
   fieldId: string | null;
   /** Officiating team reference (can be null) */
   official: TeamReference | null;
@@ -140,6 +146,12 @@ export interface GameNodeData {
   duration?: number;
   /** Flag: true if startTime was manually set (prevents auto-recalc) */
   manualTime?: boolean;
+  /**
+   * Day offset from the gameday's own date: 0 = the gameday's date, 1 = the
+   * day after, etc. Only meaningful (and only shown in the UI) when the
+   * gameday's metadata has `multiDayEnabled` set. Defaults to 0.
+   */
+  dayOffset?: number;
 
   // Game Results
   /** Game status: "Geplant", "Gestartet", "Beendet" (backend) or "DRAFT", "PUBLISHED", "COMPLETED" (frontend) */
@@ -241,6 +253,15 @@ export interface StageNodeData {
   order: number;
   /** Optional color for visual coding */
   color?: string;
+  /**
+   * Field node ids this stage's games may be distributed across (a
+   * placement phase physically played on several fields at once). Defaults
+   * to just [parentId] when unset -- the stage's parentId keeps meaning its
+   * "home" field for rendering and as the default when a game doesn't
+   * specify its own `fieldId`. When this has more than one entry, each of
+   * the stage's games must pick its actual field via GameNodeData.fieldId.
+   */
+  fieldIds?: string[];
 
   // Time scheduling (Phase 1)
   /** Start time for first game in stage (HH:MM, 24-hour) */
@@ -406,6 +427,14 @@ export interface GamedayMetadata {
   has_results?: boolean;
   resource_urls?: import('./api').ResourceUrl[];
   game_duration?: number;
+  /**
+   * Client-side convenience toggle: when set, the designer shows a per-game
+   * "Day" selector (GameNodeData.dayOffset) so games can be assigned to
+   * later calendar days than the gameday's own date. Off by default -- a
+   * normal single-day gameday shows no day UI at all. Persisted in the same
+   * JSON blob as the rest of the metadata, same as `game_duration`.
+   */
+  multiDayEnabled?: boolean;
 }
 
 // ============================================================================
@@ -600,6 +629,19 @@ export function getFieldNodes(nodes: FlowNode[]): FieldNode[] {
 }
 
 /**
+ * The set of field node ids a stage's games may be distributed across.
+ * Falls back to just the stage's own parentId (its "home" field) when
+ * `fieldIds` is unset or empty -- the single-field case every existing
+ * stage is in today.
+ */
+export function getStageFieldIds(stage: StageNode): string[] {
+  if (stage.data.fieldIds && stage.data.fieldIds.length > 0) {
+    return stage.data.fieldIds;
+  }
+  return stage.parentId ? [stage.parentId] : [];
+}
+
+/**
  * Type guard to check if a node is a StageNode.
  */
 export function isStageNode(node: FlowNode): node is StageNode {
@@ -724,6 +766,7 @@ export function createStageNode(
       stageType: options?.stageType ?? 'STANDARD',
       order: options?.order ?? 0,
       color: options?.color,
+      fieldIds: options?.fieldIds,
       // Time scheduling fields (Phase 1)
       startTime: options?.startTime,
       defaultGameDuration: options?.defaultGameDuration ?? DEFAULT_GAME_DURATION,

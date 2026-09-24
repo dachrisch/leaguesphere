@@ -24,6 +24,7 @@ import {
   getFieldNodes,
 } from '../types/flowchart';
 import { useNodesState } from './useNodesState';
+import { DEFAULT_GAME_DURATION } from '../utils/tournamentConstants';
 import { useEdgesState } from './useEdgesState';
 import { useTeamPoolState } from './useTeamPoolState';
 import { resolveBracketReferences } from '../utils/bracketResolution';
@@ -194,7 +195,7 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
   const nodesManager = useNodesState(nodes, (newNodes) => {
     setNodes(newNodes);
     handleStateChange();
-  });
+  }, undefined, metadata.game_duration ?? DEFAULT_GAME_DURATION);
   const edgesManager = useEdgesState(edges, (newEdges) => {
     setEdges(newEdges);
     handleStateChange();
@@ -374,11 +375,15 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
   }, [nodesManager, selection.nodeIds]);
 
   const getGameField = useCallback((gameId: string): FieldNode | null => {
-    const game = nodes.find((n) => n.id === gameId && isGameNode(n));
-    if (!game?.parentId) return null;
-    const stage = nodes.find((n) => n.id === game.parentId && isStageNode(n));
-    if (!stage?.parentId) return null;
-    return nodes.find((n) => n.id === stage.parentId && isFieldNode(n)) as FieldNode || null;
+    const game = nodes.find((n) => n.id === gameId && isGameNode(n)) as GameNode | undefined;
+    if (!game) return null;
+    // A game normally plays on its stage's home field, but a stage spanning
+    // multiple fields (StageNodeData.fieldIds) lets each game pick its
+    // actual field individually via GameNodeData.fieldId.
+    const resolvedFieldId = game.data.fieldId
+      ?? (nodes.find((n) => n.id === game.parentId && isStageNode(n)) as StageNode | undefined)?.parentId;
+    if (!resolvedFieldId) return null;
+    return nodes.find((n) => n.id === resolvedFieldId && isFieldNode(n)) as FieldNode || null;
   }, [nodes]);
 
   const getGameStage = useCallback((gameId: string): StageNode | null => {

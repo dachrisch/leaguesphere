@@ -119,6 +119,59 @@ describe('GameTable', () => {
     expect(screen.getByText(i18n.t('ui:message.noGamesInStage'))).toBeInTheDocument();
   });
 
+  describe('Multi-day gameday', () => {
+    it('does not show a day column when multiDayEnabled is not set', () => {
+      renderTable();
+      expect(screen.queryByText(i18n.t('ui:label.day'))).not.toBeInTheDocument();
+    });
+
+    it('shows a per-row day selector when multiDayEnabled is true', () => {
+      renderTable({ multiDayEnabled: true });
+      expect(screen.getByText(i18n.t('ui:label.day'))).toBeInTheDocument();
+    });
+
+    it('calls onUpdate with dayOffset when the day input changes', async () => {
+      const user = userEvent.setup();
+      renderTable({ multiDayEnabled: true });
+
+      const dayInput = screen.getByTitle(i18n.t('ui:hint.dayOffset'));
+      await user.clear(dayInput);
+      await user.type(dayInput, '1');
+
+      expect(mockOnUpdate).toHaveBeenCalledWith('game-2', { dayOffset: 1 });
+    });
+  });
+
+  describe('Multi-field stage', () => {
+    it('does not show a field column when stageFieldOptions is not provided', () => {
+      renderTable();
+      expect(screen.queryByText(i18n.t('ui:label.field'))).not.toBeInTheDocument();
+    });
+
+    const findFieldSelect = (): HTMLSelectElement =>
+      screen.getAllByRole('combobox').find(
+        (el) => el.tagName === 'SELECT' && Array.from((el as HTMLSelectElement).options).some((o) => o.textContent === 'Field 2')
+      ) as HTMLSelectElement;
+
+    it('shows a per-row field selector when stageFieldOptions is provided', () => {
+      const field2 = createFieldNode('field-2', { name: 'Field 2', order: 1 });
+      renderTable({ stageFieldOptions: [field1, field2] });
+
+      expect(screen.getByText(i18n.t('ui:label.field'))).toBeInTheDocument();
+      expect(findFieldSelect()).toBeInTheDocument();
+    });
+
+    it('calls onUpdate with the chosen fieldId when the field selector changes', async () => {
+      const user = userEvent.setup();
+      const field2 = createFieldNode('field-2', { name: 'Field 2', order: 1 });
+      renderTable({ stageFieldOptions: [field1, field2] });
+
+      await user.selectOptions(findFieldSelect(), 'field-2');
+
+      expect(mockOnUpdate).toHaveBeenCalledWith('game-2', { fieldId: 'field-2' });
+    });
+  });
+
   describe('Inline editing', () => {
     it('saves standing on Enter', async () => {
       const user = userEvent.setup();
