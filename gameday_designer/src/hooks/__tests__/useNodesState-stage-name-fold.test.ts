@@ -30,7 +30,7 @@ describe('useNodesState - addStageNode name-collision fold-in', () => {
     return { result, getNodes: () => nodes, rerender };
   };
 
-  it('folds a second field\'s first stage into the first field\'s same-named default stage', () => {
+  it('folds a second field\'s first stage into the first field\'s same-named default stage, returning the existing node', () => {
     const { result, getNodes, rerender } = setupHook();
 
     let field1Id = '';
@@ -40,10 +40,13 @@ describe('useNodesState - addStageNode name-collision fold-in', () => {
     act(() => { field2Id = result.current.addFieldNode().id; });
     rerender({ nodes: getNodes() });
 
-    act(() => { result.current.addStageNode(field1Id); }); // defaults to "Preliminary"
+    let firstStageId = '';
+    act(() => { firstStageId = result.current.addStageNode(field1Id)!.id; }); // defaults to "Preliminary"
     rerender({ nodes: getNodes() });
-    act(() => { result.current.addStageNode(field2Id); }); // also defaults to "Preliminary"
+    let returned: StageNode | null = null;
+    act(() => { returned = result.current.addStageNode(field2Id); }); // also defaults to "Preliminary"
 
+    expect(returned!.id).toBe(firstStageId);
     const stages = getNodes().filter(isStageNode);
     expect(stages).toHaveLength(1);
     expect(getStageFieldIds(stages[0] as StageNode)).toEqual([field1Id, field2Id]);
@@ -67,26 +70,6 @@ describe('useNodesState - addStageNode name-collision fold-in', () => {
     expect(stages).toHaveLength(1);
     expect(stages[0].data.name).toBe('Platzierung');
     expect(getStageFieldIds(stages[0] as StageNode)).toEqual([field1Id, field2Id]);
-  });
-
-  it('returns the existing stage, not a new node, on a fold-in', () => {
-    const { result, getNodes, rerender } = setupHook();
-
-    let field1Id = '';
-    let field2Id = '';
-    act(() => { field1Id = result.current.addFieldNode().id; });
-    rerender({ nodes: getNodes() });
-    act(() => { field2Id = result.current.addFieldNode().id; });
-    rerender({ nodes: getNodes() });
-
-    let firstStageId = '';
-    act(() => { firstStageId = result.current.addStageNode(field1Id)!.id; });
-    rerender({ nodes: getNodes() });
-
-    let returned: StageNode | null = null;
-    act(() => { returned = result.current.addStageNode(field2Id); });
-
-    expect(returned!.id).toBe(firstStageId);
   });
 
   it('does not create a duplicate entry when re-adding the same field (idempotent)', () => {

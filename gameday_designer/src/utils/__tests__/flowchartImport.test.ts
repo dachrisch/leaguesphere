@@ -338,7 +338,7 @@ describe('Flowchart Import Utility', () => {
       }
     });
 
-    it('folds two fields sharing a stage name into one stage node spanning both fields', () => {
+    it('folds two fields sharing a stage name (case/whitespace-insensitive) into one stage node spanning both fields', () => {
       const json = [
         {
           field: 'Feld 1',
@@ -349,7 +349,7 @@ describe('Flowchart Import Utility', () => {
         {
           field: 'Feld 2',
           games: [
-            { stage: 'Preliminary', standing: 'G2', home: 'Team C', away: 'Team D' },
+            { stage: '  PRELIMINARY  ', standing: 'G2', home: 'Team C', away: 'Team D' },
           ],
         },
       ];
@@ -362,6 +362,7 @@ describe('Flowchart Import Utility', () => {
       const stageNodes = nodes.filter(isStageNode);
 
       expect(stageNodes).toHaveLength(1);
+      expect(stageNodes[0].data.name).toBe('Preliminary');
       expect(getStageFieldIds(stageNodes[0] as StageNode)).toEqual(fieldNodes.map((f) => f.id));
 
       const gameNodes = nodes.filter(isGameNode);
@@ -370,19 +371,6 @@ describe('Flowchart Import Utility', () => {
       // own raw string -- so the backend's exact-text standings grouping
       // combines them once published.
       expect(gameNodes.every((g) => g.data.stage === stageNodes[0].data.name)).toBe(true);
-    });
-
-    it('matches stage names case-insensitively and trims whitespace when deduping across fields', () => {
-      const json = [
-        { field: 'Feld 1', games: [{ stage: 'Vorrunde', standing: 'G1', home: 'Team A', away: 'Team B' }] },
-        { field: 'Feld 2', games: [{ stage: '  VORRUNDE  ', standing: 'G2', home: 'Team C', away: 'Team D' }] },
-      ];
-
-      const result = importFromScheduleJson(json);
-
-      const stageNodes = result.state!.nodes.filter(isStageNode);
-      expect(stageNodes).toHaveLength(1);
-      expect(stageNodes[0].data.name).toBe('Vorrunde');
     });
   });
 

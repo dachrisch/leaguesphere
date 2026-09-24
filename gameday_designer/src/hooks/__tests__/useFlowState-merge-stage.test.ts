@@ -47,7 +47,7 @@ describe('useFlowState - mergeStageInto', () => {
     };
   };
 
-  it('re-parents the source stage\'s games onto the target and preserves their actual field', () => {
+  it('re-parents the source stage\'s games (preserving their actual field), unions fieldIds, and deletes the source', () => {
     const { result } = renderHook(() => useFlowState());
     act(() => { result.current.importState(buildState()); });
 
@@ -60,23 +60,9 @@ describe('useFlowState - mergeStageInto', () => {
     // must keep playing where it always did, not silently move to the
     // target's field.
     expect(movedGame.data.fieldId).toBe('field-2');
-  });
-
-  it('unions fieldIds from both stages onto the target', () => {
-    const { result } = renderHook(() => useFlowState());
-    act(() => { result.current.importState(buildState()); });
-
-    act(() => { result.current.mergeStageInto('stage-source', 'stage-target'); });
 
     const target = result.current.nodes.find((n) => n.id === 'stage-target') as StageNode;
     expect(getStageFieldIds(target)).toEqual(['field-1', 'field-2', 'field-3']);
-  });
-
-  it('deletes the source stage node', () => {
-    const { result } = renderHook(() => useFlowState());
-    act(() => { result.current.importState(buildState()); });
-
-    act(() => { result.current.mergeStageInto('stage-source', 'stage-target'); });
 
     expect(result.current.nodes.find((n) => n.id === 'stage-source')).toBeUndefined();
   });

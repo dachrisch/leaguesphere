@@ -714,18 +714,16 @@ describe('StageSection', () => {
       expect(screen.getByTestId('merge-stage-toggle-stage-1')).toBeDisabled();
     });
 
-    it('is hidden entirely when onMergeStage is not provided', () => {
-      renderStage(
+    it('is hidden when onMergeStage is not provided, and in read-only mode', () => {
+      const { unmount } = renderStage(
         createDefaultProps({
           stage: sampleStage,
           allNodes: [sampleStage, otherField, otherStage],
         })
       );
-
       expect(screen.queryByTestId('merge-stage-toggle-stage-1')).not.toBeInTheDocument();
-    });
+      unmount();
 
-    it('is hidden in read-only mode', () => {
       renderStage(
         createDefaultProps({
           stage: sampleStage,
@@ -734,7 +732,6 @@ describe('StageSection', () => {
           readOnly: true,
         })
       );
-
       expect(screen.queryByTestId('merge-stage-toggle-stage-1')).not.toBeInTheDocument();
     });
   });
