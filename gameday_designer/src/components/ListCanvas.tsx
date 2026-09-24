@@ -12,9 +12,10 @@ import FieldSection from './list/FieldSection';
 import { GameResultsTable, ScoreEdit } from './GameResultsTable';
 import MetadataTeamPoolRow from './MetadataTeamPoolRow';
 import ProgressionInspectorPanel from './ProgressionInspectorPanel';
+import StagesOverviewPanel from './StagesOverviewPanel';
 import type { FlowNode, FlowEdge, StageNode, GlobalTeam, GlobalTeamGroup, GamedayMetadata, FlowValidationResult, HighlightedElement } from '../types/flowchart';
 import type { ProgressionSimulationResult } from '../types/progression';
-import { isStageNode, getFieldNodes } from '../types/flowchart';
+import { isStageNode, getFieldNodes, getStageFieldIds } from '../types/flowchart';
 import { ICONS } from '../utils/iconConstants';
 import './ListCanvas.css';
 
@@ -43,7 +44,7 @@ export interface ListCanvasProps {
   getTeamUsage: (teamId: string) => { gameId: string; slot: 'home' | 'away' }[];
   onAssignTeam: (gameId: string, teamId: string, slot: 'home' | 'away') => void;
   onSwapTeams: (gameId: string) => void;
-  onAddGame: (stageId: string) => void;
+  onAddGame: (stageId: string, fieldId?: string) => void;
   onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
   onAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away', sourceGroup?: string) => void;
   onRemoveEdgeFromSlot: (targetGameId: string, targetSlot: 'home' | 'away') => void;
@@ -55,7 +56,11 @@ export interface ListCanvasProps {
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
   onNotify?: (message: string, type: import('../types/designer').NotificationType, title?: string) => void;
-  onMoveGame?: (gameId: string, targetStageId: string) => void;
+  onMoveGame?: (gameId: string, targetStageId: string, targetFieldId?: string) => void;
+  /** Moves a game between two field-instances of the same multi-field stage (see `StageNodeData.fieldIds`) without changing its stage. */
+  onMoveGameField?: (gameId: string, targetFieldId: string) => void;
+  /** Updates which fields a stage spans, resetting any now-stranded games back to the stage's home field. */
+  onUpdateStageFields?: (stageId: string, fieldIds: string[] | undefined) => void;
   onAutoAssignOfficials?: () => void;
   isAutoAssigning?: boolean;
   onAddOfficials?: () => void;
@@ -119,6 +124,8 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
     onDynamicReferenceClick,
     onNotify,
     onMoveGame,
+    onMoveGameField,
+    onUpdateStageFields,
     onAutoAssignOfficials,
     isAutoAssigning = false,
     onAddOfficials,
@@ -143,13 +150,17 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
 
   const fields = useMemo(() => getFieldNodes(nodes), [nodes]);
 
+  // A stage renders once per field it spans (`StageNodeData.fieldIds`,
+  // default: just its home field) -- the field is only where its games are
+  // played, never part of the stage's identity, so the same stage (and its
+  // one combined standings table) can appear under several field sections.
   const getFieldStagesMap = useMemo(() => {
     const map = new Map<string, StageNode[]>();
     nodes.filter(isStageNode).forEach(stage => {
-      if (stage.parentId) {
-        if (!map.has(stage.parentId)) map.set(stage.parentId, []);
-        map.get(stage.parentId)!.push(stage as StageNode);
-      }
+      getStageFieldIds(stage as StageNode).forEach((fieldId) => {
+        if (!map.has(fieldId)) map.set(fieldId, []);
+        map.get(fieldId)!.push(stage as StageNode);
+      });
     });
     map.forEach(stages => stages.sort((a, b) => a.data.order - b.data.order));
     return map;
@@ -206,6 +217,13 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
           onShowTeamSelection={onShowTeamSelection}
           getTeamUsage={getTeamUsage}
           onAddOfficials={onAddOfficials}
+        />
+
+        {/* Always available -- every stage and who plays in it, independent of the field layout below */}
+        <StagesOverviewPanel
+          nodes={nodes}
+          globalTeams={globalTeams}
+          onHighlightElement={onHighlightElement}
         />
 
         {/* Expert Mode: Progression Inspector — off by default, doesn't even mount when off */}
@@ -313,6 +331,8 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
                     onDynamicReferenceClick={onDynamicReferenceClick}
                     onNotify={onNotify}
                     onMoveGame={onMoveGame}
+                    onMoveGameField={onMoveGameField}
+                    onUpdateStageFields={onUpdateStageFields}
                     readOnly={readOnly}
                     expertMode={expertMode}
                     progressionByGameId={progression?.cellsByGameId}

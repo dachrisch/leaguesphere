@@ -143,32 +143,33 @@ describe('GameTable', () => {
   });
 
   describe('Multi-field stage', () => {
-    it('does not show a field column when stageFieldOptions is not provided', () => {
-      renderTable();
-      expect(screen.queryByText(i18n.t('ui:label.field'))).not.toBeInTheDocument();
-    });
-
-    const findFieldSelect = (): HTMLSelectElement =>
-      screen.getAllByRole('combobox').find(
-        (el) => el.tagName === 'SELECT' && Array.from((el as HTMLSelectElement).options).some((o) => o.textContent === 'Field 2')
-      ) as HTMLSelectElement;
-
-    it('shows a per-row field selector when stageFieldOptions is provided', () => {
+    it('never shows a field column -- placement is implicit by which field-instance card a game was added under', () => {
       const field2 = createFieldNode('field-2', { name: 'Field 2', order: 1 });
-      renderTable({ stageFieldOptions: [field1, field2] });
+      renderTable({ currentFieldId: 'field-1', otherStageFields: [field2] });
 
-      expect(screen.getByText(i18n.t('ui:label.field'))).toBeInTheDocument();
-      expect(findFieldSelect()).toBeInTheDocument();
+      expect(screen.queryByText(i18n.t('ui:label.field'))).not.toBeInTheDocument();
+      expect(
+        screen.queryAllByRole('combobox').some(
+          (el) => Array.from((el as HTMLSelectElement).options ?? []).some((o) => o.textContent === 'Field 2')
+        )
+      ).toBe(false);
     });
 
-    it('calls onUpdate with the chosen fieldId when the field selector changes', async () => {
+    it('offers "move to other field" entries in the move dropdown when the stage spans multiple fields', async () => {
       const user = userEvent.setup();
       const field2 = createFieldNode('field-2', { name: 'Field 2', order: 1 });
-      renderTable({ stageFieldOptions: [field1, field2] });
+      const mockOnMoveGameField = vi.fn();
+      renderTable({ currentFieldId: 'field-1', otherStageFields: [field2], onMoveGameField: mockOnMoveGameField });
 
-      await user.selectOptions(findFieldSelect(), 'field-2');
+      await user.click(screen.getByTestId('move-game-game-2'));
+      await user.click(screen.getByTestId('move-field-target-field-2'));
 
-      expect(mockOnUpdate).toHaveBeenCalledWith('game-2', { fieldId: 'field-2' });
+      expect(mockOnMoveGameField).toHaveBeenCalledWith('game-2', 'field-2');
+    });
+
+    it('does not offer "move to other field" entries for a single-field stage', () => {
+      renderTable();
+      expect(screen.queryByTestId('move-game-game-2')).not.toBeInTheDocument();
     });
   });
 

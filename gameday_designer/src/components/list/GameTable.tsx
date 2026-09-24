@@ -21,7 +21,7 @@ import type {
   HighlightedElement
 } from '../../types/flowchart';
 import { isGameNode, isStageNode, getFieldNodes } from '../../types/flowchart';
-import { setDraggedGameSourceStageId } from '../../utils/dragState';
+import { setDraggedGameSourceStageId, setDraggedGameSourceFieldId } from '../../utils/dragState';
 import { isWinnerReference, isLoserReference, isRankReference } from '../../types/designer';
 import type { TeamReference, WinnerReference, LoserReference } from '../../types/designer';
 import { findSourceGameForReference, findSourceStageForReference, getGamePath, getEligibleSourceGames as computeEligibleSourceGames } from '../../utils/edgeAnalysis';
@@ -228,12 +228,19 @@ export interface GameTableProps {
   edges: FlowEdge[];
   allNodes: FlowNode[];
   /**
-   * When the containing stage spans more than one field (StageNodeData.fieldIds),
-   * the fields it may distribute its games across -- shows a per-row field
-   * selector bound to GameNodeData.fieldId. Undefined for a normal
-   * single-field stage, where no such selector is shown.
+   * The field this table's stage-instance card represents (see
+   * `StageSection`'s `fieldContext`) -- every game shown here already
+   * plays on this field, so games are placed onto a field simply by which
+   * field's card they were added under, never picked from a dropdown.
    */
-  stageFieldOptions?: FieldNode[];
+  currentFieldId?: string;
+  /**
+   * When the containing stage spans more than one field
+   * (`StageNodeData.fieldIds`), its OTHER fields -- offered as "move to"
+   * targets so a game can be reassigned to a different field of the same
+   * stage without drag-and-drop. Undefined for a single-field stage.
+   */
+  otherStageFields?: FieldNode[];
   globalTeams: GlobalTeam[];
   globalTeamGroups: GlobalTeamGroup[];
   highlightedElement?: HighlightedElement | null;
@@ -251,7 +258,9 @@ export interface GameTableProps {
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
   onNotify?: (message: string, type: import('../../types/designer').NotificationType, title?: string) => void;
-  onMoveGame?: (gameId: string, targetStageId: string) => void;
+  onMoveGame?: (gameId: string, targetStageId: string, targetFieldId?: string) => void;
+  /** Moves a game between two field-instances of this stage without changing its stage. */
+  onMoveGameField?: (gameId: string, targetFieldId: string) => void;
   readOnly?: boolean;
   /**
    * Expert Mode (see `useExpertMode.ts`): when on, shows a small simulated
@@ -270,7 +279,8 @@ const GameTable: React.FC<GameTableProps> = memo(({
   games,
   edges,
   allNodes,
-  stageFieldOptions,
+  currentFieldId,
+  otherStageFields,
   globalTeams,
   globalTeamGroups,
   highlightedElement,
@@ -289,6 +299,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
   onDynamicReferenceClick,
   onNotify,
   onMoveGame,
+  onMoveGameField,
   readOnly = false,
   expertMode = false,
   progressionByGameId,
@@ -517,12 +528,16 @@ const GameTable: React.FC<GameTableProps> = memo(({
       e.dataTransfer?.setData('text/plain', game.id);
       if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
       setDraggedGameSourceStageId(game.parentId ?? null);
+      // Every game in this table plays on `currentFieldId` (that's what
+      // filters `games` in the first place) -- no need to resolve it again.
+      setDraggedGameSourceFieldId(currentFieldId ?? null);
     },
-    [readOnly]
+    [readOnly, currentFieldId]
   );
 
   const handleGameDragEnd = useCallback(() => {
     setDraggedGameSourceStageId(null);
+    setDraggedGameSourceFieldId(null);
   }, []);
 
   const renderTimeCell = (game: GameNode) => {
@@ -843,7 +858,6 @@ const GameTable: React.FC<GameTableProps> = memo(({
       <thead>
         <tr>
           <th>{t('ui:label.standing')}</th>
-          {stageFieldOptions && <th>{t('ui:label.field', 'Field')}</th>}
           {multiDayEnabled && <th>{t('ui:label.day', 'Day')}</th>}
           <th>{t('ui:label.time')}</th>
           <th>{t('ui:label.home')}</th>
@@ -888,23 +902,6 @@ const GameTable: React.FC<GameTableProps> = memo(({
                   </span>
                 )}
               </td>
-              {stageFieldOptions && (
-                <td onClick={(e) => e.stopPropagation()}>
-                  <Form.Select
-                    size="sm"
-                    value={game.data.fieldId ?? ''}
-                    onChange={(e) => onUpdate(game.id, { fieldId: e.target.value || null })}
-                    disabled={readOnly}
-                    isInvalid={!game.data.fieldId}
-                    style={{ fontSize: '0.875rem' }}
-                  >
-                    <option value="">{t('ui:placeholder.selectField', '-- Select field --')}</option>
-                    {stageFieldOptions.map((f) => (
-                      <option key={f.id} value={f.id}>{f.data.name}</option>
-                    ))}
-                  </Form.Select>
-                </td>
-              )}
               {multiDayEnabled && (
                 <td onClick={(e) => e.stopPropagation()}>
                   <Form.Control
@@ -982,7 +979,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
                   </button>
                 ) : (
                   <div className="d-flex align-items-center gap-1">
-                    {onMoveGame && (
+                    {(onMoveGame || (onMoveGameField && otherStageFields && otherStageFields.length > 0)) && (
                       <Dropdown
                         align="end"
                         onClick={(e) => e.stopPropagation()}
@@ -992,9 +989,9 @@ const GameTable: React.FC<GameTableProps> = memo(({
                           variant="link"
                           size="sm"
                           className="p-0 text-muted"
-                          disabled={getMoveTargetsForGame(game).length === 0}
+                          disabled={getMoveTargetsForGame(game).length === 0 && !otherStageFields?.length}
                           title={
-                            getMoveTargetsForGame(game).length === 0
+                            getMoveTargetsForGame(game).length === 0 && !otherStageFields?.length
                               ? t('ui:message.noMoveTargets')
                               : t('ui:tooltip.moveGame')
                           }
@@ -1007,7 +1004,24 @@ const GameTable: React.FC<GameTableProps> = memo(({
                             card body), same approach as the react-selects. */}
                         {createPortal(
                           <Dropdown.Menu>
-                            {getMoveTargetsForGame(game).map((entry) => (
+                            {onMoveGameField && otherStageFields && otherStageFields.length > 0 && (
+                              <React.Fragment>
+                                <Dropdown.Header>{t('ui:label.sameStageOtherField', 'Same stage, different field')}</Dropdown.Header>
+                                {otherStageFields.map((f) => (
+                                  <Dropdown.Item
+                                    key={f.id}
+                                    data-testid={`move-field-target-${f.id}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onMoveGameField(game.id, f.id);
+                                    }}
+                                  >
+                                    {f.data.name}
+                                  </Dropdown.Item>
+                                ))}
+                              </React.Fragment>
+                            )}
+                            {onMoveGame && getMoveTargetsForGame(game).map((entry) => (
                               <React.Fragment key={entry.field.id}>
                                 <Dropdown.Header>{entry.field.data.name}</Dropdown.Header>
                                 {entry.stages.map((targetStage) => (

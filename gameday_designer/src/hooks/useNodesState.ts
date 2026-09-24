@@ -271,12 +271,20 @@ export function useNodesState(
    * (unknown game/stage, or the game already belongs to the target stage).
    */
   const moveNodeToStage = useCallback(
-    (gameId: string, targetStageId: string): boolean => {
+    (gameId: string, targetStageId: string, targetFieldId?: string): boolean => {
       const game = nodes.find((n): n is GameNode => n.id === gameId && isGameNode(n));
       const targetStage = nodes.find((n): n is StageNode => n.id === targetStageId && isStageNode(n));
       if (!game || !targetStage || !targetStage.parentId) return false;
       if (game.parentId === targetStageId) return false;
       const sourceStageId = game.parentId;
+      // A field is just where the game is played -- it never determines
+      // which stage (and therefore which standings table) the game belongs
+      // to. Only record it when it differs from the target stage's home
+      // field, matching the default (unset = home field) convention used
+      // everywhere else a game's field is resolved.
+      const resolvedFieldId = targetFieldId && targetFieldId !== targetStage.parentId
+        ? targetFieldId
+        : null;
 
       setNodes((prevNodes) => {
         const gamesInTarget = prevNodes.filter(
@@ -295,6 +303,7 @@ export function useNodesState(
             ...game.data,
             stage: targetStage.data.name,
             stageType: targetStage.data.stageType,
+            fieldId: resolvedFieldId,
           },
         };
 
@@ -323,6 +332,67 @@ export function useNodesState(
       return true;
     },
     [nodes, setNodes]
+  );
+
+  /**
+   * Move a game between two field-instances of the SAME stage (a stage
+   * spanning multiple fields via `StageNodeData.fieldIds` renders once per
+   * field it's assigned to; dragging a game between those renderings
+   * reassigns only where it's played, never its stage/standings). Unlike
+   * `moveNodeToStage`, the game's `stage`/`stageType` never change here --
+   * only `fieldId`. Recalculates the affected stage's times, since it may
+   * now run in parallel with a different field's queue.
+   */
+  const moveGameToField = useCallback(
+    (gameId: string, targetFieldId: string): boolean => {
+      const game = nodes.find((n): n is GameNode => n.id === gameId && isGameNode(n));
+      if (!game || !game.parentId) return false;
+      const stage = nodes.find((n): n is StageNode => n.id === game.parentId && isStageNode(n));
+      if (!stage) return false;
+
+      const resolvedFieldId = game.data.fieldId || stage.parentId;
+      if (resolvedFieldId === targetFieldId) return false;
+
+      const newFieldId = targetFieldId === stage.parentId ? null : targetFieldId;
+
+      setNodes((prevNodes) => {
+        const updated = prevNodes.map((n): FlowNode =>
+          n.id === gameId ? { ...n, data: { ...n.data, fieldId: newFieldId } } as FlowNode : n
+        );
+        return recalcStageTimes(updated, stage.id);
+      });
+
+      return true;
+    },
+    [nodes, setNodes]
+  );
+
+  /**
+   * Update which fields a stage spans (`StageNodeData.fieldIds`). Removing a
+   * field the stage no longer spans would otherwise silently strand any of
+   * its games still assigned to that field -- they'd stop rendering under
+   * any field-instance card entirely, since neither their old field (now
+   * gone from the stage) nor any other card would claim them. Resetting
+   * those games' `fieldId` keeps them visible on the stage's home field
+   * instead, where the user can redistribute them deliberately.
+   */
+  const updateStageFields = useCallback(
+    (stageId: string, fieldIds: string[] | undefined) => {
+      setNodes((prevNodes) => {
+        const withUpdatedStage = prevNodes.map((n): FlowNode =>
+          n.id === stageId && isStageNode(n)
+            ? ({ ...n, data: { ...n.data, fieldIds } } as FlowNode)
+            : n
+        );
+        if (!fieldIds || fieldIds.length === 0) return withUpdatedStage;
+        return withUpdatedStage.map((n): FlowNode =>
+          isGameNode(n) && n.parentId === stageId && n.data.fieldId && !fieldIds.includes(n.data.fieldId)
+            ? ({ ...n, data: { ...n.data, fieldId: null } } as FlowNode)
+            : n
+        );
+      });
+    },
+    [setNodes]
   );
 
   /**
@@ -470,6 +540,10 @@ export function useNodesState(
 
       moveNodeToStage,
 
+      moveGameToField,
+
+      updateStageFields,
+
       updateNode,
 
       deleteNode,
@@ -484,7 +558,7 @@ export function useNodesState(
 
       getGameStage,
 
-    }), [addFieldNode, addStageNode, addGameNodeInStage, moveNodeToStage, updateNode, deleteNode, addBulkTournament, ensureContainerHierarchy, getTargetStage, getGameField, getGameStage]);
+    }), [addFieldNode, addStageNode, addGameNodeInStage, moveNodeToStage, moveGameToField, updateStageFields, updateNode, deleteNode, addBulkTournament, ensureContainerHierarchy, getTargetStage, getGameField, getGameStage]);
 
   }
 

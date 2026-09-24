@@ -460,11 +460,11 @@ export function useDesignerController(
   );
 
   const handleMoveGame = useCallback(
-    (gameId: string, targetStageId: string) => {
+    (gameId: string, targetStageId: string, targetFieldId?: string) => {
       const fs = flowStateRef.current;
       if (!fs) return;
 
-      const success = fs.moveNodeToStage(gameId, targetStageId);
+      const success = fs.moveNodeToStage(gameId, targetStageId, targetFieldId);
       if (success) {
         const targetStage = fs.nodes.find(
           (n) => n.id === targetStageId && n.type === 'stage'
@@ -482,6 +482,27 @@ export function useDesignerController(
       }
     },
     [addNotification, gamedayId]
+  );
+
+  /**
+   * Move a game between two field-instances of the SAME multi-field stage
+   * (see `moveGameToField` on `useNodesState`) -- reassigns only where the
+   * game is played, never its stage.
+   */
+  const handleMoveGameField = useCallback(
+    (gameId: string, targetFieldId: string) => {
+      const fs = flowStateRef.current;
+      if (!fs) return;
+      fs.moveGameToField(gameId, targetFieldId);
+    },
+    []
+  );
+
+  const handleUpdateStageFields = useCallback(
+    (stageId: string, fieldIds: string[] | undefined) => {
+      flowStateRef.current?.updateStageFields(stageId, fieldIds);
+    },
+    []
   );
 
   const canExport = useMemo(() => {
@@ -554,6 +575,8 @@ export function useDesignerController(
     },
     handleSwapTeams,
     handleMoveGame,
+    handleMoveGameField,
+    handleUpdateStageFields,
     handleDeleteNode: (id: string) => flowStateRef.current?.deleteNode(id),
     handleSelectNode: (id: string | null) => flowStateRef.current?.selectNode(id),
     handleGenerateTournament,
@@ -587,7 +610,8 @@ export function useDesignerController(
     addNotification,
     onMetadataHighlight,
     handleRemoveEdgeFromSlot: (gameId: string, slot: 'home' | 'away') => flowStateRef.current?.removeEdgeFromSlot(gameId, slot),
-    handleUpdateGameSlot: (stageId: string) => flowStateRef.current?.addGameNodeInStage(stageId),
+    handleUpdateGameSlot: (stageId: string, fieldId?: string) =>
+      flowStateRef.current?.addGameNodeInStage(stageId, fieldId ? { fieldId } : undefined),
     handleAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') =>
       flowStateRef.current?.addGameToGameEdge(sourceGameId, outputType, targetGameId, targetSlot),
     handleAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away', sourceGroup?: string) =>
@@ -595,7 +619,7 @@ export function useDesignerController(
   }), [
     loadData, saveData, expandField, expandStage, handleHighlightElement,
     handleDynamicReferenceClick, handleImport, handleExport, handleSaveTemplate,
-    handleSwapTeams, handleMoveGame, handleGenerateTournament, showTournamentModal,
+    handleSwapTeams, handleMoveGame, handleMoveGameField, handleUpdateStageFields, handleGenerateTournament, showTournamentModal,
     dismissNotification, addNotification, onMetadataHighlight, handleUpdateNode, gamedayId
   ]);
 

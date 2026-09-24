@@ -87,22 +87,33 @@ export function calculateGameStartTime(
     return targetGame.data.startTime;
   }
 
-  let currentTime = stageStartTime;
   const defaultDuration = stage.data.defaultGameDuration ?? DEFAULT_GAME_DURATION;
+  // A field is just where a game is played -- for a single-field stage
+  // every game resolves to the same field, so this cursor map degenerates
+  // to the one shared running clock this function always used. For a
+  // multi-field stage (`StageNodeData.fieldIds`), each field gets its own
+  // clock so games on different fields schedule in parallel instead of
+  // pushing each other back, matching `calculateGameTimes`'s full-canvas
+  // engine (this is the incremental-update counterpart used by single-game
+  // moves/edits rather than a full "Recalculate Times" pass).
+  const fieldCursor = new Map<string | null | undefined, string>();
+  const resolvedFieldOf = (game: GameNode) => game.data.fieldId || stage.parentId;
 
   for (let i = 0; i < gameIndex; i++) {
     const game = games[i];
+    const fieldId = resolvedFieldOf(game);
+    let time = fieldCursor.get(fieldId) ?? stageStartTime;
 
     if (game.data.manualTime && game.data.startTime) {
-      currentTime = game.data.startTime;
+      time = game.data.startTime;
     }
-    
+
     const gameDuration = game.data.duration ?? defaultDuration;
     const breakAfter = game.data.breakAfter ?? 0;
-    currentTime = addMinutes(currentTime, gameDuration + breakAfter);
+    fieldCursor.set(fieldId, addMinutes(time, gameDuration + breakAfter));
   }
 
-  return currentTime;
+  return fieldCursor.get(resolvedFieldOf(targetGame)) ?? stageStartTime;
 }
 
 /**

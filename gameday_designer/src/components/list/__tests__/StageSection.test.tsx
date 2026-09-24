@@ -11,12 +11,20 @@ import '@testing-library/jest-dom';
 import StageSection from '../StageSection';
 import { GamedayProvider } from '../../../context/GamedayContext';
 import i18n from '../../../i18n/testConfig';
-import type { StageNode, GameNode } from '../../../types/flowchart';
+import type { StageNode, GameNode, FieldNode } from '../../../types/flowchart';
 import type { StageSectionProps } from '../StageSection';
+
+const defaultFieldContext: FieldNode = {
+  id: 'field-1',
+  type: 'field',
+  position: { x: 0, y: 0 },
+  data: { type: 'field', name: 'Field 1', order: 0 },
+};
 
 // Helper function to create default props
 const createDefaultProps = (overrides: Partial<StageSectionProps> = {}): StageSectionProps => ({
   stage: {} as StageNode,
+  fieldContext: defaultFieldContext,
   allNodes: [],
   edges: [],
   globalTeams: [],
@@ -191,7 +199,7 @@ describe('StageSection', () => {
     expect(mockOnUpdate).toHaveBeenCalledWith('stage-1', { fieldIds: undefined });
   });
 
-  it('shows the multi-field badge and passes stageFieldOptions to GameTable when the stage already spans multiple fields', () => {
+  it('shows a position/count badge when the stage already spans multiple fields', () => {
     const field1 = { id: 'field-1', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 1', order: 0 } };
     const field2 = { id: 'field-2', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 2', order: 1 } };
     const multiFieldStage: StageNode = {
@@ -202,15 +210,16 @@ describe('StageSection', () => {
     renderStage(
       createDefaultProps({
         stage: multiFieldStage,
+        fieldContext: field1,
         allNodes: [field1, field2, multiFieldStage, sampleGame],
       })
     );
 
-    expect(screen.getByTitle(i18n.t('ui:hint.multiFieldStage'))).toBeInTheDocument();
-    // GameTable only renders its own field selector when it actually
-    // received stageFieldOptions (see GameTable's own tests for the cell
-    // itself) -- its presence here proves StageSection passed it through.
-    expect(screen.getByText(i18n.t('ui:label.field'))).toBeInTheDocument();
+    // This card represents field-1, the first of the stage's two fields.
+    expect(screen.getByText('1/2')).toBeInTheDocument();
+    // Placement is implicit by which field's card a game was added under --
+    // no manual field picker exists anymore (see GameTable's own tests).
+    expect(screen.queryByRole('combobox', { name: /field/i })).not.toBeInTheDocument();
   });
 
   it('does not show the multi-field badge for a single-field stage', () => {
@@ -221,7 +230,32 @@ describe('StageSection', () => {
       })
     );
 
-    expect(screen.queryByTitle(i18n.t('ui:hint.multiFieldStage'))).not.toBeInTheDocument();
+    expect(screen.queryByText(/^\d+\/\d+$/)).not.toBeInTheDocument();
+  });
+
+  it('only shows games actually played on this card\'s field', () => {
+    const field1 = { id: 'field-1', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 1', order: 0 } };
+    const field2 = { id: 'field-2', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 2', order: 1 } };
+    const multiFieldStage: StageNode = {
+      ...sampleStage,
+      data: { ...sampleStage.data, fieldIds: ['field-1', 'field-2'] },
+    };
+    const gameOnField2: GameNode = {
+      ...sampleGame,
+      id: 'game-2',
+      data: { ...sampleGame.data, standing: 'Game 2', fieldId: 'field-2' },
+    };
+
+    renderStage(
+      createDefaultProps({
+        stage: multiFieldStage,
+        fieldContext: field1,
+        allNodes: [field1, field2, multiFieldStage, sampleGame, gameOnField2],
+      })
+    );
+
+    expect(screen.getByText('Game 1')).toBeInTheDocument();
+    expect(screen.queryByText('Game 2')).not.toBeInTheDocument();
   });
 
   it('does not show a fields multi-select when only one field exists', () => {
@@ -356,7 +390,9 @@ describe('StageSection', () => {
       const addButtons = screen.getAllByTitle(/add a new game/i);
       fireEvent.click(addButtons[0]);
 
-      expect(mockOnAddGame).toHaveBeenCalledWith('stage-1');
+      // fieldContext (field-1) is this stage's home field, so no explicit
+      // field is passed -- the game defaults to the home field.
+      expect(mockOnAddGame).toHaveBeenCalledWith('stage-1', undefined);
     });
 
     it('No Add Game button appears at bottom when games exist', () => {

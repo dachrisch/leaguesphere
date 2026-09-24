@@ -8,23 +8,32 @@ import React, { useState, useCallback, useMemo, memo, useRef } from 'react';
 import { Card, Button, Form } from 'react-bootstrap';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import GameTable from './GameTable';
-import type { 
-  StageNode, 
-  FlowNode, 
-  FlowEdge, 
-  GameNode, 
-  GlobalTeam, 
+import type {
+  StageNode,
+  FieldNode,
+  FlowNode,
+  FlowEdge,
+  GameNode,
+  GlobalTeam,
   GlobalTeamGroup,
   HighlightedElement
 } from '../../types/flowchart';
 import { isGameNode, getFieldNodes, getStageFieldIds } from '../../types/flowchart';
 import type { GameProgressionCellResult } from '../../types/progression';
 import { ICONS } from '../../utils/iconConstants';
-import { getDraggedGameSourceStageId } from '../../utils/dragState';
+import { getDraggedGameSourceStageId, getDraggedGameSourceFieldId } from '../../utils/dragState';
 import './StageSection.css';
 
 export interface StageSectionProps {
   stage: StageNode;
+  /**
+   * The specific field this card represents. A stage spanning multiple
+   * fields (`StageNodeData.fieldIds`) renders once per field it's assigned
+   * to -- each rendering only shows the games actually played on that
+   * field. The field is purely where a game is played; it never affects
+   * the stage's identity or its (single, combined) standings table.
+   */
+  fieldContext: FieldNode;
   allNodes: FlowNode[];
   edges: FlowEdge[];
   globalTeams: GlobalTeam[];
@@ -37,7 +46,7 @@ export interface StageSectionProps {
   selectedNodeId: string | null;
   onAssignTeam: (gameId: string, teamId: string, slot: 'home' | 'away') => void;
   onSwapTeams: (gameId: string) => void;
-  onAddGame: (stageId: string) => void;
+  onAddGame: (stageId: string, fieldId?: string) => void;
   onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
   onAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away', sourceGroup?: string) => void;
   onRemoveEdgeFromSlot: (targetGameId: string, targetSlot: 'home' | 'away') => void;
@@ -46,7 +55,11 @@ export interface StageSectionProps {
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
   onNotify?: (message: string, type: import('../../types/designer').NotificationType, title?: string) => void;
-  onMoveGame?: (gameId: string, targetStageId: string) => void;
+  onMoveGame?: (gameId: string, targetStageId: string, targetFieldId?: string) => void;
+  /** Moves a game between two field-instances of this stage without changing its stage. */
+  onMoveGameField?: (gameId: string, targetFieldId: string) => void;
+  /** Updates which fields this stage spans, resetting any now-stranded games back to the stage's home field. */
+  onUpdateStageFields?: (stageId: string, fieldIds: string[] | undefined) => void;
   readOnly?: boolean;
   /** Expert Mode (see `useExpertMode.ts`) — off by default. */
   expertMode?: boolean;
@@ -58,6 +71,7 @@ export interface StageSectionProps {
 
 const StageSection: React.FC<StageSectionProps> = memo(({
   stage,
+  fieldContext,
   allNodes,
   edges,
   globalTeams,
@@ -81,6 +95,8 @@ const StageSection: React.FC<StageSectionProps> = memo(({
   onDynamicReferenceClick,
   onNotify,
   onMoveGame,
+  onMoveGameField,
+  onUpdateStageFields,
   readOnly = false,
   expertMode = false,
   progressionByGameId,
@@ -97,13 +113,19 @@ const StageSection: React.FC<StageSectionProps> = memo(({
   // Combine local state with prop
   const isExpanded = isExpandedProp || localExpanded;
 
+  // Only the subset of this stage's games actually played on `fieldContext`
+  // -- a game with no explicit `fieldId` plays on the stage's home field
+  // (matching the fallback used everywhere else a game's field is
+  // resolved, e.g. `getGameField`/`CanvasPublishService`).
   const games = useMemo(
     () =>
       allNodes.filter(
         (node): node is GameNode =>
-          isGameNode(node) && node.parentId === stage.id
+          isGameNode(node) &&
+          node.parentId === stage.id &&
+          (node.data.fieldId || stage.parentId) === fieldContext.id
       ),
-    [allNodes, stage.id]
+    [allNodes, stage.id, stage.parentId, fieldContext.id]
   );
 
   const isHighlighted = highlightedElement?.id === stage.id && highlightedElement?.type === 'stage';
@@ -171,9 +193,13 @@ const StageSection: React.FC<StageSectionProps> = memo(({
   const handleAddGame = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      onAddGame(stage.id);
+      // A new game always plays on the field-instance card it was added
+      // from; only pass an explicit fieldId when that's not the stage's
+      // home field, so a plain single-field stage keeps behaving exactly
+      // as before (no fieldId ever written).
+      onAddGame(stage.id, fieldContext.id === stage.parentId ? undefined : fieldContext.id);
     },
-    [stage.id, onAddGame]
+    [stage.id, stage.parentId, fieldContext.id, onAddGame]
   );
 
   const handleTimeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -189,36 +215,61 @@ const StageSection: React.FC<StageSectionProps> = memo(({
 
   const allFields = useMemo(() => getFieldNodes(allNodes), [allNodes]);
   const stageFieldIds = useMemo(() => getStageFieldIds(stage), [stage]);
+  const fieldPosition = useMemo(
+    () => Math.max(1, stageFieldIds.indexOf(fieldContext.id) + 1),
+    [stageFieldIds, fieldContext.id]
+  );
+  const otherFieldNames = useMemo(
+    () =>
+      allFields
+        .filter((f) => stageFieldIds.includes(f.id) && f.id !== fieldContext.id)
+        .map((f) => f.data.name),
+    [allFields, stageFieldIds, fieldContext.id]
+  );
 
   const handleFieldsChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       e.stopPropagation();
       const selected = Array.from(e.target.selectedOptions, (o) => o.value);
-      onUpdate(stage.id, { fieldIds: selected.length > 0 ? selected : undefined });
+      const fieldIds = selected.length > 0 ? selected : undefined;
+      if (onUpdateStageFields) {
+        onUpdateStageFields(stage.id, fieldIds);
+      } else {
+        onUpdate(stage.id, { fieldIds });
+      }
     },
-    [stage.id, onUpdate]
+    [stage.id, onUpdate, onUpdateStageFields]
   );
 
-  const canAcceptDrop = !readOnly && !!onMoveGame;
+  const canAcceptDrop = !readOnly && (!!onMoveGame || !!onMoveGameField);
+
+  // True when the drag's origin is THIS exact card (same stage AND same
+  // field-instance) -- the only case a drop here would be a no-op.
+  const isOwnDropTarget = useCallback(
+    () =>
+      getDraggedGameSourceStageId() === stage.id &&
+      getDraggedGameSourceFieldId() === fieldContext.id,
+    [stage.id, fieldContext.id]
+  );
 
   const handleDragEnter = useCallback(
     (e: React.DragEvent) => {
       if (!canAcceptDrop) return;
-      if (getDraggedGameSourceStageId() === stage.id) return;
+      if (isOwnDropTarget()) return;
       e.preventDefault();
       setIsDragOver(true);
     },
-    [canAcceptDrop, stage.id]
+    [canAcceptDrop, isOwnDropTarget]
   );
 
   const handleDragOver = useCallback(
     (e: React.DragEvent) => {
       if (!canAcceptDrop) return;
-      if (getDraggedGameSourceStageId() === stage.id) return;
+      if (isOwnDropTarget()) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
     },
-    [canAcceptDrop, stage.id]
+    [canAcceptDrop, isOwnDropTarget]
   );
 
   const handleDragLeave = useCallback(() => {
@@ -228,15 +279,29 @@ const StageSection: React.FC<StageSectionProps> = memo(({
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       setIsDragOver(false);
-      if (!canAcceptDrop || !onMoveGame) return;
+      if (!canAcceptDrop) return;
       const gameId = e.dataTransfer.getData('text/plain');
       if (!gameId) return;
       const game = allNodes.find((n) => isGameNode(n) && n.id === gameId);
-      if (!game || game.parentId === stage.id) return;
+      if (!game) return;
+
+      if (game.parentId === stage.id) {
+        // Same stage: dropping onto a different field-instance card just
+        // reassigns where it's played, never its stage/standings. A no-op
+        // when the game is already on this field (e.g. dropped back onto
+        // its own single-field stage card).
+        const resolvedFieldId = (game as GameNode).data.fieldId || stage.parentId;
+        if (resolvedFieldId === fieldContext.id || !onMoveGameField) return;
+        e.preventDefault();
+        onMoveGameField(gameId, fieldContext.id);
+        return;
+      }
+
+      if (!onMoveGame) return;
       e.preventDefault();
-      onMoveGame(gameId, stage.id);
+      onMoveGame(gameId, stage.id, fieldContext.id === stage.parentId ? undefined : fieldContext.id);
     },
-    [canAcceptDrop, onMoveGame, allNodes, stage.id]
+    [canAcceptDrop, onMoveGame, onMoveGameField, allNodes, stage.id, stage.parentId, fieldContext.id]
   );
 
   return (
@@ -360,9 +425,17 @@ const StageSection: React.FC<StageSectionProps> = memo(({
             </div>
             <strong className="me-2">{stage.data.name}</strong>
             {stageFieldIds.length > 1 && (
-              <span className="badge bg-light text-dark border me-2" style={{ fontSize: '0.8rem' }} title={t('ui:hint.multiFieldStage', 'Select multiple fields to spread this stage\'s games across them')}>
+              <span
+                className="badge bg-light text-dark border me-2"
+                style={{ fontSize: '0.8rem' }}
+                title={t(
+                  'ui:hint.multiFieldStageInstance',
+                  'This stage also runs on: {{otherFields}} -- all games count toward one combined table',
+                  { otherFields: otherFieldNames.join(', ') }
+                )}
+              >
                 <i className="bi bi-grid-3x3-gap me-1"></i>
-                {stageFieldIds.length}
+                {t('ui:label.fieldOfCount', '{{index}}/{{count}}', { index: fieldPosition, count: stageFieldIds.length })}
               </span>
             )}
             {!readOnly && (
@@ -445,7 +518,8 @@ const StageSection: React.FC<StageSectionProps> = memo(({
                   games={games}
                   edges={edges}
                   allNodes={allNodes}
-                  stageFieldOptions={stageFieldIds.length > 1 ? allFields.filter((f) => stageFieldIds.includes(f.id)) : undefined}
+                  currentFieldId={fieldContext.id}
+                  otherStageFields={stageFieldIds.length > 1 ? allFields.filter((f) => stageFieldIds.includes(f.id) && f.id !== fieldContext.id) : undefined}
                   globalTeams={globalTeams}
                   globalTeamGroups={globalTeamGroups}
                   highlightedElement={highlightedElement}
@@ -465,6 +539,7 @@ const StageSection: React.FC<StageSectionProps> = memo(({
                   onDynamicReferenceClick={onDynamicReferenceClick}
                   onNotify={onNotify}
                   onMoveGame={onMoveGame}
+                  onMoveGameField={onMoveGameField}
                   readOnly={readOnly}
                   expertMode={expertMode}
                   progressionByGameId={progressionByGameId}

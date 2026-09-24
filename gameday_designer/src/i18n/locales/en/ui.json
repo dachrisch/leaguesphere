@@ -1,7 +1,9 @@
 {
   "hint": {
     "unlockBlockedResults": "Cannot unlock: results have already been entered for this gameday. Re-publishing would regenerate the schedule and delete them.",
-    "multiFieldStage": "Select multiple fields to spread this stage's games across them",
+    "multiFieldStage": "Select multiple fields to run this stage's games on -- its games all feed one combined table",
+    "multiFieldStageInstance": "This stage also runs on: {{otherFields}} -- all games count toward one combined table",
+    "multiFieldStageRuns": "Runs across multiple fields, all feeding one combined table",
     "dayOffset": "0 = gameday's own date, 1 = the day after, etc."
   },
   "button": {
@@ -58,8 +60,12 @@
     "english": "English",
     "stage": "Phase",
     "standing": "Standing",
-    "field": "Field",
     "day": "Day",
+    "fieldOfCount": "{{index}}/{{count}}",
+    "sameStageOtherField": "Same stage, different field",
+    "stagesOverview": "Stages Overview",
+    "stageCount": "{{count}} stages",
+    "gameCount": "{{count}} games",
     "time": "Time",
     "home": "Home",
     "away": "Away",
@@ -160,7 +166,6 @@
     "selectSeason": "Select Season",
     "selectLeague": "Select League",
     "fieldName": "New field name...",
-    "selectField": "-- Select field --",
     "match": "e.g., HF1, Finale",
     "teamOfficials": "e.g., Team Officials",
     "templateName": "e.g., 6 Teams - 2 Fields - MyFormat",
@@ -173,6 +178,7 @@
     "noGamesYet": "No games yet",
     "noGamesInStage": "No games in this stage",
     "noMoveTargets": "No other stages available to move this game to.",
+    "stageOverviewNoTeams": "No teams assigned yet",
     "noFieldsYet": "No fields defined. Add a field above.",
     "noGroupsYet": "No groups yet",
     "createFirstField": "Click \"Add Field\" in the toolbar to create your first playing field.",
