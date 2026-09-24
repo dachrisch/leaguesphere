@@ -1,4 +1,5 @@
 import pathlib
+from datetime import timedelta
 from unittest.mock import patch
 
 import pandas as pd
@@ -8,6 +9,7 @@ from gamedays.models import Team, Gameinfo, Gameresult
 from gamedays.service.gameday_settings import (
     SCHEDULED,
     FIELD,
+    DAY_OFFSET,
     HOME,
     POINTS_HOME,
     POINTS_AWAY,
@@ -18,10 +20,20 @@ from gamedays.service.gameday_settings import (
     STATUS,
 )
 from gamedays.service.model_wrapper import GamedayModelWrapper
+from gamedays.service.utils import get_effective_today
 from gamedays.tests.setup_factories.dataframe_setup import DataFrameAssertion
 from gamedays.tests.setup_factories.db_setup import DBSetup
-from league_table.tests.setup_factories.db_setup_leaguetable import LEAGUE_TABLE_TEST_RULESET
-from league_table.tests.setup_factories.factories_leaguetable import LeagueSeasonConfigFactory
+from gamedays.tests.setup_factories.factories import (
+    GamedayFactory,
+    GameinfoFactory,
+    GameresultFactory,
+)
+from league_table.tests.setup_factories.db_setup_leaguetable import (
+    LEAGUE_TABLE_TEST_RULESET,
+)
+from league_table.tests.setup_factories.factories_leaguetable import (
+    LeagueSeasonConfigFactory,
+)
 
 
 class TestGamedayModelWrapper(TestCase):
@@ -72,7 +84,9 @@ class TestGamedayModelWrapper(TestCase):
         gmw = GamedayModelWrapper(gameday.pk)
         qualify_table = gmw.get_qualify_table()
         del qualify_table["team_id"]
-        DataFrameAssertion.expect(qualify_table).to_equal_json("ts_qualify_main_round_table")
+        DataFrameAssertion.expect(qualify_table).to_equal_json(
+            "ts_qualify_main_round_table"
+        )
 
     @patch("league_table.service.datatypes.LeagueConfigRuleset.from_ruleset")
     def test_get_qualify_table(self, mock_get_league_config_ruleset):
@@ -82,9 +96,7 @@ class TestGamedayModelWrapper(TestCase):
         gmw = GamedayModelWrapper(gameday.pk)
         qualify_table = gmw.get_qualify_table()
         del qualify_table["team_id"]
-        DataFrameAssertion.expect(qualify_table).to_equal_json(
-            "ts_qualify_table"
-        )
+        DataFrameAssertion.expect(qualify_table).to_equal_json("ts_qualify_table")
 
     def test_empty_get_final_table(self):
         gameday = DBSetup().g62_qualify_finished()
@@ -101,9 +113,7 @@ class TestGamedayModelWrapper(TestCase):
         gmw = GamedayModelWrapper(gameday.pk)
         table = gmw.get_final_table()
         del table["team_id"]
-        DataFrameAssertion.expect(table).to_equal_json(
-            "ts_final_table_6_teams"
-        )
+        DataFrameAssertion.expect(table).to_equal_json("ts_final_table_6_teams")
 
     @patch("league_table.service.datatypes.LeagueConfigRuleset.from_ruleset")
     def test_get_final_table_for_7_teams(self, mock_get_league_config_ruleset):
@@ -113,9 +123,7 @@ class TestGamedayModelWrapper(TestCase):
         gmw = GamedayModelWrapper(gameday.pk)
         table = gmw.get_final_table()
         del table["team_id"]
-        DataFrameAssertion.expect(table).to_equal_json(
-            "ts_final_table_7_teams"
-        )
+        DataFrameAssertion.expect(table).to_equal_json("ts_final_table_7_teams")
 
     def test_get_final_table_for_main_round_is_empty(self):
         gameday = DBSetup().create_main_round_gameday(status="beendet", number_teams=4)
@@ -161,6 +169,56 @@ class TestGamedayModelWrapper(TestCase):
         gmw = GamedayModelWrapper(gameday.pk)
         assert not gmw.is_finished("Vorrunde")
         assert gmw.is_finished("HF")
+
+    def _create_game(self, gameday, day_offset=0, scheduled="10:00", field=1):
+        gameinfo = GameinfoFactory(
+            gameday=gameday,
+            day_offset=day_offset,
+            scheduled=scheduled,
+            field=field,
+            stage="Vorrunde",
+            standing="Gruppe 1",
+        )
+        GameresultFactory(gameinfo=gameinfo, isHome=True)
+        GameresultFactory(gameinfo=gameinfo, isHome=False)
+        return gameinfo
+
+    def test_get_schedule_sorts_day_offset_first_without_changing_single_day_order(
+        self,
+    ):
+        gameday = GamedayFactory()
+        # Same field/time relationship as before the day_offset column
+        # existed; only day_offset differs, so single-day rows (all 0) must
+        # keep their pre-existing relative FIELD/SCHEDULED order.
+        day1_field2 = self._create_game(
+            gameday, day_offset=1, scheduled="09:00", field=2
+        )
+        day0_field2_late = self._create_game(
+            gameday, day_offset=0, scheduled="12:00", field=2
+        )
+        day0_field1_early = self._create_game(
+            gameday, day_offset=0, scheduled="10:00", field=1
+        )
+
+        schedule = GamedayModelWrapper(gameday.pk).get_schedule()
+
+        assert list(schedule["id"]) == [
+            day0_field1_early.id,
+            day0_field2_late.id,
+            day1_field2.id,
+        ]
+
+    def test_get_games_to_whistle_only_shows_todays_day_offset(self):
+        gameday = GamedayFactory(date=get_effective_today() - timedelta(days=1))
+        today_game = self._create_game(gameday, day_offset=1)
+        yesterday_game = self._create_game(gameday, day_offset=0)
+
+        gmw = GamedayModelWrapper(gameday.pk)
+        games_to_whistle = gmw.get_games_to_whistle("")
+
+        ids = list(games_to_whistle["id"])
+        assert today_game.id in ids
+        assert yesterday_game.id not in ids
 
     def test_get_games_to_whistle(self):
         gameday = DBSetup().g62_status_empty()
@@ -211,7 +269,7 @@ class TestGamedayModelWrapper(TestCase):
     def test_get_mulitple_teams_by_standing_and_points(self):
         gameday = DBSetup().g72_qualify_finished()
         all_games = Gameinfo.objects.filter(gameday=gameday)
-        all_games.update(status='beendet')
+        all_games.update(status="beendet")
         for game in all_games:
             update_gameresults(game)
         gmw = GamedayModelWrapper(gameday.pk)

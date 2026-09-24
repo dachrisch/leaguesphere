@@ -1,8 +1,11 @@
+from datetime import timedelta
+
 from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from gamedays.models import Gameday
+from gamedays.models import Gameday, GamedayDesignerState
+from gamedays.service.utils import get_effective_today
 from gamedays.tests.setup_factories.factories import GamedayFactory
 
 
@@ -61,7 +64,68 @@ class GamedayListEtagFreshnessTest(APITestCase):
             "server returned 304 Not Modified for a gameday renamed via the "
             "designer's partial-save path"
         )
-        renamed = next(
-            g for g in revalidated.data["results"] if g["id"] == gameday.id
-        )
+        renamed = next(g for g in revalidated.data["results"] if g["id"] == gameday.id)
         assert renamed["name"] == "Renamed via Designer"
+
+    def test_scorecard_list_etag_changes_when_multi_day_gameday_is_published(self):
+        """Publishing a multi-day designer gameday writes Gameinfo.day_offset
+        rows that newly make the gameday visible on '/api/gameday/list/' (the
+        scorecard endpoint) for a day after its own `date`. The list ETag
+        (shared with '/api/gamedays/', hashing only Gameday.updated_at) must
+        still reflect that -- it does, because `publish()` always saves the
+        Gameday itself right before creating those Gameinfo rows.
+        """
+        today = get_effective_today()
+        gameday = GamedayFactory(date=today - timedelta(days=1))
+        GamedayDesignerState.objects.create(
+            gameday=gameday,
+            state_data={
+                "nodes": [
+                    {
+                        "id": "field-1",
+                        "type": "field",
+                        "data": {"type": "field", "name": "Feld 1", "order": 0},
+                    },
+                    {
+                        "id": "stage-1",
+                        "type": "stage",
+                        "parentId": "field-1",
+                        "data": {
+                            "type": "stage",
+                            "name": "Liga",
+                            "category": "preliminary",
+                            "stageType": "STANDARD",
+                        },
+                    },
+                    {
+                        "id": "game-1",
+                        "type": "game",
+                        "parentId": "stage-1",
+                        "data": {
+                            "type": "game",
+                            "standing": "Tabelle",
+                            "startTime": "10:00",
+                            "dayOffset": 1,
+                            "homeTeamId": None,
+                            "awayTeamId": None,
+                            "official": None,
+                        },
+                    },
+                ],
+                "globalTeams": [],
+            },
+        )
+
+        before = self.client.get("/api/gameday/list/")
+        etag_before = before["ETag"]
+        assert gameday.id not in [g["id"] for g in before.data]
+
+        publish_response = self.client.post(f"/api/gamedays/{gameday.id}/publish/")
+        assert publish_response.status_code == status.HTTP_200_OK
+
+        after = self.client.get("/api/gameday/list/", HTTP_IF_NONE_MATCH=etag_before)
+        assert after.status_code == status.HTTP_200_OK, (
+            "server returned 304 Not Modified for a gameday that just became "
+            "visible today via a published day_offset game"
+        )
+        assert gameday.id in [g["id"] for g in after.data]
