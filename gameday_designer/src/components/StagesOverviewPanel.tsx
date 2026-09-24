@@ -10,14 +10,12 @@
  * scrolling between field sections.
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
-import { Card } from 'react-bootstrap';
+import React, { useCallback, useMemo } from 'react';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
+import OverviewCard from './OverviewCard';
 import type { FlowNode, GlobalTeam, HighlightedElement, GameNode, StageNode } from '../types/flowchart';
 import { isGameNode, isStageNode, getStageFieldIds, getFieldNodes } from '../types/flowchart';
 import { formatTeamReference } from '../utils/teamReference';
-import { ICONS } from '../utils/iconConstants';
-import './ProgressionInspectorPanel.css';
 
 export interface StagesOverviewPanelProps {
   nodes: FlowNode[];
@@ -27,7 +25,6 @@ export interface StagesOverviewPanelProps {
 
 const StagesOverviewPanel: React.FC<StagesOverviewPanelProps> = ({ nodes, globalTeams, onHighlightElement }) => {
   const { t } = useTypedTranslation(['ui']);
-  const [isExpanded, setIsExpanded] = useState(false);
 
   const handleActivateKeyDown = useCallback((e: React.KeyboardEvent, activate: () => void) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -79,69 +76,54 @@ const StagesOverviewPanel: React.FC<StagesOverviewPanelProps> = ({ nodes, global
   if (stageSummaries.length === 0) return null;
 
   return (
-    <Card className="progression-inspector-panel mb-3" data-testid="stages-overview-panel">
-      <Card.Header
-        className="progression-inspector-panel__header d-flex align-items-center"
-        role="button"
-        tabIndex={0}
-        aria-expanded={isExpanded}
-        onClick={() => setIsExpanded((prev) => !prev)}
-        onKeyDown={(e) => handleActivateKeyDown(e, () => setIsExpanded((prev) => !prev))}
-        style={{ cursor: 'pointer' }}
-      >
-        <i className={`bi ${isExpanded ? ICONS.EXPANDED : ICONS.COLLAPSED} me-2`}></i>
-        <i className="bi bi-diagram-3 me-2"></i>
-        <strong className="me-auto">{t('ui:label.stagesOverview', 'Stages Overview')}</strong>
+    <OverviewCard
+      testId="stages-overview-panel"
+      headerTestId="stages-overview-header"
+      iconClass="bi-diagram-3"
+      title={t('ui:label.stagesOverview', 'Stages Overview')}
+      badge={
         <span className="badge bg-light text-dark border" data-testid="stages-overview-count">
           {t('ui:label.stageCount', '{{count}} stages', { count: stageSummaries.length })}
         </span>
-      </Card.Header>
-      {/* Rendered conditionally (not via Collapse) so a collapsed panel --
-          the default -- never puts every stage/team name into the DOM
-          twice; unlike ProgressionInspectorPanel, this panel mounts
-          unconditionally on every canvas, so that duplication would hit
-          every test and every "find by text" lookup elsewhere on the page. */}
-      {isExpanded && (
-        <Card.Body>
-          <ul className="list-unstyled mb-0">
-            {stageSummaries.map(({ stage, teamLabels, fieldNames, gameCount }) => {
-              const highlightThisStage = () => onHighlightElement(stage.id, 'stage');
-              return (
-                <li
-                  key={stage.id}
-                  className="mb-3"
-                  role="button"
-                  tabIndex={0}
-                  onClick={highlightThisStage}
-                  onKeyDown={(e) => handleActivateKeyDown(e, highlightThisStage)}
-                  data-testid={`stages-overview-${stage.id}`}
-                >
-                  <div className="d-flex align-items-center gap-2 mb-1">
-                    <strong>{stage.data.name}</strong>
-                    {fieldNames.length > 1 ? (
-                      <span className="badge bg-info text-dark" title={t('ui:hint.multiFieldStageRuns', "Runs across multiple fields, all feeding one combined table")}>
-                        <i className="bi bi-grid-3x3-gap me-1"></i>
-                        {fieldNames.join(', ')}
-                      </span>
-                    ) : (
-                      <span className="text-muted small">{fieldNames[0]}</span>
-                    )}
-                    <span className="text-muted small">
-                      {t('ui:label.gameCount', '{{count}} games', { count: gameCount })}
-                    </span>
-                  </div>
-                  <div className="small text-muted">
-                    {teamLabels.length > 0
-                      ? teamLabels.join(', ')
-                      : t('ui:message.stageOverviewNoTeams', 'No teams assigned yet')}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </Card.Body>
-      )}
-    </Card>
+      }
+    >
+      <ul className="list-unstyled mb-0">
+        {stageSummaries.map(({ stage, teamLabels, fieldNames, gameCount }) => {
+          const highlightThisStage = () => onHighlightElement(stage.id, 'stage');
+          return (
+            <li
+              key={stage.id}
+              className="mb-3"
+              role="button"
+              tabIndex={0}
+              onClick={highlightThisStage}
+              onKeyDown={(e) => handleActivateKeyDown(e, highlightThisStage)}
+              data-testid={`stages-overview-${stage.id}`}
+            >
+              <div className="d-flex align-items-center gap-2 mb-1">
+                <strong>{stage.data.name}</strong>
+                {fieldNames.length > 1 ? (
+                  <span className="badge bg-info text-dark" title={t('ui:hint.multiFieldStageRuns', "Runs across multiple fields, all feeding one combined table")}>
+                    <i className="bi bi-grid-3x3-gap me-1"></i>
+                    {fieldNames.join(', ')}
+                  </span>
+                ) : (
+                  <span className="text-muted small">{fieldNames[0]}</span>
+                )}
+                <span className="text-muted small">
+                  {t('ui:label.gameCount', '{{count}} games', { count: gameCount })}
+                </span>
+              </div>
+              <div className="small text-muted">
+                {teamLabels.length > 0
+                  ? teamLabels.join(', ')
+                  : t('ui:message.stageOverviewNoTeams', 'No teams assigned yet')}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </OverviewCard>
   );
 };
 

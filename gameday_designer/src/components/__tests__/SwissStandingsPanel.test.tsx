@@ -37,10 +37,28 @@ describe('SwissStandingsPanel', () => {
     vi.restoreAllMocks();
   });
 
+  /** The panel starts collapsed (shared OverviewCard): expand to reach body content. */
+  const expandPanel = () => {
+    fireEvent.click(screen.getByTestId('swiss-standings-header'));
+  };
+
+  it('starts collapsed -- body content is not in the DOM until expanded', async () => {
+    vi.spyOn(designerApi, 'getSwissStandings').mockResolvedValue(TABLE);
+
+    render(<SwissStandingsPanel gamedayId={42} />);
+
+    expect(screen.getByTestId('swiss-standings-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('swiss-standings-header')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('swiss-standings-table')).not.toBeInTheDocument();
+    // The fetch still runs on mount so the header badge is ready on expand.
+    expect(await screen.findByTestId('swiss-rounds-indicator')).toBeInTheDocument();
+  });
+
   it('fetches standings for the gameday and renders table rows with bye markers', async () => {
     const spy = vi.spyOn(designerApi, 'getSwissStandings').mockResolvedValue(TABLE);
 
     render(<SwissStandingsPanel gamedayId={42} />);
+    expandPanel();
 
     expect(spy).toHaveBeenCalledWith(42);
     expect(await screen.findByTestId('swiss-standings-table')).toBeInTheDocument();
@@ -64,6 +82,7 @@ describe('SwissStandingsPanel', () => {
     });
 
     render(<SwissStandingsPanel gamedayId={42} />);
+    expandPanel();
 
     expect(await screen.findByTestId('swiss-all-complete')).toBeInTheDocument();
   });
@@ -72,6 +91,7 @@ describe('SwissStandingsPanel', () => {
     vi.spyOn(designerApi, 'getSwissStandings').mockReturnValue(new Promise(() => {}));
 
     render(<SwissStandingsPanel gamedayId={42} />);
+    expandPanel();
 
     expect(screen.getByTestId('swiss-standings-loading')).toBeInTheDocument();
   });
@@ -82,6 +102,7 @@ describe('SwissStandingsPanel', () => {
     });
 
     render(<SwissStandingsPanel gamedayId={42} />);
+    expandPanel();
 
     expect(await screen.findByTestId('swiss-standings-error')).toHaveTextContent('boom');
   });
@@ -95,6 +116,7 @@ describe('SwissStandingsPanel', () => {
       .mockResolvedValueOnce(round2);
 
     const { rerender } = render(<SwissStandingsPanel gamedayId={42} refreshKey={1} />);
+    expandPanel();
     expect(await screen.findByTestId('swiss-standings-table')).toBeInTheDocument();
     expect(spy).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('swiss-rounds-indicator')).toHaveTextContent('1');
@@ -123,6 +145,7 @@ describe('SwissStandingsPanel', () => {
       const onGenerateNext = vi.fn();
 
       render(<SwissStandingsPanel gamedayId={42} swiss={SWISS} onGenerateNext={onGenerateNext} />);
+      expandPanel();
 
       const button = await screen.findByTestId('swiss-generate-next');
       expect(button).toHaveTextContent('Generate Round 2');
@@ -144,6 +167,7 @@ describe('SwissStandingsPanel', () => {
           onGenerateNext={vi.fn()}
         />,
       );
+      expandPanel();
 
       expect(await screen.findByTestId('swiss-all-complete')).toBeInTheDocument();
       expect(screen.queryByTestId('swiss-generate-next')).not.toBeInTheDocument();
@@ -156,6 +180,7 @@ describe('SwissStandingsPanel', () => {
       });
 
       render(<SwissStandingsPanel gamedayId={42} swiss={SWISS} onGenerateNext={vi.fn()} />);
+      expandPanel();
 
       const button = await screen.findByTestId('swiss-generate-next');
       expect(button).toBeDisabled();
@@ -168,6 +193,7 @@ describe('SwissStandingsPanel', () => {
       render(
         <SwissStandingsPanel gamedayId={42} swiss={SWISS} onGenerateNext={vi.fn()} generating />,
       );
+      expandPanel();
 
       const button = await screen.findByTestId('swiss-generate-next');
       expect(button).toBeDisabled();
@@ -178,57 +204,60 @@ describe('SwissStandingsPanel', () => {
       vi.spyOn(designerApi, 'getSwissStandings').mockResolvedValue(TABLE);
 
       render(<SwissStandingsPanel gamedayId={42} />);
+      expandPanel();
 
       expect(await screen.findByTestId('swiss-standings-table')).toBeInTheDocument();
       expect(screen.queryByTestId('swiss-generate-next')).not.toBeInTheDocument();
     });
   });
 
-  it('uses the metadata accordion chrome and collapses the whole card via header toggle', async () => {
+  it('uses the shared overview card chrome and collapses the whole card via header toggle', async () => {
     vi.spyOn(designerApi, 'getSwissStandings').mockResolvedValue(TABLE);
 
     render(<SwissStandingsPanel gamedayId={42} />);
 
-    const panel = await screen.findByTestId('swiss-standings-panel');
-    // Same structural Accordion chrome as the metadata (masterdata) card.
-    expect(panel.querySelector('.accordion-item')).toBeInTheDocument();
-    expect(panel.querySelector('.accordion-header')).toBeInTheDocument();
-    // Plain header: yellow status tint is reserved for the metadata card only.
-    const headerClass = panel.querySelector('.accordion-header')?.className ?? '';
-    expect(headerClass).not.toMatch(/header-status-/);
-    const headerToggle = panel.querySelector('.accordion-button') as HTMLElement | null;
-    expect(headerToggle).toBeInTheDocument();
+    const panel = screen.getByTestId('swiss-standings-panel');
+    const header = screen.getByTestId('swiss-standings-header');
+    // Same Card chrome as Stages Overview / Progression Inspector.
+    expect(panel.classList.contains('overview-card')).toBe(true);
+    expect(header).toHaveAttribute('role', 'button');
+    expect(header).toHaveAttribute('tabIndex', '0');
+    expect(header.querySelector('.bi-trophy')).toBeInTheDocument();
 
-    // Whole-card collapse mirrors metadata: header toggle gains `collapsed`,
-    // the Accordion.Body unmounts (after the exit transition).
-    fireEvent.click(headerToggle as HTMLElement);
-    expect(headerToggle).toHaveClass('collapsed');
+    // Starts collapsed: no body in the DOM.
+    expect(header).toHaveAttribute('aria-expanded', 'false');
+    expect(panel.querySelector('.card-body')).toBeNull();
+
+    // Expand: the table mounts …
+    fireEvent.click(header);
+    expect(header).toHaveAttribute('aria-expanded', 'true');
+    expect(await screen.findByTestId('swiss-standings-table')).toBeInTheDocument();
+
+    // … and collapse unmounts the whole body again.
+    fireEvent.click(header);
+    expect(header).toHaveAttribute('aria-expanded', 'false');
     await waitFor(() => {
-      expect(panel.querySelector('.accordion-body')).toBeNull();
+      expect(panel.querySelector('.card-body')).toBeNull();
     });
   });
 
-  it('has a single collapse toggle: the header caret only, no extra toggle button', async () => {
+  it('has a single collapse toggle: the header itself, no extra toggle button', async () => {
     vi.spyOn(designerApi, 'getSwissStandings').mockResolvedValue(TABLE);
 
     render(<SwissStandingsPanel gamedayId={42} />);
+    expandPanel();
 
     await screen.findByTestId('swiss-standings-table');
     // The old extra SwissCollapseToggle is gone …
     expect(screen.queryByTestId('swiss-standings-toggle')).not.toBeInTheDocument();
-    // … the shared header caret is the single toggle and a real <button>
-    // (keyboard accessible).
+    // … the header itself is the single toggle (no nested buttons) and
+    // keyboard accessible via Enter.
     const header = screen.getByTestId('swiss-standings-header');
-    const buttons = header.querySelectorAll('button');
-    expect(buttons).toHaveLength(1);
-    expect(buttons[0].tagName).toBe('BUTTON');
-    expect(buttons[0]).toHaveClass('accordion-button');
+    expect(header.querySelectorAll('button')).toHaveLength(0);
 
-    // … and it still collapses/expands the whole card.
-    fireEvent.click(buttons[0]);
-    expect(buttons[0]).toHaveClass('collapsed');
+    fireEvent.keyDown(header, { key: 'Enter' });
     await waitFor(() => {
-      expect(screen.getByTestId('swiss-standings-panel').querySelector('.accordion-body')).toBeNull();
+      expect(screen.getByTestId('swiss-standings-panel').querySelector('.card-body')).toBeNull();
     });
   });
 });

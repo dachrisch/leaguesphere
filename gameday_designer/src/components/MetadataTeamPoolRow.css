@@ -7,7 +7,7 @@
   place-items: center;
 }
 
-/* At 1600px+: 2-column layout with equal heights (3 columns with swiss card) */
+/* At 1600px+: 2-column layout with equal heights (metadata + team pool) */
 @media (min-width: 1600px) {
   .metadata-team-pool-row {
     grid-template-columns: 1fr 1fr;
@@ -15,16 +15,10 @@
     grid-auto-rows: 1fr;
     align-items: stretch;
   }
-
-  .metadata-team-pool-row:has(.metadata-team-pool-row__swiss) {
-    grid-template-columns: 1fr 1fr 1fr;
-    max-width: 1980px;
-  }
 }
 
 .metadata-team-pool-row__metadata,
-.metadata-team-pool-row__team-pool,
-.metadata-team-pool-row__swiss {
+.metadata-team-pool-row__team-pool {
   width: 100%;
   max-width: 600px;
   display: flex;
@@ -33,8 +27,7 @@
 
 @media (min-width: 1600px) {
   .metadata-team-pool-row__metadata > *,
-  .metadata-team-pool-row__team-pool > *,
-  .metadata-team-pool-row__swiss > * {
+  .metadata-team-pool-row__team-pool > * {
     flex: 1;
   }
 }
@@ -45,7 +38,7 @@
   max-width: 600px;
 }
 
-/* Team pool + Swiss cards share the metadata Accordion chrome via
+/* The team pool card shares the metadata Accordion chrome via
  * TopRowAccordionCard (.top-row-accordion) — no per-card shadow/border here.
  * The only card-specific rule left is the team-pool highlight hook, which the
  * shared component re-exposes through .is-highlighted. */

@@ -1,17 +1,18 @@
 /**
  * Top-row card consistency tests.
  *
- * The metadata (masterdata), Team Pool, and Swiss control cards must share
- * one chrome + collapse pattern: the metadata Accordion (Accordion.Item with
- * a status-tinted accordion-button header, whole-card collapse via
- * activeKey). No Card frames, no per-card shadow/border language.
+ * The metadata (masterdata) and Team Pool cards must share one chrome +
+ * collapse pattern: the metadata Accordion (Accordion.Item with a
+ * status-tinted accordion-button header, whole-card collapse via
+ * activeKey). No Card frames, no per-card shadow/border language. (The
+ * Swiss standings live in the overview row below since the Stages
+ * Overview adoption — see ListCanvasSwiss.test.tsx.)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import MetadataTeamPoolRow from '../MetadataTeamPoolRow';
-import SwissStandingsPanel from '../SwissStandingsPanel';
 import { gamedayApi } from '../../api/gamedayApi';
 import { designerApi } from '../../api/designerApi';
 import i18n from '../../i18n/testConfig';
@@ -133,30 +134,19 @@ describe('MetadataTeamPoolRow top-row card consistency', () => {
     expect(screen.getByTestId('gameday-metadata-toggle')).toHaveClass('collapsed');
   });
 
-  it('swiss control card shares the accordion chrome with a plain (untinted) header', async () => {
-    const { container } = render(
-      <MetadataTeamPoolRow
-        {...createRowProps()}
-        swissPanel={<SwissStandingsPanel gamedayId={1} />}
-      />,
-    );
+  it('team pool shares the accordion chrome with a plain (untinted) header', async () => {
+    const { container } = render(<MetadataTeamPoolRow {...createRowProps()} />);
 
-    const swissCard = await screen.findByTestId('swiss-standings-panel');
-    expect(swissCard.querySelector('.accordion-item')).toBeInTheDocument();
-    expect(swissCard.querySelector('.accordion-header')).toBeInTheDocument();
-    expect(swissCard.querySelector('.accordion-button')).toBeInTheDocument();
     // Plain header: the yellow status tint is reserved for metadata only.
-    const swissHeaderClass = swissCard.querySelector('.accordion-header')?.className ?? '';
-    expect(swissHeaderClass).not.toMatch(/header-status-/);
     const poolHeaderClass =
       screen.getByTestId('team-pool-card').querySelector('.accordion-header')?.className ?? '';
     expect(poolHeaderClass).not.toMatch(/header-status-/);
 
-    // Metadata keeps its status tint while pool + swiss stay plain.
+    // Metadata keeps its status tint while the pool stays plain.
     expect(screen.getByTestId('gameday-metadata-header')).toHaveClass('header-status-warning');
 
-    // Identical structural chrome across all three top-row cards, but
-    // pool + swiss headers stay plain while metadata alone carries the tint.
+    // Identical structural chrome across both top-row cards, but the pool
+    // header stays plain while metadata alone carries the tint.
     const headers = Array.from(
       container.querySelectorAll('.metadata-team-pool-row__metadata .accordion-header'),
     );
@@ -171,26 +161,14 @@ describe('MetadataTeamPoolRow top-row card consistency', () => {
     expect(headerClasses(screen.getByTestId('team-pool-card').querySelector('.accordion-header')!)).toEqual(
       ['accordion-header'],
     );
-    expect(headerClasses(swissCard.querySelector('.accordion-header')!)).toEqual(['accordion-header']);
   });
 
-  it('swiss control card collapses the whole card via its header toggle', async () => {
-    render(
-      <MetadataTeamPoolRow
-        {...createRowProps()}
-        swissPanel={<SwissStandingsPanel gamedayId={1} />}
-      />,
-    );
+  it('header row never hosts the swiss standings (they live in the overview row)', () => {
+    const { container } = render(<MetadataTeamPoolRow {...createRowProps()} />);
 
-    const swissCard = await screen.findByTestId('swiss-standings-panel');
-    const swissToggle = swissCard.querySelector('.accordion-button') as HTMLElement | null;
-    expect(swissToggle).toBeInTheDocument();
-
-    fireEvent.click(swissToggle as HTMLElement);
-    expect(swissToggle).toHaveClass('collapsed');
-    await waitFor(() => {
-      expect(swissCard.querySelector('.accordion-body')).toBeNull();
-    });
+    expect(container.querySelector('.metadata-team-pool-row__swiss')).toBeNull();
+    expect(screen.queryByTestId('swiss-top-row-card')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('swiss-standings-panel')).not.toBeInTheDocument();
   });
 
   it('non-Swiss row renders the shared two-card pattern with no Card frames', () => {

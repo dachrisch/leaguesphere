@@ -53,6 +53,34 @@
 }
 
 /**
+ * Overview Row: Stages Overview + Swiss standings share one row (plus the
+ * Progression Inspector in Expert Mode). Stacked below 1600px; 2 columns
+ * for 1-2 cards and 3 columns once a third card joins. Cards collapse
+ * independently, so rows align at the top instead of stretching.
+ */
+.overview-row {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+  width: 100%;
+}
+
+@media (min-width: 1600px) {
+  .overview-row {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+
+  .overview-row:not(:has(> :nth-child(2))) {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-row:has(> :nth-child(3)) {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+/**
  * Fields Grid Layout with Responsive CSS Grid
  * Enforce vertical layout by default, max 2 columns on very large screens.
  */

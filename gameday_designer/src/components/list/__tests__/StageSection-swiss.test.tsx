@@ -16,7 +16,14 @@ import type { StageSectionProps } from '../StageSection';
 import { GamedayProvider } from '../../../context/GamedayContext';
 import { designerApi } from '../../../api/designerApi';
 import '../../../i18n/testConfig';
-import type { StageNode, GameNode } from '../../../types/flowchart';
+import type { StageNode, GameNode, FieldNode } from '../../../types/flowchart';
+
+const defaultFieldContext: FieldNode = {
+  id: 'swiss-field-1',
+  type: 'field',
+  position: { x: 0, y: 0 },
+  data: { type: 'field', name: 'Field 1', order: 0 },
+};
 
 function swissStage(id: string, round: number, field: number, startTime: string): StageNode {
   return {
@@ -75,6 +82,7 @@ function scoredGame(id: string, stageId: string, startTime: string): GameNode {
 
 const createProps = (overrides: Partial<StageSectionProps> = {}): StageSectionProps => ({
   stage: swissStage('swiss-round-2-field-1', 2, 1, '10:00'),
+  fieldContext: defaultFieldContext,
   allNodes: [],
   edges: [],
   globalTeams: [],

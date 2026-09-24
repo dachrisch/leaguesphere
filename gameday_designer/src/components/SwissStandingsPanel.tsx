@@ -1,18 +1,20 @@
 /**
  * SwissStandingsPanel Component
  *
- * Designer-embedded Swiss standings: renders the live standings table next
- * to the canvas so table + schedule are visible together, and owns the
- * single "Generate Round N" control (next = swiss.completedRounds.length + 1;
- * the preview→adjust-modal→generate flow stays upstream). Table, loading,
- * and error patterns are cloned from the retired SwissControlModal.
+ * Designer-embedded Swiss standings: renders the live standings table in
+ * the overview row (next to Stages Overview) so table + schedule are
+ * visible together, and owns the single "Generate Round N" control
+ * (next = swiss.completedRounds.length + 1; the preview→adjust-modal→
+ * generate flow stays upstream). Table, loading, and error patterns are
+ * cloned from the retired SwissControlModal. Collapsed by default via
+ * the shared OverviewCard.
  */
 
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, Spinner, Table } from 'react-bootstrap';
 import { designerApi, SwissStandings } from '../api/designerApi';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
-import TopRowAccordionCard from './TopRowAccordionCard';
+import OverviewCard from './OverviewCard';
 import type { SwissTournamentState } from '../types/flowchart';
 
 interface SwissStandingsPanelProps {
@@ -34,11 +36,6 @@ interface SwissStandingsPanelProps {
   onGenerateNext?: () => void;
   /** True while the next round is being previewed/generated — disables the button with a generating label. */
   generating?: boolean;
-  /**
-   * Scroll-driven collapse from the parent row (mirrors metadata
-   * forceCollapsed via the shared top-row card).
-   */
-  forceCollapsed?: boolean;
 }
 function apiErrorMessage(error: unknown, fallback: string): string {
   const backend = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
@@ -53,7 +50,6 @@ const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({
   swiss,
   onGenerateNext,
   generating = false,
-  forceCollapsed = false,
 }) => {
   const { t } = useTypedTranslation(['modal', 'ui']);
   const [standings, setStandings] = useState<SwissStandings | null>(null);
@@ -103,7 +99,7 @@ const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({
   const showGenerate = !complete && swiss !== undefined && onGenerateNext !== undefined && nextRound <= totalRounds;
 
   return (
-    <TopRowAccordionCard
+    <OverviewCard
       testId="swiss-standings-panel"
       headerTestId="swiss-standings-header"
       iconClass="bi-trophy"
@@ -118,7 +114,6 @@ const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({
           </span>
         )
       }
-      forceCollapsed={forceCollapsed}
     >
       <div id="swiss-standings-panel-body">
         {loading && (
@@ -215,7 +210,7 @@ const SwissStandingsPanel: React.FC<SwissStandingsPanelProps> = ({
               </>
             )}
           </div>
-        </TopRowAccordionCard>
+        </OverviewCard>
       );
     };
 

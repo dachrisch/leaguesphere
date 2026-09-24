@@ -170,6 +170,42 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
 
   const fields = useMemo(() => getFieldNodes(nodes), [nodes]);
 
+  // Overview row: Stages Overview + Swiss standings share one row (plus
+  // the Progression Inspector in Expert Mode). Stages Overview renders
+  // nothing without stages (see StagesOverviewPanel), the Swiss table only
+  // exists for Swiss gamedays, and the Progression Inspector only mounts in
+  // Expert Mode. Each card collapses independently; none follow the
+  // scroll-driven header collapse (`isRowCollapsed`).
+  const showStagesOverview = nodes.some(isStageNode);
+  const swissPanel =
+    swiss !== undefined && gamedayId !== undefined ? (
+      <SwissStandingsPanel
+        gamedayId={gamedayId}
+        refreshKey={(swiss.completedRounds?.length ?? 0) + swissResultsVersion}
+        swiss={swiss}
+        onGenerateNext={
+          // Swiss progression (results + next round) is allowed when
+          // published; structural edits stay behind readOnly. The
+          // backend draft-gates setup/reset/round-times while
+          // generate/standings stay open, so passing the handler here
+          // is safe for locked gamedays.
+          !onProgressSwissRound
+            ? undefined
+            : () => onProgressSwissRound((swiss.completedRounds?.length ?? 0) + 1)
+        }
+        generating={swissGenerating}
+      />
+    ) : undefined;
+  const progressionPanel =
+    expertMode && progression && onHighlightProgressionElement ? (
+      <ProgressionInspectorPanel
+        nodes={nodes}
+        progression={progression}
+        onHighlightElement={onHighlightProgressionElement}
+      />
+    ) : undefined;
+  const showOverviewRow = showStagesOverview || swissPanel !== undefined || progressionPanel !== undefined;
+
   // A stage renders once per field it spans (`StageNodeData.fieldIds`,
   // default: just its home field) -- the field is only where its games are
   // played, never part of the stage's identity, so the same stage (and its
@@ -241,43 +277,26 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
           onShowTeamSelection={onShowTeamSelection}
           getTeamUsage={getTeamUsage}
           onAddOfficials={onAddOfficials}
-          swissPanel={
-            swiss && gamedayId !== undefined ? (
-              <SwissStandingsPanel
-                gamedayId={gamedayId}
-                refreshKey={(swiss.completedRounds?.length ?? 0) + swissResultsVersion}
-                swiss={swiss}
-                forceCollapsed={isRowCollapsed}
-                onGenerateNext={
-                  // Swiss progression (results + next round) is allowed when
-                  // published; structural edits stay behind readOnly. The
-                  // backend draft-gates setup/reset/round-times while
-                  // generate/standings stay open, so passing the handler here
-                  // is safe for locked gamedays.
-                  !onProgressSwissRound
-                    ? undefined
-                    : () => onProgressSwissRound((swiss.completedRounds?.length ?? 0) + 1)
-                }
-                generating={swissGenerating}
+        />
+
+        {/* Overview row: Stages Overview + Swiss standings share one row
+            (plus the Progression Inspector in Expert Mode). All cards use
+            the shared OverviewCard chrome and collapse independently. */}
+        {showOverviewRow && (
+          <div className="overview-row" data-testid="overview-row">
+            {showStagesOverview && (
+              <StagesOverviewPanel
+                nodes={nodes}
+                globalTeams={globalTeams}
+                onHighlightElement={onHighlightElement}
               />
-            ) : undefined
-          }
-        />
+            )}
 
-        {/* Always available -- every stage and who plays in it, independent of the field layout below */}
-        <StagesOverviewPanel
-          nodes={nodes}
-          globalTeams={globalTeams}
-          onHighlightElement={onHighlightElement}
-        />
+            {swissPanel}
 
-        {/* Expert Mode: Progression Inspector — off by default, doesn't even mount when off */}
-        {expertMode && progression && onHighlightProgressionElement && (
-          <ProgressionInspectorPanel
-            nodes={nodes}
-            progression={progression}
-            onHighlightElement={onHighlightProgressionElement}
-          />
+            {/* Expert Mode: Progression Inspector — off by default, doesn't even mount when off */}
+            {progressionPanel}
+          </div>
         )}
 
         {/* Fields Card - Full width below team pool */}

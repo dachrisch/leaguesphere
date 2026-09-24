@@ -228,12 +228,17 @@ describe('ProgressionInspectorPanel', () => {
     const user = userEvent.setup();
     render(<ProgressionInspectorPanel nodes={nodes} progression={progression} onHighlightElement={onHighlightElement} />);
 
-    const collapseWrapper = screen.getByTestId('progression-outcome-g1').closest('.collapse');
-    expect(collapseWrapper).toHaveClass('show');
+    // Starts expanded: outcome rows are mounted.
+    expect(screen.getByTestId('progression-outcome-g1')).toBeInTheDocument();
 
     await user.click(screen.getByText('Progression Inspector'));
 
-    expect(collapseWrapper).not.toHaveClass('show');
+    // Collapsed: body unmounts (conditional render, no Collapse wrapper).
+    expect(screen.queryByTestId('progression-outcome-g1')).not.toBeInTheDocument();
+
+    await user.click(screen.getByText('Progression Inspector'));
+
+    expect(screen.getByTestId('progression-outcome-g1')).toBeInTheDocument();
   });
 
   describe('keyboard accessibility', () => {
@@ -274,13 +279,14 @@ describe('ProgressionInspectorPanel', () => {
       render(<ProgressionInspectorPanel nodes={nodes} progression={progression} onHighlightElement={onHighlightElement} />);
 
       const header = screen.getByTestId('progression-inspector-panel').querySelector('.card-header') as HTMLElement;
-      const collapseWrapper = screen.getByTestId('progression-outcome-g1').closest('.collapse');
-      expect(collapseWrapper).toHaveClass('show');
+      // Starts expanded (defaultExpanded): outcome rows are in the DOM.
+      expect(screen.getByTestId('progression-outcome-g1')).toBeInTheDocument();
 
       header.focus();
       await user.keyboard('{Enter}');
 
-      expect(collapseWrapper).not.toHaveClass('show');
+      // Collapsed: body unmounts instead of hiding behind a Collapse class.
+      expect(screen.queryByTestId('progression-outcome-g1')).not.toBeInTheDocument();
       expect(header).toHaveAttribute('aria-expanded', 'false');
     });
 

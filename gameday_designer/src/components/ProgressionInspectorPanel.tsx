@@ -11,9 +11,9 @@
  * component doesn't even mount unless Expert Mode is on — see `ListCanvas.tsx`.
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
-import { Card, Collapse } from 'react-bootstrap';
+import React, { useCallback, useMemo } from 'react';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
+import OverviewCard from './OverviewCard';
 import type { FlowNode, HighlightedElement, StageNode } from '../types/flowchart';
 import { isGameNode, isStageNode, getFieldNodes, getStageFieldIds } from '../types/flowchart';
 import { getGamesInStage } from '../utils/edgeAnalysis';
@@ -34,7 +34,6 @@ const ProgressionInspectorPanel: React.FC<ProgressionInspectorPanelProps> = ({
   onHighlightElement,
 }) => {
   const { t } = useTypedTranslation(['ui', 'validation']);
-  const [isExpanded, setIsExpanded] = useState(true);
 
   const gameById = useMemo(() => new Map(nodes.filter(isGameNode).map((n) => [n.id, n])), [nodes]);
   const stageById = useMemo(() => new Map(nodes.filter(isStageNode).map((n) => [n.id, n])), [nodes]);
@@ -87,20 +86,13 @@ const ProgressionInspectorPanel: React.FC<ProgressionInspectorPanelProps> = ({
   const hasContent = progression.cellsByGameId.size > 0 || progression.findings.length > 0;
 
   return (
-    <Card className="progression-inspector-panel mb-3" data-testid="progression-inspector-panel">
-      <Card.Header
-        className="progression-inspector-panel__header d-flex align-items-center"
-        role="button"
-        tabIndex={0}
-        aria-expanded={isExpanded}
-        onClick={() => setIsExpanded((prev) => !prev)}
-        onKeyDown={(e) => handleActivateKeyDown(e, () => setIsExpanded((prev) => !prev))}
-        style={{ cursor: 'pointer' }}
-      >
-        <i className={`bi ${isExpanded ? ICONS.EXPANDED : ICONS.COLLAPSED} me-2`}></i>
-        <i className={`bi ${ICONS.EXPERT_MODE} me-2`}></i>
-        <strong className="me-auto">{t('ui:label.progressionInspector')}</strong>
-        {progression.findings.length > 0 ? (
+    <OverviewCard
+      testId="progression-inspector-panel"
+      iconClass={ICONS.EXPERT_MODE}
+      title={t('ui:label.progressionInspector')}
+      defaultExpanded
+      badge={
+        progression.findings.length > 0 ? (
           <span className="badge bg-warning text-dark" data-testid="progression-findings-badge">
             {t('validation:warningCount', { count: progression.findings.length })}
           </span>
@@ -111,84 +103,79 @@ const ProgressionInspectorPanel: React.FC<ProgressionInspectorPanelProps> = ({
               {t('ui:label.progressionAllClear')}
             </span>
           )
-        )}
-      </Card.Header>
-      <Collapse in={isExpanded}>
-        <div>
-          <Card.Body>
-            {!hasContent ? (
-              <p className="text-muted mb-0 small">{t('ui:message.progressionInspectorEmpty')}</p>
-            ) : (
-              <>
-                {progression.findings.length > 0 && (
-                  <div className="mb-3">
-                    <h6 className="text-uppercase text-muted small mb-2">{t('ui:label.progressionFindings')}</h6>
-                    <ul className="list-unstyled mb-0">
-                      {progression.findings.map((finding) => (
+        )
+      }
+    >
+      {!hasContent ? (
+        <p className="text-muted mb-0 small">{t('ui:message.progressionInspectorEmpty')}</p>
+      ) : (
+        <>
+          {progression.findings.length > 0 && (
+            <div className="mb-3">
+              <h6 className="text-uppercase text-muted small mb-2">{t('ui:label.progressionFindings')}</h6>
+              <ul className="list-unstyled mb-0">
+                {progression.findings.map((finding) => (
+                  <li
+                    key={finding.id}
+                    className="progression-finding-row d-flex align-items-start gap-2 py-1"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleFindingClick(finding)}
+                    onKeyDown={(e) => handleActivateKeyDown(e, () => handleFindingClick(finding))}
+                    data-testid={`progression-finding-${finding.id}`}
+                  >
+                    <i className={`bi ${findingIconFor(finding.type)} mt-1`}></i>
+                    <span className="small">{getFindingMessage(finding)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div>
+            <h6 className="text-uppercase text-muted small mb-2">{t('ui:label.progressionOutcome')}</h6>
+            {stagesSorted.map((stage) => {
+              const games = getGamesInStage(stage.id, nodes);
+              if (games.length === 0) return null;
+              const fieldNames = fields
+                .filter((f) => getStageFieldIds(stage).includes(f.id))
+                .map((f) => f.data.name);
+              return (
+                <div key={stage.id} className="mb-2">
+                  <div className="small fw-bold text-muted">
+                    {fieldNames.join(', ')} — {stage.data.name}
+                  </div>
+                  <ul className="list-unstyled mb-0 ps-3">
+                    {games.map((game) => {
+                      const cell = progression.cellsByGameId.get(game.id);
+                      if (!cell) return null;
+                      const format = (slot: typeof cell.home) =>
+                        slot.teamLabel
+                          ? `${slot.teamLabel}${slot.basis === 'projected' ? ` (${t('ui:label.expertModeProjectedShort')})` : ''}`
+                          : t('ui:label.expertModeTbd');
+                      const highlightThisGame = () => onHighlightElement(game.id, 'game');
+                      return (
                         <li
-                          key={finding.id}
-                          className="progression-finding-row d-flex align-items-start gap-2 py-1"
+                          key={game.id}
+                          className="progression-outcome-row small"
                           role="button"
                           tabIndex={0}
-                          onClick={() => handleFindingClick(finding)}
-                          onKeyDown={(e) => handleActivateKeyDown(e, () => handleFindingClick(finding))}
-                          data-testid={`progression-finding-${finding.id}`}
+                          onClick={highlightThisGame}
+                          onKeyDown={(e) => handleActivateKeyDown(e, highlightThisGame)}
+                          data-testid={`progression-outcome-${game.id}`}
                         >
-                          <i className={`bi ${findingIconFor(finding.type)} mt-1`}></i>
-                          <span className="small">{getFindingMessage(finding)}</span>
+                          <strong>{game.data.standing}</strong>: {format(cell.home)} vs {format(cell.away)}
                         </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                <div>
-                  <h6 className="text-uppercase text-muted small mb-2">{t('ui:label.progressionOutcome')}</h6>
-                  {stagesSorted.map((stage) => {
-                    const games = getGamesInStage(stage.id, nodes);
-                    if (games.length === 0) return null;
-                    const fieldNames = fields
-                      .filter((f) => getStageFieldIds(stage).includes(f.id))
-                      .map((f) => f.data.name);
-                    return (
-                      <div key={stage.id} className="mb-2">
-                        <div className="small fw-bold text-muted">
-                          {fieldNames.join(', ')} — {stage.data.name}
-                        </div>
-                        <ul className="list-unstyled mb-0 ps-3">
-                          {games.map((game) => {
-                            const cell = progression.cellsByGameId.get(game.id);
-                            if (!cell) return null;
-                            const format = (slot: typeof cell.home) =>
-                              slot.teamLabel
-                                ? `${slot.teamLabel}${slot.basis === 'projected' ? ` (${t('ui:label.expertModeProjectedShort')})` : ''}`
-                                : t('ui:label.expertModeTbd');
-                            const highlightThisGame = () => onHighlightElement(game.id, 'game');
-                            return (
-                              <li
-                                key={game.id}
-                                className="progression-outcome-row small"
-                                role="button"
-                                tabIndex={0}
-                                onClick={highlightThisGame}
-                                onKeyDown={(e) => handleActivateKeyDown(e, highlightThisGame)}
-                                data-testid={`progression-outcome-${game.id}`}
-                              >
-                                <strong>{game.data.standing}</strong>: {format(cell.home)} vs {format(cell.away)}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </ul>
                 </div>
-              </>
-            )}
-          </Card.Body>
-        </div>
-      </Collapse>
-    </Card>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </OverviewCard>
   );
 };
 

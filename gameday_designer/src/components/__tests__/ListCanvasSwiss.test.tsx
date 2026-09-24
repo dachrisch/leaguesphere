@@ -18,6 +18,7 @@ import type {
   FlowValidationResult,
   SwissTournamentState,
 } from '../../types/flowchart';
+import { createFieldNode, createStageNode } from '../../types/flowchart';
 
 const SWISS: SwissTournamentState = {
   seedOrder: [1, 2, 3, 4],
@@ -120,6 +121,8 @@ describe('ListCanvas Swiss embedded standings', () => {
     renderCanvas(createProps({ swiss: SWISS }));
 
     expect(await screen.findByTestId('swiss-standings-panel')).toBeInTheDocument();
+    // Starts collapsed (shared OverviewCard): expand to reach the table.
+    fireEvent.click(screen.getByTestId('swiss-standings-header'));
     expect(await screen.findByTestId('swiss-standings-table')).toBeInTheDocument();
     expect(screen.getByTestId('swiss-standing-11')).toHaveTextContent('Alpha');
     expect(await screen.findByTestId('swiss-rounds-indicator')).toBeInTheDocument();
@@ -132,30 +135,38 @@ describe('ListCanvas Swiss embedded standings', () => {
     expect(designerApi.getSwissStandings).not.toHaveBeenCalled();
   });
 
-  it('renders the standings panel as third top-row card after metadata and team pool', async () => {
-    const { container } = renderCanvas(createProps({ swiss: SWISS }));
+  it('renders stages overview and standings side by side in the overview row', async () => {
+    const field = createFieldNode('f1', { name: 'Field 1', order: 0 });
+    const stage = createStageNode('s1', 'f1', { name: 'Preliminary', order: 0 });
+    const { container } = renderCanvas(createProps({ swiss: SWISS, nodes: [field, stage] }));
 
     const panel = await screen.findByTestId('swiss-standings-panel');
     expect(panel).toBeInTheDocument();
-    // Panel lives inside the top header row next to metadata + team pool.
+    // Both cards live inside the shared overview row below the header row.
+    const row = container.querySelector('.overview-row');
+    expect(row).toBeInTheDocument();
+    const withinRow = within(row as HTMLElement);
+    expect(withinRow.getByTestId('stages-overview-panel')).toBeInTheDocument();
+    expect(withinRow.getByTestId('swiss-standings-panel')).toBeInTheDocument();
+    // DOM order: stages overview → swiss standings.
+    const stages = withinRow.getByTestId('stages-overview-panel');
+    expect(stages.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The header row keeps metadata + team pool only …
     const topRow = container.querySelector('.metadata-team-pool-row');
     expect(topRow).toBeInTheDocument();
-    expect(within(topRow as HTMLElement).getByTestId('swiss-standings-panel')).toBeInTheDocument();
-    // DOM order: metadata → team pool → swiss control.
-    const header = screen.getByTestId('gameday-metadata-header');
-    const pool = screen.getByTestId('team-pool-card');
-    expect(header.compareDocumentPosition(pool) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(pool.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // The old sticky side callout is gone.
+    expect(within(topRow as HTMLElement).queryByTestId('swiss-standings-panel')).not.toBeInTheDocument();
+    // … and the old header-row slot plus the sticky side callout are gone.
+    expect(screen.queryByTestId('swiss-top-row-card')).not.toBeInTheDocument();
     expect(screen.queryByTestId('swiss-side-callout')).not.toBeInTheDocument();
   });
 
-  it('shows no top-row control card when there is no swiss config', () => {
-    renderCanvas(createProps({ swiss: undefined }));
+  it('shows no overview row when there are no stages and no swiss config', () => {
+    const { container } = renderCanvas(createProps({ swiss: undefined }));
 
     expect(screen.queryByTestId('swiss-standings-panel')).not.toBeInTheDocument();
     expect(screen.queryByTestId('swiss-side-callout')).not.toBeInTheDocument();
     expect(screen.queryByTestId('swiss-top-row-card')).not.toBeInTheDocument();
+    expect(container.querySelector('.overview-row')).not.toBeInTheDocument();
   });
 
   it('refetches standings when results are saved without a new round (results version bump)', async () => {
@@ -165,6 +176,7 @@ describe('ListCanvas Swiss embedded standings', () => {
       </GamedayProvider>,
     );
 
+    fireEvent.click(screen.getByTestId('swiss-standings-header'));
     expect(await screen.findByTestId('swiss-standings-table')).toBeInTheDocument();
     expect(designerApi.getSwissStandings).toHaveBeenCalledTimes(1);
 
@@ -187,6 +199,7 @@ describe('ListCanvas Swiss embedded standings', () => {
   it('wires the panel generate button to onProgressSwissRound with the next round', async () => {
     const onProgressSwissRound = vi.fn();
     renderCanvas(createProps({ swiss: SWISS, onProgressSwissRound }));
+    fireEvent.click(screen.getByTestId('swiss-standings-header'));
 
     const button = await screen.findByTestId('swiss-generate-next');
     expect(button).toHaveTextContent('Generate Round 2');
@@ -196,6 +209,7 @@ describe('ListCanvas Swiss embedded standings', () => {
 
   it('forwards the generating state to the panel button', async () => {
     renderCanvas(createProps({ swiss: SWISS, onProgressSwissRound: vi.fn(), swissGenerating: true }));
+    fireEvent.click(screen.getByTestId('swiss-standings-header'));
 
     expect(await screen.findByTestId('swiss-generate-next')).toBeDisabled();
   });
@@ -203,6 +217,7 @@ describe('ListCanvas Swiss embedded standings', () => {
   it('keeps the panel generate button when published (readOnly): Swiss progression stays available', async () => {
     const onProgressSwissRound = vi.fn();
     renderCanvas(createProps({ swiss: SWISS, onProgressSwissRound, readOnly: true }));
+    fireEvent.click(screen.getByTestId('swiss-standings-header'));
 
     const button = await screen.findByTestId('swiss-generate-next');
     expect(button).toHaveTextContent('Generate Round 2');
