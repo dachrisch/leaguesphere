@@ -132,6 +132,10 @@ export interface GameNodeData {
   resolvedHomeTeam?: string;
   /** Resolved away team label from backend (read-only) */
   resolvedAwayTeam?: string;
+  /** Real backend Gameinfo id, set once the gameday is published and this
+   * game's row exists in the database (matched by `standing`). Required to
+   * persist a score via the API — an unpublished game has no Gameinfo row. */
+  gameinfoId?: number;
 
   // Time scheduling (Phase 1)
   /** Calculated start time (HH:MM, 24-hour). Auto-calculated or manual. */

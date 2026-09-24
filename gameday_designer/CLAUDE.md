@@ -86,6 +86,16 @@ Deliberately kept separate from the always-on `useFlowValidation`/`FlowValidatio
 - Progression (winner/loser paths) resolves against **placeholder teams** — templates reference
   placeholders that must exist in the DB (see root CLAUDE.md § placeholder teams).
 - Always run `template_validation_service` logic before application; don't bypass validation.
+- **A stage's games can span multiple fields and still count as one group.** Standings
+  (`league_table`'s Vorrunden-Tabelle) and rank-based progression
+  (`gamedays/service/canvas_progression_service.py::_compute_stage_standings`) key off the
+  **stage name**, not the physical field — `field` is purely a display/scheduling attribute. To
+  split one group's games across two fields (e.g. 5 teams playing on 2 fields as one group), create
+  a `StageNode` under each field and give both the **exact same stage name**; their games will
+  resolve as one shared group for both the table and any "Nth place of this stage" dynamic team
+  reference. Stage-rank resolution ranks teams using the same `TieBreakerEngine` and configured
+  tie-break ruleset as the displayed tables (`GamedayModelWrapper.get_stage_standings()`), so it
+  always agrees with what the Vorrunden-/Abschlusstabelle shows.
 
 ## Tests
 ```bash

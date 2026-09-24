@@ -285,6 +285,7 @@
   "notification": {
     "gameResultSaved": "Game result saved",
     "saveResultFailed": "Failed to save game result",
+    "saveResultNotPublished": "Publish the gameday before entering results for this game",
     "autoSaveSuccess": "Changes saved automatically",
     "autoSaveFailed": "Failed to auto-save changes",
     "loadGamedayFailed": "Failed to load gameday",

@@ -136,7 +136,7 @@ describe('Final Coverage Polish', () => {
   it('ListDesignerApp: handleSaveResult success path', async () => {
     const mockField = { id: 'field-1', type: 'field', data: { name: 'Field 1', order: 0 } };
     const mockStage = { id: 'stage-1', type: 'stage', parentId: 'field-1', data: { name: 'Stage 1', order: 0 } };
-    const mockGame = { id: 'game-123', type: 'game', parentId: 'stage-1', data: { standing: 'Game 123' } };
+    const mockGame = { id: 'game-123', type: 'game', parentId: 'stage-1', data: { standing: 'Game 123', gameinfoId: 123 } };
     const mockController = {
         metadata: { ...defaultMetadata, status: 'PUBLISHED' },
         nodes: [mockField, mockStage, mockGame],
@@ -164,6 +164,7 @@ describe('Final Coverage Polish', () => {
     vi.mocked(gamedayApi.getGameday).mockResolvedValue({ ...defaultMetadata, status: 'IN_PROGRESS' } as unknown as Awaited<ReturnType<typeof gamedayApi.getGameday>>);
     vi.mocked(gamedayApi.listSeasons).mockResolvedValue([]);
     vi.mocked(gamedayApi.listLeagues).mockResolvedValue([]);
+    vi.mocked(gamedayApi.getGamedayGames).mockResolvedValue([]);
     vi.mocked(gamedayApi.updateGameResult).mockResolvedValue({
         halftime_score: { home: 1, away: 0 },
         final_score: { home: 2, away: 1 },
@@ -203,7 +204,7 @@ describe('Final Coverage Polish', () => {
   it('ListDesignerApp: handleSaveResult failure path', async () => {
     const mockField = { id: 'field-1', type: 'field', data: { name: 'Field 1', order: 0 } };
     const mockStage = { id: 'stage-1', type: 'stage', parentId: 'field-1', data: { name: 'Stage 1', order: 0 } };
-    const mockGame = { id: 'game-123', type: 'game', parentId: 'stage-1', data: { standing: 'Game 123' } };
+    const mockGame = { id: 'game-123', type: 'game', parentId: 'stage-1', data: { standing: 'Game 123', gameinfoId: 123 } };
     const mockController = {
         metadata: { ...defaultMetadata, status: 'PUBLISHED' },
         nodes: [mockField, mockStage, mockGame],
@@ -231,6 +232,7 @@ describe('Final Coverage Polish', () => {
     vi.mocked(gamedayApi.getGameday).mockResolvedValue({ ...defaultMetadata, status: 'IN_PROGRESS' } as unknown as Awaited<ReturnType<typeof gamedayApi.getGameday>>);
     vi.mocked(gamedayApi.listSeasons).mockResolvedValue([]);
     vi.mocked(gamedayApi.listLeagues).mockResolvedValue([]);
+    vi.mocked(gamedayApi.getGamedayGames).mockResolvedValue([]);
     vi.mocked(gamedayApi.updateGameResult).mockRejectedValue(new Error('Save Error'));
 
     render(

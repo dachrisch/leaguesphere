@@ -387,5 +387,7 @@ export interface GameResultsDisplay {
   field: number;
   scheduled: string;
   status: string;
+  stage: string;
+  standing: string;
   results: GameResultInput[];
 }

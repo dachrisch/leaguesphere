@@ -401,8 +401,44 @@ const ListDesignerApp: React.FC = () => {
     }
   }, [flowState.nodes]);
 
+  // Once a gameday is published, each canvas game node's `standing` uniquely
+  // identifies a real backend Gameinfo row (the same assumption the server's
+  // own progression logic relies on). Fetch those rows and stamp their real
+  // ids onto the matching nodes so score entry can target the correct game
+  // instead of guessing an id from the node's client-generated key.
+  const syncGameinfoIds = useCallback(async () => {
+    if (!id) return;
+    const games = await gamedayApi.getGamedayGames(parseInt(id));
+    const gameNodesByStanding = new Map(
+      flowState.nodes.filter(isGameNode).map((n) => [n.data.standing, n] as const)
+    );
+    games.forEach((game) => {
+      const node = gameNodesByStanding.get(game.standing);
+      if (node && node.data.gameinfoId !== game.id) {
+        handleUpdateNode(node.id, { gameinfoId: game.id });
+      }
+    });
+  }, [id, flowState.nodes, handleUpdateNode]);
+
+  const gameinfoSyncedForRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!id || !metadata?.status || metadata.status === 'DRAFT') return;
+    if (gameinfoSyncedForRef.current === id) return;
+    gameinfoSyncedForRef.current = id;
+    syncGameinfoIds().catch(() => {
+      // Non-fatal: score entry will simply show the "publish first" message
+      // until this succeeds on a later load or after the next publish.
+    });
+  }, [id, metadata?.status, syncGameinfoIds]);
+
   const handleSaveResult = useCallback(async (data: { halftime_score: { home: number; away: number }; final_score: { home: number; away: number } }) => {
     if (!selectedGameForResult) return;
+
+    const gameinfoId = selectedGameForResult.data.gameinfoId;
+    if (!gameinfoId) {
+      addNotification(t('ui:notification.saveResultNotPublished'), 'warning', t('ui:notification.title.prerequisites'));
+      return;
+    }
 
     try {
       handleUpdateNode(selectedGameForResult.id, {
@@ -410,10 +446,7 @@ const ListDesignerApp: React.FC = () => {
         final_score: data.final_score,
       });
 
-      const dbIdPart = selectedGameForResult.id.split('-').pop();
-      if (dbIdPart && !isNaN(parseInt(dbIdPart))) {
-        await gamedayApi.updateGameResult(parseInt(dbIdPart), { halftime_score: data.halftime_score, final_score: data.final_score });
-      }
+      await gamedayApi.updateGameResult(gameinfoId, { halftime_score: data.halftime_score, final_score: data.final_score });
 
       setShowResultModal(false);
       setSelectedGameForResult(null);
@@ -492,6 +525,11 @@ const ListDesignerApp: React.FC = () => {
       await gamedayApi.publish(parseInt(id!));
       addNotification(t('ui:notification.publishSuccess'), 'success', t('ui:notification.title.success'));
 
+      if (id) {
+        gameinfoSyncedForRef.current = id;
+      }
+      syncGameinfoIds().catch(() => {});
+
       // Track gameday published event
       trackEvent('gameday_published', {
         gameday_id: id,
@@ -509,7 +547,7 @@ const ListDesignerApp: React.FC = () => {
     } catch {
       addNotification(t('ui:notification.publishFailed'), 'danger', t('ui:notification.title.error'));
     }
-  }, [id, addNotification, t, loadData, flowState.nodes, tourBLoading, tourBSeen]);
+  }, [id, addNotification, t, loadData, flowState.nodes, tourBLoading, tourBSeen, syncGameinfoIds]);
 
   const handleConfirmDelete = useCallback(async () => {
     setShowDeleteModal(false);

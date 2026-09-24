@@ -34,6 +34,7 @@ from gamedays.service.gameday_settings import (
     IN_POSSESSION,
     IS_HOME,
     TEAM_ID,
+    RANK,
 )
 from gamedays.service.stage_category import StageCategory
 from gamedays.service.placeholder_service import GamedayPlaceholderService
@@ -218,6 +219,45 @@ class GamedayModelWrapper:
         league_config_ruleset = LeagueConfigRuleset.from_ruleset(self.league_season_ruleset)
         engine = FinalRankingEngine(league_config_ruleset)
         return engine.compute_final_table(self._games_with_result)
+
+    def get_stage_standings(self, stage_name: str) -> DataFrame:
+        """Ranks the teams of one stage (matched by name, regardless of which
+        physical field their games were scheduled on) using the same
+        TieBreakerEngine and configured tie-break ruleset as the displayed
+        Vorrunden-/Abschlusstabelle, instead of a separate hand-rolled order.
+
+        Falls back to the same default ruleset (pk=2) used elsewhere in this
+        class when the gameday's league/season has no configured ruleset, so
+        this always produces a result rather than silently doing nothing.
+        """
+        if self._games_with_result.empty:
+            return pd.DataFrame(columns=[TEAM_ID, RANK])
+
+        stage_games = self._games_with_result[
+            self._games_with_result[STAGE] == stage_name
+        ]
+        if stage_games.empty:
+            return pd.DataFrame(columns=[TEAM_ID, RANK])
+
+        # TieBreakerEngine.rank() groups by STANDING to rank each group's
+        # table separately. A stage's individual games are commonly each
+        # tagged with their own match id as `standing` (e.g. "Spiel 1",
+        # "Spiel 2"), not one shared group label, so without normalizing this
+        # column here, the engine would fragment one stage into several
+        # bogus single-game "groups" instead of ranking it as one table.
+        stage_games = stage_games.copy()
+        stage_games[STANDING] = stage_name
+
+        ruleset = self.league_season_ruleset
+        if ruleset is None:
+            try:
+                ruleset = LeagueRuleset.objects.get(pk=2)
+            except LeagueRuleset.DoesNotExist:
+                return pd.DataFrame(columns=[TEAM_ID, RANK])
+
+        league_config_ruleset = LeagueConfigRuleset.from_ruleset(ruleset)
+        engine = TieBreakerEngine(league_config_ruleset)
+        return engine.rank_by_games(stage_games).sort_values(by=RANK)
 
     def _get_passcheck_player_jersey_number(self):
         key_mapping = {

@@ -1,4 +1,6 @@
-from gamedays.models import Gameinfo, Gameresult, GamedayDesignerState
+from gamedays.models import Gameinfo, Gameresult, GamedayDesignerState, Team
+from gamedays.service.gameday_settings import TEAM_ID
+from gamedays.service.model_wrapper import GamedayModelWrapper
 
 
 class CanvasBracketProgressionService:
@@ -129,43 +131,21 @@ class CanvasBracketProgressionService:
         )
 
     def _compute_stage_standings(self, stage_name: str):
-        """Ranks the teams of a finished stage: win points (win=2, draw=1,
-        loss=0) first, then point difference, then points scored — mirroring
-        the tiebreak order already used for gameday-internal tables."""
-        stats = {}
-        games = Gameinfo.objects.filter(
-            gameday=self.game.gameday,
-            stage=stage_name,
-            status=Gameinfo.STATUS_COMPLETED,
-        )
-        for gi in games:
-            results = list(
-                Gameresult.objects.filter(gameinfo=gi).select_related("team")
-            )
-            home = next((r for r in results if r.isHome), None)
-            away = next((r for r in results if not r.isHome), None)
-            if not home or not away or not home.team or not away.team:
-                continue
-            home_total = (home.fh or 0) + (home.sh or 0)
-            away_total = (away.fh or 0) + (away.sh or 0)
-            self._accumulate(stats, home.team, home_total, away_total)
-            self._accumulate(stats, away.team, away_total, home_total)
+        """Ranks the teams of a finished stage using the same TieBreakerEngine
+        and configured tie-break ruleset as the displayed Vorrunden-/
+        Abschlusstabelle, so a rank resolved here always agrees with what the
+        table shows. Field-agnostic: a stage's games may be scheduled across
+        multiple physical fields and still resolve as one group, since ranking
+        is keyed by the stage name, not by field."""
+        try:
+            wrapper = GamedayModelWrapper(pk=self.game.gameday_id)
+        except Gameinfo.DoesNotExist:
+            return []
 
-        ranked = sorted(
-            stats.values(),
-            key=lambda s: (s["win_points"], s["pf"] - s["pa"], s["pf"]),
-            reverse=True,
-        )
-        return [s["team"] for s in ranked]
+        ranked = wrapper.get_stage_standings(stage_name)
+        if ranked.empty:
+            return []
 
-    @staticmethod
-    def _accumulate(stats: dict, team, points_for: int, points_against: int) -> None:
-        entry = stats.setdefault(
-            team.id, {"team": team, "win_points": 0, "pf": 0, "pa": 0}
-        )
-        entry["pf"] += points_for
-        entry["pa"] += points_against
-        if points_for > points_against:
-            entry["win_points"] += 2
-        elif points_for == points_against:
-            entry["win_points"] += 1
+        team_ids = ranked[TEAM_ID].tolist()
+        teams_by_id = {t.id: t for t in Team.objects.filter(id__in=team_ids)}
+        return [teams_by_id[tid] for tid in team_ids if tid in teams_by_id]

@@ -295,3 +295,150 @@ class TestCanvasBracketProgressionServiceEdgeCases:
 
         final_home = Gameresult.objects.get(gameinfo=final, isHome=True)
         assert final_home.team == placeholder  # untouched, no IndexError
+
+
+@pytest.mark.django_db
+class TestCanvasBracketProgressionServiceStageStandings:
+    """Coverage for _compute_stage_standings using the same TieBreakerEngine
+    and configured ruleset as the displayed Vorrunden-/Abschlusstabelle
+    (league_table.service.ranking.engine), instead of a separate hand-rolled
+    order, and for stage standings resolving correctly when a stage's games
+    are split across multiple physical fields."""
+
+    def setup_method(self):
+        self.user = User.objects.create_user(username="standings_test", password="pw")
+        self.season = Season.objects.create(name="standings2026")
+        self.league = League.objects.create(name="Standings League")
+        self.team_a = Team.objects.create(name="A", description="A", location="City")
+        self.team_b = Team.objects.create(name="B", description="B", location="City")
+        self.team_c = Team.objects.create(name="C", description="C", location="City")
+        self.team_d = Team.objects.create(name="D", description="D", location="City")
+        self.gameday = Gameday.objects.create(
+            name="Standings Day",
+            season=self.season,
+            league=self.league,
+            date=date(2026, 5, 2),
+            start="10:00",
+            author=self.user,
+        )
+
+    def _completed_game(self, standing, stage, home, away, home_score, away_score):
+        gi = Gameinfo.objects.create(
+            gameday=self.gameday,
+            scheduled="10:00",
+            field=1,
+            officials=self.team_a,
+            stage=stage,
+            standing=standing,
+            status=Gameinfo.STATUS_COMPLETED,
+        )
+        Gameresult.objects.create(
+            gameinfo=gi, team=home, isHome=True, fh=home_score, sh=0
+        )
+        Gameresult.objects.create(
+            gameinfo=gi, team=away, isHome=False, fh=away_score, sh=0
+        )
+        return gi
+
+    def _finale_state_with_rank_ref(self, place, stage_name="Vorrunde"):
+        return {
+            "nodes": [
+                {
+                    "id": "field-1",
+                    "type": "field",
+                    "parentId": None,
+                    "data": {"type": "field", "name": "Field 1", "order": 0},
+                    "position": {"x": 0, "y": 0},
+                },
+                _stage_node("stage-1", "field-1", stage_name),
+                _stage_node("stage-2", "field-1", "Finale", "final"),
+                _game_node(
+                    "game-fin",
+                    "stage-2",
+                    "Finale",
+                    "FIN",
+                    homeTeamDynamic={
+                        "type": "rank",
+                        "place": place,
+                        "stageName": stage_name,
+                        "stageId": "stage-1",
+                    },
+                ),
+            ]
+        }
+
+    def test_stage_rank_uses_head_to_head_tiebreak_not_hand_rolled_order(self):
+        """A and B are tied on win-quotient and would also be tied under the
+        old hand-rolled tiebreak (equal win-points), but A beat B head-to-head
+        while B has the better overall point difference (from a separate game
+        against a weaker opponent). The configured ruleset's `direct_wins`
+        tiebreak step must rank A above B; the old hand-rolled
+        win-points/point-diff order would have put B above A instead."""
+        g1 = self._completed_game(
+            "Vorrunde", "Vorrunde", self.team_a, self.team_b, 10, 0
+        )
+        self._completed_game("Vorrunde", "Vorrunde", self.team_a, self.team_c, 0, 20)
+        self._completed_game("Vorrunde", "Vorrunde", self.team_b, self.team_d, 20, 0)
+
+        final = Gameinfo.objects.create(
+            gameday=self.gameday,
+            scheduled="12:00",
+            field=1,
+            officials=self.team_a,
+            stage="Finale",
+            standing="FIN",
+            status=Gameinfo.STATUS_PUBLISHED,
+        )
+        placeholder = Team.objects.create(
+            name="Rank 2 Vorrunde", description="Rank 2 Vorrunde", location=""
+        )
+        Gameresult.objects.create(gameinfo=final, team=placeholder, isHome=True)
+
+        GamedayDesignerState.objects.create(
+            gameday=self.gameday,
+            state_data=self._finale_state_with_rank_ref(place=2),
+        )
+
+        CanvasBracketProgressionService(g1).apply()
+
+        final_home = Gameresult.objects.get(gameinfo=final, isHome=True)
+        assert final_home.team == self.team_a
+
+    def test_stage_rank_resolves_correctly_when_games_span_two_fields(self):
+        """A stage's games may be scheduled on different physical fields and
+        must still resolve as one shared group for rank references, since
+        ranking is keyed by stage name, not field."""
+        g1 = self._completed_game(
+            "Vorrunde", "Vorrunde", self.team_a, self.team_b, 10, 0
+        )
+        g1.field = 1
+        g1.save(update_fields=["field"])
+        g2 = self._completed_game(
+            "Vorrunde", "Vorrunde", self.team_a, self.team_b, 5, 0
+        )
+        g2.field = 2
+        g2.save(update_fields=["field"])
+
+        final = Gameinfo.objects.create(
+            gameday=self.gameday,
+            scheduled="12:00",
+            field=1,
+            officials=self.team_a,
+            stage="Finale",
+            standing="FIN",
+            status=Gameinfo.STATUS_PUBLISHED,
+        )
+        placeholder = Team.objects.create(
+            name="Rank 1 Vorrunde", description="Rank 1 Vorrunde", location=""
+        )
+        Gameresult.objects.create(gameinfo=final, team=placeholder, isHome=True)
+
+        GamedayDesignerState.objects.create(
+            gameday=self.gameday,
+            state_data=self._finale_state_with_rank_ref(place=1),
+        )
+
+        CanvasBracketProgressionService(g2).apply()
+
+        final_home = Gameresult.objects.get(gameinfo=final, isHome=True)
+        assert final_home.team == self.team_a
