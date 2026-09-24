@@ -428,5 +428,42 @@ describe('useNodesState', () => {
 
       expect(result.current.getGameField(gId)?.id).toBe(f2Id);
     });
+
+    it('getGameField returns null for a nonexistent game id', () => {
+      const { result } = setupHook();
+      expect(result.current.getGameField('nonexistent-game-id')).toBeNull();
+    });
+
+    it('getGameField returns null for an orphan game with no valid parent stage', () => {
+      const { result, getNodes, rerender } = setupHook();
+      let gId = '';
+      act(() => {
+        gId = result.current.addGameNodeInStage('nonexistent-stage-id').id;
+      });
+      rerender({ nodes: getNodes() });
+
+      expect(result.current.getGameField(gId)).toBeNull();
+    });
+
+    it('getGameField returns null when a game\'s fieldId override points at a nonexistent field', () => {
+      const { result, getNodes, rerender } = setupHook();
+      let gId = '';
+      let fId = '';
+      let sId = '';
+      act(() => {
+        fId = result.current.addFieldNode().id;
+      });
+      rerender({ nodes: getNodes() });
+      act(() => {
+        sId = result.current.addStageNode(fId)!.id;
+      });
+      rerender({ nodes: getNodes() });
+      act(() => {
+        gId = result.current.addGameNodeInStage(sId, { fieldId: 'dangling-field-id' }).id;
+      });
+      rerender({ nodes: getNodes() });
+
+      expect(result.current.getGameField(gId)).toBeNull();
+    });
   });
 });

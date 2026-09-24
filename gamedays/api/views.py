@@ -4,13 +4,7 @@ import logging
 from collections import OrderedDict
 from datetime import timedelta
 
-from django.db.models import (
-    Count,
-    Max,
-    Q,
-    Exists,
-    OuterRef,
-)
+from django.db.models import Count, Max, Q, Exists, OuterRef
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import condition
 from django.utils.decorators import method_decorator
@@ -24,10 +18,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from gamedays.permissions import (
-    IsAuthenticatedOrOwnerOrStaff,
-    IsAuthenticatedOrGamedayOwnerOrStaff,
-)
+from gamedays.permissions import IsAuthenticatedOrOwnerOrStaff, IsAuthenticatedOrGamedayOwnerOrStaff
 from gamedays.service.utils import get_effective_today
 
 from gamedays.api.serializers import (
@@ -109,12 +100,9 @@ def generate_gameday_games_etag(request, gameday_pk=None):
     try:
         gameday = Gameday.objects.get(pk=gameday_pk)
         # Include gameday pk and latest gameresult pk
-        latest_result = (
-            Gameresult.objects.filter(gameinfo__gameday=gameday)
-            .values_list("pk", flat=True)
-            .order_by("-pk")
-            .first()
-        )
+        latest_result = Gameresult.objects.filter(
+            gameinfo__gameday=gameday
+        ).values_list('pk', flat=True).order_by('-pk').first()
 
         etag_data = f"{gameday_pk}:{latest_result or 'no-results'}"
         return f'"{hashlib.md5(etag_data.encode()).hexdigest()}"'
@@ -137,14 +125,7 @@ class GamedayViewSet(viewsets.ModelViewSet):
     # Reads stay public (public gameday pages / dashboards); mutating a gameday
     # — including its resource URLs, which render on gameday pages — requires an
     # authenticated user to prevent anonymous tampering / link injection.
-    WRITE_ACTIONS = (
-        "create",
-        "update",
-        "partial_update",
-        "destroy",
-        "publish",
-        "designer_state",
-    )
+    WRITE_ACTIONS = ("create", "update", "partial_update", "destroy", "publish", "designer_state")
 
     def get_permissions(self):
         if self.action in self.WRITE_ACTIONS:
@@ -298,11 +279,7 @@ class GamedayViewSet(viewsets.ModelViewSet):
             update_fields = []
             for field in ("name", "date", "start", "address"):
                 value = metadata.get(field)
-                if (
-                    value is not None
-                    and value != ""
-                    and getattr(gameday, field) != value
-                ):
+                if value is not None and value != "" and getattr(gameday, field) != value:
                     setattr(gameday, field, value)
                     update_fields.append(field)
             # league/season are FKs: read/write the *_id attname directly so we
@@ -381,7 +358,7 @@ class GamedayListAPIView(ListAPIView):
         return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = Gameday.objects.select_related("league", "season", "author")
+        queryset = Gameday.objects.select_related('league', 'season', 'author')
         target_date = get_effective_today()
 
         offset_matches = Q()
@@ -389,7 +366,7 @@ class GamedayListAPIView(ListAPIView):
             offset_matches |= Q(
                 day_offset=offset, gameday__date=target_date - timedelta(days=offset)
             )
-        day_offset_matches = Gameinfo.objects.filter(gameday=OuterRef("pk")).filter(
+        day_offset_matches = Gameinfo.objects.filter(gameday=OuterRef('pk')).filter(
             offset_matches
         )
 
@@ -399,13 +376,13 @@ class GamedayListAPIView(ListAPIView):
 class GameinfoUpdateAPIView(RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticatedOrGamedayOwnerOrStaff]
     serializer_class = GameinfoSerializer
-    queryset = Gameinfo.objects.prefetch_related("gameresult_set").all()
+    queryset = Gameinfo.objects.prefetch_related('gameresult_set').all()
 
 
 class GamedayRetrieveUpdate(RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticatedOrOwnerOrStaff]
     serializer_class = GamedaySerializer
-    queryset = Gameday.objects.select_related("league", "season", "author").all()
+    queryset = Gameday.objects.select_related('league', 'season', 'author').all()
 
 
 class GameOfficialCreateOrUpdateView(RetrieveUpdateAPIView):
@@ -458,9 +435,7 @@ class GamedayScheduleView(APIView):
         elif get == "qualify":
             qualify_table = gs.get_qualify_table()
             if not isinstance(qualify_table, HtmlAndJsonRendering):
-                qualify_table = qualify_table[
-                    [STANDING, TEAM_DESCRIPTION, WIN_POINTS, PF, PA, DIFF]
-                ]
+                qualify_table = qualify_table[[STANDING, TEAM_DESCRIPTION, WIN_POINTS, PF, PA, DIFF]]
                 qualify_table = qualify_table.rename(columns=TABLE_HEADERS)
             response = qualify_table.to_json(orient="split")
         elif get == "final":
@@ -484,10 +459,7 @@ class GamedayPublishAPIView(APIView):
         gameday = get_object_or_404(Gameday, pk=pk)
 
         if not _check_gameday_mutation_permission(request, gameday):
-            return Response(
-                {"detail": "You do not have permission to perform this action."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
 
         if gameday.status != Gameday.STATUS_DRAFT:
             return Response(
@@ -512,10 +484,7 @@ class GameResultUpdateAPIView(APIView):
         game = get_object_or_404(Gameinfo, pk=pk)
 
         if not _check_gameday_mutation_permission(request, game.gameday):
-            return Response(
-                {"detail": "You do not have permission to perform this action."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
 
         halftime_score = request.data.get("halftime_score")
         final_score = request.data.get("final_score")
@@ -588,13 +557,7 @@ class LeagueViewSet(viewsets.ReadOnlyModelViewSet):
 class GameResultsListView(APIView):
     """Get all games for a gameday"""
 
-    @method_decorator(
-        condition(
-            etag_func=lambda request, gameday_pk=None: generate_gameday_games_etag(
-                request, gameday_pk
-            )
-        )
-    )
+    @method_decorator(condition(etag_func=lambda request, gameday_pk=None: generate_gameday_games_etag(request, gameday_pk)))
     def get(self, request, gameday_pk=None):
         """GET /api/gamedays/{gameday_id}/games/"""
         try:
@@ -605,7 +568,7 @@ class GameResultsListView(APIView):
             )
 
         games = Gameinfo.objects.filter(gameday=gameday).prefetch_related(
-            "gameresult_set__team"
+            'gameresult_set__team'
         )
         serializer = GameInfoSerializer(games, many=True)
         return Response(serializer.data)
@@ -618,10 +581,7 @@ class AutoAssignOfficialsView(APIView):
         gameday = get_object_or_404(Gameday, pk=pk)
 
         if not _check_gameday_mutation_permission(request, gameday):
-            return Response(
-                {"detail": "You do not have permission to perform this action."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
 
         if gameday.status != "DRAFT":
             return Response(
@@ -644,7 +604,6 @@ class AutoAssignOfficialsView(APIView):
 
 class GameResultsUpdateView(APIView):
     """Update game results for a specific game"""
-
     permission_classes = [IsAuthenticatedOrGamedayOwnerOrStaff]
 
     def post(self, request, gameday_pk=None, game_pk=None):
@@ -657,10 +616,7 @@ class GameResultsUpdateView(APIView):
             )
 
         if not _check_gameday_mutation_permission(request, game.gameday):
-            return Response(
-                {"detail": "You do not have permission to perform this action."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = GameResultsUpdateSerializer(game, data=request.data)
         if serializer.is_valid():

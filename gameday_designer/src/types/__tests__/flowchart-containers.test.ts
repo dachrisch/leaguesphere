@@ -23,6 +23,7 @@ import {
   createFieldNode,
   createStageNode,
   createGameNodeInStage,
+  getStageFieldIds,
 } from '../flowchart';
 
 describe('Container Types - Field and Stage', () => {
@@ -498,6 +499,28 @@ describe('Container Types - Field and Stage', () => {
       expect(isContainerNode(nodes[0])).toBe(true);
       expect(isContainerNode(nodes[1])).toBe(true);
       expect(isContainerNode(nodes[2])).toBe(false); // Game is not a container
+    });
+  });
+
+  describe('getStageFieldIds', () => {
+    it('returns fieldIds when the stage has more than one field', () => {
+      const stage = createStageNode('stage-1', 'field-1', { fieldIds: ['field-1', 'field-2'] });
+      expect(getStageFieldIds(stage)).toEqual(['field-1', 'field-2']);
+    });
+
+    it('falls back to [parentId] when fieldIds is unset', () => {
+      const stage = createStageNode('stage-1', 'field-1');
+      expect(getStageFieldIds(stage)).toEqual(['field-1']);
+    });
+
+    it('falls back to [parentId] when fieldIds is an empty array', () => {
+      const stage = createStageNode('stage-1', 'field-1', { fieldIds: [] });
+      expect(getStageFieldIds(stage)).toEqual(['field-1']);
+    });
+
+    it('returns an empty array when fieldIds is unset and the stage has no parentId', () => {
+      const stage = { ...createStageNode('stage-1', 'field-1'), parentId: undefined };
+      expect(getStageFieldIds(stage)).toEqual([]);
     });
   });
 });

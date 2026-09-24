@@ -169,6 +169,61 @@ describe('StageSection', () => {
     expect(mockOnUpdate).toHaveBeenCalledWith('stage-1', { fieldIds: ['field-1', 'field-2'] });
   });
 
+  it('calls onUpdate with fieldIds: undefined when all fields are deselected', () => {
+    const mockOnUpdate = vi.fn();
+    const field1 = { id: 'field-1', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 1', order: 0 } };
+    const field2 = { id: 'field-2', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 2', order: 1 } };
+
+    renderStage(
+      createDefaultProps({
+        stage: sampleStage,
+        allNodes: [field1, field2, sampleStage, sampleGame],
+        onUpdate: mockOnUpdate,
+      })
+    );
+
+    fireEvent.click(screen.getByTitle(i18n.t('ui:tooltip.editStageName')));
+
+    const select = screen.getByLabelText(/fields/i) as HTMLSelectElement;
+    Array.from(select.options).forEach((o) => { o.selected = false; });
+    fireEvent.change(select);
+
+    expect(mockOnUpdate).toHaveBeenCalledWith('stage-1', { fieldIds: undefined });
+  });
+
+  it('shows the multi-field badge and passes stageFieldOptions to GameTable when the stage already spans multiple fields', () => {
+    const field1 = { id: 'field-1', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 1', order: 0 } };
+    const field2 = { id: 'field-2', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 2', order: 1 } };
+    const multiFieldStage: StageNode = {
+      ...sampleStage,
+      data: { ...sampleStage.data, fieldIds: ['field-1', 'field-2'] },
+    };
+
+    renderStage(
+      createDefaultProps({
+        stage: multiFieldStage,
+        allNodes: [field1, field2, multiFieldStage, sampleGame],
+      })
+    );
+
+    expect(screen.getByTitle(i18n.t('ui:hint.multiFieldStage'))).toBeInTheDocument();
+    // GameTable only renders its own field selector when it actually
+    // received stageFieldOptions (see GameTable's own tests for the cell
+    // itself) -- its presence here proves StageSection passed it through.
+    expect(screen.getByText(i18n.t('ui:label.field'))).toBeInTheDocument();
+  });
+
+  it('does not show the multi-field badge for a single-field stage', () => {
+    renderStage(
+      createDefaultProps({
+        stage: sampleStage,
+        allNodes: [sampleStage, sampleGame],
+      })
+    );
+
+    expect(screen.queryByTitle(i18n.t('ui:hint.multiFieldStage'))).not.toBeInTheDocument();
+  });
+
   it('does not show a fields multi-select when only one field exists', () => {
     const field1 = { id: 'field-1', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 1', order: 0 } };
 

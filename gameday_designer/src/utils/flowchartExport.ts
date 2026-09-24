@@ -8,6 +8,7 @@
 import type {
   FlowState,
   FlowNode,
+  GameNode,
   GameNodeData,
   StageNodeData,
 } from '../types/flowchart';
@@ -153,11 +154,11 @@ function getGameStage(node: FlowNode, nodes: FlowNode[]): FlowNode | null {
  * Get the parent field of a game node from container hierarchy.
  * Traverses game -> stage -> field.
  */
-function getGameField(node: FlowNode, nodes: FlowNode[]): FlowNode | null {
+function getGameField(node: GameNode, nodes: FlowNode[]): FlowNode | null {
   // A game normally plays on its stage's home field, but a stage spanning
   // multiple fields (StageNodeData.fieldIds) lets each game pick its actual
   // field individually via GameNodeData.fieldId.
-  const gameFieldId = isGameNode(node) ? node.data.fieldId : null;
+  const gameFieldId = node.data.fieldId;
   const stage = getGameStage(node, nodes);
   const resolvedFieldId = gameFieldId ?? (stage ? stage.parentId : undefined);
   if (!resolvedFieldId) return null;
