@@ -54,9 +54,11 @@
 
 /**
  * Overview Row: Stages Overview + Swiss standings share one row (plus the
- * Progression Inspector in Expert Mode). Stacked below 1600px; 2 columns
- * for 1-2 cards and 3 columns once a third card joins. Cards collapse
- * independently, so rows align at the top instead of stretching.
+ * Progression Inspector in Expert Mode). Stacked below 1600px; asymmetric
+ * tracks above: the stages list is narrow content, the standings table gets
+ * the wide track (1:3). Cards collapse independently, so rows align at the
+ * top instead of stretching. Children allow shrinking so the wide table
+ * never forces the narrow track open.
  */
 .overview-row {
   display: grid;
@@ -65,18 +67,30 @@
   width: 100%;
 }
 
+.overview-row > * {
+  min-width: 0;
+}
+
 @media (min-width: 1600px) {
+  /* Two cards: narrow stages list + wide standings table (1:3). */
   .overview-row {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
     align-items: start;
   }
 
+  /* Single card takes the full width. */
   .overview-row:not(:has(> :nth-child(2))) {
     grid-template-columns: 1fr;
   }
 
+  /* Three cards (expert mode): stages narrow, table wide, inspector medium. */
   .overview-row:has(> :nth-child(3)) {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 3fr) minmax(0, 1.5fr);
+  }
+
+  /* No stages (Swiss leads the row): the table keeps the wide track. */
+  .overview-row:has(> [data-testid="swiss-standings-panel"]:first-child):has(> :nth-child(2)):not(:has(> :nth-child(3))) {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
   }
 }
 
