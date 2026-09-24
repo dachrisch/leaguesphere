@@ -112,6 +112,7 @@ const ListDesignerApp: React.FC = () => {
     handleMoveGame,
     handleMoveGameField,
     handleUpdateStageFields,
+    handleMergeStage,
     handleDeleteNode,
     handleSelectNode,
     handleAddGlobalTeam,
@@ -625,6 +626,7 @@ const ListDesignerApp: React.FC = () => {
               onMoveGame={handleMoveGame}
               onMoveGameField={handleMoveGameField}
               onUpdateStageFields={handleUpdateStageFields}
+              onMergeStage={handleMergeStage}
               onAddOfficials={handleAddOfficialsLocal}
               onAutoAssignOfficials={handleAutoAssignOfficials}
               isAutoAssigning={isAutoAssigning}

@@ -7,8 +7,8 @@ import {
   importFromScheduleJson,
   validateScheduleJson,
 } from '../flowchartImport';
-import { isGameNode, isGameToGameEdge, isFieldNode, isStageNode } from '../../types/flowchart';
-import type { GameNode } from '../../types/flowchart';
+import { isGameNode, isGameToGameEdge, isFieldNode, isStageNode, getStageFieldIds } from '../../types/flowchart';
+import type { GameNode, StageNode } from '../../types/flowchart';
 
 describe('Flowchart Import Utility', () => {
   describe('importFromScheduleJson', () => {
@@ -336,6 +336,53 @@ describe('Flowchart Import Utility', () => {
         expect(typeof node.position.x).toBe('number');
         expect(typeof node.position.y).toBe('number');
       }
+    });
+
+    it('folds two fields sharing a stage name into one stage node spanning both fields', () => {
+      const json = [
+        {
+          field: 'Feld 1',
+          games: [
+            { stage: 'Preliminary', standing: 'G1', home: 'Team A', away: 'Team B' },
+          ],
+        },
+        {
+          field: 'Feld 2',
+          games: [
+            { stage: 'Preliminary', standing: 'G2', home: 'Team C', away: 'Team D' },
+          ],
+        },
+      ];
+
+      const result = importFromScheduleJson(json);
+
+      expect(result.success).toBe(true);
+      const { nodes } = result.state!;
+      const fieldNodes = nodes.filter(isFieldNode);
+      const stageNodes = nodes.filter(isStageNode);
+
+      expect(stageNodes).toHaveLength(1);
+      expect(getStageFieldIds(stageNodes[0] as StageNode)).toEqual(fieldNodes.map((f) => f.id));
+
+      const gameNodes = nodes.filter(isGameNode);
+      expect(gameNodes.every((g) => g.parentId === stageNodes[0].id)).toBe(true);
+      // Every game shares the stage's own canonical name -- not each game's
+      // own raw string -- so the backend's exact-text standings grouping
+      // combines them once published.
+      expect(gameNodes.every((g) => g.data.stage === stageNodes[0].data.name)).toBe(true);
+    });
+
+    it('matches stage names case-insensitively and trims whitespace when deduping across fields', () => {
+      const json = [
+        { field: 'Feld 1', games: [{ stage: 'Vorrunde', standing: 'G1', home: 'Team A', away: 'Team B' }] },
+        { field: 'Feld 2', games: [{ stage: '  VORRUNDE  ', standing: 'G2', home: 'Team C', away: 'Team D' }] },
+      ];
+
+      const result = importFromScheduleJson(json);
+
+      const stageNodes = result.state!.nodes.filter(isStageNode);
+      expect(stageNodes).toHaveLength(1);
+      expect(stageNodes[0].data.name).toBe('Vorrunde');
     });
   });
 

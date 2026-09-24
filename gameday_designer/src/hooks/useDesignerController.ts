@@ -505,6 +505,28 @@ export function useDesignerController(
     []
   );
 
+  const handleMergeStage = useCallback(
+    (sourceStageId: string, targetStageId: string) => {
+      const fs = flowStateRef.current;
+      if (!fs) return;
+
+      const targetStage = fs.nodes.find((n) => n.id === targetStageId && n.type === 'stage');
+      const stageName = targetStage && targetStage.type === 'stage' ? targetStage.data.name : '';
+      const success = fs.mergeStageInto(sourceStageId, targetStageId);
+      if (success) {
+        addNotification(`Merged into "${stageName}"`, 'success', 'Merge Stage');
+        trackEvent('stage_merged', {
+          gameday_id: gamedayId,
+          source_stage_id: sourceStageId,
+          target_stage_id: targetStageId,
+        });
+      } else {
+        addNotification('Could not merge these stages', 'warning', 'Merge Stage');
+      }
+    },
+    [addNotification, gamedayId]
+  );
+
   const canExport = useMemo(() => {
     return (flowState?.nodes || []).some((n) => n.type === 'game') && getFieldNodes(flowState?.nodes || []).length > 0;
   }, [flowState?.nodes]);
@@ -577,6 +599,7 @@ export function useDesignerController(
     handleMoveGame,
     handleMoveGameField,
     handleUpdateStageFields,
+    handleMergeStage,
     handleDeleteNode: (id: string) => flowStateRef.current?.deleteNode(id),
     handleSelectNode: (id: string | null) => flowStateRef.current?.selectNode(id),
     handleGenerateTournament,
@@ -619,7 +642,7 @@ export function useDesignerController(
   }), [
     loadData, saveData, expandField, expandStage, handleHighlightElement,
     handleDynamicReferenceClick, handleImport, handleExport, handleSaveTemplate,
-    handleSwapTeams, handleMoveGame, handleMoveGameField, handleUpdateStageFields, handleGenerateTournament, showTournamentModal,
+    handleSwapTeams, handleMoveGame, handleMoveGameField, handleUpdateStageFields, handleMergeStage, handleGenerateTournament, showTournamentModal,
     dismissNotification, addNotification, onMetadataHighlight, handleUpdateNode, gamedayId
   ]);
 

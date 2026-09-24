@@ -13,12 +13,15 @@ import type {
   GameInputHandle,
   GlobalTeam,
   GameNodeData,
+  StageNode,
 } from '../types/flowchart';
 import {
   createFieldNode,
   createStageNode,
   createGameNodeInStage,
   createGameToGameEdge,
+  getStageFieldIds,
+  isStageNode,
 } from '../types/flowchart';
 import type { ScheduleJson } from '../types/designer';
 import { parseTeamReference } from './teamReference';
@@ -73,6 +76,18 @@ export function importFromScheduleJson(json: unknown): ImportResult {
   const gameNodeMap = new Map<string, string>(); // standing -> game id
   let teamOrder = 0;
 
+  // One stage container node per unique stage name across the WHOLE
+  // import (not per field) -- stage name is a stage's identity (see
+  // `useNodesState.ts::addStageNode`'s matching fold-in and
+  // `useFlowState.ts::mergeStageInto`), so two fields whose games both
+  // declare `stage: "Vorrunde"` must resolve to the same stage node,
+  // spanning both fields via `fieldIds`, not two separate same-named
+  // nodes. Keyed by trimmed lowercase name to match that same invariant.
+  const stageIdByName = new Map<string, string>();
+  // Each field's own stages are still ordered independently (order sorts
+  // stages within one field's card), so track that counter per field.
+  const stageOrderByField = new Map<string, number>();
+
   // First pass: Create field/stage/game container nodes, collect unique team labels
   for (let fieldIdx = 0; fieldIdx < json.length; fieldIdx++) {
     const fieldSchedule = json[fieldIdx] as ScheduleJson;
@@ -93,9 +108,6 @@ export function importFromScheduleJson(json: unknown): ImportResult {
       continue;
     }
 
-    // One stage container node per unique stage name within this field
-    const stageIdByName = new Map<string, string>();
-
     for (let gameIdx = 0; gameIdx < fieldSchedule.games.length; gameIdx++) {
       const game = fieldSchedule.games[gameIdx];
 
@@ -105,11 +117,24 @@ export function importFromScheduleJson(json: unknown): ImportResult {
       }
 
       const stageName = game.stage || 'Preliminary';
-      let stageId = stageIdByName.get(stageName);
+      const stageKey = stageName.trim().toLowerCase();
+      let stageId = stageIdByName.get(stageKey);
+      let stageNode: StageNode | undefined;
       if (!stageId) {
         stageId = `stage-${uuidv4()}`;
-        nodes.push(createStageNode(stageId, fieldId, { name: stageName, order: stageIdByName.size }));
-        stageIdByName.set(stageName, stageId);
+        const order = stageOrderByField.get(fieldId) ?? 0;
+        stageOrderByField.set(fieldId, order + 1);
+        stageNode = createStageNode(stageId, fieldId, { name: stageName, order });
+        nodes.push(stageNode);
+        stageIdByName.set(stageKey, stageId);
+      } else {
+        stageNode = nodes.find((n): n is StageNode => n.id === stageId && isStageNode(n));
+        if (stageNode) {
+          const currentFieldIds = getStageFieldIds(stageNode);
+          if (!currentFieldIds.includes(fieldId)) {
+            stageNode.data.fieldIds = [...currentFieldIds, fieldId];
+          }
+        }
       }
 
       const gameId = `game-${uuidv4()}`;
@@ -118,9 +143,14 @@ export function importFromScheduleJson(json: unknown): ImportResult {
       // Track for assignments
       gameNodeMap.set(standing, gameId);
 
-      // Create game node inside its stage (teams will be assigned in second pass)
+      // Create game node inside its stage (teams will be assigned in second pass).
+      // Use the stage's own canonical name, not this game's raw `stage`
+      // string -- once published, the backend groups standings by an exact
+      // text match on `Gameinfo.stage`, so every game sharing one stage
+      // node must write the identical string, not whatever
+      // casing/whitespace variant this particular game happened to use.
       const gameNode = createGameNodeInStage(gameId, stageId, {
-        stage: stageName,
+        stage: stageNode?.data.name ?? stageName,
         standing,
         official: game.official ? parseTeamReference(game.official) : null,
         breakAfter: game.break_after ?? 0,

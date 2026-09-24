@@ -11,6 +11,7 @@
   "orphaned_team": "Team \"{{team}}\" is not connected to any game",
   "unassigned_field": "Game \"{{game}}\" has no field assigned",
   "unassigned_field_multi_field_stage": "Game \"{{game}}\" is assigned to a field its stage \"{{stage}}\" no longer spans",
+  "duplicate_stage_name": "{{count}} stages are named \"{{name}}\" -- merge them using \"Merge into...\" on one of them",
   "game_outside_container": "Game \"{{game}}\" must be inside a stage container",
   "game_invalid_parent": "Game \"{{game}}\" parent is not a valid stage",
   "team_outside_container": "Team \"{{team}}\" must be inside a stage container",

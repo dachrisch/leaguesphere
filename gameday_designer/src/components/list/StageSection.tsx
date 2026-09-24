@@ -5,7 +5,8 @@
  */
 
 import React, { useState, useCallback, useMemo, memo, useRef } from 'react';
-import { Card, Button, Form } from 'react-bootstrap';
+import { createPortal } from 'react-dom';
+import { Card, Button, Form, Dropdown } from 'react-bootstrap';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import GameTable from './GameTable';
 import type {
@@ -18,7 +19,7 @@ import type {
   GlobalTeamGroup,
   HighlightedElement
 } from '../../types/flowchart';
-import { isGameNode, getFieldNodes, getStageFieldIds } from '../../types/flowchart';
+import { isGameNode, isStageNode, getFieldNodes, getStageFieldIds } from '../../types/flowchart';
 import type { GameProgressionCellResult } from '../../types/progression';
 import { ICONS } from '../../utils/iconConstants';
 import { getDraggedGameSourceStageId, getDraggedGameSourceFieldId } from '../../utils/dragState';
@@ -60,6 +61,8 @@ export interface StageSectionProps {
   onMoveGameField?: (gameId: string, targetFieldId: string) => void;
   /** Updates which fields this stage spans, resetting any now-stranded games back to the stage's home field. */
   onUpdateStageFields?: (stageId: string, fieldIds: string[] | undefined) => void;
+  /** Merges this stage into another stage (its games, fields, and references fold into the target; this stage is deleted). */
+  onMergeStage?: (sourceStageId: string, targetStageId: string) => void;
   readOnly?: boolean;
   /** Expert Mode (see `useExpertMode.ts`) — off by default. */
   expertMode?: boolean;
@@ -97,6 +100,7 @@ const StageSection: React.FC<StageSectionProps> = memo(({
   onMoveGame,
   onMoveGameField,
   onUpdateStageFields,
+  onMergeStage,
   readOnly = false,
   expertMode = false,
   progressionByGameId,
@@ -225,6 +229,31 @@ const StageSection: React.FC<StageSectionProps> = memo(({
         .filter((f) => stageFieldIds.includes(f.id) && f.id !== fieldContext.id)
         .map((f) => f.data.name),
     [allFields, stageFieldIds, fieldContext.id]
+  );
+
+  // Every other stage in the gameday, grouped by field, as "Merge into..."
+  // targets -- lets a user consolidate this stage into any other one
+  // deliberately (fixing a pre-existing duplicate name, or combining two
+  // differently-named stages), independent of the automatic name-collision
+  // fold-in that happens on create/rename (see useFlowState.ts::mergeStageInto).
+  const mergeTargets = useMemo(
+    () =>
+      allFields
+        .map((field) => ({
+          field,
+          stages: allNodes.filter(
+            (n): n is StageNode => isStageNode(n) && n.parentId === field.id && n.id !== stage.id
+          ),
+        }))
+        .filter((entry) => entry.stages.length > 0),
+    [allFields, allNodes, stage.id]
+  );
+
+  const handleMergeStage = useCallback(
+    (targetStageId: string) => {
+      onMergeStage?.(stage.id, targetStageId);
+    },
+    [stage.id, onMergeStage]
   );
 
   const handleFieldsChange = useCallback(
@@ -468,6 +497,48 @@ const StageSection: React.FC<StageSectionProps> = memo(({
           </button>
         )}
 
+        {!readOnly && onMergeStage && (
+          <Dropdown
+            align="end"
+            onClick={(e) => e.stopPropagation()}
+            className="me-2"
+            data-testid={`merge-stage-dropdown-${stage.id}`}
+          >
+            <Dropdown.Toggle
+              variant="link"
+              size="sm"
+              className="p-0 text-muted"
+              disabled={mergeTargets.length === 0}
+              title={mergeTargets.length === 0 ? t('ui:message.noMergeTargets', 'No other stages to merge with') : t('ui:tooltip.mergeStage', 'Merge into another stage')}
+              data-testid={`merge-stage-toggle-${stage.id}`}
+            >
+              <i className="bi bi-signpost-split"></i>
+            </Dropdown.Toggle>
+            {createPortal(
+              <Dropdown.Menu>
+                {mergeTargets.map((entry) => (
+                  <React.Fragment key={entry.field.id}>
+                    <Dropdown.Header>{entry.field.data.name}</Dropdown.Header>
+                    {entry.stages.map((targetStage) => (
+                      <Dropdown.Item
+                        key={targetStage.id}
+                        data-testid={`merge-stage-target-${targetStage.id}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMergeStage(targetStage.id);
+                        }}
+                      >
+                        {targetStage.data.name}
+                      </Dropdown.Item>
+                    ))}
+                  </React.Fragment>
+                ))}
+              </Dropdown.Menu>,
+              document.body
+            )}
+          </Dropdown>
+        )}
+
         <input
           type="color"
           value={stage.data.color || '#e7f3ff'}
@@ -480,10 +551,10 @@ const StageSection: React.FC<StageSectionProps> = memo(({
         />
 
         {!readOnly && (
-          <Button 
-            variant="outline-danger" 
-            size="sm" 
-            onClick={handleDelete} 
+          <Button
+            variant="outline-danger"
+            size="sm"
+            onClick={handleDelete}
             aria-label={t('ui:tooltip.deleteStage')}
             title={t('ui:tooltip.deleteStage')}
           >

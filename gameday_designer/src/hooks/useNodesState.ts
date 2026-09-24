@@ -29,15 +29,18 @@ import {
   isGameNode,
   isFieldNode,
   isStageNode,
+  getStageFieldIds,
 } from '../types/flowchart';
 import { recalculateStageGameTimes } from '../utils/timeCalculation';
 
 /**
  * Recalculate start times for all (non-manual) games of a stage after a
  * structural change. Returns the nodes array unchanged when the stage has
- * no configured start time (same policy as updateNode).
+ * no configured start time (same policy as updateNode). Exported for reuse
+ * by `useFlowState.ts::mergeStageInto`, which needs the identical policy
+ * after folding one stage's games into another.
  */
-function recalcStageTimes(nodes: FlowNode[], stageId: string): FlowNode[] {
+export function recalcStageTimes(nodes: FlowNode[], stageId: string): FlowNode[] {
   const stage = nodes.find((n): n is StageNode => n.id === stageId && isStageNode(n));
   if (!stage || !stage.data.startTime) return nodes;
 
@@ -130,6 +133,31 @@ export function useNodesState(
       const category = options?.category ?? defaultCategory;
       const stageType = options?.stageType ?? 'STANDARD';
       const position = { x: 20, y: 60 + stageCount * 180 };
+
+      // Stage NAME is the stage's identity (see mergeStageInto in
+      // useFlowState.ts) -- a name collision with an existing stage
+      // elsewhere in the gameday, including the common case of two
+      // fields' first "Add Stage" click both defaulting to "Preliminary",
+      // is never a second stage. It's just this field being added to the
+      // one that already exists: no new node, nothing to move.
+      const normalizedName = name.trim().toLowerCase();
+      const existingMatch = nodes.find(
+        (n): n is StageNode =>
+          isStageNode(n) && n.id !== id && n.data.name.trim().toLowerCase() === normalizedName
+      );
+      if (existingMatch) {
+        const mergedFieldIds = Array.from(new Set([...getStageFieldIds(existingMatch), fieldId]));
+        if (mergedFieldIds.length !== getStageFieldIds(existingMatch).length) {
+          setNodes((nds) =>
+            nds.map((n): FlowNode =>
+              n.id === existingMatch.id
+                ? ({ ...n, data: { ...n.data, fieldIds: mergedFieldIds } } as FlowNode)
+                : n
+            )
+          );
+        }
+        return existingMatch;
+      }
 
       const newStage = createStageNode(id, fieldId, { name, category, stageType, order: stageCount, defaultGameDuration }, position);
       setNodes((nds) => [...nds, newStage]);

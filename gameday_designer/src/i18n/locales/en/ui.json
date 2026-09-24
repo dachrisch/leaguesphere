@@ -178,6 +178,7 @@
     "noGamesYet": "No games yet",
     "noGamesInStage": "No games in this stage",
     "noMoveTargets": "No other stages available to move this game to.",
+    "noMergeTargets": "No other stages to merge with",
     "stageOverviewNoTeams": "No teams assigned yet",
     "noFieldsYet": "No fields defined. Add a field above.",
     "noGroupsYet": "No groups yet",
@@ -293,6 +294,7 @@
     "replayTour": "Replay onboarding tour",
     "moveGame": "Move this game to another stage or field (drag & drop or menu)",
     "dropToMove": "Drop to move a game into this stage",
+    "mergeStage": "Merge into another stage",
     "expertMode": "Toggle Expert Mode: inspect the simulated progression and see correctness findings (never blocks saving)"
   },
   "notification": {

@@ -314,4 +314,34 @@ describe('ProgressionInspectorPanel', () => {
       expect(onHighlightElement).toHaveBeenCalledWith('g1', 'game');
     });
   });
+
+  describe('multi-field stage', () => {
+    it('renders one combined outcome section for a stage spanning multiple fields, listing games from both', () => {
+      const field1 = createFieldNode('mf1', { name: 'Field A', order: 0 });
+      const field2 = createFieldNode('mf2', { name: 'Field B', order: 1 });
+      const multiFieldStage = createStageNode('mfs1', 'mf1', {
+        name: 'Platzierung',
+        order: 0,
+        fieldIds: ['mf1', 'mf2'],
+      });
+      const gameOnField1 = createGameNodeInStage('mfg1', 'mfs1', { standing: 'G1' });
+      const gameOnField2 = createGameNodeInStage('mfg2', 'mfs1', { standing: 'G2', fieldId: 'mf2' });
+      const multiFieldNodes: FlowNode[] = [field1, field2, multiFieldStage, gameOnField1, gameOnField2];
+
+      const progression: ProgressionSimulationResult = {
+        cellsByGameId: new Map([
+          ['mfg1', { gameId: 'mfg1', home: { teamLabel: 'Team A', basis: 'actual' }, away: { teamLabel: 'Team B', basis: 'actual' }, official: { teamLabel: null, basis: null }, findings: [] }],
+          ['mfg2', { gameId: 'mfg2', home: { teamLabel: 'Team C', basis: 'actual' }, away: { teamLabel: 'Team D', basis: 'actual' }, official: { teamLabel: null, basis: null }, findings: [] }],
+        ]),
+        findings: [],
+      };
+
+      render(<ProgressionInspectorPanel nodes={multiFieldNodes} progression={progression} onHighlightElement={onHighlightElement} />);
+
+      // Rendered once (not once per field).
+      expect(screen.getAllByText(/Platzierung/)).toHaveLength(1);
+      expect(screen.getByTestId('progression-outcome-mfg1')).toHaveTextContent('Team A');
+      expect(screen.getByTestId('progression-outcome-mfg2')).toHaveTextContent('Team C');
+    });
+  });
 });

@@ -7,6 +7,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import StageSection from '../StageSection';
 import { GamedayProvider } from '../../../context/GamedayContext';
@@ -656,4 +657,85 @@ describe('StageSection', () => {
       expect(mockOnUpdate).not.toHaveBeenCalled();
       expect(screen.queryByDisplayValue('Preliminary')).not.toBeInTheDocument();
     });
-});});
+  });
+
+  describe('Merge into...', () => {
+    const otherField = { id: 'field-2', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 2', order: 1 } };
+    const otherStage: StageNode = {
+      id: 'stage-2',
+      type: 'stage',
+      parentId: 'field-2',
+      position: { x: 0, y: 0 },
+      data: { type: 'stage', name: 'Final', category: 'final', stageType: 'STANDARD', order: 0 },
+    };
+
+    it('renders merge targets grouped by field', async () => {
+      const user = userEvent.setup();
+      renderStage(
+        createDefaultProps({
+          stage: sampleStage,
+          allNodes: [sampleStage, otherField, otherStage],
+          onMergeStage: vi.fn(),
+        })
+      );
+
+      await user.click(screen.getByTestId('merge-stage-toggle-stage-1'));
+
+      expect(screen.getByTestId('merge-stage-target-stage-2')).toBeInTheDocument();
+      expect(screen.getByText('Feld 2')).toBeInTheDocument();
+    });
+
+    it('calls onMergeStage with this stage as source and the picked stage as target', async () => {
+      const user = userEvent.setup();
+      const mockOnMergeStage = vi.fn();
+      renderStage(
+        createDefaultProps({
+          stage: sampleStage,
+          allNodes: [sampleStage, otherField, otherStage],
+          onMergeStage: mockOnMergeStage,
+        })
+      );
+
+      await user.click(screen.getByTestId('merge-stage-toggle-stage-1'));
+      await user.click(screen.getByTestId('merge-stage-target-stage-2'));
+
+      expect(mockOnMergeStage).toHaveBeenCalledWith('stage-1', 'stage-2');
+    });
+
+    it('is disabled when there are no other stages to merge with', () => {
+      renderStage(
+        createDefaultProps({
+          stage: sampleStage,
+          allNodes: [sampleStage],
+          onMergeStage: vi.fn(),
+        })
+      );
+
+      expect(screen.getByTestId('merge-stage-toggle-stage-1')).toBeDisabled();
+    });
+
+    it('is hidden entirely when onMergeStage is not provided', () => {
+      renderStage(
+        createDefaultProps({
+          stage: sampleStage,
+          allNodes: [sampleStage, otherField, otherStage],
+        })
+      );
+
+      expect(screen.queryByTestId('merge-stage-toggle-stage-1')).not.toBeInTheDocument();
+    });
+
+    it('is hidden in read-only mode', () => {
+      renderStage(
+        createDefaultProps({
+          stage: sampleStage,
+          allNodes: [sampleStage, otherField, otherStage],
+          onMergeStage: vi.fn(),
+          readOnly: true,
+        })
+      );
+
+      expect(screen.queryByTestId('merge-stage-toggle-stage-1')).not.toBeInTheDocument();
+    });
+  });
+});

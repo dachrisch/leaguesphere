@@ -14,9 +14,9 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Card, Collapse } from 'react-bootstrap';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
-import type { FlowNode, HighlightedElement } from '../types/flowchart';
-import { isGameNode, isStageNode, getFieldNodes } from '../types/flowchart';
-import { getGamesInStage, getStagesInField } from '../utils/edgeAnalysis';
+import type { FlowNode, HighlightedElement, StageNode } from '../types/flowchart';
+import { isGameNode, isStageNode, getFieldNodes, getStageFieldIds } from '../types/flowchart';
+import { getGamesInStage } from '../utils/edgeAnalysis';
 import type { ProgressionFinding, ProgressionSimulationResult } from '../types/progression';
 import { getProgressionFindingMessage } from '../utils/progressionMessages';
 import { ICONS } from '../utils/iconConstants';
@@ -70,6 +70,16 @@ const ProgressionInspectorPanel: React.FC<ProgressionInspectorPanelProps> = ({
   }, []);
 
   const fields = useMemo(() => getFieldNodes(nodes), [nodes]);
+  // Iterate stages directly, once each -- not nested under fields. A stage
+  // spanning multiple fields (StageNodeData.fieldIds) has one combined
+  // game list regardless of which field each game is actually on
+  // (getGamesInStage is already field-agnostic), so nesting under a single
+  // field here would only ever show that stage under its home field and
+  // hide its games on any other field it spans.
+  const stagesSorted = useMemo(
+    () => (nodes.filter(isStageNode) as StageNode[]).slice().sort((a, b) => a.data.order - b.data.order),
+    [nodes]
+  );
 
   const findingIconFor = (type: ProgressionFinding['type']) =>
     type === 'undecided_tie' ? ICONS.INFO : ICONS.WARNING;
@@ -134,45 +144,44 @@ const ProgressionInspectorPanel: React.FC<ProgressionInspectorPanelProps> = ({
 
                 <div>
                   <h6 className="text-uppercase text-muted small mb-2">{t('ui:label.progressionOutcome')}</h6>
-                  {fields.map((field) => (
-                    <div key={field.id} className="mb-2">
-                      {getStagesInField(field.id, nodes).map((stage) => {
-                        const games = getGamesInStage(stage.id, nodes);
-                        if (games.length === 0) return null;
-                        return (
-                          <div key={stage.id} className="mb-2">
-                            <div className="small fw-bold text-muted">
-                              {field.data.name} — {stage.data.name}
-                            </div>
-                            <ul className="list-unstyled mb-0 ps-3">
-                              {games.map((game) => {
-                                const cell = progression.cellsByGameId.get(game.id);
-                                if (!cell) return null;
-                                const format = (slot: typeof cell.home) =>
-                                  slot.teamLabel
-                                    ? `${slot.teamLabel}${slot.basis === 'projected' ? ` (${t('ui:label.expertModeProjectedShort')})` : ''}`
-                                    : t('ui:label.expertModeTbd');
-                                const highlightThisGame = () => onHighlightElement(game.id, 'game');
-                                return (
-                                  <li
-                                    key={game.id}
-                                    className="progression-outcome-row small"
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={highlightThisGame}
-                                    onKeyDown={(e) => handleActivateKeyDown(e, highlightThisGame)}
-                                    data-testid={`progression-outcome-${game.id}`}
-                                  >
-                                    <strong>{game.data.standing}</strong>: {format(cell.home)} vs {format(cell.away)}
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
+                  {stagesSorted.map((stage) => {
+                    const games = getGamesInStage(stage.id, nodes);
+                    if (games.length === 0) return null;
+                    const fieldNames = fields
+                      .filter((f) => getStageFieldIds(stage).includes(f.id))
+                      .map((f) => f.data.name);
+                    return (
+                      <div key={stage.id} className="mb-2">
+                        <div className="small fw-bold text-muted">
+                          {fieldNames.join(', ')} — {stage.data.name}
+                        </div>
+                        <ul className="list-unstyled mb-0 ps-3">
+                          {games.map((game) => {
+                            const cell = progression.cellsByGameId.get(game.id);
+                            if (!cell) return null;
+                            const format = (slot: typeof cell.home) =>
+                              slot.teamLabel
+                                ? `${slot.teamLabel}${slot.basis === 'projected' ? ` (${t('ui:label.expertModeProjectedShort')})` : ''}`
+                                : t('ui:label.expertModeTbd');
+                            const highlightThisGame = () => onHighlightElement(game.id, 'game');
+                            return (
+                              <li
+                                key={game.id}
+                                className="progression-outcome-row small"
+                                role="button"
+                                tabIndex={0}
+                                onClick={highlightThisGame}
+                                onKeyDown={(e) => handleActivateKeyDown(e, highlightThisGame)}
+                                data-testid={`progression-outcome-${game.id}`}
+                              >
+                                <strong>{game.data.standing}</strong>: {format(cell.home)} vs {format(cell.away)}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    );
+                  })}
                 </div>
               </>
             )}

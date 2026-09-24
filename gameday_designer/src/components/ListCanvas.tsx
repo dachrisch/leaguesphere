@@ -61,6 +61,8 @@ export interface ListCanvasProps {
   onMoveGameField?: (gameId: string, targetFieldId: string) => void;
   /** Updates which fields a stage spans, resetting any now-stranded games back to the stage's home field. */
   onUpdateStageFields?: (stageId: string, fieldIds: string[] | undefined) => void;
+  /** Merges one stage into another (games, fields, and references fold into the target; the source is deleted). */
+  onMergeStage?: (sourceStageId: string, targetStageId: string) => void;
   onAutoAssignOfficials?: () => void;
   isAutoAssigning?: boolean;
   onAddOfficials?: () => void;
@@ -126,6 +128,7 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
     onMoveGame,
     onMoveGameField,
     onUpdateStageFields,
+    onMergeStage,
     onAutoAssignOfficials,
     isAutoAssigning = false,
     onAddOfficials,
@@ -333,6 +336,7 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
                     onMoveGame={onMoveGame}
                     onMoveGameField={onMoveGameField}
                     onUpdateStageFields={onUpdateStageFields}
+                    onMergeStage={onMergeStage}
                     readOnly={readOnly}
                     expertMode={expertMode}
                     progressionByGameId={progression?.cellsByGameId}

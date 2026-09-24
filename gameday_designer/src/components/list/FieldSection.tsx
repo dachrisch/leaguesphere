@@ -52,6 +52,8 @@ export interface FieldSectionProps {
   onMoveGameField?: (gameId: string, targetFieldId: string) => void;
   /** Updates which fields a stage spans, resetting any now-stranded games back to the stage's home field. */
   onUpdateStageFields?: (stageId: string, fieldIds: string[] | undefined) => void;
+  /** Merges one stage into another (games, fields, and references fold into the target; the source is deleted). */
+  onMergeStage?: (sourceStageId: string, targetStageId: string) => void;
   readOnly?: boolean;
   /** Expert Mode (see `useExpertMode.ts`) — off by default. */
   expertMode?: boolean;
@@ -91,6 +93,7 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
   onMoveGame,
   onMoveGameField,
   onUpdateStageFields,
+  onMergeStage,
   readOnly = false,
   expertMode = false,
   progressionByGameId,
@@ -305,6 +308,7 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
                   onMoveGame={onMoveGame}
                   onMoveGameField={onMoveGameField}
                   onUpdateStageFields={onUpdateStageFields}
+                  onMergeStage={onMergeStage}
                   readOnly={readOnly}
                   expertMode={expertMode}
                   progressionByGameId={progressionByGameId}
