@@ -8,7 +8,6 @@ import {
   areGamesInSameStage,
   areGamesInSameField,
   getGamesInStage,
-  getStagesInField,
 } from '../edgeAnalysis';
 import type {
   FlowNode,
@@ -502,81 +501,6 @@ describe('edgeAnalysis', () => {
 
       expect(result).toHaveLength(1);
       expect(result).toContainEqual(game1);
-    });
-  });
-
-  describe('getStagesInField', () => {
-    it('returns empty array when no stages exist', () => {
-      const nodes: FlowNode[] = [];
-
-      const result = getStagesInField('field1', nodes);
-
-      expect(result).toEqual([]);
-    });
-
-    it('returns empty array when field has no stages', () => {
-      const field = createField('field1', 'Feld 1', 0);
-      const nodes: FlowNode[] = [field];
-
-      const result = getStagesInField('field1', nodes);
-
-      expect(result).toEqual([]);
-    });
-
-    it('returns all stages in a field', () => {
-      const field = createField('field1', 'Feld 1', 0);
-      const stage1 = createStage('stage1', 'Preliminary', 0, 'field1');
-      const stage2 = createStage('stage2', 'Final', 1, 'field1');
-      const nodes: FlowNode[] = [field, stage1, stage2];
-
-      const result = getStagesInField('field1', nodes);
-
-      expect(result).toHaveLength(2);
-      expect(result).toContainEqual(stage1);
-      expect(result).toContainEqual(stage2);
-    });
-
-    it('filters stages from other fields', () => {
-      const field1 = createField('field1', 'Feld 1', 0);
-      const field2 = createField('field2', 'Feld 2', 1);
-      const stage1 = createStage('stage1', 'Preliminary', 0, 'field1');
-      const stage2 = createStage('stage2', 'Final', 1, 'field1');
-      const stage3 = createStage('stage3', 'Preliminary', 0, 'field2');
-      const nodes: FlowNode[] = [field1, field2, stage1, stage2, stage3];
-
-      const result = getStagesInField('field1', nodes);
-
-      expect(result).toHaveLength(2);
-      expect(result).toContainEqual(stage1);
-      expect(result).toContainEqual(stage2);
-      expect(result).not.toContainEqual(stage3);
-    });
-
-    it('sorts stages by order', () => {
-      const field = createField('field1', 'Feld 1', 0);
-      const stage1 = createStage('stage1', 'Preliminary', 2, 'field1');
-      const stage2 = createStage('stage2', 'Final', 0, 'field1');
-      const stage3 = createStage('stage3', 'Halbfinale', 1, 'field1');
-      const nodes: FlowNode[] = [field, stage1, stage2, stage3];
-
-      const result = getStagesInField('field1', nodes);
-
-      expect(result).toHaveLength(3);
-      expect(result[0]).toEqual(stage2); // order 0
-      expect(result[1]).toEqual(stage3); // order 1
-      expect(result[2]).toEqual(stage1); // order 2
-    });
-
-    it('handles non-stage nodes in the nodes array', () => {
-      const field = createField('field1', 'Feld 1', 0);
-      const stage = createStage('stage1', 'Preliminary', 0, 'field1');
-      const game = createGame('game1', 'Match 1', 'stage1');
-      const nodes: FlowNode[] = [field, stage, game];
-
-      const result = getStagesInField('field1', nodes);
-
-      expect(result).toHaveLength(1);
-      expect(result).toContainEqual(stage);
     });
   });
 

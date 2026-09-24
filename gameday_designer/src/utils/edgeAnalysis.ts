@@ -279,16 +279,3 @@ export function getGamesInStage(stageId: string, nodes: FlowNode[]): GameNode[] 
     (n): n is GameNode => isGameNode(n) && n.parentId === stageId
   );
 }
-
-/**
- * Get all stages in a specific field.
- *
- * @param fieldId - ID of the field
- * @param nodes - All nodes in the flowchart
- * @returns Array of stage nodes in the field
- */
-export function getStagesInField(fieldId: string, nodes: FlowNode[]): StageNode[] {
-  return nodes
-    .filter((n): n is StageNode => isStageNode(n) && n.parentId === fieldId)
-    .sort((a, b) => a.data.order - b.data.order);
-}

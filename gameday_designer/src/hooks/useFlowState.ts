@@ -6,6 +6,9 @@ import type {
   FlowEdge,
   FlowState,
   GameNodeData,
+  TeamNodeData,
+  FieldNodeData,
+  StageNodeData,
   FieldNode,
   StageNode,
   GameNode,
@@ -16,14 +19,17 @@ import type {
   GameInputHandle,
   GameOutputHandle,
 } from '../types/flowchart';
+import type { TeamReference } from '../types/designer';
 import {
   createGameNode,
   isGameNode,
   isFieldNode,
   isStageNode,
   getFieldNodes,
+  getStageFieldIds,
 } from '../types/flowchart';
-import { useNodesState } from './useNodesState';
+import { useNodesState, recalcStageTimes } from './useNodesState';
+import { DEFAULT_GAME_DURATION } from '../utils/tournamentConstants';
 import { useEdgesState } from './useEdgesState';
 import { useTeamPoolState } from './useTeamPoolState';
 import { resolveBracketReferences } from '../utils/bracketResolution';
@@ -194,7 +200,7 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
   const nodesManager = useNodesState(nodes, (newNodes) => {
     setNodes(newNodes);
     handleStateChange();
-  });
+  }, undefined, metadata.game_duration ?? DEFAULT_GAME_DURATION);
   const edgesManager = useEdgesState(edges, (newEdges) => {
     setEdges(newEdges);
     handleStateChange();
@@ -363,6 +369,138 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     [nodes, edges, onStateChange]
   );
 
+  /**
+   * Merges `sourceStageId` into `targetStageId`: re-parents the source
+   * stage's games (preserving each one's actual field, exactly like
+   * `moveNodeToStage`), unions `fieldIds` onto the target, deletes the
+   * source node, and repoints every `rank`/`groupRank` reference
+   * (`homeTeamDynamic`/`awayTeamDynamic`/`official`) that targeted the
+   * source stage at the target instead. The target's own name and
+   * `stageType` always win -- the source contributes only its games and
+   * fields.
+   *
+   * Deliberately does NOT call `useEdgesState`'s `syncNodesWithEdges`:
+   * that helper unconditionally nulls out any game's `homeTeamDynamic`/
+   * `awayTeamDynamic` that has no backing `stageToGame` edge, but
+   * `templateMapper.ts`'s legacy-import path writes those fields directly
+   * with no edge at all -- calling it here would silently wipe references
+   * on any gameday imported that way. Rewriting the reference fields in
+   * place (below) handles both edge-backed and edge-less references
+   * uniformly and non-destructively; the `stageToGame` edges themselves
+   * are still remapped separately so the edge graph stays consistent for
+   * any *later* edge-driven operation.
+   */
+  const mergeStageInto = useCallback(
+    (sourceStageId: string, targetStageId: string): boolean => {
+      if (sourceStageId === targetStageId) return false;
+      const sourceStage = nodes.find((n): n is StageNode => n.id === sourceStageId && isStageNode(n));
+      const targetStage = nodes.find((n): n is StageNode => n.id === targetStageId && isStageNode(n));
+      if (!sourceStage || !targetStage) return false;
+
+      const mergedFieldIds = Array.from(
+        new Set([...getStageFieldIds(targetStage), ...getStageFieldIds(sourceStage)])
+      );
+
+      const remapRef = <T extends TeamReference | null>(ref: T): T => {
+        if (ref && (ref.type === 'rank' || ref.type === 'groupRank') && ref.stageId === sourceStageId) {
+          return { ...ref, stageId: targetStageId, stageName: targetStage.data.name };
+        }
+        return ref;
+      };
+
+      const nodesAfterMerge = nodes
+        .map((n): FlowNode => {
+          if (n.id === targetStageId && isStageNode(n)) {
+            return {
+              ...n,
+              data: { ...n.data, fieldIds: mergedFieldIds.length > 1 ? mergedFieldIds : undefined },
+            } as FlowNode;
+          }
+          if (isGameNode(n) && n.parentId === sourceStageId) {
+            const resolvedFieldId = n.data.fieldId || sourceStage.parentId;
+            const newFieldId = resolvedFieldId === targetStage.parentId ? null : resolvedFieldId;
+            return {
+              ...n,
+              parentId: targetStageId,
+              data: {
+                ...n.data,
+                stage: targetStage.data.name,
+                stageType: targetStage.data.stageType,
+                fieldId: newFieldId,
+                homeTeamDynamic: remapRef(n.data.homeTeamDynamic),
+                awayTeamDynamic: remapRef(n.data.awayTeamDynamic),
+                official: remapRef(n.data.official),
+              },
+            } as FlowNode;
+          }
+          if (isGameNode(n)) {
+            const homeTeamDynamic = remapRef(n.data.homeTeamDynamic);
+            const awayTeamDynamic = remapRef(n.data.awayTeamDynamic);
+            const official = remapRef(n.data.official);
+            if (
+              homeTeamDynamic === n.data.homeTeamDynamic &&
+              awayTeamDynamic === n.data.awayTeamDynamic &&
+              official === n.data.official
+            ) {
+              return n;
+            }
+            return { ...n, data: { ...n.data, homeTeamDynamic, awayTeamDynamic, official } } as FlowNode;
+          }
+          return n;
+        })
+        .filter((n) => n.id !== sourceStageId);
+
+      const finalNodes = recalcStageTimes(nodesAfterMerge, targetStageId);
+
+      setNodes(finalNodes);
+      setEdges((eds) =>
+        eds.map((e): FlowEdge =>
+          e.type === 'stageToGame' && e.source === sourceStageId ? { ...e, source: targetStageId } : e
+        )
+      );
+      setSelection((sel) => ({
+        nodeIds: sel.nodeIds.map((id) => (id === sourceStageId ? targetStageId : id)),
+        edgeIds: sel.edgeIds,
+      }));
+      onStateChange?.();
+      return true;
+    },
+    [nodes, onStateChange]
+  );
+
+  /**
+   * Orchestrated updateNode: a plain passthrough to `nodesManager.updateNode`
+   * for everything, EXCEPT renaming a Stage to a name that (trimmed,
+   * case-insensitively) collides with a different existing stage -- stage
+   * name is that stage's identity (see `mergeStageInto` above), so a
+   * colliding rename merges into the existing stage instead of creating a
+   * same-named duplicate. The existing stage's own name and type always
+   * win; any other fields in this same update (e.g. a simultaneous
+   * `stageType` change) are discarded along with the rest of the merged-away
+   * node, matching how the rest of that node's data is folded away too.
+   */
+  const updateNode = useCallback(
+    (nodeId: string, data: Partial<TeamNodeData | GameNodeData | FieldNodeData | StageNodeData>) => {
+      const node = nodes.find((n) => n.id === nodeId);
+      const newName = 'name' in data ? (data as Partial<StageNodeData>).name : undefined;
+      if (node && isStageNode(node) && typeof newName === 'string') {
+        const trimmed = newName.trim();
+        if (trimmed && trimmed.toLowerCase() !== node.data.name.trim().toLowerCase()) {
+          const collision = nodes.find(
+            (n): n is StageNode =>
+              isStageNode(n) && n.id !== nodeId && n.data.name.trim().toLowerCase() === trimmed.toLowerCase()
+          );
+          if (collision) {
+            mergeStageInto(nodeId, collision.id);
+            return;
+          }
+        }
+      }
+      nodesManager.updateNode(nodeId, data);
+    },
+    [nodes, nodesManager, mergeStageInto]
+  );
+
   // --- Hierarchy Helpers ---
 
   const getTargetStage = useCallback((): StageNode | null => {
@@ -374,11 +512,15 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
   }, [nodesManager, selection.nodeIds]);
 
   const getGameField = useCallback((gameId: string): FieldNode | null => {
-    const game = nodes.find((n) => n.id === gameId && isGameNode(n));
-    if (!game?.parentId) return null;
-    const stage = nodes.find((n) => n.id === game.parentId && isStageNode(n));
-    if (!stage?.parentId) return null;
-    return nodes.find((n) => n.id === stage.parentId && isFieldNode(n)) as FieldNode || null;
+    const game = nodes.find((n) => n.id === gameId && isGameNode(n)) as GameNode | undefined;
+    if (!game) return null;
+    // A game normally plays on its stage's home field, but a stage spanning
+    // multiple fields (StageNodeData.fieldIds) lets each game pick its
+    // actual field individually via GameNodeData.fieldId.
+    const resolvedFieldId = game.data.fieldId
+      ?? (nodes.find((n) => n.id === game.parentId && isStageNode(n)) as StageNode | undefined)?.parentId;
+    if (!resolvedFieldId) return null;
+    return nodes.find((n) => n.id === resolvedFieldId && isFieldNode(n)) as FieldNode || null;
   }, [nodes]);
 
   const getGameStage = useCallback((gameId: string): StageNode | null => {
@@ -450,6 +592,7 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     addOfficialsGroup,
     addGameNode, // Overrides nodesManager.addGameNode (v1 behavior)
     deleteNode, // Overrides managers
+    mergeStageInto,
     selectNode,
     updateMetadata,
     setSelection,
@@ -482,13 +625,13 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     addGlobalTeamGroup: teamPoolManager.addGlobalTeamGroup,
     assignTeamToGame: teamPoolManager.assignTeamToGame,
     ensureOfficialsGroup: teamPoolManager.ensureOfficialsGroup,
-    updateNode: nodesManager.updateNode,
+    updateNode, // Overrides nodesManager.updateNode -- see the stage-merge-on-rename note above
   }), [
     metadata, nodes, edges, globalTeams, globalTeamGroups, saveTrigger,
     undo, redo, canUndo, canRedo, stats, selection, onNodesChange, onEdgesChange,
     nodesManager, edgesManagerProps, teamPoolManager, addBulkGamesToGameEdgesCb,
     addStageToGameEdgeCb, removeEdgeFromSlotCb, addOfficialsGroup, addGameNode, deleteNode,
-    selectNode, updateMetadata,
+    mergeStageInto, updateNode, selectNode, updateMetadata,
     setSelection, clearAll, clearSchedule, importState, exportState,
     getTargetStage, ensureContainerHierarchy, getGameField, getGameStage,
     getFieldStages, getStageGames, matchNames, groupNames, addBulkGames

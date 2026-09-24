@@ -381,6 +381,33 @@ describe('useFlowState - Container Operations', () => {
       const field = result.current.getGameField(game.id);
       expect(field).toBeNull();
     });
+
+    it('returns null for a nonexistent game id', () => {
+      const { result } = renderHook(() => useFlowState());
+      expect(result.current.getGameField('nonexistent-game-id')).toBeNull();
+    });
+
+    it('returns null when a game\'s fieldId override points at a nonexistent field', () => {
+      const { result } = renderHook(() => useFlowState());
+
+      let fieldId: string = '';
+      let stageId: string = '';
+      let gameId: string = '';
+      act(() => {
+        fieldId = result.current.addFieldNode({ name: 'Main Field' }).id;
+      });
+      act(() => {
+        stageId = result.current.addStageNode(fieldId)!.id;
+      });
+      act(() => {
+        gameId = result.current.addGameNodeInStage(stageId).id;
+      });
+      act(() => {
+        result.current.updateNode(gameId, { fieldId: 'dangling-field-id' });
+      });
+
+      expect(result.current.getGameField(gameId)).toBeNull();
+    });
   });
 
   describe('getGameStage', () => {

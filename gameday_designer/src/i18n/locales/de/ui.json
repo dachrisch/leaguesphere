@@ -1,6 +1,10 @@
 {
   "hint": {
-    "unlockBlockedResults": "Freischalten nicht möglich: Für diesen Spieltag wurden bereits Ergebnisse erfasst. Beim erneuten Veröffentlichen würde der Spielplan neu erzeugt und die Ergebnisse gelöscht."
+    "unlockBlockedResults": "Freischalten nicht möglich: Für diesen Spieltag wurden bereits Ergebnisse erfasst. Beim erneuten Veröffentlichen würde der Spielplan neu erzeugt und die Ergebnisse gelöscht.",
+    "multiFieldStage": "Mehrere Felder auswählen, auf denen diese Phase läuft -- ihre Spiele zählen alle in eine gemeinsame Tabelle",
+    "multiFieldStageInstance": "Diese Phase läuft auch auf: {{otherFields}} -- alle Spiele zählen in eine gemeinsame Tabelle",
+    "multiFieldStageRuns": "Läuft über mehrere Felder, alle in einer gemeinsamen Tabelle",
+    "dayOffset": "0 = Datum des Spieltags, 1 = der Tag danach usw."
   },
   "button": {
     "addField": "Feld hinzufügen",
@@ -56,6 +60,12 @@
     "english": "Englisch",
     "stage": "Phase",
     "standing": "Platzierung",
+    "day": "Tag",
+    "fieldOfCount": "{{index}}/{{count}}",
+    "sameStageOtherField": "Gleiche Phase, anderes Feld",
+    "stagesOverview": "Phasenübersicht",
+    "stageCount": "{{count}} Phasen",
+    "gameCount": "{{count}} Spiele",
     "time": "Zeit",
     "home": "Heim",
     "away": "Gast",
@@ -94,6 +104,8 @@
     "gamedayName": "Spieltagsname",
     "gamedayDate": "Spieltagsdatum",
     "gamedayStartTime": "Startzeit",
+    "defaultGameDuration": "Standard-Spieldauer (Min.)",
+    "multiDayEnabled": "Mehrtägiger Spieltag",
     "season": "Saison",
     "league": "Liga",
     "venue": "Austragungsort",
@@ -166,6 +178,7 @@
     "noGamesYet": "Noch keine Spiele",
     "noGamesInStage": "Keine Spiele in dieser Phase",
     "noMoveTargets": "Keine anderen Phasen vorhanden, in die dieses Spiel verschoben werden kann.",
+    "stageOverviewNoTeams": "Noch keine Teams zugewiesen",
     "noFieldsYet": "Noch keine Felder",
     "noGroupsYet": "Noch keine Gruppen",
     "createFirstField": "Klicken Sie auf \"Feld hinzufügen\" in der Toolbar, um Ihr erstes Spielfeld zu erstellen.",

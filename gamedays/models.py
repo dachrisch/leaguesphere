@@ -174,6 +174,7 @@ class Gameinfo(models.Model):
     gameday = models.ForeignKey(Gameday, on_delete=models.CASCADE)
     scheduled = models.TimeField()
     field = models.PositiveSmallIntegerField()
+    day_offset = models.PositiveSmallIntegerField(default=0)
     officials = models.ForeignKey(Team, on_delete=models.PROTECT, blank=True)
     status = models.CharField(max_length=100, default="Geplant")
     gameStarted = models.TimeField(null=True, blank=True)

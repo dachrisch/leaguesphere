@@ -87,22 +87,33 @@ export function calculateGameStartTime(
     return targetGame.data.startTime;
   }
 
-  let currentTime = stageStartTime;
   const defaultDuration = stage.data.defaultGameDuration ?? DEFAULT_GAME_DURATION;
+  // A field is just where a game is played -- for a single-field stage
+  // every game resolves to the same field, so this cursor map degenerates
+  // to the one shared running clock this function always used. For a
+  // multi-field stage (`StageNodeData.fieldIds`), each field gets its own
+  // clock so games on different fields schedule in parallel instead of
+  // pushing each other back, matching `calculateGameTimes`'s full-canvas
+  // engine (this is the incremental-update counterpart used by single-game
+  // moves/edits rather than a full "Recalculate Times" pass).
+  const fieldCursor = new Map<string | null | undefined, string>();
+  const resolvedFieldOf = (game: GameNode) => game.data.fieldId || stage.parentId;
 
   for (let i = 0; i < gameIndex; i++) {
     const game = games[i];
+    const fieldId = resolvedFieldOf(game);
+    let time = fieldCursor.get(fieldId) ?? stageStartTime;
 
     if (game.data.manualTime && game.data.startTime) {
-      currentTime = game.data.startTime;
+      time = game.data.startTime;
     }
-    
+
     const gameDuration = game.data.duration ?? defaultDuration;
     const breakAfter = game.data.breakAfter ?? 0;
-    currentTime = addMinutes(currentTime, gameDuration + breakAfter);
+    fieldCursor.set(fieldId, addMinutes(time, gameDuration + breakAfter));
   }
 
-  return currentTime;
+  return fieldCursor.get(resolvedFieldOf(targetGame)) ?? stageStartTime;
 }
 
 /**
@@ -221,27 +232,19 @@ export function calculateGameTimes(
       }
     }
 
-    // Determine earliest this stage can start
+    // Determine earliest this stage can start, absent any field-specific constraint
     let stageEarliestStartAbsMinutes = baseStartTimeMinutes;
-    
+
     // Constraint A: Global barrier
     if (order > 0) {
       stageEarliestStartAbsMinutes = globalBarrierAbsMinutes + breakDuration;
-    }
-
-    // Constraint B: Field availability
-    if (fieldBusyUntilMinutes.has(fieldId)) {
-      const fieldReadyAt = fieldBusyUntilMinutes.get(fieldId)! + breakDuration;
-      if (fieldReadyAt > stageEarliestStartAbsMinutes) {
-        stageEarliestStartAbsMinutes = fieldReadyAt;
-      }
     }
 
     // Constraint C: Explicit stage start time (wrapped into absolute minutes)
     if (stage.data.startTime) {
       const explicitStartMinutes = parseTime(stage.data.startTime);
       // NOTE: We assume explicit start time refers to the current logical 'day' of the stage
-      // or at least shouldn't jump backwards. 
+      // or at least shouldn't jump backwards.
       if (explicitStartMinutes > stageEarliestStartAbsMinutes) {
         stageEarliestStartAbsMinutes = explicitStartMinutes;
       }
@@ -280,13 +283,33 @@ export function calculateGameTimes(
         return standingA.localeCompare(standingB);
       });
 
-    let currentAbsMinutes = stageEarliestStartAbsMinutes;
     const defaultDuration = stage.data.defaultGameDuration || gameDuration;
+
+    // Per-field running clock within this stage. A normal single-field
+    // stage resolves every game to `fieldId` and behaves exactly like the
+    // old single shared counter; a stage spanning multiple fields
+    // (StageNodeData.fieldIds, game.data.fieldId picking one per game) lets
+    // games on different fields schedule in parallel instead of serializing
+    // against each other, while games sharing an actual field -- whether
+    // from this stage or another -- still serialize via fieldBusyUntilMinutes.
+    const stageFieldCursor = new Map<string, number>();
+    const cursorFor = (resolvedFieldId: string): number => {
+      if (stageFieldCursor.has(resolvedFieldId)) {
+        return stageFieldCursor.get(resolvedFieldId)!;
+      }
+      let earliest = stageEarliestStartAbsMinutes;
+      if (fieldBusyUntilMinutes.has(resolvedFieldId)) {
+        const fieldReadyAt = fieldBusyUntilMinutes.get(resolvedFieldId)! + breakDuration;
+        if (fieldReadyAt > earliest) earliest = fieldReadyAt;
+      }
+      return earliest;
+    };
 
     for (let i = 0; i < stageGames.length; i++) {
       const game = stageGames[i];
-      
-      let gameStartAbsMinutes = currentAbsMinutes;
+      const resolvedFieldId = game.data.fieldId || fieldId;
+
+      let gameStartAbsMinutes = cursorFor(resolvedFieldId);
       if (game.data.manualTime && game.data.startTime) {
         // If manual time, try to find the absolute minutes that match it
         // This is tricky with wrap-around, but we'll assume it's same day for now
@@ -304,17 +327,17 @@ export function calculateGameTimes(
           duration: duration, breakAfter: breakDuration,
         },
       };
-      
+
       gameMap.set(game.id, updatedGame);
       gameEndAbsMinutes.set(game.id, gameEndAbs);
 
       // Update field availability
-      if (gameEndAbs > (fieldBusyUntilMinutes.get(fieldId) || 0)) {
-        fieldBusyUntilMinutes.set(fieldId, gameEndAbs);
+      if (gameEndAbs > (fieldBusyUntilMinutes.get(resolvedFieldId) || 0)) {
+        fieldBusyUntilMinutes.set(resolvedFieldId, gameEndAbs);
       }
 
-      // Advance for next game in stage
-      currentAbsMinutes = gameEndAbs + breakDuration;
+      // Advance for next game on this same resolved field
+      stageFieldCursor.set(resolvedFieldId, gameEndAbs + breakDuration);
     }
   }
 

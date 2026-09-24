@@ -119,6 +119,60 @@ describe('GameTable', () => {
     expect(screen.getByText(i18n.t('ui:message.noGamesInStage'))).toBeInTheDocument();
   });
 
+  describe('Multi-day gameday', () => {
+    it('does not show a day column when multiDayEnabled is not set', () => {
+      renderTable();
+      expect(screen.queryByText(i18n.t('ui:label.day'))).not.toBeInTheDocument();
+    });
+
+    it('shows a per-row day selector when multiDayEnabled is true', () => {
+      renderTable({ multiDayEnabled: true });
+      expect(screen.getByText(i18n.t('ui:label.day'))).toBeInTheDocument();
+    });
+
+    it('calls onUpdate with dayOffset when the day input changes', async () => {
+      const user = userEvent.setup();
+      renderTable({ multiDayEnabled: true });
+
+      const dayInput = screen.getByTitle(i18n.t('ui:hint.dayOffset'));
+      await user.clear(dayInput);
+      await user.type(dayInput, '1');
+
+      expect(mockOnUpdate).toHaveBeenCalledWith('game-2', { dayOffset: 1 });
+    });
+  });
+
+  describe('Multi-field stage', () => {
+    it('never shows a field column -- placement is implicit by which field-instance card a game was added under', () => {
+      const field2 = createFieldNode('field-2', { name: 'Field 2', order: 1 });
+      renderTable({ currentFieldId: 'field-1', otherStageFields: [field2] });
+
+      expect(screen.queryByText(i18n.t('ui:label.field'))).not.toBeInTheDocument();
+      expect(
+        screen.queryAllByRole('combobox').some(
+          (el) => Array.from((el as HTMLSelectElement).options ?? []).some((o) => o.textContent === 'Field 2')
+        )
+      ).toBe(false);
+    });
+
+    it('offers "move to other field" entries in the move dropdown when the stage spans multiple fields', async () => {
+      const user = userEvent.setup();
+      const field2 = createFieldNode('field-2', { name: 'Field 2', order: 1 });
+      const mockOnMoveGameField = vi.fn();
+      renderTable({ currentFieldId: 'field-1', otherStageFields: [field2], onMoveGameField: mockOnMoveGameField });
+
+      await user.click(screen.getByTestId('move-game-game-2'));
+      await user.click(screen.getByTestId('move-field-target-field-2'));
+
+      expect(mockOnMoveGameField).toHaveBeenCalledWith('game-2', 'field-2');
+    });
+
+    it('does not offer "move to other field" entries for a single-field stage', () => {
+      renderTable();
+      expect(screen.queryByTestId('move-game-game-2')).not.toBeInTheDocument();
+    });
+  });
+
   describe('Inline editing', () => {
     it('saves standing on Enter', async () => {
       const user = userEvent.setup();

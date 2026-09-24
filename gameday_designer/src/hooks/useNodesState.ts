@@ -29,15 +29,18 @@ import {
   isGameNode,
   isFieldNode,
   isStageNode,
+  getStageFieldIds,
 } from '../types/flowchart';
 import { recalculateStageGameTimes } from '../utils/timeCalculation';
 
 /**
  * Recalculate start times for all (non-manual) games of a stage after a
  * structural change. Returns the nodes array unchanged when the stage has
- * no configured start time (same policy as updateNode).
+ * no configured start time (same policy as updateNode). Exported for reuse
+ * by `useFlowState.ts::mergeStageInto`, which needs the identical policy
+ * after folding one stage's games into another.
  */
-function recalcStageTimes(nodes: FlowNode[], stageId: string): FlowNode[] {
+export function recalcStageTimes(nodes: FlowNode[], stageId: string): FlowNode[] {
   const stage = nodes.find((n): n is StageNode => n.id === stageId && isStageNode(n));
   if (!stage || !stage.data.startTime) return nodes;
 
@@ -76,7 +79,8 @@ export interface AddStageOptions {
 export function useNodesState(
   nodes: FlowNode[],
   setNodes: React.Dispatch<React.SetStateAction<FlowNode[]>>,
-  onNodesDeleted?: (nodeIds: string[]) => void
+  onNodesDeleted?: (nodeIds: string[]) => void,
+  defaultGameDuration?: number
 ) {
   /**
    * Add a new field container node.
@@ -92,7 +96,7 @@ export function useNodesState(
 
       if (includeStage) {
         const stageId = `stage-${uuidv4()}`;
-        const newStage = createStageNode(stageId, id, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0 });
+        const newStage = createStageNode(stageId, id, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0, defaultGameDuration });
         setNodes((nds) => [...nds, newField, newStage]);
       } else {
         setNodes((nds) => [...nds, newField]);
@@ -100,7 +104,7 @@ export function useNodesState(
 
       return newField;
     },
-    [nodes, setNodes]
+    [nodes, setNodes, defaultGameDuration]
   );
 
   /**
@@ -130,12 +134,37 @@ export function useNodesState(
       const stageType = options?.stageType ?? 'STANDARD';
       const position = { x: 20, y: 60 + stageCount * 180 };
 
-      const newStage = createStageNode(id, fieldId, { name, category, stageType, order: stageCount }, position);
+      // Stage NAME is the stage's identity (see mergeStageInto in
+      // useFlowState.ts) -- a name collision with an existing stage
+      // elsewhere in the gameday, including the common case of two
+      // fields' first "Add Stage" click both defaulting to "Preliminary",
+      // is never a second stage. It's just this field being added to the
+      // one that already exists: no new node, nothing to move.
+      const normalizedName = name.trim().toLowerCase();
+      const existingMatch = nodes.find(
+        (n): n is StageNode =>
+          isStageNode(n) && n.id !== id && n.data.name.trim().toLowerCase() === normalizedName
+      );
+      if (existingMatch) {
+        const mergedFieldIds = Array.from(new Set([...getStageFieldIds(existingMatch), fieldId]));
+        if (mergedFieldIds.length !== getStageFieldIds(existingMatch).length) {
+          setNodes((nds) =>
+            nds.map((n): FlowNode =>
+              n.id === existingMatch.id
+                ? ({ ...n, data: { ...n.data, fieldIds: mergedFieldIds } } as FlowNode)
+                : n
+            )
+          );
+        }
+        return existingMatch;
+      }
+
+      const newStage = createStageNode(id, fieldId, { name, category, stageType, order: stageCount, defaultGameDuration }, position);
       setNodes((nds) => [...nds, newStage]);
 
       return newStage;
     },
-    [nodes, setNodes]
+    [nodes, setNodes, defaultGameDuration]
   );
 
   /**
@@ -186,7 +215,7 @@ export function useNodesState(
       if (selected && isFieldNode(selected)) {
         const fieldId = selected.id;
         const stageId = `stage-${uuidv4()}`;
-        const newStage = createStageNode(stageId, fieldId, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0 });
+        const newStage = createStageNode(stageId, fieldId, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0, defaultGameDuration });
         setNodes((nds) => [...nds, newStage]);
         return { fieldId, stageId };
       }
@@ -201,7 +230,7 @@ export function useNodesState(
         }
         // Create stage in existing field
         const stageId = `stage-${uuidv4()}`;
-        const newStage = createStageNode(stageId, firstField.id, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0 });
+        const newStage = createStageNode(stageId, firstField.id, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0, defaultGameDuration });
         setNodes((nds) => [...nds, newStage]);
         return { fieldId: firstField.id, stageId };
       }
@@ -212,13 +241,13 @@ export function useNodesState(
       const fieldCount = nodes.filter(isFieldNode).length;
 
       const newField = createFieldNode(fieldId, { name: `Feld ${fieldCount + 1}`, order: fieldCount });
-      const newStage = createStageNode(stageId, fieldId, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0 });
+      const newStage = createStageNode(stageId, fieldId, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0, defaultGameDuration });
 
       setNodes((nds) => [...nds, newField, newStage]);
 
       return { fieldId, stageId };
     },
-    [nodes, setNodes, getTargetStage]
+    [nodes, setNodes, getTargetStage, defaultGameDuration]
   );
 
   /**
@@ -270,12 +299,20 @@ export function useNodesState(
    * (unknown game/stage, or the game already belongs to the target stage).
    */
   const moveNodeToStage = useCallback(
-    (gameId: string, targetStageId: string): boolean => {
+    (gameId: string, targetStageId: string, targetFieldId?: string): boolean => {
       const game = nodes.find((n): n is GameNode => n.id === gameId && isGameNode(n));
       const targetStage = nodes.find((n): n is StageNode => n.id === targetStageId && isStageNode(n));
       if (!game || !targetStage || !targetStage.parentId) return false;
       if (game.parentId === targetStageId) return false;
       const sourceStageId = game.parentId;
+      // A field is just where the game is played -- it never determines
+      // which stage (and therefore which standings table) the game belongs
+      // to. Only record it when it differs from the target stage's home
+      // field, matching the default (unset = home field) convention used
+      // everywhere else a game's field is resolved.
+      const resolvedFieldId = targetFieldId && targetFieldId !== targetStage.parentId
+        ? targetFieldId
+        : null;
 
       setNodes((prevNodes) => {
         const gamesInTarget = prevNodes.filter(
@@ -294,6 +331,7 @@ export function useNodesState(
             ...game.data,
             stage: targetStage.data.name,
             stageType: targetStage.data.stageType,
+            fieldId: resolvedFieldId,
           },
         };
 
@@ -322,6 +360,67 @@ export function useNodesState(
       return true;
     },
     [nodes, setNodes]
+  );
+
+  /**
+   * Move a game between two field-instances of the SAME stage (a stage
+   * spanning multiple fields via `StageNodeData.fieldIds` renders once per
+   * field it's assigned to; dragging a game between those renderings
+   * reassigns only where it's played, never its stage/standings). Unlike
+   * `moveNodeToStage`, the game's `stage`/`stageType` never change here --
+   * only `fieldId`. Recalculates the affected stage's times, since it may
+   * now run in parallel with a different field's queue.
+   */
+  const moveGameToField = useCallback(
+    (gameId: string, targetFieldId: string): boolean => {
+      const game = nodes.find((n): n is GameNode => n.id === gameId && isGameNode(n));
+      if (!game || !game.parentId) return false;
+      const stage = nodes.find((n): n is StageNode => n.id === game.parentId && isStageNode(n));
+      if (!stage) return false;
+
+      const resolvedFieldId = game.data.fieldId || stage.parentId;
+      if (resolvedFieldId === targetFieldId) return false;
+
+      const newFieldId = targetFieldId === stage.parentId ? null : targetFieldId;
+
+      setNodes((prevNodes) => {
+        const updated = prevNodes.map((n): FlowNode =>
+          n.id === gameId ? { ...n, data: { ...n.data, fieldId: newFieldId } } as FlowNode : n
+        );
+        return recalcStageTimes(updated, stage.id);
+      });
+
+      return true;
+    },
+    [nodes, setNodes]
+  );
+
+  /**
+   * Update which fields a stage spans (`StageNodeData.fieldIds`). Removing a
+   * field the stage no longer spans would otherwise silently strand any of
+   * its games still assigned to that field -- they'd stop rendering under
+   * any field-instance card entirely, since neither their old field (now
+   * gone from the stage) nor any other card would claim them. Resetting
+   * those games' `fieldId` keeps them visible on the stage's home field
+   * instead, where the user can redistribute them deliberately.
+   */
+  const updateStageFields = useCallback(
+    (stageId: string, fieldIds: string[] | undefined) => {
+      setNodes((prevNodes) => {
+        const withUpdatedStage = prevNodes.map((n): FlowNode =>
+          n.id === stageId && isStageNode(n)
+            ? ({ ...n, data: { ...n.data, fieldIds } } as FlowNode)
+            : n
+        );
+        if (!fieldIds || fieldIds.length === 0) return withUpdatedStage;
+        return withUpdatedStage.map((n): FlowNode =>
+          isGameNode(n) && n.parentId === stageId && n.data.fieldId && !fieldIds.includes(n.data.fieldId)
+            ? ({ ...n, data: { ...n.data, fieldId: null } } as FlowNode)
+            : n
+        );
+      });
+    },
+    [setNodes]
   );
 
   /**
@@ -435,11 +534,15 @@ export function useNodesState(
 
   const getGameField = useCallback(
     (gameId: string): FieldNode | null => {
-      const game = nodes.find((n) => n.id === gameId && isGameNode(n));
-      if (!game?.parentId) return null;
-      const stage = nodes.find((n) => n.id === game.parentId && isStageNode(n));
-      if (!stage?.parentId) return null;
-      const field = nodes.find((n) => n.id === stage.parentId && isFieldNode(n));
+      const game = nodes.find((n) => n.id === gameId && isGameNode(n)) as GameNode | undefined;
+      if (!game) return null;
+      // A game normally plays on its stage's home field, but a stage
+      // spanning multiple fields (StageNodeData.fieldIds) lets each game
+      // pick its actual field individually via GameNodeData.fieldId.
+      const resolvedFieldId = game.data.fieldId
+        ?? (nodes.find((n) => n.id === game.parentId && isStageNode(n)) as StageNode | undefined)?.parentId;
+      if (!resolvedFieldId) return null;
+      const field = nodes.find((n) => n.id === resolvedFieldId && isFieldNode(n));
       return (field as FieldNode) || null;
     },
     [nodes]
@@ -465,6 +568,10 @@ export function useNodesState(
 
       moveNodeToStage,
 
+      moveGameToField,
+
+      updateStageFields,
+
       updateNode,
 
       deleteNode,
@@ -479,7 +586,7 @@ export function useNodesState(
 
       getGameStage,
 
-    }), [addFieldNode, addStageNode, addGameNodeInStage, moveNodeToStage, updateNode, deleteNode, addBulkTournament, ensureContainerHierarchy, getTargetStage, getGameField, getGameStage]);
+    }), [addFieldNode, addStageNode, addGameNodeInStage, moveNodeToStage, moveGameToField, updateStageFields, updateNode, deleteNode, addBulkTournament, ensureContainerHierarchy, getTargetStage, getGameField, getGameStage]);
 
   }
 

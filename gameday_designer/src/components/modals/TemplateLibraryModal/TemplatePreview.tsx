@@ -3,6 +3,7 @@ import { Button, Badge, Form, Row, Col } from 'react-bootstrap';
 import { ScheduleTemplate } from '../../../types/api';
 import { SelectedTemplate } from './TemplateList';
 import { TournamentTemplate } from '../../../utils/tournamentTemplates';
+import { DEFAULT_GAME_DURATION } from '../../../utils/tournamentConstants';
 
 export interface TournamentConfig {
   startTime: string;
@@ -27,8 +28,8 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
 }) => {
   const [startTime, setStartTime] = useState('09:00');
   const [gameDuration, setGameDuration] = useState(() => {
-    if (!selected) return 15;
-    if (selected.type === 'builtin') return (selected.template as TournamentTemplate).timing?.defaultGameDuration ?? 15;
+    if (!selected) return DEFAULT_GAME_DURATION;
+    if (selected.type === 'builtin') return (selected.template as TournamentTemplate).timing?.defaultGameDuration ?? DEFAULT_GAME_DURATION;
     return (selected.template as ScheduleTemplate).game_duration;
   });
   const [breakDuration, setBreakDuration] = useState(() => {

@@ -1,6 +1,10 @@
 {
   "hint": {
-    "unlockBlockedResults": "Cannot unlock: results have already been entered for this gameday. Re-publishing would regenerate the schedule and delete them."
+    "unlockBlockedResults": "Cannot unlock: results have already been entered for this gameday. Re-publishing would regenerate the schedule and delete them.",
+    "multiFieldStage": "Select multiple fields to run this stage's games on -- its games all feed one combined table",
+    "multiFieldStageInstance": "This stage also runs on: {{otherFields}} -- all games count toward one combined table",
+    "multiFieldStageRuns": "Runs across multiple fields, all feeding one combined table",
+    "dayOffset": "0 = gameday's own date, 1 = the day after, etc."
   },
   "button": {
     "addField": "Add Field",
@@ -56,6 +60,12 @@
     "english": "English",
     "stage": "Phase",
     "standing": "Standing",
+    "day": "Day",
+    "fieldOfCount": "{{index}}/{{count}}",
+    "sameStageOtherField": "Same stage, different field",
+    "stagesOverview": "Stages Overview",
+    "stageCount": "{{count}} stages",
+    "gameCount": "{{count}} games",
     "time": "Time",
     "home": "Home",
     "away": "Away",
@@ -94,6 +104,8 @@
     "gamedayName": "Gameday Name",
     "gamedayDate": "Gameday Date",
     "gamedayStartTime": "Start Time",
+    "defaultGameDuration": "Default game duration (min)",
+    "multiDayEnabled": "Multi-day gameday",
     "season": "Season",
     "league": "League",
     "venue": "Venue",
@@ -166,6 +178,8 @@
     "noGamesYet": "No games yet",
     "noGamesInStage": "No games in this stage",
     "noMoveTargets": "No other stages available to move this game to.",
+    "noMergeTargets": "No other stages to merge with",
+    "stageOverviewNoTeams": "No teams assigned yet",
     "noFieldsYet": "No fields defined. Add a field above.",
     "noGroupsYet": "No groups yet",
     "createFirstField": "Click \"Add Field\" in the toolbar to create your first playing field.",
@@ -280,6 +294,7 @@
     "replayTour": "Replay onboarding tour",
     "moveGame": "Move this game to another stage or field (drag & drop or menu)",
     "dropToMove": "Drop to move a game into this stage",
+    "mergeStage": "Merge into another stage",
     "expertMode": "Toggle Expert Mode: inspect the simulated progression and see correctness findings (never blocks saving)"
   },
   "notification": {

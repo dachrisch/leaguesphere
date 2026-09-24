@@ -1,6 +1,7 @@
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
+from django.conf import settings
 from django.utils import timezone
 
 
@@ -9,6 +10,19 @@ class AsJsonEncoder(json.JSONEncoder):
         if hasattr(obj, "as_json"):
             return obj.as_json()
         return json.JSONEncoder.default(self, obj)
+
+
+def get_effective_today() -> date:
+    """The date treated as "today" for gameday/game visibility.
+
+    In DEBUG mode this is pinned to ``settings.DEBUG_DATE`` so local/dev/test
+    environments can exercise "today"-dependent behavior (scorecard
+    visibility, day_offset matching) against fixture data instead of the
+    real calendar date.
+    """
+    if settings.DEBUG:
+        return settings.DEBUG_DATE
+    return datetime.today().date()
 
 
 def utc_time_as_iso(time_value, ref_now=None) -> str:

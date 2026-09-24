@@ -37,7 +37,7 @@ export interface FieldSectionProps {
   selectedNodeId: string | null;
   onAssignTeam: (gameId: string, teamId: string, slot: 'home' | 'away') => void;
   onSwapTeams: (gameId: string) => void;
-  onAddGame: (stageId: string) => void;
+  onAddGame: (stageId: string, fieldId?: string) => void;
   onAddGameToGameEdge: (sourceGameId: string, outputType: 'winner' | 'loser', targetGameId: string, targetSlot: 'home' | 'away') => void;
   onAddStageToGameEdge: (sourceStageId: string, sourceRank: number, targetGameId: string, targetSlot: 'home' | 'away', sourceGroup?: string) => void;
   onRemoveEdgeFromSlot: (targetGameId: string, targetSlot: 'home' | 'away') => void;
@@ -47,12 +47,20 @@ export interface FieldSectionProps {
   highlightedSourceGameId?: string | null;
   onDynamicReferenceClick: (sourceGameId: string) => void;
   onNotify?: (message: string, type: import('../../types/designer').NotificationType, title?: string) => void;
-  onMoveGame?: (gameId: string, targetStageId: string) => void;
+  onMoveGame?: (gameId: string, targetStageId: string, targetFieldId?: string) => void;
+  /** Moves a game between two field-instances of the same multi-field stage without changing its stage. */
+  onMoveGameField?: (gameId: string, targetFieldId: string) => void;
+  /** Updates which fields a stage spans, resetting any now-stranded games back to the stage's home field. */
+  onUpdateStageFields?: (stageId: string, fieldIds: string[] | undefined) => void;
+  /** Merges one stage into another (games, fields, and references fold into the target; the source is deleted). */
+  onMergeStage?: (sourceStageId: string, targetStageId: string) => void;
   readOnly?: boolean;
   /** Expert Mode (see `useExpertMode.ts`) — off by default. */
   expertMode?: boolean;
   /** Per-game simulated progression, from `useProgressionInspection`. */
   progressionByGameId?: Map<string, GameProgressionCellResult>;
+  /** Shows a per-game "Day" selector when the gameday is multi-day (see `GamedayMetadata.multiDayEnabled`). */
+  multiDayEnabled?: boolean;
 }
 
 const FieldSection: React.FC<FieldSectionProps> = memo(({
@@ -83,9 +91,13 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
   onDynamicReferenceClick,
   onNotify,
   onMoveGame,
+  onMoveGameField,
+  onUpdateStageFields,
+  onMergeStage,
   readOnly = false,
   expertMode = false,
   progressionByGameId,
+  multiDayEnabled = false,
 }) => {
   const { t } = useTypedTranslation(['ui']);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -270,6 +282,7 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
                 <StageSection
                   key={stage.id}
                   stage={stage}
+                  fieldContext={field}
                   allNodes={allNodes}
                   edges={edges}
                   globalTeams={globalTeams}
@@ -293,9 +306,13 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
                   onDynamicReferenceClick={onDynamicReferenceClick}
                   onNotify={onNotify}
                   onMoveGame={onMoveGame}
+                  onMoveGameField={onMoveGameField}
+                  onUpdateStageFields={onUpdateStageFields}
+                  onMergeStage={onMergeStage}
                   readOnly={readOnly}
                   expertMode={expertMode}
                   progressionByGameId={progressionByGameId}
+                  multiDayEnabled={multiDayEnabled}
                 />
               ))}
             </>

@@ -68,6 +68,20 @@ describe('TemplatePreview', () => {
     expect(screen.getByRole('button', { name: /apply/i })).toBeInTheDocument();
   });
 
+  it('defaults game duration to 70 (not 15) for a builtin template with no configured timing', () => {
+    const onApply = vi.fn();
+    const templateWithoutTiming = { ...mockBuiltinTemplate, timing: undefined };
+    const selected: SelectedTemplate = {
+      type: 'builtin',
+      template: templateWithoutTiming as unknown as TournamentTemplate,
+    };
+    render(<TemplatePreview selected={selected} currentUserId={1} isStaff={true} onApply={onApply} onClone={vi.fn()} onDelete={vi.fn()} onSave={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /apply/i }));
+    expect(onApply).toHaveBeenCalledWith(selected, expect.objectContaining({
+      gameDuration: 70,
+    }));
+  });
+
   it('Number of fields input appears for both saved and builtin templates', () => {
     const selected: SelectedTemplate = { type: 'saved', template: mockSavedTemplate };
     const { rerender } = render(<TemplatePreview selected={selected} currentUserId={1} onApply={vi.fn()} onClone={vi.fn()} onDelete={vi.fn()} onSave={vi.fn()} />);

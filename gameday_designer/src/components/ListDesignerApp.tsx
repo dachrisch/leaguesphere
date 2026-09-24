@@ -110,6 +110,9 @@ const ListDesignerApp: React.FC = () => {
     handleAddStageToGameEdge,
     handleSwapTeams,
     handleMoveGame,
+    handleMoveGameField,
+    handleUpdateStageFields,
+    handleMergeStage,
     handleDeleteNode,
     handleSelectNode,
     handleAddGlobalTeam,
@@ -621,6 +624,9 @@ const ListDesignerApp: React.FC = () => {
               onDynamicReferenceClick={handleDynamicReferenceClick}
               onNotify={addNotification}
               onMoveGame={handleMoveGame}
+              onMoveGameField={handleMoveGameField}
+              onUpdateStageFields={handleUpdateStageFields}
+              onMergeStage={handleMergeStage}
               onAddOfficials={handleAddOfficialsLocal}
               onAutoAssignOfficials={handleAutoAssignOfficials}
               isAutoAssigning={isAutoAssigning}

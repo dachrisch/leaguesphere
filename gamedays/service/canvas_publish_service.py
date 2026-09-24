@@ -1,7 +1,6 @@
 from gamedays.models import Gameday, Gameinfo, Gameresult, GamedayDesignerState, Team
 from gamedays.service.stage_category import StageCategory
 
-
 OFFICIALS_PLACEHOLDER = "N/A"
 
 
@@ -41,7 +40,11 @@ class CanvasPublishService:
         for node in game_nodes:
             data = node.get("data", {})
             stage_node = node_by_id.get(node.get("parentId"), {})
-            field_node = node_by_id.get(stage_node.get("parentId", ""), {})
+            # A game normally plays on its stage's home field, but a stage
+            # spanning multiple fields (see StageNodeData.fieldIds) lets each
+            # game pick its actual field individually.
+            game_field_id = data.get("fieldId") or stage_node.get("parentId", "")
+            field_node = node_by_id.get(game_field_id, {})
 
             field_num = field_node.get("data", {}).get("order", 0) + 1
             stage_name = stage_node.get("data", {}).get("name", "")
@@ -50,6 +53,7 @@ class CanvasPublishService:
             )
             standing = data.get("standing", "")
             start_time = data.get("startTime") or str(self.gameday.start)
+            day_offset = data.get("dayOffset") or 0
 
             officials = self._resolve_official(
                 data.get("official"), global_teams, placeholder
@@ -59,6 +63,7 @@ class CanvasPublishService:
                 gameday=self.gameday,
                 scheduled=start_time,
                 field=field_num,
+                day_offset=day_offset,
                 stage=stage_name,
                 stage_category=stage_category,
                 standing=standing,
@@ -69,13 +74,13 @@ class CanvasPublishService:
             Gameresult.objects.create(
                 gameinfo=gi,
                 team=self._resolve_team(data.get("homeTeamId"), global_teams)
-                    or self._resolve_dynamic_team(data.get("homeTeamDynamic")),
+                or self._resolve_dynamic_team(data.get("homeTeamDynamic")),
                 isHome=True,
             )
             Gameresult.objects.create(
                 gameinfo=gi,
                 team=self._resolve_team(data.get("awayTeamId"), global_teams)
-                    or self._resolve_dynamic_team(data.get("awayTeamDynamic")),
+                or self._resolve_dynamic_team(data.get("awayTeamDynamic")),
                 isHome=False,
             )
 

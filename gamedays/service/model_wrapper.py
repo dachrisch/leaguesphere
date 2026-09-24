@@ -18,6 +18,7 @@ from gamedays.service.gameday_settings import (
     DIFF,
     SCHEDULED,
     FIELD,
+    DAY_OFFSET,
     OFFICIALS_NAME,
     STAGE,
     STAGE_CATEGORY,
@@ -37,6 +38,7 @@ from gamedays.service.gameday_settings import (
 )
 from gamedays.service.stage_category import StageCategory
 from gamedays.service.placeholder_service import GamedayPlaceholderService
+from gamedays.service.utils import get_effective_today
 from league_table.models import LeagueSeasonConfig, LeagueRuleset
 from league_table.service.datatypes import LeagueConfigRuleset, LeagueConfig
 from league_table.service.leaguetable_settings import TOP_N_PLAYER, SHOW_PLAYER_NAMES
@@ -182,7 +184,7 @@ class GamedayModelWrapper:
 
     def get_schedule(self):
         schedule = self._get_schedule()
-        schedule = schedule.sort_values(by=[SCHEDULED, FIELD])
+        schedule = schedule.sort_values(by=[DAY_OFFSET, SCHEDULED, FIELD])
         return schedule
 
     def get_qualify_table(self):
@@ -479,7 +481,7 @@ class GamedayModelWrapper:
         )
         away_teams = away_teams[[ID_AWAY, POINTS_AWAY, AWAY]]
         qualify_round = pd.concat([home_teams, away_teams], axis=1).sort_values(
-            by=[FIELD, SCHEDULED]
+            by=[DAY_OFFSET, FIELD, SCHEDULED]
         )
         qualify_round = qualify_round[
             [GAMEINFO_ID, ID_HOME, HOME, POINTS_HOME, POINTS_AWAY, AWAY, ID_AWAY]
@@ -550,9 +552,15 @@ class GamedayModelWrapper:
             ]
         ) == len(self._gameinfo[(self._gameinfo[STAGE] == check)])
 
+    def _day_offset_today(self):
+        return (get_effective_today() - self.gameday.date).days
+
     def get_games_to_whistle(self, team):
         games_to_whistle = self._get_schedule()
-        games_to_whistle = games_to_whistle.sort_values(by=[SCHEDULED, FIELD])
+        games_to_whistle = games_to_whistle[
+            games_to_whistle[DAY_OFFSET] == self._day_offset_today()
+        ]
+        games_to_whistle = games_to_whistle.sort_values(by=[DAY_OFFSET, SCHEDULED, FIELD])
         if not team:
             return games_to_whistle[games_to_whistle[GAME_FINISHED].isna()]
         return games_to_whistle[

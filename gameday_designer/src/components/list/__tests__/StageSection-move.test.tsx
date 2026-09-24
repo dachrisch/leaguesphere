@@ -12,9 +12,10 @@ import '@testing-library/jest-dom';
 import StageSection from '../StageSection';
 import { GamedayProvider } from '../../../context/GamedayContext';
 import i18n from '../../../i18n/testConfig';
-import { setDraggedGameSourceStageId } from '../../../utils/dragState';
+import { setDraggedGameSourceStageId, setDraggedGameSourceFieldId } from '../../../utils/dragState';
 import type {
   StageNode,
+  FieldNode,
   FlowNode,
   FlowEdge,
   GameNode,
@@ -26,6 +27,7 @@ import type { NotificationType } from '../../../types/designer';
 import { createFieldNode, createStageNode, createGameNodeInStage } from '../../../types/flowchart';
 
 describe('StageSection - move game drop target', () => {
+  let field1: FieldNode;
   let stage1: StageNode;
   let stage2: StageNode;
   let allNodes: FlowNode[];
@@ -50,7 +52,7 @@ describe('StageSection - move game drop target', () => {
     await i18n.changeLanguage('en');
     vi.clearAllMocks();
 
-    const field1 = createFieldNode('field-1', { name: 'Field 1', order: 0 });
+    field1 = createFieldNode('field-1', { name: 'Field 1', order: 0 });
     stage1 = createStageNode('stage-1', 'field-1', { name: 'Preliminary', category: 'preliminary', order: 0 });
     stage2 = createStageNode('stage-2', 'field-1', { name: 'Final', category: 'final', order: 1 });
     game1 = createGameNodeInStage('game-1', 'stage-2', { standing: 'Quali 1', stage: 'Final' });
@@ -71,6 +73,7 @@ describe('StageSection - move game drop target', () => {
     mockOnNotify = vi.fn();
     mockOnMoveGame = vi.fn();
     setDraggedGameSourceStageId(null);
+    setDraggedGameSourceFieldId(null);
   });
 
   const renderSection = (props = {}) => {
@@ -78,6 +81,7 @@ describe('StageSection - move game drop target', () => {
       <GamedayProvider>
         <StageSection
           stage={stage1}
+          fieldContext={field1}
           allNodes={allNodes}
           edges={[] as FlowEdge[]}
           globalTeams={[] as GlobalTeam[]}
@@ -123,7 +127,7 @@ describe('StageSection - move game drop target', () => {
       dataTransfer: { getData: vi.fn(() => 'game-1') },
     });
 
-    expect(mockOnMoveGame).toHaveBeenCalledWith('game-1', 'stage-1');
+    expect(mockOnMoveGame).toHaveBeenCalledWith('game-1', 'stage-1', undefined);
   });
 
   it('prevents default on dragOver to allow dropping', () => {
@@ -195,6 +199,7 @@ describe('StageSection - move game drop target', () => {
     // dataTransfer payload isn't readable on dragenter/dragover in real
     // browsers, so drag source tracking goes through dragState instead.
     setDraggedGameSourceStageId('stage-1');
+    setDraggedGameSourceFieldId('field-1');
     renderSection();
     const target = getDropTarget();
 
@@ -206,6 +211,7 @@ describe('StageSection - move game drop target', () => {
 
   it('does not prevent default on dragOver when hovering the game\'s own stage', () => {
     setDraggedGameSourceStageId('stage-1');
+    setDraggedGameSourceFieldId('field-1');
     renderSection();
     const target = getDropTarget();
 

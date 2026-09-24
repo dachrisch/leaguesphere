@@ -250,6 +250,100 @@ describe('timeCalculation - calculateGameTimes', () => {
       expect(result[5].data.startTime).toBe('12:40');
     });
 
+    it('schedules a single stage spanning multiple fields in parallel per game.data.fieldId', () => {
+      const field1Id = 'field-1';
+      const field2Id = 'field-2';
+      const stageId = 'stage-placement';
+
+      const fields = [
+        createFieldNode(field1Id, { name: 'Feld 1', order: 0 }),
+        createFieldNode(field2Id, { name: 'Feld 2', order: 1 }),
+      ];
+
+      const stage = createStageNode(stageId, field1Id, {
+        name: 'Platzierung',
+        category: 'preliminary',
+        order: 0,
+        startTime: DEFAULT_START_TIME,
+        defaultGameDuration: DEFAULT_GAME_DURATION,
+        fieldIds: [field1Id, field2Id],
+      });
+
+      const gameOnHomeField = createMockGameNode('game-1', stageId, 'Game 1', DEFAULT_GAME_DURATION);
+      const gameOnSecondField = {
+        ...createMockGameNode('game-2', stageId, 'Game 2', DEFAULT_GAME_DURATION),
+        data: { ...createMockGameNode('game-2', stageId, 'Game 2', DEFAULT_GAME_DURATION).data, fieldId: field2Id },
+      };
+      const secondGameOnHomeField = createMockGameNode('game-3', stageId, 'Game 3', DEFAULT_GAME_DURATION);
+
+      const result = calculateGameTimes(
+        fields,
+        [stage],
+        [gameOnHomeField, gameOnSecondField, secondGameOnHomeField],
+        DEFAULT_GAME_DURATION,
+        10
+      );
+
+      const byId = new Map(result.map((g) => [g.id, g]));
+      // game-2 is on a different field than game-1, so it starts in parallel
+      // rather than waiting for game-1 to finish.
+      expect(byId.get('game-1')!.data.startTime).toBe(DEFAULT_START_TIME);
+      expect(byId.get('game-2')!.data.startTime).toBe(DEFAULT_START_TIME);
+      // game-3 shares field-1 with game-1, so it must wait for game-1 to end.
+      expect(byId.get('game-3')!.data.startTime).toBe('11:20');
+    });
+
+    it('does not move a field\'s busy-until earlier when a later manually-timed game ends sooner', () => {
+      const fieldId = 'field-1';
+      const stage1Id = 'stage-1';
+      const stage2Id = 'stage-2';
+
+      const field = createFieldNode(fieldId, { name: 'Feld 1', order: 0 });
+      const stage1 = createStageNode(stage1Id, fieldId, {
+        name: 'Stage 1',
+        category: 'preliminary',
+        order: 0,
+        startTime: DEFAULT_START_TIME,
+        defaultGameDuration: DEFAULT_GAME_DURATION,
+      });
+      const stage2 = createStageNode(stage2Id, fieldId, {
+        name: 'Stage 2',
+        category: 'final',
+        order: 1,
+        defaultGameDuration: DEFAULT_GAME_DURATION,
+      });
+
+      // Stage 1's game runs 10:00-11:10, pushing field-1's busy-until to 11:10.
+      const autoGame = createMockGameNode('game-1', stage1Id, 'Game 1', DEFAULT_GAME_DURATION);
+      // Stage 2's game is manually pinned to an earlier, shorter slot that
+      // ends before field-1's existing busy-until -- the busy-until must
+      // stay at 11:10, not regress to this game's earlier end time.
+      const manualGame = {
+        ...createMockGameNode('game-2', stage2Id, 'Game 2', 60),
+        data: {
+          ...createMockGameNode('game-2', stage2Id, 'Game 2', 60).data,
+          manualTime: true,
+          startTime: '09:00',
+        },
+      };
+      // A third, auto-scheduled game in stage 1 queues behind stage 1's own
+      // games on field-1 -- unaffected by stage 2's manual game, which is
+      // processed afterward (stages run in order) and never regresses it.
+      const thirdGame = createMockGameNode('game-3', stage1Id, 'Game 3', DEFAULT_GAME_DURATION);
+
+      const result = calculateGameTimes(
+        [field],
+        [stage1, stage2],
+        [autoGame, manualGame, thirdGame],
+        DEFAULT_GAME_DURATION,
+        10
+      );
+
+      const byId = new Map(result.map((g) => [g.id, g]));
+      expect(byId.get('game-2')!.data.startTime).toBe('09:00');
+      expect(byId.get('game-3')!.data.startTime).toBe('11:20');
+    });
+
     it('should handle subsequent stages starting after previous stage finishes', () => {
       const field1Id = 'field-1';
       const field2Id = 'field-2';

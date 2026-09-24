@@ -2,10 +2,9 @@ import json
 import hashlib
 import logging
 from collections import OrderedDict
-from datetime import datetime
+from datetime import timedelta
 
-from django.conf import settings
-from django.db.models import Count, Max
+from django.db.models import Count, Max, Q, Exists, OuterRef
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import condition
 from django.utils.decorators import method_decorator
@@ -20,6 +19,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from gamedays.permissions import IsAuthenticatedOrOwnerOrStaff, IsAuthenticatedOrGamedayOwnerOrStaff
+from gamedays.service.utils import get_effective_today
 
 from gamedays.api.serializers import (
     GamedaySerializer,
@@ -339,6 +339,16 @@ class GamedayViewSet(viewsets.ModelViewSet):
         return Response(plan, status=status.HTTP_200_OK)
 
 
+# Generous bound on how many days a multi-day gameday can span into the
+# future -- keeps the day_offset visibility check below a small, constant
+# number of OR'd equality clauses (avoiding integer-field * duration
+# arithmetic, which the Django ORM's expression system doesn't support
+# across any backend) rather than an unbounded per-row date computation.
+# Sized like the journey progress dashboard's 14-day-future window
+# (journey/api/progress_views.py).
+MAX_DAY_OFFSET_LOOKAHEAD = 13
+
+
 class GamedayListAPIView(ListAPIView):
     serializer_class = GamedaySerializer
     queryset = Gameday.objects.all()
@@ -349,9 +359,18 @@ class GamedayListAPIView(ListAPIView):
 
     def get_queryset(self):
         queryset = Gameday.objects.select_related('league', 'season', 'author')
-        if settings.DEBUG:
-            return queryset.filter(date=settings.DEBUG_DATE)
-        return queryset.filter(date=datetime.today())
+        target_date = get_effective_today()
+
+        offset_matches = Q()
+        for offset in range(1, MAX_DAY_OFFSET_LOOKAHEAD + 1):
+            offset_matches |= Q(
+                day_offset=offset, gameday__date=target_date - timedelta(days=offset)
+            )
+        day_offset_matches = Gameinfo.objects.filter(gameday=OuterRef('pk')).filter(
+            offset_matches
+        )
+
+        return queryset.filter(Q(date=target_date) | Q(Exists(day_offset_matches)))
 
 
 class GameinfoUpdateAPIView(RetrieveUpdateAPIView):

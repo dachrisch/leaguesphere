@@ -339,6 +339,49 @@ function checkDuplicateStandings(nodes: FlowNode[]): FlowValidationWarning[] {
 }
 
 /**
+ * Check for two different Stage nodes sharing a name (trimmed,
+ * case-insensitive). Stage name is a stage's identity (see
+ * `useFlowState.ts::mergeStageInto`) -- creating or renaming a stage to
+ * match an existing one merges them automatically, so this should be
+ * unreachable through the normal UI. It exists as a safety net for paths
+ * that create stage nodes without going through those guarded functions
+ * (bulk tournament generation, hand-edited `state_data`, template import
+ * edge cases), where the Designer's own previews would otherwise show two
+ * stages while the published result silently combines them into one.
+ */
+function checkDuplicateStageNames(nodes: FlowNode[]): FlowValidationError[] {
+  const errors: FlowValidationError[] = [];
+  const stageNodes = nodes.filter(isStageNode);
+  const byName = new Map<string, StageNode[]>();
+
+  for (const stage of stageNodes) {
+    const key = stage.data.name.trim().toLowerCase();
+    if (!key) continue;
+    const existing = byName.get(key) ?? [];
+    existing.push(stage);
+    byName.set(key, existing);
+  }
+
+  for (const group of byName.values()) {
+    if (group.length < 2) continue;
+    const names = group.map((s) => s.data.name);
+    errors.push({
+      id: `duplicate_stage_name_${group.map((s) => s.id).join('_')}`,
+      type: 'duplicate_stage_name',
+      message: `${group.length} stages are named "${names[0]}" and must be merged`,
+      messageKey: 'duplicate_stage_name',
+      messageParams: {
+        name: names[0],
+        count: group.length,
+      },
+      affectedNodes: group.map((s) => s.id),
+    });
+  }
+
+  return errors;
+}
+
+/**
  * Check for orphaned team nodes (no outgoing connections).
  */
 function checkOrphanedTeams(
@@ -379,6 +422,7 @@ function checkUnassignedFields(nodes: FlowNode[]): FlowValidationWarning[] {
   const warnings: FlowValidationWarning[] = [];
 
   const gameNodes = nodes.filter(isGameNode);
+  const stageNodes = nodes.filter(isStageNode);
 
   for (const node of gameNodes) {
     const data = node.data as GameNodeData;
@@ -397,6 +441,29 @@ function checkUnassignedFields(nodes: FlowNode[]): FlowValidationWarning[] {
         messageKey: 'unassigned_field',
         messageParams: {
             game: data.standing || node.id
+        },
+        affectedNodes: [node.id],
+      });
+      continue;
+    }
+
+    // A game is placed onto a field simply by which field-instance card it
+    // was created under (see `StageSection`'s `fieldContext`), so `fieldId`
+    // is always either unset (home field) or one of the stage's current
+    // `fieldIds`. The only way it can go bad is if the stage's field list
+    // was edited afterwards to no longer include a field a game already
+    // uses -- flag that rather than requiring manual re-assignment.
+    const parentStage = stageNodes.find((s) => s.id === node.parentId) as StageNode | undefined;
+    const fieldIds = parentStage?.data.fieldIds;
+    if (parentStage && fieldIds && data.fieldId && !fieldIds.includes(data.fieldId)) {
+      warnings.push({
+        id: `${node.id}_unassigned_field`,
+        type: 'unassigned_field',
+        message: `Game "${data.standing || node.id}" is assigned to a field its stage "${parentStage.data.name}" no longer spans`,
+        messageKey: 'unassigned_field_multi_field_stage',
+        messageParams: {
+          game: data.standing || node.id,
+          stage: parentStage.data.name,
         },
         affectedNodes: [node.id],
       });
@@ -1413,6 +1480,7 @@ export function validateFlowchart(
     ...checkProgressionIntegrity(nodes, edges),
     ...checkCyclicStageReferences(nodes, edges),
     ...checkSelfPlay(nodes, edges),
+    ...checkDuplicateStageNames(nodes),
   ];
 
   const warnings: FlowValidationWarning[] = [

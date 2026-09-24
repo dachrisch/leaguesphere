@@ -7,16 +7,25 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import StageSection from '../StageSection';
 import { GamedayProvider } from '../../../context/GamedayContext';
 import i18n from '../../../i18n/testConfig';
-import type { StageNode, GameNode } from '../../../types/flowchart';
+import type { StageNode, GameNode, FieldNode } from '../../../types/flowchart';
 import type { StageSectionProps } from '../StageSection';
+
+const defaultFieldContext: FieldNode = {
+  id: 'field-1',
+  type: 'field',
+  position: { x: 0, y: 0 },
+  data: { type: 'field', name: 'Field 1', order: 0 },
+};
 
 // Helper function to create default props
 const createDefaultProps = (overrides: Partial<StageSectionProps> = {}): StageSectionProps => ({
   stage: {} as StageNode,
+  fieldContext: defaultFieldContext,
   allNodes: [],
   edges: [],
   globalTeams: [],
@@ -126,6 +135,143 @@ describe('StageSection', () => {
     fireEvent.click(deleteButton);
 
     expect(mockOnDelete).toHaveBeenCalledWith('stage-1');
+  });
+
+  it('shows a fields multi-select in edit mode when more than one field exists', () => {
+    const field1 = { id: 'field-1', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 1', order: 0 } };
+    const field2 = { id: 'field-2', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 2', order: 1 } };
+
+    renderStage(
+      createDefaultProps({
+        stage: sampleStage,
+        allNodes: [field1, field2, sampleStage, sampleGame],
+      })
+    );
+
+    fireEvent.click(screen.getByTitle(i18n.t('ui:tooltip.editStageName')));
+
+    expect(screen.getByLabelText(/fields/i)).toBeInTheDocument();
+    expect(screen.getByText('Feld 1')).toBeInTheDocument();
+    expect(screen.getByText('Feld 2')).toBeInTheDocument();
+  });
+
+  it('calls onUpdate with fieldIds when multiple fields are selected', () => {
+    const mockOnUpdate = vi.fn();
+    const field1 = { id: 'field-1', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 1', order: 0 } };
+    const field2 = { id: 'field-2', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 2', order: 1 } };
+
+    renderStage(
+      createDefaultProps({
+        stage: sampleStage,
+        allNodes: [field1, field2, sampleStage, sampleGame],
+        onUpdate: mockOnUpdate,
+      })
+    );
+
+    fireEvent.click(screen.getByTitle(i18n.t('ui:tooltip.editStageName')));
+
+    const select = screen.getByLabelText(/fields/i) as HTMLSelectElement;
+    const options = Array.from(select.options);
+    options.forEach((o) => { o.selected = true; });
+    fireEvent.change(select);
+
+    expect(mockOnUpdate).toHaveBeenCalledWith('stage-1', { fieldIds: ['field-1', 'field-2'] });
+  });
+
+  it('calls onUpdate with fieldIds: undefined when all fields are deselected', () => {
+    const mockOnUpdate = vi.fn();
+    const field1 = { id: 'field-1', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 1', order: 0 } };
+    const field2 = { id: 'field-2', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 2', order: 1 } };
+
+    renderStage(
+      createDefaultProps({
+        stage: sampleStage,
+        allNodes: [field1, field2, sampleStage, sampleGame],
+        onUpdate: mockOnUpdate,
+      })
+    );
+
+    fireEvent.click(screen.getByTitle(i18n.t('ui:tooltip.editStageName')));
+
+    const select = screen.getByLabelText(/fields/i) as HTMLSelectElement;
+    Array.from(select.options).forEach((o) => { o.selected = false; });
+    fireEvent.change(select);
+
+    expect(mockOnUpdate).toHaveBeenCalledWith('stage-1', { fieldIds: undefined });
+  });
+
+  it('shows a position/count badge when the stage already spans multiple fields', () => {
+    const field1 = { id: 'field-1', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 1', order: 0 } };
+    const field2 = { id: 'field-2', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 2', order: 1 } };
+    const multiFieldStage: StageNode = {
+      ...sampleStage,
+      data: { ...sampleStage.data, fieldIds: ['field-1', 'field-2'] },
+    };
+
+    renderStage(
+      createDefaultProps({
+        stage: multiFieldStage,
+        fieldContext: field1,
+        allNodes: [field1, field2, multiFieldStage, sampleGame],
+      })
+    );
+
+    // This card represents field-1, the first of the stage's two fields.
+    expect(screen.getByText('1/2')).toBeInTheDocument();
+    // Placement is implicit by which field's card a game was added under --
+    // no manual field picker exists anymore (see GameTable's own tests).
+    expect(screen.queryByRole('combobox', { name: /field/i })).not.toBeInTheDocument();
+  });
+
+  it('does not show the multi-field badge for a single-field stage', () => {
+    renderStage(
+      createDefaultProps({
+        stage: sampleStage,
+        allNodes: [sampleStage, sampleGame],
+      })
+    );
+
+    expect(screen.queryByText(/^\d+\/\d+$/)).not.toBeInTheDocument();
+  });
+
+  it('only shows games actually played on this card\'s field', () => {
+    const field1 = { id: 'field-1', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 1', order: 0 } };
+    const field2 = { id: 'field-2', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 2', order: 1 } };
+    const multiFieldStage: StageNode = {
+      ...sampleStage,
+      data: { ...sampleStage.data, fieldIds: ['field-1', 'field-2'] },
+    };
+    const gameOnField2: GameNode = {
+      ...sampleGame,
+      id: 'game-2',
+      data: { ...sampleGame.data, standing: 'Game 2', fieldId: 'field-2' },
+    };
+
+    renderStage(
+      createDefaultProps({
+        stage: multiFieldStage,
+        fieldContext: field1,
+        allNodes: [field1, field2, multiFieldStage, sampleGame, gameOnField2],
+      })
+    );
+
+    expect(screen.getByText('Game 1')).toBeInTheDocument();
+    expect(screen.queryByText('Game 2')).not.toBeInTheDocument();
+  });
+
+  it('does not show a fields multi-select when only one field exists', () => {
+    const field1 = { id: 'field-1', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 1', order: 0 } };
+
+    renderStage(
+      createDefaultProps({
+        stage: sampleStage,
+        allNodes: [field1, sampleStage, sampleGame],
+      })
+    );
+
+    fireEvent.click(screen.getByTitle(i18n.t('ui:tooltip.editStageName')));
+
+    expect(screen.queryByLabelText(/fields/i)).not.toBeInTheDocument();
   });
 
   it('shows correct stage name for different stages', () => {
@@ -245,7 +391,9 @@ describe('StageSection', () => {
       const addButtons = screen.getAllByTitle(/add a new game/i);
       fireEvent.click(addButtons[0]);
 
-      expect(mockOnAddGame).toHaveBeenCalledWith('stage-1');
+      // fieldContext (field-1) is this stage's home field, so no explicit
+      // field is passed -- the game defaults to the home field.
+      expect(mockOnAddGame).toHaveBeenCalledWith('stage-1', undefined);
     });
 
     it('No Add Game button appears at bottom when games exist', () => {
@@ -509,4 +657,82 @@ describe('StageSection', () => {
       expect(mockOnUpdate).not.toHaveBeenCalled();
       expect(screen.queryByDisplayValue('Preliminary')).not.toBeInTheDocument();
     });
-});});
+  });
+
+  describe('Merge into...', () => {
+    const otherField = { id: 'field-2', type: 'field' as const, position: { x: 0, y: 0 }, data: { type: 'field' as const, name: 'Feld 2', order: 1 } };
+    const otherStage: StageNode = {
+      id: 'stage-2',
+      type: 'stage',
+      parentId: 'field-2',
+      position: { x: 0, y: 0 },
+      data: { type: 'stage', name: 'Final', category: 'final', stageType: 'STANDARD', order: 0 },
+    };
+
+    it('renders merge targets grouped by field', async () => {
+      const user = userEvent.setup();
+      renderStage(
+        createDefaultProps({
+          stage: sampleStage,
+          allNodes: [sampleStage, otherField, otherStage],
+          onMergeStage: vi.fn(),
+        })
+      );
+
+      await user.click(screen.getByTestId('merge-stage-toggle-stage-1'));
+
+      expect(screen.getByTestId('merge-stage-target-stage-2')).toBeInTheDocument();
+      expect(screen.getByText('Feld 2')).toBeInTheDocument();
+    });
+
+    it('calls onMergeStage with this stage as source and the picked stage as target', async () => {
+      const user = userEvent.setup();
+      const mockOnMergeStage = vi.fn();
+      renderStage(
+        createDefaultProps({
+          stage: sampleStage,
+          allNodes: [sampleStage, otherField, otherStage],
+          onMergeStage: mockOnMergeStage,
+        })
+      );
+
+      await user.click(screen.getByTestId('merge-stage-toggle-stage-1'));
+      await user.click(screen.getByTestId('merge-stage-target-stage-2'));
+
+      expect(mockOnMergeStage).toHaveBeenCalledWith('stage-1', 'stage-2');
+    });
+
+    it('is disabled when there are no other stages to merge with', () => {
+      renderStage(
+        createDefaultProps({
+          stage: sampleStage,
+          allNodes: [sampleStage],
+          onMergeStage: vi.fn(),
+        })
+      );
+
+      expect(screen.getByTestId('merge-stage-toggle-stage-1')).toBeDisabled();
+    });
+
+    it('is hidden when onMergeStage is not provided, and in read-only mode', () => {
+      const { unmount } = renderStage(
+        createDefaultProps({
+          stage: sampleStage,
+          allNodes: [sampleStage, otherField, otherStage],
+        })
+      );
+      expect(screen.queryByTestId('merge-stage-toggle-stage-1')).not.toBeInTheDocument();
+      unmount();
+
+      renderStage(
+        createDefaultProps({
+          stage: sampleStage,
+          allNodes: [sampleStage, otherField, otherStage],
+          onMergeStage: vi.fn(),
+          readOnly: true,
+        })
+      );
+      expect(screen.queryByTestId('merge-stage-toggle-stage-1')).not.toBeInTheDocument();
+    });
+  });
+});

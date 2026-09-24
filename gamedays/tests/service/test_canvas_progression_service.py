@@ -295,3 +295,106 @@ class TestCanvasBracketProgressionServiceEdgeCases:
 
         final_home = Gameresult.objects.get(gameinfo=final, isHome=True)
         assert final_home.team == placeholder  # untouched, no IndexError
+
+    def test_rank_resolution_combines_games_from_different_fields(self):
+        """A single stage's games can be split across multiple physical
+        `field` values (a placement phase spanning several fields). The
+        stage's rank standings must combine ALL of that stage's games
+        regardless of field -- proving the field-agnostic aggregation a
+        multi-field Designer stage relies on for correct global seeding.
+        """
+        team_c = Team.objects.create(name="C", description="C", location="City")
+
+        # field 1: B beats C
+        g_field1 = Gameinfo.objects.create(
+            gameday=self.gameday,
+            scheduled="10:00",
+            field=1,
+            officials=self.team_a,
+            stage="Platzierung",
+            standing="G1",
+            status=Gameinfo.STATUS_COMPLETED,
+        )
+        Gameresult.objects.create(
+            gameinfo=g_field1, team=self.team_b, isHome=True, fh=2, sh=0
+        )
+        Gameresult.objects.create(
+            gameinfo=g_field1, team=team_c, isHome=False, fh=0, sh=0
+        )
+
+        # field 2: A beats B -- if standings were wrongly scoped to one
+        # field, A (who never played on field 1) would never enter the
+        # table and rank 1 would incorrectly resolve to B.
+        g_field2 = Gameinfo.objects.create(
+            gameday=self.gameday,
+            scheduled="10:00",
+            field=2,
+            officials=self.team_a,
+            stage="Platzierung",
+            standing="G2",
+            status=Gameinfo.STATUS_COMPLETED,
+        )
+        Gameresult.objects.create(
+            gameinfo=g_field2, team=self.team_a, isHome=True, fh=2, sh=0
+        )
+        Gameresult.objects.create(
+            gameinfo=g_field2, team=self.team_b, isHome=False, fh=0, sh=0
+        )
+
+        final = Gameinfo.objects.create(
+            gameday=self.gameday,
+            scheduled="12:00",
+            field=1,
+            officials=self.team_a,
+            stage="Finale",
+            standing="FIN",
+            status=Gameinfo.STATUS_PUBLISHED,
+        )
+        placeholder = Team.objects.create(
+            name="Rank 1 Platzierung", description="Rank 1 Platzierung", location=""
+        )
+        Gameresult.objects.create(gameinfo=final, team=placeholder, isHome=True)
+
+        state_data = {
+            "nodes": [
+                {
+                    "id": "field-1",
+                    "type": "field",
+                    "parentId": None,
+                    "data": {"type": "field", "name": "Field 1", "order": 0},
+                    "position": {"x": 0, "y": 0},
+                },
+                {
+                    "id": "field-2",
+                    "type": "field",
+                    "parentId": None,
+                    "data": {"type": "field", "name": "Field 2", "order": 1},
+                    "position": {"x": 0, "y": 0},
+                },
+                _stage_node("stage-1", "field-1", "Platzierung"),
+                _game_node("game-g1", "stage-1", "Platzierung", "G1"),
+                _game_node(
+                    "game-g2", "stage-1", "Platzierung", "G2", fieldId="field-2"
+                ),
+                _stage_node("stage-2", "field-1", "Finale", "final"),
+                _game_node(
+                    "game-fin",
+                    "stage-2",
+                    "Finale",
+                    "FIN",
+                    homeTeamDynamic={
+                        "type": "rank",
+                        "place": 1,
+                        "stageName": "Platzierung",
+                        "stageId": "stage-1",
+                    },
+                ),
+            ]
+        }
+        GamedayDesignerState.objects.create(gameday=self.gameday, state_data=state_data)
+
+        CanvasBracketProgressionService(g_field1).apply()
+        CanvasBracketProgressionService(g_field2).apply()
+
+        final_home = Gameresult.objects.get(gameinfo=final, isHome=True)
+        assert final_home.team == self.team_a
