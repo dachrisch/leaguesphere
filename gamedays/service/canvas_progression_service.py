@@ -85,14 +85,28 @@ class CanvasBracketProgressionService:
             )
         except Gameinfo.DoesNotExist:
             return
+        except Gameinfo.MultipleObjectsReturned:
+            # Several games share this standing (e.g. a placement round robin
+            # authored with one standing for all its games, like "BRR" x3) --
+            # there's no way to tell which specific game this home/away slot
+            # belongs to, so skip it. Letting this raise would abort
+            # _propagate's loop and silently leave every later game node
+            # unresolved too, not just this ambiguous one.
+            return
         Gameresult.objects.filter(gameinfo=gi, isHome=is_home).update(team=team)
 
     def _apply_official(self, target_standing, team) -> None:
         if team is None:
             return
-        Gameinfo.objects.filter(
+        matches = Gameinfo.objects.filter(
             gameday=self.game.gameday, standing=target_standing
-        ).update(officials=team)
+        )
+        if matches.count() != 1:
+            # Ambiguous (0 or several games share this standing) -- applying
+            # to all of them would silently assign the same official to
+            # unrelated games sharing a standing, so skip instead.
+            return
+        matches.update(officials=team)
 
     def _resolve_stage_ranks(self, game_nodes) -> None:
         """

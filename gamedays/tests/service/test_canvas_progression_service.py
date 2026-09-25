@@ -298,6 +298,194 @@ class TestCanvasBracketProgressionServiceEdgeCases:
 
 
 @pytest.mark.django_db
+class TestCanvasBracketProgressionServiceAmbiguousStanding:
+    """Regression coverage for gd648: a placement round robin (e.g. "BRR")
+    authored with one shared standing across all of its games made
+    `_apply_team`'s `Gameinfo.objects.get(standing=...)` raise
+    MultipleObjectsReturned, which aborted `_propagate`'s loop and silently
+    left every later game node unresolved too -- not just the ambiguous one."""
+
+    def setup_method(self):
+        self.user = User.objects.create_user(username="ambiguous_test", password="pw")
+        self.season = Season.objects.create(name="ambiguous2026")
+        self.league = League.objects.create(name="Ambiguous League")
+        self.team_a = Team.objects.create(name="A", description="A", location="City")
+        self.team_b = Team.objects.create(name="B", description="B", location="City")
+        self.gameday = Gameday.objects.create(
+            name="Ambiguous Day",
+            season=self.season,
+            league=self.league,
+            date=date(2026, 5, 3),
+            start="10:00",
+            author=self.user,
+        )
+
+    def test_ambiguous_standing_is_skipped_without_blocking_later_nodes(self):
+        prelim = Gameinfo.objects.create(
+            gameday=self.gameday,
+            scheduled="10:00",
+            field=1,
+            officials=self.team_a,
+            stage="Vorrunde",
+            standing="G1",
+            status=Gameinfo.STATUS_COMPLETED,
+        )
+        Gameresult.objects.create(
+            gameinfo=prelim, team=self.team_a, isHome=True, fh=1, sh=0
+        )
+        Gameresult.objects.create(
+            gameinfo=prelim, team=self.team_b, isHome=False, fh=0, sh=0
+        )
+
+        # Two real Gameinfo rows share standing="BRR" (a 2-game placement
+        # round robin authored the same way as the real gd648 schedule).
+        brr_placeholder = Team.objects.create(
+            name="Gewinner G1 BRR", description="Gewinner G1 BRR", location=""
+        )
+        for _ in range(2):
+            brr_game = Gameinfo.objects.create(
+                gameday=self.gameday,
+                scheduled="16:00",
+                field=2,
+                officials=self.team_a,
+                stage="BRR",
+                standing="BRR",
+                status=Gameinfo.STATUS_PUBLISHED,
+            )
+            Gameresult.objects.create(
+                gameinfo=brr_game, team=brr_placeholder, isHome=True
+            )
+
+        # A normal, uniquely-standinged final game that must still resolve
+        # correctly even though it comes AFTER the ambiguous "BRR" nodes in
+        # the canvas node array.
+        final = Gameinfo.objects.create(
+            gameday=self.gameday,
+            scheduled="18:00",
+            field=1,
+            officials=self.team_a,
+            stage="Finale",
+            standing="FIN",
+            status=Gameinfo.STATUS_PUBLISHED,
+        )
+        final_placeholder = Team.objects.create(
+            name="Gewinner G1 Final", description="Gewinner G1 Final", location=""
+        )
+        Gameresult.objects.create(gameinfo=final, team=final_placeholder, isHome=True)
+
+        state_data = {
+            "nodes": [
+                {
+                    "id": "field-1",
+                    "type": "field",
+                    "parentId": None,
+                    "data": {"type": "field", "name": "Field 1", "order": 0},
+                    "position": {"x": 0, "y": 0},
+                },
+                _stage_node("stage-vr", "field-1", "Vorrunde"),
+                _game_node("game-g1", "stage-vr", "Vorrunde", "G1"),
+                _stage_node("stage-brr", "field-1", "BRR"),
+                _game_node(
+                    "game-brr-1",
+                    "stage-brr",
+                    "BRR",
+                    "BRR",
+                    homeTeamDynamic={"type": "winner", "matchName": "G1"},
+                ),
+                _game_node(
+                    "game-brr-2",
+                    "stage-brr",
+                    "BRR",
+                    "BRR",
+                    awayTeamDynamic={"type": "winner", "matchName": "G1"},
+                ),
+                # Comes AFTER the ambiguous BRR nodes -- must still resolve.
+                _stage_node("stage-fin", "field-1", "Finale", "final"),
+                _game_node(
+                    "game-fin",
+                    "stage-fin",
+                    "Finale",
+                    "FIN",
+                    homeTeamDynamic={"type": "winner", "matchName": "G1"},
+                ),
+            ]
+        }
+        GamedayDesignerState.objects.create(gameday=self.gameday, state_data=state_data)
+
+        CanvasBracketProgressionService(prelim).apply()  # must not raise
+
+        # Ambiguous BRR games are left untouched (still their placeholder).
+        for gr in Gameresult.objects.filter(gameinfo__standing="BRR", isHome=True):
+            assert gr.team == brr_placeholder
+
+        # The unambiguous Finale game still resolves correctly.
+        final_home = Gameresult.objects.get(gameinfo=final, isHome=True)
+        assert final_home.team == self.team_a
+
+    def test_ambiguous_standing_does_not_apply_official_to_either_game(self):
+        prelim = Gameinfo.objects.create(
+            gameday=self.gameday,
+            scheduled="10:00",
+            field=1,
+            officials=self.team_a,
+            stage="Vorrunde",
+            standing="G1",
+            status=Gameinfo.STATUS_COMPLETED,
+        )
+        Gameresult.objects.create(
+            gameinfo=prelim, team=self.team_a, isHome=True, fh=1, sh=0
+        )
+        Gameresult.objects.create(
+            gameinfo=prelim, team=self.team_b, isHome=False, fh=0, sh=0
+        )
+
+        officials_placeholder = Team.objects.create(
+            name="N/A Ambiguous", description="N/A Ambiguous", location=""
+        )
+        brr_games = [
+            Gameinfo.objects.create(
+                gameday=self.gameday,
+                scheduled="16:00",
+                field=2,
+                officials=officials_placeholder,
+                stage="BRR",
+                standing="BRR",
+                status=Gameinfo.STATUS_PUBLISHED,
+            )
+            for _ in range(2)
+        ]
+
+        state_data = {
+            "nodes": [
+                {
+                    "id": "field-1",
+                    "type": "field",
+                    "parentId": None,
+                    "data": {"type": "field", "name": "Field 1", "order": 0},
+                    "position": {"x": 0, "y": 0},
+                },
+                _stage_node("stage-vr", "field-1", "Vorrunde"),
+                _game_node("game-g1", "stage-vr", "Vorrunde", "G1"),
+                _stage_node("stage-brr", "field-1", "BRR"),
+                _game_node(
+                    "game-brr-1",
+                    "stage-brr",
+                    "BRR",
+                    "BRR",
+                    official={"type": "winner", "matchName": "G1"},
+                ),
+            ]
+        }
+        GamedayDesignerState.objects.create(gameday=self.gameday, state_data=state_data)
+
+        CanvasBracketProgressionService(prelim).apply()  # must not raise
+
+        for gi in brr_games:
+            gi.refresh_from_db()
+            assert gi.officials == officials_placeholder
+
+
+@pytest.mark.django_db
 class TestCanvasBracketProgressionServiceStageStandings:
     """Coverage for _compute_stage_standings using the same TieBreakerEngine
     and configured ruleset as the displayed Vorrunden-/Abschlusstabelle
