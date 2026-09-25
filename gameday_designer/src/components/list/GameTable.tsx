@@ -25,7 +25,7 @@ import { setDraggedGameSourceStageId } from '../../utils/dragState';
 import { isWinnerReference, isLoserReference, isRankReference } from '../../types/designer';
 import type { TeamReference, WinnerReference, LoserReference } from '../../types/designer';
 import { findSourceGameForReference, findSourceStageForReference, getGamePath, getEligibleSourceGames as computeEligibleSourceGames } from '../../utils/edgeAnalysis';
-import { getStageParticipants, getStageGroups, getGroupParticipants } from '../../utils/rankingEngine';
+import { getMergedRankingStages } from '../../utils/rankingEngine';
 import { isValidTimeFormat } from '../../utils/timeCalculation';
 import { ICONS } from '../../utils/iconConstants';
 import type { GameProgressionCellResult } from '../../types/progression';
@@ -426,49 +426,43 @@ const GameTable: React.FC<GameTableProps> = memo(({
   const rankingStageOptions = useMemo(() => {
     // Determine the current stage ID (assume all games in table belong to same stage)
     const currentStageId = games[0]?.parentId;
-    
-    const rankingStages = allNodes.filter(n => 
-      isStageNode(n) && 
-      n.data.stageType === 'RANKING' &&
-      n.id !== currentStageId // Prevent self-reference
-    ) as StageNode[];
+
+    // Merged by name: a ranking stage's games may be split across multiple
+    // fields (one StageNode per field sharing the same name), and must still
+    // be offered as one combined set of places, not once per field.
+    const mergedStages = getMergedRankingStages(allNodes, currentStageId);
     const options: TeamOption[] = [];
 
-    rankingStages.forEach(stage => {
-      options.push({ 
-        value: `stage-header-${stage.id}`, 
-        label: `${stage.data.name} (${t('ui:label.ranking')})`, 
-        color: stage.data.color || '#0d6efd', 
-        isStageHeader: true, 
-        isDisabled: true 
+    mergedStages.forEach(stage => {
+      const representativeStageId = stage.stageIds[0];
+      options.push({
+        value: `stage-header-${representativeStageId}`,
+        label: `${stage.name} (${t('ui:label.ranking')})`,
+        color: stage.color || '#0d6efd',
+        isStageHeader: true,
+        isDisabled: true
       });
 
-      // Find all games in this stage
-      const stageGames = allNodes.filter(n => isGameNode(n) && n.parentId === stage.id) as GameNode[];
-      const participants = getStageParticipants(stageGames);
-      
       // For each participant, add a rank option (Overall)
-      participants.forEach((_, index) => {
+      stage.participants.forEach((_, index) => {
         const place = index + 1;
         options.push({
-          value: `rank:${stage.id}:${place}`,
-          label: `🏆 ${t('ui:message.placeFrom', { place, stage: stage.data.name })}`,
+          value: `rank:${representativeStageId}:${place}`,
+          label: `🏆 ${t('ui:message.placeFrom', { place, stage: stage.name })}`,
           isTeam: false,
-          reference: { type: 'rank', place, stageId: stage.id, stageName: stage.data.name },
+          reference: { type: 'rank', place, stageId: representativeStageId, stageName: stage.name },
         });
       });
 
       // Add Group-based ranks
-      const groups = getStageGroups(stageGames);
-      groups.forEach(groupName => {
-        const groupParticipants = getGroupParticipants(stageGames, groupName);
+      stage.groups.forEach(({ name: groupName, participants: groupParticipants }) => {
         groupParticipants.forEach((_, index) => {
           const place = index + 1;
           options.push({
-            value: `rank:group:${stage.id}:${groupName}:${place}`,
-            label: `🎖️ ${t('ui:message.placeInGroup', { place, group: groupName, stage: stage.data.name })}`,
+            value: `rank:group:${representativeStageId}:${groupName}:${place}`,
+            label: `🎖️ ${t('ui:message.placeInGroup', { place, group: groupName, stage: stage.name })}`,
             isTeam: false,
-            reference: { type: 'groupRank', place, groupName, stageId: stage.id, stageName: stage.data.name },
+            reference: { type: 'groupRank', place, groupName, stageId: representativeStageId, stageName: stage.name },
           });
         });
       });

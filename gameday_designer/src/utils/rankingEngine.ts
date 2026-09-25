@@ -1,4 +1,5 @@
-import type { GameNode } from '../types/flowchart';
+import type { FlowNode, GameNode, StageNode } from '../types/flowchart';
+import { isGameNode, isStageNode } from '../types/flowchart';
 
 /**
  * Result of ranking calculation.
@@ -50,6 +51,68 @@ export function getGroupParticipants(games: GameNode[], groupName: string): stri
   });
   
   return Array.from(participants);
+}
+
+/**
+ * A "Ranking" stage as it should appear to the person building the schedule,
+ * merging every StageNode that shares its name (e.g. one instance per field)
+ * into a single entry with the combined participant list. Without this
+ * merge, splitting one group's games across two fields makes each field's
+ * StageNode instance list only its own half of the group's teams, and the
+ * same stage name would appear twice in any "Nth place of this stage" picker.
+ */
+export interface MergedRankingStage {
+  name: string;
+  /** ids of every StageNode instance sharing this name */
+  stageIds: string[];
+  color?: string;
+  participants: string[];
+  groups: { name: string; participants: string[] }[];
+}
+
+/**
+ * Builds the merged, by-name view of every RANKING-type stage in the graph,
+ * combining games from all StageNode instances that share a name regardless
+ * of which field they were created under.
+ *
+ * @param excludeStageId - when set, drops the merged group containing this
+ *   stage id (used to prevent a game from referencing its own stage's rank).
+ */
+export function getMergedRankingStages(
+  allNodes: FlowNode[],
+  excludeStageId?: string
+): MergedRankingStage[] {
+  const stagesByName = new Map<string, StageNode[]>();
+  allNodes
+    .filter((n): n is StageNode => isStageNode(n) && n.data.stageType === 'RANKING')
+    .forEach((stage) => {
+      const list = stagesByName.get(stage.data.name) ?? [];
+      list.push(stage);
+      stagesByName.set(stage.data.name, list);
+    });
+
+  const merged: MergedRankingStage[] = [];
+  stagesByName.forEach((stages, name) => {
+    const stageIds = stages.map((s) => s.id);
+    if (excludeStageId && stageIds.includes(excludeStageId)) return;
+
+    const games = allNodes.filter(
+      (n): n is GameNode => isGameNode(n) && !!n.parentId && stageIds.includes(n.parentId)
+    );
+
+    merged.push({
+      name,
+      stageIds,
+      color: stages[0].data.color,
+      participants: getStageParticipants(games),
+      groups: getStageGroups(games).map((groupName) => ({
+        name: groupName,
+        participants: getGroupParticipants(games, groupName),
+      })),
+    });
+  });
+
+  return merged;
 }
 
 /**
