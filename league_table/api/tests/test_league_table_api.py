@@ -5,6 +5,9 @@ Following TDD principles - these tests define the expected behavior
 before implementation.
 """
 
+from unittest.mock import patch
+
+from django.core.cache import cache
 from django.test import TestCase, Client
 from django.urls import reverse
 
@@ -23,6 +26,15 @@ from league_table.tests.setup_factories.factories_leaguetable import (
 
 class LeagueTableApiTestBase(TestCase):
     def setUp(self):
+        # LeagueTableAPIView now caches its computed payload by etag
+        # (league_manager.utils.etag_cache). Under sqlite, TestCase rolls
+        # each test back via a savepoint and sqlite's rowid isn't a
+        # persistent sequence the way MySQL's AUTO_INCREMENT is, so two
+        # tests in this file can reuse the same pks and therefore compute
+        # the same etag - without this, one test's cached payload can leak
+        # into another's assertions.
+        cache.clear()
+        self.addCleanup(cache.clear)
         self.client = Client()
         self.config = LeagueSeasonConfigFactory()
         self.season = self.season = self.config.season
@@ -167,3 +179,53 @@ class TestLeagueTableApiEtag(LeagueTableApiTestBase):
         result.save()
         response = self.client.get(self.url_season, HTTP_IF_NONE_MATCH=etag)
         self.assertEqual(response.status_code, 200)
+
+
+class TestLeagueTableApiPayloadCache(LeagueTableApiTestBase):
+    """The @condition decorator's 304 already skips get_standing() for a
+    *returning* client that sends a matching If-None-Match - but a request
+    with no If-None-Match at all (a fresh client, or any non-browser caller)
+    still recomputes from scratch. get_or_compute_by_etag() caches that
+    computed payload server-side so concurrent/repeat callers with no
+    conditional header share one computation instead of one each.
+    """
+
+    def test_get_standing_called_once_for_two_requests_sharing_an_etag(self):
+        from league_table.service.league_table_service import LeagueTableService
+
+        original_get_standing = LeagueTableService.get_standing
+        call_count = {"n": 0}
+
+        def counting_get_standing(self):
+            call_count["n"] += 1
+            return original_get_standing(self)
+
+        with patch.object(
+            LeagueTableService, "get_standing", counting_get_standing
+        ):
+            first = self.client.get(self.url_season)
+            second = self.client.get(self.url_season)
+
+        self.assertEqual(first.json(), second.json())
+        self.assertEqual(call_count["n"], 1)
+
+    def test_get_standing_called_again_after_etag_changes(self):
+        from league_table.service.league_table_service import LeagueTableService
+
+        original_get_standing = LeagueTableService.get_standing
+        call_count = {"n": 0}
+
+        def counting_get_standing(self):
+            call_count["n"] += 1
+            return original_get_standing(self)
+
+        with patch.object(
+            LeagueTableService, "get_standing", counting_get_standing
+        ):
+            self.client.get(self.url_season)
+            result = Gameresult.objects.get(gameinfo=self.game, isHome=True)
+            result.sh = 12
+            result.save()
+            self.client.get(self.url_season)
+
+        self.assertEqual(call_count["n"], 2)

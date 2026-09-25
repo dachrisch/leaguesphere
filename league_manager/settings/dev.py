@@ -9,12 +9,19 @@ if not SECRET_KEY:
 DEBUG = True
 MOCK_TEAMS = True
 DEBUG_DATE = datetime.date.today()
-# DEBUG_DATE = datetime.date(2026, 3, 21)
+
+# base.py defaults to Redis so prod/stage share one cache across gunicorn
+# workers; local dev runs a single process with no Redis available, so
+# LocMemCache is simpler and sufficient here (also inherited by
+# test_sqlite.py, which imports from this module).
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "league-manager-cache",
+    }
+}
 
 DEBUG_TOOLBAR = "pytest" not in sys.modules
-# DEBUG_TOOLBAR = True
-# DEBUG_TOOLBAR = False
-# PROFILING = True
 PROFILING = False
 ALLOWED_HOSTS = [
     "127.0.0.1",

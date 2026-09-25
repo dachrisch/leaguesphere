@@ -20,6 +20,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from gamedays.permissions import IsAuthenticatedOrOwnerOrStaff, IsAuthenticatedOrGamedayOwnerOrStaff
+from league_manager.utils.etag_cache import get_or_compute_by_etag
 
 from gamedays.api.serializers import (
     GamedaySerializer,
@@ -139,7 +140,12 @@ class GamedayViewSet(viewsets.ModelViewSet):
 
     @method_decorator(condition(etag_func=generate_gameday_list_etag))
     def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        etag = generate_gameday_list_etag(request)
+
+        def compute_payload():
+            return super(GamedayViewSet, self).list(request, *args, **kwargs).data
+
+        return Response(get_or_compute_by_etag(etag, compute_payload))
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
