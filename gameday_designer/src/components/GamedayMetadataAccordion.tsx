@@ -3,6 +3,7 @@ import { Accordion, Form, Row, Col, Button, Overlay, Popover, useAccordionButton
 import { GamedayMetadata, FlowValidationResult, FlowValidationError, FlowValidationWarning, HighlightedElement } from '../types/flowchart';
 import { useTypedTranslation } from '../i18n/useTypedTranslation';
 import { ICONS } from '../utils/iconConstants';
+import { DEFAULT_GAME_DURATION, DEFAULT_BREAK_BETWEEN_GAMES } from '../utils/tournamentConstants';
 import { gamedayApi } from '../api/gamedayApi';
 import { ResourceUrl } from '../types/api';
 import './GamedayMetadataAccordion.css';
@@ -480,6 +481,33 @@ const GamedayMetadataAccordion: React.FC<GamedayMetadataAccordionProps> = ({
                     disabled={readOnly}
                     placeholder={t('ui:label.venue')}
                     className={isFieldHighlighted('venue') ? 'is-highlighted' : ''}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Row className="mb-3">
+              <Col md={6}>
+                <Form.Group controlId="gamedayDefaultGameDuration">
+                  <Form.Label>{t('ui:label.defaultGameDuration', 'Default game duration (min)')}</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min={1}
+                    value={metadata.game_duration ?? DEFAULT_GAME_DURATION}
+                    onChange={(e) => handleChange('game_duration', parseInt(e.target.value, 10))}
+                    disabled={readOnly}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group controlId="gamedayDefaultBreakBetweenGames">
+                  <Form.Label>{t('ui:label.defaultBreakBetweenGames', 'Default break between games (min)')}</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min={0}
+                    value={metadata.default_break_between_games ?? DEFAULT_BREAK_BETWEEN_GAMES}
+                    onChange={(e) => handleChange('default_break_between_games', parseInt(e.target.value, 10))}
+                    disabled={readOnly}
                   />
                 </Form.Group>
               </Col>

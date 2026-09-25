@@ -97,6 +97,8 @@
     "season": "Saison",
     "league": "Liga",
     "venue": "Austragungsort",
+    "defaultGameDuration": "Standard-Spieldauer (Min)",
+    "defaultBreakBetweenGames": "Standardpause zwischen Spielen (Min)",
     "ranking": "Ranking",
     "rank": "Platz",
     "in": "in",

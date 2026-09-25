@@ -82,6 +82,30 @@ class DesignerAPITest(APITestCase):
         assert self.gameday.league_id == original_league_id
         assert self.gameday.season_id == original_season_id
 
+    def test_update_designer_state_round_trips_default_game_duration_and_break(self):
+        """The designer's global default-game-length/break-between-games setting
+        (metadata.game_duration / metadata.default_break_between_games) has no
+        dedicated backend field -- it lives entirely inside the opaque state_data
+        JSON blob. Guard that a PUT persists it and a subsequent GET returns it
+        unchanged, so a future schema/validation change on this endpoint doesn't
+        silently start stripping it."""
+        url = f"/api/gamedays/{self.gameday.id}/designer-state/"
+        data = {
+            "state_data": {
+                "metadata": {"game_duration": 45, "default_break_between_games": 15},
+                "nodes": [],
+                "edges": [],
+            }
+        }
+        put_response = self.client.put(url, data, format="json")
+        assert put_response.status_code == status.HTTP_200_OK
+
+        get_response = self.client.get(url)
+        assert get_response.status_code == status.HTTP_200_OK
+        metadata = get_response.data["state_data"]["metadata"]
+        assert metadata["game_duration"] == 45
+        assert metadata["default_break_between_games"] == 15
+
     def test_publish_gameday(self):
         # Publishing regenerates the schedule from the designer canvas, so it is
         # only allowed when no results have been entered yet. The g62 fixture ships

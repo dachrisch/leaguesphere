@@ -1,6 +1,7 @@
 import { FlowState, GlobalTeam, FlowNode, isGameNode, isStageNode, getFieldNodes, createGameNodeInStage, createGameToGameEdge, createStageToGameEdge, FlowEdge, GlobalTeamGroup, StageCategory, StageToGameEdgeData } from '../types/flowchart';
 import { isWinnerReference, isLoserReference, isGroupTeamReference, isRankReference, isGroupRankReference, TeamReference } from '../types/designer';
 import { v4 as uuidv4 } from 'uuid';
+import { DEFAULT_GAME_DURATION } from './tournamentConstants';
 
 export interface GenericTemplateSlot {
   field: number;
@@ -213,7 +214,7 @@ export function genericizeFlowState(state: FlowState, name: string, description:
     num_teams: state.globalTeams.length,
     num_fields: fieldsList.length,
     num_groups: state.globalTeamGroups.length,
-    game_duration: state.metadata?.game_duration || 70,
+    game_duration: state.metadata?.game_duration || DEFAULT_GAME_DURATION,
     sharing,
     slots: sortedSlots,
     group_config,
