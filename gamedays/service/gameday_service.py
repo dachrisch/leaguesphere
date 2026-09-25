@@ -151,11 +151,17 @@ class EventsTableError:
 
     def _build_message(self) -> str:
         """Build a user-friendly error message"""
-        expected = f"{self.home_team} vs {self.away_team}"
+        # Rendered with |safe in the template (to_html() mirrors
+        # DataFrame.to_html()'s interface, but there's no pandas escaping
+        # step behind it here) - team descriptions are staff-controlled, so
+        # they must be escaped before going into the message.
+        home_team = escape(self.home_team)
+        away_team = escape(self.away_team)
+        expected = f"{home_team} vs {away_team}"
 
         # Filter out None/NaN values
         valid_teams = [
-            t for t in self.events_teams if t is not None and str(t) != "nan"
+            escape(t) for t in self.events_teams if t is not None and str(t) != "nan"
         ]
 
         if not valid_teams:
@@ -163,7 +169,7 @@ class EventsTableError:
 
         actual = ", ".join(valid_teams)
 
-        if set(valid_teams) == {self.home_team, self.away_team}:
+        if set(valid_teams) == {home_team, away_team}:
             return f"Ereignisdaten für dieses Spiel sind inkonsistent. Erwartet: {expected}, Gefunden: {actual}"
 
         return f"Ereignisdaten für dieses Spiel sind inkonsistent. Erwartet: {expected}, Gefunden: {actual}. Bitte kontaktieren Sie den Support."

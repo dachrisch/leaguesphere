@@ -473,7 +473,6 @@ class GamedayGameDetailView(DetailView):
             "index": False,
             "border": 0,
             "justify": "center",
-            "escape": False,
             "table_id": "team_log_events",
         }
         classes = [
@@ -593,7 +592,15 @@ class GamedayGameDetailView(DetailView):
         payload["performer"] = [
             {"@type": "SportsTeam", "name": team["name"]} for team in scores.values()
         ]
-        return json.dumps(payload)
+        # Embedded raw (not via json_script) in a <script type="application/
+        # ld+json"> tag by the template, so a team name containing
+        # "</script>" would otherwise close that tag early and let anything
+        # after it run as HTML/script. json.dumps() doesn't escape that on
+        # its own; translate the same three characters Django's own
+        # json_script() filter escapes.
+        return json.dumps(payload).translate(
+            {ord("<"): "\\u003C", ord(">"): "\\u003E", ord("&"): "\\u0026"}
+        )
 
 
 class GameinfoWizard(LoginRequiredMixin, UserPassesTestMixin, SessionWizardView):
