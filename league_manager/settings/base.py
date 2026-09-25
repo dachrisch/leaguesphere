@@ -86,7 +86,6 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "django.template.context_processors.request",
                 "league_manager.context_processors.global_menu",
                 "league_manager.context_processors.version_number",
                 "league_manager.context_processors.pages_links",
@@ -213,11 +212,6 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "handlers": {
-        "file": {
-            "level": "DEBUG",
-            "class": "logging.FileHandler",
-            "filename": "debug.log",
-        },
         "console": {
             "class": "logging.StreamHandler",
         },
