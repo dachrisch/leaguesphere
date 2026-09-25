@@ -225,6 +225,41 @@ class TournamentServiceTests(TestCase):
         self.assertEqual(context["rows"][0]["columns"][0]["title"], "Match 1")
         self.assertIsNotNone(context["rows"][0]["columns"][0]["table_html"])
 
+    def test_build_context_escapes_team_name(self):
+        """Team names flow unescaped into this table via
+        pandas.to_html(escape=False) then |safe in the template; a
+        malicious team name must render as text, not execute as HTML.
+        """
+        malicious_team = TeamFactory(
+            name="Evil Team", description="<script>alert(1)</script>"
+        )
+        tournament = TournamentFactory(name="Finals")
+
+        gameday = GamedayFactory(season=self.season, league=self.league)
+        gi = GameinfoFactory(gameday=gameday)
+        GameresultFactory(gameinfo=gi, team=malicious_team, isHome=True, fh=10, sh=7)
+        GameresultFactory(gameinfo=gi, team=self.away_team, isHome=False, fh=3, sh=4)
+
+        row = TournamentRowFactory(tournament=tournament, title="Semifinals")
+        col = TournamentColumnFactory(row=row, title="Match 1")
+        TournamentColumnGameFactory(column=col, gameinfo=gi)
+
+        tournament.refresh_from_db()
+        tournament = (
+            type(tournament)
+            .objects.prefetch_related(
+                "rows__columns__column_games__gameinfo__gameday",
+                "rows__columns__column_games__gameinfo__gameresult_set__team",
+            )
+            .get(pk=tournament.pk)
+        )
+
+        context = TournamentService.build_context(tournament)
+
+        table_html = context["rows"][0]["columns"][0]["table_html"]
+        self.assertNotIn("<script>alert(1)</script>", table_html)
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", table_html)
+
     def test_empty_column_returns_none_for_table_html(self):
         tournament = TournamentFactory(name="Finals")
         row = TournamentRowFactory(tournament=tournament, title="Semifinals")
