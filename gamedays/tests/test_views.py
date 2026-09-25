@@ -267,6 +267,35 @@ class TestGamedayLeagueStatisticView(TestCase):
                 continue
             assert v != "Die Statistiken erscheinen nach den ersten Spielen."
 
+    def test_league_statistic_view_escapes_team_name(self):
+        """Team names flow unescaped into these tables via
+        pandas.to_html(escape=False) then |safe in the template; a
+        malicious team name must render as text, not execute as HTML.
+        """
+        gameday = DBSetup().g62_finished(season=SeasonFactory(name="2025"))
+        gameinfo = gameday.gameinfo_set.first()
+        team_1_result, team_2_result = list(gameinfo.gameresult_set.all())
+        team_1_result.team.name = "<script>alert(1)</script>"
+        team_1_result.team.save()
+        DBSetup().create_teamlog_home_and_away(
+            team_1_result.team, team_2_result.team, gameinfo=gameinfo
+        )
+
+        resp = self.client.get(
+            reverse(
+                LEAGUE_GAMEDAY_LEAGUE_STATISTICS,
+                kwargs={
+                    "league": gameday.league.name,
+                    "season": gameday.season.name,
+                },
+            )
+        )
+
+        assert resp.status_code == HTTPStatus.OK
+        content = resp.content.decode()
+        assert "<script>alert(1)</script>" not in content
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in content
+
 
 class TestGamedayGameDetailView(TestCase):
 
