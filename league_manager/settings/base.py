@@ -225,6 +225,3 @@ LOGGING = {
         },
     },
 }
-
-# ToDo deleteMe
-X_FRAME_OPTIONS = "ALLOWALL"
