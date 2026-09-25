@@ -21,6 +21,7 @@ import { getAllTemplates } from '../utils/tournamentTemplates';
 import type { GenericTemplate } from '../utils/templateMapper';
 import type { TournamentTemplate } from '../types/tournament';
 import { trackEvent } from '../trackEvent';
+import { matchGamesToNodes } from '../utils/gameinfoMatching';
 import { useTourSeen } from '../onboarding/useTourSeen';
 import DesignerTour from '../onboarding/DesignerTour';
 import './ListDesignerApp.css';
@@ -401,21 +402,17 @@ const ListDesignerApp: React.FC = () => {
     }
   }, [flowState.nodes]);
 
-  // Once a gameday is published, each canvas game node's `standing` uniquely
-  // identifies a real backend Gameinfo row (the same assumption the server's
-  // own progression logic relies on). Fetch those rows and stamp their real
-  // ids onto the matching nodes so score entry can target the correct game
-  // instead of guessing an id from the node's client-generated key.
+  // Once a gameday is published, fetch its real Gameinfo rows and stamp
+  // their ids onto the matching canvas nodes (matched via stage/standing/
+  // field/time, not `standing` alone -- group-stage games commonly share one
+  // standing across the whole group) so score entry can target the correct
+  // game instead of guessing an id from the node's client-generated key.
   const syncGameinfoIds = useCallback(async () => {
     if (!id) return;
     const games = await gamedayApi.getGamedayGames(parseInt(id));
-    const gameNodesByStanding = new Map(
-      flowState.nodes.filter(isGameNode).map((n) => [n.data.standing, n] as const)
-    );
-    games.forEach((game) => {
-      const node = gameNodesByStanding.get(game.standing);
-      if (node && node.data.gameinfoId !== game.id) {
-        handleUpdateNode(node.id, { gameinfoId: game.id });
+    matchGamesToNodes(flowState.nodes, games).forEach(({ node, gameinfoId }) => {
+      if (node.data.gameinfoId !== gameinfoId) {
+        handleUpdateNode(node.id, { gameinfoId });
       }
     });
   }, [id, flowState.nodes, handleUpdateNode]);
