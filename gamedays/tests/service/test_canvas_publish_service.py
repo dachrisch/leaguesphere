@@ -1,7 +1,10 @@
 from django.test import TestCase
 
-from gamedays.models import Gameinfo, GamedayDesignerState
-from gamedays.service.canvas_publish_service import CanvasPublishService
+from gamedays.models import GamedayDesignerState, Gameinfo, Team
+from gamedays.service.canvas_publish_service import (
+    OFFICIALS_PLACEHOLDER,
+    CanvasPublishService,
+)
 from gamedays.service.stage_category import StageCategory
 from gamedays.tests.setup_factories.db_setup import DBSetup
 
@@ -188,3 +191,105 @@ class TestCanvasPublishServiceDayOffset(TestCase):
 
         gi = Gameinfo.objects.get(gameday=gameday)
         assert gi.day_offset == 0
+
+
+def _state_data_with_swiss_round():
+    """One normal game node plus one Swiss-round game node (the shape
+    SwissTournamentService writes for generated rounds), alongside a
+    pre-existing Swiss Gameinfo row with entered results."""
+    return {
+        "nodes": [
+            {
+                "id": "field-1",
+                "type": "field",
+                "data": {"type": "field", "name": "Feld 1", "order": 0},
+            },
+            {
+                "id": "stage-1",
+                "type": "stage",
+                "parentId": "field-1",
+                "data": {
+                    "type": "stage",
+                    "name": "Liga",
+                    "category": "preliminary",
+                    "stageType": "STANDARD",
+                },
+            },
+            {
+                "id": "game-1",
+                "type": "game",
+                "parentId": "stage-1",
+                "data": {
+                    "type": "game",
+                    "standing": "Spiel 1",
+                    "startTime": "10:00",
+                    "homeTeamId": None,
+                    "awayTeamId": None,
+                    "official": None,
+                },
+            },
+            {
+                "id": "swiss-field-1",
+                "type": "field",
+                "data": {"type": "field", "name": "Feld 1", "order": 0},
+            },
+            {
+                "id": "swiss-round-1-field-1",
+                "type": "stage",
+                "parentId": "swiss-field-1",
+                "data": {
+                    "type": "stage",
+                    "name": "Round 1",
+                    "category": "preliminary",
+                    "stageType": "STANDARD",
+                },
+            },
+            {
+                "id": "swiss-r1-g1",
+                "type": "game",
+                "parentId": "swiss-round-1-field-1",
+                "data": {
+                    "type": "game",
+                    "standing": "Swiss R1-G1",
+                    "startTime": "10:00",
+                    "homeTeamId": None,
+                    "awayTeamId": None,
+                    "official": None,
+                },
+            },
+        ],
+        "globalTeams": [],
+    }
+
+
+class TestCanvasPublishServiceSwissRounds(TestCase):
+    def test_apply_preserves_swiss_games_and_skips_swiss_nodes(self):
+        gameday = DBSetup().create_empty_gameday()
+        GamedayDesignerState.objects.create(
+            gameday=gameday, state_data=_state_data_with_swiss_round()
+        )
+        swiss_game = Gameinfo.objects.create(
+            gameday=gameday,
+            scheduled="10:00",
+            field=1,
+            stage="Swiss",
+            standing="Swiss R1-G1",
+            officials=Team.objects.create(
+                name=OFFICIALS_PLACEHOLDER,
+                description=OFFICIALS_PLACEHOLDER,
+                location="",
+            ),
+            status=Gameinfo.STATUS_PUBLISHED,
+        )
+
+        CanvasPublishService(gameday).apply()
+
+        # the Swiss-service row (with its results) survives the publish ...
+        assert Gameinfo.objects.filter(pk=swiss_game.pk).exists()
+        # ... the normal canvas game is still materialized ...
+        assert Gameinfo.objects.filter(gameday=gameday, standing="Spiel 1").exists()
+        # ... but the Swiss canvas node is NOT duplicated into a second row.
+        assert (
+            Gameinfo.objects.filter(gameday=gameday, standing="Swiss R1-G1").count()
+            == 1
+        )

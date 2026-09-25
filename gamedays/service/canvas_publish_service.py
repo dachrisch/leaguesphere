@@ -1,7 +1,17 @@
-from gamedays.models import Gameday, Gameinfo, Gameresult, GamedayDesignerState, Team
+from gamedays.models import Gameday, GamedayDesignerState, Gameinfo, Gameresult, Team
 from gamedays.service.stage_category import StageCategory
 
 OFFICIALS_PLACEHOLDER = "N/A"
+
+# Games owned by SwissTournamentService (gameday_designer) live outside the
+# canvas publish flow: their Gameinfo rows carry stage SWISS_GAME_STAGE and
+# their canvas game nodes hang under swiss-round-* stage nodes. Publish must
+# neither delete those rows (it would orphan completedRounds.gameIds and
+# entered results) nor duplicate them from the canvas nodes below.
+# Mirrors SWISS_STAGE / _swiss_stage_id() over there; kept local to avoid a
+# gamedays -> gameday_designer import cycle.
+SWISS_GAME_STAGE = "Swiss"
+SWISS_ROUND_STAGE_PREFIX = "swiss-round-"
 
 
 class CanvasPublishService:
@@ -35,9 +45,15 @@ class CanvasPublishService:
             defaults={"description": OFFICIALS_PLACEHOLDER, "location": ""},
         )
 
-        Gameinfo.objects.filter(gameday=self.gameday).delete()
+        Gameinfo.objects.filter(gameday=self.gameday).exclude(
+            stage=SWISS_GAME_STAGE
+        ).delete()
 
         for node in game_nodes:
+            if str(node.get("parentId", "")).startswith(SWISS_ROUND_STAGE_PREFIX):
+                # Swiss-round game: owned by SwissTournamentService, whose row
+                # already exists — materializing it again would duplicate it.
+                continue
             data = node.get("data", {})
             stage_node = node_by_id.get(node.get("parentId"), {})
             # A game normally plays on its stage's home field, but a stage
