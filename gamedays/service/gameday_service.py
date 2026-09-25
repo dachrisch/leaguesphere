@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 
 import pandas as pd
-from django.utils.html import format_html
+from django.utils.html import escape, format_html
 
 from gamedays.constants import LEAGUE_GAMEDAY_GAME_DETAIL
 from gamedays.service.placeholder_service import GamedayPlaceholderService
@@ -225,7 +225,14 @@ class GamedayService:
 
     def get_schedule(self):
         schedule = self.get_schedule_data()
-        schedule[OFFICIALS_NAME] = schedule[OFFICIALS_NAME].apply("<i>{}</i>".format)
+        # Rendered with escape=False (the officials column below needs its
+        # <i> markup preserved), so every other free-text column must be
+        # escaped by hand here - pandas won't do it for us.
+        for column in (FIELD, HOME, AWAY, STANDING, STAGE, STATUS):
+            schedule[column] = schedule[column].apply(escape)
+        schedule[OFFICIALS_NAME] = schedule[OFFICIALS_NAME].apply(
+            lambda name: format_html("<i>{}</i>", name)
+        )
         schedule[SCHEDULED] = pd.to_datetime(
             schedule[SCHEDULED], format="%H:%M:%S"
         ).dt.strftime("%H:%M")

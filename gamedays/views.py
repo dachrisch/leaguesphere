@@ -139,7 +139,6 @@ class GamedayLeagueStatisticView(TemplateView):
             ],
             "border": 0,
             "justify": "center",
-            "escape": False,
         }
 
         lss = LeagueStatisticsService.create(
@@ -225,7 +224,6 @@ class GamedayDetailView(DetailView):
             ],
             "border": 0,
             "justify": "left",
-            "escape": False,
             "table_id": "schedule",
         }
         qualify_table = gs.get_qualify_table()
@@ -302,7 +300,12 @@ class GamedayDetailView(DetailView):
                 del schedule[ID]
 
         context["info"] = {
-            "schedule": schedule.to_html(**render_configs),
+            # get_schedule() deliberately wraps the officials column in
+            # <i>...</i> markup (with the officiating team's name already
+            # escaped before being wrapped - see GamedayService.get_schedule),
+            # so this one table keeps escape=False while every other table
+            # here uses the shared (escape=True) config.
+            "schedule": schedule.to_html(**{**render_configs, "escape": False}),
             "qualify_table": qualify_table,
             "final_table": final_table,
             "officials": officials,
