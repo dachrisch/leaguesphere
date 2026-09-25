@@ -6,6 +6,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from league_manager.utils.etag_cache import get_or_compute_by_etag
 from league_table.service.league_table_service import LeagueTableService
 
 # Columns of the computed standing worth exposing publicly. Game-level
@@ -44,12 +45,13 @@ class LeagueTableAPIView(APIView):
         if service.league_season_config is None:
             return Response({"detail": "Unknown league or season."}, status=404)
 
-        table = service.get_standing()
-        columns = [column for column in STANDING_COLUMNS if column in table.columns]
-        standing = json.loads(table[columns].to_json(orient="records"))
+        etag = generate_league_table_etag(request, league, season)
 
-        return Response(
-            {
+        def compute_payload():
+            table = service.get_standing()
+            columns = [c for c in STANDING_COLUMNS if c in table.columns]
+            standing = json.loads(table[columns].to_json(orient="records"))
+            return {
                 "league": {"slug": league, "name": service.get_league_name()},
                 "season": {
                     "slug": service.get_season_slug(),
@@ -57,4 +59,5 @@ class LeagueTableAPIView(APIView):
                 },
                 "standing": standing,
             }
-        )
+
+        return Response(get_or_compute_by_etag(etag, compute_payload))
