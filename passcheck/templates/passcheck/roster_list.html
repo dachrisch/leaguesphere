@@ -43,7 +43,9 @@
                 <th scope="col">Trikot</th>
                 <th scope="col">Vorname</th>
                 <th scope="col">Nachname</th>
+                {% if is_user_or_staff %}
                 <th scope="col">Passnummer</th>
+                {% endif %}
                 <th scope="col">Gestartet am</th>
                 <th scope="col">Gegangen am</th>
                 {% for league in all_leagues %}
@@ -68,7 +70,9 @@
                 <td>{% if player.jersey_number is None %}-{% else %}{{player.jersey_number}}{% endif %}</td>
                 <td>{{player.first_name}}</td>
                 <td>{{player.last_name}}</td>
+                {% if is_user_or_staff %}
                 <td>{{player.pass_number}}</td>
+                {% endif %}
                 <td>{{player.joined_on}}</td>
                 <td>{% if player.left_on is not None %}{{player.left_on}}{% endif %}</td>
                 {% for league in all_leagues %}

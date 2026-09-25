@@ -48,6 +48,28 @@ class TestRosterView(WebTest):
         )
         assert response.status_code == HTTPStatus.NOT_FOUND
 
+    def test_anonymous_visitor_does_not_see_pass_numbers(self):
+        team, _, _, _ = DbSetupPasscheck.create_playerlist_for_team()
+        response: DjangoWebtestResponse = self.app.get(
+            reverse(PASSCHECK_ROSTER_LIST, kwargs={"pk": team.pk})
+        )
+        assert response.status_code == HTTPStatus.OK
+        content = response.text
+        assert "Passnummer" not in content
+        assert "7777777" not in content
+
+    def test_staff_user_sees_pass_numbers(self):
+        user = DBSetup().create_new_user("some staff user", is_staff=True)
+        self.app.set_user(user)
+        team, _, _, _ = DbSetupPasscheck.create_playerlist_for_team()
+        response: DjangoWebtestResponse = self.app.get(
+            reverse(PASSCHECK_ROSTER_LIST, kwargs={"pk": team.pk})
+        )
+        assert response.status_code == HTTPStatus.OK
+        content = response.text
+        assert "Passnummer" in content
+        assert "7777777" in content
+
 
 class TestPlayerlistDeleteView(WebTest):
     def test_display_team_roster(self):
