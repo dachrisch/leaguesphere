@@ -43,6 +43,41 @@ class JourneyAPITests(APITestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(JourneyEvent.objects.count(), 1)
 
+    def test_create_event_without_event_name_returns_400(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token}')
+        response = self.client.post('/api/journey/events/', {
+            'metadata': {'test': True}
+        }, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(JourneyEvent.objects.count(), 0)
+
+    def test_create_event_with_invalid_characters_in_event_name_returns_400(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token}')
+        response = self.client.post('/api/journey/events/', {
+            'event_name': '<script>alert(1)</script>',
+            'metadata': {}
+        }, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(JourneyEvent.objects.count(), 0)
+
+    def test_create_event_with_oversized_metadata_returns_400(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token}')
+        response = self.client.post('/api/journey/events/', {
+            'event_name': 'test_action',
+            'metadata': {'blob': 'x' * 5000}
+        }, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(JourneyEvent.objects.count(), 0)
+
+    def test_create_event_with_event_name_over_max_length_returns_400(self):
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token}')
+        response = self.client.post('/api/journey/events/', {
+            'event_name': 'a' * 101,
+            'metadata': {}
+        }, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(JourneyEvent.objects.count(), 0)
+
     def test_get_stats(self):
         journey = Journey.objects.create(user=self.user)
         JourneyEvent.objects.create(journey=journey, event_name='event1')
@@ -793,3 +828,44 @@ class GameProgressOrderingTests(APITestCase):
         returned_ids = [row['id'] for row in response.data['results']]
         self.assertIn(published.id, returned_ids)
         self.assertNotIn(draft.id, returned_ids)
+
+
+class PurgeOldJourneyEventsCommandTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='pass')
+        self.journey = Journey.objects.create(user=self.user)
+
+    def _create_event_aged_days(self, days):
+        event = JourneyEvent.objects.create(journey=self.journey, event_name='old_event')
+        JourneyEvent.objects.filter(id=event.id).update(
+            created_at=timezone.now() - timedelta(days=days)
+        )
+        return event
+
+    def test_dry_run_deletes_nothing(self):
+        from django.core.management import call_command
+
+        self._create_event_aged_days(100)
+        call_command('purge_old_journey_events')
+        self.assertEqual(JourneyEvent.objects.count(), 1)
+
+    def test_execute_deletes_only_events_older_than_retention(self):
+        from django.core.management import call_command
+
+        old_event = self._create_event_aged_days(100)
+        recent_event = self._create_event_aged_days(10)
+
+        call_command('purge_old_journey_events', '--execute')
+
+        remaining_ids = set(JourneyEvent.objects.values_list('id', flat=True))
+        self.assertNotIn(old_event.id, remaining_ids)
+        self.assertIn(recent_event.id, remaining_ids)
+
+    def test_execute_respects_custom_days(self):
+        from django.core.management import call_command
+
+        event = self._create_event_aged_days(40)
+
+        call_command('purge_old_journey_events', '--days', '30', '--execute')
+
+        self.assertFalse(JourneyEvent.objects.filter(id=event.id).exists())
