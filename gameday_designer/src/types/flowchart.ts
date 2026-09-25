@@ -474,7 +474,8 @@ export type FlowValidationErrorType =
   | 'field_overlap'
   | 'team_overlap'
   | 'progression_incomplete'
-  | 'progression_order';
+  | 'progression_order'
+  | 'ambiguous_dynamic_standing';
 
 /**
  * Validation warning types for the flowchart approach.

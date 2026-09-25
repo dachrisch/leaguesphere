@@ -19,6 +19,7 @@ import type {
   FlowValidationResult,
   FlowValidationError,
   FlowValidationWarning,
+  GameNode,
   GameNodeData,
   StageNode,
   GlobalTeam,
@@ -336,6 +337,53 @@ function checkDuplicateStandings(nodes: FlowNode[]): FlowValidationWarning[] {
   }
 
   return warnings;
+}
+
+/**
+ * A game's `standing` doubles as the key the backend uses to find "the game
+ * this dynamic reference belongs to" once its winner/loser/rank/official
+ * resolves. Two games sharing a standing is harmless as long as neither is
+ * itself the TARGET of a dynamic reference (the normal, supported way to
+ * split one group's games across fields) - but if a game that DOES carry a
+ * dynamic homeTeamDynamic/awayTeamDynamic/official reference shares its
+ * standing with another game, the backend has no way to tell which of them
+ * a resolved team belongs to and silently leaves it unfilled (and can abort
+ * resolving every other game that comes after it). This must block
+ * publishing, not just warn, since it fails silently once live.
+ */
+function checkAmbiguousDynamicStandings(nodes: FlowNode[]): FlowValidationError[] {
+  const errors: FlowValidationError[] = [];
+
+  const isDynamic = (data: GameNodeData): boolean =>
+    data.homeTeamDynamic != null ||
+    data.awayTeamDynamic != null ||
+    (data.official != null && data.official.type !== 'static');
+
+  const gamesByStanding = new Map<string, GameNode[]>();
+  nodes.filter(isGameNode).forEach((node) => {
+    const standing = (node.data as GameNodeData).standing;
+    if (!standing || !standing.trim()) return;
+    const list = gamesByStanding.get(standing) ?? [];
+    list.push(node);
+    gamesByStanding.set(standing, list);
+  });
+
+  gamesByStanding.forEach((games, standing) => {
+    if (games.length < 2) return;
+    const hasDynamicTarget = games.some((g) => isDynamic(g.data as GameNodeData));
+    if (!hasDynamicTarget) return;
+
+    errors.push({
+      id: `ambiguous_dynamic_standing_${standing}`,
+      type: 'ambiguous_dynamic_standing',
+      message: `Standing "${standing}" is used by ${games.length} games, and at least one of them has a winner/loser/rank/official reference. The gameday can't tell which game to fill in - give each of these games its own unique standing.`,
+      messageKey: 'ambiguous_dynamic_standing',
+      messageParams: { standing, count: games.length },
+      affectedNodes: games.map((g) => g.id),
+    });
+  });
+
+  return errors;
 }
 
 /**
@@ -1413,6 +1461,7 @@ export function validateFlowchart(
     ...checkProgressionIntegrity(nodes, edges),
     ...checkCyclicStageReferences(nodes, edges),
     ...checkSelfPlay(nodes, edges),
+    ...checkAmbiguousDynamicStandings(nodes),
   ];
 
   const warnings: FlowValidationWarning[] = [

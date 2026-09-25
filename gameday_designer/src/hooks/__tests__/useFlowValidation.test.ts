@@ -805,6 +805,134 @@ describe('useFlowValidation', () => {
     });
   });
 
+  describe('Ambiguous Dynamic Standings', () => {
+    const field1 = {
+      id: 'field1',
+      type: 'field' as const,
+      data: { type: 'field' as const, name: 'Field 1', order: 0 },
+      position: { x: 0, y: 0 },
+    };
+    const stage1 = {
+      id: 'stage1',
+      type: 'stage' as const,
+      parentId: 'field1',
+      data: { type: 'stage' as const, name: 'Stage 1', category: 'preliminary' as const, stageType: 'STANDARD' as const, order: 0, progressionMode: 'manual' as const },
+      position: { x: 0, y: 0 },
+    };
+
+    it('errors when a shared standing has a dynamic reference (gd648/649 regression)', () => {
+      // Reproduces the real bug: three placement round-robin games (e.g.
+      // "BRR") sharing one standing, each fed by a distinct `rank` reference.
+      // The backend can't tell which of them a resolved team belongs to.
+      const nodes: FlowNode[] = [
+        field1,
+        stage1,
+        {
+          id: 'brr1',
+          type: 'game',
+          parentId: 'stage1',
+          data: {
+            type: 'game', stage: 'Stage 1', stageType: 'STANDARD', breakAfter: 0,
+            standing: 'BRR', homeTeamId: null, awayTeamId: null, fieldId: 'field1', official: null,
+            homeTeamDynamic: { type: 'rank', place: 5, stageId: 'other-stage', stageName: 'Gruppenphase' },
+            awayTeamDynamic: { type: 'rank', place: 6, stageId: 'other-stage', stageName: 'Gruppenphase' },
+          },
+          position: { x: 0, y: 0 },
+        },
+        {
+          id: 'brr2',
+          type: 'game',
+          parentId: 'stage1',
+          data: {
+            type: 'game', stage: 'Stage 1', stageType: 'STANDARD', breakAfter: 0,
+            standing: 'BRR', homeTeamId: null, awayTeamId: null, fieldId: 'field1', official: null,
+            homeTeamDynamic: { type: 'rank', place: 7, stageId: 'other-stage', stageName: 'Gruppenphase' },
+            awayTeamDynamic: { type: 'rank', place: 5, stageId: 'other-stage', stageName: 'Gruppenphase' },
+          },
+          position: { x: 0, y: 0 },
+        },
+      ];
+
+      const { result } = renderHook(() => useFlowValidation(nodes, [], [], [], validMetadata));
+
+      expect(result.current.isValid).toBe(false);
+      const error = result.current.errors.find(e => e.type === 'ambiguous_dynamic_standing');
+      expect(error).toBeDefined();
+      expect(error?.affectedNodes.sort()).toEqual(['brr1', 'brr2']);
+    });
+
+    it('does not error when a shared standing has no dynamic reference (group-stage split across fields)', () => {
+      // The supported pattern: several source games (static teams, no
+      // winner/loser/rank/official reference) sharing one standing so they
+      // count as one group, split across fields.
+      const nodes: FlowNode[] = [
+        field1,
+        stage1,
+        {
+          id: 'g1',
+          type: 'game',
+          parentId: 'stage1',
+          data: {
+            type: 'game', stage: 'Stage 1', stageType: 'STANDARD', breakAfter: 0,
+            standing: 'Gruppenphase', homeTeamId: 'team1', awayTeamId: 'team2', fieldId: 'field1', official: null,
+            homeTeamDynamic: null, awayTeamDynamic: null,
+          },
+          position: { x: 0, y: 0 },
+        },
+        {
+          id: 'g2',
+          type: 'game',
+          parentId: 'stage1',
+          data: {
+            type: 'game', stage: 'Stage 1', stageType: 'STANDARD', breakAfter: 0,
+            standing: 'Gruppenphase', homeTeamId: 'team3', awayTeamId: 'team4', fieldId: 'field1', official: null,
+            homeTeamDynamic: null, awayTeamDynamic: null,
+          },
+          position: { x: 0, y: 0 },
+        },
+      ];
+
+      const { result } = renderHook(() => useFlowValidation(nodes, [], [], [], validMetadata));
+
+      expect(result.current.errors.find(e => e.type === 'ambiguous_dynamic_standing')).toBeUndefined();
+    });
+
+    it('does not error when dynamic references have unique standings', () => {
+      const nodes: FlowNode[] = [
+        field1,
+        stage1,
+        {
+          id: 'sf1',
+          type: 'game',
+          parentId: 'stage1',
+          data: {
+            type: 'game', stage: 'Stage 1', stageType: 'STANDARD', breakAfter: 0,
+            standing: 'SF 1', homeTeamId: null, awayTeamId: null, fieldId: 'field1', official: null,
+            homeTeamDynamic: { type: 'rank', place: 1, stageId: 'other-stage', stageName: 'Gruppenphase' },
+            awayTeamDynamic: null,
+          },
+          position: { x: 0, y: 0 },
+        },
+        {
+          id: 'sf2',
+          type: 'game',
+          parentId: 'stage1',
+          data: {
+            type: 'game', stage: 'Stage 1', stageType: 'STANDARD', breakAfter: 0,
+            standing: 'SF 2', homeTeamId: null, awayTeamId: null, fieldId: 'field1', official: null,
+            homeTeamDynamic: { type: 'rank', place: 2, stageId: 'other-stage', stageName: 'Gruppenphase' },
+            awayTeamDynamic: null,
+          },
+          position: { x: 0, y: 0 },
+        },
+      ];
+
+      const { result } = renderHook(() => useFlowValidation(nodes, [], [], [], validMetadata));
+
+      expect(result.current.errors.find(e => e.type === 'ambiguous_dynamic_standing')).toBeUndefined();
+    });
+  });
+
   describe('Orphaned Teams', () => {
     it('should warn about team with no outgoing connections', () => {
       const nodes: FlowNode[] = [
