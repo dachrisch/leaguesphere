@@ -231,3 +231,8 @@ export const DEFAULT_START_TIME = '10:00';
  * Default game duration in minutes (70)
  */
 export const DEFAULT_GAME_DURATION = 70;
+
+/**
+ * Default break between games in minutes (0)
+ */
+export const DEFAULT_BREAK_BETWEEN_GAMES = 0;

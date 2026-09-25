@@ -27,6 +27,7 @@ import { useNodesState } from './useNodesState';
 import { useEdgesState } from './useEdgesState';
 import { useTeamPoolState } from './useTeamPoolState';
 import { resolveBracketReferences } from '../utils/bracketResolution';
+import { DEFAULT_GAME_DURATION, DEFAULT_BREAK_BETWEEN_GAMES } from '../utils/tournamentConstants';
 
 /**
  * Calculate a position for a new node.
@@ -83,6 +84,8 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     season: 0,
     league: 0,
     status: 'DRAFT',
+    game_duration: DEFAULT_GAME_DURATION,
+    default_break_between_games: DEFAULT_BREAK_BETWEEN_GAMES,
   });
 
   const [nodes, setNodes] = useState<FlowNode[]>(initialState?.nodes ?? []);
@@ -191,10 +194,15 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
   }, [onStateChange]);
 
   // --- Specialized Hooks ---
+  const globalScheduleDefaults = useMemo(() => ({
+    defaultGameDuration: metadata.game_duration,
+    defaultBreakBetweenGames: metadata.default_break_between_games,
+  }), [metadata.game_duration, metadata.default_break_between_games]);
+
   const nodesManager = useNodesState(nodes, (newNodes) => {
     setNodes(newNodes);
     handleStateChange();
-  });
+  }, undefined, globalScheduleDefaults);
   const edgesManager = useEdgesState(edges, (newEdges) => {
     setEdges(newEdges);
     handleStateChange();
