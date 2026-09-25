@@ -4,13 +4,17 @@ import pandas as pd
 from django.test import TestCase
 from django.urls import reverse
 
+from gamedays.models import TeamLog
 from gamedays.tests.setup_factories.factories import (
     GamedayFactory,
     GameinfoFactory,
     GameOfficialFactory,
+    GameresultFactory,
     TeamFactory,
+    UserFactory,
 )
 from matchreport.constants import REPORT_TABLE_RENDER_CONFIG
+from matchreport.service.matchreport_service import MatchreportService
 from matchreport.service.model_wrapper import MachtreportModelWrapper
 from officials.tests.setup_factories.factories_officials import (
     OfficialFactory,
@@ -18,6 +22,8 @@ from officials.tests.setup_factories.factories_officials import (
     OfficialLicenseHistoryFactory,
 )
 from officials.urls import OFFICIALS_PROFILE_GAMELIST
+from passcheck.models import PasscheckVerification
+from passcheck.tests.setup_factories.db_setup_passcheck import DbSetupPasscheck
 
 
 def _license_number_link(official_id, season):
@@ -216,6 +222,46 @@ class TestLicenseCellPandasNaSentinel(TestCase):
         # Guards the "valid license" case isn't broken by switching from
         # "is not None" to pd.isna().
         self.assertEqual(MachtreportModelWrapper._license_cell("F2", None), "F2")
+
+    def test_a_malicious_license_name_is_escaped(self):
+        cell = MachtreportModelWrapper._license_cell("<script>alert(1)</script>", None)
+        self.assertNotIn("<script>alert(1)</script>", cell)
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", cell)
+
+
+class TestMatchreportOfficialsTableEscaping(TestCase):
+    def test_team_and_name_columns_are_escaped(self):
+        """Team and official name flow unescaped into this table via
+        pandas.to_html(escape=False) then |safe; a malicious value must
+        render as text, not execute as HTML.
+        """
+        gameday = GamedayFactory(date=date(2022, 5, 1))
+        gameinfo = GameinfoFactory(
+            gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
+        )
+        malicious_team = TeamFactory(
+            name="Evil Team", description="<script>alert(1)</script>"
+        )
+        official = OfficialFactory(team=malicious_team)
+        GameOfficialFactory(
+            gameinfo=gameinfo,
+            official=official,
+            name="<script>alert(2)</script>",
+            position="Referee",
+        )
+
+        wrapper = MachtreportModelWrapper(gameday.pk)
+        officials_table = wrapper._get_game_officials_table(gameinfo.id)
+        html = officials_table.to_html(**REPORT_TABLE_RENDER_CONFIG)
+
+        self.assertNotIn("<script>alert(1)</script>", html)
+        self.assertNotIn("<script>alert(2)</script>", html)
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", html)
+        self.assertIn("&lt;script&gt;alert(2)&lt;/script&gt;", html)
+        # The license link markup must still render as real markup, not
+        # escaped text, proving escape=False + hand-escaping is still in
+        # effect rather than a blanket escape=True that would break it.
+        self.assertIn('<a href="', html)
 
 
 class TestMatchreportOfficialsLicenseExpiredNote(TestCase):
@@ -500,3 +546,81 @@ class TestMatchreportOfficialsLicenseNumber(TestCase):
             licensed_row["Lizenznummer"],
             _license_number_link(official.pk, 2027),
         )
+
+
+class TestStaffPasscheckDetailsEscaping(TestCase):
+    def test_note_linebreaks_preserved_and_content_escaped(self):
+        """The note column is deliberately transformed (newlines -> <br>);
+        a malicious note must still render as text, not execute as HTML,
+        while multi-line notes keep rendering as line breaks.
+        """
+        gameday = GamedayFactory()
+        GameinfoFactory(gameday=gameday)
+        team = TeamFactory(name="<script>alert(1)</script>")
+        PasscheckVerification.objects.create(
+            user=UserFactory(username="<script>alert(2)</script>"),
+            official_name="<script>alert(3)</script>",
+            team=team,
+            gameday=gameday,
+            note="line one\n<script>alert(4)</script>",
+        )
+
+        wrapper = MachtreportModelWrapper(gameday.pk)
+        html = wrapper.get_staff_passcheck_details().to_html(
+            **REPORT_TABLE_RENDER_CONFIG
+        )
+
+        for i in range(1, 5):
+            self.assertNotIn(f"<script>alert({i})</script>", html)
+            self.assertIn(f"&lt;script&gt;alert({i})&lt;/script&gt;", html)
+        # The note's own newline-to-<br> transform must still work.
+        self.assertIn("line one<br>", html)
+
+
+class TestPasscheckPlayerTableEscaping(TestCase):
+    def test_team_description_is_escaped(self):
+        gameday = GamedayFactory()
+        team = TeamFactory(name="Evil Team", description="<script>alert(1)</script>")
+        gameinfo = GameinfoFactory(gameday=gameday)
+
+        DbSetupPasscheck().create_playerlist_for_team(team=team, gamedays=[gameday])
+
+        ms = MatchreportService.create(gameday.pk)
+        data = ms.get_passcheck_player_details(render_config=REPORT_TABLE_RENDER_CONFIG)
+
+        html = "".join(entry["player_table"] for entry in data.values())
+        self.assertNotIn("<script>alert(1)</script>", html)
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", html)
+
+
+class TestGameFlagsTableEscaping(TestCase):
+    def test_team_description_and_penalty_text_are_escaped(self):
+        gameday = GamedayFactory()
+        gameinfo = GameinfoFactory(gameday=gameday)
+        team = TeamFactory(name="Evil Team", description="<script>alert(1)</script>")
+        away_team = TeamFactory(name="Away Team")
+        GameresultFactory(gameinfo=gameinfo, team=team, isHome=True, fh=0, sh=0)
+        GameresultFactory(gameinfo=gameinfo, team=away_team, isHome=False, fh=0, sh=0)
+
+        TeamLog.objects.create(
+            gameinfo=gameinfo,
+            team=team,
+            sequence=1,
+            player=1,
+            event="Strafe",
+            input="<script>alert(2)</script>",
+            value=0,
+            half=1,
+            author=UserFactory(),
+        )
+
+        wrapper = MachtreportModelWrapper(gameday.pk)
+        reports = wrapper.get_gameday_match_report(REPORT_TABLE_RENDER_CONFIG)
+        flags_html = next(
+            r["flags"] for r in reports if r["gameinfo_id"] == gameinfo.pk
+        )
+
+        self.assertNotIn("<script>alert(1)</script>", flags_html)
+        self.assertNotIn("<script>alert(2)</script>", flags_html)
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", flags_html)
+        self.assertIn("&lt;script&gt;alert(2)&lt;/script&gt;", flags_html)

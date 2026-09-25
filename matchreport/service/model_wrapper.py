@@ -2,6 +2,8 @@ from datetime import timedelta
 
 import pandas as pd
 from django.db.models import OuterRef, Subquery
+from django.utils.html import escape, format_html
+from django.utils.safestring import mark_safe
 
 from gamedays.models import (
     Gameinfo,
@@ -66,7 +68,14 @@ class MachtreportModelWrapper:
         passchecks["created_at"] = passchecks.created_at.dt.strftime(
             "%Y-%m-%d %H:%M:%S"
         )
-        passchecks["note"] = passchecks.note.apply(lambda x: x.replace("\n", "</br>"))
+        # Rendered with escape=False (the note column below needs its <br>
+        # markup preserved), so every other free-text column must be
+        # escaped by hand here - pandas won't do it for us.
+        for column in ("official_name", "user__username", "team__name"):
+            passchecks[column] = passchecks[column].apply(escape)
+        passchecks["note"] = passchecks.note.apply(
+            lambda note: mark_safe("<br>".join(escape(note).splitlines()))
+        )
 
         return passchecks.rename(columns=column_mapping)
 
@@ -275,6 +284,11 @@ class MachtreportModelWrapper:
             officials_df["order"] = officials_df.position.apply(position_order.get)
             officials_df.sort_values("order", ascending=True, inplace=True)
             officials_df.drop(columns=["order"], inplace=True)
+            # Rendered with escape=False (the license_cell/license_number_cell
+            # columns below deliberately contain markup), so every other
+            # free-text column must be escaped by hand here.
+            for column in ("official__team__description", "name", "position"):
+                officials_df[column] = officials_df[column].apply(escape)
             officials_df["license_cell"] = officials_df.apply(
                 lambda row: self._license_cell(
                     row["latest_license"], row["last_started_license_date"]
@@ -312,7 +326,7 @@ class MachtreportModelWrapper:
         # that's True for pd.NA, NaN, and None alike, mirroring
         # _license_number_cell()'s existing guard below.
         if not pd.isna(license_name):
-            return license_name
+            return escape(license_name)
 
         # No currently valid license - if the official has ever held one
         # that had already started as of this gameday, show when it expired
@@ -334,9 +348,9 @@ class MachtreportModelWrapper:
         expired_on = pd.Timestamp(last_started_license_date).date() + timedelta(
             days=365
         )
-        return (
-            f'<span class="text-muted fst-italic">'
-            f'abgelaufen seit {expired_on.strftime("%d.%m.%Y")}</span>'
+        return format_html(
+            '<span class="text-muted fst-italic">abgelaufen seit {}</span>',
+            expired_on.strftime("%d.%m.%Y"),
         )
 
     @staticmethod
@@ -379,19 +393,26 @@ class MachtreportModelWrapper:
         from officials.service.official_profile import official_profile_gamelist_url
 
         profile_url = official_profile_gamelist_url(official_id, season)
-        # No escaping needed here (unlike the external_id this replaced):
-        # official_id has just been through int(), so it can only ever be
-        # an integer's str() representation - there's no free-text input
-        # left to sanitize.
-        return (
-            f'<a href="{profile_url}" target="_blank" title="Zum Profil des Offiziellen">'
-            f"#{official_id}</a>"
+        # official_id has just been through int(), so it can only ever be an
+        # integer's str() representation - there's no free-text input left
+        # to sanitize, but format_html() still escapes profile_url for
+        # defense-in-depth/consistency with the rest of this table.
+        return format_html(
+            '<a href="{}" target="_blank" title="Zum Profil des Offiziellen">#{}</a>',
+            profile_url,
+            official_id,
         )
 
     def get_gameday_match_report(self, render_config: dict):
         games = []
 
         no_flags_text = """<p>In diesem Spiel gab es keine Strafen</p>"""
+        # Unlike "refs" (whose Lizenz/Lizenznummer columns deliberately
+        # contain markup, so it keeps render_config's escape=False and
+        # hand-escapes its other columns - see _get_game_officials_table),
+        # no column in "flags" ever contains markup, so it can safely
+        # override to escape=True.
+        flags_render_config = {**render_config, "escape": True}
 
         for gameinfo in self._gameinfo.id:
             end_notes = self._get_staff_game_end_notes(gameinfo)
@@ -405,7 +426,7 @@ class MachtreportModelWrapper:
                     "end_notes": end_notes,
                     "refs": game_refs.to_html(**render_config),
                     "flags": (
-                        game_flags.to_html(**render_config)
+                        game_flags.to_html(**flags_render_config)
                         if not game_flags.empty
                         else no_flags_text
                     ),

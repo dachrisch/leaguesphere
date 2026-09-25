@@ -45,9 +45,13 @@ class MatchreportService:
     def get_passcheck_player_details(self, render_config):
         data = self.mmw.get_gameday_passcheck_team_players_dict()
 
+        # Unlike the passcheck/refs/flags tables sharing render_config, no
+        # column here ever contains markup, so this one table can safely
+        # override to escape=True instead of relying on hand-escaped data.
+        player_table_config = {**render_config, "escape": True}
         for key in data.keys():
             data[key]["player_table"] = data[key]["player_table"].to_html(
-                **render_config
+                **player_table_config
             )
 
         return data
