@@ -69,4 +69,34 @@ describe('resolveSwissRound', () => {
     const seen = [...result.pairings.flat(), ...(result.bye ? [result.bye] : [])];
     expect(seen.sort()).toEqual(['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']);
   });
+
+  it('repairs rematches the adjacent swap cannot fix', () => {
+    // Round 4 of the approved 6-team run-through: the adjacent pass leaves
+    // 1v2 and 5v6 standing (every single swap trades one rematch for
+    // another). The global repair must find the rematch-free round.
+    const previous = new Set(
+      [
+        ['T1', 'T4'],
+        ['T2', 'T5'],
+        ['T3', 'T6'],
+        ['T1', 'T2'],
+        ['T3', 'T5'],
+        ['T4', 'T6'],
+        ['T1', 'T3'],
+        ['T2', 'T4'],
+        ['T5', 'T6'],
+      ].map(([h, a]) => pairKey(h, a)),
+    );
+    const result = resolveSwissRound(
+      ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'],
+      { T1: 6, T2: 4, T3: 4, T4: 2, T5: 2, T6: 0 },
+      new Set(),
+      previous,
+    );
+    const paired = result.pairings.map(([h, a]) => pairKey(h, a));
+    expect(paired.some((key) => previous.has(key))).toBe(false);
+    expect(paired.sort()).toEqual(
+      [pairKey('T1', 'T6'), pairKey('T2', 'T3'), pairKey('T4', 'T5')].sort(),
+    );
+  });
 });

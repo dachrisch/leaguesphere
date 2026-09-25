@@ -8,7 +8,12 @@
  * - Odd-sized groups float their lowest seed down to the next-lower group.
  * - Odd active-team count yields exactly one bye, assigned first to the
  *   lowest-ranked team (points, then seed) without one yet (worth 2 pts).
- * - Rematch avoidance is best-effort adjacent swap, deterministic.
+ * - Rematch avoidance is two-stage, deterministic: first an adjacent swap
+ *   (a repeated pairing swaps away teams with a neighbour when that
+ *   resolves both without creating a new rematch), then — only if rematches
+ *   remain — a bounded backtracking search over the round pool for the
+ *   pairing with the fewest rematches (cross-group pairs only break ties,
+ *   so the same-group structure wins whenever it is rematch-free).
  *
  * v1 rulings: bye is a standings-only adjustment (no synthetic game row);
  * final-ranking tie-breaks out of scope (points, then seed).
@@ -38,8 +43,6 @@ export function resolveSwissRound(
     const [pb, sb] = rankKey(b);
     return pa - pb || sa - sb;
   };
-  const pairKey = (home: string, away: string): string =>
-    [home, away].sort().join('|');
 
   // Odd count => exactly one bye, assigned first globally.
   let bye: string | null = null;
@@ -107,7 +110,11 @@ export function resolveSwissRound(
     );
   }
 
-  return { pairings: avoidRematches(pairings, previousPairings, pairKey), bye, floaters };
+  return {
+    pairings: avoidRematches(pairings, previousPairings, orderedGroups, seedIndex),
+    bye,
+    floaters,
+  };
 }
 
 function pickBye(
@@ -120,12 +127,18 @@ function pickBye(
   return worstFirst.find((t) => !teamsWithBye.has(t)) ?? worstFirst[0];
 }
 
+const REMATCH_COST = 1000;
+const REPAIR_SEARCH_BUDGET = 20000;
+
 function avoidRematches(
   pairings: Array<[string, string]>,
   previousPairings: ReadonlySet<string>,
-  pairKey: (home: string, away: string) => string,
+  orderedGroups: string[][],
+  seedIndex: Map<string, number>,
 ): Array<[string, string]> {
   if (previousPairings.size === 0) return [...pairings];
+  const pairKey = (home: string, away: string): string =>
+    [home, away].sort().join('|');
   const result: Array<[string, string]> = pairings.map((p) => [...p] as [string, string]);
   for (let i = 0; i < result.length; i++) {
     const [home, away] = result[i];
@@ -143,5 +156,70 @@ function avoidRematches(
       }
     }
   }
+  if (result.some(([home, away]) => previousPairings.has(pairKey(home, away)))) {
+    const groupOf = new Map<string, number>();
+    orderedGroups.forEach((members, groupIdx) => {
+      members.forEach((team) => groupOf.set(team, groupIdx));
+    });
+    return repairRematchesGlobal(result, previousPairings, groupOf, seedIndex);
+  }
   return result;
+}
+
+function repairRematchesGlobal(
+  pairings: Array<[string, string]>,
+  previousPairings: ReadonlySet<string>,
+  groupOf: Map<string, number>,
+  seedIndex: Map<string, number>,
+): Array<[string, string]> {
+  const pairKey = (home: string, away: string): string =>
+    [home, away].sort().join('|');
+  const seedPos = (team: string): number => seedIndex.get(team) ?? seedIndex.size;
+  const pairCost = (home: string, away: string): number =>
+    (previousPairings.has(pairKey(home, away)) ? REMATCH_COST : 0) +
+    (groupOf.get(home) !== groupOf.get(away) ? 1 : 0);
+  const totalCost = (pairs: Array<[string, string]>): number =>
+    pairs.reduce((sum, [home, away]) => sum + pairCost(home, away), 0);
+
+  const pool = [...new Set(pairings.flat())].sort((a, b) => seedPos(a) - seedPos(b));
+  let best: Array<[string, string]> = pairings.map((p) => [...p] as [string, string]);
+  let bestCost = totalCost(best);
+  let budget = REPAIR_SEARCH_BUDGET;
+
+  const search = (remaining: Set<string>, current: Array<[string, string]>, cost: number): void => {
+    if (budget <= 0) return;
+    budget -= 1;
+    if (remaining.size === 0) {
+      if (cost < bestCost) {
+        best = current.map((p) => [...p] as [string, string]);
+        bestCost = cost;
+      }
+      return;
+    }
+    const team = [...remaining].sort((a, b) => seedPos(a) - seedPos(b))[0];
+    const partners = [...remaining]
+      .filter((u) => u !== team)
+      .sort((a, b) => {
+        const ra = previousPairings.has(pairKey(team, a)) ? 1 : 0;
+        const rb = previousPairings.has(pairKey(team, b)) ? 1 : 0;
+        if (ra !== rb) return ra - rb;
+        const ga = groupOf.get(team) !== groupOf.get(a) ? 1 : 0;
+        const gb = groupOf.get(team) !== groupOf.get(b) ? 1 : 0;
+        if (ga !== gb) return ga - gb;
+        return seedPos(a) - seedPos(b);
+      });
+    for (const partner of partners) {
+      const step = pairCost(team, partner);
+      if (cost + step >= bestCost) continue;
+      const next = new Set(remaining);
+      next.delete(team);
+      next.delete(partner);
+      current.push([team, partner]);
+      search(next, current, cost + step);
+      current.pop();
+    }
+  };
+
+  search(new Set(pool), [], 0);
+  return best;
 }

@@ -14,9 +14,12 @@ Implements the JLT Flag 2026 pairing rules scoped in
   yet, worth ``BYE_POINTS`` (2) points. This keeps every group's pool even
   through the floater cascade — see the invariant check in ``resolve_round``.
 - Score margins don't affect pairings; only points + seed order matter.
-- Rematch avoidance is best-effort: a repeated pairing is swapped with the
-  adjacent pairing's away team when that resolves both without creating a
-  new rematch. Deterministic, no randomness.
+- Rematch avoidance is two-stage, deterministic, no randomness: first an
+  adjacent swap (a repeated pairing swaps away teams with a neighbour when
+  that resolves both without creating a new rematch), then — only if
+  rematches remain — a bounded backtracking search over the round pool for
+  the pairing with the fewest rematches (cross-group pairs only break ties,
+  so the same-group structure wins whenever it is rematch-free).
 
 Open-question rulings for v1 (see design doc):
 - Bye is a standings-only adjustment returned separately (``bye``); no
@@ -41,6 +44,19 @@ class SwissRoundResolver:
     """Generates Swiss-system pairings for a single round."""
 
     BYE_POINTS = 2
+
+    # A rematch outweighs any number of cross-group pairs: the global repair
+    # below always prefers a rematch-free round over a same-group round with
+    # repeats. Cross-group count only breaks ties between equally
+    # rematch-free (or equally rematch-burdened) candidates.
+    _REMATCH_COST = 1000
+
+    # Cap on explored partial matchings in _repair_rematches_global. Pools
+    # are at most 16 teams (template max) and the search prunes on the
+    # adjacent-pass result, so ordinary rounds finish far below this; the cap
+    # only guards pathological late-tournament states. Falls back to the
+    # best pairing found so far (never worse than the adjacent pass).
+    _REPAIR_SEARCH_BUDGET = 20000
 
     @staticmethod
     def resolve_round(
@@ -116,7 +132,9 @@ class SwissRoundResolver:
                 "the even-active-count invariant was violated"
             )
 
-        pairings = SwissRoundResolver._avoid_rematches(pairings, previous_pairings)
+        pairings = SwissRoundResolver._avoid_rematches(
+            pairings, previous_pairings, groups, seed_index
+        )
         return SwissRoundResult(pairings=pairings, bye=bye, floaters=floaters)
 
     @staticmethod
@@ -136,7 +154,10 @@ class SwissRoundResolver:
 
     @staticmethod
     def _avoid_rematches(
-        pairings: List[tuple], previous_pairings: Set[FrozenSet[str]]
+        pairings: List[tuple],
+        previous_pairings: Set[FrozenSet[str]],
+        groups: Dict[float, List[str]],
+        seed_index: Dict[str, int],
     ) -> List[tuple]:
         if not previous_pairings:
             return list(pairings)
@@ -156,4 +177,88 @@ class SwissRoundResolver:
                         result[i] = (home, other_away)
                         result[j] = (other_home, away)
                         break
+        if any(
+            frozenset({home, away}) in previous_pairings for home, away in result
+        ):
+            group_of = {
+                team: pts for pts, members in groups.items() for team in members
+            }
+            result = SwissRoundResolver._repair_rematches_global(
+                result, previous_pairings, group_of, seed_index
+            )
         return result
+
+    @staticmethod
+    def _repair_rematches_global(
+        pairings: List[tuple],
+        previous_pairings: Set[FrozenSet[str]],
+        group_of: Dict[str, float],
+        seed_index: Dict[str, int],
+    ) -> List[tuple]:
+        """Backtracking search for the fewest-rematch perfect matching.
+
+        Only runs when the adjacent pass above leaves repeats standing.
+        Cost is lexicographic (rematches, cross-group pairs): a rematch-free
+        round always beats a same-group round with repeats, and among equal
+        rematch counts the pairing closest to the score-group structure wins.
+        Candidates are explored in seed order with branch-and-bound pruning
+        plus a node budget, so the result is deterministic and the fallback
+        is never worse than the input ``pairings``.
+        """
+
+        def pair_cost(home: str, away: str) -> int:
+            cost = 0
+            if frozenset({home, away}) in previous_pairings:
+                cost += SwissRoundResolver._REMATCH_COST
+            if group_of.get(home) != group_of.get(away):
+                cost += 1
+            return cost
+
+        def total_cost(pairs: List[tuple]) -> int:
+            return sum(pair_cost(home, away) for home, away in pairs)
+
+        pool = sorted(
+            [team for pair in pairings for team in pair],
+            key=lambda t: seed_index.get(t, len(seed_index)),
+        )
+        best = list(pairings)
+        best_cost = total_cost(best)
+        budget = [SwissRoundResolver._REPAIR_SEARCH_BUDGET]
+
+        def candidates(team: str, remaining: Set[str]) -> List[str]:
+            others = [u for u in remaining if u != team]
+
+            def sort_key(u: str):
+                return (
+                    frozenset({team, u}) in previous_pairings,
+                    group_of.get(team) != group_of.get(u),
+                    seed_index.get(u, len(seed_index)),
+                )
+
+            return sorted(others, key=sort_key)
+
+        def search(remaining: Set[str], current: List[tuple], cost: int) -> None:
+            nonlocal best, best_cost
+            if budget[0] <= 0:
+                return
+            budget[0] -= 1
+            if not remaining:
+                if cost < best_cost:
+                    best = list(current)
+                    best_cost = cost
+                return
+            team = min(remaining, key=lambda t: seed_index.get(t, len(seed_index)))
+            rest = set(remaining)
+            rest.discard(team)
+            for partner in candidates(team, rest):
+                step = pair_cost(team, partner)
+                if cost + step >= best_cost:
+                    continue
+                next_remaining = set(rest)
+                next_remaining.discard(partner)
+                current.append((team, partner))
+                search(next_remaining, current, cost + step)
+                current.pop()
+
+        search(set(pool), [], 0)
+        return best

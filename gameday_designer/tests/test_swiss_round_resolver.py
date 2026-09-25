@@ -86,3 +86,57 @@ def test_all_teams_paired_or_bye_exactly_once():
     if result.bye:
         seen.append(result.bye)
     assert sorted(seen) == ["T1", "T2", "T3", "T4", "T5", "T6", "T7"]
+
+
+def _r4_published_run():
+    """Standings into round 4 of the approved 6-team published run-through:
+    T1 6pts, T2/T3 4pts, T5/T4 2pts, T6 0pts, with R1-R3 history."""
+    seed_order = ["T1", "T2", "T3", "T4", "T5", "T6"]
+    points = {"T1": 6, "T2": 4, "T3": 4, "T4": 2, "T5": 2, "T6": 0}
+    previous = {
+        frozenset({"T1", "T4"}),
+        frozenset({"T2", "T5"}),
+        frozenset({"T3", "T6"}),
+        frozenset({"T1", "T2"}),
+        frozenset({"T3", "T5"}),
+        frozenset({"T4", "T6"}),
+        frozenset({"T1", "T3"}),
+        frozenset({"T2", "T4"}),
+        frozenset({"T5", "T6"}),
+    }
+    return seed_order, points, previous
+
+
+def test_global_repair_removes_rematches_adjacent_pass_cannot_fix():
+    seed_order, points, previous = _r4_published_run()
+    result = SwissRoundResolver.resolve_round(
+        seed_order=seed_order,
+        points=points,
+        previous_pairings=previous,
+    )
+    paired = [frozenset(pair) for pair in result.pairings]
+    assert not any(pair in previous for pair in paired)
+    # every team exactly once, no bye in an even pool
+    assert result.bye is None
+    assert sorted(t for pair in result.pairings for t in pair) == seed_order
+
+
+def test_global_repair_is_deterministic():
+    seed_order, points, previous = _r4_published_run()
+    first = SwissRoundResolver.resolve_round(
+        seed_order=seed_order, points=points, previous_pairings=previous
+    )
+    second = SwissRoundResolver.resolve_round(
+        seed_order=seed_order, points=points, previous_pairings=previous
+    )
+    assert first.pairings == second.pairings
+
+
+def test_global_repair_prefers_same_group_when_rematch_free():
+    seed_order, points, previous = _r4_published_run()
+    result = SwissRoundResolver.resolve_round(
+        seed_order=seed_order, points=points, previous_pairings=previous
+    )
+    # T2 and T3 share the 4pt group: they must stay paired when that avoids
+    # a rematch (cross-group pairs only break ties).
+    assert frozenset({"T2", "T3"}) in [frozenset(p) for p in result.pairings]
