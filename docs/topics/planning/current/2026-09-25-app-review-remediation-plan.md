@@ -147,3 +147,84 @@ Goal: close every High that is a config change. Target: a single PR touching `le
 - **Where:** `league_table/api/views.py` (`LeagueTableAPIView.get` rebuilds a pandas DataFrame per request that lacks a matching ETag); the same pattern fits `GamedayViewSet.list` and the journey progress feed.
 - **How:** The ETag function already knows when data changed. Use the ETag string as the cache key: on a miss, compute, `cache.set(etag, payload, 3600)`; on a hit, return the stored JSON. Wrap this in a small helper in `league_manager/utils/` so the three endpoints share it. Only meaningful once 3.1 is in, otherwise it is six caches again.
 - **Verify:** Test with `assertNumQueries`: the second request with the same ETag runs only the ETag query. Run `k6 run load-test-k6.js` before and after and compare p95 in the Grafana k6 dashboard.
+
+**Phase 3 done when:** Redis is deployed to stage and prod through Ansible, the throttle and maintenance behaviour are consistent across workers, and the k6 comparison is written to `docs/topics/` under reports.
+
+---
+
+## Phase 4: Process, docs and repo hygiene
+
+### 4.1 Make `black` real (item 14)
+- **Where:** CLAUDE.md says "REQUIRED before pushing", `black --check .` fails on 136 files (34 gamedays, 20 `.claude`, 18 gameday_designer, 16 each in league_table, league_manager, journey), and neither `.circleci/continue.yml` nor the workflows run black.
+- **How:** One formatting-only commit (`black .`), then add a `black --check .` step to the always-on CircleCI jobs next to `scope_coverage`, and add black to `.pre-commit-config.yaml`. Add a `[tool.black]` section with an explicit `extend-exclude` for migrations if you want them left alone.
+- **Verify:** CI fails on a deliberately unformatted file in a test PR.
+
+### 4.2 Fix the documentation map (item 15)
+- **Where:** `CLAUDE.md` and `README.md` link `docs/guides/contributor-guide.md`, `docs/guides/coding-standards.md`, `docs/guides/performance-guide.md`, `docs/guides/infrastructure-policy.md`, `docs/guides/infrastructure-performance-policy.md`, `docs/guides/setup-guide.md`, `docs/arch/architecture-overview.md` and `docs/testing/`. They live under `docs/topics/guides/`, `docs/topics/architecture/` and `docs/topics/testing/` since the May consolidation.
+- **How:** Update the links. Delete `docs/AUDIT.md` and `docs/CONSOLIDATION_SUMMARY.md` (they describe a finished migration) or move them to `docs/topics/planning/history/`. Add a link checker (`lychee` or a 20-line Python script) to the always-on CI job so this cannot regress.
+- **Verify:** Link checker passes.
+
+### 4.3 Tidy the repo root (item 16)
+- Move `CIRCLECI_IMPLEMENTATION.md`, `IMPLEMENTATION_CHECKLIST.md`, `RELEASE_FLOW_COMPARISON.md`, `RELEASE_PROCESS_ANALYSIS.md` into `docs/topics/planning/history/` or `docs/topics/deployment/`, as `docs/DOCUMENTATION.md` already requires.
+- Move `e2e-game-test.js`, `find-game-id.js`, `step1-find-game.js`, `setup-gameday-for-today.js` and `capture_screenshot.sh` into `scripts/stage/` with a README, and remove the hard-coded username from `step1-find-game.js` (read it from an env var).
+- Move `test_settings.py` to `league_manager/settings/test_e2e.py` and update `scorecard/tests/e2e/conftest.py` and `gameday_designer/tests/e2e/conftest.py`.
+- Fold `GEMINI.md` and `QWEN.md` into `AGENTS.md` and make `CLAUDE.md` the Claude-specific delta only, so there is one source of truth. Decide whether the 35 module-level `AGENTS.md` and `CLAUDE.md` pairs should also collapse to one file each.
+- Delete `coverage-reports/` (only a README) and the `conductor/` tracks if they are no longer used.
+- Update `.circleci/scope-mapping.txt` and `scope-exclude.txt` for every move and run `python3 scripts/check_scope_coverage.py`.
+
+### 4.4 Config drift (item 17)
+- `CLAUDE.md` says Django 5.2, `pyproject.toml` pins Django 6.0.8: fix the doc.
+- `[tool.bumpversion] current_version = "4.26.4-rc.4"` is stale and release-please owns versioning: delete the bumpversion section and drop `bump2version` from test deps, or update it if it is still used for the `package.json` files.
+- `[tool.setuptools.packages.find]` omits `gameday_designer`, `matchreport`, `journey`: add them.
+- `.env.demo` uses `MYSQL_PASSWORD`/`MYSQL_DATABASE`, `base.py` reads `MYSQL_PWD`/`MYSQL_DB_NAME`: pick one naming and use it in `base.py`, `demo.py`, `.env_template` and the compose files.
+- The 17 GitHub Actions workflows are marked deactivated in favour of CircleCI: delete them, or keep only `release-please*.yaml` if those still run.
+
+**Phase 4 done when:** `black --check`, the link checker and `check_scope_coverage.py` all run in CI and pass, and the root holds only config files, `README.md`, `CHANGELOG.md`, `LICENSE`, `AGENTS.md` and `CLAUDE.md`.
+
+---
+
+## Phase 5: Frontend and backend code quality
+
+### 5.1 One frontend toolchain (item 18)
+- **Where:** five apps with five `package.json`, five ESLint, Vite and Vitest configs; exact pins in `gameday_designer` and `journey_dashboard`, carets elsewhere; `fe_template/` still carries `webpack.config.js` and a legacy `.eslintrc.json`.
+- **How:** Introduce an npm workspace at the root (`package.json` `workspaces`), a shared `eslint.config.mjs` and `vite.shared.mts` that each app extends, and let Renovate group the shared deps. Delete `fe_template/` or rebuild it as the workspace template. Keep JS + Redux in liveticker and scorecard for now; converting them to TypeScript is a separate decision.
+- **Verify:** `npm run eslint` and `npm run test:run` pass from the root for all apps; CircleCI node jobs still pass with the path scoping.
+
+### 5.2 Remove lint suppressions (item 18)
+- Nine `react-hooks/exhaustive-deps` disables: `gameday_designer/src/components/ListDesignerApp.tsx:335,369,383`, `.../dashboard/GamedayDashboard.tsx:319`, `passcheck/src/components/GameOverview.tsx:32`, `PlayerModal.tsx:46`, `RosterOverview.tsx:60,74,91`. Each hides a possible stale closure. Fix by moving the effect body into `useCallback` with correct deps, or by using a ref for the value that must not retrigger.
+- `passcheck/src/utils/api.ts:1` disables `no-explicit-any` for the whole file: type the API responses (the DRF serializers define the shape) and remove the directive.
+- Two `react-hooks/set-state-in-effect` disables in `GamedayMetadataAccordion.tsx:224` and `useFlowState.ts:142`: derive the value during render or use a reducer.
+
+### 5.3 Split the giant files (item 18)
+- `gameday_designer/src/hooks/useFlowValidation.ts` (1462 lines) into one module per validation rule with a small orchestrator.
+- `gameday_designer/src/components/list/GameTable.tsx` (1005 lines) into row, header and editing components.
+- Scorecard: replace the 16 hard-coded `/api/` string literals with one `api.js` client module.
+
+### 5.4 Django nits (item 19)
+- `league_manager/urls.py:154` and `:157` mount `journey.urls` twice; keep the API under `/api/journey/` and the HTML dashboard under `/journeys/` by splitting `journey/urls.py` into `api_urls.py` and `urls.py`.
+- `ClearCacheView` mutates state on GET: make it POST with a CSRF-protected form or button.
+- `RegisterAPI` inherits `IsAuthenticatedOrReadOnly`, so only logged-in users can register: either set `AllowAny` on purpose or remove the endpoint.
+- `Gameday.author` and the second FK at `gamedays/models.py:89` and `:292` use `on_delete=SET_DEFAULT, default=1`: switch to `SET_NULL` with `null=True`, or `PROTECT`.
+- `league_manager/middleware/db_guard.py:54` bare `except:`: catch `NoReverseMatch`.
+- Rename the "journey" concept or split the app: it is both user click tracking (`Journey`, `JourneyEvent`) and the game progress feed, and the module guide only describes the second.
+
+### 5.5 Testing hygiene (item 20)
+- `assertNumQueries` is used in 14 of 199 test files although CLAUDE.md calls it mandatory: add it to every API list and detail test, starting with `gamedays/tests/api/test_gameday_viewset.py`.
+- Split `journey/tests.py` (795 lines) into a `journey/tests/` package by view.
+- Remove `--capture=no` from `pytest.ini` addopts; use `-s` locally when needed.
+- `scorecard/tests/e2e/` is empty but ignored in `pytest.ini`: delete the ignore or add the tests.
+
+---
+
+## Working agreements for every phase
+
+- One PR per numbered item or per phase sub-section, never one PR per phase. Conventional commit prefixes (`fix:`, `chore:`, `refactor:`).
+- TDD as in CLAUDE.md: write the failing test first for every code change in Phases 1 to 3.
+- Before pushing: `black .`, `pytest`, `npm run eslint` and `npm run test:run` in each touched app, `python3 scripts/check_scope_coverage.py`.
+- Every change is verified on stage (`./container/deploy.sh stage`) before merging to master; infra changes go through the container repo's Ansible, never by editing a server.
+
+## Explicitly out of scope for now
+
+- A full Content-Security-Policy (needs SRI or nonces for the 44 CDN references first; revisit after 5.1).
+- Converting liveticker and scorecard from JavaScript + Redux to TypeScript.
+- Replacing pandas in the standings and match report code paths.
