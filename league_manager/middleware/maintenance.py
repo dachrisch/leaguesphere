@@ -1,6 +1,7 @@
 import re
 
 from django.core.cache import cache
+from django.db import OperationalError
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 
@@ -30,7 +31,14 @@ class MaintenanceModeMiddleware:
         config = cache.get("%s" % MAINTENANCE_CONFIG_CACHE_KEY)
 
         if config is None:
-            db_config = SiteConfiguration.objects.first()
+            try:
+                db_config = SiteConfiguration.objects.first()
+            except OperationalError:
+                # DB unreachable: fail open rather than 500ing here.
+                # DatabaseGuardMiddleware (which runs before this one) is
+                # responsible for redirecting to the offline page.
+                db_config = None
+
             if db_config:
                 config = {
                     "scope": db_config.maintenance_scope,

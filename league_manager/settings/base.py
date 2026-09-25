@@ -10,7 +10,12 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
-CORS_ORIGIN_ALLOW_ALL = True
+# Cross-origin API access is not required in normal operation: every React
+# app is either served same-origin from this Django deployment, or (in dev)
+# proxied same-origin through the Vite dev server (see each app's
+# vite.config.*). Environments that do need a specific external origin set
+# CORS_ALLOWED_ORIGINS explicitly; credentials stay disabled.
+CORS_ALLOWED_ORIGINS = []
 
 # Application definition
 
@@ -47,8 +52,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "league_manager.middleware.maintenance.MaintenanceModeMiddleware",
     "league_manager.middleware.db_guard.DatabaseGuardMiddleware",
+    "league_manager.middleware.maintenance.MaintenanceModeMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -81,7 +86,6 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "django.template.context_processors.request",
                 "league_manager.context_processors.global_menu",
                 "league_manager.context_processors.version_number",
                 "league_manager.context_processors.pages_links",
@@ -208,11 +212,6 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "handlers": {
-        "file": {
-            "level": "DEBUG",
-            "class": "logging.FileHandler",
-            "filename": "debug.log",
-        },
         "console": {
             "class": "logging.StreamHandler",
         },
@@ -225,6 +224,3 @@ LOGGING = {
         },
     },
 }
-
-# ToDo deleteMe
-X_FRAME_OPTIONS = "ALLOWALL"
