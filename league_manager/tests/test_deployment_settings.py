@@ -31,3 +31,39 @@ def test_cookies_hsts_and_ssl_redirect_enabled(module_name):
         re.match(pattern, "health/")
         for pattern in settings_module.SECURE_REDIRECT_EXEMPT
     )
+
+
+@pytest.mark.parametrize(
+    "module_name",
+    [
+        "league_manager.settings.prod",
+        "league_manager.settings.stage",
+        "league_manager.settings.demo",
+    ],
+)
+def test_multi_worker_environments_share_a_redis_cache(module_name):
+    """gunicorn runs 6 workers in prod/stage/demo (see deployed/docker-
+    compose*.yaml); LocMemCache is private per worker, so a shared backend
+    is required for AnonRateThrottle counts, maintenance-mode/DB-guard
+    status and cached payloads to agree across workers.
+    """
+    settings_module = importlib.import_module(module_name)
+
+    assert (
+        settings_module.CACHES["default"]["BACKEND"]
+        == "django.core.cache.backends.redis.RedisCache"
+    )
+
+
+@pytest.mark.parametrize(
+    "module_name",
+    ["league_manager.settings.dev", "league_manager.settings.test_sqlite"],
+)
+def test_single_process_environments_use_locmem_cache(module_name):
+    """dev/test_sqlite run a single process with no Redis available."""
+    settings_module = importlib.import_module(module_name)
+
+    assert (
+        settings_module.CACHES["default"]["BACKEND"]
+        == "django.core.cache.backends.locmem.LocMemCache"
+    )

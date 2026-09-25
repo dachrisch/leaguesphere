@@ -62,10 +62,18 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# gunicorn runs multiple worker processes (see deployed/docker-compose*.yaml,
+# `-w 6 --threads 2`); LocMemCache is private to each worker, so six workers
+# means six independent caches. That makes AnonRateThrottle's "120/min"
+# really ~720/min, /clear-cache/ only clear one worker in six, maintenance
+# mode/DB-guard status disagree between workers, and every cached value gets
+# rebuilt six times and lost on every deploy. Redis shares one cache across
+# all workers; dev.py/test_sqlite.py override this back to LocMemCache since
+# neither runs multiple workers nor has Redis available.
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "league-manager-cache",
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0"),
     }
 }
 

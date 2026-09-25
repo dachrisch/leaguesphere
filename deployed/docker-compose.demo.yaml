@@ -24,6 +24,24 @@ services:
       # portainer team
       - io.portainer.accesscontrol.teams=leaguesphere
 
+  redis:
+    image: redis:7-alpine
+    container_name: ${COMPOSE_PROJECT_NAME}.redis
+    restart: unless-stopped
+    volumes:
+      - "./redis-data:/data"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    labels:
+      - traefik.enable=false
+      - io.portainer.accesscontrol.teams=leaguesphere
+
   www:
     image: leaguesphere/frontend:demo
     env_file: .env.demo
@@ -94,6 +112,8 @@ services:
       - egress
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
 
