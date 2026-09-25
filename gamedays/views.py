@@ -139,7 +139,6 @@ class GamedayLeagueStatisticView(TemplateView):
             ],
             "border": 0,
             "justify": "center",
-            "escape": False,
         }
 
         lss = LeagueStatisticsService.create(
@@ -225,7 +224,6 @@ class GamedayDetailView(DetailView):
             ],
             "border": 0,
             "justify": "left",
-            "escape": False,
             "table_id": "schedule",
         }
         qualify_table = gs.get_qualify_table()
@@ -302,7 +300,12 @@ class GamedayDetailView(DetailView):
                 del schedule[ID]
 
         context["info"] = {
-            "schedule": schedule.to_html(**render_configs),
+            # get_schedule() deliberately wraps the officials column in
+            # <i>...</i> markup (with the officiating team's name already
+            # escaped before being wrapped - see GamedayService.get_schedule),
+            # so this one table keeps escape=False while every other table
+            # here uses the shared (escape=True) config.
+            "schedule": schedule.to_html(**{**render_configs, "escape": False}),
             "qualify_table": qualify_table,
             "final_table": final_table,
             "officials": officials,
@@ -470,7 +473,6 @@ class GamedayGameDetailView(DetailView):
             "index": False,
             "border": 0,
             "justify": "center",
-            "escape": False,
             "table_id": "team_log_events",
         }
         classes = [
@@ -590,7 +592,15 @@ class GamedayGameDetailView(DetailView):
         payload["performer"] = [
             {"@type": "SportsTeam", "name": team["name"]} for team in scores.values()
         ]
-        return json.dumps(payload)
+        # Embedded raw (not via json_script) in a <script type="application/
+        # ld+json"> tag by the template, so a team name containing
+        # "</script>" would otherwise close that tag early and let anything
+        # after it run as HTML/script. json.dumps() doesn't escape that on
+        # its own; translate the same three characters Django's own
+        # json_script() filter escapes.
+        return json.dumps(payload).translate(
+            {ord("<"): "\\u003C", ord(">"): "\\u003E", ord("&"): "\\u0026"}
+        )
 
 
 class GameinfoWizard(LoginRequiredMixin, UserPassesTestMixin, SessionWizardView):

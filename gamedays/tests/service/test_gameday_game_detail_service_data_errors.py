@@ -99,6 +99,61 @@ class TestGamedayGameServiceDataErrors(TestCase):
         assert isinstance(events_table, EventsTableError)
         assert "Extra Team Desc" in events_table.error_message
 
+    def test_events_contain_extra_team_escapes_team_name(self):
+        """The error message is rendered with |safe in the template; a
+        malicious team description must render as text, not execute as
+        HTML.
+        """
+        gameday = DBSetup().g62_finished()
+        gameinfo = list(Gameinfo.objects.filter(gameday=gameday.pk))[0]
+        home_team = list(Gameresult.objects.filter(gameinfo=gameinfo, isHome=True))[
+            0
+        ].team
+        away_team = list(Gameresult.objects.filter(gameinfo=gameinfo, isHome=False))[
+            0
+        ].team
+
+        malicious_team = Team.objects.create(
+            name="<script>alert(1)</script>",
+            description="<script>alert(1)</script>",
+        )
+        author = gameday.author
+
+        TeamLog.objects.create(
+            gameinfo=gameinfo,
+            team=home_team,
+            sequence=1,
+            event="Touchdown",
+            value=6,
+            half=1,
+            author=author,
+        )
+        TeamLog.objects.create(
+            gameinfo=gameinfo,
+            team=away_team,
+            sequence=2,
+            event="Safety",
+            value=2,
+            half=1,
+            author=author,
+        )
+        TeamLog.objects.create(
+            gameinfo=gameinfo,
+            team=malicious_team,
+            sequence=3,
+            event="Invalid",
+            value=1,
+            half=1,
+            author=author,
+        )
+
+        ggs = GamedayGameService.create(gameinfo.pk)
+        events_table = ggs.get_events_table()
+
+        assert isinstance(events_table, EventsTableError)
+        assert "<script>alert(1)</script>" not in events_table.error_message
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in events_table.error_message
+
     def test_no_events_at_all(self):
         """
         When game has zero team events (only static events like GAME_START),

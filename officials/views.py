@@ -12,7 +12,7 @@ from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.utils.decorators import method_decorator
-from django.utils.safestring import mark_safe
+from django.utils.html import format_html, format_html_join
 from django.views import View
 from django.views.decorators.cache import cache_page
 
@@ -291,7 +291,7 @@ class AddInternalGameOfficialUpdateView(LoginRequiredMixin, UserPassesTestMixin,
         )
 
     def post(self, request):
-        created_entries = "Folgende Einträge erzeugt: <br>"
+        entry_lines = []
         current_line = []
         form = AddInternalGameOfficialEntryForm(request.POST)
         data = form.data.copy()
@@ -300,9 +300,7 @@ class AddInternalGameOfficialUpdateView(LoginRequiredMixin, UserPassesTestMixin,
             while all_lines:
                 current_line = all_lines.pop(0)
                 result = [x.strip() for x in current_line.split(",")]
-                created_entries += (
-                    OfficialService.create_game_official_entry(result) + "<br>"
-                )
+                entry_lines.append(OfficialService.create_game_official_entry(result))
         except (TypeError, ValueError) as error:
             error_message = error.args[0]
             all_lines = [current_line] + all_lines
@@ -322,7 +320,13 @@ class AddInternalGameOfficialUpdateView(LoginRequiredMixin, UserPassesTestMixin,
             form.add_error("entries", "official_id nicht gefunden!")
 
         if form.is_valid():
-            messages.success(self.request, mark_safe(created_entries))
+            messages.success(
+                self.request,
+                format_html(
+                    "Folgende Einträge erzeugt:<br>{}",
+                    format_html_join("<br>", "{}", ((line,) for line in entry_lines)),
+                ),
+            )
         data["entries"] = "\n".join(all_lines)
         form.data = data
         return render(request, self.template_name, {"form": form})
@@ -358,7 +362,7 @@ class AddExternalGameOfficialUpdateView(LoginRequiredMixin, UserPassesTestMixin,
         return render(request, self.template_name, {"form": self.form_class()})
 
     def post(self, request):
-        created_entries = "Folgende Einträge erzeugt: <br>"
+        entry_lines = []
         current_line = []
         form = self.form_class(request.POST)
         data = form.data.copy()
@@ -373,11 +377,10 @@ class AddExternalGameOfficialUpdateView(LoginRequiredMixin, UserPassesTestMixin,
                         f"Zeile muss genau {len(EXTERNAL_MANUAL_ENTRY_FIELDS)} "
                         "Werte haben!"
                     )
-                created_entries += (
+                entry_lines.append(
                     official_service.create_external_official_entry(
                         dict(zip(EXTERNAL_MANUAL_ENTRY_FIELDS, values))
                     )
-                    + "<br>"
                 )
         except (TypeError, ValueError) as error:
             all_lines = [current_line] + all_lines
@@ -387,7 +390,13 @@ class AddExternalGameOfficialUpdateView(LoginRequiredMixin, UserPassesTestMixin,
             form.add_error("entries", "official_id nicht gefunden!")
 
         if form.is_valid():
-            messages.success(self.request, mark_safe(created_entries))
+            messages.success(
+                self.request,
+                format_html(
+                    "Folgende Einträge erzeugt:<br>{}",
+                    format_html_join("<br>", "{}", ((line,) for line in entry_lines)),
+                ),
+            )
         data["entries"] = "\n".join(all_lines)
         form.data = data
         return render(request, self.template_name, {"form": form})
@@ -684,10 +693,10 @@ class GameOfficialImportConfirmView(LoginRequiredMixin, UserPassesTestMixin, Vie
             return
         capped = errors[:IMPORT_ERROR_MESSAGE_LIMIT]
         remaining = len(errors) - len(capped)
-        detail = "; ".join(capped)
+        detail = format_html_join("; ", "{}", ((line,) for line in capped))
         if remaining > 0:
-            detail += f" (und {remaining} weitere)"
-        messages.warning(request, mark_safe(f"{summary}<br>{detail}"))
+            detail = format_html("{} (und {} weitere)", detail, remaining)
+        messages.warning(request, format_html("{}<br>{}", summary, detail))
 
 
 class LicenseCheckForOfficials(LoginRequiredMixin, UserPassesTestMixin, View):
