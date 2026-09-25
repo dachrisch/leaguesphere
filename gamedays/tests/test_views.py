@@ -44,6 +44,7 @@ from gamedays.tests.setup_factories.factories import (
     GamedayFactory,
     SeasonFactory,
     ResourceUrlFactory,
+    TeamFactory,
 )
 from gamedays.wizard import FIELD_GROUP_STEP, GAMEDAY_FORMAT_STEP, GAMEINFO_STEP
 from league_table.tests.setup_factories.db_setup_leaguetable import LEAGUE_TABLE_TEST_RULESET
@@ -371,6 +372,29 @@ class TestGamedayGameDetailView(TestCase):
             EmptySplitScoreTable.to_html()
         )
 
+    def test_detail_view_escapes_team_name_in_events_and_split_score_tables(self):
+        """Team descriptions flow unescaped into these tables via
+        pandas.to_html(escape=False) then |safe; a malicious team name
+        must render as text, not execute as HTML.
+        """
+        home = TeamFactory(name="Home XSS", description="<script>alert(1)</script>")
+        away = TeamFactory(name="Away XSS", description="Away Desc")
+        gameinfo = DBSetup().create_teamlog_home_and_away(home, away)
+
+        resp = self.client.get(
+            reverse(
+                LEAGUE_GAMEDAY_GAME_DETAIL,
+                kwargs={
+                    "gameday_pk": gameinfo.pk,
+                    "pk": gameinfo.pk,
+                },
+            )
+        )
+
+        assert resp.status_code == HTTPStatus.OK
+        content = resp.content.decode()
+        assert "<script>alert(1)</script>" not in content
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in content
 
 class TestGamedayUpdateView(WebTest):
     def test_staff_user_can_access_update_view(self):
