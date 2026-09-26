@@ -230,7 +230,9 @@ class ScheduleTemplateViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_200_OK,
             )
 
-        except ApplicationError as e:
+        except (ApplicationError, IntegrityError):
+            # IntegrityError: template data the schema rejects (e.g. a NOT NULL
+            # column); the transaction is rolled back, so report it as a bad request.
             logging.exception("Error applying schedule template")
             return Response(
                 {"error": "Failed to apply template"},
