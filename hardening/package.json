@@ -1,0 +1,16 @@
+{
+  "name": "leaguesphere-hardening",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Reusable headless-Chrome hardening harness for demo.leaguesphere.app (playwright-core driving system Chromium).",
+  "type": "commonjs",
+  "scripts": {
+    "recon": "node recon.js",
+    "provoke": "node provoke-api.js",
+    "lifecycle": "node lifecycle.js",
+    "verify": "node verify-demo.js"
+  },
+  "dependencies": {
+    "playwright-core": "^1.49.0"
+  }
+}

@@ -19,6 +19,7 @@ find-game-id\.js
 setup-gameday-for-today\.js
 step1-find-game\.js
 capture_screenshot\.sh
+hardening/.*
 
 # --- legacy / dead code (not installed, not built) ---
 fe_template/.*
