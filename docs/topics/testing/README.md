@@ -13,7 +13,7 @@ CI test execution is path-scoped — see **[Scoped CI](../deployment/scoped-ci.m
 
 ## Hardening tracks
 
-- [Hardening 2026-09-25: findings (designer → scorecard → liveticker)](./hardening-2026-09-25-findings.md) (+ [screenshots](./hardening-2026-09-25/))
+- [Hardening 2026-09-25: findings (designer → scorecard → liveticker)](./hardening-2026-09-25-findings.md)
 - [Hardening domain knowledge + reusable harness](./hardening-domain-knowledge.md)
 
 ## Overview

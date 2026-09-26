@@ -44,14 +44,12 @@ Companion: [domain knowledge + reusable harness](./hardening-domain-knowledge.md
   correctly showed empty states: both filter by **server-local** today
   (CEST; the runner used UTC, a day behind). Re-run with the gameday dated to
   server-today (`PUT /api/gamedays/1/ {date: <server-today>}`):
-  `/api/gameday/list` returns it, the scorecard lists it with `Auswählen`
-  (screenshot below), and the liveticker renders the games. The remaining
+  `/api/gameday/list` returns it, the scorecard lists it with `Auswählen`,
+  and the liveticker renders the games. The remaining
   polish notes (hash-route `#/select-game` renders only the menu without the
   menu click-through; missing favicon) stand as minor.
 - **F8 added** — liveticker shows team *descriptions* instead of names (found
   in the corrected populated-state pass).
-
-![scorecard populated list](./hardening-2026-09-25/scorecard-populated-list.png)
 
 ### F8 [medium] Liveticker renders team descriptions where names belong
 
@@ -60,8 +58,6 @@ Companion: [domain knowledge + reusable harness](./hardening-domain-knowledge.md
 2. Open `/liveticker/` → game cards show e.g. "The rising bird team from the
    north" vs "Speed and precision football" instead of "Phoenix United" vs
    "Velocity FC".
-
-![liveticker team names](./hardening-2026-09-25/liveticker-team-names.png)
 
 **Root cause:** `liveticker/api/serializers.py:103-126` builds the frontend's
 `home/away.name` from `FULL_NAME_HOME/AWAY` = `team__description`
@@ -200,8 +196,6 @@ click-through).
 1. Log in as `admin@demo.local`, open `/scorecard/`, click `Scorecard`.
 2. With no gameday on server-today: table shows only `Keine Spieltage verfügbar`.
 
-![scorecard empty state](./hardening-2026-09-25/scorecard-no-gamedays-empty-state.png)
-
 (Correct-state screenshot from the corrected run is under Corrections above.)
 
 ### F7 [WITHDRAWN — not a bug, see Corrections]
@@ -213,8 +207,6 @@ and requires explicit "Publish Anyway" — intended UX.
 1. Designer dashboard (`/gamedays/gameday/design/`) → `Create Gameday`.
 2. Immediately click `Publish Schedule` → warnings dialog lists missing venue,
    no teams, no games → click `Publish Anyway`.
-
-![publish empty schedule](./hardening-2026-09-25/designer-publish-empty-warnings.png)
 
 The warning dialog itself is good UX; the question is whether an empty publish
 should be possible at all (it locks the structure; downstream scorecard/
@@ -234,11 +226,9 @@ publish path).
 - Valid scoring path works end-to-end at API level: TD+PAT list payload →
   `201` with recomputed halves (round5.js P2).
 
-- Empty/whitespace template name rejected client-side (`Name is required.`,
-  screenshot below) and server-side (`400`, incl. `darf nicht leer sein`);
+- Empty/whitespace template name rejected client-side (`Name is required.`)
+  and server-side (`400`, incl. `darf nicht leer sein`);
   `num_teams=0`/malformed/empty template POSTs → `400` with field errors.
-
-![empty template name rejected](./hardening-2026-09-25/designer-empty-template-name-rejected.png)
 
 - `GET/DELETE /api/designer/templates/999999/` → `404` (no 500, no phantom 2xx).
 - Games ETag works: conditional `GET /api/gamedays/1/games/` → `304`.
