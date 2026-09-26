@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.31.1](https://github.com/dachrisch/leaguesphere/compare/v4.31.0...v4.31.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* **ci:** run e2e on tag pipelines so real deploys are gated by it ([a3375bc](https://github.com/dachrisch/leaguesphere/commit/a3375bce8ca8fbe44fd363e95d23c767ea39c084))
+* **ci:** run e2e on tag pipelines so real deploys are gated by it ([150f60d](https://github.com/dachrisch/leaguesphere/commit/150f60d6701363c99e6f0ec57fb29716022ab3a4))
+
 ## [4.31.0](https://github.com/dachrisch/leaguesphere/compare/v4.30.0...v4.31.0) (2026-09-26)
 
 
