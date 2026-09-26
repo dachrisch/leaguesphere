@@ -258,6 +258,64 @@ class SnapshotEndpointTest(APITestCase):
 
         assert revalidated.status_code == status.HTTP_200_OK
 
+    def test_snapshot_etag_changes_when_score_entered_via_api(self):
+        """Lock the invariant through the production write path:
+        GameResultUpdateView.patch writes scores via queryset .update()
+        (no save(), no signals) plus game.save() -- the etag must flip.
+        (Score entry is staff-only: IsAuthenticatedOrGamedayOwnerOrStaff
+        resolves a Gameday object to no gameday FK, so only staff passes.)
+        """
+        staff = User.objects.create_user(username="staff", password="pw", is_staff=True)
+        gameday = make_gameday_with_game(
+            with_scores=False, with_log=False, author=self.user
+        )
+        game = gameday.gameinfo_set.get()
+
+        first = self.client.get(SNAPSHOT_URL, {"include": "games"})
+        etag_before = first["ETag"]
+
+        self.client.force_authenticate(user=staff)
+        patched = self.client.patch(
+            f"/api/gamedays/gameinfo/{game.pk}/result/",
+            {"final_score": {"home": 7, "away": 6}},
+            format="json",
+        )
+        assert patched.status_code == status.HTTP_200_OK
+        self.client.force_authenticate(user=None)
+
+        revalidated = self.client.get(
+            SNAPSHOT_URL,
+            {"include": "games"},
+            HTTP_IF_NONE_MATCH=etag_before,
+        )
+
+        assert revalidated.status_code == status.HTTP_200_OK
+
+    def test_snapshot_etag_changes_when_log_entry_deleted_via_api(self):
+        """Log deletion flips isDeleted via queryset .update() in
+        mark_entries_as_deleted -- the etag must flip."""
+        owner = User.objects.create_user(username="owner2", password="pw")
+        gameday = make_gameday_with_game(author=owner)
+        game = gameday.gameinfo_set.get()
+
+        first = self.client.get(SNAPSHOT_URL, {"include": "games,logs"})
+        etag_before = first["ETag"]
+
+        self.client.force_authenticate(user=owner)
+        deleted = self.client.delete(
+            f"/api/gamelog/{game.pk}", {"sequence": 1}, format="json"
+        )
+        assert deleted.status_code == status.HTTP_200_OK
+        self.client.force_authenticate(user=None)
+
+        revalidated = self.client.get(
+            SNAPSHOT_URL,
+            {"include": "games,logs"},
+            HTTP_IF_NONE_MATCH=etag_before,
+        )
+
+        assert revalidated.status_code == status.HTTP_200_OK
+
     def test_snapshot_second_identical_request_is_cached(self):
         make_gameday_with_game(author=self.user)
         params = {"include": "games,logs"}

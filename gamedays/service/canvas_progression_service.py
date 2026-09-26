@@ -1,3 +1,5 @@
+from django.utils import timezone
+
 from gamedays.models import Gameinfo, Gameresult, GamedayDesignerState
 
 
@@ -83,14 +85,18 @@ class CanvasBracketProgressionService:
             )
         except Gameinfo.DoesNotExist:
             return
-        Gameresult.objects.filter(gameinfo=gi, isHome=is_home).update(team=team)
+        # Queryset .update() bypasses save(), so auto_now would not fire:
+        # stamp explicitly. The snapshot ETag depends on Max(updated_at).
+        Gameresult.objects.filter(gameinfo=gi, isHome=is_home).update(
+            team=team, updated_at=timezone.now()
+        )
 
     def _apply_official(self, target_standing, team) -> None:
         if team is None:
             return
         Gameinfo.objects.filter(
             gameday=self.game.gameday, standing=target_standing
-        ).update(officials=team)
+        ).update(officials=team, updated_at=timezone.now())
 
     def _resolve_stage_ranks(self, game_nodes) -> None:
         """

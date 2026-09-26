@@ -1,6 +1,7 @@
 import json
 
 from django.db.models import QuerySet
+from django.utils import timezone
 
 from gamedays.models import Gameresult, TeamLog
 from gamedays.service.utils import AsJsonEncoder
@@ -231,8 +232,10 @@ class GameLog(object):
         return self._calc_score(self.get_entries_away_secondhalf())
 
     def mark_entries_as_deleted(self, sequence):
+        # Queryset .update() bypasses save(), so auto_now would not fire:
+        # stamp explicitly. The snapshot ETag depends on Max(updated_at).
         TeamLog.objects.filter(gameinfo=self.gameinfo, sequence=sequence).update(
-            isDeleted=True
+            isDeleted=True, updated_at=timezone.now()
         )
 
 

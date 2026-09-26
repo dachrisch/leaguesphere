@@ -141,60 +141,30 @@ def snapshot_gameday_queryset(filters):
 
 
 def _scope_aggregates(filters):
-    """Freshness signals for the scope.
+    """Freshness signals for the scope: four cheap aggregate queries.
 
-    pk-max alone cannot see UPDATEs (edited scores keep their pk), so the
-    result/log/gameinfo signals are content hashes over the rows in scope.
-    Costs a few indexed FK scans per request -- correctness over cleverness;
-    the TTL cache means a full payload build happens at most once per TTL
-    window while every request pays only these cheap fingerprint queries.
+    RULE (enforced by tests + code comments at the write paths): every
+    production write to Gameinfo/Gameresult/TeamLog bumps updated_at --
+    auto_now via save() (incl. partial saves through BumpUpdatedAtOnSaveMixin)
+    or explicit updated_at=timezone.now() in queryset .update() calls, which
+    bypass save() entirely (score entry, log deletion, canvas progression).
+    A pk-max alone cannot see UPDATEs (edited rows keep their pk), and
+    hashing full row contents costs full-scope scans per request (measured
+    7.6 s on stage for the full dump) -- MAX(updated_at) sees every write
+    at aggregate cost.
     """
     gamedays = snapshot_gameday_queryset(filters)
     state = gamedays.aggregate(count=Count("pk"), latest_update=Max("updated_at"))
-    result_rows = list(
-        Gameresult.objects.filter(gameinfo__gameday__in=gamedays)
-        .order_by("gameinfo_id", "isHome")
-        .values_list("gameinfo_id", "isHome", "team_id", "fh", "sh", "pa")
-    )
-    log_rows = list(
-        TeamLog.objects.filter(gameinfo__gameday__in=gamedays)
-        .order_by("gameinfo_id", "sequence", "pk")
-        .values_list(
-            "gameinfo_id",
-            "team_id",
-            "sequence",
-            "event",
-            "player",
-            "value",
-            "half",
-            "isDeleted",
-            "cop",
-        )
-    )
-    gameinfo_rows = list(
-        Gameinfo.objects.filter(gameday__in=gamedays)
-        .order_by("pk")
-        .values_list(
-            "pk",
-            "status",
-            "gameStarted",
-            "gameHalftime",
-            "gameFinished",
-            "stage",
-            "standing",
-            "officials_id",
-        )
-    )
-
-    def content_hash(rows):
-        return hashlib.md5(repr(rows).encode()).hexdigest()
-
-    return (
-        state,
-        content_hash(result_rows),
-        content_hash(log_rows),
-        content_hash(gameinfo_rows),
-    )
+    latest_result = Gameresult.objects.filter(gameinfo__gameday__in=gamedays).aggregate(
+        latest=Max("updated_at")
+    )["latest"]
+    latest_log = TeamLog.objects.filter(gameinfo__gameday__in=gamedays).aggregate(
+        latest=Max("updated_at")
+    )["latest"]
+    latest_gameinfo = Gameinfo.objects.filter(gameday__in=gamedays).aggregate(
+        latest=Max("updated_at")
+    )["latest"]
+    return state, latest_result, latest_log, latest_gameinfo
 
 
 def generate_snapshot_etag(request):
@@ -204,12 +174,12 @@ def generate_snapshot_etag(request):
     except ValidationError:
         # Invalid params still get a stable ETag; the view returns the 400.
         return '"invalid"'
-    state, results_hash, logs_hash, gameinfo_hash = _scope_aggregates(filters)
+    state, latest_result, latest_log, latest_gameinfo = _scope_aggregates(filters)
     etag_data = (
         f"{request.GET.urlencode() or 'all'}:"
         f"{sorted(include)}:"
         f"{state['count']}:{state['latest_update']}:"
-        f"{results_hash}:{logs_hash}:{gameinfo_hash}"
+        f"{latest_result}:{latest_log}:{latest_gameinfo}"
     )
     return f'"{hashlib.md5(etag_data.encode()).hexdigest()}"'
 
