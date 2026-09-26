@@ -70,6 +70,52 @@ Companion: [domain knowledge + reusable harness](./hardening-domain-knowledge.md
 **Fix:** map `name` ← `team__name` (keep description as subtitle if wanted);
 regression test asserting the feed contains team names.
 
+### F9 [high] Log rescore wipes manually entered scores (two write paths disagree)
+
+**Repro (game 2, seed final 3-3, no TeamLog rows):**
+1. Race `PUT /api/game/2/finalize` + `POST /api/gamelog/2 {TD}` → 200 + 201.
+2. Delete the single log entry (cleanup) → rescore recomputes halves from
+   log sums only → final **3-3 → 0-0**. Same signature earlier on game 8
+   (6-0 → 0-0).
+
+**Root cause:** `GameService.update_score` →
+`GameresultWrapper._save` (`gamedays/service/wrapper/gameresult_wrapper.py:8-29`)
+unconditionally overwrites `fh`/`sh` with sums of non-deleted `TeamLog`
+entries. But `PATCH gameinfo/<pk>/result/`
+(`gamedays/api/views.py:473-507`) writes `fh`/`sh` directly with **zero**
+`TeamLog` rows. Any later scorecard log entry on such a game silently zeroes
+the manually entered halves. Realistic damage path: halftime entered via
+results UI, then sideline logging wipes it.
+**Fix:** reconcile instead of overwrite (e.g. seed opening TeamLogs from
+manual scores, or skip halves with no log coverage); regression test:
+manual-result → log-write → scores preserved.
+
+### F10 [high] Applying the only association template crashes with HTTP 500
+
+**Repro:**
+1. `POST /api/gamedays/ {season 3, league 1, date <server-today>,
+   format 8_2}` → 201.
+2. `GET /api/designer/templates/16/` → "Association Group Cup", 26 slots.
+3. `POST /api/designer/templates/16/apply/ {gameday_id, team_mapping:
+   {0_0:1, 0_1:2, … all 8 placeholders}}` → **500** (0 games created).
+   Same with empty mapping → 400, bad gameday → 400, bad template → 404
+   (those contracts are fine).
+
+**Root cause:** slots 19–20 ("Championship Group" Game 25/26) have
+`official_group=null` **and** `official_reference=""` →
+`_resolve_team_placeholder` returns None
+(`template_application_service.py:374-415`) →
+`Gameinfo.objects.create(officials=None)` violates the non-nullable
+`officials` FK (`gamedays/models.py:177`) → IntegrityError → 500.
+Validation gap: `GET .../templates/16/validate/` → **200** while apply
+crashes — the check that would catch this runs nowhere.
+**Fix:** pre-validate at apply (400 naming the offending slots), and/or make
+`officials` nullable with the wizard's `"N/A"` fallback
+(`canvas_publish_service.py:33-37`); regression test applying a template with
+official-less slots. (Template 16 also mixes Playoffs + 3rd/5th Place +
+Championship Group stages with team-less QF/SF/Final shells — data hygiene
+follow-up.)
+
 ## Findings (original run)
 
 ### F1 [high]
@@ -181,6 +227,10 @@ publish path).
 - Permission model on log delete works: referee deleting admin's entry →
   `403 {"detail":"You do not have permission…"}`, admin deleting own → 200
   (round6.js Q2, game 8).
+- Designer authz holds: anon `GET /api/designer/templates/` and `POST apply`
+  → 401; regular user `POST apply` → 403 (German permission message); `GET
+  validate` for non-owner → 404 (permission-filtered queryset; inconsistent
+  with apply's 403 but denies safely).
 - Valid scoring path works end-to-end at API level: TD+PAT list payload →
   `201` with recomputed halves (round5.js P2).
 
@@ -195,6 +245,21 @@ publish path).
 - `GET /api/gameday…` gamelog for unknown game → `404` on both `?other=1` and
   plain paths; bad `gamedayId` on games feed → `404 {"error":"Gameday not found"}`.
 - Scratch gameday/template `DELETE` → `204`.
+
+## Smaller observations (not filed)
+
+- `DELETE` a PUBLISHED gameday → `403 {"detail":"Published gamedays cannot
+  be deleted. Please unlock the gameday first."}` — unlock = `PUT` back to
+  DRAFT, then delete → 204 (verified). 403 is the wrong status for a state
+  conflict (409/400); message is otherwise exemplary.
+- UI scoring E2E incomplete: as admin or referee, the scorecard game list
+  shows "Keine Spiele zu pfeifen" (assignment-filtered) and the "Zeige alle
+  Spiele" toggle did not reveal rows in headless timing. Valid-path scoring
+  verified at API level + display via liveticker; a staffed on-site run with
+  an assigned official should close this.
+- Demo hygiene: seed games carry `fh/sh` with no backing `TeamLog`s (see F9);
+  `get_or_create` reseeds do not clean `TeamLog` rows (soft-deleted remnants
+  persist across resets).
 
 ## Follow-ups (updated)
 
