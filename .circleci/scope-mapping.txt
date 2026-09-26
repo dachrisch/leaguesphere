@@ -18,26 +18,23 @@
 \.circleci/.* run-passcheck true
 \.circleci/.* run-designer true
 \.circleci/.* run-journey true
-\.circleci/.* run-e2e true
 \.circleci/.* run-build-backend true
 \.circleci/.* run-build-frontend true
 \.circleci/.* run-migrations true
 \.circleci/.* run-compose true
 
-# --- shared python roots: all shards + e2e + backend image + migrations ---
+# --- shared python roots: all shards + backend image + migrations ---
 (conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock|\.coveragerc) run-python-core true
 (conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock|\.coveragerc) run-python-gamedays true
 (conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock|\.coveragerc) run-python-officials true
 (conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock|\.coveragerc) run-python-live true
 (conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock|\.coveragerc) run-python-designer true
 (conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock|\.coveragerc) run-python-cross true
-(conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock) run-e2e true
 (conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock) run-build-backend true
 (conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock) run-migrations true
 
-# --- league_manager (project config/urls/middleware): core + e2e + image ---
+# --- league_manager (project config/urls/middleware): core + image ---
 league_manager/.* run-python-core true
-league_manager/.* run-e2e true
 league_manager/.* run-build-backend true
 league_manager/.* run-migrations true
 
@@ -67,28 +64,27 @@ league_manager/.* run-migrations true
 passcheck/templates/.* run-python-designer true
 (scorecard|liveticker)/templates/.* run-python-live true
 gameday_designer/templates/.* run-python-designer true
-(scorecard|gameday_designer)/templates/.* run-e2e true
 
 # --- cross-cutting tests + CI scripts ---
 (tests|scripts)/.* run-python-cross true
 (tests|scripts)/.* run-build-backend true
 
-# --- frontends (src + configs trigger job + image build; e2e where covered) ---
+# --- frontends (src + configs trigger job + image build) ---
 scorecard/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc|\.prettierignore) run-scorecard true
 scorecard/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc|\.prettierignore) run-build-frontend true
-scorecard/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc|\.prettierignore) run-e2e true
 liveticker/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc) run-liveticker true
 liveticker/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc) run-build-frontend true
 passcheck/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|jest\.config\.js|index\.html|public/.*|\.npmrc|exclude-files\.txt) run-passcheck true
 passcheck/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|jest\.config\.js|index\.html|public/.*|\.npmrc|exclude-files\.txt) run-build-frontend true
 gameday_designer/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*|\.npmrc) run-designer true
 gameday_designer/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*|\.npmrc) run-build-frontend true
-gameday_designer/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*|\.npmrc) run-e2e true
 journey_dashboard/.* run-journey true
 journey_dashboard/.* run-build-frontend true
 journey/(static|templates)/.* run-journey true
 journey/(static|templates)/.* run-build-frontend true
-(scorecard|gameday_designer)/tests/e2e/.* run-e2e true
+# e2e sources stay covered by their shards (e2e job itself is always-run).
+scorecard/tests/e2e/.* run-python-live true
+gameday_designer/tests/e2e/.* run-python-designer true
 
 # --- committed static assets (collectstatic / nginx image input) ---
 (gamedays|league_manager|liveticker|officials|passcheck|scorecard|teammanager|gameday_designer)/static/.* run-build-frontend true

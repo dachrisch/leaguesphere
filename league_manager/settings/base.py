@@ -1,6 +1,8 @@
 import os
+import tempfile
 
 from django.contrib import messages
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 from dotenv import load_dotenv
 
@@ -61,7 +63,17 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         "LOCATION": "league-manager-cache",
-    }
+    },
+    # Snapshot payload cache: file-based so the TTL dump is shared across
+    # gunicorn worker processes (LocMemCache would rebuild it per worker).
+    # Ephemeral by design -- a cold cache only costs one rebuild.
+    "snapshot": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": os.environ.get(
+            "SNAPSHOT_CACHE_DIR",
+            os.path.join(tempfile.gettempdir(), "leaguesphere-snapshot-cache"),
+        ),
+    },
 }
 
 PAGES_LINKS = {
@@ -168,11 +180,12 @@ REST_FRAMEWORK = {
     ),
     # Public read surface (liveticker, gamedays, league table) is anonymous;
     # throttle unauthenticated traffic to protect the dynamic endpoints.
-    "DEFAULT_THROTTLE_CLASSES": (
-        "rest_framework.throttling.AnonRateThrottle",
-    ),
+    "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.AnonRateThrottle",),
     "DEFAULT_THROTTLE_RATES": {
         "anon": "120/min",
+        # The snapshot dump is expensive by design (whole scopes in one
+        # response); throttle it strictly so it cannot be used for DoS.
+        "snapshot": "60/hour",
     },
 }
 
