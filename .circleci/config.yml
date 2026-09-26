@@ -68,9 +68,6 @@ parameters:
   run-journey:
     type: boolean
     default: false
-  run-e2e:
-    type: boolean
-    default: false
   run-build-backend:
     type: boolean
     default: false
