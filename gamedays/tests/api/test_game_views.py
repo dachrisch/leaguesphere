@@ -272,6 +272,8 @@ class TestGameLog(WebTest):
     def test_post_team_log_updates_score(self):
         DBSetup().g62_status_empty()
         first_game = Gameinfo.objects.first()
+        # Start unscored: fixture scores without gamelog entries are kept (#1988).
+        Gameresult.objects.filter(gameinfo=first_game).update(fh=None, sh=None, pa=None)
         response = self.app.post_json(
             reverse(API_GAMELOG, kwargs={"id": first_game.pk}),
             {
@@ -294,6 +296,8 @@ class TestGameLog(WebTest):
     def test_score_is_updated_with_multiple_entries(self):
         DBSetup().g62_status_empty()
         first_game = Gameinfo.objects.first()
+        # Start unscored: fixture scores without gamelog entries are kept (#1988).
+        Gameresult.objects.filter(gameinfo=first_game).update(fh=None, sh=None, pa=None)
         self.app.post_json(
             reverse(API_GAMELOG, kwargs={"id": first_game.pk}),
             {
