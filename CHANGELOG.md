@@ -1,5 +1,18 @@
 # Changelog
 
+## [4.29.0](https://github.com/dachrisch/leaguesphere/compare/v4.28.1...v4.29.0) (2026-09-26)
+
+
+### Features
+
+* **api:** add configurable snapshot mass endpoint for API consumers ([331ba41](https://github.com/dachrisch/leaguesphere/commit/331ba41fb2b67ee5c92c56f33f23a0bcea9daa6e))
+* **api:** add configurable snapshot mass endpoint for API consumers ([a85f564](https://github.com/dachrisch/leaguesphere/commit/a85f5641076c3f26a85fedf0bfbcaf82b65cc67c))
+
+
+### Performance Improvements
+
+* **api:** cheap snapshot ETag via updated_at freshness signals ([454881b](https://github.com/dachrisch/leaguesphere/commit/454881b7b99d59e8fcaf0fe93509ad589fdd962a))
+
 ## [4.28.1](https://github.com/dachrisch/leaguesphere/compare/v4.28.0...v4.28.1) (2026-09-18)
 
 
