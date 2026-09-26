@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.31.0](https://github.com/dachrisch/leaguesphere/compare/v4.30.0...v4.31.0) (2026-09-26)
+
+
+### Features
+
+* zero-downtime watchtower swaps via blue-green strategy ([9cebdcf](https://github.com/dachrisch/leaguesphere/commit/9cebdcfc0527ec28972aa2b63a0116b02915ce15))
+
 ## [4.30.0](https://github.com/dachrisch/leaguesphere/compare/v4.29.0...v4.30.0) (2026-09-26)
 
 
