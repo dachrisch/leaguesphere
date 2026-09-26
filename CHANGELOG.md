@@ -1,5 +1,20 @@
 # Changelog
 
+## [4.30.0](https://github.com/dachrisch/leaguesphere/compare/v4.29.0...v4.30.0) (2026-09-26)
+
+
+### Features
+
+* **hardening:** add reusable headless-chrome harness (playwright-core) + wire into scope-exclude ([1ac42e5](https://github.com/dachrisch/leaguesphere/commit/1ac42e56fbe0daeaf7a0c68ad1873d2901371d96))
+
+
+### Documentation
+
+* hardening report 2026-09-25 (designer, scorecard, liveticker) + domain knowledge ([037fbeb](https://github.com/dachrisch/leaguesphere/commit/037fbeb84f0bf5902ee45b841a02eb2c1339431e))
+* hardening report 2026-09-25 (designer, scorecard, liveticker) + domain knowledge ([e0e55f2](https://github.com/dachrisch/leaguesphere/commit/e0e55f265f1ac92501f02238be4d0f1331c9d3e1))
+* intensive round - F9 rescore wipe, F10 apply 500, matrix evidence, deep domain knowledge ([88a2de4](https://github.com/dachrisch/leaguesphere/commit/88a2de457235e8d0e1bf1dd017a36a70846f9fc1))
+* remove hardening screenshots from report ([ec4c967](https://github.com/dachrisch/leaguesphere/commit/ec4c967745daf27c1e2087ebc2db87c7029c99f8))
+
 ## [4.29.0](https://github.com/dachrisch/leaguesphere/compare/v4.28.1...v4.29.0) (2026-09-26)
 
 
