@@ -116,17 +116,13 @@ from demo seed data (`seed_demo_data.py`) — re-confirm against stage via
 
 ## 5. Reusable hardening harness
 
-Playwright-core + system Chromium headless (`--no-sandbox`). Scripts live in
-`/tmp/opencode/harness/` (copy into repo on request): `gate.js`,
-`recon.js`, `harden.js` (D1–D5/S1–S4/L1–L3), `harden2.js` (CSRF fix,
-scorecard deep-dive, cleanup), `harden3.js` (GET/DELETE/possession edges,
-today-shift, publish-empty), `harden4.js` (PUBLISHED-today click-through),
-`probe.js` (500 capture), `verify.js` (seed restore), `corrected.js`
-(server-today proof + populated states), `round5.js` (status matrix, log
-lifecycle, referee matrix, UI E2E attempt), `round6.js` (cleanup, permission
-matrix, setup-guard, revert verify), `investigate.js` (log inspection).
-Auth recipe: UI login (cookies shared with `page.request`) + `Referer` +
-`Origin` + `X-CSRFToken`; without `Referer` Django returns 403 regardless.
-Results: `runs/<ts>/{results.json|*.log,shots/}`. Run all mutation rounds
-against **demo only**; revert date shifts; deleted scratch gamedays return
-204; seed scores are random per reset — assert shapes, not values.
+Playwright-core + system Chromium headless (`--no-sandbox`). In-repo tooling:
+**`hardening/`** (`README.md`, `lib.js` with login/CSRF/run helpers, plus
+`recon.js` / `provoke-api.js` / `lifecycle.js` / `verify-demo.js`; `npm
+install` inside the folder; the README documents the Alpine `apk add
+chromium` setup). Auth recipe: UI login (cookies shared with `page.request`)
++ `Referer` + `Origin` + `X-CSRFToken`; without `Referer` Django returns 403
+regardless. Results: `hardening/runs/<ts>/{results.json|*.log,shots/}`.
+Run all mutation rounds against **demo only**; revert date shifts; deleted
+scratch gamedays return 204; seed scores are random per reset — assert
+shapes, not values.
