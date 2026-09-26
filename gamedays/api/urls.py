@@ -10,6 +10,7 @@ from gamedays.api.game_views import (
     ConfigPenalties,
     GamePossessionAPIView,
 )
+from gamedays.api.snapshot import SnapshotAPIView
 from gamedays.api.views import (
     AutoAssignOfficialsView,
     GamedayListAPIView,
@@ -82,6 +83,7 @@ urlpatterns = [
         ),
     ),
     path("gameday/list/", GamedayListAPIView.as_view(), name=API_GAMEDAY_LIST),
+    path("snapshot/", SnapshotAPIView.as_view(), name="api-snapshot"),
     path(
         "gameinfo/<int:pk>/",
         GameinfoUpdateAPIView.as_view(),
