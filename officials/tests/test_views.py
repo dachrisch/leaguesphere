@@ -963,7 +963,10 @@ class TestGameOfficialImportUploadView(WebTest):
         response = form.submit(expect_errors=True)
 
         assert response.status_code == HTTPStatus.BAD_REQUEST
-        assert "Anzahl Spiele" in response.json["errors"]["file"][0]
+        error_message = response.json["errors"]["file"][0]
+        assert error_message == "Die Datei konnte nicht verarbeitet werden."
+        assert "Gefundene Spalten" not in error_message
+        assert "Anzahl Spiele" not in error_message
 
     def test_valid_csv_upload_returns_grouped_json(self):
         team = TeamFactory(name="Test Team")
