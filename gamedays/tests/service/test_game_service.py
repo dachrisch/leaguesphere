@@ -203,6 +203,41 @@ class TestGamelogScoreChange(TestCase):
         assert "would drop to -4" in logs.output[0]
 
 
+class TestGamelogSequenceLocking(TestCase):
+    """GameLogCreator must serialize sequence allocation per game (#2006)."""
+
+    def test_create_locks_gameinfo_row_for_sequence_allocation(self):
+        gameday = DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=game, isHome=True).team
+        event = [{"name": "Touchdown", "input": None, "player": "19"}]
+
+        real_select_for_update = Gameinfo.objects.select_for_update
+
+        with mock.patch.object(
+            Gameinfo.objects,
+            "select_for_update",
+            wraps=real_select_for_update,
+        ) as select_for_update:
+            GameService(game.pk).create_gamelog(home.pk, event, gameday.author, 1)
+            assert select_for_update.called
+
+    def test_sequential_creates_produce_distinct_sequences(self):
+        gameday = DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=game, isHome=True).team
+        event = [{"name": "Touchdown", "input": None, "player": "19"}]
+        for _ in range(3):
+            GameService(game.pk).create_gamelog(home.pk, event, gameday.author, 1)
+        sequences = sorted(
+            TeamLog.objects.filter(gameinfo=game)
+            .exclude(sequence=0)
+            .values_list("sequence", flat=True)
+            .distinct()
+        )
+        assert sequences == [1, 2, 3]
+
+
 @unittest.skipUnless(
     connection.features.has_select_for_update, "needs row locks (MySQL in CI)"
 )
@@ -247,3 +282,42 @@ class TestConcurrentGamelogWrites(TransactionTestCase):
 
         assert errors == []
         assert _scores(game) == ((7 * self.WRITERS, 0, 0), (0, 0, 7 * self.WRITERS))
+
+    def test_concurrent_creates_produce_distinct_sequences(self):
+        """N concurrent writes must yield N distinct sequences (#2006).
+
+        Each TOUCHDOWN_WITH_PAT write allocates exactly one sequence (two
+        TeamLog rows share it by design). Duplicate sequences would collapse
+        entries in GameLog.create_entries_for_half while points still count.
+        """
+        gameday = DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=game, isHome=True).team
+        Gameresult.objects.filter(gameinfo=game).update(fh=0, sh=0, pa=0)
+        errors = []
+
+        def write():
+            try:
+                GameService(game.pk).create_gamelog(
+                    home.pk, TOUCHDOWN_WITH_PAT, gameday.author, 1
+                )
+            except Exception as error:  # pragma: no cover - reported below
+                errors.append(error)
+            finally:
+                connection.close()
+
+        threads = [threading.Thread(target=write) for _ in range(self.WRITERS)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert errors == []
+        sequences = list(
+            TeamLog.objects.filter(gameinfo=game)
+            .exclude(sequence=0)
+            .values_list("sequence", flat=True)
+            .distinct()
+        )
+        assert len(sequences) == self.WRITERS
+        assert len(set(sequences)) == self.WRITERS

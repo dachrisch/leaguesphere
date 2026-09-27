@@ -1,9 +1,10 @@
 import json
 
+from django.db import transaction
 from django.db.models import QuerySet
 from django.utils import timezone
 
-from gamedays.models import Gameresult, TeamLog
+from gamedays.models import Gameinfo, Gameresult, TeamLog
 from gamedays.service.utils import AsJsonEncoder
 
 EXCLUDED_EVENTS = ["Strafe", "Spielzeit", "Auszeit", "First Down"]
@@ -22,7 +23,27 @@ class GameLogCreator(object):
         self.user = user
 
     def create(self):
-        sequence = self._getSequence()
+        # NOTE (#2006): no UniqueConstraint on (gameinfo, sequence) is
+        # possible -- several TeamLog rows intentionally share one sequence
+        # (Touchdown + PAT are two rows with the same sequence; every
+        # EXCLUDED_EVENTS entry uses sequence 0). Uniqueness of logical
+        # sequences is enforced by serializing allocation below instead.
+        if not self._needs_sequence():
+            return self._create_with_sequence(0)
+        with transaction.atomic():
+            # Serialize sequence allocation per game. On MySQL/Postgres this
+            # takes a row lock so two concurrent writes cannot read the same
+            # max(sequence); on SQLite it is a no-op (dev/demo only). Safe to
+            # nest inside GameService._write_gamelog's transaction (which
+            # holds the Gameresult rows): lock order is always
+            # Gameresult -> Gameinfo.
+            Gameinfo.objects.select_for_update().get(pk=self.gameinfo.pk)
+            return self._create_with_sequence(self._getSequence())
+
+    def _needs_sequence(self):
+        return any(entry.get("name") not in EXCLUDED_EVENTS for entry in self.event)
+
+    def _create_with_sequence(self, sequence):
         for entry in self.event:
             teamlog = TeamLog()
             teamlog.gameinfo = self.gameinfo
