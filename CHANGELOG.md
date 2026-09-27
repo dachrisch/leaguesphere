@@ -1,5 +1,21 @@
 # Changelog
 
+## [4.31.3](https://github.com/dachrisch/leaguesphere/compare/v4.31.2...v4.31.3) (2026-09-27)
+
+
+### Bug Fixes
+
+* **gamedays:** game write APIs return 400/404 instead of 500 on invalid input ([ce75408](https://github.com/dachrisch/leaguesphere/commit/ce75408396ee48cc123c951623bf54478052dadb))
+* **gamedays:** return 400 for malformed gamelog payloads ([416670e](https://github.com/dachrisch/leaguesphere/commit/416670e5ece8cac3758e580f5cb0ccf44ec02e78))
+* **gamedays:** return 404 for halftime/finalize/possession on unknown game ([769eec8](https://github.com/dachrisch/leaguesphere/commit/769eec8147fbec798bc1ed35cb9b39ca40170958))
+* **scorecard:** ship favicon and fix direct #/select-game navigation ([03df023](https://github.com/dachrisch/leaguesphere/commit/03df023f745624cc83a9ee0292e79541241969f2))
+* **scorecard:** ship favicon and render gameday selector on direct #/select-game navigation ([48226d1](https://github.com/dachrisch/leaguesphere/commit/48226d13e9badd58947747867c43e9220f783298))
+
+
+### Documentation
+
+* add api hardening implementation plan ([fe5a09c](https://github.com/dachrisch/leaguesphere/commit/fe5a09cc794b63815c3cca333f4e87c21c026db5))
+
 ## [4.31.2](https://github.com/dachrisch/leaguesphere/compare/v4.31.1...v4.31.2) (2026-09-27)
 
 

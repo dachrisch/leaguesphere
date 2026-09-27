@@ -10,6 +10,7 @@ from django.test import TestCase, TransactionTestCase
 from gamedays.models import Team, Gameinfo, Gameresult, TeamLog
 from gamedays.service.game_service import GameService
 from gamedays.service.gamelog import GameLog
+from gamedays.service.wrapper.gameinfo_wrapper import IllegalGameTransition
 from gamedays.tests.setup_factories.db_setup import DBSetup
 
 
@@ -22,13 +23,14 @@ class TestGameService(TestCase):
         gameday = DBSetup().g62_status_empty()
         firstGame = Gameinfo.objects.first()
         game_service = GameService(firstGame.pk)
+        game_service.update_gamestart(gameday.author)
         game_service.update_halftime(gameday.author)
         firstGame = Gameinfo.objects.first()
         assert firstGame.status == "2. Halbzeit"
         assert re.match(
             "^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]", str(firstGame.gameHalftime)
         )
-        assert len(TeamLog.objects.all()) == 1
+        assert len(TeamLog.objects.all()) == 2
 
     def test_gamestart_is_updated(self):
         gameday = DBSetup().g62_status_empty()
@@ -46,24 +48,32 @@ class TestGameService(TestCase):
         gameday = DBSetup().g62_status_empty()
         firstGame = Gameinfo.objects.first()
         game_service = GameService(firstGame.pk)
+        game_service.update_gamestart(gameday.author)
+        game_service.update_halftime(gameday.author)
         game_service.update_game_finished(gameday.author)
         firstGame: Gameinfo = Gameinfo.objects.first()
         assert firstGame.status == "beendet"
         assert re.match(
             "^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]", str(firstGame.gameFinished)
         )
-        assert len(TeamLog.objects.all()) == 1
+        assert len(TeamLog.objects.all()) == 3
 
     def test_entry_for_game_created_halftime_and_finished_only_written_once(self):
         gameday = DBSetup().g62_status_empty()
         firstGame = Gameinfo.objects.first()
         game_service = GameService(firstGame.pk)
         game_service.update_gamestart(gameday.author)
-        game_service.update_gamestart(gameday.author)
-        game_service.update_halftime(gameday.author)
         game_service.update_halftime(gameday.author)
         game_service.update_game_finished(gameday.author)
-        game_service.update_game_finished(gameday.author)
+        assert len(TeamLog.objects.all()) == 3
+        # A second transition is rejected, so a duplicate log entry is impossible.
+        for transition in (
+            game_service.update_gamestart,
+            game_service.update_halftime,
+            game_service.update_game_finished,
+        ):
+            with self.assertRaises(IllegalGameTransition):
+                transition(gameday.author)
         assert len(TeamLog.objects.all()) == 3
 
     def test_update_score(self):

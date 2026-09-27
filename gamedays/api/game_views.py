@@ -1,8 +1,9 @@
 import json
+import logging
 from collections import OrderedDict
 from http import HTTPStatus
 
-from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import UpdateAPIView, RetrieveUpdateAPIView
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -13,10 +14,35 @@ from gamedays.api.serializers import (
     GameSetupSerializer,
     GameLogSerializer,
 )
-from gamedays.models import Team, Gameinfo, GameSetup, TeamLog
+from gamedays.models import Team, Gameinfo, GameSetup, Gameresult, TeamLog
 from gamedays.service.game_service import GameService
+from gamedays.service.wrapper.gameinfo_wrapper import IllegalGameTransition
 from gamedays.service.gameday_service import GamedayService
 from gamedays.service.model_helper import GameresultHelper, TeamLogHelper
+
+logger = logging.getLogger(__name__)
+
+
+def _validate_gamelog_payload(data):
+    """Reject malformed gamelog write payloads with a 400 instead of a 500.
+
+    The scorecard posts ``event`` as a list of ``{name, player?, input?}``
+    objects and ``half`` as ``1``/``2``. Anything else (e.g. a bare-string
+    event that ``GameLogCreator`` would iterate char-by-char, or a half that
+    cannot be stored) is client error, not server failure (#1980 F1).
+    """
+    event = data.get("event")
+    half = data.get("half")
+    if not isinstance(event, list) or not event:
+        raise ValidationError({"event": "must be a non-empty list of event objects"})
+    for entry in event:
+        if not isinstance(entry, dict):
+            raise ValidationError({"event": "each entry must be an object"})
+        name = entry.get("name")
+        if not isinstance(name, str) or not name:
+            raise ValidationError({"event": "each entry must have a non-empty 'name'"})
+    if half not in (1, 2):
+        raise ValidationError({"half": "must be 1 or 2"})
 
 
 class GameLogAPIView(APIView):
@@ -87,6 +113,7 @@ class GameLogAPIView(APIView):
     def post(self, request, *args, **kwargs):
         try:
             data = request.data
+            _validate_gamelog_payload(data)
             game_service = GameService(data.get("gameId"))
             gamelog = game_service.create_gamelog(
                 data.get("team"), data.get("event"), request.user, data.get("half")
@@ -146,8 +173,21 @@ class GameLogAPIView(APIView):
 
 class GameHalftimeAPIView(APIView):
     def put(self, request, *args, **kwargs):
-        game_service = GameService(kwargs.get("pk"))
-        game_service.update_halftime(request.user)
+        pk = kwargs.get("pk")
+        try:
+            game_service = GameService(pk)
+        except Gameinfo.DoesNotExist:
+            raise NotFound(detail=f"No game found for gameId {pk}")
+        try:
+            game_service.update_halftime(request.user)
+        except IllegalGameTransition as e:
+            logger.warning(
+                "Rejected halftime transition for game %s: %s", kwargs.get("pk"), e
+            )
+            return Response(
+                {"detail": "Dieser Spielstatus erlaubt keine Halbzeit."},
+                status=HTTPStatus.CONFLICT,
+            )
         return Response()
 
 
@@ -157,8 +197,18 @@ class GameFinalizeUpdateView(UpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         pk = kwargs.get("pk")
-        game_service = GameService(pk)
-        game_service.update_game_finished(request.user)
+        try:
+            game_service = GameService(pk)
+        except Gameinfo.DoesNotExist:
+            raise NotFound(detail=f"No game found for gameId {pk}")
+        try:
+            game_service.update_game_finished(request.user)
+        except IllegalGameTransition as e:
+            logger.warning("Rejected finalize for game %s: %s", pk, e)
+            return Response(
+                {"detail": "Dieser Spielstatus erlaubt kein Spielende."},
+                status=HTTPStatus.CONFLICT,
+            )
         game_setup, _ = GameSetup.objects.get_or_create(gameinfo_id=pk)
         serializer = GameFinalizer(instance=game_setup, data=request.data)
         if serializer.is_valid():
@@ -189,7 +239,14 @@ class GameSetupCreateOrUpdateView(RetrieveUpdateAPIView):
         serializer = GameSetupSerializer(instance=game_setup, data=request.data)
         if is_game_setup_created:
             game_service = GameService(pk)
-            game_service.update_gamestart(request.user)
+            try:
+                game_service.update_gamestart(request.user)
+            except IllegalGameTransition as e:
+                logger.warning("Rejected gamestart for game %s: %s", pk, e)
+                return Response(
+                    {"detail": "Dieser Spielstatus erlaubt keinen Spielstart."},
+                    status=HTTPStatus.CONFLICT,
+                )
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=HTTPStatus.OK)
@@ -207,8 +264,24 @@ class GamesToWhistleAPIView(APIView):
 
 class GamePossessionAPIView(APIView):
     def put(self, request, *args, **kwargs):
-        game_service = GameService(kwargs.get("pk"))
-        game_service.update_team_in_possesion(request.data.get("team"))
+        pk = kwargs.get("pk")
+        try:
+            game_service = GameService(pk)
+        except Gameinfo.DoesNotExist:
+            raise NotFound(detail=f"No game found for gameId {pk}")
+        team = request.data.get("team")
+        home = Gameresult.objects.get(
+            gameinfo=game_service.gameinfo.gameinfo, isHome=True
+        ).team
+        away = Gameresult.objects.get(
+            gameinfo=game_service.gameinfo.gameinfo, isHome=False
+        ).team
+        valid_teams = {str(home.pk), home.name, str(away.pk), away.name}
+        if team not in valid_teams:
+            raise ValidationError(
+                {"team": f"must be one of the game's teams ({home.name}, {away.name})"}
+            )
+        game_service.update_team_in_possesion(team)
         return Response()
 
 
