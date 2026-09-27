@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.31.2](https://github.com/dachrisch/leaguesphere/compare/v4.31.1...v4.31.2) (2026-09-27)
+
+
+### Bug Fixes
+
+* **designer:** apply templates with official-less slots instead of 500 ([d66717d](https://github.com/dachrisch/leaguesphere/commit/d66717dc564eddd87ef0f3582d69728423a87bab))
+* **gamedays:** keep manually entered scores on scorecard gamelog writes ([7408fae](https://github.com/dachrisch/leaguesphere/commit/7408fae59ad8104c3ad4f467a1f49e20271f7f0d))
+
 ## [4.31.1](https://github.com/dachrisch/leaguesphere/compare/v4.31.0...v4.31.1) (2026-09-26)
 
 
