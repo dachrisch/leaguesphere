@@ -645,10 +645,8 @@ jobs:
             MYSQL_USER=ci_test_user
             MYSQL_PWD=ci_test_password
             MYSQL_ROOT_PASSWORD=ci_test_root_pw
-            # ...while the mariadb image's own entrypoint only creates the DB
-            # and user from the standard MYSQL_DATABASE/MYSQL_PASSWORD names.
-            # Set both so the user exists even if the mysql-init script is a
-            # no-op; docker-entrypoint-initdb.d is skipped on non-empty datadir.
+            # ...while the mariadb image's own entrypoint creates the DB/user
+            # from the standard MYSQL_DATABASE/MYSQL_PASSWORD names.
             MYSQL_DATABASE=ci_test_db
             MYSQL_PASSWORD=ci_test_password
             DEBUG=False
@@ -658,11 +656,15 @@ jobs:
                 -e 's|image: leaguesphere/frontend:latest|image: frontend:latest|g' \
                 docker-compose.yaml > docker-compose.ci.yaml
             docker network create proxy || true
+            # CircleCI injects project-level MYSQL_* (the test-shard DB creds)
+            # into this job's shell, and this Compose lets the shell env override
+            # env_file — so the app and db would end up disagreeing on the
+            # user/password. Drop them so ls.env.ci wins for this throwaway stack.
+            unset MYSQL_HOST MYSQL_DB_NAME MYSQL_USER MYSQL_PWD MYSQL_ROOT_PASSWORD MYSQL_DATABASE MYSQL_PASSWORD
             docker-compose -f docker-compose.ci.yaml up -d
             docker-compose -f docker-compose.ci.yaml ps
 
             APP_CONTAINER=$(docker-compose -f docker-compose.ci.yaml ps -q app)
-            DB_CONTAINER=$(docker-compose -f docker-compose.ci.yaml ps -q db)
             # The CI compose DB ships no schema, but the frontend healthcheck
             # performs a real login POST, which needs auth_user. Migrate before
             # asserting health; retry until the db service accepts connections.
@@ -673,7 +675,7 @@ jobs:
             done
             if [ "$migrated" != "true" ]; then
               echo "Migrations never succeeded; db + app logs follow"
-              docker logs "$DB_CONTAINER" || true
+              docker logs "$(docker-compose -f docker-compose.ci.yaml ps -q db)" || true
               docker logs "$APP_CONTAINER" || true
               docker-compose -f docker-compose.ci.yaml down -v
               exit 1
