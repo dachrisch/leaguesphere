@@ -2,7 +2,7 @@ import json
 from collections import OrderedDict
 from http import HTTPStatus
 
-from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import UpdateAPIView, RetrieveUpdateAPIView
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -17,6 +17,28 @@ from gamedays.models import Team, Gameinfo, GameSetup, TeamLog
 from gamedays.service.game_service import GameService
 from gamedays.service.gameday_service import GamedayService
 from gamedays.service.model_helper import GameresultHelper, TeamLogHelper
+
+
+def _validate_gamelog_payload(data):
+    """Reject malformed gamelog write payloads with a 400 instead of a 500.
+
+    The scorecard posts ``event`` as a list of ``{name, player?, input?}``
+    objects and ``half`` as ``1``/``2``. Anything else (e.g. a bare-string
+    event that ``GameLogCreator`` would iterate char-by-char, or a half that
+    cannot be stored) is client error, not server failure (#1980 F1).
+    """
+    event = data.get("event")
+    half = data.get("half")
+    if not isinstance(event, list) or not event:
+        raise ValidationError({"event": "must be a non-empty list of event objects"})
+    for entry in event:
+        if not isinstance(entry, dict):
+            raise ValidationError({"event": "each entry must be an object"})
+        name = entry.get("name")
+        if not isinstance(name, str) or not name:
+            raise ValidationError({"event": "each entry must have a non-empty 'name'"})
+    if half not in (1, 2):
+        raise ValidationError({"half": "must be 1 or 2"})
 
 
 class GameLogAPIView(APIView):
@@ -87,6 +109,7 @@ class GameLogAPIView(APIView):
     def post(self, request, *args, **kwargs):
         try:
             data = request.data
+            _validate_gamelog_payload(data)
             game_service = GameService(data.get("gameId"))
             gamelog = game_service.create_gamelog(
                 data.get("team"), data.get("event"), request.user, data.get("half")

@@ -233,6 +233,54 @@ class TestGameLog(WebTest):
             "isFirstHalf": True,
         }
 
+    def test_post_team_log_rejects_string_event(self):
+        DBSetup().g62_status_empty()
+        first_game = Gameinfo.objects.first()
+        response = self.app.post_json(
+            reverse(API_GAMELOG, kwargs={"id": first_game.pk}),
+            {
+                "team": "A1",
+                "gameId": first_game.pk,
+                "half": 1,
+                "event": "NotARealEventXYZ",
+            },
+            headers=DBSetup().get_token_header(),
+            expect_errors=True,
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+
+    def test_post_team_log_rejects_invalid_half(self):
+        DBSetup().g62_status_empty()
+        first_game = Gameinfo.objects.first()
+        response = self.app.post_json(
+            reverse(API_GAMELOG, kwargs={"id": first_game.pk}),
+            {
+                "team": "A1",
+                "gameId": first_game.pk,
+                "half": "XX",
+                "event": [{"name": "Touchdown", "player": "19"}],
+            },
+            headers=DBSetup().get_token_header(),
+            expect_errors=True,
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+
+    def test_post_team_log_rejects_entry_without_name(self):
+        DBSetup().g62_status_empty()
+        first_game = Gameinfo.objects.first()
+        response = self.app.post_json(
+            reverse(API_GAMELOG, kwargs={"id": first_game.pk}),
+            {
+                "team": "A1",
+                "gameId": first_game.pk,
+                "half": 1,
+                "event": [{"player": "19"}],
+            },
+            headers=DBSetup().get_token_header(),
+            expect_errors=True,
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+
     def test_post_team_log_change_of_possession(self):
         DBSetup().g62_status_empty()
         first_game = Gameinfo.objects.first()
