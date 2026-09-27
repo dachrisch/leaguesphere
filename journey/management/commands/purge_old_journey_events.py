@@ -21,7 +21,7 @@ Custom retention window::
 
 from datetime import timedelta
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from journey.models import JourneyEvent
@@ -51,6 +51,10 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         days = opts["days"]
         execute = opts["execute"]
+        if days <= 0:
+            # 0 or negative would put the cutoff at/after now and delete
+            # (nearly) every event.
+            raise CommandError(f"--days must be a positive integer (got {days}).")
         cutoff = timezone.now() - timedelta(days=days)
         stale_events = JourneyEvent.objects.filter(created_at__lt=cutoff)
         count = stale_events.count()

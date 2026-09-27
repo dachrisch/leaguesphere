@@ -869,3 +869,15 @@ class PurgeOldJourneyEventsCommandTests(TestCase):
         call_command('purge_old_journey_events', '--days', '30', '--execute')
 
         self.assertFalse(JourneyEvent.objects.filter(id=event.id).exists())
+
+    def test_non_positive_days_is_rejected_before_anything_is_deleted(self):
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+
+        self._create_event_aged_days(1)
+
+        for days in ("0", "-5"):
+            with self.assertRaises(CommandError):
+                call_command('purge_old_journey_events', '--days', days, '--execute')
+
+        self.assertEqual(JourneyEvent.objects.count(), 1)
