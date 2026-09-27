@@ -44,6 +44,10 @@ class TestLlmsDynamicTxtEndpoint(TestCase):
         response = self.client.get("/llms-dynamic.txt")
         self.assertContains(response, "/api/league-table/")
 
+    def test_llms_dynamic_txt_documents_leagues_api(self):
+        response = self.client.get("/llms-dynamic.txt")
+        self.assertContains(response, "/api/leagues/")
+
     def test_llms_dynamic_txt_documents_gameday_games_api(self):
         response = self.client.get("/llms-dynamic.txt")
         self.assertContains(response, "/games/")
