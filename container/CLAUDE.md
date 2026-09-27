@@ -15,7 +15,7 @@ Several scripts here assume they run from inside a full leaguesphere checkout an
 - `nginx.conf` / `nginx.staging.conf` / `nginx.demo.conf` — per-environment reverse-proxy config in front of the Django app. Identical except for the `upstream django` target (`app` / `staging-app` / `demo-app`), matching each environment's compose service name.
 - `entrypoint.sh` — production container entrypoint; runs `manage.py migrate` only when `RUN_MIGRATIONS=true`.
 - `entrypoint.demo.sh` — demo-environment entrypoint; resets/seeds the demo DB from a snapshot once per UTC day via the `seed_demo_data` / `reset_demo_database` management commands.
-- `healthcheck.sh` — nginx-side healthcheck: treats an HTTP 302 to `/maintenance/` as healthy, otherwise performs a real CSRF-cookie + login POST against `/login/`.
+- `healthcheck.sh` — nginx-side healthcheck: treats an HTTP 302 to `/maintenance/` as healthy, otherwise performs a real CSRF-cookie + login POST against `/login/`. It probes over plain HTTP but sends `X-Forwarded-Proto: https` so Django (stage/prod `SECURE_SSL_REDIRECT`) does not answer with a 301; the nginx confs conversely exempt its localhost requests from the `/login/` rate limit. Regression tests: `scripts/tests/test_container_healthcheck.py`.
 - `spinup_test_db.sh` / `test_db_dump.sql` / `test_user.sql` — provisions the MariaDB test database used by the Django test suite, inside the `servyy-test` LXC container.
 - `start_dev_server.sh` — bootstraps a full local dev environment (test DB, env vars, Python deps, optionally hot-reloading builds of the React apps).
 

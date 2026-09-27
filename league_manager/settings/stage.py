@@ -39,5 +39,8 @@ SECURE_SSL_REDIRECT = True
 SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30  # start at 30 days, raise to a year once stable
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
-# The container healthcheck hits /health/ over plain HTTP.
+# The *backend* container healthcheck hits /health/ over plain HTTP (no
+# X-Forwarded-Proto), so keep it reachable instead of 301-redirecting it. The
+# frontend (nginx) container probes /login/ instead and advertises
+# X-Forwarded-Proto: https itself -- see container/healthcheck.sh.
 SECURE_REDIRECT_EXEMPT = [r"^health/"]
