@@ -163,6 +163,10 @@ journey/static/journey_dashboard/*.css
 share/static/share/*.js
 share/static/share/*.css
 
+# The Python template's `lib/` rule above also swallows the frontend source
+# directory; keep share's shared TS modules tracked.
+!share/src/lib/
+
 # Superpowers tooling artifacts
 .superpowers/
 
