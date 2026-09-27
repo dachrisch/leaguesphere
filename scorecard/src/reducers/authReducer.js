@@ -43,7 +43,7 @@ export default (state = initialState, action) => {
       return {
         ...state,
         token: null,
-        isAuthenticated: null,
+        isAuthenticated: false,
         isLoading: false,
         user: null,
       };
