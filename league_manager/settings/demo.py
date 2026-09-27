@@ -55,7 +55,10 @@ else:
     }
 
 # Security settings for demo
-# Relax for local development, strict for production
+# Deliberately NOT the prod/stage posture (no HSTS, no SSL redirect, cookies
+# secure only in Docker): these settings also drive local plain-HTTP runs via
+# container/start_dev_server.sh, and HSTS would pin browsers to HTTPS for a
+# throwaway environment. The nginx demo conf still sends the edge headers.
 if os.environ.get('RUNNING_IN_DOCKER'):
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
