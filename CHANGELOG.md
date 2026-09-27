@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.32.2](https://github.com/dachrisch/leaguesphere/compare/v4.32.1...v4.32.2) (2026-09-27)
+
+
+### Bug Fixes
+
+* **container:** keep frontend healthcheck healthy behind TLS redirect ([9664ebf](https://github.com/dachrisch/leaguesphere/commit/9664ebf6b4e4882ea720b79d4a53d04709b03476))
+* **container:** keep frontend healthcheck healthy behind TLS redirect ([bd37c00](https://github.com/dachrisch/leaguesphere/commit/bd37c00cf87e19210fde8174c52280e24bcf2222))
+
 ## [4.32.1](https://github.com/dachrisch/leaguesphere/compare/v4.32.0...v4.32.1) (2026-09-27)
 
 
