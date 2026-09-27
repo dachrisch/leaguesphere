@@ -97,6 +97,8 @@
     "season": "Season",
     "league": "League",
     "venue": "Venue",
+    "defaultGameDuration": "Default game duration (min)",
+    "defaultBreakBetweenGames": "Default break between games (min)",
     "ranking": "Ranking",
     "rank": "Rank",
     "in": "in",

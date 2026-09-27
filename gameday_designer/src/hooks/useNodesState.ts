@@ -31,6 +31,7 @@ import {
   isStageNode,
 } from '../types/flowchart';
 import { recalculateStageGameTimes } from '../utils/timeCalculation';
+import { DEFAULT_GAME_DURATION, DEFAULT_BREAK_BETWEEN_GAMES } from '../utils/tournamentConstants';
 
 /**
  * Recalculate start times for all (non-manual) games of a stage after a
@@ -73,11 +74,25 @@ export interface AddStageOptions {
   stageType?: StageType;
 }
 
+/**
+ * Global scheduling defaults (from GamedayMetadata) used to seed newly
+ * created stages' own defaults, and as a last-resort fallback for games
+ * created in a stage that has none set.
+ */
+export interface GlobalScheduleDefaults {
+  defaultGameDuration?: number;
+  defaultBreakBetweenGames?: number;
+}
+
 export function useNodesState(
   nodes: FlowNode[],
   setNodes: React.Dispatch<React.SetStateAction<FlowNode[]>>,
-  onNodesDeleted?: (nodeIds: string[]) => void
+  onNodesDeleted?: (nodeIds: string[]) => void,
+  globalDefaults?: GlobalScheduleDefaults
 ) {
+  const resolvedDefaultGameDuration = globalDefaults?.defaultGameDuration ?? DEFAULT_GAME_DURATION;
+  const resolvedDefaultBreakBetweenGames = globalDefaults?.defaultBreakBetweenGames ?? DEFAULT_BREAK_BETWEEN_GAMES;
+
   /**
    * Add a new field container node.
    */
@@ -92,7 +107,11 @@ export function useNodesState(
 
       if (includeStage) {
         const stageId = `stage-${uuidv4()}`;
-        const newStage = createStageNode(stageId, id, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0 });
+        const newStage = createStageNode(stageId, id, {
+          name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0,
+          defaultGameDuration: resolvedDefaultGameDuration,
+          defaultBreakBetweenGames: resolvedDefaultBreakBetweenGames,
+        });
         setNodes((nds) => [...nds, newField, newStage]);
       } else {
         setNodes((nds) => [...nds, newField]);
@@ -100,7 +119,7 @@ export function useNodesState(
 
       return newField;
     },
-    [nodes, setNodes]
+    [nodes, setNodes, resolvedDefaultGameDuration, resolvedDefaultBreakBetweenGames]
   );
 
   /**
@@ -130,12 +149,16 @@ export function useNodesState(
       const stageType = options?.stageType ?? 'STANDARD';
       const position = { x: 20, y: 60 + stageCount * 180 };
 
-      const newStage = createStageNode(id, fieldId, { name, category, stageType, order: stageCount }, position);
+      const newStage = createStageNode(id, fieldId, {
+        name, category, stageType, order: stageCount,
+        defaultGameDuration: resolvedDefaultGameDuration,
+        defaultBreakBetweenGames: resolvedDefaultBreakBetweenGames,
+      }, position);
       setNodes((nds) => [...nds, newStage]);
 
       return newStage;
     },
-    [nodes, setNodes]
+    [nodes, setNodes, resolvedDefaultGameDuration, resolvedDefaultBreakBetweenGames]
   );
 
   /**
@@ -186,7 +209,11 @@ export function useNodesState(
       if (selected && isFieldNode(selected)) {
         const fieldId = selected.id;
         const stageId = `stage-${uuidv4()}`;
-        const newStage = createStageNode(stageId, fieldId, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0 });
+        const newStage = createStageNode(stageId, fieldId, {
+          name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0,
+          defaultGameDuration: resolvedDefaultGameDuration,
+          defaultBreakBetweenGames: resolvedDefaultBreakBetweenGames,
+        });
         setNodes((nds) => [...nds, newStage]);
         return { fieldId, stageId };
       }
@@ -201,7 +228,11 @@ export function useNodesState(
         }
         // Create stage in existing field
         const stageId = `stage-${uuidv4()}`;
-        const newStage = createStageNode(stageId, firstField.id, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0 });
+        const newStage = createStageNode(stageId, firstField.id, {
+          name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0,
+          defaultGameDuration: resolvedDefaultGameDuration,
+          defaultBreakBetweenGames: resolvedDefaultBreakBetweenGames,
+        });
         setNodes((nds) => [...nds, newStage]);
         return { fieldId: firstField.id, stageId };
       }
@@ -212,13 +243,17 @@ export function useNodesState(
       const fieldCount = nodes.filter(isFieldNode).length;
 
       const newField = createFieldNode(fieldId, { name: `Feld ${fieldCount + 1}`, order: fieldCount });
-      const newStage = createStageNode(stageId, fieldId, { name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0 });
+      const newStage = createStageNode(stageId, fieldId, {
+        name: 'Preliminary', category: 'preliminary', stageType: 'STANDARD', order: 0,
+        defaultGameDuration: resolvedDefaultGameDuration,
+        defaultBreakBetweenGames: resolvedDefaultBreakBetweenGames,
+      });
 
       setNodes((nds) => [...nds, newField, newStage]);
 
       return { fieldId, stageId };
     },
-    [nodes, setNodes, getTargetStage]
+    [nodes, setNodes, getTargetStage, resolvedDefaultGameDuration, resolvedDefaultBreakBetweenGames]
   );
 
   /**
@@ -242,8 +277,16 @@ export function useNodesState(
       const standing = options?.standing ?? `Game ${nodes.filter(isGameNode).length + 1}`;
       const position = { x: 30, y: 50 + gamesInStage.length * 120 };
 
-      const newGame = createGameNodeInStage(id, targetStageId!, { ...options, standing }, position);
-      
+      const targetStage = nodes.find((n): n is StageNode => n.id === targetStageId && isStageNode(n));
+      const duration = options?.duration
+        ?? targetStage?.data.defaultGameDuration
+        ?? resolvedDefaultGameDuration;
+      const breakAfter = options?.breakAfter
+        ?? targetStage?.data.defaultBreakBetweenGames
+        ?? resolvedDefaultBreakBetweenGames;
+
+      const newGame = createGameNodeInStage(id, targetStageId!, { ...options, standing, duration, breakAfter }, position);
+
       if (hierarchyCreated) {
         // We already called setNodes in ensureContainerHierarchy, but we need to add the game too.
         // To avoid multiple state updates and race conditions, we should ideally do this in one go.
@@ -255,7 +298,7 @@ export function useNodesState(
 
       return newGame;
     },
-    [nodes, setNodes, ensureContainerHierarchy]
+    [nodes, setNodes, ensureContainerHierarchy, resolvedDefaultGameDuration, resolvedDefaultBreakBetweenGames]
   );
 
   /**

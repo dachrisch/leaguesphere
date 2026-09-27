@@ -406,6 +406,7 @@ export interface GamedayMetadata {
   has_results?: boolean;
   resource_urls?: import('./api').ResourceUrl[];
   game_duration?: number;
+  default_break_between_games?: number;
 }
 
 // ============================================================================

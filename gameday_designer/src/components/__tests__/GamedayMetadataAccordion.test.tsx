@@ -95,6 +95,43 @@ describe('GamedayMetadataAccordion', () => {
     expect(mockOnUpdate).toHaveBeenCalledWith({ name: 'Updated Name' });
   });
 
+  it('shows default game duration and break fields with fallback values', async () => {
+    await renderAccordion();
+
+    expect(screen.getByLabelText('Default game duration (min)')).toHaveValue(70);
+    expect(screen.getByLabelText('Default break between games (min)')).toHaveValue(0);
+  });
+
+  it('shows default game duration and break fields with metadata values', async () => {
+    await renderAccordion({ metadata: { ...mockMetadata, game_duration: 45, default_break_between_games: 15 } });
+
+    expect(screen.getByLabelText('Default game duration (min)')).toHaveValue(45);
+    expect(screen.getByLabelText('Default break between games (min)')).toHaveValue(15);
+  });
+
+  it('calls onUpdate with a parsed number when default game duration changes', async () => {
+    await renderAccordion({ onUpdate: mockOnUpdate });
+    const input = screen.getByLabelText('Default game duration (min)');
+    fireEvent.change(input, { target: { value: '50' } });
+
+    expect(mockOnUpdate).toHaveBeenCalledWith({ game_duration: 50 });
+  });
+
+  it('calls onUpdate with a parsed number when default break between games changes', async () => {
+    await renderAccordion({ onUpdate: mockOnUpdate });
+    const input = screen.getByLabelText('Default break between games (min)');
+    fireEvent.change(input, { target: { value: '10' } });
+
+    expect(mockOnUpdate).toHaveBeenCalledWith({ default_break_between_games: 10 });
+  });
+
+  it('disables default game duration and break fields when readOnly', async () => {
+    await renderAccordion({ readOnly: true });
+
+    expect(screen.getByLabelText('Default game duration (min)')).toBeDisabled();
+    expect(screen.getByLabelText('Default break between games (min)')).toBeDisabled();
+  });
+
   it('collapses when forceCollapsed becomes true', async () => {
     const { rerender } = await renderAccordion({ forceCollapsed: false });
     expect(document.querySelector('.accordion-button')).not.toHaveClass('collapsed');

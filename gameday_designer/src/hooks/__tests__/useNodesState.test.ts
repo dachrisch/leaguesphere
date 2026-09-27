@@ -8,11 +8,16 @@ import { useNodesState } from '../useNodesState';
 import {
   isFieldNode,
   isStageNode,
+  isGameNode,
 } from '../../types/flowchart';
 import type { FlowNode, GameNode, FieldNode, StageNode, FieldNodeData, StageNodeData, GameNodeData } from '../../types/flowchart';
+import { DEFAULT_GAME_DURATION, DEFAULT_BREAK_BETWEEN_GAMES } from '../../utils/tournamentConstants';
 
 describe('useNodesState', () => {
-  const setupHook = (initialNodes: FlowNode[] = []) => {
+  const setupHook = (
+    initialNodes: FlowNode[] = [],
+    globalDefaults?: { defaultGameDuration?: number; defaultBreakBetweenGames?: number }
+  ) => {
     let nodes = initialNodes;
     const setNodes = vi.fn((update) => {
       if (typeof update === 'function') {
@@ -25,7 +30,7 @@ describe('useNodesState', () => {
     const onNodesDeleted = vi.fn();
 
     const { result, rerender } = renderHook(
-      ({ nodes }) => useNodesState(nodes, setNodes, onNodesDeleted),
+      ({ nodes }) => useNodesState(nodes, setNodes, onNodesDeleted, globalDefaults),
       { initialProps: { nodes } }
     );
 
@@ -265,6 +270,119 @@ describe('useNodesState', () => {
       const { result, getNodes } = setupHook();
       act(() => { result.current.addGameNodeInStage(); });
       expect(getNodes()).toHaveLength(3); // field, stage, game
+    });
+
+    it('bakes duration/breakAfter from the target stage defaults when no explicit options are given', () => {
+      const { result, getNodes, rerender } = setupHook();
+
+      let fieldId = '';
+      act(() => { fieldId = result.current.addFieldNode().id; });
+      rerender({ nodes: getNodes() });
+
+      let stageId = '';
+      act(() => {
+        stageId = result.current.addStageNode(fieldId, undefined)!.id;
+      });
+      rerender({ nodes: getNodes() });
+
+      // Give the stage non-default resolved defaults directly (as if it had
+      // been created with custom global defaults or edited afterwards).
+      act(() => {
+        result.current.updateNode(stageId, { defaultGameDuration: 45, defaultBreakBetweenGames: 15 });
+      });
+      rerender({ nodes: getNodes() });
+
+      act(() => { result.current.addGameNodeInStage(stageId); });
+
+      const game = getNodes().find(isGameNode) as GameNode;
+      expect(game.data.duration).toBe(45);
+      expect(game.data.breakAfter).toBe(15);
+    });
+
+    it('falls back to globalDefaults when the target stage has no resolved defaults', () => {
+      const stage = {
+        id: 'stage-1',
+        type: 'stage',
+        parentId: 'field-1',
+        position: { x: 0, y: 0 },
+        data: { type: 'stage', name: 'S', category: 'preliminary', stageType: 'STANDARD', order: 0 } as unknown as StageNodeData,
+      } as unknown as StageNode;
+      const { result, getNodes } = setupHook([stage], { defaultGameDuration: 55, defaultBreakBetweenGames: 10 });
+
+      act(() => { result.current.addGameNodeInStage('stage-1'); });
+
+      const game = getNodes().find(isGameNode) as GameNode;
+      expect(game.data.duration).toBe(55);
+      expect(game.data.breakAfter).toBe(10);
+    });
+
+    it('falls back to the built-in constants when neither the stage nor globalDefaults provide a value', () => {
+      const { result, getNodes } = setupHook();
+      act(() => { result.current.addGameNodeInStage(); });
+
+      const game = getNodes().find(isGameNode) as GameNode;
+      expect(game.data.duration).toBe(DEFAULT_GAME_DURATION);
+      expect(game.data.breakAfter).toBe(DEFAULT_BREAK_BETWEEN_GAMES);
+    });
+
+    it('lets explicit options override both the stage defaults and globalDefaults', () => {
+      const stage = {
+        id: 'stage-1',
+        type: 'stage',
+        parentId: 'field-1',
+        position: { x: 0, y: 0 },
+        data: {
+          type: 'stage', name: 'S', category: 'preliminary', stageType: 'STANDARD', order: 0,
+          defaultGameDuration: 45, defaultBreakBetweenGames: 15,
+        } as unknown as StageNodeData,
+      } as unknown as StageNode;
+      const { result, getNodes } = setupHook([stage], { defaultGameDuration: 55, defaultBreakBetweenGames: 10 });
+
+      act(() => { result.current.addGameNodeInStage('stage-1', { duration: 30, breakAfter: 5 }); });
+
+      const game = getNodes().find(isGameNode) as GameNode;
+      expect(game.data.duration).toBe(30);
+      expect(game.data.breakAfter).toBe(5);
+    });
+  });
+
+  describe('addStageNode / hierarchy creation with globalDefaults', () => {
+    it('addStageNode seeds the new stage defaults from globalDefaults', () => {
+      const { result, getNodes, rerender } = setupHook([], { defaultGameDuration: 40, defaultBreakBetweenGames: 8 });
+
+      let fieldId = '';
+      act(() => { fieldId = result.current.addFieldNode().id; });
+      rerender({ nodes: getNodes() });
+
+      act(() => { result.current.addStageNode(fieldId); });
+
+      const stage = getNodes().find(isStageNode) as StageNode;
+      expect(stage.data.defaultGameDuration).toBe(40);
+      expect(stage.data.defaultBreakBetweenGames).toBe(8);
+    });
+
+    it('addStageNode falls back to the built-in constants without globalDefaults', () => {
+      const { result, getNodes, rerender } = setupHook();
+
+      let fieldId = '';
+      act(() => { fieldId = result.current.addFieldNode().id; });
+      rerender({ nodes: getNodes() });
+
+      act(() => { result.current.addStageNode(fieldId); });
+
+      const stage = getNodes().find(isStageNode) as StageNode;
+      expect(stage.data.defaultGameDuration).toBe(DEFAULT_GAME_DURATION);
+      expect(stage.data.defaultBreakBetweenGames).toBe(DEFAULT_BREAK_BETWEEN_GAMES);
+    });
+
+    it('ensureContainerHierarchy seeds newly created stages from globalDefaults', () => {
+      const { result, getNodes } = setupHook([], { defaultGameDuration: 33, defaultBreakBetweenGames: 3 });
+
+      act(() => { result.current.ensureContainerHierarchy(null); });
+
+      const stage = getNodes().find(isStageNode) as StageNode;
+      expect(stage.data.defaultGameDuration).toBe(33);
+      expect(stage.data.defaultBreakBetweenGames).toBe(3);
     });
   });
 
