@@ -1,11 +1,18 @@
 #!/bin/sh
 set -e
 
-URL="http://localhost/login/"
+URL="${HEALTHCHECK_URL:-http://localhost/login/}"
 ORIGIN="${FRONTEND_URL:-https://leaguesphere.app}"
 
+# Probe over plain HTTP from inside the container, but advertise the scheme the
+# TLS-terminating proxy (Traefik) sets. Stage and prod enable
+# SECURE_SSL_REDIRECT, so without this header Django answers the probe with a
+# 301 to https://, the container is marked unhealthy and the reverse proxy
+# stops routing to it.
+PROTO_HEADER="X-Forwarded-Proto: https"
+
 # 0. Check if service is up
-UP_STATUS=$(curl -A healthcheck-status -s -o /dev/null -w "%{http_code}" "$URL")
+UP_STATUS=$(curl -A healthcheck-status -H "$PROTO_HEADER" -s -o /dev/null -w "%{http_code}" "$URL")
 
 # Maintenance mode: the app redirects all real routes to /maintenance/. The
 # service is up and serving correctly, so report healthy and skip the deep
@@ -13,7 +20,7 @@ UP_STATUS=$(curl -A healthcheck-status -s -o /dev/null -w "%{http_code}" "$URL")
 # the container is marked unhealthy during maintenance and the reverse proxy
 # stops routing to it.
 if [ "$UP_STATUS" -eq 302 ]; then
-  REDIRECT=$(curl -A healthcheck-status -s -o /dev/null -w "%{redirect_url}" "$URL")
+  REDIRECT=$(curl -A healthcheck-status -H "$PROTO_HEADER" -s -o /dev/null -w "%{redirect_url}" "$URL")
   case "$REDIRECT" in
     */maintenance/*)
       echo "Maintenance mode active (status=302 -> $REDIRECT) — healthy"
@@ -29,7 +36,7 @@ fi
 
 # 1. Cookie + CSRF-Token von Login-Form holen
 COOKIE_JAR=$(mktemp)
-HTML=$(curl -A healthcheck-csrf-get -s -c "$COOKIE_JAR" "$URL")
+HTML=$(curl -A healthcheck-csrf-get -H "$PROTO_HEADER" -s -c "$COOKIE_JAR" "$URL")
 
 # CSRF Cookie extrahieren
 CSRFTOKEN=$(grep csrftoken "$COOKIE_JAR" | awk '{print $7}')
@@ -40,7 +47,7 @@ if [ -z "$CSRFTOKEN" ]; then
 fi
 
 # 2. POST mit Cookie + Token
-STATUS=$(curl -A healthcheck-csrf-post -s -o /dev/null -w "%{http_code}" \
+STATUS=$(curl -A healthcheck-csrf-post -H "$PROTO_HEADER" -s -o /dev/null -w "%{http_code}" \
   -X POST "$URL" \
   -H "Origin: $ORIGIN" \
   -H "Referer: $ORIGIN/login/" \
