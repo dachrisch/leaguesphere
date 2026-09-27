@@ -116,6 +116,7 @@ Goal: close every High that is a config change. Target: a single PR touching `le
 - **Where:** `/login/` and `/admin/login/` are plain Django views (`league_manager/urls.py`); DRF's `AnonRateThrottle` covers only the API.
 - **How:** Either add `django-axes` (`AXES_FAILURE_LIMIT = 5`, `AXES_COOLOFF_TIME = 1` hour, lock by username + IP) or add `limit_req_zone` in nginx for those two paths. Prefer `django-axes` because it also covers `/api/accounts/auth/login/` and logs attempts. Do this after Phase 3 if you pick axes, because it needs a shared cache to count across workers.
 - **Verify:** Six wrong passwords in a row returns a lockout response; the test suite includes one such test.
+- **Done as:** nginx `limit_req` on the two HTML login forms (`/login`, `/admin/login`, with and without trailing slash) only. **Follow-up (Phase 3, after the shared cache):** `django-axes` so `/api/accounts/auth/login/` (Knox token login) is covered too and attempts are logged.
 
 ### 2.4 Validate journey events (item 12)
 - **Where:** `journey/views.py:19` (`JourneyEventViewSet.create` reads `request.data` directly).

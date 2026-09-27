@@ -18,21 +18,14 @@ class JourneyEventViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """Create event and handle journey boundaries (login/inactivity)."""
-        user = request.user
-        event_name = request.data.get('event_name')
-        metadata = request.data.get('metadata', {})
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
         # Get or create active journey
-        journey = self._get_or_create_journey(user)
+        journey = self._get_or_create_journey(request.user)
 
         # Create event
-        event = JourneyEvent.objects.create(
-            journey=journey,
-            event_name=event_name,
-            metadata=metadata
-        )
-
-        serializer = self.get_serializer(event)
+        serializer.save(journey=journey)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def _get_or_create_journey(self, user):

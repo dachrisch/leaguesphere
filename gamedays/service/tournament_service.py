@@ -111,7 +111,6 @@ class TournamentService:
         ],
         "border": 0,
         "justify": "center",
-        "escape": False,
     }
 
     @staticmethod

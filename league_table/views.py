@@ -65,7 +65,9 @@ class LeagueScheduleView(View):
             ],
             "border": 0,
             "justify": "left",
-            "escape": False,
+            # Team names are user-controlled: when the TODO in
+            # get_all_schedules() lands, hand-escape rather than flip this.
+            "escape": True,
             "table_id": "schedule",
         }
         context = {
