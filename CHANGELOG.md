@@ -1,5 +1,20 @@
 # Changelog
 
+## [4.32.0](https://github.com/dachrisch/leaguesphere/compare/v4.31.4...v4.32.0) (2026-09-27)
+
+
+### Features
+
+* **designer:** make default game duration and break-between-games configurable in the designer ([#1976](https://github.com/dachrisch/leaguesphere/issues/1976)) ([1748585](https://github.com/dachrisch/leaguesphere/commit/174858559801c5184ab68696035a91725118854b))
+
+
+### Bug Fixes
+
+* escaping, validation and access decisions ([6a7e86b](https://github.com/dachrisch/leaguesphere/commit/6a7e86b78abfae75ea31664be7a4188f782af17c))
+* **gamedays:** retry gamelog writes on MySQL deadlock ([ad13100](https://github.com/dachrisch/leaguesphere/commit/ad13100a73b2c5d408e1de012ae419e20796061c))
+* **gamedays:** retry gamelog writes on MySQL deadlock ([ceb2e58](https://github.com/dachrisch/leaguesphere/commit/ceb2e58e2829e5a062cf66af1e09dc8b49fe6824))
+* settings/edge hardening ([35635b4](https://github.com/dachrisch/leaguesphere/commit/35635b4b070c19a2adc54a643772e41b751148ef))
+
 ## [4.31.4](https://github.com/dachrisch/leaguesphere/compare/v4.31.3...v4.31.4) (2026-09-27)
 
 
