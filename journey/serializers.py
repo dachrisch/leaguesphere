@@ -4,10 +4,8 @@ import re
 from rest_framework import serializers
 from .models import Journey, JourneyEvent
 
-# Event names follow a loose "<area>_<action>" convention (gameday_created,
-# gd_tour_manual_build_started, template_used, ...) that grows as features
-# are added - a fixed enum would go stale immediately. This just rejects
-# garbage/injection-shaped values while allowing the convention through.
+# Event names follow a loose "<area>_<action>" convention that grows with
+# the features, so reject garbage rather than pin a fixed enum.
 EVENT_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9_]+$")
 
 MAX_METADATA_BYTES = 4096

@@ -65,10 +65,8 @@ class LeagueScheduleView(View):
             ],
             "border": 0,
             "justify": "left",
-            # Keep escape=True: team names are user-controlled. If the TODO
-            # in get_all_schedules() ever needs a markup column, hand-escape
-            # the other columns (see GamedayService.get_schedule) instead of
-            # flipping this back to False.
+            # Team names are user-controlled: when the TODO in
+            # get_all_schedules() lands, hand-escape rather than flip this.
             "escape": True,
             "table_id": "schedule",
         }

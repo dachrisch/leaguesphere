@@ -231,10 +231,7 @@ class TestLicenseCellPandasNaSentinel(TestCase):
 
 class TestMatchreportOfficialsTableEscaping(TestCase):
     def test_team_and_name_columns_are_escaped(self):
-        """Team and official name flow unescaped into this table via
-        pandas.to_html(escape=False) then |safe; a malicious value must
-        render as text, not execute as HTML.
-        """
+        """This table reaches the template via |safe."""
         gameday = GamedayFactory(date=date(2022, 5, 1))
         gameinfo = GameinfoFactory(
             gameday=gameday, stage="Hauptrunde", standing="Gruppe 1"
@@ -550,9 +547,8 @@ class TestMatchreportOfficialsLicenseNumber(TestCase):
 
 class TestStaffPasscheckDetailsEscaping(TestCase):
     def test_note_linebreaks_preserved_and_content_escaped(self):
-        """The note column is deliberately transformed (newlines -> <br>);
-        a malicious note must still render as text, not execute as HTML,
-        while multi-line notes keep rendering as line breaks.
+        """The note's newlines become <br>, so escaping must survive that
+        transform without losing the line breaks.
         """
         gameday = GamedayFactory()
         GameinfoFactory(gameday=gameday)
@@ -577,9 +573,7 @@ class TestStaffPasscheckDetailsEscaping(TestCase):
         self.assertIn("line one<br>", html)
 
     def test_null_note_renders_as_empty_cell_not_the_string_none(self):
-        """PasscheckVerification.note is null=True; escape(None) would
-        coerce it to the literal text "None" in the report.
-        """
+        """note is null=True, and escape(None) would render as "None"."""
         gameday = GamedayFactory()
         GameinfoFactory(gameday=gameday)
         PasscheckVerification.objects.create(

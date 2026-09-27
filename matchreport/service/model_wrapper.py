@@ -70,10 +70,8 @@ class MachtreportModelWrapper:
         passchecks["created_at"] = passchecks.created_at.dt.strftime(
             "%Y-%m-%d %H:%M:%S"
         )
-        # Rendered with escape=False (the note column below needs its <br>
-        # markup preserved), so every other free-text column must be
-        # escaped by hand here - pandas won't do it for us. escape_cell()
-        # keeps NULL cells empty (note is null=True) instead of "None".
+        # Rendered with escape=False to keep the note's <br> markup, so every
+        # other free-text column is escaped by hand here.
         for column in ("official_name", "user__username", "team__name"):
             passchecks[column] = passchecks[column].apply(escape_cell)
         passchecks["note"] = passchecks.note.apply(
@@ -287,9 +285,8 @@ class MachtreportModelWrapper:
             officials_df["order"] = officials_df.position.apply(position_order.get)
             officials_df.sort_values("order", ascending=True, inplace=True)
             officials_df.drop(columns=["order"], inplace=True)
-            # Rendered with escape=False (the license_cell/license_number_cell
-            # columns below deliberately contain markup), so every other
-            # free-text column must be escaped by hand here.
+            # Rendered with escape=False for the license cells' markup, so
+            # every other free-text column is escaped by hand here.
             for column in ("official__team__description", "name", "position"):
                 officials_df[column] = officials_df[column].apply(escape_cell)
             officials_df["license_cell"] = officials_df.apply(
@@ -396,10 +393,8 @@ class MachtreportModelWrapper:
         from officials.service.official_profile import official_profile_gamelist_url
 
         profile_url = official_profile_gamelist_url(official_id, season)
-        # official_id has just been through int(), so it can only ever be an
-        # integer's str() representation - there's no free-text input left
-        # to sanitize, but format_html() still escapes profile_url for
-        # defense-in-depth/consistency with the rest of this table.
+        # official_id has been through int(), so there is no free text left
+        # to sanitize; format_html() escapes the url anyway.
         return format_html(
             '<a href="{}" target="_blank" title="Zum Profil des Offiziellen">#{}</a>',
             profile_url,
@@ -410,11 +405,8 @@ class MachtreportModelWrapper:
         games = []
 
         no_flags_text = """<p>In diesem Spiel gab es keine Strafen</p>"""
-        # Unlike "refs" (whose Lizenz/Lizenznummer columns deliberately
-        # contain markup, so it keeps render_config's escape=False and
-        # hand-escapes its other columns - see _get_game_officials_table),
-        # no column in "flags" ever contains markup, so it can safely
-        # override to escape=True.
+        # No column here contains markup (unlike "refs"), so it can override
+        # the shared config's escape=False.
         flags_render_config = {**render_config, "escape": True}
 
         for gameinfo in self._gameinfo.id:

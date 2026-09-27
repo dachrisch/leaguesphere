@@ -147,10 +147,8 @@ class TestGamedayDetailView(TestCase):
 
 
 class TestGamedayDetailViewEscaping(TestCase):
-    """The offense/defense statistics tables are rendered by GamedayDetailView
-    with its shared render config; pin the escaping through the view rather
-    than by calling to_html(escape=True) directly, which would pass even if
-    the view config regressed.
+    """Pinned through the view: calling to_html(escape=True) directly would
+    pass even if the view's render config regressed.
     """
 
     @patch("league_table.service.datatypes.LeagueConfigRuleset.from_ruleset")
@@ -315,10 +313,7 @@ class TestGamedayLeagueStatisticView(TestCase):
             assert v != "Die Statistiken erscheinen nach den ersten Spielen."
 
     def test_league_statistic_view_escapes_team_name(self):
-        """Team names flow unescaped into these tables via
-        pandas.to_html(escape=False) then |safe in the template; a
-        malicious team name must render as text, not execute as HTML.
-        """
+        """These tables reach the template via |safe."""
         gameday = DBSetup().g62_finished(season=SeasonFactory(name="2025"))
         gameinfo = gameday.gameinfo_set.first()
         team_1_result, team_2_result = list(gameinfo.gameresult_set.all())
@@ -419,10 +414,7 @@ class TestGamedayGameDetailView(TestCase):
         )
 
     def test_detail_view_escapes_team_name_in_events_and_split_score_tables(self):
-        """Team descriptions flow unescaped into these tables via
-        pandas.to_html(escape=False) then |safe; a malicious team name
-        must render as text, not execute as HTML.
-        """
+        """These tables reach the template via |safe."""
         home = TeamFactory(name="Home XSS", description="<script>alert(1)</script>")
         away = TeamFactory(name="Away XSS", description="Away Desc")
         gameinfo = DBSetup().create_teamlog_home_and_away(home, away)
@@ -443,9 +435,8 @@ class TestGamedayGameDetailView(TestCase):
         assert "&lt;script&gt;alert(1)&lt;/script&gt;" in content
 
     def test_detail_view_json_ld_cannot_break_out_of_its_script_tag(self):
-        """sports_event_ld is embedded raw inside <script type="application/
-        ld+json">; a team description containing "</script>" must be
-        translated to \\u003C/script\\u003E so it cannot close the tag early.
+        """A description containing "</script>" must not close the JSON-LD
+        tag early.
         """
         home = TeamFactory(
             name="LD XSS", description="</script><script>alert(1)</script>"

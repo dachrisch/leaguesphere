@@ -1,22 +1,5 @@
-"""Delete JourneyEvent rows older than a retention window.
-
-JourneyEvent.metadata is an uncapped JSONField written from an
-authenticated-but-otherwise-unvalidated API endpoint, with no retention
-policy - left alone it grows without bound. Dry-run by default.
-
-Usage
------
-Dry-run (default)::
-
-    python manage.py purge_old_journey_events
-
-Delete events older than the default (90 days)::
-
-    python manage.py purge_old_journey_events --execute
-
-Custom retention window::
-
-    python manage.py purge_old_journey_events --days 30 --execute
+"""Delete JourneyEvent rows older than a retention window, so the uncapped
+metadata JSONField stops growing without bound. Dry-run unless --execute.
 """
 
 from datetime import timedelta
@@ -52,8 +35,7 @@ class Command(BaseCommand):
         days = opts["days"]
         execute = opts["execute"]
         if days <= 0:
-            # 0 or negative would put the cutoff at/after now and delete
-            # (nearly) every event.
+            # 0 or negative would put the cutoff at/after now.
             raise CommandError(f"--days must be a positive integer (got {days}).")
         cutoff = timezone.now() - timedelta(days=days)
         stale_events = JourneyEvent.objects.filter(created_at__lt=cutoff)

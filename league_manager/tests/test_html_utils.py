@@ -1,7 +1,3 @@
-"""Cells of pandas tables that are rendered with escape=False must be escaped
-by hand -- but NULL/NaN cells must stay empty, not become the text "None".
-"""
-
 import math
 
 import pandas as pd

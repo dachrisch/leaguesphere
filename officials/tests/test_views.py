@@ -685,10 +685,7 @@ class TestAddInternalGameOfficialUpdateView(WebTest):
         )
 
     def test_official_name_is_escaped_in_success_message(self):
-        """An official's name flows unescaped into the success message via
-        mark_safe(); a name containing markup must render as text, not
-        execute as HTML.
-        """
+        """The success message is built with format_html, not mark_safe."""
         user = DBSetup().create_new_user("some user", is_staff=True)
         self.app.set_user(user)
         DBSetup().g62_status_empty()
@@ -1243,11 +1240,7 @@ class TestGameOfficialImportConfirmView(WebTest):
         assert content.count("ID: ") == 0
 
     def test_report_results_escapes_error_detail(self):
-        """_report_results joins per-row error messages (which can echo
-        back CSV cell content, e.g. from a ValueError/DatabaseError raised
-        while parsing an attacker-controlled cell) into one mark_safe()'d
-        warning message. Markup in an error message must render as text.
-        """
+        """Per-row error messages can echo back CSV cell content."""
         request = RequestFactory().get("/")
         request.session = {}
         request._messages = FallbackStorage(request)

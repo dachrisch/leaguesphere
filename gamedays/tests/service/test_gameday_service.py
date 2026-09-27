@@ -25,10 +25,7 @@ class TestGamedayService(TestCase):
         assert gs.get_final_table().to_json() == EmptyFinalTable().to_json()
 
     def test_get_schedule_escapes_team_names(self):
-        """Team names (Heim/Gast) flow unescaped into the schedule table
-        via pandas.to_html(escape=False) then |safe; a malicious team name
-        must render as text, not execute as HTML.
-        """
+        """The schedule table reaches the template via |safe."""
         gameday = DBSetup().g62_status_empty()
         first_game = Gameinfo.objects.first()
         home_result = first_game.gameresult_set.filter(isHome=True).first()
@@ -42,10 +39,8 @@ class TestGamedayService(TestCase):
         assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
 
     def test_get_schedule_escapes_officials_name_while_keeping_italic_markup(self):
-        """The officials column is deliberately wrapped in <i> markup
-        (gameday_service.py's get_schedule()); the officiating team's name
-        must still be escaped before being wrapped, or a malicious team
-        name breaks out of the <i> tag.
+        """The officials name is wrapped in <i> markup, so it must be escaped
+        before wrapping or it breaks out of the tag.
         """
         gameday = DBSetup().g62_status_empty()
         first_game = Gameinfo.objects.first()

@@ -153,10 +153,7 @@ class EventsTableError:
 
     def _build_message(self) -> str:
         """Build a user-friendly error message"""
-        # Rendered with |safe in the template (to_html() mirrors
-        # DataFrame.to_html()'s interface, but there's no pandas escaping
-        # step behind it here) - team descriptions are staff-controlled, so
-        # they must be escaped before going into the message.
+        # Rendered with |safe, and nothing escapes on the way there.
         home_team = escape(self.home_team)
         away_team = escape(self.away_team)
         expected = f"{home_team} vs {away_team}"
@@ -235,9 +232,8 @@ class GamedayService:
 
     def get_schedule(self):
         schedule = self.get_schedule_data()
-        # Rendered with escape=False (the officials column below needs its
-        # <i> markup preserved), so every other free-text column must be
-        # escaped by hand here - pandas won't do it for us.
+        # Rendered with escape=False to keep the officials <i> markup, so
+        # every other free-text column is escaped by hand here.
         for column in (FIELD, HOME, AWAY, STANDING, STAGE, STATUS):
             schedule[column] = schedule[column].apply(escape_cell)
         schedule[OFFICIALS_NAME] = schedule[OFFICIALS_NAME].apply(

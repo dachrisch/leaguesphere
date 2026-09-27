@@ -100,10 +100,7 @@ class TestGamedayGameServiceDataErrors(TestCase):
         assert "Extra Team Desc" in events_table.error_message
 
     def test_events_contain_extra_team_escapes_team_name(self):
-        """The error message is rendered with |safe in the template; a
-        malicious team description must render as text, not execute as
-        HTML.
-        """
+        """The error message reaches the template via |safe."""
         gameday = DBSetup().g62_finished()
         gameinfo = list(Gameinfo.objects.filter(gameday=gameday.pk))[0]
         home_team = list(Gameresult.objects.filter(gameinfo=gameinfo, isHome=True))[

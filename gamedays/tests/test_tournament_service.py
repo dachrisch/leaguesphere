@@ -226,10 +226,7 @@ class TournamentServiceTests(TestCase):
         self.assertIsNotNone(context["rows"][0]["columns"][0]["table_html"])
 
     def test_build_context_escapes_team_name(self):
-        """Team names flow unescaped into this table via
-        pandas.to_html(escape=False) then |safe in the template; a
-        malicious team name must render as text, not execute as HTML.
-        """
+        """This table reaches the template via |safe."""
         malicious_team = TeamFactory(
             name="Evil Team", description="<script>alert(1)</script>"
         )
