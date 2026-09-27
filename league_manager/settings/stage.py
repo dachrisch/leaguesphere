@@ -1,32 +1,11 @@
-import os
-
 # noinspection PyUnresolvedReferences
 from .base import *
-from django.core.exceptions import ImproperlyConfigured
+from ._env_guard import require_env_vars
 
-# base.py falls back to insecure defaults (user/user@127.0.0.1, no
-# SECRET_KEY) when these are unset, which is fine for local dev but must
-# never happen silently on stage: fail fast at import time instead.
-#
-# Guarded on DJANGO_SETTINGS_MODULE actually pointing here (rather than just
-# checking os.environ) because league_manager/settings/__init__.py imports
-# this module as an incidental fallback whenever the `league_manager` env
-# var isn't "dev"/"test_sqlite" -- which happens on every settings import,
-# including in local dev/test runs that target dev.py/test_sqlite.py
-# directly. Without this guard, this check would fire there too.
-if os.environ.get("DJANGO_SETTINGS_MODULE") == __name__:
-    _REQUIRED_ENV_VARS = [
-        "SECRET_KEY",
-        "MYSQL_HOST",
-        "MYSQL_DB_NAME",
-        "MYSQL_USER",
-        "MYSQL_PWD",
-    ]
-    _missing_env_vars = [var for var in _REQUIRED_ENV_VARS if not os.environ.get(var)]
-    if _missing_env_vars:
-        raise ImproperlyConfigured(
-            f"stage settings require these environment variables to be set: {', '.join(_missing_env_vars)}"
-        )
+# Refuse to start without the DB/SECRET_KEY env vars -- see _env_guard.py
+# for why this is guarded on being the *active* settings (directly or via
+# the league_manager.settings package fallback) rather than on os.environ.
+require_env_vars(__name__, "stage")
 
 DEBUG = False
 MOCK_TEAMS = False
