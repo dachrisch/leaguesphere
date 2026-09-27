@@ -4,7 +4,7 @@ import time
 import unittest
 from unittest import mock
 
-from django.db import connection
+from django.db import OperationalError, connection
 from django.test import TestCase, TransactionTestCase
 
 from gamedays.models import Team, Gameinfo, Gameresult, TeamLog
@@ -236,6 +236,72 @@ class TestGamelogSequenceLocking(TestCase):
             .distinct()
         )
         assert sequences == [1, 2, 3]
+
+
+class TestGamelogWriteRetry(TestCase):
+    """_write_gamelog must restart on InnoDB deadlocks (#2006)."""
+
+    def test_retries_deadlock_then_succeeds(self):
+        from gamedays.service.game_service import GameService
+        from gamedays.service.wrapper.gameresult_wrapper import GameresultWrapper
+
+        gameday = DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=game, isHome=True).team
+        event = [{"name": "Touchdown", "input": None, "player": "19"}]
+
+        real_lock = GameresultWrapper.lock
+        calls = {"count": 0}
+
+        def flaky_lock(lock_self):
+            calls["count"] += 1
+            if calls["count"] == 1:
+                raise OperationalError(1213, "Deadlock found when trying to get lock")
+            return real_lock(lock_self)
+
+        with mock.patch.object(
+            GameresultWrapper, "lock", autospec=True, side_effect=flaky_lock
+        ):
+            GameService(game.pk).create_gamelog(home.pk, event, gameday.author, 1)
+
+        assert calls["count"] >= 2
+        assert TeamLog.objects.filter(gameinfo=game, event="Touchdown").exists()
+
+    def test_non_lock_error_is_not_retried(self):
+        from gamedays.service.game_service import GameService
+        from gamedays.service.wrapper.gameresult_wrapper import GameresultWrapper
+
+        gameday = DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=game, isHome=True).team
+        event = [{"name": "Touchdown", "input": None, "player": "19"}]
+
+        with mock.patch.object(
+            GameresultWrapper, "lock", side_effect=ValueError("boom")
+        ) as lock:
+            with self.assertRaises(ValueError):
+                GameService(game.pk).create_gamelog(home.pk, event, gameday.author, 1)
+            assert lock.call_count == 1
+
+    def test_gives_up_after_max_attempts(self):
+        from gamedays.service.game_service import GameService
+        from gamedays.service.wrapper.gameresult_wrapper import GameresultWrapper
+
+        gameday = DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=game, isHome=True).team
+        event = [{"name": "Touchdown", "input": None, "player": "19"}]
+
+        with mock.patch.object(
+            GameresultWrapper,
+            "lock",
+            side_effect=OperationalError(
+                1213, "Deadlock found when trying to get lock"
+            ),
+        ) as lock:
+            with self.assertRaises(OperationalError):
+                GameService(game.pk).create_gamelog(home.pk, event, gameday.author, 1)
+            assert lock.call_count == 3
 
 
 @unittest.skipUnless(
