@@ -15,6 +15,7 @@ from gamedays.api.serializers import (
 )
 from gamedays.models import Team, Gameinfo, GameSetup, Gameresult, TeamLog
 from gamedays.service.game_service import GameService
+from gamedays.service.wrapper.gameinfo_wrapper import IllegalGameTransition
 from gamedays.service.gameday_service import GamedayService
 from gamedays.service.model_helper import GameresultHelper, TeamLogHelper
 
@@ -174,7 +175,10 @@ class GameHalftimeAPIView(APIView):
             game_service = GameService(pk)
         except Gameinfo.DoesNotExist:
             raise NotFound(detail=f"No game found for gameId {pk}")
-        game_service.update_halftime(request.user)
+        try:
+            game_service.update_halftime(request.user)
+        except IllegalGameTransition as e:
+            return Response({"detail": str(e)}, status=HTTPStatus.CONFLICT)
         return Response()
 
 
@@ -188,7 +192,10 @@ class GameFinalizeUpdateView(UpdateAPIView):
             game_service = GameService(pk)
         except Gameinfo.DoesNotExist:
             raise NotFound(detail=f"No game found for gameId {pk}")
-        game_service.update_game_finished(request.user)
+        try:
+            game_service.update_game_finished(request.user)
+        except IllegalGameTransition as e:
+            return Response({"detail": str(e)}, status=HTTPStatus.CONFLICT)
         game_setup, _ = GameSetup.objects.get_or_create(gameinfo_id=pk)
         serializer = GameFinalizer(instance=game_setup, data=request.data)
         if serializer.is_valid():
@@ -219,7 +226,10 @@ class GameSetupCreateOrUpdateView(RetrieveUpdateAPIView):
         serializer = GameSetupSerializer(instance=game_setup, data=request.data)
         if is_game_setup_created:
             game_service = GameService(pk)
-            game_service.update_gamestart(request.user)
+            try:
+                game_service.update_gamestart(request.user)
+            except IllegalGameTransition as e:
+                return Response({"detail": str(e)}, status=HTTPStatus.CONFLICT)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=HTTPStatus.OK)
