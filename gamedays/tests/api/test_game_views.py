@@ -559,6 +559,15 @@ class TestGameHalftime(WebTest):
         assert first_game.status == "2. Halbzeit"
         assert re.match(r"^(0\d|1\d|2[0-3]):[0-5]\d", str(first_game.gameHalftime))
 
+    def test_halftime_unknown_game_404(self):
+        DBSetup().create_new_user()
+        response = self.app.put_json(
+            reverse(API_GAME_HALFTIME, kwargs={"pk": 999999}),
+            headers=DBSetup().get_token_header(),
+            expect_errors=True,
+        )
+        assert response.status_code == HTTPStatus.NOT_FOUND
+
 
 class TestGameFinalize(WebTest):
     def test_game_is_finalized(self):
@@ -585,6 +594,16 @@ class TestGameFinalize(WebTest):
         assert first_game.status == "beendet"
         assert re.match(r"^(0\d|1\d|2[0-3]):[0-5]\d", str(first_game.gameFinished))
 
+    def test_finalize_unknown_game_404(self):
+        DBSetup().create_new_user()
+        response = self.app.put_json(
+            reverse(API_GAME_FINALIZE, kwargs={"pk": 999999}),
+            {"note": "x"},
+            headers=DBSetup().get_token_header(),
+            expect_errors=True,
+        )
+        assert response.status_code == HTTPStatus.NOT_FOUND
+
 
 class TestConfigPenaltiesAPIView(WebTest):
     def test_get_penalty_list(self):
@@ -605,3 +624,13 @@ class TestGamePossessionAPIView(WebTest):
         )
         assert response.status_code == HTTPStatus.OK
         assert Gameinfo.objects.last().in_possession == "name of team"
+
+    def test_possession_unknown_game_404(self):
+        DBSetup().create_new_user()
+        response = self.app.put_json(
+            reverse(API_GAME_POSSESSION, kwargs={"pk": 999999}),
+            {"team": "A1"},
+            headers=DBSetup().get_token_header(),
+            expect_errors=True,
+        )
+        assert response.status_code == HTTPStatus.NOT_FOUND

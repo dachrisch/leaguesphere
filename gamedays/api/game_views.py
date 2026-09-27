@@ -169,7 +169,11 @@ class GameLogAPIView(APIView):
 
 class GameHalftimeAPIView(APIView):
     def put(self, request, *args, **kwargs):
-        game_service = GameService(kwargs.get("pk"))
+        pk = kwargs.get("pk")
+        try:
+            game_service = GameService(pk)
+        except Gameinfo.DoesNotExist:
+            raise NotFound(detail=f"No game found for gameId {pk}")
         game_service.update_halftime(request.user)
         return Response()
 
@@ -180,7 +184,10 @@ class GameFinalizeUpdateView(UpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         pk = kwargs.get("pk")
-        game_service = GameService(pk)
+        try:
+            game_service = GameService(pk)
+        except Gameinfo.DoesNotExist:
+            raise NotFound(detail=f"No game found for gameId {pk}")
         game_service.update_game_finished(request.user)
         game_setup, _ = GameSetup.objects.get_or_create(gameinfo_id=pk)
         serializer = GameFinalizer(instance=game_setup, data=request.data)
@@ -230,7 +237,11 @@ class GamesToWhistleAPIView(APIView):
 
 class GamePossessionAPIView(APIView):
     def put(self, request, *args, **kwargs):
-        game_service = GameService(kwargs.get("pk"))
+        pk = kwargs.get("pk")
+        try:
+            game_service = GameService(pk)
+        except Gameinfo.DoesNotExist:
+            raise NotFound(detail=f"No game found for gameId {pk}")
         game_service.update_team_in_possesion(request.data.get("team"))
         return Response()
 
