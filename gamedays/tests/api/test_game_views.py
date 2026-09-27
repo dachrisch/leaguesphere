@@ -564,7 +564,7 @@ class TestGameHalftime(WebTest):
         assert first_game.status == "2. Halbzeit"
         assert re.match(r"^(0\d|1\d|2[0-3]):[0-5]\d", str(first_game.gameHalftime))
 
-def test_halftime_unknown_game_404(self):
+    def test_halftime_unknown_game_404(self):
         DBSetup().create_new_user()
         response = self.app.put_json(
             reverse(API_GAME_HALFTIME, kwargs={"pk": 999999}),
@@ -583,6 +583,7 @@ def test_halftime_unknown_game_404(self):
             expect_errors=True,
         )
         assert response.status_code == HTTPStatus.CONFLICT
+        assert response.json == {"detail": "Dieser Spielstatus erlaubt keine Halbzeit."}
         assert Gameinfo.objects.first().status == "Geplant"
 
     def test_halftime_after_finalize_conflict(self):
@@ -596,6 +597,7 @@ def test_halftime_unknown_game_404(self):
             expect_errors=True,
         )
         assert response.status_code == HTTPStatus.CONFLICT
+        assert response.json == {"detail": "Dieser Spielstatus erlaubt keine Halbzeit."}
         assert Gameinfo.objects.first().status == "beendet"
 
 
@@ -632,7 +634,7 @@ class TestGameFinalize(WebTest):
         assert first_game.status == "beendet"
         assert re.match(r"^(0\d|1\d|2[0-3]):[0-5]\d", str(first_game.gameFinished))
 
-def test_finalize_unknown_game_404(self):
+    def test_finalize_unknown_game_404(self):
         DBSetup().create_new_user()
         response = self.app.put_json(
             reverse(API_GAME_FINALIZE, kwargs={"pk": 999999}),
@@ -653,6 +655,7 @@ def test_finalize_unknown_game_404(self):
             expect_errors=True,
         )
         assert response.status_code == HTTPStatus.CONFLICT
+        assert response.json == {"detail": "Dieser Spielstatus erlaubt kein Spielende."}
         assert Gameinfo.objects.first().status == "Geplant"
 
     def test_finalize_allowed_from_first_half(self):

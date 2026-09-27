@@ -1,4 +1,5 @@
 import json
+import logging
 from collections import OrderedDict
 from http import HTTPStatus
 
@@ -18,6 +19,8 @@ from gamedays.service.game_service import GameService
 from gamedays.service.wrapper.gameinfo_wrapper import IllegalGameTransition
 from gamedays.service.gameday_service import GamedayService
 from gamedays.service.model_helper import GameresultHelper, TeamLogHelper
+
+logger = logging.getLogger(__name__)
 
 
 def _validate_gamelog_payload(data):
@@ -178,7 +181,13 @@ class GameHalftimeAPIView(APIView):
         try:
             game_service.update_halftime(request.user)
         except IllegalGameTransition as e:
-            return Response({"detail": str(e)}, status=HTTPStatus.CONFLICT)
+            logger.warning(
+                "Rejected halftime transition for game %s: %s", kwargs.get("pk"), e
+            )
+            return Response(
+                {"detail": "Dieser Spielstatus erlaubt keine Halbzeit."},
+                status=HTTPStatus.CONFLICT,
+            )
         return Response()
 
 
@@ -195,7 +204,11 @@ class GameFinalizeUpdateView(UpdateAPIView):
         try:
             game_service.update_game_finished(request.user)
         except IllegalGameTransition as e:
-            return Response({"detail": str(e)}, status=HTTPStatus.CONFLICT)
+            logger.warning("Rejected finalize for game %s: %s", pk, e)
+            return Response(
+                {"detail": "Dieser Spielstatus erlaubt kein Spielende."},
+                status=HTTPStatus.CONFLICT,
+            )
         game_setup, _ = GameSetup.objects.get_or_create(gameinfo_id=pk)
         serializer = GameFinalizer(instance=game_setup, data=request.data)
         if serializer.is_valid():
@@ -229,7 +242,11 @@ class GameSetupCreateOrUpdateView(RetrieveUpdateAPIView):
             try:
                 game_service.update_gamestart(request.user)
             except IllegalGameTransition as e:
-                return Response({"detail": str(e)}, status=HTTPStatus.CONFLICT)
+                logger.warning("Rejected gamestart for game %s: %s", pk, e)
+                return Response(
+                    {"detail": "Dieser Spielstatus erlaubt keinen Spielstart."},
+                    status=HTTPStatus.CONFLICT,
+                )
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=HTTPStatus.OK)
