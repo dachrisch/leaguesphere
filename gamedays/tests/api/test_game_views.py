@@ -619,11 +619,11 @@ class TestGamePossessionAPIView(WebTest):
         assert last_game.in_possession == "A1"
         response = self.app.put_json(
             reverse(API_GAME_POSSESSION, kwargs={"pk": last_game.pk}),
-            {"team": "name of team"},
+            {"team": "B1"},
             headers=DBSetup().get_token_header(),
         )
         assert response.status_code == HTTPStatus.OK
-        assert Gameinfo.objects.last().in_possession == "name of team"
+        assert Gameinfo.objects.last().in_possession == "B1"
 
     def test_possession_unknown_game_404(self):
         DBSetup().create_new_user()
@@ -634,3 +634,15 @@ class TestGamePossessionAPIView(WebTest):
             expect_errors=True,
         )
         assert response.status_code == HTTPStatus.NOT_FOUND
+
+    def test_put_game_possession_rejects_unknown_team(self):
+        DBSetup().g62_status_empty()
+        last_game: Gameinfo = Gameinfo.objects.last()
+        response = self.app.put_json(
+            reverse(API_GAME_POSSESSION, kwargs={"pk": last_game.pk}),
+            {"team": "Not A Real Team XYZ"},
+            headers=DBSetup().get_token_header(),
+            expect_errors=True,
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert Gameinfo.objects.last().in_possession == "A1"

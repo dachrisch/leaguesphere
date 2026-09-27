@@ -13,7 +13,7 @@ from gamedays.api.serializers import (
     GameSetupSerializer,
     GameLogSerializer,
 )
-from gamedays.models import Team, Gameinfo, GameSetup, TeamLog
+from gamedays.models import Team, Gameinfo, GameSetup, Gameresult, TeamLog
 from gamedays.service.game_service import GameService
 from gamedays.service.gameday_service import GamedayService
 from gamedays.service.model_helper import GameresultHelper, TeamLogHelper
@@ -242,7 +242,19 @@ class GamePossessionAPIView(APIView):
             game_service = GameService(pk)
         except Gameinfo.DoesNotExist:
             raise NotFound(detail=f"No game found for gameId {pk}")
-        game_service.update_team_in_possesion(request.data.get("team"))
+        team = request.data.get("team")
+        home = Gameresult.objects.get(
+            gameinfo=game_service.gameinfo.gameinfo, isHome=True
+        ).team
+        away = Gameresult.objects.get(
+            gameinfo=game_service.gameinfo.gameinfo, isHome=False
+        ).team
+        valid_teams = {str(home.pk), home.name, str(away.pk), away.name}
+        if team not in valid_teams:
+            raise ValidationError(
+                {"team": f"must be one of the game's teams ({home.name}, {away.name})"}
+            )
+        game_service.update_team_in_possesion(team)
         return Response()
 
 
