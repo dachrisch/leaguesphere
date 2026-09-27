@@ -1,6 +1,8 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
+
+const srcDir = fileURLToPath(new URL('./src', import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
@@ -9,8 +11,10 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        widget: path.resolve(import.meta.dirname, 'src/widget/main.tsx'),
-        generator: path.resolve(import.meta.dirname, 'src/generator/main.tsx'),
+        widget: fileURLToPath(new URL('./src/widget/main.tsx', import.meta.url)),
+        generator: fileURLToPath(
+          new URL('./src/generator/main.tsx', import.meta.url)
+        ),
       },
       output: {
         entryFileNames: '[name].js',
@@ -27,7 +31,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(import.meta.dirname, './src'),
+      '@': srcDir,
     },
   },
 });
