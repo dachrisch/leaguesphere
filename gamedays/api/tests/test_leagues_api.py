@@ -25,7 +25,4 @@ class LeagueListApiTest(APITestCase):
             assert "slug" in item, f"league {item['name']} has no slug"
         by_name = {item["name"]: item for item in response.data}
         assert by_name["DKB DFFL"]["slug"] == "dffl"
-        assert (
-            by_name["Flag Football Bundesliga"]["slug"]
-            == "flag-football-bundesliga"
-        )
+        assert by_name["Flag Football Bundesliga"]["slug"] == "flag-football-bundesliga"
