@@ -492,7 +492,7 @@ class GamedayGameDetailView(DetailView):
         game_setup_details = {}
 
         if split_score_repaired:
-            split_score_table_html = f"""{split_score_table_html}</ br>
+            split_score_table_html = f"""{split_score_table_html}<br>
 <small>Die Aufteilung der Punkte je Halbzeit kann eventuell inkorrekt sein.</small>"""
 
         events_table = ggs.get_events_table()
