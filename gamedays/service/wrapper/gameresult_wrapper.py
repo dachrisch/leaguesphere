@@ -1,8 +1,10 @@
+import logging
+
 from django.db import transaction
-from django.db.models import F, Value
-from django.db.models.functions import Coalesce, Greatest
 
 from gamedays.models import Gameresult, Team, Gameinfo
+
+logger = logging.getLogger(__name__)
 
 
 class GameresultWrapper(object):
@@ -32,23 +34,42 @@ class GameresultWrapper(object):
             gameresult.pa = gameresult.pa + points_against
         gameresult.save()
 
+    def lock(self) -> dict[bool, Gameresult]:
+        """Lock the game's result rows until the surrounding transaction ends."""
+        return {
+            gameresult.isHome: gameresult
+            for gameresult in Gameresult.objects.select_for_update()
+            .filter(gameinfo=self.gameinfo)
+            .order_by("pk")
+        }
+
     def apply_score_change(self, deltas: dict):
         """Shift the stored half scores by ``{(is_home, "fh"|"sh"): delta}``.
 
         Scores that did not come from the gamelog (entered manually in the
         designer results editor) are kept instead of being overwritten (#1988).
-        ``pa`` is re-derived from the opponent's stored halves.
+        ``pa`` is re-derived from the opponent's stored halves. A half that
+        would drop below 0 (a manual edit lowered it below the gamelog points
+        now being removed) is stored as 0 and logged.
         """
         with transaction.atomic():
+            gameresults = self.lock()
             for (is_home, half), delta in deltas.items():
-                Gameresult.objects.filter(
-                    gameinfo=self.gameinfo, isHome=is_home
-                ).update(**{half: Greatest(Coalesce(F(half), Value(0)) + delta, 0)})
-            for is_home in (True, False):
-                opponent = self._get_gameresult(not is_home)
-                Gameresult.objects.filter(
-                    gameinfo=self.gameinfo, isHome=is_home
-                ).update(pa=self._calc_score(opponent))
+                gameresult = gameresults[is_home]
+                score = (getattr(gameresult, half) or 0) + delta
+                if score < 0:
+                    logger.warning(
+                        "Gameresult %s %s would drop to %s after gamelog change %+d, storing 0",
+                        gameresult.pk,
+                        half,
+                        score,
+                        delta,
+                    )
+                    score = 0
+                setattr(gameresult, half, score)
+            for is_home, gameresult in gameresults.items():
+                gameresult.pa = self._calc_score(gameresults[not is_home])
+                gameresult.save()
 
     def _get_team_name(self, is_home):
         return self._get_gameresult(is_home).team.name

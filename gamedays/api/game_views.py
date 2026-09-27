@@ -91,7 +91,6 @@ class GameLogAPIView(APIView):
             gamelog = game_service.create_gamelog(
                 data.get("team"), data.get("event"), request.user, data.get("half")
             )
-            game_service.update_score(gamelog)
             return Response(
                 json.loads(gamelog.as_json(), object_pairs_hook=OrderedDict),
                 status=HTTPStatus.CREATED,
@@ -120,7 +119,6 @@ class GameLogAPIView(APIView):
             )
         game_service = GameService(game_id)
         gamelog = game_service.delete_gamelog(sequence)
-        game_service.update_score(gamelog)
         return Response(
             json.loads(gamelog.as_json(), object_pairs_hook=OrderedDict),
             status=HTTPStatus.OK,
