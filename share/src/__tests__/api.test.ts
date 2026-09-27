@@ -28,8 +28,9 @@ describe('url builders', () => {
     expect(teamsUrl('Renegades')).toBe('/api/teams/?search=Renegades&page_size=50');
   });
 
-  it('encodes league and season in the table url', () => {
+  it('encodes league in the table url and omits an optional season', () => {
     expect(leagueTableUrl('dffl', '2026')).toBe('/api/league-table/dffl/2026/');
+    expect(leagueTableUrl('dffl')).toBe('/api/league-table/dffl/');
   });
 });
 
@@ -55,12 +56,12 @@ describe('fetchers', () => {
     expect(await fetchLiveticker(fetcher)).toEqual([{ gameId: 1 }]);
   });
 
-  it('fetches a league table', async () => {
+  it('fetches the latest league table when no season is given', async () => {
     const fetcher = vi.fn(async () =>
       jsonResponse({ league: { slug: 'dffl', name: 'DFFL' }, season: {}, standing: [] })
     );
-    await fetchLeagueTable('dffl', '2026', fetcher);
-    expect(fetcher).toHaveBeenCalledWith('/api/league-table/dffl/2026/', {
+    await fetchLeagueTable('dffl', undefined, fetcher);
+    expect(fetcher).toHaveBeenCalledWith('/api/league-table/dffl/', {
       headers: { Accept: 'application/json' },
     });
   });

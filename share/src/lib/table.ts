@@ -1,18 +1,18 @@
 import type { Snapshot } from './types';
 
-export function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
 export interface LeagueSeason {
   leagueName: string;
   seasonName: string;
 }
 
+/**
+ * The most recent league+season the given teams actually play in.
+ *
+ * The league-table API is keyed by slugs, but the snapshot only exposes
+ * display names (`league_display`, `season_display`). Callers therefore
+ * resolve the league name to its slug via `/api/leagues/` and fetch the
+ * table without a season, which the API resolves to the latest season.
+ */
 export function pickLeagueSeason(
   snapshot: Snapshot,
   teamIds: number[]

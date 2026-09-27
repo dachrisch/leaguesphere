@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import type { CSSProperties } from 'react';
 
 import { LiveCard } from '../components/LiveCard';
 import { PoweredBy } from '../components/PoweredBy';
@@ -24,13 +23,12 @@ export function Live({
   const games = liveFeed.filter((game) => watchedIds.has(game.gameId));
 
   return (
-    <div
-      className="share-widget"
-      style={{ '--share-accent': `#${config.color}` } as CSSProperties}
-    >
+    <div className="share-widget">
       <h2 className="share-team__name">Live</h2>
       {games.length === 0 ? (
-        <p className="share-empty">Kein Live-Spiel gerade.</p>
+        <div className="content-section">
+          <p className="share-empty">Kein Live-Spiel gerade.</p>
+        </div>
       ) : (
         games.map((game) => <LiveCard key={game.gameId} game={game} />)
       )}

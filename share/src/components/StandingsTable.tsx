@@ -8,17 +8,17 @@ export function StandingsTable({
   highlightTeamIds: number[];
 }) {
   return (
-    <table className="share-table">
+    <table className="table table-sm table-hover share-table mb-0">
       <thead>
         <tr>
-          <th>#</th>
+          <th>Rang</th>
           <th>Team</th>
           <th>Sp</th>
           <th>S</th>
           <th>U</th>
           <th>N</th>
-          <th>P+</th>
-          <th>P-</th>
+          <th>EP</th>
+          <th>GP</th>
           <th>Diff</th>
           <th>Pkt</th>
         </tr>
@@ -42,7 +42,7 @@ export function StandingsTable({
             <td>{row.pf}</td>
             <td>{row.pa}</td>
             <td>{row.diff}</td>
-            <td>{row.win_points}</td>
+            <td className="fw-semibold">{row.win_points}</td>
           </tr>
         ))}
       </tbody>

@@ -36,13 +36,14 @@ function CopyField({ label, value }: { label: string; value: string }) {
     }
   };
   return (
-    <label className="share-gen__field">
-      <span>{label}</span>
-      <textarea readOnly rows={4} value={value} />
-      <button type="button" onClick={copy}>
+    <div className="mb-3">
+      <label className="form-label small text-muted">{label}</label>
+      <textarea className="form-control" readOnly rows={4} value={value} />
+      <button type="button" className="btn btn-sm btn-outline-secondary mt-1" onClick={copy}>
+        <i className="bi bi-clipboard me-1" />
         {copied ? 'Kopiert!' : 'Kopieren'}
       </button>
-    </label>
+    </div>
   );
 }
 
@@ -84,157 +85,188 @@ export function App() {
 
   return (
     <main className="share-gen">
-      <h1>LeagueSphere Widget-Generator</h1>
-      <p>
-        Team auswählen, Optionen festlegen und den fertigen Einbettungscode
-        kopieren. Das Widget zeigt nur die ausgewählten Teams.
+      <h1>LeagueSphere Widget</h1>
+      <p className="text-muted">
+        Team auswählen, Optionen festlegen und den Einbettungscode kopieren. Das
+        Widget zeigt nur die ausgewählten Teams.
       </p>
 
-      <section className="share-gen__section">
-        <h2>1. Teams</h2>
+      <div className="content-section">
+        <h2 className="h5">1. Teams</h2>
         <input
           type="search"
+          className="form-control"
           placeholder="Team suchen…"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <ul className="share-gen__results">
-          {results.map((team) => (
-            <li key={team.id}>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelected((previous) =>
-                    previous.some((entry) => entry.id === team.id)
-                      ? previous
-                      : [...previous, team]
-                  );
-                  setQuery('');
-                }}
-              >
-                {team.name} ({team.description})
-              </button>
-            </li>
-          ))}
-        </ul>
-        <ul className="share-gen__selected">
-          {selected.map((team) => (
-            <li key={team.id}>
-              <span>{team.name}</span>
-              <button
-                type="button"
-                aria-label={`${team.name} entfernen`}
-                onClick={() =>
-                  setSelected((previous) =>
-                    previous.filter((entry) => entry.id !== team.id)
-                  )
-                }
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+        {results.length > 0 && (
+          <ul className="share-gen__results">
+            {results.map((team) => (
+              <li key={team.id}>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-primary"
+                  onClick={() => {
+                    setSelected((previous) =>
+                      previous.some((entry) => entry.id === team.id)
+                        ? previous
+                        : [...previous, team]
+                    );
+                    setQuery('');
+                  }}
+                >
+                  {team.name} ({team.description})
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {selected.length > 0 && (
+          <ul className="share-gen__selected">
+            {selected.map((team) => (
+              <li key={team.id} className="badge text-bg-light d-inline-flex align-items-center gap-2">
+                <span>{team.name}</span>
+                <button
+                  type="button"
+                  className="btn-close"
+                  aria-label={`${team.name} entfernen`}
+                  onClick={() =>
+                    setSelected((previous) =>
+                      previous.filter((entry) => entry.id !== team.id)
+                    )
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
-      <section className="share-gen__section">
-        <h2>2. Optionen</h2>
-        <label className="share-gen__inline">
-          Ansicht
-          <select
-            value={options.view}
-            onChange={(event) => update({ view: event.target.value as ViewName })}
-          >
-            <option value="spielplan">Spielplan</option>
-            <option value="table">Tabelle</option>
-            <option value="live">Live-Ticker</option>
-          </select>
-        </label>
-        <label className="share-gen__inline">
-          Akzentfarbe
+      <div className="content-section">
+        <h2 className="h5">2. Optionen</h2>
+        <div className="row g-2 align-items-end">
+          <div className="col-sm-4">
+            <label className="form-label small">Ansicht</label>
+            <select
+              className="form-select form-select-sm"
+              value={options.view}
+              onChange={(event) =>
+                update({ view: event.target.value as ViewName })
+              }
+            >
+              <option value="spielplan">Spielplan</option>
+              <option value="table">Tabelle</option>
+              <option value="live">Live-Ticker</option>
+            </select>
+          </div>
+          <div className="col-sm-4">
+            <label className="form-label small">Vergangene Spiele</label>
+            <input
+              type="number"
+              min={0}
+              className="form-control form-control-sm"
+              value={options.past}
+              onChange={(event) =>
+                update({ past: Math.max(0, Number(event.target.value) || 0) })
+              }
+            />
+          </div>
+          <div className="col-sm-4">
+            <label className="form-label small">Kommende Spiele (0 = alle)</label>
+            <input
+              type="number"
+              min={0}
+              className="form-control form-control-sm"
+              value={options.future}
+              onChange={(event) =>
+                update({ future: Math.max(0, Number(event.target.value) || 0) })
+              }
+            />
+          </div>
+        </div>
+        <div className="form-check mt-2">
           <input
-            type="color"
-            value={`#${options.color}`}
-            onChange={(event) => update({ color: event.target.value.slice(1) })}
-          />
-        </label>
-        <label className="share-gen__inline">
-          Vergangene Spiele
-          <input
-            type="number"
-            min={0}
-            value={options.past}
-            onChange={(event) =>
-              update({ past: Math.max(0, Number(event.target.value) || 0) })
-            }
-          />
-        </label>
-        <label className="share-gen__inline">
-          Kommende Spiele (0 = alle)
-          <input
-            type="number"
-            min={0}
-            value={options.future}
-            onChange={(event) =>
-              update({ future: Math.max(0, Number(event.target.value) || 0) })
-            }
-          />
-        </label>
-        <label className="share-gen__inline">
-          <input
+            className="form-check-input"
             type="checkbox"
+            id="opt-show-past"
             checked={options.showPast}
             onChange={(event) => update({ showPast: event.target.checked })}
           />
-          Vergangene Spiele anzeigen
-        </label>
-        <label className="share-gen__inline">
+          <label className="form-check-label" htmlFor="opt-show-past">
+            Vergangene Spiele anzeigen
+          </label>
+        </div>
+        <div className="form-check">
           <input
+            className="form-check-input"
             type="checkbox"
+            id="opt-show-future"
             checked={options.showFuture}
             onChange={(event) => update({ showFuture: event.target.checked })}
           />
-          Kommende Spiele anzeigen
-        </label>
-        <label className="share-gen__inline">
+          <label className="form-check-label" htmlFor="opt-show-future">
+            Kommende Spiele anzeigen
+          </label>
+        </div>
+        <div className="form-check">
           <input
+            className="form-check-input"
             type="checkbox"
+            id="opt-title"
             checked={options.title}
             onChange={(event) => update({ title: event.target.checked })}
           />
-          Teamname anzeigen
-        </label>
-        <label className="share-gen__inline">
+          <label className="form-check-label" htmlFor="opt-title">
+            Teamname anzeigen
+          </label>
+        </div>
+        <div className="form-check">
           <input
+            className="form-check-input"
             type="checkbox"
+            id="opt-compact"
             checked={options.compact}
             onChange={(event) => update({ compact: event.target.checked })}
           />
-          Kompakte Darstellung
-        </label>
-        <label className="share-gen__inline">
+          <label className="form-check-label" htmlFor="opt-compact">
+            Kompakte Darstellung
+          </label>
+        </div>
+        <div className="form-check">
           <input
+            className="form-check-input"
             type="checkbox"
+            id="opt-powered"
             checked={options.poweredBy}
             onChange={(event) => update({ poweredBy: event.target.checked })}
           />
-          LeagueSphere-Hinweis anzeigen
-        </label>
-      </section>
+          <label className="form-check-label" htmlFor="opt-powered">
+            LeagueSphere-Hinweis anzeigen
+          </label>
+        </div>
+      </div>
 
-      <section className="share-gen__section">
-        <h2>3. Vorschau &amp; Einbettung</h2>
+      <div className="content-section">
+        <h2 className="h5">3. Vorschau &amp; Einbettung</h2>
         {selected.length === 0 ? (
           <p className="share-empty">Bitte zuerst ein Team auswählen.</p>
         ) : (
           <>
-            <iframe className="share-gen__preview" title="Vorschau" src={url} />
-            <CopyField label="Schritt 1 – Größen-Listener (einmalig)" value={PARENT_LISTENER_SNIPPET} />
+            <iframe
+              className="share-gen__preview mb-3"
+              title="Vorschau"
+              src={url}
+            />
+            <CopyField
+              label="Schritt 1 – Größen-Listener (einmalig auf der Seite)"
+              value={PARENT_LISTENER_SNIPPET}
+            />
             <CopyField label="Schritt 2 – iframe" value={buildIframeSnippet(url)} />
             <CopyField label="Direktlink" value={url} />
           </>
         )}
-      </section>
+      </div>
     </main>
   );
 }

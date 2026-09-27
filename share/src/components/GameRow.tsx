@@ -6,26 +6,20 @@ export function formatDate(isoDate: string): string {
 }
 
 export function GameRow({ entry }: { entry: ScheduleEntry }) {
-  const result = entry.isFinal ? `${entry.teamScore} : ${entry.opponentScore}` : null;
   return (
-    <li
-      className={`share-game${entry.isLive ? ' share-game--live' : ''}`}
-      data-testid={`game-${entry.gameId}`}
-    >
-      <span className="share-game__date">{formatDate(entry.date)}</span>
-      <span className="share-game__opponent">
-        <span className="share-game__venue">{entry.isHome ? 'H' : 'A'}</span>
-        {entry.opponent}
-      </span>
-      <span className="share-game__result">
+    <tr className={entry.isLive ? 'table-warning' : undefined}>
+      <td className="text-nowrap">{formatDate(entry.date)}</td>
+      <td className="text-muted">{entry.isHome ? 'H' : 'A'}</td>
+      <td className="text-start">{entry.opponent}</td>
+      <td className="text-end fw-semibold text-nowrap">
         {entry.isFinal ? (
-          result
+          `${entry.teamScore} : ${entry.opponentScore}`
         ) : entry.isLive ? (
-          <span className="share-game__live">LIVE</span>
+          <span className="badge text-bg-danger">LIVE</span>
         ) : (
-          entry.time
+          <span className="text-muted">{entry.time}</span>
         )}
-      </span>
-    </li>
+      </td>
+    </tr>
   );
 }

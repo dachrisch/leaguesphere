@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { CSSProperties } from 'react';
 
 import { ErrorBanner } from '../components/ErrorBanner';
 import { PoweredBy } from '../components/PoweredBy';
 import { StandingsTable } from '../components/StandingsTable';
 import { fetchLeagueTable, fetchLeagues } from '../lib/api';
 import type { WidgetConfig } from '../lib/params';
-import { pickLeagueSeason, slugify } from '../lib/table';
+import { pickLeagueSeason } from '../lib/table';
 import type { LeagueTable, Snapshot } from '../lib/types';
 
 export function Table({
@@ -24,10 +23,9 @@ export function Table({
   const [error, setError] = useState<string | null>(null);
 
   const leagueName = picked?.leagueName;
-  const seasonName = picked?.seasonName;
 
   useEffect(() => {
-    if (leagueName === undefined || seasonName === undefined) {
+    if (leagueName === undefined) {
       return;
     }
     let active = true;
@@ -38,7 +36,9 @@ export function Table({
         if (league === undefined) {
           throw new Error(`unknown league ${leagueName}`);
         }
-        const data = await fetchLeagueTable(league.slug, slugify(seasonName));
+        // No season slug: the API resolves to the latest season for the
+        // league, avoiding any display-name -> slug guessing.
+        const data = await fetchLeagueTable(league.slug);
         if (active) {
           setTable(data);
           setError(null);
@@ -53,23 +53,26 @@ export function Table({
     return () => {
       active = false;
     };
-  }, [leagueName, seasonName]);
+  }, [leagueName]);
 
   return (
-    <div
-      className="share-widget"
-      style={{ '--share-accent': `#${config.color}` } as CSSProperties}
-    >
-      <h2 className="share-team__name">
-        {picked ? `${picked.leagueName} ${picked.seasonName}` : 'Tabelle'}
-      </h2>
-      {error !== null ? (
-        <ErrorBanner message={error} />
-      ) : table !== null ? (
-        <StandingsTable table={table} highlightTeamIds={config.teams} />
-      ) : (
-        <p className="share-loading">Lädt…</p>
-      )}
+    <div className="share-widget">
+      <div className="content-section">
+        <h2 className="share-team__name">
+          {table !== null
+            ? `${table.league.name} ${table.season.name}`
+            : picked
+              ? picked.leagueName
+              : 'Tabelle'}
+        </h2>
+        {error !== null ? (
+          <ErrorBanner message={error} />
+        ) : table !== null ? (
+          <StandingsTable table={table} highlightTeamIds={config.teams} />
+        ) : (
+          <p className="share-loading">Lädt…</p>
+        )}
+      </div>
       <PoweredBy show={config.poweredBy} />
     </div>
   );

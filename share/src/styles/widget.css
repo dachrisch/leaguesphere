@@ -1,39 +1,30 @@
-:root {
-  --share-accent: #ff4500;
-}
+/* Embed-specific tweaks on top of LeagueSphere's Bootstrap + main.css.
+   Everything visual should come from Bootstrap / gamedays/css/main.css so the
+   widget matches the rest of LeagueSphere. */
 
 html,
-body {
+body.share-body {
+  height: auto;
+  min-height: 0;
   margin: 0;
   padding: 0;
   background: transparent;
-}
-
-body {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  color: #1b1b1b;
+  /* main.css sets body { padding-top: 5rem } for the site navbar; the embed
+     has no navbar. */
+  padding-top: 0;
+  display: block;
 }
 
 .share-widget {
   padding: 8px;
 }
 
-.share-widget--compact {
-  font-size: 0.85rem;
-}
-
-.share-team {
-  margin-bottom: 16px;
+.share-widget .content-section {
+  padding: 12px 16px;
 }
 
 .share-team__name {
   font-size: 1.1rem;
-  margin: 0 0 8px;
-  padding-left: 8px;
-  border-left: 4px solid var(--share-accent);
-}
-
-.share-section {
   margin-bottom: 12px;
 }
 
@@ -41,148 +32,21 @@ body {
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #666;
-  margin: 0 0 4px;
+  color: #6c757d;
+  margin-bottom: 6px;
 }
 
-.share-games {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.share-game {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 8px;
-  border-bottom: 1px solid #eee;
-  font-size: 0.9rem;
-}
-
-.share-game--live {
-  background: rgba(255, 69, 0, 0.08);
-}
-
-.share-game__venue {
-  display: inline-block;
-  width: 1.1em;
-  color: #999;
-}
-
-.share-game__result {
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
-
-.share-game__live {
-  color: var(--share-accent);
-}
-
-.share-empty,
-.share-loading {
-  color: #777;
-  font-size: 0.9rem;
-  padding: 8px;
-}
-
-.share-error {
-  background: #fdecea;
-  color: #b71c1c;
-  padding: 8px;
-  border-radius: 4px;
-  font-size: 0.9rem;
-}
-
-.share-more {
-  background: none;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.share-powered {
-  margin-top: 12px;
-  text-align: right;
-  font-size: 0.75rem;
-}
-
-.share-powered a {
-  color: #999;
-  text-decoration: none;
-}
-
-.share-powered a:hover {
-  text-decoration: underline;
-}
-
-.share-live {
-  border: 1px solid #eee;
-  border-radius: 6px;
-  padding: 8px;
-  margin-bottom: 12px;
-}
-
-.share-live__header {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.8rem;
-  color: #666;
-}
-
-.share-live__score {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  font-weight: 600;
-}
-
-.share-live__numbers {
-  font-variant-numeric: tabular-nums;
-}
-
-.share-live__team--away {
-  text-align: right;
-}
-
-.share-live__ticks {
-  list-style: none;
-  margin: 0;
-  padding: 6px 0 0;
-  border-top: 1px dashed #eee;
-  font-size: 0.8rem;
-}
-
-.share-live__tick {
-  display: flex;
-  gap: 8px;
-  padding: 2px 0;
-}
-
-.share-live__tick-time {
-  color: #999;
-}
-
-.share-live__tick--neutral {
-  font-style: italic;
-  color: #666;
-}
-
+/* Compact standings table inside a narrow embed. */
 .share-table {
-  width: 100%;
-  border-collapse: collapse;
   font-size: 0.85rem;
+  margin-bottom: 0;
 }
 
 .share-table th,
 .share-table td {
-  padding: 4px 6px;
-  text-align: right;
-  border-bottom: 1px solid #eee;
+  padding: 0.35rem 0.4rem;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .share-table th:nth-child(2),
@@ -191,6 +55,41 @@ body {
 }
 
 .share-table__row--highlight {
-  background: rgba(255, 69, 0, 0.1);
   font-weight: 600;
+}
+
+.share-table__row--highlight td {
+  background-color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.08);
+}
+
+.share-empty,
+.share-loading {
+  color: #6c757d;
+  padding: 8px;
+  margin: 0;
+}
+
+.share-powered {
+  margin-top: 8px;
+  text-align: right;
+  font-size: 0.75rem;
+}
+
+.share-powered a {
+  color: #adb5bd;
+  text-decoration: none;
+}
+
+.share-powered a:hover {
+  text-decoration: underline;
+}
+
+.share-live__tick--neutral {
+  font-style: italic;
+  color: #6c757d;
+}
+
+.share-live__numbers {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
 }

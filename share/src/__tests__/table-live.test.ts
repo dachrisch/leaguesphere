@@ -1,17 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { activeWatchedGames } from '../lib/live';
-import { pickLeagueSeason, slugify } from '../lib/table';
+import { pickLeagueSeason } from '../lib/table';
 
 import { makeGame, makeGameday, makeSnapshot } from './fixtures';
-
-describe('slugify', () => {
-  it('lowercases and dashes non-alphanumerics', () => {
-    expect(slugify('2026')).toBe('2026');
-    expect(slugify('DKB DFFL')).toBe('dkb-dffl');
-    expect(slugify('  Saison 2026/27 ')).toBe('saison-2026-27');
-  });
-});
 
 describe('pickLeagueSeason', () => {
   it('returns the most recent league/season the teams play in', () => {

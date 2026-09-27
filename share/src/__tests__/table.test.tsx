@@ -1,0 +1,96 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { parseWidgetConfig } from '../lib/params';
+import { Table } from '../views/Table';
+
+import { makeGame, makeGameday, makeSnapshot } from './fixtures';
+
+const config = (search: string) => parseWidgetConfig(new URLSearchParams(search));
+
+function stubFetch(handlers: Record<string, unknown>) {
+  return vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    const body = handlers[url];
+    if (body === undefined) {
+      return new Response(JSON.stringify({ detail: 'not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  });
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe('Table', () => {
+  it('fetches the latest season table by league slug only (no season slug)', async () => {
+    const fetcher = stubFetch({
+      '/api/leagues/': [{ id: 3, name: 'RL BAWÜ', slug: 'rl-bawu' }],
+      '/api/league-table/rl-bawu/': {
+        league: { slug: 'rl-bawu', name: 'RL BAWÜ' },
+        season: { slug: '2025-2026', name: '2025/2026' },
+        standing: [
+          {
+            standing: 1,
+            team_id: 159,
+            team__description: 'Renegades',
+            wins: 1,
+            draws: 0,
+            losses: 0,
+            games_played: 1,
+            pf: 21,
+            pa: 7,
+            diff: 14,
+            win_points: 2,
+            win_quotient: 1,
+          },
+        ],
+      },
+    });
+    vi.stubGlobal('fetch', fetcher);
+
+    const snapshot = makeSnapshot([
+      makeGameday({
+        league_display: 'RL BAWÜ',
+        season_display: '2025/2026',
+        games: [makeGame({ id: 11 })],
+      }),
+    ]);
+
+    render(<Table snapshot={snapshot} config={config('t=159&view=table')} />);
+
+    await waitFor(() =>
+      expect(screen.getByText('Renegades')).toBeInTheDocument()
+    );
+    expect(screen.getByText('RL BAWÜ 2025/2026')).toBeInTheDocument();
+    const calledUrls = fetcher.mock.calls.map((call) => String(call[0]));
+    expect(calledUrls).toContain('/api/league-table/rl-bawu/');
+    expect(calledUrls.some((url) => url.includes('2025'))).toBe(false);
+  });
+
+  it('shows an error banner when the table is unavailable', async () => {
+    vi.stubGlobal(
+      'fetch',
+      stubFetch({
+        '/api/leagues/': [{ id: 3, name: 'RL BAWÜ', slug: 'rl-bawu' }],
+      })
+    );
+    const snapshot = makeSnapshot([
+      makeGameday({
+        league_display: 'RL BAWÜ',
+        games: [makeGame({ id: 11 })],
+      }),
+    ]);
+    render(<Table snapshot={snapshot} config={config('t=159&view=table')} />);
+    await waitFor(() =>
+      expect(screen.getByText('Tabelle nicht verfügbar.')).toBeInTheDocument()
+    );
+  });
+});

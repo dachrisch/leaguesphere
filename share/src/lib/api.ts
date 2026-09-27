@@ -54,13 +54,16 @@ export function fetchLiveticker(fetcher: Fetcher = fetch): Promise<LiveGame[]> {
   return getJson<LiveGame[]>('/api/liveticker/', fetcher);
 }
 
-export function leagueTableUrl(slug: string, season: string): string {
-  return `/api/league-table/${encodeURIComponent(slug)}/${encodeURIComponent(season)}/`;
+export function leagueTableUrl(slug: string, season?: string): string {
+  const base = `/api/league-table/${encodeURIComponent(slug)}/`;
+  return season === undefined
+    ? base
+    : `${base}${encodeURIComponent(season)}/`;
 }
 
 export function fetchLeagueTable(
   slug: string,
-  season: string,
+  season?: string,
   fetcher: Fetcher = fetch
 ): Promise<LeagueTable> {
   return getJson<LeagueTable>(leagueTableUrl(slug, season), fetcher);

@@ -40,6 +40,29 @@ describe('Spielplan', () => {
     expect(screen.getByText('powered by LeagueSphere')).toBeInTheDocument();
   });
 
+  it('uses LeagueSphere Bootstrap markup (content-section + table)', () => {
+    const snapshot = makeSnapshot([
+      makeGameday({
+        games: [makeGame({ id: 11, status: 'beendet' })],
+      }),
+    ]);
+    const { container } = render(
+      <Spielplan snapshot={snapshot} config={config('t=159')} />
+    );
+    expect(container.querySelector('.content-section')).not.toBeNull();
+    expect(container.querySelector('table.table')).not.toBeNull();
+  });
+
+  it('shows a LIVE badge for an in-progress game', () => {
+    const snapshot = makeSnapshot([
+      makeGameday({
+        games: [makeGame({ id: 11, status: 'Gestartet' })],
+      }),
+    ]);
+    render(<Spielplan snapshot={snapshot} config={config('t=159')} />);
+    expect(screen.getByText('LIVE')).toBeInTheDocument();
+  });
+
   it('only shows the configured teams', () => {
     const snapshot = makeSnapshot([
       makeGameday({
