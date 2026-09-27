@@ -126,3 +126,44 @@ def test_real_ci_flags_all_carryforward(checker):
 
     assert ci_flags, "expected CI to upload at least one Codecov flag"
     assert checker.missing_carryforward(ci_flags, codecov_text) == []
+
+
+def _stage(checker, tmp_path, continue_text, codecov_text):
+    continue_file = tmp_path / "continue.yml"
+    continue_file.write_text(continue_text, encoding="utf-8")
+    codecov_file = tmp_path / "codecov.yml"
+    if codecov_text is not None:
+        codecov_file.write_text(codecov_text, encoding="utf-8")
+    checker.CONTINUE_CONFIG = str(continue_file)
+    checker.CODECOV_FILE = str(codecov_file)
+
+
+def test_main_returns_zero_when_all_flags_carry_forward(checker, tmp_path):
+    _stage(checker, tmp_path, SAMPLE_CONTINUE, SAMPLE_FLAG_MANAGEMENT_TRUE)
+    assert checker.main([]) == 0
+
+
+def test_main_fails_when_continue_config_missing(checker, tmp_path, capsys):
+    checker.CONTINUE_CONFIG = str(tmp_path / "missing.yml")
+    checker.CODECOV_FILE = str(tmp_path / "codecov.yml")
+    assert checker.main([]) == 1
+    assert "cannot read" in capsys.readouterr().out
+
+
+def test_main_fails_when_codecov_file_missing(checker, tmp_path, capsys):
+    _stage(checker, tmp_path, SAMPLE_CONTINUE, None)
+    assert checker.main([]) == 1
+    assert "cannot read" in capsys.readouterr().out
+
+
+def test_main_fails_closed_without_flags(checker, tmp_path, capsys):
+    _stage(checker, tmp_path, "version: 2.1\n", SAMPLE_FLAG_MANAGEMENT_TRUE)
+    assert checker.main([]) == 1
+    assert "no Codecov flags" in capsys.readouterr().out
+
+
+def test_main_fails_when_a_flag_lacks_carryforward(checker, tmp_path, capsys):
+    _stage(checker, tmp_path, SAMPLE_CONTINUE, "coverage:\n  status: {}\n")
+    assert checker.main([]) == 1
+    output = capsys.readouterr().out
+    assert "python-core" in output and "scorecard" in output
