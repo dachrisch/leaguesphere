@@ -511,8 +511,16 @@ jobs:
               --data '{"httpRequest": {"method": "POST", "path": "/login/"}, "httpResponse": {"statusCode": 200}}' \
               http://app:8000/mockserver/expectation
 
-            # Test health status
-            docker run --rm --detach --network test_network --name test_container backend:latest gunicorn -b 0.0.0.0:8000 league_manager.wsgi
+            # Test health status (envs are CI-only dummies: the prod settings
+            # guard requires all of them set, and fork PRs get no contexts;
+            # all HTTP is answered by mockserver, no real DB is ever touched)
+            docker run --rm --detach --network test_network --name test_container \
+              -e SECRET_KEY=test-image-dummy-secret-not-for-production \
+              -e MYSQL_HOST=127.0.0.1 \
+              -e MYSQL_DB_NAME=ci_dummy \
+              -e MYSQL_USER=ci_dummy \
+              -e MYSQL_PWD=ci_dummy \
+              backend:latest gunicorn -b 0.0.0.0:8000 league_manager.wsgi
             sleep 3
             for i in {1..10}; do
               status=$(docker inspect --format='{{.State.Health.Status}}' test_container)
@@ -581,22 +589,25 @@ jobs:
             # OUR migrations against OUR schema — decoupled from any real/prod DB.
             docker network create ls-ci-net || true
             docker run -d --name ls-ci-db --network ls-ci-net \
-              -e MYSQL_ALLOW_EMPTY_PASSWORD=yes \
+              -e MYSQL_ROOT_PASSWORD=ci-check-pw \
               -e MYSQL_DATABASE=ci_check_db \
               mariadb:latest \
               --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
             # Wait for the DB to accept connections.
             for i in $(seq 1 30); do
-              docker exec ls-ci-db mariadb-admin ping -uroot --silent 2>/dev/null && break
+              docker exec ls-ci-db mariadb-admin ping -uroot -pci-check-pw --silent 2>/dev/null && break
               echo "waiting for ci db ($i)..."; sleep 2
             done
             # Run the real backend image against the fresh DB: verifies there are no
             # missing migrations AND that the full set applies cleanly end-to-end.
+            # SECRET_KEY/MYSQL_PWD are build-only CI dummies (the prod settings
+            # guard requires them set, and fork PRs get no CircleCI contexts).
             docker run --rm --network ls-ci-net \
               -e MYSQL_HOST=ls-ci-db \
               -e MYSQL_DB_NAME=ci_check_db \
               -e MYSQL_USER=root \
-              -e MYSQL_PWD="" \
+              -e MYSQL_PWD=ci-check-pw \
+              -e SECRET_KEY=ci-check-dummy-secret-not-for-production \
               backend:latest \
               bash -c "set -e && python manage.py check && python manage.py makemigrations --check --dry-run && python manage.py migrate --no-input"
             docker rm -f ls-ci-db || true

@@ -10,6 +10,7 @@ from django.test import TestCase, TransactionTestCase
 from gamedays.models import Team, Gameinfo, Gameresult, TeamLog
 from gamedays.service.game_service import GameService
 from gamedays.service.gamelog import GameLog
+from gamedays.service.wrapper.gameinfo_wrapper import IllegalGameTransition
 from gamedays.tests.setup_factories.db_setup import DBSetup
 
 
@@ -22,13 +23,14 @@ class TestGameService(TestCase):
         gameday = DBSetup().g62_status_empty()
         firstGame = Gameinfo.objects.first()
         game_service = GameService(firstGame.pk)
+        game_service.update_gamestart(gameday.author)
         game_service.update_halftime(gameday.author)
         firstGame = Gameinfo.objects.first()
         assert firstGame.status == "2. Halbzeit"
         assert re.match(
             "^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]", str(firstGame.gameHalftime)
         )
-        assert len(TeamLog.objects.all()) == 1
+        assert len(TeamLog.objects.all()) == 2
 
     def test_gamestart_is_updated(self):
         gameday = DBSetup().g62_status_empty()
@@ -46,24 +48,32 @@ class TestGameService(TestCase):
         gameday = DBSetup().g62_status_empty()
         firstGame = Gameinfo.objects.first()
         game_service = GameService(firstGame.pk)
+        game_service.update_gamestart(gameday.author)
+        game_service.update_halftime(gameday.author)
         game_service.update_game_finished(gameday.author)
         firstGame: Gameinfo = Gameinfo.objects.first()
         assert firstGame.status == "beendet"
         assert re.match(
             "^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]", str(firstGame.gameFinished)
         )
-        assert len(TeamLog.objects.all()) == 1
+        assert len(TeamLog.objects.all()) == 3
 
     def test_entry_for_game_created_halftime_and_finished_only_written_once(self):
         gameday = DBSetup().g62_status_empty()
         firstGame = Gameinfo.objects.first()
         game_service = GameService(firstGame.pk)
         game_service.update_gamestart(gameday.author)
-        game_service.update_gamestart(gameday.author)
-        game_service.update_halftime(gameday.author)
         game_service.update_halftime(gameday.author)
         game_service.update_game_finished(gameday.author)
-        game_service.update_game_finished(gameday.author)
+        assert len(TeamLog.objects.all()) == 3
+        # A second transition is rejected, so a duplicate log entry is impossible.
+        for transition in (
+            game_service.update_gamestart,
+            game_service.update_halftime,
+            game_service.update_game_finished,
+        ):
+            with self.assertRaises(IllegalGameTransition):
+                transition(gameday.author)
         assert len(TeamLog.objects.all()) == 3
 
     def test_update_score(self):
@@ -193,6 +203,41 @@ class TestGamelogScoreChange(TestCase):
         assert "would drop to -4" in logs.output[0]
 
 
+class TestGamelogSequenceLocking(TestCase):
+    """GameLogCreator must serialize sequence allocation per game (#2006)."""
+
+    def test_create_locks_gameinfo_row_for_sequence_allocation(self):
+        gameday = DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=game, isHome=True).team
+        event = [{"name": "Touchdown", "input": None, "player": "19"}]
+
+        real_select_for_update = Gameinfo.objects.select_for_update
+
+        with mock.patch.object(
+            Gameinfo.objects,
+            "select_for_update",
+            wraps=real_select_for_update,
+        ) as select_for_update:
+            GameService(game.pk).create_gamelog(home.pk, event, gameday.author, 1)
+            assert select_for_update.called
+
+    def test_sequential_creates_produce_distinct_sequences(self):
+        gameday = DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=game, isHome=True).team
+        event = [{"name": "Touchdown", "input": None, "player": "19"}]
+        for _ in range(3):
+            GameService(game.pk).create_gamelog(home.pk, event, gameday.author, 1)
+        sequences = sorted(
+            TeamLog.objects.filter(gameinfo=game)
+            .exclude(sequence=0)
+            .values_list("sequence", flat=True)
+            .distinct()
+        )
+        assert sequences == [1, 2, 3]
+
+
 @unittest.skipUnless(
     connection.features.has_select_for_update, "needs row locks (MySQL in CI)"
 )
@@ -237,3 +282,42 @@ class TestConcurrentGamelogWrites(TransactionTestCase):
 
         assert errors == []
         assert _scores(game) == ((7 * self.WRITERS, 0, 0), (0, 0, 7 * self.WRITERS))
+
+    def test_concurrent_creates_produce_distinct_sequences(self):
+        """N concurrent writes must yield N distinct sequences (#2006).
+
+        Each TOUCHDOWN_WITH_PAT write allocates exactly one sequence (two
+        TeamLog rows share it by design). Duplicate sequences would collapse
+        entries in GameLog.create_entries_for_half while points still count.
+        """
+        gameday = DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=game, isHome=True).team
+        Gameresult.objects.filter(gameinfo=game).update(fh=0, sh=0, pa=0)
+        errors = []
+
+        def write():
+            try:
+                GameService(game.pk).create_gamelog(
+                    home.pk, TOUCHDOWN_WITH_PAT, gameday.author, 1
+                )
+            except Exception as error:  # pragma: no cover - reported below
+                errors.append(error)
+            finally:
+                connection.close()
+
+        threads = [threading.Thread(target=write) for _ in range(self.WRITERS)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert errors == []
+        sequences = list(
+            TeamLog.objects.filter(gameinfo=game)
+            .exclude(sequence=0)
+            .values_list("sequence", flat=True)
+            .distinct()
+        )
+        assert len(sequences) == self.WRITERS
+        assert len(set(sequences)) == self.WRITERS
