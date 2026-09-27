@@ -28,6 +28,10 @@ services:
       # portainer team
       - io.portainer.accesscontrol.teams=leaguesphere
       - com.centurylinklabs.watchtower.scope=prod
+      # Zero-downtime image swaps (openserbia watchtower fork): start green
+      # alongside blue, gate on HEALTHCHECK, drain, retire blue. Stateless
+      # nginx, no host ports, explicit Traefik routers -> blue-green eligible.
+      - com.centurylinklabs.watchtower.update-strategy=blue-green
     networks:
       - backend
       - proxy
@@ -45,6 +49,10 @@ services:
       # portainer team
       - io.portainer.accesscontrol.teams=leaguesphere
       - com.centurylinklabs.watchtower.scope=prod
+      # Zero-downtime image swaps (openserbia watchtower fork): stateless
+      # gunicorn against shared MySQL; requires migrations to stay
+      # backwards-compatible while the old container drains.
+      - com.centurylinklabs.watchtower.update-strategy=blue-green
     env_file: ls.env
     environment:
       DJANGO_SETTINGS_MODULE: league_manager.settings.prod

@@ -1038,8 +1038,14 @@ workflows:
           filters: "(pipeline.parameters.run-python-designer == true)"
       - python-cross:
           filters: "(pipeline.parameters.run-python-cross == true)"
-      # Always-run: required check, exercises every app by convention.
-      - e2e
+      # Always-run: required check, exercises every app by convention. Opts
+      # in to tags (tags: only /.*/) because a job with no filters only runs
+      # on branches — without this, e2e silently drops out of tag pipelines
+      # (deploys) and its requires entries vanish, so deploys bypass e2e.
+      - e2e:
+          filters:
+            tags:
+              only: /.*/
       - scorecard_js:
           filters: "(pipeline.parameters.run-scorecard == true)"
       - liveticker_js:
