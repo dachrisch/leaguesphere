@@ -58,6 +58,7 @@ from officials.urls import (
     OFFICIALS_SIGN_OUT,
 )
 from officials.views import (
+    IMPORT_ERROR_MESSAGE_LIMIT,
     MOODLE_LOGGED_IN_USER,
     MOODLE_REMEMBER_COOKIE,
     GameOfficialImportConfirmView,
@@ -1255,6 +1256,21 @@ class TestGameOfficialImportConfirmView(WebTest):
         rendered = "".join(str(m) for m in get_messages(request))
         assert "<script>alert(1)</script>" not in rendered
         assert "&lt;script&gt;alert(1)&lt;/script&gt;" in rendered
+
+    def test_report_results_caps_the_listed_errors_and_counts_the_rest(self):
+        """Past the limit the message reports a count, not one line per row."""
+        request = RequestFactory().get("/")
+        request.session = {}
+        request._messages = FallbackStorage(request)
+        errors = [f"<b>Zeile {i}</b>" for i in range(IMPORT_ERROR_MESSAGE_LIMIT + 3)]
+
+        GameOfficialImportConfirmView._report_results(request, 0, 0, errors)
+
+        rendered = "".join(str(m) for m in get_messages(request))
+        assert "(und 3 weitere)" in rendered
+        assert f"Zeile {IMPORT_ERROR_MESSAGE_LIMIT}" not in rendered
+        assert "<b>" not in rendered
+        assert "&lt;b&gt;Zeile 0&lt;/b&gt;" in rendered
 
 
 class TestAddExternalGameOfficialUpdateView(WebTest):
