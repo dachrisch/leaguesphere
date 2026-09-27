@@ -31,8 +31,16 @@ RUN rm -rf scorecard/static/scorecard/js
 RUN rm -rf passcheck/static/passcheck/js
 RUN rm -rf gameday_designer/static/gameday_designer/js
 
-# collect static files
-RUN .venv/bin/python manage.py collectstatic --no-input --clear
+# collect static files (no DB access needed, but prod settings import
+# requires env vars to be set — use build-only dummies so fork PRs
+# without CircleCI secrets/contexts can still build; values never land
+# in the final nginx image, only collected static files do)
+RUN SECRET_KEY=build-only-dummy-secret-key-not-for-production \
+    MYSQL_HOST=127.0.0.1 \
+    MYSQL_DB_NAME=build_dummy \
+    MYSQL_USER=build_dummy \
+    MYSQL_PWD=build_dummy \
+    .venv/bin/python manage.py collectstatic --no-input --clear
 
 FROM node:24-slim AS node-builder
 ARG APP_DIR="/liveticker-app"
