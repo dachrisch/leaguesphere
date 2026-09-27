@@ -7,6 +7,7 @@ from datetime import datetime
 from django.conf import settings
 from django.db.models import Count, Max
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.views.decorators.http import condition
 from django.utils.decorators import method_decorator
 from rest_framework import viewsets, status
@@ -96,18 +97,29 @@ def generate_gameday_list_etag(request):
 
 
 def generate_gameday_games_etag(request, gameday_pk=None):
-    """Generate ETag for gameday games list based on latest gameresult."""
-    try:
-        gameday = Gameday.objects.get(pk=gameday_pk)
-        # Include gameday pk and latest gameresult pk
-        latest_result = Gameresult.objects.filter(
-            gameinfo__gameday=gameday
-        ).values_list('pk', flat=True).order_by('-pk').first()
+    """Generate ETag for gameday games list based on game/result state.
 
-        etag_data = f"{gameday_pk}:{latest_result or 'no-results'}"
-        return f'"{hashlib.md5(etag_data.encode()).hexdigest()}"'
+    Must change whenever the games response would change: a new/deleted game
+    on re-publish (count), or an in-place edit on an existing row -- a score
+    edit on Gameresult (fh/sh/pa) or a status edit on Gameinfo (max
+    updated_at). The pk of the newest result alone doesn't cover that last
+    case: live scoring edits existing rows in place, so the pk-only ETag
+    stayed identical across score updates and clients kept serving their
+    pre-update cached body via a stale 304.
+    """
+    try:
+        Gameday.objects.get(pk=gameday_pk)
     except Gameday.DoesNotExist:
+        # Stable ETag for a missing gameday; the view still returns its 404.
         return '""'
+    games = Gameinfo.objects.filter(gameday=gameday_pk).aggregate(
+        count=Count("pk"), latest=Max("updated_at")
+    )
+    latest_result = Gameresult.objects.filter(gameinfo__gameday=gameday_pk).aggregate(
+        latest=Max("updated_at")
+    )["latest"]
+    etag_data = f"{gameday_pk}:{games['count']}:{games['latest']}:{latest_result}"
+    return f'"{hashlib.md5(etag_data.encode()).hexdigest()}"'
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -448,8 +460,6 @@ class GamedayPublishAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        from django.utils import timezone
-
         gameday.status = Gameday.STATUS_PUBLISHED
         gameday.published_at = timezone.now()
         gameday.save()
@@ -473,12 +483,14 @@ class GameResultUpdateAPIView(APIView):
         if halftime_score is not None:
             if game.status == Gameinfo.STATUS_PUBLISHED or game.status == "Geplant":
                 game.status = Gameinfo.STATUS_IN_PROGRESS
-            # Sync to Gameresult records
+            # Sync to Gameresult records.
+            # Queryset .update() bypasses save(), so auto_now would not fire:
+            # stamp explicitly. The games ETag depends on Max(updated_at).
             Gameresult.objects.filter(gameinfo=game, isHome=True).update(
-                fh=halftime_score.get("home")
+                fh=halftime_score.get("home"), updated_at=timezone.now()
             )
             Gameresult.objects.filter(gameinfo=game, isHome=False).update(
-                fh=halftime_score.get("away")
+                fh=halftime_score.get("away"), updated_at=timezone.now()
             )
 
         if final_score is not None:
@@ -500,10 +512,14 @@ class GameResultUpdateAPIView(APIView):
             )
 
             Gameresult.objects.filter(gameinfo=game, isHome=True).update(
-                fh=home_fh, sh=final_score.get("home", 0) - (home_fh or 0)
+                fh=home_fh,
+                sh=final_score.get("home", 0) - (home_fh or 0),
+                updated_at=timezone.now(),
             )
             Gameresult.objects.filter(gameinfo=game, isHome=False).update(
-                fh=away_fh, sh=final_score.get("away", 0) - (away_fh or 0)
+                fh=away_fh,
+                sh=final_score.get("away", 0) - (away_fh or 0),
+                updated_at=timezone.now(),
             )
 
         game.save()
