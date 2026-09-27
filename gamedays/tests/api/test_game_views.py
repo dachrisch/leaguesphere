@@ -272,6 +272,8 @@ class TestGameLog(WebTest):
     def test_post_team_log_updates_score(self):
         DBSetup().g62_status_empty()
         first_game = Gameinfo.objects.first()
+        # Start unscored: fixture scores without gamelog entries are kept (#1988).
+        Gameresult.objects.filter(gameinfo=first_game).update(fh=None, sh=None, pa=None)
         response = self.app.post_json(
             reverse(API_GAMELOG, kwargs={"id": first_game.pk}),
             {
@@ -294,6 +296,8 @@ class TestGameLog(WebTest):
     def test_score_is_updated_with_multiple_entries(self):
         DBSetup().g62_status_empty()
         first_game = Gameinfo.objects.first()
+        # Start unscored: fixture scores without gamelog entries are kept (#1988).
+        Gameresult.objects.filter(gameinfo=first_game).update(fh=None, sh=None, pa=None)
         self.app.post_json(
             reverse(API_GAMELOG, kwargs={"id": first_game.pk}),
             {
@@ -414,6 +418,84 @@ class TestGameLog(WebTest):
         assert TeamLog.objects.filter(
             gameinfo=first_game, sequence=1, isDeleted=True
         ).exists()
+
+
+class TestManualScoreSurvivesGamelogWrites(WebTest):
+    """Regression for #1988: a score entered in the designer results editor
+    (no gamelog entries) was wiped by the next scorecard gamelog write."""
+
+    def _enter_manual_score(self, game, halftime, final):
+        response = self.app.patch_json(
+            reverse("api-gamedays-game-result", kwargs={"pk": game.pk}),
+            {"halftime_score": halftime, "final_score": final},
+            headers=DBSetup().get_token_header(),
+        )
+        assert response.status_code == HTTPStatus.OK
+
+    def _post_touchdown(self, game, team):
+        response = self.app.post_json(
+            reverse(API_GAMELOG, kwargs={"id": game.pk}),
+            {
+                "team": team,
+                "gameId": game.pk,
+                "half": 1,
+                "event": [
+                    {"name": "Touchdown", "player": "19"},
+                    {"name": "1-Extra-Punkt", "player": "7"},
+                ],
+            },
+            headers=DBSetup().get_token_header(),
+        )
+        assert response.status_code == HTTPStatus.CREATED
+
+    def _delete_sequence(self, game, sequence):
+        response = self.app.delete_json(
+            reverse(API_GAMELOG, kwargs={"id": game.pk}),
+            {"sequence": sequence},
+            headers=DBSetup().get_token_header(),
+        )
+        assert response.status_code == HTTPStatus.OK
+
+    def _scores(self, game):
+        home = Gameresult.objects.get(gameinfo=game, isHome=True)
+        away = Gameresult.objects.get(gameinfo=game, isHome=False)
+        return (home.fh, home.sh, home.pa), (away.fh, away.sh, away.pa)
+
+    def test_manual_score_survives_gamelog_add_and_delete(self):
+        DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        self._enter_manual_score(
+            game, {"home": 14, "away": 7}, {"home": 28, "away": 14}
+        )
+
+        self._post_touchdown(game, "A1")
+        assert self._scores(game) == ((21, 14, 14), (7, 7, 35))
+
+        self._delete_sequence(game, 1)
+        assert self._scores(game) == ((14, 14, 14), (7, 7, 28))
+
+    def test_manual_score_survives_deleting_earlier_gamelog_entry(self):
+        DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        self._post_touchdown(game, "A1")
+        self._enter_manual_score(
+            game, {"home": 21, "away": 7}, {"home": 35, "away": 14}
+        )
+
+        self._delete_sequence(game, 1)
+        assert self._scores(game) == ((14, 14, 14), (7, 7, 28))
+
+    def test_repeated_delete_does_not_change_score_again(self):
+        DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        self._enter_manual_score(
+            game, {"home": 14, "away": 7}, {"home": 28, "away": 14}
+        )
+        self._post_touchdown(game, "A1")
+
+        self._delete_sequence(game, 1)
+        self._delete_sequence(game, 1)
+        assert self._scores(game) == ((14, 14, 14), (7, 7, 28))
 
 
 class TestGameHalftime(WebTest):
