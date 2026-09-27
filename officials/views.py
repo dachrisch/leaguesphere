@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import date, datetime, timedelta
 
 from django.conf import settings
@@ -50,6 +51,8 @@ from officials.service.signup_service import (
     MaxSignupError,
 )
 from officials.service.remember_me import RememberMeService, REMEMBER_ME_MAX_AGE
+
+logger = logging.getLogger(__name__)
 
 MOODLE_LOGGED_IN_USER = "moodle_logged_in_user"
 
@@ -483,7 +486,11 @@ class GameOfficialImportUploadView(LoginRequiredMixin, UserPassesTestMixin, View
             dataframe = parse_uploaded_file(form.cleaned_data["file"])
             result = build_import_result(dataframe)
         except ImportColumnError as error:
-            return JsonResponse({"errors": {"file": [str(error)]}}, status=400)
+            logger.warning("Game official import rejected: %s", error)
+            return JsonResponse(
+                {"errors": {"file": ["Die Datei konnte nicht verarbeitet werden."]}},
+                status=400,
+            )
 
         external_items = [
             _external_suggestion_to_initial(suggestion)

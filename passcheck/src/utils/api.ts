@@ -20,7 +20,6 @@ export const apiPut = (url: string, body: any) => {
   const header = tokenConfig();
   return axios
     .put(url, body, header)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
     .then(() => {})
     .catch((err) => {
       console.error(err);
