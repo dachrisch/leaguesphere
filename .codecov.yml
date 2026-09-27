@@ -1,6 +1,17 @@
 # Codecov configuration
 # https://docs.codecov.com/docs/codecov-yaml
 
+# CI is path-scoped (docs/topics/deployment/scoped-ci.md): a PR confined
+# to one app runs only that app's shard(s) and skips the rest, so the
+# skipped flags are not re-uploaded on that commit. Codecov would then
+# drop the files exclusive to those flags from the project comparison and
+# falsely fail codecov/project with a large apparent drop (issue #2015).
+# Carry each flag forward from its last known coverage instead. Guarded
+# by scripts/check_codecov_flags.py so a new shard can't drift.
+flag_management:
+  default_rules:
+    carryforward: true
+
 coverage:
   status:
     project:

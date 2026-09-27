@@ -68,6 +68,19 @@ Shards need the LXC test DB locally (see Contributor Guide) and get a
 sidecar MySQL service + `-n 4 --nomigrations` in CI. e2e dirs stay
 excluded from shards via `pytest.ini` and run only in the `e2e` job.
 
+### Coverage uploads and carryforward
+
+Each shard and frontend job uploads its own Codecov flag (`python-core`,
+`scorecard`, …). Because a scoped run legitimately skips shards, the
+skipped flags get no fresh report on that commit. `.codecov.yml` enables
+`flag_management.default_rules.carryforward: true` so Codecov reuses each
+flag's last known coverage instead of dropping its files from the project
+comparison — without it, a single-app PR falsely fails `codecov/project`
+with a large apparent drop (issue #2015). Adding a new shard/flag needs
+no Codecov change; `scripts/check_codecov_flags.py` fails if any CI flag
+is not carryforward-enabled, and runs as an always-on step of the
+`scope_coverage` job (plus its unit test in the `python-cross` shard).
+
 ### Adding/changing a scope rule
 
 1. Edit `.circleci/scope-mapping.txt` (jobs) or `.circleci/scope-exclude.txt` (ignores).
