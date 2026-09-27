@@ -511,10 +511,16 @@ jobs:
               --data '{"httpRequest": {"method": "POST", "path": "/login/"}, "httpResponse": {"statusCode": 200}}' \
               http://app:8000/mockserver/expectation
 
-            # Test health status (SECRET_KEY is a CI-only dummy: the prod
-            # settings guard requires it set, and fork PRs get no contexts;
-            # all HTTP is answered by mockserver, no DB needed)
-            docker run --rm --detach --network test_network --name test_container -e SECRET_KEY=test-image-dummy-secret-not-for-production backend:latest gunicorn -b 0.0.0.0:8000 league_manager.wsgi
+            # Test health status (envs are CI-only dummies: the prod settings
+            # guard requires all of them set, and fork PRs get no contexts;
+            # all HTTP is answered by mockserver, no real DB is ever touched)
+            docker run --rm --detach --network test_network --name test_container \
+              -e SECRET_KEY=test-image-dummy-secret-not-for-production \
+              -e MYSQL_HOST=127.0.0.1 \
+              -e MYSQL_DB_NAME=ci_dummy \
+              -e MYSQL_USER=ci_dummy \
+              -e MYSQL_PWD=ci_dummy \
+              backend:latest gunicorn -b 0.0.0.0:8000 league_manager.wsgi
             sleep 3
             for i in {1..10}; do
               status=$(docker inspect --format='{{.State.Health.Status}}' test_container)
