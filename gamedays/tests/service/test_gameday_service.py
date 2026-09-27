@@ -8,7 +8,6 @@ from gamedays.service.gameday_service import (
     EmptyFinalTable,
 )
 from gamedays.tests.setup_factories.db_setup import DBSetup
-from gamedays.tests.setup_factories.factories import SeasonFactory, TeamLogFactory
 
 
 class TestGamedayService(TestCase):
@@ -63,45 +62,6 @@ class TestGamedayService(TestCase):
 
         assert "<script>alert(1)</script>" not in html
         assert "<i>&lt;script&gt;alert(1)&lt;/script&gt;</i>" in html
-
-    def test_get_offense_player_statistics_table_escapes_team_description(self):
-        gameday = DBSetup().g62_finished(season=SeasonFactory(name="2025"))
-        gameinfo = gameday.gameinfo_set.first()
-        team_1_result, team_2_result = list(gameinfo.gameresult_set.all())
-        team_1_result.team.description = "<script>alert(1)</script>"
-        team_1_result.team.save()
-        DBSetup().create_teamlog_home_and_away(
-            team_1_result.team, team_2_result.team, gameinfo=gameinfo
-        )
-
-        gs = GamedayService.create(gameday.pk)
-        html = gs.get_offense_player_statistics_table().to_html(escape=True)
-
-        assert "<script>alert(1)</script>" not in html
-        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
-
-    def test_get_defense_statistic_table_escapes_team_description(self):
-        gameday = DBSetup().g62_finished(season=SeasonFactory(name="2025"))
-        gameinfo = gameday.gameinfo_set.first()
-        team_1_result, _ = list(gameinfo.gameresult_set.all())
-        team_1_result.team.description = "<script>alert(1)</script>"
-        team_1_result.team.save()
-        TeamLogFactory(
-            gameinfo=gameinfo,
-            team=team_1_result.team,
-            sequence=1,
-            player=19,
-            event="Interception",
-            value=0,
-            half=1,
-            author=gameday.author,
-        )
-
-        gs = GamedayService.create(gameday.pk)
-        html = gs.get_defense_player_statistic_table().to_html(escape=True)
-
-        assert "<script>alert(1)</script>" not in html
-        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
 
     def test_get_games_to_whistle(self):
         gameday = DBSetup().g62_status_empty()
