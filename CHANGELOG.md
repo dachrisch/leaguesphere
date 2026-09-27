@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.32.1](https://github.com/dachrisch/leaguesphere/compare/v4.32.0...v4.32.1) (2026-09-27)
+
+
+### Bug Fixes
+
+* **ci:** enable codecov carryforward for scoped-CI flags ([#2015](https://github.com/dachrisch/leaguesphere/issues/2015)) ([007e7fc](https://github.com/dachrisch/leaguesphere/commit/007e7fc2bedf9fb91bbba2765ae444f99c0a59b4))
+* **ci:** enable codecov carryforward for scoped-CI flags ([#2015](https://github.com/dachrisch/leaguesphere/issues/2015)) ([c589b00](https://github.com/dachrisch/leaguesphere/commit/c589b003e080f1fcb05cfd66b243dc907285cad8))
+
 ## [4.32.0](https://github.com/dachrisch/leaguesphere/compare/v4.31.4...v4.32.0) (2026-09-27)
 
 
