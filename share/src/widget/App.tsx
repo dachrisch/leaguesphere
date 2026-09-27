@@ -1,10 +1,10 @@
-import { ErrorBanner } from '@/components/ErrorBanner';
-import { useAutoHeight } from '@/hooks/useAutoHeight';
-import { useSnapshot } from '@/hooks/useSnapshot';
-import { parseWidgetConfig } from '@/lib/params';
-import { Live } from '@/views/Live';
-import { Spielplan } from '@/views/Spielplan';
-import { Table } from '@/views/Table';
+import { ErrorBanner } from '../components/ErrorBanner';
+import { useAutoHeight } from '../hooks/useAutoHeight';
+import { useSnapshot } from '../hooks/useSnapshot';
+import { parseWidgetConfig } from '../lib/params';
+import { Live } from '../views/Live';
+import { Spielplan } from '../views/Spielplan';
+import { Table } from '../views/Table';
 
 export function App() {
   const config = parseWidgetConfig(new URLSearchParams(window.location.search));

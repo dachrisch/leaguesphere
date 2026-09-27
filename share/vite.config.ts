@@ -2,8 +2,6 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-const srcDir = fileURLToPath(new URL('./src', import.meta.url));
-
 export default defineConfig({
   plugins: [react()],
   build: {
@@ -27,11 +25,6 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:8000',
       '/media': 'http://localhost:8000',
-    },
-  },
-  resolve: {
-    alias: {
-      '@': srcDir,
     },
   },
 });

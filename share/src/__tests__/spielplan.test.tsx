@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { parseWidgetConfig } from '@/lib/params';
-import { Spielplan } from '@/views/Spielplan';
+import { parseWidgetConfig } from '../lib/params';
+import { Spielplan } from '../views/Spielplan';
 
 import { makeGame, makeGameday, makeSnapshot } from './fixtures';
 

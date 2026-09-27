@@ -1,4 +1,4 @@
-import type { LeagueTable } from '@/lib/types';
+import type { LeagueTable } from '../lib/types';
 
 export function StandingsTable({
   table,

@@ -1,4 +1,4 @@
-import type { LiveGame } from '@/lib/types';
+import type { LiveGame } from '../lib/types';
 
 export function LiveCard({ game }: { game: LiveGame }) {
   return (

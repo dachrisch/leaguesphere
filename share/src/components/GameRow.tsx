@@ -1,4 +1,4 @@
-import type { ScheduleEntry } from '@/lib/schedule';
+import type { ScheduleEntry } from '../lib/schedule';
 
 export function formatDate(isoDate: string): string {
   const [year, month, day] = isoDate.split('-');

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { activeWatchedGames } from '@/lib/live';
-import { pickLeagueSeason, slugify } from '@/lib/table';
+import { activeWatchedGames } from '../lib/live';
+import { pickLeagueSeason, slugify } from '../lib/table';
 
 import { makeGame, makeGameday, makeSnapshot } from './fixtures';
 

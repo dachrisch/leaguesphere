@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildTeamSchedule, isFinal, isLive } from '@/lib/schedule';
-import type { ApiGame, ApiGameday, Snapshot } from '@/lib/types';
+import { buildTeamSchedule, isFinal, isLive } from '../lib/schedule';
+import type { ApiGame, ApiGameday, Snapshot } from '../lib/types';
 
 function makeGame(overrides: Partial<ApiGame> = {}): ApiGame {
   return {

@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { LiveCard } from '@/components/LiveCard';
-import { StandingsTable } from '@/components/StandingsTable';
-import type { LeagueTable, LiveGame } from '@/lib/types';
+import { LiveCard } from '../components/LiveCard';
+import { StandingsTable } from '../components/StandingsTable';
+import type { LeagueTable, LiveGame } from '../lib/types';
 
 describe('StandingsTable', () => {
   const table: LeagueTable = {

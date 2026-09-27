@@ -5,7 +5,7 @@ import {
   buildWidgetUrl,
   type GeneratorOptions,
   PARENT_LISTENER_SNIPPET,
-} from '@/lib/generator';
+} from '../lib/generator';
 
 const base = 'https://leaguesphere.app/share/widget/';
 

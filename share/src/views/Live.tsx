@@ -1,12 +1,12 @@
 import { useMemo } from 'react';
 import type { CSSProperties } from 'react';
 
-import { LiveCard } from '@/components/LiveCard';
-import { PoweredBy } from '@/components/PoweredBy';
-import { useLiveticker } from '@/hooks/useLiveticker';
-import { activeWatchedGames } from '@/lib/live';
-import type { WidgetConfig } from '@/lib/params';
-import type { Snapshot } from '@/lib/types';
+import { LiveCard } from '../components/LiveCard';
+import { PoweredBy } from '../components/PoweredBy';
+import { useLiveticker } from '../hooks/useLiveticker';
+import { activeWatchedGames } from '../lib/live';
+import type { WidgetConfig } from '../lib/params';
+import type { Snapshot } from '../lib/types';
 
 export function Live({
   snapshot,

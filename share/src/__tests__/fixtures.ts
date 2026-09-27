@@ -1,4 +1,4 @@
-import type { ApiGame, ApiGameday, Snapshot } from '@/lib/types';
+import type { ApiGame, ApiGameday, Snapshot } from '../lib/types';
 
 export function makeGame(overrides: Partial<ApiGame> = {}): ApiGame {
   return {

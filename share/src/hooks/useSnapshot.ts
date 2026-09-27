@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
-import { fetchSnapshot } from '@/lib/api';
-import type { Snapshot } from '@/lib/types';
+import { fetchSnapshot } from '../lib/api';
+import type { Snapshot } from '../lib/types';
 
 export interface SnapshotState {
   snapshot: Snapshot | null;

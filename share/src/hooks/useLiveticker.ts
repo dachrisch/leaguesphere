@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
-import { fetchLiveticker } from '@/lib/api';
-import type { LiveGame } from '@/lib/types';
+import { fetchLiveticker } from '../lib/api';
+import type { LiveGame } from '../lib/types';
 
 const POLL_INTERVAL_MS = 60_000;
 

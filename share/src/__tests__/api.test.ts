@@ -8,7 +8,7 @@ import {
   leagueTableUrl,
   snapshotUrl,
   teamsUrl,
-} from '@/lib/api';
+} from '../lib/api';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {

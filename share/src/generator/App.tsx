@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 
-import { fetchTeams } from '@/lib/api';
+import { fetchTeams } from '../lib/api';
 import {
   buildIframeSnippet,
   buildWidgetUrl,
   type GeneratorOptions,
   PARENT_LISTENER_SNIPPET,
-} from '@/lib/generator';
-import type { ViewName } from '@/lib/params';
-import type { TeamDirectoryEntry } from '@/lib/types';
+} from '../lib/generator';
+import type { ViewName } from '../lib/params';
+import type { TeamDirectoryEntry } from '../lib/types';
 
 const DEFAULT_OPTIONS: GeneratorOptions = {
   teams: [],

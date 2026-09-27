@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-import { notifyParentHeight } from '@/lib/embed';
+import { notifyParentHeight } from '../lib/embed';
 
 export function useAutoHeight(): void {
   useEffect(() => {

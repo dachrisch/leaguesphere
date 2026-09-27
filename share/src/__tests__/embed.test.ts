@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { WIDGET_MESSAGE_TYPE, notifyParentHeight } from '@/lib/embed';
+import { WIDGET_MESSAGE_TYPE, notifyParentHeight } from '../lib/embed';
 
 describe('notifyParentHeight', () => {
   it('posts a tagged height message to the parent frame', () => {

@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 
-import { ErrorBanner } from '@/components/ErrorBanner';
-import { PoweredBy } from '@/components/PoweredBy';
-import { StandingsTable } from '@/components/StandingsTable';
-import { fetchLeagueTable, fetchLeagues } from '@/lib/api';
-import type { WidgetConfig } from '@/lib/params';
-import { pickLeagueSeason, slugify } from '@/lib/table';
-import type { LeagueTable, Snapshot } from '@/lib/types';
+import { ErrorBanner } from '../components/ErrorBanner';
+import { PoweredBy } from '../components/PoweredBy';
+import { StandingsTable } from '../components/StandingsTable';
+import { fetchLeagueTable, fetchLeagues } from '../lib/api';
+import type { WidgetConfig } from '../lib/params';
+import { pickLeagueSeason, slugify } from '../lib/table';
+import type { LeagueTable, Snapshot } from '../lib/types';
 
 export function Table({
   snapshot,

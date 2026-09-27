@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseWidgetConfig } from '@/lib/params';
+import { parseWidgetConfig } from '../lib/params';
 
 const parse = (search: string) => parseWidgetConfig(new URLSearchParams(search));
 

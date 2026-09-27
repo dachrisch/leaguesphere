@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 
-import { GameRow } from '@/components/GameRow';
-import { PoweredBy } from '@/components/PoweredBy';
-import type { WidgetConfig } from '@/lib/params';
-import { buildTeamSchedule } from '@/lib/schedule';
-import type { Snapshot } from '@/lib/types';
+import { GameRow } from '../components/GameRow';
+import { PoweredBy } from '../components/PoweredBy';
+import type { WidgetConfig } from '../lib/params';
+import { buildTeamSchedule } from '../lib/schedule';
+import type { Snapshot } from '../lib/types';
 
 function TeamBlock({
   snapshot,
