@@ -717,6 +717,14 @@ jobs:
             # neither .circleci/scope-mapping.txt nor
             # .circleci/scope-exclude.txt. stdlib only, no dependencies.
             python3 scripts/check_scope_coverage.py
+      - run:
+          name: Every CI Codecov flag must carry forward
+          command: |
+            # Also always-on: a .codecov.yml-only change is scope-excluded
+            # and runs no shard, so the python-cross unit test wouldn't
+            # catch a config regression. Fails when a flag CI uploads is
+            # not carryforward-enabled (issue #2015). stdlib only.
+            python3 scripts/check_codecov_flags.py
 
   check_version_sequence:
     docker:
