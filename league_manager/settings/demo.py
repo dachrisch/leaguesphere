@@ -55,7 +55,8 @@ else:
     }
 
 # Security settings for demo
-# Relax for local development, strict for production
+# Relaxed on purpose (no HSTS/SSL redirect): these settings also drive local
+# plain-HTTP runs via container/start_dev_server.sh.
 if os.environ.get('RUNNING_IN_DOCKER'):
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
