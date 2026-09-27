@@ -1,7 +1,7 @@
+import logging
 import re
 
 from django.core.cache import cache
-from django.db import OperationalError
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 
@@ -22,6 +22,8 @@ ADMIN_PREFIX = "/admin/"
 MAINTENANCE_PREFIX = "/maintenance/"
 WRITE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
+logger = logging.getLogger(__name__)
+
 
 class MaintenanceModeMiddleware:
     def __init__(self, get_response):
@@ -33,21 +35,31 @@ class MaintenanceModeMiddleware:
         if config is None:
             try:
                 db_config = SiteConfiguration.objects.first()
-            except OperationalError:
-                # DB unreachable: fail open rather than 500ing here.
-                # DatabaseGuardMiddleware (which runs before this one) is
-                # responsible for redirecting to the offline page.
-                db_config = None
-
-            if db_config:
-                config = {
-                    "scope": db_config.maintenance_scope,
-                    "patterns": db_config.maintenance_pages,
-                }
-            else:
+            except Exception as exc:
+                # DB unreachable / misconfigured: fail open rather than 500ing
+                # here. Broad on purpose, mirroring DatabaseGuardMiddleware:
+                # OperationalError, InterfaceError, DatabaseError wrappers and
+                # ImproperlyConfigured all surface from this one probe.
+                # DatabaseGuardMiddleware (which runs before this one) owns the
+                # redirect to the offline page.
+                logger.error(
+                    f"Maintenance config lookup failed, treating maintenance as off: {exc}"
+                )
+                # Deliberately not cached: retry on the next request so
+                # maintenance mode is honoured as soon as the DB is back.
                 config = {"scope": MAINTENANCE_SCOPE_OFF, "patterns": []}
+            else:
+                if db_config:
+                    config = {
+                        "scope": db_config.maintenance_scope,
+                        "patterns": db_config.maintenance_pages,
+                    }
+                else:
+                    config = {"scope": MAINTENANCE_SCOPE_OFF, "patterns": []}
 
-            cache.set(MAINTENANCE_CONFIG_CACHE_KEY, config, MAINTENANCE_CONFIG_CACHE_TTL)
+                cache.set(
+                    MAINTENANCE_CONFIG_CACHE_KEY, config, MAINTENANCE_CONFIG_CACHE_TTL
+                )
 
         path = request.path_info
         if self._is_exempt(path):

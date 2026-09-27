@@ -9,7 +9,8 @@ from unittest.mock import patch
 
 import pytest
 from django.core.cache import cache
-from django.db import OperationalError
+from django.core.exceptions import ImproperlyConfigured
+from django.db import DatabaseError, InterfaceError, OperationalError
 
 from league_manager.constants import MAINTENANCE_CONFIG_CACHE_KEY
 from league_manager.middleware.maintenance import MaintenanceModeMiddleware
@@ -39,10 +40,22 @@ def test_db_down_with_cold_caches_shows_offline_page_not_500(client):
     assert response.url == "/database-error/"
 
 
-def test_maintenance_middleware_survives_db_error_on_cold_cache():
+@pytest.mark.parametrize(
+    "error",
+    [
+        OperationalError("DB is down"),
+        InterfaceError("connection already closed"),
+        DatabaseError("deadlock / lock wait timeout"),
+        ImproperlyConfigured("settings.DATABASES is improperly configured"),
+    ],
+    ids=lambda error: type(error).__name__,
+)
+def test_maintenance_middleware_survives_db_error_on_cold_cache(error, caplog):
     """Even called directly (independent of ordering), the maintenance
-    middleware must not propagate an OperationalError from a cold-cache
-    lookup -- it should fall back to scope 'off' and let the request through.
+    middleware must not propagate a failure from a cold-cache lookup -- it
+    should log it, fall back to scope 'off' and let the request through.
+    OperationalError alone is too narrow: InterfaceError, DatabaseError
+    wrappers and ImproperlyConfigured all surface from the same probe.
     """
     calls = []
 
@@ -52,10 +65,13 @@ def test_maintenance_middleware_survives_db_error_on_cold_cache():
 
     middleware = MaintenanceModeMiddleware(get_response)
 
-    with patch(
-        "league_manager.middleware.maintenance.SiteConfiguration.objects"
-    ) as mock_manager:
-        mock_manager.first.side_effect = OperationalError("DB is down")
+    with (
+        patch(
+            "league_manager.middleware.maintenance.SiteConfiguration.objects"
+        ) as mock_manager,
+        caplog.at_level("ERROR", logger="league_manager.middleware.maintenance"),
+    ):
+        mock_manager.first.side_effect = error
 
         result = middleware(
             request=type("Req", (), {"path_info": "/home/", "method": "GET"})()
@@ -63,3 +79,20 @@ def test_maintenance_middleware_survives_db_error_on_cold_cache():
 
     assert result == "downstream-response"
     assert len(calls) == 1
+    assert str(error) in caplog.text
+
+
+def test_maintenance_middleware_does_not_cache_fallback_after_db_error():
+    """A failed lookup must not park scope 'off' in the cache for the TTL:
+    the next request should retry so maintenance mode is honoured as soon as
+    the database is reachable again.
+    """
+    middleware = MaintenanceModeMiddleware(lambda request: "downstream-response")
+
+    with patch(
+        "league_manager.middleware.maintenance.SiteConfiguration.objects"
+    ) as mock_manager:
+        mock_manager.first.side_effect = OperationalError("DB is down")
+        middleware(request=type("Req", (), {"path_info": "/home/", "method": "GET"})())
+
+    assert cache.get(MAINTENANCE_CONFIG_CACHE_KEY) is None
