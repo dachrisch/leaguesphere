@@ -576,6 +576,26 @@ class TestStaffPasscheckDetailsEscaping(TestCase):
         # The note's own newline-to-<br> transform must still work.
         self.assertIn("line one<br>", html)
 
+    def test_null_note_renders_as_empty_cell_not_the_string_none(self):
+        """PasscheckVerification.note is null=True; escape(None) would
+        coerce it to the literal text "None" in the report.
+        """
+        gameday = GamedayFactory()
+        GameinfoFactory(gameday=gameday)
+        PasscheckVerification.objects.create(
+            user=UserFactory(),
+            official_name="Ref",
+            team=TeamFactory(),
+            gameday=gameday,
+            note=None,
+        )
+
+        wrapper = MachtreportModelWrapper(gameday.pk)
+        details = wrapper.get_staff_passcheck_details()
+
+        self.assertEqual(details["Notiz"].iloc[0], "")
+        self.assertNotIn(">None<", details.to_html(**REPORT_TABLE_RENDER_CONFIG))
+
 
 class TestPasscheckPlayerTableEscaping(TestCase):
     def test_team_description_is_escaped(self):

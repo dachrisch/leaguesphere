@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 import pandas as pd
 from django.utils.html import escape, format_html
 
+from league_manager.utils.html import escape_cell
+
 from gamedays.constants import LEAGUE_GAMEDAY_GAME_DETAIL
 from gamedays.service.placeholder_service import GamedayPlaceholderService
 from league_manager.utils.url_service import UrlService
@@ -161,7 +163,9 @@ class EventsTableError:
 
         # Filter out None/NaN values
         valid_teams = [
-            escape(t) for t in self.events_teams if t is not None and str(t) != "nan"
+            escape(str(t))
+            for t in self.events_teams
+            if t is not None and str(t) != "nan"
         ]
 
         if not valid_teams:
@@ -235,7 +239,7 @@ class GamedayService:
         # <i> markup preserved), so every other free-text column must be
         # escaped by hand here - pandas won't do it for us.
         for column in (FIELD, HOME, AWAY, STANDING, STAGE, STATUS):
-            schedule[column] = schedule[column].apply(escape)
+            schedule[column] = schedule[column].apply(escape_cell)
         schedule[OFFICIALS_NAME] = schedule[OFFICIALS_NAME].apply(
             lambda name: format_html("<i>{}</i>", name)
         )

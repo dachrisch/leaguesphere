@@ -5,6 +5,8 @@ from django.db.models import OuterRef, Subquery
 from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
 
+from league_manager.utils.html import escape_cell
+
 from gamedays.models import (
     Gameinfo,
     GameSetup,
@@ -70,11 +72,12 @@ class MachtreportModelWrapper:
         )
         # Rendered with escape=False (the note column below needs its <br>
         # markup preserved), so every other free-text column must be
-        # escaped by hand here - pandas won't do it for us.
+        # escaped by hand here - pandas won't do it for us. escape_cell()
+        # keeps NULL cells empty (note is null=True) instead of "None".
         for column in ("official_name", "user__username", "team__name"):
-            passchecks[column] = passchecks[column].apply(escape)
+            passchecks[column] = passchecks[column].apply(escape_cell)
         passchecks["note"] = passchecks.note.apply(
-            lambda note: mark_safe("<br>".join(escape(note).splitlines()))
+            lambda note: mark_safe("<br>".join(escape_cell(note).splitlines()))
         )
 
         return passchecks.rename(columns=column_mapping)
@@ -288,7 +291,7 @@ class MachtreportModelWrapper:
             # columns below deliberately contain markup), so every other
             # free-text column must be escaped by hand here.
             for column in ("official__team__description", "name", "position"):
-                officials_df[column] = officials_df[column].apply(escape)
+                officials_df[column] = officials_df[column].apply(escape_cell)
             officials_df["license_cell"] = officials_df.apply(
                 lambda row: self._license_cell(
                     row["latest_license"], row["last_started_license_date"]
