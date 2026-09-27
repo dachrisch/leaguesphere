@@ -1,5 +1,25 @@
 # Changelog
 
+## [4.31.4](https://github.com/dachrisch/leaguesphere/compare/v4.31.3...v4.31.4) (2026-09-27)
+
+
+### Bug Fixes
+
+* **ci:** make check_migrations and test_backend_image work without secrets ([8fdc7b0](https://github.com/dachrisch/leaguesphere/commit/8fdc7b04b0fee2b682456b925070683a290d6574))
+* **ci:** make check_migrations and test_backend_image work without secrets ([c3cbac2](https://github.com/dachrisch/leaguesphere/commit/c3cbac2558bb07a4afeb1f134448efbf6a7f192b))
+* **ci:** pass MYSQL dummies to test_backend_image container ([89d67e8](https://github.com/dachrisch/leaguesphere/commit/89d67e8e5082ae899207f50079c405b6a89d30e3))
+* **ci:** pass MYSQL dummies to test_backend_image container ([c472a78](https://github.com/dachrisch/leaguesphere/commit/c472a7800b6aff2bfae71b9c876281c26a76cbfb))
+* **container:** use build-only dummy env for collectstatic in nginx image ([fd08aad](https://github.com/dachrisch/leaguesphere/commit/fd08aad910d0f1aa840758f588ec21b90cbdeb6c))
+* **container:** use build-only dummy env for collectstatic in nginx image ([864c9bd](https://github.com/dachrisch/leaguesphere/commit/864c9bd32d8f87fba14d0c56451d7d70b772a9e1))
+* **gamedays:** don't expose IllegalGameTransition details in 409 responses ([6bce22b](https://github.com/dachrisch/leaguesphere/commit/6bce22bf1179e7661cf8a1b2be3bbea0a2712f1a))
+* **gamedays:** guard illegal game status transitions with 409 ([a6d6da9](https://github.com/dachrisch/leaguesphere/commit/a6d6da9759e471310a11fbe69ea40e3af60f9b9a))
+* **gamedays:** serialize gamelog sequence allocation per game ([e827f14](https://github.com/dachrisch/leaguesphere/commit/e827f141bf9bcf3febc2f59121fde691e5b49417))
+* **gamedays:** serialize gamelog sequence allocation per game ([de68fee](https://github.com/dachrisch/leaguesphere/commit/de68fee38480e4b7dab49ae9e3cb92cd28ab4bec)), closes [#2006](https://github.com/dachrisch/leaguesphere/issues/2006)
+* **gamedays:** validate possession team against the game's teams ([06c1a64](https://github.com/dachrisch/leaguesphere/commit/06c1a64b9e96830062ce9c430009b369e51a432d))
+* **gamedays:** validate possession team and guard illegal game status transitions ([1c8316e](https://github.com/dachrisch/leaguesphere/commit/1c8316e422f38462d8a3a7f7fdd38046b07b99e6))
+* resolve code scanning alerts (CWE-209 info exposure, unused eslint directive) ([e5022e3](https://github.com/dachrisch/leaguesphere/commit/e5022e3e0e3f2bcff83125dd946182e61f627720))
+* resolve code scanning alerts (CWE-209 info exposure, unused eslint directive) ([80a2ad8](https://github.com/dachrisch/leaguesphere/commit/80a2ad8a2a3e23b932bd2c45d58eaa14c1ef55ed))
+
 ## [4.31.3](https://github.com/dachrisch/leaguesphere/compare/v4.31.2...v4.31.3) (2026-09-27)
 
 
