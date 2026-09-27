@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.33.0](https://github.com/dachrisch/leaguesphere/compare/v4.32.3...v4.33.0) (2026-09-27)
+
+
+### Features
+
+* **gamedays:** expose slug in /api/leagues/ response ([db094e5](https://github.com/dachrisch/leaguesphere/commit/db094e5e890232542470b6269a6054365e18c318))
+
+
+### Documentation
+
+* document /api/leagues/ slug directory in llms-dynamic.txt ([6bfdc38](https://github.com/dachrisch/leaguesphere/commit/6bfdc38c89b562a411b55ed02d6dabfd01c5f6d5))
+
 ## [4.32.3](https://github.com/dachrisch/leaguesphere/compare/v4.32.2...v4.32.3) (2026-09-27)
 
 
