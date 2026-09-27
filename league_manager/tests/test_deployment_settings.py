@@ -20,7 +20,10 @@ def test_cookies_hsts_and_ssl_redirect_enabled(module_name):
     assert settings_module.SECURE_HSTS_SECONDS > 0
     assert settings_module.SECURE_HSTS_INCLUDE_SUBDOMAINS is True
     assert settings_module.SECURE_REFERRER_POLICY == "strict-origin-when-cross-origin"
-    # The container healthcheck hits /health/ over plain HTTP.
+    # The *backend* container healthcheck hits /health/ over plain HTTP; keep
+    # it exempt from the SSL redirect. The frontend (nginx) container probes
+    # /login/ and advertises X-Forwarded-Proto: https instead -- covered by
+    # scripts/tests/test_container_healthcheck.py.
     assert any(
         re.match(pattern, "health/")
         for pattern in settings_module.SECURE_REDIRECT_EXEMPT

@@ -640,10 +640,17 @@ jobs:
             cat > ls.env.ci \<<EOF
             SECRET_KEY=ci-test-secret-key-not-for-production
             MYSQL_HOST=db
+            # base.py (and the app) read these names...
             MYSQL_DB_NAME=ci_test_db
             MYSQL_USER=ci_test_user
             MYSQL_PWD=ci_test_password
             MYSQL_ROOT_PASSWORD=ci_test_root_pw
+            # ...while the mariadb image's own entrypoint only creates the DB
+            # and user from the standard MYSQL_DATABASE/MYSQL_PASSWORD names.
+            # Set both so the user exists even if the mysql-init script is a
+            # no-op; docker-entrypoint-initdb.d is skipped on non-empty datadir.
+            MYSQL_DATABASE=ci_test_db
+            MYSQL_PASSWORD=ci_test_password
             DEBUG=False
             EOF
             sed -e 's/env_file: ls.env/env_file: ls.env.ci/g' \
@@ -652,10 +659,48 @@ jobs:
                 docker-compose.yaml > docker-compose.ci.yaml
             docker network create proxy || true
             docker-compose -f docker-compose.ci.yaml up -d
-            sleep 15
             docker-compose -f docker-compose.ci.yaml ps
+
             APP_CONTAINER=$(docker-compose -f docker-compose.ci.yaml ps -q app)
-            docker exec $APP_CONTAINER sh -c 'curl -f --max-time 10 https://www.google.com'
+            DB_CONTAINER=$(docker-compose -f docker-compose.ci.yaml ps -q db)
+            # The CI compose DB ships no schema, but the frontend healthcheck
+            # performs a real login POST, which needs auth_user. Migrate before
+            # asserting health; retry until the db service accepts connections.
+            migrated=false
+            for i in $(seq 1 30); do
+              docker exec "$APP_CONTAINER" python manage.py migrate --no-input && migrated=true && break
+              echo "waiting for db/app ($i)..."; sleep 3
+            done
+            if [ "$migrated" != "true" ]; then
+              echo "Migrations never succeeded; db + app logs follow"
+              docker logs "$DB_CONTAINER" || true
+              docker logs "$APP_CONTAINER" || true
+              docker-compose -f docker-compose.ci.yaml down -v
+              exit 1
+            fi
+
+            # End-to-end guard the mockserver-based test_frontend_image cannot
+            # give: real prod settings (SECURE_SSL_REDIRECT) + real nginx + real
+            # healthcheck. This is what the 4.32.0 deploy broke.
+            WWW_CONTAINER=$(docker-compose -f docker-compose.ci.yaml ps -q www)
+            status=""
+            if [ -n "$WWW_CONTAINER" ]; then
+              for i in $(seq 1 24); do
+                status=$(docker inspect --format='{{.State.Health.Status}}' "$WWW_CONTAINER")
+                echo "www health: $status"
+                [ "$status" = "healthy" ] && break
+                sleep 5
+              done
+            fi
+            if [ "$status" != "healthy" ]; then
+              echo "Frontend container did not become healthy"
+              docker exec "$WWW_CONTAINER" sh -c 'curl -s -o /dev/null -w "probe-no-header=%{http_code}\n" http://localhost/login/; curl -s -o /dev/null -w "probe-with-header=%{http_code}\n" -H "X-Forwarded-Proto: https" http://localhost/login/' || true
+              docker logs "$WWW_CONTAINER" || true
+              docker-compose -f docker-compose.ci.yaml down -v
+              exit 1
+            fi
+
+            docker exec "$APP_CONTAINER" sh -c 'curl -f --max-time 10 https://www.google.com'
             docker-compose -f docker-compose.ci.yaml down -v
 
   check_release_sequence:
