@@ -23,6 +23,16 @@ class DataFrameWrapper:
                         field["type"] = "string"
                     # Remove 'extDtype' as it varies across versions
                     field.pop("extDtype", None)
+                # Drop volatile write-stamps: updated_at is set at row-creation
+                # time, so golden files cannot pin it (same reason the
+                # snapshot ETag treats it as a freshness signal, not content).
+                data["schema"]["fields"] = [
+                    field
+                    for field in data["schema"].get("fields", [])
+                    if field.get("name") != "updated_at"
+                ]
+            for row in data.get("data", []):
+                row.pop("updated_at", None)
             return data
 
         actual = normalize_schema(actual)

@@ -1,3 +1,5 @@
+from django.db import transaction
+
 from gamedays.models import Team, TeamLog
 from gamedays.service.gamelog import GameLog, GameLogCreator
 from gamedays.service.wrapper.gameinfo_wrapper import GameinfoWrapper
@@ -28,8 +30,9 @@ class GameService(object):
     def create_gamelog(self, team_name, event, user, half):
         # ToDo extract to TeamWrapper
         team = self._resolve_team(team_name)
-        gamelog = GameLogCreator(self.gameinfo.gameinfo, team, event, user, half)
-        return gamelog.create()
+        return self._write_gamelog(
+            GameLogCreator(self.gameinfo.gameinfo, team, event, user, half).create
+        )
 
     @staticmethod
     def _resolve_team(team_identifier) -> Team:
@@ -51,6 +54,11 @@ class GameService(object):
         return team
 
     def update_score(self, gamelog: GameLog):
+        """Overwrite the stored half scores with the gamelog totals.
+
+        Full recompute: scores entered without gamelog entries are lost. The
+        scorecard write path does not use this, see ``_write_gamelog``.
+        """
         self.gameresult.save_home_first_half(
             gamelog.get_home_firsthalf_score(), gamelog.get_away_firsthalf_score()
         )
@@ -65,9 +73,40 @@ class GameService(object):
         )
 
     def delete_gamelog(self, sequence):
-        gamelog = GameLog(self.gameinfo.gameinfo)
+        return self._write_gamelog(lambda: self._mark_entries_as_deleted(sequence))
+
+    def _mark_entries_as_deleted(self, sequence) -> GameLog:
+        gamelog = self.get_gamelog()
         gamelog.mark_entries_as_deleted(sequence)
         return gamelog
+
+    def _write_gamelog(self, write) -> GameLog:
+        """Run a gamelog ``write`` and shift the stored scores by its effect.
+
+        Only the change the write makes to the gamelog half scores is applied,
+        so a score entered without gamelog entries (designer results editor)
+        survives scorecard writes (#1988). Snapshot, write and score update run
+        in one transaction holding the game's result rows locked, so concurrent
+        writes to the same game apply their changes one after the other.
+        """
+        with transaction.atomic():
+            self.gameresult.lock()
+            before = self._half_scores(self.get_gamelog())
+            gamelog = write()
+            after = self._half_scores(gamelog)
+            self.gameresult.apply_score_change(
+                {key: after[key] - before[key] for key in after}
+            )
+        return gamelog
+
+    @staticmethod
+    def _half_scores(gamelog: GameLog) -> dict:
+        return {
+            (True, "fh"): gamelog.get_home_firsthalf_score(),
+            (True, "sh"): gamelog.get_home_secondhalf_score(),
+            (False, "fh"): gamelog.get_away_firsthalf_score(),
+            (False, "sh"): gamelog.get_away_secondhalf_score(),
+        }
 
     def _create_log_entry(self, event_text, user):
         TeamLog.objects.get_or_create(
