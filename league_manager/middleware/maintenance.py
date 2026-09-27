@@ -36,17 +36,13 @@ class MaintenanceModeMiddleware:
             try:
                 db_config = SiteConfiguration.objects.first()
             except Exception as exc:
-                # DB unreachable / misconfigured: fail open rather than 500ing
-                # here. Broad on purpose, mirroring DatabaseGuardMiddleware:
-                # OperationalError, InterfaceError, DatabaseError wrappers and
-                # ImproperlyConfigured all surface from this one probe.
-                # DatabaseGuardMiddleware (which runs before this one) owns the
-                # redirect to the offline page.
+                # Fail open on any DB error, mirroring DatabaseGuardMiddleware
+                # (which runs first and owns the redirect to the offline page).
                 logger.error(
                     f"Maintenance config lookup failed, treating maintenance as off: {exc}"
                 )
-                # Deliberately not cached: retry on the next request so
-                # maintenance mode is honoured as soon as the DB is back.
+                # Not cached: retry next request so maintenance mode resumes
+                # as soon as the DB is back.
                 config = {"scope": MAINTENANCE_SCOPE_OFF, "patterns": []}
             else:
                 if db_config:

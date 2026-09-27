@@ -2,16 +2,15 @@ import pytest
 from django.conf import settings
 from django.test import override_settings
 
-# A real, public, read-only endpoint (LeagueViewSet): /api/ itself has no
-# index route, so a check there would pass for the wrong reason.
+# A real public endpoint: /api/ has no index route, so it would pass for
+# the wrong reason.
 PUBLIC_API_URL = "/api/leagues/"
 WIDGET_ORIGIN = "https://widget.example.com"
 
 
 def test_cors_is_not_wide_open():
-    """CORS_ORIGIN_ALLOW_ALL let any website read API responses cross-origin
-    (deprecated setting name too -- django-cors-headers now calls it
-    CORS_ALLOW_ALL_ORIGINS). Only an explicit allow-list should be trusted.
+    """Only an explicit allow-list should be trusted -- under either the old
+    or the current django-cors-headers setting name.
     """
     assert not getattr(settings, "CORS_ORIGIN_ALLOW_ALL", False)
     assert not getattr(settings, "CORS_ALLOW_ALL_ORIGINS", False)

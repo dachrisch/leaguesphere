@@ -12,11 +12,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
-# Cross-origin API access is not required in normal operation: every React
-# app is either served same-origin from this Django deployment, or (in dev)
-# proxied same-origin through the Vite dev server (see each app's
-# vite.config.*). Environments that do need a specific external origin set
-# CORS_ALLOWED_ORIGINS explicitly; credentials stay disabled.
+# Every React app is served (or dev-proxied) same-origin, so no cross-origin
+# access is needed by default; environments that need one set it explicitly.
 CORS_ALLOWED_ORIGINS = []
 
 # Application definition
