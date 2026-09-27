@@ -30,7 +30,7 @@ class SeasonSerializer(ModelSerializer):
 class LeagueSerializer(ModelSerializer):
     class Meta:
         model = League
-        fields = ["id", "name"]
+        fields = ["id", "name", "slug"]
 
 
 class ResourceUrlSerializer(ModelSerializer):

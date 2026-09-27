@@ -32,6 +32,10 @@ League standings. Add a season for a specific year: `GET /api/league-table/{leag
 
 Paginated gameday list with metadata (name, date, league, season, status). Supports `?search=` and `?page=`.
 
+### GET /api/leagues/
+
+League directory: `id`, `name` and `slug` for every league. Slugs are the identifiers used by `/api/liveticker/?league=<slug>` and `/api/league-table/{league}/`; some are hand-set and cannot be derived from the name.
+
 ### GET /api/gameday/{id}/details/?get=schedule
 
 Full schedule of one gameday as JSON (games, times, fields, statuses).
