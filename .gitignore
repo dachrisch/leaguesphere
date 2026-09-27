@@ -166,6 +166,7 @@ journey/static/journey_dashboard/*.css
 
 # Local JS lint output
 **/js-lint-results-*.json
+**/js-lint-results-*.sarif
 
 # Opencode local install artifacts
 .opencode/package-lock.json

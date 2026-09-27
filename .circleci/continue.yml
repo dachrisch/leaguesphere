@@ -44,9 +44,6 @@ parameters:
   run-journey:
     type: boolean
     default: false
-  run-e2e:
-    type: boolean
-    default: false
   run-build-backend:
     type: boolean
     default: false
@@ -992,8 +989,11 @@ workflows:
       # missing frontend.tar (observed on pipelines 5503 and 5525). The
       # anchor guarantees at least one requirement always remains, so a
       # build waits for whichever tests run and never skips. Only the
-      # test shards + e2e below are path-filtered; everything downstream
-      # keeps its `requires`. e2e needs neither image and runs fully in
+      # test shards below are path-filtered; everything downstream
+      # keeps its `requires`. e2e is always-run (no filter): it is a
+      # required check and touches every app by convention, so scoping
+      # it would only trade minutes for flaky required-check gating.
+      # e2e needs neither image and runs fully in
       # parallel with the shards and the builds; it instead gates the
       # post-build image smoke tests
       # (test_backend_image/test_frontend_image), so a slow browser suite
@@ -1038,8 +1038,14 @@ workflows:
           filters: "(pipeline.parameters.run-python-designer == true)"
       - python-cross:
           filters: "(pipeline.parameters.run-python-cross == true)"
+      # Always-run: required check, exercises every app by convention. Opts
+      # in to tags (tags: only /.*/) because a job with no filters only runs
+      # on branches — without this, e2e silently drops out of tag pipelines
+      # (deploys) and its requires entries vanish, so deploys bypass e2e.
       - e2e:
-          filters: "(pipeline.parameters.run-e2e == true)"
+          filters:
+            tags:
+              only: /.*/
       - scorecard_js:
           filters: "(pipeline.parameters.run-scorecard == true)"
       - liveticker_js:

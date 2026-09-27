@@ -1,5 +1,56 @@
 # Changelog
 
+## [4.31.2](https://github.com/dachrisch/leaguesphere/compare/v4.31.1...v4.31.2) (2026-09-27)
+
+
+### Bug Fixes
+
+* **designer:** apply templates with official-less slots instead of 500 ([d66717d](https://github.com/dachrisch/leaguesphere/commit/d66717dc564eddd87ef0f3582d69728423a87bab))
+* **gamedays:** keep manually entered scores on scorecard gamelog writes ([7408fae](https://github.com/dachrisch/leaguesphere/commit/7408fae59ad8104c3ad4f467a1f49e20271f7f0d))
+
+## [4.31.1](https://github.com/dachrisch/leaguesphere/compare/v4.31.0...v4.31.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* **ci:** run e2e on tag pipelines so real deploys are gated by it ([a3375bc](https://github.com/dachrisch/leaguesphere/commit/a3375bce8ca8fbe44fd363e95d23c767ea39c084))
+* **ci:** run e2e on tag pipelines so real deploys are gated by it ([150f60d](https://github.com/dachrisch/leaguesphere/commit/150f60d6701363c99e6f0ec57fb29716022ab3a4))
+
+## [4.31.0](https://github.com/dachrisch/leaguesphere/compare/v4.30.0...v4.31.0) (2026-09-26)
+
+
+### Features
+
+* zero-downtime watchtower swaps via blue-green strategy ([9cebdcf](https://github.com/dachrisch/leaguesphere/commit/9cebdcfc0527ec28972aa2b63a0116b02915ce15))
+
+## [4.30.0](https://github.com/dachrisch/leaguesphere/compare/v4.29.0...v4.30.0) (2026-09-26)
+
+
+### Features
+
+* **hardening:** add reusable headless-chrome harness (playwright-core) + wire into scope-exclude ([1ac42e5](https://github.com/dachrisch/leaguesphere/commit/1ac42e56fbe0daeaf7a0c68ad1873d2901371d96))
+
+
+### Documentation
+
+* hardening report 2026-09-25 (designer, scorecard, liveticker) + domain knowledge ([037fbeb](https://github.com/dachrisch/leaguesphere/commit/037fbeb84f0bf5902ee45b841a02eb2c1339431e))
+* hardening report 2026-09-25 (designer, scorecard, liveticker) + domain knowledge ([e0e55f2](https://github.com/dachrisch/leaguesphere/commit/e0e55f265f1ac92501f02238be4d0f1331c9d3e1))
+* intensive round - F9 rescore wipe, F10 apply 500, matrix evidence, deep domain knowledge ([88a2de4](https://github.com/dachrisch/leaguesphere/commit/88a2de457235e8d0e1bf1dd017a36a70846f9fc1))
+* remove hardening screenshots from report ([ec4c967](https://github.com/dachrisch/leaguesphere/commit/ec4c967745daf27c1e2087ebc2db87c7029c99f8))
+
+## [4.29.0](https://github.com/dachrisch/leaguesphere/compare/v4.28.1...v4.29.0) (2026-09-26)
+
+
+### Features
+
+* **api:** add configurable snapshot mass endpoint for API consumers ([331ba41](https://github.com/dachrisch/leaguesphere/commit/331ba41fb2b67ee5c92c56f33f23a0bcea9daa6e))
+* **api:** add configurable snapshot mass endpoint for API consumers ([a85f564](https://github.com/dachrisch/leaguesphere/commit/a85f5641076c3f26a85fedf0bfbcaf82b65cc67c))
+
+
+### Performance Improvements
+
+* **api:** cheap snapshot ETag via updated_at freshness signals ([454881b](https://github.com/dachrisch/leaguesphere/commit/454881b7b99d59e8fcaf0fe93509ad589fdd962a))
+
 ## [4.28.1](https://github.com/dachrisch/leaguesphere/compare/v4.28.0...v4.28.1) (2026-09-18)
 
 

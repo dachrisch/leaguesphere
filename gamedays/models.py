@@ -7,6 +7,27 @@ from django.utils.text import slugify
 from gamedays.service.stage_category import StageCategory, derive_legacy_stage_category
 
 
+class BumpUpdatedAtOnSaveMixin(models.Model):
+    """Bump auto_now updated_at even on partial save(update_fields=[...]).
+
+    Plain auto_now only fires for fields Django actually writes: a partial
+    save skips any field not listed (proven empirically -- Gameday.save
+    below documents the same trap). The snapshot ETag's freshness depends
+    on Max(updated_at), so every save must bump it.
+    NOTE: queryset .update() calls bypass save() entirely -- those call
+    sites set updated_at=timezone.now() explicitly.
+    """
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            kwargs["update_fields"] = set(update_fields) | {"updated_at"}
+        super().save(*args, **kwargs)
+
+
 class Season(models.Model):
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True, blank=True)
@@ -162,7 +183,7 @@ class GamedayDesignerState(models.Model):
     objects: QuerySet["GamedayDesignerState"] = models.Manager()
 
 
-class Gameinfo(models.Model):
+class Gameinfo(BumpUpdatedAtOnSaveMixin, models.Model):
     STATUS_DRAFT = "DRAFT"
     STATUS_PUBLISHED = "Geplant"
     STATUS_IN_PROGRESS = "Gestartet"
@@ -190,6 +211,7 @@ class Gameinfo(models.Model):
     in_possession = models.CharField(
         max_length=100, blank=True, null=True, default=None
     )
+    updated_at = models.DateTimeField(auto_now=True)
 
     objects: QuerySet["Gameinfo"] = models.Manager()
 
@@ -211,13 +233,14 @@ class Gameinfo(models.Model):
         )
 
 
-class Gameresult(models.Model):
+class Gameresult(BumpUpdatedAtOnSaveMixin, models.Model):
     gameinfo: Gameinfo = models.ForeignKey(Gameinfo, on_delete=models.CASCADE)
     team = models.ForeignKey(Team, on_delete=models.PROTECT, blank=True, null=True)
     fh = models.SmallIntegerField(null=True)
     sh = models.SmallIntegerField(null=True)
     pa = models.PositiveSmallIntegerField(null=True)
     isHome = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
 
     objects: QuerySet["Gameresult"] = models.Manager()
 
@@ -277,7 +300,7 @@ class GameSetup(models.Model):
         return f"{self.gameinfo.pk}"
 
 
-class TeamLog(models.Model):
+class TeamLog(BumpUpdatedAtOnSaveMixin, models.Model):
     gameinfo: Gameinfo = models.ForeignKey(Gameinfo, on_delete=models.CASCADE)
     team = models.ForeignKey(Team, on_delete=models.PROTECT, blank=True, null=True)
     sequence = models.PositiveSmallIntegerField()
@@ -290,6 +313,7 @@ class TeamLog(models.Model):
     isDeleted = models.BooleanField(default=False)
     created_time = models.TimeField(default=timezone.now)
     author = models.ForeignKey(User, on_delete=models.SET_DEFAULT, default=1)
+    updated_at = models.DateTimeField(auto_now=True)
 
     objects: QuerySet["TeamLog"] = models.Manager()
 
