@@ -64,14 +64,26 @@ def _finalize_game_via_api(live_server_url: str, token: str, gameinfo: Gameinfo,
     This hits the actual production API used by the React app, 
     triggering the signals while bypassing UI complexities.
     """
-    # 1. Set scores via ORM (API for event-based scoring is very verbose)
+    # 1. Start the game via the setup endpoint (the scorecard UI always posts
+    #    the setup on game start, which transitions Geplant -> 1. Halbzeit).
+    headers = {"Authorization": f"Token {token}"}
+    setup_url = f"{live_server_url}/api/game/{gameinfo.pk}/setup"
+    setup_response = requests.put(
+        setup_url,
+        json={"ctResult": "won", "direction": "arrow_forward", "fhPossession": "HOME"},
+        headers=headers,
+    )
+    assert setup_response.status_code == 200, (
+        f"Game start failed: {setup_response.content}"
+    )
+
+    # 2. Set scores via ORM (API for event-based scoring is very verbose)
     hr = gameinfo.gameresult_set.get(isHome=True)
     ar = gameinfo.gameresult_set.get(isHome=False)
     hr.fh = home_score; hr.sh = 0; hr.pa = away_score; hr.save()
     ar.fh = away_score; ar.sh = 0; ar.pa = home_score; ar.save()
     
-    # 2. Call Finalize API
-    headers = {"Authorization": f"Token {token}"}
+    # 3. Call Finalize API
     data = {
         "homeCaptain": "Captain Home",
         "awayCaptain": "Captain Away",

@@ -353,6 +353,13 @@ class TestPublishCreatesGameinfos:
         Gameresult.objects.filter(gameinfo=prelim, isHome=False).update(fh=0, sh=0)
 
         # Finalize via the scorecard endpoint — this triggers the post_save signal
+        # Walk the valid status sequence first (start -> halftime -> finalize).
+        self.client.put(
+            f"/api/game/{prelim.id}/setup",
+            {"ctResult": "won", "direction": "arrow_forward", "fhPossession": "HOME"},
+            format="json",
+        )
+        self.client.put(f"/api/game/{prelim.id}/halftime", {}, format="json")
         resp = self.client.put(
             f"/api/game/{prelim.id}/finalize",
             {},

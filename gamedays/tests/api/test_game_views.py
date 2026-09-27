@@ -550,6 +550,11 @@ class TestGameHalftime(WebTest):
     def test_halftime_submitted(self):
         DBSetup().g62_status_empty()
         first_game: Gameinfo = Gameinfo.objects.first()
+        self.app.put_json(
+            reverse(API_GAME_SETUP, kwargs={"pk": first_game.pk}),
+            {"ctResult": "won", "direction": "arrow_forward", "fhPossession": "HOME"},
+            headers=DBSetup().get_token_header(),
+        )
         response = self.app.put_json(
             reverse(API_GAME_HALFTIME, kwargs={"pk": first_game.pk}),
             headers=DBSetup().get_token_header(),
@@ -568,12 +573,47 @@ class TestGameHalftime(WebTest):
         )
         assert response.status_code == HTTPStatus.NOT_FOUND
 
+    def test_halftime_requires_started_game(self):
+        DBSetup().g62_status_empty()
+        first_game: Gameinfo = Gameinfo.objects.first()
+        assert first_game.status == "Geplant"
+        response = self.app.put_json(
+            reverse(API_GAME_HALFTIME, kwargs={"pk": first_game.pk}),
+            headers=DBSetup().get_token_header(),
+            expect_errors=True,
+        )
+        assert response.status_code == HTTPStatus.CONFLICT
+        assert response.json == {"detail": "Dieser Spielstatus erlaubt keine Halbzeit."}
+        assert Gameinfo.objects.first().status == "Geplant"
+
+    def test_halftime_after_finalize_conflict(self):
+        DBSetup().g62_status_empty()
+        first_game: Gameinfo = Gameinfo.objects.first()
+        first_game.status = "beendet"
+        first_game.save()
+        response = self.app.put_json(
+            reverse(API_GAME_HALFTIME, kwargs={"pk": first_game.pk}),
+            headers=DBSetup().get_token_header(),
+            expect_errors=True,
+        )
+        assert response.status_code == HTTPStatus.CONFLICT
+        assert response.json == {"detail": "Dieser Spielstatus erlaubt keine Halbzeit."}
+        assert Gameinfo.objects.first().status == "beendet"
+
 
 class TestGameFinalize(WebTest):
     def test_game_is_finalized(self):
         DBSetup().g62_status_empty()
         first_game: Gameinfo = Gameinfo.objects.last()
-        DBSetup().create_gamesetup(first_game)
+        self.app.put_json(
+            reverse(API_GAME_SETUP, kwargs={"pk": first_game.pk}),
+            {"ctResult": "won", "direction": "arrow_forward", "fhPossession": "AWAY"},
+            headers=DBSetup().get_token_header(),
+        )
+        self.app.put_json(
+            reverse(API_GAME_HALFTIME, kwargs={"pk": first_game.pk}),
+            headers=DBSetup().get_token_header(),
+        )
         response = self.app.put_json(
             reverse(API_GAME_FINALIZE, kwargs={"pk": first_game.pk}),
             {
@@ -604,6 +644,37 @@ class TestGameFinalize(WebTest):
         )
         assert response.status_code == HTTPStatus.NOT_FOUND
 
+    def test_finalize_requires_started_game(self):
+        DBSetup().g62_status_empty()
+        first_game: Gameinfo = Gameinfo.objects.first()
+        assert first_game.status == "Geplant"
+        response = self.app.put_json(
+            reverse(API_GAME_FINALIZE, kwargs={"pk": first_game.pk}),
+            {"note": "x"},
+            headers=DBSetup().get_token_header(),
+            expect_errors=True,
+        )
+        assert response.status_code == HTTPStatus.CONFLICT
+        assert response.json == {"detail": "Dieser Spielstatus erlaubt kein Spielende."}
+        assert Gameinfo.objects.first().status == "Geplant"
+
+    def test_finalize_allowed_from_first_half(self):
+        DBSetup().g62_status_empty()
+        first_game: Gameinfo = Gameinfo.objects.first()
+        self.app.put_json(
+            reverse(API_GAME_SETUP, kwargs={"pk": first_game.pk}),
+            {"ctResult": "won", "direction": "arrow_forward", "fhPossession": "HOME"},
+            headers=DBSetup().get_token_header(),
+        )
+        assert Gameinfo.objects.first().status == "1. Halbzeit"
+        response = self.app.put_json(
+            reverse(API_GAME_FINALIZE, kwargs={"pk": first_game.pk}),
+            {"note": "x"},
+            headers=DBSetup().get_token_header(),
+        )
+        assert response.status_code == HTTPStatus.OK
+        assert Gameinfo.objects.first().status == "beendet"
+
 
 class TestConfigPenaltiesAPIView(WebTest):
     def test_get_penalty_list(self):
@@ -619,11 +690,11 @@ class TestGamePossessionAPIView(WebTest):
         assert last_game.in_possession == "A1"
         response = self.app.put_json(
             reverse(API_GAME_POSSESSION, kwargs={"pk": last_game.pk}),
-            {"team": "name of team"},
+            {"team": "B1"},
             headers=DBSetup().get_token_header(),
         )
         assert response.status_code == HTTPStatus.OK
-        assert Gameinfo.objects.last().in_possession == "name of team"
+        assert Gameinfo.objects.last().in_possession == "B1"
 
     def test_possession_unknown_game_404(self):
         DBSetup().create_new_user()
@@ -634,3 +705,15 @@ class TestGamePossessionAPIView(WebTest):
             expect_errors=True,
         )
         assert response.status_code == HTTPStatus.NOT_FOUND
+
+    def test_put_game_possession_rejects_unknown_team(self):
+        DBSetup().g62_status_empty()
+        last_game: Gameinfo = Gameinfo.objects.last()
+        response = self.app.put_json(
+            reverse(API_GAME_POSSESSION, kwargs={"pk": last_game.pk}),
+            {"team": "Not A Real Team XYZ"},
+            headers=DBSetup().get_token_header(),
+            expect_errors=True,
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert Gameinfo.objects.last().in_possession == "A1"

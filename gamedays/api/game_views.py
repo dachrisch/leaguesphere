@@ -1,4 +1,5 @@
 import json
+import logging
 from collections import OrderedDict
 from http import HTTPStatus
 
@@ -13,10 +14,13 @@ from gamedays.api.serializers import (
     GameSetupSerializer,
     GameLogSerializer,
 )
-from gamedays.models import Team, Gameinfo, GameSetup, TeamLog
+from gamedays.models import Team, Gameinfo, GameSetup, Gameresult, TeamLog
 from gamedays.service.game_service import GameService
+from gamedays.service.wrapper.gameinfo_wrapper import IllegalGameTransition
 from gamedays.service.gameday_service import GamedayService
 from gamedays.service.model_helper import GameresultHelper, TeamLogHelper
+
+logger = logging.getLogger(__name__)
 
 
 def _validate_gamelog_payload(data):
@@ -174,7 +178,16 @@ class GameHalftimeAPIView(APIView):
             game_service = GameService(pk)
         except Gameinfo.DoesNotExist:
             raise NotFound(detail=f"No game found for gameId {pk}")
-        game_service.update_halftime(request.user)
+        try:
+            game_service.update_halftime(request.user)
+        except IllegalGameTransition as e:
+            logger.warning(
+                "Rejected halftime transition for game %s: %s", kwargs.get("pk"), e
+            )
+            return Response(
+                {"detail": "Dieser Spielstatus erlaubt keine Halbzeit."},
+                status=HTTPStatus.CONFLICT,
+            )
         return Response()
 
 
@@ -188,7 +201,14 @@ class GameFinalizeUpdateView(UpdateAPIView):
             game_service = GameService(pk)
         except Gameinfo.DoesNotExist:
             raise NotFound(detail=f"No game found for gameId {pk}")
-        game_service.update_game_finished(request.user)
+        try:
+            game_service.update_game_finished(request.user)
+        except IllegalGameTransition as e:
+            logger.warning("Rejected finalize for game %s: %s", pk, e)
+            return Response(
+                {"detail": "Dieser Spielstatus erlaubt kein Spielende."},
+                status=HTTPStatus.CONFLICT,
+            )
         game_setup, _ = GameSetup.objects.get_or_create(gameinfo_id=pk)
         serializer = GameFinalizer(instance=game_setup, data=request.data)
         if serializer.is_valid():
@@ -219,7 +239,14 @@ class GameSetupCreateOrUpdateView(RetrieveUpdateAPIView):
         serializer = GameSetupSerializer(instance=game_setup, data=request.data)
         if is_game_setup_created:
             game_service = GameService(pk)
-            game_service.update_gamestart(request.user)
+            try:
+                game_service.update_gamestart(request.user)
+            except IllegalGameTransition as e:
+                logger.warning("Rejected gamestart for game %s: %s", pk, e)
+                return Response(
+                    {"detail": "Dieser Spielstatus erlaubt keinen Spielstart."},
+                    status=HTTPStatus.CONFLICT,
+                )
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=HTTPStatus.OK)
@@ -242,7 +269,19 @@ class GamePossessionAPIView(APIView):
             game_service = GameService(pk)
         except Gameinfo.DoesNotExist:
             raise NotFound(detail=f"No game found for gameId {pk}")
-        game_service.update_team_in_possesion(request.data.get("team"))
+        team = request.data.get("team")
+        home = Gameresult.objects.get(
+            gameinfo=game_service.gameinfo.gameinfo, isHome=True
+        ).team
+        away = Gameresult.objects.get(
+            gameinfo=game_service.gameinfo.gameinfo, isHome=False
+        ).team
+        valid_teams = {str(home.pk), home.name, str(away.pk), away.name}
+        if team not in valid_teams:
+            raise ValidationError(
+                {"team": f"must be one of the game's teams ({home.name}, {away.name})"}
+            )
+        game_service.update_team_in_possesion(team)
         return Response()
 
 
