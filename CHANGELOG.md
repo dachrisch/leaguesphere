@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.32.3](https://github.com/dachrisch/leaguesphere/compare/v4.32.2...v4.32.3) (2026-09-27)
+
+
+### Bug Fixes
+
+* **gamedays:** make games ETag change on live score/status updates ([c2b2d76](https://github.com/dachrisch/leaguesphere/commit/c2b2d7667f3425a3c6ff112a2f78920ac1e13d94))
+* **gamedays:** make games ETag change on live score/status updates ([c95dc3b](https://github.com/dachrisch/leaguesphere/commit/c95dc3b58a9ed9540bda8f77ace7a121515c435d))
+
 ## [4.32.2](https://github.com/dachrisch/leaguesphere/compare/v4.32.1...v4.32.2) (2026-09-27)
 
 
