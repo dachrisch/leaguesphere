@@ -28,6 +28,7 @@ export const ICONS = {
   TOURNAMENT: 'bi-trophy',
   UNDO: 'bi-arrow-counterclockwise',
   REPLACE: 'bi-arrow-repeat',
+  SHUFFLE: 'bi-shuffle',
   LINK: 'bi-link-45deg',
   SEARCH: 'bi-search',
   BACK: 'bi-arrow-left',

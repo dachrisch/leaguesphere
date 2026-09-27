@@ -137,4 +137,51 @@ describe('SwissSetupStep', () => {
 
     expect(screen.getByTestId('swiss-setup-confirm')).not.toBeDisabled();
   });
+
+  it('draws a new seed order when the shuffle button is clicked', () => {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+    render(<SwissSetupStep {...baseProps} teams={makeTeams()} onBack={vi.fn()} onConfirm={vi.fn()} />);
+
+    fireEvent.click(screen.getByTestId('swiss-seed-shuffle'));
+
+    const rows = within(screen.getByTestId('swiss-seed-list')).getAllByRole('listitem');
+    // Fisher-Yates with random()=0 on ['11','22','33','44'] -> ['22','33','44','11']
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining('Team 22'),
+      expect.stringContaining('Team 33'),
+      expect.stringContaining('Team 44'),
+      expect.stringContaining('Team 11'),
+    ]);
+    randomSpy.mockRestore();
+  });
+
+  it('keeps the same teams after a draw (permutation only)', () => {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    render(<SwissSetupStep {...baseProps} teams={makeTeams()} onBack={vi.fn()} onConfirm={vi.fn()} />);
+
+    fireEvent.click(screen.getByTestId('swiss-seed-shuffle'));
+
+    const names = within(screen.getByTestId('swiss-seed-list'))
+      .getAllByRole('listitem')
+      .map((row) => row.textContent ?? '');
+    expect(names).toHaveLength(4);
+    ['Team 11', 'Team 22', 'Team 33', 'Team 44'].forEach((name) => {
+      expect(names.some((text) => text.includes(name))).toBe(true);
+    });
+    randomSpy.mockRestore();
+  });
+
+  it('disables the shuffle button when locked (draft-only)', () => {
+    render(
+      <SwissSetupStep
+        {...baseProps}
+        teams={makeTeams()}
+        disabled
+        onBack={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('swiss-seed-shuffle')).toBeDisabled();
+  });
 });

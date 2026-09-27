@@ -47,6 +47,7 @@
     "subtitle": "Rank the teams once by seed, then fix rounds, fields and game duration. Round 1 generates automatically from here.",
     "seedTitle": "Seed the teams",
     "seedHint": "Seeds stay fixed for the whole tournament — only the pairings change each round.",
+    "shuffle": "Draw seeds",
     "setupTitle": "Tournament setup",
     "rounds": "Number of rounds",
     "fields": "Number of fields",
