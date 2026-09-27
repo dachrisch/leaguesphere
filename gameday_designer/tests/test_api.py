@@ -5,12 +5,16 @@ Following TDD methodology (RED phase) - writing tests BEFORE ViewSet implementat
 Tests define expected API behavior for all endpoints and actions.
 """
 
+from unittest.mock import patch
+
 import pytest
 from django.contrib.auth.models import User
+from django.db import IntegrityError
 from rest_framework.test import APIClient
 from rest_framework import status
 
-from gamedays.models import Association, Gameday, Team, Season, League
+from gamedays.models import Association, Gameday, Gameinfo, Team, Season, League
+from gamedays.service.canvas_publish_service import OFFICIALS_PLACEHOLDER
 from gameday_designer.models import (
     ScheduleTemplate,
     TemplateSlot,
@@ -555,6 +559,73 @@ class TestTemplateApplyEndpoint:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_apply_template_with_slot_without_officials(
+        self, api_client, staff_user, template, gameday, teams
+    ):
+        """Regression #1987: a slot without officials must not cause a 500."""
+        TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=1,
+            stage="Vorrunde",
+            standing="Gruppe 1",
+            home_group=0,
+            home_team=0,
+            away_group=0,
+            away_team=1,
+        )
+        TemplateSlot.objects.create(
+            template=template,
+            field=1,
+            slot_order=2,
+            stage="Finale",
+            standing="P1",
+            home_group=0,
+            home_team=2,
+            away_group=0,
+            away_team=3,
+            official_reference="Gewinner HF1",
+        )
+        api_client.force_authenticate(user=staff_user)
+
+        response = api_client.post(
+            f"/api/designer/templates/{template.pk}/apply/",
+            {
+                "gameday_id": gameday.pk,
+                "team_mapping": {f"0_{i}": teams[i].pk for i in range(4)},
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["gameinfos_created"] == 2
+        officials = Gameinfo.objects.filter(gameday=gameday).values_list(
+            "officials__name", flat=True
+        )
+        assert list(officials) == [OFFICIALS_PLACEHOLDER, OFFICIALS_PLACEHOLDER]
+
+    def test_apply_returns_400_on_integrity_error(
+        self, api_client, staff_user, template_with_slots, gameday, teams
+    ):
+        """Database integrity errors during apply are reported as 400, not 500."""
+        api_client.force_authenticate(user=staff_user)
+
+        with patch(
+            "gameday_designer.views.TemplateApplicationService.apply",
+            side_effect=IntegrityError("NOT NULL constraint failed"),
+        ):
+            response = api_client.post(
+                f"/api/designer/templates/{template_with_slots.pk}/apply/",
+                {
+                    "gameday_id": gameday.pk,
+                    "team_mapping": {f"0_{i}": teams[i].pk for i in range(6)},
+                },
+                format="json",
+            )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data == {"error": "Failed to apply template"}
 
     def test_apply_creates_audit_record(
         self, api_client, staff_user, template_with_slots, gameday, teams
