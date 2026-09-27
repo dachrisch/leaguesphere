@@ -1,9 +1,31 @@
-from django.db import transaction
+import logging
+import random
+import time
+
+from django.db import OperationalError, transaction
 
 from gamedays.models import Team, TeamLog
 from gamedays.service.gamelog import GameLog, GameLogCreator
 from gamedays.service.wrapper.gameinfo_wrapper import GameinfoWrapper
 from gamedays.service.wrapper.gameresult_wrapper import GameresultWrapper
+
+logger = logging.getLogger(__name__)
+
+# MySQL error codes for retryable lock contention under concurrent writes:
+# 1213 deadlocks, 1205 lock-wait timeout. MySQL itself advises
+# "try restarting transaction" -- concurrent scorecard writes to the same
+# game must do exactly that instead of surfacing a 500 (#2006).
+_RETRYABLE_MYSQL_CODES = frozenset({1213, 1205})
+_WRITE_MAX_ATTEMPTS = 3
+
+
+def _is_retryable_lock_error(error: Exception) -> bool:
+    """True for MySQL deadlock / lock-wait-timeout OperationalErrors."""
+    args = getattr(error, "args", ())
+    if args and args[0] in _RETRYABLE_MYSQL_CODES:
+        return True
+    message = str(error).lower()
+    return "deadlock found" in message or "lock wait timeout exceeded" in message
 
 
 class GameService(object):
@@ -88,16 +110,41 @@ class GameService(object):
         survives scorecard writes (#1988). Snapshot, write and score update run
         in one transaction holding the game's result rows locked, so concurrent
         writes to the same game apply their changes one after the other.
+
+        Concurrent writers contend on the Gameresult + Gameinfo row locks and
+        the TeamLog inserts, so InnoDB deadlocks (1213) / lock-wait timeouts
+        (1205) are expected under load. Retry the whole transaction a few
+        times with backoff instead of failing the request (#2006).
         """
-        with transaction.atomic():
-            self.gameresult.lock()
-            before = self._half_scores(self.get_gamelog())
-            gamelog = write()
-            after = self._half_scores(gamelog)
-            self.gameresult.apply_score_change(
-                {key: after[key] - before[key] for key in after}
-            )
-        return gamelog
+        last_error = None
+        for attempt in range(_WRITE_MAX_ATTEMPTS):
+            try:
+                with transaction.atomic():
+                    self.gameresult.lock()
+                    before = self._half_scores(self.get_gamelog())
+                    gamelog = write()
+                    after = self._half_scores(gamelog)
+                    self.gameresult.apply_score_change(
+                        {key: after[key] - before[key] for key in after}
+                    )
+                return gamelog
+            except OperationalError as error:
+                last_error = error
+                if (
+                    not _is_retryable_lock_error(error)
+                    or attempt + 1 >= _WRITE_MAX_ATTEMPTS
+                ):
+                    raise
+                logger.warning(
+                    "Retrying gamelog write for game %s after lock contention "
+                    "(attempt %d/%d): %s",
+                    self.game_id,
+                    attempt + 1,
+                    _WRITE_MAX_ATTEMPTS,
+                    error,
+                )
+                time.sleep(0.05 * (2**attempt) + random.uniform(0, 0.05))
+        raise last_error  # pragma: no cover - loop always returns or raises
 
     @staticmethod
     def _half_scores(gamelog: GameLog) -> dict:
