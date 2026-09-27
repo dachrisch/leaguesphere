@@ -44,6 +44,9 @@ parameters:
   run-journey:
     type: boolean
     default: false
+  run-share:
+    type: boolean
+    default: false
   run-build-backend:
     type: boolean
     default: false
@@ -408,6 +411,28 @@ jobs:
       - run:
           name: "JavaScript Build"
           command: npm --prefix journey_dashboard/ run build
+
+  share_js:
+    executor:
+      name: node/default
+      tag: "24.17"
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - node/install-packages:
+          app-dir: share/
+      - run:
+          name: "JavaScript Test Suite"
+          command: npm --prefix share/ run test:run
+      - run:
+          name: "TypeScript Typecheck"
+          command: npm --prefix share/ run typecheck
+      - run:
+          name: "JavaScript Linter"
+          command: npm --prefix share/ run eslint
+      - run:
+          name: "JavaScript Build"
+          command: npm --prefix share/ run build
 
   e2e:
     docker:
@@ -1122,6 +1147,8 @@ workflows:
           filters: "(pipeline.parameters.run-designer == true)"
       - journey_dashboard_js:
           filters: "(pipeline.parameters.run-journey == true)"
+      - share_js:
+          filters: "(pipeline.parameters.run-share == true)"
 
       - build_backend:
           filters: "(pipeline.parameters.run-compose == true or pipeline.parameters.run-build-backend == true or pipeline.parameters.run-build-frontend == true or pipeline.parameters.run-migrations == true)"
@@ -1142,6 +1169,7 @@ workflows:
             - passcheck_js
             - gameday_designer_js
             - journey_dashboard_js
+            - share_js
 
       - test_backend_image:
           filters: "(pipeline.parameters.run-build-backend == true or pipeline.parameters.run-migrations == true or pipeline.parameters.run-compose == true)"

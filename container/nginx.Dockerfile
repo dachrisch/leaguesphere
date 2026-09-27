@@ -88,6 +88,14 @@ RUN rm -rf static/journey_dashboard/js
 RUN npm ci
 RUN npm run build
 
+ARG APP_DIR="/share-app"
+WORKDIR ${APP_DIR}
+
+COPY share ${APP_DIR}
+
+RUN npm ci
+RUN npm run build
+
 FROM nginx:stable
 
 COPY --from=python-builder /app/league_manager/league_manager/static /static
@@ -96,6 +104,7 @@ COPY --from=node-builder /scorecard-app/static /static
 COPY --from=node-builder /passcheck-app/static /static
 COPY --from=node-builder /gameday-designer-app/static /static
 COPY --from=node-builder /journey-dashboard-app/static /static
+COPY --from=node-builder /share-app/static /static
 COPY ./container/nginx.conf /etc/nginx/conf.d/default.conf
 COPY ./container/healthcheck.sh /healthcheck.sh
 RUN chmod +x /healthcheck.sh

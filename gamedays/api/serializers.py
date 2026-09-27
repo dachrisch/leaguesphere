@@ -14,6 +14,7 @@ from gamedays.models import (
     League,
     Gameresult,
     ResourceUrl,
+    Team,
 )
 from gamedays.service.placeholder_service import GamedayPlaceholderService
 from gamedays.service.utils import utc_time_as_iso
@@ -31,6 +32,18 @@ class LeagueSerializer(ModelSerializer):
     class Meta:
         model = League
         fields = ["id", "name", "slug"]
+
+
+class TeamSerializer(ModelSerializer):
+    """Public team directory entry for the embeddable widget/generator.
+
+    Only non-personal display fields: the widget needs a stable id, the full
+    name, the short abbreviation used in results, and the optional logo.
+    """
+
+    class Meta:
+        model = Team
+        fields = ["id", "name", "description", "logo"]
 
 
 class ResourceUrlSerializer(ModelSerializer):

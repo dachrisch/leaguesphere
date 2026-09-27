@@ -68,6 +68,9 @@ parameters:
   run-journey:
     type: boolean
     default: false
+  run-share:
+    type: boolean
+    default: false
   run-build-backend:
     type: boolean
     default: false

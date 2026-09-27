@@ -23,6 +23,7 @@ from gamedays.api.views import (
     GamedayViewSet,
     SeasonViewSet,
     LeagueViewSet,
+    TeamViewSet,
     GameResultsListView,
     GameResultsUpdateView,
 )
@@ -42,6 +43,7 @@ router = DefaultRouter()
 router.register(r"gamedays", GamedayViewSet, basename="gameday")
 router.register(r"seasons", SeasonViewSet, basename="season")
 router.register(r"leagues", LeagueViewSet, basename="league")
+router.register(r"teams", TeamViewSet, basename="team")
 
 urlpatterns = [
     path("", include(router.urls)),

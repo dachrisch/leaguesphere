@@ -18,6 +18,7 @@
 \.circleci/.* run-passcheck true
 \.circleci/.* run-designer true
 \.circleci/.* run-journey true
+\.circleci/.* run-share true
 \.circleci/.* run-build-backend true
 \.circleci/.* run-build-frontend true
 \.circleci/.* run-migrations true
@@ -82,12 +83,19 @@ journey_dashboard/.* run-journey true
 journey_dashboard/.* run-build-frontend true
 journey/(static|templates)/.* run-journey true
 journey/(static|templates)/.* run-build-frontend true
+# --- share (embeddable widget): small backend shard + own frontend ---
+share/.*\.py run-python-core true
+share/.*\.py run-build-backend true
+share/templates/.* run-python-core true
+share/templates/.* run-build-backend true
+share/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*) run-share true
+share/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*) run-build-frontend true
 # e2e sources stay covered by their shards (e2e job itself is always-run).
 scorecard/tests/e2e/.* run-python-live true
 gameday_designer/tests/e2e/.* run-python-designer true
 
 # --- committed static assets (collectstatic / nginx image input) ---
-(gamedays|league_manager|liveticker|officials|passcheck|scorecard|teammanager|gameday_designer)/static/.* run-build-frontend true
+(gamedays|league_manager|liveticker|officials|passcheck|scorecard|teammanager|gameday_designer|share)/static/.* run-build-frontend true
 
 # --- container images ---
 (container/app\.Dockerfile|container/entrypoint.*\.sh) run-build-backend true

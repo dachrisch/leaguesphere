@@ -160,6 +160,8 @@ gameday_designer/static/gameday_designer/js/*.woff
 gameday_designer/static/gameday_designer/js/*.woff2
 journey/static/journey_dashboard/*.js
 journey/static/journey_dashboard/*.css
+share/static/share/*.js
+share/static/share/*.css
 
 # Superpowers tooling artifacts
 .superpowers/
