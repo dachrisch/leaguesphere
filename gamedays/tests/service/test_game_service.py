@@ -1,10 +1,16 @@
 import re
+import threading
+import time
+import unittest
+from unittest import mock
 
-from django.test import TestCase
+from django.db import OperationalError, connection
+from django.test import TestCase, TransactionTestCase
 
 from gamedays.models import Team, Gameinfo, Gameresult, TeamLog
 from gamedays.service.game_service import GameService
 from gamedays.service.gamelog import GameLog
+from gamedays.service.wrapper.gameinfo_wrapper import IllegalGameTransition
 from gamedays.tests.setup_factories.db_setup import DBSetup
 
 
@@ -17,13 +23,14 @@ class TestGameService(TestCase):
         gameday = DBSetup().g62_status_empty()
         firstGame = Gameinfo.objects.first()
         game_service = GameService(firstGame.pk)
+        game_service.update_gamestart(gameday.author)
         game_service.update_halftime(gameday.author)
         firstGame = Gameinfo.objects.first()
         assert firstGame.status == "2. Halbzeit"
         assert re.match(
             "^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]", str(firstGame.gameHalftime)
         )
-        assert len(TeamLog.objects.all()) == 1
+        assert len(TeamLog.objects.all()) == 2
 
     def test_gamestart_is_updated(self):
         gameday = DBSetup().g62_status_empty()
@@ -41,24 +48,32 @@ class TestGameService(TestCase):
         gameday = DBSetup().g62_status_empty()
         firstGame = Gameinfo.objects.first()
         game_service = GameService(firstGame.pk)
+        game_service.update_gamestart(gameday.author)
+        game_service.update_halftime(gameday.author)
         game_service.update_game_finished(gameday.author)
         firstGame: Gameinfo = Gameinfo.objects.first()
         assert firstGame.status == "beendet"
         assert re.match(
             "^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]", str(firstGame.gameFinished)
         )
-        assert len(TeamLog.objects.all()) == 1
+        assert len(TeamLog.objects.all()) == 3
 
     def test_entry_for_game_created_halftime_and_finished_only_written_once(self):
         gameday = DBSetup().g62_status_empty()
         firstGame = Gameinfo.objects.first()
         game_service = GameService(firstGame.pk)
         game_service.update_gamestart(gameday.author)
-        game_service.update_gamestart(gameday.author)
-        game_service.update_halftime(gameday.author)
         game_service.update_halftime(gameday.author)
         game_service.update_game_finished(gameday.author)
-        game_service.update_game_finished(gameday.author)
+        assert len(TeamLog.objects.all()) == 3
+        # A second transition is rejected, so a duplicate log entry is impossible.
+        for transition in (
+            game_service.update_gamestart,
+            game_service.update_halftime,
+            game_service.update_game_finished,
+        ):
+            with self.assertRaises(IllegalGameTransition):
+                transition(gameday.author)
         assert len(TeamLog.objects.all()) == 3
 
     def test_update_score(self):
@@ -126,3 +141,249 @@ class TestGameService(TestCase):
             GameService(game.pk).create_gamelog(
                 "no such team", event, gameday.author, 1
             )
+
+
+TOUCHDOWN_WITH_PAT = [
+    {"name": "Touchdown", "input": None, "player": "19"},
+    {"name": "1-Extra-Punkt", "input": None, "player": "7"},
+]
+
+
+def _scores(game):
+    home = Gameresult.objects.get(gameinfo=game, isHome=True)
+    away = Gameresult.objects.get(gameinfo=game, isHome=False)
+    return (home.fh, home.sh, home.pa), (away.fh, away.sh, away.pa)
+
+
+class TestGamelogScoreChange(TestCase):
+    """#1988: gamelog writes shift the stored score by their own effect only."""
+
+    def setUp(self):
+        self.gameday = DBSetup().g62_status_empty()
+        self.game = Gameinfo.objects.first()
+        self.home = Gameresult.objects.get(gameinfo=self.game, isHome=True).team
+        # Manually entered score, no gamelog entries behind it.
+        Gameresult.objects.filter(gameinfo=self.game, isHome=True).update(
+            fh=14, sh=14, pa=14
+        )
+        Gameresult.objects.filter(gameinfo=self.game, isHome=False).update(
+            fh=7, sh=7, pa=28
+        )
+
+    def test_add_then_delete_round_trips_with_fresh_services(self):
+        GameService(self.game.pk).create_gamelog(
+            self.home.pk, TOUCHDOWN_WITH_PAT, self.gameday.author, 1
+        )
+        assert _scores(self.game) == ((21, 14, 14), (7, 7, 35))
+
+        GameService(self.game.pk).delete_gamelog(1)
+        assert _scores(self.game) == ((14, 14, 14), (7, 7, 28))
+
+    def test_add_then_delete_round_trips_on_one_service(self):
+        game_service = GameService(self.game.pk)
+        game_service.create_gamelog(
+            self.home.pk, TOUCHDOWN_WITH_PAT, self.gameday.author, 2
+        )
+        game_service.delete_gamelog(1)
+        game_service.delete_gamelog(1)
+        assert _scores(self.game) == ((14, 14, 14), (7, 7, 28))
+
+    def test_delete_below_zero_stores_zero_and_logs(self):
+        GameService(self.game.pk).create_gamelog(
+            self.home.pk, TOUCHDOWN_WITH_PAT, self.gameday.author, 1
+        )
+        Gameresult.objects.filter(gameinfo=self.game, isHome=True).update(fh=3)
+
+        with self.assertLogs(
+            "gamedays.service.wrapper.gameresult_wrapper", "WARNING"
+        ) as logs:
+            GameService(self.game.pk).delete_gamelog(1)
+
+        assert _scores(self.game) == ((0, 14, 14), (7, 7, 14))
+        assert "would drop to -4" in logs.output[0]
+
+
+class TestGamelogSequenceLocking(TestCase):
+    """GameLogCreator must serialize sequence allocation per game (#2006)."""
+
+    def test_create_locks_gameinfo_row_for_sequence_allocation(self):
+        gameday = DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=game, isHome=True).team
+        event = [{"name": "Touchdown", "input": None, "player": "19"}]
+
+        real_select_for_update = Gameinfo.objects.select_for_update
+
+        with mock.patch.object(
+            Gameinfo.objects,
+            "select_for_update",
+            wraps=real_select_for_update,
+        ) as select_for_update:
+            GameService(game.pk).create_gamelog(home.pk, event, gameday.author, 1)
+            assert select_for_update.called
+
+    def test_sequential_creates_produce_distinct_sequences(self):
+        gameday = DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=game, isHome=True).team
+        event = [{"name": "Touchdown", "input": None, "player": "19"}]
+        for _ in range(3):
+            GameService(game.pk).create_gamelog(home.pk, event, gameday.author, 1)
+        sequences = sorted(
+            TeamLog.objects.filter(gameinfo=game)
+            .exclude(sequence=0)
+            .values_list("sequence", flat=True)
+            .distinct()
+        )
+        assert sequences == [1, 2, 3]
+
+
+class TestGamelogWriteRetry(TestCase):
+    """_write_gamelog must restart on InnoDB deadlocks (#2006)."""
+
+    def test_retries_deadlock_then_succeeds(self):
+        from gamedays.service.game_service import GameService
+        from gamedays.service.wrapper.gameresult_wrapper import GameresultWrapper
+
+        gameday = DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=game, isHome=True).team
+        event = [{"name": "Touchdown", "input": None, "player": "19"}]
+
+        real_lock = GameresultWrapper.lock
+        calls = {"count": 0}
+
+        def flaky_lock(lock_self):
+            calls["count"] += 1
+            if calls["count"] == 1:
+                raise OperationalError(1213, "Deadlock found when trying to get lock")
+            return real_lock(lock_self)
+
+        with mock.patch.object(
+            GameresultWrapper, "lock", autospec=True, side_effect=flaky_lock
+        ):
+            GameService(game.pk).create_gamelog(home.pk, event, gameday.author, 1)
+
+        assert calls["count"] >= 2
+        assert TeamLog.objects.filter(gameinfo=game, event="Touchdown").exists()
+
+    def test_non_lock_error_is_not_retried(self):
+        from gamedays.service.game_service import GameService
+        from gamedays.service.wrapper.gameresult_wrapper import GameresultWrapper
+
+        gameday = DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=game, isHome=True).team
+        event = [{"name": "Touchdown", "input": None, "player": "19"}]
+
+        with mock.patch.object(
+            GameresultWrapper, "lock", side_effect=ValueError("boom")
+        ) as lock:
+            with self.assertRaises(ValueError):
+                GameService(game.pk).create_gamelog(home.pk, event, gameday.author, 1)
+            assert lock.call_count == 1
+
+    def test_gives_up_after_max_attempts(self):
+        from gamedays.service.game_service import GameService
+        from gamedays.service.wrapper.gameresult_wrapper import GameresultWrapper
+
+        gameday = DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=game, isHome=True).team
+        event = [{"name": "Touchdown", "input": None, "player": "19"}]
+
+        with mock.patch.object(
+            GameresultWrapper,
+            "lock",
+            side_effect=OperationalError(
+                1213, "Deadlock found when trying to get lock"
+            ),
+        ) as lock:
+            with self.assertRaises(OperationalError):
+                GameService(game.pk).create_gamelog(home.pk, event, gameday.author, 1)
+            assert lock.call_count == 3
+
+
+@unittest.skipUnless(
+    connection.features.has_select_for_update, "needs row locks (MySQL in CI)"
+)
+class TestConcurrentGamelogWrites(TransactionTestCase):
+    """Concurrent scorecard writes to one game must not lose points (#1988)."""
+
+    WRITERS = 4
+
+    def test_concurrent_creates_add_up(self):
+        gameday = DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=game, isHome=True).team
+        Gameresult.objects.filter(gameinfo=game).update(fh=0, sh=0, pa=0)
+        half_scores = GameService._half_scores
+
+        def slow_half_scores(gamelog):
+            # Widen the window between reading the gamelog and writing scores.
+            scores = half_scores(gamelog)
+            time.sleep(0.2)
+            return scores
+
+        errors = []
+
+        def write():
+            try:
+                GameService(game.pk).create_gamelog(
+                    home.pk, TOUCHDOWN_WITH_PAT, gameday.author, 1
+                )
+            except Exception as error:  # pragma: no cover - reported below
+                errors.append(error)
+            finally:
+                connection.close()
+
+        with mock.patch.object(
+            GameService, "_half_scores", staticmethod(slow_half_scores)
+        ):
+            threads = [threading.Thread(target=write) for _ in range(self.WRITERS)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+
+        assert errors == []
+        assert _scores(game) == ((7 * self.WRITERS, 0, 0), (0, 0, 7 * self.WRITERS))
+
+    def test_concurrent_creates_produce_distinct_sequences(self):
+        """N concurrent writes must yield N distinct sequences (#2006).
+
+        Each TOUCHDOWN_WITH_PAT write allocates exactly one sequence (two
+        TeamLog rows share it by design). Duplicate sequences would collapse
+        entries in GameLog.create_entries_for_half while points still count.
+        """
+        gameday = DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=game, isHome=True).team
+        Gameresult.objects.filter(gameinfo=game).update(fh=0, sh=0, pa=0)
+        errors = []
+
+        def write():
+            try:
+                GameService(game.pk).create_gamelog(
+                    home.pk, TOUCHDOWN_WITH_PAT, gameday.author, 1
+                )
+            except Exception as error:  # pragma: no cover - reported below
+                errors.append(error)
+            finally:
+                connection.close()
+
+        threads = [threading.Thread(target=write) for _ in range(self.WRITERS)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert errors == []
+        sequences = list(
+            TeamLog.objects.filter(gameinfo=game)
+            .exclude(sequence=0)
+            .values_list("sequence", flat=True)
+            .distinct()
+        )
+        assert len(sequences) == self.WRITERS
+        assert len(set(sequences)) == self.WRITERS

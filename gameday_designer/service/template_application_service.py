@@ -16,6 +16,7 @@ from django.db import transaction
 from django.contrib.auth.models import User
 
 from gamedays.models import Gameday, Team, Gameinfo, Gameresult
+from gamedays.service.canvas_publish_service import OFFICIALS_PLACEHOLDER
 from gameday_designer.models import ScheduleTemplate, TemplateSlot, TemplateApplication
 from gameday_designer.service.time_service import TimeService
 
@@ -92,6 +93,7 @@ class TemplateApplicationService:
         self.break_duration = break_duration
         self.num_fields = num_fields
         self._ordered_slots = None
+        self._placeholder_official: Optional[Team] = None
 
     def apply(self) -> ApplicationResult:
         """
@@ -322,9 +324,7 @@ class TemplateApplicationService:
                 )
 
                 for slot, scheduled in zip(slots, start_times):
-                    official_team = self._resolve_team_placeholder(
-                        slot.official_group, slot.official_team, slot.official_reference
-                    )
+                    official_team = self._resolve_official(slot)
                     gameinfo = Gameinfo.objects.create(
                         gameday=self.gameday,
                         scheduled=scheduled,
@@ -355,9 +355,7 @@ class TemplateApplicationService:
                 )
 
                 for slot, scheduled in zip(slots, start_times):
-                    official_team = self._resolve_team_placeholder(
-                        slot.official_group, slot.official_team, slot.official_reference
-                    )
+                    official_team = self._resolve_official(slot)
                     gameinfo = Gameinfo.objects.create(
                         gameday=self.gameday,
                         scheduled=scheduled,
@@ -370,6 +368,29 @@ class TemplateApplicationService:
                     gameinfos.append(gameinfo)
 
         return gameinfos
+
+    def _resolve_official(self, slot: TemplateSlot) -> Team:
+        """
+        Resolve the officiating team for a slot.
+
+        Gameinfo.officials is NOT NULL, but a slot may have no official at all or
+        reference one that is only known later (e.g. "Gewinner HF1"). Fall back to
+        the shared "N/A" placeholder team, as CanvasPublishService does.
+        """
+        official = self._resolve_team_placeholder(
+            slot.official_group, slot.official_team, slot.official_reference
+        )
+        if official is None:
+            official = self._officials_placeholder()
+        return official
+
+    def _officials_placeholder(self) -> Team:
+        if self._placeholder_official is None:
+            self._placeholder_official, _ = Team.objects.get_or_create(
+                name=OFFICIALS_PLACEHOLDER,
+                defaults={"description": OFFICIALS_PLACEHOLDER, "location": ""},
+            )
+        return self._placeholder_official
 
     def _resolve_team_placeholder(
         self, group: Optional[int], team: Optional[int], reference: Optional[str]

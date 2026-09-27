@@ -8,8 +8,9 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.contrib.messages import get_messages
+from django.contrib.messages.storage.fallback import FallbackStorage
 from django.db import connection
-from django.test import TestCase, Client
+from django.test import TestCase, Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django_webtest import WebTest, DjangoWebtestResponse
 from rest_framework.reverse import reverse
@@ -56,7 +57,12 @@ from officials.urls import (
     OFFICIALS_SIGN_UP_FOR_GAMEDAY,
     OFFICIALS_SIGN_OUT,
 )
-from officials.views import MOODLE_LOGGED_IN_USER, MOODLE_REMEMBER_COOKIE
+from officials.views import (
+    IMPORT_ERROR_MESSAGE_LIMIT,
+    MOODLE_LOGGED_IN_USER,
+    MOODLE_REMEMBER_COOKIE,
+    GameOfficialImportConfirmView,
+)
 from officials.service.remember_me import RememberMeService
 
 
@@ -679,6 +685,26 @@ class TestAddInternalGameOfficialUpdateView(WebTest):
             in response.html.find_all("div", {"class": "alert-success"})[0].text
         )
 
+    def test_official_name_is_escaped_in_success_message(self):
+        """The success message is built with format_html, not mark_safe."""
+        user = DBSetup().create_new_user("some user", is_staff=True)
+        self.app.set_user(user)
+        DBSetup().g62_status_empty()
+        team = DbSetupOfficials().create_officials_and_team()
+        first_game = Gameinfo.objects.first()
+        malicious_official = OfficialFactory(
+            first_name="<script>alert(1)</script>", last_name="Evil", team=team
+        )
+        response: DjangoWebtestResponse = self.app.get(
+            reverse(OFFICIALS_GAMEOFFICIAL_INTERNAL_CREATE)
+        )
+        form = response.forms[1]
+        form["entries"] = f"{first_game.pk}, {malicious_official.pk}, Side Judge"
+        response = form.submit()
+        content = response.content.decode()
+        assert "<script>alert(1)</script>" not in content
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in content
+
 
 class TestGameCountOfficials(WebTest):
     @patch.object(MoodleService, "get_all_users_for_course")
@@ -963,7 +989,10 @@ class TestGameOfficialImportUploadView(WebTest):
         response = form.submit(expect_errors=True)
 
         assert response.status_code == HTTPStatus.BAD_REQUEST
-        assert "Anzahl Spiele" in response.json["errors"]["file"][0]
+        error_message = response.json["errors"]["file"][0]
+        assert error_message == "Die Datei konnte nicht verarbeitet werden."
+        assert "Gefundene Spalten" not in error_message
+        assert "Anzahl Spiele" not in error_message
 
     def test_valid_csv_upload_returns_grouped_json(self):
         team = TeamFactory(name="Test Team")
@@ -1214,6 +1243,35 @@ class TestGameOfficialImportConfirmView(WebTest):
         # Counts, not one line per created row.
         assert content.count("ID: ") == 0
 
+    def test_report_results_escapes_error_detail(self):
+        """Per-row error messages can echo back CSV cell content."""
+        request = RequestFactory().get("/")
+        request.session = {}
+        request._messages = FallbackStorage(request)
+
+        GameOfficialImportConfirmView._report_results(
+            request, 0, 0, ["<script>alert(1)</script>"]
+        )
+
+        rendered = "".join(str(m) for m in get_messages(request))
+        assert "<script>alert(1)</script>" not in rendered
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in rendered
+
+    def test_report_results_caps_the_listed_errors_and_counts_the_rest(self):
+        """Past the limit the message reports a count, not one line per row."""
+        request = RequestFactory().get("/")
+        request.session = {}
+        request._messages = FallbackStorage(request)
+        errors = [f"<b>Zeile {i}</b>" for i in range(IMPORT_ERROR_MESSAGE_LIMIT + 3)]
+
+        GameOfficialImportConfirmView._report_results(request, 0, 0, errors)
+
+        rendered = "".join(str(m) for m in get_messages(request))
+        assert "(und 3 weitere)" in rendered
+        assert f"Zeile {IMPORT_ERROR_MESSAGE_LIMIT}" not in rendered
+        assert "<b>" not in rendered
+        assert "&lt;b&gt;Zeile 0&lt;/b&gt;" in rendered
+
 
 class TestAddExternalGameOfficialUpdateView(WebTest):
     def test_non_staff_denied(self):
@@ -1272,3 +1330,20 @@ class TestAddExternalGameOfficialUpdateView(WebTest):
             in response.html.find_all("div", {"class": "alert-success"})[0].text
         )
         assert OfficialExternalGames.objects.filter(official=official).exists()
+
+    def test_official_name_is_escaped_in_success_message(self):
+        team = TeamFactory(name="Test Team")
+        malicious_official = OfficialFactory(
+            first_name="<script>alert(1)</script>", last_name="Evil", team=team
+        )
+        user = DBSetup().create_new_user("staff", is_staff=True)
+        self.app.set_user(user)
+        response = self.app.get(reverse(OFFICIALS_GAMEOFFICIAL_EXTERNAL_CREATE))
+        form = response.forms[1]
+        form["entries"] = (
+            f"{malicious_official.pk}, 2, 2024-05-01, Referee, Hamburg, 20"
+        )
+        response = form.submit()
+        content = response.content.decode()
+        assert "<script>alert(1)</script>" not in content
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in content

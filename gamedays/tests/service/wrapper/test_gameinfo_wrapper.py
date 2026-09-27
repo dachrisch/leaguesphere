@@ -5,7 +5,10 @@ from unittest import mock
 from django.test import TestCase
 
 from gamedays.models import Gameinfo
-from gamedays.service.wrapper.gameinfo_wrapper import GameinfoWrapper
+from gamedays.service.wrapper.gameinfo_wrapper import (
+    GameinfoWrapper,
+    IllegalGameTransition,
+)
 from gamedays.tests.setup_factories.db_setup import DBSetup
 from gamedays.tests.setup_factories.factories import GameinfoFactory
 from league_table.tests.setup_factories.factories_leaguetable import LeagueGroupFactory
@@ -16,6 +19,7 @@ class TestGameinfoWrapper(TestCase):
         DBSetup().g62_status_empty()
         first_game = Gameinfo.objects.first()
         gameinfo_wrapper = GameinfoWrapper.from_id(first_game.pk)
+        gameinfo_wrapper.set_gamestarted_to_now()
         gameinfo_wrapper.set_halftime_to_now()
         first_game = Gameinfo.objects.first()
         assert first_game.status == "2. Halbzeit"
@@ -34,10 +38,25 @@ class TestGameinfoWrapper(TestCase):
         DBSetup().g62_status_empty()
         first_game = Gameinfo.objects.first()
         gameinfo_wrapper = GameinfoWrapper.from_instance(first_game)
+        gameinfo_wrapper.set_gamestarted_to_now()
+        gameinfo_wrapper.set_halftime_to_now()
         gameinfo_wrapper.set_game_finished_to_now()
         first_game: Gameinfo = Gameinfo.objects.first()
         assert first_game.status == "beendet"
         assert re.match("^(0\d|1\d|2[0-3]):[0-5]\d", str(first_game.gameFinished))
+
+    def test_illegal_transition_raises(self):
+        DBSetup().g62_status_empty()
+        first_game = Gameinfo.objects.first()
+        gameinfo_wrapper = GameinfoWrapper.from_instance(first_game)
+        gameinfo_wrapper.set_gamestarted_to_now()
+        gameinfo_wrapper.set_halftime_to_now()
+        gameinfo_wrapper.set_game_finished_to_now()
+        first_game = Gameinfo.objects.first()
+        assert first_game.status == "beendet"
+        with self.assertRaises(IllegalGameTransition):
+            gameinfo_wrapper.set_halftime_to_now()
+        assert Gameinfo.objects.first().status == "beendet"
 
     def _setup_first_game(self):
         DBSetup().g62_status_empty()
@@ -59,6 +78,7 @@ class TestGameinfoWrapper(TestCase):
     def test_halftime_time_is_stored_in_utc(self):
         utc_now = datetime(2026, 8, 15, 9, 5, 0, tzinfo=UTC)
         first_game, gameinfo_wrapper = self._setup_first_game()
+        gameinfo_wrapper.set_gamestarted_to_now()
         with self.assertNumQueries(1):
             with mock.patch("django.utils.timezone.now", return_value=utc_now):
                 gameinfo_wrapper.set_halftime_to_now()
@@ -71,6 +91,8 @@ class TestGameinfoWrapper(TestCase):
         # reads (see gamedays/service/signals.py).
         utc_now = datetime(2026, 8, 15, 9, 5, 0, tzinfo=UTC)
         first_game, gameinfo_wrapper = self._setup_first_game()
+        gameinfo_wrapper.set_gamestarted_to_now()
+        gameinfo_wrapper.set_halftime_to_now()
         with mock.patch("django.utils.timezone.now", return_value=utc_now):
             gameinfo_wrapper.set_game_finished_to_now()
         first_game.refresh_from_db()

@@ -1,6 +1,8 @@
 import os
+import tempfile
 
 from django.contrib import messages
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 from dotenv import load_dotenv
 
@@ -10,7 +12,9 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
-CORS_ORIGIN_ALLOW_ALL = True
+# Every React app is served (or dev-proxied) same-origin, so no cross-origin
+# access is needed by default; environments that need one set it explicitly.
+CORS_ALLOWED_ORIGINS = []
 
 # Application definition
 
@@ -47,8 +51,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "league_manager.middleware.maintenance.MaintenanceModeMiddleware",
     "league_manager.middleware.db_guard.DatabaseGuardMiddleware",
+    "league_manager.middleware.maintenance.MaintenanceModeMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -61,7 +65,17 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         "LOCATION": "league-manager-cache",
-    }
+    },
+    # Snapshot payload cache: file-based so the TTL dump is shared across
+    # gunicorn worker processes (LocMemCache would rebuild it per worker).
+    # Ephemeral by design -- a cold cache only costs one rebuild.
+    "snapshot": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": os.environ.get(
+            "SNAPSHOT_CACHE_DIR",
+            os.path.join(tempfile.gettempdir(), "leaguesphere-snapshot-cache"),
+        ),
+    },
 }
 
 PAGES_LINKS = {
@@ -81,7 +95,6 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "django.template.context_processors.request",
                 "league_manager.context_processors.global_menu",
                 "league_manager.context_processors.version_number",
                 "league_manager.context_processors.pages_links",
@@ -168,11 +181,12 @@ REST_FRAMEWORK = {
     ),
     # Public read surface (liveticker, gamedays, league table) is anonymous;
     # throttle unauthenticated traffic to protect the dynamic endpoints.
-    "DEFAULT_THROTTLE_CLASSES": (
-        "rest_framework.throttling.AnonRateThrottle",
-    ),
+    "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.AnonRateThrottle",),
     "DEFAULT_THROTTLE_RATES": {
         "anon": "120/min",
+        # The snapshot dump is expensive by design (whole scopes in one
+        # response); throttle it strictly so it cannot be used for DoS.
+        "snapshot": "60/hour",
     },
 }
 
@@ -208,11 +222,6 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "handlers": {
-        "file": {
-            "level": "DEBUG",
-            "class": "logging.FileHandler",
-            "filename": "debug.log",
-        },
         "console": {
             "class": "logging.StreamHandler",
         },
@@ -225,6 +234,3 @@ LOGGING = {
         },
     },
 }
-
-# ToDo deleteMe
-X_FRAME_OPTIONS = "ALLOWALL"

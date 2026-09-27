@@ -139,7 +139,6 @@ class GamedayLeagueStatisticView(TemplateView):
             ],
             "border": 0,
             "justify": "center",
-            "escape": False,
         }
 
         lss = LeagueStatisticsService.create(
@@ -225,7 +224,6 @@ class GamedayDetailView(DetailView):
             ],
             "border": 0,
             "justify": "left",
-            "escape": False,
             "table_id": "schedule",
         }
         qualify_table = gs.get_qualify_table()
@@ -302,7 +300,9 @@ class GamedayDetailView(DetailView):
                 del schedule[ID]
 
         context["info"] = {
-            "schedule": schedule.to_html(**render_configs),
+            # Only this table keeps escape=False: get_schedule() wraps the
+            # officials column in <i> markup and hand-escapes the rest.
+            "schedule": schedule.to_html(**{**render_configs, "escape": False}),
             "qualify_table": qualify_table,
             "final_table": final_table,
             "officials": officials,
@@ -470,7 +470,6 @@ class GamedayGameDetailView(DetailView):
             "index": False,
             "border": 0,
             "justify": "center",
-            "escape": False,
             "table_id": "team_log_events",
         }
         classes = [
@@ -490,7 +489,7 @@ class GamedayGameDetailView(DetailView):
         game_setup_details = {}
 
         if split_score_repaired:
-            split_score_table_html = f"""{split_score_table_html}</ br>
+            split_score_table_html = f"""{split_score_table_html}<br>
 <small>Die Aufteilung der Punkte je Halbzeit kann eventuell inkorrekt sein.</small>"""
 
         events_table = ggs.get_events_table()
@@ -590,7 +589,11 @@ class GamedayGameDetailView(DetailView):
         payload["performer"] = [
             {"@type": "SportsTeam", "name": team["name"]} for team in scores.values()
         ]
-        return json.dumps(payload)
+        # Embedded raw in a <script> tag, so a name containing "</script>"
+        # would close it early. Escape what json_script() escapes.
+        return json.dumps(payload).translate(
+            {ord("<"): "\\u003C", ord(">"): "\\u003E", ord("&"): "\\u0026"}
+        )
 
 
 class GameinfoWizard(LoginRequiredMixin, UserPassesTestMixin, SessionWizardView):

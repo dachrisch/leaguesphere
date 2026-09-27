@@ -1,7 +1,31 @@
+import logging
+import random
+import time
+
+from django.db import OperationalError, transaction
+
 from gamedays.models import Team, TeamLog
 from gamedays.service.gamelog import GameLog, GameLogCreator
 from gamedays.service.wrapper.gameinfo_wrapper import GameinfoWrapper
 from gamedays.service.wrapper.gameresult_wrapper import GameresultWrapper
+
+logger = logging.getLogger(__name__)
+
+# MySQL error codes for retryable lock contention under concurrent writes:
+# 1213 deadlocks, 1205 lock-wait timeout. MySQL itself advises
+# "try restarting transaction" -- concurrent scorecard writes to the same
+# game must do exactly that instead of surfacing a 500 (#2006).
+_RETRYABLE_MYSQL_CODES = frozenset({1213, 1205})
+_WRITE_MAX_ATTEMPTS = 3
+
+
+def _is_retryable_lock_error(error: Exception) -> bool:
+    """True for MySQL deadlock / lock-wait-timeout OperationalErrors."""
+    args = getattr(error, "args", ())
+    if args and args[0] in _RETRYABLE_MYSQL_CODES:
+        return True
+    message = str(error).lower()
+    return "deadlock found" in message or "lock wait timeout exceeded" in message
 
 
 class GameService(object):
@@ -28,8 +52,9 @@ class GameService(object):
     def create_gamelog(self, team_name, event, user, half):
         # ToDo extract to TeamWrapper
         team = self._resolve_team(team_name)
-        gamelog = GameLogCreator(self.gameinfo.gameinfo, team, event, user, half)
-        return gamelog.create()
+        return self._write_gamelog(
+            GameLogCreator(self.gameinfo.gameinfo, team, event, user, half).create
+        )
 
     @staticmethod
     def _resolve_team(team_identifier) -> Team:
@@ -51,6 +76,11 @@ class GameService(object):
         return team
 
     def update_score(self, gamelog: GameLog):
+        """Overwrite the stored half scores with the gamelog totals.
+
+        Full recompute: scores entered without gamelog entries are lost. The
+        scorecard write path does not use this, see ``_write_gamelog``.
+        """
         self.gameresult.save_home_first_half(
             gamelog.get_home_firsthalf_score(), gamelog.get_away_firsthalf_score()
         )
@@ -65,9 +95,65 @@ class GameService(object):
         )
 
     def delete_gamelog(self, sequence):
-        gamelog = GameLog(self.gameinfo.gameinfo)
+        return self._write_gamelog(lambda: self._mark_entries_as_deleted(sequence))
+
+    def _mark_entries_as_deleted(self, sequence) -> GameLog:
+        gamelog = self.get_gamelog()
         gamelog.mark_entries_as_deleted(sequence)
         return gamelog
+
+    def _write_gamelog(self, write) -> GameLog:
+        """Run a gamelog ``write`` and shift the stored scores by its effect.
+
+        Only the change the write makes to the gamelog half scores is applied,
+        so a score entered without gamelog entries (designer results editor)
+        survives scorecard writes (#1988). Snapshot, write and score update run
+        in one transaction holding the game's result rows locked, so concurrent
+        writes to the same game apply their changes one after the other.
+
+        Concurrent writers contend on the Gameresult + Gameinfo row locks and
+        the TeamLog inserts, so InnoDB deadlocks (1213) / lock-wait timeouts
+        (1205) are expected under load. Retry the whole transaction a few
+        times with backoff instead of failing the request (#2006).
+        """
+        last_error = None
+        for attempt in range(_WRITE_MAX_ATTEMPTS):
+            try:
+                with transaction.atomic():
+                    self.gameresult.lock()
+                    before = self._half_scores(self.get_gamelog())
+                    gamelog = write()
+                    after = self._half_scores(gamelog)
+                    self.gameresult.apply_score_change(
+                        {key: after[key] - before[key] for key in after}
+                    )
+                return gamelog
+            except OperationalError as error:
+                last_error = error
+                if (
+                    not _is_retryable_lock_error(error)
+                    or attempt + 1 >= _WRITE_MAX_ATTEMPTS
+                ):
+                    raise
+                logger.warning(
+                    "Retrying gamelog write for game %s after lock contention "
+                    "(attempt %d/%d): %s",
+                    self.game_id,
+                    attempt + 1,
+                    _WRITE_MAX_ATTEMPTS,
+                    error,
+                )
+                time.sleep(0.05 * (2**attempt) + random.uniform(0, 0.05))
+        raise last_error  # pragma: no cover - loop always returns or raises
+
+    @staticmethod
+    def _half_scores(gamelog: GameLog) -> dict:
+        return {
+            (True, "fh"): gamelog.get_home_firsthalf_score(),
+            (True, "sh"): gamelog.get_home_secondhalf_score(),
+            (False, "fh"): gamelog.get_away_firsthalf_score(),
+            (False, "sh"): gamelog.get_away_secondhalf_score(),
+        }
 
     def _create_log_entry(self, event_text, user):
         TeamLog.objects.get_or_create(

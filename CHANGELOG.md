@@ -1,5 +1,92 @@
 # Changelog
 
+## [4.31.4](https://github.com/dachrisch/leaguesphere/compare/v4.31.3...v4.31.4) (2026-09-27)
+
+
+### Bug Fixes
+
+* **ci:** make check_migrations and test_backend_image work without secrets ([8fdc7b0](https://github.com/dachrisch/leaguesphere/commit/8fdc7b04b0fee2b682456b925070683a290d6574))
+* **ci:** make check_migrations and test_backend_image work without secrets ([c3cbac2](https://github.com/dachrisch/leaguesphere/commit/c3cbac2558bb07a4afeb1f134448efbf6a7f192b))
+* **ci:** pass MYSQL dummies to test_backend_image container ([89d67e8](https://github.com/dachrisch/leaguesphere/commit/89d67e8e5082ae899207f50079c405b6a89d30e3))
+* **ci:** pass MYSQL dummies to test_backend_image container ([c472a78](https://github.com/dachrisch/leaguesphere/commit/c472a7800b6aff2bfae71b9c876281c26a76cbfb))
+* **container:** use build-only dummy env for collectstatic in nginx image ([fd08aad](https://github.com/dachrisch/leaguesphere/commit/fd08aad910d0f1aa840758f588ec21b90cbdeb6c))
+* **container:** use build-only dummy env for collectstatic in nginx image ([864c9bd](https://github.com/dachrisch/leaguesphere/commit/864c9bd32d8f87fba14d0c56451d7d70b772a9e1))
+* **gamedays:** don't expose IllegalGameTransition details in 409 responses ([6bce22b](https://github.com/dachrisch/leaguesphere/commit/6bce22bf1179e7661cf8a1b2be3bbea0a2712f1a))
+* **gamedays:** guard illegal game status transitions with 409 ([a6d6da9](https://github.com/dachrisch/leaguesphere/commit/a6d6da9759e471310a11fbe69ea40e3af60f9b9a))
+* **gamedays:** serialize gamelog sequence allocation per game ([e827f14](https://github.com/dachrisch/leaguesphere/commit/e827f141bf9bcf3febc2f59121fde691e5b49417))
+* **gamedays:** serialize gamelog sequence allocation per game ([de68fee](https://github.com/dachrisch/leaguesphere/commit/de68fee38480e4b7dab49ae9e3cb92cd28ab4bec)), closes [#2006](https://github.com/dachrisch/leaguesphere/issues/2006)
+* **gamedays:** validate possession team against the game's teams ([06c1a64](https://github.com/dachrisch/leaguesphere/commit/06c1a64b9e96830062ce9c430009b369e51a432d))
+* **gamedays:** validate possession team and guard illegal game status transitions ([1c8316e](https://github.com/dachrisch/leaguesphere/commit/1c8316e422f38462d8a3a7f7fdd38046b07b99e6))
+* resolve code scanning alerts (CWE-209 info exposure, unused eslint directive) ([e5022e3](https://github.com/dachrisch/leaguesphere/commit/e5022e3e0e3f2bcff83125dd946182e61f627720))
+* resolve code scanning alerts (CWE-209 info exposure, unused eslint directive) ([80a2ad8](https://github.com/dachrisch/leaguesphere/commit/80a2ad8a2a3e23b932bd2c45d58eaa14c1ef55ed))
+
+## [4.31.3](https://github.com/dachrisch/leaguesphere/compare/v4.31.2...v4.31.3) (2026-09-27)
+
+
+### Bug Fixes
+
+* **gamedays:** game write APIs return 400/404 instead of 500 on invalid input ([ce75408](https://github.com/dachrisch/leaguesphere/commit/ce75408396ee48cc123c951623bf54478052dadb))
+* **gamedays:** return 400 for malformed gamelog payloads ([416670e](https://github.com/dachrisch/leaguesphere/commit/416670e5ece8cac3758e580f5cb0ccf44ec02e78))
+* **gamedays:** return 404 for halftime/finalize/possession on unknown game ([769eec8](https://github.com/dachrisch/leaguesphere/commit/769eec8147fbec798bc1ed35cb9b39ca40170958))
+* **scorecard:** ship favicon and fix direct #/select-game navigation ([03df023](https://github.com/dachrisch/leaguesphere/commit/03df023f745624cc83a9ee0292e79541241969f2))
+* **scorecard:** ship favicon and render gameday selector on direct #/select-game navigation ([48226d1](https://github.com/dachrisch/leaguesphere/commit/48226d13e9badd58947747867c43e9220f783298))
+
+
+### Documentation
+
+* add api hardening implementation plan ([fe5a09c](https://github.com/dachrisch/leaguesphere/commit/fe5a09cc794b63815c3cca333f4e87c21c026db5))
+
+## [4.31.2](https://github.com/dachrisch/leaguesphere/compare/v4.31.1...v4.31.2) (2026-09-27)
+
+
+### Bug Fixes
+
+* **designer:** apply templates with official-less slots instead of 500 ([d66717d](https://github.com/dachrisch/leaguesphere/commit/d66717dc564eddd87ef0f3582d69728423a87bab))
+* **gamedays:** keep manually entered scores on scorecard gamelog writes ([7408fae](https://github.com/dachrisch/leaguesphere/commit/7408fae59ad8104c3ad4f467a1f49e20271f7f0d))
+
+## [4.31.1](https://github.com/dachrisch/leaguesphere/compare/v4.31.0...v4.31.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* **ci:** run e2e on tag pipelines so real deploys are gated by it ([a3375bc](https://github.com/dachrisch/leaguesphere/commit/a3375bce8ca8fbe44fd363e95d23c767ea39c084))
+* **ci:** run e2e on tag pipelines so real deploys are gated by it ([150f60d](https://github.com/dachrisch/leaguesphere/commit/150f60d6701363c99e6f0ec57fb29716022ab3a4))
+
+## [4.31.0](https://github.com/dachrisch/leaguesphere/compare/v4.30.0...v4.31.0) (2026-09-26)
+
+
+### Features
+
+* zero-downtime watchtower swaps via blue-green strategy ([9cebdcf](https://github.com/dachrisch/leaguesphere/commit/9cebdcfc0527ec28972aa2b63a0116b02915ce15))
+
+## [4.30.0](https://github.com/dachrisch/leaguesphere/compare/v4.29.0...v4.30.0) (2026-09-26)
+
+
+### Features
+
+* **hardening:** add reusable headless-chrome harness (playwright-core) + wire into scope-exclude ([1ac42e5](https://github.com/dachrisch/leaguesphere/commit/1ac42e56fbe0daeaf7a0c68ad1873d2901371d96))
+
+
+### Documentation
+
+* hardening report 2026-09-25 (designer, scorecard, liveticker) + domain knowledge ([037fbeb](https://github.com/dachrisch/leaguesphere/commit/037fbeb84f0bf5902ee45b841a02eb2c1339431e))
+* hardening report 2026-09-25 (designer, scorecard, liveticker) + domain knowledge ([e0e55f2](https://github.com/dachrisch/leaguesphere/commit/e0e55f265f1ac92501f02238be4d0f1331c9d3e1))
+* intensive round - F9 rescore wipe, F10 apply 500, matrix evidence, deep domain knowledge ([88a2de4](https://github.com/dachrisch/leaguesphere/commit/88a2de457235e8d0e1bf1dd017a36a70846f9fc1))
+* remove hardening screenshots from report ([ec4c967](https://github.com/dachrisch/leaguesphere/commit/ec4c967745daf27c1e2087ebc2db87c7029c99f8))
+
+## [4.29.0](https://github.com/dachrisch/leaguesphere/compare/v4.28.1...v4.29.0) (2026-09-26)
+
+
+### Features
+
+* **api:** add configurable snapshot mass endpoint for API consumers ([331ba41](https://github.com/dachrisch/leaguesphere/commit/331ba41fb2b67ee5c92c56f33f23a0bcea9daa6e))
+* **api:** add configurable snapshot mass endpoint for API consumers ([a85f564](https://github.com/dachrisch/leaguesphere/commit/a85f5641076c3f26a85fedf0bfbcaf82b65cc67c))
+
+
+### Performance Improvements
+
+* **api:** cheap snapshot ETag via updated_at freshness signals ([454881b](https://github.com/dachrisch/leaguesphere/commit/454881b7b99d59e8fcaf0fe93509ad589fdd962a))
+
 ## [4.28.1](https://github.com/dachrisch/leaguesphere/compare/v4.28.0...v4.28.1) (2026-09-18)
 
 

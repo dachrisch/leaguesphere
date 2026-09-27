@@ -1,3 +1,4 @@
+import json
 from http import HTTPStatus
 from unittest.mock import patch
 
@@ -44,6 +45,8 @@ from gamedays.tests.setup_factories.factories import (
     GamedayFactory,
     SeasonFactory,
     ResourceUrlFactory,
+    TeamFactory,
+    TeamLogFactory,
 )
 from gamedays.wizard import FIELD_GROUP_STEP, GAMEDAY_FORMAT_STEP, GAMEINFO_STEP
 from league_table.tests.setup_factories.db_setup_leaguetable import LEAGUE_TABLE_TEST_RULESET
@@ -141,6 +144,48 @@ class TestGamedayDetailView(TestCase):
     def test_detail_view_gameday_not_available(self):
         resp = self.client.get(reverse(LEAGUE_GAMEDAY_DETAIL, args=[00]))
         assert resp.status_code == HTTPStatus.NOT_FOUND
+
+
+class TestGamedayDetailViewEscaping(TestCase):
+    """Pinned through the view: calling to_html(escape=True) directly would
+    pass even if the view's render config regressed.
+    """
+
+    @patch("league_table.service.datatypes.LeagueConfigRuleset.from_ruleset")
+    def test_detail_view_escapes_team_description_in_offense_and_defense_tables(
+        self, mock_get_league_config_ruleset
+    ):
+        mock_get_league_config_ruleset.return_value = LEAGUE_TABLE_TEST_RULESET
+        gameday = DBSetup().g62_finished(season=SeasonFactory(name="2025"))
+        LeagueSeasonConfigFactory(league=gameday.league, season=gameday.season)
+        gameinfo = gameday.gameinfo_set.first()
+        team_1_result, team_2_result = list(gameinfo.gameresult_set.all())
+        team_1_result.team.description = "<script>alert(1)</script>"
+        team_1_result.team.save()
+        DBSetup().create_teamlog_home_and_away(
+            team_1_result.team, team_2_result.team, gameinfo=gameinfo
+        )
+        TeamLogFactory(
+            gameinfo=gameinfo,
+            team=team_1_result.team,
+            sequence=99,
+            player=19,
+            event="Interception",
+            value=0,
+            half=1,
+            author=gameday.author,
+        )
+
+        resp = self.client.get(
+            reverse(LEAGUE_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk})
+        )
+
+        assert resp.status_code == HTTPStatus.OK
+        info = resp.context_data["info"]
+        for table in (info["offense_table"], info["defense_table"]):
+            assert "<script>alert(1)</script>" not in table
+            assert "&lt;script&gt;alert(1)&lt;/script&gt;" in table
+        assert "<script>alert(1)</script>" not in resp.content.decode()
 
 
 class TestGamedayDetailViewCanMigrate(TestCase):
@@ -267,6 +312,32 @@ class TestGamedayLeagueStatisticView(TestCase):
                 continue
             assert v != "Die Statistiken erscheinen nach den ersten Spielen."
 
+    def test_league_statistic_view_escapes_team_name(self):
+        """These tables reach the template via |safe."""
+        gameday = DBSetup().g62_finished(season=SeasonFactory(name="2025"))
+        gameinfo = gameday.gameinfo_set.first()
+        team_1_result, team_2_result = list(gameinfo.gameresult_set.all())
+        team_1_result.team.name = "<script>alert(1)</script>"
+        team_1_result.team.save()
+        DBSetup().create_teamlog_home_and_away(
+            team_1_result.team, team_2_result.team, gameinfo=gameinfo
+        )
+
+        resp = self.client.get(
+            reverse(
+                LEAGUE_GAMEDAY_LEAGUE_STATISTICS,
+                kwargs={
+                    "league": gameday.league.name,
+                    "season": gameday.season.name,
+                },
+            )
+        )
+
+        assert resp.status_code == HTTPStatus.OK
+        content = resp.content.decode()
+        assert "<script>alert(1)</script>" not in content
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in content
+
 
 class TestGamedayGameDetailView(TestCase):
 
@@ -341,6 +412,53 @@ class TestGamedayGameDetailView(TestCase):
         assert not context["info"]["split_score_table"].startswith(
             EmptySplitScoreTable.to_html()
         )
+
+    def test_detail_view_escapes_team_name_in_events_and_split_score_tables(self):
+        """These tables reach the template via |safe."""
+        home = TeamFactory(name="Home XSS", description="<script>alert(1)</script>")
+        away = TeamFactory(name="Away XSS", description="Away Desc")
+        gameinfo = DBSetup().create_teamlog_home_and_away(home, away)
+
+        resp = self.client.get(
+            reverse(
+                LEAGUE_GAMEDAY_GAME_DETAIL,
+                kwargs={
+                    "gameday_pk": gameinfo.pk,
+                    "pk": gameinfo.pk,
+                },
+            )
+        )
+
+        assert resp.status_code == HTTPStatus.OK
+        content = resp.content.decode()
+        assert "<script>alert(1)</script>" not in content
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in content
+
+    def test_detail_view_json_ld_cannot_break_out_of_its_script_tag(self):
+        """A description containing "</script>" must not close the JSON-LD
+        tag early.
+        """
+        home = TeamFactory(
+            name="LD XSS", description="</script><script>alert(1)</script>"
+        )
+        away = TeamFactory(name="Away LD", description="Away Desc")
+        gameinfo = DBSetup().create_teamlog_home_and_away(home, away)
+
+        resp = self.client.get(
+            reverse(
+                LEAGUE_GAMEDAY_GAME_DETAIL,
+                kwargs={"gameday_pk": gameinfo.pk, "pk": gameinfo.pk},
+            )
+        )
+
+        assert resp.status_code == HTTPStatus.OK
+        ld = resp.context_data["sports_event_ld"]
+        assert "</script>" not in ld
+        assert "\\u003C/script\\u003E" in ld
+        # Still valid JSON that round-trips to the original name.
+        assert json.loads(ld)["homeTeam"]["name"] == home.description
+        # The only "</script>" on the page closes the JSON-LD tag itself.
+        assert resp.content.decode().count("</script>") == resp.content.decode().count("<script")
 
 
 class TestGamedayUpdateView(WebTest):

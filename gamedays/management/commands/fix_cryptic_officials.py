@@ -45,6 +45,7 @@ from datetime import datetime
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.utils import timezone
 
 from gamedays.models import Gameday, GamedayDesignerState, Gameinfo, Team
 from gamedays.service.canvas_publish_service import CanvasPublishService
@@ -187,7 +188,8 @@ class Command(BaseCommand):
                         )
                         if existing:
                             Gameinfo.objects.filter(officials_id=team_id).update(
-                                officials_id=existing.id
+                                officials_id=existing.id,
+                                updated_at=timezone.now(),
                             )
                             self.stdout.write(
                                 f"  Team {team_id}: '{new_name}' already exists "

@@ -11,6 +11,7 @@ on:
 permissions:
   contents: write
   checks: write
+  security-events: write
 
 jobs:
   test-matrix:
@@ -63,3 +64,18 @@ jobs:
         with:
           eslint-report: ${{ matrix.project }}/js-lint-results-${{ matrix.project }}.json
           typescript-log: ${{ matrix.project }}/typescript.log
+
+      - name: 🔍🔁 Convert ${{ matrix.project }} lint results to SARIF
+        if: ${{ !cancelled() && hashFiles(format('{0}/js-lint-results-{0}.json', matrix.project)) != '' }}
+        working-directory: .
+        run: >
+          node .github/scripts/eslint-json-to-sarif.mjs
+          ${{ matrix.project }}/js-lint-results-${{ matrix.project }}.json
+          ${{ matrix.project }}/js-lint-results-${{ matrix.project }}.sarif
+
+      - name: 📦⬆️ Upload ${{ matrix.project }} lint results to Code Scanning
+        if: ${{ !cancelled() && hashFiles(format('{0}/js-lint-results-{0}.sarif', matrix.project)) != '' }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ${{ matrix.project }}/js-lint-results-${{ matrix.project }}.sarif
+          category: eslint-${{ matrix.project }}
