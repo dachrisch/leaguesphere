@@ -2,9 +2,7 @@
 from .base import *
 from ._env_guard import require_env_vars
 
-# Refuse to start without the DB/SECRET_KEY env vars -- see _env_guard.py
-# for why this is guarded on being the *active* settings (directly or via
-# the league_manager.settings package fallback) rather than on os.environ.
+# Refuse to start without the DB/SECRET_KEY env vars (see _env_guard.py).
 require_env_vars(__name__, "production")
 
 DEBUG = False

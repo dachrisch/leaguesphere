@@ -1,21 +1,9 @@
 """Fail-fast guard for the deployed settings modules (prod.py, stage.py).
 
 base.py falls back to insecure defaults (user/user@127.0.0.1, no SECRET_KEY)
-when the MySQL/SECRET_KEY env vars are unset. That is fine for local dev but
-must never happen silently on a deployed environment, so the deployed
-settings modules refuse to import without them.
-
-The check only runs when the module is genuinely the active settings:
-
-* ``DJANGO_SETTINGS_MODULE`` names it directly (the compose files do this), or
-* ``DJANGO_SETTINGS_MODULE`` names the ``league_manager.settings`` *package*
-  (the default in wsgi.py / asgi.py / manage.py) and the ``league_manager``
-  env var does not select dev/test_sqlite, so the package's ``__init__``
-  resolves to prod.
-
-It must NOT run when prod.py is merely imported incidentally -- e.g. by the
-package ``__init__`` during a local run, or by tests importing the module to
-inspect its values -- or every local dev/test run would need prod secrets.
+when the env vars are unset, so prod/stage refuse to import without them --
+but only when they are the active settings, not when prod.py is imported
+incidentally by the settings package or by a test.
 """
 
 import os
@@ -39,6 +27,8 @@ def is_active_settings_module(module_name):
     active = os.environ.get("DJANGO_SETTINGS_MODULE")
     if active == module_name:
         return True
+    # wsgi/asgi/manage.py default to the settings *package*, whose __init__
+    # falls back to prod unless `league_manager` selects dev/test_sqlite.
     return (
         active == SETTINGS_PACKAGE
         and module_name == PACKAGE_FALLBACK_MODULE

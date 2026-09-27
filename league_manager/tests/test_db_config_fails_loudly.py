@@ -1,10 +1,5 @@
-"""base.py silently falls back to user/user@127.0.0.1 when the MySQL env
-vars are missing, and SECRET_KEY has no prod-time enforcement either. In
-prod/stage that means a misconfigured deploy doesn't fail fast -- it starts
-up and either talks to the wrong database or, if nothing is listening at
-127.0.0.1:3306, fails with a confusing connection error far from the actual
-cause. Importing prod.py/stage.py without the required env vars set must
-raise immediately instead.
+"""A misconfigured prod/stage deploy must fail at import instead of silently
+falling back to base.py's user/user@127.0.0.1 defaults.
 """
 
 import importlib
@@ -32,9 +27,7 @@ def _reimport(module_name, env):
         for var in REQUIRED_ENV_VARS:
             os.environ.pop(var, None)
         os.environ.update(env)
-        # The check only fires when this module is genuinely the active
-        # settings, not when it's incidentally imported as a fallback by
-        # league_manager/settings/__init__.py.
+        # The check only fires for the *active* settings module.
         os.environ["DJANGO_SETTINGS_MODULE"] = module_name
         return importlib.import_module(module_name)
     finally:
@@ -71,11 +64,8 @@ def test_all_required_env_vars_present_imports_cleanly(module_name):
     _reimport(module_name, env)
 
 
-# wsgi.py / manage.py / asgi.py default DJANGO_SETTINGS_MODULE to the
-# `league_manager.settings` *package*, whose __init__ falls back to prod
-# unless the `league_manager` env var selects dev/test_sqlite. Booting that
-# way must be guarded exactly like naming prod.py directly, otherwise the
-# silent user/user@127.0.0.1 fallback survives on the most common boot path.
+# wsgi/asgi/manage.py default to the settings *package*, which falls back to
+# prod -- the most common boot path, so it must be guarded the same way.
 _PACKAGE = "league_manager.settings"
 _PACKAGE_MODULES = [_PACKAGE, f"{_PACKAGE}.prod", f"{_PACKAGE}._env_guard"]
 
