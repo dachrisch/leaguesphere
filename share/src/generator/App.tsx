@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { usePreviewHeight } from '../hooks/usePreviewHeight';
 import { fetchSeasons, fetchSnapshot, fetchTeams } from '../lib/api';
 import { leaguesInSnapshot, type LeagueOption } from '../lib/derived';
 import {
@@ -149,6 +150,7 @@ export function App() {
     ...options,
     teams: selected.map((team) => team.id),
   });
+  const [previewRef, previewHeight] = usePreviewHeight(selected.length > 0);
 
   return (
     <main className="share-gen">
@@ -409,9 +411,11 @@ export function App() {
         ) : (
           <>
             <iframe
+              ref={previewRef}
               className="share-gen__preview mb-3"
               title="Vorschau"
               src={url}
+              style={{ height: `${previewHeight}px` }}
             />
             <CopyField
               label="Schritt 1 – Größen-Listener (einmalig auf der Seite)"

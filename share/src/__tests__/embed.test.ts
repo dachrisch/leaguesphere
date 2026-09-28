@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   isWidgetLoading,
   measureContentHeight,
+  nextFrameHeight,
   notifyParentHeight,
   WIDGET_MESSAGE_TYPE,
 } from '../lib/embed';
@@ -65,5 +66,15 @@ describe('isWidgetLoading', () => {
   it('is false once real content is rendered', () => {
     document.body.innerHTML = '<div id="share-widget-root"><table></table></div>';
     expect(isWidgetLoading(document)).toBe(false);
+  });
+});
+
+describe('nextFrameHeight', () => {
+  it('grows to the measured height', () => {
+    expect(nextFrameHeight(0, 393)).toBe(393);
+  });
+
+  it('never shrinks below the previous height', () => {
+    expect(nextFrameHeight(500, 40)).toBe(500);
   });
 });

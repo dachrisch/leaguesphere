@@ -33,6 +33,15 @@ export function isWidgetLoading(doc: Document = document): boolean {
 }
 
 /**
+ * Grow-only height reducer for an embedding page (the generator preview and
+ * the documented listener snippet): a short measurement while the widget is
+ * still loading must never shrink the frame and hide content.
+ */
+export function nextFrameHeight(previous: number, measured: number): number {
+  return Math.max(previous, measured);
+}
+
+/**
  * Ask the embedding page to resize our iframe.
  *
  * The parent listener script (documented on the generator page) checks
