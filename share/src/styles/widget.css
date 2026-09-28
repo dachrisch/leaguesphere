@@ -28,12 +28,18 @@ body.share-body {
   margin-bottom: 12px;
 }
 
+.share-section + .share-section {
+  margin-top: 16px;
+}
+
 .share-section__title {
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: #6c757d;
-  margin-bottom: 6px;
+  margin: 0 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e3e3e3;
 }
 
 /* Compact standings table inside a narrow embed. */

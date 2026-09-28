@@ -63,6 +63,26 @@ describe('Spielplan', () => {
     expect(screen.getByText('LIVE')).toBeInTheDocument();
   });
 
+  it('labels the result columns Ergebnis (past) and Anpfiff (upcoming)', () => {
+    const snapshot = makeSnapshot([
+      makeGameday({
+        id: 1,
+        date: '2026-05-01',
+        games: [makeGame({ id: 11, status: 'beendet' })],
+      }),
+      makeGameday({
+        id: 2,
+        date: '2026-06-01',
+        games: [makeGame({ id: 22, scheduled: '12:20:00', status: 'Geplant' })],
+      }),
+    ]);
+    render(<Spielplan snapshot={snapshot} config={config('t=159')} />);
+    expect(screen.getByText('Ergebnis')).toBeInTheDocument();
+    expect(screen.getByText('Anpfiff')).toBeInTheDocument();
+    expect(screen.getByText('12:20')).toBeInTheDocument();
+    expect(screen.queryByText('12:20:00')).not.toBeInTheDocument();
+  });
+
   it('only shows the configured teams', () => {
     const snapshot = makeSnapshot([
       makeGameday({

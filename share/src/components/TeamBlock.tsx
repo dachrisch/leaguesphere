@@ -1,7 +1,13 @@
 import type { ScheduleEntry } from '../lib/schedule';
 import { GameRow } from './GameRow';
 
-function GameTable({ entries }: { entries: ScheduleEntry[] }) {
+function GameTable({
+  entries,
+  resultColumn,
+}: {
+  entries: ScheduleEntry[];
+  resultColumn: 'Ergebnis' | 'Anpfiff';
+}) {
   return (
     <table className="table table-sm table-hover mb-0">
       <thead>
@@ -9,7 +15,7 @@ function GameTable({ entries }: { entries: ScheduleEntry[] }) {
           <th>Datum</th>
           <th />
           <th>Gegner</th>
-          <th className="text-end">Ergebnis</th>
+          <th className="text-end">{resultColumn}</th>
         </tr>
       </thead>
       <tbody>
@@ -60,12 +66,12 @@ export function TeamBlock({
       )}
 
       {showPast && (
-        <div className="mb-3">
+        <div className="share-section">
           <h3 className="share-section__title">Vergangene Spiele</h3>
           {visiblePast.length === 0 ? (
             <p className="share-empty">Noch keine Ergebnisse.</p>
           ) : (
-            <GameTable entries={visiblePast} />
+            <GameTable entries={visiblePast} resultColumn="Ergebnis" />
           )}
           {hiddenPast > 0 && !showAllPast && (
             <button
@@ -80,12 +86,12 @@ export function TeamBlock({
       )}
 
       {showFuture && (
-        <div>
+        <div className="share-section">
           <h3 className="share-section__title">Kommende Spiele</h3>
           {visibleUpcoming.length === 0 ? (
             <p className="share-empty">Keine kommenden Spiele.</p>
           ) : (
-            <GameTable entries={visibleUpcoming} />
+            <GameTable entries={visibleUpcoming} resultColumn="Anpfiff" />
           )}
         </div>
       )}

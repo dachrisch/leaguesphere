@@ -52,6 +52,14 @@ function scoreOf(result: ApiGameResult | null): number {
   return (result.fh ?? 0) + (result.sh ?? 0);
 }
 
+/** "12:20:00" (or "12:20") -> "12:20". */
+export function formatTime(raw: string): string {
+  const [hours, minutes] = raw.split(':');
+  return hours !== undefined && minutes !== undefined
+    ? `${hours}:${minutes}`
+    : raw;
+}
+
 function buildEntry(
   gameday: ApiGameday,
   game: ApiGame,
@@ -63,7 +71,7 @@ function buildEntry(
     gamedayId: gameday.id,
     gamedayName: gameday.name,
     date: gameday.date,
-    time: game.scheduled,
+    time: formatTime(game.scheduled),
     league: gameday.league_display,
     gameId: game.id,
     status: game.status,

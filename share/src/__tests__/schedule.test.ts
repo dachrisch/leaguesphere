@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildTeamSchedule, isFinal, isLive } from '../lib/schedule';
+import { buildTeamSchedule, formatTime, isFinal, isLive } from '../lib/schedule';
 import type { ApiGame, ApiGameday, Snapshot } from '../lib/types';
 
 function makeGame(overrides: Partial<ApiGame> = {}): ApiGame {
@@ -46,6 +46,16 @@ function makeGameday(overrides: Partial<ApiGameday> = {}): ApiGameday {
 function makeSnapshot(gamedays: ApiGameday[]): Snapshot {
   return { generated_at: '2026-05-09T10:00:00Z', etag: 'x', gamedays };
 }
+
+describe('formatTime', () => {
+  it('drops seconds from a HH:MM:SS value', () => {
+    expect(formatTime('12:20:00')).toBe('12:20');
+  });
+
+  it('keeps an already short HH:MM value', () => {
+    expect(formatTime('09:05')).toBe('09:05');
+  });
+});
 
 describe('status helpers', () => {
   it('recognises final and live game statuses', () => {
@@ -136,6 +146,14 @@ describe('buildTeamSchedule', () => {
     const schedule = buildTeamSchedule(makeSnapshot(gamedays), 159);
     expect(schedule.past.map((entry) => entry.gameId)).toEqual([44, 33]);
     expect(schedule.upcoming.map((entry) => entry.gameId)).toEqual([22, 11]);
+  });
+
+  it('normalises the kick-off time to HH:MM', () => {
+    const gameday = makeGameday({
+      games: [makeGame({ id: 1, scheduled: '12:20:00', status: 'Geplant' })],
+    });
+    const schedule = buildTeamSchedule(makeSnapshot([gameday]), 159);
+    expect(schedule.upcoming[0].time).toBe('12:20');
   });
 
   it('returns an empty schedule when the team has no games', () => {
