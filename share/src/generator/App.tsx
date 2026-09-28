@@ -24,6 +24,8 @@ const DEFAULT_OPTIONS: GeneratorOptions = {
   logo: null,
 };
 
+const MIN_SEARCH_LENGTH = 2;
+
 function CopyField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -53,10 +55,16 @@ export function App() {
   const [selected, setSelected] = useState<TeamDirectoryEntry[]>([]);
   const [options, setOptions] = useState<GeneratorOptions>(DEFAULT_OPTIONS);
 
+  const trimmedQuery = query.trim();
+  const queryReady = trimmedQuery.length >= MIN_SEARCH_LENGTH;
+
   useEffect(() => {
+    if (!queryReady) {
+      return;
+    }
     let active = true;
     const handle = window.setTimeout(() => {
-      fetchTeams(query)
+      fetchTeams(trimmedQuery)
         .then((teams) => {
           if (active) {
             setResults(teams);
@@ -72,7 +80,7 @@ export function App() {
       active = false;
       window.clearTimeout(handle);
     };
-  }, [query]);
+  }, [trimmedQuery, queryReady]);
 
   const update = (patch: Partial<GeneratorOptions>) =>
     setOptions((previous) => ({ ...previous, ...patch }));
@@ -100,7 +108,15 @@ export function App() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        {results.length > 0 && (
+        {query.trim().length > 0 && !queryReady && (
+          <p className="text-muted small mt-2 mb-0">
+            Bitte mindestens {MIN_SEARCH_LENGTH} Zeichen eingeben.
+          </p>
+        )}
+        {queryReady && results.length === 0 && (
+          <p className="text-muted small mt-2 mb-0">Kein Team gefunden.</p>
+        )}
+        {queryReady && results.length > 0 && (
           <ul className="share-gen__results">
             {results.map((team) => (
               <li key={team.id}>

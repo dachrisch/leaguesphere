@@ -21,6 +21,26 @@ function stubTeams(results: Array<Record<string, unknown>>) {
 }
 
 describe('generator App options', () => {
+  it('does not list teams until the user searches', async () => {
+    stubTeams([{ id: 159, name: 'Renegades', description: 'Ren', logo: null }]);
+    const { container } = render(<App />);
+
+    // On an empty query no team directory is dumped.
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    expect(container.querySelectorAll('.share-gen__results button')).toHaveLength(0);
+    expect(screen.getByRole('searchbox')).toHaveAttribute(
+      'placeholder',
+      'Team suchen…'
+    );
+
+    fireEvent.change(screen.getByRole('searchbox'), {
+      target: { value: 'Ren' },
+    });
+    expect(
+      await screen.findByRole('button', { name: /Renegades \(Ren\)/ })
+    ).toBeInTheDocument();
+  });
+
   it('offers color and logo customization and no attribution toggle', () => {
     stubTeams([]);
     const { container } = render(<App />);
@@ -35,6 +55,9 @@ describe('generator App options', () => {
     stubTeams([{ id: 159, name: 'Renegades', description: 'Ren', logo: null }]);
     render(<App />);
 
+    fireEvent.change(screen.getByRole('searchbox'), {
+      target: { value: 'Ren' },
+    });
     fireEvent.click(await screen.findByRole('button', { name: /Renegades \(Ren\)/ }));
 
     fireEvent.change(screen.getByTestId('gen-color'), {
