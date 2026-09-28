@@ -1,21 +1,15 @@
-{% load static %}<!doctype html>
-<html lang="de">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="robots" content="noindex">
-    <title>LeagueSphere – Widget-Generator</title>
-    <link crossorigin="anonymous"
-          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
-          rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="{% static 'gamedays/css/main.css' %}" rel="stylesheet" type="text/css">
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
     <link rel="stylesheet" href="{% static 'share/generator.css' %}">
-</head>
-<body class="share-gen-body">
+{% endblock %}
+
+{% block content %}
     <div id="share-generator-root"></div>
     <noscript>Du benötigst JavaScript, um den Generator zu verwenden.</noscript>
+{% endblock %}
+
+{% block extra_js %}
     <script type="module" src="{% static 'share/generator.js' %}"></script>
-</body>
-</html>
+{% endblock %}

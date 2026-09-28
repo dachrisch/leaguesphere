@@ -9,10 +9,15 @@ body.share-body {
   margin: 0;
   padding: 0;
   background: transparent;
-  /* main.css sets body { padding-top: 5rem } for the site navbar; the embed
-     has no navbar. */
-  padding-top: 0;
   display: block;
+}
+
+/* Inside an iframe there is no scroll-past-navbar; render the site header as a
+   normal (non-fixed) block so it cannot overlap the widget content and so it
+   contributes to the embedded height reported to the parent page. */
+.share-embed .site-header .navbar {
+  position: static;
+  z-index: auto;
 }
 
 .share-widget {

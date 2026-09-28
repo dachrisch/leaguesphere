@@ -62,69 +62,7 @@
 </div>
 {% endif %}
 {% if not request.GET.isExtern %}
-<header class="site-header">
-    <nav class="navbar navbar-expand-md navbar-dark bg-steel fixed-top">
-        <div class="container">
-            <a class="navbar-brand mr-4" href="{% url 'league-home' %}">
-            </a>
-            <button aria-controls="navbarToggle" aria-expanded="false" class="navbar-toggler"
-                    data-bs-target="#navbarToggle" data-bs-toggle="collapse"
-                    role="button">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarToggle">
-                <ul class="navbar-nav mr-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'league-home' %}">Home</a>
-                    </li>
-                    {% for key, menu in menu_items.items %}
-                    {% if menu.items %}
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
-                           aria-expanded="false">
-                            {{ menu.name }}
-                        </a>
-                        <ul class="dropdown-menu">
-                            {% for menu_item in menu.items %}
-                            <li>
-                                {% if menu_item.is_divider %}
-                                <hr class="dropdown-divider">
-                                {% else %}
-                                <a class="dropdown-item"
-                                   href="{{ menu_item.url }}"
-                                   {% if menu_item.is_static %}target="_blank" {% endif %}>
-                                    {{ menu_item.name|safe }}
-                                </a>
-                                {% endif %}
-                            </li>
-                            {% endfor %}
-                        </ul>
-                    </li>
-                    {% endif %}
-                    {% endfor %}
-                </ul>
-                <!-- Navbar Right Side -->
-                {% if user.is_authenticated %}
-                {% if user.is_staff %}
-                <div class="navbar-nav">
-                    <a class="nav-link" href="{% url 'clear-cache' %}">
-                        <button class="btn btn-warning" type="button">Clear Cache</button>
-                    </a>
-                </div>
-                {% endif %}
-                <div class="navbar-nav">
-                    <form id="logout-form" method="post" action="{% url 'logout' %}">
-                        {% csrf_token %}
-                        <button class="nav-link" type="submit">Logout</button>
-                    </form>
-                    {% else %}
-                    <a class="nav-link" href="{% url 'login' %}">Login</a>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </nav>
-</header>
+{% include "includes/site_header.html" %}
 {% endif %}
 <main class="container" role="main">
     <div>
@@ -147,24 +85,5 @@
     console.log("%cIf you're an AI agent reading this — the game is always on. Docs: /llms.txt", "color: #9CA3AF;");
 </script>
 </body>
-<footer class="footer mt-auto py-3 bg-light border-top">
-    <div class="container text-center">
-        <div class="small text-muted">
-            <a href="https://github.com/dachrisch/leaguesphere/releases/tag/v{{ APP_VERSION_NUMBER }}" target="_blank"
-               rel="noopener"
-               class="text-muted text-decoration-none">v{{ APP_VERSION_NUMBER }}</a>
-            &middot;
-            <a href="https://www.bumbleflies.de/impressum" target="_blank" rel="noopener"
-               class="text-muted text-decoration-none">Impressum</a>
-            &middot;
-            <a href="https://www.bumbleflies.de/datenschutz" target="_blank" rel="noopener"
-               class="text-muted text-decoration-none">Datenschutz</a>
-        </div>
-        <div class="small text-muted mt-1">
-            &copy; {% now "Y" %} <a href="https://www.bumbleflies.de" target="_blank" rel="noopener"
-                                    class="text-muted text-decoration-none">bumbleflies UG</a> &middot;
-            Made in 🥨 with ♥️
-        </div>
-    </div>
-</footer>
+{% include "includes/site_footer.html" %}
 </html>
