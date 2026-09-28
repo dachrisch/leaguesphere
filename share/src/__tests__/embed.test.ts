@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { WIDGET_MESSAGE_TYPE, notifyParentHeight } from '../lib/embed';
+import { measureContentHeight, notifyParentHeight, WIDGET_MESSAGE_TYPE } from '../lib/embed';
 
 describe('notifyParentHeight', () => {
   it('posts a tagged height message to the parent frame', () => {
@@ -17,5 +17,36 @@ describe('notifyParentHeight', () => {
     const postMessage = vi.fn();
     notifyParentHeight(420, { postMessage } as unknown as Window, true);
     expect(postMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe('measureContentHeight', () => {
+  it('measures the widget content, not the viewport height', () => {
+    document.body.innerHTML = '<div id="share-widget-root"></div>';
+    const root = document.getElementById('share-widget-root') as HTMLElement;
+    // Simulate a short viewport with taller content.
+    Object.defineProperty(document.documentElement, 'clientHeight', {
+      configurable: true,
+      value: 400,
+    });
+    Object.defineProperty(document.documentElement, 'scrollHeight', {
+      configurable: true,
+      value: 400,
+    });
+    Object.defineProperty(root, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ height: 812, top: 0 }),
+    });
+
+    expect(measureContentHeight(document)).toBeGreaterThanOrEqual(812);
+  });
+
+  it('falls back to the body height when the root is missing', () => {
+    document.body.innerHTML = '';
+    Object.defineProperty(document.body, 'scrollHeight', {
+      configurable: true,
+      value: 250,
+    });
+    expect(measureContentHeight(document)).toBe(250);
   });
 });

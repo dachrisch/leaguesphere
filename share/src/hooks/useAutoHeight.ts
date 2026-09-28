@@ -1,24 +1,33 @@
 import { useEffect } from 'react';
 
-import { notifyParentHeight } from '../lib/embed';
+import { measureContentHeight, notifyParentHeight } from '../lib/embed';
 
 export function useAutoHeight(): void {
   useEffect(() => {
     if (window.parent === window) {
       return;
     }
-    const send = () =>
-      notifyParentHeight(
-        document.documentElement.scrollHeight,
-        window.parent,
-        false
-      );
-    send();
+    const send = () => {
+      // Ignore a zero measurement (content not mounted yet); a later
+      // ResizeObserver callback will report the real height.
+      const height = measureContentHeight(document);
+      if (height > 0) {
+        notifyParentHeight(height, window.parent, false);
+      }
+    };
+    const frame = window.requestAnimationFrame(send);
     if (typeof ResizeObserver === 'undefined') {
-      return;
+      return () => window.cancelAnimationFrame(frame);
     }
     const observer = new ResizeObserver(send);
-    observer.observe(document.documentElement);
-    return () => observer.disconnect();
+    observer.observe(document.body);
+    const root = document.getElementById('share-widget-root');
+    if (root !== null) {
+      observer.observe(root);
+    }
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, []);
 }
