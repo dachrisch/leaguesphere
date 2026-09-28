@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 
-import { PoweredBy } from '../components/PoweredBy';
 import { TeamBlock } from '../components/TeamBlock';
+import { WidgetShell } from '../components/WidgetShell';
 import type { WidgetConfig } from '../lib/params';
 import { buildTeamSchedule } from '../lib/schedule';
 import type { Snapshot } from '../lib/types';
@@ -48,7 +48,7 @@ export function Spielplan({
     return <p className="share-empty">Kein Team konfiguriert.</p>;
   }
   return (
-    <div className={`share-widget${config.compact ? ' text-body' : ''}`}>
+    <WidgetShell config={config}>
       {config.teams.map((teamId) => (
         <TeamSchedule
           key={teamId}
@@ -57,7 +57,6 @@ export function Spielplan({
           teamId={teamId}
         />
       ))}
-      <PoweredBy show={config.poweredBy} />
-    </div>
+    </WidgetShell>
   );
 }

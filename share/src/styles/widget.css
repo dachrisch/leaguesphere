@@ -16,7 +16,26 @@ body.share-body {
 }
 
 .share-widget {
+  /* Public customization hooks. Embedders can override any of these (or the
+     share-* classes below) from their own stylesheet when self-hosting; the
+     generator's color option sets --share-accent inline on this element. */
+  --share-accent: #ff4500;
+  --share-muted: #6c757d;
+  --share-border: #e3e3e3;
+  --share-logo-max-height: 48px;
   padding: 8px;
+}
+
+.share-header {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.share-logo {
+  max-height: var(--share-logo-max-height);
+  max-width: 100%;
+  height: auto;
 }
 
 .share-widget .content-section {
@@ -36,10 +55,10 @@ body.share-body {
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #6c757d;
+  color: var(--share-muted);
   margin: 0 0 6px;
   padding-bottom: 4px;
-  border-bottom: 1px solid #e3e3e3;
+  border-bottom: 1px solid var(--share-border);
 }
 
 /* Compact standings table inside a narrow embed. */
@@ -65,7 +84,8 @@ body.share-body {
 }
 
 .share-table__row--highlight td {
-  background-color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.08);
+  background-color: color-mix(in srgb, var(--share-accent) 12%, transparent);
+  border-left: 3px solid var(--share-accent);
 }
 
 .share-empty,
@@ -87,6 +107,7 @@ body.share-body {
 }
 
 .share-powered a:hover {
+  color: var(--share-accent);
   text-decoration: underline;
 }
 

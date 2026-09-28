@@ -16,7 +16,6 @@ export interface WidgetConfig {
   showFuture: boolean;
   title: boolean;
   compact: boolean;
-  poweredBy: boolean;
   logo: string | null;
   liveUrl: string | null;
   refresh: boolean;
@@ -78,7 +77,6 @@ export function parseWidgetConfig(params: URLSearchParams): WidgetConfig {
     showFuture: parseBool(params.get('show_future'), true),
     title: parseBool(params.get('title'), true),
     compact: parseBool(params.get('compact'), false),
-    poweredBy: parseBool(params.get('powered'), true),
     logo: parseHttpUrl(params.get('logo')),
     liveUrl: parseHttpUrl(params.get('live_url')),
     refresh: params.has('refresh') && params.get('refresh') !== '0',

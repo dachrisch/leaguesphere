@@ -2,8 +2,17 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { LiveCard } from '../components/LiveCard';
+import { PoweredBy } from '../components/PoweredBy';
 import { StandingsTable } from '../components/StandingsTable';
 import type { LeagueTable, LiveGame } from '../lib/types';
+
+describe('PoweredBy', () => {
+  it('always renders the LeagueSphere attribution (not optional)', () => {
+    render(<PoweredBy />);
+    const link = screen.getByRole('link', { name: /powered by LeagueSphere/i });
+    expect(link).toHaveAttribute('href', 'https://leaguesphere.app');
+  });
+});
 
 describe('StandingsTable', () => {
   const table: LeagueTable = {

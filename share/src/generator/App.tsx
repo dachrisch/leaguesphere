@@ -20,8 +20,8 @@ const DEFAULT_OPTIONS: GeneratorOptions = {
   showFuture: true,
   title: true,
   compact: false,
-  poweredBy: true,
   liveUrl: null,
+  logo: null,
 };
 
 function CopyField({ label, value }: { label: string; value: string }) {
@@ -185,6 +185,39 @@ export function App() {
             />
           </div>
         </div>
+        <div className="row g-2 align-items-end mt-1">
+          <div className="col-sm-4">
+            <label className="form-label small" htmlFor="opt-color">
+              Akzentfarbe
+            </label>
+            <input
+              id="opt-color"
+              type="color"
+              className="form-control form-control-color form-control-sm"
+              data-testid="gen-color"
+              value={`#${options.color}`}
+              onChange={(event) =>
+                update({ color: event.target.value.replace('#', '').toLowerCase() })
+              }
+            />
+          </div>
+          <div className="col-sm-8">
+            <label className="form-label small" htmlFor="opt-logo">
+              Logo-URL (optional)
+            </label>
+            <input
+              id="opt-logo"
+              type="url"
+              className="form-control form-control-sm"
+              data-testid="gen-logo"
+              placeholder="https://…/logo.png"
+              value={options.logo ?? ''}
+              onChange={(event) =>
+                update({ logo: event.target.value === '' ? null : event.target.value })
+              }
+            />
+          </div>
+        </div>
         <div className="form-check mt-2">
           <input
             className="form-check-input"
@@ -231,18 +264,6 @@ export function App() {
           />
           <label className="form-check-label" htmlFor="opt-compact">
             Kompakte Darstellung
-          </label>
-        </div>
-        <div className="form-check">
-          <input
-            className="form-check-input"
-            type="checkbox"
-            id="opt-powered"
-            checked={options.poweredBy}
-            onChange={(event) => update({ poweredBy: event.target.checked })}
-          />
-          <label className="form-check-label" htmlFor="opt-powered">
-            LeagueSphere-Hinweis anzeigen
           </label>
         </div>
       </div>

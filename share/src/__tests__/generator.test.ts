@@ -19,8 +19,8 @@ const defaults: GeneratorOptions = {
   showFuture: true,
   title: true,
   compact: false,
-  poweredBy: true,
   liveUrl: null,
+  logo: null,
 };
 
 describe('buildWidgetUrl', () => {
@@ -60,6 +60,22 @@ describe('buildWidgetUrl', () => {
     expect(new URLSearchParams(url.split('?')[1]).get('live_url')).toBe(
       'https://renegades.de/live'
     );
+  });
+
+  it('includes the club-provided logo url', () => {
+    const url = buildWidgetUrl(base, {
+      ...defaults,
+      logo: 'https://club.de/logo.png',
+    });
+    expect(new URLSearchParams(url.split('?')[1]).get('logo')).toBe(
+      'https://club.de/logo.png'
+    );
+  });
+
+  it('never emits a powered param, even for legacy configs', () => {
+    const legacy = { ...defaults, poweredBy: false } as unknown as GeneratorOptions;
+    const params = new URLSearchParams(buildWidgetUrl(base, legacy).split('?')[1]);
+    expect(params.has('powered')).toBe(false);
   });
 });
 

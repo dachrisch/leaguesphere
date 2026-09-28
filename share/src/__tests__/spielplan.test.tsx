@@ -107,8 +107,34 @@ describe('Spielplan', () => {
     expect(screen.getByText('Kein Team konfiguriert.')).toBeInTheDocument();
   });
 
-  it('hides branding when powered=0', () => {
+  it('always shows the LeagueSphere attribution, even with powered=0', () => {
     render(<Spielplan snapshot={makeSnapshot([])} config={config('t=159&powered=0')} />);
-    expect(screen.queryByText('powered by LeagueSphere')).not.toBeInTheDocument();
+    expect(screen.getByText('powered by LeagueSphere')).toBeInTheDocument();
+  });
+
+  it('renders a club-provided logo only when one is configured', () => {
+    const { container, rerender } = render(
+      <Spielplan
+        snapshot={makeSnapshot([])}
+        config={config('t=159&logo=https%3A%2F%2Fclub.de%2Flogo.png')}
+      />
+    );
+    const img = container.querySelector('img.share-logo');
+    expect(img).not.toBeNull();
+    expect(img?.getAttribute('src')).toBe('https://club.de/logo.png');
+
+    rerender(<Spielplan snapshot={makeSnapshot([])} config={config('t=159')} />);
+    expect(container.querySelector('img.share-logo')).toBeNull();
+  });
+
+  it('exposes the accent color as a --share-accent CSS variable on the root', () => {
+    const { container } = render(
+      <Spielplan snapshot={makeSnapshot([])} config={config('t=159&color=1a73e8')} />
+    );
+    const root = container.querySelector('.share-widget');
+    expect(root?.getAttribute('style')).toContain('--share-accent');
+    expect((root as HTMLElement).style.getPropertyValue('--share-accent')).toBe(
+      '#1a73e8'
+    );
   });
 });

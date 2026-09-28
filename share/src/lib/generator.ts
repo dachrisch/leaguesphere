@@ -10,8 +10,8 @@ export interface GeneratorOptions {
   showFuture: boolean;
   title: boolean;
   compact: boolean;
-  poweredBy: boolean;
   liveUrl: string | null;
+  logo: string | null;
 }
 
 const DEFAULT_COLOR = 'ff4500';
@@ -46,8 +46,8 @@ export function buildWidgetUrl(base: string, options: GeneratorOptions): string 
   if (options.compact) {
     params.set('compact', '1');
   }
-  if (!options.poweredBy) {
-    params.set('powered', '0');
+  if (options.logo) {
+    params.set('logo', options.logo);
   }
   if (options.liveUrl) {
     params.set('live_url', options.liveUrl);

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { ErrorBanner } from '../components/ErrorBanner';
-import { PoweredBy } from '../components/PoweredBy';
 import { StandingsTable } from '../components/StandingsTable';
+import { WidgetShell } from '../components/WidgetShell';
 import { fetchLeagueTable, fetchLeagues } from '../lib/api';
 import type { WidgetConfig } from '../lib/params';
 import { pickLeagueSeason } from '../lib/table';
@@ -56,7 +56,7 @@ export function Table({
   }, [leagueName]);
 
   return (
-    <div className="share-widget">
+    <WidgetShell config={config}>
       <div className="content-section">
         <h2 className="share-team__name">
           {table !== null
@@ -73,7 +73,6 @@ export function Table({
           <p className="share-loading">Lädt…</p>
         )}
       </div>
-      <PoweredBy show={config.poweredBy} />
-    </div>
+    </WidgetShell>
   );
 }

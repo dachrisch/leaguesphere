@@ -16,7 +16,6 @@ describe('parseWidgetConfig', () => {
     expect(cfg.showFuture).toBe(true);
     expect(cfg.title).toBe(true);
     expect(cfg.compact).toBe(false);
-    expect(cfg.poweredBy).toBe(true);
     expect(cfg.liveUrl).toBeNull();
     expect(cfg.logo).toBeNull();
     expect(cfg.refresh).toBe(false);
@@ -55,12 +54,16 @@ describe('parseWidgetConfig', () => {
   });
 
   it('treats 0 toggles as false and defaults to true', () => {
-    const cfg = parse('show_past=0&show_future=0&title=0&powered=0&compact=1');
+    const cfg = parse('show_past=0&show_future=0&title=0&compact=1');
     expect(cfg.showPast).toBe(false);
     expect(cfg.showFuture).toBe(false);
     expect(cfg.title).toBe(false);
-    expect(cfg.poweredBy).toBe(false);
     expect(cfg.compact).toBe(true);
+  });
+
+  it('ignores the removed powered flag (attribution is not optional)', () => {
+    expect('poweredBy' in parse('powered=0')).toBe(false);
+    expect('poweredBy' in parse('')).toBe(false);
   });
 
   it('only accepts http(s) urls for live_url and logo', () => {

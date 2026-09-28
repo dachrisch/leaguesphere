@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 import { LiveCard } from '../components/LiveCard';
-import { PoweredBy } from '../components/PoweredBy';
+import { WidgetShell } from '../components/WidgetShell';
 import { useLiveticker } from '../hooks/useLiveticker';
 import { activeWatchedGames } from '../lib/live';
 import type { WidgetConfig } from '../lib/params';
@@ -23,7 +23,7 @@ export function Live({
   const games = liveFeed.filter((game) => watchedIds.has(game.gameId));
 
   return (
-    <div className="share-widget">
+    <WidgetShell config={config}>
       <h2 className="share-team__name">Live</h2>
       {games.length === 0 ? (
         <div className="content-section">
@@ -32,7 +32,6 @@ export function Live({
       ) : (
         games.map((game) => <LiveCard key={game.gameId} game={game} />)
       )}
-      <PoweredBy show={config.poweredBy} />
-    </div>
+    </WidgetShell>
   );
 }

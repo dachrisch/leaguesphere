@@ -1,7 +1,8 @@
-export function PoweredBy({ show }: { show: boolean }) {
-  if (!show) {
-    return null;
-  }
+/**
+ * Attribution footer. LeagueSphere is always credited on embedded widgets —
+ * this is deliberately not configurable.
+ */
+export function PoweredBy() {
   return (
     <footer className="share-powered">
       <a
