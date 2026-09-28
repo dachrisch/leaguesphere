@@ -2,9 +2,31 @@ import { describe, expect, it } from 'vitest';
 
 import { activeWatchedGames } from '../lib/live';
 import { leaguesInSnapshot } from '../lib/derived';
-import { pickLeagueSeason } from '../lib/table';
+import { pickLeagueSeason, resolveSeasonId } from '../lib/table';
 
 import { makeGame, makeGameday, makeSnapshot } from './fixtures';
+
+describe('resolveSeasonId', () => {
+  const seasons = [
+    { id: 6, name: '2026' },
+    { id: 4, name: '2025/2026' },
+    { id: 3, name: '2021' },
+  ];
+
+  it('prefers an explicit season id', () => {
+    expect(resolveSeasonId(seasons, 3, '2026')).toBe(3);
+  });
+
+  it('resolves a year against season names', () => {
+    expect(resolveSeasonId(seasons, null, '2021')).toBe(3);
+    expect(resolveSeasonId(seasons, null, '2025')).toBe(4);
+  });
+
+  it('returns null when nothing matches', () => {
+    expect(resolveSeasonId(seasons, null, '1999')).toBeNull();
+    expect(resolveSeasonId(seasons, null, null)).toBeNull();
+  });
+});
 
 describe('leaguesInSnapshot', () => {
   it('lists distinct leagues the teams appeared in, sorted by name', () => {

@@ -1,6 +1,7 @@
 import { ErrorBanner } from '../components/ErrorBanner';
 import { PoweredBy } from '../components/PoweredBy';
 import { useAutoHeight } from '../hooks/useAutoHeight';
+import { useResolvedSeason } from '../hooks/useResolvedSeason';
 import { useSnapshot } from '../hooks/useSnapshot';
 import { parseWidgetConfig } from '../lib/params';
 import { Live } from '../views/Live';
@@ -9,8 +10,9 @@ import { Table } from '../views/Table';
 
 export function App() {
   const config = parseWidgetConfig(new URLSearchParams(window.location.search));
+  const seasonId = useResolvedSeason(config);
   const { snapshot, loading, error } = useSnapshot(config.teams, {
-    season: config.season ?? undefined,
+    season: seasonId ?? undefined,
     league: config.league ?? undefined,
   });
   useAutoHeight();
@@ -38,7 +40,7 @@ export function App() {
     return <Live snapshot={snapshot} config={config} />;
   }
   if (config.view === 'table') {
-    return <Table snapshot={snapshot} config={config} />;
+    return <Table snapshot={snapshot} config={config} seasonId={seasonId} />;
   }
   return <Spielplan snapshot={snapshot} config={config} />;
 }

@@ -13,6 +13,7 @@ export interface GeneratorOptions {
   liveUrl: string | null;
   logo: string | null;
   season: number | null;
+  seasonName: string | null;
   league: number | null;
 }
 
@@ -55,7 +56,14 @@ export function buildWidgetUrl(base: string, options: GeneratorOptions): string 
     params.set('live_url', options.liveUrl);
   }
   if (options.season !== null) {
-    params.set('season', String(options.season));
+    // Prefer a human-readable year when the season name starts with one
+    // (e.g. "2026" or "2025/2026"), so the URL is easy to read and edit.
+    const year = options.seasonName?.match(/^(\d{4})/)?.[1];
+    if (year !== undefined) {
+      params.set('year', year);
+    } else {
+      params.set('season', String(options.season));
+    }
   }
   if (options.league !== null) {
     params.set('league', String(options.league));

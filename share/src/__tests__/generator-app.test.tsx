@@ -125,7 +125,8 @@ describe('generator App options', () => {
       const params = new URLSearchParams(
         (iframe.getAttribute('src') ?? '').split('?')[1]
       );
-      expect(params.get('season')).toBe('5');
+      // Season name "2025" carries a year, so it is emitted as ?year=.
+      expect(params.get('year')).toBe('2025');
       expect(params.get('league')).toBe('8');
     });
   });

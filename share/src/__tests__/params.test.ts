@@ -92,4 +92,10 @@ describe('parseWidgetConfig', () => {
     expect(cfg.season).toBeNull();
     expect(cfg.league).toBeNull();
   });
+
+  it('parses a four-digit year param', () => {
+    expect(parse('year=2026').year).toBe('2026');
+    expect(parse('year=26').year).toBeNull();
+    expect(parse('year=abcd').year).toBeNull();
+  });
 });

@@ -16,6 +16,28 @@ export interface LeagueSeason {
 }
 
 /**
+ * Resolve a season id from either an explicit `season` id or a `year`.
+ *
+ * `year` matches a season whose name contains the year (e.g. `2026`, or
+ * `2025/2026` for a season spanning two years — the first four digits win).
+ * Explicit `season` takes precedence when both are present.
+ */
+export function resolveSeasonId(
+  seasons: { id: number; name: string }[],
+  season: number | null,
+  year: string | null
+): number | null {
+  if (season !== null) {
+    return season;
+  }
+  if (year === null) {
+    return null;
+  }
+  const match = seasons.find((entry) => entry.name.startsWith(year));
+  return match ? match.id : null;
+}
+
+/**
  * The most recent league+season the given teams actually play in.
  *
  * The league-table API is keyed by slugs, but the snapshot only exposes

@@ -11,9 +11,11 @@ import type { LeagueTable, Snapshot } from '../lib/types';
 export function Table({
   snapshot,
   config,
+  seasonId = null,
 }: {
   snapshot: Snapshot;
   config: WidgetConfig;
+  seasonId?: number | null;
 }) {
   const picked = useMemo(
     () => pickLeagueSeason(snapshot, config.teams),
@@ -23,7 +25,6 @@ export function Table({
   const [error, setError] = useState<string | null>(null);
 
   const leagueName = picked?.leagueName;
-  const seasonId = config.season;
 
   useEffect(() => {
     if (leagueName === undefined) {

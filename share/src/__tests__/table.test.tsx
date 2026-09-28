@@ -128,7 +128,11 @@ describe('Table', () => {
       }),
     ]);
     render(
-      <Table snapshot={snapshot} config={config('t=159&view=table&season=5')} />
+      <Table
+        snapshot={snapshot}
+        config={config('t=159&view=table&season=5')}
+        seasonId={5}
+      />
     );
     await waitFor(() =>
       expect(screen.getByText('Renegades')).toBeInTheDocument()

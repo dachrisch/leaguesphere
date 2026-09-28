@@ -22,6 +22,7 @@ const defaults: GeneratorOptions = {
   liveUrl: null,
   logo: null,
   season: null,
+  seasonName: null,
   league: null,
 };
 
@@ -85,6 +86,24 @@ describe('buildWidgetUrl', () => {
     const params = new URLSearchParams(url.split('?')[1]);
     expect(params.get('season')).toBe('5');
     expect(params.get('league')).toBe('8');
+  });
+
+  it('emits a human-readable year when the season name has one', () => {
+    const url = buildWidgetUrl(base, {
+      ...defaults,
+      season: 6,
+      seasonName: '2025/2026',
+    });
+    const params = new URLSearchParams(url.split('?')[1]);
+    expect(params.get('year')).toBe('2025');
+    expect(params.has('season')).toBe(false);
+  });
+
+  it('falls back to the season id when the name has no year', () => {
+    const url = buildWidgetUrl(base, { ...defaults, season: 5, seasonName: 'Saison' });
+    const params = new URLSearchParams(url.split('?')[1]);
+    expect(params.get('season')).toBe('5');
+    expect(params.has('year')).toBe(false);
   });
 
   it('omits season and league when unset', () => {

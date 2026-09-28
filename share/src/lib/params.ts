@@ -21,6 +21,7 @@ export interface WidgetConfig {
   refresh: boolean;
   season: number | null;
   league: number | null;
+  year: string | null;
 }
 
 function parseTeamIds(params: URLSearchParams): number[] {
@@ -92,5 +93,14 @@ export function parseWidgetConfig(params: URLSearchParams): WidgetConfig {
     refresh: params.has('refresh') && params.get('refresh') !== '0',
     season: parsePositiveInt(params.get('season')),
     league: parsePositiveInt(params.get('league')),
+    year: parseYear(params.get('year')),
   };
+}
+
+function parseYear(raw: string | null): string | null {
+  if (raw === null) {
+    return null;
+  }
+  const trimmed = raw.trim();
+  return /^\d{4}$/.test(trimmed) ? trimmed : null;
 }

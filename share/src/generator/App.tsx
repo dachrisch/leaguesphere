@@ -24,6 +24,7 @@ const DEFAULT_OPTIONS: GeneratorOptions = {
   liveUrl: null,
   logo: null,
   season: null,
+  seasonName: null,
   league: null,
 };
 
@@ -272,6 +273,9 @@ export function App() {
               onChange={(event) =>
                 update({
                   season: event.target.value === '' ? null : Number(event.target.value),
+                  seasonName:
+                    seasons.find((season) => String(season.id) === event.target.value)
+                      ?.name ?? null,
                   // League depends on season; reset to "all" on change.
                   league: null,
                 })

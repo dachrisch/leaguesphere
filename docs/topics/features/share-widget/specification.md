@@ -39,6 +39,7 @@ be relaxed is framing, and only for the two `/share/` routes.
 | `live_url` | — | Optional `http(s)` link target for the live banner. |
 | `refresh` | — | Present (and not `0`) to bypass client caches. |
 | `season` | latest | Season id (from `/api/seasons/`); scopes fixtures/results and the table to one season. |
+| `year` | — | Human-readable alternative to `season`: a 4-digit year matched against season names (`2026`, or `2025/2026` -> `2025`). `season` wins if both are set. |
 | `league` | — | League id (from `/api/leagues/`); scopes to one league within the season (e.g. league vs. relegation, which are separate leagues). |
 
 Non-`http(s)` values for `live_url`/`logo` are ignored; unknown values fall back
