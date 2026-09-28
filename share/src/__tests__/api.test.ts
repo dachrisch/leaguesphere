@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  fetchLeagues,
   fetchLeagueTable,
   fetchLiveticker,
+  fetchSeasons,
   fetchSnapshot,
   fetchTeams,
   leagueTableUrl,
@@ -21,6 +23,12 @@ describe('url builders', () => {
   it('builds a team-filtered, games-only snapshot url', () => {
     expect(snapshotUrl([159, 287])).toBe(
       '/api/snapshot/?team=159&team=287&include=games'
+    );
+  });
+
+  it('adds optional season and league filters to the snapshot url', () => {
+    expect(snapshotUrl([159], { season: 5, league: 8 })).toBe(
+      '/api/snapshot/?team=159&include=games&season=5&league=8'
     );
   });
 
@@ -69,5 +77,16 @@ describe('fetchers', () => {
   it('throws on a non-ok response', async () => {
     const fetcher = vi.fn(async () => jsonResponse({ detail: 'nope' }, 404));
     await expect(fetchSnapshot([1], fetcher)).rejects.toThrow(Error);
+  });
+
+  it('fetches seasons and leagues as directory lists', async () => {
+    const fetcher = vi.fn(async () => jsonResponse([{ id: 5, name: '2025' }]));
+    expect(await fetchSeasons(fetcher)).toEqual([{ id: 5, name: '2025' }]);
+    const leagueFetcher = vi.fn(async () =>
+      jsonResponse([{ id: 8, name: 'DFFL2', slug: 'dffl2' }])
+    );
+    expect(await fetchLeagues(leagueFetcher)).toEqual([
+      { id: 8, name: 'DFFL2', slug: 'dffl2' },
+    ]);
   });
 });

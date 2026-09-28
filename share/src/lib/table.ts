@@ -1,5 +1,15 @@
 import type { Snapshot } from './types';
 
+/** Mirror of Django's `slugify` for season names ("2025/2026" -> "2025-2026"). */
+export function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 export interface LeagueSeason {
   leagueName: string;
   seasonName: string;

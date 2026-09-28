@@ -12,6 +12,8 @@ export interface GeneratorOptions {
   compact: boolean;
   liveUrl: string | null;
   logo: string | null;
+  season: number | null;
+  league: number | null;
 }
 
 const DEFAULT_COLOR = 'ff4500';
@@ -51,6 +53,12 @@ export function buildWidgetUrl(base: string, options: GeneratorOptions): string 
   }
   if (options.liveUrl) {
     params.set('live_url', options.liveUrl);
+  }
+  if (options.season !== null) {
+    params.set('season', String(options.season));
+  }
+  if (options.league !== null) {
+    params.set('league', String(options.league));
   }
 
   return `${base}?${params.toString()}`;

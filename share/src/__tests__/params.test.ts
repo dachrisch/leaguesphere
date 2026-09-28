@@ -80,4 +80,16 @@ describe('parseWidgetConfig', () => {
     expect(parse('refresh=1').refresh).toBe(true);
     expect(parse('refresh=0').refresh).toBe(false);
   });
+
+  it('parses optional season and league ids', () => {
+    const cfg = parse('season=5&league=8');
+    expect(cfg.season).toBe(5);
+    expect(cfg.league).toBe(8);
+  });
+
+  it('ignores invalid season and league ids', () => {
+    const cfg = parse('season=x&league=-1');
+    expect(cfg.season).toBeNull();
+    expect(cfg.league).toBeNull();
+  });
 });

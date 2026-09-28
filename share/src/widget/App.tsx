@@ -9,7 +9,10 @@ import { Table } from '../views/Table';
 
 export function App() {
   const config = parseWidgetConfig(new URLSearchParams(window.location.search));
-  const { snapshot, loading, error } = useSnapshot(config.teams);
+  const { snapshot, loading, error } = useSnapshot(config.teams, {
+    season: config.season ?? undefined,
+    league: config.league ?? undefined,
+  });
   useAutoHeight();
 
   if (config.teams.length === 0) {

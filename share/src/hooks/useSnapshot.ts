@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { fetchSnapshot } from '../lib/api';
+import { fetchSnapshot, type SnapshotFilters } from '../lib/api';
 import type { Snapshot } from '../lib/types';
 
 export interface SnapshotState {
@@ -9,8 +9,13 @@ export interface SnapshotState {
   error: string | null;
 }
 
-export function useSnapshot(teamIds: number[]): SnapshotState {
+export function useSnapshot(
+  teamIds: number[],
+  filters: SnapshotFilters = {}
+): SnapshotState {
   const key = teamIds.join(',');
+  const season = filters.season ?? null;
+  const league = filters.league ?? null;
   const [state, setState] = useState<SnapshotState>({
     snapshot: null,
     loading: teamIds.length > 0,
@@ -25,7 +30,10 @@ export function useSnapshot(teamIds: number[]): SnapshotState {
     let active = true;
     const load = async () => {
       try {
-        const snapshot = await fetchSnapshot(ids);
+        const snapshot = await fetchSnapshot(ids, {
+          season: season ?? undefined,
+          league: league ?? undefined,
+        });
         if (active) {
           setState({ snapshot, loading: false, error: null });
         }
@@ -43,7 +51,7 @@ export function useSnapshot(teamIds: number[]): SnapshotState {
     return () => {
       active = false;
     };
-  }, [key]);
+  }, [key, season, league]);
 
   return state;
 }

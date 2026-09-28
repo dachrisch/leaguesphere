@@ -3,9 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { StandingsTable } from '../components/StandingsTable';
 import { WidgetShell } from '../components/WidgetShell';
-import { fetchLeagueTable, fetchLeagues } from '../lib/api';
+import { fetchLeagueTable, fetchLeagues, fetchSeasons } from '../lib/api';
 import type { WidgetConfig } from '../lib/params';
-import { pickLeagueSeason } from '../lib/table';
+import { pickLeagueSeason, slugify } from '../lib/table';
 import type { LeagueTable, Snapshot } from '../lib/types';
 
 export function Table({
@@ -23,6 +23,7 @@ export function Table({
   const [error, setError] = useState<string | null>(null);
 
   const leagueName = picked?.leagueName;
+  const seasonId = config.season;
 
   useEffect(() => {
     if (leagueName === undefined) {
@@ -36,9 +37,15 @@ export function Table({
         if (league === undefined) {
           throw new Error(`unknown league ${leagueName}`);
         }
-        // No season slug: the API resolves to the latest season for the
-        // league, avoiding any display-name -> slug guessing.
-        const data = await fetchLeagueTable(league.slug);
+        let seasonSlug: string | undefined;
+        if (seasonId !== null) {
+          const seasons = await fetchSeasons();
+          const season = seasons.find((entry) => entry.id === seasonId);
+          if (season !== undefined) {
+            seasonSlug = slugify(season.name);
+          }
+        }
+        const data = await fetchLeagueTable(league.slug, seasonSlug);
         if (active) {
           setTable(data);
           setError(null);
@@ -53,7 +60,7 @@ export function Table({
     return () => {
       active = false;
     };
-  }, [leagueName]);
+  }, [leagueName, seasonId]);
 
   return (
     <WidgetShell config={config}>

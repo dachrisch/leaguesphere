@@ -38,6 +38,8 @@ be relaxed is framing, and only for the two `/share/` routes.
 | `powered` | `1` | Set to `0` to hide the "powered by LeagueSphere" link. |
 | `live_url` | — | Optional `http(s)` link target for the live banner. |
 | `refresh` | — | Present (and not `0`) to bypass client caches. |
+| `season` | latest | Season id (from `/api/seasons/`); scopes fixtures/results and the table to one season. |
+| `league` | — | League id (from `/api/leagues/`); scopes to one league within the season (e.g. league vs. relegation, which are separate leagues). |
 
 Non-`http(s)` values for `live_url`/`logo` are ignored; unknown values fall back
 to defaults. The parameter contract is compatible with the earlier

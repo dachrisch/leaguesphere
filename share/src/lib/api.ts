@@ -20,18 +20,44 @@ async function getJson<T>(url: string, fetcher: Fetcher): Promise<T> {
   return (await response.json()) as T;
 }
 
-export function snapshotUrl(teamIds: number[]): string {
+export interface SnapshotFilters {
+  season?: number;
+  league?: number;
+}
+
+export function snapshotUrl(teamIds: number[], filters: SnapshotFilters = {}): string {
   const params = new URLSearchParams();
   teamIds.forEach((id) => params.append('team', String(id)));
   params.set('include', 'games');
+  if (filters.season !== undefined) {
+    params.set('season', String(filters.season));
+  }
+  if (filters.league !== undefined) {
+    params.set('league', String(filters.league));
+  }
   return `/api/snapshot/?${params.toString()}`;
 }
 
 export function fetchSnapshot(
   teamIds: number[],
-  fetcher: Fetcher = fetch
+  filtersOrFetcher: SnapshotFilters | Fetcher = {},
+  maybeFetcher: Fetcher = fetch
 ): Promise<Snapshot> {
-  return getJson<Snapshot>(snapshotUrl(teamIds), fetcher);
+  const filters =
+    typeof filtersOrFetcher === 'function' ? {} : filtersOrFetcher;
+  const fetcher =
+    typeof filtersOrFetcher === 'function' ? filtersOrFetcher : maybeFetcher;
+  return getJson<Snapshot>(snapshotUrl(teamIds, filters), fetcher);
+}
+
+export function seasonsUrl(): string {
+  return '/api/seasons/';
+}
+
+export function fetchSeasons(
+  fetcher: Fetcher = fetch
+): Promise<{ id: number; name: string }[]> {
+  return getJson('/api/seasons/', fetcher);
 }
 
 export function teamsUrl(search: string): string {

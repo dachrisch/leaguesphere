@@ -1,9 +1,28 @@
 import { describe, expect, it } from 'vitest';
 
 import { activeWatchedGames } from '../lib/live';
+import { leaguesInSnapshot } from '../lib/derived';
 import { pickLeagueSeason } from '../lib/table';
 
 import { makeGame, makeGameday, makeSnapshot } from './fixtures';
+
+describe('leaguesInSnapshot', () => {
+  it('lists distinct leagues the teams appeared in, sorted by name', () => {
+    const snapshot = makeSnapshot([
+      makeGameday({ id: 1, league: 57, league_display: 'Bayernpokal' }),
+      makeGameday({ id: 2, league: 8, league_display: 'DFFL2' }),
+      makeGameday({ id: 3, league: 8, league_display: 'DFFL2' }),
+    ]);
+    expect(leaguesInSnapshot(snapshot)).toEqual([
+      { id: 57, name: 'Bayernpokal' },
+      { id: 8, name: 'DFFL2' },
+    ]);
+  });
+
+  it('returns an empty list when the snapshot has no gamedays', () => {
+    expect(leaguesInSnapshot(makeSnapshot([]))).toEqual([]);
+  });
+});
 
 describe('pickLeagueSeason', () => {
   it('returns the most recent league/season the teams play in', () => {

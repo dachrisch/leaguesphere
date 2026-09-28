@@ -93,4 +93,47 @@ describe('Table', () => {
       expect(screen.getByText('Tabelle nicht verfügbar.')).toBeInTheDocument()
     );
   });
+
+  it('uses the selected season slug when a season is configured', async () => {
+    const fetcher = stubFetch({
+      '/api/leagues/': [{ id: 3, name: 'RL BAWÜ', slug: 'rl-bawu' }],
+      '/api/seasons/': [{ id: 5, name: '2025/2026' }],
+      '/api/league-table/rl-bawu/2025-2026/': {
+        league: { slug: 'rl-bawu', name: 'RL BAWÜ' },
+        season: { slug: '2025-2026', name: '2025/2026' },
+        standing: [
+          {
+            standing: 1,
+            team_id: 159,
+            team__description: 'Renegades',
+            wins: 1,
+            draws: 0,
+            losses: 0,
+            games_played: 1,
+            pf: 21,
+            pa: 7,
+            diff: 14,
+            win_points: 2,
+            win_quotient: 1,
+          },
+        ],
+      },
+    });
+    vi.stubGlobal('fetch', fetcher);
+
+    const snapshot = makeSnapshot([
+      makeGameday({
+        league_display: 'RL BAWÜ',
+        games: [makeGame({ id: 11 })],
+      }),
+    ]);
+    render(
+      <Table snapshot={snapshot} config={config('t=159&view=table&season=5')} />
+    );
+    await waitFor(() =>
+      expect(screen.getByText('Renegades')).toBeInTheDocument()
+    );
+    const calledUrls = fetcher.mock.calls.map((call) => String(call[0]));
+    expect(calledUrls).toContain('/api/league-table/rl-bawu/2025-2026/');
+  });
 });

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
-import { fetchTeams } from '../lib/api';
+import { fetchSeasons, fetchSnapshot, fetchTeams } from '../lib/api';
+import { leaguesInSnapshot, type LeagueOption } from '../lib/derived';
 import {
   buildIframeSnippet,
   buildWidgetUrl,
@@ -22,6 +23,8 @@ const DEFAULT_OPTIONS: GeneratorOptions = {
   compact: false,
   liveUrl: null,
   logo: null,
+  season: null,
+  league: null,
 };
 
 const MIN_SEARCH_LENGTH = 2;
@@ -54,9 +57,64 @@ export function App() {
   const [results, setResults] = useState<TeamDirectoryEntry[]>([]);
   const [selected, setSelected] = useState<TeamDirectoryEntry[]>([]);
   const [options, setOptions] = useState<GeneratorOptions>(DEFAULT_OPTIONS);
+  const [seasons, setSeasons] = useState<{ id: number; name: string }[]>([]);
+  const [derivedLeagues, setDerivedLeagues] = useState<{
+    key: string;
+    leagues: LeagueOption[];
+  }>({ key: '', leagues: [] });
 
   const trimmedQuery = query.trim();
   const queryReady = trimmedQuery.length >= MIN_SEARCH_LENGTH;
+  const primaryTeamId = selected.length > 0 ? selected[0].id : null;
+
+  useEffect(() => {
+    let active = true;
+    fetchSeasons()
+      .then((data) => {
+        if (active) {
+          setSeasons(data);
+        }
+      })
+      .catch(() => {
+        /* seasons are optional */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Derive the leagues a team actually played in for the chosen season, so a
+  // club can offer only relevant leagues (league vs. relegation etc.).
+  const leaguesKey =
+    primaryTeamId !== null && options.season !== null
+      ? `${primaryTeamId}:${options.season}`
+      : '';
+  useEffect(() => {
+    if (leaguesKey === '') {
+      return;
+    }
+    const [teamId, seasonId] = leaguesKey.split(':').map(Number);
+    let active = true;
+    fetchSnapshot([teamId], { season: seasonId })
+      .then((snapshot) => {
+        if (active) {
+          setDerivedLeagues({ key: leaguesKey, leagues: leaguesInSnapshot(snapshot) });
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setDerivedLeagues({ key: leaguesKey, leagues: [] });
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [leaguesKey]);
+
+  const leagues =
+    leaguesKey !== '' && derivedLeagues.key === leaguesKey
+      ? derivedLeagues.leagues
+      : [];
 
   useEffect(() => {
     if (!queryReady) {
@@ -199,6 +257,62 @@ export function App() {
                 update({ future: Math.max(0, Number(event.target.value) || 0) })
               }
             />
+          </div>
+        </div>
+        <div className="row g-2 align-items-end mt-1">
+          <div className="col-sm-6">
+            <label className="form-label small" htmlFor="opt-season">
+              Saison
+            </label>
+            <select
+              id="opt-season"
+              className="form-select form-select-sm"
+              data-testid="gen-season"
+              value={options.season ?? ''}
+              onChange={(event) =>
+                update({
+                  season: event.target.value === '' ? null : Number(event.target.value),
+                  // League depends on season; reset to "all" on change.
+                  league: null,
+                })
+              }
+            >
+              <option value="">Alle / Neueste</option>
+              {seasons.map((season) => (
+                <option key={season.id} value={season.id}>
+                  {season.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="col-sm-6">
+            <label className="form-label small" htmlFor="opt-league">
+              Liga
+            </label>
+            <select
+              id="opt-league"
+              className="form-select form-select-sm"
+              data-testid="gen-league"
+              disabled={leagues.length === 0}
+              value={options.league ?? ''}
+              onChange={(event) =>
+                update({
+                  league: event.target.value === '' ? null : Number(event.target.value),
+                })
+              }
+            >
+              <option value="">Alle</option>
+              {leagues.map((league) => (
+                <option key={league.id} value={league.id}>
+                  {league.name}
+                </option>
+              ))}
+            </select>
+            {primaryTeamId !== null && options.season !== null && leagues.length === 0 && (
+              <span className="form-text">
+                Keine Liga für dieses Team in dieser Saison gefunden.
+              </span>
+            )}
           </div>
         </div>
         <div className="row g-2 align-items-end mt-1">

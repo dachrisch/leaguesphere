@@ -19,6 +19,8 @@ export interface WidgetConfig {
   logo: string | null;
   liveUrl: string | null;
   refresh: boolean;
+  season: number | null;
+  league: number | null;
 }
 
 function parseTeamIds(params: URLSearchParams): number[] {
@@ -63,6 +65,14 @@ function parseHttpUrl(raw: string | null): string | null {
   }
 }
 
+function parsePositiveInt(raw: string | null): number | null {
+  if (raw === null || raw === '') {
+    return null;
+  }
+  const value = Number.parseInt(raw, 10);
+  return Number.isInteger(value) && value > 0 ? value : null;
+}
+
 export function parseWidgetConfig(params: URLSearchParams): WidgetConfig {
   const view = params.get('view');
   return {
@@ -80,5 +90,7 @@ export function parseWidgetConfig(params: URLSearchParams): WidgetConfig {
     logo: parseHttpUrl(params.get('logo')),
     liveUrl: parseHttpUrl(params.get('live_url')),
     refresh: params.has('refresh') && params.get('refresh') !== '0',
+    season: parsePositiveInt(params.get('season')),
+    league: parsePositiveInt(params.get('league')),
   };
 }

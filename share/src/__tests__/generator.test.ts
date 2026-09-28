@@ -21,6 +21,8 @@ const defaults: GeneratorOptions = {
   compact: false,
   liveUrl: null,
   logo: null,
+  season: null,
+  league: null,
 };
 
 describe('buildWidgetUrl', () => {
@@ -76,6 +78,21 @@ describe('buildWidgetUrl', () => {
     const legacy = { ...defaults, poweredBy: false } as unknown as GeneratorOptions;
     const params = new URLSearchParams(buildWidgetUrl(base, legacy).split('?')[1]);
     expect(params.has('powered')).toBe(false);
+  });
+
+  it('includes season and league when chosen', () => {
+    const url = buildWidgetUrl(base, { ...defaults, season: 5, league: 8 });
+    const params = new URLSearchParams(url.split('?')[1]);
+    expect(params.get('season')).toBe('5');
+    expect(params.get('league')).toBe('8');
+  });
+
+  it('omits season and league when unset', () => {
+    const params = new URLSearchParams(
+      buildWidgetUrl(base, defaults).split('?')[1]
+    );
+    expect(params.has('season')).toBe(false);
+    expect(params.has('league')).toBe(false);
   });
 });
 
