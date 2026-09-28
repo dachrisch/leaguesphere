@@ -1,4 +1,5 @@
 import { ErrorBanner } from '../components/ErrorBanner';
+import { PoweredBy } from '../components/PoweredBy';
 import { useAutoHeight } from '../hooks/useAutoHeight';
 import { useSnapshot } from '../hooks/useSnapshot';
 import { parseWidgetConfig } from '../lib/params';
@@ -19,6 +20,16 @@ export function App() {
   }
   if (loading || snapshot === null) {
     return <p className="share-loading">Lädt…</p>;
+  }
+  if (snapshot.gamedays.length === 0) {
+    return (
+      <div className="share-widget">
+        <p className="share-empty">
+          Für dieses Team liegen noch keine Spiele vor.
+        </p>
+        <PoweredBy />
+      </div>
+    );
   }
   if (config.view === 'live') {
     return <Live snapshot={snapshot} config={config} />;

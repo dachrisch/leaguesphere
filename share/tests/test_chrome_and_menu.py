@@ -1,6 +1,5 @@
-"""The embeddable widget and generator carry the site chrome (header nav +
-footer), and the Team menu links to the generator. Attribution is not
-optional, so the LeagueSphere footer/credit is always present.
+"""The widget is a bare embed (no site chrome) and the generator carries the
+site header/footer. The Team menu links to the generator.
 """
 
 import pytest
@@ -11,12 +10,12 @@ from share.menu import ShareMenu, TEAM_MENU_NAME
 
 
 @pytest.mark.django_db
-def test_widget_page_has_site_header_and_footer(client):
+def test_widget_page_is_a_bare_embed(client):
     html = client.get("/share/widget/").content.decode()
-    assert 'class="site-header"' in html
-    assert 'href="/login/"' in html
-    assert "bumbleflies" in html
-    assert "Impressum" in html
+    assert 'id="share-widget-root"' in html
+    # No site chrome inside the iframe.
+    assert 'class="site-header"' not in html
+    assert "bumbleflies" not in html
 
 
 @pytest.mark.django_db
