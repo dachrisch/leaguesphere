@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { measureContentHeight, notifyParentHeight, WIDGET_MESSAGE_TYPE } from '../lib/embed';
+import {
+  isWidgetLoading,
+  measureContentHeight,
+  notifyParentHeight,
+  WIDGET_MESSAGE_TYPE,
+} from '../lib/embed';
 
 describe('notifyParentHeight', () => {
   it('posts a tagged height message to the parent frame', () => {
@@ -48,5 +53,17 @@ describe('measureContentHeight', () => {
       value: 250,
     });
     expect(measureContentHeight(document)).toBe(250);
+  });
+});
+
+describe('isWidgetLoading', () => {
+  it('is true while the loading placeholder is shown', () => {
+    document.body.innerHTML = '<div id="share-widget-root"><p class="share-loading">Lädt…</p></div>';
+    expect(isWidgetLoading(document)).toBe(true);
+  });
+
+  it('is false once real content is rendered', () => {
+    document.body.innerHTML = '<div id="share-widget-root"><table></table></div>';
+    expect(isWidgetLoading(document)).toBe(false);
   });
 });

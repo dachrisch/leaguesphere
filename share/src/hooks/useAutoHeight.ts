@@ -1,6 +1,10 @@
 import { useEffect } from 'react';
 
-import { measureContentHeight, notifyParentHeight } from '../lib/embed';
+import {
+  isWidgetLoading,
+  measureContentHeight,
+  notifyParentHeight,
+} from '../lib/embed';
 
 export function useAutoHeight(): void {
   useEffect(() => {
@@ -8,8 +12,11 @@ export function useAutoHeight(): void {
       return;
     }
     const send = () => {
-      // Ignore a zero measurement (content not mounted yet); a later
-      // ResizeObserver callback will report the real height.
+      // Skip the transient loading/empty shell: reporting its tiny height
+      // makes the embed shrink before the real content arrives.
+      if (isWidgetLoading(document)) {
+        return;
+      }
       const height = measureContentHeight(document);
       if (height > 0) {
         notifyParentHeight(height, window.parent, false);

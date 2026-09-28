@@ -91,7 +91,12 @@ window.addEventListener('message', function (event) {
   for (var i = 0; i < frames.length; i++) {
     try {
       if (frames[i].contentWindow === event.source) {
-        frames[i].style.height = event.data.height + 'px';
+        // Grow-only: a short measurement while the widget is still loading
+        // must not collapse the frame and hide the content.
+        var prev = frames[i]._lsHeight || 0;
+        var next = Math.max(prev, event.data.height);
+        frames[i]._lsHeight = next;
+        frames[i].style.height = next + 'px';
         break;
       }
     } catch (error) {}

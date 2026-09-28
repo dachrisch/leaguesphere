@@ -24,6 +24,15 @@ export function measureContentHeight(doc: Document = document): number {
 }
 
 /**
+ * Whether the widget is showing its loading placeholder / empty shell rather
+ * than real content. Used to avoid reporting a transient tiny height while the
+ * data request is still in flight.
+ */
+export function isWidgetLoading(doc: Document = document): boolean {
+  return doc.querySelector('.share-loading') !== null;
+}
+
+/**
  * Ask the embedding page to resize our iframe.
  *
  * The parent listener script (documented on the generator page) checks

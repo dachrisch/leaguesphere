@@ -126,4 +126,10 @@ describe('snippets', () => {
     expect(PARENT_LISTENER_SNIPPET).toContain('iframeHeight');
     expect(PARENT_LISTENER_SNIPPET).toContain('leaguesphere.app');
   });
+
+  it('makes the listener grow-only so a transient small height cannot collapse the embed', () => {
+    // The listener keeps the largest height seen per iframe.
+    expect(PARENT_LISTENER_SNIPPET).toContain('_lsHeight');
+    expect(PARENT_LISTENER_SNIPPET).toMatch(/Math\.max/);
+  });
 });
