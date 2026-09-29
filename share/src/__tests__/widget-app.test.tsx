@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from '../widget/App';
@@ -47,5 +47,68 @@ describe('widget App season resolution', () => {
         )
       ).toBe(true)
     );
+  });
+
+  it('renders only the newest season that contains the team by default', async () => {
+    const game = (id: number, opponent: string, opponentId: number) => ({
+      id,
+      gameday: id,
+      scheduled: '10:00',
+      field: 1,
+      officials: null,
+      stage: '',
+      standing: '',
+      status: 'beendet',
+      results: [
+        { id: id * 10, team_id: 159, team_name: 'Renegades', fh: 1, sh: 0, pa: 0, isHome: true },
+        { id: id * 10 + 1, team_id: opponentId, team_name: opponent, fh: 0, sh: 0, pa: 0, isHome: false },
+      ],
+      halftime_score: { home: 0, away: 0 },
+      final_score: { home: 1, away: 0 },
+    });
+    const gameday = (
+      id: number,
+      seasonDisplay: string,
+      date: string,
+      opponent: string
+    ) => ({
+      id,
+      name: `Spieltag ${id}`,
+      season: id,
+      season_display: seasonDisplay,
+      league: 1,
+      league_display: 'Liga',
+      date,
+      start: '10:00',
+      format: 'CUSTOM',
+      author: 1,
+      address: 'Nürnberg',
+      status: 'PUBLISHED',
+      has_designer_state: false,
+      games: [game(id, opponent, 900 + id)],
+    });
+    const snapshot = {
+      generated_at: 'x',
+      etag: 'e',
+      gamedays: [
+        gameday(1, '2023', '2023-05-13', 'OldRival'),
+        gameday(2, '2026', '2026-05-09', 'NewRival'),
+      ],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        const body = url.startsWith('/api/seasons/') ? [] : snapshot;
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      })
+    );
+    window.history.pushState({}, '', '/share/widget/?t=159');
+    render(<App />);
+    expect(await screen.findByText('NewRival')).toBeInTheDocument();
+    expect(screen.queryByText('OldRival')).not.toBeInTheDocument();
   });
 });

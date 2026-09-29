@@ -283,7 +283,7 @@ export function App() {
                 })
               }
             >
-              <option value="">Alle / Neueste</option>
+              <option value="">Aktuelle Saison</option>
               {seasons.map((season) => (
                 <option key={season.id} value={season.id}>
                   {season.name}

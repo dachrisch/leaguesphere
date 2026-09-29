@@ -27,6 +27,14 @@ export function isFinal(status: string): boolean {
   return status === 'beendet';
 }
 
+/** Local calendar date as YYYY-MM-DD (the widget runs in the viewer's browser). */
+export function todayIso(now: Date = new Date()): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function isLive(status: string): boolean {
   return status === 'Gestartet' || status.includes('Halbzeit');
 }
@@ -89,7 +97,8 @@ const byDate = (a: ScheduleEntry, b: ScheduleEntry) =>
 
 export function buildTeamSchedule(
   snapshot: Snapshot,
-  teamId: number
+  teamId: number,
+  today: string = todayIso()
 ): TeamSchedule {
   const past: ScheduleEntry[] = [];
   const upcoming: ScheduleEntry[] = [];
@@ -105,7 +114,9 @@ export function buildTeamSchedule(
       const entry = buildEntry(gameday, game, teamId);
       if (entry.isFinal) {
         past.push(entry);
-      } else {
+      } else if (gameday.date >= today) {
+        // A past-dated game that is still open is stale data, not an upcoming
+        // fixture; drop it from both lists.
         upcoming.push(entry);
       }
     }

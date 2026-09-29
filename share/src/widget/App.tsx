@@ -1,8 +1,11 @@
+import { useMemo } from 'react';
+
 import { ErrorBanner } from '../components/ErrorBanner';
 import { PoweredBy } from '../components/PoweredBy';
 import { useAutoHeight } from '../hooks/useAutoHeight';
 import { useResolvedSeason } from '../hooks/useResolvedSeason';
 import { useSnapshot } from '../hooks/useSnapshot';
+import { filterToLatestSeason } from '../lib/derived';
 import { parseWidgetConfig } from '../lib/params';
 import { Live } from '../views/Live';
 import { Spielplan } from '../views/Spielplan';
@@ -11,10 +14,23 @@ import { Table } from '../views/Table';
 export function App() {
   const config = parseWidgetConfig(new URLSearchParams(window.location.search));
   const seasonId = useResolvedSeason(config);
-  const { snapshot, loading, error } = useSnapshot(config.teams, {
+  const {
+    snapshot: rawSnapshot,
+    loading,
+    error,
+  } = useSnapshot(config.teams, {
     season: seasonId ?? undefined,
     league: config.league ?? undefined,
   });
+  const defaultSeason = config.season === null && config.year === null;
+  const teamsKey = config.teams.join(',');
+  const snapshot = useMemo(() => {
+    if (rawSnapshot === null || !defaultSeason) {
+      return rawSnapshot;
+    }
+    const ids = teamsKey === '' ? [] : teamsKey.split(',').map(Number);
+    return filterToLatestSeason(rawSnapshot, ids);
+  }, [rawSnapshot, defaultSeason, teamsKey]);
   useAutoHeight();
 
   if (config.teams.length === 0) {

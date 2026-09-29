@@ -1,4 +1,4 @@
-import { findOpponentResult, findTeamResult, isFinal } from './schedule';
+import { findOpponentResult, findTeamResult, isFinal, todayIso } from './schedule';
 import type { Snapshot } from './types';
 
 export interface WatchedGame {
@@ -9,13 +9,24 @@ export interface WatchedGame {
   gamedayName: string;
 }
 
+/**
+ * Non-final games for the watched teams scheduled **today**.
+ *
+ * Restricting to today's gamedays keeps the widget from polling the
+ * liveticker forever for a stale open game (e.g. a 2023 fixture that was
+ * never marked final).
+ */
 export function activeWatchedGames(
   snapshot: Snapshot,
-  teamIds: number[]
+  teamIds: number[],
+  today: string = todayIso()
 ): WatchedGame[] {
   const games: WatchedGame[] = [];
   const seen = new Set<number>();
   for (const gameday of snapshot.gamedays) {
+    if (gameday.date !== today) {
+      continue;
+    }
     for (const game of gameday.games ?? []) {
       if (isFinal(game.status) || seen.has(game.id)) {
         continue;

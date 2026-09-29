@@ -2,11 +2,20 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { parseWidgetConfig } from '../lib/params';
+import { todayIso } from '../lib/schedule';
 import { Spielplan } from '../views/Spielplan';
 
 import { makeGame, makeGameday, makeSnapshot } from './fixtures';
 
 const config = (search: string) => parseWidgetConfig(new URLSearchParams(search));
+
+function futureDate(): string {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() + 5);
+  return todayIso(date);
+}
+
+const FUTURE = futureDate();
 
 describe('Spielplan', () => {
   it('renders final and upcoming games for the configured team', () => {
@@ -27,7 +36,7 @@ describe('Spielplan', () => {
       }),
       makeGameday({
         id: 2,
-        date: '2026-06-01',
+        date: FUTURE,
         games: [makeGame({ id: 22, scheduled: '14:00', status: 'Geplant' })],
       }),
     ]);
@@ -56,6 +65,7 @@ describe('Spielplan', () => {
   it('shows a LIVE badge for an in-progress game', () => {
     const snapshot = makeSnapshot([
       makeGameday({
+        date: FUTURE,
         games: [makeGame({ id: 11, status: 'Gestartet' })],
       }),
     ]);
@@ -72,7 +82,7 @@ describe('Spielplan', () => {
       }),
       makeGameday({
         id: 2,
-        date: '2026-06-01',
+        date: FUTURE,
         games: [makeGame({ id: 22, scheduled: '12:20:00', status: 'Geplant' })],
       }),
     ]);

@@ -21,6 +21,8 @@ be relaxed is framing, and only for the `/share/widget/` route.
   `/api/league-table/` (standings). `/api/teams/` powers team search.
 - The widget reports its own height to the embedding page with
   `postMessage({ type: 'iframeHeight', height })`, so the iframe grows to fit.
+- Unfinished games dated before today are treated as stale and omitted from
+  "Kommende Spiele"; `view=live` only polls for non-final games scheduled today.
 
 ## Configuration (URL parameters)
 
@@ -38,7 +40,7 @@ be relaxed is framing, and only for the `/share/widget/` route.
 | `powered` | `1` | Set to `0` to hide the "powered by LeagueSphere" link. |
 | `live_url` | — | Optional `http(s)` link target for the live banner. |
 | `refresh` | — | Present (and not `0`) to bypass client caches. |
-| `season` | latest | Season id (from `/api/seasons/`); scopes fixtures/results and the table to one season. |
+| `season` | Aktuelle Saison | Season id (from `/api/seasons/`); scopes fixtures/results and the table to one season. When neither `season` nor `year` is set, the widget resolves the newest season in which one of the configured teams plays (client-side, no extra request). |
 | `year` | — | Human-readable alternative to `season`: a 4-digit year matched against season names (`2026`, or `2025/2026` -> `2025`). `season` wins if both are set. |
 | `league` | — | League id (from `/api/leagues/`); scopes to one league within the season (e.g. league vs. relegation, which are separate leagues). |
 

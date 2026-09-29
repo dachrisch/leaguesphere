@@ -47,6 +47,8 @@ function makeSnapshot(gamedays: ApiGameday[]): Snapshot {
   return { generated_at: '2026-05-09T10:00:00Z', etag: 'x', gamedays };
 }
 
+const TODAY = '2026-05-01';
+
 describe('formatTime', () => {
   it('drops seconds from a HH:MM:SS value', () => {
     expect(formatTime('12:20:00')).toBe('12:20');
@@ -81,7 +83,7 @@ describe('buildTeamSchedule', () => {
         }),
       ],
     });
-    const schedule = buildTeamSchedule(makeSnapshot([gameday]), 159);
+    const schedule = buildTeamSchedule(makeSnapshot([gameday]), 159, TODAY);
     expect(schedule.teamName).toBe('Renegades');
     expect(schedule.upcoming.map((entry) => entry.gameId)).toEqual([1]);
     expect(schedule.past).toEqual([]);
@@ -95,7 +97,7 @@ describe('buildTeamSchedule', () => {
         makeGame({ id: 3, status: 'Gestartet' }),
       ],
     });
-    const schedule = buildTeamSchedule(makeSnapshot([gameday]), 159);
+    const schedule = buildTeamSchedule(makeSnapshot([gameday]), 159, TODAY);
     expect(schedule.past.map((entry) => entry.gameId)).toEqual([1]);
     expect(schedule.upcoming.map((entry) => entry.gameId)).toEqual([2, 3]);
   });
@@ -127,7 +129,7 @@ describe('buildTeamSchedule', () => {
         }),
       ],
     });
-    const schedule = buildTeamSchedule(makeSnapshot([home, away]), 159);
+    const schedule = buildTeamSchedule(makeSnapshot([home, away]), 159, TODAY);
     const [playedHome, playedAway] = schedule.past;
     expect(playedHome.isHome).toBe(true);
     expect([playedHome.teamScore, playedHome.opponentScore]).toEqual([3, 1]);
@@ -143,7 +145,7 @@ describe('buildTeamSchedule', () => {
       makeGameday({ id: 3, date: '2026-04-01', games: [makeGame({ id: 33, status: 'beendet' })] }),
       makeGameday({ id: 4, date: '2026-03-01', games: [makeGame({ id: 44, status: 'beendet' })] }),
     ];
-    const schedule = buildTeamSchedule(makeSnapshot(gamedays), 159);
+    const schedule = buildTeamSchedule(makeSnapshot(gamedays), 159, TODAY);
     expect(schedule.past.map((entry) => entry.gameId)).toEqual([44, 33]);
     expect(schedule.upcoming.map((entry) => entry.gameId)).toEqual([22, 11]);
   });
@@ -152,12 +154,39 @@ describe('buildTeamSchedule', () => {
     const gameday = makeGameday({
       games: [makeGame({ id: 1, scheduled: '12:20:00', status: 'Geplant' })],
     });
-    const schedule = buildTeamSchedule(makeSnapshot([gameday]), 159);
+    const schedule = buildTeamSchedule(makeSnapshot([gameday]), 159, TODAY);
     expect(schedule.upcoming[0].time).toBe('12:20');
   });
 
+  it('drops a past-dated unfinished game from both lists', () => {
+    const gameday = makeGameday({
+      date: '2023-05-13',
+      games: [makeGame({ id: 1, status: 'Geplant' })],
+    });
+    const schedule = buildTeamSchedule(
+      makeSnapshot([gameday]),
+      159,
+      '2026-09-29'
+    );
+    expect(schedule.past).toEqual([]);
+    expect(schedule.upcoming).toEqual([]);
+  });
+
+  it('keeps a non-final game dated today in upcoming', () => {
+    const gameday = makeGameday({
+      date: '2026-09-29',
+      games: [makeGame({ id: 1, status: 'Geplant' })],
+    });
+    const schedule = buildTeamSchedule(
+      makeSnapshot([gameday]),
+      159,
+      '2026-09-29'
+    );
+    expect(schedule.upcoming.map((entry) => entry.gameId)).toEqual([1]);
+  });
+
   it('returns an empty schedule when the team has no games', () => {
-    const schedule = buildTeamSchedule(makeSnapshot([]), 159);
+    const schedule = buildTeamSchedule(makeSnapshot([]), 159, TODAY);
     expect(schedule.teamName).toBe('');
     expect(schedule.past).toEqual([]);
     expect(schedule.upcoming).toEqual([]);
