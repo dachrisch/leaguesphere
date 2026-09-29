@@ -11,6 +11,7 @@ import pytest
 CSP_FRAME_ANCESTORS = "frame-ancestors *"
 
 
+@pytest.mark.django_db
 def test_widget_page_is_frameable(client):
     response = client.get("/share/widget/")
     assert response.status_code == 200
@@ -18,6 +19,7 @@ def test_widget_page_is_frameable(client):
     assert "X-Frame-Options" not in response.headers
 
 
+@pytest.mark.django_db
 def test_generator_page_still_denies_framing(client):
     response = client.get("/share/")
     assert response.status_code == 200
