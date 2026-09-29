@@ -13,7 +13,7 @@ from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
 from rest_framework import status
 from rest_framework.test import APITestCase
-from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle
 
 from gamedays.models import Gameday, TeamLog
 from gamedays.tests.setup_factories.factories import (
@@ -28,8 +28,17 @@ from gamedays.tests.setup_factories.factories import (
 
 SNAPSHOT_URL = "/api/snapshot/"
 LOC_MEM_CACHES = {
-    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
-    "snapshot": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+    # Distinct LOCATIONs: without one, Django's LocMemCache keys its store by
+    # location, so the payload and throttle caches would share one dict and
+    # clearing the payload cache would also wipe throttle history.
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "snapshot-tests-default",
+    },
+    "snapshot": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "snapshot-tests-snapshot",
+    },
 }
 
 
@@ -334,9 +343,24 @@ class SnapshotEndpointTest(APITestCase):
             "the TTL cache did not serve it"
         )
 
-    def test_snapshot_throttle_blocks_abuse(self):
-        # DRF binds THROTTLE_RATES at import, so override_settings cannot
-        # change the rate: patch the class attribute and clear history.
+    def test_snapshot_cache_hits_are_not_throttled(self):
+        """The strict snapshot rate gates rebuilds, not reads of the cached
+        payload: per-page-view widget loads behind one IP must not exhaust it.
+        DRF binds THROTTLE_RATES at import, so patch the class attribute and
+        clear history."""
+        from django.core.cache import caches
+
+        make_gameday_with_game(author=self.user)
+        caches["default"].delete("throttle_snapshot_127.0.0.1")
+        caches["snapshot"].clear()
+        rates = {"snapshot": "1/min"}
+        with mock.patch.object(ScopedRateThrottle, "THROTTLE_RATES", rates):
+            # First request rebuilds (one miss); the rest are cache hits.
+            assert self.client.get(SNAPSHOT_URL).status_code == status.HTTP_200_OK
+            for _ in range(5):
+                assert self.client.get(SNAPSHOT_URL).status_code == (status.HTTP_200_OK)
+
+    def test_snapshot_cache_misses_are_throttled(self):
         from django.core.cache import caches
 
         make_gameday_with_game(author=self.user)
@@ -344,10 +368,30 @@ class SnapshotEndpointTest(APITestCase):
         rates = {"snapshot": "2/min"}
         with mock.patch.object(ScopedRateThrottle, "THROTTLE_RATES", rates):
             assert self.client.get(SNAPSHOT_URL).status_code == status.HTTP_200_OK
+            caches["snapshot"].clear()
             assert self.client.get(SNAPSHOT_URL).status_code == status.HTTP_200_OK
+            caches["snapshot"].clear()
             assert self.client.get(SNAPSHOT_URL).status_code == (
                 status.HTTP_429_TOO_MANY_REQUESTS
             )
+
+    def test_snapshot_304_revalidation_is_not_throttled(self):
+        """A conditional request answered with 304 never rebuilds, so it must
+        not consume the strict snapshot budget either."""
+        from django.core.cache import caches
+
+        make_gameday_with_game(author=self.user)
+        caches["default"].delete("throttle_snapshot_127.0.0.1")
+        params = {"include": "games"}
+        rates = {"snapshot": "1/min"}
+        with mock.patch.object(ScopedRateThrottle, "THROTTLE_RATES", rates):
+            first = self.client.get(SNAPSHOT_URL, params)
+            assert first.status_code == status.HTTP_200_OK
+            for _ in range(3):
+                again = self.client.get(
+                    SNAPSHOT_URL, params, HTTP_IF_NONE_MATCH=first["ETag"]
+                )
+                assert again.status_code == status.HTTP_304_NOT_MODIFIED
 
     def test_snapshot_throttle_scope_is_configured(self):
         from django.conf import settings as django_settings
@@ -359,7 +403,10 @@ class SnapshotEndpointTest(APITestCase):
             == "60/hour"
         )
         assert SnapshotAPIView.throttle_scope == "snapshot"
-        assert ScopedRateThrottle in SnapshotAPIView.throttle_classes
+        # The snapshot rate is applied explicitly on a rebuild, not via DRF's
+        # per-request throttle_classes (which would also count cache hits/304s).
+        assert ScopedRateThrottle not in SnapshotAPIView.throttle_classes
+        assert AnonRateThrottle in SnapshotAPIView.throttle_classes
 
     def test_snapshot_does_not_leak_roster_pii(self):
         """Scores and game logs are public data; roster PII (passcheck names,

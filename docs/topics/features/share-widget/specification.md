@@ -58,8 +58,10 @@ changed.
 - Schedules and results are ETag-cached; the browser revalidates cheaply.
 - Live scores follow `/api/liveticker/`, which is cached for 60 seconds
   server-side. That is the effective live update cadence.
-- Snapshot responses are file-cached for 300 seconds and throttled (60/hour per
-  IP); the widget requests one team-scoped snapshot per load.
+- Snapshot responses are file-cached for 300 seconds; the 60/hour per-IP
+  throttle applies only when the payload must be rebuilt (cache hits and 304
+  revalidations are not charged). The widget requests one team-scoped snapshot
+  per load.
 
 ## Privacy
 

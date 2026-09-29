@@ -4,7 +4,9 @@ Replaces the N+1 scrape pattern (1 x gameday catalog + N x per-gameday
 /games/ + M x per-game HTML game-log parsing) with one configurable,
 gzipped, ETag'd response. Reads stay public like the endpoints it mirrors
 (GamedayViewSet.list, GameResultsListView, GameLogAPIView); the dump is
-expensive by design, so it carries its own strict throttle scope.
+expensive by design, so it carries its own strict throttle scope — applied only
+when the payload has to be rebuilt, so cache hits and 304 revalidations stay on
+the general anon rate.
 
 No Redis is operated in any environment, so the TTL payload cache is a
 file-based cache (shared across gunicorn worker processes via the
@@ -20,7 +22,7 @@ from django.db.models import Count, Max
 from django.utils import timezone
 from django.views.decorators.http import condition
 from django.utils.decorators import method_decorator
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import Throttled, ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle
@@ -307,8 +309,19 @@ class SnapshotAPIView(APIView):
     """GET /api/snapshot/ — one configurable dump for API consumers."""
 
     permission_classes = [AllowAny]
-    throttle_classes = [AnonRateThrottle, ScopedRateThrottle]
+    # The general anon rate guards every read; the strict snapshot rate is
+    # applied explicitly only when the payload has to be rebuilt (see
+    # `_enforce_snapshot_throttle`). Wiring it through throttle_classes would
+    # charge cache hits and 304 revalidations too, so a single IP behind a
+    # venue Wi-Fi / CGNAT could exhaust the budget with plain page views.
+    throttle_classes = [AnonRateThrottle]
     throttle_scope = SNAPSHOT_THROTTLE_SCOPE
+
+    def _enforce_snapshot_throttle(self, request):
+        """Apply the strict `snapshot` rate; raise `Throttled` (429) if hit."""
+        throttle = ScopedRateThrottle()
+        if not throttle.allow_request(request, self):
+            raise Throttled(wait=throttle.wait())
 
     @method_decorator(condition(etag_func=generate_snapshot_etag))
     def get(self, request, *args, **kwargs):
@@ -322,6 +335,9 @@ class SnapshotAPIView(APIView):
         cache_key = f"snapshot:v1:{etag}"
         payload = cache.get(cache_key)
         if payload is None:
+            # Rebuild path only: this is the expensive branch the strict rate
+            # is meant to protect.
+            self._enforce_snapshot_throttle(request)
             # Single-flight: only one worker builds a cold scope; the rest
             # fall through and build anyway rather than block.
             lock_key = f"{cache_key}:lock"
