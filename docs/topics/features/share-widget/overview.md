@@ -9,7 +9,8 @@ Third-party pages cannot read `/api/...` from the browser because the responses
 carry no `Access-Control-Allow-Origin`. Instead of opening the read API to every
 origin, we host the widget ourselves: the document runs on `leaguesphere.app`,
 so its API calls are same-origin and no CORS headers are needed. Only framing is
-relaxed — and only for the two `/share/` routes.
+relaxed — and only for the `/share/widget/` route (the generator is a normal
+page and keeps `X-Frame-Options: DENY`).
 
 ## Pages
 

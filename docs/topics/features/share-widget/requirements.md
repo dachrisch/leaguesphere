@@ -8,14 +8,14 @@
   game without reloading the page.
 - As a club, the widget only ever shows the team(s) I configured.
 - As the platform, embedding stays safe: only public, read-only data is
-  exposed, and only the `/share/` pages may be framed.
+  exposed, and only the `/share/widget/` page may be framed.
 
 ## Acceptance criteria
 
-1. `/share/` and `/share/widget/` respond with
+1. `/share/widget/` responds with
    `Content-Security-Policy: frame-ancestors *` and **no** `X-Frame-Options`.
-2. Every other route (including `/`, `/admin/`, the JSON API) still responds
-   with `X-Frame-Options: DENY`.
+2. Every other route (including `/`, `/admin/`, the JSON API and the `/share/`
+   generator) still responds with `X-Frame-Options: DENY`.
 3. `GET /api/teams/?search=<q>` returns a paginated directory with only
    `id`, `name`, `description` and `logo` — no location, association or roster
    data.

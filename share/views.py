@@ -1,11 +1,12 @@
 """Public, cross-origin embeddable pages (/share/*).
 
-These are the only LeagueSphere pages that may be framed by a third-party site,
-so clubs can embed live scores and standings. They are read-only and serve the
-same anonymous, public data the JSON API already exposes; no credentials or
-cookies are involved. Framing is opened with CSP ``frame-ancestors *`` (X-Frame-
-Options cannot express a wildcard allowlist) while every other route keeps
-Django's default ``X-Frame-Options: DENY``.
+``/share/widget/`` is the only LeagueSphere page that may be framed by a
+third-party site, so clubs can embed live scores and standings. It is read-only
+and serves the same anonymous, public data the JSON API already exposes; no
+credentials or cookies are involved. Framing is opened with CSP
+``frame-ancestors *`` (X-Frame-Options cannot express a wildcard allowlist)
+while every other route — including the ``/share/`` generator, which is a
+normal page — keeps Django's default ``X-Frame-Options: DENY``.
 """
 
 from django.utils.decorators import method_decorator
@@ -29,5 +30,5 @@ class ShareWidgetView(FrameableTemplateView):
     template_name = "share/widget.html"
 
 
-class ShareGeneratorView(FrameableTemplateView):
+class ShareGeneratorView(TemplateView):
     template_name = "share/generator.html"

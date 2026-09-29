@@ -8,7 +8,8 @@ results, live scores and standings on their own websites with one `<iframe>`. No
 server, no API key, no CORS.
 
 ## Role in the system
-- Django app serving two frameable pages and a small React/Vite frontend (this directory).
+- Django app serving a frameable iframe document, a normal (frames-denied)
+  generator page and a small React/Vite frontend (this directory).
 - Reads public data from [gamedays](../gamedays/CLAUDE.md) (`/api/snapshot/`, `/api/teams/`),
   [liveticker](../liveticker/CLAUDE.md) (`/api/liveticker/`) and
   [league_table](../league_table/CLAUDE.md) (`/api/league-table/`).
@@ -17,7 +18,8 @@ server, no API key, no CORS.
 
 ## Key files
 - `views.py` — `FrameableTemplateView` adds `Content-Security-Policy: frame-ancestors *`
-  and exempts the response from `X-Frame-Options`. Only these two views may be framed.
+  and exempts the response from `X-Frame-Options`. Only the widget view may be framed;
+  the generator is a plain `TemplateView` (keeps `X-Frame-Options: DENY`).
 - `urls.py` — `/share/` (generator) and `/share/widget/` (iframe document).
 - `templates/share/` — standalone templates (no `base.html` chrome), reference the built
   bundles via `{% static %}`.
@@ -31,9 +33,9 @@ server, no API key, no CORS.
 - `GET /share/widget/` → iframe app (`share-widget`)
 
 ## Conventions & gotchas
-- **Framing is the security boundary**: `frame-ancestors *` is applied *only* on the two
-  `/share/` views. Never add it elsewhere; `/`, `/admin/` and the API must keep
-  `X-Frame-Options: DENY` (asserted in `share/tests/test_framing.py`).
+- **Framing is the security boundary**: `frame-ancestors *` is applied *only* on the
+  `/share/widget/` view. Never add it elsewhere; the generator, `/`, `/admin/` and the API
+  must keep `X-Frame-Options: DENY` (asserted in `share/tests/test_framing.py`).
 - **Stateless config**: all options are URL params (`t`, `view`, `color`, …). No stored
   per-team config; the widget only renders the configured teams.
 - **Data freshness**: `/api/liveticker/` is server-cached for 60 s — that is the live

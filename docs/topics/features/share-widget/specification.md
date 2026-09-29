@@ -10,7 +10,7 @@ responses carry no `Access-Control-Allow-Origin`. Opening the read API to every
 origin was considered, but hosting the widget ourselves is a tighter boundary:
 the widget document runs on `leaguesphere.app`, so its API calls are
 same-origin and no CORS headers are needed at all. The only thing that needs to
-be relaxed is framing, and only for the two `/share/` routes.
+be relaxed is framing, and only for the `/share/widget/` route.
 
 ## Behavior
 
