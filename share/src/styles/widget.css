@@ -76,6 +76,12 @@ body.share-body {
   text-align: left;
 }
 
+.share-table__group td {
+  background-color: #f1f3f5;
+  font-weight: 600;
+  text-align: left;
+}
+
 .share-table__row--highlight {
   font-weight: 600;
 }

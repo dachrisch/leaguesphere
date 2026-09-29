@@ -38,7 +38,7 @@ describe('Table', () => {
         season: { slug: '2025-2026', name: '2025/2026' },
         standing: [
           {
-            standing: 1,
+            standing: 'Gruppe 1',
             team_id: 159,
             team__description: 'Renegades',
             wins: 1,
@@ -103,7 +103,7 @@ describe('Table', () => {
         season: { slug: '2025-2026', name: '2025/2026' },
         standing: [
           {
-            standing: 1,
+            standing: 'Gruppe 1',
             team_id: 159,
             team__description: 'Renegades',
             wins: 1,

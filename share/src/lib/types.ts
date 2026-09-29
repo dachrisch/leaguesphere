@@ -80,7 +80,7 @@ export interface LeagueRef {
 }
 
 export interface StandingRow {
-  standing: number;
+  standing: string;
   team_id: number;
   team__description: string;
   wins: number;

@@ -14,26 +14,35 @@ describe('PoweredBy', () => {
   });
 });
 
+function rankOf(team: string): string {
+  const row = screen.getByText(team).closest('tr');
+  return row?.querySelector('td')?.textContent ?? '';
+}
+
 describe('StandingsTable', () => {
+  const row = (
+    teamId: number,
+    description: string,
+    group: string
+  ): LeagueTable['standing'][number] => ({
+    standing: group,
+    team_id: teamId,
+    team__description: description,
+    wins: 1,
+    draws: 0,
+    losses: 0,
+    games_played: 1,
+    pf: 21,
+    pa: 7,
+    diff: 14,
+    win_points: 2,
+    win_quotient: 1,
+  });
+
   const table: LeagueTable = {
     league: { slug: 'dffl', name: 'DFFL' },
     season: { slug: '2026', name: '2026' },
-    standing: [
-      {
-        standing: 1,
-        team_id: 159,
-        team__description: 'Renegades',
-        wins: 1,
-        draws: 0,
-        losses: 0,
-        games_played: 1,
-        pf: 21,
-        pa: 7,
-        diff: 14,
-        win_points: 2,
-        win_quotient: 1,
-      },
-    ],
+    standing: [row(159, 'Renegades', 'Gruppe 1')],
   };
 
   it('renders the standing and highlights the configured team', () => {
@@ -47,6 +56,48 @@ describe('StandingsTable', () => {
     expect(screen.getByText('Renegades').closest('tr')).not.toHaveClass(
       'share-table__row--highlight'
     );
+  });
+
+  it('numbers rows by rank instead of showing the group label', () => {
+    const single: LeagueTable = {
+      ...table,
+      standing: [
+        row(159, 'Renegades', 'Gruppe 1'),
+        row(200, 'Sharks', 'Gruppe 1'),
+      ],
+    };
+    render(<StandingsTable table={single} highlightTeamIds={[]} />);
+    expect(rankOf('Renegades')).toBe('1');
+    expect(rankOf('Sharks')).toBe('2');
+  });
+
+  it('omits group headers when all rows share one group', () => {
+    const single: LeagueTable = {
+      ...table,
+      standing: [
+        row(159, 'Renegades', 'Gruppe 1'),
+        row(200, 'Sharks', 'Gruppe 1'),
+      ],
+    };
+    render(<StandingsTable table={single} highlightTeamIds={[]} />);
+    expect(screen.queryByText('Gruppe 1')).not.toBeInTheDocument();
+  });
+
+  it('renders a group header and restarts ranks when the group changes', () => {
+    const multi: LeagueTable = {
+      ...table,
+      standing: [
+        row(159, 'Renegades', 'Gruppe 1'),
+        row(200, 'Sharks', 'Gruppe 1'),
+        row(300, 'Wolves', 'Gruppe 2'),
+      ],
+    };
+    render(<StandingsTable table={multi} highlightTeamIds={[]} />);
+    expect(screen.getByText('Gruppe 1')).toBeInTheDocument();
+    expect(screen.getByText('Gruppe 2')).toBeInTheDocument();
+    expect(rankOf('Renegades')).toBe('1');
+    expect(rankOf('Sharks')).toBe('2');
+    expect(rankOf('Wolves')).toBe('1');
   });
 });
 
