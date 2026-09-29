@@ -188,7 +188,7 @@ jobs:
       - checkout
       - setup_uv
       - python_shard_test:
-          paths: "league_manager/tests/"
+          paths: "league_manager/tests/ share/tests/"
           junit: "test-results-core.xml"
           cov_flag: "python-core"
 
