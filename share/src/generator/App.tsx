@@ -376,6 +376,28 @@ export function App() {
             />
           </div>
         </div>
+        {options.view === 'live' && (
+          <div className="row g-2 align-items-end mt-1">
+            <div className="col-12">
+              <label className="form-label small" htmlFor="opt-live-url">
+                Live-Link (optional)
+              </label>
+              <input
+                id="opt-live-url"
+                type="url"
+                className="form-control form-control-sm"
+                data-testid="gen-live-url"
+                placeholder="https://…/liveticker"
+                value={options.liveUrl ?? ''}
+                onChange={(event) =>
+                  update({
+                    liveUrl: event.target.value === '' ? null : event.target.value,
+                  })
+                }
+              />
+            </div>
+          </div>
+        )}
         <div className="form-check mt-2">
           <input
             className="form-check-input"

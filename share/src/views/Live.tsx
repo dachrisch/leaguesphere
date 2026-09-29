@@ -30,7 +30,13 @@ export function Live({
           <p className="share-empty">Kein Live-Spiel gerade.</p>
         </div>
       ) : (
-        games.map((game) => <LiveCard key={game.gameId} game={game} />)
+        games.map((game) => (
+          <LiveCard
+            key={game.gameId}
+            game={game}
+            liveUrl={config.liveUrl}
+          />
+        ))
       )}
     </WidgetShell>
   );

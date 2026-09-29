@@ -1,10 +1,28 @@
 import type { LiveGame } from '../lib/types';
 
-export function LiveCard({ game }: { game: LiveGame }) {
+export function LiveCard({
+  game,
+  liveUrl = null,
+}: {
+  game: LiveGame;
+  liveUrl?: string | null;
+}) {
+  const badge = <span className="badge text-bg-danger">LIVE</span>;
   return (
     <div className="content-section">
       <div className="d-flex justify-content-between align-items-center mb-2">
-        <span className="badge text-bg-danger">LIVE</span>
+        {liveUrl !== null ? (
+          <a
+            className="share-live__link"
+            href={liveUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {badge}
+          </a>
+        ) : (
+          badge
+        )}
         <span className="text-muted small">{game.status}</span>
       </div>
       <div className="d-flex justify-content-between align-items-center">

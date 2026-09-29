@@ -160,6 +160,33 @@ describe('generator App options', () => {
     ).toBeInTheDocument();
   });
 
+  it('offers a live url input for the live view and round-trips it', async () => {
+    stubApi({
+      teams: [{ id: 159, name: 'Renegades', description: 'Ren', logo: null }],
+    });
+    render(<App />);
+    await pickTeam(/Renegades \(Ren\)/);
+
+    // Not shown for the default (plan) view.
+    expect(screen.queryByTestId('gen-live-url')).toBeNull();
+
+    fireEvent.change(screen.getByTestId('gen-view'), {
+      target: { value: 'live' },
+    });
+    fireEvent.change(screen.getByTestId('gen-live-url'), {
+      target: { value: 'https://club.de/live' },
+    });
+
+    await waitFor(() => {
+      const iframe = screen.getByTitle('Vorschau');
+      const params = new URLSearchParams(
+        (iframe.getAttribute('src') ?? '').split('?')[1]
+      );
+      expect(params.get('view')).toBe('live');
+      expect(params.get('live_url')).toBe('https://club.de/live');
+    });
+  });
+
   it('debounces the preview url so a burst of changes reloads the iframe once', async () => {
     stubApi({
       teams: [{ id: 159, name: 'Renegades', description: 'Ren', logo: null }],

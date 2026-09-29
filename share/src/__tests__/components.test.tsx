@@ -136,4 +136,16 @@ describe('LiveCard', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('<script>alert(1)</script>')).toBeInTheDocument();
   });
+
+  it('links the LIVE badge to live_url when one is configured', () => {
+    render(<LiveCard game={game} liveUrl="https://renegades.de/live" />);
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('href', 'https://renegades.de/live');
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
+  it('renders no link without a live_url', () => {
+    render(<LiveCard game={game} />);
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
 });

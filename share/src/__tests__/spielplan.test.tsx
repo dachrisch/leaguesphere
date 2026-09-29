@@ -147,4 +147,11 @@ describe('Spielplan', () => {
       '#1a73e8'
     );
   });
+
+  it('adds the compact class for compact=1', () => {
+    const { container } = render(
+      <Spielplan snapshot={makeSnapshot([])} config={config('t=159&compact=1')} />
+    );
+    expect(container.querySelector('.share-widget--compact')).not.toBeNull();
+  });
 });

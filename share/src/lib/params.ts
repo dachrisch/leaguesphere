@@ -18,7 +18,6 @@ export interface WidgetConfig {
   compact: boolean;
   logo: string | null;
   liveUrl: string | null;
-  refresh: boolean;
   season: number | null;
   league: number | null;
   year: string | null;
@@ -90,7 +89,6 @@ export function parseWidgetConfig(params: URLSearchParams): WidgetConfig {
     compact: parseBool(params.get('compact'), false),
     logo: parseHttpUrl(params.get('logo')),
     liveUrl: parseHttpUrl(params.get('live_url')),
-    refresh: params.has('refresh') && params.get('refresh') !== '0',
     season: parsePositiveInt(params.get('season')),
     league: parsePositiveInt(params.get('league')),
     year: parseYear(params.get('year')),

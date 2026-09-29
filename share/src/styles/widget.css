@@ -39,6 +39,29 @@ body.share-body {
   padding: 12px 16px;
 }
 
+/* compact=1: denser layout for tighter embeds. */
+.share-widget--compact {
+  padding: 4px;
+}
+
+.share-widget--compact .content-section {
+  padding: 6px 8px;
+}
+
+.share-widget--compact .share-team__name {
+  font-size: 1rem;
+  margin-bottom: 6px;
+}
+
+.share-widget--compact .share-table th,
+.share-widget--compact .share-table td {
+  padding: 0.2rem 0.3rem;
+}
+
+.share-live__link {
+  text-decoration: none;
+}
+
 .share-team__name {
   font-size: 1.1rem;
   margin-bottom: 12px;

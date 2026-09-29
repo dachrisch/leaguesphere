@@ -18,7 +18,6 @@ describe('parseWidgetConfig', () => {
     expect(cfg.compact).toBe(false);
     expect(cfg.liveUrl).toBeNull();
     expect(cfg.logo).toBeNull();
-    expect(cfg.refresh).toBe(false);
   });
 
   it('collects repeated team ids as numbers', () => {
@@ -75,10 +74,9 @@ describe('parseWidgetConfig', () => {
     expect(parse('logo=//evil.example/x.png').logo).toBeNull();
   });
 
-  it('detects the refresh flag', () => {
-    expect(parse('refresh').refresh).toBe(true);
-    expect(parse('refresh=1').refresh).toBe(true);
-    expect(parse('refresh=0').refresh).toBe(false);
+  it('ignores the removed refresh flag (ETags handle freshness)', () => {
+    expect('refresh' in parse('refresh')).toBe(false);
+    expect('refresh' in parse('refresh=1')).toBe(false);
   });
 
   it('parses optional season and league ids', () => {

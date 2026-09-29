@@ -37,7 +37,7 @@ All data is already public and anonymous:
 - `view=table`: the watched team's league standings, with that team highlighted.
 - `view=live`: play-by-play for in-progress watched games.
 - Posts its height to the embedding page so the iframe auto-sizes.
-- Shows a "powered by LeagueSphere" link unless `powered=0`.
+- Always shows a "powered by LeagueSphere" attribution (not configurable).
 
 See [specification.md](./specification.md) for the full URL parameter table and
 freshness/privacy notes.

@@ -41,15 +41,14 @@ be relaxed is framing, and only for the `/share/widget/` route.
 | `show_future` | `1` | Set to `0` to hide upcoming fixtures. |
 | `title` | `1` | Set to `0` to hide the team heading. |
 | `compact` | `0` | Set to `1` for a denser layout. |
-| `powered` | `1` | Set to `0` to hide the "powered by LeagueSphere" link. |
 | `live_url` | — | Optional `http(s)` link target for the live banner. |
-| `refresh` | — | Present (and not `0`) to bypass client caches. |
 | `season` | Aktuelle Saison | Season id (from `/api/seasons/`); scopes fixtures/results and the table to one season. When neither `season` nor `year` is set, the widget resolves the newest season in which one of the configured teams plays (client-side, no extra request). |
 | `year` | — | Human-readable alternative to `season`: a 4-digit year matched against season names (`2026`, or `2025/2026` -> `2025`). `season` wins if both are set. |
 | `league` | — | League id (from `/api/leagues/`); scopes to one league within the season (e.g. league vs. relegation, which are separate leagues). |
 
 Non-`http(s)` values for `live_url`/`logo` are ignored; unknown values fall back
-to defaults. The parameter contract is compatible with the earlier
+to defaults. The "powered by LeagueSphere" attribution is always rendered and
+cannot be disabled. The parameter contract is compatible with the earlier
 `renegades-scores` relay, so existing embeds only need their iframe `src`
 changed.
 

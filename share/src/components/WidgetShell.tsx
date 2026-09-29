@@ -22,7 +22,7 @@ export function WidgetShell({
   const className = [
     'share-widget',
     `share-widget--${config.view}`,
-    config.compact ? 'text-body' : '',
+    config.compact ? 'share-widget--compact' : '',
   ]
     .filter(Boolean)
     .join(' ');
