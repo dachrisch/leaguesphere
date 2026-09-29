@@ -250,4 +250,78 @@ describe('Table', () => {
     expect(calledUrls).toContain('/api/league-table/dffl/');
     expect(calledUrls.some((url) => url.includes('bayernpokal'))).toBe(false);
   });
+
+  it('renders a standings table for each league the teams play in', async () => {
+    const fetcher = stubFetch({
+      '/api/leagues/': [
+        { id: 7, name: 'DFFL', slug: 'dffl' },
+        { id: 12, name: 'RL BAWÜ', slug: 'rl-bawu' },
+      ],
+      '/api/league-table/dffl/': {
+        league: { slug: 'dffl', name: 'DFFL' },
+        season: { slug: '2026', name: '2026' },
+        standing: [
+          {
+            standing: 'Gruppe 1',
+            team_id: 159,
+            team__description: 'Renegades',
+            wins: 1,
+            draws: 0,
+            losses: 0,
+            games_played: 1,
+            pf: 21,
+            pa: 7,
+            diff: 14,
+            win_points: 2,
+            win_quotient: 1,
+          },
+        ],
+      },
+      '/api/league-table/rl-bawu/': {
+        league: { slug: 'rl-bawu', name: 'RL BAWÜ' },
+        season: { slug: '2025-2026', name: '2025/2026' },
+        standing: [
+          {
+            standing: 'Gruppe 1',
+            team_id: 200,
+            team__description: 'Crocodiles',
+            wins: 1,
+            draws: 0,
+            losses: 0,
+            games_played: 1,
+            pf: 21,
+            pa: 7,
+            diff: 14,
+            win_points: 2,
+            win_quotient: 1,
+          },
+        ],
+      },
+    });
+    vi.stubGlobal('fetch', fetcher);
+
+    const snapshot = makeSnapshot([
+      makeGameday({
+        id: 1,
+        league: 7,
+        league_display: 'DFFL',
+        games: [makeGame({ id: 1 })],
+      }),
+      makeGameday({
+        id: 2,
+        league: 12,
+        league_display: 'RL BAWÜ',
+        games: [makeGame({ id: 2 })],
+      }),
+    ]);
+    render(<Table snapshot={snapshot} config={config('t=159&t=200&view=table')} />);
+
+    await waitFor(() =>
+      expect(screen.getByText('Renegades')).toBeInTheDocument()
+    );
+    expect(await screen.findByText('Crocodiles')).toBeInTheDocument();
+    expect(screen.getByText('DFFL 2026')).toBeInTheDocument();
+    expect(screen.getByText('RL BAWÜ 2025/2026')).toBeInTheDocument();
+    expect(screen.getAllByRole('table')).toHaveLength(2);
+  });
 });

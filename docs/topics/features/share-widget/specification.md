@@ -23,10 +23,10 @@ be relaxed is framing, and only for the `/share/widget/` route.
   `postMessage({ type: 'iframeHeight', height })`, so the iframe grows to fit.
 - Unfinished games dated before today are treated as stale and omitted from
   "Kommende Spiele"; `view=live` only polls for non-final games scheduled today.
-- `view=table`: standings for the watched team. Within the resolved season the
-  widget tries the leagues present in the snapshot by number of games (so the
-  league wins over a cup the team also entered) until one returns a table; an
-  explicit `league` is used directly and never falls through to another.
+- `view=table`: standings for each league the configured teams play in within
+  the resolved season (the leagues present in the snapshot, most games first;
+  leagues without a standings endpoint, e.g. cups, are skipped). An explicit
+  `league` pins the view to that one league and never falls through.
 
 ## Configuration (URL parameters)
 
