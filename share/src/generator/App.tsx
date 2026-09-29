@@ -5,9 +5,9 @@ import { fetchSeasons, fetchSnapshot, fetchTeams } from '../lib/api';
 import { leaguesInSnapshot, type LeagueOption } from '../lib/derived';
 import {
   buildIframeSnippet,
+  buildListenerSnippet,
   buildWidgetUrl,
   type GeneratorOptions,
-  PARENT_LISTENER_SNIPPET,
 } from '../lib/generator';
 import type { ViewName } from '../lib/params';
 import type { TeamDirectoryEntry } from '../lib/types';
@@ -419,7 +419,7 @@ export function App() {
             />
             <CopyField
               label="Schritt 1 – Größen-Listener (einmalig auf der Seite)"
-              value={PARENT_LISTENER_SNIPPET}
+              value={buildListenerSnippet(window.location.origin)}
             />
             <CopyField label="Schritt 2 – iframe" value={buildIframeSnippet(url)} />
             <CopyField label="Direktlink" value={url} />

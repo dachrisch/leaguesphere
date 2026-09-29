@@ -83,9 +83,10 @@ export function buildIframeSnippet(url: string): string {
 ></iframe>`;
 }
 
-export const PARENT_LISTENER_SNIPPET = `<script>
+export function buildListenerSnippet(origin: string): string {
+  return `<script>
 window.addEventListener('message', function (event) {
-  if (event.origin !== 'https://leaguesphere.app') return;
+  if (event.origin !== ${JSON.stringify(origin)}) return;
   if (!event.data || event.data.type !== 'iframeHeight') return;
   var frames = document.getElementsByTagName('iframe');
   for (var i = 0; i < frames.length; i++) {
@@ -103,3 +104,4 @@ window.addEventListener('message', function (event) {
   }
 });
 </script>`;
+}

@@ -23,8 +23,8 @@
    ids are ignored.
 5. `live_url` and `logo` accept only `http(s)` URLs; other schemes are ignored.
 6. The widget posts `{ type: 'iframeHeight', height }` to the parent and the
-   generator documents the matching listener with the `leaguesphere.app` origin
-   check.
+   generator documents the matching listener with the widget's own origin check
+   (so it works on stage and on any self-hosted instance).
 7. All values from the API are rendered as text (no HTML injection).
 8. `/api/liveticker/` remains the live source; scores refresh at the server's
    60 s cache cadence.

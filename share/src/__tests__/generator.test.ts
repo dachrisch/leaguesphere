@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildIframeSnippet,
+  buildListenerSnippet,
   buildWidgetUrl,
   type GeneratorOptions,
-  PARENT_LISTENER_SNIPPET,
 } from '../lib/generator';
 
 const base = 'https://leaguesphere.app/share/widget/';
@@ -122,14 +122,16 @@ describe('snippets', () => {
     expect(snippet).toContain('<iframe');
   });
 
-  it('ships a parent listener that checks the LeagueSphere origin', () => {
-    expect(PARENT_LISTENER_SNIPPET).toContain('iframeHeight');
-    expect(PARENT_LISTENER_SNIPPET).toContain('leaguesphere.app');
+  it('ships a parent listener bound to the widget origin', () => {
+    const snippet = buildListenerSnippet('https://stage.leaguesphere.app');
+    expect(snippet).toContain('iframeHeight');
+    expect(snippet).toContain('https://stage.leaguesphere.app');
   });
 
   it('makes the listener grow-only so a transient small height cannot collapse the embed', () => {
     // The listener keeps the largest height seen per iframe.
-    expect(PARENT_LISTENER_SNIPPET).toContain('_lsHeight');
-    expect(PARENT_LISTENER_SNIPPET).toMatch(/Math\.max/);
+    const snippet = buildListenerSnippet('https://leaguesphere.app');
+    expect(snippet).toContain('_lsHeight');
+    expect(snippet).toMatch(/Math\.max/);
   });
 });

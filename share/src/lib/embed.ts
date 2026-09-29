@@ -44,9 +44,9 @@ export function nextFrameHeight(previous: number, measured: number): number {
 /**
  * Ask the embedding page to resize our iframe.
  *
- * The parent listener script (documented on the generator page) checks
- * `event.origin === 'https://leaguesphere.app'` before trusting the height.
- * When the widget is opened top-level there is no parent to notify.
+ * The parent listener script (documented on the generator page) checks the
+ * widget origin before trusting the height. When the widget is opened
+ * top-level there is no parent to notify.
  */
 export function notifyParentHeight(
   height: number,
