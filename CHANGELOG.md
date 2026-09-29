@@ -1,5 +1,42 @@
 # Changelog
 
+## [4.34.0](https://github.com/dachrisch/leaguesphere/compare/v4.33.0...v4.34.0) (2026-09-29)
+
+
+### Features
+
+* **share:** embeddable widget for club sites ([5a9574c](https://github.com/dachrisch/leaguesphere/commit/5a9574c282ae8787529fcf4d36c555d17ec55f91))
+* **share:** embeddable widget for club sites ([fd28151](https://github.com/dachrisch/leaguesphere/commit/fd2815105a62f56cd41c1e3bdd1f1fea990d8091))
+* **share:** human-readable year param for the widget ([56e8139](https://github.com/dachrisch/leaguesphere/commit/56e8139c4f2b97be7fb5af8168f2725e6a19a677))
+* **share:** non-optional attribution, club logo and color customization ([4c9903e](https://github.com/dachrisch/leaguesphere/commit/4c9903e4211260156dccc3c82a932f5785d6a588))
+* **share:** season and league selection for the widget ([217c35a](https://github.com/dachrisch/leaguesphere/commit/217c35a97b41eb587a8217cf09f3b2eea276d5ca))
+* **share:** site header/footer in the embed and a Team-menu link ([8f2844c](https://github.com/dachrisch/leaguesphere/commit/8f2844cfeda863ac80de69a73e8d14b6d3aa848e))
+
+
+### Bug Fixes
+
+* **api:** throttle snapshot rebuilds, not cache hits ([7adecfa](https://github.com/dachrisch/leaguesphere/commit/7adecfa2f1df778fae0f521607306b29c6f56778))
+* **share:** auto-size the generator preview like an embed ([cf15e8f](https://github.com/dachrisch/leaguesphere/commit/cf15e8fc7af127ca3a8d15ad8eec9994fabd1a2c))
+* **share:** bare widget embed and explicit no-games message ([64920fe](https://github.com/dachrisch/leaguesphere/commit/64920fe5cafbebed84e9d1f2ad69db3e3c3fb399))
+* **share:** bind the listener snippet to the widget origin ([dc89082](https://github.com/dachrisch/leaguesphere/commit/dc89082b419f843cdb21eb05bd1294abb8aacd24))
+* **share:** correct league-table lookup and match LeagueSphere design ([4a98775](https://github.com/dachrisch/leaguesphere/commit/4a98775507a7fb5137338c0d0251faf8e541943f))
+* **share:** draw the standings highlight bar on the first cell only ([ff7af30](https://github.com/dachrisch/leaguesphere/commit/ff7af3083e40e5eab65d53e6d158102773012347))
+* **share:** hide stale fixtures and default to the current season ([c06adfb](https://github.com/dachrisch/leaguesphere/commit/c06adfb0a55dadc74d82b0e80ac0accee18a4615))
+* **share:** honor live_url and compact, drop the no-op refresh flag ([6c81145](https://github.com/dachrisch/leaguesphere/commit/6c8114586a518644d01a2a0b22eb1883dfc5827d))
+* **share:** make the standings table usable at phone width ([045f89b](https://github.com/dachrisch/leaguesphere/commit/045f89b03727f1a451fa0f9a58549b8e66bbea79))
+* **share:** mark framing view tests as django_db ([eb15a53](https://github.com/dachrisch/leaguesphere/commit/eb15a53882adf4427fe6b0859147dc3e24299ac6))
+* **share:** mark framing view tests as django_db ([9010d89](https://github.com/dachrisch/leaguesphere/commit/9010d895d23efd487f11be2b9702e9ce25cde466))
+* **share:** report real content height to the embedding page ([d23de44](https://github.com/dachrisch/leaguesphere/commit/d23de440b58d32efa063969c73001e45e4ad7cdd))
+* **share:** search-first team picker in the generator ([c88d65e](https://github.com/dachrisch/leaguesphere/commit/c88d65e72bf235d33c20e477483708de53a9a565))
+* **share:** show HH:MM kick-off and context-aware result column ([6497082](https://github.com/dachrisch/leaguesphere/commit/64970827505a83e408fc0bfd90c6236b13349c4b))
+* **share:** show real rank and group headers in the standings table ([5f4b0be](https://github.com/dachrisch/leaguesphere/commit/5f4b0bea14976f2b98048248712149bfb3062988))
+* **share:** show the league table, not a cup, in the table view ([42b9381](https://github.com/dachrisch/leaguesphere/commit/42b93810fc76e3ddf99fcf28e4592cb134a88325))
+* **share:** stop double-fetching and retry throttled snapshots ([76cf8c3](https://github.com/dachrisch/leaguesphere/commit/76cf8c317feeb4d112e342158f97796076b052aa))
+* **share:** stop framing the generator page ([15adac7](https://github.com/dachrisch/leaguesphere/commit/15adac7274fe8e9f6e14181d0858bcbe95e7e682))
+* **share:** stop the embed collapsing while loading ([7faa6fd](https://github.com/dachrisch/leaguesphere/commit/7faa6fddabdf4422b6c88face5af4153d42d5d77))
+* **share:** track src/lib (swallowed by Python gitignore) ([ffdc0be](https://github.com/dachrisch/leaguesphere/commit/ffdc0be3719885ada9a8c705ddbd0f07696752fd))
+* **share:** use relative imports instead of @ alias for CI ([f580800](https://github.com/dachrisch/leaguesphere/commit/f5808004b3b110425421cdcf9415012679b7a2d4))
+
 ## [4.33.0](https://github.com/dachrisch/leaguesphere/compare/v4.32.3...v4.33.0) (2026-09-27)
 
 
