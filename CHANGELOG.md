@@ -1,5 +1,19 @@
 # Changelog
 
+## [4.35.0](https://github.com/dachrisch/leaguesphere/compare/v4.34.0...v4.35.0) (2026-09-29)
+
+
+### Features
+
+* **share:** multi-team table view + generator leagues from all teams ([3566119](https://github.com/dachrisch/leaguesphere/commit/35661192aee7b24ddcd1a9a9cfb74b29cfb9e967))
+* **share:** render a standings table per league for multiple teams ([33dce68](https://github.com/dachrisch/leaguesphere/commit/33dce68ea01068e1831be32426c3c8f1c6401afd))
+
+
+### Bug Fixes
+
+* **share:** derive the generator league list from all selected teams ([6f19b12](https://github.com/dachrisch/leaguesphere/commit/6f19b1247857e430f1e3d172e6942ece3f45d65f))
+* **share:** wrap long team names so the table fits at 375px ([fcf798f](https://github.com/dachrisch/leaguesphere/commit/fcf798f120a7779a3e41382eeb82021b4b5c936e))
+
 ## [4.34.0](https://github.com/dachrisch/leaguesphere/compare/v4.33.0...v4.34.0) (2026-09-29)
 
 
