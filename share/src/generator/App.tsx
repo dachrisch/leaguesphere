@@ -85,19 +85,21 @@ export function App() {
     };
   }, []);
 
-  // Derive the leagues a team actually played in for the chosen season, so a
-  // club can offer only relevant leagues (league vs. relegation etc.).
+  // Derive the leagues a team actually played in, so a club can offer only
+  // relevant leagues (league vs. relegation etc.) — even before picking a
+  // season, in which case the snapshot spans all seasons.
   const leaguesKey =
-    primaryTeamId !== null && options.season !== null
-      ? `${primaryTeamId}:${options.season}`
-      : '';
+    primaryTeamId !== null ? `${primaryTeamId}:${options.season ?? 'all'}` : '';
   useEffect(() => {
     if (leaguesKey === '') {
       return;
     }
-    const [teamId, seasonId] = leaguesKey.split(':').map(Number);
+    const [teamRaw, seasonRaw] = leaguesKey.split(':');
+    const teamId = Number(teamRaw);
+    const filters =
+      seasonRaw === 'all' ? {} : { season: Number(seasonRaw) };
     let active = true;
-    fetchSnapshot([teamId], { season: seasonId })
+    fetchSnapshot([teamId], filters)
       .then((snapshot) => {
         if (active) {
           setDerivedLeagues({ key: leaguesKey, leagues: leaguesInSnapshot(snapshot) });
@@ -227,6 +229,7 @@ export function App() {
             <label className="form-label small">Ansicht</label>
             <select
               className="form-select form-select-sm"
+              data-testid="gen-view"
               value={options.view}
               onChange={(event) =>
                 update({ view: event.target.value as ViewName })
@@ -314,11 +317,19 @@ export function App() {
                 </option>
               ))}
             </select>
-            {primaryTeamId !== null && options.season !== null && leagues.length === 0 && (
+            {primaryTeamId !== null && leagues.length === 0 && (
               <span className="form-text">
-                Keine Liga für dieses Team in dieser Saison gefunden.
+                Keine Liga für dieses Team gefunden.
               </span>
             )}
+            {options.view === 'table' &&
+              options.league === null &&
+              leagues.length > 1 && (
+                <span className="form-text">
+                  Mehrere Ligen gefunden – bitte eine Liga für die Tabelle
+                  wählen.
+                </span>
+              )}
           </div>
         </div>
         <div className="row g-2 align-items-end mt-1">

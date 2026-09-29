@@ -130,4 +130,31 @@ describe('generator App options', () => {
       expect(params.get('league')).toBe('8');
     });
   });
+
+  it('derives leagues before a season is chosen and hints to pick one for the table', async () => {
+    stubApi({
+      teams: [{ id: 159, name: 'Renegades', description: 'Ren', logo: null }],
+      snapshot: {
+        gamedays: [
+          { league: 57, league_display: 'Bayernpokal' },
+          { league: 8, league_display: 'DFFL2' },
+        ],
+      },
+    });
+    render(<App />);
+
+    await pickTeam(/Renegades \(Ren\)/);
+
+    // Leagues come from the all-season snapshot, even before a season is set.
+    expect(
+      await screen.findByRole('option', { name: 'DFFL2' })
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('gen-view'), {
+      target: { value: 'table' },
+    });
+    expect(
+      await screen.findByText(/Mehrere Ligen gefunden/)
+    ).toBeInTheDocument();
+  });
 });

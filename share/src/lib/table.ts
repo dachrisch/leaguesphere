@@ -10,17 +10,12 @@ export function slugify(value: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-export interface LeagueSeason {
-  leagueName: string;
-  seasonName: string;
-}
-
 /**
  * Resolve a season id from either an explicit `season` id or a `year`.
  *
- * `year` matches a season whose name contains the year (e.g. `2026`, or
- * `2025/2026` for a season spanning two years — the first four digits win).
- * Explicit `season` takes precedence when both are present.
+ * `year` matches a season whose name starts with the year (e.g. `2026`, or
+ * `2025/2026` for a season spanning two years). Explicit `season` takes
+ * precedence when both are present.
  */
 export function resolveSeasonId(
   seasons: { id: number; name: string }[],
@@ -37,38 +32,37 @@ export function resolveSeasonId(
   return match ? match.id : null;
 }
 
+export interface LeagueCandidate {
+  id: number;
+  name: string;
+  gameCount: number;
+}
+
 /**
- * The most recent league+season the given teams actually play in.
+ * Leagues present in the snapshot (already scoped to the resolved season),
+ * ordered by number of games desc.
  *
- * The league-table API is keyed by slugs, but the snapshot only exposes
- * display names (`league_display`, `season_display`). Callers therefore
- * resolve the league name to its slug via `/api/leagues/` and fetch the
- * table without a season, which the API resolves to the latest season.
+ * The snapshot offers only display names + ids (`league`, `league_display`);
+ * callers resolve each candidate's id/name to a slug via `/api/leagues/` and
+ * fetch its table, falling through to the next candidate on a 404. This lets a
+ * club's league win over a cup it also appeared in within the same season.
  */
-export function pickLeagueSeason(
-  snapshot: Snapshot,
-  teamIds: number[]
-): LeagueSeason | null {
-  let best: (LeagueSeason & { date: string }) | null = null;
+export function leagueCandidates(snapshot: Snapshot): LeagueCandidate[] {
+  const byId = new Map<number, LeagueCandidate>();
   for (const gameday of snapshot.gamedays) {
-    const plays = (gameday.games ?? []).some((game) =>
-      game.results.some(
-        (result) => result.team_id !== null && teamIds.includes(result.team_id)
-      )
-    );
-    if (!plays) {
-      continue;
-    }
-    if (best === null || gameday.date > best.date) {
-      best = {
-        date: gameday.date,
-        leagueName: gameday.league_display,
-        seasonName: gameday.season_display,
-      };
+    const gameCount = gameday.games?.length ?? 0;
+    const current = byId.get(gameday.league);
+    if (current === undefined) {
+      byId.set(gameday.league, {
+        id: gameday.league,
+        name: gameday.league_display,
+        gameCount,
+      });
+    } else {
+      current.gameCount += gameCount;
     }
   }
-  if (best === null) {
-    return null;
-  }
-  return { leagueName: best.leagueName, seasonName: best.seasonName };
+  return [...byId.values()].sort(
+    (a, b) => b.gameCount - a.gameCount || a.name.localeCompare(b.name)
+  );
 }

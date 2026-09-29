@@ -140,4 +140,114 @@ describe('Table', () => {
     const calledUrls = fetcher.mock.calls.map((call) => String(call[0]));
     expect(calledUrls).toContain('/api/league-table/rl-bawu/2025-2026/');
   });
+
+  it('falls back to the league when a cup candidate returns no table', async () => {
+    const fetcher = stubFetch({
+      '/api/leagues/': [
+        { id: 57, name: 'Bayernpokal', slug: 'bayernpokal' },
+        { id: 7, name: 'DFFL', slug: 'dffl' },
+      ],
+      '/api/league-table/dffl/': {
+        league: { slug: 'dffl', name: 'DFFL' },
+        season: { slug: '2026', name: '2026' },
+        standing: [
+          {
+            standing: 'Gruppe 1',
+            team_id: 159,
+            team__description: 'Renegades',
+            wins: 1,
+            draws: 0,
+            losses: 0,
+            games_played: 1,
+            pf: 21,
+            pa: 7,
+            diff: 14,
+            win_points: 2,
+            win_quotient: 1,
+          },
+        ],
+      },
+    });
+    vi.stubGlobal('fetch', fetcher);
+
+    const snapshot = makeSnapshot([
+      makeGameday({
+        id: 1,
+        league: 57,
+        league_display: 'Bayernpokal',
+        games: [makeGame({ id: 1 }), makeGame({ id: 2 }), makeGame({ id: 3 })],
+      }),
+      makeGameday({
+        id: 2,
+        league: 7,
+        league_display: 'DFFL',
+        games: [makeGame({ id: 4 })],
+      }),
+    ]);
+    render(<Table snapshot={snapshot} config={config('t=159&view=table')} />);
+
+    await waitFor(() =>
+      expect(screen.getByText('Renegades')).toBeInTheDocument()
+    );
+    expect(screen.getByText('DFFL 2026')).toBeInTheDocument();
+    const calledUrls = fetcher.mock.calls.map((call) => String(call[0]));
+    // The larger cup is tried first, then the league succeeds.
+    expect(calledUrls).toContain('/api/league-table/bayernpokal/');
+    expect(calledUrls).toContain('/api/league-table/dffl/');
+  });
+
+  it('uses an explicit league without trying other candidates', async () => {
+    const fetcher = stubFetch({
+      '/api/leagues/': [
+        { id: 57, name: 'Bayernpokal', slug: 'bayernpokal' },
+        { id: 7, name: 'DFFL', slug: 'dffl' },
+      ],
+      '/api/league-table/dffl/': {
+        league: { slug: 'dffl', name: 'DFFL' },
+        season: { slug: '2026', name: '2026' },
+        standing: [
+          {
+            standing: 'Gruppe 1',
+            team_id: 159,
+            team__description: 'Renegades',
+            wins: 1,
+            draws: 0,
+            losses: 0,
+            games_played: 1,
+            pf: 21,
+            pa: 7,
+            diff: 14,
+            win_points: 2,
+            win_quotient: 1,
+          },
+        ],
+      },
+    });
+    vi.stubGlobal('fetch', fetcher);
+
+    const snapshot = makeSnapshot([
+      makeGameday({
+        id: 1,
+        league: 57,
+        league_display: 'Bayernpokal',
+        games: [makeGame({ id: 1 }), makeGame({ id: 2 }), makeGame({ id: 3 })],
+      }),
+      makeGameday({
+        id: 2,
+        league: 7,
+        league_display: 'DFFL',
+        games: [makeGame({ id: 4 })],
+      }),
+    ]);
+    render(
+      <Table snapshot={snapshot} config={config('t=159&view=table&league=7')} />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText('Renegades')).toBeInTheDocument()
+    );
+    const calledUrls = fetcher.mock.calls.map((call) => String(call[0]));
+    expect(calledUrls).toContain('/api/league-table/dffl/');
+    expect(calledUrls.some((url) => url.includes('bayernpokal'))).toBe(false);
+  });
 });

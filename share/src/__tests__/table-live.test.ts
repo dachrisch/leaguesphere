@@ -6,7 +6,7 @@ import {
   leaguesInSnapshot,
   latestSeasonDisplay,
 } from '../lib/derived';
-import { pickLeagueSeason, resolveSeasonId } from '../lib/table';
+import { leagueCandidates, resolveSeasonId } from '../lib/table';
 
 import { makeGame, makeGameday, makeSnapshot } from './fixtures';
 
@@ -52,35 +52,41 @@ describe('leaguesInSnapshot', () => {
   });
 });
 
-describe('pickLeagueSeason', () => {
-  it('returns the most recent league/season the teams play in', () => {
-    const snapshot = makeSnapshot([
-      makeGameday({ id: 1, date: '2026-04-01', league_display: 'FF BL', season_display: '2025' }),
-      makeGameday({ id: 2, date: '2026-06-01', league_display: 'DKB DFFL', season_display: '2026' }),
-    ]);
-    for (const gameday of snapshot.gamedays) {
-      gameday.games = [makeGame({ id: gameday.id })];
-    }
-    expect(pickLeagueSeason(snapshot, [159])).toEqual({
-      leagueName: 'DKB DFFL',
-      seasonName: '2026',
-    });
-  });
-
-  it('ignores gamedays without the team and returns null when empty', () => {
+describe('leagueCandidates', () => {
+  it('orders leagues in the season by number of games desc', () => {
     const snapshot = makeSnapshot([
       makeGameday({
-        games: [
-          makeGame({
-            results: [
-              { id: 1, team_id: 500, team_name: 'A', fh: 0, sh: 0, pa: 0, isHome: true },
-              { id: 2, team_id: 501, team_name: 'B', fh: 0, sh: 0, pa: 0, isHome: false },
-            ],
-          }),
-        ],
+        id: 1,
+        league: 57,
+        league_display: 'Bayernpokal',
+        games: [makeGame({ id: 1 }), makeGame({ id: 2 }), makeGame({ id: 3 })],
+      }),
+      makeGameday({
+        id: 2,
+        league: 7,
+        league_display: 'DFFL',
+        games: [makeGame({ id: 4 })],
       }),
     ]);
-    expect(pickLeagueSeason(snapshot, [159])).toBeNull();
+    expect(leagueCandidates(snapshot)).toEqual([
+      { id: 57, name: 'Bayernpokal', gameCount: 3 },
+      { id: 7, name: 'DFFL', gameCount: 1 },
+    ]);
+  });
+
+  it('breaks ties by name and handles gamedays without games', () => {
+    const snapshot = makeSnapshot([
+      makeGameday({ id: 1, league: 8, league_display: 'DFFL2', games: [] }),
+      makeGameday({ id: 2, league: 57, league_display: 'Bayernpokal', games: [] }),
+    ]);
+    expect(leagueCandidates(snapshot).map((entry) => entry.name)).toEqual([
+      'Bayernpokal',
+      'DFFL2',
+    ]);
+  });
+
+  it('returns an empty list without gamedays', () => {
+    expect(leagueCandidates(makeSnapshot([]))).toEqual([]);
   });
 });
 
