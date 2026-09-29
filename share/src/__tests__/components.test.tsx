@@ -99,6 +99,11 @@ describe('StandingsTable', () => {
     expect(rankOf('Sharks')).toBe('2');
     expect(rankOf('Wolves')).toBe('1');
   });
+
+  it('wraps the table so a narrow embed scrolls instead of clipping', () => {
+    render(<StandingsTable table={table} highlightTeamIds={[]} />);
+    expect(screen.getByRole('table').closest('.table-responsive')).not.toBeNull();
+  });
 });
 
 describe('LiveCard', () => {

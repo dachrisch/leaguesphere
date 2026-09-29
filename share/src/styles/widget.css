@@ -126,3 +126,14 @@ body.share-body {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
 }
+
+/* Narrow embeds (phone width iframes): drop the secondary EP/GP columns so the
+   points column is not pushed out of view. */
+@media (max-width: 419.98px) {
+  .share-table th:nth-child(7),
+  .share-table td:nth-child(7),
+  .share-table th:nth-child(8),
+  .share-table td:nth-child(8) {
+    display: none;
+  }
+}
