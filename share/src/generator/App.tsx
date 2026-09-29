@@ -68,7 +68,7 @@ export function App() {
 
   const trimmedQuery = query.trim();
   const queryReady = trimmedQuery.length >= MIN_SEARCH_LENGTH;
-  const primaryTeamId = selected.length > 0 ? selected[0].id : null;
+  const teamIdsKey = selected.map((team) => team.id).join(',');
 
   useEffect(() => {
     let active = true;
@@ -86,21 +86,21 @@ export function App() {
     };
   }, []);
 
-  // Derive the leagues a team actually played in, so a club can offer only
-  // relevant leagues (league vs. relegation etc.) — even before picking a
-  // season, in which case the snapshot spans all seasons.
+  // Derive the leagues the selected teams actually played in, so a club can
+  // offer only relevant leagues (league vs. relegation etc.) — across all
+  // selected teams, and even before picking a season (all-seasons snapshot).
   const leaguesKey =
-    primaryTeamId !== null ? `${primaryTeamId}:${options.season ?? 'all'}` : '';
+    teamIdsKey !== '' ? `${teamIdsKey}:${options.season ?? 'all'}` : '';
   useEffect(() => {
     if (leaguesKey === '') {
       return;
     }
-    const [teamRaw, seasonRaw] = leaguesKey.split(':');
-    const teamId = Number(teamRaw);
+    const [teamsRaw, seasonRaw] = leaguesKey.split(':');
+    const teamIds = teamsRaw.split(',').map(Number);
     const filters =
       seasonRaw === 'all' ? {} : { season: Number(seasonRaw) };
     let active = true;
-    fetchSnapshot([teamId], filters)
+    fetchSnapshot(teamIds, filters)
       .then((snapshot) => {
         if (active) {
           setDerivedLeagues({ key: leaguesKey, leagues: leaguesInSnapshot(snapshot) });
@@ -328,7 +328,7 @@ export function App() {
                 </option>
               ))}
             </select>
-            {primaryTeamId !== null && leagues.length === 0 && (
+            {teamIdsKey !== '' && leagues.length === 0 && (
               <span className="form-text">
                 Keine Liga für dieses Team gefunden.
               </span>

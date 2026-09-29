@@ -187,6 +187,64 @@ describe('generator App options', () => {
     });
   });
 
+  it('derives leagues across all selected teams, not just the first', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith('/api/teams/')) {
+          return new Response(
+            JSON.stringify({
+              results: [
+                { id: 159, name: 'Renegades', description: 'Ren', logo: null },
+                { id: 200, name: 'Crocodiles', description: 'Cro', logo: null },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (url.startsWith('/api/seasons/')) {
+          return new Response(JSON.stringify([]), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        if (url.startsWith('/api/snapshot/')) {
+          const teams = new URL(url, 'http://localhost').searchParams.getAll('team');
+          const gamedays = teams.includes('200')
+            ? [
+                { league: 7, league_display: 'DFFL' },
+                { league: 12, league_display: 'RL BAWÜ' },
+              ]
+            : [{ league: 7, league_display: 'DFFL' }];
+          return new Response(JSON.stringify({ gamedays }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify({}), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      })
+    );
+    render(<App />);
+
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Ren' } });
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Renegades \(Ren\)/ })
+    );
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Cro' } });
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Crocodiles \(Cro\)/ })
+    );
+
+    expect(await screen.findByRole('option', { name: 'DFFL' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('option', { name: 'RL BAWÜ' })
+    ).toBeInTheDocument();
+  });
+
   it('debounces the preview url so a burst of changes reloads the iframe once', async () => {
     stubApi({
       teams: [{ id: 159, name: 'Renegades', description: 'Ren', logo: null }],
