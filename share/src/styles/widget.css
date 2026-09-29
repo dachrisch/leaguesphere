@@ -88,6 +88,9 @@ body.share-body {
 
 .share-table__row--highlight td {
   background-color: color-mix(in srgb, var(--share-accent) 12%, transparent);
+}
+
+.share-table__row--highlight td:first-child {
   border-left: 3px solid var(--share-accent);
 }
 
