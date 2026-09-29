@@ -28,6 +28,9 @@
 7. All values from the API are rendered as text (no HTML injection).
 8. `/api/liveticker/` remains the live source; scores refresh at the server's
    60 s cache cadence.
+9. The table view renders standings for every league the configured teams play
+   in (skipping leagues without a standings endpoint); an explicit `league`
+   shows only that league.
 
 ## Out of scope
 

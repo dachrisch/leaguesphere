@@ -159,4 +159,10 @@ body.share-body {
   .share-table td:nth-child(8) {
     display: none;
   }
+
+  /* Let long team names wrap so the table fits without a horizontal scroll. */
+  .share-table th:nth-child(2),
+  .share-table td:nth-child(2) {
+    white-space: normal;
+  }
 }

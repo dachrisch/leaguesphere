@@ -34,7 +34,8 @@ All data is already public and anonymous:
 - Renders only the teams configured in `?t=` (repeatable).
 - `view=spielplan` (default): past results and upcoming fixtures, with the team
   name, opponent and score; past games collapse after `past` entries.
-- `view=table`: the watched team's league standings, with that team highlighted.
+- `view=table`: the standings of every league the configured teams play in,
+  with those teams highlighted (an explicit `league` pins it to one league).
 - `view=live`: play-by-play for in-progress watched games.
 - Posts its height to the embedding page so the iframe auto-sizes.
 - Always shows a "powered by LeagueSphere" attribution (not configurable).

@@ -43,7 +43,7 @@ export function Table({
     () => resolveCandidates(snapshot, config.league),
     [snapshot, config.league]
   );
-  const [table, setTable] = useState<LeagueTable | null>(null);
+  const [tables, setTables] = useState<LeagueTable[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -59,7 +59,10 @@ export function Table({
             seasonSlug = slugify(season.name);
           }
         }
-        let found: LeagueTable | null = null;
+        // Try every candidate: a club may appear in more than one league
+        // (e.g. league and cup). Cups without a standings endpoint 404 and are
+        // skipped; each league that returns a table gets its own view.
+        const found: LeagueTable[] = [];
         for (const candidate of candidates) {
           const league =
             leagues.find((entry) => entry.id === candidate.id) ??
@@ -68,25 +71,19 @@ export function Table({
             continue;
           }
           try {
-            found = await fetchLeagueTable(league.slug, seasonSlug);
-            break;
+            found.push(await fetchLeagueTable(league.slug, seasonSlug));
           } catch {
-            /* no table for this league (e.g. a cup) — try the next one */
+            /* no table for this league (e.g. a cup) — skip it */
           }
         }
         if (!active) {
           return;
         }
-        if (found !== null) {
-          setTable(found);
-          setError(null);
-        } else {
-          setTable(null);
-          setError('Tabelle nicht verfügbar.');
-        }
+        setTables(found);
+        setError(found.length > 0 ? null : 'Tabelle nicht verfügbar.');
       } catch {
         if (active) {
-          setTable(null);
+          setTables([]);
           setError('Tabelle nicht verfügbar.');
         }
       }
@@ -96,23 +93,29 @@ export function Table({
     };
   }, [candidates, seasonId]);
 
-  const heading =
-    table !== null
-      ? `${table.league.name} ${table.season.name}`
-      : candidates[0]?.name || 'Tabelle';
-
   return (
     <WidgetShell config={config}>
-      <div className="content-section">
-        <h2 className="share-team__name">{heading}</h2>
-        {error !== null ? (
+      {error !== null ? (
+        <div className="content-section">
           <ErrorBanner message={error} />
-        ) : table !== null ? (
-          <StandingsTable table={table} highlightTeamIds={config.teams} />
-        ) : (
+        </div>
+      ) : tables.length > 0 ? (
+        tables.map((table) => (
+          <div
+            className="content-section"
+            key={`${table.league.slug}-${table.season.slug}`}
+          >
+            <h2 className="share-team__name">
+              {table.league.name} {table.season.name}
+            </h2>
+            <StandingsTable table={table} highlightTeamIds={config.teams} />
+          </div>
+        ))
+      ) : (
+        <div className="content-section">
           <p className="share-loading">Lädt…</p>
-        )}
-      </div>
+        </div>
+      )}
     </WidgetShell>
   );
 }
