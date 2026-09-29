@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'share/generator.css' %}">
+{% endblock %}
+
+{% block content %}
+    <div id="share-generator-root"></div>
+    <noscript>Du benötigst JavaScript, um den Generator zu verwenden.</noscript>
+{% endblock %}
+
+{% block extra_js %}
+    <script type="module" src="{% static 'share/generator.js' %}"></script>
+{% endblock %}

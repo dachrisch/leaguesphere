@@ -13,6 +13,7 @@ from django.utils.decorators import method_decorator
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
+from rest_framework.filters import SearchFilter
 from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, CreateAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
@@ -29,6 +30,7 @@ from gamedays.api.serializers import (
     GameOfficialSerializer,
     SeasonSerializer,
     LeagueSerializer,
+    TeamSerializer,
 )
 from gamedays.models import (
     Gameday,
@@ -38,6 +40,7 @@ from gamedays.models import (
     League,
     Gameresult,
     GamedayDesignerState,
+    Team,
     TeamLog,
 )
 from gamedays.serializers.game_results import (
@@ -549,6 +552,17 @@ class LeagueViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = League.objects.all().order_by("name")
     serializer_class = LeagueSerializer
     pagination_class = None
+
+
+class TeamViewSet(viewsets.ReadOnlyModelViewSet):
+    """Public team directory: lets the embeddable widget resolve team ids to
+    names/logos and lets the generator search without scraping HTML."""
+
+    queryset = Team.objects.all().order_by("name")
+    serializer_class = TeamSerializer
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [SearchFilter]
+    search_fields = ["name", "description"]
 
 
 class GameResultsListView(APIView):

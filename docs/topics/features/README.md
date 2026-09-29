@@ -9,6 +9,7 @@ Current features:
 - [Gameday Live Updates](./liveticker/) — Real-time game progress updates
 - [Score Card Entry](./scorecard/) — Game result and score entry
 - [League Table](./league-table/) — League standings and team statistics
+- [Share Widget](./share-widget/) — Embeddable scores/fixtures/standings for club sites
 
 ## Overview
 
