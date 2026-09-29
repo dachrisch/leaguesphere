@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { fetchSnapshot, type SnapshotFilters } from '../lib/api';
+import { fetchSnapshot, retryDelayMs, type SnapshotFilters } from '../lib/api';
 import type { Snapshot } from '../lib/types';
 
 export interface SnapshotState {
@@ -11,7 +11,8 @@ export interface SnapshotState {
 
 export function useSnapshot(
   teamIds: number[],
-  filters: SnapshotFilters = {}
+  filters: SnapshotFilters = {},
+  ready = true
 ): SnapshotState {
   const key = teamIds.join(',');
   const season = filters.season ?? null;
@@ -24,26 +25,39 @@ export function useSnapshot(
 
   useEffect(() => {
     const ids = key === '' ? [] : key.split(',').map(Number);
-    if (ids.length === 0) {
+    if (ids.length === 0 || !ready) {
       return;
     }
     let active = true;
     const load = async () => {
-      try {
-        const snapshot = await fetchSnapshot(ids, {
-          season: season ?? undefined,
-          league: league ?? undefined,
-        });
-        if (active) {
-          setState({ snapshot, loading: false, error: null });
-        }
-      } catch {
-        if (active) {
-          setState({
-            snapshot: null,
-            loading: false,
-            error: 'Daten konnten nicht geladen werden.',
+      // One retry on 429 (honouring Retry-After), then surface the error.
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const snapshot = await fetchSnapshot(ids, {
+            season: season ?? undefined,
+            league: league ?? undefined,
           });
+          if (active) {
+            setState({ snapshot, loading: false, error: null });
+          }
+          return;
+        } catch (error) {
+          const delay = retryDelayMs(error);
+          if (delay !== null && attempt === 0) {
+            await new Promise((resolve) => window.setTimeout(resolve, delay));
+            if (!active) {
+              return;
+            }
+            continue;
+          }
+          if (active) {
+            setState({
+              snapshot: null,
+              loading: false,
+              error: 'Daten konnten nicht geladen werden.',
+            });
+          }
+          return;
         }
       }
     };
@@ -51,7 +65,7 @@ export function useSnapshot(
     return () => {
       active = false;
     };
-  }, [key, season, league]);
+  }, [key, season, league, ready]);
 
   return state;
 }

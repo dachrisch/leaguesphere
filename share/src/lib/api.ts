@@ -12,10 +12,51 @@ export type Fetcher = (
 
 const JSON_HEADERS: RequestInit = { headers: { Accept: 'application/json' } };
 
+/** Cap on how long we honour a `Retry-After` before retrying once. */
+export const RETRY_AFTER_CAP_SECONDS = 30;
+const RETRY_AFTER_DEFAULT_SECONDS = 1;
+
+export class HttpError extends Error {
+  readonly status: number;
+  readonly retryAfterSeconds: number | null;
+
+  constructor(status: number, retryAfterSeconds: number | null = null) {
+    super(`HTTP ${status}`);
+    this.name = 'HttpError';
+    this.status = status;
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
+function parseRetryAfter(response: Response): number | null {
+  const header = response.headers.get('Retry-After');
+  if (header === null) {
+    return null;
+  }
+  const seconds = Number.parseInt(header, 10);
+  return Number.isFinite(seconds) && seconds >= 0 ? seconds : null;
+}
+
+/**
+ * Delay before the single retry of a throttled (429) read, in ms — or null
+ * when the error is not retryable. Honours `Retry-After`, capped so a huge
+ * value cannot stall the widget forever.
+ */
+export function retryDelayMs(error: unknown): number | null {
+  if (!(error instanceof HttpError) || error.status !== 429) {
+    return null;
+  }
+  const seconds = Math.min(
+    error.retryAfterSeconds ?? RETRY_AFTER_DEFAULT_SECONDS,
+    RETRY_AFTER_CAP_SECONDS
+  );
+  return seconds * 1000;
+}
+
 async function getJson<T>(url: string, fetcher: Fetcher): Promise<T> {
   const response = await fetcher(url, JSON_HEADERS);
   if (!response.ok) {
-    throw new Error(`GET ${url} failed with ${response.status}`);
+    throw new HttpError(response.status, parseRetryAfter(response));
   }
   return (await response.json()) as T;
 }

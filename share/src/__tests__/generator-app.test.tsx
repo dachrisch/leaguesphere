@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from '../generator/App';
@@ -81,13 +81,15 @@ describe('generator App options', () => {
       target: { value: 'https://club.de/logo.png' },
     });
 
-    const iframe = await screen.findByTitle('Vorschau');
-    const params = new URLSearchParams(
-      (iframe.getAttribute('src') ?? '').split('?')[1]
-    );
-    expect(params.get('color')).toBe('1a73e8');
-    expect(params.get('logo')).toBe('https://club.de/logo.png');
-    expect(params.has('powered')).toBe(false);
+    await waitFor(() => {
+      const iframe = screen.getByTitle('Vorschau');
+      const params = new URLSearchParams(
+        (iframe.getAttribute('src') ?? '').split('?')[1]
+      );
+      expect(params.get('color')).toBe('1a73e8');
+      expect(params.get('logo')).toBe('https://club.de/logo.png');
+      expect(params.has('powered')).toBe(false);
+    });
   });
 
   it('offers the season and the leagues the team played in that season', async () => {
@@ -156,5 +158,33 @@ describe('generator App options', () => {
     expect(
       await screen.findByText(/Mehrere Ligen gefunden/)
     ).toBeInTheDocument();
+  });
+
+  it('debounces the preview url so a burst of changes reloads the iframe once', async () => {
+    stubApi({
+      teams: [{ id: 159, name: 'Renegades', description: 'Ren', logo: null }],
+    });
+    render(<App />);
+    await pickTeam(/Renegades \(Ren\)/);
+
+    const initialSrc =
+      (await screen.findByTitle('Vorschau')).getAttribute('src') ?? '';
+    vi.useFakeTimers();
+    try {
+      const color = screen.getByTestId('gen-color');
+      fireEvent.change(color, { target: { value: '#111111' } });
+      fireEvent.change(color, { target: { value: '#222222' } });
+      fireEvent.change(color, { target: { value: '#333333' } });
+      // Not reloaded yet — the preview url is debounced.
+      expect(screen.getByTitle('Vorschau').getAttribute('src')).toBe(initialSrc);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600);
+      });
+      const src = screen.getByTitle('Vorschau').getAttribute('src') ?? '';
+      expect(new URLSearchParams(src.split('?')[1]).get('color')).toBe('333333');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

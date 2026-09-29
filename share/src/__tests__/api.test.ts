@@ -7,7 +7,9 @@ import {
   fetchSeasons,
   fetchSnapshot,
   fetchTeams,
+  HttpError,
   leagueTableUrl,
+  retryDelayMs,
   snapshotUrl,
   teamsUrl,
 } from '../lib/api';
@@ -88,5 +90,18 @@ describe('fetchers', () => {
     expect(await fetchLeagues(leagueFetcher)).toEqual([
       { id: 8, name: 'DFFL2', slug: 'dffl2' },
     ]);
+  });
+});
+
+describe('retryDelayMs', () => {
+  it('honours Retry-After but caps it at 30 seconds', () => {
+    expect(retryDelayMs(new HttpError(429, 2))).toBe(2000);
+    expect(retryDelayMs(new HttpError(429, 45))).toBe(30000);
+  });
+
+  it('defaults a missing Retry-After and ignores non-429 errors', () => {
+    expect(retryDelayMs(new HttpError(429, null))).toBe(1000);
+    expect(retryDelayMs(new HttpError(500, null))).toBeNull();
+    expect(retryDelayMs(new Error('boom'))).toBeNull();
   });
 });

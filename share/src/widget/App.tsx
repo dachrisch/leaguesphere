@@ -13,15 +13,19 @@ import { Table } from '../views/Table';
 
 export function App() {
   const config = parseWidgetConfig(new URLSearchParams(window.location.search));
-  const seasonId = useResolvedSeason(config);
+  const { seasonId, ready } = useResolvedSeason(config);
   const {
     snapshot: rawSnapshot,
     loading,
     error,
-  } = useSnapshot(config.teams, {
-    season: seasonId ?? undefined,
-    league: config.league ?? undefined,
-  });
+  } = useSnapshot(
+    config.teams,
+    {
+      season: seasonId ?? undefined,
+      league: config.league ?? undefined,
+    },
+    ready
+  );
   const defaultSeason = config.season === null && config.year === null;
   const teamsKey = config.teams.join(',');
   const snapshot = useMemo(() => {

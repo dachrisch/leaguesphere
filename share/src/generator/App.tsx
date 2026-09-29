@@ -30,6 +30,7 @@ const DEFAULT_OPTIONS: GeneratorOptions = {
 };
 
 const MIN_SEARCH_LENGTH = 2;
+const PREVIEW_DEBOUNCE_MS = 600;
 
 function CopyField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
@@ -152,6 +153,16 @@ export function App() {
     ...options,
     teams: selected.map((team) => team.id),
   });
+  // Debounce the iframe src so dragging the colour picker / typing does not
+  // reload the preview on every keystroke.
+  const [previewUrl, setPreviewUrl] = useState(url);
+  useEffect(() => {
+    const handle = window.setTimeout(
+      () => setPreviewUrl(url),
+      PREVIEW_DEBOUNCE_MS
+    );
+    return () => window.clearTimeout(handle);
+  }, [url]);
   const [previewRef, previewHeight] = usePreviewHeight(selected.length > 0);
 
   return (
@@ -425,7 +436,7 @@ export function App() {
               ref={previewRef}
               className="share-gen__preview mb-3"
               title="Vorschau"
-              src={url}
+              src={previewUrl}
               style={{ height: `${previewHeight}px` }}
             />
             <CopyField

@@ -1,7 +1,54 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from '../widget/App';
+
+function json(body: unknown, status = 200, headers: Record<string, string> = {}) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...headers },
+  });
+}
+
+const FINAL_SNAPSHOT = {
+  generated_at: 'x',
+  etag: 'e',
+  gamedays: [
+    {
+      id: 1,
+      name: 'Spieltag',
+      season: 1,
+      season_display: '2026',
+      league: 1,
+      league_display: 'Liga',
+      date: '2026-05-09',
+      start: '10:00',
+      format: 'CUSTOM',
+      author: 1,
+      address: 'Nürnberg',
+      status: 'PUBLISHED',
+      has_designer_state: false,
+      games: [
+        {
+          id: 1,
+          gameday: 1,
+          scheduled: '10:00',
+          field: 1,
+          officials: null,
+          stage: '',
+          standing: '',
+          status: 'beendet',
+          results: [
+            { id: 1, team_id: 159, team_name: 'Renegades', fh: 1, sh: 0, pa: 0, isHome: true },
+            { id: 2, team_id: 999, team_name: 'Rival', fh: 0, sh: 0, pa: 0, isHome: false },
+          ],
+          halftime_score: { home: 0, away: 0 },
+          final_score: { home: 1, away: 0 },
+        },
+      ],
+    },
+  ],
+};
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -110,5 +157,80 @@ describe('widget App season resolution', () => {
     render(<App />);
     expect(await screen.findByText('NewRival')).toBeInTheDocument();
     expect(screen.queryByText('OldRival')).not.toBeInTheDocument();
+  });
+
+  it('does not fetch the snapshot before the year resolves', async () => {
+    let resolveSeasons: (value: Array<{ id: number; name: string }>) => void =
+      () => {};
+    const seasonsPending = new Promise<Array<{ id: number; name: string }>>(
+      (resolve) => {
+        resolveSeasons = resolve;
+      }
+    );
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/api/seasons/')) {
+        return json(await seasonsPending);
+      }
+      return json({ gamedays: [], generated_at: 'x', etag: 'e' });
+    });
+    vi.stubGlobal('fetch', fetcher);
+    window.history.pushState({}, '', '/share/widget/?t=159&year=2026');
+    render(<App />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const snapshotCalls = () =>
+      fetcher.mock.calls
+        .map((call) => String(call[0]))
+        .filter((url) => url.startsWith('/api/snapshot/'));
+    expect(snapshotCalls()).toHaveLength(0);
+
+    resolveSeasons([{ id: 6, name: '2026' }]);
+    await waitFor(() => expect(snapshotCalls().length).toBeGreaterThan(0));
+    expect(snapshotCalls()[0]).toContain('season=6');
+  });
+
+  it('retries a single 429 and then renders the snapshot', async () => {
+    let snapshotCalls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith('/api/seasons/')) {
+          return json([]);
+        }
+        snapshotCalls += 1;
+        if (snapshotCalls === 1) {
+          return json({}, 429, { 'Retry-After': '0' });
+        }
+        return json(FINAL_SNAPSHOT);
+      })
+    );
+    window.history.pushState({}, '', '/share/widget/?t=159');
+    render(<App />);
+    expect(await screen.findByText('Rival')).toBeInTheDocument();
+    expect(snapshotCalls).toBe(2);
+  });
+
+  it('shows the error after a second 429 instead of retrying forever', async () => {
+    let snapshotCalls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith('/api/seasons/')) {
+          return json([]);
+        }
+        snapshotCalls += 1;
+        return json({}, 429, { 'Retry-After': '0' });
+      })
+    );
+    window.history.pushState({}, '', '/share/widget/?t=159');
+    render(<App />);
+    expect(
+      await screen.findByText('Daten konnten nicht geladen werden.')
+    ).toBeInTheDocument();
+    expect(snapshotCalls).toBe(2);
   });
 });
