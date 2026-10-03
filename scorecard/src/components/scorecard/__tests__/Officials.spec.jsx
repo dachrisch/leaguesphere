@@ -189,7 +189,17 @@ describe('Officials component', () => {
     it('should be red when no official is identified', () => {
       setup(true);
       expect(summary()).toHaveTextContent('Offizielle erkannt: 0/4');
+      expect(summary()).toHaveTextContent('Davon mit gültiger Lizenz: 0/0');
       expect(summary()).toHaveClass('alert-danger');
+    });
+    it('should count identified officials with a valid license', async () => {
+      const user = userEvent.setup();
+      setup(true);
+      await pick(user, 'Referee (Vorname Nachname)', /first_name first_last/);
+      await pick(user, 'Down Judge (Vorname Nachname)', /second_name second_last/);
+      await pick(user, 'Field Judge (Vorname Nachname)', /third_name third_last/);
+      expect(summary()).toHaveTextContent('Offizielle erkannt: 3/4');
+      expect(summary()).toHaveTextContent('Davon mit gültiger Lizenz: 1/3');
     });
     it('should be yellow when some officials are identified', async () => {
       const user = userEvent.setup();
@@ -223,6 +233,7 @@ describe('Officials component', () => {
     it('should count officials restored from a saved setup', () => {
       setup(false);
       expect(summary()).toHaveTextContent('Offizielle erkannt: 1/4');
+      expect(summary()).toHaveTextContent('Davon mit gültiger Lizenz: 1/1');
       expect(summary()).toHaveClass('alert-warning');
     });
   });

@@ -28,15 +28,22 @@ export const toItem = (entry) => {
     return item;
   }
   if (!entry.license) {
-    return {...item, licenseLabel: 'Keine Lizenz', licenseExpired: false};
+    return {
+      ...item, licenseLabel: 'Keine Lizenz', licenseExpired: false,
+      licenseValid: false,
+    };
   }
   if (entry.is_valid) {
-    return {...item, licenseLabel: entry.license, licenseExpired: false};
+    return {
+      ...item, licenseLabel: entry.license, licenseExpired: false,
+      licenseValid: true,
+    };
   }
   return {
     ...item,
     licenseLabel: `${entry.license} – abgelaufen seit ${formatDate(entry.valid_until)}`,
     licenseExpired: true,
+    licenseValid: false,
   };
 };
 
@@ -188,8 +195,13 @@ export const Officials = (props) => {
   if (props.teamOfficialsError) {
     return <div className="container mt-3"><div className="alert alert-danger">Offizielle konnten nicht geladen werden.</div></div>;
   }
-  const identifiedCount = [scJudge, referee, downJudge, fieldJudge]
-      .filter((official) => official.id !== null).length;
+  const identified = [scJudge, referee, downJudge, fieldJudge]
+      .filter((official) => official.id !== null);
+  const identifiedCount = identified.length;
+  // officials restored from a saved setup carry no license info themselves
+  const hasValidLicense = (official) => official.licenseValid ??
+    props.teamOfficials.find((entry) => entry.id === official.id)?.is_valid;
+  const validLicenseCount = identified.filter(hasValidLicense).length;
   const summaryVariant = identifiedCount === 4 ?
     'success' : identifiedCount === 0 ? 'danger' : 'warning';
   const resetOfficialsSearch = () => {
@@ -324,6 +336,8 @@ export const Officials = (props) => {
           className={`alert alert-${summaryVariant} mt-3 mb-0`}
           data-testid="officialsSummary">
           Offizielle erkannt: {identifiedCount}/4
+          <br />
+          Davon mit gültiger Lizenz: {validLicenseCount}/{identifiedCount}
         </div>
         <div className="d-grid mt-3">
           <button className="btn btn-primary" type="submit">

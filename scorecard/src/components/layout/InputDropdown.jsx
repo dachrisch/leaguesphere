@@ -59,7 +59,9 @@ const InputDropdown = (props) => {
   const handleSearchSelection = (itemText, id, license = null) => {
     setSelectedLicense(license);
     setSearchInput(itemText);
-    setSelectedIndex({text: itemText, id: id});
+    setSelectedIndex(license ?
+      {text: itemText, id: id, licenseValid: license.valid} :
+      {text: itemText, id: id});
     setOfficialFound(true);
     setDisplaySuggestionBox(false);
     setDisplaySearchInput(false);
@@ -172,7 +174,8 @@ const InputDropdown = (props) => {
                   className='list-group-item bg-light'
                   onMouseDown={() => {
                     handleSearchSelection(item.text, item.id, item.licenseLabel ?
-                      {label: item.licenseLabel, expired: item.licenseExpired} :
+                      {label: item.licenseLabel, expired: item.licenseExpired,
+                        valid: item.licenseValid} :
                       null);
                   }}
                 >
