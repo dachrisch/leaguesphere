@@ -17,7 +17,7 @@ export const getTeamOfficials = (team) => {
 
 export const searchForOfficials = (team, name) => {
   return apiGet(
-      `/api/officials/search/exclude/team/${team}/list?name=${name}`,
+      `/api/officials/search/exclude/team/${team}/list?name=${encodeURIComponent(name)}`,
       OFFICIALS_SEARCH_FOR_OFFICIALS,
   );
 };

@@ -1,5 +1,6 @@
 from http import HTTPStatus
 
+from django.db.models import Q
 from rest_framework import permissions
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.request import Request
@@ -43,10 +44,15 @@ class OfficialsSearchName(APIView):
             )
         if len(name[0]) < 3:
             raise ValidationError("Vorname muss mindestens 3 Zeichen haben")
-        officials = (
-            Official.objects.filter(
-                first_name__istartswith=name[0], last_name__istartswith=name[-1]
+        # first/last name may each consist of several words, so try every split
+        name_split_filter = Q()
+        for split_at in range(1, len(name)):
+            name_split_filter |= Q(
+                first_name__istartswith=" ".join(name[:split_at]),
+                last_name__istartswith=" ".join(name[split_at:]),
             )
+        officials = (
+            Official.objects.filter(name_split_filter)
             .exclude(team=team_id)
             .order_by("first_name", "last_name")
             .values(*OfficialTeamListScorecardSerializer.ALL_FIELD_VALUES)

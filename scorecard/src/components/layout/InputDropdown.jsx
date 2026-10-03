@@ -1,7 +1,21 @@
 import React, {useState, useEffect} from 'react';
 import PropTypes from 'prop-types';
-import {FaSearch, FaTrashAlt} from 'react-icons/fa';
+import {FaCheck, FaQuestion, FaSearch, FaTrashAlt} from 'react-icons/fa';
 import FloatingInput from './FloatingInput';
+
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const StatusBadge = ({found}) => (
+  <span
+    data-testid={found ? 'officialFound' : 'officialNotFound'}
+    className={`d-inline-flex align-items-center justify-content-center
+      rounded ${found ? 'bg-success text-white' : 'bg-warning text-dark'}`}
+    style={{width: '1.5rem', height: '1.5rem'}}>
+    {found ? <FaCheck /> : <FaQuestion />}
+  </span>
+);
+
+StatusBadge.propTypes = {found: PropTypes.bool.isRequired};
 
 const InputDropdown = (props) => {
   const {
@@ -20,17 +34,20 @@ const InputDropdown = (props) => {
   const [displaySearchInput, setDisplaySearchInput] = useState(true);
   const [autofocus, setAutofocus] = useState(focus);
   const [displaySearchButton, setDisplaySearchButton] = useState(true);
+  const [officialFound, setOfficialFound] = useState(false);
   useEffect(() => {
     if (initValues && Object.keys(initValues).length !== 0) {
       if (initValues.text && !initValues.id) {
         setSearchInput(initValues.text);
         setSelectedIndex({text: initValues.text, id: null});
+        setOfficialFound(false);
       }
       if (initValues.text && initValues.id) {
         setSearchInput(initValues.text);
         setSelectedIndex({text: initValues.text, id: initValues.id});
         setDisplaySuggestionBox(false);
         setDisplaySearchInput(false);
+        setOfficialFound(true);
       }
     }
   }, [initValues]);
@@ -41,6 +58,7 @@ const InputDropdown = (props) => {
   const handleSearchSelection = (itemText, id) => {
     setSearchInput(itemText);
     setSelectedIndex({text: itemText, id: id});
+    setOfficialFound(true);
     setDisplaySuggestionBox(false);
     setDisplaySearchInput(false);
     onSelected();
@@ -64,17 +82,21 @@ const InputDropdown = (props) => {
     setDisplaySearchInput(true);
     setDisplaySuggestionBox(true);
     setSelectedIndex({text: '', id: null});
+    setOfficialFound(false);
     setSearchInput('');
     setAutofocus(true);
   };
   const onChange = (value) => {
     setSearchInput(value);
     setSelectedIndex({text: value, id: null});
+    setOfficialFound(false);
   };
   const checkName = (item, input) => {
     const pattern = input
+        .trim()
+        .replace(/\s+/g, ' ')
         .split('')
-        .map((character) => `${character}.*`)
+        .map((character) => `${escapeRegExp(character)}.*`)
         .join('');
     const regex = new RegExp(pattern, 'gi');
     return item.match(regex);
@@ -96,6 +118,7 @@ const InputDropdown = (props) => {
                 value={searchInput || ''}
                 required={false}
                 readOnly={true}
+                startAdornment={<StatusBadge found={officialFound} />}
                 onChange={()=>{}} />
             </div>
             <div className='col-3 d-grid'>
@@ -120,6 +143,7 @@ const InputDropdown = (props) => {
               onChange={onChange}
               text={placeholderText}
               required={false}
+              startAdornment={<StatusBadge found={officialFound} />}
               value={searchInput} />
             <ul
               className='list-group'

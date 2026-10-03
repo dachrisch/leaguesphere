@@ -1,5 +1,7 @@
 from http import HTTPStatus
 
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django_webtest import WebTest
 from rest_framework.reverse import reverse
 
@@ -8,6 +10,7 @@ from gamedays.tests.setup_factories.db_setup import DBSetup
 from officials.api.urls import API_OFFICIALS_FOR_TEAM, API_OFFICIALS_SEARCH_BY_NAME
 from officials.models import Official
 from officials.tests.setup_factories.db_setup_officials import DbSetupOfficials
+from officials.tests.setup_factories.factories_officials import OfficialFactory
 
 
 class TestOfficialsTeamListAPIView(WebTest):
@@ -92,6 +95,54 @@ class TestOfficialsSearchName(WebTest):
         )
         assert response.status_code == HTTPStatus.OK
         assert len(response.json) == 2
+
+    def _create_official(self, first_name, last_name, external_id):
+        if Official.objects.filter(first_name="Franzi").exists():
+            team = Official.objects.get(first_name="Franzi").team
+        else:
+            team = DbSetupOfficials().create_officials_and_team()
+        return OfficialFactory(
+            first_name=first_name,
+            last_name=last_name,
+            team=team,
+            external_id=external_id,
+        )
+
+    def _search(self, name):
+        return self.app.get(
+            reverse(API_OFFICIALS_SEARCH_BY_NAME, kwargs={"pk": 0}),
+            f"name={name}",
+            expect_errors=True,
+            headers=DBSetup().get_token_header(),
+        )
+
+    def test_search_full_name_with_multi_word_last_name(self):
+        official = self._create_official("Hans", "van der Berg", 101)
+        response = self._search("Hans%20van%20der%20Berg")
+        assert response.status_code == HTTPStatus.OK
+        assert [o["id"] for o in response.json] == [official.pk]
+
+    def test_search_full_name_with_multi_word_first_name(self):
+        official = self._create_official("Anna Maria", "Mueller", 102)
+        response = self._search("Anna%20Maria%20Mueller")
+        assert response.status_code == HTTPStatus.OK
+        assert [o["id"] for o in response.json] == [official.pk]
+
+    def test_search_ignores_surrounding_and_repeated_whitespace(self):
+        official = self._create_official("Hans", "Berg", 103)
+        response = self._search("%20Hans%20%20Berg%20")
+        assert response.status_code == HTTPStatus.OK
+        assert [o["id"] for o in response.json] == [official.pk]
+
+    def test_search_query_count_does_not_depend_on_name_parts(self):
+        self._create_official("Hans", "Berg", 104)
+        self._create_official("Hans", "van der Berg", 105)
+        with CaptureQueriesContext(connection) as short:
+            assert self._search("Hans%20Berg").status_code == HTTPStatus.OK
+        with CaptureQueriesContext(connection) as long:
+            response = self._search("Hans%20van%20der%20Berg")
+        assert response.status_code == HTTPStatus.OK
+        assert len(long) == len(short)
 
     def test_search_no_official_found(self):
         DbSetupOfficials().create_officials_and_team()

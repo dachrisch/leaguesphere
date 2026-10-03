@@ -80,4 +80,59 @@ describe('InputDropdown component', () => {
         toEqual({text: 'third_name third_last_name', id: 3});
     expect(updateMock.mock.calls).toHaveLength(1);
   });
+  it('should still list the match when input has a trailing space',
+      async () => {
+        const user = userEvent.setup();
+        setup();
+        const input = screen.getByPlaceholderText('inputDropdownPlaceholderText');
+        await user.type(input, 'second_name second_last_name  ');
+        expect(screen.getByText('second_name second_last_name'))
+            .toBeInTheDocument();
+        expect(screen.queryByText('first_name first_last_name'))
+            .not.toBeInTheDocument();
+      });
+  it('should not crash on regex special characters in input', async () => {
+    const user = userEvent.setup();
+    setup();
+    const input = screen.getByPlaceholderText('inputDropdownPlaceholderText');
+    await user.type(input, '(+?');
+    expect(screen.queryByText(/first_name/)).not.toBeInTheDocument();
+  });
+  it('should show question badge when nothing is selected', () => {
+    setup();
+    expect(screen.getByTestId('officialNotFound')).toBeInTheDocument();
+    expect(screen.queryByTestId('officialFound')).not.toBeInTheDocument();
+  });
+  it('should show check badge after selecting an item', async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.click(screen.getByText(/third_name/i));
+    expect(screen.getByTestId('officialFound')).toBeInTheDocument();
+    expect(screen.queryByTestId('officialNotFound')).not.toBeInTheDocument();
+  });
+  it('should show check badge for init values with id', () => {
+    setup({text: 'some text', id: 1});
+    expect(screen.getByTestId('officialFound')).toBeInTheDocument();
+  });
+  it('should show question badge for init values without id', () => {
+    setup({text: 'some text', id: null});
+    expect(screen.getByTestId('officialNotFound')).toBeInTheDocument();
+  });
+  it('should show question badge again after deleting selection',
+      async () => {
+        const user = userEvent.setup();
+        setup({text: 'some text', id: 1});
+        await user.click(screen.getByRole('button'));
+        expect(screen.getByTestId('officialNotFound')).toBeInTheDocument();
+      });
+  it('should show question badge again when typing after selection',
+      async () => {
+        const user = userEvent.setup();
+        setup();
+        await user.click(screen.getByText(/third_name/i));
+        await user.click(screen.getByRole('button'));
+        await user.type(
+            screen.getByPlaceholderText('inputDropdownPlaceholderText'), 'x');
+        expect(screen.getByTestId('officialNotFound')).toBeInTheDocument();
+      });
 });
