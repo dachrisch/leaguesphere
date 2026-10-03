@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Modal, Button, ListGroup } from 'react-bootstrap';
 import { GlobalTeam } from '../../../types/flowchart';
 import { useTypedTranslation } from '../../../i18n/useTypedTranslation';
+import { ICONS } from '../../../utils/iconConstants';
+import { shuffle } from '../../../utils/shuffle';
 import { computeSwissRoundTimes } from '../../../utils/swissSchedule';
 
 export interface SwissSetupConfig {
@@ -120,7 +122,21 @@ const SwissSetupStep: React.FC<SwissSetupStepProps> = ({
       </Modal.Header>
       <Modal.Body>
         <p className="text-muted">{t('modal:swissSetup.subtitle')}</p>
-        <h6>{t('modal:swissSetup.seedTitle')}</h6>
+        <div className="d-flex align-items-center justify-content-between">
+          <h6 className="mb-0">{t('modal:swissSetup.seedTitle')}</h6>
+          <Button
+            size="sm"
+            variant="outline-secondary"
+            onClick={() => setSeedIds((prev) => shuffle(prev))}
+            disabled={disabled || seededTeams.length < 2}
+            data-testid="swiss-seed-shuffle"
+            aria-label={t('modal:swissSetup.shuffle')}
+            title={t('modal:swissSetup.shuffle')}
+          >
+            <i className={`bi ${ICONS.SHUFFLE} me-1`} />
+            {t('modal:swissSetup.shuffle')}
+          </Button>
+        </div>
         <p className="text-muted small">{t('modal:swissSetup.seedHint')}</p>
         <ListGroup as="ul" data-testid="swiss-seed-list">
           {seededTeams.map((team, index) => (

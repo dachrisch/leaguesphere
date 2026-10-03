@@ -47,6 +47,7 @@
     "subtitle": "Reihen Sie die Teams einmalig nach Setzposition und legen Sie Runden, Felder und Spieldauer fest. Runde 1 wird von hier aus automatisch generiert.",
     "seedTitle": "Teams setzen",
     "seedHint": "Die Setzreihenfolge gilt für das gesamte Turnier — nur die Paarungen ändern sich pro Runde.",
+    "shuffle": "Setzliste losen",
     "setupTitle": "Turnier-Setup",
     "rounds": "Anzahl Runden",
     "fields": "Anzahl Felder",
