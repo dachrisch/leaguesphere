@@ -49,6 +49,9 @@ class OfficialTeamListScorecardSerializer(Serializer):
     last_name = CharField()
     first_name = CharField()
     id = IntegerField()
+    license = CharField(allow_null=True)
+    valid_until = DateField(allow_null=True)
+    is_valid = BooleanField()
 
 
 class OfficialSerializer(ModelSerializer):

@@ -9,6 +9,15 @@ from rest_framework.views import APIView
 
 from officials.api.serializers import OfficialTeamListScorecardSerializer
 from officials.models import Official
+from officials.service.game_official_licenses import resolve_current_licenses
+
+
+def _with_licenses(officials) -> list:
+    """Evaluates the officials queryset and adds each one's current license
+    (see resolve_current_licenses) with a single extra query."""
+    rows = list(officials)
+    licenses = resolve_current_licenses(row["id"] for row in rows)
+    return [{**row, **licenses[row["id"]]} for row in rows]
 
 
 class OfficialsTeamListAPIView(APIView):
@@ -22,7 +31,9 @@ class OfficialsTeamListAPIView(APIView):
             .order_by("first_name", "last_name")
             .values(*OfficialTeamListScorecardSerializer.ALL_FIELD_VALUES)
         )
-        serializer = OfficialTeamListScorecardSerializer(instance=officials, many=True)
+        serializer = OfficialTeamListScorecardSerializer(
+            instance=_with_licenses(officials), many=True
+        )
         return Response(serializer.data, status=HTTPStatus.OK)
 
 
@@ -57,7 +68,8 @@ class OfficialsSearchName(APIView):
             .order_by("first_name", "last_name")
             .values(*OfficialTeamListScorecardSerializer.ALL_FIELD_VALUES)
         )
-        if not officials.exists():
+        officials = _with_licenses(officials)
+        if not officials:
             raise NotFound(
                 f'Es wurden keine Offiziellen gefunden für: {" ".join(name)}'
             )

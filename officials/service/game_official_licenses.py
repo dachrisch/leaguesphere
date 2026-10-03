@@ -11,10 +11,12 @@ matchreport's referee table) can't independently drift on what counts as
 """
 
 from collections import defaultdict
+from datetime import date, timedelta
 from typing import Dict, Iterable, Optional
 
 from gamedays.models import Gameinfo, GameOfficial
 from officials.service.official_service import LICENSE_LEVELS, bulk_history_by_official
+from officials.service.license_validity import is_valid_on
 from officials.service.officials_compliance_service import best_valid_rank
 
 POSITION_REFEREE = "Referee"
@@ -81,3 +83,35 @@ def resolve_game_official_licenses(
         )
 
     return result
+
+
+NO_LICENSE = {"license": None, "valid_until": None, "is_valid": False}
+
+
+def resolve_current_licenses(
+    official_ids: Iterable[int], on_date: Optional[date] = None
+) -> Dict[int, dict]:
+    """For each official id, resolves the license level to display on
+    `on_date` (default today) as {"license", "valid_until", "is_valid"}.
+    The best currently valid level wins; if none is valid the most recently
+    started one is reported with is_valid=False, so callers can show when it
+    expired. valid_until is created_at + 365 days (see license_validity).
+    Officials without any recognized F1-F4 history map to NO_LICENSE. Bulk -
+    one query regardless of how many ids are passed in."""
+    on_date = on_date or date.today()
+    result = {}
+    for official_id, history in bulk_history_by_official(list(official_ids)).items():
+        rank = best_valid_rank(history, on_date)
+        if rank is not None:
+            # latest start among entries of the winning rank that are valid
+            created_at = max(
+                c for c, r in history if r == rank and is_valid_on(c, on_date)
+            )
+        else:
+            created_at, rank = max(history, key=lambda entry: entry[0])
+        result[official_id] = {
+            "license": LICENSE_LEVELS[rank],
+            "valid_until": created_at + timedelta(days=365),
+            "is_valid": is_valid_on(created_at, on_date),
+        }
+    return defaultdict(lambda: dict(NO_LICENSE), result)

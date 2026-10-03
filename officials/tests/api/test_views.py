@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from http import HTTPStatus
 
 from django.db import connection
@@ -10,10 +11,21 @@ from gamedays.tests.setup_factories.db_setup import DBSetup
 from officials.api.urls import API_OFFICIALS_FOR_TEAM, API_OFFICIALS_SEARCH_BY_NAME
 from officials.models import Official
 from officials.tests.setup_factories.db_setup_officials import DbSetupOfficials
-from officials.tests.setup_factories.factories_officials import OfficialFactory
+from officials.tests.setup_factories.factories_officials import (
+    OfficialFactory,
+    OfficialLicenseFactory,
+    OfficialLicenseHistoryFactory,
+)
+
+
+def _valid_until(official: Official) -> str:
+    latest = official.officiallicensehistory_set.latest("created_at").created_at
+    return (latest + timedelta(days=365)).isoformat()
 
 
 class TestOfficialsTeamListAPIView(WebTest):
+    _valid_until = staticmethod(_valid_until)
+
     def test_get_officials_for_team(self):
         team: Team = DbSetupOfficials().create_officials_and_team()
         official: Official = Official.objects.first()
@@ -29,7 +41,27 @@ class TestOfficialsTeamListAPIView(WebTest):
             "id": official.pk,
             "first_name": "Franzi",
             "last_name": "Fedora",
+            "license": "F1",
+            "is_valid": True,
+            "valid_until": self._valid_until(official),
         }
+
+    def test_license_lookup_does_not_add_queries_per_official(self):
+        team = DbSetupOfficials().create_officials_and_team()
+        url = reverse(API_OFFICIALS_FOR_TEAM, kwargs={"pk": team.pk})
+        headers = DBSetup().get_token_header()
+        with CaptureQueriesContext(connection) as two_officials:
+            self.app.get(url, headers=headers)
+        for i in range(5):
+            OfficialFactory(
+                first_name=f"Extra{i}",
+                last_name="Official",
+                team=team,
+                external_id=500 + i,
+            )
+        with CaptureQueriesContext(connection) as seven_officials:
+            self.app.get(url, headers=headers)
+        assert len(seven_officials) == len(two_officials)
 
     def test_get_empty_officials_for_non_existent_team(self):
         DbSetupOfficials().create_officials_and_team()
@@ -43,6 +75,8 @@ class TestOfficialsTeamListAPIView(WebTest):
 
 
 class TestOfficialsSearchName(WebTest):
+    _valid_until = staticmethod(_valid_until)
+
     def test_search_for_empty_name(self):
         DBSetup().create_new_user()
         response = self.app.get(
@@ -77,6 +111,9 @@ class TestOfficialsSearchName(WebTest):
             "id": official.pk,
             "first_name": "Franzi",
             "last_name": "Fedora",
+            "license": "F1",
+            "is_valid": True,
+            "valid_until": self._valid_until(official),
         }
 
     def test_search_finds_multiple_matches(self):
@@ -143,6 +180,29 @@ class TestOfficialsSearchName(WebTest):
             response = self._search("Hans%20van%20der%20Berg")
         assert response.status_code == HTTPStatus.OK
         assert len(long) == len(short)
+
+    def test_search_includes_expired_license_with_expiry_date(self):
+        official = self._create_official("Hans", "Berg", 106)
+        created_at = date.today() - timedelta(days=500)
+        OfficialLicenseHistoryFactory(
+            official=official,
+            license=OfficialLicenseFactory(name="F3"),
+            created_at=created_at,
+        )
+        response = self._search("Hans%20Berg")
+        assert response.json[0]["license"] == "F3"
+        assert response.json[0]["is_valid"] is False
+        assert (
+            response.json[0]["valid_until"]
+            == (created_at + timedelta(days=365)).isoformat()
+        )
+
+    def test_search_official_without_license(self):
+        self._create_official("Hans", "Berg", 107)
+        response = self._search("Hans%20Berg")
+        assert response.json[0]["license"] is None
+        assert response.json[0]["valid_until"] is None
+        assert response.json[0]["is_valid"] is False
 
     def test_search_no_official_found(self):
         DbSetupOfficials().create_officials_and_team()
