@@ -13,6 +13,7 @@ from gamedays.models import (
     Team,
 )
 from gamedays.service.canvas_progression_service import CanvasBracketProgressionService
+from gamedays.service.canvas_publish_service import CanvasPublishService
 
 
 def _stage_node(node_id, field_id, name, category="preliminary"):
@@ -295,3 +296,117 @@ class TestCanvasBracketProgressionServiceEdgeCases:
 
         final_home = Gameresult.objects.get(gameinfo=final, isHome=True)
         assert final_home.team == placeholder  # untouched, no IndexError
+
+
+@pytest.mark.django_db
+class TestProgressionResolvesViaEdges:
+    """Regression for #2038: two semi-finals that share a standing, wired to a
+    later game via canvas edges, must still propagate their winners. Before the
+    fix the backend matched references by standing only (`matchName`),
+    so `HF1 1.-4.` never matched a game whose standing was `1.-4.`."""
+
+    def _designer_state(self):
+        return {
+            "nodes": [
+                {
+                    "id": "field-1",
+                    "type": "field",
+                    "parentId": None,
+                    "data": {"type": "field", "name": "Feld 1", "order": 0},
+                },
+                _stage_node("stage-semi", "field-1", "Halbfinale", "final"),
+                _stage_node("stage-final", "field-1", "Finale", "final"),
+                _game_node(
+                    "hf1",
+                    "stage-semi",
+                    "Halbfinale",
+                    "1.-4.",
+                    homeTeamId="t-a",
+                    awayTeamId="t-b",
+                ),
+                _game_node(
+                    "hf2",
+                    "stage-semi",
+                    "Halbfinale",
+                    "1.-4.",
+                    homeTeamId="t-c",
+                    awayTeamId="t-d",
+                ),
+                _game_node(
+                    "final",
+                    "stage-final",
+                    "Finale",
+                    "1.-2.",
+                    homeTeamDynamic={"type": "winner", "matchName": "HF1 1.-4."},
+                    awayTeamDynamic={"type": "winner", "matchName": "HF2 1.-4."},
+                ),
+            ],
+            "edges": [
+                {
+                    "id": "e1",
+                    "type": "gameToGame",
+                    "source": "hf1",
+                    "sourceHandle": "winner",
+                    "target": "final",
+                    "targetHandle": "home",
+                },
+                {
+                    "id": "e2",
+                    "type": "gameToGame",
+                    "source": "hf2",
+                    "sourceHandle": "winner",
+                    "target": "final",
+                    "targetHandle": "away",
+                },
+            ],
+            "globalTeams": [
+                {"id": "t-a", "label": "Team A"},
+                {"id": "t-b", "label": "Team B"},
+                {"id": "t-c", "label": "Team C"},
+                {"id": "t-d", "label": "Team D"},
+            ],
+        }
+
+    def _published_gameday(self):
+        user = User.objects.create_user(username="edge2038", password="pw")
+        season = Season.objects.create(name="edge2038")
+        league = League.objects.create(name="Edge2038")
+        gameday = Gameday.objects.create(
+            name="Edge2038",
+            season=season,
+            league=league,
+            date=date(2026, 5, 1),
+            start="10:00",
+            author=user,
+        )
+        GamedayDesignerState.objects.create(
+            gameday=gameday, state_data=self._designer_state()
+        )
+        CanvasPublishService(gameday).apply()
+        return gameday
+
+    def test_winner_propagates_when_semis_share_standing(self):
+        gameday = self._published_gameday()
+        hf1 = Gameinfo.objects.get(gameday=gameday, designer_node_id="hf1")
+        final = Gameinfo.objects.get(gameday=gameday, designer_node_id="final")
+
+        Gameresult.objects.filter(gameinfo=hf1, isHome=True).update(fh=3, sh=0)
+        Gameresult.objects.filter(gameinfo=hf1, isHome=False).update(fh=0, sh=0)
+        Gameinfo.objects.filter(pk=hf1.pk).update(status=Gameinfo.STATUS_COMPLETED)
+
+        CanvasBracketProgressionService(hf1).apply()
+
+        assert Gameresult.objects.get(gameinfo=final, isHome=True).team.name == "Team A"
+
+    def test_loser_and_away_winner_propagate(self):
+        gameday = self._published_gameday()
+        hf2 = Gameinfo.objects.get(gameday=gameday, designer_node_id="hf2")
+        final = Gameinfo.objects.get(gameday=gameday, designer_node_id="final")
+
+        Gameresult.objects.filter(gameinfo=hf2, isHome=True).update(fh=0, sh=0)
+        Gameresult.objects.filter(gameinfo=hf2, isHome=False).update(fh=5, sh=0)
+        Gameinfo.objects.filter(pk=hf2.pk).update(status=Gameinfo.STATUS_COMPLETED)
+
+        CanvasBracketProgressionService(hf2).apply()
+
+        assert Gameresult.objects.get(gameinfo=final, isHome=False).team.name == "Team D"

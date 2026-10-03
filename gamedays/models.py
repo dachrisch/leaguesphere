@@ -202,6 +202,7 @@ class Gameinfo(BumpUpdatedAtOnSaveMixin, models.Model):
     gameFinished = models.TimeField(null=True, blank=True)
     stage = models.CharField(max_length=100)
     standing = models.CharField(max_length=100)
+    designer_node_id = models.CharField(max_length=100, blank=True, default="")
     stage_category = models.CharField(
         max_length=20, choices=StageCategory.choices, blank=True, default=""
     )

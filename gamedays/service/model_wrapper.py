@@ -76,10 +76,17 @@ class GamedayModelWrapper:
         if not gameinfo.exists():
             raise Gameinfo.DoesNotExist
         self.gameday = gameinfo.first().gameday
+        gameinfo_fields = [
+            f.name
+            for f in Gameinfo._meta.local_fields
+            # Internal canvas link used only by the progression resolver; it is
+            # not part of the schedule table and must not leak into its snapshots.
+            if f.name != "designer_node_id"
+        ]
         self._gameinfo: DataFrame = pd.DataFrame(gameinfo.values(
                 # select the fields which should be in the dataframe
                 *(
-                    [f.name for f in Gameinfo._meta.local_fields]
+                    gameinfo_fields
                     + ["officials__name"]
                     + additional_columns
                 )

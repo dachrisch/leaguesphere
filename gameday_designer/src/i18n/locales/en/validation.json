@@ -33,6 +33,8 @@
     "duplicate_team_label_other": "Duplicate team name \"{{team}}\" — one entry is assigned to a game, but {{count}} entries with the same name are not",
     "unused_field": "Field \"{{field}}\" has no games assigned",
     "broken_progression": "Game \"{{game}}\" references non-existent standing \"{{target}}\" for {{slot}}",
+    "ambiguous_progression": "Game \"{{game}}\" references \"{{target}}\" for {{slot}}, but {{count}} games share that standing",
+    "self_progression": "Game \"{{game}}\" references its own winner/loser for {{slot}}",
     "dangling_reference": "\"{{game}}\" references \"{{target}}\" for {{slot}}, but nothing in the schedule produces it",
     "unreachable_placeholder": "\"{{game}}\" is never referenced by any later game or official assignment",
     "unreachable_placeholder_stage": "Ranking stage \"{{stage}}\" computes placements that no game ever references",

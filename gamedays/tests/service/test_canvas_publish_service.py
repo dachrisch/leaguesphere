@@ -77,3 +77,16 @@ class TestCanvasPublishServiceStageCategory(TestCase):
 
         gi = Gameinfo.objects.get(gameday=gameday)
         assert gi.stage_category == StageCategory.PRELIMINARY
+
+
+class TestCanvasPublishServiceDesignerNodeId(TestCase):
+    def test_apply_persists_designer_node_id_from_game_node(self):
+        gameday = DBSetup().create_empty_gameday()
+        GamedayDesignerState.objects.create(
+            gameday=gameday, state_data=_state_data_with_one_game()
+        )
+
+        CanvasPublishService(gameday).apply()
+
+        gi = Gameinfo.objects.get(gameday=gameday)
+        assert gi.designer_node_id == "game-1"
