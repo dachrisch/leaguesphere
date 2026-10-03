@@ -1246,48 +1246,131 @@ function checkUnusedFields(nodes: FlowNode[]): FlowValidationWarning[] {
 }
 
 /**
- * Check for broken dynamic progressions (invalid matchName references).
+ * Check that every progression reference can actually resolve (#2038).
+ *
+ * A home/away `winner`/`loser` ref is authoritative via its maintained
+ * `gameToGame` edge (source game -> target game + slot) — that stays correct
+ * even when several games share a `standing`. Only refs without an edge fall
+ * back to `matchName` matching, and then the name must resolve to exactly one
+ * game. Rank/groupRank refs must point at an existing stage.
+ *
+ * These are BLOCKING errors (unlike the old non-blocking warning): publishing a
+ * gameday whose progression cannot resolve would otherwise silently break on
+ * game day. Mirrors the backend `CanvasProgressionValidator`.
  */
-function checkBrokenDynamicProgressions(nodes: FlowNode[]): FlowValidationWarning[] {
-  const warnings: FlowValidationWarning[] = [];
+function checkProgressionReferences(
+  nodes: FlowNode[],
+  edges: FlowEdge[]
+): FlowValidationError[] {
+  const errors: FlowValidationError[] = [];
   const gameNodes = nodes.filter(isGameNode);
   const stageNodes = nodes.filter(isStageNode);
+  const gameById = new Map(gameNodes.map((g) => [g.id, g]));
 
-  const allStandings = new Set<string>();
+  const standingToGames = new Map<string, FlowNode[]>();
+  for (const node of gameNodes) {
+    const standing = (node.data as GameNodeData).standing;
+    if (!standing) continue;
+    const list = standingToGames.get(standing) ?? [];
+    list.push(node);
+    standingToGames.set(standing, list);
+  }
+  const stageById = new Map(stageNodes.map((s) => [s.id, s]));
+  const stageByName = new Map(stageNodes.map((s) => [s.data.name, s]));
+
+  const addError = (
+    node: FlowNode,
+    slot: string,
+    type: FlowValidationError['type'],
+    messageKey: string,
+    messageParams: Record<string, unknown>
+  ) => {
+    errors.push({
+      id: `${node.id}_${type}_${slot}`,
+      type,
+      message: `Progression reference for ${slot} cannot be resolved`,
+      messageKey,
+      messageParams,
+      affectedNodes: [node.id],
+    });
+  };
+
   for (const node of gameNodes) {
     const data = node.data as GameNodeData;
-    if (data.standing) allStandings.add(data.standing);
-  }
-  for (const node of stageNodes) {
-    const data = node.data;
-    if (data.name) allStandings.add(data.name);
-  }
+    const gameLabel = data.standing || node.id;
 
-  for (const node of gameNodes) {
-    const data = node.data as GameNodeData;
-
-    const checkRef = (ref: { type: string; matchName?: string } | null, slot: string) => {
-      if (ref && ref.matchName && !allStandings.has(ref.matchName)) {
-        warnings.push({
-          id: `${node.id}_broken_${slot}`,
-          type: 'broken_progression',
-          message: `Game "${data.standing || node.id}" references non-existent standing "${ref.matchName}" for ${slot}`,
-          messageKey: 'broken_progression',
-          messageParams: {
-            game: data.standing || node.id,
-            target: ref.matchName,
+    const check = (
+      ref: { type: string; matchName?: string; stageId?: string; stageName?: string } | null,
+      slot: 'home' | 'away' | 'official'
+    ) => {
+      if (!ref) return;
+      if (ref.type === 'winner' || ref.type === 'loser') {
+        // Home/away refs are wired by edge; officials have no edge port.
+        if (slot !== 'official') {
+          const edge = edges.find(
+            (e) => isGameToGameEdge(e) && e.target === node.id && e.targetHandle === slot
+          );
+          if (edge) {
+            const source = gameById.get(edge.source);
+            if (!source) {
+              addError(node, slot, 'broken_progression', 'broken_progression', {
+                game: gameLabel,
+                target: ref.matchName || '',
+                slot,
+              });
+            } else if (source.id === node.id) {
+              addError(node, slot, 'self_reference', 'self_progression', {
+                game: gameLabel,
+                slot,
+              });
+            }
+            return;
+          }
+        }
+        const candidates = ref.matchName
+          ? standingToGames.get(ref.matchName) ?? []
+          : [];
+        if (candidates.length === 0) {
+          addError(node, slot, 'broken_progression', 'broken_progression', {
+            game: gameLabel,
+            target: ref.matchName || '',
             slot,
-          },
-          affectedNodes: [node.id],
-        });
+          });
+        } else if (candidates.length > 1) {
+          addError(node, slot, 'broken_progression', 'ambiguous_progression', {
+            game: gameLabel,
+            target: ref.matchName || '',
+            count: candidates.length,
+            slot,
+          });
+        } else if (candidates[0].id === node.id) {
+          addError(node, slot, 'self_reference', 'self_progression', {
+            game: gameLabel,
+            slot,
+          });
+        }
+        return;
+      }
+      if (ref.type === 'rank' || ref.type === 'groupRank') {
+        const stage =
+          (ref.stageId ? stageById.get(ref.stageId) : undefined) ??
+          (ref.stageName ? stageByName.get(ref.stageName) : undefined);
+        if (!stage) {
+          addError(node, slot, 'broken_progression', 'broken_progression', {
+            game: gameLabel,
+            target: ref.stageName || '',
+            slot,
+          });
+        }
       }
     };
 
-    checkRef(data.homeTeamDynamic || null, 'home');
-    checkRef(data.awayTeamDynamic || null, 'away');
+    check(data.homeTeamDynamic ?? null, 'home');
+    check(data.awayTeamDynamic ?? null, 'away');
+    check(data.official ?? null, 'official');
   }
 
-  return warnings;
+  return errors;
 }
 
 /**
@@ -1411,6 +1494,7 @@ export function validateFlowchart(
     ...checkTimeOverlaps(nodes),
     ...checkTeamCapacity(nodes, globalTeams),
     ...checkProgressionIntegrity(nodes, edges),
+    ...checkProgressionReferences(nodes, edges),
     ...checkCyclicStageReferences(nodes, edges),
     ...checkSelfPlay(nodes, edges),
   ];
@@ -1426,7 +1510,6 @@ export function validateFlowchart(
     ...checkNoGames(nodes),
     ...checkTeamsWithoutGames(nodes, globalTeams),
     ...checkUnusedFields(nodes),
-    ...checkBrokenDynamicProgressions(nodes),
   ];
 
   return {

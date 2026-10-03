@@ -248,6 +248,29 @@ class GamedayViewSet(viewsets.ModelViewSet):
 
         from django.utils import timezone
         from gamedays.service.canvas_publish_service import CanvasPublishService
+        from gamedays.service.canvas_progression_validation_service import (
+            validate_progression_for_gameday,
+        )
+
+        issues = validate_progression_for_gameday(gameday)
+        if issues:
+            return Response(
+                {
+                    "detail": (
+                        "Cannot publish: this gameday's progression is invalid. "
+                        "Fix the highlighted games first."
+                    ),
+                    "issues": [
+                        {
+                            "code": issue.code,
+                            "message": issue.message,
+                            "node_ids": issue.node_ids,
+                        }
+                        for issue in issues
+                    ],
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         gameday.status = Gameday.STATUS_PUBLISHED
         gameday.published_at = timezone.now()
@@ -460,6 +483,30 @@ class GamedayPublishAPIView(APIView):
         if gameday.status != Gameday.STATUS_DRAFT:
             return Response(
                 {"detail": "Gameday is already published or completed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from gamedays.service.canvas_progression_validation_service import (
+            validate_progression_for_gameday,
+        )
+
+        issues = validate_progression_for_gameday(gameday)
+        if issues:
+            return Response(
+                {
+                    "detail": (
+                        "Cannot publish: this gameday's progression is invalid. "
+                        "Fix the highlighted games first."
+                    ),
+                    "issues": [
+                        {
+                            "code": issue.code,
+                            "message": issue.message,
+                            "node_ids": issue.node_ids,
+                        }
+                        for issue in issues
+                    ],
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

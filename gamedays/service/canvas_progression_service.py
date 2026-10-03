@@ -19,15 +19,17 @@ class CanvasBracketProgressionService:
         except GamedayDesignerState.DoesNotExist:
             return
 
-        nodes = (state.state_data or {}).get("nodes", [])
+        state_data = state.state_data or {}
+        nodes = state_data.get("nodes", [])
+        edges = state_data.get("edges", [])
         game_nodes = [n for n in nodes if n.get("type") == "game"]
 
         winner_team, loser_team = self._resolve_winner_loser()
         if winner_team is not None or loser_team is not None:
             self._propagate(
                 game_nodes,
-                lambda ref: self._resolve_winner_loser_ref(
-                    ref, winner_team, loser_team
+                lambda node, slot: self._winner_loser_team_for(
+                    node, slot, edges, winner_team, loser_team
                 ),
             )
 
@@ -49,41 +51,90 @@ class CanvasBracketProgressionService:
             return home.team, away.team
         return away.team, home.team
 
-    def _resolve_winner_loser_ref(self, ref, winner_team, loser_team):
-        if not ref or ref.get("matchName") != self.game.standing:
+    def _winner_loser_team_for(self, node, slot, edges, winner_team, loser_team):
+        """Resolve a target slot's winner/loser reference to a team.
+
+        Primary key is the maintained ``gameToGame`` edge (source game node ->
+        target game node + slot): unambiguous even when several games share a
+        ``standing``, and independent of the human-readable ``matchName``. The
+        legacy ``matchName == this game's standing`` match is kept as a fallback
+        for imported/template graphs that carry no edges. See #2038.
+        """
+        ref = self._ref_for(node, slot)
+        if not ref or ref.get("type") not in ("winner", "loser"):
             return None
-        ref_type = ref.get("type")
-        if ref_type == "winner":
-            return winner_team
-        if ref_type == "loser":
-            return loser_team
+
+        if slot in ("home", "away") and self.game.designer_node_id:
+            edge = self._find_edge(edges, node.get("id"), slot)
+            if edge is not None:
+                # An edge is authoritative: never silently fall back to the
+                # (possibly stale) matchName when the edge wired a winner/loser.
+                source_handle = edge.get("sourceHandle")
+                return winner_team if source_handle == "winner" else loser_team
+
+        if ref.get("matchName") and ref.get("matchName") == self.game.standing:
+            return winner_team if ref.get("type") == "winner" else loser_team
         return None
+
+    def _find_edge(self, edges, target_id, slot):
+        for edge in edges:
+            if (
+                edge.get("type") == "gameToGame"
+                and edge.get("target") == target_id
+                and edge.get("targetHandle") == slot
+                and edge.get("source") == self.game.designer_node_id
+            ):
+                return edge
+        return None
+
+    @staticmethod
+    def _ref_for(node, slot):
+        data = node.get("data", {})
+        if slot == "home":
+            return data.get("homeTeamDynamic")
+        if slot == "away":
+            return data.get("awayTeamDynamic")
+        return data.get("official")
 
     def _propagate(self, game_nodes, resolve_ref) -> None:
         """For every game node, resolve its home/away/official dynamic refs
-        via `resolve_ref` (a ref dict -> Team or None) and write the result
+        via `resolve_ref` (a (node, slot) -> Team or None) and write the result
         to the matching slot wherever it resolves to a team."""
         for node in game_nodes:
             data = node.get("data", {})
-            target_standing = data.get("standing")
-            if not target_standing:
+            if not data.get("standing"):
                 continue
-            self._apply_team(
-                target_standing, True, resolve_ref(data.get("homeTeamDynamic"))
-            )
-            self._apply_team(
-                target_standing, False, resolve_ref(data.get("awayTeamDynamic"))
-            )
-            self._apply_official(target_standing, resolve_ref(data.get("official")))
+            self._apply_team(node, True, resolve_ref(node, "home"))
+            self._apply_team(node, False, resolve_ref(node, "away"))
+            self._apply_official(node, resolve_ref(node, "official"))
 
-    def _apply_team(self, target_standing, is_home, team) -> None:
+    def _target_gameinfo(self, node):
+        """Resolve the Gameinfo a canvas game node maps to.
+
+        Primary: the stable ``designer_node_id`` stamped at publish time, which
+        stays correct when several games share a ``standing``. Fallback: a
+        standing match for gamedays published before that column existed — uses
+        ``.first()`` so duplicated standings can never raise
+        ``MultipleObjectsReturned`` (see #2038)."""
+        node_id = node.get("id")
+        if node_id:
+            gi = Gameinfo.objects.filter(
+                gameday=self.game.gameday, designer_node_id=node_id
+            ).first()
+            if gi is not None:
+                return gi
+        standing = node.get("data", {}).get("standing")
+        if standing:
+            return Gameinfo.objects.filter(
+                gameday=self.game.gameday, standing=standing
+            ).first()
+        return None
+
+    def _apply_team(self, node, is_home, team) -> None:
         if team is None:
             return
-        try:
-            gi = Gameinfo.objects.get(
-                gameday=self.game.gameday, standing=target_standing
-            )
-        except Gameinfo.DoesNotExist:
+        gi = self._target_gameinfo(node)
+        if gi is None:
             return
         # Queryset .update() bypasses save(), so auto_now would not fire:
         # stamp explicitly. The snapshot ETag depends on Max(updated_at).
@@ -91,12 +142,15 @@ class CanvasBracketProgressionService:
             team=team, updated_at=timezone.now()
         )
 
-    def _apply_official(self, target_standing, team) -> None:
+    def _apply_official(self, node, team) -> None:
         if team is None:
             return
-        Gameinfo.objects.filter(
-            gameday=self.game.gameday, standing=target_standing
-        ).update(officials=team, updated_at=timezone.now())
+        gi = self._target_gameinfo(node)
+        if gi is None:
+            return
+        Gameinfo.objects.filter(pk=gi.pk).update(
+            officials=team, updated_at=timezone.now()
+        )
 
     def _resolve_stage_ranks(self, game_nodes) -> None:
         """
@@ -116,7 +170,9 @@ class CanvasBracketProgressionService:
 
         self._propagate(
             game_nodes,
-            lambda ref: self._resolve_rank_ref(ref, stage_name, standings),
+            lambda node, slot: self._resolve_rank_ref(
+                self._ref_for(node, slot), stage_name, standings
+            ),
         )
 
     def _resolve_rank_ref(self, ref, stage_name, standings):

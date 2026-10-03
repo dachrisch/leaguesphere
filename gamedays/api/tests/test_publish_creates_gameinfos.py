@@ -4,28 +4,112 @@ from rest_framework.test import APIClient
 from gamedays.models import Gameday, Gameinfo, Gameresult, GamedayDesignerState, Season, League
 
 
+def _game(
+    node_id,
+    parent_id,
+    standing,
+    home_team=None,
+    away_team=None,
+    home_dynamic=None,
+    away_dynamic=None,
+    official=None,
+):
+    return {
+        "id": node_id,
+        "type": "game",
+        "parentId": parent_id,
+        "data": {
+            "type": "game",
+            "stage": "",
+            "standing": standing,
+            "startTime": "10:00",
+            "homeTeamId": home_team,
+            "awayTeamId": away_team,
+            "homeTeamDynamic": home_dynamic,
+            "awayTeamDynamic": away_dynamic,
+            "official": official,
+        },
+        "position": {"x": 0, "y": 0},
+    }
+
+
+def _field_and_final_nodes(game):
+    return [
+        {"id": "field-1", "type": "field", "parentId": None,
+         "data": {"type": "field", "name": "Field 1", "order": 0}, "position": {"x": 0, "y": 0}},
+        {"id": "stage-1", "type": "stage", "parentId": "field-1",
+         "data": {"type": "stage", "name": "Final", "category": "final"}, "position": {"x": 0, "y": 0}},
+        game,
+    ]
+
+
 def _make_dynamic_canvas(home_dynamic, away_dynamic):
-    """Canvas with one playoff game whose teams come from dynamic refs."""
+    """Canvas with one playoff game whose teams come from dynamic refs.
+
+    Adds the producer games/stages each reference points at so the canvas is
+    valid under the #2038 progression guard, while still exercising the
+    dynamic-label formatting this fixture exists to verify."""
+    nodes = _field_and_final_nodes(
+        _game("game-1", "stage-1", "FIN",
+              home_dynamic=home_dynamic, away_dynamic=away_dynamic)
+    )
+    added_stages = set()
+
+    def ensure_stage(stage_name):
+        stage_id = f"stage-src-{stage_name}"
+        if stage_name and stage_name not in added_stages:
+            added_stages.add(stage_name)
+            nodes.append({
+                "id": stage_id, "type": "stage", "parentId": "field-1",
+                "data": {"type": "stage", "name": stage_name, "category": "preliminary"},
+                "position": {"x": 0, "y": 0},
+            })
+        return stage_id
+
+    for ref in (home_dynamic, away_dynamic):
+        if not ref:
+            continue
+        ref_type = ref.get("type")
+        if ref_type in ("winner", "loser"):
+            name = ref.get("matchName")
+            if name and not any(n.get("data", {}).get("standing") == name for n in nodes):
+                nodes.append(
+                    _game(f"src-{name}", ensure_stage("Vorrunde"), name,
+                          home_team="t1", away_team="t2")
+                )
+        elif ref_type in ("rank", "groupRank"):
+            stage_id = ensure_stage(ref.get("stageName") or "Stufe")
+            # A ranking stage needs at least one game for a rank to resolve.
+            if not any(
+                n.get("type") == "game" and n.get("parentId") == stage_id
+                for n in nodes
+            ):
+                nodes.append(
+                    _game(f"src-rank-{stage_id}", stage_id, f"Quelle {stage_id}",
+                          home_team="t1", away_team="t2")
+                )
+
     return {
         "globalTeams": [
             {"id": "t1", "label": "Alpha", "groupId": None, "order": 0},
             {"id": "t2", "label": "Beta",  "groupId": None, "order": 1},
         ],
         "globalTeamGroups": [],
-        "nodes": [
-            {"id": "field-1", "type": "field", "parentId": None,
-             "data": {"type": "field", "name": "Field 1", "order": 0}, "position": {"x": 0, "y": 0}},
-            {"id": "stage-1", "type": "stage", "parentId": "field-1",
-             "data": {"type": "stage", "name": "Final", "category": "final"}, "position": {"x": 0, "y": 0}},
-            {"id": "game-1", "type": "game", "parentId": "stage-1",
-             "data": {
-                 "type": "game", "stage": "Final", "standing": "FIN",
-                 "startTime": "14:00", "homeTeamId": None, "awayTeamId": None,
-                 "homeTeamDynamic": home_dynamic,
-                 "awayTeamDynamic": away_dynamic,
-                 "official": None,
-             }, "position": {"x": 0, "y": 0}},
-        ],
+        "nodes": nodes,
+        "edges": [],
+    }
+
+
+def _dangling_canvas():
+    """Canvas whose playoff game references winners no game produces (#2038)."""
+    return {
+        "globalTeams": [],
+        "globalTeamGroups": [],
+        "nodes": _field_and_final_nodes(
+            _game("game-1", "stage-1", "FIN",
+                  home_dynamic={"type": "winner", "matchName": "SF1"},
+                  away_dynamic={"type": "winner", "matchName": "SF2"})
+        ),
         "edges": [],
     }
 
@@ -225,6 +309,22 @@ class TestPublishCreatesGameinfos:
         assert response.status_code == 200
         assert Gameinfo.objects.filter(gameday=self.gameday).count() == 1
 
+    def test_publish_blocked_when_progression_is_invalid(self):
+        """#2038: a canvas whose winner/loser references nothing must not
+        publish, must not materialize games, and must keep the gameday a draft."""
+        GamedayDesignerState.objects.create(
+            gameday=self.gameday, state_data=_dangling_canvas()
+        )
+        response = self._publish()
+        assert response.status_code == 400
+        assert "progression" in response.data["detail"].lower()
+        assert {issue["code"] for issue in response.data["issues"]} == {
+            "dangling_reference"
+        }
+        self.gameday.refresh_from_db()
+        assert self.gameday.status == Gameday.STATUS_DRAFT
+        assert Gameinfo.objects.filter(gameday=self.gameday).count() == 0
+
     def test_publish_sets_gameinfo_fields_from_canvas(self):
         GamedayDesignerState.objects.create(
             gameday=self.gameday, state_data=MINIMAL_CANVAS_STATE
@@ -279,9 +379,17 @@ class TestPublishCreatesGameinfos:
 
         state = copy.deepcopy(MINIMAL_CANVAS_STATE)
         state["nodes"][-1]["data"]["official"] = official_ref
+        if official_ref["type"] in ("winner", "loser"):
+            # Add the producing game the official reference points at so the
+            # canvas passes the #2038 progression guard.
+            state["nodes"].append(
+                _game("src-official", "stage-1", official_ref["matchName"],
+                      home_team="t1", away_team="t2")
+            )
         GamedayDesignerState.objects.create(gameday=self.gameday, state_data=state)
-        self._publish()
-        gi = Gameinfo.objects.get(gameday=self.gameday)
+        response = self._publish()
+        assert response.status_code == 200
+        gi = Gameinfo.objects.get(gameday=self.gameday, designer_node_id="game-1")
         assert gi.officials.name == expected_name
 
     def test_republish_after_unlock_replaces_gameinfos(self):

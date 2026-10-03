@@ -1,4 +1,8 @@
 from gamedays.models import Gameday, Gameinfo, Gameresult, GamedayDesignerState, Team
+from gamedays.service.canvas_progression_validation_service import (
+    CanvasProgressionValidator,
+    ProgressionValidationError,
+)
 from gamedays.service.stage_category import StageCategory
 
 
@@ -26,6 +30,13 @@ class CanvasPublishService:
         game_nodes = [n for n in nodes if n.get("type") == "game"]
         if not game_nodes:
             return
+
+        # Refuse to materialize a gameday whose progression cannot resolve
+        # (dangling/ambiguous winner-loser refs, missing rank stages, cycles).
+        # See #2038.
+        issues = CanvasProgressionValidator(state_data or {}).validate()
+        if issues:
+            raise ProgressionValidationError(issues)
 
         node_by_id = {n["id"]: n for n in nodes}
         global_teams = {t["id"]: t for t in state_data.get("globalTeams", [])}
@@ -62,6 +73,7 @@ class CanvasPublishService:
                 stage=stage_name,
                 stage_category=stage_category,
                 standing=standing,
+                designer_node_id=node.get("id", ""),
                 officials=officials,
                 status=Gameinfo.STATUS_PUBLISHED,
             )

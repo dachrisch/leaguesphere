@@ -1,7 +1,7 @@
 
 import { renderHook } from '@testing-library/react';
 import { useFlowValidation } from '../useFlowValidation';
-import type { FlowNode, GlobalTeam, FieldNodeData, StageNodeData, GameNodeData } from '../../types/flowchart';
+import type { FlowNode, FlowEdge, GlobalTeam, FieldNodeData, StageNodeData, GameNodeData } from '../../types/flowchart';
 import { describe, it, expect } from 'vitest';
 
 const validMetadata = { id: 1, name: 'Test', date: '2026-01-01', start: '10:00', status: 'DRAFT', format: '6_2', author: 1, address: 'Field', season: 1, league: 1 };
@@ -195,8 +195,8 @@ describe('useFlowValidation - New Warnings', () => {
     });
   });
 
-  describe('Broken Dynamic Progressions Warning', () => {
-    it('should warn when a game references a non-existent standing', () => {
+  describe('Broken Dynamic Progressions', () => {
+    it('errors when a game references a non-existent standing', () => {
       const nodes: FlowNode[] = [
         { id: 'f1', type: 'field', data: { name: 'F1', order: 0 } as FieldNodeData, position: { x: 0, y: 0 } },
         { id: 's1', type: 'stage', parentId: 'f1', data: { name: 'S1', order: 0 } as StageNodeData, position: { x: 0, y: 0 } },
@@ -204,12 +204,46 @@ describe('useFlowValidation - New Warnings', () => {
       ];
       const { result } = renderHook(() => useFlowValidation(nodes, [], [], [], validMetadata));
       
-      const warning = result.current.warnings.find(w => w.type === 'broken_progression');
-      expect(warning).toBeDefined();
-      expect(warning?.messageParams?.target).toBe('NonExistent');
+      const error = result.current.errors.find(e => e.type === 'broken_progression');
+      expect(error).toBeDefined();
+      expect(error?.messageParams?.target).toBe('NonExistent');
+      expect(result.current.isValid).toBe(false);
     });
 
-    it('should not warn for valid dynamic references', () => {
+    it('errors when a winner/loser matchName is ambiguous and has no edge', () => {
+      const nodes: FlowNode[] = [
+        { id: 'f1', type: 'field', data: { name: 'F1', order: 0 } as FieldNodeData, position: { x: 0, y: 0 } },
+        { id: 's1', type: 'stage', parentId: 'f1', data: { name: 'S1', order: 0 } as StageNodeData, position: { x: 0, y: 0 } },
+        { id: 'g1', type: 'game', parentId: 's1', data: { standing: '1.-4.', homeTeamId: 't1', awayTeamId: 't2' } as GameNodeData, position: { x: 0, y: 0 } },
+        { id: 'g2', type: 'game', parentId: 's1', data: { standing: '1.-4.', homeTeamId: 't3', awayTeamId: 't4' } as GameNodeData, position: { x: 0, y: 0 } },
+        { id: 'g3', type: 'game', parentId: 's1', data: { standing: 'FIN', homeTeamDynamic: { type: 'winner', matchName: '1.-4.' }, awayTeamId: 't5' } as GameNodeData, position: { x: 0, y: 0 } }
+      ];
+      const { result } = renderHook(() => useFlowValidation(nodes, [], [], [], validMetadata));
+      
+      const error = result.current.errors.find(e => e.messageKey === 'ambiguous_progression');
+      expect(error).toBeDefined();
+      expect(error?.messageParams?.count).toBe(2);
+    });
+
+    it('does not error for edge-wired refs even when standings are duplicated', () => {
+      const nodes: FlowNode[] = [
+        { id: 'f1', type: 'field', data: { name: 'F1', order: 0 } as FieldNodeData, position: { x: 0, y: 0 } },
+        { id: 's1', type: 'stage', parentId: 'f1', data: { name: 'S1', order: 0 } as StageNodeData, position: { x: 0, y: 0 } },
+        { id: 'hf1', type: 'game', parentId: 's1', data: { standing: '1.-4.', homeTeamId: 't1', awayTeamId: 't2' } as GameNodeData, position: { x: 0, y: 0 } },
+        { id: 'hf2', type: 'game', parentId: 's1', data: { standing: '1.-4.', homeTeamId: 't3', awayTeamId: 't4' } as GameNodeData, position: { x: 0, y: 0 } },
+        { id: 'fin', type: 'game', parentId: 's1', data: { standing: 'FIN', homeTeamDynamic: { type: 'winner', matchName: 'HF1 1.-4.' }, awayTeamDynamic: { type: 'winner', matchName: 'HF2 1.-4.' } } as GameNodeData, position: { x: 0, y: 0 } }
+      ];
+      const edges: FlowEdge[] = [
+        { id: 'e1', type: 'gameToGame', source: 'hf1', sourceHandle: 'winner', target: 'fin', targetHandle: 'home', data: {} } as FlowEdge,
+        { id: 'e2', type: 'gameToGame', source: 'hf2', sourceHandle: 'winner', target: 'fin', targetHandle: 'away', data: {} } as FlowEdge
+      ];
+      const { result } = renderHook(() => useFlowValidation(nodes, edges, [], [], validMetadata));
+      
+      const error = result.current.errors.find(e => e.type === 'broken_progression');
+      expect(error).toBeUndefined();
+    });
+
+    it('does not error for valid dynamic references without edges', () => {
       const nodes: FlowNode[] = [
         { id: 'f1', type: 'field', data: { name: 'F1', order: 0 } as FieldNodeData, position: { x: 0, y: 0 } },
         { id: 's1', type: 'stage', parentId: 'f1', data: { name: 'S1', order: 0 } as StageNodeData, position: { x: 0, y: 0 } },
@@ -218,8 +252,8 @@ describe('useFlowValidation - New Warnings', () => {
       ];
       const { result } = renderHook(() => useFlowValidation(nodes, [], [], [], validMetadata));
       
-      const warning = result.current.warnings.find(w => w.type === 'broken_progression');
-      expect(warning).toBeUndefined();
+      const error = result.current.errors.find(e => e.type === 'broken_progression');
+      expect(error).toBeUndefined();
     });
   });
 });

@@ -31,6 +31,8 @@
     "duplicate_team_label_other": "Doppelter Teamname \"{{team}}\" — ein Eintrag ist einem Spiel zugewiesen, aber {{count}} Einträge mit demselben Namen nicht",
     "unused_field": "Feld \"{{field}}\" hat keine zugewiesenen Spiele",
     "broken_progression": "Spiel \"{{game}}\" referenziert nicht existierende Platzierung \"{{target}}\" für {{slot}}",
+    "ambiguous_progression": "Spiel \"{{game}}\" referenziert \"{{target}}\" für {{slot}}, aber {{count}} Spiele teilen diese Platzierung",
+    "self_progression": "Spiel \"{{game}}\" referenziert seinen eigenen Gewinner/Verlierer für {{slot}}",
     "dangling_reference": "\"{{game}}\" verweist für {{slot}} auf \"{{target}}\", aber nichts im Zeitplan erzeugt dies",
     "unreachable_placeholder": "\"{{game}}\" wird von keinem späteren Spiel oder keiner Schiedsrichter-Zuweisung referenziert",
     "unreachable_placeholder_stage": "Die Ranglisten-Phase \"{{stage}}\" berechnet Platzierungen, auf die kein Spiel verweist",
