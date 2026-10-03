@@ -12,6 +12,7 @@ const FloatingInput = (props) => {
     onChange: setValue,
     autofocus = false,
     type = 'text',
+    startAdornment = null,
     setHasFocus = () => {}} = props;
   const [inputValue, setInputValue] = useState(value);
   useEffect(() => {
@@ -21,8 +22,23 @@ const FloatingInput = (props) => {
     setInputValue(newValue);
     setValue(newValue);
   };
+  const adornmentPadding = startAdornment ? {paddingLeft: '3rem'} : {};
   return (
     <div className="form-floating mt-3">
+      {startAdornment && (
+        <span
+          data-testid="startAdornment"
+          className="d-flex align-items-center"
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: '0.75rem',
+            zIndex: 5,
+          }}>
+          {startAdornment}
+        </span>
+      )}
       <input
         autoFocus={autofocus}
         type={type}
@@ -39,9 +55,9 @@ const FloatingInput = (props) => {
         placeholder={text}
         required={required}
         readOnly={readOnly}
-        style={{display: show ? 'block' : 'none'}}
+        style={{display: show ? 'block' : 'none', ...adornmentPadding}}
       />
-      <label htmlFor={id} className="form-label">
+      <label htmlFor={id} className="form-label" style={adornmentPadding}>
         {text}
       </label>
     </div>
@@ -59,6 +75,7 @@ FloatingInput.propTypes = {
   setHasFocus: PropTypes.func,
   autofocus: PropTypes.bool,
   type: PropTypes.string,
+  startAdornment: PropTypes.node,
 };
 
 export default FloatingInput;

@@ -1,5 +1,6 @@
 from http import HTTPStatus
 
+from django.db.models import Q
 from rest_framework import permissions
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.request import Request
@@ -8,6 +9,15 @@ from rest_framework.views import APIView
 
 from officials.api.serializers import OfficialTeamListScorecardSerializer
 from officials.models import Official
+from officials.service.game_official_licenses import resolve_current_licenses
+
+
+def _with_licenses(officials) -> list:
+    """Evaluates the officials queryset and adds each one's current license
+    (see resolve_current_licenses) with a single extra query."""
+    rows = list(officials)
+    licenses = resolve_current_licenses(row["id"] for row in rows)
+    return [{**row, **licenses[row["id"]]} for row in rows]
 
 
 class OfficialsTeamListAPIView(APIView):
@@ -21,7 +31,9 @@ class OfficialsTeamListAPIView(APIView):
             .order_by("first_name", "last_name")
             .values(*OfficialTeamListScorecardSerializer.ALL_FIELD_VALUES)
         )
-        serializer = OfficialTeamListScorecardSerializer(instance=officials, many=True)
+        serializer = OfficialTeamListScorecardSerializer(
+            instance=_with_licenses(officials), many=True
+        )
         return Response(serializer.data, status=HTTPStatus.OK)
 
 
@@ -43,15 +55,21 @@ class OfficialsSearchName(APIView):
             )
         if len(name[0]) < 3:
             raise ValidationError("Vorname muss mindestens 3 Zeichen haben")
-        officials = (
-            Official.objects.filter(
-                first_name__istartswith=name[0], last_name__istartswith=name[-1]
+        # first/last name may each consist of several words, so try every split
+        name_split_filter = Q()
+        for split_at in range(1, len(name)):
+            name_split_filter |= Q(
+                first_name__istartswith=" ".join(name[:split_at]),
+                last_name__istartswith=" ".join(name[split_at:]),
             )
+        officials = (
+            Official.objects.filter(name_split_filter)
             .exclude(team=team_id)
             .order_by("first_name", "last_name")
             .values(*OfficialTeamListScorecardSerializer.ALL_FIELD_VALUES)
         )
-        if not officials.exists():
+        officials = _with_licenses(officials)
+        if not officials:
             raise NotFound(
                 f'Es wurden keine Offiziellen gefunden für: {" ".join(name)}'
             )

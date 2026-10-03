@@ -27,4 +27,15 @@ describe('FloatingInput component', () => {
     await user.type(inputElement, 'some text');
     expect(inputElement).toBeValid();
   });
+
+  it('should render start adornment when provided', () => {
+    render(<FloatingInput id='someId' text='someText' value=''
+      onChange={() => {}} startAdornment={<span>adornment</span>} />);
+    expect(screen.getByText('adornment')).toBeInTheDocument();
+  });
+
+  it('should not render adornment wrapper by default', () => {
+    setup();
+    expect(screen.queryByTestId('startAdornment')).not.toBeInTheDocument();
+  });
 });

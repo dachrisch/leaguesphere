@@ -1,7 +1,21 @@
 import React, {useState, useEffect} from 'react';
 import PropTypes from 'prop-types';
-import {FaSearch, FaTrashAlt} from 'react-icons/fa';
+import {FaCheck, FaQuestion, FaSearch, FaTrashAlt} from 'react-icons/fa';
 import FloatingInput from './FloatingInput';
+
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const StatusBadge = ({found}) => (
+  <span
+    data-testid={found ? 'officialFound' : 'officialNotFound'}
+    className={`d-inline-flex align-items-center justify-content-center
+      rounded ${found ? 'bg-success text-white' : 'bg-warning text-dark'}`}
+    style={{width: '1.5rem', height: '1.5rem'}}>
+    {found ? <FaCheck /> : <FaQuestion />}
+  </span>
+);
+
+StatusBadge.propTypes = {found: PropTypes.bool.isRequired};
 
 const InputDropdown = (props) => {
   const {
@@ -20,17 +34,21 @@ const InputDropdown = (props) => {
   const [displaySearchInput, setDisplaySearchInput] = useState(true);
   const [autofocus, setAutofocus] = useState(focus);
   const [displaySearchButton, setDisplaySearchButton] = useState(true);
+  const [officialFound, setOfficialFound] = useState(false);
+  const [selectedLicense, setSelectedLicense] = useState(null);
   useEffect(() => {
     if (initValues && Object.keys(initValues).length !== 0) {
       if (initValues.text && !initValues.id) {
         setSearchInput(initValues.text);
         setSelectedIndex({text: initValues.text, id: null});
+        setOfficialFound(false);
       }
       if (initValues.text && initValues.id) {
         setSearchInput(initValues.text);
         setSelectedIndex({text: initValues.text, id: initValues.id});
         setDisplaySuggestionBox(false);
         setDisplaySearchInput(false);
+        setOfficialFound(true);
       }
     }
   }, [initValues]);
@@ -38,9 +56,13 @@ const InputDropdown = (props) => {
     setDisplaySearchButton(true);
   }, [items]);
 
-  const handleSearchSelection = (itemText, id) => {
+  const handleSearchSelection = (itemText, id, license = null) => {
+    setSelectedLicense(license);
     setSearchInput(itemText);
-    setSelectedIndex({text: itemText, id: id});
+    setSelectedIndex(license ?
+      {text: itemText, id: id, licenseValid: license.valid} :
+      {text: itemText, id: id});
+    setOfficialFound(true);
     setDisplaySuggestionBox(false);
     setDisplaySearchInput(false);
     onSelected();
@@ -64,17 +86,23 @@ const InputDropdown = (props) => {
     setDisplaySearchInput(true);
     setDisplaySuggestionBox(true);
     setSelectedIndex({text: '', id: null});
+    setOfficialFound(false);
+    setSelectedLicense(null);
     setSearchInput('');
     setAutofocus(true);
   };
   const onChange = (value) => {
     setSearchInput(value);
     setSelectedIndex({text: value, id: null});
+    setOfficialFound(false);
+    setSelectedLicense(null);
   };
   const checkName = (item, input) => {
     const pattern = input
+        .trim()
+        .replace(/\s+/g, ' ')
         .split('')
-        .map((character) => `${character}.*`)
+        .map((character) => `${escapeRegExp(character)}.*`)
         .join('');
     const regex = new RegExp(pattern, 'gi');
     return item.match(regex);
@@ -96,7 +124,16 @@ const InputDropdown = (props) => {
                 value={searchInput || ''}
                 required={false}
                 readOnly={true}
+                startAdornment={<StatusBadge found={officialFound} />}
                 onChange={()=>{}} />
+              {selectedLicense && (
+                <div
+                  data-testid='officialLicense'
+                  className={`small ps-1 ${selectedLicense.expired ?
+                    'text-danger' : 'text-muted'}`}>
+                  {selectedLicense.label}
+                </div>
+              )}
             </div>
             <div className='col-3 d-grid'>
               <button
@@ -120,6 +157,7 @@ const InputDropdown = (props) => {
               onChange={onChange}
               text={placeholderText}
               required={false}
+              startAdornment={<StatusBadge found={officialFound} />}
               value={searchInput} />
             <ul
               className='list-group'
@@ -135,11 +173,23 @@ const InputDropdown = (props) => {
                   key={index}
                   className='list-group-item bg-light'
                   onMouseDown={() => {
-                    handleSearchSelection(item.text, item.id);
+                    handleSearchSelection(item.text, item.id, item.licenseLabel ?
+                      {label: item.licenseLabel, expired: item.licenseExpired,
+                        valid: item.licenseValid} :
+                      null);
                   }}
                 >
                   <div className='row'>
-                    <div className='col-9'>{item.text}</div>
+                    <div className='col-9'>
+                      {item.text}
+                      {item.licenseLabel && (
+                        <div
+                          className={`small ${item.licenseExpired ?
+                            'text-danger' : 'text-muted'}`}>
+                          {item.licenseLabel}
+                        </div>
+                      )}
+                    </div>
                     <div
                       className='col-3 text-end text-muted ps-0 pe-0'
                       style={{fontSize: 'x-small'}}

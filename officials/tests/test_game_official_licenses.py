@@ -13,6 +13,7 @@ from officials.service.game_official_licenses import (
     POSITION_FIELD_JUDGE,
     POSITION_REFEREE,
     POSITION_SIDE_JUDGE,
+    resolve_current_licenses,
     resolve_game_official_licenses,
 )
 from officials.tests.setup_factories.factories_officials import (
@@ -132,3 +133,80 @@ class TestResolveGameOfficialLicenses(TestCase):
 
         with self.assertNumQueries(3):
             resolve_game_official_licenses([gameinfo_one.id, gameinfo_two.id])
+
+
+class TestResolveCurrentLicenses(TestCase):
+    TODAY = date(2027, 5, 1)
+
+    def _official(self, *history):
+        official = OfficialFactory(team=TeamFactory())
+        for name, created_at in history:
+            OfficialLicenseHistoryFactory(
+                official=official,
+                license=OfficialLicenseFactory(name=name),
+                created_at=created_at,
+            )
+        return official
+
+    def test_valid_license_with_valid_until(self):
+        created_at = self.TODAY - timedelta(days=30)
+        official = self._official(("F2", created_at))
+        result = resolve_current_licenses([official.id], on_date=self.TODAY)
+        assert result[official.id] == {
+            "license": "F2",
+            "valid_until": created_at + timedelta(days=365),
+            "is_valid": True,
+        }
+
+    def test_best_valid_rank_wins_and_year_suffix_is_normalized(self):
+        official = self._official(
+            ("F3", self.TODAY - timedelta(days=10)),
+            ("F1 2027", self.TODAY - timedelta(days=20)),
+        )
+        result = resolve_current_licenses([official.id], on_date=self.TODAY)
+        assert result[official.id]["license"] == "F1"
+        assert result[official.id]["is_valid"] is True
+
+    def test_expired_license_reports_level_and_expiry_date(self):
+        created_at = self.TODAY - timedelta(days=400)
+        official = self._official(("F1", created_at))
+        result = resolve_current_licenses([official.id], on_date=self.TODAY)
+        assert result[official.id] == {
+            "license": "F1",
+            "valid_until": created_at + timedelta(days=365),
+            "is_valid": False,
+        }
+
+    def test_valid_license_beats_newer_expired_lookalike(self):
+        official = self._official(
+            ("F1", self.TODAY - timedelta(days=500)),
+            ("F3", self.TODAY - timedelta(days=100)),
+        )
+        result = resolve_current_licenses([official.id], on_date=self.TODAY)
+        assert result[official.id]["license"] == "F3"
+        assert result[official.id]["is_valid"] is True
+
+    def test_most_recent_expired_license_is_reported(self):
+        newest = self.TODAY - timedelta(days=400)
+        official = self._official(
+            ("F1", self.TODAY - timedelta(days=900)), ("F4", newest)
+        )
+        result = resolve_current_licenses([official.id], on_date=self.TODAY)
+        assert result[official.id]["license"] == "F4"
+        assert result[official.id]["valid_until"] == newest + timedelta(days=365)
+
+    def test_official_without_recognized_license(self):
+        official = self._official(("-", self.TODAY - timedelta(days=10)))
+        result = resolve_current_licenses([official.id], on_date=self.TODAY)
+        assert result[official.id] == {
+            "license": None,
+            "valid_until": None,
+            "is_valid": False,
+        }
+
+    def test_query_count_is_constant(self):
+        officials = [
+            self._official(("F2", self.TODAY - timedelta(days=i))) for i in range(5)
+        ]
+        with self.assertNumQueries(1):
+            resolve_current_licenses([o.id for o in officials], on_date=self.TODAY)

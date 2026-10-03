@@ -16,6 +16,37 @@ import InputDropdown from '../layout/InputDropdown';
 import {OFFICIALS_SEARCH_FOR_OFFICIALS} from '../../actions/types';
 import { trackEvent } from '../../trackEvent';
 
+const formatDate = (isoDate) => isoDate.split('-').reverse().join('.');
+
+export const toItem = (entry) => {
+  const item = {
+    text: `${entry.first_name} ${entry.last_name}`,
+    subtext: entry.team,
+    id: entry.id,
+  };
+  if (entry.license === undefined) {
+    return item;
+  }
+  if (!entry.license) {
+    return {
+      ...item, licenseLabel: 'Keine Lizenz', licenseExpired: false,
+      licenseValid: false,
+    };
+  }
+  if (entry.is_valid) {
+    return {
+      ...item, licenseLabel: entry.license, licenseExpired: false,
+      licenseValid: true,
+    };
+  }
+  return {
+    ...item,
+    licenseLabel: `${entry.license} – abgelaufen seit ${formatDate(entry.valid_until)}`,
+    licenseExpired: true,
+    licenseValid: false,
+  };
+};
+
 export const Officials = (props) => {
   const selectedGame = props.selectedGame;
   const [isSuccessfulSubmitted, setIsSuccessfulSubmitted] = useState(false);
@@ -37,11 +68,7 @@ export const Officials = (props) => {
 
   useEffect(() => {
     setTeamOfficials((props.teamOfficials).map((entry) => {
-      return {
-        text: `${entry.first_name} ${entry.last_name}`,
-        subtext: entry.team,
-        id: entry.id,
-      };
+      return toItem(entry);
     }));
   }, [JSON.stringify(props.teamOfficials)]);
 
@@ -82,18 +109,10 @@ export const Officials = (props) => {
   // load search officials
   useEffect(() => {
     const teamOffi = (props.teamOfficials).map((entry) => {
-      return {
-        text: `${entry.first_name} ${entry.last_name}`,
-        subtext: entry.team,
-        id: entry.id,
-      };
+      return toItem(entry);
     });
     const searchOffi = (props.searchOfficialsResult).map((entry) => {
-      return {
-        text: `${entry.first_name} ${entry.last_name}`,
-        subtext: entry.team,
-        id: entry.id,
-      };
+      return toItem(entry);
     });
     const allOfficials = [...searchOffi, ...teamOffi];
     const filteredOfficials = allOfficials.filter((item) => {
@@ -115,18 +134,10 @@ export const Officials = (props) => {
   // filter team officials
   useEffect(() => {
     const teamOffi = (props.teamOfficials).map((entry) => {
-      return {
-        text: `${entry.first_name} ${entry.last_name}`,
-        subtext: entry.team,
-        id: entry.id,
-      };
+      return toItem(entry);
     });
     const searchOffi = (props.searchOfficialsResult).map((entry) => {
-      return {
-        text: `${entry.first_name} ${entry.last_name}`,
-        subtext: entry.team,
-        id: entry.id,
-      };
+      return toItem(entry);
     });
     const allOfficials = [...searchOffi, ...teamOffi];
     const filteredOfficials = allOfficials.filter((item) => {
@@ -184,6 +195,15 @@ export const Officials = (props) => {
   if (props.teamOfficialsError) {
     return <div className="container mt-3"><div className="alert alert-danger">Offizielle konnten nicht geladen werden.</div></div>;
   }
+  const identified = [referee, downJudge, fieldJudge, sideJudge]
+      .filter((official) => official.id !== null);
+  const identifiedCount = identified.length;
+  // officials restored from a saved setup carry no license info themselves
+  const hasValidLicense = (official) => official.licenseValid ??
+    props.teamOfficials.find((entry) => entry.id === official.id)?.is_valid;
+  const validLicenseCount = identified.filter(hasValidLicense).length;
+  const summaryVariant = identifiedCount === 4 ?
+    'success' : identifiedCount === 0 ? 'danger' : 'warning';
   const resetOfficialsSearch = () => {
     dispatch({
       type: OFFICIALS_SEARCH_FOR_OFFICIALS,
@@ -312,6 +332,13 @@ export const Officials = (props) => {
           />
         </div>
 
+        <div
+          className={`alert alert-${summaryVariant} mt-3 mb-0`}
+          data-testid="officialsSummary">
+          Offizielle erkannt: {identifiedCount}/4
+          <br />
+          Davon mit gültiger Lizenz: {validLicenseCount}/{identifiedCount}
+        </div>
         <div className="d-grid mt-3">
           <button className="btn btn-primary" type="submit">
             Spiel starten

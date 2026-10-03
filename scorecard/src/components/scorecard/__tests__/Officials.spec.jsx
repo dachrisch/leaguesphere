@@ -2,20 +2,29 @@
 import React, {act} from 'react';
 import {Provider} from 'react-redux';
 import {MemoryRouter as Router, Route, Routes} from 'react-router-dom';
-import {render, screen} from '@testing-library/react';
+import {render, screen, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {testStore} from '../../../__tests__/Utils';
 import {GAME_PAIR_1} from '../../../__tests__/testdata/gamesData';
-import Officials from '../Officials';
+import Officials, {toItem} from '../Officials';
 import {DETAILS_URL, OFFICIALS_URL} from '../../common/urls';
 import {apiGet, apiPut, apiPost} from '../../../actions/utils/api';
-import {GET_GAME_OFFICIALS, GET_GAME_SETUP, OFFICIALS_GET_TEAM_OFFICIALS} from '../../../actions/types';
+import {
+  GET_GAME_OFFICIALS,
+  GET_GAME_SETUP,
+  OFFICIALS_GET_TEAM_OFFICIALS,
+  OFFICIALS_SEARCH_FOR_OFFICIALS,
+} from '../../../actions/types';
 import {GAME_OFFICIALS} from '../../../__tests__/testdata/gameSetupData';
 import {OFFICIALS_TEAM_OFFICIALS} from '../../../__tests__/testdata/officialsData';
 import { vi } from 'vitest';
 
 const selectedGame = GAME_PAIR_1;
 let isInitEmpty = false;
+const SEARCH_RESULT = [{
+  id: 2000, team: 'Other Team', first_name: 'Marcel', last_name: 'Borutta',
+  license: 'F2', valid_until: '2024-07-07', is_valid: false,
+}];
 
 vi.mock('../../../actions/utils/api');
 apiPost.mockImplementation(() => {
@@ -51,10 +60,14 @@ apiGet.mockImplementation((url, actionType) => (dispatch) => {
       },
     });
   }
+  if (actionType == OFFICIALS_SEARCH_FOR_OFFICIALS) {
+    dispatch({type: OFFICIALS_SEARCH_FOR_OFFICIALS, payload: SEARCH_RESULT});
+  }
   return () => {};
 });
 
-const setup = (isInitialEmpty=false, emptyTeamOfficials=false) => {
+const setup = (isInitialEmpty=false, emptyTeamOfficials=false,
+    extraTeamOfficials=[]) => {
   isInitEmpty = isInitialEmpty;
   let initialOfficials = GAME_OFFICIALS;
   let initialGameSetup = {
@@ -62,7 +75,7 @@ const setup = (isInitialEmpty=false, emptyTeamOfficials=false) => {
     direction: 'directionRight',
     fhPossession: GAME_PAIR_1.away,
   };
-  let initialTeamOfficials = OFFICIALS_TEAM_OFFICIALS;
+  let initialTeamOfficials = [...OFFICIALS_TEAM_OFFICIALS, ...extraTeamOfficials];
   if (isInitialEmpty) {
     initialOfficials = [];
     initialGameSetup = {};
@@ -96,6 +109,31 @@ const setup = (isInitialEmpty=false, emptyTeamOfficials=false) => {
   </Provider>,
   );
 };
+
+const summary = () => screen.getByTestId('officialsSummary');
+
+describe('toItem', () => {
+  const entry = {id: 7, team: 'T', first_name: 'A', last_name: 'B'};
+  it('keeps entries without license data unchanged', () => {
+    expect(toItem(entry)).toEqual({text: 'A B', subtext: 'T', id: 7});
+  });
+  it('marks a valid license', () => {
+    expect(toItem({...entry, license: 'F1', is_valid: true, valid_until: '2027-01-01'}))
+        .toMatchObject({licenseLabel: 'F1', licenseExpired: false, licenseValid: true});
+  });
+  it('shows the expiry date of an expired license', () => {
+    expect(toItem({...entry, license: 'F3', is_valid: false, valid_until: '2024-02-29'}))
+        .toMatchObject({
+          licenseLabel: 'F3 – abgelaufen seit 29.02.2024',
+          licenseExpired: true,
+          licenseValid: false,
+        });
+  });
+  it('labels officials without a license', () => {
+    expect(toItem({...entry, license: null, is_valid: false, valid_until: null}))
+        .toMatchObject({licenseLabel: 'Keine Lizenz', licenseExpired: false, licenseValid: false});
+  });
+});
 
 describe('Officials component', () => {
   it('should render component', () => {
@@ -177,6 +215,94 @@ describe('Officials component', () => {
     await user.click(screen.getAllByText(/first_name first_last_name/i)[0]);
     await user.click(screen.getByPlaceholderText('Down Judge (Vorname Nachname)'));
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
+  });
+  describe('identified officials summary', () => {
+    const pick = async (user, placeholder, name) => {
+      const input = screen.getByPlaceholderText(placeholder);
+      await user.click(input);
+      await user.click(within(input.closest('.row')).getByText(name));
+    };
+    it('should be red when no official is identified', () => {
+      setup(true);
+      expect(summary()).toHaveTextContent('Offizielle erkannt: 0/4');
+      expect(summary()).toHaveTextContent('Davon mit gültiger Lizenz: 0/0');
+      expect(summary()).toHaveClass('alert-danger');
+    });
+    it('should count identified officials with a valid license', async () => {
+      const user = userEvent.setup();
+      setup(true);
+      await pick(user, 'Referee (Vorname Nachname)', /first_name first_last/);
+      await pick(user, 'Down Judge (Vorname Nachname)', /second_name second_last/);
+      await pick(user, 'Field Judge (Vorname Nachname)', /third_name third_last/);
+      expect(summary()).toHaveTextContent('Offizielle erkannt: 3/4');
+      expect(summary()).toHaveTextContent('Davon mit gültiger Lizenz: 1/3');
+    });
+    it('should be yellow when some officials are identified', async () => {
+      const user = userEvent.setup();
+      setup(true);
+      await pick(user, 'Referee (Vorname Nachname)', /first_name first_last/);
+      expect(summary()).toHaveTextContent('Offizielle erkannt: 1/4');
+      expect(summary()).toHaveClass('alert-warning');
+    });
+    it('should not count the scorecard judge', async () => {
+      const user = userEvent.setup();
+      setup(true);
+      await pick(user, 'Scorecard Judge (Vorname Nachname)', /first_name first_last/);
+      expect(summary()).toHaveTextContent('Offizielle erkannt: 0/4');
+      expect(summary()).toHaveClass('alert-danger');
+    });
+    it('should be green when all four officials are identified', async () => {
+      const user = userEvent.setup();
+      setup(true, false, [{
+        id: 1000, team: 'Some Team', first_name: 'fourth_name',
+        last_name: 'fourth_last_name', license: 'F4', valid_until: '2027-01-01',
+        is_valid: true,
+      }]);
+      await pick(user, 'Referee (Vorname Nachname)', /first_name first_last/);
+      await pick(user, 'Down Judge (Vorname Nachname)', /second_name second_last/);
+      await pick(user, 'Field Judge (Vorname Nachname)', /third_name third_last/);
+      expect(summary()).toHaveClass('alert-warning');
+      await pick(user, 'Side Judge (Vorname Nachname)', /fourth_name fourth_last/);
+      expect(summary()).toHaveTextContent('Offizielle erkannt: 4/4');
+      expect(summary()).toHaveClass('alert-success');
+    });
+    it('should count officials restored from a saved setup', () => {
+      setup(false);
+      expect(summary()).toHaveTextContent('Offizielle erkannt: 1/4');
+      expect(summary()).toHaveTextContent('Davon mit gültiger Lizenz: 1/1');
+      expect(summary()).toHaveClass('alert-warning');
+    });
+  });
+  it('should show license, expiry and missing license of team officials', async () => {
+    const user = userEvent.setup();
+    setup(true);
+    await user.click(screen.getByPlaceholderText('Referee (Vorname Nachname)'));
+    const list = within(
+        screen.getByPlaceholderText('Referee (Vorname Nachname)').closest('.row'));
+    expect(list.getByText('F1')).toBeInTheDocument();
+    expect(list.getByText('F2 – abgelaufen seit 07.07.2024')).toBeInTheDocument();
+    expect(list.getByText('Keine Lizenz')).toBeInTheDocument();
+  });
+  it('should search for an official and list the result with license', async () => {
+    const user = userEvent.setup();
+    setup(true);
+    const input = screen.getByPlaceholderText('Referee (Vorname Nachname)');
+    await user.type(input, 'Marcel Borutta');
+    await user.click(within(input.closest('.row')).getByTestId('searchButton'));
+    expect(apiGet).toHaveBeenCalledWith(
+        `/api/officials/search/exclude/team/${selectedGame.officialsId}` +
+        '/list?name=Marcel%20Borutta',
+        OFFICIALS_SEARCH_FOR_OFFICIALS,
+    );
+    const row = within(input.closest('.row'));
+    expect(row.getByText('Marcel Borutta')).toBeInTheDocument();
+    expect(row.getByText('F2 – abgelaufen seit 07.07.2024')).toHaveClass('text-danger');
+    await user.click(row.getByText('Marcel Borutta'));
+    expect(summary()).toHaveTextContent('Offizielle erkannt: 1/4');
+    expect(summary()).toHaveTextContent('Davon mit gültiger Lizenz: 0/1');
+    await user.click(screen.getByPlaceholderText('Down Judge (Vorname Nachname)'));
+    expect(screen.queryByText('Marcel Borutta', {selector: 'li *'}))
+        .not.toBeInTheDocument();
   });
   it('should show loading spinner when team officials are loading', () => {
     const initialState = {
