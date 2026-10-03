@@ -109,33 +109,45 @@ const previewRound2 = {
   game_ids: [],
 };
 
-const makeFlowState = (overrides: Partial<FlowState> = {}) => ({
-  nodes: [] as FlowNode[],
-  edges: [],
-  globalTeams: [AACHEN, ANTWERP],
-  globalTeamGroups: [] as GlobalTeamGroup[],
-  metadata: null,
-  swiss: {
-    seedOrder: [138, 522],
-    rounds: 4,
-    fields: 2,
-    gameDuration: 30,
-    roundStartTimes: {},
-    completedRounds: [{ round: 1, gameIds: [11], bye: null }],
-    byes: {},
-  },
-  saveTrigger: 0,
-  canUndo: false,
-  canRedo: false,
-  stats: { fieldCount: 0, gameCount: 0, teamCount: 0 },
-  exportState: vi.fn(() => ({ nodes: [], edges: [], globalTeams: [AACHEN, ANTWERP], globalTeamGroups: [] })),
-  importState: vi.fn(),
-  ...overrides,
-});
+const lastFlowMocks: { exportState?: Mock; importState?: Mock } = {};
+
+const makeFlowState = (
+  overrides: Partial<FlowState> & { exportState?: Mock; importState?: Mock } = {},
+) => {
+  const { exportState, importState, ...rest } = overrides;
+  const state = {
+    nodes: [] as FlowNode[],
+    edges: [],
+    globalTeams: [AACHEN, ANTWERP],
+    globalTeamGroups: [] as GlobalTeamGroup[],
+    metadata: null,
+    swiss: {
+      seedOrder: [138, 522],
+      rounds: 4,
+      fields: 2,
+      gameDuration: 30,
+      roundStartTimes: {},
+      completedRounds: [{ round: 1, gameIds: [11], bye: null }],
+      byes: {},
+    },
+    saveTrigger: 0,
+    canUndo: false,
+    canRedo: false,
+    stats: { fieldCount: 0, gameCount: 0, teamCount: 0 },
+    exportState:
+      exportState ??
+      vi.fn(() => ({ nodes: [], edges: [], globalTeams: [AACHEN, ANTWERP], globalTeamGroups: [] })),
+    importState: importState ?? vi.fn(),
+    ...rest,
+  };
+  lastFlowMocks.exportState = state.exportState as Mock;
+  lastFlowMocks.importState = state.importState as Mock;
+  return state;
+};
 
 const mockHandlers = {
   loadData: vi.fn(async () => {}),
-  saveData: vi.fn(async () => {}),
+  saveData: vi.fn<(state: FlowState) => Promise<void>>(async () => {}),
   handleHighlightElement: vi.fn(),
   handleDynamicReferenceClick: vi.fn(),
   handleImport: vi.fn(),
@@ -203,12 +215,18 @@ const controllerReturn = {
   stats: { gameCount: 0, teamCount: 0, fieldCount: 0 },
 };
 
-async function setup(flowOverrides: Partial<FlowState> = {}) {
+async function setup(
+  flowOverrides: Partial<FlowState> & { exportState?: Mock; importState?: Mock } = {},
+  metadataStatus = 'DRAFT',
+) {
   await i18n.changeLanguage('en');
   vi.clearAllMocks();
   adjustCapture.calls = 0;
   (useFlowState as Mock).mockReturnValue(makeFlowState(flowOverrides));
-  (useDesignerController as Mock).mockReturnValue(controllerReturn);
+  (useDesignerController as Mock).mockReturnValue({
+    ...controllerReturn,
+    metadata: { ...controllerReturn.metadata, status: metadataStatus },
+  });
   render(
     <GamedayProvider>
       <MemoryRouter initialEntries={['/designer/1']}>
@@ -494,6 +512,34 @@ describe('ListDesignerApp handleGenerateSwiss error branches', () => {
     expect(mockHandlers.loadData).toHaveBeenCalled();
   });
 
+  it('persists without import when the call carries no teams at all', async () => {
+    await setup({ globalTeams: [] });
+    vi.mocked(designerApi.setupSwissTournament).mockResolvedValueOnce({ success: true, config: {} as never });
+    vi.mocked(designerApi.generateSwissRound).mockResolvedValueOnce({
+      success: true,
+      round: 1,
+      pairings: [],
+      bye_team_id: null,
+      game_ids: [],
+    });
+    const template = templateCapture.props as unknown as {
+      onGenerateSwiss: (c: unknown) => Promise<void>;
+    };
+
+    await act(async () => {
+      await template.onGenerateSwiss({
+        seedTeamIds: [138, 522],
+        rounds: 4,
+        fields: 2,
+        gameDuration: 30,
+      });
+    });
+
+    expect(mockHandlers.saveData).toHaveBeenCalledTimes(1);
+    expect(designerApi.setupSwissTournament).toHaveBeenCalled();
+    expect(mockHandlers.loadData).toHaveBeenCalled();
+  });
+
   it('shows the backend error when setup fails and skips generate', async () => {
     await setup({ globalTeams: [] });
     vi.mocked(designerApi.setupSwissTournament).mockRejectedValueOnce({
@@ -522,5 +568,166 @@ describe('ListDesignerApp handleGenerateSwiss error branches', () => {
 
     expect(mockHandlers.loadData).not.toHaveBeenCalled();
     expect(mockHandlers.addNotification).toHaveBeenCalledWith('gelost', 'danger', expect.anything());
+  });
+});
+
+describe('ListDesignerApp Swiss progression when published', () => {
+  const gameNode = {
+    id: 'game-7',
+    type: 'game',
+    position: { x: 0, y: 0 },
+    data: { type: 'game', homeTeamId: '138', awayTeamId: '522' },
+  } as unknown as FlowNode;
+
+  const saveResult = async () => {
+    await act(async () => {
+      canvasProps().onOpenResultModal('game-7');
+    });
+    const modal = resultModalCapture.props as unknown as {
+      onSave: (data: { halftime_score: { home: number; away: number }; final_score: { home: number; away: number } }) => Promise<void>;
+    };
+    await act(async () => {
+      await modal.onSave({
+        halftime_score: { home: 1, away: 0 },
+        final_score: { home: 2, away: 0 },
+      });
+    });
+  };
+
+  it('progresses rounds when published: preview opens the modal and confirm generates', async () => {
+    await setup({}, 'PUBLISHED');
+    vi.mocked(designerApi.previewSwissRound).mockResolvedValueOnce({ ...previewRound2 });
+    await act(async () => {
+      await canvasProps().onProgressSwissRound(2);
+    });
+    expect(screen.getByTestId('swiss-adjust-modal')).toBeTruthy();
+
+    vi.mocked(designerApi.generateSwissRound).mockResolvedValueOnce({
+      success: true,
+      round: 2,
+      pairings: [],
+      bye_team_id: null,
+      game_ids: [21],
+    });
+    const overrides = { pairings: [{ home_team_id: 522, away_team_id: 138 }], bye_team_id: null };
+    await act(async () => {
+      await adjustProps().onConfirm(overrides);
+    });
+
+    expect(designerApi.generateSwissRound).toHaveBeenCalledWith(1, overrides);
+    expect(mockHandlers.loadData).toHaveBeenCalled();
+    expect(screen.queryByTestId('swiss-adjust-modal')).toBeNull();
+  });
+
+  it('persists node scores explicitly when published (auto-save is locked)', async () => {
+    const otherNode = {
+      id: 'game-8',
+      type: 'game',
+      position: { x: 0, y: 0 },
+      data: { type: 'game', homeTeamId: '138', awayTeamId: '522' },
+    } as unknown as FlowNode;
+    const exportState = vi.fn(() => ({
+      nodes: [gameNode, otherNode],
+      edges: [],
+      globalTeams: [AACHEN, ANTWERP],
+      globalTeamGroups: [],
+    }));
+    await setup({ nodes: [gameNode, otherNode], exportState }, 'PUBLISHED');
+    expect(canvasProps().swissResultsVersion).toBe(0);
+
+    await saveResult();
+
+    // In-memory node update + Gameinfo write + explicit canvas persist.
+    expect(mockHandlers.handleUpdateNode).toHaveBeenCalledWith(
+      'game-7',
+      expect.objectContaining({ final_score: { home: 2, away: 0 } }),
+    );
+    expect(mockHandlers.saveData).toHaveBeenCalledTimes(1);
+    const saved = mockHandlers.saveData.mock.calls[0][0] as FlowState;
+    const savedGame = saved.nodes.find((n) => n.id === 'game-7') as unknown as {
+      data: { final_score: { home: number; away: number } };
+    };
+    expect(savedGame.data.final_score).toEqual({ home: 2, away: 0 });
+    expect(canvasProps().swissResultsVersion).toBe(1);
+  });
+
+  it('reports explicit failure when the canvas persist fails after Gameinfo success', async () => {
+    await setup({ nodes: [gameNode] }, 'PUBLISHED');
+    mockHandlers.saveData.mockRejectedValueOnce(new Error('persist failed'));
+
+    await saveResult();
+
+    // Gameinfo write happened, but the user sees failure (not silent success):
+    // modal stays open, no version bump, no success toast.
+    expect(vi.mocked(gamedayApi.updateGameResult)).toHaveBeenCalled();
+    expect(mockHandlers.addNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      'danger',
+      expect.anything(),
+    );
+    const kinds = vi.mocked(mockHandlers.addNotification).mock.calls.map((c) => c[1]);
+    expect(kinds).not.toContain('success');
+    expect(canvasProps().swissResultsVersion).toBe(0);
+  });
+
+  it('skips the Gameinfo write for placeholder ids without a numeric suffix', async () => {
+    const placeholder = {
+      id: 'swiss-r2-g1',
+      type: 'game',
+      position: { x: 0, y: 0 },
+      data: { type: 'game', homeTeamId: '138', awayTeamId: '522' },
+    } as unknown as FlowNode;
+    const exportState = vi.fn(() => ({
+      nodes: [placeholder],
+      edges: [],
+      globalTeams: [AACHEN, ANTWERP],
+      globalTeamGroups: [],
+    }));
+    await setup({ nodes: [placeholder], exportState }, 'PUBLISHED');
+
+    await act(async () => {
+      canvasProps().onOpenResultModal('swiss-r2-g1');
+    });
+    const modal = resultModalCapture.props as unknown as {
+      onSave: (data: { halftime_score: { home: number; away: number }; final_score: { home: number; away: number } }) => Promise<void>;
+    };
+    await act(async () => {
+      await modal.onSave({
+        halftime_score: { home: 0, away: 0 },
+        final_score: { home: 1, away: 1 },
+      });
+    });
+
+    // No numeric DB id to write through — canvas persist still happens.
+    expect(vi.mocked(gamedayApi.updateGameResult)).not.toHaveBeenCalled();
+    expect(mockHandlers.saveData).toHaveBeenCalledTimes(1);
+    expect(canvasProps().swissResultsVersion).toBe(1);
+  });
+
+  it('surfaces the draft-only backend error when generating setup while published', async () => {
+    await setup({ globalTeams: [] }, 'PUBLISHED');
+    vi.mocked(designerApi.setupSwissTournament).mockRejectedValueOnce({
+      response: { data: { error: 'Swiss setup is only available in draft status' } },
+    });
+    const template = templateCapture.props as unknown as {
+      onGenerateSwiss: (c: unknown) => Promise<void>;
+    };
+
+    await act(async () => {
+      await template.onGenerateSwiss({
+        seedTeamIds: [138, 522],
+        rounds: 4,
+        fields: 2,
+        gameDuration: 30,
+        teams: [],
+      });
+    });
+
+    expect(designerApi.generateSwissRound).not.toHaveBeenCalled();
+    expect(mockHandlers.addNotification).toHaveBeenCalledWith(
+      'Swiss setup is only available in draft status',
+      'danger',
+      expect.anything(),
+    );
   });
 });
