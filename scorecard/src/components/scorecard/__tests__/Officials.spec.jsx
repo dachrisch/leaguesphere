@@ -2,7 +2,7 @@
 import React, {act} from 'react';
 import {Provider} from 'react-redux';
 import {MemoryRouter as Router, Route, Routes} from 'react-router-dom';
-import {render, screen} from '@testing-library/react';
+import {render, screen, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {testStore} from '../../../__tests__/Utils';
 import {GAME_PAIR_1} from '../../../__tests__/testdata/gamesData';
@@ -54,7 +54,8 @@ apiGet.mockImplementation((url, actionType) => (dispatch) => {
   return () => {};
 });
 
-const setup = (isInitialEmpty=false, emptyTeamOfficials=false) => {
+const setup = (isInitialEmpty=false, emptyTeamOfficials=false,
+    extraTeamOfficials=[]) => {
   isInitEmpty = isInitialEmpty;
   let initialOfficials = GAME_OFFICIALS;
   let initialGameSetup = {
@@ -62,7 +63,7 @@ const setup = (isInitialEmpty=false, emptyTeamOfficials=false) => {
     direction: 'directionRight',
     fhPossession: GAME_PAIR_1.away,
   };
-  let initialTeamOfficials = OFFICIALS_TEAM_OFFICIALS;
+  let initialTeamOfficials = [...OFFICIALS_TEAM_OFFICIALS, ...extraTeamOfficials];
   if (isInitialEmpty) {
     initialOfficials = [];
     initialGameSetup = {};
@@ -177,6 +178,63 @@ describe('Officials component', () => {
     await user.click(screen.getAllByText(/first_name first_last_name/i)[0]);
     await user.click(screen.getByPlaceholderText('Down Judge (Vorname Nachname)'));
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
+  });
+  describe('identified officials summary', () => {
+    const summary = () => screen.getByTestId('officialsSummary');
+    const pick = async (user, placeholder, name) => {
+      const input = screen.getByPlaceholderText(placeholder);
+      await user.click(input);
+      await user.click(within(input.closest('.row')).getByText(name));
+    };
+    it('should be red when no official is identified', () => {
+      setup(true);
+      expect(summary()).toHaveTextContent('Offizielle erkannt: 0/4');
+      expect(summary()).toHaveClass('alert-danger');
+    });
+    it('should be yellow when some officials are identified', async () => {
+      const user = userEvent.setup();
+      setup(true);
+      await pick(user, 'Referee (Vorname Nachname)', /first_name first_last/);
+      expect(summary()).toHaveTextContent('Offizielle erkannt: 1/4');
+      expect(summary()).toHaveClass('alert-warning');
+    });
+    it('should not count the side judge', async () => {
+      const user = userEvent.setup();
+      setup(true);
+      await pick(user, 'Side Judge (Vorname Nachname)', /first_name first_last/);
+      expect(summary()).toHaveTextContent('Offizielle erkannt: 0/4');
+      expect(summary()).toHaveClass('alert-danger');
+    });
+    it('should be green when all four officials are identified', async () => {
+      const user = userEvent.setup();
+      setup(true, false, [{
+        id: 1000, team: 'Some Team', first_name: 'fourth_name',
+        last_name: 'fourth_last_name', license: 'F4', valid_until: '2027-01-01',
+        is_valid: true,
+      }]);
+      await pick(user, 'Scorecard Judge (Vorname Nachname)', /first_name first_last/);
+      await pick(user, 'Referee (Vorname Nachname)', /second_name second_last/);
+      await pick(user, 'Down Judge (Vorname Nachname)', /third_name third_last/);
+      expect(summary()).toHaveClass('alert-warning');
+      await pick(user, 'Field Judge (Vorname Nachname)', /fourth_name fourth_last/);
+      expect(summary()).toHaveTextContent('Offizielle erkannt: 4/4');
+      expect(summary()).toHaveClass('alert-success');
+    });
+    it('should count officials restored from a saved setup', () => {
+      setup(false);
+      expect(summary()).toHaveTextContent('Offizielle erkannt: 1/4');
+      expect(summary()).toHaveClass('alert-warning');
+    });
+  });
+  it('should show license, expiry and missing license of team officials', async () => {
+    const user = userEvent.setup();
+    setup(true);
+    await user.click(screen.getByPlaceholderText('Referee (Vorname Nachname)'));
+    const list = within(
+        screen.getByPlaceholderText('Referee (Vorname Nachname)').closest('.row'));
+    expect(list.getByText('F1')).toBeInTheDocument();
+    expect(list.getByText('F2 – abgelaufen seit 07.07.2024')).toBeInTheDocument();
+    expect(list.getByText('Keine Lizenz')).toBeInTheDocument();
   });
   it('should show loading spinner when team officials are loading', () => {
     const initialState = {

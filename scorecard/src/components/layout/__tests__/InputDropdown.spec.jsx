@@ -17,9 +17,13 @@ const setup = (initText = {}) => {
     items: [
       {text: 'first_name first_last_name',
         subtext: 'some team',
+        licenseLabel: 'F1',
+        licenseExpired: false,
         id: 1},
       {text: 'second_name second_last_name',
         subtext: 'some team',
+        licenseLabel: 'F3 – abgelaufen seit 01.01.2024',
+        licenseExpired: true,
         id: 2},
       {text: 'third_name third_last_name',
         subtext: 'some team',
@@ -134,5 +138,29 @@ describe('InputDropdown component', () => {
         await user.type(
             screen.getByPlaceholderText('inputDropdownPlaceholderText'), 'x');
         expect(screen.getByTestId('officialNotFound')).toBeInTheDocument();
+      });
+  it('should show the license label in the dropdown rows', () => {
+    setup();
+    expect(screen.getByText('F1')).toHaveClass('text-muted');
+    expect(screen.getByText('F3 – abgelaufen seit 01.01.2024'))
+        .toHaveClass('text-danger');
+  });
+  it('should keep showing the license next to the selected official',
+      async () => {
+        const user = userEvent.setup();
+        setup();
+        await user.click(screen.getByText(/second_name/i));
+        const label = screen.getByTestId('officialLicense');
+        expect(label).toHaveTextContent('F3 – abgelaufen seit 01.01.2024');
+        expect(label).toHaveClass('text-danger');
+      });
+  it('should remove the license label when the selection is deleted',
+      async () => {
+        const user = userEvent.setup();
+        setup();
+        await user.click(screen.getByText(/first_name/i));
+        expect(screen.getByTestId('officialLicense')).toHaveTextContent('F1');
+        await user.click(screen.getByRole('button'));
+        expect(screen.queryByTestId('officialLicense')).not.toBeInTheDocument();
       });
 });
