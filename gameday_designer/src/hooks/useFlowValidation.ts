@@ -41,16 +41,33 @@ import { DEFAULT_GAME_DURATION } from '../utils/tournamentConstants';
 
 /**
  * Check if a game node has incomplete inputs.
+ *
+ * Swiss-aware: games in UNGENERATED Swiss rounds (parent stage's
+ * `data.swissRound` above `swissCompletedRounds`) have no teams by design
+ * (pairings are computed when the round is generated), so they are skipped.
+ * Games in generated rounds (round <= completed) validate exactly as before.
  */
 function checkIncompleteInputs(
   nodes: FlowNode[],
-  edges: FlowEdge[]
+  edges: FlowEdge[],
+  swissCompletedRounds?: number
 ): FlowValidationError[] {
   const errors: FlowValidationError[] = [];
 
   const gameNodes = nodes.filter(isGameNode);
 
   for (const node of gameNodes) {
+    // Skip placeholders in ungenerated Swiss rounds — no teams by design.
+    if (swissCompletedRounds !== undefined && node.parentId) {
+      const parent = nodes.find((n) => n.id === node.parentId);
+      if (parent && isStageNode(parent)) {
+        const swissRound = parent.data.swissRound;
+        if (swissRound != null && swissRound > swissCompletedRounds) {
+          continue;
+        }
+      }
+    }
+
     const data = node.data as GameNodeData;
 
     // Check if home slot is filled:
@@ -1398,11 +1415,12 @@ export function validateFlowchart(
   edges: FlowEdge[],
   globalTeams: GlobalTeam[] = [],
   globalTeamGroups: GlobalTeamGroup[] = [],
-  metadata?: GamedayMetadata
+  metadata?: GamedayMetadata,
+  swissCompletedRounds?: number
 ): FlowValidationResult {
   const errors: FlowValidationError[] = [
     ...checkMandatoryMetadata(metadata),
-    ...checkIncompleteInputs(nodes, edges),
+    ...checkIncompleteInputs(nodes, edges, swissCompletedRounds),
     ...checkCircularDependencies(nodes, edges),
     ...checkOfficialPlaying(nodes, edges, globalTeams),
     ...checkStagesOutsideFields(nodes),
@@ -1446,6 +1464,9 @@ export function validateFlowchart(
  * @param globalTeams - Global team pool
  * @param globalTeamGroups - Team groups
  * @param metadata - Gameday metadata
+ * @param swissCompletedRounds - Number of generated Swiss rounds
+ *   (`swiss.completedRounds.length`); games in later Swiss rounds are
+ *   placeholders without teams by design and skip team-connection checks
  * @returns Validation result with errors and warnings
  */
 export function useFlowValidation(
@@ -1453,10 +1474,11 @@ export function useFlowValidation(
   edges: FlowEdge[],
   globalTeams: GlobalTeam[] = [],
   globalTeamGroups: GlobalTeamGroup[] = [],
-  metadata?: GamedayMetadata
+  metadata?: GamedayMetadata,
+  swissCompletedRounds?: number
 ): FlowValidationResult {
   return useMemo(
-    () => validateFlowchart(nodes, edges, globalTeams, globalTeamGroups, metadata),
-    [nodes, edges, globalTeams, globalTeamGroups, metadata]
+    () => validateFlowchart(nodes, edges, globalTeams, globalTeamGroups, metadata, swissCompletedRounds),
+    [nodes, edges, globalTeams, globalTeamGroups, metadata, swissCompletedRounds]
   );
 }

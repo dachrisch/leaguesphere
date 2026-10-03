@@ -454,6 +454,38 @@ describe('useDesignerController', () => {
       const importCall = importStateSpy.mock.calls[0][0];
       expect(importCall.globalTeams).toHaveLength(4);
     });
+
+    it('preserves swiss tournament state across tournament generation', async () => {
+      const swiss = {
+        seedOrder: [1, 2, 3, 4],
+        rounds: 3,
+        fields: 1,
+        gameDuration: 30,
+        roundStartTimes: { '1': '09:00', '2': '10:00', '3': '11:00' },
+        completedRounds: [],
+        byes: {},
+      };
+      const { result } = renderHook(() => {
+        const fs = useFlowState({
+          nodes: [],
+          edges: [],
+          globalTeams: [],
+          globalTeamGroups: [],
+          swiss,
+        });
+        return { fs, controller: useDesignerController(undefined, fs) };
+      });
+
+      vi.mocked(tournamentGenerator.generateTournament).mockReturnValue(mockStructure);
+      const importStateSpy = vi.spyOn(result.current.fs, 'importState');
+
+      await act(async () => {
+        await result.current.controller.handlers.handleGenerateTournament(mockConfig);
+      });
+
+      expect(importStateSpy).toHaveBeenCalledWith(expect.objectContaining({ swiss }));
+      expect(result.current.fs.swiss).toEqual(swiss);
+    });
   });
 
   describe('Other Handlers', () => {
