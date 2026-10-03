@@ -195,7 +195,7 @@ export const Officials = (props) => {
   if (props.teamOfficialsError) {
     return <div className="container mt-3"><div className="alert alert-danger">Offizielle konnten nicht geladen werden.</div></div>;
   }
-  const identified = [scJudge, referee, downJudge, fieldJudge]
+  const identified = [referee, downJudge, fieldJudge, sideJudge]
       .filter((official) => official.id !== null);
   const identifiedCount = identified.length;
   // officials restored from a saved setup carry no license info themselves

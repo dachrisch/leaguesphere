@@ -244,10 +244,10 @@ describe('Officials component', () => {
       expect(summary()).toHaveTextContent('Offizielle erkannt: 1/4');
       expect(summary()).toHaveClass('alert-warning');
     });
-    it('should not count the side judge', async () => {
+    it('should not count the scorecard judge', async () => {
       const user = userEvent.setup();
       setup(true);
-      await pick(user, 'Side Judge (Vorname Nachname)', /first_name first_last/);
+      await pick(user, 'Scorecard Judge (Vorname Nachname)', /first_name first_last/);
       expect(summary()).toHaveTextContent('Offizielle erkannt: 0/4');
       expect(summary()).toHaveClass('alert-danger');
     });
@@ -258,11 +258,11 @@ describe('Officials component', () => {
         last_name: 'fourth_last_name', license: 'F4', valid_until: '2027-01-01',
         is_valid: true,
       }]);
-      await pick(user, 'Scorecard Judge (Vorname Nachname)', /first_name first_last/);
-      await pick(user, 'Referee (Vorname Nachname)', /second_name second_last/);
-      await pick(user, 'Down Judge (Vorname Nachname)', /third_name third_last/);
+      await pick(user, 'Referee (Vorname Nachname)', /first_name first_last/);
+      await pick(user, 'Down Judge (Vorname Nachname)', /second_name second_last/);
+      await pick(user, 'Field Judge (Vorname Nachname)', /third_name third_last/);
       expect(summary()).toHaveClass('alert-warning');
-      await pick(user, 'Field Judge (Vorname Nachname)', /fourth_name fourth_last/);
+      await pick(user, 'Side Judge (Vorname Nachname)', /fourth_name fourth_last/);
       expect(summary()).toHaveTextContent('Offizielle erkannt: 4/4');
       expect(summary()).toHaveClass('alert-success');
     });
