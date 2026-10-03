@@ -1,5 +1,14 @@
 # Changelog
 
+## [4.35.1](https://github.com/dachrisch/leaguesphere/compare/v4.35.0...v4.35.1) (2026-10-03)
+
+
+### Bug Fixes
+
+* **gamedays:** guard designer progression and link refs by canvas node id ([#2038](https://github.com/dachrisch/leaguesphere/issues/2038)) ([ab081dc](https://github.com/dachrisch/leaguesphere/commit/ab081dcedd51d67d89e0f00522295f9ebcfe7d58))
+* **gamedays:** guard designer progression and link refs by canvas node id ([#2038](https://github.com/dachrisch/leaguesphere/issues/2038)) ([c1efbc3](https://github.com/dachrisch/leaguesphere/commit/c1efbc3c1cb68281604ba86cc08aef6e82823c63))
+* **scorecard:** find officials by full name; show officials summary and licenses ([#2039](https://github.com/dachrisch/leaguesphere/issues/2039)) ([eb11604](https://github.com/dachrisch/leaguesphere/commit/eb11604602a315a63a84d16c9892eca0e65e0738))
+
 ## [4.35.0](https://github.com/dachrisch/leaguesphere/compare/v4.34.0...v4.35.0) (2026-09-29)
 
 
