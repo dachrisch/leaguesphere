@@ -3,30 +3,67 @@ import { useMemo } from 'react';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { PoweredBy } from '../components/PoweredBy';
 import { useAutoHeight } from '../hooks/useAutoHeight';
-import { useResolvedSeason } from '../hooks/useResolvedSeason';
-import { useSnapshot } from '../hooks/useSnapshot';
+import { useSnapshot, type SnapshotPolling } from '../hooks/useSnapshot';
+import type { SnapshotFilters, SnapshotInclude } from '../lib/api';
 import { filterToLatestSeason } from '../lib/derived';
-import { parseWidgetConfig } from '../lib/params';
+import { activeWatchedGames } from '../lib/live';
+import { parseWidgetConfig, type WidgetConfig } from '../lib/params';
+import { todayIso } from '../lib/schedule';
+import type { Snapshot } from '../lib/types';
 import { Live } from '../views/Live';
 import { Spielplan } from '../views/Spielplan';
 import { Table } from '../views/Table';
 
+const LIVE_POLL_MS = 60_000;
+
+function hasOpenGameToday(snapshot: Snapshot): boolean {
+  const teamIds = snapshot.scope?.team ?? [];
+  return activeWatchedGames(snapshot, teamIds).length > 0;
+}
+
+const LIVE_POLLING: SnapshotPolling = {
+  intervalMs: LIVE_POLL_MS,
+  shouldPoll: hasOpenGameToday,
+};
+
+/**
+ * One snapshot request per view: names and logos always (`teams`), plus the
+ * standings for the table view or today's live blocks for the live view.
+ */
+export function snapshotFilters(config: WidgetConfig, today: string): SnapshotFilters {
+  if (config.view === 'live') {
+    return {
+      include: ['games', 'teams', 'live'],
+      dateFrom: today,
+      dateTo: today,
+    };
+  }
+  const include: SnapshotInclude[] = ['games', 'teams'];
+  if (config.view === 'table') {
+    include.push('standings');
+  }
+  return {
+    include,
+    season: config.season ?? undefined,
+    year: config.season === null ? (config.year ?? undefined) : undefined,
+    league: config.league ?? undefined,
+  };
+}
+
 export function App() {
   const config = parseWidgetConfig(new URLSearchParams(window.location.search));
-  const { seasonId, ready } = useResolvedSeason(config);
+  const isLive = config.view === 'live';
   const {
     snapshot: rawSnapshot,
     loading,
     error,
   } = useSnapshot(
     config.teams,
-    {
-      season: seasonId ?? undefined,
-      league: config.league ?? undefined,
-    },
-    ready
+    snapshotFilters(config, todayIso()),
+    isLive ? LIVE_POLLING : null
   );
-  const defaultSeason = config.season === null && config.year === null;
+  const defaultSeason =
+    !isLive && config.season === null && config.year === null;
   const teamsKey = config.teams.join(',');
   const snapshot = useMemo(() => {
     if (rawSnapshot === null || !defaultSeason) {
@@ -46,6 +83,10 @@ export function App() {
   if (loading || snapshot === null) {
     return <p className="share-loading">Lädt…</p>;
   }
+  if (isLive) {
+    // Today's scope is usually empty; the live view says so itself.
+    return <Live snapshot={snapshot} config={config} />;
+  }
   if (snapshot.gamedays.length === 0) {
     return (
       <div className="share-widget">
@@ -56,11 +97,8 @@ export function App() {
       </div>
     );
   }
-  if (config.view === 'live') {
-    return <Live snapshot={snapshot} config={config} />;
-  }
   if (config.view === 'table') {
-    return <Table snapshot={snapshot} config={config} seasonId={seasonId} />;
+    return <Table snapshot={snapshot} config={config} />;
   }
   return <Spielplan snapshot={snapshot} config={config} />;
 }

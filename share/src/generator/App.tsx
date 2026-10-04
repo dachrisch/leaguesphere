@@ -6,6 +6,7 @@ import { leaguesInSnapshot, type LeagueOption } from '../lib/derived';
 import {
   buildIframeSnippet,
   buildListenerSnippet,
+  buildSnapshotDataUrl,
   buildWidgetUrl,
   type GeneratorOptions,
 } from '../lib/generator';
@@ -467,6 +468,13 @@ export function App() {
             />
             <CopyField label="Schritt 2 – iframe" value={buildIframeSnippet(url)} />
             <CopyField label="Direktlink" value={url} />
+            <CopyField
+              label="Daten als JSON (öffentliche API, für eigene Darstellungen)"
+              value={buildSnapshotDataUrl(window.location.origin, {
+                ...options,
+                teams: selected.map((team) => team.id),
+              })}
+            />
           </>
         )}
       </div>

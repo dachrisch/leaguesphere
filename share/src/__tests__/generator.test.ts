@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildIframeSnippet,
   buildListenerSnippet,
+  buildSnapshotDataUrl,
   buildWidgetUrl,
   type GeneratorOptions,
 } from '../lib/generator';
@@ -133,5 +134,32 @@ describe('snippets', () => {
     const snippet = buildListenerSnippet('https://leaguesphere.app');
     expect(snippet).toContain('_lsHeight');
     expect(snippet).toMatch(/Math\.max/);
+  });
+});
+
+describe('buildSnapshotDataUrl', () => {
+  it('links the public snapshot for the selected teams, season and league', () => {
+    expect(
+      buildSnapshotDataUrl('https://leaguesphere.app', {
+        teams: [159, 287],
+        season: 6,
+        league: 7,
+      })
+    ).toBe(
+      'https://leaguesphere.app/api/snapshot/?team=159&team=287' +
+        '&include=games%2Cteams%2Cstandings&season=6&league=7'
+    );
+  });
+
+  it('omits unset filters', () => {
+    expect(
+      buildSnapshotDataUrl('https://leaguesphere.app', {
+        teams: [159],
+        season: null,
+        league: null,
+      })
+    ).toBe(
+      'https://leaguesphere.app/api/snapshot/?team=159&include=games%2Cteams%2Cstandings'
+    );
   });
 });

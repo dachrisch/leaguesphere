@@ -1,68 +1,24 @@
-import type { Snapshot } from './types';
-
-/** Mirror of Django's `slugify` for season names ("2025/2026" -> "2025-2026"). */
-export function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
+import type { LeagueTable, Snapshot } from './types';
 
 /**
- * Resolve a season id from either an explicit `season` id or a `year`.
- *
- * `year` matches a season whose name starts with the year (e.g. `2026`, or
- * `2025/2026` for a season spanning two years). Explicit `season` takes
- * precedence when both are present.
+ * Standings to show: the snapshot's tables for the seasons present in the
+ * (possibly latest-season-filtered) gamedays, narrowed to an explicit
+ * `league=` when the embed sets one. Leagues without a table (cups) never
+ * appear: the snapshot only returns configured league-seasons.
  */
-export function resolveSeasonId(
-  seasons: { id: number; name: string }[],
-  season: number | null,
-  year: string | null
-): number | null {
-  if (season !== null) {
-    return season;
-  }
-  if (year === null) {
-    return null;
-  }
-  const match = seasons.find((entry) => entry.name.startsWith(year));
-  return match ? match.id : null;
-}
-
-export interface LeagueCandidate {
-  id: number;
-  name: string;
-  gameCount: number;
-}
-
-/**
- * Leagues present in the snapshot (already scoped to the resolved season),
- * ordered by number of games desc.
- *
- * The snapshot offers only display names + ids (`league`, `league_display`);
- * callers resolve each candidate's id/name to a slug via `/api/leagues/` and
- * fetch its table, falling through to the next candidate on a 404. This lets a
- * club's league win over a cup it also appeared in within the same season.
- */
-export function leagueCandidates(snapshot: Snapshot): LeagueCandidate[] {
-  const byId = new Map<number, LeagueCandidate>();
-  for (const gameday of snapshot.gamedays) {
-    const gameCount = gameday.games?.length ?? 0;
-    const current = byId.get(gameday.league);
-    if (current === undefined) {
-      byId.set(gameday.league, {
-        id: gameday.league,
-        name: gameday.league_display,
-        gameCount,
-      });
-    } else {
-      current.gameCount += gameCount;
-    }
-  }
-  return [...byId.values()].sort(
-    (a, b) => b.gameCount - a.gameCount || a.name.localeCompare(b.name)
+export function visibleStandings(
+  snapshot: Snapshot,
+  league: number | null
+): LeagueTable[] {
+  const seasons = new Set(snapshot.gamedays.map((gameday) => gameday.season));
+  return (snapshot.standings ?? []).filter(
+    (table) =>
+      seasons.has(table.season.id) &&
+      (league === null || table.league.id === league)
   );
+}
+
+/** Whether the table ranks by league quotient, so the column must show. */
+export function ranksByQuotient(table: LeagueTable): boolean {
+  return table.ranking[0] === 'win_quotient';
 }

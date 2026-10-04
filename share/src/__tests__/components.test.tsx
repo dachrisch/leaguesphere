@@ -23,9 +23,12 @@ describe('StandingsTable', () => {
   const row = (
     teamId: number,
     description: string,
-    group: string
-  ): LeagueTable['standing'][number] => ({
+    group: string,
+    rank: number
+  ): LeagueTable['rows'][number] => ({
     standing: group,
+    group,
+    rank,
     team_id: teamId,
     team__description: description,
     wins: 1,
@@ -36,13 +39,14 @@ describe('StandingsTable', () => {
     pa: 7,
     diff: 14,
     win_points: 2,
-    win_quotient: 1,
+    win_quotient: 0.625,
   });
 
   const table: LeagueTable = {
-    league: { slug: 'dffl', name: 'DFFL' },
-    season: { slug: '2026', name: '2026' },
-    standing: [row(159, 'Renegades', 'Gruppe 1')],
+    league: { id: 7, slug: 'dffl', name: 'DFFL' },
+    season: { id: 6, slug: '2026', name: '2026' },
+    ranking: ['league_points'],
+    rows: [row(159, 'Renegades', 'Gruppe 1', 1)],
   };
 
   it('renders the standing and highlights the configured team', () => {
@@ -58,12 +62,12 @@ describe('StandingsTable', () => {
     );
   });
 
-  it('numbers rows by rank instead of showing the group label', () => {
+  it('shows the rank from the snapshot instead of the group label', () => {
     const single: LeagueTable = {
       ...table,
-      standing: [
-        row(159, 'Renegades', 'Gruppe 1'),
-        row(200, 'Sharks', 'Gruppe 1'),
+      rows: [
+        row(159, 'Renegades', 'Gruppe 1', 1),
+        row(200, 'Sharks', 'Gruppe 1', 2),
       ],
     };
     render(<StandingsTable table={single} highlightTeamIds={[]} />);
@@ -74,30 +78,44 @@ describe('StandingsTable', () => {
   it('omits group headers when all rows share one group', () => {
     const single: LeagueTable = {
       ...table,
-      standing: [
-        row(159, 'Renegades', 'Gruppe 1'),
-        row(200, 'Sharks', 'Gruppe 1'),
+      rows: [
+        row(159, 'Renegades', 'Gruppe 1', 1),
+        row(200, 'Sharks', 'Gruppe 1', 2),
       ],
     };
     render(<StandingsTable table={single} highlightTeamIds={[]} />);
     expect(screen.queryByText('Gruppe 1')).not.toBeInTheDocument();
   });
 
-  it('renders a group header and restarts ranks when the group changes', () => {
+  it('renders a group header when the group changes', () => {
     const multi: LeagueTable = {
       ...table,
-      standing: [
-        row(159, 'Renegades', 'Gruppe 1'),
-        row(200, 'Sharks', 'Gruppe 1'),
-        row(300, 'Wolves', 'Gruppe 2'),
+      rows: [
+        row(159, 'Renegades', 'Gruppe 1', 1),
+        row(200, 'Sharks', 'Gruppe 1', 2),
+        row(300, 'Wolves', 'Gruppe 2', 1),
       ],
     };
     render(<StandingsTable table={multi} highlightTeamIds={[]} />);
     expect(screen.getByText('Gruppe 1')).toBeInTheDocument();
     expect(screen.getByText('Gruppe 2')).toBeInTheDocument();
-    expect(rankOf('Renegades')).toBe('1');
-    expect(rankOf('Sharks')).toBe('2');
     expect(rankOf('Wolves')).toBe('1');
+  });
+
+  it('shows the quotient column when the table ranks by it', () => {
+    render(
+      <StandingsTable
+        table={{ ...table, ranking: ['win_quotient', 'direct_wins'] }}
+        highlightTeamIds={[]}
+      />
+    );
+    expect(screen.getByText('Quote')).toBeInTheDocument();
+    expect(screen.getByText('0,625')).toBeInTheDocument();
+  });
+
+  it('hides the quotient column for tables ranked by points', () => {
+    render(<StandingsTable table={table} highlightTeamIds={[]} />);
+    expect(screen.queryByText('Quote')).not.toBeInTheDocument();
   });
 
   it('wraps the table so a narrow embed scrolls instead of clipping', () => {
@@ -110,7 +128,6 @@ describe('LiveCard', () => {
   const game: LiveGame = {
     gameId: 1,
     status: '1. Halbzeit',
-    standing: '',
     time: '12:00',
     home: { name: 'Renegades', score: 7, isInPossession: false },
     away: { name: 'Sharks', score: 0, isInPossession: false },

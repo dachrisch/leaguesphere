@@ -31,6 +31,7 @@ export function TeamBlock({
   past,
   upcoming,
   teamName,
+  teamLogo = null,
   showPast,
   showFuture,
   pastLimit,
@@ -42,6 +43,7 @@ export function TeamBlock({
   past: ScheduleEntry[];
   upcoming: ScheduleEntry[];
   teamName: string;
+  teamLogo?: string | null;
   showPast: boolean;
   showFuture: boolean;
   pastLimit: number;
@@ -62,7 +64,12 @@ export function TeamBlock({
   return (
     <section className="content-section">
       {showTitle && teamName && (
-        <h2 className="share-team__name">{teamName}</h2>
+        <h2 className="share-team__name">
+          {teamLogo !== null && (
+            <img className="share-team-logo" src={teamLogo} alt="" />
+          )}
+          {teamName}
+        </h2>
       )}
 
       {showPast && (
