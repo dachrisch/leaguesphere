@@ -8,6 +8,7 @@ HTML game-log parsing) with one configurable, gzipped, ETag'd response:
 from unittest import mock
 
 from django.contrib.auth.models import User
+from django.core.cache import caches
 from django.db import connection
 from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
@@ -82,6 +83,10 @@ def make_gameday_with_game(
 @override_settings(CACHES=LOC_MEM_CACHES)
 class SnapshotEndpointTest(APITestCase):
     def setUp(self):
+        # The payload cache outlives a test (LocMem), and the per-scope entry
+        # is keyed by query string alone: without a reset, a later test with
+        # the same params would be served an earlier test's build.
+        caches["snapshot"].clear()
         self.user = User.objects.create_user(username="logger", password="pw")
 
     def test_snapshot_returns_envelope_with_gameday_fields(self):
