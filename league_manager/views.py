@@ -108,42 +108,28 @@ def facts_json_view(request):
         "sport": "American flag football",
         "locale": "de-DE",
         "entities": ["Season", "League", "Gameday", "Game", "Team", "Official"],
+        # The snapshot is the only public API; other /api/ paths are internal.
         "dynamicEndpoints": [
             {
-                "url": "/api/liveticker/",
-                "description": "Live scores for today's gamedays",
-                "updateFrequency": "cached ~60 seconds; near real-time during games",
+                "url": "/api/snapshot/",
+                "description": (
+                    "Public API: gamedays filtered by team, league, season, year "
+                    "or date, with opt-in games, logs, teams (full names, logos), "
+                    "standings and today's live scores via ?include="
+                ),
+                "updateFrequency": (
+                    "ETag on every response; rebuilt at most every 30 seconds "
+                    "while games are live"
+                ),
                 "auth": "none",
-            },
-            {
-                "url": "/api/gamedays/",
-                "description": "Paginated list of gamedays with metadata",
-                "updateFrequency": "changes when gamedays are created or updated",
-                "auth": "none",
-            },
-            {
-                "url": "/api/gamedays/{id}/games/",
-                "description": "Games of a gameday with halftime and final scores",
-                "updateFrequency": "changes on every score update of that gameday",
-                "auth": "none",
-            },
-            {
-                "url": "/api/league-table/{league}/",
-                "description": "League standings, optionally per season: /api/league-table/{league}/{season}/",
-                "updateFrequency": "changes when finished games or point adjustments change",
-                "auth": "none",
-            },
-            {
-                "url": "/api/game-progress/",
-                "description": "Gameday progress window (-7/+14 days)",
-                "updateFrequency": "daily",
-                "auth": "none",
+                "crossOrigin": True,
+                "schemaVersion": 1,
             },
         ],
         "snapshotPolicy": (
             "A game is final once its status is 'beendet'; a gameday page is "
             "final once all its games are finished. Finalized data is stable "
-            "and safe to cite. Use the API endpoints for current data."
+            "and safe to cite. Use /api/snapshot/ for current data."
         ),
         "agentDocumentation": [
             STATIC_INFO_PATHS["llms"],

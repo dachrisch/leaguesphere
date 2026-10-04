@@ -32,6 +32,10 @@ This is where the real logic lives — read it before changing behavior:
 
 ## API (`api/`)
 `api/game_views.py`, `api/views.py`, `api/serializers.py`, routed via `api/urls.py`.
+**`api/snapshot.py` (`/api/snapshot/`) is LeagueSphere's only public API** (CORS-readable, versioned,
+additive-only within `schema_version` 1; contract in
+[docs/topics/features/public-api/snapshot-v1.md](../docs/topics/features/public-api/snapshot-v1.md)).
+All other `/api/` endpoints are internal: anonymous where our pages need them, no CORS, no promise.
 **ETag caching is implemented here** — see root CLAUDE.md § Query Optimization. Read-heavy
 endpoints return HTTP 304 via `@condition(...)`; keep new list/detail endpoints on that pattern.
 

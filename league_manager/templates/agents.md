@@ -22,9 +22,9 @@ fluently.
 
 ## Live data
 
-Need current scores? Use /api/liveticker/ (cached ~60 seconds, ETag
-supported). Standings live at /api/league-table/{league}/. Results are final
-once a game's status is `beendet`.
+Need current scores or standings? Use the public API /api/snapshot/
+(e.g. ?team=<id>&include=games,teams,standings,live; ETag supported; see
+/llms-dynamic.txt). Results are final once a game's status is `beendet`.
 
 ---
 

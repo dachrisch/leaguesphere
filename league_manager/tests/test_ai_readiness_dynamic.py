@@ -36,21 +36,25 @@ class TestLlmsDynamicTxtEndpoint(TestCase):
         response = self.client.get("/llms-dynamic.txt")
         self.assertEqual(response["Content-Type"], "text/plain")
 
-    def test_llms_dynamic_txt_documents_liveticker_api(self):
+    def test_llms_dynamic_txt_documents_the_snapshot_as_public_api(self):
         response = self.client.get("/llms-dynamic.txt")
-        self.assertContains(response, "/api/liveticker/")
+        self.assertContains(response, "/api/snapshot/")
+        for include in ("games", "logs", "teams", "standings", "live"):
+            self.assertContains(response, f"`{include}`")
+        self.assertContains(response, "If-None-Match")
 
-    def test_llms_dynamic_txt_documents_league_table_api(self):
-        response = self.client.get("/llms-dynamic.txt")
-        self.assertContains(response, "/api/league-table/")
-
-    def test_llms_dynamic_txt_documents_leagues_api(self):
-        response = self.client.get("/llms-dynamic.txt")
-        self.assertContains(response, "/api/leagues/")
-
-    def test_llms_dynamic_txt_documents_gameday_games_api(self):
-        response = self.client.get("/llms-dynamic.txt")
-        self.assertContains(response, "/games/")
+    def test_llms_dynamic_txt_documents_no_internal_endpoint(self):
+        """Only the snapshot is a public contract; internal paths stay out."""
+        body = self.client.get("/llms-dynamic.txt").content.decode()
+        for internal in (
+            "/api/liveticker/",
+            "/api/league-table/",
+            "/api/leagues/",
+            "/api/gamedays/",
+            "/api/game-progress/",
+        ):
+            self.assertNotIn(internal, body)
+        self.assertIn("internal", body)
 
     def test_llms_dynamic_txt_explains_game_status_vocabulary(self):
         response = self.client.get("/llms-dynamic.txt")
@@ -79,12 +83,12 @@ class TestFactsJsonEndpoint(TestCase):
         self.assertIn("description", payload)
         self.assertIn("sport", payload)
 
-    def test_facts_json_lists_dynamic_endpoints_with_freshness(self):
+    def test_facts_json_lists_only_the_public_snapshot(self):
         payload = json.loads(self.client.get("/facts.json").content)
         endpoints = payload["dynamicEndpoints"]
-        by_url = {e["url"]: e for e in endpoints}
-        self.assertIn("/api/liveticker/", by_url)
-        self.assertIn("updateFrequency", by_url["/api/liveticker/"])
+        self.assertEqual([e["url"] for e in endpoints], ["/api/snapshot/"])
+        self.assertIn("updateFrequency", endpoints[0])
+        self.assertTrue(endpoints[0]["crossOrigin"])
 
     def test_facts_json_references_agent_documentation(self):
         payload = json.loads(self.client.get("/facts.json").content)
@@ -127,9 +131,10 @@ class TestLlmsTxtReferencesDynamicLayer(TestCase):
         response = self.client.get("/llms.txt")
         self.assertContains(response, "/llms-dynamic.txt")
 
-    def test_llms_txt_links_league_table_api(self):
+    def test_llms_txt_links_the_public_snapshot_api(self):
         response = self.client.get("/llms.txt")
-        self.assertContains(response, "/api/league-table/")
+        self.assertContains(response, "/api/snapshot/")
+        self.assertNotContains(response, "/api/league-table/")
 
 
 class TestGameDetailJsonLd(TestCase):
@@ -159,7 +164,10 @@ class TestGameDetailJsonLd(TestCase):
         Gameresult.objects.create(
             gameinfo=self.game, team=None, fh=0, sh=0, pa=0, isHome=True
         )
-        self.url = reverse("league-gameday-game-detail", kwargs={"gameday_pk": self.gameday.pk, "pk": self.game.pk})
+        self.url = reverse(
+            "league-gameday-game-detail",
+            kwargs={"gameday_pk": self.gameday.pk, "pk": self.game.pk},
+        )
 
     def test_game_detail_contains_sports_event_json_ld(self):
         response = self.client.get(self.url)
@@ -179,8 +187,9 @@ class TestGameDetailJsonLd(TestCase):
         self.assertEqual(payload["awayTeam"]["score"], 6)
         self.assertEqual(payload["eventStatus"], "https://schema.org/EventPassed")
         # the anonymous result row must not appear as a team
-        self.assertEqual(set(payload.keys()) & {"homeTeam", "awayTeam"},
-                         {"homeTeam", "awayTeam"})
+        self.assertEqual(
+            set(payload.keys()) & {"homeTeam", "awayTeam"}, {"homeTeam", "awayTeam"}
+        )
 
     def test_json_ld_contains_speakable(self):
         response = self.client.get(self.url)
@@ -197,7 +206,9 @@ class TestGameDetailJsonLd(TestCase):
         self.assertNotIn("location", payload)
 
     def test_json_ld_contains_location_when_gameday_has_address(self):
-        gameday = GamedayFactory(status="PUBLISHED", address="Sportplatz 1, 70173 Stuttgart")
+        gameday = GamedayFactory(
+            status="PUBLISHED", address="Sportplatz 1, 70173 Stuttgart"
+        )
         game = Gameinfo.objects.create(
             gameday=gameday,
             scheduled="10:00",
@@ -207,10 +218,15 @@ class TestGameDetailJsonLd(TestCase):
             stage="Gruppe",
             standing="Gruppe 1",
         )
-        url = reverse("league-gameday-game-detail", kwargs={"gameday_pk": gameday.pk, "pk": game.pk})
+        url = reverse(
+            "league-gameday-game-detail",
+            kwargs={"gameday_pk": gameday.pk, "pk": game.pk},
+        )
         payload = self._get_payload(url)
         self.assertEqual(payload["location"]["@type"], "Place")
-        self.assertEqual(payload["location"]["address"], "Sportplatz 1, 70173 Stuttgart")
+        self.assertEqual(
+            payload["location"]["address"], "Sportplatz 1, 70173 Stuttgart"
+        )
 
     def test_json_ld_contains_end_date_after_start_date(self):
         payload = self._get_payload(self.url)
@@ -240,7 +256,9 @@ class TestGameDetailJsonLd(TestCase):
     def test_json_ld_contains_free_offer_with_game_url(self):
         payload = self._get_payload(self.url)
         self.assertEqual(payload["offers"]["price"], "0")
-        self.assertEqual(payload["offers"]["availability"], "https://schema.org/InStock")
+        self.assertEqual(
+            payload["offers"]["availability"], "https://schema.org/InStock"
+        )
         self.assertTrue(payload["offers"]["url"].endswith(self.url))
 
 

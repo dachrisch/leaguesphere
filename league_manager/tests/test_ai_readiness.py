@@ -55,7 +55,9 @@ class TestRobotsTxtAiCrawlerPolicy(TestCase):
         self.assertContains(response, "Disallow: /*/delete/")
 
     def test_sitemap_directive_present(self):
-        self.assertContains(self.response, "Sitemap: https://leaguesphere.app/sitemap.xml")
+        self.assertContains(
+            self.response, "Sitemap: https://leaguesphere.app/sitemap.xml"
+        )
 
     def test_ai_files_referenced(self):
         """Agents are pointed to the llms.txt files from robots.txt."""
@@ -100,7 +102,7 @@ class TestLlmsTxtEndpoint(TestCase):
 
     def test_llms_txt_documents_api_endpoints(self):
         response = self.client.get("/llms.txt")
-        self.assertContains(response, "/api/liveticker/")
+        self.assertContains(response, "/api/snapshot/")
 
     def test_llms_txt_notes_german_content(self):
         """Agents should know the site content language."""

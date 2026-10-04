@@ -3,14 +3,14 @@
 An embeddable, cross-origin widget for club and fan websites: LeagueSphere
 fixtures, results, live scores and standings in a single `<iframe>`.
 
-## Why an iframe instead of CORS
+## Iframe and public API
 
-Third-party pages cannot read `/api/...` from the browser because the responses
-carry no `Access-Control-Allow-Origin`. Instead of opening the read API to every
-origin, we host the widget ourselves: the document runs on `leaguesphere.app`,
-so its API calls are same-origin and no CORS headers are needed. Only framing is
-relaxed — and only for the `/share/widget/` route (the generator is a normal
-page and keeps `X-Frame-Options: DENY`).
+The widget is the ready-made display; clubs that want their own layout read the
+same data from the public API, [`/api/snapshot/`](../public-api/snapshot-v1.md),
+which is the only cross-origin readable endpoint. The widget document runs on
+`leaguesphere.app` and reads only that endpoint. Framing is relaxed only for
+the `/share/widget/` route (the generator is a normal page and keeps
+`X-Frame-Options: DENY`).
 
 ## Pages
 
@@ -21,13 +21,17 @@ page and keeps `X-Frame-Options: DENY`).
 
 ## Data
 
-All data is already public and anonymous:
+The widget reads one request per view from the public API:
 
-- `/api/snapshot/?team=<id>&include=games` — one team-scoped dump of gamedays,
-  games and results (replaces the old per-gameday scrape + `snapshot.json`).
-- `/api/liveticker/` — live scores, cached 60 s server-side.
-- `/api/league-table/<league>/<season>/` — standings for `view=table`.
-- `/api/teams/?search=` — team search for the generator.
+- `/api/snapshot/?team=<id>&include=games,teams` — schedule, results and full
+  team names/logos (`view=spielplan`).
+- `…&include=games,teams,standings` — plus the league tables (`view=table`).
+- `…&include=games,teams,live&date_from=<today>&date_to=<today>` — today's live
+  blocks, re-polled every 60 s while a watched game is open (`view=live`).
+
+The generator (a LeagueSphere page) also uses the internal `/api/teams/?search=`
+and `/api/seasons/` for its pickers, and shows the snapshot URL of the current
+selection as "Daten als JSON".
 
 ## Behavior
 

@@ -21,9 +21,7 @@ LeagueSphere serves amateur flag-football leagues. League administrators plan ga
 
 ## Machine-readable data
 
-- [API: Liveticker](https://leaguesphere.app/api/liveticker/): JSON live scores, no authentication, cached ~60 seconds
-- [API: Gamedays](https://leaguesphere.app/api/gamedays/): JSON, paginated list of gamedays, no authentication
-- [API: League table](https://leaguesphere.app/api/league-table/{league}/): JSON standings per league (and optional season)
+- [API: Snapshot](https://leaguesphere.app/api/snapshot/): the public JSON API, no authentication, readable cross-origin; filter by team/league/season/year/date and opt into games, logs, teams, standings and live scores
 - [Dynamic data guide](https://leaguesphere.app/llms-dynamic.txt): how fresh each endpoint is, and when results are final
 - [For agents](https://leaguesphere.app/agents.md): welcome file and navigation guide for AI agents
 - [Full reference](https://leaguesphere.app/llms-full.txt): extended descriptions of every page and API endpoint
