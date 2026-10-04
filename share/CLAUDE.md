@@ -5,16 +5,19 @@
 ## Purpose
 Public, cross-origin **embeddable widget** so clubs can show LeagueSphere fixtures,
 results, live scores and standings on their own websites with one `<iframe>`. No relay
-server, no API key, no CORS.
+server, no API key.
 
 ## Role in the system
 - Django app serving a frameable iframe document, a normal (frames-denied)
   generator page and a small React/Vite frontend (this directory).
-- Reads public data from [gamedays](../gamedays/CLAUDE.md) (`/api/snapshot/`, `/api/teams/`),
-  [liveticker](../liveticker/CLAUDE.md) (`/api/liveticker/`) and
-  [league_table](../league_table/CLAUDE.md) (`/api/league-table/`).
-- Because LeagueSphere hosts the iframe, its API calls are **same-origin** —
-  `CORS_ALLOWED_ORIGINS` stays empty. Only framing is relaxed.
+- The widget reads **only** the public API, `/api/snapshot/`
+  ([gamedays](../gamedays/CLAUDE.md); contract:
+  [snapshot-v1](../docs/topics/features/public-api/snapshot-v1.md)): one request per
+  view with `include=games,teams` plus `standings` or `live`. Keep it that way:
+  the widget doubles as the reference consumer of the public API.
+- The generator (`/share/`, a LeagueSphere page) may use internal endpoints
+  (`/api/teams/`, `/api/seasons/`) for its pickers.
+- Framing is relaxed only for `/share/widget/`; CORS is open only on the snapshot.
 
 ## Key files
 - `views.py` — `FrameableTemplateView` adds `Content-Security-Policy: frame-ancestors *`
@@ -38,8 +41,9 @@ server, no API key, no CORS.
   must keep `X-Frame-Options: DENY` (asserted in `share/tests/test_framing.py`).
 - **Stateless config**: all options are URL params (`t`, `view`, `color`, …). No stored
   per-team config; the widget only renders the configured teams.
-- **Data freshness**: `/api/liveticker/` is server-cached for 60 s — that is the live
-  cadence. Poll at 60 s in the `live` view; do not hammer it faster.
+- **Data freshness**: a snapshot scope is rebuilt at most every 30 s. The `live` view
+  re-polls the snapshot every 60 s (with revalidation) only while a watched game is
+  open today; do not poll faster.
 - **Escaping**: never use `dangerouslySetInnerHTML`; React escapes API strings. `live_url`
   and `logo` are validated to `http(s)` in `params.ts`.
 - The bundle is built (Vite) before Django serves it; run `npm --prefix share/ run build`

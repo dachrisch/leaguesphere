@@ -1,7 +1,26 @@
-# Snapshot as the only public API — proposal
+# Snapshot as the only public API
 
-Status: **proposal, not implemented**. Author: triage of #2028 / #2036 / #2037
-(2026-10-04). Replaces the separate answers to those issues with one design.
+Status: **implemented** on branch `claude/triage-open-issues` (2026-10-04);
+contract: [features/public-api/snapshot-v1.md](../../features/public-api/snapshot-v1.md).
+Origin: triage of #2028 / #2036 / #2037. Where the implementation differs from
+the proposal below, see "As built".
+
+## As built (differences from the proposal)
+
+- `year=` lives in the snapshot: seasons whose name *starts with* the year
+  (`2025` matches `2025/2026`, as the generator assumes); a well-formed year
+  without a season gives an empty scope instead of a 400.
+- `SNAPSHOT_LARGE_SCOPE_GAMEDAYS` is 100, not 50: a long-standing club's
+  all-seasons widget scope (the default before the client picks the latest
+  season) must not count as a dump.
+- Logos are stored site-relative in the cached payload and made absolute per
+  request (`request.build_absolute_uri`), so the cache stays host-independent.
+- The teams map is one extra query per build (`scope_teams`), not collected
+  from the prefetch; constant in scope size.
+- `has_designer_state` had an N+1 (one query per gameday); fixed with a
+  key-only prefetch while touching the payload builder.
+- Open decisions 1–5 took their defaults.
+- One branch/PR with one commit per area instead of one PR per step.
 
 ## Decision
 
@@ -158,7 +177,7 @@ Change: bound rebuilds **per scope**, not per IP.
   header when absent). Clients see data at most 30 s old during live play.
 - Otherwise rebuild (single-flight lock as today).
 - The per-IP 60/h rate stays only for **large scopes** (no `team`, `league`,
-  `season` or date filter, or more than `SNAPSHOT_LARGE_SCOPE_GAMEDAYS` = 50
+  `season` or date filter, or more than `SNAPSHOT_LARGE_SCOPE_GAMEDAYS` = 100
   gamedays): that is the dump the strict rate was written for.
 
 Result: rebuild cost is at most 2 per minute per distinct scope, independent of
@@ -192,9 +211,8 @@ throttled path; no credentials; every internal endpoint keeps #1977's posture.
 | Live | snapshot + `/api/liveticker/` every 60 s | `snapshot?team=…&date_from=today&date_to=today&include=games,teams,live` every 60 s with `If-None-Match` |
 | Generator (`/share/`) | `/api/teams/`, `/api/seasons/`, `/api/leagues/` | unchanged — it is a LeagueSphere page, internal endpoints are fine |
 
-- `year=` resolution: add `season_year` to the scope filter or resolve it
-  server-side (`?year=2026` → seasons named `2026`), removing `/api/seasons/`
-  from the widget. (Small, additive filter.)
+- `year=` resolution moves server-side (`?year=2026` → seasons whose name
+  starts with `2026`), removing `/api/seasons/` from the widget.
 - Short codes ("Nürn") disappear: headings/opponents use
   `teams[id].description` (#2029 review nit).
 - `leagueCandidates` and the 404-retry loop in `views/Table.tsx` go away.

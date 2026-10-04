@@ -100,7 +100,7 @@ class TestLlmsTxtEndpoint(TestCase):
 
     def test_llms_txt_documents_api_endpoints(self):
         response = self.client.get("/llms.txt")
-        self.assertContains(response, "/api/liveticker/")
+        self.assertContains(response, "/api/snapshot/")
 
     def test_llms_txt_notes_german_content(self):
         """Agents should know the site content language."""

@@ -36,21 +36,25 @@ class TestLlmsDynamicTxtEndpoint(TestCase):
         response = self.client.get("/llms-dynamic.txt")
         self.assertEqual(response["Content-Type"], "text/plain")
 
-    def test_llms_dynamic_txt_documents_liveticker_api(self):
+    def test_llms_dynamic_txt_documents_the_snapshot_as_public_api(self):
         response = self.client.get("/llms-dynamic.txt")
-        self.assertContains(response, "/api/liveticker/")
+        self.assertContains(response, "/api/snapshot/")
+        for include in ("games", "logs", "teams", "standings", "live"):
+            self.assertContains(response, f"`{include}`")
+        self.assertContains(response, "If-None-Match")
 
-    def test_llms_dynamic_txt_documents_league_table_api(self):
-        response = self.client.get("/llms-dynamic.txt")
-        self.assertContains(response, "/api/league-table/")
-
-    def test_llms_dynamic_txt_documents_leagues_api(self):
-        response = self.client.get("/llms-dynamic.txt")
-        self.assertContains(response, "/api/leagues/")
-
-    def test_llms_dynamic_txt_documents_gameday_games_api(self):
-        response = self.client.get("/llms-dynamic.txt")
-        self.assertContains(response, "/games/")
+    def test_llms_dynamic_txt_documents_no_internal_endpoint(self):
+        """Only the snapshot is a public contract; internal paths stay out."""
+        body = self.client.get("/llms-dynamic.txt").content.decode()
+        for internal in (
+            "/api/liveticker/",
+            "/api/league-table/",
+            "/api/leagues/",
+            "/api/gamedays/",
+            "/api/game-progress/",
+        ):
+            self.assertNotIn(internal, body)
+        self.assertIn("internal", body)
 
     def test_llms_dynamic_txt_explains_game_status_vocabulary(self):
         response = self.client.get("/llms-dynamic.txt")
@@ -79,12 +83,12 @@ class TestFactsJsonEndpoint(TestCase):
         self.assertIn("description", payload)
         self.assertIn("sport", payload)
 
-    def test_facts_json_lists_dynamic_endpoints_with_freshness(self):
+    def test_facts_json_lists_only_the_public_snapshot(self):
         payload = json.loads(self.client.get("/facts.json").content)
         endpoints = payload["dynamicEndpoints"]
-        by_url = {e["url"]: e for e in endpoints}
-        self.assertIn("/api/liveticker/", by_url)
-        self.assertIn("updateFrequency", by_url["/api/liveticker/"])
+        self.assertEqual([e["url"] for e in endpoints], ["/api/snapshot/"])
+        self.assertIn("updateFrequency", endpoints[0])
+        self.assertTrue(endpoints[0]["crossOrigin"])
 
     def test_facts_json_references_agent_documentation(self):
         payload = json.loads(self.client.get("/facts.json").content)
@@ -127,9 +131,10 @@ class TestLlmsTxtReferencesDynamicLayer(TestCase):
         response = self.client.get("/llms.txt")
         self.assertContains(response, "/llms-dynamic.txt")
 
-    def test_llms_txt_links_league_table_api(self):
+    def test_llms_txt_links_the_public_snapshot_api(self):
         response = self.client.get("/llms.txt")
-        self.assertContains(response, "/api/league-table/")
+        self.assertContains(response, "/api/snapshot/")
+        self.assertNotContains(response, "/api/league-table/")
 
 
 class TestGameDetailJsonLd(TestCase):

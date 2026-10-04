@@ -1,48 +1,40 @@
 # LeagueSphere — dynamic data reference for AI agents
 
-> How to access live and changing data on LeagueSphere: which endpoints exist, how fresh the data is, and when values are final. Static site overview: /llms.txt — full reference: /llms-full.txt
+> How to access live and changing data on LeagueSphere: the public snapshot API, how fresh its data is, and when values are final. Static site overview: /llms.txt — full reference: /llms-full.txt
 
-## Current live data
+## The public API: GET /api/snapshot/
 
-Use these JSON endpoints (no authentication) instead of fetching HTML pages when you need current values:
+LeagueSphere has one public API: `/api/snapshot/`. It is anonymous, read-only, returns JSON, and may be read cross-origin from any website (CORS `*`, no credentials). Use it instead of fetching HTML pages. Other `/api/` paths are internal to LeagueSphere's own pages and may change without notice.
 
-### GET /api/liveticker/
+### Scope (filters; repeat a parameter for OR, combine parameters for AND)
 
-Live scores for today's gamedays. Includes each game's status, current score, and the latest ticker events (touchdowns, extra points, timeouts).
+- `?team=<id>` — gamedays in which the team plays (including fixtures not yet played)
+- `?league=<id>`, `?season=<id>` — by league / season id
+- `?year=YYYY` — seasons whose name starts with the year (`2025` also matches `2025/2026`); an unknown year returns an empty scope
+- `?date_from=YYYY-MM-DD`, `?date_to=YYYY-MM-DD` — by gameday date
+- `?status=PUBLISHED` (etc.) — gameday status; drafts are excluded by default
 
-- Freshness: near real-time during games; responses are cached for ~60 seconds (`Cache-Control: max-age=60`)
-- Parameters: `?league=<slug>` (comma-separated), `?gameday=<id>` (comma-separated), `?getAllTicksFor=<gameId>` for the full event list of one game
-- ETag supported: send `If-None-Match` to avoid re-downloading unchanged data
+### Includes (`?include=`, comma-separated; everything is opt-in)
 
-### GET /api/gamedays/{id}/games/
+- `games` — every game with status, schedule, `results` (team id, short name, scores) and `final_score`
+- `logs` — the full event log per game (touchdowns, extra points, penalties)
+- `teams` — one map `{"<team id>": {name, description, logo}}`; `description` is the full team name, `logo` an absolute URL or null
+- `standings` — one table per league-season in scope that has a table: `league`, `season`, `ranking` (tie-break steps in order) and `rows` (rank, group, team, wins, draws, losses, games_played, pf, pa, diff, win_points, win_quotient). Cups and tournaments have no table.
+- `live` — for today's open games, a `live` block (status, current score, possession, latest ticker events); implies `games`
 
-All games of one gameday with halftime and final scores.
+### Finding ids
 
-- Freshness: changes on every score update while the gameday runs
-- ETag supported
+Gameday entries carry `league`, `league_display`, `season` and `season_display`; `include=teams` maps every team id in scope to its names. A narrow date window (e.g. `?date_from=<today>&include=teams`) is a cheap way to discover current ids.
 
-### GET /api/league-table/{league}/
+### Freshness and polite use
 
-League standings. Add a season for a specific year: `GET /api/league-table/{league}/{season}/` — omitting the season returns the latest season.
+- Every response has an `ETag`; send `If-None-Match` and you get `304 Not Modified` when nothing changed. This covers team edits and, with `standings`, every result of the league-season.
+- During a running gameday a scope is rebuilt at most every 30 seconds; poll at most once a minute, only while games are live, and pause hidden tabs.
+- Large dumps (no filter, or more than 100 gamedays) are rate-limited per client; a `429` carries `Retry-After`.
+- `schema_version` is 1: within version 1, changes are additive only (new fields, new includes).
 
-- Freshness: changes when finished games or manual point adjustments change
-- Columns: standing, team__description (team name), wins, draws, losses, games_played, pf (points for), pa (points against), diff, win_points, win_quotient
-
-### GET /api/gamedays/
-
-Paginated gameday list with metadata (name, date, league, season, status). Supports `?search=` and `?page=`.
-
-### GET /api/leagues/
-
-League directory: `id`, `name` and `slug` for every league. Slugs are the identifiers used by `/api/liveticker/?league=<slug>` and `/api/league-table/{league}/`; some are hand-set and cannot be derived from the name.
-
-### GET /api/gameday/{id}/details/?get=schedule
-
-Full schedule of one gameday as JSON (games, times, fields, statuses).
-
-### GET /api/game-progress/
-
-Gameday progress within a -7/+14 day window; excludes draft gamedays.
+Example — a club's current season with full names and its league table:
+`GET /api/snapshot/?team=159&year=2026&include=games,teams,standings`
 
 ## Status vocabulary
 
@@ -56,7 +48,7 @@ Gameday lifecycle statuses: `DRAFT` (not public), `PUBLISHED`, `IN_PROGRESS`, `C
 
 ## Data freshness and citation policy
 
-- Respect `Cache-Control` and `ETag` headers; they encode how fresh the data must be
+- Respect `Cache-Control` and `ETag` headers; they encode how fresh the data must be (`ETag` + `If-None-Match` on the snapshot)
 - Scores and standings change while a gameday is running — do not present in-play values as final
 - A game's result is **final** once its status is `beendet`
 - A gameday's results are **final** once all its games are `beendet`; finalized gameday pages and API responses are stable and safe to cite
