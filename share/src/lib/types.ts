@@ -20,6 +20,8 @@ export interface ApiGame {
   results: ApiGameResult[];
   halftime_score: { home: number; away: number };
   final_score: { home: number; away: number };
+  /** Present with `include=live` on today's open games. */
+  live?: SnapshotLive;
 }
 
 export interface ApiGameday {
@@ -39,10 +41,33 @@ export interface ApiGameday {
   games?: ApiGame[];
 }
 
+/** One entry of the snapshot's `teams` map (`include=teams`). */
+export interface SnapshotTeam {
+  name: string;
+  description: string;
+  logo: string | null;
+}
+
+/** The liveticker view of one open game (`include=live`). */
+export interface SnapshotLive {
+  status: string;
+  time: string;
+  home: LiveTeamSide;
+  away: LiveTeamSide;
+  ticks: LiveTick[];
+}
+
 export interface Snapshot {
+  schema_version?: number;
   generated_at: string;
   etag: string;
+  /** Echo of the request's filters (team ids etc.). */
+  scope?: { team: number[] | null };
   gamedays: ApiGameday[];
+  /** Keyed by team id as a string (`include=teams`). */
+  teams?: Record<string, SnapshotTeam>;
+  /** One table per configured league-season in scope (`include=standings`). */
+  standings?: LeagueTable[];
 }
 
 export interface TeamDirectoryEntry {
@@ -64,23 +89,22 @@ export interface LiveTick {
   time: string;
 }
 
-export interface LiveGame {
+export interface LiveGame extends SnapshotLive {
   gameId: number;
-  status: string;
-  standing: string;
-  time: string;
-  home: LiveTeamSide;
-  away: LiveTeamSide;
-  ticks: LiveTick[];
 }
 
 export interface LeagueRef {
+  id: number;
   slug: string;
   name: string;
 }
 
 export interface StandingRow {
-  standing: string;
+  /** Group label from the league table (e.g. "Gruppe 1"), not a position. */
+  standing: string | null;
+  group: string | null;
+  /** 1-based position within the group. */
+  rank: number;
   team_id: number;
   team__description: string;
   wins: number;
@@ -96,6 +120,8 @@ export interface StandingRow {
 
 export interface LeagueTable {
   league: LeagueRef;
-  season: { slug: string; name: string };
-  standing: StandingRow[];
+  season: { id: number; slug: string; name: string };
+  /** Tie-break step keys in ranking order, e.g. ["win_quotient", …]. */
+  ranking: string[];
+  rows: StandingRow[];
 }

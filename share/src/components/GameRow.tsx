@@ -10,10 +10,16 @@ export function GameRow({ entry }: { entry: ScheduleEntry }) {
     <tr className={entry.isLive ? 'table-warning' : undefined}>
       <td className="text-nowrap">{formatDate(entry.date)}</td>
       <td className="text-muted">{entry.isHome ? 'H' : 'A'}</td>
-      <td className="text-start">{entry.opponent}</td>
+      <td className="text-start">
+        {entry.opponentLogo !== null && (
+          <img className="share-team-logo" src={entry.opponentLogo} alt="" />
+        )}
+        {entry.opponent}
+      </td>
       <td className="text-end fw-semibold text-nowrap">
         {entry.isFinal ? (
-          `${entry.teamScore} : ${entry.opponentScore}`
+          // Always home : away, matching the H/A column, not own : opponent.
+          `${entry.homeScore} : ${entry.awayScore}`
         ) : entry.isLive ? (
           <span className="badge text-bg-danger">LIVE</span>
         ) : (

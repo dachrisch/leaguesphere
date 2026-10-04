@@ -1,5 +1,6 @@
 import { findOpponentResult, findTeamResult, isFinal, todayIso } from './schedule';
-import type { Snapshot } from './types';
+import { teamDisplayName } from './teams';
+import type { LiveGame, Snapshot } from './types';
 
 export interface WatchedGame {
   gameId: number;
@@ -13,7 +14,7 @@ export interface WatchedGame {
  * Non-final games for the watched teams scheduled **today**.
  *
  * Restricting to today's gamedays keeps the widget from polling the
- * liveticker forever for a stale open game (e.g. a 2023 fixture that was
+ * snapshot forever for a stale open game (e.g. a 2023 fixture that was
  * never marked final).
  */
 export function activeWatchedGames(
@@ -46,9 +47,33 @@ export function activeWatchedGames(
         gameId: game.id,
         teamId,
         isHome: own.isHome,
-        opponent: findOpponentResult(game, teamId)?.team_name ?? '',
+        opponent: teamDisplayName(snapshot, findOpponentResult(game, teamId)),
         gamedayName: gameday.name,
       });
+    }
+  }
+  return games;
+}
+
+/**
+ * Live cards for the watched teams' open games today, from the snapshot's
+ * `live` blocks (`include=live`; same data as the LeagueSphere liveticker).
+ */
+export function liveGames(
+  snapshot: Snapshot,
+  teamIds: number[],
+  today: string = todayIso()
+): LiveGame[] {
+  const watched = new Set(
+    activeWatchedGames(snapshot, teamIds, today).map((game) => game.gameId)
+  );
+  const games: LiveGame[] = [];
+  for (const gameday of snapshot.gamedays) {
+    for (const game of gameday.games ?? []) {
+      if (game.live !== undefined && watched.has(game.id)) {
+        games.push({ gameId: game.id, ...game.live });
+        watched.delete(game.id);
+      }
     }
   }
   return games;

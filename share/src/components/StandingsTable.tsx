@@ -1,9 +1,10 @@
 import { Fragment } from 'react';
 
+import { ranksByQuotient } from '../lib/table';
 import type { LeagueTable, StandingRow } from '../lib/types';
 
 interface StandingGroup {
-  name: string;
+  name: string | null;
   rows: StandingRow[];
 }
 
@@ -11,13 +12,20 @@ function groupStandings(rows: StandingRow[]): StandingGroup[] {
   const groups: StandingGroup[] = [];
   for (const row of rows) {
     const current = groups[groups.length - 1];
-    if (current !== undefined && current.name === row.standing) {
+    if (current !== undefined && current.name === row.group) {
       current.rows.push(row);
     } else {
-      groups.push({ name: row.standing, rows: [row] });
+      groups.push({ name: row.group, rows: [row] });
     }
   }
   return groups;
+}
+
+function formatQuotient(value: number): string {
+  return value.toLocaleString('de-DE', {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  });
 }
 
 export function StandingsTable({
@@ -27,8 +35,12 @@ export function StandingsTable({
   table: LeagueTable;
   highlightTeamIds: number[];
 }) {
-  const groups = groupStandings(table.standing);
+  const groups = groupStandings(table.rows);
   const showGroups = groups.length > 1;
+  // Tables ranked by league quotient would read as mis-sorted by points
+  // without the quotient next to them.
+  const showQuotient = ranksByQuotient(table);
+  const columnCount = showQuotient ? 11 : 10;
 
   return (
     <div className="table-responsive">
@@ -45,17 +57,18 @@ export function StandingsTable({
             <th>GP</th>
             <th>Diff</th>
             <th>Pkt</th>
+            {showQuotient && <th title="Ligaquotient">Quote</th>}
           </tr>
         </thead>
         <tbody>
           {groups.map((group) => (
-            <Fragment key={`${group.name}-${group.rows[0].team_id}`}>
+            <Fragment key={`${group.name ?? ''}-${group.rows[0].team_id}`}>
               {showGroups && (
                 <tr className="share-table__group">
-                  <td colSpan={10}>{group.name}</td>
+                  <td colSpan={columnCount}>{group.name ?? ''}</td>
                 </tr>
               )}
-              {group.rows.map((row, index) => (
+              {group.rows.map((row) => (
                 <tr
                   key={row.team_id}
                   className={
@@ -64,7 +77,7 @@ export function StandingsTable({
                       : undefined
                   }
                 >
-                  <td>{index + 1}</td>
+                  <td>{row.rank}</td>
                   <td>{row.team__description}</td>
                   <td>{row.games_played}</td>
                   <td>{row.wins}</td>
@@ -73,7 +86,14 @@ export function StandingsTable({
                   <td>{row.pf}</td>
                   <td>{row.pa}</td>
                   <td>{row.diff}</td>
-                  <td className="fw-semibold">{row.win_points}</td>
+                  <td className={showQuotient ? undefined : 'fw-semibold'}>
+                    {row.win_points}
+                  </td>
+                  {showQuotient && (
+                    <td className="fw-semibold">
+                      {formatQuotient(row.win_quotient)}
+                    </td>
+                  )}
                 </tr>
               ))}
             </Fragment>

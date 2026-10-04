@@ -1,9 +1,4 @@
-import type {
-  LeagueTable,
-  LiveGame,
-  Snapshot,
-  TeamDirectoryEntry,
-} from './types';
+import type { Snapshot, TeamDirectoryEntry } from './types';
 
 export type Fetcher = (
   input: RequestInfo | URL,
@@ -11,6 +6,11 @@ export type Fetcher = (
 ) => Promise<Response>;
 
 const JSON_HEADERS: RequestInit = { headers: { Accept: 'application/json' } };
+/**
+ * Snapshot reads always revalidate: the browser sends If-None-Match from its
+ * HTTP cache and gets a cheap 304 when nothing changed.
+ */
+const SNAPSHOT_INIT: RequestInit = { ...JSON_HEADERS, cache: 'no-cache' };
 
 /** Cap on how long we honour a `Retry-After` before retrying once. */
 export const RETRY_AFTER_CAP_SECONDS = 30;
@@ -53,28 +53,49 @@ export function retryDelayMs(error: unknown): number | null {
   return seconds * 1000;
 }
 
-async function getJson<T>(url: string, fetcher: Fetcher): Promise<T> {
-  const response = await fetcher(url, JSON_HEADERS);
+async function getJson<T>(
+  url: string,
+  fetcher: Fetcher,
+  init: RequestInit = JSON_HEADERS
+): Promise<T> {
+  const response = await fetcher(url, init);
   if (!response.ok) {
     throw new HttpError(response.status, parseRetryAfter(response));
   }
   return (await response.json()) as T;
 }
 
+export type SnapshotInclude = 'games' | 'teams' | 'standings' | 'live';
+
 export interface SnapshotFilters {
   season?: number;
+  /** Seasons whose name starts with this year ("2025" → "2025/2026"). */
+  year?: string;
   league?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  include?: SnapshotInclude[];
 }
 
+/** /api/snapshot/ is the widget's only data source (the public API). */
 export function snapshotUrl(teamIds: number[], filters: SnapshotFilters = {}): string {
   const params = new URLSearchParams();
   teamIds.forEach((id) => params.append('team', String(id)));
-  params.set('include', 'games');
+  params.set('include', (filters.include ?? ['games']).join(','));
   if (filters.season !== undefined) {
     params.set('season', String(filters.season));
   }
+  if (filters.year !== undefined) {
+    params.set('year', filters.year);
+  }
   if (filters.league !== undefined) {
     params.set('league', String(filters.league));
+  }
+  if (filters.dateFrom !== undefined) {
+    params.set('date_from', filters.dateFrom);
+  }
+  if (filters.dateTo !== undefined) {
+    params.set('date_to', filters.dateTo);
   }
   return `/api/snapshot/?${params.toString()}`;
 }
@@ -88,8 +109,11 @@ export function fetchSnapshot(
     typeof filtersOrFetcher === 'function' ? {} : filtersOrFetcher;
   const fetcher =
     typeof filtersOrFetcher === 'function' ? filtersOrFetcher : maybeFetcher;
-  return getJson<Snapshot>(snapshotUrl(teamIds, filters), fetcher);
+  return getJson<Snapshot>(snapshotUrl(teamIds, filters), fetcher, SNAPSHOT_INIT);
 }
+
+// The generator (a LeagueSphere page) also reads internal endpoints for its
+// season list and team search; the embedded widget never does.
 
 export function seasonsUrl(): string {
   return '/api/seasons/';
@@ -115,29 +139,4 @@ export async function fetchTeams(
     fetcher
   );
   return data.results;
-}
-
-export function fetchLiveticker(fetcher: Fetcher = fetch): Promise<LiveGame[]> {
-  return getJson<LiveGame[]>('/api/liveticker/', fetcher);
-}
-
-export function leagueTableUrl(slug: string, season?: string): string {
-  const base = `/api/league-table/${encodeURIComponent(slug)}/`;
-  return season === undefined
-    ? base
-    : `${base}${encodeURIComponent(season)}/`;
-}
-
-export function fetchLeagueTable(
-  slug: string,
-  season?: string,
-  fetcher: Fetcher = fetch
-): Promise<LeagueTable> {
-  return getJson<LeagueTable>(leagueTableUrl(slug, season), fetcher);
-}
-
-export function fetchLeagues(
-  fetcher: Fetcher = fetch
-): Promise<{ id: number; name: string; slug: string }[]> {
-  return getJson('/api/leagues/', fetcher);
 }

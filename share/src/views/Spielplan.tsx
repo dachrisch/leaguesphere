@@ -26,6 +26,7 @@ function TeamSchedule({
       past={schedule.past}
       upcoming={schedule.upcoming}
       teamName={schedule.teamName}
+      teamLogo={schedule.teamLogo}
       showPast={config.showPast}
       showFuture={config.showFuture}
       pastLimit={config.past}

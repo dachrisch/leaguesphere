@@ -1,3 +1,4 @@
+import { snapshotUrl } from './api';
 import type { ViewName } from './params';
 
 export interface GeneratorOptions {
@@ -70,6 +71,21 @@ export function buildWidgetUrl(base: string, options: GeneratorOptions): string 
   }
 
   return `${base}?${params.toString()}`;
+}
+
+/**
+ * The public API URL for the current selection: the same data the widget
+ * shows, as JSON, for clubs that build their own display.
+ */
+export function buildSnapshotDataUrl(
+  origin: string,
+  options: Pick<GeneratorOptions, 'teams' | 'season' | 'league'>
+): string {
+  return `${origin}${snapshotUrl(options.teams, {
+    include: ['games', 'teams', 'standings'],
+    season: options.season ?? undefined,
+    league: options.league ?? undefined,
+  })}`;
 }
 
 export function buildIframeSnippet(url: string): string {

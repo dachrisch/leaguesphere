@@ -1,14 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  fetchLeagues,
-  fetchLeagueTable,
-  fetchLiveticker,
   fetchSeasons,
   fetchSnapshot,
   fetchTeams,
   HttpError,
-  leagueTableUrl,
   retryDelayMs,
   snapshotUrl,
   teamsUrl,
@@ -38,18 +34,28 @@ describe('url builders', () => {
     expect(teamsUrl('Renegades')).toBe('/api/teams/?search=Renegades&page_size=50');
   });
 
-  it('encodes league in the table url and omits an optional season', () => {
-    expect(leagueTableUrl('dffl', '2026')).toBe('/api/league-table/dffl/2026/');
-    expect(leagueTableUrl('dffl')).toBe('/api/league-table/dffl/');
+  it('adds includes, a year and a date window to the snapshot url', () => {
+    expect(
+      snapshotUrl([159], {
+        include: ['games', 'teams', 'live'],
+        year: '2026',
+        dateFrom: '2026-05-09',
+        dateTo: '2026-05-09',
+      })
+    ).toBe(
+      '/api/snapshot/?team=159&include=games%2Cteams%2Clive&year=2026' +
+        '&date_from=2026-05-09&date_to=2026-05-09'
+    );
   });
 });
 
 describe('fetchers', () => {
-  it('requests the snapshot with an Accept header', async () => {
+  it('requests the snapshot with an Accept header, always revalidating', async () => {
     const fetcher = vi.fn(async () => jsonResponse({ gamedays: [] }));
     await fetchSnapshot([159], fetcher);
     expect(fetcher).toHaveBeenCalledWith('/api/snapshot/?team=159&include=games', {
       headers: { Accept: 'application/json' },
+      cache: 'no-cache',
     });
   });
 
@@ -61,35 +67,14 @@ describe('fetchers', () => {
     expect(teams).toEqual([{ id: 1, name: 'A', description: 'A', logo: null }]);
   });
 
-  it('fetches the liveticker feed as a list', async () => {
-    const fetcher = vi.fn(async () => jsonResponse([{ gameId: 1 }]));
-    expect(await fetchLiveticker(fetcher)).toEqual([{ gameId: 1 }]);
-  });
-
-  it('fetches the latest league table when no season is given', async () => {
-    const fetcher = vi.fn(async () =>
-      jsonResponse({ league: { slug: 'dffl', name: 'DFFL' }, season: {}, standing: [] })
-    );
-    await fetchLeagueTable('dffl', undefined, fetcher);
-    expect(fetcher).toHaveBeenCalledWith('/api/league-table/dffl/', {
-      headers: { Accept: 'application/json' },
-    });
-  });
-
   it('throws on a non-ok response', async () => {
     const fetcher = vi.fn(async () => jsonResponse({ detail: 'nope' }, 404));
     await expect(fetchSnapshot([1], fetcher)).rejects.toThrow(Error);
   });
 
-  it('fetches seasons and leagues as directory lists', async () => {
+  it('fetches the season list for the generator', async () => {
     const fetcher = vi.fn(async () => jsonResponse([{ id: 5, name: '2025' }]));
     expect(await fetchSeasons(fetcher)).toEqual([{ id: 5, name: '2025' }]);
-    const leagueFetcher = vi.fn(async () =>
-      jsonResponse([{ id: 8, name: 'DFFL2', slug: 'dffl2' }])
-    );
-    expect(await fetchLeagues(leagueFetcher)).toEqual([
-      { id: 8, name: 'DFFL2', slug: 'dffl2' },
-    ]);
   });
 });
 
