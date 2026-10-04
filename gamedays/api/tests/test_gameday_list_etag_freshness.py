@@ -61,7 +61,5 @@ class GamedayListEtagFreshnessTest(APITestCase):
             "server returned 304 Not Modified for a gameday renamed via the "
             "designer's partial-save path"
         )
-        renamed = next(
-            g for g in revalidated.data["results"] if g["id"] == gameday.id
-        )
+        renamed = next(g for g in revalidated.data["results"] if g["id"] == gameday.id)
         assert renamed["name"] == "Renamed via Designer"

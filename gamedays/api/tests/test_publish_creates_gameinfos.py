@@ -1,7 +1,14 @@
 import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
-from gamedays.models import Gameday, Gameinfo, Gameresult, GamedayDesignerState, Season, League
+from gamedays.models import (
+    Gameday,
+    Gameinfo,
+    Gameresult,
+    GamedayDesignerState,
+    Season,
+    League,
+)
 
 
 def _game(
@@ -35,10 +42,20 @@ def _game(
 
 def _field_and_final_nodes(game):
     return [
-        {"id": "field-1", "type": "field", "parentId": None,
-         "data": {"type": "field", "name": "Field 1", "order": 0}, "position": {"x": 0, "y": 0}},
-        {"id": "stage-1", "type": "stage", "parentId": "field-1",
-         "data": {"type": "stage", "name": "Final", "category": "final"}, "position": {"x": 0, "y": 0}},
+        {
+            "id": "field-1",
+            "type": "field",
+            "parentId": None,
+            "data": {"type": "field", "name": "Field 1", "order": 0},
+            "position": {"x": 0, "y": 0},
+        },
+        {
+            "id": "stage-1",
+            "type": "stage",
+            "parentId": "field-1",
+            "data": {"type": "stage", "name": "Final", "category": "final"},
+            "position": {"x": 0, "y": 0},
+        },
         game,
     ]
 
@@ -50,8 +67,13 @@ def _make_dynamic_canvas(home_dynamic, away_dynamic):
     valid under the #2038 progression guard, while still exercising the
     dynamic-label formatting this fixture exists to verify."""
     nodes = _field_and_final_nodes(
-        _game("game-1", "stage-1", "FIN",
-              home_dynamic=home_dynamic, away_dynamic=away_dynamic)
+        _game(
+            "game-1",
+            "stage-1",
+            "FIN",
+            home_dynamic=home_dynamic,
+            away_dynamic=away_dynamic,
+        )
     )
     added_stages = set()
 
@@ -59,11 +81,19 @@ def _make_dynamic_canvas(home_dynamic, away_dynamic):
         stage_id = f"stage-src-{stage_name}"
         if stage_name and stage_name not in added_stages:
             added_stages.add(stage_name)
-            nodes.append({
-                "id": stage_id, "type": "stage", "parentId": "field-1",
-                "data": {"type": "stage", "name": stage_name, "category": "preliminary"},
-                "position": {"x": 0, "y": 0},
-            })
+            nodes.append(
+                {
+                    "id": stage_id,
+                    "type": "stage",
+                    "parentId": "field-1",
+                    "data": {
+                        "type": "stage",
+                        "name": stage_name,
+                        "category": "preliminary",
+                    },
+                    "position": {"x": 0, "y": 0},
+                }
+            )
         return stage_id
 
     for ref in (home_dynamic, away_dynamic):
@@ -72,27 +102,38 @@ def _make_dynamic_canvas(home_dynamic, away_dynamic):
         ref_type = ref.get("type")
         if ref_type in ("winner", "loser"):
             name = ref.get("matchName")
-            if name and not any(n.get("data", {}).get("standing") == name for n in nodes):
+            if name and not any(
+                n.get("data", {}).get("standing") == name for n in nodes
+            ):
                 nodes.append(
-                    _game(f"src-{name}", ensure_stage("Vorrunde"), name,
-                          home_team="t1", away_team="t2")
+                    _game(
+                        f"src-{name}",
+                        ensure_stage("Vorrunde"),
+                        name,
+                        home_team="t1",
+                        away_team="t2",
+                    )
                 )
         elif ref_type in ("rank", "groupRank"):
             stage_id = ensure_stage(ref.get("stageName") or "Stufe")
             # A ranking stage needs at least one game for a rank to resolve.
             if not any(
-                n.get("type") == "game" and n.get("parentId") == stage_id
-                for n in nodes
+                n.get("type") == "game" and n.get("parentId") == stage_id for n in nodes
             ):
                 nodes.append(
-                    _game(f"src-rank-{stage_id}", stage_id, f"Quelle {stage_id}",
-                          home_team="t1", away_team="t2")
+                    _game(
+                        f"src-rank-{stage_id}",
+                        stage_id,
+                        f"Quelle {stage_id}",
+                        home_team="t1",
+                        away_team="t2",
+                    )
                 )
 
     return {
         "globalTeams": [
             {"id": "t1", "label": "Alpha", "groupId": None, "order": 0},
-            {"id": "t2", "label": "Beta",  "groupId": None, "order": 1},
+            {"id": "t2", "label": "Beta", "groupId": None, "order": 1},
         ],
         "globalTeamGroups": [],
         "nodes": nodes,
@@ -106,9 +147,13 @@ def _dangling_canvas():
         "globalTeams": [],
         "globalTeamGroups": [],
         "nodes": _field_and_final_nodes(
-            _game("game-1", "stage-1", "FIN",
-                  home_dynamic={"type": "winner", "matchName": "SF1"},
-                  away_dynamic={"type": "winner", "matchName": "SF2"})
+            _game(
+                "game-1",
+                "stage-1",
+                "FIN",
+                home_dynamic={"type": "winner", "matchName": "SF1"},
+                away_dynamic={"type": "winner", "matchName": "SF2"},
+            )
         ),
         "edges": [],
     }
@@ -117,7 +162,7 @@ def _dangling_canvas():
 DYNAMIC_REF_CASES = [
     (
         {"type": "winner", "matchName": "SF1"},
-        {"type": "loser",  "matchName": "SF1"},
+        {"type": "loser", "matchName": "SF1"},
         "Gewinner SF1",
         "Verlierer SF1",
     ),
@@ -134,8 +179,20 @@ DYNAMIC_REF_CASES = [
         "Rank 2 Vorrunde",
     ),
     (
-        {"type": "groupRank", "place": 1, "groupName": "Pool B", "stageName": "Quali", "stageId": ""},
-        {"type": "groupRank", "place": 2, "groupName": "Pool B", "stageName": "Quali", "stageId": ""},
+        {
+            "type": "groupRank",
+            "place": 1,
+            "groupName": "Pool B",
+            "stageName": "Quali",
+            "stageId": "",
+        },
+        {
+            "type": "groupRank",
+            "place": 2,
+            "groupName": "Pool B",
+            "stageName": "Quali",
+            "stageId": "",
+        },
         "Rank 1 in Pool B of Quali",
         "Rank 2 in Pool B of Quali",
     ),
@@ -150,7 +207,7 @@ DYNAMIC_REF_CASES = [
 MINIMAL_CANVAS_STATE = {
     "globalTeams": [
         {"id": "t1", "label": "Team Alpha", "groupId": None, "order": 0},
-        {"id": "t2", "label": "Team Beta",  "groupId": None, "order": 1},
+        {"id": "t2", "label": "Team Beta", "groupId": None, "order": 1},
         {"id": "t3", "label": "Officials FC", "groupId": None, "order": 2},
     ],
     "globalTeamGroups": [],
@@ -196,43 +253,63 @@ MINIMAL_CANVAS_STATE = {
 PROGRESSION_CANVAS_STATE = {
     "globalTeams": [
         {"id": "t1", "label": "Team Alpha", "groupId": None, "order": 0},
-        {"id": "t2", "label": "Team Beta",  "groupId": None, "order": 1},
+        {"id": "t2", "label": "Team Beta", "groupId": None, "order": 1},
     ],
     "globalTeamGroups": [],
     "nodes": [
         {
-            "id": "field-1", "type": "field", "parentId": None,
+            "id": "field-1",
+            "type": "field",
+            "parentId": None,
             "data": {"type": "field", "name": "Field 1", "order": 0},
             "position": {"x": 0, "y": 0},
         },
         {
-            "id": "stage-1", "type": "stage", "parentId": "field-1",
+            "id": "stage-1",
+            "type": "stage",
+            "parentId": "field-1",
             "data": {"type": "stage", "name": "Vorrunde", "category": "preliminary"},
             "position": {"x": 0, "y": 0},
         },
         # Preliminary game – has real teams
         {
-            "id": "game-prelim", "type": "game", "parentId": "stage-1",
+            "id": "game-prelim",
+            "type": "game",
+            "parentId": "stage-1",
             "data": {
-                "type": "game", "stage": "Vorrunde", "standing": "Game A1",
-                "startTime": "10:00", "homeTeamId": "t1", "awayTeamId": "t2",
-                "homeTeamDynamic": None, "awayTeamDynamic": None, "official": None,
+                "type": "game",
+                "stage": "Vorrunde",
+                "standing": "Game A1",
+                "startTime": "10:00",
+                "homeTeamId": "t1",
+                "awayTeamId": "t2",
+                "homeTeamDynamic": None,
+                "awayTeamDynamic": None,
+                "official": None,
             },
             "position": {"x": 0, "y": 0},
         },
         {
-            "id": "stage-2", "type": "stage", "parentId": "field-1",
+            "id": "stage-2",
+            "type": "stage",
+            "parentId": "field-1",
             "data": {"type": "stage", "name": "Finale", "category": "final"},
             "position": {"x": 0, "y": 0},
         },
         # Playoff game – teams resolved dynamically after prelim completes
         {
-            "id": "game-sf1", "type": "game", "parentId": "stage-2",
+            "id": "game-sf1",
+            "type": "game",
+            "parentId": "stage-2",
             "data": {
-                "type": "game", "stage": "Finale", "standing": "SF1",
-                "startTime": "12:00", "homeTeamId": None, "awayTeamId": None,
+                "type": "game",
+                "stage": "Finale",
+                "standing": "SF1",
+                "startTime": "12:00",
+                "homeTeamId": None,
+                "awayTeamId": None,
                 "homeTeamDynamic": {"type": "winner", "matchName": "Game A1"},
-                "awayTeamDynamic": {"type": "loser",  "matchName": "Game A1"},
+                "awayTeamDynamic": {"type": "loser", "matchName": "Game A1"},
                 "official": None,
             },
             "position": {"x": 0, "y": 0},
@@ -332,7 +409,7 @@ class TestPublishCreatesGameinfos:
         self._publish()
         gi = Gameinfo.objects.get(gameday=self.gameday)
         assert str(gi.scheduled) == "10:00:00"
-        assert gi.field == 1   # order=0 → field=1 (1-based)
+        assert gi.field == 1  # order=0 → field=1 (1-based)
         assert gi.stage == "Vorrunde"
         assert gi.standing == "Gruppe 1"
 
@@ -355,21 +432,32 @@ class TestPublishCreatesGameinfos:
         )
         self._publish()
         gi = Gameinfo.objects.get(gameday=self.gameday)
-        assert gi.officials.name == "Officials FC"   # NOT the "t3" UUID
+        assert gi.officials.name == "Officials FC"  # NOT the "t3" UUID
 
     @pytest.mark.parametrize(
         "official_ref,expected_name",
         [
             ({"type": "winner", "matchName": "VF 2"}, "Gewinner VF 2"),
             ({"type": "loser", "matchName": "VF 2"}, "Verlierer VF 2"),
-            ({"type": "rank", "place": 1, "stageName": "Vorrunde", "stageId": ""}, "Rank 1 Vorrunde"),
             (
-                {"type": "groupRank", "place": 3, "groupName": "Pool B", "stageName": "Quali", "stageId": ""},
+                {"type": "rank", "place": 1, "stageName": "Vorrunde", "stageId": ""},
+                "Rank 1 Vorrunde",
+            ),
+            (
+                {
+                    "type": "groupRank",
+                    "place": 3,
+                    "groupName": "Pool B",
+                    "stageName": "Quali",
+                    "stageId": "",
+                },
                 "Rank 3 in Pool B of Quali",
             ),
         ],
     )
-    def test_publish_dynamic_official_resolved_to_readable_label(self, official_ref, expected_name):
+    def test_publish_dynamic_official_resolved_to_readable_label(
+        self, official_ref, expected_name
+    ):
         """
         Guards against cryptic official labels ("winner:game-<uuid>"). A ref's
         official that references the winner/loser/rank of another game must
@@ -383,8 +471,13 @@ class TestPublishCreatesGameinfos:
             # Add the producing game the official reference points at so the
             # canvas passes the #2038 progression guard.
             state["nodes"].append(
-                _game("src-official", "stage-1", official_ref["matchName"],
-                      home_team="t1", away_team="t2")
+                _game(
+                    "src-official",
+                    "stage-1",
+                    official_ref["matchName"],
+                    home_team="t1",
+                    away_team="t2",
+                )
             )
         GamedayDesignerState.objects.create(gameday=self.gameday, state_data=state)
         response = self._publish()
@@ -478,8 +571,8 @@ class TestPublishCreatesGameinfos:
         sf1 = Gameinfo.objects.get(gameday=self.gameday, standing="SF1")
         home_result = Gameresult.objects.get(gameinfo=sf1, isHome=True)
         away_result = Gameresult.objects.get(gameinfo=sf1, isHome=False)
-        assert home_result.team.name == "Team Alpha"   # winner (7 points)
-        assert away_result.team.name == "Team Beta"    # loser (0 points)
+        assert home_result.team.name == "Team Alpha"  # winner (7 points)
+        assert away_result.team.name == "Team Beta"  # loser (0 points)
 
     def test_progression_resolves_team_after_game_completes(self):
         GamedayDesignerState.objects.create(
@@ -499,22 +592,30 @@ class TestPublishCreatesGameinfos:
         sf1 = Gameinfo.objects.get(gameday=self.gameday, standing="SF1")
         home_result = Gameresult.objects.get(gameinfo=sf1, isHome=True)
         away_result = Gameresult.objects.get(gameinfo=sf1, isHome=False)
-        assert home_result.team.name == "Team Alpha"   # winner
-        assert away_result.team.name == "Team Beta"    # loser
+        assert home_result.team.name == "Team Alpha"  # winner
+        assert away_result.team.name == "Team Beta"  # loser
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("home_ref,away_ref,expected_home,expected_away", DYNAMIC_REF_CASES)
-def test_publish_dynamic_ref_creates_placeholder_team(home_ref, away_ref, expected_home, expected_away):
+@pytest.mark.parametrize(
+    "home_ref,away_ref,expected_home,expected_away", DYNAMIC_REF_CASES
+)
+def test_publish_dynamic_ref_creates_placeholder_team(
+    home_ref, away_ref, expected_home, expected_away
+):
     user = User.objects.create_superuser("dyn_test", password="pw")
     client = APIClient()
     client.force_authenticate(user)
     season = Season.objects.create(name="2026dyn")
     league = League.objects.create(name="Dyn League")
     gameday = Gameday.objects.create(
-        name="Dyn Day", season=season, league=league,
-        date="2026-03-15", start="10:00",
-        status=Gameday.STATUS_DRAFT, author=user,
+        name="Dyn Day",
+        season=season,
+        league=league,
+        date="2026-03-15",
+        start="10:00",
+        status=Gameday.STATUS_DRAFT,
+        author=user,
     )
     GamedayDesignerState.objects.create(
         gameday=gameday,

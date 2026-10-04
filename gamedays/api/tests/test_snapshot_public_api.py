@@ -173,13 +173,25 @@ class SnapshotYearFilterTest(SnapshotPublicApiTestBase):
         assert [g["id"] for g in response.data["gamedays"]] == [wanted.id]
         assert response.data["scope"]["season"] == [season.pk]
 
-    def test_invalid_or_unknown_year_is_rejected(self):
+    def test_year_matches_seasons_spanning_two_years(self):
+        season = SeasonFactory(name="2033/2034")
+        wanted = GamedayFactory(status=Gameday.STATUS_PUBLISHED, season=season)
+
+        response = self.client.get(SNAPSHOT_URL, {"year": "2033"})
+
+        assert [g["id"] for g in response.data["gamedays"]] == [wanted.id]
+
+    def test_malformed_year_is_rejected(self):
         assert self.client.get(SNAPSHOT_URL, {"year": "26"}).status_code == (
             status.HTTP_400_BAD_REQUEST
         )
-        assert self.client.get(SNAPSHOT_URL, {"year": "1899"}).status_code == (
-            status.HTTP_400_BAD_REQUEST
-        )
+
+    def test_year_without_season_matches_nothing(self):
+        response = self.client.get(SNAPSHOT_URL, {"year": "1899", "include": "teams"})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["gamedays"] == []
+        assert response.data["teams"] == {}
 
 
 class SnapshotStandingsTest(APITestCase):

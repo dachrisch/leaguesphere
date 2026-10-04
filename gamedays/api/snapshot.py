@@ -64,9 +64,10 @@ SCHEMA_VERSION = 1
 # build instead of rebuilding again: during a live gameday every score write
 # changes the ETag, so without this bound each poll would be a rebuild.
 SNAPSHOT_MIN_REBUILD_SECONDS = 30
-# Scopes above this size (or without any filter) are "dumps": only those are
+# Scopes above this size (or without any filter) are "dumps" (a club's
+# all-seasons widget scope stays well below it): only those are
 # charged against the strict per-IP snapshot rate.
-SNAPSHOT_LARGE_SCOPE_GAMEDAYS = 50
+SNAPSHOT_LARGE_SCOPE_GAMEDAYS = 100
 INCLUDE_GAMES = "games"
 INCLUDE_LOGS = "logs"
 INCLUDE_TEAMS = "teams"
@@ -105,18 +106,22 @@ def _parse_date(raw, param_name):
 
 
 def _parse_years(raw_values):
-    """Resolve ?year=YYYY to the seasons of that name (400 on error)."""
+    """Resolve ?year=YYYY to the seasons whose name starts with it.
+
+    "2026" matches "2026" and "2026/2027". A well-formed year without a
+    season is a filter that matches nothing (not an error): a club can embed
+    next season's year before the season exists.
+    """
     years = [raw.strip() for raw in raw_values]
     invalid = [year for year in years if not YEAR_PATTERN.match(year)]
     if invalid:
         raise ValidationError({"year": f"must be YYYY, got {invalid}"})
     if not years:
         return []
-    seasons = list(Season.objects.filter(name__in=years))
-    missing = sorted(set(years) - {season.name for season in seasons})
-    if missing:
-        raise ValidationError({"year": f"unknown years: {missing}"})
-    return seasons
+    year_filter = Q()
+    for year in years:
+        year_filter |= Q(name__startswith=year)
+    return list(Season.objects.filter(year_filter).order_by("pk"))
 
 
 def parse_snapshot_params(query_params):
@@ -128,6 +133,9 @@ def parse_snapshot_params(query_params):
         if season.pk not in known_season_ids:
             seasons.append(season)
             known_season_ids.add(season.pk)
+    # An empty season list means "unfiltered", so a year that matched no
+    # season must empty the scope explicitly.
+    matches_nothing = bool(query_params.getlist("year")) and not seasons
     teams = _parse_int_list(query_params.getlist("team"), "team", Team)
 
     date_from = (
@@ -168,6 +176,7 @@ def parse_snapshot_params(query_params):
             "date_from": date_from,
             "date_to": date_to,
             "statuses": statuses,
+            "matches_nothing": matches_nothing,
         },
         include,
     )
@@ -175,6 +184,8 @@ def parse_snapshot_params(query_params):
 
 def snapshot_gameday_queryset(filters):
     """Gamedays in scope, ordered deterministically. Drafts excluded by default."""
+    if filters.get("matches_nothing"):
+        return Gameday.objects.none()
     queryset = Gameday.objects.all()
     if filters["leagues"]:
         queryset = queryset.filter(

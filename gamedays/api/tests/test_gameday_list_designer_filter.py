@@ -29,16 +29,18 @@ class GamedayListDesignerFilterTest(APITestCase):
         return gameday
 
     def test_list_can_filter_to_only_gamedays_with_designer_state(self):
-        with_state = self._make_gameday("With Designer", date(2026, 6, 24), with_state=True)
+        with_state = self._make_gameday(
+            "With Designer", date(2026, 6, 24), with_state=True
+        )
         self._make_gameday("No Designer", date(2021, 1, 1), with_state=False)
 
         response = self.client.get("/api/gamedays/?has_designer_state=true")
 
         assert response.status_code == status.HTTP_200_OK
         ids = [g["id"] for g in response.data["results"]]
-        assert ids == [with_state.id], (
-            f"expected only the designer gameday {with_state.id}, got {ids}"
-        )
+        assert ids == [
+            with_state.id
+        ], f"expected only the designer gameday {with_state.id}, got {ids}"
 
     def test_designer_gameday_is_returned_even_when_beyond_first_page(self):
         # Reproduces the production bug: many older gamedays without designer
@@ -60,8 +62,12 @@ class GamedayListDesignerFilterTest(APITestCase):
             ]
         )
         designer = self._make_gameday(
-            "Recent Designer", date(2026, 6, 24), with_state=True,
-            season=base.season, league=base.league, author=base.author,
+            "Recent Designer",
+            date(2026, 6, 24),
+            with_state=True,
+            season=base.season,
+            league=base.league,
+            author=base.author,
         )
 
         response = self.client.get("/api/gamedays/?has_designer_state=true")
