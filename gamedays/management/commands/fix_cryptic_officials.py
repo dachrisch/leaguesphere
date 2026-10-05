@@ -197,7 +197,9 @@ class Command(BaseCommand):
                                 "instead of renaming."
                             )
                         else:
-                            Team.objects.filter(id=team_id).update(name=new_name)
+                            Team.objects.filter(id=team_id).update(
+                                name=new_name, updated_at=timezone.now()
+                            )
                 self.stdout.write(
                     self.style.SUCCESS(f"COMMITTED {len(changes)} team fix(es).")
                 )
