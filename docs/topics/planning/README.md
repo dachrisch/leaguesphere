@@ -8,6 +8,7 @@ Project plans, tracks, and roadmap documentation.
 See [current/](./current/) for active planning work.
 
 - [2026-09-25 App Review: Remediation Plan](./current/2026-09-25-app-review-remediation-plan.md): security, reliability, caching and hygiene fixes from the full-app code review
+- [2026-10-04 Snapshot as the only public API](./current/2026-10-04-snapshot-only-public-api.md): implemented; public contract on `/api/snapshot/` (teams, standings, live includes, CORS, per-scope rebuild control); all other `/api/` endpoints internal
 
 ### Completed Plans
 See [history/](./history/) for completed and archived plans.

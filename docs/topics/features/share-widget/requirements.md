@@ -16,7 +16,8 @@
    `Content-Security-Policy: frame-ancestors *` and **no** `X-Frame-Options`.
 2. Every other route (including `/`, `/admin/`, the JSON API and the `/share/`
    generator) still responds with `X-Frame-Options: DENY`.
-3. `GET /api/teams/?search=<q>` returns a paginated directory with only
+3. Internal `GET /api/teams/?search=<q>` (generator team search, not public)
+   returns a paginated directory with only
    `id`, `name`, `description` and `logo` — no location, association or roster
    data.
 4. The widget renders exclusively the teams given by `t`; malformed/negative
@@ -26,16 +27,18 @@
    generator documents the matching listener with the widget's own origin check
    (so it works on stage and on any self-hosted instance).
 7. All values from the API are rendered as text (no HTML injection).
-8. `/api/liveticker/` remains the live source; scores refresh at the server's
-   60 s cache cadence.
-9. The table view renders standings for every league the configured teams play
-   in (skipping leagues without a standings endpoint); an explicit `league`
-   shows only that league.
+8. The widget reads only the public `/api/snapshot/`; live scores come from its
+   `live` include, re-polled every 60 s while a watched game is open today.
+9. The table view renders the snapshot's standings for every league the
+   configured teams play in (leagues without a table are not returned); an
+   explicit `league` shows only that league.
 
 ## Out of scope
 
-- Opening the read API with CORS.
+- Opening the read API with CORS. (Since superseded: `/api/snapshot/`, and only
+  that path, is now cross-origin readable as the public API; see
+  [snapshot-v1](../public-api/snapshot-v1.md).)
 - Stored per-team widget configurations (configuration is stateless URL params).
 - Authentication, API keys or write access.
 - WebSockets/push updates.
-- Client-side standings computation (the league-table API is used instead).
+- Client-side standings computation (the snapshot's `standings` are used instead).
