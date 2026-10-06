@@ -335,6 +335,7 @@ class SnapshotLiveTest(SnapshotPublicApiTestBase):
             event="Touchdown",
             player=7,
             half=1,
+            author=self.gameday.author,
         )
         self.finished = make_game(
             self.gameday,
