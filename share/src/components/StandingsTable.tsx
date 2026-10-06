@@ -22,10 +22,10 @@ function groupStandings(rows: StandingRow[]): StandingGroup[] {
 }
 
 function formatQuotient(value: number): string {
-  return value.toLocaleString('de-DE', {
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
-  });
+  // German decimal comma, without relying on runtime ICU data: Node's
+  // small-icu build (CI, some test envs) lacks de-DE, so toLocaleString
+  // silently falls back to en-US ('0.625'). toFixed is deterministic.
+  return value.toFixed(3).replace('.', ',');
 }
 
 export function StandingsTable({

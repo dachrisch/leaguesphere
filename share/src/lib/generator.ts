@@ -81,7 +81,9 @@ export function buildWidgetUrl(base: string, options: GeneratorOptions): string 
  */
 export function buildSnapshotDataUrl(
   origin: string,
-  options: Pick<GeneratorOptions, 'teams' | 'season' | 'seasonName' | 'league'>
+  options: Pick<GeneratorOptions, 'teams' | 'season' | 'league'> & {
+    seasonName?: string | null;
+  }
 ): string {
   const year = options.seasonName?.match(/^(\d{4})/)?.[1];
   return `${origin}${snapshotUrl(options.teams, {
