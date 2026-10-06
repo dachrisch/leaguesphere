@@ -24,6 +24,7 @@ import logging
 import re
 import time
 from datetime import date
+from types import SimpleNamespace
 
 from django.core.cache import caches
 from django.db.models import Count, Max, Prefetch, Q
@@ -59,6 +60,9 @@ logger = logging.getLogger(__name__)
 SNAPSHOT_TTL_SECONDS = 300
 SNAPSHOT_CACHE_ALIAS = "snapshot"
 SNAPSHOT_THROTTLE_SCOPE = "snapshot"
+# Per-IP bound on rebuilds of narrow scopes: much looser than the dump rate,
+# but one IP cycling through scopes still cannot rebuild without limit.
+SNAPSHOT_REBUILD_THROTTLE_SCOPE = "snapshot_rebuild"
 SCHEMA_VERSION = 1
 # A scope rebuilt less than this many seconds ago is served from its last
 # build instead of rebuilding again: during a live gameday every score write
@@ -293,6 +297,31 @@ def _extra_etag_parts(filters, include):
     return parts
 
 
+def scope_signature(filters, include):
+    """Canonical form of a scope, built from the parsed filters only.
+
+    Unknown params (cache-busters such as ?_=<ts>), param order and include
+    token order do not change it, so they share one ETag, one payload and
+    one rebuild window.
+    """
+
+    def ids(instances):
+        return sorted({instance.pk for instance in instances})
+
+    return repr(
+        (
+            ids(filters["teams"]),
+            ids(filters["leagues"]),
+            ids(filters["seasons"]),
+            filters["date_from"],
+            filters["date_to"],
+            sorted(set(filters["statuses"])),
+            filters["matches_nothing"],
+            sorted(include),
+        )
+    )
+
+
 def _compute_snapshot_state(query_params):
     try:
         filters, include = parse_snapshot_params(query_params)
@@ -301,8 +330,7 @@ def _compute_snapshot_state(query_params):
         return {"etag": '"invalid"', "count": 0}
     state, latest_result, latest_log, latest_gameinfo = _scope_aggregates(filters)
     etag_data = (
-        f"{query_params.urlencode() or 'all'}:"
-        f"{sorted(include)}:"
+        f"{scope_signature(filters, include)}:"
         f"{state['count']}:{state['latest_update']}:"
         f"{latest_result}:{latest_log}:{latest_gameinfo}"
     )
@@ -346,13 +374,10 @@ def is_large_scope(filters, gameday_count):
     return not narrowed or gameday_count > SNAPSHOT_LARGE_SCOPE_GAMEDAYS
 
 
-def scope_cache_key(query_params):
-    """Cache key of a scope independent of its ETag (param order ignored)."""
-    items = sorted(
-        (key, value) for key, values in query_params.lists() for value in values
-    )
-    digest = hashlib.md5(repr(items).encode()).hexdigest()
-    return f"snapshot:scope:v1:{digest}"
+def scope_cache_key(filters, include):
+    """Cache key of a scope independent of its ETag (see scope_signature)."""
+    digest = hashlib.md5(scope_signature(filters, include).encode()).hexdigest()
+    return f"snapshot:scope:v2:{digest}"
 
 
 def build_game_log(game):
@@ -528,10 +553,10 @@ class SnapshotAPIView(APIView):
     throttle_classes = [AnonRateThrottle]
     throttle_scope = SNAPSHOT_THROTTLE_SCOPE
 
-    def _enforce_snapshot_throttle(self, request):
-        """Apply the strict `snapshot` rate; raise `Throttled` (429) if hit."""
+    def _enforce_snapshot_throttle(self, request, scope=SNAPSHOT_THROTTLE_SCOPE):
+        """Apply a per-IP snapshot rate; raise `Throttled` (429) if hit."""
         throttle = ScopedRateThrottle()
-        if not throttle.allow_request(request, self):
+        if not throttle.allow_request(request, SimpleNamespace(throttle_scope=scope)):
             raise Throttled(wait=throttle.wait())
 
     @method_decorator(condition(etag_func=generate_snapshot_etag))
@@ -548,7 +573,7 @@ class SnapshotAPIView(APIView):
         payload = cache.get(cache_key)
         served_etag = etag
         if payload is None:
-            scope_key = scope_cache_key(request.GET)
+            scope_key = scope_cache_key(filters, include)
             recent = cache.get(scope_key)
             if (
                 recent is not None
@@ -591,9 +616,12 @@ class SnapshotAPIView(APIView):
     def _rebuild(self, request, filters, include, state, cache_key):
         """Build and cache the payload: the expensive path."""
         if is_large_scope(filters, state["count"]):
-            # The strict per-IP rate protects dumps; narrow scopes are bounded
-            # per scope by SNAPSHOT_MIN_REBUILD_SECONDS instead.
+            # The strict per-IP rate protects dumps.
             self._enforce_snapshot_throttle(request)
+        else:
+            # Narrow scopes are bounded per scope by SNAPSHOT_MIN_REBUILD_SECONDS
+            # and per IP by the looser rebuild rate.
+            self._enforce_snapshot_throttle(request, SNAPSHOT_REBUILD_THROTTLE_SCOPE)
         cache = caches[SNAPSHOT_CACHE_ALIAS]
         # Single-flight: only one worker builds a cold scope; the rest
         # fall through and build anyway rather than block.

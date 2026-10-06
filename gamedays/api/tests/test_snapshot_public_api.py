@@ -435,12 +435,70 @@ class SnapshotRebuildControlTest(SnapshotPublicApiTestBase):
         game = gameday_entry(again, self.gameday)["games"][0]
         assert game["final_score"]["home"] == 20
 
-    def test_narrow_scope_rebuilds_are_not_ip_throttled(self):
+    def test_narrow_scope_rebuilds_skip_the_strict_dump_rate(self):
         params = {"include": "games", "team": [str(self.home.pk)]}
-        rates = {"snapshot": "1/min"}
+        rates = {"snapshot": "1/min", "snapshot_rebuild": "100/min"}
         with mock.patch.object(ScopedRateThrottle, "THROTTLE_RATES", rates):
             for _ in range(3):
                 caches["snapshot"].clear()
                 assert self.client.get(SNAPSHOT_URL, params).status_code == (
                     status.HTTP_200_OK
                 )
+
+    def test_narrow_scope_rebuilds_have_a_looser_ip_rate(self):
+        """Distinct narrow scopes are cheap but not free: one IP cycling
+        through scopes (or cache-busting) still hits a per-IP bound."""
+        params = {"include": "games", "team": [str(self.home.pk)]}
+        rates = {"snapshot": "100/min", "snapshot_rebuild": "2/min"}
+        with mock.patch.object(ScopedRateThrottle, "THROTTLE_RATES", rates):
+            codes = []
+            for _ in range(3):
+                caches["snapshot"].clear()
+                codes.append(self.client.get(SNAPSHOT_URL, params).status_code)
+
+        assert codes == [
+            status.HTTP_200_OK,
+            status.HTTP_200_OK,
+            status.HTTP_429_TOO_MANY_REQUESTS,
+        ]
+
+    def test_unknown_params_share_the_scope_build(self):
+        """A cache-buster (?_=<ts>) must not force a rebuild: unknown params
+        are not part of the scope, its ETag or its rebuild window."""
+        first = self.client.get(SNAPSHOT_URL, self.params)
+        self.enter_score(20)
+
+        busted = self.client.get(SNAPSHOT_URL, {**self.params, "_": "1696500000"})
+
+        assert busted.status_code == status.HTTP_200_OK
+        assert busted["ETag"] == first["ETag"]
+        assert busted.data["gamedays"] == first.data["gamedays"]
+
+
+class SnapshotScopeNormalizationTest(SnapshotPublicApiTestBase):
+    def etag(self, params):
+        response = self.client.get(SNAPSHOT_URL, params)
+        assert response.status_code == status.HTTP_200_OK
+        return response["ETag"]
+
+    def test_unknown_params_do_not_change_the_etag(self):
+        assert self.etag({"include": "games"}) == self.etag(
+            {"include": "games", "_": "123", "utm_source": "club"}
+        )
+
+    def test_include_token_order_and_spacing_do_not_change_the_etag(self):
+        assert self.etag({"include": "games,teams"}) == self.etag(
+            {"include": " teams , games,teams"}
+        )
+
+    def test_repeated_filter_order_does_not_change_the_etag(self):
+        team_ids = [str(self.home.pk), str(self.away.pk)]
+        assert self.etag({"team": team_ids}) == self.etag(
+            {"team": list(reversed(team_ids))}
+        )
+
+    def test_different_scopes_still_get_different_etags(self):
+        assert self.etag({"team": str(self.home.pk)}) != self.etag(
+            {"team": str(self.away.pk)}
+        )
+        assert self.etag({"include": "games"}) != self.etag({"include": "games,teams"})
