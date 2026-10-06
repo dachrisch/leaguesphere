@@ -16,7 +16,8 @@
    `Content-Security-Policy: frame-ancestors *` and **no** `X-Frame-Options`.
 2. Every other route (including `/`, `/admin/`, the JSON API and the `/share/`
    generator) still responds with `X-Frame-Options: DENY`.
-3. `GET /api/teams/?search=<q>` returns a paginated directory with only
+3. Internal `GET /api/teams/?search=<q>` (generator team search, not public)
+   returns a paginated directory with only
    `id`, `name`, `description` and `logo` — no location, association or roster
    data.
 4. The widget renders exclusively the teams given by `t`; malformed/negative

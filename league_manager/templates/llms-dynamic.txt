@@ -30,7 +30,7 @@ Gameday entries carry `league`, `league_display`, `season` and `season_display`;
 
 - Every response has an `ETag`; send `If-None-Match` and you get `304 Not Modified` when nothing changed. This covers team edits and, with `standings`, every result of the league-season.
 - During a running gameday a scope is rebuilt at most every 30 seconds; poll at most once a minute, only while games are live, and pause hidden tabs.
-- Large dumps (no filter, or more than 100 gamedays) are rate-limited per client; a `429` carries `Retry-After`.
+- Large dumps (no team/league/season/date/status filter, more than 100 gamedays, or `include=standings`) are rate-limited per client at 60/hour on rebuilds; narrow scopes at 600/hour; a `429` carries `Retry-After`.
 - `schema_version` is 1: within version 1, changes are additive only (new fields, new includes).
 
 Example — a club's current season with full names and its league table:

@@ -29,7 +29,7 @@ Core entities and their relationships:
 LeagueSphere has one public API, `/api/snapshot/`: anonymous, read-only JSON, readable cross-origin from any website, with an ETag for conditional requests. Other `/api/` paths are internal to LeagueSphere's own pages and may change without notice.
 
 - [API: Snapshot](https://leaguesphere.app/api/snapshot/): gamedays for a scope (`team`, `league`, `season`, `year`, `date_from`/`date_to`, `status`), with opt-in `include=games` (games and scores), `logs` (event logs), `teams` (full team names and logos), `standings` (league tables of the league-seasons in scope) and `live` (today's live scores and ticker events). Schema version 1 changes additively only.
-- [Dynamic data guide](https://leaguesphere.app/llms-dynamic.txt): freshness, cache headers, and game-status vocabulary for all dynamic endpoints.
+- [Dynamic data guide](https://leaguesphere.app/llms-dynamic.txt): freshness, cache headers, and game-status vocabulary for the public snapshot endpoint.
 
 ## Dynamic content policy
 

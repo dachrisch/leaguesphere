@@ -11,8 +11,11 @@ Implementation: `gamedays/api/snapshot.py`. Tests:
   GET/HEAD/OPTIONS; request header `If-None-Match` allowed; `ETag` and
   `Retry-After` exposed; never credentialed.
 - Rate limits: the general anonymous rate (120/min per IP) for every request.
-  Dump-sized scopes (no filter, or more than 100 gamedays) additionally cost the
-  strict 60/hour per-IP rate, but only when the payload has to be rebuilt.
+  Dump-sized scopes (no team/league/season/date/status filter, more than 100
+  gamedays, or `include=standings` which fans out to full table computes)
+  additionally cost the strict 60/hour per-IP rate, but only when the payload
+  has to be rebuilt. Narrow scopes are bounded per scope (30 s rebuild floor)
+  plus a looser 600/hour per-IP rebuild rate.
   A `429` carries `Retry-After`.
 
 ## Scope parameters
