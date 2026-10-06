@@ -16,8 +16,15 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 # third-party page may read is the public API, /api/snapshot/: anonymous,
 # read-only, never with credentials. Every other route (admin, auth, the
 # internal /api/ endpoints, HTML pages) gets no CORS headers at all.
+# NOTE: the trailing slash is significant — CorsMiddleware runs before
+# CommonMiddleware's APPEND_SLASH redirect, so /api/snapshot (no slash)
+# gets no CORS headers by design. The share widget must use the exact
+# trailing-slash URL.
 CORS_URLS_REGEX = r"^/api/snapshot/$"
 CORS_ALLOW_ALL_ORIGINS = True  # only on CORS_URLS_REGEX
+# Vestigial deny-by-default: ALLOW_ALL takes precedence on matched paths;
+# unmatched paths get nothing either way. Kept empty so a future
+# ALLOW_ALL=False flip stays deny-by-default.
 CORS_ALLOWED_ORIGINS = []
 CORS_ALLOW_CREDENTIALS = False
 CORS_ALLOW_METHODS = ("GET", "HEAD", "OPTIONS")

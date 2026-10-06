@@ -44,10 +44,22 @@ def test_snapshot_preflight_allows_conditional_get_only(client):
     assert response.status_code == 200
     assert response.headers["Access-Control-Allow-Origin"] == "*"
     assert "if-none-match" in response.headers["Access-Control-Allow-Headers"]
+    assert "Access-Control-Allow-Credentials" not in response.headers
     methods = response.headers["Access-Control-Allow-Methods"]
     assert "GET" in methods
     for write_method in ("POST", "PUT", "PATCH", "DELETE"):
         assert write_method not in methods
+
+
+@pytest.mark.django_db
+def test_snapshot_without_trailing_slash_gets_no_cors_headers(client):
+    # CorsMiddleware runs before CommonMiddleware's APPEND_SLASH redirect,
+    # so the 301 carries no CORS headers. The widget must use the exact
+    # trailing-slash URL.
+    response = client.get("/api/snapshot", HTTP_ORIGIN=ORIGIN)
+
+    assert response.status_code in (301, 302)
+    assert "Access-Control-Allow-Origin" not in response.headers
 
 
 @pytest.mark.django_db
@@ -62,7 +74,7 @@ def test_snapshot_body_is_identical_with_and_without_origin(client):
     with_origin = client.get(PUBLIC_API_URL, HTTP_ORIGIN=ORIGIN)
     without_origin = client.get(PUBLIC_API_URL)
 
-    assert with_origin.json()["gamedays"] == without_origin.json()["gamedays"]
+    assert with_origin.content == without_origin.content
 
 
 @pytest.mark.django_db
