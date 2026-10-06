@@ -1,38 +1,91 @@
+"""CORS: only the public API (/api/snapshot/) is cross-origin readable.
+
+Replaces the blanket CORS_ORIGIN_ALLOW_ALL removed in #1977 with the
+property that matters: any origin may *read* the anonymous snapshot, no
+origin gets CORS on anything else, and nothing is ever credentialed.
+"""
+
 import pytest
-from django.conf import settings
-from django.test import override_settings
 
-# A real public endpoint: /api/ has no index route, so it would pass for
-# the wrong reason.
-PUBLIC_API_URL = "/api/leagues/"
-WIDGET_ORIGIN = "https://widget.example.com"
-
-
-def test_cors_is_not_wide_open():
-    """Only an explicit allow-list should be trusted -- under either the old
-    or the current django-cors-headers setting name.
-    """
-    assert not getattr(settings, "CORS_ORIGIN_ALLOW_ALL", False)
-    assert not getattr(settings, "CORS_ALLOW_ALL_ORIGINS", False)
+PUBLIC_API_URL = "/api/snapshot/"
+ORIGIN = "https://club.example.org"
+INTERNAL_URLS = [
+    "/api/leagues/",
+    "/api/teams/",
+    "/api/seasons/",
+    "/api/liveticker/",
+    "/api/gamedays/",
+    "/api/",
+    "/admin/",
+    "/",
+]
 
 
 @pytest.mark.django_db
-def test_preflight_from_unlisted_origin_gets_no_cors_header(client):
+def test_snapshot_is_readable_from_any_origin(client):
+    response = client.get(PUBLIC_API_URL, HTTP_ORIGIN=ORIGIN)
+
+    assert response.status_code == 200
+    assert response.headers["Access-Control-Allow-Origin"] == "*"
+    exposed = response.headers["Access-Control-Expose-Headers"].lower()
+    assert "etag" in exposed
+    assert "retry-after" in exposed
+
+
+@pytest.mark.django_db
+def test_snapshot_preflight_allows_conditional_get_only(client):
     response = client.options(
         PUBLIC_API_URL,
-        HTTP_ORIGIN="https://evil.example.com",
+        HTTP_ORIGIN=ORIGIN,
         HTTP_ACCESS_CONTROL_REQUEST_METHOD="GET",
+        HTTP_ACCESS_CONTROL_REQUEST_HEADERS="if-none-match",
     )
+
+    assert response.status_code == 200
+    assert response.headers["Access-Control-Allow-Origin"] == "*"
+    assert "if-none-match" in response.headers["Access-Control-Allow-Headers"]
+    assert "Access-Control-Allow-Credentials" not in response.headers
+    methods = response.headers["Access-Control-Allow-Methods"]
+    assert "GET" in methods
+    for write_method in ("POST", "PUT", "PATCH", "DELETE"):
+        assert write_method not in methods
+
+
+@pytest.mark.django_db
+def test_snapshot_without_trailing_slash_gets_no_cors_headers(client):
+    # CorsMiddleware runs before CommonMiddleware's APPEND_SLASH redirect,
+    # so the 301 carries no CORS headers. The widget must use the exact
+    # trailing-slash URL.
+    response = client.get("/api/snapshot", HTTP_ORIGIN=ORIGIN)
+
+    assert response.status_code in (301, 302)
     assert "Access-Control-Allow-Origin" not in response.headers
 
 
 @pytest.mark.django_db
-@override_settings(CORS_ALLOWED_ORIGINS=[WIDGET_ORIGIN])
-def test_listed_origin_gets_cors_header_and_unlisted_still_does_not(client):
-    allowed = client.get(PUBLIC_API_URL, HTTP_ORIGIN=WIDGET_ORIGIN)
-    assert allowed.status_code == 200
-    assert allowed.headers["Access-Control-Allow-Origin"] == WIDGET_ORIGIN
+def test_snapshot_never_allows_credentials(client):
+    response = client.get(PUBLIC_API_URL, HTTP_ORIGIN=ORIGIN)
 
-    denied = client.get(PUBLIC_API_URL, HTTP_ORIGIN="https://evil.example.com")
-    assert denied.status_code == 200
-    assert "Access-Control-Allow-Origin" not in denied.headers
+    assert "Access-Control-Allow-Credentials" not in response.headers
+
+
+@pytest.mark.django_db
+def test_snapshot_body_is_identical_with_and_without_origin(client):
+    with_origin = client.get(PUBLIC_API_URL, HTTP_ORIGIN=ORIGIN)
+    without_origin = client.get(PUBLIC_API_URL)
+
+    assert with_origin.content == without_origin.content
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("url", INTERNAL_URLS)
+def test_internal_routes_get_no_cors_headers(client, url):
+    response = client.get(url, HTTP_ORIGIN=ORIGIN)
+    preflight = client.options(
+        url,
+        HTTP_ORIGIN=ORIGIN,
+        HTTP_ACCESS_CONTROL_REQUEST_METHOD="GET",
+    )
+
+    assert "Access-Control-Allow-Origin" not in response.headers
+    assert "Access-Control-Allow-Origin" not in preflight.headers
