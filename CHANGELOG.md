@@ -1,5 +1,19 @@
 # Changelog
 
+## [4.36.0](https://github.com/dachrisch/leaguesphere/compare/v4.35.1...v4.36.0) (2026-10-06)
+
+
+### Features
+
+* **api:** allow cross-origin reads of /api/snapshot/ only ([#2043](https://github.com/dachrisch/leaguesphere/issues/2043)) ([67fb819](https://github.com/dachrisch/leaguesphere/commit/67fb81995a13359b1739836eaebd454e5d73dfcc))
+* **api:** snapshot gains teams, standings, live and year ([#2044](https://github.com/dachrisch/leaguesphere/issues/2044)) ([48960ec](https://github.com/dachrisch/leaguesphere/commit/48960ecc56e449a54e567a56a4e0379fa7f0cd12))
+* **share:** build the widget on the public snapshot only ([#2045](https://github.com/dachrisch/leaguesphere/issues/2045)) ([1851dbb](https://github.com/dachrisch/leaguesphere/commit/1851dbbb78d21f9e34ae8ac088a52ec6eea203e7))
+
+
+### Documentation
+
+* **api:** document /api/snapshot/ as the only public API ([#2046](https://github.com/dachrisch/leaguesphere/issues/2046)) ([105dda2](https://github.com/dachrisch/leaguesphere/commit/105dda2ed1247af6c497c2b63529f0c43b3e778a))
+
 ## [4.35.1](https://github.com/dachrisch/leaguesphere/compare/v4.35.0...v4.35.1) (2026-10-03)
 
 
