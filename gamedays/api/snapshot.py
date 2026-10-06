@@ -246,9 +246,11 @@ def _scope_aggregates(filters):
 def scope_teams(filters):
     """Teams referenced in scope: every result's team plus the team filter."""
     gamedays = snapshot_gameday_queryset(filters)
-    return Team.objects.filter(
-        Q(gameresult__gameinfo__gameday__in=gamedays)
-        | Q(pk__in=[team.pk for team in filters["teams"]])
+    return (
+        Team.objects.filter(
+            Q(gameresult__gameinfo__gameday__in=gamedays)
+            | Q(pk__in=[team.pk for team in filters["teams"]])
+        ).distinct()
     )
 
 
@@ -292,8 +294,8 @@ def _extra_etag_parts(filters, include):
         state = standing_state_parts(scope_league_season_configs(filters))
         parts.append(f"standings={[state[pk] for pk in sorted(state)]}")
     if INCLUDE_LIVE in include:
-        # Which games count as "today" changes at midnight.
-        parts.append(f"live={date.today().isoformat()}")
+        # Which games count as "today" changes at midnight (server TZ).
+        parts.append(f"live={timezone.localdate().isoformat()}")
     return parts
 
 
@@ -362,12 +364,24 @@ def generate_snapshot_etag(request):
     return snapshot_state(request)["etag"]
 
 
-def is_large_scope(filters, gameday_count):
-    """A dump: no narrowing filter at all, or many gamedays."""
+def is_large_scope(filters, gameday_count, include=None):
+    """A dump: no narrowing filter at all, many gamedays, or costly includes.
+
+    `status` alone counts as narrowing (it still shrinks the scope).
+    An empty scope (`matches_nothing`, e.g. year with no season) is cheap,
+    never a dump. `standings` fans out to full league-season table computes,
+    so it is charged at the strict dump rate even on narrow scopes.
+    """
+    include = include or frozenset()
+    if filters.get("matches_nothing"):
+        return False
+    if INCLUDE_STANDINGS in include:
+        return True
     narrowed = (
         filters["teams"]
         or filters["leagues"]
         or filters["seasons"]
+        or filters["statuses"]
         or filters["date_from"] is not None
         or filters["date_to"] is not None
     )
@@ -465,13 +479,13 @@ def build_teams_map(filters):
             "description": team.description,
             "logo": team.logo.url if team.logo else None,
         }
-        for team in scope_teams(filters).distinct().order_by("pk")
+        for team in scope_teams(filters).order_by("pk")
     }
 
 
 def build_live_by_game(gamedays):
     """Liveticker entries (same text as /api/liveticker/) for today's games."""
-    today = date.today()
+    today = timezone.localdate()
     gameday_ids = [gameday.pk for gameday in gamedays if gameday.date == today]
     if not gameday_ids:
         return {}
@@ -507,7 +521,12 @@ def build_snapshot_payload(filters, include):
                     game_data["log"] = build_game_log(game)
                 live = live_by_game.get(game.pk)
                 if live is not None and game.status != Gameinfo.STATUS_COMPLETED:
-                    game_data["live"] = {field: live[field] for field in LIVE_FIELDS}
+                    # Contract with LivetickerService: LIVE_FIELDS must exist.
+                    # Use .get() so a future serializer change degrades to
+                    # missing keys instead of a 500 on the public API.
+                    game_data["live"] = {
+                        field: live.get(field) for field in LIVE_FIELDS
+                    }
                 games.append(game_data)
             entry["games"] = games
         entries.append(entry)
@@ -555,6 +574,8 @@ class SnapshotAPIView(APIView):
 
     def _enforce_snapshot_throttle(self, request, scope=SNAPSHOT_THROTTLE_SCOPE):
         """Apply a per-IP snapshot rate; raise `Throttled` (429) if hit."""
+        # ScopedRateThrottle only reads `view.throttle_scope` via getattr,
+        # so a lightweight namespace suffices (get_cache_key ignores view).
         throttle = ScopedRateThrottle()
         if not throttle.allow_request(request, SimpleNamespace(throttle_scope=scope)):
             raise Throttled(wait=throttle.wait())
@@ -615,7 +636,7 @@ class SnapshotAPIView(APIView):
 
     def _rebuild(self, request, filters, include, state, cache_key):
         """Build and cache the payload: the expensive path."""
-        if is_large_scope(filters, state["count"]):
+        if is_large_scope(filters, state["count"], include):
             # The strict per-IP rate protects dumps.
             self._enforce_snapshot_throttle(request)
         else:
