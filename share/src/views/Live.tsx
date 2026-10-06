@@ -2,11 +2,11 @@ import { useMemo } from 'react';
 
 import { LiveCard } from '../components/LiveCard';
 import { WidgetShell } from '../components/WidgetShell';
-import { useLiveticker } from '../hooks/useLiveticker';
-import { activeWatchedGames } from '../lib/live';
+import { liveGames } from '../lib/live';
 import type { WidgetConfig } from '../lib/params';
 import type { Snapshot } from '../lib/types';
 
+/** Today's open games of the watched teams; the app re-polls the snapshot. */
 export function Live({
   snapshot,
   config,
@@ -14,13 +14,10 @@ export function Live({
   snapshot: Snapshot;
   config: WidgetConfig;
 }) {
-  const watched = useMemo(
-    () => activeWatchedGames(snapshot, config.teams),
+  const games = useMemo(
+    () => liveGames(snapshot, config.teams),
     [snapshot, config.teams]
   );
-  const liveFeed = useLiveticker(watched.length > 0);
-  const watchedIds = new Set(watched.map((game) => game.gameId));
-  const games = liveFeed.filter((game) => watchedIds.has(game.gameId));
 
   return (
     <WidgetShell config={config}>

@@ -67,6 +67,16 @@ body.share-body {
   margin-bottom: 12px;
 }
 
+/* Team logos from the snapshot teams map: inline, the height of the text. */
+.share-team-logo {
+  height: 1.25em;
+  width: auto;
+  max-width: 2.5em;
+  margin-right: 0.4em;
+  vertical-align: -0.25em;
+  object-fit: contain;
+}
+
 .share-section + .share-section {
   margin-top: 16px;
 }

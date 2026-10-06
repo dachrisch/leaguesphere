@@ -1,38 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { activeWatchedGames } from '../lib/live';
+import { activeWatchedGames, liveGames } from '../lib/live';
 import {
   filterToLatestSeason,
   leaguesInSnapshot,
   latestSeasonDisplay,
 } from '../lib/derived';
-import { leagueCandidates, resolveSeasonId } from '../lib/table';
+import { ranksByQuotient } from '../lib/table';
+import type { SnapshotLive } from '../lib/types';
 
 import { makeGame, makeGameday, makeSnapshot } from './fixtures';
 
 const TODAY = '2026-05-09';
-
-describe('resolveSeasonId', () => {
-  const seasons = [
-    { id: 6, name: '2026' },
-    { id: 4, name: '2025/2026' },
-    { id: 3, name: '2021' },
-  ];
-
-  it('prefers an explicit season id', () => {
-    expect(resolveSeasonId(seasons, 3, '2026')).toBe(3);
-  });
-
-  it('resolves a year against season names', () => {
-    expect(resolveSeasonId(seasons, null, '2021')).toBe(3);
-    expect(resolveSeasonId(seasons, null, '2025')).toBe(4);
-  });
-
-  it('returns null when nothing matches', () => {
-    expect(resolveSeasonId(seasons, null, '1999')).toBeNull();
-    expect(resolveSeasonId(seasons, null, null)).toBeNull();
-  });
-});
 
 describe('leaguesInSnapshot', () => {
   it('lists distinct leagues the teams appeared in, sorted by name', () => {
@@ -52,41 +31,18 @@ describe('leaguesInSnapshot', () => {
   });
 });
 
-describe('leagueCandidates', () => {
-  it('orders leagues in the season by number of games desc', () => {
-    const snapshot = makeSnapshot([
-      makeGameday({
-        id: 1,
-        league: 57,
-        league_display: 'Bayernpokal',
-        games: [makeGame({ id: 1 }), makeGame({ id: 2 }), makeGame({ id: 3 })],
-      }),
-      makeGameday({
-        id: 2,
-        league: 7,
-        league_display: 'DFFL',
-        games: [makeGame({ id: 4 })],
-      }),
-    ]);
-    expect(leagueCandidates(snapshot)).toEqual([
-      { id: 57, name: 'Bayernpokal', gameCount: 3 },
-      { id: 7, name: 'DFFL', gameCount: 1 },
-    ]);
+describe('ranksByQuotient', () => {
+  const table = (ranking: string[]) => ({
+    league: { id: 1, slug: 'l', name: 'L' },
+    season: { id: 1, slug: '2026', name: '2026' },
+    ranking,
+    rows: [],
   });
 
-  it('breaks ties by name and handles gamedays without games', () => {
-    const snapshot = makeSnapshot([
-      makeGameday({ id: 1, league: 8, league_display: 'DFFL2', games: [] }),
-      makeGameday({ id: 2, league: 57, league_display: 'Bayernpokal', games: [] }),
-    ]);
-    expect(leagueCandidates(snapshot).map((entry) => entry.name)).toEqual([
-      'Bayernpokal',
-      'DFFL2',
-    ]);
-  });
-
-  it('returns an empty list without gamedays', () => {
-    expect(leagueCandidates(makeSnapshot([]))).toEqual([]);
+  it('is true only when the quotient is the first ranking step', () => {
+    expect(ranksByQuotient(table(['win_quotient', 'direct_wins']))).toBe(true);
+    expect(ranksByQuotient(table(['win_points', 'win_quotient']))).toBe(false);
+    expect(ranksByQuotient(table([]))).toBe(false);
   });
 });
 
@@ -123,6 +79,50 @@ describe('activeWatchedGames', () => {
     ]);
     const games = activeWatchedGames(snapshot, [159, 200], TODAY);
     expect(games.map((game) => game.gameId)).toEqual([11]);
+  });
+});
+
+describe('activeWatchedGames names', () => {
+  it('names the opponent from the snapshot teams map', () => {
+    const snapshot = {
+      ...makeSnapshot([makeGameday({ games: [makeGame({ id: 11 })] })]),
+      teams: { '200': { name: 'Sharks', description: 'Hamburg Sharks', logo: null } },
+    };
+    expect(activeWatchedGames(snapshot, [159], TODAY)[0].opponent).toBe(
+      'Hamburg Sharks'
+    );
+  });
+});
+
+describe('liveGames', () => {
+  const live: SnapshotLive = {
+    status: '1. Halbzeit',
+    time: '10:05',
+    home: { name: 'Renegades', score: 7, isInPossession: true },
+    away: { name: 'Sharks', score: 0, isInPossession: false },
+    ticks: [],
+  };
+
+  it("turns today's live blocks of watched games into live cards", () => {
+    const snapshot = makeSnapshot([
+      makeGameday({
+        games: [
+          makeGame({ id: 11, status: '1. Halbzeit', live }),
+          makeGame({ id: 12, status: 'Geplant' }),
+        ],
+      }),
+    ]);
+    expect(liveGames(snapshot, [159], TODAY)).toEqual([{ gameId: 11, ...live }]);
+  });
+
+  it('ignores live blocks of unwatched teams and other days', () => {
+    const snapshot = makeSnapshot([
+      makeGameday({
+        games: [makeGame({ id: 11, status: '1. Halbzeit', live })],
+      }),
+    ]);
+    expect(liveGames(snapshot, [777], TODAY)).toEqual([]);
+    expect(liveGames(snapshot, [159], '2026-05-10')).toEqual([]);
   });
 });
 
