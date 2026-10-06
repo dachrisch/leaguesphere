@@ -67,6 +67,18 @@ async function getJson<T>(
 
 export type SnapshotInclude = 'games' | 'teams' | 'standings' | 'live';
 
+/** Public API contract version the widget understands (backend SCHEMA_VERSION). */
+export const SNAPSHOT_SCHEMA_VERSION = 1;
+
+export function assertSnapshotVersion(snapshot: Snapshot): void {
+  if (
+    snapshot.schema_version !== undefined &&
+    snapshot.schema_version !== SNAPSHOT_SCHEMA_VERSION
+  ) {
+    throw new HttpError(502, null);
+  }
+}
+
 export interface SnapshotFilters {
   season?: number;
   /** Seasons whose name starts with this year ("2025" → "2025/2026"). */
@@ -109,7 +121,14 @@ export function fetchSnapshot(
     typeof filtersOrFetcher === 'function' ? {} : filtersOrFetcher;
   const fetcher =
     typeof filtersOrFetcher === 'function' ? filtersOrFetcher : maybeFetcher;
-  return getJson<Snapshot>(snapshotUrl(teamIds, filters), fetcher, SNAPSHOT_INIT);
+  return getJson<Snapshot>(
+    snapshotUrl(teamIds, filters),
+    fetcher,
+    SNAPSHOT_INIT
+  ).then((snapshot) => {
+    assertSnapshotVersion(snapshot);
+    return snapshot;
+  });
 }
 
 // The generator (a LeagueSphere page) also reads internal endpoints for its

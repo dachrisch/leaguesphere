@@ -76,14 +76,19 @@ export function buildWidgetUrl(base: string, options: GeneratorOptions): string 
 /**
  * The public API URL for the current selection: the same data the widget
  * shows, as JSON, for clubs that build their own display.
+ * Prefers `year=` like the widget URL when the season name starts with a
+ * year, so both copy-fields select the same seasons.
  */
 export function buildSnapshotDataUrl(
   origin: string,
-  options: Pick<GeneratorOptions, 'teams' | 'season' | 'league'>
+  options: Pick<GeneratorOptions, 'teams' | 'season' | 'seasonName' | 'league'>
 ): string {
+  const year = options.seasonName?.match(/^(\d{4})/)?.[1];
   return `${origin}${snapshotUrl(options.teams, {
     include: ['games', 'teams', 'standings'],
-    season: options.season ?? undefined,
+    ...(year !== undefined
+      ? { year }
+      : { season: options.season ?? undefined }),
     league: options.league ?? undefined,
   })}`;
 }

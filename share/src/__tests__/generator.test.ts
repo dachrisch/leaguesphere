@@ -156,10 +156,24 @@ describe('buildSnapshotDataUrl', () => {
       buildSnapshotDataUrl('https://leaguesphere.app', {
         teams: [159],
         season: null,
+        seasonName: null,
         league: null,
       })
     ).toBe(
       'https://leaguesphere.app/api/snapshot/?team=159&include=games%2Cteams%2Cstandings'
+    );
+  });
+
+  it('prefers year= like the widget URL when the season name starts with one', () => {
+    expect(
+      buildSnapshotDataUrl('https://leaguesphere.app', {
+        teams: [159],
+        season: 6,
+        seasonName: '2025/2026',
+        league: null,
+      })
+    ).toBe(
+      'https://leaguesphere.app/api/snapshot/?team=159&include=games%2Cteams%2Cstandings&year=2025'
     );
   });
 });
