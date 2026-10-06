@@ -1,4 +1,10 @@
-"""GET /api/snapshot/ — mass endpoint for API consumers.
+"""GET /api/snapshot/ — LeagueSphere's public API.
+
+This is the only public, documented and cross-origin readable endpoint
+(CORS is scoped to this path in settings). Every other /api/ path is
+internal: anonymous where LeagueSphere's own pages need it, but without a
+stability promise. Contract: schema_version 1 changes additively only; see
+docs/topics/features/public-api/snapshot-v1.md.
 
 Replaces the N+1 scrape pattern (1 x gameday catalog + N x per-gameday
 /games/ + M x per-game HTML game-log parsing) with one configurable,
@@ -15,10 +21,13 @@ container disk) with a single-flight lock against stampedes.
 
 import hashlib
 import logging
+import re
+import time
 from datetime import date
+from types import SimpleNamespace
 
 from django.core.cache import caches
-from django.db.models import Count, Max
+from django.db.models import Count, Max, Prefetch, Q
 from django.utils import timezone
 from django.views.decorators.http import condition
 from django.utils.decorators import method_decorator
@@ -29,18 +38,50 @@ from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle
 from rest_framework.views import APIView
 
 from gamedays.api.serializers import GamedayListSerializer, GameLogSerializer
-from gamedays.models import Gameday, Gameinfo, Gameresult, League, Season, Team, TeamLog
+from gamedays.models import (
+    Gameday,
+    GamedayDesignerState,
+    Gameinfo,
+    Gameresult,
+    League,
+    Season,
+    Team,
+    TeamLog,
+)
 from gamedays.serializers.game_results import GameInfoSerializer
 from gamedays.service.model_helper import TeamLogHelper
+from league_table.api.etag import standing_state_parts
+from league_table.api.standings import build_standings
+from league_table.models import LeagueSeasonConfig
+from liveticker.service.liveticker_service import LivetickerService
 
 logger = logging.getLogger(__name__)
 
 SNAPSHOT_TTL_SECONDS = 300
 SNAPSHOT_CACHE_ALIAS = "snapshot"
 SNAPSHOT_THROTTLE_SCOPE = "snapshot"
+# Per-IP bound on rebuilds of narrow scopes: much looser than the dump rate,
+# but one IP cycling through scopes still cannot rebuild without limit.
+SNAPSHOT_REBUILD_THROTTLE_SCOPE = "snapshot_rebuild"
+SCHEMA_VERSION = 1
+# A scope rebuilt less than this many seconds ago is served from its last
+# build instead of rebuilding again: during a live gameday every score write
+# changes the ETag, so without this bound each poll would be a rebuild.
+SNAPSHOT_MIN_REBUILD_SECONDS = 30
+# Scopes above this size (or without any filter) are "dumps" (a club's
+# all-seasons widget scope stays well below it): only those are
+# charged against the strict per-IP snapshot rate.
+SNAPSHOT_LARGE_SCOPE_GAMEDAYS = 100
 INCLUDE_GAMES = "games"
 INCLUDE_LOGS = "logs"
-VALID_INCLUDES = frozenset({INCLUDE_GAMES, INCLUDE_LOGS})
+INCLUDE_TEAMS = "teams"
+INCLUDE_STANDINGS = "standings"
+INCLUDE_LIVE = "live"
+VALID_INCLUDES = frozenset(
+    {INCLUDE_GAMES, INCLUDE_LOGS, INCLUDE_TEAMS, INCLUDE_STANDINGS, INCLUDE_LIVE}
+)
+LIVE_FIELDS = ("status", "time", "home", "away", "ticks")
+YEAR_PATTERN = re.compile(r"^\d{4}$")
 
 
 def _parse_int_list(raw_values, param_name, model):
@@ -68,10 +109,37 @@ def _parse_date(raw, param_name):
         raise ValidationError({param_name: f"must be YYYY-MM-DD, got {raw!r}"})
 
 
+def _parse_years(raw_values):
+    """Resolve ?year=YYYY to the seasons whose name starts with it.
+
+    "2026" matches "2026" and "2026/2027". A well-formed year without a
+    season is a filter that matches nothing (not an error): a club can embed
+    next season's year before the season exists.
+    """
+    years = [raw.strip() for raw in raw_values]
+    invalid = [year for year in years if not YEAR_PATTERN.match(year)]
+    if invalid:
+        raise ValidationError({"year": f"must be YYYY, got {invalid}"})
+    if not years:
+        return []
+    year_filter = Q()
+    for year in years:
+        year_filter |= Q(name__startswith=year)
+    return list(Season.objects.filter(year_filter).order_by("pk"))
+
+
 def parse_snapshot_params(query_params):
     """Validate snapshot query params. Returns (filters, include) or raises 400."""
     leagues = _parse_int_list(query_params.getlist("league"), "league", League)
     seasons = _parse_int_list(query_params.getlist("season"), "season", Season)
+    known_season_ids = {season.pk for season in seasons}
+    for season in _parse_years(query_params.getlist("year")):
+        if season.pk not in known_season_ids:
+            seasons.append(season)
+            known_season_ids.add(season.pk)
+    # An empty season list means "unfiltered", so a year that matched no
+    # season must empty the scope explicitly.
+    matches_nothing = bool(query_params.getlist("year")) and not seasons
     teams = _parse_int_list(query_params.getlist("team"), "team", Team)
 
     date_from = (
@@ -100,6 +168,9 @@ def parse_snapshot_params(query_params):
                     {"include": f"must be a combination of {sorted(VALID_INCLUDES)}"}
                 )
             include.add(token)
+    if INCLUDE_LIVE in include:
+        # The live block sits on game entries, so it needs them.
+        include.add(INCLUDE_GAMES)
 
     return (
         {
@@ -109,6 +180,7 @@ def parse_snapshot_params(query_params):
             "date_from": date_from,
             "date_to": date_to,
             "statuses": statuses,
+            "matches_nothing": matches_nothing,
         },
         include,
     )
@@ -116,6 +188,8 @@ def parse_snapshot_params(query_params):
 
 def snapshot_gameday_queryset(filters):
     """Gamedays in scope, ordered deterministically. Drafts excluded by default."""
+    if filters.get("matches_nothing"):
+        return Gameday.objects.none()
     queryset = Gameday.objects.all()
     if filters["leagues"]:
         queryset = queryset.filter(
@@ -169,21 +243,155 @@ def _scope_aggregates(filters):
     return state, latest_result, latest_log, latest_gameinfo
 
 
-def generate_snapshot_etag(request):
-    """ETag covering query params plus every row type in the response."""
+def scope_teams(filters):
+    """Teams referenced in scope: every result's team plus the team filter."""
+    gamedays = snapshot_gameday_queryset(filters)
+    return (
+        Team.objects.filter(
+            Q(gameresult__gameinfo__gameday__in=gamedays)
+            | Q(pk__in=[team.pk for team in filters["teams"]])
+        ).distinct()
+    )
+
+
+def scope_league_season_configs(filters):
+    """LeagueSeasonConfigs of the (league, season) pairs in scope.
+
+    Leagues without a config (cups, tournaments) have no table and are left
+    out, so a client never has to guess which league has standings.
+    """
+    pairs = set(
+        snapshot_gameday_queryset(filters)
+        .order_by()
+        .values_list("league_id", "season_id")
+        .distinct()
+    )
+    if not pairs:
+        return []
+    pair_filter = Q()
+    for league_id, season_id in pairs:
+        pair_filter |= Q(league_id=league_id, season_id=season_id)
+    return list(
+        LeagueSeasonConfig.objects.filter(pair_filter)
+        .select_related("league", "season")
+        .order_by("season__name", "league__name", "pk")
+    )
+
+
+def _extra_etag_parts(filters, include):
+    """Freshness of data the opt-in includes read beyond the scope's rows.
+
+    Only computed for the includes requested, so plain scopes keep exactly
+    their previous queries and ETags.
+    """
+    parts = []
+    if INCLUDE_TEAMS in include:
+        latest_team = scope_teams(filters).aggregate(latest=Max("updated_at"))
+        parts.append(f"teams={latest_team['latest']}")
+    if INCLUDE_STANDINGS in include:
+        # Standings cover the whole league-season, not just the scope: a
+        # team-scoped snapshot must change when any team's result does.
+        state = standing_state_parts(scope_league_season_configs(filters))
+        parts.append(f"standings={[state[pk] for pk in sorted(state)]}")
+    if INCLUDE_LIVE in include:
+        # Which games count as "today" changes at midnight (server TZ).
+        parts.append(f"live={timezone.localdate().isoformat()}")
+    return parts
+
+
+def scope_signature(filters, include):
+    """Canonical form of a scope, built from the parsed filters only.
+
+    Unknown params (cache-busters such as ?_=<ts>), param order and include
+    token order do not change it, so they share one ETag, one payload and
+    one rebuild window.
+    """
+
+    def ids(instances):
+        return sorted({instance.pk for instance in instances})
+
+    return repr(
+        (
+            ids(filters["teams"]),
+            ids(filters["leagues"]),
+            ids(filters["seasons"]),
+            filters["date_from"],
+            filters["date_to"],
+            sorted(set(filters["statuses"])),
+            filters["matches_nothing"],
+            sorted(include),
+        )
+    )
+
+
+def _compute_snapshot_state(query_params):
     try:
-        filters, include = parse_snapshot_params(request.GET)
+        filters, include = parse_snapshot_params(query_params)
     except ValidationError:
         # Invalid params still get a stable ETag; the view returns the 400.
-        return '"invalid"'
+        return {"etag": '"invalid"', "count": 0}
     state, latest_result, latest_log, latest_gameinfo = _scope_aggregates(filters)
     etag_data = (
-        f"{request.GET.urlencode() or 'all'}:"
-        f"{sorted(include)}:"
+        f"{scope_signature(filters, include)}:"
         f"{state['count']}:{state['latest_update']}:"
         f"{latest_result}:{latest_log}:{latest_gameinfo}"
     )
-    return f'"{hashlib.md5(etag_data.encode()).hexdigest()}"'
+    extra = _extra_etag_parts(filters, include)
+    if extra:
+        etag_data = ":".join([etag_data, *extra])
+    return {
+        "etag": f'"{hashlib.md5(etag_data.encode()).hexdigest()}"',
+        "count": state["count"],
+    }
+
+
+def snapshot_state(request):
+    """ETag and scope size, computed once per request.
+
+    The `condition` decorator and the view both need them; memoized on the
+    underlying Django request (DRF's Request proxies attribute reads to it).
+    """
+    django_request = getattr(request, "_request", request)
+    state = getattr(django_request, "_snapshot_state", None)
+    if state is None:
+        state = _compute_snapshot_state(django_request.GET)
+        django_request._snapshot_state = state
+    return state
+
+
+def generate_snapshot_etag(request):
+    """ETag covering query params plus every row type in the response."""
+    return snapshot_state(request)["etag"]
+
+
+def is_large_scope(filters, gameday_count, include=None):
+    """A dump: no narrowing filter at all, many gamedays, or costly includes.
+
+    `status` alone counts as narrowing (it still shrinks the scope).
+    An empty scope (`matches_nothing`, e.g. year with no season) is cheap,
+    never a dump. `standings` fans out to full league-season table computes,
+    so it is charged at the strict dump rate even on narrow scopes.
+    """
+    include = include or frozenset()
+    if filters.get("matches_nothing"):
+        return False
+    if INCLUDE_STANDINGS in include:
+        return True
+    narrowed = (
+        filters["teams"]
+        or filters["leagues"]
+        or filters["seasons"]
+        or filters["statuses"]
+        or filters["date_from"] is not None
+        or filters["date_to"] is not None
+    )
+    return not narrowed or gameday_count > SNAPSHOT_LARGE_SCOPE_GAMEDAYS
+
+
+def scope_cache_key(filters, include):
+    """Cache key of a scope independent of its ETag (see scope_signature)."""
+    digest = hashlib.md5(scope_signature(filters, include).encode()).hexdigest()
+    return f"snapshot:scope:v2:{digest}"
 
 
 def build_game_log(game):
@@ -259,6 +467,32 @@ def build_game_log(game):
     return GameLogSerializer(instance=gamelog).data
 
 
+def build_teams_map(filters):
+    """{"<team id>": {name, description, logo}} for every team in scope.
+
+    `logo` is site-relative here so the cached payload is host-independent;
+    the view makes it absolute per request.
+    """
+    return {
+        str(team.pk): {
+            "name": team.name,
+            "description": team.description,
+            "logo": team.logo.url if team.logo else None,
+        }
+        for team in scope_teams(filters).order_by("pk")
+    }
+
+
+def build_live_by_game(gamedays):
+    """Liveticker entries (same text as /api/liveticker/) for today's games."""
+    today = timezone.localdate()
+    gameday_ids = [gameday.pk for gameday in gamedays if gameday.date == today]
+    if not gameday_ids:
+        return {}
+    entries = LivetickerService([], [], gameday_ids).get_liveticker_as_json()
+    return {entry["gameId"]: entry for entry in entries}
+
+
 def build_snapshot_payload(filters, include):
     """Bulk-build the dump: a handful of queries regardless of scope size."""
     gamedays = list(
@@ -267,8 +501,15 @@ def build_snapshot_payload(filters, include):
         .prefetch_related(
             "gameinfo_set__gameresult_set__team",
             "gameinfo_set__teamlog_set",
+            # has_designer_state only needs existence: one query for the
+            # whole scope, without loading the state_data blobs.
+            Prefetch(
+                "designer_state",
+                queryset=GamedayDesignerState.objects.only("gameday_id"),
+            ),
         )
     )
+    live_by_game = build_live_by_game(gamedays) if INCLUDE_LIVE in include else {}
     entries = []
     for gameday in gamedays:
         entry = dict(GamedayListSerializer(gameday).data)
@@ -278,10 +519,19 @@ def build_snapshot_payload(filters, include):
                 game_data = dict(GameInfoSerializer(game).data)
                 if INCLUDE_LOGS in include:
                     game_data["log"] = build_game_log(game)
+                live = live_by_game.get(game.pk)
+                if live is not None and game.status != Gameinfo.STATUS_COMPLETED:
+                    # Contract with LivetickerService: LIVE_FIELDS must exist.
+                    # Use .get() so a future serializer change degrades to
+                    # missing keys instead of a 500 on the public API.
+                    game_data["live"] = {
+                        field: live.get(field) for field in LIVE_FIELDS
+                    }
                 games.append(game_data)
             entry["games"] = games
         entries.append(entry)
-    return {
+    payload = {
+        "schema_version": SCHEMA_VERSION,
         "generated_at": timezone.now().isoformat(),
         "scope": {
             "league": sorted({league.pk for league in filters["leagues"]}) or None,
@@ -303,10 +553,15 @@ def build_snapshot_payload(filters, include):
         },
         "gamedays": entries,
     }
+    if INCLUDE_TEAMS in include:
+        payload["teams"] = build_teams_map(filters)
+    if INCLUDE_STANDINGS in include:
+        payload["standings"] = build_standings(scope_league_season_configs(filters))
+    return payload
 
 
 class SnapshotAPIView(APIView):
-    """GET /api/snapshot/ — one configurable dump for API consumers."""
+    """GET /api/snapshot/ — the public API: one configurable, cached dump."""
 
     permission_classes = [AllowAny]
     # The general anon rate guards every read; the strict snapshot rate is
@@ -317,10 +572,12 @@ class SnapshotAPIView(APIView):
     throttle_classes = [AnonRateThrottle]
     throttle_scope = SNAPSHOT_THROTTLE_SCOPE
 
-    def _enforce_snapshot_throttle(self, request):
-        """Apply the strict `snapshot` rate; raise `Throttled` (429) if hit."""
+    def _enforce_snapshot_throttle(self, request, scope=SNAPSHOT_THROTTLE_SCOPE):
+        """Apply a per-IP snapshot rate; raise `Throttled` (429) if hit."""
+        # ScopedRateThrottle only reads `view.throttle_scope` via getattr,
+        # so a lightweight namespace suffices (get_cache_key ignores view).
         throttle = ScopedRateThrottle()
-        if not throttle.allow_request(request, self):
+        if not throttle.allow_request(request, SimpleNamespace(throttle_scope=scope)):
             raise Throttled(wait=throttle.wait())
 
     @method_decorator(condition(etag_func=generate_snapshot_etag))
@@ -330,29 +587,76 @@ class SnapshotAPIView(APIView):
         except ValidationError as exc:
             return Response(exc.detail, status=400)
 
-        etag = generate_snapshot_etag(request)
+        state = snapshot_state(request)
+        etag = state["etag"]
         cache = caches[SNAPSHOT_CACHE_ALIAS]
         cache_key = f"snapshot:v1:{etag}"
         payload = cache.get(cache_key)
+        served_etag = etag
         if payload is None:
-            # Rebuild path only: this is the expensive branch the strict rate
-            # is meant to protect.
-            self._enforce_snapshot_throttle(request)
-            # Single-flight: only one worker builds a cold scope; the rest
-            # fall through and build anyway rather than block.
-            lock_key = f"{cache_key}:lock"
-            try:
-                have_lock = cache.add(lock_key, True, timeout=60)
-            except Exception:  # noqa: BLE001 - cache backend must never 500 reads
-                logger.exception("snapshot cache lock failed")
-                have_lock = True
-            payload = build_snapshot_payload(filters, include)
-            try:
-                cache.set(cache_key, payload, SNAPSHOT_TTL_SECONDS)
-                if have_lock:
-                    cache.delete(lock_key)
-            except Exception:  # noqa: BLE001 - cache backend must never 500 reads
-                logger.exception("snapshot cache store failed")
+            scope_key = scope_cache_key(filters, include)
+            recent = cache.get(scope_key)
+            if (
+                recent is not None
+                and time.time() - recent["built_at"] < SNAPSHOT_MIN_REBUILD_SECONDS
+            ):
+                # Rebuilt moments ago: serve that build under its own ETag
+                # instead of rebuilding on every live score write.
+                payload = recent["payload"]
+                served_etag = recent["etag"]
+            else:
+                payload = self._rebuild(request, filters, include, state, cache_key)
+                try:
+                    cache.set(
+                        scope_key,
+                        {"etag": etag, "payload": payload, "built_at": time.time()},
+                        SNAPSHOT_TTL_SECONDS,
+                    )
+                except Exception:  # noqa: BLE001 - cache backend must never 500 reads
+                    logger.exception("snapshot scope cache store failed")
         payload = dict(payload)
-        payload["etag"] = etag.strip('"')
-        return Response(payload)
+        payload["etag"] = served_etag.strip('"')
+        if INCLUDE_TEAMS in include:
+            payload["teams"] = {
+                team_id: {
+                    **team,
+                    "logo": (
+                        request.build_absolute_uri(team["logo"])
+                        if team["logo"]
+                        else None
+                    ),
+                }
+                for team_id, team in payload["teams"].items()
+            }
+        response = Response(payload)
+        # `condition` only sets ETag when absent: a served earlier build keeps
+        # the ETag it was built under.
+        response["ETag"] = served_etag
+        return response
+
+    def _rebuild(self, request, filters, include, state, cache_key):
+        """Build and cache the payload: the expensive path."""
+        if is_large_scope(filters, state["count"], include):
+            # The strict per-IP rate protects dumps.
+            self._enforce_snapshot_throttle(request)
+        else:
+            # Narrow scopes are bounded per scope by SNAPSHOT_MIN_REBUILD_SECONDS
+            # and per IP by the looser rebuild rate.
+            self._enforce_snapshot_throttle(request, SNAPSHOT_REBUILD_THROTTLE_SCOPE)
+        cache = caches[SNAPSHOT_CACHE_ALIAS]
+        # Single-flight: only one worker builds a cold scope; the rest
+        # fall through and build anyway rather than block.
+        lock_key = f"{cache_key}:lock"
+        try:
+            have_lock = cache.add(lock_key, True, timeout=60)
+        except Exception:  # noqa: BLE001 - cache backend must never 500 reads
+            logger.exception("snapshot cache lock failed")
+            have_lock = True
+        payload = build_snapshot_payload(filters, include)
+        try:
+            cache.set(cache_key, payload, SNAPSHOT_TTL_SECONDS)
+            if have_lock:
+                cache.delete(lock_key)
+        except Exception:  # noqa: BLE001 - cache backend must never 500 reads
+            logger.exception("snapshot cache store failed")
+        return payload

@@ -1,30 +1,11 @@
-import json
-
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import condition
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from league_table.api.standings import standing_rows
 from league_table.service.league_table_service import LeagueTableService
-
-# Columns of the computed standing worth exposing publicly. Game-level
-# internals (opponent ids, per-game result columns) stay internal.
-STANDING_COLUMNS = [
-    "standing",
-    "team_id",
-    "team__description",
-    "wins",
-    "draws",
-    "losses",
-    "games_played",
-    "pf",
-    "pa",
-    "diff",
-    "win_points",
-    "win_quotient",
-    "league__name",
-]
 
 
 def generate_league_table_etag(request, league=None, season=None):
@@ -35,7 +16,11 @@ def generate_league_table_etag(request, league=None, season=None):
 
 @method_decorator(condition(etag_func=generate_league_table_etag), name="get")
 class LeagueTableAPIView(APIView):
-    """Public, read-only standings for a league (and optional season)."""
+    """Read-only standings for a league (and optional season).
+
+    Anonymous but internal: serves LeagueSphere's own pages. The public,
+    cross-origin readable contract is /api/snapshot/?include=standings.
+    """
 
     permission_classes = [AllowAny]
 
@@ -44,9 +29,7 @@ class LeagueTableAPIView(APIView):
         if service.league_season_config is None:
             return Response({"detail": "Unknown league or season."}, status=404)
 
-        table = service.get_standing()
-        columns = [column for column in STANDING_COLUMNS if column in table.columns]
-        standing = json.loads(table[columns].to_json(orient="records"))
+        standing = standing_rows(service)
 
         return Response(
             {

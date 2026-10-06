@@ -64,7 +64,7 @@ class Association(models.Model):
         return f"{self.pk}: {self.abbr} - {self.name}"
 
 
-class Team(models.Model):
+class Team(BumpUpdatedAtOnSaveMixin, models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.CharField(max_length=255, unique=True)
     location = models.CharField(max_length=100)
@@ -72,6 +72,9 @@ class Team(models.Model):
         "Logo", upload_to="teammanager/logos", blank=True, null=True
     )
     association = models.ForeignKey(Association, on_delete=models.DO_NOTHING, null=True)
+    # The public snapshot (include=teams) serves name/description/logo; its
+    # ETag folds in Max(updated_at), so team edits must bump it.
+    updated_at = models.DateTimeField(auto_now=True)
 
     objects: QuerySet["Team"] = models.Manager()
 

@@ -204,6 +204,9 @@ REST_FRAMEWORK = {
         # The snapshot dump is expensive by design (whole scopes in one
         # response); throttle it strictly so it cannot be used for DoS.
         "snapshot": "60/hour",
+        # Rebuilds of narrow (team/league/season/date) snapshot scopes; each
+        # scope rebuilds at most every 30 s, this bounds one IP across scopes.
+        "snapshot_rebuild": "600/hour",
     },
 }
 
