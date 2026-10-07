@@ -10,6 +10,7 @@ from datetime import date, timedelta
 from unittest import mock
 
 from django.core.cache import caches
+from django.core.files.base import ContentFile
 from django.db import connection
 from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
@@ -109,16 +110,25 @@ class SnapshotTeamsTest(SnapshotPublicApiTestBase):
         assert response.data["teams"][str(idle.pk)]["description"] == "Idle Team"
 
     def test_logo_is_absolute_and_null_when_unset(self):
-        self.home.logo.name = "teammanager/logos/nuern.png"
-        self.home.save()
+        self.home.logo.save("nuern.png", ContentFile("fake-png-bytes"), save=True)
+        self.addCleanup(lambda: self.home.logo.delete(save=False))
 
         response = self.client.get(SNAPSHOT_URL, {"include": "teams"})
 
         teams = response.data["teams"]
         assert teams[str(self.home.pk)]["logo"] == (
-            "http://testserver/media/teammanager/logos/nuern.png"
+            f"http://testserver/media/{self.home.logo.name}"
         )
         assert teams[str(self.away.pk)]["logo"] is None
+
+    def test_logo_is_null_when_file_is_missing(self):
+        self.home.logo.name = "teammanager/logos/does-not-exist.png"
+        self.home.save()
+
+        response = self.client.get(SNAPSHOT_URL, {"include": "teams"})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["teams"][str(self.home.pk)]["logo"] is None
 
     def test_team_edit_changes_etag_only_with_teams_included(self):
         with_teams = self.client.get(SNAPSHOT_URL, {"include": "teams"})

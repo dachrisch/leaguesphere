@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
+import { useState } from 'react';
 
 import type { WidgetConfig } from '../lib/params';
 import { PoweredBy } from './PoweredBy';
@@ -26,15 +27,21 @@ export function WidgetShell({
   ]
     .filter(Boolean)
     .join(' ');
+  const [headerLogoFailed, setHeaderLogoFailed] = useState(false);
 
   return (
     <div
       className={className}
       style={{ '--share-accent': `#${config.color}` } as CSSProperties}
     >
-      {config.logo !== null && (
+      {config.logo !== null && !headerLogoFailed && (
         <header className="share-header">
-          <img className="share-logo" src={config.logo} alt="" />
+          <img
+            className="share-logo"
+            src={config.logo}
+            alt=""
+            onError={() => setHeaderLogoFailed(true)}
+          />
         </header>
       )}
       {children}
