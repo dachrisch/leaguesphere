@@ -17,10 +17,12 @@ import type {
   GlobalTeamGroup,
   HighlightedElement
 } from '../../types/flowchart';
-import { isGameNode } from '../../types/flowchart';
+import { isGameNode, isStageNode } from '../../types/flowchart';
 import type { GameProgressionCellResult } from '../../types/progression';
 import { ICONS } from '../../utils/iconConstants';
 import { getDraggedGameSourceStageId } from '../../utils/dragState';
+import { designerApi } from '../../api/designerApi';
+import { parseTime, formatTime, isValidTimeFormat } from '../../utils/timeCalculation';
 import './StageSection.css';
 
 export interface StageSectionProps {
@@ -52,6 +54,14 @@ export interface StageSectionProps {
   expertMode?: boolean;
   /** Per-game simulated progression, from `useProgressionInspection`. */
   progressionByGameId?: Map<string, GameProgressionCellResult>;
+  /** Backend gameday PK — required for the Swiss round-times endpoint. */
+  gamedayId?: number;
+  /**
+   * Number of generated Swiss rounds (`swiss.completedRounds.length` from
+   * ListCanvas). A bare number, not the whole swiss object. Rounds above
+   * this count are future-only: their planned start time is editable.
+   */
+  swissCompletedRounds?: number;
 }
 
 const StageSection: React.FC<StageSectionProps> = memo(({
@@ -82,6 +92,8 @@ const StageSection: React.FC<StageSectionProps> = memo(({
   readOnly = false,
   expertMode = false,
   progressionByGameId,
+  gamedayId,
+  swissCompletedRounds,
 }) => {
   const { t } = useTypedTranslation(['ui', 'domain']);
   const [isEditing, setIsEditing] = useState(false);
@@ -104,6 +116,17 @@ const StageSection: React.FC<StageSectionProps> = memo(({
   );
 
   const isHighlighted = highlightedElement?.id === stage.id && highlightedElement?.type === 'stage';
+
+  // Swiss round stage (materialized by the backend with data.swissRound).
+  // A round at or below the completed count is generated: its games keep
+  // their times, so the Start input is read-only with a localized hint.
+  // Rounds above it are future-only and editable via the round-times plan.
+  const swissRound = stage.data.swissRound ?? null;
+  const swissLocked =
+    swissRound !== null &&
+    gamedayId !== undefined &&
+    swissCompletedRounds !== undefined &&
+    swissRound <= swissCompletedRounds;
 
   const handleToggleExpand = useCallback(() => {
     setLocalExpanded((prev) => !prev);
@@ -176,8 +199,76 @@ const StageSection: React.FC<StageSectionProps> = memo(({
   const handleTimeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
     const value = e.target.value;
+    // Swiss round stage (data.swissRound set by the backend) with a known
+    // gameday + completed-round count: the round-times endpoint owns the
+    // plan for future rounds, so POST first and only apply locally on
+    // success. Generated rounds never reach here (input disabled).
+    if (swissRound != null && gamedayId !== undefined && swissCompletedRounds !== undefined) {
+      // An empty round time is never valid: ignore the clear (revert to the
+      // previous value) — no POST, no local apply — so siblings and
+      // placeholders stay in sync with the backend plan.
+      if (!value) {
+        e.target.value = stage.data.startTime || '';
+        return;
+      }
+      void (async () => {
+        try {
+          await designerApi.updateSwissRoundTimes(gamedayId, { [String(swissRound)]: value });
+        } catch {
+          onNotify?.(t('ui:notification.swissRoundTimeFailed'), 'danger', t('ui:notification.title.error'));
+          return;
+        }
+        // Round-level plan: retime this stage, its sibling stages for the
+        // same round (one per field) and the round's placeholder games via
+        // the existing game-update handler (same payload shape the GameTable
+        // time pencil uses, minus manualTime — this is plan-driven, so a
+        // later plan edit must still win). Games with results keep theirs.
+        // Committed handlers feed the debounced autosave; no explicit save.
+        // Offset-preserving: each placeholder keeps its offset from the
+        // stage's previous start (robust to any backend staggering, e.g.
+        // same-field games staggered by slot). Missing/invalid times fall
+        // back to newStart (no crash, no NaN).
+        const oldRoundStart = stage.data.startTime;
+        const roundStageIds = new Set(
+          allNodes
+            .filter((n) => isStageNode(n) && n.data.swissRound === swissRound)
+            .map((n) => n.id),
+        );
+        for (const id of roundStageIds) {
+          onUpdate(id, { startTime: value });
+        }
+        for (const game of allNodes) {
+          if (
+            isGameNode(game) &&
+            game.parentId !== null &&
+            game.parentId !== undefined &&
+            roundStageIds.has(game.parentId) &&
+            !game.data.final_score &&
+            !game.data.halftime_score
+          ) {
+            let newGameTime = value;
+            try {
+              if (
+                game.data.startTime &&
+                oldRoundStart &&
+                isValidTimeFormat(game.data.startTime) &&
+                isValidTimeFormat(oldRoundStart) &&
+                isValidTimeFormat(value)
+              ) {
+                const offset = parseTime(game.data.startTime) - parseTime(oldRoundStart);
+                newGameTime = formatTime(parseTime(value) + offset);
+              }
+            } catch {
+              newGameTime = value;
+            }
+            onUpdate(game.id, { startTime: newGameTime });
+          }
+        }
+      })();
+      return;
+    }
     onUpdate(stage.id, { startTime: value || undefined });
-  }, [stage.id, onUpdate]);
+  }, [stage.id, stage.data.startTime, onUpdate, swissRound, gamedayId, swissCompletedRounds, allNodes, onNotify, t]);
 
   const handleColorChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
@@ -255,8 +346,18 @@ const StageSection: React.FC<StageSectionProps> = memo(({
             onChange={handleTimeChange}
             onClick={(e) => e.stopPropagation()}
             style={{ width: '110px' }}
-            disabled={readOnly}
+            disabled={readOnly || swissLocked}
+            title={swissLocked ? t('ui:swiss.roundTimeLocked') : undefined}
           />
+          {swissLocked && (
+            <span
+              className="text-muted small"
+              data-testid={`swiss-round-time-hint-${stage.id}`}
+              title={t('ui:swiss.roundTimeLocked')}
+            >
+              {t('ui:swiss.roundTimeLocked')}
+            </span>
+          )}
         </div>
 
         {isEditing ? (
@@ -426,6 +527,7 @@ const StageSection: React.FC<StageSectionProps> = memo(({
                   readOnly={readOnly}
                   expertMode={expertMode}
                   progressionByGameId={progressionByGameId}
+                  lockTimeEdits={swissLocked}
                 />
               </>
             )}

@@ -12,6 +12,8 @@ import TeamSelectionModal from './modals/TeamSelectionModal';
 import NotificationToast from './ui/NotificationToast';
 import LoadingOverlay from './ui/LoadingOverlay';
 import TemplateLibraryModal from './modals/TemplateLibraryModal';
+import SwissRoundAdjustModal, { SwissAdjustTeamOption, buildSwissAdjustTeamOptions } from './modals/SwissRoundAdjustModal';
+import { designerApi, SwissRoundPreview, SwissGenerateOverrides } from '../api/designerApi';
 import { useGamedayContext } from '../context/GamedayContext';
 import type { GameNode } from '../types/flowchart';
 import { isGameNode, GlobalTeam } from '../types/flowchart';
@@ -21,6 +23,7 @@ import { getAllTemplates } from '../utils/tournamentTemplates';
 import type { GenericTemplate } from '../utils/templateMapper';
 import type { TournamentTemplate } from '../types/tournament';
 import { trackEvent } from '../trackEvent';
+import { buildMergedSwissPool } from '../utils/swissSeedPool';
 import { useTourSeen } from '../onboarding/useTourSeen';
 import DesignerTour from '../onboarding/DesignerTour';
 import './ListDesignerApp.css';
@@ -58,6 +61,16 @@ const ListDesignerApp: React.FC = () => {
   } = useGamedayContext();
 
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
+  // Bumped after each successful game-result save so the embedded Swiss
+  // standings panel refetches (points change with no new round generated).
+  const [swissResultsVersion, setSwissResultsVersion] = useState(0);
+  const [showSwissAdjust, setShowSwissAdjust] = useState(false);
+  const [swissAdjustPreview, setSwissAdjustPreview] = useState<SwissRoundPreview | null>(null);
+  const [swissAdjustRound, setSwissAdjustRound] = useState(1);
+  // True while the next Swiss round is being previewed — disables the
+  // panel-owned Generate button (same convention as the adjust modal's local
+  // `generating` flag, lifted here so the canvas stays in sync).
+  const [swissGenerating, setSwissGenerating] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
@@ -124,6 +137,122 @@ const ListDesignerApp: React.FC = () => {
   } = handlers;
 
   const isLocked = metadata?.status ? metadata.status !== 'DRAFT' : false;
+
+  const handleGenerateSwiss = useCallback(async (config: {
+    seedTeamIds: number[];
+    rounds: number;
+    fields: number;
+    gameDuration: number;
+    teams?: GlobalTeam[];
+  }) => {
+    if (!id) return;
+    const gamedayId = parseInt(id);
+    try {
+      // Import the selected league teams into the canvas pool first. The
+      // backend never writes globalTeams, so without this the loadData()
+      // below would overwrite the pool with the team-less persisted state
+      // and the GameTable would render "-- Select Team --".
+      // NOTE: flowState.addGlobalTeam can't be reused here — it mints
+      // `team-<pk>` ids and auto-assigns colors, while the backend writes
+      // node refs as bare String(pk) (e.g. "138"). The importState merge
+      // below (same mechanism as the normal template path) preserves each
+      // team's id/label/color/order exactly.
+      const incoming = config.teams ?? [];
+      if (incoming.length > 0) {
+        const current = flowState.exportState();
+        const { merged, didMerge } = buildMergedSwissPool(current, incoming, config.seedTeamIds);
+        if (didMerge) {
+          // Build the merged pool ONCE and reuse the same object for both
+          // import + save. A second exportState() after importState() would
+          // re-export the pre-import pool (React setState is async), so the
+          // save would persist team-less state and loadData() would wipe
+          // the import.
+          flowState.importState(merged);
+          // Persist BEFORE setup/generate: those calls rewrite the backend
+          // nodes, and loadData() overwrites frontend state from the backend.
+          // A save failure aborts via the catch below (swissSetupFailed)
+          // before any team-less tournament is set up. saveData rethrows
+          // (see useDesignerController) so the abort path is reachable.
+          await saveData(merged);
+        } else {
+          // Nothing new to import — persist the snapshot as-is (same object
+          // buildMergedSwissPool returned, no second export needed).
+          await saveData(merged);
+        }
+      } else {
+        await saveData(flowState.exportState());
+      }
+      await designerApi.setupSwissTournament(gamedayId, {
+        seed_team_ids: config.seedTeamIds,
+        rounds: config.rounds,
+        fields: config.fields,
+        game_duration: config.gameDuration,
+      });
+      const generated = await designerApi.generateSwissRound(gamedayId);
+      trackEvent('swiss_round_generated', { gameday_id: gamedayId, round: generated.round });
+      addNotification(t('ui:notification.swissSetupSuccess'), 'success', t('ui:notification.title.success'));
+      await loadData();
+    } catch (e) {
+      const backend = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      addNotification(
+        backend ?? t('ui:notification.swissSetupFailed'),
+        'danger',
+        t('ui:notification.title.error'),
+      );
+    }
+  }, [id, addNotification, t, loadData, flowState, saveData]);
+
+  const swissTeamOptions: SwissAdjustTeamOption[] = buildSwissAdjustTeamOptions(
+    flowState.swiss?.seedOrder ?? [],
+    flowState.globalTeams,
+  );
+
+  const handleProgressSwissRound = useCallback(async (roundNumber: number) => {
+    if (!id) return;
+    const gamedayId = parseInt(id);
+    setSwissGenerating(true);
+    try {
+      const preview = await designerApi.previewSwissRound(gamedayId);
+      setSwissAdjustRound(preview.round || roundNumber);
+      setSwissAdjustPreview(preview);
+      setShowSwissAdjust(true);
+    } catch (e) {
+      const backend = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      addNotification(
+        backend ?? t('ui:notification.swissRoundFailed'),
+        'danger',
+        t('ui:notification.title.error'),
+      );
+    } finally {
+      setSwissGenerating(false);
+    }
+  }, [id, addNotification, t]);
+
+  const handleConfirmSwissAdjust = useCallback(async (overrides: SwissGenerateOverrides) => {
+    if (!id) return;
+    const gamedayId = parseInt(id);
+    try {
+      const generated = await designerApi.generateSwissRound(gamedayId, overrides);
+      trackEvent('swiss_round_generated', { gameday_id: gamedayId, round: generated.round });
+      addNotification(
+        t('ui:notification.swissRoundGenerated', { n: generated.round }),
+        'success',
+        t('ui:notification.title.success'),
+      );
+      setShowSwissAdjust(false);
+      setSwissAdjustPreview(null);
+      await loadData();
+    } catch (e) {
+      const backend = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      addNotification(
+        backend ?? t('ui:notification.swissRoundFailed'),
+        'danger',
+        t('ui:notification.title.error'),
+      );
+      // Rethrow so the adjust modal stays open and shows the error inline.
+      throw e;
+    }
+  }, [id, addNotification, t, loadData]);
 
   // --- Onboarding Tour A (manual build) ---
   const { seen: tourASeen, loading: tourALoading, markSeen: markTourASeen } = useTourSeen('manual_build');
@@ -417,6 +546,7 @@ const ListDesignerApp: React.FC = () => {
 
       setShowResultModal(false);
       setSelectedGameForResult(null);
+      setSwissResultsVersion((v) => v + 1);
       addNotification(t('ui:notification.gameResultSaved'), 'success', t('ui:notification.title.success'));
 
       // Track game result saved event
@@ -474,7 +604,8 @@ const ListDesignerApp: React.FC = () => {
       
       const updatedGames = await gamedayApi.getGamedayGames(parseInt(id));
       setGameResults(updatedGames);
-      
+      setSwissResultsVersion((v) => v + 1);
+
       addNotification(t('ui:notification.resultsSaved'), 'success', t('ui:notification.title.success'));
     } catch (error) {
       console.error('Failed to save bulk results', error);
@@ -647,6 +778,10 @@ const ListDesignerApp: React.FC = () => {
               expertMode={expertMode}
               progression={progression}
               onHighlightProgressionElement={handleHighlightElement}
+              swiss={flowState.swiss}
+              swissResultsVersion={swissResultsVersion}
+              swissGenerating={swissGenerating}
+              onProgressSwissRound={handleProgressSwissRound}
             />
           )}
       </div>
@@ -728,9 +863,25 @@ const ListDesignerApp: React.FC = () => {
             selectedTeams,
           });
         }}
+        onGenerateSwiss={handleGenerateSwiss}
+        dayStartTime={metadata?.start}
         onNotify={addNotification}
         onSaveTemplate={handleSaveTemplate}
       />
+
+      {swissAdjustPreview && (
+        <SwissRoundAdjustModal
+          key={`swiss-adjust-${swissAdjustRound}-${showSwissAdjust}`}
+          show={showSwissAdjust}
+          onHide={() => setShowSwissAdjust(false)}
+          gamedayId={parseInt(id)}
+          roundNumber={swissAdjustRound}
+          preview={swissAdjustPreview}
+          teamOptions={swissTeamOptions}
+          fieldCount={flowState.swiss?.fields ?? 0}
+          onConfirm={handleConfirmSwissAdjust}
+        />
+      )}
 
       <NotificationToast
         notifications={ui?.notifications || []}

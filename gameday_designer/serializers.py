@@ -342,3 +342,74 @@ class TemplateApplicationSerializer(serializers.ModelSerializer):
         if obj.applied_by:
             return obj.applied_by.username
         return "Unknown"
+
+
+class SwissSetupRequestSerializer(serializers.Serializer):
+    """
+    Serializer for Swiss tournament setup
+    (POST /api/designer/gamedays/<gameday_id>/swiss/setup/).
+
+    seed_team_ids is the pre-tournament rank order (best first); it stays
+    fixed while pairings change each round. Ranges mirror the setup screen
+    (rounds 2-8, fields 1-4, duration 15-60 min).
+    """
+
+    seed_team_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1), min_length=2
+    )
+    rounds = serializers.IntegerField(min_value=2, max_value=8)
+    fields = serializers.IntegerField(min_value=1, max_value=4)
+    game_duration = serializers.IntegerField(min_value=15, max_value=60)
+    round_start_overrides = serializers.DictField(
+        child=serializers.RegexField(regex=r"^\d{2}:\d{2}$"),
+        required=False,
+        default=dict,
+    )
+
+
+class SwissGenerateOverridePairingSerializer(serializers.Serializer):
+    """
+    One manually confirmed pairing inside a generate-round override envelope.
+
+    Field/time default to the round's slot when omitted; deep validation
+    (team coverage, field range, real clock time) lives in
+    SwissTournamentService, which knows the tournament config.
+    """
+
+    home_team_id = serializers.IntegerField(min_value=1)
+    away_team_id = serializers.IntegerField(min_value=1)
+    field = serializers.IntegerField(min_value=1, required=False)
+    start_time = serializers.RegexField(regex=r"^\d{2}:\d{2}$", required=False)
+
+
+class SwissRoundTimesRequestSerializer(serializers.Serializer):
+    """
+    Round start-time updates
+    (POST /api/designer/gamedays/<gameday_id>/swiss/round-times/).
+
+    Light shape validation only (HH:MM pattern per entry); semantic checks
+    (round 1..rounds_total, real clock time) live in
+    SwissTournamentService, which knows the tournament config.
+    """
+
+    round_start_overrides = serializers.DictField(
+        child=serializers.RegexField(regex=r"^\d{2}:\d{2}$"),
+    )
+
+
+class SwissGenerateOverridesSerializer(serializers.Serializer):
+    """
+    Full-manual round override envelope
+    (POST /api/designer/gamedays/<gameday_id>/swiss/generate-round/).
+
+    Pairings must cover every seed team exactly once (plus bye_team_id for
+    odd team counts); the service rejects unknown/duplicate teams, a paired
+    bye team, out-of-range fields, and bad times.
+    """
+
+    pairings = serializers.ListField(
+        child=SwissGenerateOverridePairingSerializer(), min_length=1
+    )
+    bye_team_id = serializers.IntegerField(
+        min_value=1, required=False, allow_null=True, default=None
+    )

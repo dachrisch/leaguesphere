@@ -15,6 +15,7 @@ import type {
   GamedayMetadata,
   GameInputHandle,
   GameOutputHandle,
+  SwissTournamentState,
 } from '../types/flowchart';
 import {
   createGameNode,
@@ -92,6 +93,9 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
   const [edges, setEdges] = useState<FlowEdge[]>(initialState?.edges ?? []);
   const [globalTeams, setGlobalTeams] = useState<GlobalTeam[]>(initialState?.globalTeams ?? []);
   const [globalTeamGroups, setGlobalTeamGroups] = useState<GlobalTeamGroup[]>(initialState?.globalTeamGroups ?? []);
+  // Swiss-system tournament config (#1970): client-opaque, round-tripped
+  // untouched so designer saves never wipe the organizer's tournament.
+  const [swiss, setSwiss] = useState<SwissTournamentState | undefined>(initialState?.swiss);
   const [selection, setSelection] = useState<SelectionState>({ nodeIds: [], edgeIds: [] });
   const hasInitializedOfficials = useRef(false);
 
@@ -250,6 +254,7 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     setEdges([]);
     setGlobalTeams([]);
     setGlobalTeamGroups([]);
+    setSwiss(undefined);
     setSelection({ nodeIds: [], edgeIds: [] });
     // When clearing everything, we should also allow re-initialization of officials group if needed
     hasInitializedOfficials.current = false;
@@ -290,6 +295,9 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     });
     setGlobalTeams(migratedTeams);
     setGlobalTeamGroups(state.globalTeamGroups || []);
+    if ('swiss' in state) {
+      setSwiss(state.swiss);
+    }
     setSelection({ nodeIds: [], edgeIds: [] });
     handleStateChange();
   }, [handleStateChange]);
@@ -301,8 +309,9 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
       edges,
       globalTeams,
       globalTeamGroups,
+      swiss,
     };
-  }, [metadata, nodes, edges, globalTeams, globalTeamGroups]);
+  }, [metadata, nodes, edges, globalTeams, globalTeamGroups, swiss]);
 
   /**
    * Legacy addGameNode that doesn't enforce hierarchy.
@@ -465,6 +474,8 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     clearSchedule,
     importState,
     exportState,
+    swiss,
+    setSwiss,
     getTargetStage,
     ensureContainerHierarchy,
     getGameField,
@@ -497,7 +508,7 @@ function useFlowStateInternal(initialState?: Partial<FlowState>, onStateChange?:
     nodesManager, edgesManagerProps, teamPoolManager, addBulkGamesToGameEdgesCb,
     addStageToGameEdgeCb, removeEdgeFromSlotCb, addOfficialsGroup, addGameNode, deleteNode,
     selectNode, updateMetadata,
-    setSelection, clearAll, clearSchedule, importState, exportState,
+    setSelection, clearAll, clearSchedule, importState, exportState, swiss, setSwiss,
     getTargetStage, ensureContainerHierarchy, getGameField, getGameStage,
     getFieldStages, getStageGames, matchNames, groupNames, addBulkGames
   ]);

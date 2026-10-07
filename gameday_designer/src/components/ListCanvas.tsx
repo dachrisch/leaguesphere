@@ -12,7 +12,8 @@ import FieldSection from './list/FieldSection';
 import { GameResultsTable, ScoreEdit } from './GameResultsTable';
 import MetadataTeamPoolRow from './MetadataTeamPoolRow';
 import ProgressionInspectorPanel from './ProgressionInspectorPanel';
-import type { FlowNode, FlowEdge, StageNode, GlobalTeam, GlobalTeamGroup, GamedayMetadata, FlowValidationResult, HighlightedElement } from '../types/flowchart';
+import SwissStandingsPanel from './SwissStandingsPanel';
+import type { FlowNode, FlowEdge, StageNode, GlobalTeam, GlobalTeamGroup, GamedayMetadata, FlowValidationResult, HighlightedElement, SwissTournamentState } from '../types/flowchart';
 import type { ProgressionSimulationResult } from '../types/progression';
 import { isStageNode, getFieldNodes } from '../types/flowchart';
 import { ICONS } from '../utils/iconConstants';
@@ -78,6 +79,18 @@ export interface ListCanvasProps {
   progression?: ProgressionSimulationResult;
   /** Click-to-highlight for Progression Inspector findings/outcome rows. */
   onHighlightProgressionElement?: (id: string, type: HighlightedElement['type']) => void;
+  /** Swiss tournament state — drives the panel-owned Generate Round control. */
+  swiss?: SwissTournamentState;
+  /** Called with the round number when the panel Generate Round button is clicked. */
+  onProgressSwissRound?: (roundNumber: number) => void;
+  /** True while the next swiss round is being previewed/generated — disables the panel button. */
+  swissGenerating?: boolean;
+  /**
+   * Results-save signal: bumped by ListDesignerApp after each successful game
+   * result save (single + bulk). Added to completedRounds.length so the
+   * standings panel refetches on points changes that add no new round.
+   */
+  swissResultsVersion?: number;
 }
 
 const ListCanvas: React.FC<ListCanvasProps> = (props) => {
@@ -137,11 +150,19 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
     expertMode = false,
     progression,
     onHighlightProgressionElement,
+    swiss,
+    onProgressSwissRound,
+    swissGenerating = false,
+    swissResultsVersion = 0,
   } = props;
 
   const { t } = useTypedTranslation(['ui']);
 
   const fields = useMemo(() => getFieldNodes(nodes), [nodes]);
+
+  // Generated Swiss round count for StageSection (bare number, not the
+  // whole swiss object): rounds at/below it keep their game times.
+  const swissCompletedRounds = swiss?.completedRounds?.length ?? 0;
 
   const getFieldStagesMap = useMemo(() => {
     const map = new Map<string, StageNode[]>();
@@ -206,6 +227,22 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
           onShowTeamSelection={onShowTeamSelection}
           getTeamUsage={getTeamUsage}
           onAddOfficials={onAddOfficials}
+          swissPanel={
+            swiss && gamedayId !== undefined ? (
+              <SwissStandingsPanel
+                gamedayId={gamedayId}
+                refreshKey={(swiss.completedRounds?.length ?? 0) + swissResultsVersion}
+                swiss={swiss}
+                forceCollapsed={isRowCollapsed}
+                onGenerateNext={
+                  readOnly || !onProgressSwissRound
+                    ? undefined
+                    : () => onProgressSwissRound((swiss.completedRounds?.length ?? 0) + 1)
+                }
+                generating={swissGenerating}
+              />
+            ) : undefined
+          }
         />
 
         {/* Expert Mode: Progression Inspector — off by default, doesn't even mount when off */}
@@ -316,6 +353,8 @@ const ListCanvas: React.FC<ListCanvasProps> = (props) => {
                     readOnly={readOnly}
                     expertMode={expertMode}
                     progressionByGameId={progression?.cellsByGameId}
+                    gamedayId={gamedayId}
+                    swissCompletedRounds={swissCompletedRounds}
                   />
                 ))}
               </div>

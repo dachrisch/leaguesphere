@@ -8,12 +8,12 @@ import React, { useState, useCallback, memo, useMemo } from 'react';
 import { Card, Button } from 'react-bootstrap';
 import { useTypedTranslation } from '../../i18n/useTypedTranslation';
 import StageSection from './StageSection';
-import type { 
-  FieldNode, 
-  StageNode, 
-  FlowNode, 
-  FlowEdge, 
-  GlobalTeam, 
+import type {
+  FieldNode,
+  StageNode,
+  FlowNode,
+  FlowEdge,
+  GlobalTeam,
   GlobalTeamGroup,
   HighlightedElement
 } from '../../types/flowchart';
@@ -53,6 +53,10 @@ export interface FieldSectionProps {
   expertMode?: boolean;
   /** Per-game simulated progression, from `useProgressionInspection`. */
   progressionByGameId?: Map<string, GameProgressionCellResult>;
+  /** Backend gameday PK — forwarded to StageSection for Swiss round times. */
+  gamedayId?: number;
+  /** Generated Swiss round count — forwarded to StageSection (bare number). */
+  swissCompletedRounds?: number;
 }
 
 const FieldSection: React.FC<FieldSectionProps> = memo(({
@@ -86,6 +90,8 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
   readOnly = false,
   expertMode = false,
   progressionByGameId,
+  gamedayId,
+  swissCompletedRounds,
 }) => {
   const { t } = useTypedTranslation(['ui']);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -296,6 +302,8 @@ const FieldSection: React.FC<FieldSectionProps> = memo(({
                   readOnly={readOnly}
                   expertMode={expertMode}
                   progressionByGameId={progressionByGameId}
+                  gamedayId={gamedayId}
+                  swissCompletedRounds={swissCompletedRounds}
                 />
               ))}
             </>
