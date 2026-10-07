@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.36.1](https://github.com/dachrisch/leaguesphere/compare/v4.36.0...v4.36.1) (2026-10-07)
+
+
+### Bug Fixes
+
+* serve team logos and hide dead logo URLs ([#2050](https://github.com/dachrisch/leaguesphere/issues/2050)) ([87c21b4](https://github.com/dachrisch/leaguesphere/commit/87c21b47c29e227442829055271e98927b03f3ac)), closes [#2049](https://github.com/dachrisch/leaguesphere/issues/2049)
+
 ## [4.36.0](https://github.com/dachrisch/leaguesphere/compare/v4.35.1...v4.36.0) (2026-10-06)
 
 
