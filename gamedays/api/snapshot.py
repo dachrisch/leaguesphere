@@ -467,6 +467,24 @@ def build_game_log(game):
     return GameLogSerializer(instance=gamelog).data
 
 
+def team_logo_path(team):
+    """Site-relative logo URL, or None when unset or the file is gone.
+
+    Uploads live on container disk (MEDIA_ROOT); a lost volume, a deleted
+    file or a stale DB row must never hand a dead URL to third-party embeds.
+    """
+    if not team.logo:
+        return None
+    try:
+        if team.logo.storage.exists(team.logo.name):
+            return team.logo.url
+    except Exception:  # noqa: BLE001 - storage failure must never 500 the dump
+        logger.exception("team logo storage check failed for team %s", team.pk)
+        return None
+    logger.warning("team logo file missing for team %s: %s", team.pk, team.logo.name)
+    return None
+
+
 def build_teams_map(filters):
     """{"<team id>": {name, description, logo}} for every team in scope.
 
@@ -477,7 +495,7 @@ def build_teams_map(filters):
         str(team.pk): {
             "name": team.name,
             "description": team.description,
-            "logo": team.logo.url if team.logo else None,
+            "logo": team_logo_path(team),
         }
         for team in scope_teams(filters).order_by("pk")
     }

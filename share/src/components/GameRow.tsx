@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import type { ScheduleEntry } from '../lib/schedule';
 
 export function formatDate(isoDate: string): string {
@@ -6,13 +8,19 @@ export function formatDate(isoDate: string): string {
 }
 
 export function GameRow({ entry }: { entry: ScheduleEntry }) {
+  const [logoFailed, setLogoFailed] = useState(false);
   return (
     <tr className={entry.isLive ? 'table-warning' : undefined}>
       <td className="text-nowrap">{formatDate(entry.date)}</td>
       <td className="text-muted">{entry.isHome ? 'H' : 'A'}</td>
       <td className="text-start">
-        {entry.opponentLogo !== null && (
-          <img className="share-team-logo" src={entry.opponentLogo} alt="" />
+        {entry.opponentLogo !== null && !logoFailed && (
+          <img
+            className="share-team-logo"
+            src={entry.opponentLogo}
+            alt=""
+            onError={() => setLogoFailed(true)}
+          />
         )}
         {entry.opponent}
       </td>

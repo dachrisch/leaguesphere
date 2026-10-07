@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import type { ScheduleEntry } from '../lib/schedule';
 import { GameRow } from './GameRow';
 
@@ -60,13 +62,19 @@ export function TeamBlock({
   const hiddenPast = past.length - visiblePast.length;
   const visibleUpcoming =
     futureLimit > 0 ? upcoming.slice(0, futureLimit) : upcoming;
+  const [titleLogoFailed, setTitleLogoFailed] = useState(false);
 
   return (
     <section className="content-section">
       {showTitle && teamName && (
         <h2 className="share-team__name">
-          {teamLogo !== null && (
-            <img className="share-team-logo" src={teamLogo} alt="" />
+          {teamLogo !== null && !titleLogoFailed && (
+            <img
+              className="share-team-logo"
+              src={teamLogo}
+              alt=""
+              onError={() => setTitleLogoFailed(true)}
+            />
           )}
           {teamName}
         </h2>

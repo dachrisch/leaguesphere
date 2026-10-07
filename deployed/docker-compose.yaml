@@ -4,6 +4,10 @@ services:
     image: leaguesphere/frontend:latest
     env_file: .env
     container_name: ${COMPOSE_PROJECT_NAME}.www
+    volumes:
+      # User uploads: served directly by nginx at /media/ (see nginx.conf).
+      # Read-only here; the app container owns the write side.
+      - media:/media:ro
     labels:
       # redirect service
       # https://jensknipper.de/blog/traefik-http-to-https-redirect/
@@ -60,6 +64,11 @@ services:
     networks:
       - backend   # For www communication
       - database  # For external MySQL access
+    volumes:
+      # MEDIA_ROOT is <BASE_DIR>/media = /app/league_manager/media.
+      # A named volume survives Watchtower blue-green recreates, unlike the
+      # container filesystem, so uploaded team logos persist across releases.
+      - media:/app/league_manager/media
     restart: unless-stopped
     healthcheck:
       interval: 15s
@@ -100,3 +109,8 @@ networks:
     internal: false  # Allow external connectivity for MySQL
   proxy:
     external: true
+
+volumes:
+  # Shared user uploads (Team.logo and friends). Named (not bind-mounted) so
+  # blue-green container swaps keep the files.
+  media:
