@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Swiss System — configure teams, rounds, fields and schedule</title>
+<style>
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#f1f3f5}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;border:none;background:none;padding:0;}
+  .row:hover{background:#f8f9fa}
+  .cta:hover{background:#0b5ed7}
+  .back:hover{text-decoration:underline}
+  .stepper-btn{width:28px;height:28px;border-radius:7px;border:1px solid #ced4da;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;color:#495057;}
+  .stepper-btn:hover{background:#f1f3f5}
+  .page{min-height:100vh;box-sizing:border-box;background:#f1f3f5;display:flex;flex-direction:column;font-size:14px;color:#212529;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div style="height:56px;flex:0 0 56px;background:#ffffff;border-bottom:1px solid #dee2e6;display:flex;align-items:center;padding:0 28px;gap:12px;">
+    <div style="font-weight:700;font-size:17px;color:#0d6efd;">LeagueSphere</div>
+    <div style="width:1px;height:20px;background:#dee2e6;"></div>
+    <div style="font-size:14px;color:#495057;">Gameday Designer</div>
+    <div style="flex-grow:1;"></div>
+    <div style="font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#0d6efd;background:#e7f1ff;border-radius:999px;padding:4px 10px;">Mock · screen 2 / 6</div>
+    <div style="width:30px;height:30px;border-radius:50%;background:#dee2e6;"></div>
+  </div>
+
+  <div style="flex-grow:1;display:flex;justify-content:center;padding:28px;">
+    <div style="width:1100px;max-width:100%;display:flex;flex-direction:column;gap:16px;">
+      <a class="back" href="01-template-library.html" style="font-size:12.5px;color:#0d6efd;font-weight:600;">← Template Library</a>
+
+      <div>
+        <div style="font-size:19px;font-weight:600;">Configure Tournament — Swiss System</div>
+        <div style="font-size:13px;color:#6c757d;margin-top:4px;">Enter teams, rank them once by seed, and fix rounds, fields and game duration. That's the whole setup — Round 1 generates automatically from here.</div>
+      </div>
+
+      <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
+
+        <div style="width:680px;max-width:100%;background:#ffffff;border:1px solid #dee2e6;border-radius:12px;padding:22px 26px;display:flex;flex-direction:column;gap:14px;">
+          <div>
+            <div style="font-size:15px;font-weight:600;">Seed the 10 teams</div>
+            <div style="font-size:12px;color:#868e96;margin-top:2px;">Rank once. Seeds stay fixed for the whole tournament — only the pairings change each round.</div>
+          </div>
+          <div style="border:1px solid #eef0f2;border-radius:10px;overflow:hidden;">
+            <div style="display:flex;padding:9px 16px;background:#f8f9fa;border-bottom:1px solid #eef0f2;font-size:11.5px;font-weight:600;color:#868e96;text-transform:uppercase;letter-spacing:0.03em;">
+              <div style="width:56px;">Seed</div>
+              <div style="flex-grow:1;">Team</div>
+              <div style="width:70px;text-align:right;">Reorder</div>
+            </div>
+            <div id="team-rows"></div>
+          </div>
+        </div>
+
+        <div style="width:400px;max-width:100%;background:#ffffff;border:1px solid #dee2e6;border-radius:12px;padding:22px 24px;display:flex;flex-direction:column;gap:14px;">
+          <div style="font-size:15px;font-weight:600;">Tournament setup</div>
+
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px;">
+              <div style="font-size:13px;font-weight:500;">Number of rounds</div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <button class="stepper-btn" onclick="adjust('rounds',-1)">–</button>
+                <div id="rounds-val" style="font-size:15px;font-weight:700;min-width:16px;text-align:center;">4</div>
+                <button class="stepper-btn" onclick="adjust('rounds',1)">+</button>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px;">
+              <div style="font-size:13px;font-weight:500;">Number of fields</div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <button class="stepper-btn" onclick="adjust('fields',-1)">–</button>
+                <div id="fields-val" style="font-size:15px;font-weight:700;min-width:16px;text-align:center;">2</div>
+                <button class="stepper-btn" onclick="adjust('fields',1)">+</button>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px;">
+              <div style="font-size:13px;font-weight:500;">Game duration</div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <button class="stepper-btn" onclick="adjust('duration',-5)">–</button>
+                <div id="duration-val" style="font-size:15px;font-weight:700;min-width:50px;text-align:center;">30 min</div>
+                <button class="stepper-btn" onclick="adjust('duration',5)">+</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="border-top:1px solid #eef0f2;padding-top:14px;display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:11px;">🔒</span>
+              <div style="font-size:12px;font-weight:700;color:#495057;text-transform:uppercase;letter-spacing:0.03em;">Schedule — reserved now</div>
+            </div>
+            <div id="schedule-rows"></div>
+            <div style="font-size:11.5px;color:#868e96;line-height:1.5;margin-top:2px;">
+              Auto-calculated by default from rounds/fields/duration — click any round's time to nudge it (try Round 2, as if Round 1 ran long). Same override an organizer already has on a single game's start time today.
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="background:#fffbea;border:1px solid #ffe8a1;border-radius:10px;padding:12px 18px;font-size:12.5px;color:#6b5511;line-height:1.6;">
+        Two different kinds of "known upfront": seeds, round count, fields and duration give every round a planned time slot — a starting point, not a lock. Who plays in each slot is decided round by round; when it actually starts stays the operator's call, live.
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;">
+        <a class="cta" href="03-round1.html" style="background:#0d6efd;color:#fff;border-radius:8px;padding:10px 20px;font-size:13.5px;font-weight:600;">Generate Round 1 →</a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  var TEAMS = [
+    ['Rhein Fire', '#0d6efd'], ['Ember Dragons', '#6f42c1'], ['Ironclad Razorbacks', '#d63384'],
+    ['Harbor Islanders', '#dc3545'], ['Northgate Sentinels', '#fd7e14'], ['Timberline Wolves', '#20c997'],
+    ['Blackwing Ravens', '#198754'], ['Comet Athletics', '#0dcaf0'], ['Iron Titans', '#6610f2'],
+    ['Fjord Vikings', '#6c757d']
+  ];
+
+  var state = { rounds: 4, fields: 2, duration: 30, manualOverrides: {} };
+
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+  function formatTime(totalMinutes) {
+    var h = Math.floor(totalMinutes / 60), m = totalMinutes % 60;
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  }
+
+  function adjust(key, delta) {
+    if (key === 'rounds') state.rounds = clamp(state.rounds + delta, 2, 8);
+    if (key === 'fields') state.fields = clamp(state.fields + delta, 1, 4);
+    if (key === 'duration') state.duration = clamp(state.duration + delta, 15, 60);
+    render();
+  }
+
+  function toggleManual(round) {
+    state.manualOverrides[round] = !state.manualOverrides[round];
+    render();
+  }
+
+  function render() {
+    document.getElementById('rounds-val').textContent = state.rounds;
+    document.getElementById('fields-val').textContent = state.fields;
+    document.getElementById('duration-val').textContent = state.duration + ' min';
+
+    var teamCount = TEAMS.length;
+    var gamesPerRound = Math.ceil(teamCount / 2);
+    var slotsPerField = Math.ceil(gamesPerRound / state.fields);
+    var breakMin = 10;
+    var roundLengthMin = slotsPerField * (state.duration + breakMin);
+    var startOfDay = 9 * 60;
+    var fieldsLabel = state.fields > 1 ? ('Fields 1–' + state.fields) : 'Field 1';
+
+    var rows = '';
+    for (var i = 0; i < state.rounds; i++) {
+      var round = i + 1;
+      var manual = !!state.manualOverrides[round];
+      var minutes = startOfDay + i * roundLengthMin + (manual ? 30 : 0);
+      rows += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#f8f9fa;border-radius:7px;margin-bottom:4px;">' +
+        '<div style="font-size:12.5px;font-weight:600;">Round ' + round + '</div>' +
+        '<button onclick="toggleManual(' + round + ')" style="display:flex;align-items:center;gap:6px;">' +
+          '<span style="font-size:12.5px;color:#495057;">' + formatTime(minutes) + '</span>' +
+          (manual ? '<span style="font-size:9.5px;font-weight:700;color:#8a6d1a;background:#fff6da;border-radius:4px;padding:1px 5px;">manual</span>' : '') +
+          '<span style="font-size:10px;color:#adb5bd;">✎</span>' +
+        '</button>' +
+        '<div style="font-size:11.5px;color:#868e96;">' + fieldsLabel + '</div>' +
+      '</div>';
+    }
+    document.getElementById('schedule-rows').innerHTML = rows;
+  }
+
+  var teamRows = '';
+  TEAMS.forEach(function (t, i) {
+    teamRows += '<div class="row" style="display:flex;align-items:center;padding:8px 16px;border-bottom:1px solid #f1f3f5;">' +
+      '<div style="width:56px;"><div style="width:24px;height:24px;border-radius:50%;background:#0d6efd;color:#fff;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;">' + (i + 1) + '</div></div>' +
+      '<div style="flex-grow:1;display:flex;align-items:center;gap:10px;"><div style="width:10px;height:10px;border-radius:3px;background:' + t[1] + ';"></div><div style="font-size:13px;font-weight:500;">' + t[0] + '</div></div>' +
+      '<div style="width:70px;text-align:right;color:#ced4da;font-size:15px;letter-spacing:2px;">⋮⋮</div>' +
+    '</div>';
+  });
+  document.getElementById('team-rows').innerHTML = teamRows;
+
+  render();
+</script>
+</body>
+</html>

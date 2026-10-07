@@ -169,11 +169,13 @@ export type StageType = 'STANDARD' | 'RANKING';
  * - manual: No templates (default) - all games added manually
  * - round_robin: Group stage with round robin matchups
  * - placement: Placement rounds (e.g., 1st-4th place)
+ * - swiss: Swiss-system rounds resolved per round from standings (#1970)
  */
 export type ProgressionMode =
   | 'manual'         // No templates (default)
   | 'round_robin'    // Group stage
-  | 'placement';     // Placement rounds
+  | 'placement'      // Placement rounds
+  | 'swiss';         // Swiss-system (JLT Flag 2026 rules)
 
 /**
  * Configuration for Round Robin progression mode.
@@ -205,9 +207,24 @@ export interface ManualConfig {
 }
 
 /**
+ * Configuration for Swiss-system progression mode (#1970, JLT Flag 2026 rules).
+ * Pairings are resolved per round by SwissRoundResolver from the seed list +
+ * live standings — never from a static progressionMapping.
+ */
+export interface SwissConfig {
+  mode: 'swiss';
+  /** Number of rounds to play */
+  rounds: number;
+  /** Pre-tournament seed order (best first) */
+  seedOrder: string[];
+  /** Points awarded for a bye (default 2) */
+  byePoints: number;
+}
+
+/**
  * Union type for all progression configurations.
  */
-export type ProgressionConfig = ManualConfig | RoundRobinConfig | PlacementConfig;
+export type ProgressionConfig = ManualConfig | RoundRobinConfig | PlacementConfig | SwissConfig;
 
 /**
  * Data for a field container node - represents a playing field.
