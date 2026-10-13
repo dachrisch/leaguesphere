@@ -1,8 +1,11 @@
 # What's New 2026
 
-User-facing highlights shipped in LeagueSphere during 2026 (v3.19.0 → v4.36.x).
-Source of truth for dates/versions is the root `CHANGELOG.md` — this page
-curates the major features by theme, not every fix.
+User-facing highlights shipped in LeagueSphere during 2026 (Jan–Oct; versioned
+as v3.19.0 → v4.36.x — work from Jan–mid-May predates release-please
+versioning, so it has PR numbers but no version entries).
+Source of truth is the merge history / root `CHANGELOG.md` — this page curates
+the major features by theme, not every fix. Contributors are credited per item
+(`@dachrisch`, `@JaWeilBaum`, `@phhbr`; dependency-bot PRs excluded).
 
 ## Baseline: what LeagueSphere could already do before 2026
 
@@ -42,6 +45,29 @@ below are the new capabilities on top of that baseline.
 | Raw journey events, static dashboard | Per-session timeline widget, live/upcoming gameday status |
 | No maintenance switch, thin SEO | Maintenance mode + health signal, JSON-LD + Open Graph, DB-outage auto-recovery |
 
+## Early 2026: designer foundations, dashboards, journey tracking (Jan–May)
+
+Shipped before release-please versioning started — PR numbers instead of
+versions, mostly `@dachrisch`:
+
+- **Tournament generation in the designer** (#694, #728, #731, #944) —
+  automatic time calculation, ranking-stage refinements, dual-tournament
+  progression with centralized placeholder resolution, validation system with
+  highlighting and cross-stage logic, team exchange (#805), structured export
+  (#793).
+- **Designer i18n** (#710, #971) — full internationalization of the designer.
+- **Gameday Management & Dashboard** (#758, #1147) — management views plus a
+  game-progress dashboard.
+- **Templates** (#980, #1060) — gameday template management, league-team
+  selection for tournament templates.
+- **Journey tracking** (#1097, #1155) — user-journey tracking system plus a
+  global journey dashboard and layout refactor.
+- **Spielberichtsbogen lite** (#1150) — lightweight scoresheet.
+- **Demo environment** (#1071) — complete demo env with auto-reset and seeding.
+- **DB resilience groundwork** (#984, #1393) — connection guard, auto-recovering
+  DB-outage page.
+- **Team pool** (#1085) — team select dialog with association filters.
+
 ## Share your games anywhere: embeddable widget + public API
 
 The biggest 2026 theme: clubs can now publish LeagueSphere data on their own sites.
@@ -66,37 +92,40 @@ The biggest 2026 theme: clubs can now publish LeagueSphere data on their own sit
 
 ## Gameday Designer: faster to build, harder to break
 
-- **Tournament View (v4.8.0)** — dedicated view for cup/tournament gamedays.
-- **Onboarding tours (v4.11.0)** — guided tours for manual build and
+- **Tournament View (v4.8.0, @JaWeilBaum #1573)** — dedicated view for cup/tournament gamedays.
+- **Onboarding tours (v4.11.0, @dachrisch #1598)** — guided tours for manual build and
   save-as-template.
-- **Designer identity (v4.10.0)** — real user avatar + username in the designer
+- **Designer identity (v4.10.0, @dachrisch #1593)** — real user avatar + username in the designer
   header; Orga designer link cleanup (v4.6.0).
-- **Expert Mode progression inspector (v4.25.0)** — inspect dual-progression
+- **Expert Mode progression inspector (v4.25.0, @JaWeilBaum #1938)** — inspect dual-progression
   state; see [dual-progression](./dual-progression.md).
-- **Move games between stages and fields (v4.23.0)** — drag/reassign across
+- **Move games between stages and fields (v4.23.0, @dachrisch #1922)** — drag/reassign across
   stages without rebuilding.
-- **Configurable defaults (v4.32.0)** — default game duration and
+- **Configurable defaults (v4.32.0, @JaWeilBaum #1976)** — default game duration and
   break-between-games are now designer settings.
-- **Auto-assign referees (v4.7.0)** — one-click referee assignment in the
+- **Auto-assign referees (v4.7.0, @dachrisch #1572)** — one-click referee assignment in the
   designer.
-- **Legacy migration (v4.20.0)** — migrate legacy gamedays to the Designer,
+- **Legacy migration (v4.20.0, @dachrisch #1883)** — migrate legacy gamedays to the Designer,
   with adoption reporting (v4.21.0) and creation-method metrics (v3.31.0).
-- **Finals 2026 templates (v4.2.0)** — ready-made finals templates.
+- **Finals 2026 templates (v4.2.0, @JaWeilBaum #1528)** — ready-made finals templates.
 - **Safer results handling** — block unlocking a gameday with entered results
   (v4.3.0), `restore_gameday` scoped recovery command (v4.4.0), ResourceURLs
   for gameday details (v3.32.0).
 
 ## Officials & match report: compliance without paperwork pain
 
-- **Self-reported games import (v4.27.0)** — staff UI to import referee
+- **Self-reported games import (v4.27.0, @dachrisch)** — staff UI to import referee
   self-reported games (XLSX-native dates, "Mix" position, async review UI with
   tag search and consolidated menu).
-- **Team cards + referee leaderboard (v4.19.0)** — searchable team cards and
-  referee statistics leaderboard.
-- **Automatic compliance check (v4.24.0)** — match report checks officials
-  compliance automatically and shows license numbers.
+- **Team cards + referee leaderboard (v4.19.0, @JaWeilBaum, #1871)** —
+  searchable team cards and referee statistics leaderboard.
+- **Automatic compliance check (v4.24.0, @JaWeilBaum, #1917)** — match report
+  checks officials compliance automatically and shows license numbers.
+- **Scorecard officials lookup (v4.35.1, @JaWeilBaum, #2039)** — find officials
+  by full name; officials summary and licenses in the scorecard.
 - **Passcheck integration** — Passcheck Export in match report & gameday view
-  (v4.9.0); Passcheck names in statistics (v3.21.0).
+  (v4.9.0, @JaWeilBaum #1582, re-landed #1586); Passcheck names in statistics
+  (v3.21.0, @JaWeilBaum #1244).
 - **Smoother sign-up (v4.1.0)** — remember-me for officials sign-up.
 
 ## Journey, dashboard and operations
@@ -111,6 +140,24 @@ The biggest 2026 theme: clubs can now publish LeagueSphere data on their own sit
 - **DB-outage resilience (v3.30.0)** — auto-recovering DB-outage page when the
   database returns.
 
+## Security & privacy hardening (@phhbr, #1977/#1978)
+
+App-review remediation, phases 1–2 — mostly invisible, all user-protecting:
+
+- **Transport & framing** — secure cookies, HSTS + SSL redirect in prod/stage,
+  removed invalid `ALLOWALL` frame option (back to `DENY`), nginx security
+  headers (`X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`).
+- **Fail loud, not open** — prod/stage refuse to start without required env
+  vars instead of silently falling back to defaults; CORS allow-all replaced
+  with an explicit allow-list.
+- **XSS fixes** — hand-escaped rendering in league/gameday statistics, game
+  detail, tournament and match-report tables; escaped officials-import messages
+  and JSON-LD payloads.
+- **Abuse & privacy** — rate-limited HTML login endpoints, pass numbers hidden
+  from anonymous roster visitors, journey-event validation with a retention
+  purge command. Decision recorded in
+  [passcheck-roster-privacy](./passcheck-roster-privacy.md).
+
 ## Under the hood (for operators)
 
 Zero-downtime blue-green Watchtower swaps (v4.31.0), path-scoped CI with
@@ -120,3 +167,15 @@ most users.
 
 ---
 *Last updated: 2026-10-13. Full history: root `CHANGELOG.md`.*
+
+## Contributors (2026 feature work)
+
+- **@dachrisch** — designer foundations (tournament generation, i18n,
+  templates), dashboards, journey tracking, demo env, maintenance mode,
+  Share Widget + snapshot API, officials import UI, scoped CI / releases.
+- **@JaWeilBaum** — Tournament View, Passcheck Export + names in statistics,
+  Open Graph tags, ResourceURLs, Finals 2026 templates, officials leaderboard,
+  compliance check, Expert Mode inspector, configurable designer durations,
+  scorecard officials lookup.
+- **@phhbr** — security & privacy hardening (settings/edge phase 1,
+  escaping/validation phase 2).
