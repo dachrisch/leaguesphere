@@ -6,6 +6,7 @@ incrementally without breaking pages that only exist in German.
 """
 
 from pathlib import Path
+import re
 
 import markdown
 from django.utils.translation import get_language
@@ -15,6 +16,10 @@ from league_manager.help.registry import DEFAULT_LANGUAGE, HelpTopic
 CONTENT_DIR = Path(__file__).resolve().parent / "content"
 
 MARKDOWN_EXTENSIONS = ["extra", "toc", "sane_lists"]
+
+# The page template renders the topic title (with icon) from the registry, so
+# the leading Markdown H1 would otherwise appear twice. Drop just the first one.
+_LEADING_H1 = re.compile(r"^\s*<h1[^>]*>.*?</h1>\s*", re.DOTALL)
 
 
 def normalize_language(lang: str | None) -> str:
@@ -34,4 +39,5 @@ def read_topic_markdown(topic: HelpTopic, lang: str | None = None) -> str:
 
 def render_topic(topic: HelpTopic, lang: str | None = None) -> str:
     text = read_topic_markdown(topic, lang)
-    return markdown.markdown(text, extensions=MARKDOWN_EXTENSIONS)
+    html = markdown.markdown(text, extensions=MARKDOWN_EXTENSIONS)
+    return _LEADING_H1.sub("", html, count=1)

@@ -32,6 +32,15 @@ class TestHelpTopic(TestCase):
         # Markdown must be converted to HTML, not shown as raw text.
         assert "<h1" in response.content.decode()
 
+    def test_help_topic_has_a_single_headline(self):
+        response = self.client.get(
+            reverse("help-topic", kwargs={"slug": "getting-started"})
+        )
+
+        # The registry title (with icon) is rendered by the template; the
+        # leading Markdown H1 must not appear a second time.
+        assert response.content.decode().count("<h1") == 1
+
     def test_help_unknown_topic_returns_404(self):
         response = self.client.get(reverse("help-topic", kwargs={"slug": "nope"}))
 
