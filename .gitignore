@@ -193,3 +193,6 @@ ngrok.sh
 test-reports/
 Testing release detection
 junit.xml
+
+# Google OAuth client secrets — never commit (use docs/guides/*.json locally only)
+client_secret_*.json
