@@ -14,6 +14,13 @@ gebliebenen Spieltag/Vorlage aus einem vorigen Lauf löschen. Der Demo-Bestand
 hat keine eigenen Vorlagen; die Aufnahme beginnt auf dem Designer-Dashboard
 mit leerer Liste.
 
+- Hinweis „geführter Start": Im Howto (`league_manager/help/content/gameday-designer.de.md`)
+  meint „geführter Start" den geführten Anlege-/Aufbau-Ablauf (Spieltag anlegen →
+  Teams, Feld, Phasen, Spiele → als Vorlage speichern), NICHT die einmalige
+  Onboarding-Tour. Die kosmetischen Joyride-Tour-Overlays werden vor der Aufnahme
+  als gesehen markiert (Journey-Events oben), damit sie die UI nicht verdecken –
+  im Video ist daher bewusst KEINE Tour-Popup-Einblendung zu sehen.
+
 - selector notes (all confirmed in the deployed build v4.36.2):
 - Routen: Dashboard `/gamedays/gameday/design/`, Editor
   `/gamedays/gameday/design/designer/<id>`. `create-gameday-button` legt einen
@@ -50,7 +57,7 @@ mit leerer Liste.
 - hold: 3
 
 ## Step 2
-- caption: Neuen Spieltag anlegen – der geführte Start begleitet dich
+- caption: Neuen Spieltag anlegen
 - action: click
 - target: [data-testid="create-gameday-button"]
 - hold: 3
