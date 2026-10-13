@@ -144,10 +144,21 @@ def facts_json_view(request):
 
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.core.cache import cache
+from django.http import Http404
 from django.shortcuts import redirect
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.safestring import mark_safe
+from django.utils.translation import get_language
 from django.views import View
 from gamedays.service.team_repository_service import TeamRepositoryService
+
+from league_manager.help import loader
+from league_manager.help.registry import (
+    HELP_GROUPS,
+    get_topic,
+    localized,
+    ordered_topics,
+)
 
 
 class ClearCacheView(UserPassesTestMixin, View):
@@ -206,4 +217,67 @@ class DemoInfoView(TemplateView):
                 "description": "Viewing standings and league information",
             },
         ]
+        return context
+
+
+def _topic_context(topic, lang):
+    return {
+        "slug": topic.slug,
+        "title": localized(topic.title, lang),
+        "summary": localized(topic.summary, lang),
+        "icon": topic.icon,
+        "video": topic.video,
+        "tutorial": topic.tutorial,
+    }
+
+
+def _help_groups_context(lang):
+    topics = ordered_topics()
+    return [
+        {
+            "key": key,
+            "title": localized(meta["title"], lang),
+            "topics": [_topic_context(topic, lang) for topic in topics if topic.group == key],
+        }
+        for key, meta in sorted(HELP_GROUPS.items(), key=lambda item: item[1]["order"])
+    ]
+
+
+class HelpIndexView(TemplateView):
+    template_name = "help/index.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        lang = loader.normalize_language(get_language())
+        context["title"] = localized({"de": "Hilfe", "en": "Help"}, lang)
+        context["help_groups"] = _help_groups_context(lang)
+        return context
+
+
+class HelpTopicView(TemplateView):
+    template_name = "help/topic.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        slug = kwargs.get("slug")
+        topic = get_topic(slug)
+        if topic is None:
+            raise Http404(f"Unknown help topic: {slug}")
+
+        lang = loader.normalize_language(get_language())
+        context["title"] = localized(topic.title, lang)
+        context["topic"] = _topic_context(topic, lang)
+        context["topic_html"] = mark_safe(loader.render_topic(topic, lang))
+
+        topics = ordered_topics()
+        index = topics.index(topic)
+        context["prev_topic"] = (
+            _topic_context(topics[index - 1], lang) if index > 0 else None
+        )
+        context["next_topic"] = (
+            _topic_context(topics[index + 1], lang)
+            if index < len(topics) - 1
+            else None
+        )
+        context["help_groups"] = _help_groups_context(lang)
         return context

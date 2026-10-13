@@ -14,6 +14,11 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'league-home' %}">Home</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'help-index' %}">
+                            <i class="bi bi-question-circle me-1"></i>Hilfe
+                        </a>
+                    </li>
                     {% for key, menu in menu_items.items %}
                     {% if menu.items %}
                     <li class="nav-item dropdown">
