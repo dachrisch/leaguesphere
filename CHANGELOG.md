@@ -1,5 +1,18 @@
 # Changelog
 
+## [4.38.0](https://github.com/dachrisch/leaguesphere/compare/v4.37.0...v4.38.0) (2026-10-13)
+
+
+### Features
+
+* **help:** add Spieltage, Ligatabellen and Teams & Offizielle sections with screenshots ([8c0585b](https://github.com/dachrisch/leaguesphere/commit/8c0585b8b683731e43c4b08fef08a9b6ebc9338c))
+* **help:** add Spieltage, Ligatabellen and Teams & Offizielle sections with screenshots ([4ff061f](https://github.com/dachrisch/leaguesphere/commit/4ff061f659c7e599b43d123f3714260d1584fea2))
+
+
+### Documentation
+
+* **skill:** add add-help-topic skill ([eef82ea](https://github.com/dachrisch/leaguesphere/commit/eef82ea94355ab1b1f2abb30fda57ee8b6bd8950))
+
 ## [4.37.0](https://github.com/dachrisch/leaguesphere/compare/v4.36.2...v4.37.0) (2026-10-13)
 
 
