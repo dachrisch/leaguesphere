@@ -4,6 +4,44 @@ User-facing highlights shipped in LeagueSphere during 2026 (v3.19.0 → v4.36.x)
 Source of truth for dates/versions is the root `CHANGELOG.md` — this page
 curates the major features by theme, not every fix.
 
+## Baseline: what LeagueSphere could already do before 2026
+
+Before the 2026 work, LeagueSphere was already a complete league-operations
+system (Django 5.2 + MariaDB backend, standalone Vite React apps served via
+`collectstatic`):
+
+- **Core scheduling (`gamedays`)** — create and manage gamedays, leagues,
+  games, schedules and results; league-table standings calculation.
+- **Visual planning (`gameday_designer`)** — flowchart-based schedule design
+  with templates.
+- **Game day execution** — on-field score entry (`scorecard`), real-time fan
+  updates (`liveticker`), match reporting (`matchreport`).
+- **People & eligibility** — club/roster management (`teammanager`), officials
+  management (`officials`), player eligibility verification (`passcheck`),
+  auth via DRF + Knox (`accounts`).
+- **Insight (`journey`, `dashboard`)** — user-journey tracking and operations
+  dashboard.
+
+What was missing: there was no public, cross-origin API or embeddable widget
+(clubs could not publish scores on their own sites), designer work was largely
+manual (no tours, no auto-assign, no move-across-stages, no expert inspector),
+officials compliance and imports were manual, and there was no maintenance
+mode, SEO/OG metadata, or scoped/zero-downtime release machinery. The sections
+below are the new capabilities on top of that baseline.
+
+## Now: new capabilities in 2026 at a glance
+
+| Before (pre-2026 baseline) | Now (new in 2026) |
+|---|---|
+| Scores visible only inside LeagueSphere | Embeddable `<iframe>` Share Widget + multi-team table view for club sites |
+| Internal APIs only | Public `/api/snapshot/` (teams, standings, live, year) + `/api/leagues/` slug |
+| Manual designer builds | Onboarding tours, Expert Mode inspector, move games across stages/fields, configurable durations, auto-assign referees |
+| Legacy + canvas gamedays side by side | Legacy migration to Designer + adoption reporting, Finals 2026 templates, Tournament View |
+| Manual officials checks, XLSX by hand | Self-reported import UI, team cards + leaderboard, automatic compliance check + licenses |
+| Rosters/stats without passcheck link | Passcheck Export + Passcheck names in statistics |
+| Raw journey events, static dashboard | Per-session timeline widget, live/upcoming gameday status |
+| No maintenance switch, thin SEO | Maintenance mode + health signal, JSON-LD + Open Graph, DB-outage auto-recovery |
+
 ## Share your games anywhere: embeddable widget + public API
 
 The biggest 2026 theme: clubs can now publish LeagueSphere data on their own sites.
