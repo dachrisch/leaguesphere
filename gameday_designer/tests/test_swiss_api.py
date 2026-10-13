@@ -578,3 +578,100 @@ class TestSwissRoundTimesEndpoint:
         )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestSwissWriteAuthorization:
+    """Mutating Swiss endpoints must be restricted to the gameday's author or
+    staff, mirroring GamedayViewSet's write gating. ``make_gameday`` creates a
+    gameday owned by a different user than the ``association_user`` fixture."""
+
+    def test_setup_forbidden_for_non_owner(self, api_client, association_user):
+        gameday = make_gameday(name="Swiss API Authz Setup")
+        teams = make_teams(4, prefix="AS")
+        api_client.force_authenticate(user=association_user)
+
+        response = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/setup/",
+            setup_payload(teams),
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert not GamedayDesignerState.objects.filter(gameday=gameday).exists()
+
+    def test_generate_round_forbidden_for_non_owner(
+        self, api_client, staff_user, association_user
+    ):
+        gameday = make_gameday(name="Swiss API Authz Generate")
+        teams = make_teams(4, prefix="AG")
+        api_client.force_authenticate(user=staff_user)
+        assert (
+            api_client.post(
+                f"/api/designer/gamedays/{gameday.pk}/swiss/setup/",
+                setup_payload(teams),
+                format="json",
+            ).status_code
+            == status.HTTP_200_OK
+        )
+
+        api_client.force_authenticate(user=association_user)
+        response = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/generate-round/"
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert Gameinfo.objects.filter(gameday=gameday, stage="Swiss").count() == 0
+
+    def test_reset_forbidden_for_non_owner(
+        self, api_client, staff_user, association_user
+    ):
+        gameday = make_gameday(name="Swiss API Authz Reset")
+        teams = make_teams(4, prefix="AR")
+        api_client.force_authenticate(user=staff_user)
+        assert (
+            api_client.post(
+                f"/api/designer/gamedays/{gameday.pk}/swiss/setup/",
+                setup_payload(teams),
+                format="json",
+            ).status_code
+            == status.HTTP_200_OK
+        )
+        assert (
+            api_client.post(
+                f"/api/designer/gamedays/{gameday.pk}/swiss/generate-round/"
+            ).status_code
+            == status.HTTP_200_OK
+        )
+
+        api_client.force_authenticate(user=association_user)
+        response = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/reset/"
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert Gameinfo.objects.filter(gameday=gameday, stage="Swiss").count() > 0
+
+    def test_round_times_forbidden_for_non_owner(
+        self, api_client, staff_user, association_user
+    ):
+        gameday = make_gameday(name="Swiss API Authz RoundTimes")
+        teams = make_teams(4, prefix="AT")
+        api_client.force_authenticate(user=staff_user)
+        assert (
+            api_client.post(
+                f"/api/designer/gamedays/{gameday.pk}/swiss/setup/",
+                setup_payload(teams),
+                format="json",
+            ).status_code
+            == status.HTTP_200_OK
+        )
+
+        api_client.force_authenticate(user=association_user)
+        response = api_client.post(
+            f"/api/designer/gamedays/{gameday.pk}/swiss/round-times/",
+            {"round_start_overrides": {"2": "10:30"}},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN

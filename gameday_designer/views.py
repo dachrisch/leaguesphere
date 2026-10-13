@@ -11,6 +11,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, render
@@ -683,6 +684,20 @@ class ConfigView(APIView):
         )
 
 
+def _get_swiss_write_gameday(request, gameday_id):
+    """Fetch a gameday for a mutating Swiss endpoint, enforcing write access.
+
+    Mirrors ``GamedayViewSet``'s write gating (``IsAuthenticatedOrOwnerOrStaff``):
+    only the gameday's author or staff may mutate its tournament. APIView does
+    not run object-level permissions, so the check is explicit here. Missing
+    gamedays still surface as 404; unauthorized users get 403 (never 200).
+    """
+    gameday = get_object_or_404(Gameday, pk=gameday_id)
+    if not (request.user.is_staff or gameday.author_id == request.user.id):
+        raise PermissionDenied("You do not have write access to this gameday.")
+    return gameday
+
+
 class SwissSetupView(APIView):
     """
     POST /api/designer/gamedays/<gameday_id>/swiss/setup/
@@ -699,7 +714,7 @@ class SwissSetupView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, gameday_id):
-        gameday = get_object_or_404(Gameday, pk=gameday_id)
+        gameday = _get_swiss_write_gameday(request, gameday_id)
         serializer = SwissSetupRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -734,7 +749,7 @@ class SwissGenerateRoundView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, gameday_id):
-        gameday = get_object_or_404(Gameday, pk=gameday_id)
+        gameday = _get_swiss_write_gameday(request, gameday_id)
         try:
             if request.query_params.get("dry_run") == "true":
                 preview = SwissTournamentService(gameday).preview_round()
@@ -813,7 +828,7 @@ class SwissResetView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, gameday_id):
-        gameday = get_object_or_404(Gameday, pk=gameday_id)
+        gameday = _get_swiss_write_gameday(request, gameday_id)
         try:
             deleted_games = SwissTournamentService(gameday).reset()
         except SwissTournamentError as exc:
@@ -838,7 +853,7 @@ class SwissRoundTimesView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, gameday_id):
-        gameday = get_object_or_404(Gameday, pk=gameday_id)
+        gameday = _get_swiss_write_gameday(request, gameday_id)
         serializer = SwissRoundTimesRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(
