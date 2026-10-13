@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.36.2](https://github.com/dachrisch/leaguesphere/compare/v4.36.1...v4.36.2) (2026-10-13)
+
+
+### Documentation
+
+* add pre-2026 baseline and before/now table to What's New 2026 ([515b438](https://github.com/dachrisch/leaguesphere/commit/515b438b6c79d9ce38473981aaf7b138cfcbf3d4))
+* add What's New 2026 roundup of major features ([4762618](https://github.com/dachrisch/leaguesphere/commit/4762618b44b547a4b9bcada1b984d23977e2615b))
+* add What's New 2026 roundup of major features ([ce753dd](https://github.com/dachrisch/leaguesphere/commit/ce753ddefa3f598876e973a9bd2eba849454e0e6))
+* credit all 2026 contributors, add early-2026 feats and security hardening ([fa3c1ae](https://github.com/dachrisch/leaguesphere/commit/fa3c1ae44c6afc64c70cfc53b19c64469b20351c))
+* resweep What's New 2026 and make it customer-friendly ([236e702](https://github.com/dachrisch/leaguesphere/commit/236e70279099a992000ff2fbfe6b8a4c6f876fbe))
+* rewrite What's New 2026 in customer-friendly language ([36559af](https://github.com/dachrisch/leaguesphere/commit/36559aff7ac3ae3fa6a1a0ff92b2930777edad55))
+
 ## [4.36.1](https://github.com/dachrisch/leaguesphere/compare/v4.36.0...v4.36.1) (2026-10-07)
 
 
