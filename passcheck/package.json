@@ -1,6 +1,6 @@
 {
   "name": "passcheck",
-  "version": "4.36.3-rc.3",
+  "version": "4.37.0",
   "private": true,
   "type": "module",
   "dependencies": {

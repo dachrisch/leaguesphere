@@ -1,5 +1,19 @@
 # Changelog
 
+## [4.37.0](https://github.com/dachrisch/leaguesphere/compare/v4.36.2...v4.37.0) (2026-10-13)
+
+
+### Features
+
+* add in-app help section ([fd10214](https://github.com/dachrisch/leaguesphere/commit/fd10214d0d7cac8f831ca2ffbd8e999c7219f59b))
+* add in-app help section with topic-based Markdown pages ([d755808](https://github.com/dachrisch/leaguesphere/commit/d75580828b3415bba12587a9c97ac459fb7b733c))
+* **help:** render What's New 2026 as an in-app page ([3e56c5f](https://github.com/dachrisch/leaguesphere/commit/3e56c5f848faebbf9fb4d1f1d8fb7addf31b6550))
+
+
+### Bug Fixes
+
+* **help:** avoid duplicate topic headline and reorder Hilfe nav link ([d243ea5](https://github.com/dachrisch/leaguesphere/commit/d243ea5796b714ce9d044eb35d18dbb8a8cb3e17))
+
 ## [4.36.2](https://github.com/dachrisch/leaguesphere/compare/v4.36.1...v4.36.2) (2026-10-13)
 
 
