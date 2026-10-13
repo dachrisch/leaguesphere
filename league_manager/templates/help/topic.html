@@ -20,7 +20,11 @@
 
             {% if topic.video %}
             <div class="ratio ratio-16x9 mb-4">
+                {% comment %}The site sends Referrer-Policy: same-origin, which drops the Referer on
+                cross-origin requests and makes YouTube refuse the embed (Error 153). The iframe's
+                referrerpolicy attribute overrides that for this request.{% endcomment %}
                 <iframe src="{{ topic.video }}" title="{{ topic.title }}"
+                        referrerpolicy="strict-origin-when-cross-origin"
                         allowfullscreen loading="lazy"></iframe>
             </div>
             {% endif %}
