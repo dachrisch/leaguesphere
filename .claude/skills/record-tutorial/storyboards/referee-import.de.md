@@ -27,7 +27,12 @@ startet auf `/officials/gameofficial/import/upload/` (leeres Formular).
   (id 2)**. Ohne dahinterliegende Offizielle landet jede Zeile im Konflikt-Tab
   („Official mit ID … wurde nicht gefunden."). Das Intro der Tour sagt das
   nicht – es ist reine Pre-flight-Datenvorbereitung.
-- **Datei-Feld:** das versteckte `<input type="file" id="id_file">` (crispy
+  **Vorbedingung:** die Demo muss **0 vorab vorhandene Offizielle** haben, damit
+  die beiden Neuanlagen auf **pk 1 und 2** landen – die Spalte „Lizenznummer"
+  der Meldung wird gegen `Official.pk` aufgelöst (siehe Beispiel-Datei). Die
+  Demo setzt sich **nächtlich um Mitternacht UTC** zurück; vor jeder Neuaufnahme
+  also zuerst prüfen und ggf. neu anlegen.
+- **Datei-Feld:** das sichtbare `<input type="file" id="id_file">` (crispy
   innerhalb von `label#import-drop-zone`). Die **`fill`-Aktion des SKILL kann
   kein File-Input setzen** – stattdessen das chrome-devtools-Tool `upload_file`
   auf dem File-Input-Element verwenden (Exception, siehe Step 2). Danach
@@ -49,7 +54,9 @@ startet auf `/officials/gameofficial/import/upload/` (leeres Formular).
   Upload-Seite mit einer Django-Message („N externe Einsätze erstellt, M
   Korrekturen angewendet, K Fehler."). **Confirm nie als fetch** – sichtbarer
   Seitenwechsel ist Teil der Tour.
-- **Beispiel-Datei (Pre-flight):** `/tmp/opencode/referee-import-sample.csv`.
+- **Beispiel-Datei (Pre-flight):** kanonisch als Fixture abgelegt unter
+  `.claude/skills/record-tutorial/storyboards/fixtures/referee-import-sample.csv`
+  (von dort identisch nach `/tmp/opencode/referee-import-sample.csv` kopieren).
   Spalten wie der echte Sheet-Export; „Welche Position?" kommt zweimal vor, der
   zweite Vorkommen wird von pandas zu `Welche Position?.1` (externer Branch).
   Branch über die Frage-Spalte: „außerhalb DFFL" → extern, „DFFL" → intern.
@@ -58,6 +65,19 @@ startet auf `/officials/gameofficial/import/upload/` (leeres Formular).
   1 interne Korrektur (DFFL, Spiel-ID 16, Sabine id 1 → Tab „Interne
   Korrekturen"). Erwartetes Ergebnis: „Neu (2/2)", „Duplikate (0/0)",
   „Konflikte (0/1)".
+  **Vorbedingung:** die interne Zeile verweist auf eine Korrektur für
+  **Gameinfo pk 16** – dieses Spiel muss auf der Demo existieren, sonst lautet
+  die Abschlussmeldung „1 Fehler" statt der aufgenommenen „0 Fehler" (der
+  externe Branch hängt nicht davon ab). Inhalt (identisch zum Fixture,
+  5 Zeilen, UTF-8):
+
+  ```csv
+  Zeitstempel,Name,Für welchen Bereich möchtest du einen Einsatz melden?,Anzahl Spiele,Wann hat der Einsatz stattgefunden?,Unter welchem Verband hat der Einsatz stattgefunden?,Internationales Turnier,Dauer einer Halbzeit?,Mit Clock Control?,Anmerkung - Turniername,Wie ist die ID des fehlerhaften Spiels?,Wie ist deine Lizenznummer?,Welche Position?,Welche Position?,Lizenznummer
+  2026-09-01 09:12:00,Sabine Wagner,außerhalb DFFL,2,2026-07-10,Flag Football Verband Bayern,Nein,12,Ja,Sommer-Cup München,,,,Referee,1
+  2026-09-02 18:45:00,Jonas Becker,außerhalb DFFL,1,2026-07-18,Flag Football Verband NRW,Ja,10,Nein,NRW Bowl,,,,Mix,2
+  2026-09-03 08:05:00,Unbekannt,außerhalb DFFL,3,2026-08-30,Flag Football Verband Hessen,Nein,12,Nein,Hessen Trophy,,,,Field Judge,99999
+  2026-09-04 20:15:00,Sabine Wagner,DFFL,,,,,,,,16,1,Referee,,
+  ```
 
 ## Step 1
 - caption: Selbstmeldungen der Offiziellen importieren
