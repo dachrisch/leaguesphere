@@ -34,9 +34,13 @@ HELP_GROUPS: Dict[str, Dict[str, object]] = {
         "title": {"de": "Erste Schritte", "en": "Getting started"},
         "order": 10,
     },
+    "spielbetrieb": {
+        "title": {"de": "Spielbetrieb", "en": "Running your league"},
+        "order": 20,
+    },
     "funktionen": {
         "title": {"de": "Funktionen", "en": "Features"},
-        "order": 20,
+        "order": 30,
     },
 }
 
@@ -66,9 +70,42 @@ HELP_TOPICS = [
         order=10,
     ),
     HelpTopic(
+        slug="spieltage",
+        group="spielbetrieb",
+        title={"de": "Spieltage", "en": "Gamedays"},
+        summary={
+            "de": "Spielpläne, Ergebnisse und der Tagesstatus eines Spieltags.",
+            "en": "Schedules, results and the day status of a gameday.",
+        },
+        icon="bi-calendar-event",
+        order=10,
+    ),
+    HelpTopic(
+        slug="ligatabellen",
+        group="spielbetrieb",
+        title={"de": "Ligatabellen", "en": "League tables"},
+        summary={
+            "de": "Platzierungen je Liga und Saison, automatisch berechnet.",
+            "en": "Standings per league and season, calculated automatically.",
+        },
+        icon="bi-table",
+        order=20,
+    ),
+    HelpTopic(
+        slug="teams-offizielle",
+        group="spielbetrieb",
+        title={"de": "Teams & Offizielle", "en": "Teams & Officials"},
+        summary={
+            "de": "Kader, Pässe und Schiedsrichter-Einsätze.",
+            "en": "Rosters, passes and officials assignments.",
+        },
+        icon="bi-people",
+        order=30,
+    ),
+    HelpTopic(
         slug="share-widget",
         group="funktionen",
-        title={"de": "Share Widget", "en": "Share Widget"},
+        title={"de": "Website einbinden", "en": "Embed on your website"},
         summary={
             "de": "Spielplan, Ergebnisse und Tabellen per Widget auf der eigenen Website zeigen.",
             "en": "Show fixtures, results and tables on your own site with the widget.",

@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 from django.test import TestCase
 from django.urls import reverse
@@ -84,3 +85,24 @@ class TestHelpRegistry(TestCase):
             assert (
                 content_dir / f"{topic.slug}.de.md"
             ).exists(), f"missing German content for {topic.slug}"
+
+
+PROMISED_TOPICS = ["spieltage", "ligatabellen", "teams-offizielle", "share-widget"]
+
+
+class TestPromisedSections(TestCase):
+    def test_promised_topics_render_with_a_screenshot(self):
+        for slug in PROMISED_TOPICS:
+            response = self.client.get(reverse("help-topic", kwargs={"slug": slug}))
+            assert response.status_code == 200, slug
+            assert "<img" in response.content.decode(), slug
+
+    def test_help_images_referenced_by_content_exist(self):
+        content_dir = Path(__file__).resolve().parent.parent / "help" / "content"
+        static_dir = Path(__file__).resolve().parent.parent / "static"
+
+        for md_file in content_dir.glob("*.de.md"):
+            for ref in re.findall(r"/static/help/img/[\w.-]+", md_file.read_text()):
+                assert (
+                    static_dir / ref.removeprefix("/static/")
+                ).exists(), f"{md_file.name} references missing image {ref}"

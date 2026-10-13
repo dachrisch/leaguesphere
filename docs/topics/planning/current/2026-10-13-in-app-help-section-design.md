@@ -84,7 +84,10 @@ step. The index also surfaces a "Was ist neu 2026" card.
 |---|---|---|---|
 | Neu in 2026 | `whats-new-2026` | `bi-stars` | The year's major features (featured card on the index) |
 | Erste Schritte | `getting-started` | `bi-rocket` | What LeagueSphere is, roles/accounts, logging in |
-| Funktionen | `share-widget` | `bi-code-slash` | Embedding the widget, public API |
+| Spielbetrieb | `spieltage` | `bi-calendar-event` | Schedules, results, day status (screenshot) |
+| Spielbetrieb | `ligatabellen` | `bi-table` | Standings per league/season (screenshot) |
+| Spielbetrieb | `teams-offizielle` | `bi-people` | Rosters, passes, officials (screenshots) |
+| Funktionen | `share-widget` | `bi-code-slash` | Embedding the widget, public API (screenshot) |
 | Funktionen | `gameday-designer` | `bi-diagram-3` | Guided start, reusable templates, tournaments |
 | Funktionen | `referee-import` | `bi-file-earmark-arrow-up` | Importing officials' self-reported games |
 | Funktionen | `live-status` | `bi-broadcast` | Today's upcoming / live / finished gamedays |
@@ -93,6 +96,21 @@ step. The index also surfaces a "Was ist neu 2026" card.
 `featured`, so the index shows it as a highlight card and keeps it out of the
 grouped list. Each topic has an optional `video` / `tutorial` field, empty for
 now.
+
+### Screenshots
+
+Topic screenshots live in `league_manager/static/help/img/` and are referenced
+from the Markdown with absolute `/static/help/img/...` paths inside a
+`<figure class="help-figure">`. Source of screenshots:
+
+- **Public pages** (Spieltage, Ligatabellen, Teams & Offizielle, Website) are
+  captured from `stage.leaguesphere.app`, which has real, populated data.
+- **Login-required pages** (e.g. Gameday Designer, referee import) should be
+  captured from `demo.leaguesphere.app` using the documented demo credentials,
+  seeding data when needed.
+
+The demo environment is currently too sparse for public pages (no games,
+standings or tables), which is why stage is used there.
 
 ## Testing
 
