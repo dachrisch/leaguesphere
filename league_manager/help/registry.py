@@ -29,17 +29,9 @@ HELP_GROUPS: Dict[str, Dict[str, object]] = {
         "title": {"de": "Erste Schritte", "en": "Getting started"},
         "order": 10,
     },
-    "spieltage": {
-        "title": {"de": "Spieltage", "en": "Gamedays"},
+    "funktionen": {
+        "title": {"de": "Funktionen", "en": "Features"},
         "order": 20,
-    },
-    "teams": {
-        "title": {"de": "Teams & Offizielle", "en": "Teams & Officials"},
-        "order": 30,
-    },
-    "website": {
-        "title": {"de": "Website einbinden", "en": "Embed on your website"},
-        "order": 40,
     },
 }
 
@@ -57,37 +49,51 @@ HELP_TOPICS = [
         order=10,
     ),
     HelpTopic(
-        slug="gamedays",
-        group="spieltage",
-        title={"de": "Spieltage ansehen", "en": "View gamedays"},
-        summary={
-            "de": "Spielpläne, Ergebnisse und der Tagesstatus eines Spieltags.",
-            "en": "Schedules, results and the day status of a gameday.",
-        },
-        icon="bi-calendar-event",
-        order=20,
-    ),
-    HelpTopic(
-        slug="teams-officials",
-        group="teams",
-        title={"de": "Teams & Offizielle", "en": "Teams & Officials"},
-        summary={
-            "de": "Kader, Pässe (Passcheck) und die Einsätze der Offiziellen.",
-            "en": "Rosters, passes (Passcheck) and officials assignments.",
-        },
-        icon="bi-people",
-        order=30,
-    ),
-    HelpTopic(
         slug="share-widget",
-        group="website",
-        title={"de": "Website einbinden", "en": "Embed on your website"},
+        group="funktionen",
+        title={"de": "Share Widget", "en": "Share Widget"},
         summary={
             "de": "Spielplan, Ergebnisse und Tabellen per Widget auf der eigenen Website zeigen.",
             "en": "Show fixtures, results and tables on your own site with the widget.",
         },
         icon="bi-code-slash",
+        order=20,
+    ),
+    HelpTopic(
+        slug="gameday-designer",
+        group="funktionen",
+        title={"de": "Gameday Designer", "en": "Gameday Designer"},
+        summary={
+            "de": "Spielpläne mit geführtem Start und wiederverwendbaren Vorlagen erstellen.",
+            "en": "Build schedules with a guided start and reusable templates.",
+        },
+        icon="bi-diagram-3",
+        order=30,
+    ),
+    HelpTopic(
+        slug="referee-import",
+        group="funktionen",
+        title={
+            "de": "Schiedsrichter-Meldungen importieren",
+            "en": "Referee report import",
+        },
+        summary={
+            "de": "Selbst gemeldete Spiele der Offiziellen prüfen und importieren.",
+            "en": "Review and import officials' self-reported games.",
+        },
+        icon="bi-file-earmark-arrow-up",
         order=40,
+    ),
+    HelpTopic(
+        slug="live-status",
+        group="funktionen",
+        title={"de": "Live-Status heute", "en": "Today's live status"},
+        summary={
+            "de": "Auf einen Blick sehen, welche Spieltage heute anstehen oder gerade laufen.",
+            "en": "See at a glance which gamedays are upcoming or live today.",
+        },
+        icon="bi-broadcast",
+        order=50,
     ),
 ]
 

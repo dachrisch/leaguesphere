@@ -1,4 +1,4 @@
-# Website einbinden
+# Share Widget
 
 LeagueSphere kann Spielplan, Ergebnisse, Live-Zwischenstände und Tabellen direkt
 auf deiner Vereinswebsite anzeigen – ohne dass du Daten doppelt pflegen musst.

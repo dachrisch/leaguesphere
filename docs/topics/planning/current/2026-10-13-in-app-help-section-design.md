@@ -83,9 +83,10 @@ step. The index also surfaces a "Was ist neu 2026" card.
 | Group | Slug | Icon | Covers |
 |---|---|---|---|
 | Erste Schritte | `getting-started` | `bi-rocket` | What LeagueSphere is, roles/accounts, logging in |
-| Spieltage | `gamedays` | `bi-calendar-event` | Viewing game days, schedules, results |
-| Teams & Offizielle | `teams-officials` | `bi-people` | Rosters, Passcheck, referees |
-| Website einbinden | `share-widget` | `bi-code-slash` | Embedding the widget, public API |
+| Funktionen | `share-widget` | `bi-code-slash` | Embedding the widget, public API |
+| Funktionen | `gameday-designer` | `bi-diagram-3` | Guided start, reusable templates, tournaments |
+| Funktionen | `referee-import` | `bi-file-earmark-arrow-up` | Importing officials' self-reported games |
+| Funktionen | `live-status` | `bi-broadcast` | Today's upcoming / live / finished gamedays |
 
 Each topic has an optional `video` / `tutorial` field, empty for now.
 
