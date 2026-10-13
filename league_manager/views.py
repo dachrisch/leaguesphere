@@ -155,6 +155,7 @@ from gamedays.service.team_repository_service import TeamRepositoryService
 from league_manager.help import loader
 from league_manager.help.registry import (
     HELP_GROUPS,
+    featured_topics,
     get_topic,
     localized,
     ordered_topics,
@@ -231,16 +232,22 @@ def _topic_context(topic, lang):
     }
 
 
-def _help_groups_context(lang):
+def _help_groups_context(lang, include_featured=True):
     topics = ordered_topics()
-    return [
-        {
-            "key": key,
-            "title": localized(meta["title"], lang),
-            "topics": [_topic_context(topic, lang) for topic in topics if topic.group == key],
-        }
-        for key, meta in sorted(HELP_GROUPS.items(), key=lambda item: item[1]["order"])
-    ]
+    if not include_featured:
+        topics = [topic for topic in topics if not topic.featured]
+    groups = []
+    for key, meta in sorted(HELP_GROUPS.items(), key=lambda item: item[1]["order"]):
+        group_topics = [_topic_context(topic, lang) for topic in topics if topic.group == key]
+        if group_topics:
+            groups.append(
+                {
+                    "key": key,
+                    "title": localized(meta["title"], lang),
+                    "topics": group_topics,
+                }
+            )
+    return groups
 
 
 class HelpIndexView(TemplateView):
@@ -250,7 +257,10 @@ class HelpIndexView(TemplateView):
         context = super().get_context_data(**kwargs)
         lang = loader.normalize_language(get_language())
         context["title"] = localized({"de": "Hilfe", "en": "Help"}, lang)
-        context["help_groups"] = _help_groups_context(lang)
+        context["featured_topics"] = [
+            _topic_context(topic, lang) for topic in featured_topics()
+        ]
+        context["help_groups"] = _help_groups_context(lang, include_featured=False)
         return context
 
 

@@ -82,13 +82,17 @@ step. The index also surfaces a "Was ist neu 2026" card.
 
 | Group | Slug | Icon | Covers |
 |---|---|---|---|
+| Neu in 2026 | `whats-new-2026` | `bi-stars` | The year's major features (featured card on the index) |
 | Erste Schritte | `getting-started` | `bi-rocket` | What LeagueSphere is, roles/accounts, logging in |
 | Funktionen | `share-widget` | `bi-code-slash` | Embedding the widget, public API |
 | Funktionen | `gameday-designer` | `bi-diagram-3` | Guided start, reusable templates, tournaments |
 | Funktionen | `referee-import` | `bi-file-earmark-arrow-up` | Importing officials' self-reported games |
 | Funktionen | `live-status` | `bi-broadcast` | Today's upcoming / live / finished gamedays |
 
-Each topic has an optional `video` / `tutorial` field, empty for now.
+`whats-new-2026` is a real in-app page (not a link to the repo doc) and is marked
+`featured`, so the index shows it as a highlight card and keeps it out of the
+grouped list. Each topic has an optional `video` / `tutorial` field, empty for
+now.
 
 ## Testing
 

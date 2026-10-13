@@ -21,6 +21,23 @@ class TestHelpIndex(TestCase):
         for topic in HELP_TOPICS:
             assert escape(topic.title["de"]) in content
 
+    def test_help_index_links_to_in_app_whats_new_page(self):
+        response = self.client.get(reverse("help-index"))
+
+        content = response.content.decode()
+        assert reverse("help-topic", kwargs={"slug": "whats-new-2026"}) in content
+        assert "docs/topics/features/whats-new-2026.md" not in content
+
+
+class TestWhatsNew(TestCase):
+    def test_whats_new_is_an_in_app_page(self):
+        response = self.client.get(
+            reverse("help-topic", kwargs={"slug": "whats-new-2026"})
+        )
+
+        assert response.status_code == 200
+        assert "2026" in response.content.decode()
+
 
 class TestHelpTopic(TestCase):
     def test_help_topic_renders_markdown(self):

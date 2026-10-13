@@ -22,9 +22,14 @@ class HelpTopic:
     order: int
     video: Optional[str] = None
     tutorial: Optional[str] = None
+    featured: bool = False
 
 
 HELP_GROUPS: Dict[str, Dict[str, object]] = {
+    "neu": {
+        "title": {"de": "Neu in 2026", "en": "New in 2026"},
+        "order": 5,
+    },
     "getting-started": {
         "title": {"de": "Erste Schritte", "en": "Getting started"},
         "order": 10,
@@ -37,6 +42,18 @@ HELP_GROUPS: Dict[str, Dict[str, object]] = {
 
 
 HELP_TOPICS = [
+    HelpTopic(
+        slug="whats-new-2026",
+        group="neu",
+        title={"de": "Was ist neu 2026", "en": "What's New 2026"},
+        summary={
+            "de": "Die wichtigsten neuen Funktionen des Jahres im Überblick.",
+            "en": "A roundup of the year's major new features.",
+        },
+        icon="bi-stars",
+        order=10,
+        featured=True,
+    ),
     HelpTopic(
         slug="getting-started",
         group="getting-started",
@@ -115,3 +132,7 @@ def ordered_topics():
         HELP_TOPICS,
         key=lambda topic: (group_order.get(topic.group, 999), topic.order),
     )
+
+
+def featured_topics():
+    return [topic for topic in ordered_topics() if topic.featured]
