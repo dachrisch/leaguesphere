@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - LeagueSphere{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'help-index' %}">Hilfe</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ topic.title }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="d-flex align-items-center mb-4">
+                <i class="bi {{ topic.icon }} fs-1 me-3 text-primary"></i>
+                <h1 class="mb-0">{{ topic.title }}</h1>
+            </div>
+
+            {% if topic.video %}
+            <div class="ratio ratio-16x9 mb-4">
+                <iframe src="{{ topic.video }}" title="{{ topic.title }}"
+                        allowfullscreen loading="lazy"></iframe>
+            </div>
+            {% endif %}
+
+            <div class="help-content">
+                {{ topic_html }}
+            </div>
+
+            {% if topic.tutorial %}
+            <p>
+                <a href="{{ topic.tutorial }}" target="_blank" rel="noopener">
+                    <i class="bi bi-box-arrow-up-right me-1"></i> Ausführliches Tutorial
+                </a>
+            </p>
+            {% endif %}
+
+            <hr class="my-4">
+
+            <div class="d-flex justify-content-between">
+                {% if prev_topic %}
+                <a class="btn btn-outline-secondary" href="{% url 'help-topic' prev_topic.slug %}">
+                    <i class="bi bi-arrow-left me-1"></i> {{ prev_topic.title }}
+                </a>
+                {% else %}<span></span>{% endif %}
+                {% if next_topic %}
+                <a class="btn btn-outline-secondary" href="{% url 'help-topic' next_topic.slug %}">
+                    {{ next_topic.title }} <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">Alle Themen</div>
+                <div class="list-group list-group-flush">
+                    {% for group in help_groups %}
+                    <div class="list-group-item bg-light fw-semibold">{{ group.title }}</div>
+                    {% for item in group.topics %}
+                    <a class="list-group-item list-group-item-action {% if item.slug == topic.slug %}active{% endif %}"
+                       href="{% url 'help-topic' item.slug %}">
+                        <i class="bi {{ item.icon }} me-2"></i>{{ item.title }}
+                    </a>
+                    {% endfor %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
