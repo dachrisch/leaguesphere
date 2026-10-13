@@ -5,6 +5,7 @@ Feature specifications, requirements, and documentation.
 ## Quick Links
 
 Current features:
+- [What's New 2026](./whats-new-2026.md) — Major user-facing features shipped in 2026
 - [Gameday Designer](./gameday-designer/) — Flowchart-based game schedule design
 - [Gameday Live Updates](./liveticker/) — Real-time game progress updates
 - [Score Card Entry](./scorecard/) — Game result and score entry
