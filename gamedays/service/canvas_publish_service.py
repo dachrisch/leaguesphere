@@ -4,19 +4,21 @@ from gamedays.service.canvas_progression_validation_service import (
     ProgressionValidationError,
 )
 from gamedays.service.stage_category import StageCategory
+from gamedays.service.swiss_constants import (
+    SWISS_ROUND_STAGE_PREFIX,
+    SWISS_STAGE as SWISS_GAME_STAGE,
+)
 
 
 OFFICIALS_PLACEHOLDER = "N/A"
 
 # Games owned by SwissTournamentService (gameday_designer) live outside the
 # canvas publish flow: their Gameinfo rows carry stage SWISS_GAME_STAGE and
-# their canvas game nodes hang under swiss-round-* stage nodes. Publish must
+# their canvas game nodes hang under Swiss round stage nodes. Publish must
 # neither delete those rows (it would orphan completedRounds.gameIds and
-# entered results) nor duplicate them from the canvas nodes below.
-# Mirrors SWISS_STAGE / _swiss_stage_id() over there; kept local to avoid a
-# gamedays -> gameday_designer import cycle.
-SWISS_GAME_STAGE = "Swiss"
-SWISS_ROUND_STAGE_PREFIX = "swiss-round-"
+# entered results) nor duplicate them from the canvas nodes below. The
+# identifiers are shared with the Swiss service via gamedays.service.swiss_constants
+# so the two can never drift apart.
 
 
 class CanvasPublishService:
