@@ -2,6 +2,9 @@
 
 {% block title %}{{ title }} - LeagueSphere{% endblock %}
 
+{% block og_title %}Leaguesphere - {{ topic.title }}{% endblock %}
+{% block og_description %}{{ topic.summary }}{% endblock %}
+
 {% block extra_css %}
 <style>
     .help-content img {

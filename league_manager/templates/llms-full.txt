@@ -24,6 +24,21 @@ Core entities and their relationships:
 - [Team roster](https://leaguesphere.app/passcheck/team/{id}/list/): public roster of a single team (players per season).
 - [Officials assignments](https://leaguesphere.app/officials/einsaetze/): which officiating team referees which games, per gameday.
 
+## Help (German howtos)
+
+Short, task-oriented howtos for administrators and referees, grouped by area. Content is German-first Markdown.
+
+- [Help overview](https://leaguesphere.app/help/): all topics grouped by area.
+- [Was ist neu 2026](https://leaguesphere.app/help/whats-new-2026/): Die wichtigsten neuen Funktionen des Jahres im Überblick.
+- [Erste Schritte](https://leaguesphere.app/help/getting-started/): Was LeagueSphere ist, welche Rollen es gibt und wie du dich anmeldest.
+- [Spieltage](https://leaguesphere.app/help/spieltage/): Spielpläne, Ergebnisse und der Tagesstatus eines Spieltags.
+- [Ligatabellen](https://leaguesphere.app/help/ligatabellen/): Platzierungen je Liga und Saison, automatisch berechnet.
+- [Teams & Offizielle](https://leaguesphere.app/help/teams-offizielle/): Kader, Pässe und Schiedsrichter-Einsätze.
+- [Website einbinden](https://leaguesphere.app/help/share-widget/): Spielplan, Ergebnisse und Tabellen per Widget auf der eigenen Website zeigen.
+- [Gameday Designer](https://leaguesphere.app/help/gameday-designer/): Spielpläne mit geführtem Start und wiederverwendbaren Vorlagen erstellen.
+- [Schiedsrichter-Meldungen importieren](https://leaguesphere.app/help/referee-import/): Selbst gemeldete Spiele der Offiziellen prüfen und importieren.
+- [Live-Status heute](https://leaguesphere.app/help/live-status/): Auf einen Blick sehen, welche Spieltage heute anstehen oder gerade laufen.
+
 ## Machine-readable data (JSON, no authentication)
 
 LeagueSphere has one public API, `/api/snapshot/`: anonymous, read-only JSON, readable cross-origin from any website, with an ETag for conditional requests. Other `/api/` paths are internal to LeagueSphere's own pages and may change without notice.

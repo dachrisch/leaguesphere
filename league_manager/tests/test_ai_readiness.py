@@ -10,6 +10,7 @@ from django.test import TestCase, Client
 from django.test.client import RequestFactory
 
 from league_manager.constants import STATIC_INFO_PATHS
+from league_manager.help.registry import HELP_TOPICS
 from league_manager.middleware.db_guard import DatabaseGuardMiddleware
 from league_manager.middleware.maintenance import MaintenanceModeMiddleware
 
@@ -55,7 +56,9 @@ class TestRobotsTxtAiCrawlerPolicy(TestCase):
         self.assertContains(response, "Disallow: /*/delete/")
 
     def test_sitemap_directive_present(self):
-        self.assertContains(self.response, "Sitemap: https://leaguesphere.app/sitemap.xml")
+        self.assertContains(
+            self.response, "Sitemap: https://leaguesphere.app/sitemap.xml"
+        )
 
     def test_ai_files_referenced(self):
         """Agents are pointed to the llms.txt files from robots.txt."""
@@ -126,6 +129,23 @@ class TestLlmsFullTxtEndpoint(TestCase):
         llms = self.client.get("/llms.txt").content
         llms_full = self.client.get("/llms-full.txt").content
         self.assertGreater(len(llms_full), len(llms))
+
+
+class TestLlmsHelpLinks(TestCase):
+    """Agents discover the in-app help section from the llms.txt files."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_llms_txt_links_help_index(self):
+        response = self.client.get("/llms.txt")
+        self.assertContains(response, "/help/")
+
+    def test_llms_full_txt_links_help_index_and_every_topic(self):
+        response = self.client.get("/llms-full.txt")
+        self.assertContains(response, "/help/")
+        for topic in HELP_TOPICS:
+            self.assertContains(response, f"/help/{topic.slug}/")
 
 
 class TestSecurityTxtEndpoint(TestCase):
