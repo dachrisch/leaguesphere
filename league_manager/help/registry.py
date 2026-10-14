@@ -75,6 +75,8 @@ HELP_TOPICS = [
         },
         icon="bi-code-slash",
         order=20,
+        video="https://www.youtube.com/embed/PzINW_SXlDU",
+        tutorial="https://github.com/dachrisch/leaguesphere/blob/master/docs/topics/features/share-widget/overview.md",
     ),
     HelpTopic(
         slug="gameday-designer",
@@ -86,6 +88,7 @@ HELP_TOPICS = [
         },
         icon="bi-diagram-3",
         order=30,
+        video="https://www.youtube.com/embed/Ek3yec2hqK0",
     ),
     HelpTopic(
         slug="referee-import",
@@ -100,6 +103,7 @@ HELP_TOPICS = [
         },
         icon="bi-file-earmark-arrow-up",
         order=40,
+        video="https://www.youtube.com/embed/AUg1Jn_jy1E",
     ),
     HelpTopic(
         slug="live-status",
@@ -111,6 +115,7 @@ HELP_TOPICS = [
         },
         icon="bi-broadcast",
         order=50,
+        video="https://www.youtube.com/embed/NO2BNJ38jc8",
     ),
 ]
 

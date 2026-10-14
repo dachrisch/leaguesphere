@@ -63,6 +63,15 @@ class TestHelpTopic(TestCase):
 
         assert response.status_code == 404
 
+    def test_topic_with_video_embeds_it_with_referrerpolicy(self):
+        response = self.client.get(
+            reverse("help-topic", kwargs={"slug": "share-widget"})
+        )
+
+        content = response.content.decode()
+        assert "https://www.youtube.com/embed/PzINW_SXlDU" in content
+        assert 'referrerpolicy="strict-origin-when-cross-origin"' in content
+
 
 class TestHelpLanguageFallback(TestCase):
     def test_missing_english_file_falls_back_to_german(self):
@@ -84,3 +93,10 @@ class TestHelpRegistry(TestCase):
             assert (
                 content_dir / f"{topic.slug}.de.md"
             ).exists(), f"missing German content for {topic.slug}"
+
+    def test_every_topic_video_is_a_youtube_embed_url(self):
+        for topic in HELP_TOPICS:
+            if topic.video:
+                assert topic.video.startswith(
+                    "https://www.youtube.com/embed/"
+                ), f"{topic.slug}: video must be a YouTube /embed/ URL"
