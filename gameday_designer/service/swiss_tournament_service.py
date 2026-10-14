@@ -35,15 +35,12 @@ from gamedays.models import (
     Team,
 )
 from gamedays.service.canvas_publish_service import OFFICIALS_PLACEHOLDER
+from gamedays.service.swiss_constants import SWISS_NODE_PREFIX, SWISS_STAGE
 from gameday_designer.service.swiss_round_resolver import (
     SwissRoundResolver,
     SwissRoundResult,
 )
 from gameday_designer.service.time_service import TimeService
-
-SWISS_STAGE = "Swiss"
-
-SWISS_NODE_PREFIX = "swiss-"
 
 MIN_ROUNDS = 2
 MAX_ROUNDS = 8
