@@ -89,6 +89,7 @@ HELP_TOPICS = [
         icon="bi-diagram-3",
         order=30,
         video="https://www.youtube.com/embed/Ek3yec2hqK0",
+        tutorial="https://github.com/dachrisch/leaguesphere/blob/master/docs/topics/features/gameday-designer/gameday-designer.md",
     ),
     HelpTopic(
         slug="referee-import",
