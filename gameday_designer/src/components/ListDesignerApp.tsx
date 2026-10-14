@@ -475,6 +475,8 @@ const ListDesignerApp: React.FC = () => {
       if (pendingSaveRef.current.timer) {
         clearTimeout(pendingSaveRef.current.timer);
       }
+      // Locked (published) gamedays must not PUT the canvas blob.
+      if (isLocked) return;
       if (!isSavingRef.current) {
         const stateToSave = latestStateRef.current?.exportState();
         if (stateToSave) {
@@ -484,7 +486,7 @@ const ListDesignerApp: React.FC = () => {
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [saveData]);
+  }, [saveData, isLocked]);
 
   useEffect(() => {
     if (id) {
@@ -545,31 +547,11 @@ const ListDesignerApp: React.FC = () => {
         await gamedayApi.updateGameResult(parseInt(dbIdPart), { halftime_score: data.halftime_score, final_score: data.final_score });
       }
 
-      // Explicit persist (works when published): the debounced auto-save
-      // skips locked gamedays, so without this the node-level scores would
-      // revert on the next loadData(). Built synchronously from the same
-      // patch because handleUpdateNode applies via async setState.
-      // A failure here is explicit (not a silent success): the Gameinfo
-      // rows are already written, but the canvas copy is stale — keep the
-      // modal open and report failure so the user retries.
-      try {
-        const current = flowState.exportState();
-        const patched = {
-          ...current,
-          nodes: current.nodes.map((n) =>
-            n.id === selectedGameForResult.id && isGameNode(n)
-              ? { ...n, data: { ...n.data, ...patch } }
-              : n
-          ),
-        };
-        await saveData(patched);
-        lastSavedStateRef.current = JSON.stringify(patched);
-      } catch (persistError) {
-        console.error('Failed to persist game result to canvas', persistError);
-        addNotification(t('ui:notification.autoSaveFailed'), 'danger', t('ui:notification.title.error'));
-        return;
-      }
-
+      // Canvas node scores are synced server-side by the result endpoint, and
+      // auto-save is disabled while the gameday is locked. The client must not
+      // PUT the whole state_data blob here: it would re-enable the write that
+      // is deliberately skipped when published, and a stale copy could clobber
+      // a concurrent canvas edit.
       setShowResultModal(false);
       setSelectedGameForResult(null);
       setSwissResultsVersion((v) => v + 1);
@@ -586,7 +568,7 @@ const ListDesignerApp: React.FC = () => {
       console.error('Failed to save result', error);
       addNotification(t('ui:notification.saveResultFailed'), 'danger', t('ui:notification.title.error'));
     }
-  }, [selectedGameForResult, handleUpdateNode, addNotification, t, id, flowState, saveData]);
+  }, [selectedGameForResult, handleUpdateNode, addNotification, t, id]);
 
   const handleShowTeamSelection = useCallback((slotId: string, side: 'home' | 'away' | 'official' | 'group' | 'replace') => {
     setTeamSelectionModalContext({ slotId, side });

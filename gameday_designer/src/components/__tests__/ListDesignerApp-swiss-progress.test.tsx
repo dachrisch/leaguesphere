@@ -619,47 +619,34 @@ describe('ListDesignerApp Swiss progression when published', () => {
     expect(screen.queryByTestId('swiss-adjust-modal')).toBeNull();
   });
 
-  it('persists node scores explicitly when published (auto-save is locked)', async () => {
-    const otherNode = {
-      id: 'game-8',
-      type: 'game',
-      position: { x: 0, y: 0 },
-      data: { type: 'game', homeTeamId: '138', awayTeamId: '522' },
-    } as unknown as FlowNode;
-    const exportState = vi.fn(() => ({
-      nodes: [gameNode, otherNode],
-      edges: [],
-      globalTeams: [AACHEN, ANTWERP],
-      globalTeamGroups: [],
-    }));
-    await setup({ nodes: [gameNode, otherNode], exportState }, 'PUBLISHED');
+  it('does not PUT the whole canvas when a result is saved while published', async () => {
+    await setup({ nodes: [gameNode] }, 'PUBLISHED');
     expect(canvasProps().swissResultsVersion).toBe(0);
 
     await saveResult();
 
-    // In-memory node update + Gameinfo write + explicit canvas persist.
+    // In-memory node update + Gameinfo write; the canvas node is synced
+    // server-side, so the client must NOT send the whole state_data blob.
     expect(mockHandlers.handleUpdateNode).toHaveBeenCalledWith(
       'game-7',
       expect.objectContaining({ final_score: { home: 2, away: 0 } }),
     );
-    expect(mockHandlers.saveData).toHaveBeenCalledTimes(1);
-    const saved = mockHandlers.saveData.mock.calls[0][0] as FlowState;
-    const savedGame = saved.nodes.find((n) => n.id === 'game-7') as unknown as {
-      data: { final_score: { home: number; away: number } };
-    };
-    expect(savedGame.data.final_score).toEqual({ home: 2, away: 0 });
+    expect(vi.mocked(gamedayApi.updateGameResult)).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ final_score: { home: 2, away: 0 } }),
+    );
+    expect(mockHandlers.saveData).not.toHaveBeenCalled();
     expect(canvasProps().swissResultsVersion).toBe(1);
   });
 
-  it('reports explicit failure when the canvas persist fails after Gameinfo success', async () => {
+  it('reports failure and keeps the modal open when the Gameinfo write fails', async () => {
     await setup({ nodes: [gameNode] }, 'PUBLISHED');
-    mockHandlers.saveData.mockRejectedValueOnce(new Error('persist failed'));
+    vi.mocked(gamedayApi.updateGameResult).mockRejectedValueOnce(new Error('write failed'));
 
     await saveResult();
 
-    // Gameinfo write happened, but the user sees failure (not silent success):
-    // modal stays open, no version bump, no success toast.
-    expect(vi.mocked(gamedayApi.updateGameResult)).toHaveBeenCalled();
+    // No silent success: modal stays open, no version bump, no success toast,
+    // and no canvas PUT.
     expect(mockHandlers.addNotification).toHaveBeenCalledWith(
       expect.anything(),
       'danger',
@@ -668,6 +655,7 @@ describe('ListDesignerApp Swiss progression when published', () => {
     const kinds = vi.mocked(mockHandlers.addNotification).mock.calls.map((c) => c[1]);
     expect(kinds).not.toContain('success');
     expect(canvasProps().swissResultsVersion).toBe(0);
+    expect(mockHandlers.saveData).not.toHaveBeenCalled();
   });
 
   it('skips the Gameinfo write for placeholder ids without a numeric suffix', async () => {
@@ -698,9 +686,10 @@ describe('ListDesignerApp Swiss progression when published', () => {
       });
     });
 
-    // No numeric DB id to write through — canvas persist still happens.
+    // No numeric DB id to write through, and no client canvas PUT either —
+    // the server owns the canvas sync.
     expect(vi.mocked(gamedayApi.updateGameResult)).not.toHaveBeenCalled();
-    expect(mockHandlers.saveData).toHaveBeenCalledTimes(1);
+    expect(mockHandlers.saveData).not.toHaveBeenCalled();
     expect(canvasProps().swissResultsVersion).toBe(1);
   });
 
