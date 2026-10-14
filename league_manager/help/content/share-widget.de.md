@@ -1,7 +1,12 @@
-# Share Widget
+# Website einbinden
 
 LeagueSphere kann Spielplan, Ergebnisse, Live-Zwischenstände und Tabellen direkt
 auf deiner Vereinswebsite anzeigen – ohne dass du Daten doppelt pflegen musst.
+
+<figure class="help-figure">
+  <img src="/static/help/img/website.png" alt="Widget-Generator mit Teamauswahl und Optionen">
+  <figcaption>Der Widget-Generator: Teams wählen, Optionen festlegen, Code kopieren.</figcaption>
+</figure>
 
 ## Das Widget
 

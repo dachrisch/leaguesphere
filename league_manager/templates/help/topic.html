@@ -2,6 +2,25 @@
 
 {% block title %}{{ title }} - LeagueSphere{% endblock %}
 
+{% block extra_css %}
+<style>
+    .help-content img {
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+    }
+    .help-figure {
+        margin: 1.25rem 0;
+    }
+    .help-figure figcaption {
+        color: #6c757d;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <nav aria-label="breadcrumb">

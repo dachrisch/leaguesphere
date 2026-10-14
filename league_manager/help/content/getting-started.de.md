@@ -5,11 +5,13 @@ damit Spieltage, erfasst Ergebnisse, führst Tabellen und verfolgst Spiele live.
 
 ## Was du hier findest
 
-- **Spieltage** – Spielpläne, Ergebnisse und der Tagesstatus.
-- **Ligatabellen** – Platzierungen je Liga und Saison, automatisch berechnet.
-- **Teams & Offizielle** – Kader, Pässe und Schiedsrichter-Einsätze.
-- **Website** – Spielplan, Ergebnisse und Tabellen auf der eigenen Vereinsseite
-  einbinden.
+- **[Spieltage](/help/spieltage/)** – Spielpläne, Ergebnisse und der Tagesstatus.
+- **[Ligatabellen](/help/ligatabellen/)** – Platzierungen je Liga und Saison,
+  automatisch berechnet.
+- **[Teams & Offizielle](/help/teams-offizielle/)** – Kader, Pässe und
+  Schiedsrichter-Einsätze.
+- **[Website](/help/share-widget/)** – Spielplan, Ergebnisse und Tabellen auf der
+  eigenen Vereinsseite einbinden.
 
 ## Anmeldung
 

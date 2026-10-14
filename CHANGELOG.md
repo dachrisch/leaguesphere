@@ -1,5 +1,32 @@
 # Changelog
 
+## [4.38.0](https://github.com/dachrisch/leaguesphere/compare/v4.37.0...v4.38.0) (2026-10-13)
+
+
+### Features
+
+* **help:** add Spieltage, Ligatabellen and Teams & Offizielle sections with screenshots ([8c0585b](https://github.com/dachrisch/leaguesphere/commit/8c0585b8b683731e43c4b08fef08a9b6ebc9338c))
+* **help:** add Spieltage, Ligatabellen and Teams & Offizielle sections with screenshots ([4ff061f](https://github.com/dachrisch/leaguesphere/commit/4ff061f659c7e599b43d123f3714260d1584fea2))
+
+
+### Documentation
+
+* **skill:** add add-help-topic skill ([eef82ea](https://github.com/dachrisch/leaguesphere/commit/eef82ea94355ab1b1f2abb30fda57ee8b6bd8950))
+
+## [4.37.0](https://github.com/dachrisch/leaguesphere/compare/v4.36.2...v4.37.0) (2026-10-13)
+
+
+### Features
+
+* add in-app help section ([fd10214](https://github.com/dachrisch/leaguesphere/commit/fd10214d0d7cac8f831ca2ffbd8e999c7219f59b))
+* add in-app help section with topic-based Markdown pages ([d755808](https://github.com/dachrisch/leaguesphere/commit/d75580828b3415bba12587a9c97ac459fb7b733c))
+* **help:** render What's New 2026 as an in-app page ([3e56c5f](https://github.com/dachrisch/leaguesphere/commit/3e56c5f848faebbf9fb4d1f1d8fb7addf31b6550))
+
+
+### Bug Fixes
+
+* **help:** avoid duplicate topic headline and reorder Hilfe nav link ([d243ea5](https://github.com/dachrisch/leaguesphere/commit/d243ea5796b714ce9d044eb35d18dbb8a8cb3e17))
+
 ## [4.36.2](https://github.com/dachrisch/leaguesphere/compare/v4.36.1...v4.36.2) (2026-10-13)
 
 
