@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.39.1](https://github.com/dachrisch/leaguesphere/compare/v4.39.0...v4.39.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **gamedays:** stop 500 on detail view for non-numeric season names ([086cb5d](https://github.com/dachrisch/leaguesphere/commit/086cb5df4c115d80a5630ab80faef4ec19c035f6))
+* **gamedays:** stop 500 on gameday detail for non-numeric season names ([171d577](https://github.com/dachrisch/leaguesphere/commit/171d5772e3fa1f7fc711b613b113b1350dc62f2e))
+
 ## [4.39.0](https://github.com/dachrisch/leaguesphere/compare/v4.38.0...v4.39.0) (2026-10-14)
 
 
