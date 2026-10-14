@@ -1,5 +1,31 @@
 # Changelog
 
+## [4.39.0](https://github.com/dachrisch/leaguesphere/compare/v4.38.0...v4.39.0) (2026-10-14)
+
+
+### Features
+
+* **help:** add gameday-designer tutorial link ([0101539](https://github.com/dachrisch/leaguesphere/commit/0101539a7184969887dab8bccd6a94e413c8f9d2))
+* **help:** add live-status walkthrough storyboard ([fa71a35](https://github.com/dachrisch/leaguesphere/commit/fa71a35fcb9f999a2e4f8893d28dd5b53b605e3b))
+* **help:** add referee-import walkthrough storyboard ([e8a7016](https://github.com/dachrisch/leaguesphere/commit/e8a7016cc6f439f86c3deca1de12266b9da5518d))
+* **help:** link feature walkthrough videos in help topics ([3b95fa1](https://github.com/dachrisch/leaguesphere/commit/3b95fa16e811f18defcce67d6e8c4161d6b1c009))
+* **help:** walkthrough videos — storyboards, uploader, and embed referrer fix ([b0800e7](https://github.com/dachrisch/leaguesphere/commit/b0800e710f93ff99371bcaa531ae072448ddad06))
+* **record-tutorial:** add YouTube upload helper + ignore OAuth client secrets ([1a4a2e3](https://github.com/dachrisch/leaguesphere/commit/1a4a2e365df22d9da11e3dc89e3c77c2d5895fac))
+
+
+### Bug Fixes
+
+* **help:** set iframe referrerpolicy so YouTube embeds load (Error 153) ([b2fd48e](https://github.com/dachrisch/leaguesphere/commit/b2fd48e958ac31e67bb9142f31320e21434c30d2))
+* **record-tutorial:** write YouTube token with owner-only perms ([15c90e6](https://github.com/dachrisch/leaguesphere/commit/15c90e657e29b6886f0e9e6c35bf69caa43c00f3))
+
+
+### Documentation
+
+* address review nits (iframe comment, gitignore, storyboard locale note) ([8f3ab6e](https://github.com/dachrisch/leaguesphere/commit/8f3ab6efcbabb718649855689666ebe191e326e6))
+* **help:** add help videos & howtos planning doc ([2facd2c](https://github.com/dachrisch/leaguesphere/commit/2facd2cb40ef6f7fc20cc8e08d4bb5a413e17c76))
+* **help:** align topic howtos with walkthrough videos ([e7cc4c1](https://github.com/dachrisch/leaguesphere/commit/e7cc4c1385b4278da10c3cf7ba6c7b4605862bdd))
+* **help:** make referee-import storyboard reproducible ([35faece](https://github.com/dachrisch/leaguesphere/commit/35faeceb8e3d2c492d98db130497992282bec5ea))
+
 ## [4.38.0](https://github.com/dachrisch/leaguesphere/compare/v4.37.0...v4.38.0) (2026-10-13)
 
 
