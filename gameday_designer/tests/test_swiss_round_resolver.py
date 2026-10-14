@@ -76,6 +76,40 @@ def test_rematch_avoidance_swaps_adjacent_pairing():
     assert paired == [("T1", "T4"), ("T2", "T3")]
 
 
+def test_adjacent_rematch_swap_stays_within_score_group():
+    # Two score groups: T1-T4 on 2 pts, T5-T8 on 0. The 2-pt group pairs
+    # (T1,T3) and (T2,T4); (T2,T4) is a rematch. Its first neighbour in the
+    # flat list is the 0-pt pair (T5,T7) -- swapping there would drop T2 into
+    # the winless bracket. The adjacent pass must instead trade with the same
+    # group's first pair so every pairing stays inside its score group.
+    result = SwissRoundResolver.resolve_round(
+        seed_order=["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"],
+        points={
+            "T1": 2,
+            "T2": 2,
+            "T3": 2,
+            "T4": 2,
+            "T5": 0,
+            "T6": 0,
+            "T7": 0,
+            "T8": 0,
+        },
+        previous_pairings={frozenset({"T2", "T4"})},
+    )
+    two_pt = {"T1", "T2", "T3", "T4"}
+    assert all(
+        len({(2 if team in two_pt else 0) for team in pair}) == 1
+        for pair in result.pairings
+    )
+    assert result.bye is None
+    assert sorted(tuple(sorted(p)) for p in result.pairings) == [
+        ("T1", "T4"),
+        ("T2", "T3"),
+        ("T5", "T7"),
+        ("T6", "T8"),
+    ]
+
+
 def test_all_teams_paired_or_bye_exactly_once():
     result = SwissRoundResolver.resolve_round(
         seed_order=["T1", "T2", "T3", "T4", "T5", "T6", "T7"],

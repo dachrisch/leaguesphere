@@ -161,6 +161,13 @@ class SwissRoundResolver:
     ) -> List[tuple]:
         if not previous_pairings:
             return list(pairings)
+        group_of = {
+            team: pts for pts, members in groups.items() for team in members
+        }
+
+        def same_group(*teams: str) -> bool:
+            return len({group_of.get(t) for t in teams}) == 1
+
         result = list(pairings)
         for i, (home, away) in enumerate(result):
             if frozenset({home, away}) not in previous_pairings:
@@ -168,6 +175,14 @@ class SwissRoundResolver:
             for j in (i + 1, i - 1):
                 if 0 <= j < len(result):
                     other_home, other_away = result[j]
+                    # Only trade opponents inside one score group here. A
+                    # cross-group pair is a last resort owned by the global
+                    # repair (weighted below rematches); letting the adjacent
+                    # pass cross brackets just because that neighbour came
+                    # first in the list would silently drop a team out of its
+                    # score group even when a same-group swap also existed.
+                    if not same_group(home, away, other_home, other_away):
+                        continue
                     candidate_a = frozenset({home, other_away})
                     candidate_b = frozenset({other_home, away})
                     if (
@@ -180,9 +195,6 @@ class SwissRoundResolver:
         if any(
             frozenset({home, away}) in previous_pairings for home, away in result
         ):
-            group_of = {
-                team: pts for pts, members in groups.items() for team in members
-            }
             result = SwissRoundResolver._repair_rematches_global(
                 result, previous_pairings, group_of, seed_index
             )

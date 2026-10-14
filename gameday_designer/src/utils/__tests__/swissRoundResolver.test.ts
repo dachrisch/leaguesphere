@@ -61,6 +61,31 @@ describe('resolveSwissRound', () => {
     );
   });
 
+  it('keeps an adjacent rematch swap inside the score group', () => {
+    // T1-T4 on 2 pts, T5-T8 on 0. (T2,T4) is a rematch whose first flat-list
+    // neighbour is the 0-pt pair (T5,T7); the adjacent pass must trade with
+    // the same group's first pair instead of dropping T2 into the 0-pt bracket.
+    const result = resolveSwissRound(
+      ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8'],
+      { T1: 2, T2: 2, T3: 2, T4: 2, T5: 0, T6: 0, T7: 0, T8: 0 },
+      new Set(),
+      new Set([pairKey('T2', 'T4')]),
+    );
+    const twoPt = new Set(['T1', 'T2', 'T3', 'T4']);
+    for (const pair of result.pairings) {
+      expect(new Set(pair.map((t) => (twoPt.has(t) ? 2 : 0))).size).toBe(1);
+    }
+    expect(result.bye).toBeNull();
+    expect(result.pairings.map(([h, a]) => pairKey(h, a)).sort()).toEqual(
+      [
+        pairKey('T1', 'T4'),
+        pairKey('T2', 'T3'),
+        pairKey('T5', 'T7'),
+        pairKey('T6', 'T8'),
+      ].sort(),
+    );
+  });
+
   it('pairs or byes every team exactly once', () => {
     const result = resolveSwissRound(
       ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],

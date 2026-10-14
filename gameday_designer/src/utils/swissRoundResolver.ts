@@ -139,6 +139,12 @@ function avoidRematches(
   if (previousPairings.size === 0) return [...pairings];
   const pairKey = (home: string, away: string): string =>
     [home, away].sort().join('|');
+  const groupOf = new Map<string, number>();
+  orderedGroups.forEach((members, groupIdx) => {
+    members.forEach((team) => groupOf.set(team, groupIdx));
+  });
+  const sameGroup = (...teams: string[]): boolean =>
+    new Set(teams.map((t) => groupOf.get(t))).size === 1;
   const result: Array<[string, string]> = pairings.map((p) => [...p] as [string, string]);
   for (let i = 0; i < result.length; i++) {
     const [home, away] = result[i];
@@ -146,6 +152,12 @@ function avoidRematches(
     for (const j of [i + 1, i - 1]) {
       if (j < 0 || j >= result.length) continue;
       const [otherHome, otherAway] = result[j];
+      // Only trade opponents inside one score group here. A cross-group pair
+      // is a last resort owned by the global repair (weighted below
+      // rematches); letting the adjacent pass cross brackets just because
+      // that neighbour came first in the list would silently drop a team out
+      // of its score group even when a same-group swap also existed.
+      if (!sameGroup(home, away, otherHome, otherAway)) continue;
       if (
         !previousPairings.has(pairKey(home, otherAway)) &&
         !previousPairings.has(pairKey(otherHome, away))
@@ -157,10 +169,6 @@ function avoidRematches(
     }
   }
   if (result.some(([home, away]) => previousPairings.has(pairKey(home, away)))) {
-    const groupOf = new Map<string, number>();
-    orderedGroups.forEach((members, groupIdx) => {
-      members.forEach((team) => groupOf.set(team, groupIdx));
-    });
     return repairRematchesGlobal(result, previousPairings, groupOf, seedIndex);
   }
   return result;
