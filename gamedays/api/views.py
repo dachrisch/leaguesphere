@@ -5,6 +5,7 @@ from collections import OrderedDict
 from datetime import datetime
 
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Count, Max
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -308,6 +309,25 @@ class GamedayViewSet(viewsets.ModelViewSet):
             return Response({"state_data": state_data})
 
         if request.method == "PUT":
+            # Once a gameday leaves draft, its designer canvas is a projection
+            # of the published schedule and must not be overwritten wholesale by
+            # a stale client. The only post-publish writes are the server-side
+            # node sync on a game result and the one-time migration of a legacy
+            # gameday that has no state yet (see migration_plan, which uses the
+            # same hasattr guard) -- so allow the PUT only while draft or when
+            # creating the very first state row.
+            if gameday.status != Gameday.STATUS_DRAFT and hasattr(
+                gameday, "designer_state"
+            ):
+                return Response(
+                    {
+                        "detail": (
+                            "Designer state can only be edited while the gameday "
+                            "is in draft status."
+                        )
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             state, created = GamedayDesignerState.objects.get_or_create(gameday=gameday)
             state.state_data = request.data.get("state_data", {})
             state.last_modified_by = request.user
@@ -517,6 +537,42 @@ class GamedayPublishAPIView(APIView):
         return Response(GamedaySerializer(gameday).data, status=status.HTTP_200_OK)
 
 
+def _sync_designer_node_scores(game, halftime_score, final_score):
+    """Mirror a game result into its designer canvas node (server-side).
+
+    The canvas stores each game's scores in the node ``data``. On a locked
+    (published) gameday the client may not PUT the whole ``state_data`` blob,
+    so the result endpoint owns this single-node sync. The node is resolved
+    via ``Gameinfo.designer_node_id`` (set by CanvasPublishService); rows
+    without one (e.g. Swiss games) are skipped.
+    """
+    node_id = game.designer_node_id
+    if not node_id:
+        return
+    try:
+        state = GamedayDesignerState.objects.select_for_update().get(
+            gameday_id=game.gameday_id
+        )
+    except GamedayDesignerState.DoesNotExist:
+        return
+    state_data = dict(state.state_data or {})
+    nodes = state_data.get("nodes")
+    if not isinstance(nodes, list):
+        return
+    for node in nodes:
+        if node.get("id") != node_id:
+            continue
+        data = dict(node.get("data") or {})
+        if halftime_score is not None:
+            data["halftime_score"] = halftime_score
+        if final_score is not None:
+            data["final_score"] = final_score
+        node["data"] = data
+        state.state_data = state_data
+        state.save(update_fields=["state_data"])
+        return
+
+
 class GameResultUpdateAPIView(APIView):
     permission_classes = [IsAuthenticatedOrGamedayOwnerOrStaff]
 
@@ -530,63 +586,68 @@ class GameResultUpdateAPIView(APIView):
         halftime_score = request.data.get("halftime_score")
         final_score = request.data.get("final_score")
 
-        if halftime_score is not None:
-            if game.status == Gameinfo.STATUS_PUBLISHED or game.status == "Geplant":
-                game.status = Gameinfo.STATUS_IN_PROGRESS
-            # Sync to Gameresult records.
-            # Queryset .update() bypasses save(), so auto_now would not fire:
-            # stamp explicitly. The games ETag depends on Max(updated_at).
-            Gameresult.objects.filter(gameinfo=game, isHome=True).update(
-                fh=halftime_score.get("home"), updated_at=timezone.now()
-            )
-            Gameresult.objects.filter(gameinfo=game, isHome=False).update(
-                fh=halftime_score.get("away"), updated_at=timezone.now()
-            )
+        with transaction.atomic():
+            if halftime_score is not None:
+                if game.status == Gameinfo.STATUS_PUBLISHED or game.status == "Geplant":
+                    game.status = Gameinfo.STATUS_IN_PROGRESS
+                # Sync to Gameresult records.
+                # Queryset .update() bypasses save(), so auto_now would not fire:
+                # stamp explicitly. The games ETag depends on Max(updated_at).
+                Gameresult.objects.filter(gameinfo=game, isHome=True).update(
+                    fh=halftime_score.get("home"), updated_at=timezone.now()
+                )
+                Gameresult.objects.filter(gameinfo=game, isHome=False).update(
+                    fh=halftime_score.get("away"), updated_at=timezone.now()
+                )
 
-        if final_score is not None:
-            game.status = Gameinfo.STATUS_COMPLETED
-            # Sync to Gameresult records
-            # Final score in JSON is total, in Gameresult it's sh (since fh is already set)
-            home_res = Gameresult.objects.filter(gameinfo=game, isHome=True).first()
-            away_res = Gameresult.objects.filter(gameinfo=game, isHome=False).first()
+            if final_score is not None:
+                game.status = Gameinfo.STATUS_COMPLETED
+                # Sync to Gameresult records
+                # Final score in JSON is total, in Gameresult it's sh (since fh is already set)
+                home_res = Gameresult.objects.filter(gameinfo=game, isHome=True).first()
+                away_res = Gameresult.objects.filter(gameinfo=game, isHome=False).first()
 
-            home_fh = (
-                halftime_score.get("home", 0)
-                if halftime_score
-                else (home_res.fh if home_res else 0)
-            )
-            away_fh = (
-                halftime_score.get("away", 0)
-                if halftime_score
-                else (away_res.fh if away_res else 0)
-            )
+                home_fh = (
+                    halftime_score.get("home", 0)
+                    if halftime_score
+                    else (home_res.fh if home_res else 0)
+                )
+                away_fh = (
+                    halftime_score.get("away", 0)
+                    if halftime_score
+                    else (away_res.fh if away_res else 0)
+                )
 
-            Gameresult.objects.filter(gameinfo=game, isHome=True).update(
-                fh=home_fh,
-                sh=final_score.get("home", 0) - (home_fh or 0),
-                updated_at=timezone.now(),
-            )
-            Gameresult.objects.filter(gameinfo=game, isHome=False).update(
-                fh=away_fh,
-                sh=final_score.get("away", 0) - (away_fh or 0),
-                updated_at=timezone.now(),
-            )
+                Gameresult.objects.filter(gameinfo=game, isHome=True).update(
+                    fh=home_fh,
+                    sh=final_score.get("home", 0) - (home_fh or 0),
+                    updated_at=timezone.now(),
+                )
+                Gameresult.objects.filter(gameinfo=game, isHome=False).update(
+                    fh=away_fh,
+                    sh=final_score.get("away", 0) - (away_fh or 0),
+                    updated_at=timezone.now(),
+                )
 
-        game.save()
+            game.save()
 
-        # Update gameday status
-        gameday = game.gameday
-        if gameday.status == Gameday.STATUS_PUBLISHED:
-            gameday.status = Gameday.STATUS_IN_PROGRESS
-            gameday.save()
+            # Mirror the result onto the designer canvas node so its scores
+            # survive a reload without the client PUTting the whole state.
+            _sync_designer_node_scores(game, halftime_score, final_score)
 
-        # Check if all games are completed
-        all_games = Gameinfo.objects.filter(gameday=gameday)
-        if all(g.status == Gameinfo.STATUS_COMPLETED for g in all_games):
-            gameday.status = Gameday.STATUS_COMPLETED
-            gameday.save()
+            # Update gameday status
+            gameday = game.gameday
+            if gameday.status == Gameday.STATUS_PUBLISHED:
+                gameday.status = Gameday.STATUS_IN_PROGRESS
+                gameday.save()
 
-        return Response(GameinfoSerializer(game).data, status=status.HTTP_200_OK)
+            # Check if all games are completed
+            all_games = Gameinfo.objects.filter(gameday=gameday)
+            if all(g.status == Gameinfo.STATUS_COMPLETED for g in all_games):
+                gameday.status = Gameday.STATUS_COMPLETED
+                gameday.save()
+
+        return Response(GameInfoSerializer(game).data, status=status.HTTP_200_OK)
 
 
 class SeasonViewSet(viewsets.ReadOnlyModelViewSet):

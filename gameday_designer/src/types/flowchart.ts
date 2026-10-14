@@ -169,11 +169,13 @@ export type StageType = 'STANDARD' | 'RANKING';
  * - manual: No templates (default) - all games added manually
  * - round_robin: Group stage with round robin matchups
  * - placement: Placement rounds (e.g., 1st-4th place)
+ * - swiss: Swiss-system rounds resolved per round from standings (#1970)
  */
 export type ProgressionMode =
   | 'manual'         // No templates (default)
   | 'round_robin'    // Group stage
-  | 'placement';     // Placement rounds
+  | 'placement'      // Placement rounds
+  | 'swiss';         // Swiss-system (JLT Flag 2026 rules)
 
 /**
  * Configuration for Round Robin progression mode.
@@ -205,9 +207,24 @@ export interface ManualConfig {
 }
 
 /**
+ * Configuration for Swiss-system progression mode (#1970, JLT Flag 2026 rules).
+ * Pairings are resolved per round by SwissRoundResolver from the seed list +
+ * live standings — never from a static progressionMapping.
+ */
+export interface SwissConfig {
+  mode: 'swiss';
+  /** Number of rounds to play */
+  rounds: number;
+  /** Pre-tournament seed order (best first) */
+  seedOrder: string[];
+  /** Points awarded for a bye (default 2) */
+  byePoints: number;
+}
+
+/**
  * Union type for all progression configurations.
  */
-export type ProgressionConfig = ManualConfig | RoundRobinConfig | PlacementConfig;
+export type ProgressionConfig = ManualConfig | RoundRobinConfig | PlacementConfig | SwissConfig;
 
 /**
  * Data for a field container node - represents a playing field.
@@ -260,6 +277,14 @@ export interface StageNodeData {
     home: { sourceIndex: number; type: 'winner' | 'loser' | 'rank'; sourceStageId?: string; sourceStageIndex?: number };
     away: { sourceIndex: number; type: 'winner' | 'loser' | 'rank'; sourceStageId?: string; sourceStageIndex?: number };
   }>;
+  /**
+   * Swiss round number (1-based) for stages materialized by
+   * SwissTournamentService (`swiss-round-{n}-field-{f}`). Absent on
+   * manually built stages.
+   */
+  swissRound?: number;
+  /** Field number within the Swiss round (1-based). */
+  swissField?: number;
 }
 
 // ============================================================================
@@ -427,6 +452,33 @@ export interface FlowState {
   globalTeams: GlobalTeam[];
   /** Global team groups - for organizing teams into sections */
   globalTeamGroups: GlobalTeamGroup[];
+  /**
+   * Swiss-system tournament config (#1970). Stored alongside the canvas so a
+   * designer save never wipes it — importState/exportState must round-trip
+   * it untouched. Shape mirrors the backend SwissTournamentService config.
+   */
+  swiss?: SwissTournamentState;
+}
+
+/**
+ * Swiss-system tournament state persisted on the gameday's designer state.
+ * Mirrors `SwissTournamentService.setup()` output on the backend.
+ */
+export interface SwissTournamentState {
+  /** Pre-tournament rank order (best first) as backend Team PKs */
+  seedOrder: number[];
+  /** Total rounds to play */
+  rounds: number;
+  /** Number of fields */
+  fields: number;
+  /** Game duration in minutes */
+  gameDuration: number;
+  /** Planned start time per round ("HH:MM", keys are 1-based round numbers) */
+  roundStartTimes: Record<string, string>;
+  /** Generated rounds with their Gameinfo rows and bye */
+  completedRounds: Array<{ round: number; gameIds: number[]; bye: number | null }>;
+  /** Bye history: team PK (as string) -> round number */
+  byes: Record<string, number>;
 }
 
 // ============================================================================

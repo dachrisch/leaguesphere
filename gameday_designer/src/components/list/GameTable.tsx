@@ -255,6 +255,12 @@ export interface GameTableProps {
   expertMode?: boolean;
   /** Per-game simulated progression, from `useProgressionInspection`. */
   progressionByGameId?: Map<string, GameProgressionCellResult>;
+  /**
+   * Lock per-game time-pencil edits (generated Swiss rounds keep their
+   * scheduled times). Team/result editing stays live — only the time cell
+   * is disabled, with the same localized hint the stage Start input uses.
+   */
+  lockTimeEdits?: boolean;
 }
 
 const GameTable: React.FC<GameTableProps> = memo(({
@@ -282,6 +288,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
   readOnly = false,
   expertMode = false,
   progressionByGameId,
+  lockTimeEdits = false,
 }) => {
   const { t } = useTypedTranslation(['ui', 'domain', 'error', 'validation']);
   const [editingGameId, setEditingGameId] = useState<string | null>(null);
@@ -518,6 +525,7 @@ const GameTable: React.FC<GameTableProps> = memo(({
     const isEditingTime = editingGameId === game.id && editingField === 'time';
     const timeValue = game.data.startTime || '';
     const isManual = game.data.manualTime;
+    const timeLocked = lockTimeEdits;
 
     return (
       <td style={{ backgroundColor: isManual ? '#fff3cd' : undefined }} onClick={(e) => { e.stopPropagation(); onSelectNode(game.id); onHighlightElement(game.id, 'game'); }}>
@@ -554,18 +562,19 @@ const GameTable: React.FC<GameTableProps> = memo(({
         ) : (
           <div className="d-flex align-items-center gap-1">
             <span 
-              onClick={(e) => !readOnly && handleStartEdit(e, game, 'time')} 
-              style={{ cursor: readOnly ? 'default' : 'text' }}
-              title={readOnly ? undefined : (isManual ? t('ui:tooltip.manualTimeHint') : t('ui:tooltip.autoTimeHint'))}
+              onClick={(e) => !readOnly && !timeLocked && handleStartEdit(e, game, 'time')} 
+              style={{ cursor: readOnly || timeLocked ? 'default' : 'text' }}
+              title={timeLocked ? t('ui:swiss.roundTimeLocked') : (readOnly ? undefined : (isManual ? t('ui:tooltip.manualTimeHint') : t('ui:tooltip.autoTimeHint')))}
             >
               {timeValue || '--:--'}
             </span>
-            {!readOnly && (
+            {!readOnly && !timeLocked && (
               <i 
                 className={`bi bi-pencil-fill ${isManual ? 'text-warning' : 'text-muted'}`} 
                 style={{ fontSize: '0.7rem', cursor: 'pointer' }} 
                 onClick={(e) => handleStartEdit(e, game, 'time')}
                 title={t('ui:tooltip.clickToEdit')}
+                data-testid={`game-time-edit-${game.id}`}
               />
             )}
           </div>

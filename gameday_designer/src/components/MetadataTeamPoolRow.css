@@ -7,7 +7,7 @@
   place-items: center;
 }
 
-/* At 1600px+: 2-column layout with equal heights */
+/* At 1600px+: 2-column layout with equal heights (3 columns with swiss card) */
 @media (min-width: 1600px) {
   .metadata-team-pool-row {
     grid-template-columns: 1fr 1fr;
@@ -15,10 +15,16 @@
     grid-auto-rows: 1fr;
     align-items: stretch;
   }
+
+  .metadata-team-pool-row:has(.metadata-team-pool-row__swiss) {
+    grid-template-columns: 1fr 1fr 1fr;
+    max-width: 1980px;
+  }
 }
 
 .metadata-team-pool-row__metadata,
-.metadata-team-pool-row__team-pool {
+.metadata-team-pool-row__team-pool,
+.metadata-team-pool-row__swiss {
   width: 100%;
   max-width: 600px;
   display: flex;
@@ -27,7 +33,8 @@
 
 @media (min-width: 1600px) {
   .metadata-team-pool-row__metadata > *,
-  .metadata-team-pool-row__team-pool > * {
+  .metadata-team-pool-row__team-pool > *,
+  .metadata-team-pool-row__swiss > * {
     flex: 1;
   }
 }
@@ -38,34 +45,7 @@
   max-width: 600px;
 }
 
-/* Team pool card styles */
-.team-pool-card {
-  width: 100%;
-  max-width: 600px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  border: none;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.team-pool-card .card-header {
-  flex-shrink: 0;
-  background-color: #fff;
-  border-bottom: 1px solid #dee2e6;
-  padding: 1rem;
-  border-radius: 8px 8px 0 0;
-}
-
-.team-pool-card .card-body {
-  flex: 1;
-  min-height: 0;
-  padding: 1rem;
-  overflow: hidden;
-}
-
-.team-pool-card.is-highlighted {
-  border-color: var(--bs-info);
-  background-color: rgba(13, 110, 253, 0.05);
-}
+/* Team pool + Swiss cards share the metadata Accordion chrome via
+ * TopRowAccordionCard (.top-row-accordion) — no per-card shadow/border here.
+ * The only card-specific rule left is the team-pool highlight hook, which the
+ * shared component re-exposes through .is-highlighted. */

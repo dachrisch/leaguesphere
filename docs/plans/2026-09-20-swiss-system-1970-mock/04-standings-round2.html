@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Swiss System — Standings and Round 2 generation</title>
+<style>
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#f1f3f5}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit;cursor:pointer;border:none;}
+  .cta{background:#0d6efd;color:#fff;border-radius:8px;padding:10px 20px;font-size:13.5px;font-weight:600;}
+  .cta:hover{background:#0b5ed7}
+  .back:hover{text-decoration:underline}
+  .fwd:hover{text-decoration:underline}
+  .page{min-height:100vh;box-sizing:border-box;background:#f1f3f5;display:flex;flex-direction:column;font-size:14px;color:#212529;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div style="height:56px;flex:0 0 56px;background:#ffffff;border-bottom:1px solid #dee2e6;display:flex;align-items:center;padding:0 28px;gap:12px;">
+    <div style="font-weight:700;font-size:17px;color:#0d6efd;">LeagueSphere</div>
+    <div style="width:1px;height:20px;background:#dee2e6;"></div>
+    <div style="font-size:14px;color:#495057;">Gameday Designer</div>
+    <div style="flex-grow:1;"></div>
+    <div style="font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#0d6efd;background:#e7f1ff;border-radius:999px;padding:4px 10px;">Mock · screen 4 / 6</div>
+    <div style="width:30px;height:30px;border-radius:50%;background:#dee2e6;"></div>
+  </div>
+
+  <div style="flex-grow:1;display:flex;justify-content:center;padding:26px;">
+    <div style="width:1000px;max-width:100%;display:flex;flex-direction:column;gap:16px;">
+      <a class="back" href="03-round1.html" style="font-size:12.5px;color:#0d6efd;font-weight:600;">← Round 1</a>
+
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div style="font-size:19px;font-weight:600;">Control Panel</div>
+        <div style="display:flex;gap:5px;">
+          <div style="width:9px;height:9px;border-radius:50%;background:#0d6efd;"></div>
+          <div id="dot2" style="width:9px;height:9px;border-radius:50%;background:#dee2e6;"></div>
+          <div style="width:9px;height:9px;border-radius:50%;background:#dee2e6;"></div>
+          <div style="width:9px;height:9px;border-radius:50%;background:#dee2e6;"></div>
+        </div>
+        <div id="round-label" style="font-size:12.5px;color:#868e96;">Round 1 complete — awaiting Round 2</div>
+        <div style="font-size:11px;color:#868e96;">🕐 auto-scheduled · organizer can still nudge times</div>
+      </div>
+
+      <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
+
+        <div style="width:480px;max-width:100%;background:#ffffff;border:1px solid #dee2e6;border-radius:10px;overflow:hidden;">
+          <div style="padding:14px 18px;border-bottom:1px solid #eef0f2;">
+            <div style="font-size:16px;font-weight:600;">Round 1 — Final Standings</div>
+            <div style="font-size:12px;color:#868e96;margin-top:2px;">Win = 2 pts · Bye = 2 pts · Loss = 0 pts</div>
+          </div>
+          <div id="standings"></div>
+          <div style="padding:14px 18px;">
+            <button class="cta" onclick="reveal()" style="width:100%;">Generate Round 2 Pairings →</button>
+          </div>
+        </div>
+
+        <div style="width:500px;max-width:100%;background:#f5f9ff;border:1px solid #cfe2ff;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;">
+          <div style="font-size:13px;font-weight:700;color:#0a4fb5;">What just happened</div>
+          <div style="font-size:12.5px;color:#22406f;line-height:1.65;">Round 1 was seed-based, so it never needed standings. Every round after this one is generated fresh from the table on the left — nothing is pre-built ahead of time.</div>
+          <div style="font-size:12.5px;color:#22406f;line-height:1.65;">This is the part that doesn't fit today's schedule engine, which resolves every pairing once, when the template is applied.</div>
+        </div>
+      </div>
+
+      <div id="round2-section" style="display:none;flex-direction:column;gap:16px;">
+
+        <div>
+          <div style="font-size:16px;font-weight:600;">Point Groups → Round 2 of 4</div>
+          <div style="font-size:12.5px;color:#6c757d;margin-top:2px;">Group by points, sort by seed, split top half vs. bottom half. Odd groups float their lowest seed down.</div>
+        </div>
+
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:260px;background:#ffffff;border:1px solid #dee2e6;border-radius:10px;padding:14px 16px;">
+            <div style="font-size:12px;font-weight:700;color:#495057;margin-bottom:8px;">Group A · 2 pts</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:5px 0;"><div style="width:20px;height:20px;border-radius:50%;background:#0d6efd;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 20px;">1</div><div style="flex-grow:1;font-size:12.5px;">Rhein Fire</div></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:5px 0;"><div style="width:20px;height:20px;border-radius:50%;background:#d63384;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 20px;">3</div><div style="flex-grow:1;font-size:12.5px;">Ironclad Razorbacks</div></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:5px 0;"><div style="width:20px;height:20px;border-radius:50%;background:#fd7e14;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 20px;">5</div><div style="flex-grow:1;font-size:12.5px;">Northgate Sentinels</div></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:5px 0;"><div style="width:20px;height:20px;border-radius:50%;background:#198754;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 20px;">7</div><div style="flex-grow:1;font-size:12.5px;">Blackwing Ravens</div></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:5px 0;"><div style="width:20px;height:20px;border-radius:50%;background:#6610f2;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 20px;">9</div><div style="flex-grow:1;font-size:12.5px;">Iron Titans</div><span style="font-size:11px;font-weight:700;color:#b8860b;background:#fff6da;border-radius:5px;padding:2px 6px;">floater ↓ odd group</span></div>
+          </div>
+          <div style="flex:1;min-width:260px;background:#ffffff;border:1px solid #dee2e6;border-radius:10px;padding:14px 16px;">
+            <div style="font-size:12px;font-weight:700;color:#495057;margin-bottom:8px;">Group B · 0 pts <span style="font-weight:400;color:#adb5bd;">(+ floater)</span></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:5px 0;"><div style="width:20px;height:20px;border-radius:50%;background:#6f42c1;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 20px;">2</div><div style="flex-grow:1;font-size:12.5px;">Ember Dragons</div></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:5px 0;"><div style="width:20px;height:20px;border-radius:50%;background:#dc3545;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 20px;">4</div><div style="flex-grow:1;font-size:12.5px;">Harbor Islanders</div></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:5px 0;"><div style="width:20px;height:20px;border-radius:50%;background:#20c997;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 20px;">6</div><div style="flex-grow:1;font-size:12.5px;">Timberline Wolves</div></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:5px 0;"><div style="width:20px;height:20px;border-radius:50%;background:#0dcaf0;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 20px;">8</div><div style="flex-grow:1;font-size:12.5px;">Comet Athletics</div></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:5px 0;"><div style="width:20px;height:20px;border-radius:50%;background:#6610f2;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 20px;">9</div><div style="flex-grow:1;font-size:12.5px;">Iron Titans</div><span style="font-size:11px;font-weight:700;color:#0a4fb5;background:#e7f1ff;border-radius:5px;padding:2px 6px;">↓ arrived</span></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:5px 0;"><div style="width:20px;height:20px;border-radius:50%;background:#6c757d;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 20px;">10</div><div style="flex-grow:1;font-size:12.5px;">Fjord Vikings</div></div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:8px;">Round 2 Pairings</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+            <div style="background:#ffffff;border:1px solid #dee2e6;border-radius:9px;padding:10px 12px;"><div style="font-size:10.5px;color:#adb5bd;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">Field 1 · 11:00</div><div style="display:flex;align-items:center;gap:7px;margin-top:6px;"><div style="width:18px;height:18px;border-radius:50%;background:#0d6efd;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 18px;">1</div><div style="font-size:12.5px;">Rhein Fire</div></div><div style="display:flex;align-items:center;gap:7px;margin-top:4px;"><div style="width:18px;height:18px;border-radius:50%;background:#fd7e14;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 18px;">5</div><div style="font-size:12.5px;">Northgate Sentinels</div></div></div>
+            <div style="background:#ffffff;border:1px solid #dee2e6;border-radius:9px;padding:10px 12px;"><div style="font-size:10.5px;color:#adb5bd;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">Field 2 · 11:00</div><div style="display:flex;align-items:center;gap:7px;margin-top:6px;"><div style="width:18px;height:18px;border-radius:50%;background:#d63384;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 18px;">3</div><div style="font-size:12.5px;">Ironclad Razorbacks</div></div><div style="display:flex;align-items:center;gap:7px;margin-top:4px;"><div style="width:18px;height:18px;border-radius:50%;background:#198754;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 18px;">7</div><div style="font-size:12.5px;">Blackwing Ravens</div></div></div>
+            <div style="background:#ffffff;border:1px solid #dee2e6;border-radius:9px;padding:10px 12px;"><div style="font-size:10.5px;color:#adb5bd;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">Field 1 · 11:40</div><div style="display:flex;align-items:center;gap:7px;margin-top:6px;"><div style="width:18px;height:18px;border-radius:50%;background:#6f42c1;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 18px;">2</div><div style="font-size:12.5px;">Ember Dragons</div></div><div style="display:flex;align-items:center;gap:7px;margin-top:4px;"><div style="width:18px;height:18px;border-radius:50%;background:#0dcaf0;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 18px;">8</div><div style="font-size:12.5px;">Comet Athletics</div></div></div>
+            <div style="background:#ffffff;border:1px solid #dee2e6;border-radius:9px;padding:10px 12px;"><div style="font-size:10.5px;color:#adb5bd;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">Field 2 · 11:40</div><div style="display:flex;align-items:center;gap:7px;margin-top:6px;"><div style="width:18px;height:18px;border-radius:50%;background:#dc3545;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 18px;">4</div><div style="font-size:12.5px;">Harbor Islanders</div></div><div style="display:flex;align-items:center;gap:7px;margin-top:4px;"><div style="width:18px;height:18px;border-radius:50%;background:#6610f2;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 18px;">9</div><div style="font-size:12.5px;">Iron Titans</div></div></div>
+            <div style="background:#ffffff;border:1px solid #dee2e6;border-radius:9px;padding:10px 12px;"><div style="font-size:10.5px;color:#adb5bd;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">Field 1 · 12:20</div><div style="display:flex;align-items:center;gap:7px;margin-top:6px;"><div style="width:18px;height:18px;border-radius:50%;background:#20c997;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 18px;">6</div><div style="font-size:12.5px;">Timberline Wolves</div></div><div style="display:flex;align-items:center;gap:7px;margin-top:4px;"><div style="width:18px;height:18px;border-radius:50%;background:#6c757d;color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 18px;">10</div><div style="font-size:12.5px;">Fjord Vikings</div></div></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:20px;flex-wrap:wrap;">
+          <a class="fwd" href="06-public-standings.html" style="font-size:12.5px;color:#0d6efd;font-weight:600;">↗ View public standings (spectator view)</a>
+          <a class="fwd" href="05-integration-notes.html" style="font-size:12.5px;color:#0d6efd;font-weight:600;">→ How this plugs into the codebase</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  var STANDINGS = [
+    { seed: 1, name: 'Rhein Fire', color: '#0d6efd', pts: 2, record: '1-0', bg: '#ffffff' },
+    { seed: 3, name: 'Ironclad Razorbacks', color: '#d63384', pts: 2, record: '1-0', bg: '#ffffff' },
+    { seed: 5, name: 'Northgate Sentinels', color: '#fd7e14', pts: 2, record: '1-0', bg: '#ffffff' },
+    { seed: 7, name: 'Blackwing Ravens', color: '#198754', pts: 2, record: '1-0', bg: '#ffffff' },
+    { seed: 9, name: 'Iron Titans', color: '#6610f2', pts: 2, record: '1-0', bg: '#fffbea' },
+    { seed: 2, name: 'Ember Dragons', color: '#6f42c1', pts: 0, record: '0-1', bg: '#ffffff' },
+    { seed: 4, name: 'Harbor Islanders', color: '#dc3545', pts: 0, record: '0-1', bg: '#ffffff' },
+    { seed: 6, name: 'Timberline Wolves', color: '#20c997', pts: 0, record: '0-1', bg: '#ffffff' },
+    { seed: 8, name: 'Comet Athletics', color: '#0dcaf0', pts: 0, record: '0-1', bg: '#ffffff' },
+    { seed: 10, name: 'Fjord Vikings', color: '#6c757d', pts: 0, record: '0-1', bg: '#ffffff' }
+  ];
+
+  function renderStandings() {
+    var html = '';
+    STANDINGS.forEach(function (s) {
+      html += '<div style="display:flex;align-items:center;padding:7px 18px;border-bottom:1px solid #f5f6f7;background:' + s.bg + ';">' +
+        '<div style="width:24px;height:24px;border-radius:50%;background:' + s.color + ';color:#fff;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 24px;">' + s.seed + '</div>' +
+        '<div style="flex-grow:1;font-size:13px;padding-left:10px;">' + s.name + '</div>' +
+        '<div style="width:56px;font-size:12px;color:#6c757d;text-align:right;">' + s.record + '</div>' +
+        '<div style="width:40px;font-size:13px;font-weight:700;text-align:right;">' + s.pts + '</div>' +
+      '</div>';
+    });
+    document.getElementById('standings').innerHTML = html;
+  }
+
+  function reveal() {
+    document.getElementById('round2-section').style.display = 'flex';
+    document.getElementById('dot2').style.background = '#0d6efd';
+    document.getElementById('round-label').textContent = 'Round 2 generated';
+  }
+
+  renderStandings();
+</script>
+</body>
+</html>

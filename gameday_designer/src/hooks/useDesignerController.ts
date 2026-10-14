@@ -32,6 +32,7 @@ import type { GamedayMetadata } from '../types/flowchart';
 import type { UseFlowStateReturn } from './useFlowState';
 import { v4 as uuidv4 } from 'uuid';
 import { gamedayApi } from '../api/gamedayApi';
+import { designerApi } from '../api/designerApi';
 import { genericizeFlowState, applyGenericTemplate, GenericTemplate } from '../utils/templateMapper';
 import { trackEvent } from '../trackEvent';
 
@@ -73,16 +74,26 @@ export function useDesignerController(
       await gamedayApi.updateDesignerState(parseInt(gamedayId), state);
     } catch (error) {
       console.error('Failed to save designer state', error);
+      // Rethrow (not boolean): audited all 3 production callers in
+      // ListDesignerApp — autosave try/catch + queued .catch, beforeunload
+      // .catch(()=>{}), handleGenerateSwiss try/catch — all handle rejection,
+      // so no unhandled-rejection risk and the abort-on-save-failure path
+      // stays reachable.
+      throw error;
     }
   }, [gamedayId]);
 
-  // Validate the current flowchart
+  // Validate the current flowchart.
+  // Swiss-aware: games in ungenerated Swiss rounds (round >
+  // swiss.completedRounds.length) are placeholders without teams by design
+  // and skip team-connection blocking errors.
   const validation = useFlowValidation(
     flowState?.nodes || [],
     flowState?.edges || [],
     flowState?.globalTeams || [],
     flowState?.globalTeamGroups || [],
-    flowState?.metadata || {} as GamedayMetadata
+    flowState?.metadata || {} as GamedayMetadata,
+    flowState?.swiss?.completedRounds?.length
   );
 
   // Expert-mode-only progression simulation — a deliberately SEPARATE value
@@ -312,7 +323,8 @@ export function useDesignerController(
                 nodes: timedNodes,
                 edges: imported.edges,
                 globalTeams: imported.globalTeams,
-                globalTeamGroups: imported.globalTeamGroups
+                globalTeamGroups: imported.globalTeamGroups,
+                swiss: fs.swiss
             });
             
             setShowTournamentModal(false);
@@ -403,6 +415,7 @@ export function useDesignerController(
           edges: [], // Edges will be added by assignTeamsToTournament if needed
           globalTeams: teamsToUse,
           globalTeamGroups: allGroups,
+          swiss: fs.swiss,
         });
 
         fs.setSelection({ nodeIds: [], edgeIds: [] });
@@ -528,6 +541,40 @@ export function useDesignerController(
     });
   }, [gamedayId]);
 
+  const handleClearAll = useCallback(async () => {
+    const fs = flowStateRef.current;
+    if (!fs) return;
+    // Swiss gameday: reset the tournament on the backend FIRST so a fresh
+    // setup can run afterwards. A failed reset aborts — nothing is cleared.
+    const hadSwiss = fs.exportState().swiss !== undefined;
+    if (hadSwiss && gamedayId) {
+      try {
+        await designerApi.resetSwissTournament(parseInt(gamedayId));
+      } catch {
+        addNotification('Failed to reset the Swiss tournament', 'danger', 'Error');
+        return;
+      }
+    }
+    fs.clearAll();
+    if (hadSwiss) {
+      // Persist the cleared state explicitly (metadata preserved): the
+      // debounced autosave would otherwise risk writing a stale pre-clear
+      // snapshot back over the empty canvas.
+      try {
+        await saveData({
+          ...fs.exportState(),
+          nodes: [],
+          edges: [],
+          globalTeams: [],
+          globalTeamGroups: [],
+          swiss: undefined,
+        });
+      } catch {
+        addNotification('Failed to clear the schedule', 'danger', 'Error');
+      }
+    }
+  }, [gamedayId, saveData, addNotification]);
+
   const handlersInternal = useMemo(() => ({
     loadData,
     saveData,
@@ -538,7 +585,7 @@ export function useDesignerController(
     handleImport,
     handleExport,
     handleSaveTemplate,
-    handleClearAll: () => flowStateRef.current?.clearAll(),
+    handleClearAll,
     handleUpdateMetadata: (data: Partial<GamedayMetadata>) => flowStateRef.current?.updateMetadata(data),
     handleUpdateNode,
     handleUpdateGlobalTeam: (id: string, data: Record<string, unknown>) => flowStateRef.current?.updateGlobalTeam(id, data),
@@ -595,7 +642,7 @@ export function useDesignerController(
   }), [
     loadData, saveData, expandField, expandStage, handleHighlightElement,
     handleDynamicReferenceClick, handleImport, handleExport, handleSaveTemplate,
-    handleSwapTeams, handleMoveGame, handleGenerateTournament, showTournamentModal,
+    handleClearAll, handleSwapTeams, handleMoveGame, handleGenerateTournament, showTournamentModal,
     dismissNotification, addNotification, onMetadataHighlight, handleUpdateNode, gamedayId
   ]);
 

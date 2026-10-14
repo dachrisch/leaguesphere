@@ -32,6 +32,77 @@ export interface DesignerConfig {
   avatar_url: string | null;
 }
 
+export interface SwissSetupRequest {
+  seed_team_ids: number[];
+  rounds: number;
+  fields: number;
+  game_duration: number;
+  round_start_overrides?: Record<string, string>;
+}
+
+export interface SwissTournamentConfig {
+  seedOrder: number[];
+  rounds: number;
+  fields: number;
+  gameDuration: number;
+  roundStartTimes: Record<string, string>;
+  completedRounds: Array<{ round: number; gameIds: number[]; bye: number | null }>;
+  byes: Record<string, number>;
+}
+
+export interface SwissPairing {
+  home_team_id: number;
+  away_team_id: number;
+}
+
+export interface SwissGeneratedRound {
+  success: boolean;
+  round: number;
+  pairings: SwissPairing[];
+  bye_team_id: number | null;
+  game_ids: number[];
+}
+
+export interface SwissRoundPreview {
+  success: boolean;
+  round: number;
+  pairings: SwissPairing[];
+  bye_team_id: number | null;
+  game_ids: number[];
+}
+
+export interface SwissGeneratePairingOverride {
+  home_team_id: number;
+  away_team_id: number;
+  field?: number;
+  start_time?: string;
+}
+
+export interface SwissGenerateOverrides {
+  pairings: SwissGeneratePairingOverride[];
+  bye_team_id?: number | null;
+}
+
+export interface SwissStandingRow {
+  team_id: number;
+  team_name: string;
+  seed: number;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  points_for: number;
+  points_against: number;
+  byes: number;
+  points: number;
+}
+
+export interface SwissStandings {
+  standings: SwissStandingRow[];
+  rounds_completed: number;
+  rounds_total: number;
+}
+
 /**
  * API client class for Gameday Designer backend operations.
  */
@@ -296,6 +367,93 @@ class DesignerApi {
         });
     }
     return this.configPromise;
+  }
+
+  /**
+   * Persist the Swiss tournament setup for a gameday.
+   *
+   * @param gamedayId - Backend gameday PK
+   * @param setup - Seed order (backend Team PKs, best first), rounds,
+   * fields, game duration and optional per-round start-time overrides
+   */
+  async setupSwissTournament(
+    gamedayId: number,
+    setup: SwissSetupRequest,
+  ): Promise<{ success: boolean; config: SwissTournamentConfig }> {
+    const response = await this.client.post<{ success: boolean; config: SwissTournamentConfig }>(
+      `/gamedays/${gamedayId}/swiss/setup/`,
+      setup,
+    );
+    return response.data;
+  }
+
+  /**
+   * Generate the next Swiss round (round 1 needs no prior results; later
+   * rounds require every game of the previous round to be completed).
+   *
+   * @param gamedayId - Backend gameday PK
+   * @param overrides - Optional edited pairings envelope (per-game field /
+   * start_time plus bye_team_id) to materialize instead of the default draw
+   */
+  async generateSwissRound(
+    gamedayId: number,
+    overrides?: SwissGenerateOverrides,
+  ): Promise<SwissGeneratedRound> {
+    const response = await this.client.post<SwissGeneratedRound>(
+      `/gamedays/${gamedayId}/swiss/generate-round/`,
+      overrides ?? {},
+    );
+    return response.data;
+  }
+
+  /**
+   * Preview the next Swiss round without materializing games.
+   */
+  async previewSwissRound(gamedayId: number): Promise<SwissRoundPreview> {
+    const response = await this.client.post<SwissRoundPreview>(
+      `/gamedays/${gamedayId}/swiss/generate-round/?dry_run=true`,
+      {},
+    );
+    return response.data;
+  }
+
+  /**
+   * Live Swiss standings table for a gameday.
+   */
+  async getSwissStandings(gamedayId: number): Promise<SwissStandings> {
+    const response = await this.client.get<SwissStandings>(
+      `/gamedays/${gamedayId}/swiss/standings/`,
+    );
+    return response.data;
+  }
+
+  /**
+   * Full reset of the Swiss tournament: deletes the ``swiss`` config and
+   * all Swiss-stage games so setup can run again from scratch.
+   */
+  async resetSwissTournament(
+    gamedayId: number,
+  ): Promise<{ success: boolean; deleted_games: number }> {
+    const response = await this.client.post<{ success: boolean; deleted_games: number }>(
+      `/gamedays/${gamedayId}/swiss/reset/`,
+      {},
+    );
+    return response.data;
+  }
+
+  /**
+   * Update planned start times for not-yet-generated Swiss rounds.
+   * Already-generated games keep their scheduled times (future-only).
+   */
+  async updateSwissRoundTimes(
+    gamedayId: number,
+    overrides: Record<string, string>,
+  ): Promise<{ success: boolean; roundStartTimes: Record<string, string> }> {
+    const response = await this.client.post<{ success: boolean; roundStartTimes: Record<string, string> }>(
+      `/gamedays/${gamedayId}/swiss/round-times/`,
+      { round_start_overrides: overrides },
+    );
+    return response.data;
   }
 }
 

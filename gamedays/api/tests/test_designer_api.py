@@ -31,6 +31,57 @@ class DesignerAPITest(APITestCase):
         state = GamedayDesignerState.objects.get(gameday=self.gameday)
         assert state.state_data["nodes"][0]["id"] == "2"
 
+    def test_update_designer_state_rejected_when_published(self):
+        """The whole-canvas PUT is a draft-only operation. Once published the
+        canvas is a projection of the published schedule; the only legitimate
+        post-publish write is the server-side node sync on a game result, so a
+        stale client must not be able to overwrite the state_data blob."""
+        self.gameday.status = Gameday.STATUS_PUBLISHED
+        self.gameday.save()
+        GamedayDesignerState.objects.create(
+            gameday=self.gameday, state_data={"nodes": [{"id": "keep"}]}
+        )
+        url = f"/api/gamedays/{self.gameday.id}/designer-state/"
+
+        response = self.client.put(
+            url, {"state_data": {"nodes": [{"id": "clobber"}]}}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        state = GamedayDesignerState.objects.get(gameday=self.gameday)
+        assert state.state_data["nodes"][0]["id"] == "keep"
+
+    def test_update_designer_state_allows_initial_migration_write_when_published(self):
+        """A legacy published gameday with no designer state yet may receive its
+        one-time migration write (see MigrateGamedayRunner); only overwriting an
+        existing canvas is refused."""
+        self.gameday.status = Gameday.STATUS_PUBLISHED
+        self.gameday.save()
+        url = f"/api/gamedays/{self.gameday.id}/designer-state/"
+
+        response = self.client.put(
+            url, {"state_data": {"nodes": [{"id": "m"}]}}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert (
+            GamedayDesignerState.objects.get(gameday=self.gameday)
+            .state_data["nodes"][0]["id"]
+            == "m"
+        )
+
+    def test_get_designer_state_still_allowed_when_published(self):
+        self.gameday.status = Gameday.STATUS_PUBLISHED
+        self.gameday.save()
+        GamedayDesignerState.objects.create(
+            gameday=self.gameday, state_data={"nodes": [{"id": "1"}]}
+        )
+        url = f"/api/gamedays/{self.gameday.id}/designer-state/"
+
+        response = self.client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+
     def test_get_designer_state_seeds_metadata_from_gameday_when_state_is_empty(self):
         """For a new gameday with no stored state_data, GET should return metadata
         seeded from the Gameday model so the designer form shows correct defaults."""

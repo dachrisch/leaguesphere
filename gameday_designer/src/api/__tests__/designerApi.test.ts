@@ -558,4 +558,157 @@ describe('DesignerApi', () => {
       );
     });
   });
+
+  describe('setupSwissTournament', () => {
+    it('should post the swiss setup for a gameday', async () => {
+      const setup = {
+        seed_team_ids: [11, 22, 33, 44],
+        rounds: 3,
+        fields: 2,
+        game_duration: 30,
+      };
+      const config = {
+        seedOrder: [11, 22, 33, 44],
+        rounds: 3,
+        fields: 2,
+        gameDuration: 30,
+        roundStartTimes: { '1': '09:00', '2': '10:20', '3': '11:40' },
+        completedRounds: [],
+        byes: {},
+      };
+      mockAxiosInstance.post.mockResolvedValue({ data: { success: true, config } });
+
+      const result = await designerApi.setupSwissTournament(42, setup);
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+        '/gamedays/42/swiss/setup/',
+        setup,
+      );
+      expect(result).toEqual({ success: true, config });
+    });
+  });
+
+  describe('generateSwissRound', () => {
+    it('should post a round-generation request and return pairings', async () => {
+      const generated = {
+        success: true,
+        round: 1,
+        pairings: [{ home_team_id: 11, away_team_id: 33 }],
+        bye_team_id: null,
+        game_ids: [101],
+      };
+      mockAxiosInstance.post.mockResolvedValue({ data: generated });
+
+      const result = await designerApi.generateSwissRound(42);
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+        '/gamedays/42/swiss/generate-round/',
+        {},
+      );
+      expect(result).toEqual(generated);
+    });
+
+    it('should post the overrides envelope as body when provided', async () => {
+      const overrides = {
+        pairings: [
+          { home_team_id: 11, away_team_id: 22, field: 2, start_time: '10:20' },
+          { home_team_id: 33, away_team_id: 44 },
+        ],
+        bye_team_id: 55,
+      };
+      const generated = {
+        success: true,
+        round: 2,
+        pairings: [
+          { home_team_id: 11, away_team_id: 22 },
+          { home_team_id: 33, away_team_id: 44 },
+        ],
+        bye_team_id: 55,
+        game_ids: [201, 202],
+      };
+      mockAxiosInstance.post.mockResolvedValue({ data: generated });
+
+      const result = await designerApi.generateSwissRound(42, overrides);
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+        '/gamedays/42/swiss/generate-round/',
+        overrides,
+      );
+      expect(result).toEqual(generated);
+    });
+  });
+
+  describe('previewSwissRound', () => {
+    it('should post a dry_run request and resolve the preview shape', async () => {
+      const preview = {
+        success: true,
+        round: 2,
+        pairings: [{ home_team_id: 11, away_team_id: 22 }],
+        bye_team_id: 33,
+        game_ids: [],
+      };
+      mockAxiosInstance.post.mockResolvedValue({ data: preview });
+
+      const result = await designerApi.previewSwissRound(42);
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+        '/gamedays/42/swiss/generate-round/?dry_run=true',
+        {},
+      );
+      expect(result).toEqual(preview);
+    });
+  });
+
+  describe('getSwissStandings', () => {
+    it('should fetch the standings table for a gameday', async () => {
+      const standings = {
+        standings: [
+          {
+            team_id: 11, team_name: 'A', seed: 0, played: 1, wins: 1,
+            draws: 0, losses: 0, points_for: 10, points_against: 5,
+            byes: 0, points: 2,
+          },
+        ],
+        rounds_completed: 1,
+        rounds_total: 3,
+      };
+      mockAxiosInstance.get.mockResolvedValue({ data: standings });
+
+      const result = await designerApi.getSwissStandings(42);
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        '/gamedays/42/swiss/standings/',
+      );
+      expect(result).toEqual(standings);
+    });
+  });
+
+  describe('resetSwissTournament', () => {
+    it('should post the swiss reset for a gameday and return the deleted count', async () => {
+      mockAxiosInstance.post.mockResolvedValue({ data: { success: true, deleted_games: 4 } });
+
+      const result = await designerApi.resetSwissTournament(42);
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+        '/gamedays/42/swiss/reset/',
+        {},
+      );
+      expect(result).toEqual({ success: true, deleted_games: 4 });
+    });
+  });
+
+  describe('updateSwissRoundTimes', () => {
+    it('should post round start overrides and return the updated plan', async () => {
+      const roundStartTimes = { '1': '09:00', '2': '10:30', '3': '11:40' };
+      mockAxiosInstance.post.mockResolvedValue({ data: { success: true, roundStartTimes } });
+
+      const result = await designerApi.updateSwissRoundTimes(42, { '2': '10:30' });
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+        '/gamedays/42/swiss/round-times/',
+        { round_start_overrides: { '2': '10:30' } },
+      );
+      expect(result).toEqual({ success: true, roundStartTimes });
+    });
+  });
 });
