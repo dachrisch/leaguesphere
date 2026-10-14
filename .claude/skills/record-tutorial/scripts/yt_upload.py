@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -73,6 +74,18 @@ def cmd_auth(args) -> int:
     return 0
 
 
+def _save_token(token_path: Path, creds) -> None:
+    """Write the token JSON with owner-only permissions (0600).
+
+    The file holds a channel refresh token with upload scope, so it must not be
+    world-readable (the default umask would otherwise create it 0644).
+    """
+    token_path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(token_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write(creds.to_json())
+
+
 def _credentials(args):
     from google.oauth2.credentials import Credentials
     from google.auth.transport.requests import Request
@@ -82,7 +95,7 @@ def _credentials(args):
         creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
-            token_path.write_text(creds.to_json(), encoding="utf-8")
+            _save_token(token_path, creds)
         if creds and creds.valid:
             return creds
 
@@ -93,8 +106,7 @@ def _credentials(args):
     flow = _flow(args.client_secret)
     flow.fetch_token(code=_extract_code(args.code))
     creds = flow.credentials
-    token_path.parent.mkdir(parents=True, exist_ok=True)
-    token_path.write_text(creds.to_json(), encoding="utf-8")
+    _save_token(token_path, creds)
     print(f"Saved token to {token_path}", file=sys.stderr)
     return creds
 
