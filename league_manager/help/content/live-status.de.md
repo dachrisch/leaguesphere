@@ -1,13 +1,15 @@
 # Live-Status heute
 
-Auf der Startseite siehst du auf einen Blick, was heute läuft: welche Spieltage
-anstehen, welche gerade laufen und welche abgeschlossen sind.
+Auf der Startseite siehst du, welche Spieltage heute stattfinden. Wie weit sie
+sind – anstehend, live oder beendet – zeigt dir die Fortschrittsansicht.
 
 ## Status auf einen Blick
 
-- **Bevorstehend** – der Spieltag beginnt später.
-- **Läuft** – Spiele sind gerade im Gange.
-- **Abgeschlossen** – alle Ergebnisse sind erfasst.
+In der Fortschrittsansicht trägt jeder Spieltag ein Abzeichen:
+
+- **ANSTEHEND** – der Spieltag beginnt später.
+- **LIVE** – Spiele sind gerade im Gange.
+- **BEENDET** – alle Ergebnisse sind erfasst.
 
 ## Live verfolgen
 

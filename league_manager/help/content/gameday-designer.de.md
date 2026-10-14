@@ -6,7 +6,7 @@ Vorlagen.
 
 ## Geführter Start
 
-Beim ersten Mal nimmt dich eine kurze Tour an die Hand:
+Der Designer führt dich Schritt für Schritt durch den Aufbau:
 
 1. Wähle Liga, Saison und Datum.
 2. Lege Teams, Felder und Spielzeiten fest.
