@@ -60,6 +60,10 @@ action:
 - hold: 3
 ```
 
+A storyboard filename may carry a locale suffix when its captions are in a specific
+language (e.g. `share-widget.de.md` for German). This skill's example commands below
+use `<slug>.md` — pass the storyboard's actual filename.
+
 `action` is one of `navigate` / `click` / `fill` / `wait` / `hover`. `target` is a URL
 (for `navigate`) or a CSS selector (for everything else) — prefer `[data-testid="..."]`
 selectors already present in `gameday_designer/src/**/*.tsx` over fragile structural

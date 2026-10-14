@@ -194,5 +194,6 @@ test-reports/
 Testing release detection
 junit.xml
 
-# Google OAuth client secrets — never commit (use docs/guides/*.json locally only)
+# Google OAuth client secrets — never commit. Keep them outside tracked
+# directories (e.g. ~/.config/leaguesphere/); this pattern is a safety net only.
 client_secret_*.json

@@ -39,9 +39,10 @@
 
             {% if topic.video %}
             <div class="ratio ratio-16x9 mb-4">
-                {% comment %}The site sends Referrer-Policy: same-origin, which drops the Referer on
-                cross-origin requests and makes YouTube refuse the embed (Error 153). The iframe's
-                referrerpolicy attribute overrides that for this request.{% endcomment %}
+                {% comment %}The iframe's referrerpolicy attribute wins over the document
+                policy, so it overrides whatever Referrer-Policy the edge sends. It guards
+                against a policy that drops the Referer on cross-origin requests (e.g.
+                `same-origin`), which makes YouTube refuse the embed (Error 153).{% endcomment %}
                 <iframe src="{{ topic.video }}" title="{{ topic.title }}"
                         referrerpolicy="strict-origin-when-cross-origin"
                         allowfullscreen loading="lazy"></iframe>
