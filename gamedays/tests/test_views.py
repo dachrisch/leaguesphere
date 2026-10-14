@@ -145,6 +145,18 @@ class TestGamedayDetailView(TestCase):
         resp = self.client.get(reverse(LEAGUE_GAMEDAY_DETAIL, args=[00]))
         assert resp.status_code == HTTPStatus.NOT_FOUND
 
+    def test_detail_view_renders_with_non_numeric_season_name(self):
+        # Regression: the season's name is not always a bare year (the demo
+        # seeds "2025/2026"). The detail view must not try to reverse a URL
+        # that expects an integer season with the Season object.
+        gameday = DBSetup().create_empty_gameday()
+        gameday.season.name = "2025/2026"
+        gameday.season.save()
+        resp = self.client.get(
+            reverse(LEAGUE_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk})
+        )
+        assert resp.status_code == HTTPStatus.OK
+
 
 class TestGamedayDetailViewEscaping(TestCase):
     """Pinned through the view: calling to_html(escape=True) directly would
