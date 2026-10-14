@@ -86,6 +86,37 @@ class TestHelpLanguageFallback(TestCase):
         assert "LeagueSphere" in response.content.decode()
 
 
+class TestHelpOpenGraph(TestCase):
+    def test_help_index_has_help_specific_og_title(self):
+        response = self.client.get(reverse("help-index"))
+
+        content = response.content.decode()
+        assert '<meta property="og:title" content="Hilfe - LeagueSphere">' in content
+        assert "Welcome to leaguesphere" not in content
+
+    def test_help_topic_og_title_uses_topic_title(self):
+        response = self.client.get(
+            reverse("help-topic", kwargs={"slug": "getting-started"})
+        )
+
+        content = response.content.decode()
+        assert (
+            '<meta property="og:title" content="Leaguesphere - Erste Schritte">'
+            in content
+        )
+
+    def test_help_topic_og_description_uses_topic_summary(self):
+        response = self.client.get(
+            reverse("help-topic", kwargs={"slug": "getting-started"})
+        )
+
+        content = response.content.decode()
+        assert (
+            'content="Was LeagueSphere ist, welche Rollen es gibt und wie du dich '
+            'anmeldest."' in content
+        )
+
+
 class TestHelpRegistry(TestCase):
     def test_every_topic_has_german_content_file(self):
         content_dir = Path(__file__).resolve().parent.parent / "help" / "content"

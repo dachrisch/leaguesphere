@@ -18,6 +18,7 @@ LeagueSphere serves amateur flag-football leagues. League administrators plan ga
 - [Gameday detail](https://leaguesphere.app/gamedays/gameday/{id}/): schedule, results, and progress of one gameday
 - [Team roster](https://leaguesphere.app/passcheck/team/{id}/list/): public roster of a single team
 - [Officials assignments](https://leaguesphere.app/officials/einsaetze/): referee assignments per gameday
+- [Help](https://leaguesphere.app/help/): in-app howtos for gamedays, tables, teams, officials and the 2026 features (German)
 
 ## Machine-readable data
 
