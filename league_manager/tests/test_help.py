@@ -137,6 +137,17 @@ class TestHelpRegistry(TestCase):
 PROMISED_TOPICS = ["spieltage", "ligatabellen", "teams-offizielle", "share-widget"]
 
 
+NEW_TOPICS = ["liga-verwalten", "ergebnisse-erfassen", "offizielle-statistik"]
+
+
+class TestNewLeagueAndResultsTopics(TestCase):
+    def test_new_topics_render(self):
+        for slug in NEW_TOPICS:
+            response = self.client.get(reverse("help-topic", kwargs={"slug": slug}))
+            assert response.status_code == 200, slug
+            assert "<h1" in response.content.decode(), slug
+
+
 class TestPromisedSections(TestCase):
     def test_promised_topics_render_with_a_screenshot(self):
         for slug in PROMISED_TOPICS:
