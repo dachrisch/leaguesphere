@@ -26,5 +26,12 @@ def test_client_secret_is_optional_for_upload():
 
 
 def test_flow_requires_client_secret():
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match="client-secret"):
         _flow("")
+
+
+def test_client_secret_parses_when_supplied():
+    args = build_parser().parse_args(
+        ["--client-secret", "s.json", "upload", "--file", "x.mp4", "--title", "t"]
+    )
+    assert args.client_secret == "s.json"

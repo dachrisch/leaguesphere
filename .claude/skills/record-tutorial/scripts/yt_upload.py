@@ -7,16 +7,15 @@ silent captioned .mp4, this pushes it to the channel.
 Auth is an OAuth *installed-app* flow in two manual steps (the agent cannot
 click through Google's consent screen for you):
 
-    python yt_upload.py auth  --client-secret <client_secret.json>
+    python yt_upload.py --client-secret <client_secret.json> auth
     # open the printed URL, grant access, copy the code (or the whole
     # http://localhost/?code=... redirect URL)
-    python yt_upload.py upload --client-secret <client_secret.json> \\
+    python yt_upload.py --client-secret <client_secret.json> upload \\
         --file ~/leaguesphere-tutorials/share-widget.mp4 \\
         --title "..." --description "..." --tags help,tutorial
 
 The refresh token lives at ``~/.config/leaguesphere/youtube_token.json`` (default;
-override with ``--token``). It can be seeded from the ``YOUTUBE_OAUTH_TOKEN_B64``
-environment variable, so later uploads need no browser.
+override with ``--token``), so later uploads need no browser.
 
 Requires: google-api-python-client google-auth-oauthlib google-auth-httplib2
 """
@@ -39,7 +38,7 @@ DEFAULT_TOKEN = Path.home() / ".config" / "leaguesphere" / "youtube_token.json"
 LEAGUESPHERE_CATEGORY_ID = "17"  # Sports
 
 
-def _flow(client_secret: str):
+def _flow(client_secret: str | None):
     if not client_secret:
         raise SystemExit("--client-secret is required for the interactive auth flow.")
 
