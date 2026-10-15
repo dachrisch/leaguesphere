@@ -1,5 +1,14 @@
 # Changelog
 
+## [4.40.0](https://github.com/dachrisch/leaguesphere/compare/v4.39.1...v4.40.0) (2026-10-14)
+
+
+### Features
+
+* **help:** add Open Graph tags and link help topics from llms files ([adf37ef](https://github.com/dachrisch/leaguesphere/commit/adf37ef2c4c121fa5ad751b060b06c8dc7a5ef8d))
+* **help:** Open Graph tags + link help from llms files ([90e0c45](https://github.com/dachrisch/leaguesphere/commit/90e0c4540c747a73b6fefe389fa235d32b12933b))
+* **swiss:** draw the seed order at setup ([c74d4d0](https://github.com/dachrisch/leaguesphere/commit/c74d4d015cd37b3035468fdd3aef2b31074f3697))
+
 ## [4.39.1](https://github.com/dachrisch/leaguesphere/compare/v4.39.0...v4.39.1) (2026-10-14)
 
 
