@@ -113,8 +113,10 @@ def _seed_token_from_env(token_path: Path) -> None:
         return
     try:
         incoming = json.loads(base64.b64decode(raw, validate=True))
-    except (ValueError, json.JSONDecodeError) as exc:
+    except ValueError as exc:
         raise SystemExit(f"{TOKEN_ENV_VAR} is not valid base64-encoded JSON: {exc}") from exc
+    if not isinstance(incoming, dict):
+        raise SystemExit(f"{TOKEN_ENV_VAR} did not decode to a JSON object.")
     if token_path.exists():
         try:
             existing = json.loads(token_path.read_text(encoding="utf-8"))
