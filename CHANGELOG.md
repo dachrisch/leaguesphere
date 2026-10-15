@@ -1,5 +1,28 @@
 # Changelog
 
+## [4.41.0](https://github.com/dachrisch/leaguesphere/compare/v4.40.0...v4.41.0) (2026-10-15)
+
+
+### Features
+
+* **demo:** seed officials crew and full game schedule ([#2067](https://github.com/dachrisch/leaguesphere/issues/2067)) ([10cc0ab](https://github.com/dachrisch/leaguesphere/commit/10cc0ab4a7fc04f72ee90ff3db118b4aec3b1440))
+* **help:** league, results and officials topics with walkthrough videos ([#2071](https://github.com/dachrisch/leaguesphere/issues/2071)) ([066afc5](https://github.com/dachrisch/leaguesphere/commit/066afc509ac59136438299ca3313f8308ba84254))
+* **record-tutorial:** make --client-secret optional when a token exists ([5fc1977](https://github.com/dachrisch/leaguesphere/commit/5fc197712f309b7b2dcb007c600f9b9f31ec6284))
+* **record-tutorial:** seed yt_upload token from YOUTUBE_OAUTH_TOKEN_B64 ([1ddd6ef](https://github.com/dachrisch/leaguesphere/commit/1ddd6ef6fc7aa5eba76449dbe4c0ba4f977a86f6))
+* **record-tutorial:** unattended YouTube upload token for yt_upload.py ([044a5bf](https://github.com/dachrisch/leaguesphere/commit/044a5bf50ac96da3c863aeb5efdede1c81c020a2))
+
+
+### Bug Fixes
+
+* **record-tutorial:** drop premature env-seed docstring; tighten secret tests ([efb46c6](https://github.com/dachrisch/leaguesphere/commit/efb46c605455fc6167d17b9d15d442f7ceb5961f))
+* **record-tutorial:** guard yt_upload token env against non-object JSON ([e30a3c1](https://github.com/dachrisch/leaguesphere/commit/e30a3c14ae7d8f4f205f3579539da9ae6ed41476))
+
+
+### Documentation
+
+* **record-tutorial:** upload finished video to bumble:tube automatically ([2d23448](https://github.com/dachrisch/leaguesphere/commit/2d234483fc8940d06a65e411e5b0fa325558a40d))
+* **record-tutorial:** upload finished video to bumble:tube automatically ([9ec7646](https://github.com/dachrisch/leaguesphere/commit/9ec76466d1402bac66ba1f358b597842d26f21bd))
+
 ## [4.40.0](https://github.com/dachrisch/leaguesphere/compare/v4.39.1...v4.40.0) (2026-10-14)
 
 
