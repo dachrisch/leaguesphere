@@ -14,9 +14,15 @@ Pre-flight (off camera, per SKILL.md):
 - Datum bewusst auf **heute** setzen, damit ein späterer Ergebnis-Rundgang
   (Scorecard listet nur heutige Spieltage) darauf aufbauen kann.
 
-Befund: `/gamedays/gameday/<id>/` (Detailseite) antwortet auf der Demo mit
-HTTP 500 – der Rundgang endet daher im Assistenten/der Spieleliste und **nicht**
-auf der Spieltags-Detailseite.
+Befunde (live gegen demo.leaguesphere.app v4.40.0+demo.1, 2026-10-15):
+- `/gamedays/gameday/<id>/` (Detailseite) antwortet auf der Demo mit HTTP 500 –
+  der Rundgang endet daher auf `/gamedays/gameday/<id>/gameinfos/update/`
+  („Spielplan aktualisieren") und **nicht** auf der Detailseite.
+- Das gewählte **Format muss zu den gewählten Gruppen passen**: `8_2` (2 Gruppen)
+  mit nur einer Gruppe `Gruppe 1` führte in Schritt 2 des Assistenten zu **HTTP
+  500**. Konsistent z. B. `Gruppe 1` + `3_1` (3 Teams, 1 Gruppe, 1 Feld).
+- Der Assistent legt Spiele an; der klassische Weg erzeugt einen
+  **veröffentlichten** Spieltag.
 
 ## Step 1
 - caption: Neuen Spieltag anlegen
@@ -81,11 +87,11 @@ auf der Spieltags-Detailseite.
 ## Step 11
 - caption: Spielplan wird berechnet
 - action: wait
-- target: the generated schedule in #gameinfos-form
+- target: the generated schedule on /gamedays/gameday/<id>/gameinfos/update/ (title "Spielplan aktualisieren - Spiele")
 - hold: 4
 
 ## Step 12
 - caption: Spielplan prüfen und übernehmen
 - action: wait
-- target: the "#gameinfos-form" table with the generated games
+- target: the "Spielplan aktualisieren" table with the generated games (Zeit, Feld, Heim, Gast)
 - hold: 4
