@@ -147,6 +147,13 @@ class TestNewLeagueAndResultsTopics(TestCase):
             assert response.status_code == 200, slug
             assert "<h1" in response.content.decode(), slug
 
+    def test_new_topics_embed_a_video(self):
+        for slug in NEW_TOPICS:
+            response = self.client.get(reverse("help-topic", kwargs={"slug": slug}))
+            assert (
+                "https://www.youtube.com/embed/" in response.content.decode()
+            ), f"{slug}: expected an embedded walkthrough video"
+
 
 class TestPromisedSections(TestCase):
     def test_promised_topics_render_with_a_screenshot(self):

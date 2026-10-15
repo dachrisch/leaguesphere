@@ -165,6 +165,7 @@ HELP_TOPICS = [
         },
         icon="bi-clipboard-plus",
         order=5,
+        video="https://www.youtube.com/embed/876HYWyVNFs",
     ),
     HelpTopic(
         slug="ergebnisse-erfassen",
@@ -176,6 +177,7 @@ HELP_TOPICS = [
         },
         icon="bi-clipboard-check",
         order=35,
+        video="https://www.youtube.com/embed/lW-sky-op6M",
     ),
     HelpTopic(
         slug="offizielle-statistik",
@@ -190,6 +192,7 @@ HELP_TOPICS = [
         },
         icon="bi-bar-chart",
         order=40,
+        video="https://www.youtube.com/embed/g9QuDwGZhK8",
     ),
 ]
 
