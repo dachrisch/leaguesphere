@@ -28,6 +28,7 @@ npm install
 node recon.js          # read-only inventory (gamedays, templates, games)
 node provoke-api.js    # API 4xx/5xx matrix (gamelog, halftime/finalize/possession, template apply)
 node lifecycle.js      # create gameday -> placeholders -> apply -> publish -> score
+node swiss.js          # Swiss 6-team/4-round tournament + a normal result write
 node verify-demo.js    # seed-state restore check after a run
 ```
 
@@ -63,3 +64,8 @@ steps, per-step screenshots.
   `DRAFT`, then `DELETE` (204).
 - Scratch gamedays/templates created by a run should be deleted before the
   run finishes (demo resets nightly, but a same-day rerun collides).
+- **A played gameday cannot be deleted over the API.** `swiss/reset` is
+  draft-only, unlocking is refused once results exist, and a non-draft
+  gameday can't be `DELETE`d. A run that plays a *published* gameday (e.g.
+  `swiss.js`) therefore leaves it behind until the nightly reset — the script
+  logs this instead of pretending cleanup succeeded.
