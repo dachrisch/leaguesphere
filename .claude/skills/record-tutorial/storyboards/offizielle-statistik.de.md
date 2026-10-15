@@ -11,7 +11,11 @@ Pre-flight (off camera, per SKILL.md):
 - Braucht `GameOfficial`-Daten: die Demo muss mit dem erweiterten Seed
   (`seed_demo_data`, „Demo Officials") neu befüllt sein. Die Bestenliste zeigt
   nur Offizielle mit **≥ 10** erfassten Spielen.
-- `/officials/einsaetze/` ist 24 h gecacht – ggf. frisch nach dem Seed aufnehmen.
+- `/officials/einsaetze/` ist 24 h gecacht – ggf. frisch nach dem Seed aufnehmen
+  (Cache über den „Clear Cache"-Knopf leeren).
+- Der **Lizenz-Check** (`/officials/licensecheck/<course_id>/`) antwortet auf der
+  Demo mit **HTTP 500** (Moodle-Anbindung fehlt) und ist daher **nicht** Teil des
+  Videos. `/officials/einsaetze/` zeigt auf der Demo nur wenige Einträge.
 
 ## Step 1
 - caption: Offizielle-Übersicht
@@ -54,9 +58,3 @@ Pre-flight (off camera, per SKILL.md):
 - action: wait
 - target: the assignments table (Datum, Spieltag, Team, Name, Position)
 - hold: 4
-
-## Step 8
-- caption: Lizenz-Check (Staff)
-- action: navigate
-- target: /officials/licensecheck/15/
-- hold: 3
