@@ -8,6 +8,7 @@
     "recon": "node recon.js",
     "provoke": "node provoke-api.js",
     "lifecycle": "node lifecycle.js",
+    "swiss": "node swiss.js",
     "verify": "node verify-demo.js"
   },
   "dependencies": {
