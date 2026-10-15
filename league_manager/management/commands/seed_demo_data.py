@@ -1,15 +1,30 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from django.utils import timezone
-from gamedays.models import Team, Season, League, Association, SeasonLeagueTeam, Gameday, Gameinfo, Gameresult, Person
+from gamedays.models import (
+    Team,
+    Season,
+    League,
+    Association,
+    SeasonLeagueTeam,
+    Gameday,
+    Gameinfo,
+    GameOfficial,
+    Gameresult,
+    Person,
+)
+from officials.models import Official, OfficialLicense, OfficialLicenseHistory
 from passcheck.models import Player, Playerlist
 from league_table.models import LeagueGroup
 import random
 from datetime import datetime, timedelta, date
 
+OFFICIALS_TEAM_NAME = "Demo Officials"
+OFFICIAL_POSITIONS = ["Referee", "Down Judge", "Field Judge", "Side Judge"]
+
 
 class Command(BaseCommand):
-    help = 'Seed demo database with synthetic data for demo.leaguesphere.app'
+    help = "Seed demo database with synthetic data for demo.leaguesphere.app"
 
     def handle(self, *args, **options):
         self.stdout.write("Starting demo data seeding...")
@@ -46,21 +61,31 @@ class Command(BaseCommand):
         gamedays_count = self.create_gamedays(seasons, leagues, teams)
         self.stdout.write(f"✓ Created {gamedays_count} gamedays with sample games")
 
-        self.stdout.write(self.style.SUCCESS("✅ Demo data seeding completed successfully!"))
+        # Create an officials crew and assign them to the seeded games, so the
+        # officials statistics pages and the scorecard official dropdowns are
+        # populated for demo/help-video capture.
+        gamedays = list(Gameday.objects.filter(season=seasons[-1])) if seasons else []
+        officials_count = self.create_officials(associations, gamedays)
+        self.stdout.write(
+            f"✓ Created {officials_count} officials and assigned them to games"
+        )
+
+        self.stdout.write(
+            self.style.SUCCESS("✅ Demo data seeding completed successfully!")
+        )
 
     def create_associations(self):
         """Create demo associations representing different regional governing bodies."""
         associations_data = [
-            {'abbr': 'MPL', 'name': 'Metropolitan Premier League'},
-            {'abbr': 'UNC', 'name': 'United Nations Cup'},
-            {'abbr': 'CSF', 'name': 'Continental Soccer Federation'},
-            {'abbr': 'RSF', 'name': 'Regional Soccer Federation'},
+            {"abbr": "MPL", "name": "Metropolitan Premier League"},
+            {"abbr": "UNC", "name": "United Nations Cup"},
+            {"abbr": "CSF", "name": "Continental Soccer Federation"},
+            {"abbr": "RSF", "name": "Regional Soccer Federation"},
         ]
         associations = []
         for data in associations_data:
             assoc, created = Association.objects.get_or_create(
-                abbr=data['abbr'],
-                defaults={'name': data['name']}
+                abbr=data["abbr"], defaults={"name": data["name"]}
             )
             associations.append(assoc)
         return associations
@@ -68,16 +93,15 @@ class Command(BaseCommand):
     def create_leagues(self):
         """Create demo leagues."""
         league_names = [
-            'Premier Division',
-            'Championship Division',
-            'League One',
-            'League Two',
+            "Premier Division",
+            "Championship Division",
+            "League One",
+            "League Two",
         ]
         leagues = []
         for name in league_names:
             league, created = League.objects.get_or_create(
-                name=name,
-                defaults={'slug': name.lower().replace(' ', '-')}
+                name=name, defaults={"slug": name.lower().replace(" ", "-")}
             )
             leagues.append(league)
         return leagues
@@ -85,15 +109,14 @@ class Command(BaseCommand):
     def create_seasons(self):
         """Create demo seasons."""
         season_names = [
-            '2023/2024',
-            '2024/2025',
-            '2025/2026',
+            "2023/2024",
+            "2024/2025",
+            "2025/2026",
         ]
         seasons = []
         for name in season_names:
             season, created = Season.objects.get_or_create(
-                name=name,
-                defaults={'slug': name.lower().replace('/', '-')}
+                name=name, defaults={"slug": name.lower().replace("/", "-")}
             )
             seasons.append(season)
         return seasons
@@ -101,29 +124,38 @@ class Command(BaseCommand):
     def create_teams(self, associations):
         """Create demo teams with predefined data."""
         team_data = [
-            {'name': 'Phoenix United', 'description': 'The rising bird team from the north'},
-            {'name': 'Stellar Strikers', 'description': 'Bright stars of the south'},
-            {'name': 'Velocity FC', 'description': 'Speed and precision football'},
-            {'name': 'Thunder Titans', 'description': 'Mighty and powerful'},
-            {'name': 'Crystal Eagles', 'description': 'Pure and soaring high'},
-            {'name': 'Quantum Wolves', 'description': 'Advanced and fierce'},
-            {'name': 'Solar Panthers', 'description': 'Energetic and athletic'},
-            {'name': 'Nexus Rockets', 'description': 'Connected and fast'},
-            {'name': 'Zenith Dragons', 'description': 'Peak performance team'},
-            {'name': 'Horizon Falcons', 'description': 'Looking forward and determined'},
-            {'name': 'Infinity Cougars', 'description': 'Endless potential and strength'},
-            {'name': 'Aurora Leopards', 'description': 'Beautiful dawn athletes'},
+            {
+                "name": "Phoenix United",
+                "description": "The rising bird team from the north",
+            },
+            {"name": "Stellar Strikers", "description": "Bright stars of the south"},
+            {"name": "Velocity FC", "description": "Speed and precision football"},
+            {"name": "Thunder Titans", "description": "Mighty and powerful"},
+            {"name": "Crystal Eagles", "description": "Pure and soaring high"},
+            {"name": "Quantum Wolves", "description": "Advanced and fierce"},
+            {"name": "Solar Panthers", "description": "Energetic and athletic"},
+            {"name": "Nexus Rockets", "description": "Connected and fast"},
+            {"name": "Zenith Dragons", "description": "Peak performance team"},
+            {
+                "name": "Horizon Falcons",
+                "description": "Looking forward and determined",
+            },
+            {
+                "name": "Infinity Cougars",
+                "description": "Endless potential and strength",
+            },
+            {"name": "Aurora Leopards", "description": "Beautiful dawn athletes"},
         ]
 
         teams = []
         for team_info in team_data:
             team, created = Team.objects.get_or_create(
-                name=team_info['name'],
+                name=team_info["name"],
                 defaults={
-                    'description': team_info['description'],
-                    'location': f"Demo City {random.randint(1, 50)}",
-                    'association': random.choice(associations),
-                }
+                    "description": team_info["description"],
+                    "location": f"Demo City {random.randint(1, 50)}",
+                    "association": random.choice(associations),
+                },
             )
             teams.append(team)
         return teams
@@ -151,14 +183,48 @@ class Command(BaseCommand):
         """Create players for each team."""
         player_count = 0
         first_names = [
-            'Michael', 'David', 'James', 'Robert', 'John', 'Thomas', 'Daniel', 'Matthew',
-            'Christopher', 'Anthony', 'Sarah', 'Emma', 'Lisa', 'Anna', 'Jennifer', 'Maria',
-            'Jessica', 'Laura', 'Michelle', 'Sandra'
+            "Michael",
+            "David",
+            "James",
+            "Robert",
+            "John",
+            "Thomas",
+            "Daniel",
+            "Matthew",
+            "Christopher",
+            "Anthony",
+            "Sarah",
+            "Emma",
+            "Lisa",
+            "Anna",
+            "Jennifer",
+            "Maria",
+            "Jessica",
+            "Laura",
+            "Michelle",
+            "Sandra",
         ]
         last_names = [
-            'Schmidt', 'Mueller', 'Schneider', 'Fischer', 'Weber', 'Meyer', 'Wagner', 'Becker',
-            'Schulz', 'Hoffmann', 'Schroeder', 'Koch', 'Bauer', 'Richter', 'Wolf', 'Schaefer',
-            'Hill', 'Graham', 'Thompson', 'Taylor'
+            "Schmidt",
+            "Mueller",
+            "Schneider",
+            "Fischer",
+            "Weber",
+            "Meyer",
+            "Wagner",
+            "Becker",
+            "Schulz",
+            "Hoffmann",
+            "Schroeder",
+            "Koch",
+            "Bauer",
+            "Richter",
+            "Wolf",
+            "Schaefer",
+            "Hill",
+            "Graham",
+            "Thompson",
+            "Taylor",
         ]
 
         for team in teams:
@@ -174,23 +240,22 @@ class Command(BaseCommand):
                     first_name=first_name,
                     last_name=last_name,
                     defaults={
-                        'sex': sex,
-                        'year_of_birth': year_of_birth,
-                    }
+                        "sex": sex,
+                        "year_of_birth": year_of_birth,
+                    },
                 )
 
                 player, created = Player.objects.get_or_create(
-                    person=person,
-                    defaults={'pass_number': f"{team.id}{i:02d}"}
+                    person=person, defaults={"pass_number": f"{team.id}{i:02d}"}
                 )
 
                 playerlist, created = Playerlist.objects.get_or_create(
                     team=team,
                     player=player,
                     defaults={
-                        'jersey_number': (i % 100),
-                        'joined_on': date.today(),
-                    }
+                        "jersey_number": (i % 100),
+                        "joined_on": date.today(),
+                    },
                 )
 
                 if created:
@@ -202,47 +267,47 @@ class Command(BaseCommand):
         """Create demo user accounts with predefined credentials."""
         demo_accounts = [
             {
-                'username': 'admin@demo.local',
-                'email': 'admin@demo.local',
-                'password': 'DemoAdmin123!',
-                'is_staff': True,
-                'is_superuser': True,
+                "username": "admin@demo.local",
+                "email": "admin@demo.local",
+                "password": "DemoAdmin123!",
+                "is_staff": True,
+                "is_superuser": True,
             },
             {
-                'username': 'referee@demo.local',
-                'email': 'referee@demo.local',
-                'password': 'DemoRef123!',
-                'is_staff': False,
-                'is_superuser': False,
+                "username": "referee@demo.local",
+                "email": "referee@demo.local",
+                "password": "DemoRef123!",
+                "is_staff": False,
+                "is_superuser": False,
             },
             {
-                'username': 'manager@demo.local',
-                'email': 'manager@demo.local',
-                'password': 'DemoMgr123!',
-                'is_staff': False,
-                'is_superuser': False,
+                "username": "manager@demo.local",
+                "email": "manager@demo.local",
+                "password": "DemoMgr123!",
+                "is_staff": False,
+                "is_superuser": False,
             },
             {
-                'username': 'user@demo.local',
-                'email': 'user@demo.local',
-                'password': 'DemoUser123!',
-                'is_staff': False,
-                'is_superuser': False,
+                "username": "user@demo.local",
+                "email": "user@demo.local",
+                "password": "DemoUser123!",
+                "is_staff": False,
+                "is_superuser": False,
             },
         ]
 
         for account in demo_accounts:
             user, created = User.objects.get_or_create(
-                username=account['username'],
+                username=account["username"],
                 defaults={
-                    'email': account['email'],
-                    'is_staff': account['is_staff'],
-                    'is_superuser': account['is_superuser'],
-                    'first_name': account['username'].split('@')[0].title(),
-                }
+                    "email": account["email"],
+                    "is_staff": account["is_staff"],
+                    "is_superuser": account["is_superuser"],
+                    "first_name": account["username"].split("@")[0].title(),
+                },
             )
             if created:
-                user.set_password(account['password'])
+                user.set_password(account["password"])
                 user.save()
 
     def create_gamedays(self, seasons, leagues, teams):
@@ -253,7 +318,7 @@ class Command(BaseCommand):
         latest_season = seasons[-1]
         gameday_count = 0
         now = timezone.now()
-        admin_user = User.objects.filter(username='admin@demo.local').first()
+        admin_user = User.objects.filter(username="admin@demo.local").first()
 
         if not admin_user:
             return 0
@@ -269,11 +334,15 @@ class Command(BaseCommand):
                     league=league,
                     name=gameday_name,
                     defaults={
-                        'date': gameday_date.date(),
-                        'start': '10:00',
-                        'status': Gameday.STATUS_PUBLISHED if day_num == 1 else Gameday.STATUS_DRAFT,
-                        'author': admin_user,
-                    }
+                        "date": gameday_date.date(),
+                        "start": "10:00",
+                        "status": (
+                            Gameday.STATUS_PUBLISHED
+                            if day_num == 1
+                            else Gameday.STATUS_DRAFT
+                        ),
+                        "author": admin_user,
+                    },
                 )
 
                 if created:
@@ -298,7 +367,7 @@ class Command(BaseCommand):
         if len(group_b_teams) < 2:
             group_b_teams = teams[2:4] if len(teams) >= 4 else [teams[0]]
 
-        scheduled_times = ['10:00', '11:15', '12:30']
+        scheduled_times = ["10:00", "11:15", "12:30"]
         game_counter = 0
 
         # Create round-robin games within each group
@@ -307,27 +376,29 @@ class Command(BaseCommand):
 
             # Create or get LeagueGroup
             league_group, _ = LeagueGroup.objects.get_or_create(
-                league=league,
-                season=season,
-                name=group_name
+                league=league, season=season, name=group_name
             )
 
             # Create games between teams in this group
             for i, home_team in enumerate(group_teams):
-                for away_team in group_teams[i+1:]:
+                for away_team in group_teams[i + 1 :]:
                     scheduled = scheduled_times[game_counter % len(scheduled_times)]
 
+                    # Include the (per-game unique) stage in the lookup, not
+                    # just gameday + group - otherwise every game after the
+                    # first in a group would match and be skipped, collapsing
+                    # the round-robin to a single game per group.
                     gameinfo, created = Gameinfo.objects.get_or_create(
                         gameday=gameday,
                         league_group=league_group,
+                        stage=f"Game {game_counter + 1}",
                         defaults={
-                            'scheduled': scheduled,
-                            'field': (game_counter % 3) + 1,
-                            'status': 'Geplant',  # All games start as unplayed (Planned)
-                            'stage': f"Game {game_counter + 1}",
-                            'standing': group_name,
-                            'officials': random.choice([home_team, away_team]),
-                        }
+                            "scheduled": scheduled,
+                            "field": (game_counter % 3) + 1,
+                            "status": "Geplant",  # All games start as unplayed (Planned)
+                            "standing": group_name,
+                            "officials": random.choice([home_team, away_team]),
+                        },
                     )
 
                     if created:
@@ -349,10 +420,10 @@ class Command(BaseCommand):
             team=home_team,
             isHome=True,
             defaults={
-                'fh': home_goals_fh,
-                'sh': home_goals_sh,
-                'pa': random.randint(6, 12),
-            }
+                "fh": home_goals_fh,
+                "sh": home_goals_sh,
+                "pa": random.randint(6, 12),
+            },
         )
 
         # Away team result
@@ -361,8 +432,95 @@ class Command(BaseCommand):
             team=away_team,
             isHome=False,
             defaults={
-                'fh': away_goals_fh,
-                'sh': away_goals_sh,
-                'pa': random.randint(6, 12),
-            }
+                "fh": away_goals_fh,
+                "sh": away_goals_sh,
+                "pa": random.randint(6, 12),
+            },
         )
+
+    def create_officials(self, associations, gamedays):
+        """Create an officials crew and assign it to the seeded games.
+
+        Creates a dedicated "Demo Officials" team plus a handful of officials
+        with licenses, points every seeded game at that team (so the scorecard
+        official dropdowns resolve), and records four GameOfficial positions per
+        game. With enough games that gives several officials the >= 10 games the
+        statistics leaderboard requires (see
+        OfficialsRepositoryService.get_officials_statistics_for_season).
+
+        Returns the number of officials created.
+        """
+        gameinfos = list(Gameinfo.objects.filter(gameday__in=gamedays).order_by("id"))
+        if not gameinfos:
+            return 0
+
+        officials_team, _ = Team.objects.get_or_create(
+            name=OFFICIALS_TEAM_NAME,
+            defaults={
+                "description": "Officiating crew for the demo environment",
+                "location": "Demo City",
+                "association": random.choice(associations) if associations else None,
+            },
+        )
+
+        licenses = []
+        for name in ["F1", "F2", "F3", "F4"]:
+            license_obj, _ = OfficialLicense.objects.get_or_create(name=name)
+            licenses.append(license_obj)
+
+        first_names = [
+            "Alex",
+            "Jamie",
+            "Robin",
+            "Casey",
+            "Jordan",
+            "Morgan",
+            "Taylor",
+            "Drew",
+        ]
+        last_names = [
+            "Berger",
+            "Klein",
+            "Vogel",
+            "Hartmann",
+            "Krause",
+            "Lange",
+            "Peters",
+            "Reuter",
+        ]
+
+        license_year = gameinfos[0].gameday.date.year
+        officials = []
+        for i in range(len(first_names)):
+            official, created = Official.objects.get_or_create(
+                external_id=f"DEMO-OFF-{i + 1:02d}",
+                defaults={
+                    "first_name": first_names[i],
+                    "last_name": last_names[i],
+                    "team": officials_team,
+                    "association": officials_team.association,
+                },
+            )
+            OfficialLicenseHistory.objects.get_or_create(
+                official=official,
+                license=licenses[i % len(licenses)],
+                created_at=date(license_year, 1, 1),
+                defaults={"result": 100},
+            )
+            officials.append(official)
+
+        for game_idx, gameinfo in enumerate(gameinfos):
+            if gameinfo.officials_id != officials_team.id:
+                gameinfo.officials = officials_team
+                gameinfo.save(update_fields=["officials"])
+            for pos_idx, position in enumerate(OFFICIAL_POSITIONS):
+                official = officials[
+                    (game_idx * len(OFFICIAL_POSITIONS) + pos_idx) % len(officials)
+                ]
+                GameOfficial.objects.get_or_create(
+                    gameinfo=gameinfo,
+                    position=position,
+                    defaults={"official": official},
+                )
+
+        return len(officials)
