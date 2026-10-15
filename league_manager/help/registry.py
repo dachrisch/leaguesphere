@@ -155,6 +155,45 @@ HELP_TOPICS = [
         order=50,
         video="https://www.youtube.com/embed/NO2BNJ38jc8",
     ),
+    HelpTopic(
+        slug="liga-verwalten",
+        group="spielbetrieb",
+        title={"de": "Liga & Spieltag verwalten", "en": "Running a gameday"},
+        summary={
+            "de": "Einen Spieltag anlegen, Teams und Felder festlegen und den Spielplan veröffentlichen.",
+            "en": "Create a gameday, set teams and fields, and publish the schedule.",
+        },
+        icon="bi-clipboard-plus",
+        order=5,
+        video="https://www.youtube.com/embed/876HYWyVNFs",
+    ),
+    HelpTopic(
+        slug="ergebnisse-erfassen",
+        group="spielbetrieb",
+        title={"de": "Ergebnisse erfassen", "en": "Recording results"},
+        summary={
+            "de": "Auf dem Platz Ergebnisse eintragen: Offizielle, Spielzüge, Halbzeit und Abschluss.",
+            "en": "Enter results on game day: officials, plays, halftime and finalization.",
+        },
+        icon="bi-clipboard-check",
+        order=35,
+        video="https://www.youtube.com/embed/lW-sky-op6M",
+    ),
+    HelpTopic(
+        slug="offizielle-statistik",
+        group="spielbetrieb",
+        title={
+            "de": "Offizielle: Übersicht & Statistik",
+            "en": "Officials: overview & stats",
+        },
+        summary={
+            "de": "Wer welche Spiele geleitet hat – Übersicht, Bestenliste und alle Einsätze.",
+            "en": "Who officiated what – overview, leaderboard and all assignments.",
+        },
+        icon="bi-bar-chart",
+        order=40,
+        video="https://www.youtube.com/embed/g9QuDwGZhK8",
+    ),
 ]
 
 
