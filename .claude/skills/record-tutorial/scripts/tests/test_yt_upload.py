@@ -1,6 +1,6 @@
 import pytest
 
-from yt_upload import _extract_code
+from yt_upload import _extract_code, _flow, build_parser
 
 
 def test_extract_code_from_full_redirect_url():
@@ -18,3 +18,13 @@ def test_extract_code_accepts_a_bare_code():
 def test_extract_code_rejects_url_without_code():
     with pytest.raises(SystemExit):
         _extract_code("http://localhost/?state=abc")
+
+
+def test_client_secret_is_optional_for_upload():
+    args = build_parser().parse_args(["upload", "--file", "x.mp4", "--title", "t"])
+    assert args.client_secret is None
+
+
+def test_flow_requires_client_secret():
+    with pytest.raises(SystemExit):
+        _flow("")

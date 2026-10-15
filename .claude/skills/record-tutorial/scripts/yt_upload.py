@@ -14,8 +14,9 @@ click through Google's consent screen for you):
         --file ~/leaguesphere-tutorials/share-widget.mp4 \\
         --title "..." --description "..." --tags help,tutorial
 
-The refresh token is cached (default ``~/.config/leaguesphere/youtube_token.json``)
-so later uploads need no browser.
+The refresh token lives at ``~/.config/leaguesphere/youtube_token.json`` (default;
+override with ``--token``). It can be seeded from the ``YOUTUBE_OAUTH_TOKEN_B64``
+environment variable, so later uploads need no browser.
 
 Requires: google-api-python-client google-auth-oauthlib google-auth-httplib2
 """
@@ -39,6 +40,9 @@ LEAGUESPHERE_CATEGORY_ID = "17"  # Sports
 
 
 def _flow(client_secret: str):
+    if not client_secret:
+        raise SystemExit("--client-secret is required for the interactive auth flow.")
+
     from google_auth_oauthlib.flow import InstalledAppFlow
 
     # PKCE is off: this flow is split across two separate CLI invocations
@@ -167,7 +171,7 @@ def cmd_upload(args) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--client-secret", required=True)
+    parser.add_argument("--client-secret")
     parser.add_argument("--token", default=str(DEFAULT_TOKEN))
     sub = parser.add_subparsers(dest="command", required=True)
 
