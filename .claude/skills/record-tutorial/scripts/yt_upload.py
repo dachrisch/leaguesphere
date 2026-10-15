@@ -17,12 +17,17 @@ click through Google's consent screen for you):
 The refresh token lives at ``~/.config/leaguesphere/youtube_token.json`` (default;
 override with ``--token``), so later uploads need no browser.
 
+For unattended use the token can instead be provisioned from the environment:
+if ``YOUTUBE_OAUTH_TOKEN_B64`` holds the base64 of the token JSON, it is written
+to the token path on first use, so no interactive auth step is needed.
+
 Requires: google-api-python-client google-auth-oauthlib google-auth-httplib2
 """
 
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import sys
@@ -36,6 +41,7 @@ SCOPES = [
 REDIRECT_URI = "http://localhost"
 DEFAULT_TOKEN = Path.home() / ".config" / "leaguesphere" / "youtube_token.json"
 LEAGUESPHERE_CATEGORY_ID = "17"  # Sports
+TOKEN_ENV_VAR = "YOUTUBE_OAUTH_TOKEN_B64"
 
 
 def _flow(client_secret: str | None):
@@ -77,16 +83,46 @@ def cmd_auth(args) -> int:
     return 0
 
 
-def _save_token(token_path: Path, creds) -> None:
-    """Write the token JSON with owner-only permissions (0600).
+def _write_private(path: Path, text: str) -> None:
+    """Write text to path with owner-only permissions (0600).
 
     The file holds a channel refresh token with upload scope, so it must not be
     world-readable (the default umask would otherwise create it 0644).
     """
-    token_path.parent.mkdir(parents=True, exist_ok=True)
-    fd = os.open(token_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as handle:
-        handle.write(creds.to_json())
+        handle.write(text)
+
+
+def _save_token(token_path: Path, creds) -> None:
+    _write_private(token_path, creds.to_json())
+
+
+def _seed_token_from_env(token_path: Path) -> None:
+    """Materialize the token file from YOUTUBE_OAUTH_TOKEN_B64 (server-side).
+
+    The env var is the base64 of the self-contained OAuth token JSON. It is
+    written into the (writable) token path — the persistent /root volume in the
+    opencode container — so google-auth can refresh it non-interactively. A
+    refreshed token (same refresh_token) is left untouched; a genuinely rotated
+    token (different refresh_token) replaces it.
+    """
+    raw = os.environ.get(TOKEN_ENV_VAR, "").strip()
+    if not raw:
+        return
+    try:
+        incoming = json.loads(base64.b64decode(raw, validate=True))
+    except (ValueError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"{TOKEN_ENV_VAR} is not valid base64-encoded JSON: {exc}") from exc
+    if token_path.exists():
+        try:
+            existing = json.loads(token_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            existing = {}
+        if existing.get("refresh_token") and existing.get("refresh_token") == incoming.get("refresh_token"):
+            return
+    _write_private(token_path, json.dumps(incoming))
 
 
 def _credentials(args):
@@ -94,6 +130,7 @@ def _credentials(args):
     from google.auth.transport.requests import Request
 
     token_path = Path(args.token)
+    _seed_token_from_env(token_path)
     if token_path.exists():
         creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
         if creds and creds.expired and creds.refresh_token:
