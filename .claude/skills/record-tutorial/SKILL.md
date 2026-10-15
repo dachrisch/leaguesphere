@@ -1,13 +1,14 @@
 ---
 name: record-tutorial
-description: Record a captioned tutorial video of a LeagueSphere feature by scripting a walkthrough of demo.leaguesphere.app
+description: Record a captioned tutorial video of a LeagueSphere feature by scripting a walkthrough of demo.leaguesphere.app, then upload it (unlisted) to the bumble:tube YouTube channel
 type: skill
 ---
 
 # Record Tutorial Skill
 
 Drives a scripted browser walkthrough of `demo.leaguesphere.app`, captures it as an
-.mp4 with burned-in captions, and optionally layers a local-TTS voice track on top.
+.mp4 with burned-in captions, optionally layers a local-TTS voice track on top, and
+then uploads the finished video to the `bumble:tube` YouTube channel (unlisted).
 Each tutorial's content lives in its own storyboard file under `storyboards/` — this
 skill is the reusable runner, not tied to any one feature.
 
@@ -44,8 +45,11 @@ mid-transition animation frames).
   actually driven — never `claude-in-chrome`, which shares the user's live browser).
 - Piper TTS binary + a voice model — **only** required for the optional narration
   pass (Step 4 below). Everything else works without it.
-- Python 3, stdlib only: `cd leaguesphere/.claude/skills/record-tutorial && python -m
-  pytest scripts/tests/ -v` should pass before recording anything.
+- Python 3: `cd leaguesphere/.claude/skills/record-tutorial && python -m
+  pytest scripts/tests/ -v` should pass before recording anything. The recording
+  scripts are stdlib-only; **Step 5 (upload) additionally needs**
+  `google-api-python-client`, `google-auth-oauthlib`, `google-auth-httplib2` (installed
+  in the opencode container at boot) and a cached OAuth token (see Step 5).
 
 ## Storyboard schema
 
@@ -262,7 +266,48 @@ python scripts/render_narration.py \
 If Piper isn't installed or this fails, `<slug>.mp4` (silent, captioned) remains the
 valid deliverable — report that narration was skipped, don't fail the whole run.
 
-### 5. Deliver
+### 5. Publish to `bumble:tube` (automatic)
+
+Every successful run uploads the finished video to the **bumble:tube** channel,
+`unlisted` by default. Upload the narrated render if Step 4 produced one, otherwise the
+silent one:
+
+```bash
+cd leaguesphere/.claude/skills/record-tutorial
+python3 scripts/yt_upload.py upload \
+  --file <output-dir>/<slug>.narrated.mp4 \
+  --title "<title>" \
+  --description "<description>" \
+  --tags "<tags>" \
+  --privacy unlisted
+```
+
+(Use `<output-dir>/<slug>.mp4` as `--file` when Step 4 was skipped.) The command prints
+the video id and an `https://www.youtube.com/embed/<id>` URL.
+
+**Derive the metadata from the storyboard — do not prompt for it:**
+
+- **title** — the storyboard's H1 (its first line, `# ...`) with the leading `# `
+  stripped, e.g. `# Share-Widget (Widget einbetten)` → `Share-Widget (Widget einbetten)`.
+- **description** — exactly `LeagueSphere tutorial: <title>. Recorded against demo.leaguesphere.app.`
+- **tags** — `leaguesphere,tutorial`, plus the locale code when the storyboard filename
+  carries one (`<slug>.de.md` → also `de`).
+
+**Authentication:** on the server the opencode container provisions
+`YOUTUBE_OAUTH_TOKEN_B64`, which `yt_upload.py` decodes into
+`~/.config/leaguesphere/youtube_token.json` and refreshes non-interactively — so no
+`--client-secret` is needed. On a dev machine without that env var, first provision the
+token with the interactive flow (`python3 scripts/yt_upload.py --client-secret
+docs/guides/client_secret_*.json auth`, then `... --client-secret
+docs/guides/client_secret_*.json channel --code "<redirect-url>"`); once the token file
+exists, `upload` needs no secret.
+
+**If the upload fails** (no token, `invalid_grant`, or a refresh token past its ~7-day
+window for an OAuth client left in "Testing"), do **not** abort the run: report the
+upload error and still deliver the local file(s) in Step 6.
+
+### 6. Deliver
 
 Hand the produced file(s) (`<slug>.mp4`, and `<slug>.narrated.mp4` if made) to the
-user directly. This skill does not publish or host anything.
+user directly. Beyond the Step 5 upload to `bumble:tube`, this skill does not host
+anything.
