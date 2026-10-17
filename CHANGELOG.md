@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.41.1](https://github.com/dachrisch/leaguesphere/compare/v4.41.0...v4.41.1) (2026-10-17)
+
+
+### Documentation
+
+* **help:** lead liga-verwalten with the Gameday Designer ([#2072](https://github.com/dachrisch/leaguesphere/issues/2072)) ([8672229](https://github.com/dachrisch/leaguesphere/commit/8672229b00a353d5623c13f85677503b8a037ac3))
+
 ## [4.41.0](https://github.com/dachrisch/leaguesphere/compare/v4.40.0...v4.41.0) (2026-10-15)
 
 
