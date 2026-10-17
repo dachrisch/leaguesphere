@@ -160,12 +160,12 @@ HELP_TOPICS = [
         group="spielbetrieb",
         title={"de": "Liga & Spieltag verwalten", "en": "Running a gameday"},
         summary={
-            "de": "Einen Spieltag anlegen, Teams und Felder festlegen und den Spielplan veröffentlichen.",
-            "en": "Create a gameday, set teams and fields, and publish the schedule.",
+            "de": "Einen Spieltag mit dem Gameday Designer anlegen, Teams und Felder festlegen und den Spielplan veröffentlichen.",
+            "en": "Create a gameday with the Gameday Designer, set teams and fields, and publish the schedule.",
         },
         icon="bi-clipboard-plus",
         order=5,
-        video="https://www.youtube.com/embed/876HYWyVNFs",
+        video="https://www.youtube.com/embed/Ek3yec2hqK0",
     ),
     HelpTopic(
         slug="ergebnisse-erfassen",

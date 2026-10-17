@@ -1,5 +1,12 @@
 # Liga & Spieltag verwalten (Spieltag anlegen)
 
+> **Überholt (2026-10-16):** Die Hilfe-Seite `liga-verwalten` führt inzwischen den
+> **Gameday Designer** als empfohlenen Weg und bindet dessen Video ein
+> (`Ek3yec2hqK0`). Das klassische Formular ist nur noch die Alternative; das aus
+> diesem Storyboard erzeugte Video (`876HYWyVNFs`) wird nicht mehr verlinkt. Das
+> Storyboard bleibt als Aufzeichnung des klassischen Ablaufs erhalten.
+> Siehe Branch `feat/help-liga-verwalten-designer-first`.
+
 Rundgang durch das Anlegen eines Spieltags über den Chooser und das klassische
 Formular samt Assistent (Gruppen/Felder/Format -> Teams -> Spielplan).
 Orientierung an `league_manager/help/content/liga-verwalten.de.md`. Der Designer

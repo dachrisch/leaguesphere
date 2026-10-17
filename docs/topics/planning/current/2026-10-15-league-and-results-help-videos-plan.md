@@ -8,12 +8,14 @@
 
 **Tech Stack:** `record-tutorial` skill (chrome-devtools-mcp + `slideshow.py`/`ffmpeg`), Python-Markdown (help loader), Django (help views + tests), YouTube (manual upload/host).
 
+> **Revision (2026-10-16):** The `liga-verwalten` topic now leads with the **Gameday Designer** as the recommended way to create a gameday, documents the classic form only as the alternative, and reuses the designer walkthrough video (`Ek3yec2hqK0`) instead of the classic-form recording (`876HYWyVNFs`). See branch `feat/help-liga-verwalten-designer-first`. Notes below that say "classic form" reflect the original, now-superseded decision.
+
 ---
 
 ## Scope & decisions (locked)
 
 - **Three topics, one per job** (user decision):
-  1. `liga-verwalten` — *"Liga & Spieltag verwalten"* — the **full staff league lifecycle** (overview): create a gameday via the classic form + wizard, then publish; points on to the officials and results topics. Uses the **classic form/wizard**, NOT the designer (the designer already has its own video, `gameday-designer`).
+  1. `liga-verwalten` — *"Liga & Spieltag verwalten"* — the **full staff league lifecycle** (overview): create a gameday with the **Gameday Designer** (recommended) or the classic form + wizard, then publish; points on to the officials and results topics. _Revised: the designer leads (the designer's own video, `gameday-designer`, is reused here). Original decision was the classic form/wizard only._
   2. `ergebnisse-erfassen` — *"Ergebnisse erfassen"* — the **Scorecard** deep dive (select game → officials/coin toss → score logging → halftime → finalize/captains confirm).
   3. `offizielle-statistik` — *"Offizielle: Übersicht & Statistik"* — the **Offizielle menu** area: overview cards, statistics/leaderboard, all assignments, license check. Deep companion to the existing `teams-offizielle` topic (cross-link both ways).
 - **Group:** all three in the existing `spielbetrieb` ("Running your league") group. Orders `5`, `35`, `40` (see registry task).
@@ -193,7 +195,7 @@ class TestNewLeagueAndResultsTopics(TestCase):
 
 **Step 4: Write the three content files.** Each starts with `# <Title>` (the loader strips the H1), stays short (what it is → steps → *Häufige Fragen*), and includes one screenshot figure (Task 2 provides the image). Suggested outlines:
 
-`liga-verwalten.de.md` — what a gameday is; **Orga → Spieltag erstellen** → choose *Spieltag designen* (Link to `/help/gameday-designer/`) or the classic form; wizard steps (Gruppen/Felder/Format → Teams → Spielplan); publish; then → *Ergebnisse erfassen* and *Offizielle: Übersicht & Statistik*. FAQ: "Warum sehe ich den Menüpunkt nicht?" (nur Staff), "Muss ich den Designer nutzen?" (nein).
+`liga-verwalten.de.md` — what a gameday is; **Orga → Spieltag erstellen** → choose *Spieltag designen* (recommended; link to `/help/gameday-designer/`) with the classic form documented as the alternative; designer flow (Liga/Saison/Datum → Teams/Felder → Vorlage speichern); publish; then → *Ergebnisse erfassen* and *Offizielle: Übersicht & Statistik*. FAQ: "Warum sehe ich den Menüpunkt nicht?" (nur Staff), "Muss ich den Designer nutzen?" (empfohlen, aber nicht Pflicht).
 
 `ergebnisse-erfassen.de.md` — open `/scorecard/`, **Scorecard** wählen, Spieltag → Spiel **Auswählen/Start**, Offizielle + Münzwurf, Spielzüge mit **Eintrag speichern** (Touchdown/Serie/Mehr…), **Halbzeit**, **Ende**, Kapitäne **Bestätigen**, **Ergebnis abschicken**. FAQ: "Ergebnis falsch erfasst?" (Eintrag per Doppelklick löschen / *Spielstand bearbeiten*), "Wer darf erfassen?" (angemeldete Offizielle).
 
@@ -440,5 +442,5 @@ Expected: h264, 1920x1080; duration ≈ sum of storyboard `hold`s. Then confirm 
 - **No `data-testid`s** on the wizard and officials pages — storyboards target CSS ids/labels, which can drift with UI edits. Re-confirm selectors against the deployed build at record time.
 - **`/officials/einsaetze/` is cached 24h** (Flow 2) — a stale cache can show old/empty data; seed and wait before capturing.
 - **YouTube upload is manual** and gates Task 7; Tasks 1–5 and 8 can proceed independently.
-- **`liga-verwalten` vs `gameday-designer` overlap** — keep the lifecycle video on the classic form/wizard and link to the designer; do not re-record designer basics.
+- **`liga-verwalten` vs `gameday-designer` overlap** — the lifecycle topic now leads with the designer and reuses the designer walkthrough video, with the classic form documented as the alternative; do not re-record designer basics.
 ```
