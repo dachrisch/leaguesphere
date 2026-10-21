@@ -34,4 +34,4 @@ cd leaguesphere && pytest teammanager
 
 ## CI scope (scoped CI)
 
-Changes here run: **python-officials shard scope (teammanager has only an empty tests stub).** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).
+Changes here run: **python-officials shard scope (includes `teammanager/` tests).** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).

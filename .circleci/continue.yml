@@ -222,7 +222,7 @@ jobs:
       - checkout
       - setup_uv
       - python_shard_test:
-          paths: "officials/tests/"
+          paths: "officials/tests/ teammanager/"
           junit: "test-results-officials.xml"
           cov_flag: "python-officials"
 

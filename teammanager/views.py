@@ -124,7 +124,7 @@ def editteam(request, team_id):
             authored = True
     if authored:
         if request.method == "POST":
-            form = Teamform(request.POST, instance=team)
+            form = Teamform(request.POST, request.FILES, instance=team)
             if form.is_valid():
                 form.save()
                 return redirect(showteams)
