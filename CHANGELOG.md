@@ -1,5 +1,18 @@
 # Changelog
 
+## [4.42.0](https://github.com/dachrisch/leaguesphere/compare/v4.41.3...v4.42.0) (2026-10-21)
+
+
+### Features
+
+* **api:** add time and cop player to snapshot logs ([6c9cae5](https://github.com/dachrisch/leaguesphere/commit/6c9cae58c690dab4eddfe698ca27cf0fe04fada3)), closes [#2052](https://github.com/dachrisch/leaguesphere/issues/2052)
+
+
+### Bug Fixes
+
+* team logo upload and snapshot log fields ([472e198](https://github.com/dachrisch/leaguesphere/commit/472e1988d3526b4a9552e2c6eeca48f79ca1285b))
+* **teammanager:** save uploaded team logo on edit ([3df1a11](https://github.com/dachrisch/leaguesphere/commit/3df1a119554770a7711bbe31b4b9ef4de7095a49)), closes [#2053](https://github.com/dachrisch/leaguesphere/issues/2053)
+
 ## [4.41.3](https://github.com/dachrisch/leaguesphere/compare/v4.41.2...v4.41.3) (2026-10-21)
 
 
