@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.41.3](https://github.com/dachrisch/leaguesphere/compare/v4.41.2...v4.41.3) (2026-10-21)
+
+
+### Bug Fixes
+
+* **officials:** streamline game official import UX ([#2076](https://github.com/dachrisch/leaguesphere/issues/2076)) ([760a585](https://github.com/dachrisch/leaguesphere/commit/760a58507240ee56d2e62b9b73fb3fcd19740044))
+
 ## [4.41.2](https://github.com/dachrisch/leaguesphere/compare/v4.41.1...v4.41.2) (2026-10-21)
 
 
