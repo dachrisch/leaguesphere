@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.41.2](https://github.com/dachrisch/leaguesphere/compare/v4.41.1...v4.41.2) (2026-10-21)
+
+
+### Documentation
+
+* **help:** cover late-2025 foundations in What's New 2026 ([a4f4734](https://github.com/dachrisch/leaguesphere/commit/a4f4734057041fe1b94e0cb8d830a3955c72e26f))
+* **help:** cover late-2025 foundations in What's New 2026 ([f6702d0](https://github.com/dachrisch/leaguesphere/commit/f6702d093722ebd6d08ecc4118bfdcb2ef1192d1))
+
 ## [4.41.1](https://github.com/dachrisch/leaguesphere/compare/v4.41.0...v4.41.1) (2026-10-17)
 
 
