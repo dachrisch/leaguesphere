@@ -51,8 +51,8 @@ HELP_TOPICS = [
         group="neu",
         title={"de": "Was ist neu 2026", "en": "What's New 2026"},
         summary={
-            "de": "Die wichtigsten neuen Funktionen des Jahres im Überblick.",
-            "en": "A roundup of the year's major new features.",
+            "de": "Die wichtigsten neuen Funktionen seit Ende 2025 im Überblick.",
+            "en": "A roundup of the major new features since late 2025.",
         },
         icon="bi-stars",
         order=10,

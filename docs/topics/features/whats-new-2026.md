@@ -1,16 +1,18 @@
 # What's New 2026
 
-A year of LeagueSphere, in plain language. 2026 turned LeagueSphere from a place
-to run your game days into a platform that can publish your competitions on your
-own website. Here's what's new, grouped by what you actually do.
+A year of LeagueSphere, in plain language. The story actually starts in late
+2025: that's when the Gameday Designer and the new league-table engine landed.
+In 2026 LeagueSphere became a platform that can publish your competitions on
+your own website. Here is the foundation and everything that followed.
 
 ## At a glance: before → now
 
-| Before 2026 | Now |
+| Before | Now |
 |---|---|
 | Scores lived only inside LeagueSphere | Publish fixtures, results, live scores and tables on your own club site |
-| Schedules built by hand | Guided tours, one-click referee assignment, move games across stages, sensible defaults |
-| Cup and tournament planning was basic | Dedicated tournament views, ready-made finals templates, legacy schedules migrated automatically |
+| Schedules built by hand | Gameday Designer with templates, tournament generator and one-click referee assignment |
+| Tables were fixed to one scheme | Configurable points, tie-breakers and precision, multiple teams and leagues at a glance |
+| Cups and group stages were the limit | Swiss-system tournaments with automatic pairings and an embedded table |
 | Referee paperwork was manual | Import self-reported games, automatic compliance checks, referee leaderboards |
 | Rosters and stats stood alone | Linked with Passcheck: exports and names where you need them |
 | Static overview pages | Live "upcoming / in progress" status on today's game days |
@@ -38,11 +40,16 @@ See [Share Widget](./share-widget/overview.md).
 
 - **Guided start** — built-in tours walk you through building a schedule and
   saving it as a reusable template.
+- **Template library** — save templates, share them with others and reuse them
+  with teams from your association.
 - **Less clicking** — assign every referee with one button, move games between
   stages and fields instead of rebuilding them, and set your own defaults for
   game length and breaks.
 - **Cups and tournaments** — dedicated tournament views, automatic time
   calculation and ranking stages, plus ready-made "Finals 2026" templates.
+- **Swiss system** — set rounds and fields, generate each round's pairings
+  automatically, follow the standings inside the designer and adjust pairings by
+  hand when needed.
 - **Expert Mode** — a progression inspector shows exactly how teams advance
   through complex tournament formats; see [dual-progression](./dual-progression.md).
 - **Know who planned what** — the designer shows the planner's name and avatar.
@@ -52,6 +59,8 @@ See [Share Widget](./share-widget/overview.md).
   automatically, and a lost schedule can be restored.
 - **Safe by design** — game days with entered results can't be unlocked by
   accident, and schedule editing is limited to staff.
+
+More in the [Gameday Designer](./gameday-designer/).
 
 ## Referees and match reports, minus the paperwork
 
@@ -74,6 +83,13 @@ See [Share Widget](./share-widget/overview.md).
 - **Self-healing** — the site recovers on its own after a brief database
   hiccup, and updates are deployed without downtime.
 
+## Help right in the app
+
+- **Topics instead of a manual** — getting started, game days, league tables,
+  teams & officials, the Gameday Designer, the share widget and referee imports.
+- **Screenshots and short videos** — the most important workflows are explained
+  visually.
+
 ## Safer and more private
 
 - **Roster privacy** — player pass numbers are only visible to signed-in users;
@@ -84,18 +100,27 @@ See [Share Widget](./share-widget/overview.md).
 - **Reliable logos** — team logos are served consistently, and broken logo links
   are hidden instead of showing empty images.
 
-## What LeagueSphere already did coming into 2026
+## The foundation: what landed in late 2025
 
-Everything above builds on the basics you already rely on:
+None of 2026 would have been possible without the work in the months before.
+The essentials:
 
-- Plan game days and leagues, with tables and standings calculated
-  automatically.
-- Design schedules visually with the Gameday Designer, using reusable templates.
-- Enter scores on the field (Scorecard), follow games live (Liveticker) and
-  write match reports.
-- Manage clubs, rosters, referees and player eligibility (Passcheck).
-- Dashboards to follow operations and usage.
+- **The Gameday Designer** — the visual schedule editor with stages, fields,
+  colors and progression badges. Tournaments get automatic time calculation.
+- **The new league table** — standings are calculated, with configurable points,
+  tie-breakers and precision. Add several teams to a league in one step and group
+  tables by league.
+- **The gameday wizard** — create game days with groups, stages and formats, then
+  keep editing, delete or reset them.
+- **Rules and licenses** — BOFF license rules and license years.
+- **Being found** — the LeagueSphere name with its own favicon, plus `robots.txt`
+  and `sitemap.xml` for search engines.
+- **Reliable operations** — a health check that includes login, and a staging
+  environment for testing before going live.
+
+Everything else — game days, Scorecard, Liveticker, match reports, Passcheck and
+dashboards — already existed and remains the base.
 
 ---
 
-*Thanks to @dachrisch, @JaWeilBaum and @phhbr for the 2026 feature work.*
+*Thanks to @dachrisch, @JaWeilBaum and @phhbr for the feature work since late 2025.*

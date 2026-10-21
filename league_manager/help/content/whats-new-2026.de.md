@@ -1,19 +1,22 @@
 # Was ist neu 2026
 
-Ein Jahr LeagueSphere in einfachen Worten. 2026 hat LeagueSphere von einem Ort,
-an dem du Spieltage durchführst, zu einer Plattform gemacht, die deine
-Wettbewerbe auf der eigenen Website veröffentlichen kann.
+Ein Jahr LeagueSphere in einfachen Worten. Die Geschichte beginnt eigentlich
+schon Ende 2025: Damals entstanden der Gameday Designer und die neue
+Liga-Tabellen-Engine. 2026 hat LeagueSphere dann zu einer Plattform gemacht, die
+deine Wettbewerbe auf der eigenen Website veröffentlichen kann. Hier findest du
+beides – das Fundament und alles, was 2026 dazukam.
 
 ## Auf einen Blick: vorher → jetzt
 
-| Vor 2026 | Jetzt |
+| Vorher | Jetzt |
 |---|---|
 | Ergebnisse lebten nur in LeagueSphere | Spielplan, Ergebnisse, Live-Stände und Tabellen auf der eigenen Vereinsseite veröffentlichen |
-| Spielpläne von Hand gebaut | Geführter Start, Ein-Klick-Zuweisung der Offiziellen, Spiele zwischen Phasen verschieben, sinnvolle Vorgaben |
-| Pokal- und Turnierplanung war einfach | Eigene Turnieransichten, fertige Final-Vorlagen, automatisch übernommene Alt-Spielpläne |
+| Spielpläne von Hand gebaut | Gameday Designer mit Vorlagen, Turnier-Generator und Ein-Klick-Zuweisung der Offiziellen |
+| Tabellen starr nach einem Schema | Konfigurierbare Punkte, Tie-Breaker und Genauigkeit, mehrere Teams und Ligen auf einen Blick |
+| Pokal- und Gruppenphase waren das Höchste | Zusätzlich Schweizer System mit automatischer Paarung und eingebetteter Tabelle |
 | Schiedsrichter-Papierkram war manuell | Selbst gemeldete Spiele importieren, automatische Prüfungen, Schiedsrichter-Bestenlisten |
 | Kader und Statistiken standen für sich | Verknüpft mit Passcheck: Exporte und Namen dort, wo du sie brauchst |
-| Statische Übersichtsseiten | Live-Status „anstehend / läuft" auf den Spieltagen von heute |
+| Statische Übersichtsseiten | Live-Status „anstehend / läuft“ auf den Spieltagen von heute |
 
 ## Deine Spiele auf der eigenen Website
 
@@ -34,11 +37,16 @@ Mehr dazu unter [Share Widget](/help/share-widget/).
 
 - **Geführter Start** – eine Tour führt dich durch den Aufbau eines Spielplans,
   den du als Vorlage speicherst.
+- **Vorlagen-Bibliothek** – Vorlagen speichern, mit anderen teilen und mit Teams
+  aus deinem Verband wiederverwenden.
 - **Weniger Klicks** – alle Offiziellen mit einem Knopf zuweisen, Spiele
   zwischen Phasen und Feldern verschieben, eigene Vorgaben für Spieldauer und
   Pausen setzen.
 - **Pokale und Turniere** – eigene Ansichten, automatische Zeitberechnung und
-  fertige „Finals"-Vorlagen.
+  fertige „Finals“-Vorlagen.
+- **Schweizer System** – Runden und Felder festlegen, Paarungen je Runde
+  automatisch erzeugen, die Tabelle direkt im Designer verfolgen und Paarungen
+  bei Bedarf von Hand anpassen.
 - **Expert Mode** – zeigt, wie Teams durch komplexe Formate weiterrücken.
 
 Mehr dazu unter [Gameday Designer](/help/gameday-designer/).
@@ -66,6 +74,15 @@ Mehr dazu unter
 
 Mehr dazu unter [Live-Status heute](/help/live-status/).
 
+## Hilfe direkt in der App
+
+- **Themen statt Handbuch** – Erste Schritte, Spieltage, Ligatabellen, Teams &
+  Offizielle, Gameday Designer, Share Widget und Schiedsrichter-Import.
+- **Screenshots und kurze Videos** – die wichtigsten Abläufe werden bildlich
+  erklärt.
+
+Mehr dazu unter [Hilfe](/help/).
+
 ## Sicherer und privater
 
 - **Kader-Datenschutz** – Passnummern sind nur für angemeldete Nutzer sichtbar;
@@ -75,6 +92,26 @@ Mehr dazu unter [Live-Status heute](/help/live-status/).
 - **Zuverlässige Logos** – Team-Logos werden konsistent ausgeliefert, tote
   Links werden ausgeblendet.
 
+## Das Fundament: was Ende 2025 entstand
+
+2026 wäre nicht möglich gewesen ohne die Arbeit der Monate davor. Das Wichtigste:
+
+- **Der Gameday Designer** – visueller Spielplan-Editor mit Phasen, Feldern,
+  Farben und Fortschrittsanzeige. Turniere berechnet er mit automatischen Zeiten.
+- **Die neue Liga-Tabelle** – Platzierungen werden berechnet; Punkte, Tie-Breaker
+  und Genauigkeit sind konfigurierbar. Mehrere Teams einer Liga lassen sich in
+  einem Schritt anlegen, Tabellen nach Liga gruppieren.
+- **Der Spieltag-Assistent** – Spieltage mit Gruppen, Phasen und Formaten anlegen,
+  weiterbearbeiten, löschen und zurücksetzen.
+- **Regeln und Lizenzen** – Lizenzregeln nach BOFF-Anforderungen und Lizenzjahre.
+- **Gefunden werden** – der Name LeagueSphere mit eigenem Favicon sowie
+  `robots.txt` und `sitemap.xml` für Suchmaschinen.
+- **Zuverlässiger Betrieb** – Healthcheck inklusive Login-Prüfung und eine
+  Staging-Umgebung zum Testen vor dem Livegang.
+
+Alles Weitere – Spieltage, Scorecard, Liveticker, Spielberichte, Passcheck und
+Dashboards – gab es schon vorher und bleibt die Basis.
+
 ---
 
-*Danke an @dachrisch, @JaWeilBaum und @phhbr für die Feature-Arbeit 2026.*
+*Danke an @dachrisch, @JaWeilBaum und @phhbr für die Feature-Arbeit seit Ende 2025.*
