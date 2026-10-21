@@ -16,6 +16,7 @@
             <label id="import-drop-zone" class="d-block border border-2 border-dashed rounded p-5 text-center mb-3" style="cursor: pointer;">
                 <i class="bi bi-cloud-arrow-up-fill" style="font-size: 2rem;"></i>
                 <p class="mb-0">Datei hierher ziehen oder klicken, um eine Datei auszuwählen.</p>
+                <p class="text-muted small mb-0">Die Datei wird nach der Auswahl automatisch verarbeitet.</p>
                 {{ form|crispy }}
             </label>
             <div class="form-group">
@@ -45,6 +46,8 @@
     <div id="import-error" class="alert alert-danger d-none" role="alert"></div>
 
     <div id="import-results" class="d-none">
+        <div id="import-commit-result" class="alert d-none" role="status"></div>
+
         <ul class="nav nav-tabs mb-3" id="import-branch-tabs"></ul>
 
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
@@ -102,6 +105,22 @@ document.addEventListener("DOMContentLoaded", function () {
         dropZone.addEventListener("drop", function (event) {
             if (event.dataTransfer && event.dataTransfer.files.length) {
                 fileInput.files = event.dataTransfer.files;
+                startUpload();
+            }
+        });
+    }
+
+    // Picking a file is the only step staff expect: process it right
+    // away instead of making them hit a second "Hochladen" button. The
+    // button stays in the markup as a no-JS fallback and is hidden here.
+    var autoUploadBtn = document.getElementById("import-upload-btn");
+    if (autoUploadBtn) {
+        autoUploadBtn.classList.add("d-none");
+    }
+    if (fileInput) {
+        fileInput.addEventListener("change", function () {
+            if (fileInput.files.length) {
+                startUpload();
             }
         });
     }
@@ -157,6 +176,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var state = null;
     var selected = {external: new Set(), internal_fix: new Set()};
+    var commitResult = {external: {}, internal_fix: {}};
+    var committed = false;
     var activeBranch = "external";
     var activeStep = "new";
     var currentPage = 1;
@@ -164,6 +185,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
     uploadForm.addEventListener("submit", function (event) {
         event.preventDefault();
+        startUpload();
+    });
+
+    function startUpload() {
+        if (!fileInput.files.length || !spinner.classList.contains("d-none")) {
+            return;
+        }
         errorBox.classList.add("d-none");
         resultsBox.classList.add("d-none");
         spinner.classList.remove("d-none");
@@ -192,6 +220,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     });
                     errorBox.textContent = messagesList.join(" ") || "Fehler beim Verarbeiten der Datei.";
                     errorBox.classList.remove("d-none");
+                    autoUploadBtn.classList.remove("d-none");
                     return;
                 }
                 onDataLoaded(result.data, fileName);
@@ -201,14 +230,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 uploadBtn.disabled = false;
                 errorBox.textContent = "Netzwerkfehler beim Hochladen.";
                 errorBox.classList.remove("d-none");
+                autoUploadBtn.classList.remove("d-none");
             });
-    });
+    }
 
     document.getElementById("import-reset-btn").addEventListener("click", function () {
         state = null;
+        committed = false;
+        commitResult = {external: {}, internal_fix: {}};
         resultsBox.classList.add("d-none");
         summaryBar.classList.add("d-none");
         uploadSection.classList.remove("d-none");
+        autoUploadBtn.classList.add("d-none");
         uploadForm.reset();
     });
 
@@ -248,6 +281,9 @@ document.addEventListener("DOMContentLoaded", function () {
     function onDataLoaded(data, fileName) {
         state = data;
         selected = {external: new Set(), internal_fix: new Set()};
+        committed = false;
+        commitResult = {external: {}, internal_fix: {}};
+        document.getElementById("import-commit-result").classList.add("d-none");
         ["external", "internal_fix"].forEach(function (branch) {
             BRANCH_STEPS[branch].forEach(function (step) {
                 (state[branch][step] || []).forEach(function (row) {
@@ -499,6 +535,7 @@ document.addEventListener("DOMContentLoaded", function () {
         selectAllCheckbox.className = "form-check-input";
         selectAllCheckbox.id = "import-select-all-checkbox";
         selectAllCheckbox.title = "Alle sichtbaren (gefilterten) Zeilen auswählen/abwählen";
+        selectAllCheckbox.disabled = committed;
         selectAllCheckbox.addEventListener("change", function () {
             var rows = filteredRows();
             if (selectAllCheckbox.checked) {
@@ -521,6 +558,11 @@ document.addEventListener("DOMContentLoaded", function () {
             th.textContent = col.label;
             headRow.appendChild(th);
         });
+        if (committed) {
+            var statusTh = document.createElement("th");
+            statusTh.textContent = "Status";
+            headRow.appendChild(statusTh);
+        }
     }
 
     function renderTable() {
@@ -536,6 +578,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var selectedInFiltered = rows.filter(function (row) { return selected[activeBranch].has(row.row_number); }).length;
         checkbox.checked = rows.length > 0 && selectedInFiltered === rows.length;
         checkbox.indeterminate = selectedInFiltered > 0 && selectedInFiltered < rows.length;
+        checkbox.disabled = committed;
     }
 
     function renderTableBody() {
@@ -556,7 +599,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!pageRows.length) {
             var emptyRow = document.createElement("tr");
             var emptyCell = document.createElement("td");
-            emptyCell.colSpan = columns.length + 1;
+            emptyCell.colSpan = columns.length + (committed ? 2 : 1);
             emptyCell.className = "text-muted text-center";
             emptyCell.textContent = allRows.length ? "Keine Einträge passen zum Filter." : "Keine Einträge in dieser Kategorie.";
             emptyRow.appendChild(emptyCell);
@@ -569,6 +612,7 @@ document.addEventListener("DOMContentLoaded", function () {
             checkbox.type = "checkbox";
             checkbox.className = "form-check-input";
             checkbox.checked = selected[activeBranch].has(row.row_number);
+            checkbox.disabled = committed;
             checkbox.addEventListener("change", function () {
                 if (checkbox.checked) {
                     selected[activeBranch].add(row.row_number);
@@ -590,10 +634,35 @@ document.addEventListener("DOMContentLoaded", function () {
                 td.textContent = (value === null || value === undefined) ? "" : value;
                 tr.appendChild(td);
             });
+            if (committed) {
+                tr.appendChild(buildOutcomeCell(row));
+            }
             body.appendChild(tr);
         });
 
         renderPagination(totalPages, rows.length, allRows.length);
+    }
+
+    function buildOutcomeCell(row) {
+        var td = document.createElement("td");
+        var outcome = commitResult[activeBranch][row.row_number];
+        if (!outcome) {
+            return td;
+        }
+        var badge = document.createElement("span");
+        badge.className = "badge " + (outcome.ok ? "bg-success" : "bg-danger");
+        badge.textContent = outcome.ok ? "Übernommen" : "Fehler";
+        if (outcome.message) {
+            badge.title = outcome.message;
+        }
+        td.appendChild(badge);
+        if (outcome.message) {
+            var detail = document.createElement("span");
+            detail.className = "d-block small " + (outcome.ok ? "text-muted" : "text-danger");
+            detail.textContent = outcome.message;
+            td.appendChild(detail);
+        }
+        return td;
     }
 
     function renderPagination(totalPages, filteredCount, totalCount) {
@@ -632,7 +701,11 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("import-selected-count").textContent = total;
     }
 
-    document.getElementById("import-confirm-form").addEventListener("submit", function () {
+    document.getElementById("import-confirm-form").addEventListener("submit", function (event) {
+        event.preventDefault();
+        if (committed) {
+            return;
+        }
         // One field per branch with all selected row_numbers joined by
         // comma - not one hidden <input> per row. A real import can have
         // thousands of rows selected at once, and one field per row hits
@@ -649,7 +722,92 @@ document.addEventListener("DOMContentLoaded", function () {
         internalInput.name = "internal_rows";
         internalInput.value = Array.from(selected.internal_fix).join(",");
         container.appendChild(internalInput);
+
+        var confirmForm = this;
+        var confirmBtn = confirmForm.querySelector('button[type="submit"]');
+        var originalLabel = confirmBtn.innerHTML;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = "Wird gespeichert ...";
+
+        fetch(confirmForm.action, {
+            method: "POST",
+            body: new FormData(confirmForm),
+            headers: {"X-Requested-With": "XMLHttpRequest"},
+        })
+            .then(function (response) {
+                return response.json().then(function (data) {
+                    return {ok: response.ok, data: data};
+                });
+            })
+            .then(function (result) {
+                if (!result.ok) {
+                    throw new Error("Speichern fehlgeschlagen.");
+                }
+                applyCommitResult(result.data);
+            })
+            .catch(function () {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = originalLabel;
+                var alertBox = document.getElementById("import-commit-result");
+                alertBox.className = "alert alert-danger";
+                alertBox.textContent = "Netzwerkfehler beim Speichern. Bitte erneut versuchen.";
+                alertBox.classList.remove("d-none");
+            });
     });
+
+    function applyCommitResult(data) {
+        committed = true;
+        commitResult = {external: {}, internal_fix: {}};
+        ["external", "internal_fix"].forEach(function (branch) {
+            var branchData = data[branch] || {};
+            (branchData.created || []).forEach(function (entry) {
+                commitResult[branch][entry.row_number] = {ok: true, message: entry.message};
+            });
+            (branchData.errors || []).forEach(function (entry) {
+                commitResult[branch][entry.row_number] = {ok: false, message: entry.message};
+            });
+        });
+
+        var summary = data.summary || {};
+        var alertBox = document.getElementById("import-commit-result");
+        alertBox.innerHTML = "";
+        var hasErrors = (summary.error_count || 0) > 0;
+        alertBox.className = "alert " + (hasErrors ? "alert-warning" : "alert-success");
+        var text = document.createElement("p");
+        text.className = "mb-0";
+        text.textContent =
+            (summary.external_created || 0) + " externe Einsätze erstellt, "
+            + (summary.internal_created || 0) + " Korrekturen angewendet, "
+            + (summary.error_count || 0) + " Fehler.";
+        alertBox.appendChild(text);
+
+        // Errors can belong to rows on a tab/page staff aren't looking
+        // at, so list them explicitly instead of relying on the per-row
+        // badges alone.
+        var errorEntries = [];
+        ["external", "internal_fix"].forEach(function (branch) {
+            ((data[branch] || {}).errors || []).forEach(function (entry) {
+                errorEntries.push({branch: branch, entry: entry});
+            });
+        });
+        if (errorEntries.length) {
+            var list = document.createElement("ul");
+            list.className = "mb-0 mt-2";
+            errorEntries.forEach(function (item) {
+                var li = document.createElement("li");
+                li.textContent = (item.branch === "external" ? "Extern" : "Intern")
+                    + " - Zeile " + item.entry.row_number + ": " + item.entry.message;
+                list.appendChild(li);
+            });
+            alertBox.appendChild(list);
+        }
+        alertBox.classList.remove("d-none");
+
+        document.getElementById("import-confirm-form").classList.add("d-none");
+        renderBranchTabs();
+        renderStepper();
+        renderTable();
+    }
 });
 </script>
 {% endblock content %}

@@ -647,11 +647,38 @@ class GameOfficialImportConfirmView(LoginRequiredMixin, UserPassesTestMixin, Vie
         )
 
         request.session.pop(OFFICIALS_IMPORT_SESSION_KEY, None)
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            # The review UI keeps the reviewed rows client-side and marks
+            # each one with its own outcome in place (see the template's
+            # JS) - answering with per-row results instead of a redirect
+            # means staff actually see what the confirm did, rather than
+            # only a transient toast on an otherwise empty upload page.
+            return JsonResponse(
+                {
+                    "external": {
+                        "created": external_created,
+                        "errors": external_errors,
+                    },
+                    "internal_fix": {
+                        "created": internal_created,
+                        "errors": internal_errors,
+                    },
+                    "summary": {
+                        "external_created": len(external_created),
+                        "internal_created": len(internal_created),
+                        "error_count": len(external_errors) + len(internal_errors),
+                    },
+                }
+            )
+
         self._report_results(
             request,
             external_created_count=len(external_created),
             internal_created_count=len(internal_created),
-            errors=external_errors + internal_errors,
+            errors=[
+                f"Zeile {entry['row_number']}: {entry['message']}"
+                for entry in external_errors + internal_errors
+            ],
         )
         from officials.urls import OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD
 
@@ -661,13 +688,20 @@ class GameOfficialImportConfirmView(LoginRequiredMixin, UserPassesTestMixin, Vie
     def _commit(items, save_entry, build_row_data) -> tuple:
         """Saves every selected row's entry from scratch, isolating each
         failure (e.g. an Official deleted since upload time) in its own
-        try/except and collecting it as a plain message instead of
-        aborting the rest of the batch."""
+        try/except and collecting it as a {row_number, message} result
+        instead of aborting the rest of the batch. Row numbers let the
+        AJAX response attach each outcome to the row it belongs to."""
         created = []
         errors = []
         for item in items:
+            row_number = item.get("row_number")
             try:
-                created.append(save_entry(build_row_data(item)))
+                created.append(
+                    {
+                        "row_number": row_number,
+                        "message": save_entry(build_row_data(item)),
+                    }
+                )
             except (
                 TypeError,
                 ValueError,
@@ -677,7 +711,10 @@ class GameOfficialImportConfirmView(LoginRequiredMixin, UserPassesTestMixin, Vie
                 DatabaseError,
             ) as error:
                 errors.append(
-                    f"Zeile {item.get('row_number')}: {_entry_error_message(error)}"
+                    {
+                        "row_number": row_number,
+                        "message": _entry_error_message(error),
+                    }
                 )
         return created, errors
 
