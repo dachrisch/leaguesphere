@@ -6,7 +6,7 @@ team names/logos, standings, live ticker data, a year filter — plus the
 per-scope rebuild bound that keeps live polling cheap.
 """
 
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 from unittest import mock
 
 from django.core.cache import caches
@@ -513,3 +513,104 @@ class SnapshotScopeNormalizationTest(SnapshotPublicApiTestBase):
             {"team": str(self.away.pk)}
         )
         assert self.etag({"include": "games"}) != self.etag({"include": "games,teams"})
+
+
+class SnapshotLogFieldsTest(SnapshotPublicApiTestBase):
+    """Public log entries expose when a play happened and who made it."""
+
+    GAMEDAY_DATE = date(2026, 9, 19)
+
+    def setUp(self):
+        super().setUp()
+        self.gameday.date = self.GAMEDAY_DATE
+        self.gameday.save()
+
+    def log_entries(self, response):
+        log = gameday_entry(response, self.gameday)["games"][0]["log"]
+        entries = []
+        for side in ("home", "away"):
+            for half in ("firsthalf", "secondhalf"):
+                entries.extend(log[side][half]["entries"])
+        return entries
+
+    def entry(self, response, sequence):
+        return next(
+            entry
+            for entry in self.log_entries(response)
+            if entry["sequence"] == sequence
+        )
+
+    def get_log(self):
+        response = self.client.get(SNAPSHOT_URL, {"include": "games,logs"})
+        assert response.status_code == status.HTTP_200_OK
+        return response
+
+    def add_log(self, **kwargs):
+        defaults = {
+            "gameinfo": self.game,
+            "team": self.home,
+            "player": 7,
+            "half": 1,
+            "created_time": time(12, 0, 0),
+        }
+        defaults.update(kwargs)
+        return TeamLogFactory(**defaults)
+
+    def test_every_log_entry_has_a_time_on_the_gameday_date(self):
+        self.add_log(
+            sequence=1,
+            event="Touchdown",
+            created_time=time(12, 41, 7),
+        )
+
+        entry = self.entry(self.get_log(), 1)
+
+        assert entry["time"] == "2026-09-19T12:41:07+00:00"
+
+    def test_time_near_utc_midnight_uses_the_gameday_date(self):
+        self.add_log(sequence=1, event="Touchdown", created_time=time(23, 59, 0))
+        self.add_log(sequence=2, event="Touchdown", created_time=time(0, 5, 0))
+
+        response = self.get_log()
+
+        assert self.entry(response, 1)["time"] == "2026-09-19T23:59:00+00:00"
+        assert self.entry(response, 2)["time"] == "2026-09-19T00:05:00+00:00"
+
+    def test_touchdown_and_conversion_share_one_time(self):
+        self.add_log(sequence=1, event="Touchdown", player=7)
+        self.add_log(sequence=1, event="1-Extra-Punkt", player=9)
+
+        entries = [
+            entry
+            for entry in self.log_entries(self.get_log())
+            if entry["sequence"] == 1
+        ]
+
+        assert entries == [
+            {
+                "sequence": 1,
+                "td": 7,
+                "pat1": 9,
+                "time": "2026-09-19T12:00:00+00:00",
+            }
+        ]
+
+    def test_time_is_appended_after_the_event_key(self):
+        # The scorecard reads Object.entries(entry)[1] as the event for
+        # non-touchdown entries; `time` must not displace it.
+        self.add_log(sequence=1, event="Safety", player=7)
+
+        entry = self.entry(self.get_log(), 1)
+
+        assert list(entry) == ["sequence", "Safety", "time"]
+
+    def test_cop_entries_keep_the_player_number(self):
+        self.add_log(sequence=1, event="Interception", cop=True, player=23)
+        self.add_log(sequence=2, event="Turnover", cop=True, player=0)
+        self.add_log(sequence=3, event="Interception", cop=True, player=None)
+
+        response = self.get_log()
+
+        assert self.entry(response, 1)["player"] == 23
+        assert self.entry(response, 2)["player"] == 0
+        assert self.entry(response, 3)["player"] is None

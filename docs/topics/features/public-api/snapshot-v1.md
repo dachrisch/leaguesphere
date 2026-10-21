@@ -41,10 +41,15 @@ All opt-in; without `include` the payload carries gameday entries only.
 | Token | Adds |
 |---|---|
 | `games` | `gamedays[].games[]`: id, scheduled, field, stage, standing, status, `results[]` (`team_id`, `team_name` short code or placeholder label, `fh`, `sh`, `pa`, `isHome`), `halftime_score`, `final_score`. |
-| `logs` | `games[].log`: the full event log, same shape as the game log page. |
+| `logs` | `games[].log`: the full event log, same shape as the game log page. Every entry has `sequence` and `time` (UTC ISO-8601 on the gameday's date), plus `isDeleted` when corrected. `cop` entries also carry `player` (jersey number or `null`). |
 | `teams` | Top-level `teams: {"<id>": {name, description, logo}}` for every team in scope (result teams plus `team` filter). `description` is the full name; `logo` is an absolute URL or `null`. |
 | `standings` | Top-level `standings[]`: one entry per league-season in scope that has a table (`league {id, slug, name}`, `season {id, slug, name}`, `ranking` = tie-break step keys in order, `rows[]` with `rank` (within group), `group`, `standing`, `team_id`, `team__description`, `wins`, `draws`, `losses`, `games_played`, `pf`, `pa`, `diff`, `win_points`, `win_quotient`). Covers the whole league-season, not just the scope's teams. Cups/tournaments have no table. |
 | `live` | Implies `games`. Today's games that are not `beendet` get `live {status, time, home {name, score, isInPossession}, away {…}, ticks[] {text, team, time}}` (latest 5 ticks, same text as the liveticker). |
+
+`logs[].time` is the stored UTC time-of-day recombined with the gameday's
+date, not the response date, so historical snapshots stay correct.
+Entries that share a sequence (a touchdown and its conversion) share one
+`time`.
 
 ## Envelope
 
