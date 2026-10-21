@@ -552,6 +552,7 @@ class SnapshotLogFieldsTest(SnapshotPublicApiTestBase):
             "player": 7,
             "half": 1,
             "created_time": time(12, 0, 0),
+            "author": self.gameday.author,
         }
         defaults.update(kwargs)
         return TeamLogFactory(**defaults)
