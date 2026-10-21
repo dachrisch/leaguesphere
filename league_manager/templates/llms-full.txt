@@ -29,7 +29,7 @@ Core entities and their relationships:
 Short, task-oriented howtos for administrators and referees, grouped by area. Content is German-first Markdown.
 
 - [Help overview](https://leaguesphere.app/help/): all topics grouped by area.
-- [Was ist neu 2026](https://leaguesphere.app/help/whats-new-2026/): Die wichtigsten neuen Funktionen des Jahres im Überblick.
+- [Was ist neu 2026](https://leaguesphere.app/help/whats-new-2026/): Die wichtigsten neuen Funktionen seit Ende 2025 im Überblick.
 - [Erste Schritte](https://leaguesphere.app/help/getting-started/): Was LeagueSphere ist, welche Rollen es gibt und wie du dich anmeldest.
 - [Liga & Spieltag verwalten](https://leaguesphere.app/help/liga-verwalten/): Einen Spieltag anlegen, Teams und Felder festlegen und den Spielplan veröffentlichen.
 - [Spieltage](https://leaguesphere.app/help/spieltage/): Spielpläne, Ergebnisse und der Tagesstatus eines Spieltags.

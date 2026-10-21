@@ -37,7 +37,9 @@ class TestWhatsNew(TestCase):
         )
 
         assert response.status_code == 200
-        assert "2026" in response.content.decode()
+        content = response.content.decode()
+        assert "2026" in content
+        assert "2025" in content
 
 
 class TestHelpTopic(TestCase):
