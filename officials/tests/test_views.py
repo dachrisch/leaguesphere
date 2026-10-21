@@ -1112,7 +1112,21 @@ class TestGameOfficialImportConfirmView(WebTest):
             for field_name, row_numbers in row_number_lists.items()
         }
         params.setdefault("csrfmiddlewaretoken", self.app.cookies["csrftoken"])
-        return self.app.post(reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_CONFIRM), params=params)
+        return self.app.post(
+            reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_CONFIRM), params=params
+        )
+
+    def _confirm_ajax(self, **row_number_lists):
+        params = {
+            field_name: ",".join(row_numbers)
+            for field_name, row_numbers in row_number_lists.items()
+        }
+        params.setdefault("csrfmiddlewaretoken", self.app.cookies["csrftoken"])
+        return self.app.post(
+            reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_CONFIRM),
+            params=params,
+            headers={"X-Requested-With": "XMLHttpRequest"},
+        )
 
     def test_non_staff_denied(self):
         user = DBSetup().create_new_user("some user")
@@ -1169,6 +1183,87 @@ class TestGameOfficialImportConfirmView(WebTest):
         assert not GameOfficial.objects.filter(
             gameinfo=gameinfo, position="Side Judge", official=official
         ).exists()
+
+    def test_ajax_confirm_returns_per_row_outcomes_instead_of_redirect(self):
+        team = TeamFactory(name="Test Team")
+        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
+        DBSetup().g62_status_empty()
+        gameinfo = Gameinfo.objects.first()
+
+        data = self._upload(
+            [
+                _external_import_row(
+                    official.pk, 2, "01.05.2024", "Referee", "Hamburg", 20
+                ),
+                _internal_fix_import_row(gameinfo.pk, official.pk, "Referee"),
+            ]
+        )
+        external_row_number = str(data["external"]["new"][0]["row_number"])
+        internal_row_number = str(data["internal_fix"]["new"][0]["row_number"])
+
+        response = self._confirm_ajax(
+            external_rows=[external_row_number],
+            internal_rows=[internal_row_number],
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        payload = response.json
+        created_external = payload["external"]["created"]
+        assert len(created_external) == 1
+        assert created_external[0]["row_number"] == int(external_row_number)
+        assert "ID: " in created_external[0]["message"]
+        created_internal = payload["internal_fix"]["created"]
+        assert len(created_internal) == 1
+        assert created_internal[0]["row_number"] == int(internal_row_number)
+        assert f"Spiel {gameinfo.pk}" in created_internal[0]["message"]
+        assert payload["summary"] == {
+            "external_created": 1,
+            "internal_created": 1,
+            "error_count": 0,
+        }
+        assert OfficialExternalGames.objects.filter(official=official).exists()
+        assert GameOfficial.objects.filter(
+            gameinfo=gameinfo, position="Referee", official=official
+        ).exists()
+
+    def test_ajax_confirm_reports_per_row_errors_by_row_number(self):
+        team = TeamFactory(name="Test Team")
+        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
+        other_official_1 = OfficialFactory(first_name="A", last_name="One", team=team)
+        other_official_2 = OfficialFactory(first_name="B", last_name="Two", team=team)
+
+        data = self._upload(
+            [
+                _external_import_row(
+                    official.pk, 2, "01.05.2024", "Referee", "Hamburg", 20
+                ),
+                _external_import_row(
+                    other_official_1.pk, 3, "01.05.2024", "Referee", "Hamburg", 20
+                ),
+                _external_import_row(
+                    other_official_2.pk, 4, "01.05.2024", "Referee", "Hamburg", 20
+                ),
+            ]
+        )
+        rows = data["external"]["new"]
+        stale_row_number = rows[0]["row_number"]
+        other_row_numbers = [row["row_number"] for row in rows[1:]]
+        official.delete()
+
+        response = self._confirm_ajax(
+            external_rows=[str(row["row_number"]) for row in rows]
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        payload = response.json
+        assert [entry["row_number"] for entry in payload["external"]["created"]] == (
+            other_row_numbers
+        )
+        errors = payload["external"]["errors"]
+        assert len(errors) == 1
+        assert errors[0]["row_number"] == stale_row_number
+        assert "nicht gefunden" in errors[0]["message"]
+        assert payload["summary"]["error_count"] == 1
 
     def test_official_deleted_between_upload_and_confirm_surfaces_per_row_error(self):
         team = TeamFactory(name="Test Team")
@@ -1235,8 +1330,7 @@ class TestGameOfficialImportConfirmView(WebTest):
         assert response.status_code == HTTPStatus.FOUND
         response = response.follow()
         assert (
-            OfficialExternalGames.objects.filter(official=official).count()
-            == row_count
+            OfficialExternalGames.objects.filter(official=official).count() == row_count
         )
         content = response.content.decode()
         assert f"{row_count} externe Einsätze erstellt" in content
