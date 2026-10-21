@@ -16,6 +16,7 @@
         {
           "cop": true,
           "name": "Interception",
+          "player": null,
           "sequence": 10
         },
         {
@@ -25,6 +26,7 @@
         {
           "cop": true,
           "name": "Turnover",
+          "player": null,
           "sequence": 6
         },
         {

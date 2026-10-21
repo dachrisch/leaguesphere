@@ -130,6 +130,18 @@ class TestGameSetup(WebTest):
 
 
 class TestGameLog(WebTest):
+    @staticmethod
+    def without_time(value):
+        if isinstance(value, dict):
+            return {
+                key: TestGameLog.without_time(item)
+                for key, item in value.items()
+                if key != "time"
+            }
+        if isinstance(value, list):
+            return [TestGameLog.without_time(item) for item in value]
+        return value
+
     def test_game_not_found_exception(self):
         response = self.app.get(
             reverse(API_GAMELOG, kwargs={"id": 666}), expect_errors=True
@@ -151,7 +163,11 @@ class TestGameLog(WebTest):
         expected_gamelog["away"]["id"] = Gameresult.objects.get(
             gameinfo=gameinfo, isHome=False
         ).team_id
-        assert response.json == expected_gamelog
+        assert self.without_time(response.json) == expected_gamelog
+        for side in ("home", "away"):
+            for half in ("firsthalf", "secondhalf"):
+                for entry in response.json[side][half]["entries"]:
+                    assert entry["time"].endswith("+00:00")
 
     def test_post_team_log(self):
         DBSetup().g62_status_empty()

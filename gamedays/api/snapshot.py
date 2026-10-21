@@ -394,9 +394,11 @@ def scope_cache_key(filters, include):
     return f"snapshot:scope:v2:{digest}"
 
 
-def build_game_log(game):
+def build_game_log(game, gameday_date=None):
     """Same payload shape as GET /api/gamelog/<id>, built from prefetched
     relations instead of fresh queries. Mirrors GameLogAPIView.get."""
+    if gameday_date is None:
+        gameday_date = game.gameday.date
     results = list(game.gameresult_set.all())
     home_result = next((r for r in results if r.isHome), None)
     away_result = next((r for r in results if not r.isHome), None)
@@ -443,6 +445,7 @@ def build_game_log(game):
                     "player": teamlog.player,
                     "isDeleted": teamlog.isDeleted,
                     "half": teamlog.half,
+                    "created_time": teamlog.created_time,
                 }
             )
     for entries in teamlogs.values():
@@ -453,6 +456,7 @@ def build_game_log(game):
         GameLogSerializer.GAME_HALFTIME: game.gameHalftime,
         GameLogSerializer.HOME_TEAM: team_name(home_result),
         GameLogSerializer.AWAY_TEAM: team_name(away_result),
+        GameLogSerializer.GAMEDAY_DATE: gameday_date,
         "home_id": team_id(home_result),
         "away_id": team_id(away_result),
         GameLogSerializer.SCORE_HOME_OVERALL: overall(home_result),
@@ -536,7 +540,7 @@ def build_snapshot_payload(filters, include):
             for game in gameday.gameinfo_set.all():
                 game_data = dict(GameInfoSerializer(game).data)
                 if INCLUDE_LOGS in include:
-                    game_data["log"] = build_game_log(game)
+                    game_data["log"] = build_game_log(game, gameday.date)
                 live = live_by_game.get(game.pk)
                 if live is not None and game.status != Gameinfo.STATUS_COMPLETED:
                     # Contract with LivetickerService: LIVE_FIELDS must exist.

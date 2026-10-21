@@ -3,6 +3,7 @@ import logging
 from collections import OrderedDict
 from http import HTTPStatus
 
+from django.db.models import F
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import UpdateAPIView, RetrieveUpdateAPIView
 from rest_framework.request import Request
@@ -82,8 +83,14 @@ class GameLogAPIView(APIView):
                 ),
                 score_away_fh=GameresultHelper.get_gameresult_score(False, is_fh=True),
                 score_away_sh=GameresultHelper.get_gameresult_score(False, is_sh=True),
+                gameday_date=F("gameday__date"),
             )
-            .values(*GameLogSerializer.ALL_FIELD_VALUES, "home_id", "away_id")
+            .values(
+                *GameLogSerializer.ALL_FIELD_VALUES,
+                "home_id",
+                "away_id",
+                GameLogSerializer.GAMEDAY_DATE,
+            )
         )
         if not gamelog.exists():
             raise NotFound(detail=f"No game found for gameId {game_id}")

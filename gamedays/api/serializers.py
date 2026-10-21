@@ -1,4 +1,5 @@
 import logging
+from datetime import UTC, datetime, time
 
 from django.db import transaction
 from rest_framework.fields import SerializerMethodField, IntegerField
@@ -221,6 +222,7 @@ class GameLogSerializer(Serializer):
     SCORE_AWAY_SH = "score_away_sh"
     TEAMLOG_HOME = "teamlog_home"
     TEAMLOG_AWAY = "teamlog_away"
+    GAMEDAY_DATE = "gameday_date"
 
     ALL_FIELD_VALUES = [
         ID,
@@ -271,6 +273,7 @@ class GameLogSerializer(Serializer):
     def _get_entries(self, is_home: bool, obj: dict):
         teamlog = self.TEAMLOG_HOME if is_home else self.TEAMLOG_AWAY
         teamlog = obj[teamlog]
+        ref_now = self._gameday_ref_now(obj)
         teamlog_firsthalf = []
         teamlog_secondhalf = []
         for entry in teamlog:
@@ -278,21 +281,37 @@ class GameLogSerializer(Serializer):
                 teamlog_firsthalf += [entry]
             else:
                 teamlog_secondhalf += [entry]
-        teamlog_firsthalf = self._create_entries_for_half(teamlog_firsthalf)
-        teamlog_secondhalf = self._create_entries_for_half(teamlog_secondhalf)
+        teamlog_firsthalf = self._create_entries_for_half(teamlog_firsthalf, ref_now)
+        teamlog_secondhalf = self._create_entries_for_half(teamlog_secondhalf, ref_now)
         return teamlog_firsthalf, teamlog_secondhalf
 
-    def _create_entries_for_half(self, half_entries: list):
+    @staticmethod
+    def _gameday_ref_now(obj: dict):
+        """Anchor log times to the gameday date, not to the request time.
+
+        A snapshot also serves past gamedays; anchoring at noon UTC lets
+        ``utc_time_as_iso`` resolve the date of both 00:05 and 23:59 ticks
+        to the gameday's date.
+        """
+        gameday_date = obj.get(GameLogSerializer.GAMEDAY_DATE)
+        if gameday_date is None:
+            return None
+        return datetime.combine(gameday_date, time(12, 0), tzinfo=UTC)
+
+    def _create_entries_for_half(self, half_entries: list, ref_now=None):
         result = dict()
+        sequence_times = dict()
         entry: dict
         for entry in half_entries:
-            if result.get(entry["sequence"]) is None:
-                result[entry["sequence"]] = {"sequence": entry["sequence"]}
+            sequence = entry["sequence"]
+            if result.get(sequence) is None:
+                result[sequence] = {"sequence": sequence}
             if entry["cop"]:
                 result[entry["sequence"]].update(
                     {
                         "cop": entry["cop"],
                         "name": entry["event"],
+                        "player": entry["player"],
                     }
                 )
             else:
@@ -309,4 +328,17 @@ class GameLogSerializer(Serializer):
                 result[entry["sequence"]].update({key: entry["player"]})
             if entry["isDeleted"]:
                 result[entry["sequence"]].update({"isDeleted": True})
+            created_time = entry.get("created_time")
+            if created_time is not None and (
+                sequence not in sequence_times
+                or created_time < sequence_times[sequence]
+            ):
+                # A touchdown and its conversion share one sequence: keep the
+                # earliest submit time as the single time of that play. Add
+                # `time` last so consumers that read the second key as the
+                # event (scorecard) keep working.
+                sequence_times[sequence] = created_time
+                result[sequence]["time"] = utc_time_as_iso(
+                    created_time, ref_now=ref_now
+                )
         return list(result.values())
