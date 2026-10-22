@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.43.1](https://github.com/dachrisch/leaguesphere/compare/v4.43.0...v4.43.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* **test:** pin the middleware caches in every query-count test ([#2090](https://github.com/dachrisch/leaguesphere/issues/2090)) ([0c1e44b](https://github.com/dachrisch/leaguesphere/commit/0c1e44bafde4d7af4901a823ed71459877324a5e))
+* **test:** pin the middleware caches in every query-count test ([#2090](https://github.com/dachrisch/leaguesphere/issues/2090)) ([bcdac3a](https://github.com/dachrisch/leaguesphere/commit/bcdac3ad2152e1ef2dd19bd9eb48b566f14a9d8d))
+
 ## [4.43.0](https://github.com/dachrisch/leaguesphere/compare/v4.42.0...v4.43.0) (2026-10-22)
 
 
