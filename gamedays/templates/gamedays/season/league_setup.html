@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="content-section">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+        <div>
+            <h3 class="mb-1">Ligen &amp; Teams · {{ season.name }}</h3>
+            <p class="text-muted mb-0">
+                Welche Ligen und Teams gehören zu dieser Saison? Übernimm sie aus der Vorsaison
+                oder ordne sie einzeln zu.
+            </p>
+        </div>
+        <a class="btn btn-sm btn-outline-secondary" href="{% url 'league-season-list' %}">
+            Alle Saisons
+        </a>
+    </div>
+
+    <div class="border rounded p-3 mb-4">
+        <h5 class="mb-1">Aus Vorsaison übernehmen</h5>
+        {% if previous_season %}
+        <p class="text-muted mb-2">
+            Übernimmt die Ligen und Teams aus <strong>{{ previous_season.name }}</strong>.
+            Bereits zugeordnete Ligen werden übersprungen, nicht überschrieben.
+        </p>
+        {% else %}
+        <p class="text-muted mb-2">
+            Es wurde keine Vorsaison gefunden. Wähle unten eine Saison als Quelle oder ordne die
+            Teams einzeln zu.
+        </p>
+        {% endif %}
+
+        <form method="POST" action="{% url 'league-season-league-copy' season.pk %}">
+            {% csrf_token %}
+            <div class="row g-2 align-items-end">
+                <div class="col-sm-5">
+                    <label class="form-label small text-muted" for="from_season">Quelle</label>
+                    <select class="form-select" id="from_season" name="from_season">
+                        {% for source in source_seasons %}
+                        <option value="{{ source.pk }}"
+                                {% if previous_season and source.pk == previous_season.pk %}selected{% endif %}>
+                            {{ source.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-sm-auto">
+                    <button class="btn btn-primary" type="submit">
+                        <i class="bi bi-arrow-repeat"></i> Aus Vorsaison übernehmen
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <h5 class="mb-2">Manuell zuordnen</h5>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th style="width: 22%;">Liga</th>
+                    <th>Teams</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td class="fw-semibold">
+                        {{ row.league.name }}
+                        {% if not row.assignment %}
+                        <div class="text-muted small">noch nicht zugeordnet</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST"
+                              action="{% url 'league-season-league-assign' season.pk row.league.pk %}">
+                            {% csrf_token %}
+                            <select class="form-select" name="teams" multiple size="6"
+                                    aria-label="Teams für {{ row.league.name }}">
+                                {% for team in all_teams %}
+                                <option value="{{ team.pk }}"
+                                        {% if team.pk in row.team_ids %}selected{% endif %}>
+                                    {{ team.description }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                Mehrfachauswahl mit Strg/Cmd. Leere Auswahl entfernt alle Teams aus dieser Liga.
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary mt-2" type="submit">
+                                Teams für {{ row.league.name }} speichern
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="border rounded p-3 mt-4">
+        <h5 class="mb-1">Weiter zu Spieltag</h5>
+        <p class="text-muted mb-2">
+            Sobald Ligen und Teams stehen, kann der erste Spieltag dieser Saison entstehen.
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-primary" href="{{ designer_url }}">
+                <i class="bi bi-palette"></i> Aus Vorlage anwenden
+            </a>
+            <a class="btn btn-outline-primary" href="{{ gameday_create_url }}">
+                Spieltag manuell anlegen
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock content %}

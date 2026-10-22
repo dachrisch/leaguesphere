@@ -41,6 +41,9 @@ endpoints return HTTP 304 via `@condition(...)`; keep new list/detail endpoints 
 
 ## Routes (`urls.py`)
 `gamedays/`, `gameday/<int:pk>/`, `gameday/new/`. Multi-step gameday creation lives under `wizard/`.
+Staff season rollover: `seasons/`, `seasons/new/`, `seasons/<pk>/update/`,
+`seasons/<pk>/leagues/` (+ `copy/` and `<league_pk>/` POST actions) — see
+[season rollover](../docs/topics/features/season-rollover/overview.md).
 
 ## Conventions & gotchas
 - **Every DB-touching test must assert query count** (`assertNumQueries`) and the count must not

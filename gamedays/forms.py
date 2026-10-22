@@ -3,10 +3,24 @@ from dataclasses import dataclass
 from dal import autocomplete
 from django import forms
 from django.contrib.auth.models import User
-from django.forms import modelformset_factory, BaseFormSet, formset_factory, inlineformset_factory
+from django.forms import (
+    modelformset_factory,
+    BaseFormSet,
+    formset_factory,
+    inlineformset_factory,
+)
 from django.utils import timezone
+from django.utils.text import slugify
 
-from gamedays.models import Season, League, Gameday, Gameinfo, Team, SeasonLeagueTeam, ResourceUrl
+from gamedays.models import (
+    Season,
+    League,
+    Gameday,
+    Gameinfo,
+    Team,
+    SeasonLeagueTeam,
+    ResourceUrl,
+)
 
 SCHEDULE_CUSTOM_CHOICE_C = "CUSTOM"
 SCHEDULE_MAP_GROUPS_C = "groups"
@@ -186,9 +200,10 @@ ResourceUrlFormSet = inlineformset_factory(
         "url": forms.URLInput(attrs=FORM_CONTROL),
         "description": forms.TextInput(attrs=FORM_CONTROL),
     },
-    extra=1,          # how many empty rows to show by default
+    extra=1,  # how many empty rows to show by default
     can_delete=True,  # lets users remove existing URLs
 )
+
 
 @dataclass
 class GamedayFormContext:
@@ -479,12 +494,75 @@ def get_gameinfo_formset(extra=0):
         min_num=1,
     )
 
+
+class SeasonForm(forms.ModelForm):
+    """Name-only season form; the slug is derived and must not collide.
+
+    The slug is only derived on create: a rename keeps the existing slug so
+    links that already point at the season keep working.
+    """
+
+    class Meta:
+        model = Season
+        fields = ["name"]
+        widgets = {"name": forms.TextInput(attrs={"class": "form-control"})}
+
+    def clean(self):
+        cleaned_data = super().clean()
+        name = (cleaned_data.get("name") or "").strip()
+        if not name:
+            raise forms.ValidationError("Bitte einen Namen für die Saison angeben.")
+        cleaned_data["name"] = name
+
+        if self.instance.pk is None:
+            slug = slugify(name)
+            if not slug:
+                raise forms.ValidationError(
+                    "Aus diesem Namen lässt sich kein Kürzel erzeugen. Bitte "
+                    "Buchstaben oder Zahlen verwenden."
+                )
+            existing = Season.objects.filter(slug=slug).first()
+            if existing is not None:
+                raise forms.ValidationError(
+                    f"Eine Saison mit dem Kürzel „{slug}“ existiert bereits "
+                    f"({existing.name}). Bitte einen anderen Namen wählen."
+                )
+        return cleaned_data
+
+
 class SeasonLeagueTeamForm(forms.ModelForm):
     class Meta:
         model = SeasonLeagueTeam
         fields = "__all__"
-        widgets = {
-            'teams': autocomplete.ModelSelect2Multiple(
-                url="/dal/team"
+        widgets = {"teams": autocomplete.ModelSelect2Multiple(url="/dal/team")}
+
+    def clean(self):
+        """Duplicate (season, league) rows cannot be created through the UI.
+
+        There is deliberately no database constraint: existing duplicates are
+        reported by ``report_duplicate_season_league_teams`` instead, so a
+        follow-up migration can be prepared safely.
+        """
+        cleaned_data = super().clean()
+        season = cleaned_data.get("season") or getattr(self.instance, "season", None)
+        league = cleaned_data.get("league") or getattr(self.instance, "league", None)
+        if season is None or league is None:
+            return cleaned_data
+
+        duplicates = SeasonLeagueTeam.objects.filter(season=season, league=league)
+        if self.instance.pk is not None:
+            duplicates = duplicates.exclude(pk=self.instance.pk)
+        if duplicates.exists():
+            raise forms.ValidationError(
+                f"Für {league.name} in {season.name} existiert bereits eine "
+                "Zuordnung. Bitte diese bearbeiten statt eine zweite anzulegen."
             )
-        }
+        return cleaned_data
+
+
+class SeasonLeagueTeamAssignForm(forms.Form):
+    teams = forms.ModelMultipleChoiceField(
+        queryset=Team.objects.all(),
+        required=False,
+        label="Teams",
+    )
