@@ -21,6 +21,22 @@ that already exists — no notifications, no email, no feed, no per-user state.
 
 `league_manager/views.py::homeview` and its unused template were removed.
 
+## Header and orientation
+
+The page opens like a home, not a console:
+
+- **Greeting by time of day** (`Guten Morgen` < 11, `Guten Tag` < 18, `Guten Abend`) plus the
+  person's first name from `UserProfile.firstname`, then `user.first_name`; without a real name
+  the greeting stays neutral (never the role, never the account login).
+- **Avatar** prefers `UserProfile.avatar`, then the team's `Team.logo`, then initials of the
+  person (first + last name). The old role abbreviation ("ST" for staff) is gone.
+- **Role line in a sentence** ("Teamverantwortlich für …", "Liga-Verwaltung · <Liga>") plus the
+  season context, and the German date on the right.
+- **A section strip ("Weitermachen")** at the bottom links into the rest of the site — the page is
+  the post-login target (`LOGIN_REDIRECT_URL`) and should orient, not only list tasks. Links are
+  role-aware: everyone gets Spieltage, Offizielle, Team and Hilfe; team users and staff also get
+  their league's table; staff additionally get the season administration.
+
 ## The four states
 
 Role precedence: **team → official → staff → guest**.
@@ -52,7 +68,9 @@ Role precedence: **team → official → staff → guest**.
 
 Every row states its severity in words (`Erledigt`, `Achtung`, `Offen`); colour
 is never the only carrier. Completed checks stay visible as a green row so the
-list feels finite.
+list feels finite. An empty October is **not** an alarm: the "nothing planned"
+nudge is neutral (`Hinweis`), and `Achtung`/`Offen` are reserved for states that
+are actually wrong (roster below the league minimum, missing officials).
 
 ## Data rules
 
