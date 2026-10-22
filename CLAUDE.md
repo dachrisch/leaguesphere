@@ -128,6 +128,7 @@ getting lost or missing cross-module dependencies.
 - [teammanager/](teammanager/CLAUDE.md) — team/club/roster CRUD (uses gamedays models)
 - [matchreport/](matchreport/CLAUDE.md) — per-game match report generation (service-only)
 - [journey/](journey/CLAUDE.md) — Game Progress dashboard **backend** (read-only progress API)
+- [home/](home/CLAUDE.md) — personal home page (`/home/`): next gameday, checks, staff readiness/nudge
 - [dashboard/](dashboard/CLAUDE.md) — ⚠️ **legacy**, being phased out (prefer `journey`)
 
 **Hybrid (Django app + co-located React app in the same folder)**
