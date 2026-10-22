@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "matchreport",
     "journey",
     "share",
+    "home",
 ]
 
 MIDDLEWARE = [
@@ -183,7 +184,7 @@ MEDIA_URL = "/media/"
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
-LOGIN_REDIRECT_URL = "league-home"
+LOGIN_REDIRECT_URL = "home"
 LOGIN_URL = "login"
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")

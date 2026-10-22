@@ -9,6 +9,19 @@ from gamedays.service.utils import AsJsonEncoder
 
 EXCLUDED_EVENTS = ["Strafe", "Spielzeit", "Auszeit", "First Down"]
 
+# Scoring vocabulary: how many points an event is worth. Single source of truth
+# for "which TeamLog rows are scoring events" (the home page's moments card
+# consumes SCORING_EVENTS instead of re-listing these names).
+SCORING_EVENT_VALUES = {
+    "Touchdown": 6,
+    "Overtime": 1,
+    "1-Extra-Punkt": 1,
+    "Safety (+1)": 1,
+    "2-Extra-Punkte": 2,
+    "Safety (+2)": 2,
+}
+SCORING_EVENTS = frozenset(SCORING_EVENT_VALUES)
+
 # Valid range of TeamLog.player (PositiveSmallIntegerField). Enforced here
 # explicitly because SQLite does not range-check integer columns (#1465).
 PLAYER_MIN, PLAYER_MAX = 0, 32767
@@ -73,13 +86,7 @@ class GameLogCreator(object):
 
     def _getValue(self, name):
         # ToDo deleteMe ... info should come via API request
-        if name == "Touchdown":
-            return 6
-        if name in ("Overtime", "1-Extra-Punkt", "Safety (+1)"):
-            return 1
-        if name in ("2-Extra-Punkte", "Safety (+2)"):
-            return 2
-        return 0
+        return SCORING_EVENT_VALUES.get(name, 0)
 
     @staticmethod
     def _coerce_player(value):

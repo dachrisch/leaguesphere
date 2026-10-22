@@ -11,6 +11,7 @@ Current features:
 - [Score Card Entry](./scorecard/) — Game result and score entry
 - [League Table](./league-table/) — League standings and team statistics
 - [Season Rollover](./season-rollover/overview.md) — Staff flow from a new season to league/team assignment and the first gameday
+- [Personal Home](./personal-home/overview.md) — `/home/`: next gameday, checks, season break, official and staff states
 - [Share Widget](./share-widget/) — Embeddable scores/fixtures/standings for club sites
 - [Public API](./public-api/) — `/api/snapshot/`, the only public, cross-origin readable endpoint
 

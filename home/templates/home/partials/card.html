@@ -1,0 +1,79 @@
+{% comment %}
+  One card. Included from home/home.html with `card` in context; no queries,
+  no logic beyond presenting the dict that home/service/cards.py built.
+{% endcomment %}
+<div class="home-card is-{{ card.severity }} h-100 p-3">
+  <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+    <div>
+      <div class="home-label mb-1">{{ card.title }}</div>
+      <div class="fw-semibold">{{ card.summary }}</div>
+    </div>
+    {% if card.severity == 'danger' or card.severity == 'warning' %}
+    <span class="badge {% if card.severity == 'danger' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+      {{ card.severity_text }}
+    </span>
+    {% endif %}
+  </div>
+
+  {% if card.score %}
+  <div class="d-flex justify-content-between align-items-center mt-3 gap-2">
+    <span class="fw-semibold">{{ card.score_team|default:"" }}</span>
+    <span class="home-score">{{ card.score }}</span>
+    <span class="fw-semibold text-end">{{ card.opponent }}</span>
+  </div>
+  {% endif %}
+
+  {% if card.steps %}
+  <ol class="home-steps mt-3">
+    {% for step in card.steps %}
+    <li class="home-step {{ step.state }}">
+      <span class="num" aria-hidden="true">{{ forloop.counter }}</span>
+      <span class="body">
+        <span class="k">{{ step.title }}</span>
+        <span class="v">
+          {% if step.url %}<a href="{{ step.url }}">{{ step.text }}</a>{% else %}{{ step.text }}{% endif %}
+        </span>
+        {% if step.annotation %}<span class="a">{{ step.annotation }}</span>{% endif %}
+      </span>
+    </li>
+    {% endfor %}
+  </ol>
+  {% endif %}
+
+  {% if card.rows %}
+  <div class="mt-3">
+    {% for row in card.rows %}
+    <div class="home-row">
+      {% if row.status_text %}
+        <div class="status {{ row.status }}">{{ row.status_text }}</div>
+        <div class="flex-grow-1">
+          <div class="fw-semibold">{{ row.title }}</div>
+          <div class="text-muted small">{{ row.reason }}</div>
+        </div>
+      {% else %}
+        <div class="flex-grow-1">
+          {% if row.event %}<span class="fw-semibold">{{ row.event }}</span> · {% endif %}
+          {{ row.text }}{{ row.label }}{{ row.previous_score }}
+        </div>
+      {% endif %}
+      {% if row.url %}<div class="align-self-start"><a class="small" href="{{ row.url }}">{{ row.label|default:"Öffnen" }}</a></div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if card.links %}
+  <div class="d-flex flex-wrap gap-2 mt-3">
+    {% for link in card.links %}
+    <a class="btn btn-sm {% if link.primary %}btn-primary{% else %}btn-outline-primary{% endif %}"
+       href="{{ link.url }}">{{ link.label }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if card.fallback %}
+  <p class="mt-3 mb-0">
+    <a class="home-quiet-link" href="{{ card.fallback.url }}">&hellip;oder {{ card.fallback.label }}</a>
+  </p>
+  {% endif %}
+</div>
