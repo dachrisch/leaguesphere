@@ -44,6 +44,20 @@ def _plural(count: int, singular: str, plural: str) -> str:
     return singular if count == 1 else plural
 
 
+def _gameday_label(name, day: date) -> str:
+    """The gameday's name plus its date - unless the name already contains it.
+
+    Auto-generated names look like "Gameday on 16.10.2026", so printing both
+    would say the date twice.
+    """
+    formatted = _format_date(day)
+    if name and formatted in str(name):
+        return formatted
+    if name:
+        return f"{name} · {formatted}"
+    return formatted
+
+
 def _ago(days: int) -> str:
     """'heute' / 'vor 4 Tagen' / 'vor 8 Wochen' - never 'vor 0 Wochen'."""
     if days <= 0:
@@ -126,6 +140,7 @@ def roster_checks_card(
     active_players: int,
     players_without_jersey: int,
     minimum_player_strength: int | None,
+    roster_url: str | None = None,
 ):
     """Roster checks built only from existing data and the league's own rule.
 
@@ -142,7 +157,6 @@ def roster_checks_card(
                     f"Nur {active_players} aktive Spieler – "
                     f"Liga-Minimum ist {minimum_player_strength}",
                     "Der Kader muss den Spieltag vollständig abdecken.",
-                    label="Kader",
                 )
             )
         else:
@@ -152,7 +166,6 @@ def roster_checks_card(
                     f"Kader erfüllt das Liga-Minimum "
                     f"({active_players} von {minimum_player_strength})",
                     "Alle Spieler sind aktiv gemeldet.",
-                    label="Kader",
                 )
             )
 
@@ -162,7 +175,6 @@ def roster_checks_card(
                 SEVERITY_WARNING,
                 f"{players_without_jersey} Spieler ohne Trikotnummer",
                 "Ohne Nummer ist der Spieler am Spieltag nicht eindeutig erfassbar.",
-                label="Kader",
             )
         )
     else:
@@ -171,11 +183,15 @@ def roster_checks_card(
                 SEVERITY_OK,
                 "Trikotnummern vollständig",
                 "Jeder aktive Spieler hat eine Nummer.",
-                label="Kader",
             )
         )
 
-    return _check_card("roster_checks", "Vor dem Spieltag zu erledigen", checks)
+    card = _check_card("roster_checks", "Vor dem Spieltag zu erledigen", checks)
+    if roster_url is not None:
+        card["links"] = [
+            {"label": "Kader & Transfers", "url": roster_url, "primary": False}
+        ]
+    return card
 
 
 def pending_transfers_card(transfers: list):
@@ -356,8 +372,6 @@ def staff_gameday_nudge_card(
     league,
     season,
     has_template: bool,
-    last_gameday_date,
-    today: date,
     has_upcoming_gameday: bool,
     season_url: str,
     designer_url: str,
@@ -393,9 +407,9 @@ def staff_gameday_nudge_card(
         }
 
     if has_template:
-        annotation = "Vorlage vorhanden - im Designer anwenden"
+        annotation = "Vorlage vorhanden"
     else:
-        annotation = "Keine Vorlage vorhanden - im Designer anlegen"
+        annotation = "Keine Vorlage vorhanden"
 
     gameday_step = {
         "key": "gameday",
@@ -407,33 +421,22 @@ def staff_gameday_nudge_card(
         "url": designer_url,
     }
 
-    if last_gameday_date is not None:
-        last_text = (
-            f"Letzter Spieltag: {_format_date(last_gameday_date)} - "
-            f"{_ago((today - last_gameday_date).days)}."
-        )
-    else:
-        last_text = "Noch kein Spieltag angelegt."
-
     return {
         "key": "staff_gameday_nudge",
         "title": f"Noch nichts geplant · {league}",
         "severity": SEVERITY_INFO,
         "severity_text": SEVERITY_TEXT[SEVERITY_INFO],
-        "summary": last_text,
+        "summary": "Der nächste Spieltag entsteht in wenigen Minuten aus einer Vorlage.",
         "steps": [season_step, gameday_step],
         "rows": [],
+        # Step 2 already opens the designer, so only the manual fallback is a
+        # button here - no second path to the same place.
         "links": [
-            {
-                "label": "Spieltag im Designer anlegen",
-                "url": designer_url,
-                "primary": True,
-            },
             {
                 "label": "Spieltag manuell anlegen",
                 "url": gameday_create_url,
                 "primary": False,
-            },
+            }
         ],
     }
 
@@ -451,20 +454,31 @@ def staff_review_card(
     games_with_results: int,
 ):
     """One card summarising the past: last season, and how the last gameday went."""
-    if is_finished:
-        summary = f"{gameday_count} Spieltage · abgeschlossen"
+    if gameday_count == 0:
+        summary = "Noch kein Spieltag angelegt"
+    elif is_finished:
+        summary = (
+            f"{gameday_count} {_plural(gameday_count, 'Spieltag', 'Spieltage')} "
+            "· abgeschlossen"
+        )
     else:
-        summary = f"{gameday_count} Spieltage · läuft noch"
+        summary = (
+            f"{gameday_count} {_plural(gameday_count, 'Spieltag', 'Spieltage')} "
+            "· läuft noch"
+        )
 
-    rows = [{"text": f"Teams {team_count} · Ligen {league_count}"}]
+    rows = []
+    if team_count or league_count:
+        rows.append({"text": f"Teams {team_count} · Ligen {league_count}"})
     if last_gameday_date is not None:
         rows.append(
             {
-                "text": f"Letzter Spieltag: {last_gameday_name} · "
-                f"{_format_date(last_gameday_date)} · "
-                f"{_ago((today - last_gameday_date).days)}"
+                "text": "Letzter Spieltag: "
+                + _gameday_label(last_gameday_name, last_gameday_date)
+                + f" · {_ago((today - last_gameday_date).days)}"
             }
         )
+    if games_total:
         rows.append({"text": f"Spiele erfasst {games_with_results} / {games_total}"})
 
     return {

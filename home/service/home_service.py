@@ -70,6 +70,7 @@ from .cards import (
 DESIGNER_URL_NAME = "gameday_designer_app:index"
 TEAMMANAGER_URL_NAME = "teammanager"
 OFFICIALS_URL_NAME = "view-officials-list-for-all-teams"
+PASSCHECK_ROSTER_URL_NAME = "passcheck-roster-list"
 HELP_URL_NAME = "help-index"
 SEASON_LIST_URL_NAME = "league-season-list"
 
@@ -142,18 +143,42 @@ def _table_url(membership) -> str | None:
 
 def _sections(*, table_url=None, is_staff=False) -> list:
     """Quiet links into the rest of the site - this page is the landing page."""
-    sections = [{"label": "Spieltage", "url": reverse(LEAGUE_GAMEDAY_LIST)}]
+    sections = [
+        {
+            "label": "Spieltage",
+            "icon": "bi-calendar3",
+            "url": reverse(LEAGUE_GAMEDAY_LIST),
+        }
+    ]
     if table_url is not None:
-        sections.append({"label": "Ligen & Tabellen", "url": table_url})
+        sections.append(
+            {"label": "Ligen & Tabellen", "icon": "bi-bar-chart", "url": table_url}
+        )
     sections.extend(
         [
-            {"label": "Offizielle", "url": reverse(OFFICIALS_URL_NAME)},
-            {"label": "Team", "url": reverse(TEAMMANAGER_URL_NAME)},
+            {
+                "label": "Offizielle",
+                "icon": "bi-person-badge",
+                "url": reverse(OFFICIALS_URL_NAME),
+            },
+            {
+                "label": "Team",
+                "icon": "bi-people",
+                "url": reverse(TEAMMANAGER_URL_NAME),
+            },
         ]
     )
     if is_staff:
-        sections.append({"label": "Saisons", "url": reverse(SEASON_LIST_URL_NAME)})
-    sections.append({"label": "Hilfe", "url": reverse(HELP_URL_NAME)})
+        sections.append(
+            {
+                "label": "Saisons",
+                "icon": "bi-tags",
+                "url": reverse(SEASON_LIST_URL_NAME),
+            }
+        )
+    sections.append(
+        {"label": "Hilfe", "icon": "bi-question-circle", "url": reverse(HELP_URL_NAME)}
+    )
     return sections
 
 
@@ -380,6 +405,10 @@ def _previous_scores(team, before) -> dict:
     return scores
 
 
+def _roster_url(team) -> str:
+    return reverse(PASSCHECK_ROSTER_URL_NAME, kwargs={"pk": team.pk})
+
+
 def _roster_card(team, memberships):
     active = Playerlist.objects.filter(team=team, left_on__isnull=True)
     minimum = None
@@ -392,6 +421,7 @@ def _roster_card(team, memberships):
         active_players=active.count(),
         players_without_jersey=active.filter(jersey_number__isnull=True).count(),
         minimum_player_strength=minimum,
+        roster_url=_roster_url(team),
     )
 
 
@@ -472,10 +502,10 @@ def _season_break_card(team, memberships, today):
         f"{reason} Kein Spieltag mit Datum ab heute.",
         links=[
             {
-                "label": "Jetzt sinnvoll: Kader prüfen",
-                "url": reverse("league-gameday-list"),
+                "label": "Kader & Transfers",
+                "url": _roster_url(team),
+                "primary": False,
             },
-            {"label": "Alle Spieltage", "url": reverse("league-gameday-list")},
         ],
     )
 
@@ -565,16 +595,13 @@ def _staff_context(today) -> dict:
                 info_card(
                     "staff_empty",
                     "Noch keine Saison und kein Spieltag",
-                    "Lege zuerst eine Saison an, dann einen Spieltag.",
+                    "Lege zuerst eine Saison an - danach den ersten Spieltag.",
                     links=[
                         {
                             "label": "Saison anlegen",
                             "url": reverse("league-season-create"),
-                        },
-                        {
-                            "label": "Aus Vorlage anwenden",
-                            "url": reverse(DESIGNER_URL_NAME),
-                        },
+                            "primary": True,
+                        }
                     ],
                 )
             ],
@@ -601,8 +628,6 @@ def _staff_context(today) -> dict:
                 league=league.name,
                 season=next_season,
                 has_template=ScheduleTemplate.objects.exists(),
-                last_gameday_date=latest.date,
-                today=today,
                 has_upcoming_gameday=False,
                 season_url=reverse("league-season-create"),
                 designer_url=reverse(DESIGNER_URL_NAME),

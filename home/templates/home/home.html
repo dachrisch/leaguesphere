@@ -14,21 +14,28 @@
   .home-row .status.warning { color: #8a5a00; }
   .home-row .status.ok { color: #2f6b45; }
   .home-row .status.info { color: #41586a; }
-  .home-step { flex: 1; border: 1px solid #e3e6e8; border-radius: .5rem; padding: .55rem .7rem; background: #fff; }
-  .home-step.done { border-color: #cfe3d6; background: #f6faf7; }
-  .home-step.todo { border-style: dashed; background: #fcfcfd; }
-  .home-step .k { font-size: .66rem; letter-spacing: .07em; text-transform: uppercase; color: #8a9196; font-weight: 700; }
-  .home-step .v { font-size: .9rem; font-weight: 600; }
-  .home-step .a { font-size: .78rem; color: #6c757d; margin-top: .15rem; }
+  .home-steps { list-style: none; padding: 0; margin: 0; }
+  .home-step { display: flex; gap: .7rem; align-items: flex-start; padding: .4rem 0; }
+  .home-step .num { flex: 0 0 1.5rem; width: 1.5rem; height: 1.5rem; border-radius: 50%;
+                    background: #eef2f5; color: #5f788a; font-size: .8rem; font-weight: 700;
+                    display: inline-flex; align-items: center; justify-content: center; }
+  .home-step.done .num { background: #e3f1e8; color: #2f6b45; }
+  .home-step .body { display: flex; flex-direction: column; }
+  .home-step .k { font-size: .68rem; letter-spacing: .07em; text-transform: uppercase; color: #8a9196; font-weight: 700; }
+  .home-step .v { font-size: .95rem; font-weight: 600; }
+  .home-step .a { font-size: .82rem; color: #6c757d; }
   .home-score { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.5rem; }
   .home-avatar { width: 56px; height: 56px; border-radius: 14px; background: #eef2f5; color: #5f788a;
                  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem;
                  overflow: hidden; flex: 0 0 56px; }
   .home-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .home-sections { border-top: 1px solid #e3e6e8; margin-top: 1.5rem; padding-top: 1rem; }
-  .home-sections a { color: #41586a; text-decoration: none; border-bottom: 1px solid transparent; }
-  .home-sections a:hover { border-bottom-color: #5f788a; }
-  .home-sections .sep { color: #cbd6de; margin: 0 .6rem; }
+  .home-sections { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 2rem; }
+  .home-pill { display: inline-flex; align-items: center; gap: .45rem; padding: .45rem .9rem;
+               border: 1px solid #dfe4e8; border-radius: 999px; background: #fff;
+               color: #41586a; text-decoration: none; font-size: .92rem; font-weight: 500;
+               transition: background-color .12s ease, border-color .12s ease; }
+  .home-pill:hover { background: #f2f6f8; border-color: #b9c6cf; color: #2f4553; }
+  .home-pill i { font-size: 1rem; color: #5f788a; }
   @media (max-width: 767px) { .home-row { flex-direction: column; gap: .15rem; } }
 </style>
 
@@ -45,7 +52,6 @@
     <div class="text-muted">{{ role_text }}</div>
     {% if context_text %}<div class="text-muted small">{{ context_text }}</div>{% endif %}
   </div>
-  <div class="text-muted small">{{ date_text }}</div>
 </div>
 
 {% if cards|length == 1 %}
@@ -66,10 +72,10 @@
 {% endif %}
 
 <nav class="home-sections" aria-label="Weitere Bereiche">
-  <span class="home-label me-2">Weitermachen</span>
   {% for section in sections %}
-    <a href="{{ section.url }}">{{ section.label }}</a>
-    {% if not forloop.last %}<span class="sep">·</span>{% endif %}
+  <a class="home-pill" href="{{ section.url }}">
+    <i class="bi {{ section.icon }}" aria-hidden="true"></i>{{ section.label }}
+  </a>
   {% endfor %}
 </nav>
 {% endblock content %}
