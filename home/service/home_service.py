@@ -19,7 +19,7 @@ from data every request.
 
 from datetime import timedelta
 
-from django.db.models import Count, Max
+from django.db.models import Count, Max, Q
 from django.urls import reverse
 from django.utils import timezone
 
@@ -62,6 +62,7 @@ from .cards import (
     roster_checks_card,
     staff_gameday_nudge_card,
     staff_readiness_card,
+    staff_review_card,
     table_delta_card,
 )
 
@@ -477,7 +478,10 @@ def _staff_context(today) -> dict:
     )
 
     if upcoming is not None:
-        cards = [_readiness_card(upcoming, league, today)]
+        cards = [
+            _readiness_card(upcoming, league, today),
+            _review_card(upcoming.season, today),
+        ]
     else:
         next_season = (
             Season.objects.filter(name__gt=latest.season.name).order_by("-name").first()
@@ -493,7 +497,8 @@ def _staff_context(today) -> dict:
                 season_url=reverse("league-season-create"),
                 designer_url=reverse(DESIGNER_URL_NAME),
                 gameday_create_url=reverse(LEAGUE_GAMEDAY_CREATE),
-            )
+            ),
+            _review_card(latest.season, today),
         ]
 
     return {
@@ -501,6 +506,43 @@ def _staff_context(today) -> dict:
         "subtitle": f"Liga-Verwaltung · {league.name} · Saison {latest.season.name}",
         "cards": [card for card in cards if card is not None],
     }
+
+
+def _review_card(season, today):
+    """One card for the past: the season and how its last gameday went."""
+    season_stats = Gameday.objects.filter(season=season).aggregate(
+        total=Count("pk"),
+        upcoming=Count("pk", filter=Q(date__gte=today)),
+    )
+    memberships = SeasonLeagueTeam.objects.filter(season=season).aggregate(
+        leagues=Count("league_id", distinct=True),
+        teams=Count("teams", distinct=True),
+    )
+
+    last_gameday = (
+        Gameday.objects.filter(season=season, date__lt=today)
+        .order_by("-date", "-pk")
+        .first()
+    )
+    games = {"total": 0, "with_results": 0}
+    if last_gameday is not None:
+        games = Gameinfo.objects.filter(gameday=last_gameday).aggregate(
+            total=Count("pk", distinct=True),
+            with_results=Count("pk", filter=Q(gameresult__isnull=False), distinct=True),
+        )
+
+    return staff_review_card(
+        season_name=season.name,
+        gameday_count=season_stats["total"],
+        is_finished=season_stats["upcoming"] == 0,
+        team_count=memberships["teams"],
+        league_count=memberships["leagues"],
+        last_gameday_name=last_gameday.name if last_gameday else None,
+        last_gameday_date=last_gameday.date if last_gameday else None,
+        today=today,
+        games_total=games["total"],
+        games_with_results=games["with_results"],
+    )
 
 
 def _readiness_card(gameday, league, today):
