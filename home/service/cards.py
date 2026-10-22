@@ -429,15 +429,13 @@ def staff_gameday_nudge_card(
         "summary": "Der nächste Spieltag entsteht in wenigen Minuten aus einer Vorlage.",
         "steps": [season_step, gameday_step],
         "rows": [],
-        # Step 2 already opens the designer, so only the manual fallback is a
-        # button here - no second path to the same place.
-        "links": [
-            {
-                "label": "Spieltag manuell anlegen",
-                "url": gameday_create_url,
-                "primary": False,
-            }
-        ],
+        # Step 2 is the action; the classic form is a quiet "…oder" fallback,
+        # never a button that could read as the primary way.
+        "links": [],
+        "fallback": {
+            "label": "Spieltag manuell anlegen",
+            "url": gameday_create_url,
+        },
     }
 
 
@@ -483,7 +481,7 @@ def staff_review_card(
 
     return {
         "key": "staff_review",
-        "title": f"Letzte Saison · {season_name}",
+        "title": f"Saison {season_name}",
         "severity": SEVERITY_INFO,
         "severity_text": SEVERITY_TEXT[SEVERITY_INFO],
         "summary": summary,

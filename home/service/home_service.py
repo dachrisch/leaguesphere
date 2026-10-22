@@ -620,9 +620,11 @@ def _staff_context(today) -> dict:
             _review_card(upcoming.season, today),
         ]
     else:
-        next_season = (
-            Season.objects.filter(name__gt=latest.season.name).order_by("-name").first()
-        )
+        # The chain's first link asks "is there a season to plan in at all?".
+        # Season carries no dates, so the newest season is the target; the old
+        # "newer than the last gameday's season" rule wrongly reported a missing
+        # season whenever the current season was already in use.
+        next_season = Season.objects.order_by("-name", "-pk").first()
         cards = [
             staff_gameday_nudge_card(
                 league=league.name,
