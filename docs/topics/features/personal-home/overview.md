@@ -64,13 +64,18 @@ Role precedence: **team → official → staff → guest**.
    before the gameday). Without one: **Saison → Spieltag**, with the designer as
    the default way and the manual `gameday/new/` form as the fallback only.
    Creating a gameday *from a template* happens in the designer, so "Vorlage" is
-   an annotation on the gameday step ("Vorlage vorhanden – im Designer anwenden"
-   / "Keine Vorlage – im Designer anlegen"), not a step of its own. Step 1 links
-   to the season flow from #2079, not to Django admin.
+   an annotation on the gameday step ("Vorlage vorhanden" / "Keine Vorlage
+   vorhanden"), not a step of its own. Step 1 links to the season flow from
+   #2079, not to Django admin; it reports a season as **present whenever one
+   exists** (the newest season is the target — `Season` stores no dates, so
+   "newer than the last gameday's season" wrongly reported the current season as
+   missing). The classic `gameday/new/` form is a quiet "…oder" link under the
+   steps, never a button that could read as the primary way.
 
-   Both staff states also carry one **past review card**: the last season, how
-   many gamedays it has (and whether it is finished), teams/leagues, the last
-   gameday with "vor N Wochen/Tagen", and how many of its games have results.
+   Both staff states also carry one **season review card** ("Saison <name>" —
+   not "Letzte Saison", since it is usually the running season): how many
+   gamedays it has (and whether it is finished), teams/leagues, the last gameday
+   with "vor N Wochen/Tagen", and how many of its games have results.
    Pluralisation is correct (`1 Spieltag`, `6 Spieltage`), zero-value rows are
    omitted, the date is not printed twice when the gameday name already contains
    it ("Gameday on 16.10.2026"), and a season without gamedays collapses to a

@@ -333,12 +333,14 @@ class TestStaffGamedayNudgeCard:
             link["label"] for link in card["links"]
         ]
 
-    def test_manual_creation_stays_as_the_only_button(self):
+    def test_manual_creation_is_a_quiet_fallback_not_a_button(self):
         card = self._card()
 
-        assert [link["label"] for link in card["links"]] == ["Spieltag manuell anlegen"]
-        assert card["links"][0]["url"] == "/gamedays/gameday/new/"
-        assert card["links"][0]["primary"] is False
+        assert card["links"] == []
+        assert card["fallback"] == {
+            "label": "Spieltag manuell anlegen",
+            "url": "/gamedays/gameday/new/",
+        }
 
     def test_does_not_repeat_the_last_gameday(self):
         """The review card owns the past; the nudge must not say it twice."""
@@ -364,11 +366,12 @@ class TestStaffReviewCard:
         kwargs.update(overrides)
         return staff_review_card(**kwargs)
 
-    def test_summarises_the_last_season(self):
+    def test_summarises_the_season(self):
         card = self._card()
 
         assert card["key"] == "staff_review"
-        assert "2025/2026" in card["title"]
+        assert card["title"] == "Saison 2025/2026"
+        assert "Letzte" not in card["title"]
         assert "6 Spieltage" in card["summary"]
         assert "abgeschlossen" in card["summary"]
 

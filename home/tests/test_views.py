@@ -106,13 +106,13 @@ def test_staff_sees_the_past_review_in_both_states(client):
     _team_with_gameday(TODAY - timedelta(days=40))
     client.force_login(UserFactory(username="staff_user_a", is_staff=True))
     content = client.get(reverse("home")).content.decode()
-    assert "Letzte Saison" in content
-    assert "Spiele erfasst" in content
+    assert "Saison 2025/2026" in content
+    assert "Letzter Spieltag" in content
 
     _team_with_gameday(TODAY + timedelta(days=4))
     client.force_login(UserFactory(username="staff_user_b", is_staff=True))
     content = client.get(reverse("home")).content.decode()
-    assert "Letzte Saison" in content
+    assert "Saison 2025/2026" in content
 
 
 @pytest.mark.django_db
@@ -205,6 +205,9 @@ def test_home_does_not_repeat_a_destination(client):
     assert main.count(f'href="{designer}"') == 1
     assert "Spieltag im Designer anlegen" in main
     assert main.count("Spieltag manuell anlegen") == 1
+    # ... and it is a quiet fallback link, not a button competing with the step.
+    assert "home-quiet-link" in main
+    assert "oder Spieltag manuell anlegen" in main
     # The past is stated by the review card only.
     assert main.count("Letzter Spieltag") == 1
 
@@ -220,3 +223,23 @@ def test_home_header_has_no_date_and_no_hint_chip(client):
     assert ">Hinweis<" not in content
     assert "Weitermachen" not in content  # the strip is icons now, not a text row
     assert "home-pill" in content
+
+
+@pytest.mark.django_db
+def test_staff_nudge_does_not_call_an_existing_season_missing(client):
+    """The chain's first link is about having a season at all - the season of
+    the last gameday counts, even when no newer season exists."""
+    team, season, league, _ = _team_with_gameday(TODAY - timedelta(days=6))
+    client.force_login(UserFactory(username="staff_season_exists", is_staff=True))
+
+    response = client.get(reverse("home"))
+
+    nudge = next(
+        card
+        for card in response.context["cards"]
+        if card["key"] == "staff_gameday_nudge"
+    )
+    season_step = nudge["steps"][0]
+    assert season_step["state"] == "done"
+    assert season.name in season_step["text"]
+    assert "fehlt" not in season_step["text"]
