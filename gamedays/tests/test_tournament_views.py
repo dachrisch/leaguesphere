@@ -3,6 +3,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 
 from gamedays.constants import LEAGUE_TOURNAMENT_DETAIL
+from gamedays.tests.setup_factories.request_caches import pin_request_path_caches
 from gamedays.models import ResourceUrl
 from gamedays.tests.setup_factories.factories import (
     LeagueFactory,
@@ -90,9 +91,9 @@ class TournamentDetailViewTests(TestCase):
         # 10. ResourceUrl prefetch
         # 11. LeagueSeasonConfig (from base template rendering)
         # Expected: 11 queries, flat regardless of tournament size
-        # Warm request-path caches (maintenance-mode SiteConfiguration lookup + connection
-        # liveness check) so the query count is not order-dependent under parallel (xdist) runs.
-        self.client.get(url)
+        # Pin the middleware caches: a warm-up request only *usually* leaves them
+        # populated and the count then flips under CI load (see request_caches).
+        pin_request_path_caches()
         with self.assertNumQueries(11):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTPStatus.OK)
@@ -105,9 +106,9 @@ class TournamentDetailViewTests(TestCase):
         # Query count should remain flat regardless of tournament size:
         # Same 11 queries as the small tournament (2 rows, 3 cols each, 5 games per col = 30 games)
         # All relationships are prefetched, so no N+1 queries occur
-        # Warm request-path caches (maintenance-mode SiteConfiguration lookup + connection
-        # liveness check) so the query count is not order-dependent under parallel (xdist) runs.
-        self.client.get(url)
+        # Pin the middleware caches: a warm-up request only *usually* leaves them
+        # populated and the count then flips under CI load (see request_caches).
+        pin_request_path_caches()
         with self.assertNumQueries(11):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTPStatus.OK)

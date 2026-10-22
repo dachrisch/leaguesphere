@@ -6,6 +6,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from gamedays.models import Gameresult, SeasonLeagueTeam
+from gamedays.tests.setup_factories.request_caches import pin_request_path_caches
 from gamedays.tests.setup_factories.factories import (
     GamedayFactory,
     GameinfoFactory,
@@ -144,7 +145,7 @@ def test_query_count_is_flat_between_one_and_twelve_teams(client):
     team, season, league, _ = _team_with_gameday(TODAY + timedelta(days=4))
     client.force_login(_manager(team))
     url = reverse("home")
-    client.get(url)  # warm middleware / menu caches
+    pin_request_path_caches()
 
     with CaptureQueriesContext(connection) as small:
         client.get(url)
