@@ -39,6 +39,10 @@ migrations.
 - **`Gameresult` carries only `fh`, `sh`, `pa`** — no yardage/catch data. Do not
   invent stats, ratings or predictions.
 - **Team-less users must not get roster/transfer cards** — not even empty ones.
+- **The greeting depends on the wall clock** (`Guten Morgen/Tag/Abend`).
+  `build_context(user, now=...)` exists for that reason: any test that asserts a
+  greeting must inject `now=`, otherwise it passes in the morning and fails in
+  the evening (that is exactly how it broke CI once).
 - **Query count must stay flat**: the page is read for one team only; assert
   with `django_assert_num_queries` / `CaptureQueriesContext` that 1 team and 12
   teams cost the same.

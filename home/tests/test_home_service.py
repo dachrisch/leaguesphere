@@ -343,11 +343,16 @@ class TestRoleText:
         team, season, league = _team_in_league()
         _gameday(team, season, league, TODAY - timedelta(days=40))
 
+        # Inject the clock: the greeting is time-of-day dependent, so a test
+        # without `now=` passes in the morning and fails in the evening.
         context = build_context(
-            UserFactory(username="staff_role", is_staff=True), today=TODAY
+            UserFactory(username="staff_role", is_staff=True),
+            today=TODAY,
+            now=datetime(2026, 10, 22, 12, 0),
         )
 
         assert context["heading"] == "Guten Tag"
+        assert "Staff" not in context["heading"]
         assert context["role_text"] == "Liga-Verwaltung"
         assert context["context_text"] == "Premier Division · Saison 2025/2026"
 
