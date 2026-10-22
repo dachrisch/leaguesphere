@@ -1,5 +1,37 @@
 # Changelog
 
+## [4.43.0](https://github.com/dachrisch/leaguesphere/compare/v4.42.0...v4.43.0) (2026-10-22)
+
+
+### Features
+
+* **designer:** create the gameday for the season and league it was opened for ([#2084](https://github.com/dachrisch/leaguesphere/issues/2084)) ([f66d42b](https://github.com/dachrisch/leaguesphere/commit/f66d42be7e6d2189e34f4737d9ae5c66037a1751))
+* **designer:** create the gameday for the season and league it was opened for ([#2084](https://github.com/dachrisch/leaguesphere/issues/2084)) ([9dc245a](https://github.com/dachrisch/leaguesphere/commit/9dc245adf04c11c638421d42555c164b54ebd6c2))
+* **home:** personal home with gameday rhythm, readiness and creation nudge ([#2078](https://github.com/dachrisch/leaguesphere/issues/2078)) ([229fa02](https://github.com/dachrisch/leaguesphere/commit/229fa026555e0a18a610a5e351f5168eb6239418))
+* **home:** personal home with gameday rhythm, readiness and creation nudge ([#2078](https://github.com/dachrisch/leaguesphere/issues/2078)) ([f2db18c](https://github.com/dachrisch/leaguesphere/commit/f2db18cadd406af989e5157da7b29da008844db0))
+* **home:** welcome people by name and point them at the rest of the site ([#2078](https://github.com/dachrisch/leaguesphere/issues/2078)) ([f1e002b](https://github.com/dachrisch/leaguesphere/commit/f1e002b1c2e316aa9184e4df2d67427e8a1ae6ec))
+* **season:** staff UI for season rollover ([#2079](https://github.com/dachrisch/leaguesphere/issues/2079)) ([e29ad11](https://github.com/dachrisch/leaguesphere/commit/e29ad11e09c9da9de914cce4eb6e9569a33ec597))
+* **season:** staff UI for season rollover ([#2079](https://github.com/dachrisch/leaguesphere/issues/2079)) ([41a9f92](https://github.com/dachrisch/leaguesphere/commit/41a9f92c519119b3689612da9de2ff0b5e454d70))
+
+
+### Bug Fixes
+
+* **home:** an existing season is not a missing one, and the fallback is not the primary action ([#2078](https://github.com/dachrisch/leaguesphere/issues/2078)) ([87513a9](https://github.com/dachrisch/leaguesphere/commit/87513a92abbcdb155f43d9e42151b397bb0d4160))
+* **home:** designer is the default gameday path, plus a past review ([#2078](https://github.com/dachrisch/leaguesphere/issues/2078)) ([30e6128](https://github.com/dachrisch/leaguesphere/commit/30e612811c9dc1a0b4564da7cfe9489cdc9b6b9f))
+* **home:** make the greeting test independent of the wall clock ([#2089](https://github.com/dachrisch/leaguesphere/issues/2089)) ([a0d82bd](https://github.com/dachrisch/leaguesphere/commit/a0d82bd83b34792605925b2b719f3ab0be36a4a5))
+* **home:** make the greeting test independent of the wall clock ([#2089](https://github.com/dachrisch/leaguesphere/issues/2089)) ([a17dbe1](https://github.com/dachrisch/leaguesphere/commit/a17dbe14e677f29f6dcfcf90a39548b55d795511))
+* **home:** no date, no chips, no repeated links ([#2078](https://github.com/dachrisch/leaguesphere/issues/2078)) ([f177754](https://github.com/dachrisch/leaguesphere/commit/f177754cd45e0861bbeb99b4b883a10fbc0c360a))
+* **test:** pin middleware caches in the gameday detail query-count test ([#2079](https://github.com/dachrisch/leaguesphere/issues/2079)) ([8d30149](https://github.com/dachrisch/leaguesphere/commit/8d30149866c7c7e2700e4837267a6bc7cd69a6cc))
+
+
+### Documentation
+
+* **help:** in-app help for the home page and the season rollover ([#2087](https://github.com/dachrisch/leaguesphere/issues/2087)) ([b6ede02](https://github.com/dachrisch/leaguesphere/commit/b6ede027d9788fd4d0c014e601c0bc271d6ee9dc))
+* **help:** in-app help for the home page and the season rollover ([#2087](https://github.com/dachrisch/leaguesphere/issues/2087)) ([53a5cff](https://github.com/dachrisch/leaguesphere/commit/53a5cffd79c02f790cfb0734d3f6435d924fb763))
+* **home:** document the personal home and its data rules ([#2078](https://github.com/dachrisch/leaguesphere/issues/2078)) ([0c9d7e7](https://github.com/dachrisch/leaguesphere/commit/0c9d7e7106f51df377488a48890a8e9db26d2978))
+* **season:** document the staff rollover flow ([#2079](https://github.com/dachrisch/leaguesphere/issues/2079)) ([f7a1d8b](https://github.com/dachrisch/leaguesphere/commit/f7a1d8b684b0c4e5eb6d545ec9659d7a7b34d023))
+* **skills:** require a help entry for user-facing feature work ([#2087](https://github.com/dachrisch/leaguesphere/issues/2087)) ([b8fa1df](https://github.com/dachrisch/leaguesphere/commit/b8fa1dfaef8926ebb47208915739b52b5bcb5091))
+
 ## [4.42.0](https://github.com/dachrisch/leaguesphere/compare/v4.41.3...v4.42.0) (2026-10-21)
 
 
