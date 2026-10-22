@@ -31,11 +31,17 @@ The page opens like a home, not a console:
 - **Avatar** prefers `UserProfile.avatar`, then the team's `Team.logo`, then initials of the
   person (first + last name). The old role abbreviation ("ST" for staff) is gone.
 - **Role line in a sentence** ("Teamverantwortlich für …", "Liga-Verwaltung · <Liga>") plus the
-  season context, and the German date on the right.
-- **A section strip ("Weitermachen")** at the bottom links into the rest of the site — the page is
-  the post-login target (`LOGIN_REDIRECT_URL`) and should orient, not only list tasks. Links are
+  season context. No date in the header — it is a home page, not a console.
+- **A strip of icon pills** at the bottom links into the rest of the site — the page is the
+  post-login target (`LOGIN_REDIRECT_URL`) and should orient, not only list tasks. Links are
   role-aware: everyone gets Spieltage, Offizielle, Team and Hilfe; team users and staff also get
   their league's table; staff additionally get the season administration.
+- **No destination twice.** The strip owns navigation, so cards only carry links the strip does
+  not offer (Kader & Transfers, Saison anlegen, Spieltag manuell anlegen). The nudge's gameday
+  step already opens the designer, so it has no second designer button; the past is stated by the
+  review card only. A test asserts each of those URLs appears exactly once inside `<main>`.
+- **Card badges only for `warning`/`danger`** — an `info` card (like "nothing planned yet") carries
+  no chip. Row-level severity still always says `Erledigt` / `Achtung` / `Offen` in words.
 
 ## The four states
 
@@ -65,6 +71,10 @@ Role precedence: **team → official → staff → guest**.
    Both staff states also carry one **past review card**: the last season, how
    many gamedays it has (and whether it is finished), teams/leagues, the last
    gameday with "vor N Wochen/Tagen", and how many of its games have results.
+   Pluralisation is correct (`1 Spieltag`, `6 Spieltage`), zero-value rows are
+   omitted, the date is not printed twice when the gameday name already contains
+   it ("Gameday on 16.10.2026"), and a season without gamedays collapses to a
+   single line instead of `Teams 0 · Ligen 0` / `Spiele erfasst 0 / 0`.
 
 Every row states its severity in words (`Erledigt`, `Achtung`, `Offen`); colour
 is never the only carrier. Completed checks stay visible as a green row so the

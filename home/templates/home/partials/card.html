@@ -8,13 +8,11 @@
       <div class="home-label mb-1">{{ card.title }}</div>
       <div class="fw-semibold">{{ card.summary }}</div>
     </div>
-    <span class="badge
-      {% if card.severity == 'danger' %}bg-danger
-      {% elif card.severity == 'warning' %}bg-warning text-dark
-      {% elif card.severity == 'ok' %}bg-success
-      {% else %}bg-secondary{% endif %}">
+    {% if card.severity == 'danger' or card.severity == 'warning' %}
+    <span class="badge {% if card.severity == 'danger' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
       {{ card.severity_text }}
     </span>
+    {% endif %}
   </div>
 
   {% if card.score %}
@@ -26,17 +24,20 @@
   {% endif %}
 
   {% if card.steps %}
-  <div class="d-flex flex-wrap gap-2 mt-3">
+  <ol class="home-steps mt-3">
     {% for step in card.steps %}
-    <div class="home-step {{ step.state }}">
-      <div class="k">{{ step.label }} · {{ step.title }}</div>
-      <div class="v">
-        {% if step.url %}<a href="{{ step.url }}">{{ step.text }}</a>{% else %}{{ step.text }}{% endif %}
-      </div>
-      {% if step.annotation %}<div class="a">{{ step.annotation }}</div>{% endif %}
-    </div>
+    <li class="home-step {{ step.state }}">
+      <span class="num" aria-hidden="true">{{ forloop.counter }}</span>
+      <span class="body">
+        <span class="k">{{ step.title }}</span>
+        <span class="v">
+          {% if step.url %}<a href="{{ step.url }}">{{ step.text }}</a>{% else %}{{ step.text }}{% endif %}
+        </span>
+        {% if step.annotation %}<span class="a">{{ step.annotation }}</span>{% endif %}
+      </span>
+    </li>
     {% endfor %}
-  </div>
+  </ol>
   {% endif %}
 
   {% if card.rows %}

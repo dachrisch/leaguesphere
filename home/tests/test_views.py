@@ -79,8 +79,11 @@ def test_season_break_is_explained_and_offers_chores(client):
     response = client.get(reverse("home"))
 
     content = response.content.decode()
-    assert "Keine Spieltage geplant" in content
-    assert "Jetzt sinnvoll" in content
+    main = content.split("<main", 1)[1].split("</main>", 1)[0]
+    assert "Keine Spieltage geplant" in main
+    assert "Kader &amp; Transfers" in main
+    # One link per destination: the gameday list is offered by the strip only.
+    assert main.count(f'href="{reverse("league-gameday-list")}"') == 1
 
 
 @pytest.mark.django_db
@@ -178,8 +181,42 @@ def test_home_links_onwards_to_the_other_sections(client):
 
     content = client.get(reverse("home")).content.decode()
 
-    assert "Weitermachen" in content
+    assert "home-pill" in content
+    assert 'class="bi bi-calendar3"' in content
     assert reverse("league-gameday-list") in content
     assert reverse("view-officials-list-for-all-teams") in content
     assert reverse("teammanager") in content
     assert reverse("help-index") in content
+
+
+@pytest.mark.django_db
+def test_home_does_not_repeat_a_destination(client):
+    """Each action appears once: the step already links the designer, so the
+    nudge must not also render a designer button."""
+    _team_with_gameday(TODAY - timedelta(days=40))
+    client.force_login(UserFactory(username="staff_once", is_staff=True))
+
+    content = client.get(reverse("home")).content.decode()
+
+    main = content.split("<main", 1)[1].split("</main>", 1)[0]
+    designer = "/gamedays/gameday/design/"
+    # The step links the designer; the card must not also render a button for it
+    # (the nav carries one more, which is chrome outside <main>).
+    assert main.count(f'href="{designer}"') == 1
+    assert "Spieltag im Designer anlegen" in main
+    assert main.count("Spieltag manuell anlegen") == 1
+    # The past is stated by the review card only.
+    assert main.count("Letzter Spieltag") == 1
+
+
+@pytest.mark.django_db
+def test_home_header_has_no_date_and_no_hint_chip(client):
+    _team_with_gameday(TODAY - timedelta(days=40))
+    client.force_login(UserFactory(username="staff_chrome", is_staff=True))
+
+    content = client.get(reverse("home")).content.decode()
+
+    assert "Do," not in content
+    assert ">Hinweis<" not in content
+    assert "Weitermachen" not in content  # the strip is icons now, not a text row
+    assert "home-pill" in content

@@ -113,6 +113,18 @@ class TestRosterChecksCard:
         assert all(row["status_text"] == "Erledigt" for row in card["rows"])
         assert len(card["rows"]) == 2
 
+    def test_offers_one_roster_link_instead_of_a_label_per_row(self):
+        card = roster_checks_card(
+            active_players=4,
+            players_without_jersey=2,
+            minimum_player_strength=5,
+            roster_url="/passcheck/team/1/list/",
+        )
+
+        assert [link["label"] for link in card["links"]] == ["Kader & Transfers"]
+        assert card["links"][0]["url"] == "/passcheck/team/1/list/"
+        assert all(row["label"] is None for row in card["rows"])
+
     def test_without_a_league_rule_only_the_data_checks_are_shown(self):
         card = roster_checks_card(
             active_players=2, players_without_jersey=0, minimum_player_strength=None
@@ -247,10 +259,12 @@ class TestStaffReadinessCard:
 
 
 class TestStaffGamedayNudgeCard:
-    """Two steps, one action: the designer *is* the default way.
+    """Two steps, one action each - and no link twice.
 
-    Choosing a template and creating the gameday happen in the same place, so
-    "Vorlage" is an annotation on the gameday step, not a step of its own.
+    Choosing a template and creating the gameday happen in the designer, so
+    "Vorlage" is an annotation on the gameday step, not a step of its own. Step
+    2 already opens the designer, so the card carries only the manual fallback
+    as a button.
     """
 
     def _card(self, **overrides):
@@ -258,8 +272,6 @@ class TestStaffGamedayNudgeCard:
             "league": "Premier Division",
             "season": type("Season", (), {"name": "2026/2027"})(),
             "has_template": True,
-            "last_gameday_date": date(2026, 5, 11),
-            "today": date(2026, 7, 6),
             "has_upcoming_gameday": False,
             "season_url": "/gamedays/seasons/new/",
             "designer_url": "/gamedays/gameday/design/",
@@ -309,35 +321,30 @@ class TestStaffGamedayNudgeCard:
         with_template = self._card(has_template=True)
         without_template = self._card(has_template=False)
 
-        assert "Vorlage vorhanden" in with_template["steps"][1]["annotation"]
-        assert "Keine Vorlage" in without_template["steps"][1]["annotation"]
-        assert "Designer" in without_template["steps"][1]["annotation"]
+        assert with_template["steps"][1]["annotation"] == "Vorlage vorhanden"
+        assert without_template["steps"][1]["annotation"] == "Keine Vorlage vorhanden"
 
-    def test_designer_application_is_the_named_primary_action(self):
+    def test_the_designer_url_appears_only_in_the_step(self):
         card = self._card()
 
-        primary = [link for link in card["links"] if link["primary"]]
-        assert len(primary) == 1
-        assert primary[0]["label"] == "Spieltag im Designer anlegen"
-        assert primary[0]["url"] == "/gamedays/gameday/design/"
+        urls = [link["url"] for link in card["links"]]
+        assert card["steps"][1]["url"] not in urls
+        assert "Spieltag im Designer anlegen" not in [
+            link["label"] for link in card["links"]
+        ]
 
-    def test_manual_creation_stays_as_the_fallback(self):
+    def test_manual_creation_stays_as_the_only_button(self):
         card = self._card()
 
-        secondary = [link for link in card["links"] if not link["primary"]]
-        assert [link["label"] for link in secondary] == ["Spieltag manuell anlegen"]
-        assert secondary[0]["url"] == "/gamedays/gameday/new/"
+        assert [link["label"] for link in card["links"]] == ["Spieltag manuell anlegen"]
+        assert card["links"][0]["url"] == "/gamedays/gameday/new/"
+        assert card["links"][0]["primary"] is False
 
-    def test_states_how_long_ago_the_last_gameday_was(self):
+    def test_does_not_repeat_the_last_gameday(self):
+        """The review card owns the past; the nudge must not say it twice."""
         card = self._card()
 
-        assert "vor 8 Wochen" in card["summary"]
-
-    def test_short_gaps_are_stated_in_days_not_zero_weeks(self):
-        card = self._card(last_gameday_date=date(2026, 7, 2), today=date(2026, 7, 6))
-
-        assert "vor 4 Tagen" in card["summary"]
-        assert "0 Wochen" not in card["summary"]
+        assert "Letzter Spieltag" not in card["summary"]
 
 
 class TestStaffReviewCard:
@@ -365,6 +372,11 @@ class TestStaffReviewCard:
         assert "6 Spieltage" in card["summary"]
         assert "abgeschlossen" in card["summary"]
 
+    def test_a_single_gameday_is_not_plural(self):
+        card = self._card(gameday_count=1, is_finished=False)
+
+        assert card["summary"] == "1 Spieltag · läuft noch"
+
     def test_lists_teams_leagues_and_the_last_gameday(self):
         card = self._card()
 
@@ -383,6 +395,36 @@ class TestStaffReviewCard:
         card = self._card(is_finished=False)
 
         assert "läuft noch" in card["summary"]
+
+    def test_does_not_print_the_date_twice(self):
+        card = self._card(
+            last_gameday_name="Gameday on 11.05.2026",
+            last_gameday_date=date(2026, 5, 11),
+        )
+
+        text = [row["text"] for row in card["rows"] if "Letzter" in row["text"]][0]
+        assert text.count("11.05.2026") == 1
+
+    def test_keeps_a_real_gameday_name(self):
+        card = self._card(last_gameday_name="Spieltag 6")
+
+        text = [row["text"] for row in card["rows"] if "Letzter" in row["text"]][0]
+        assert "Spieltag 6" in text
+        assert "11.05.2026" in text
+
+    def test_an_empty_season_is_one_line_without_zero_rows(self):
+        card = self._card(
+            gameday_count=0,
+            team_count=0,
+            league_count=0,
+            last_gameday_name=None,
+            last_gameday_date=None,
+            games_total=0,
+            games_with_results=0,
+        )
+
+        assert card["summary"] == "Noch kein Spieltag angelegt"
+        assert card["rows"] == []
 
 
 class TestOfficialCards:
