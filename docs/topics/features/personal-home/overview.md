@@ -122,6 +122,13 @@ ranking, so it is not shown.
   home nudge and the season setup page pass the ids they know; the designer falls back
   to its first entries only when the link is stale.
 
+## In-app help
+
+The user-facing explanation lives in the in-app help: `/help/startseite/`
+(`league_manager/help/content/startseite.de.md`), linked from *Erste Schritte*,
+and the season step is described in *Liga & Spieltag verwalten*. Keep both in
+sync when the page changes - see `.opencode/skills/add-help-topic/SKILL.md`.
+
 ## Tests
 
 `pytest home`. The suite covers the pure cards, role selection, the four view

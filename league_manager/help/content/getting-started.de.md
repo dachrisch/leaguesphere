@@ -5,6 +5,8 @@ damit Spieltage, erfasst Ergebnisse, führst Tabellen und verfolgst Spiele live.
 
 ## Was du hier findest
 
+- **[Startseite](/help/startseite/)** – deine Seite nach der Anmeldung:
+  nächster Spieltag, offene Aufgaben und Wege in den Rest der Plattform.
 - **[Spieltage](/help/spieltage/)** – Spielpläne, Ergebnisse und der Tagesstatus.
 - **[Ligatabellen](/help/ligatabellen/)** – Platzierungen je Liga und Saison,
   automatisch berechnet.

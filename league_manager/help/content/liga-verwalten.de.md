@@ -10,6 +10,22 @@ Designer**.
   <figcaption>Der Gameday Designer: Spieltage erstellen, verwalten und als Vorlage wiederverwenden.</figcaption>
 </figure>
 
+## Saison anlegen (Staff)
+
+Vor dem ersten Spieltag einer Saison stehen die Ligen und Teams dieser Saison
+fest:
+
+1. Öffne im Menü **Orga → Saisons**.
+2. **Neue Saison anlegen** – das Kürzel entsteht automatisch aus dem Namen.
+3. Auf der Saisonseite übernimmst du mit **Aus Vorsaison übernehmen** die Ligen
+   und Teams der Vorsaison; bereits zugeordnete Ligen werden übersprungen. Oder
+   du ordnest die Teams je Liga einzeln zu.
+4. Danach geht es weiter mit **Aus Vorlage anwenden** (Designer) oder dem
+   manuellen Formular.
+
+Denselben Weg zeigt die [Startseite](/help/startseite/), wenn noch kein
+Spieltag geplant ist.
+
 ## Einen Spieltag anlegen (empfohlen: Gameday Designer)
 
 1. Öffne im Menü **Orga → Spieltag erstellen**.

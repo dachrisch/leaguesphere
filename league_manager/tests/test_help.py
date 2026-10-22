@@ -138,6 +138,34 @@ class TestHelpRegistry(TestCase):
 
 PROMISED_TOPICS = ["spieltage", "ligatabellen", "teams-offizielle", "share-widget"]
 
+# Topics added with the personal home (#2078) and the season rollover (#2079).
+HOME_TOPICS = ["startseite"]
+
+
+class TestHomeTopic(TestCase):
+    def test_home_topic_renders(self):
+        for slug in HOME_TOPICS:
+            response = self.client.get(reverse("help-topic", kwargs={"slug": slug}))
+            assert response.status_code == 200, slug
+            assert "<h1" in response.content.decode(), slug
+
+    def test_getting_started_links_the_home_topic(self):
+        response = self.client.get(
+            reverse("help-topic", kwargs={"slug": "getting-started"})
+        )
+
+        assert (
+            reverse("help-topic", kwargs={"slug": "startseite"})
+            in response.content.decode()
+        )
+
+    def test_home_topic_points_at_the_gameday_chain(self):
+        response = self.client.get(reverse("help-topic", kwargs={"slug": "startseite"}))
+
+        content = response.content.decode()
+        assert reverse("help-topic", kwargs={"slug": "liga-verwalten"}) in content
+        assert reverse("help-topic", kwargs={"slug": "gameday-designer"}) in content
+
 
 NEW_TOPICS = ["liga-verwalten", "ergebnisse-erfassen", "offizielle-statistik"]
 

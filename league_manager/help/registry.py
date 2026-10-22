@@ -59,6 +59,17 @@ HELP_TOPICS = [
         featured=True,
     ),
     HelpTopic(
+        slug="startseite",
+        group="getting-started",
+        title={"de": "Startseite", "en": "Home"},
+        summary={
+            "de": "Deine Seite nach der Anmeldung: nächster Spieltag, offene Aufgaben und Wege in den Rest der Plattform.",
+            "en": "Your page after signing in: next gameday, open tasks and ways into the rest of the platform.",
+        },
+        icon="bi-house-door",
+        order=5,
+    ),
+    HelpTopic(
         slug="getting-started",
         group="getting-started",
         title={"de": "Erste Schritte", "en": "Getting started"},

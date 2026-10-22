@@ -22,6 +22,10 @@ All documentation lives in `/docs/topics/` organized by topic. Before creating o
 
 See [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md) for the complete guide.
 
+**User-facing behaviour changes also need an in-app help entry** (`/help/`). The
+rules - when a topic is required, and what "short" means - are in
+`.opencode/skills/add-help-topic/SKILL.md`.
+
 ## 🛠 Central Authority
 
 Refer to the specialized guides for detailed protocols:
