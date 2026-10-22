@@ -13,6 +13,7 @@ from gamedays.constants import (
     LEAGUE_SEASON_UPDATE,
 )
 from gamedays.models import Season, SeasonLeagueTeam
+from gamedays.tests.setup_factories.request_caches import pin_request_path_caches
 from gamedays.tests.setup_factories.factories import (
     LeagueFactory,
     SeasonFactory,
@@ -103,7 +104,7 @@ class TestSeasonListView(SeasonViewTestBase):
     def test_query_count_does_not_grow_with_the_number_of_seasons(self):
         self.client.force_login(self.staff)
         url = reverse(LEAGUE_SEASON_LIST)
-        self.client.get(url)  # warm middleware/menu caches
+        pin_request_path_caches()
 
         with CaptureQueriesContext(connection) as small:
             self.client.get(url)
@@ -243,7 +244,7 @@ class TestSeasonLeagueTeamSetupView(SeasonViewTestBase):
             teams=[TeamFactory(name="dragons", description="Zenith Dragons")],
         )
         url = reverse(LEAGUE_SEASON_LEAGUE_SETUP, args=[self.season.pk])
-        self.client.get(url)  # warm middleware/menu caches
+        pin_request_path_caches()
 
         with CaptureQueriesContext(connection) as small:
             self.client.get(url)

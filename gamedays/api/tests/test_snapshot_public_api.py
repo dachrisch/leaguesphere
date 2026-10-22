@@ -21,6 +21,9 @@ from rest_framework.throttling import ScopedRateThrottle
 from gamedays.api.snapshot import SNAPSHOT_MIN_REBUILD_SECONDS
 from gamedays.api.tests.test_snapshot import LOC_MEM_CACHES, SNAPSHOT_URL
 from gamedays.models import Gameday, Gameinfo, Gameresult, SeasonLeagueTeam
+from gamedays.tests.setup_factories.request_caches import (
+    pin_request_path_caches,
+)
 from gamedays.tests.setup_factories.factories import (
     GamedayFactory,
     GameinfoFactory,
@@ -163,7 +166,8 @@ class SnapshotTeamsTest(SnapshotPublicApiTestBase):
             assert response.status_code == status.HTTP_200_OK
             return len(ctx)
 
-        count_queries()  # warm-up: first request pays one-off lookups
+        # Pin the middleware caches (a warm-up request races their TTL under load).
+        pin_request_path_caches()
         small = count_queries()
         for _ in range(3):
             other = GamedayFactory(status=Gameday.STATUS_PUBLISHED)
