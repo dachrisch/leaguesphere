@@ -190,6 +190,28 @@ const GamedayDashboard: React.FC = () => {
         return;
       }
 
+      // Pages that send staff here (the personal home's season rollover) open
+      // the designer for a specific season and league. Honour that context so
+      // the new gameday does not silently land in another league; fall back to
+      // the first entry when the link is stale.
+      const requestedParams = new URLSearchParams(location.search);
+      const requestedSeason = seasons.find(
+        (entry) => `${entry.id}` === requestedParams.get('season')
+      );
+      const requestedLeague = leagues.find(
+        (entry) => `${entry.id}` === requestedParams.get('league')
+      );
+      if (
+        (requestedParams.has('season') && !requestedSeason) ||
+        (requestedParams.has('league') && !requestedLeague)
+      ) {
+        addNotification(
+          t('ui:message.designerContextUnavailable'),
+          'warning',
+          t('ui:notification.title.prerequisites')
+        );
+      }
+
       const today = new Date();
       const dd = String(today.getDate()).padStart(2, '0');
       const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -203,8 +225,8 @@ const GamedayDashboard: React.FC = () => {
         format: '6_2',
         author: 1, // TODO: Use actual user ID
         address: '',
-        season: seasons[0].id,
-        league: leagues[0].id,
+        season: requestedSeason?.id ?? seasons[0].id,
+        league: requestedLeague?.id ?? leagues[0].id,
       });
 
       if (showCreateTour && !tourASeen) {

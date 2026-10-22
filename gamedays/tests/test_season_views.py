@@ -221,7 +221,8 @@ class TestSeasonLeagueTeamSetupView(SeasonViewTestBase):
 
         content = response.content.decode()
         assert reverse(LEAGUE_GAMEDAY_CREATE) in content
-        assert reverse(DESIGNER_INDEX) in content
+        # The designer creates the gameday for the season it was opened for.
+        assert f"{reverse(DESIGNER_INDEX)}?season={self.season.pk}" in content
 
     def test_copy_from_previous_season_is_the_primary_action(self):
         response = self.client.get(

@@ -387,3 +387,35 @@ class TestSections:
         assert "Saisons" not in labels
         assert "Spieltage" in labels
         assert "Offizielle" in labels
+
+
+@pytest.mark.django_db
+def test_staff_nudge_opens_the_designer_for_the_next_season_and_league():
+    """The designer creates the gameday with the context it was opened for."""
+    team, season, league = _team_in_league()
+    _gameday(team, season, league, TODAY - timedelta(days=40))
+    next_season = SeasonFactory(name="2026/2027")
+
+    context = build_context(
+        UserFactory(username="staff_designer", is_staff=True), today=TODAY
+    )
+
+    nudge = next(c for c in context["cards"] if c["key"] == "staff_gameday_nudge")
+    primary = next(link for link in nudge["links"] if link["primary"])
+    assert f"league={league.pk}" in primary["url"]
+    assert f"season={next_season.pk}" in primary["url"]
+
+
+@pytest.mark.django_db
+def test_staff_nudge_omits_the_season_while_it_is_missing():
+    team, season, league = _team_in_league()
+    _gameday(team, season, league, TODAY - timedelta(days=40))
+
+    context = build_context(
+        UserFactory(username="staff_designer_2", is_staff=True), today=TODAY
+    )
+
+    nudge = next(c for c in context["cards"] if c["key"] == "staff_gameday_nudge")
+    primary = next(link for link in nudge["links"] if link["primary"])
+    assert f"league={league.pk}" in primary["url"]
+    assert "season=" not in primary["url"]
