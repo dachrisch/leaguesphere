@@ -52,12 +52,16 @@ league_manager/
    Use absolute `/static/help/img/...` paths (Markdown can't call `{% static %}`).
 4. **Link it** from a related topic (e.g. `getting-started.de.md`) with a normal
    Markdown link: `[Spieltage](/help/spieltage/)`.
-5. **Run the tests** (they enforce registry↔content and image existence):
+5. **Add the topic to `templates/llms-full.txt`** (the "Help" list). A test
+   asserts that file links the help index and *every* registry topic, so a new
+   topic without this line fails `test_ai_readiness.py`.
+6. **Run the tests** (they enforce registry↔content, image existence and the
+   llms-full list):
    ```bash
    .venv/bin/python -m pytest league_manager/tests/test_help.py --ds=test_settings -q
    .venv/bin/python -m black --fast league_manager/help/ league_manager/tests/test_help.py
    ```
-6. Deploy to staging (use the `deploy-to-staging` skill) and verify at
+7. Deploy to staging (use the `deploy-to-staging` skill) and verify at
    `https://stage.leaguesphere.app/help/<slug>/`.
 
 ## Screenshots
