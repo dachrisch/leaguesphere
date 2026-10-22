@@ -194,6 +194,7 @@
     "loading": "Loading...",
     "prerequisitesMissing": "Please ensure at least one Season and one League exist in the database before creating a gameday.",
     "defaultGamedayName": "Gameday on {{date}}",
+    "designerContextUnavailable": "The season or league from the link is no longer available - using the first entry instead.",
     "saveConfigDescription": "You can save the current setup as a new template to reuse it for future gamedays.",
     "autoAssignNote": "Teams will be assigned based on their order in the pool.",
     "manualAssignNote": "Placeholders will be created, you can assign teams manually later.",

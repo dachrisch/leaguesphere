@@ -28,13 +28,17 @@ vi.mock('../../../trackEvent', () => ({
   trackEvent: vi.fn(),
 }));
 
+const { mockLocation } = vi.hoisted(() => ({
+  mockLocation: { current: { state: null, pathname: '/', search: '' } },
+}));
+
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>();
   return {
     ...actual,
     useNavigate: () => mockNavigate,
-    useLocation: () => ({ state: null, pathname: '/' }),
+    useLocation: () => mockLocation.current,
   };
 });
 
@@ -79,9 +83,16 @@ describe('GamedayDashboard', () => {
     await i18n.changeLanguage('en');
     vi.clearAllMocks();
     localStorage.clear();
+    mockLocation.current = { state: null, pathname: '/', search: '' };
     (gamedayApi.listGamedays as ReturnType<typeof vi.fn>).mockResolvedValue(mockResponse);
-    (gamedayApi.listSeasons as ReturnType<typeof vi.fn>).mockResolvedValue([{ id: 1, name: '2026' }]);
-    (gamedayApi.listLeagues as ReturnType<typeof vi.fn>).mockResolvedValue([{ id: 1, name: 'DFFL' }]);
+    (gamedayApi.listSeasons as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 1, name: '2026' },
+      { id: 2, name: '2027' },
+    ]);
+    (gamedayApi.listLeagues as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 1, name: 'DFFL' },
+      { id: 7, name: 'Landesliga' },
+    ]);
     (gamedayApi.getGameday as ReturnType<typeof vi.fn>).mockResolvedValue({ ...mockGamedays[1] });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => [] }));
   });
@@ -179,6 +190,58 @@ describe('GamedayDashboard', () => {
     });
     await renderDashboard();
     expect(screen.getByText('Server Filtered Gameday')).toBeInTheDocument();
+  });
+
+  it('creates the gameday in the season and league from the link', async () => {
+    // The personal home opens the designer for a specific season/league; the
+    // created gameday must not silently land in the first entry instead.
+    vi.mocked(gamedayApi.createGameday).mockResolvedValue({ id: 3, name: 'x' } as never);
+    mockLocation.current = { state: null, pathname: '/', search: '?season=2&league=7' };
+
+    await renderDashboard();
+    fireEvent.click(screen.getByRole('button', { name: /Create Gameday/i }));
+
+    await waitFor(() => {
+      const payload = vi.mocked(gamedayApi.createGameday).mock.calls[0][0] as {
+        season: number;
+        league: number;
+      };
+      expect(payload.season).toBe(2);
+      expect(payload.league).toBe(7);
+    });
+  });
+
+  it('falls back to the first entry when the link points at an unknown season/league', async () => {
+    vi.mocked(gamedayApi.createGameday).mockResolvedValue({ id: 3, name: 'x' } as never);
+    mockLocation.current = { state: null, pathname: '/', search: '?season=99&league=99' };
+
+    await renderDashboard();
+    fireEvent.click(screen.getByRole('button', { name: /Create Gameday/i }));
+
+    await waitFor(() => {
+      const payload = vi.mocked(gamedayApi.createGameday).mock.calls[0][0] as {
+        season: number;
+        league: number;
+      };
+      expect(payload.season).toBe(1);
+      expect(payload.league).toBe(1);
+    });
+  });
+
+  it('uses the first entry when the link carries no context', async () => {
+    vi.mocked(gamedayApi.createGameday).mockResolvedValue({ id: 3, name: 'x' } as never);
+
+    await renderDashboard();
+    fireEvent.click(screen.getByRole('button', { name: /Create Gameday/i }));
+
+    await waitFor(() => {
+      const payload = vi.mocked(gamedayApi.createGameday).mock.calls[0][0] as {
+        season: number;
+        league: number;
+      };
+      expect(payload.season).toBe(1);
+      expect(payload.league).toBe(1);
+    });
   });
 
   it('prevents deletion of published gamedays and shows info toast', async () => {

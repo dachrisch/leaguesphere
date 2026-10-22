@@ -86,6 +86,9 @@ Deliberately kept separate from the always-on `useFlowValidation`/`FlowValidatio
 - Progression (winner/loser paths) resolves against **placeholder teams** — templates reference
   placeholders that must exist in the DB (see root CLAUDE.md § placeholder teams).
 - Always run `template_validation_service` logic before application; don't bypass validation.
+- The dashboard can be opened with `?season=<id>&league=<id>` (e.g. from the home page's
+  season rollover). `handleCreateGameday` uses those ids when they exist and falls back to
+  the first entry otherwise — keep that contract when changing the create flow.
 
 ## Tests
 ```bash
