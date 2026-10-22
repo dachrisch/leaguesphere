@@ -44,6 +44,16 @@ def _plural(count: int, singular: str, plural: str) -> str:
     return singular if count == 1 else plural
 
 
+def _ago(days: int) -> str:
+    """'heute' / 'vor 4 Tagen' / 'vor 8 Wochen' - never 'vor 0 Wochen'."""
+    if days <= 0:
+        return "heute"
+    if days < 7:
+        return f"vor {days} {_plural(days, 'Tag', 'Tagen')}"
+    weeks = days // 7
+    return f"vor {weeks} {_plural(weeks, 'Woche', 'Wochen')}"
+
+
 def _check(status: str, title: str, reason: str, *, url=None, label=None) -> dict:
     return {
         "status": status,
@@ -353,50 +363,54 @@ def staff_gameday_nudge_card(
     designer_url: str,
     gameday_create_url: str,
 ):
-    """The 3-step chain Saison -> Vorlage -> Spieltag.
+    """The chain Saison -> Spieltag for a league with nothing planned.
 
-    Rendered only when the league has no upcoming gameday at all. Template
-    application is the primary action; the manual form is the fallback.
+    Creating a gameday *from a template* happens in the designer, so "Vorlage"
+    is not a step of its own - it is the annotation on the gameday step. That
+    step and the primary action both point at the designer; the manual form is
+    the fallback only.
     """
     if has_upcoming_gameday:
         return None
 
-    steps = [
-        {
+    if season is not None:
+        season_step = {
             "key": "season",
             "label": "Schritt 1",
             "title": "Saison",
-            "state": "done" if season is not None else "missing",
-            "text": (
-                f"Saison {season.name} vorhanden"
-                if season is not None
-                else "Saison fehlt"
-            ),
+            "state": "done",
+            "text": f"Saison {season.name} vorhanden",
             "url": season_url,
-        },
-        {
-            "key": "template",
-            "label": "Schritt 2",
-            "title": "Vorlage",
-            "state": "done" if has_template else "missing",
-            "text": "Vorlage vorhanden" if has_template else "Keine Vorlage vorhanden",
-            "url": designer_url,
-        },
-        {
-            "key": "gameday",
-            "label": "Schritt 3",
-            "title": "Spieltag",
-            "state": "todo",
-            "text": "Spieltag anlegen",
-            "url": gameday_create_url,
-        },
-    ]
+        }
+    else:
+        season_step = {
+            "key": "season",
+            "label": "Schritt 1",
+            "title": "Saison",
+            "state": "missing",
+            "text": "Saison fehlt",
+            "url": season_url,
+        }
+
+    if has_template:
+        annotation = "Vorlage vorhanden - im Designer anwenden"
+    else:
+        annotation = "Keine Vorlage vorhanden - im Designer anlegen"
+
+    gameday_step = {
+        "key": "gameday",
+        "label": "Schritt 2",
+        "title": "Spieltag",
+        "state": "todo",
+        "text": "Spieltag im Designer anlegen",
+        "annotation": annotation,
+        "url": designer_url,
+    }
 
     if last_gameday_date is not None:
-        weeks = (today - last_gameday_date).days // 7
         last_text = (
-            f"Letzter Spieltag: {_format_date(last_gameday_date)} – "
-            f"vor {weeks} Wochen."
+            f"Letzter Spieltag: {_format_date(last_gameday_date)} - "
+            f"{_ago((today - last_gameday_date).days)}."
         )
     else:
         last_text = "Noch kein Spieltag angelegt."
@@ -407,11 +421,11 @@ def staff_gameday_nudge_card(
         "severity": SEVERITY_WARNING,
         "severity_text": SEVERITY_TEXT[SEVERITY_WARNING],
         "summary": last_text,
-        "steps": steps,
+        "steps": [season_step, gameday_step],
         "rows": [],
         "links": [
             {
-                "label": "Aus Vorlage anwenden",
+                "label": "Spieltag im Designer anlegen",
                 "url": designer_url,
                 "primary": True,
             },
@@ -421,6 +435,46 @@ def staff_gameday_nudge_card(
                 "primary": False,
             },
         ],
+    }
+
+
+def staff_review_card(
+    season_name,
+    gameday_count: int,
+    is_finished: bool,
+    team_count: int,
+    league_count: int,
+    last_gameday_name,
+    last_gameday_date,
+    today: date,
+    games_total: int,
+    games_with_results: int,
+):
+    """One card summarising the past: last season, and how the last gameday went."""
+    if is_finished:
+        summary = f"{gameday_count} Spieltage · abgeschlossen"
+    else:
+        summary = f"{gameday_count} Spieltage · läuft noch"
+
+    rows = [{"text": f"Teams {team_count} · Ligen {league_count}"}]
+    if last_gameday_date is not None:
+        rows.append(
+            {
+                "text": f"Letzter Spieltag: {last_gameday_name} · "
+                f"{_format_date(last_gameday_date)} · "
+                f"{_ago((today - last_gameday_date).days)}"
+            }
+        )
+        rows.append({"text": f"Spiele erfasst {games_with_results} / {games_total}"})
+
+    return {
+        "key": "staff_review",
+        "title": f"Letzte Saison · {season_name}",
+        "severity": SEVERITY_INFO,
+        "severity_text": SEVERITY_TEXT[SEVERITY_INFO],
+        "summary": summary,
+        "rows": rows,
+        "links": [],
     }
 
 

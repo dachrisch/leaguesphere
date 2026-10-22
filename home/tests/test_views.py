@@ -84,16 +84,32 @@ def test_season_break_is_explained_and_offers_chores(client):
 
 
 @pytest.mark.django_db
-def test_staff_without_upcoming_gameday_sees_the_three_step_nudge(client):
+def test_staff_without_upcoming_gameday_sees_the_two_step_nudge(client):
     _team_with_gameday(TODAY - timedelta(days=40))
     client.force_login(UserFactory(username="staff_user", is_staff=True))
 
     response = client.get(reverse("home"))
 
     content = response.content.decode()
-    assert "Aus Vorlage anwenden" in content
+    assert "Spieltag im Designer anlegen" in content
     assert "Spieltag manuell anlegen" in content
     assert "Saison" in content
+    keys = [card["key"] for card in response.context["cards"]]
+    assert keys == ["staff_gameday_nudge", "staff_review"]
+
+
+@pytest.mark.django_db
+def test_staff_sees_the_past_review_in_both_states(client):
+    _team_with_gameday(TODAY - timedelta(days=40))
+    client.force_login(UserFactory(username="staff_user_a", is_staff=True))
+    content = client.get(reverse("home")).content.decode()
+    assert "Letzte Saison" in content
+    assert "Spiele erfasst" in content
+
+    _team_with_gameday(TODAY + timedelta(days=4))
+    client.force_login(UserFactory(username="staff_user_b", is_staff=True))
+    content = client.get(reverse("home")).content.decode()
+    assert "Letzte Saison" in content
 
 
 @pytest.mark.django_db
@@ -103,9 +119,10 @@ def test_staff_with_an_upcoming_gameday_does_not_see_the_nudge(client):
 
     response = client.get(reverse("home"))
 
-    assert "Aus Vorlage anwenden" not in response.content.decode()
+    assert "Spieltag im Designer anlegen" not in response.content.decode()
     keys = [card["key"] for card in response.context["cards"]]
     assert "staff_readiness" in keys
+    assert "staff_review" in keys
 
 
 @pytest.mark.django_db

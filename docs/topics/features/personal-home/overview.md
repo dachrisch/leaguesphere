@@ -39,10 +39,16 @@ Role precedence: **team → official → staff → guest**.
    `request.session["moodle_logged_in_user"]` is present.
 4. **Staff** — with an upcoming gameday: readiness (understaffed games via
    `officials_compliance_service`, drafts in the league, licences that expire
-   before the gameday). Without one: the 3-step chain **Saison → Vorlage →
-   Spieltag**, with **"Aus Vorlage anwenden" as the primary action** and the
-   manual `gameday/new/` form as the fallback. Step 1 links to the season flow
-   from #2079, not to Django admin.
+   before the gameday). Without one: **Saison → Spieltag**, with the designer as
+   the default way and the manual `gameday/new/` form as the fallback only.
+   Creating a gameday *from a template* happens in the designer, so "Vorlage" is
+   an annotation on the gameday step ("Vorlage vorhanden – im Designer anwenden"
+   / "Keine Vorlage – im Designer anlegen"), not a step of its own. Step 1 links
+   to the season flow from #2079, not to Django admin.
+
+   Both staff states also carry one **past review card**: the last season, how
+   many gamedays it has (and whether it is finished), teams/leagues, the last
+   gameday with "vor N Wochen/Tagen", and how many of its games have results.
 
 Every row states its severity in words (`Erledigt`, `Achtung`, `Offen`); colour
 is never the only carrier. Completed checks stay visible as a green row so the
@@ -78,6 +84,8 @@ ranking, so it is not shown.
 - **Official state depends on the Moodle session** (no User → Official link).
 - `AutoAssignOfficialsService` (`gamedays/service/auto_assign_officials_service.py`)
   has no product surface yet, so readiness can only link to the gameday page.
+- The designer's "create gameday" picks the first season/league from its own API
+  unless it is opened with `?season=<id>&league=<id>` (stacked follow-up PR).
 
 ## Tests
 

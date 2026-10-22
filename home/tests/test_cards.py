@@ -21,6 +21,7 @@ from home.service.cards import (
     roster_checks_card,
     staff_gameday_nudge_card,
     staff_readiness_card,
+    staff_review_card,
     table_delta_card,
 )
 
@@ -246,6 +247,12 @@ class TestStaffReadinessCard:
 
 
 class TestStaffGamedayNudgeCard:
+    """Two steps, one action: the designer *is* the default way.
+
+    Choosing a template and creating the gameday happen in the same place, so
+    "Vorlage" is an annotation on the gameday step, not a step of its own.
+    """
+
     def _card(self, **overrides):
         kwargs = {
             "league": "Premier Division",
@@ -264,38 +271,111 @@ class TestStaffGamedayNudgeCard:
     def test_does_not_render_when_the_league_has_an_upcoming_gameday(self):
         assert self._card(has_upcoming_gameday=True) is None
 
-    def test_names_the_missing_link_of_the_chain(self):
-        card = self._card(season=None, has_template=False)
-
-        states = {step["key"]: step["state"] for step in card["steps"]}
-        assert states == {"season": "missing", "template": "missing", "gameday": "todo"}
-
-    def test_marks_existing_steps_as_done(self):
+    def test_has_two_steps(self):
         card = self._card()
 
-        states = {step["key"]: step["state"] for step in card["steps"]}
-        assert states == {"season": "done", "template": "done", "gameday": "todo"}
+        assert [step["key"] for step in card["steps"]] == ["season", "gameday"]
 
-    def test_template_application_is_the_primary_action(self):
+    def test_names_the_missing_season(self):
+        card = self._card(season=None)
+
+        step = card["steps"][0]
+        assert step["state"] == "missing"
+        assert "Saison fehlt" in step["text"]
+        assert step["url"] == "/gamedays/seasons/new/"
+
+    def test_marks_the_season_as_done_when_it_exists(self):
+        card = self._card()
+
+        assert card["steps"][0]["state"] == "done"
+        assert "Saison 2026/2027" in card["steps"][0]["text"]
+
+    def test_the_gameday_step_links_to_the_designer(self):
+        card = self._card()
+
+        step = card["steps"][1]
+        assert step["state"] == "todo"
+        assert step["url"] == "/gamedays/gameday/design/"
+        assert "Designer" in step["text"]
+
+    def test_the_template_state_is_an_annotation_on_the_gameday_step(self):
+        with_template = self._card(has_template=True)
+        without_template = self._card(has_template=False)
+
+        assert "Vorlage vorhanden" in with_template["steps"][1]["annotation"]
+        assert "Keine Vorlage" in without_template["steps"][1]["annotation"]
+        assert "Designer" in without_template["steps"][1]["annotation"]
+
+    def test_designer_application_is_the_named_primary_action(self):
         card = self._card()
 
         primary = [link for link in card["links"] if link["primary"]]
         assert len(primary) == 1
-        assert primary[0]["label"] == "Aus Vorlage anwenden"
+        assert primary[0]["label"] == "Spieltag im Designer anlegen"
         assert primary[0]["url"] == "/gamedays/gameday/design/"
 
+    def test_manual_creation_stays_as_the_fallback(self):
+        card = self._card()
+
         secondary = [link for link in card["links"] if not link["primary"]]
-        assert any(link["url"] == "/gamedays/gameday/new/" for link in secondary)
-
-    def test_step_one_links_to_the_season_flow(self):
-        card = self._card(season=None)
-
-        assert card["steps"][0]["url"] == "/gamedays/seasons/new/"
+        assert [link["label"] for link in secondary] == ["Spieltag manuell anlegen"]
+        assert secondary[0]["url"] == "/gamedays/gameday/new/"
 
     def test_states_how_long_ago_the_last_gameday_was(self):
         card = self._card()
 
         assert "vor 8 Wochen" in card["summary"]
+
+    def test_short_gaps_are_stated_in_days_not_zero_weeks(self):
+        card = self._card(last_gameday_date=date(2026, 7, 2), today=date(2026, 7, 6))
+
+        assert "vor 4 Tagen" in card["summary"]
+        assert "0 Wochen" not in card["summary"]
+
+
+class TestStaffReviewCard:
+    def _card(self, **overrides):
+        kwargs = {
+            "season_name": "2025/2026",
+            "gameday_count": 6,
+            "is_finished": True,
+            "team_count": 12,
+            "league_count": 2,
+            "last_gameday_name": "Spieltag 6",
+            "last_gameday_date": date(2026, 5, 11),
+            "today": date(2026, 7, 6),
+            "games_total": 12,
+            "games_with_results": 10,
+        }
+        kwargs.update(overrides)
+        return staff_review_card(**kwargs)
+
+    def test_summarises_the_last_season(self):
+        card = self._card()
+
+        assert card["key"] == "staff_review"
+        assert "2025/2026" in card["title"]
+        assert "6 Spieltage" in card["summary"]
+        assert "abgeschlossen" in card["summary"]
+
+    def test_lists_teams_leagues_and_the_last_gameday(self):
+        card = self._card()
+
+        texts = [row["text"] for row in card["rows"]]
+        assert "Teams 12 · Ligen 2" in texts
+        assert any("Spieltag 6" in text for text in texts)
+        assert any("vor 8 Wochen" in text for text in texts)
+
+    def test_states_how_many_games_have_results(self):
+        card = self._card()
+
+        texts = [row["text"] for row in card["rows"]]
+        assert "Spiele erfasst 10 / 12" in texts
+
+    def test_a_running_season_is_not_called_finished(self):
+        card = self._card(is_finished=False)
+
+        assert "läuft noch" in card["summary"]
 
 
 class TestOfficialCards:
