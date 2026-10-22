@@ -18,6 +18,7 @@ from data every request.
 """
 
 from datetime import timedelta
+from urllib.parse import urlencode
 
 from django.db.models import Count, Max, Q
 from django.urls import reverse
@@ -67,6 +68,21 @@ from .cards import (
 )
 
 DESIGNER_URL_NAME = "gameday_designer_app:index"
+
+
+def designer_url(*, season_id=None, league_id=None) -> str:
+    """Designer URL carrying the season/league the gameday is meant for.
+
+    The designer honours ``?season=<id>&league=<id>`` when creating a gameday;
+    without them it falls back to the first entry of its own lists.
+    """
+    base = reverse(DESIGNER_URL_NAME)
+    params = {}
+    if season_id is not None:
+        params["season"] = season_id
+    if league_id is not None:
+        params["league"] = league_id
+    return f"{base}?{urlencode(params)}" if params else base
 
 
 def team_for_user(user):
@@ -495,7 +511,10 @@ def _staff_context(today) -> dict:
                 today=today,
                 has_upcoming_gameday=False,
                 season_url=reverse("league-season-create"),
-                designer_url=reverse(DESIGNER_URL_NAME),
+                designer_url=designer_url(
+                    season_id=next_season.pk if next_season else None,
+                    league_id=league.pk,
+                ),
                 gameday_create_url=reverse(LEAGUE_GAMEDAY_CREATE),
             ),
             _review_card(latest.season, today),

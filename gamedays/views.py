@@ -965,7 +965,9 @@ class SeasonLeagueTeamSetupView(StaffOnlyMixin, TemplateView):
                     "-name"
                 ),
                 "gameday_create_url": reverse(LEAGUE_GAMEDAY_CREATE),
-                "designer_url": reverse("gameday_designer_app:index"),
+                "designer_url": (
+                    f'{reverse("gameday_designer_app:index")}?season={season.pk}'
+                ),
             }
         )
         return context
