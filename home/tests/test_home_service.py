@@ -387,3 +387,38 @@ class TestSections:
         assert "Saisons" not in labels
         assert "Spieltage" in labels
         assert "Offizielle" in labels
+
+
+@pytest.mark.django_db
+def test_staff_nudge_opens_the_designer_for_the_next_season_and_league():
+    """The designer creates the gameday with the context it was opened for."""
+    team, season, league = _team_in_league()
+    _gameday(team, season, league, TODAY - timedelta(days=40))
+    next_season = SeasonFactory(name="2026/2027")
+
+    context = build_context(
+        UserFactory(username="staff_designer", is_staff=True), today=TODAY
+    )
+
+    nudge = next(c for c in context["cards"] if c["key"] == "staff_gameday_nudge")
+    # The gameday step is the designer link (the card has no extra button).
+    designer_step = next(step for step in nudge["steps"] if step["key"] == "gameday")
+    assert f"league={league.pk}" in designer_step["url"]
+    assert f"season={next_season.pk}" in designer_step["url"]
+
+
+@pytest.mark.django_db
+def test_staff_nudge_passes_the_existing_season_too():
+    """An existing season counts, so the designer gets it even when no newer
+    season has been created yet."""
+    team, season, league = _team_in_league()
+    _gameday(team, season, league, TODAY - timedelta(days=40))
+
+    context = build_context(
+        UserFactory(username="staff_designer_2", is_staff=True), today=TODAY
+    )
+
+    nudge = next(c for c in context["cards"] if c["key"] == "staff_gameday_nudge")
+    designer_step = next(step for step in nudge["steps"] if step["key"] == "gameday")
+    assert f"league={league.pk}" in designer_step["url"]
+    assert f"season={season.pk}" in designer_step["url"]

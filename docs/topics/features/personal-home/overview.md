@@ -117,8 +117,10 @@ ranking, so it is not shown.
 - **Official state depends on the Moodle session** (no User → Official link).
 - `AutoAssignOfficialsService` (`gamedays/service/auto_assign_officials_service.py`)
   has no product surface yet, so readiness can only link to the gameday page.
-- The designer's "create gameday" picks the first season/league from its own API
-  unless it is opened with `?season=<id>&league=<id>` (stacked follow-up PR).
+- The designer's "create gameday" used to pick the first season/league from its own
+  API. It now honours `?season=<id>&league=<id>` (stacked PR for #2084), and both the
+  home nudge and the season setup page pass the ids they know; the designer falls back
+  to its first entries only when the link is stale.
 
 ## Tests
 

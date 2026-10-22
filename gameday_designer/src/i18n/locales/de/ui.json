@@ -194,6 +194,7 @@
     "loading": "Lade...",
     "prerequisitesMissing": "Bitte stellen Sie sicher, dass mindestens eine Saison und eine Liga in der Datenbank vorhanden sind, bevor Sie einen Spieltag erstellen.",
     "defaultGamedayName": "Spieltag am {{date}}",
+    "designerContextUnavailable": "Saison oder Liga aus dem Link ist nicht mehr vorhanden - es wird der erste Eintrag verwendet.",
     "saveConfigDescription": "Sie können den aktuellen Aufbau als neue Vorlage speichern, um ihn für zukünftige Spieltage wiederzuverwenden.",
     "autoAssignNote": "Teams werden basierend auf ihrer Reihenfolge im Pool zugewiesen.",
     "manualAssignNote": "Platzhalter werden erstellt, Sie können Teams später manuell zuweisen.",
