@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .home-card { border: 1px solid #e3e6e8; border-radius: .6rem; background: #fff; }
+  .home-card.is-danger { border-left: 4px solid #b02a37; }
+  .home-card.is-warning { border-left: 4px solid #b8860b; }
+  .home-card.is-ok { border-left: 4px solid #2f6b45; }
+  .home-card.is-info { border-left: 4px solid #5f788a; }
+  .home-label { font-size: .72rem; letter-spacing: .09em; text-transform: uppercase; color: #6c757d; font-weight: 600; }
+  .home-row { display: flex; gap: .75rem; padding: .7rem 0; border-bottom: 1px solid #f0f2f4; }
+  .home-row:last-child { border-bottom: 0; }
+  .home-row .status { flex: 0 0 6.5rem; font-size: .8rem; font-weight: 600; }
+  .home-row .status.danger { color: #b02a37; }
+  .home-row .status.warning { color: #8a5a00; }
+  .home-row .status.ok { color: #2f6b45; }
+  .home-row .status.info { color: #41586a; }
+  .home-step { flex: 1; border: 1px solid #e3e6e8; border-radius: .5rem; padding: .55rem .7rem; background: #fff; }
+  .home-step.done { border-color: #cfe3d6; background: #f6faf7; }
+  .home-step.todo { border-style: dashed; background: #fcfcfd; }
+  .home-step .k { font-size: .66rem; letter-spacing: .07em; text-transform: uppercase; color: #8a9196; font-weight: 700; }
+  .home-step .v { font-size: .9rem; font-weight: 600; }
+  .home-score { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.5rem; }
+  @media (max-width: 767px) { .home-row { flex-direction: column; gap: .15rem; } }
+</style>
+
+<div class="d-flex align-items-center gap-3 mb-4">
+  <div class="rounded d-flex align-items-center justify-content-center"
+       style="width:44px;height:44px;background:#eef2f5;color:#5f788a;font-weight:700;">
+    {{ heading|slice:":2"|upper }}
+  </div>
+  <div>
+    <h1 class="h4 mb-0">{{ heading }}</h1>
+    <div class="text-muted small">{{ subtitle }}</div>
+  </div>
+</div>
+
+<div class="row g-4">
+  {% for card in cards %}
+  <div class="col-12 {% if cards|length > 1 %}col-lg-6{% endif %}">
+    <div class="home-card is-{{ card.severity }} h-100 p-3">
+      <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+        <div>
+          <div class="home-label mb-1">{{ card.title }}</div>
+          <div class="fw-semibold">{{ card.summary }}</div>
+        </div>
+        <span class="badge
+          {% if card.severity == 'danger' %}bg-danger
+          {% elif card.severity == 'warning' %}bg-warning text-dark
+          {% elif card.severity == 'ok' %}bg-success
+          {% else %}bg-secondary{% endif %}">
+          {{ card.severity_text }}
+        </span>
+      </div>
+
+      {% if card.score %}
+      <div class="d-flex justify-content-between align-items-center mt-3 gap-2">
+        <span class="fw-semibold">{{ heading }}</span>
+        <span class="home-score">{{ card.score }}</span>
+        <span class="fw-semibold text-end">{{ card.opponent }}</span>
+      </div>
+      {% endif %}
+
+      {% if card.steps %}
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        {% for step in card.steps %}
+        <div class="home-step {{ step.state }}">
+          <div class="k">{{ step.label }} · {{ step.title }}</div>
+          <div class="v">
+            {% if step.url %}<a href="{{ step.url }}">{{ step.text }}</a>{% else %}{{ step.text }}{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if card.rows %}
+      <div class="mt-3">
+        {% for row in card.rows %}
+        <div class="home-row">
+          {% if row.status_text %}
+          <div class="status {{ row.status }}">{{ row.status_text }}</div>
+          <div class="flex-grow-1">
+            <div class="fw-semibold">{{ row.title }}</div>
+            <div class="text-muted small">{{ row.reason }}</div>
+          </div>
+          {% else %}
+          <div class="flex-grow-1">
+            {% if row.event %}<span class="fw-semibold">{{ row.event }}</span> · {% endif %}
+            {{ row.text }}{{ row.label }}{{ row.previous_score }}
+          </div>
+          {% endif %}
+          {% if row.url %}<div class="align-self-start"><a class="small" href="{{ row.url }}">{{ row.label|default:"Öffnen" }}</a></div>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if card.links %}
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        {% for link in card.links %}
+        <a class="btn btn-sm {% if link.primary %}btn-primary{% else %}btn-outline-primary{% endif %}"
+           href="{{ link.url }}">{{ link.label }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock content %}

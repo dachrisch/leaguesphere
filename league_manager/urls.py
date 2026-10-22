@@ -157,6 +157,7 @@ urlpatterns = [
     path("api/passcheck/", include("passcheck.api.urls")),
     path("api/journey/", include("journey.urls")),
     path("share/", include("share.urls")),
+    path("home/", include("home.urls")),
     path("gamedays/progress/", GameProgressPageView.as_view(), name="game-progress-page"),
     path("gamedays/gameday/design/", include("gameday_designer.app_urls")),
     path("journeys/", include("journey.urls")),

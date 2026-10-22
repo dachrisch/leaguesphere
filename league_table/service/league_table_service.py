@@ -39,7 +39,13 @@ class LeagueTableService:
         except LeagueSeasonConfig.DoesNotExist:
             return cls(None)
 
-    def get_standing(self):
+    def get_standing(self, until_date=None):
+        """Standings for this league/season.
+
+        ``until_date`` restricts the results to gamedays on or before that date,
+        which is how the home page compares "rank before the last gameday" with
+        the current rank. Defaults to the full season.
+        """
         try:
             if self.league_season_config is None:
                 raise LeagueSeasonConfig.DoesNotExist
@@ -54,8 +60,10 @@ class LeagueTableService:
                 # .exclude(gameinfo__gameday__gte=627)
                 .exclude(gameinfo__gameday__in=league_config.excluded_gameday_ids)
                 .select_related("gameinfo", "team")
-                .values(*LEAGUE_TABLE_GAME_COLUMNS)
             )
+            if until_date is not None:
+                results = results.filter(gameinfo__gameday__date__lte=until_date)
+            results = results.values(*LEAGUE_TABLE_GAME_COLUMNS)
             team_and_league_ids = (
                 SeasonLeagueTeam.objects.filter(
                     season=current_season,
