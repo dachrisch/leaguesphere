@@ -154,3 +154,32 @@ def test_query_count_is_flat_between_one_and_twelve_teams(client):
 
     assert len(small) > 0
     assert len(small) == len(large)
+
+
+@pytest.mark.django_db
+def test_home_greets_the_person_not_the_role(client):
+    team, *_ = _team_with_gameday(TODAY + timedelta(days=4))
+    user = _manager(team)
+    user.userprofile_set.update(firstname="Chris", lastname="D")
+    client.force_login(user)
+
+    content = client.get(reverse("home")).content.decode()
+
+    assert "Guten" in content
+    assert "Teamverantwortlich für Zenith Dragons" in content
+    assert 'class="home-avatar"' in content
+    assert "CD" in content
+    assert ">Staff<" not in content
+
+
+@pytest.mark.django_db
+def test_home_links_onwards_to_the_other_sections(client):
+    client.force_login(_manager(TeamFactory(name="solo-two", description="Solo Two")))
+
+    content = client.get(reverse("home")).content.decode()
+
+    assert "Weitermachen" in content
+    assert reverse("league-gameday-list") in content
+    assert reverse("view-officials-list-for-all-teams") in content
+    assert reverse("teammanager") in content
+    assert reverse("help-index") in content

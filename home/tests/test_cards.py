@@ -271,6 +271,13 @@ class TestStaffGamedayNudgeCard:
     def test_does_not_render_when_the_league_has_an_upcoming_gameday(self):
         assert self._card(has_upcoming_gameday=True) is None
 
+    def test_an_empty_october_is_not_an_alarm(self):
+        card = self._card()
+
+        assert card["severity"] == "info"
+        assert card["severity_text"] == "Hinweis"
+        assert "Noch nichts geplant" in card["title"]
+
     def test_has_two_steps(self):
         card = self._card()
 

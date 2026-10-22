@@ -23,7 +23,7 @@ from django.db.models import Count, Max, Q
 from django.urls import reverse
 from django.utils import timezone
 
-from gamedays.constants import LEAGUE_GAMEDAY_CREATE
+from gamedays.constants import LEAGUE_GAMEDAY_CREATE, LEAGUE_GAMEDAY_LIST
 from gamedays.models import (
     Gameday,
     Gameresult,
@@ -37,6 +37,7 @@ from gamedays.models import (
 )
 from gamedays.service.gamelog import SCORING_EVENTS
 from gameday_designer.models import ScheduleTemplate
+from league_table.constants import LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE
 from league_table.models import LeagueSeasonConfig
 from league_table.service.league_table_service import LeagueTableService
 from officials.models import Official, OfficialGamedaySignup
@@ -67,6 +68,93 @@ from .cards import (
 )
 
 DESIGNER_URL_NAME = "gameday_designer_app:index"
+TEAMMANAGER_URL_NAME = "teammanager"
+OFFICIALS_URL_NAME = "view-officials-list-for-all-teams"
+HELP_URL_NAME = "help-index"
+SEASON_LIST_URL_NAME = "league-season-list"
+
+WEEKDAYS = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
+
+
+def _greeting(now) -> str:
+    if now.hour < 11:
+        return "Guten Morgen"
+    if now.hour < 18:
+        return "Guten Tag"
+    return "Guten Abend"
+
+
+def _profile_for_user(user):
+    if not user.is_authenticated:
+        return None
+    return (
+        UserProfile.objects.filter(user=user)
+        .select_related("team")
+        .order_by("pk")
+        .first()
+    )
+
+
+def _display_name(user, profile):
+    for candidate in (
+        profile.firstname if profile is not None else None,
+        user.first_name,
+    ):
+        if candidate and candidate.strip():
+            return candidate.strip()
+    return None
+
+
+def _initials(user, profile, display_name) -> str:
+    first = (profile.firstname if profile is not None else None) or user.first_name
+    last = (profile.lastname if profile is not None else None) or user.last_name
+    if first and last:
+        return f"{first[0]}{last[0]}".upper()
+    if display_name:
+        return display_name[:2].upper()
+    return user.username[:2].upper()
+
+
+def _avatar(profile, team, user, display_name) -> dict:
+    """Prefer the person's avatar, then the team's logo, then initials."""
+    if profile is not None and profile.avatar:
+        return {"kind": "image", "url": profile.avatar.url, "initials": ""}
+    if team is not None and team.logo:
+        return {"kind": "team_logo", "url": team.logo.url, "initials": ""}
+    return {
+        "kind": "initials",
+        "url": None,
+        "initials": _initials(user, profile, display_name),
+    }
+
+
+def _table_url(membership) -> str | None:
+    if not membership:
+        return None
+    return reverse(
+        LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE,
+        kwargs={
+            "league": membership["league__slug"],
+            "season": membership["season__slug"],
+        },
+    )
+
+
+def _sections(*, table_url=None, is_staff=False) -> list:
+    """Quiet links into the rest of the site - this page is the landing page."""
+    sections = [{"label": "Spieltage", "url": reverse(LEAGUE_GAMEDAY_LIST)}]
+    if table_url is not None:
+        sections.append({"label": "Ligen & Tabellen", "url": table_url})
+    sections.extend(
+        [
+            {"label": "Offizielle", "url": reverse(OFFICIALS_URL_NAME)},
+            {"label": "Team", "url": reverse(TEAMMANAGER_URL_NAME)},
+        ]
+    )
+    if is_staff:
+        sections.append({"label": "Saisons", "url": reverse(SEASON_LIST_URL_NAME)})
+    sections.append({"label": "Hilfe", "url": reverse(HELP_URL_NAME)})
+    return sections
 
 
 def team_for_user(user):
@@ -79,21 +167,23 @@ def team_for_user(user):
     if not user.is_authenticated:
         return None
 
-    profile = (
-        UserProfile.objects.filter(user=user, team__isnull=False)
-        .select_related("team")
-        .order_by("pk")
-        .first()
-    )
-    if profile is not None:
+    profile = _profile_for_user(user)
+    if profile is not None and profile.team_id is not None:
         return profile.team
     return Team.objects.filter(name=user.username).first()
 
 
-def build_context(user, *, official_id=None, today=None) -> dict:
+def build_context(user, *, official_id=None, today=None, now=None) -> dict:
     today = today or timezone.localdate()
+    now = now or timezone.localtime()
 
-    team = team_for_user(user)
+    profile = _profile_for_user(user)
+    team = None
+    if profile is not None and profile.team_id is not None:
+        team = profile.team
+    elif user.is_authenticated:
+        team = Team.objects.filter(name=user.username).first()
+
     if team is not None:
         context = _team_context(team, today)
         role = "team"
@@ -107,7 +197,20 @@ def build_context(user, *, official_id=None, today=None) -> dict:
         context = _guest_context()
         role = "guest"
 
-    context.update(role=role, today=today)
+    table_url = context.pop("table_url", None)
+
+    display_name = _display_name(user, profile)
+    greeting = _greeting(now)
+    context.update(
+        role=role,
+        today=today,
+        greeting=greeting,
+        display_name=display_name,
+        heading=f"{greeting}, {display_name}" if display_name else greeting,
+        date_text=f"{WEEKDAYS[today.weekday()]}, {today.strftime('%d.%m.%Y')}",
+        avatar=_avatar(profile, team, user, display_name),
+        sections=_sections(table_url=table_url, is_staff=user.is_staff),
+    )
     return context
 
 
@@ -119,7 +222,14 @@ def _memberships(team):
         SeasonLeagueTeam.objects.filter(teams=team)
         .select_related("league", "season")
         .order_by("season__name", "league__name")
-        .values("league_id", "season_id", "league__name", "season__name")
+        .values(
+            "league_id",
+            "season_id",
+            "league__name",
+            "league__slug",
+            "season__name",
+            "season__slug",
+        )
     )
 
 
@@ -180,13 +290,13 @@ def _team_context(team, today) -> dict:
 
     league_name = memberships[0]["league__name"] if memberships else None
     season_name = memberships[0]["season__name"] if memberships else None
-    subtitle_parts = [part for part in (league_name, _season_text(season_name)) if part]
-    subtitle_parts.append("angemeldet als Teamverantwortliche:r")
+    context_parts = [part for part in (league_name, _season_text(season_name)) if part]
 
     return {
         "team": team,
-        "heading": team.description,
-        "subtitle": " · ".join(subtitle_parts),
+        "role_text": f"Teamverantwortlich für {team.description}",
+        "context_text": " · ".join(context_parts) or None,
+        "table_url": _table_url(memberships[0] if memberships else None),
         "cards": [card for card in cards if card is not None],
     }
 
@@ -432,8 +542,8 @@ def _official_context(official_id, today) -> dict:
 
     return {
         "official": official,
-        "heading": f"{official.first_name} {official.last_name}".strip(),
-        "subtitle": "Offizielle:r · keinem Team zugeordnet",
+        "role_text": "Schiedsrichter:in · keinem Team zugeordnet",
+        "context_text": None,
         "cards": cards,
     }
 
@@ -449,8 +559,8 @@ def _staff_context(today) -> dict:
     )
     if latest is None:
         return {
-            "heading": "Staff",
-            "subtitle": "Liga-Verwaltung",
+            "role_text": "Liga-Verwaltung",
+            "context_text": None,
             "cards": [
                 info_card(
                     "staff_empty",
@@ -502,8 +612,12 @@ def _staff_context(today) -> dict:
         ]
 
     return {
-        "heading": "Staff",
-        "subtitle": f"Liga-Verwaltung · {league.name} · Saison {latest.season.name}",
+        "role_text": "Liga-Verwaltung",
+        "context_text": f"{league.name} · Saison {latest.season.name}",
+        "table_url": reverse(
+            LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE,
+            kwargs={"league": league.slug, "season": latest.season.slug},
+        ),
         "cards": [card for card in cards if card is not None],
     }
 
@@ -587,8 +701,8 @@ def _expiring_licences(gameday, today) -> int:
 # --------------------------------------------------------------------------- #
 def _guest_context() -> dict:
     return {
-        "heading": "Willkommen",
-        "subtitle": "Kein Team und keine Liga zugeordnet",
+        "role_text": "Deinem Konto ist noch kein Team zugeordnet",
+        "context_text": None,
         "cards": [
             info_card(
                 "guest",

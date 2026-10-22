@@ -417,9 +417,9 @@ def staff_gameday_nudge_card(
 
     return {
         "key": "staff_gameday_nudge",
-        "title": f"Kein Spieltag geplant · {league}",
-        "severity": SEVERITY_WARNING,
-        "severity_text": SEVERITY_TEXT[SEVERITY_WARNING],
+        "title": f"Noch nichts geplant · {league}",
+        "severity": SEVERITY_INFO,
+        "severity_text": SEVERITY_TEXT[SEVERITY_INFO],
         "summary": last_text,
         "steps": [season_step, gameday_step],
         "rows": [],

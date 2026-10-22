@@ -4,7 +4,7 @@ Only the orchestration is tested here - the cards themselves are pure and
 covered by test_cards.py.
 """
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 
@@ -238,3 +238,152 @@ def test_table_delta_renders_for_a_ranked_league():
     card = next(c for c in context["cards"] if c["key"] == "table_delta")
     assert "→" in card["text"]
     assert card["severity"] in {"ok", "warning", "info"}
+
+
+class TestGreeting:
+    @pytest.mark.django_db
+    def test_time_of_day_greeting(self):
+        user = UserFactory(username="greeter")
+
+        assert (
+            build_context(user, now=datetime(2026, 10, 22, 8, 0))["greeting"]
+            == "Guten Morgen"
+        )
+        assert (
+            build_context(user, now=datetime(2026, 10, 22, 11, 0))["greeting"]
+            == "Guten Tag"
+        )
+        assert (
+            build_context(user, now=datetime(2026, 10, 22, 18, 0))["greeting"]
+            == "Guten Abend"
+        )
+
+    @pytest.mark.django_db
+    def test_greets_the_persons_first_name(self):
+        user = UserFactory(username="greeter2")
+        user.userprofile_set.create(firstname="Chris")
+
+        context = build_context(user, now=datetime(2026, 10, 22, 12, 0))
+
+        assert context["display_name"] == "Chris"
+        assert context["heading"] == "Guten Tag, Chris"
+
+    @pytest.mark.django_db
+    def test_falls_back_to_the_accounts_first_name(self):
+        user = UserFactory(username="greeter3", first_name="Sam")
+
+        context = build_context(user, now=datetime(2026, 10, 22, 12, 0))
+
+        assert context["display_name"] == "Sam"
+
+    @pytest.mark.django_db
+    def test_without_a_name_the_greeting_stays_neutral(self):
+        user = UserFactory(username="staff_account", is_staff=True)
+
+        context = build_context(user, now=datetime(2026, 10, 22, 12, 0))
+
+        assert context["display_name"] is None
+        assert context["heading"] == "Guten Tag"
+
+    @pytest.mark.django_db
+    def test_shows_the_german_date(self):
+        context = build_context(UserFactory(username="dater"), today=date(2026, 10, 22))
+
+        assert context["date_text"] == "Do, 22.10.2026"
+
+
+class TestAvatar:
+    @pytest.mark.django_db
+    def test_uses_the_profile_avatar(self):
+        user = UserFactory(username="avatar_user")
+        user.userprofile_set.create(
+            firstname="Chris", lastname="D", avatar="media/avatars/c.png"
+        )
+
+        avatar = build_context(user)["avatar"]
+
+        assert avatar["kind"] == "image"
+        assert avatar["url"].endswith("media/avatars/c.png")
+
+    @pytest.mark.django_db
+    def test_team_accounts_get_the_team_logo(self):
+        team = TeamFactory(name="logo-team", description="Logo Team")
+        team.logo = "teammanager/logos/t.png"
+        team.save(update_fields=["logo"])
+        user = UserFactory(username="logo-team")
+
+        avatar = build_context(user)["avatar"]
+
+        assert avatar["kind"] == "team_logo"
+        assert avatar["url"].endswith("teammanager/logos/t.png")
+
+    @pytest.mark.django_db
+    def test_initials_are_the_fallback(self):
+        user = UserFactory(username="initials_user")
+        user.userprofile_set.create(firstname="Chris", lastname="D")
+
+        avatar = build_context(user)["avatar"]
+
+        assert avatar["kind"] == "initials"
+        assert avatar["initials"] == "CD"
+
+
+class TestRoleText:
+    @pytest.mark.django_db
+    def test_team_role_text_names_the_team(self):
+        team, season, league = _team_in_league()
+
+        context = build_context(_manager(team), today=TODAY)
+
+        assert context["role_text"] == "Teamverantwortlich für Zenith Dragons"
+        assert context["context_text"] == "Premier Division · Saison 2025/2026"
+
+    @pytest.mark.django_db
+    def test_staff_is_not_called_staff_in_the_headline(self):
+        team, season, league = _team_in_league()
+        _gameday(team, season, league, TODAY - timedelta(days=40))
+
+        context = build_context(
+            UserFactory(username="staff_role", is_staff=True), today=TODAY
+        )
+
+        assert context["heading"] == "Guten Tag"
+        assert context["role_text"] == "Liga-Verwaltung"
+        assert context["context_text"] == "Premier Division · Saison 2025/2026"
+
+
+class TestSections:
+    @pytest.mark.django_db
+    def test_team_gets_the_site_sections_plus_its_own_table(self):
+        team, season, league = _team_in_league()
+
+        sections = build_context(_manager(team), today=TODAY)["sections"]
+        labels = [section["label"] for section in sections]
+
+        assert labels[:2] == ["Spieltage", "Ligen & Tabellen"]
+        assert "Hilfe" in labels
+        table = sections[1]["url"]
+        assert league.slug in table
+        assert season.slug in table
+
+    @pytest.mark.django_db
+    def test_staff_gets_the_season_administration(self):
+        team, season, league = _team_in_league()
+        _gameday(team, season, league, TODAY - timedelta(days=40))
+
+        sections = build_context(
+            UserFactory(username="staff_sections", is_staff=True), today=TODAY
+        )["sections"]
+
+        assert "Saisons" in [section["label"] for section in sections]
+
+    @pytest.mark.django_db
+    def test_guests_get_no_staff_only_section(self):
+        sections = build_context(
+            UserFactory(username="guest_sections", is_staff=False)
+        )["sections"]
+
+        labels = [section["label"] for section in sections]
+        assert "Saisons" not in labels
+        assert "Spieltage" in labels
+        assert "Offizielle" in labels
