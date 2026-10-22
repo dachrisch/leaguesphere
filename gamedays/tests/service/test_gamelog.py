@@ -221,3 +221,19 @@ class TestGamelogCreator(TestCase):
         assert teamlog.sequence == 1
         assert teamlog.value == 6
         assert teamlog.half == 1
+
+
+class TestScoringEvents:
+    def test_scoring_events_match_the_point_values(self):
+        from gamedays.service.gamelog import (
+            SCORING_EVENTS,
+            SCORING_EVENT_VALUES,
+            GameLogCreator,
+        )
+
+        assert set(SCORING_EVENTS) == set(SCORING_EVENT_VALUES)
+        assert "Auszeit" not in SCORING_EVENTS
+        for event in SCORING_EVENTS:
+            assert SCORING_EVENT_VALUES[event] > 0
+            assert GameLogCreator._getValue(None, event) == SCORING_EVENT_VALUES[event]
+        assert GameLogCreator._getValue(None, "Strafe") == 0

@@ -6,10 +6,6 @@ from django.conf import settings
 from league_manager.constants import STATIC_INFO_PATHS
 
 
-def homeview(request):
-    return render(request, "homeview.html")
-
-
 def database_error_view(request):
     # Static response to avoid any context processors or database-dependent template rendering
     html = """<!DOCTYPE html>
