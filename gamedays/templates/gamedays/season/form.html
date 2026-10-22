@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block content %}
+<div class="content-section">
+    <form method="POST">
+        {% csrf_token %}
+        <fieldset class="form-group">
+            {% include "partials/legend_with_cancel.html" with title=action_label cancel_url=cancel_url %}
+
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger" role="alert">
+                {% for error in form.non_field_errors %}
+                <div>{{ error }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {{ form.name|as_crispy_field }}
+            <p class="text-muted small">
+                Das Kürzel der Saison wird aus dem Namen erzeugt. Beim Umbenennen bleibt das
+                bisherige Kürzel erhalten, damit vorhandene Links weiter funktionieren.
+            </p>
+        </fieldset>
+
+        <div class="form-group">
+            <button class="btn btn-primary" type="submit">{{ action_label }}</button>
+        </div>
+    </form>
+</div>
+{% endblock content %}

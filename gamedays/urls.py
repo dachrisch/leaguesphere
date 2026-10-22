@@ -16,6 +16,12 @@ from .constants import (
     LEAGUE_GAMEDAY_GAME_DETAIL,
     LEAGUE_GAMEDAY_LEAGUE_STATISTICS,
     LEAGUE_TOURNAMENT_DETAIL,
+    LEAGUE_SEASON_LIST,
+    LEAGUE_SEASON_CREATE,
+    LEAGUE_SEASON_UPDATE,
+    LEAGUE_SEASON_LEAGUE_SETUP,
+    LEAGUE_SEASON_LEAGUE_COPY,
+    LEAGUE_SEASON_LEAGUE_ASSIGN,
 )
 from .views import (
     GamedayDetailView,
@@ -30,6 +36,12 @@ from .views import (
     GamedayGameDetailView,
     GamedayLeagueStatisticView,
     TournamentDetailView,
+    SeasonListView,
+    SeasonCreateView,
+    SeasonUpdateView,
+    SeasonLeagueTeamSetupView,
+    SeasonLeagueTeamCopyView,
+    SeasonLeagueTeamAssignView,
 )
 
 urlpatterns = [
@@ -86,6 +98,28 @@ urlpatterns = [
         "gameday/<int:pk>/gameinfos/delete/",
         GameinfoDeleteView.as_view(),
         name=LEAGUE_GAMEDAY_GAMEINFOS_DELETE,
+    ),
+    path("seasons/", SeasonListView.as_view(), name=LEAGUE_SEASON_LIST),
+    path("seasons/new/", SeasonCreateView.as_view(), name=LEAGUE_SEASON_CREATE),
+    path(
+        "seasons/<int:pk>/update/",
+        SeasonUpdateView.as_view(),
+        name=LEAGUE_SEASON_UPDATE,
+    ),
+    path(
+        "seasons/<int:pk>/leagues/",
+        SeasonLeagueTeamSetupView.as_view(),
+        name=LEAGUE_SEASON_LEAGUE_SETUP,
+    ),
+    path(
+        "seasons/<int:pk>/leagues/copy/",
+        SeasonLeagueTeamCopyView.as_view(),
+        name=LEAGUE_SEASON_LEAGUE_COPY,
+    ),
+    path(
+        "seasons/<int:pk>/leagues/<int:league_pk>/",
+        SeasonLeagueTeamAssignView.as_view(),
+        name=LEAGUE_SEASON_LEAGUE_ASSIGN,
     ),
     path(
         "tournament/<int:pk>/",

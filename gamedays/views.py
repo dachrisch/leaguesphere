@@ -4,8 +4,9 @@ from datetime import datetime, timedelta
 import pandas as pd
 from django.apps import apps
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.db.models import Max
+from django.db.models import Count, Max
 from django.db.models.functions import ExtractYear
 from django.shortcuts import render, get_object_or_404, redirect
 from django.templatetags.static import static
@@ -18,6 +19,7 @@ from django.views.generic import (
     CreateView,
     FormView,
     DeleteView,
+    ListView,
     TemplateView,
 )
 from formtools.wizard.views import SessionWizardView
@@ -38,6 +40,13 @@ from .constants import (
     LEAGUE_GAMEDAY_LEAGUE_STATISTICS,
     LEAGUE_TOURNAMENT_DETAIL,
     LEAGUE_GAMEDAY_GAME_DETAIL,
+    LEAGUE_GAMEDAY_CREATE,
+    LEAGUE_SEASON_LIST,
+    LEAGUE_SEASON_CREATE,
+    LEAGUE_SEASON_UPDATE,
+    LEAGUE_SEASON_LEAGUE_SETUP,
+    LEAGUE_SEASON_LEAGUE_COPY,
+    LEAGUE_SEASON_LEAGUE_ASSIGN,
 )
 from .forms import (
     GamedayForm,
@@ -49,13 +58,26 @@ from .forms import (
     SCHEDULE_MAP,
     SCHEDULE_CUSTOM_CHOICE_C,
     ResourceUrlFormSet,
+    SeasonForm,
+    SeasonLeagueTeamAssignForm,
 )
-from .models import Gameday, Gameinfo, Gameresult, ResourceUrl, Tournament
+from .models import (
+    Gameday,
+    Gameinfo,
+    Gameresult,
+    League,
+    ResourceUrl,
+    Season,
+    SeasonLeagueTeam,
+    Team,
+    Tournament,
+)
 from .service.builders import TableContextBuilder
 from .service.gameday_form_service import GamedayFormService
 from .service.gameday_service import GamedayService, GamedayGameService, EmptySchedule
 from .service.gameday_settings import ID
 from .service.league_statistics_service import LeagueStatisticsService
+from .service.season_rollover_service import copy_league_teams, previous_season
 from .service.tournament_service import TournamentService
 from .wizard import (
     FIELD_GROUP_STEP,
@@ -506,7 +528,9 @@ class GamedayGameDetailView(DetailView):
             "split_score_table": split_score_table_html,
             "game_setup_details": game_setup_details,
         }
-        context["sports_event_ld"] = self._build_sports_event_ld(gameinfo, context["info"])
+        context["sports_event_ld"] = self._build_sports_event_ld(
+            gameinfo, context["info"]
+        )
         return context
 
     # Games have no stored duration; used to derive an estimated endDate for
@@ -523,7 +547,9 @@ class GamedayGameDetailView(DetailView):
             else "https://schema.org/EventScheduled"
         )
         scores = {}
-        for result in Gameresult.objects.filter(gameinfo=gameinfo).select_related("team"):
+        for result in Gameresult.objects.filter(gameinfo=gameinfo).select_related(
+            "team"
+        ):
             if result.team is None:
                 continue
             side = "homeTeam" if result.isHome else "awayTeam"
@@ -580,7 +606,11 @@ class GamedayGameDetailView(DetailView):
                 "address": gameday.address,
             }
         payload.update(
-            {side: team for side, team in scores.items() if side in ("homeTeam", "awayTeam")}
+            {
+                side: team
+                for side, team in scores.items()
+                if side in ("homeTeam", "awayTeam")
+            }
         )
         payload["performer"] = [
             {"@type": "SportsTeam", "name": team["name"]} for team in scores.values()
@@ -830,3 +860,185 @@ class GamedayCreateChooserView(LoginRequiredMixin, UserPassesTestMixin, Template
 
     def test_func(self):
         return self.request.user.is_staff
+
+
+class StaffOnlyMixin(LoginRequiredMixin, UserPassesTestMixin):
+    """Staff-only page: anonymous users are redirected to login, others get 403."""
+
+    def test_func(self):
+        return self.request.user.is_staff
+
+
+class SeasonListView(StaffOnlyMixin, ListView):
+    model = Season
+    template_name = "gamedays/season/list.html"
+    context_object_name = "seasons"
+
+    def get_queryset(self):
+        return Season.objects.annotate(
+            league_count=Count("seasonleagueteam__league", distinct=True),
+            team_count=Count("seasonleagueteam__teams", distinct=True),
+            gameday_count=Count("gameday", distinct=True),
+        ).order_by("-name")
+
+
+class SeasonCreateView(StaffOnlyMixin, CreateView):
+    model = Season
+    form_class = SeasonForm
+    template_name = "gamedays/season/form.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["action_label"] = "Saison anlegen"
+        context["cancel_url"] = reverse(LEAGUE_SEASON_LIST)
+        return context
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(
+            self.request,
+            f"Saison „{self.object.name}“ angelegt. Jetzt Ligen und Teams zuordnen.",
+        )
+        return response
+
+    def get_success_url(self):
+        return reverse(LEAGUE_SEASON_LEAGUE_SETUP, kwargs={"pk": self.object.pk})
+
+
+class SeasonUpdateView(StaffOnlyMixin, UpdateView):
+    model = Season
+    form_class = SeasonForm
+    template_name = "gamedays/season/form.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["action_label"] = "Saison umbenennen"
+        context["cancel_url"] = reverse(LEAGUE_SEASON_LIST)
+        return context
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, f"Saison „{self.object.name}“ gespeichert.")
+        return response
+
+    def get_success_url(self):
+        return reverse(LEAGUE_SEASON_LIST)
+
+
+class SeasonLeagueTeamSetupView(StaffOnlyMixin, TemplateView):
+    """Season rollover: league/team assignment per league for one season."""
+
+    template_name = "gamedays/season/league_setup.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        season = get_object_or_404(Season, pk=self.kwargs["pk"])
+
+        assignments = {
+            assignment.league_id: assignment
+            for assignment in SeasonLeagueTeam.objects.filter(season=season)
+            .select_related("league")
+            .prefetch_related("teams")
+            .order_by("league__name")
+        }
+
+        rows = []
+        for league in League.objects.order_by("name"):
+            assignment = assignments.get(league.pk)
+            teams = list(assignment.teams.all()) if assignment is not None else []
+            rows.append(
+                {
+                    "league": league,
+                    "assignment": assignment,
+                    "teams": teams,
+                    "team_ids": {team.pk for team in teams},
+                }
+            )
+
+        context.update(
+            {
+                "season": season,
+                "rows": rows,
+                "all_teams": list(Team.objects.order_by("description")),
+                "previous_season": previous_season(season),
+                "source_seasons": Season.objects.exclude(pk=season.pk).order_by(
+                    "-name"
+                ),
+                "gameday_create_url": reverse(LEAGUE_GAMEDAY_CREATE),
+                "designer_url": reverse("gameday_designer_app:index"),
+            }
+        )
+        return context
+
+
+class SeasonLeagueTeamCopyView(StaffOnlyMixin, View):
+    """Copy last season's assignments into this season (idempotent)."""
+
+    def get(self, request, *args, **kwargs):
+        return redirect(
+            reverse(LEAGUE_SEASON_LEAGUE_SETUP, kwargs={"pk": self.kwargs["pk"]})
+        )
+
+    def post(self, request, *args, **kwargs):
+        season = get_object_or_404(Season, pk=self.kwargs["pk"])
+        source_id = request.POST.get("from_season")
+
+        if source_id:
+            source = Season.objects.filter(pk=source_id).exclude(pk=season.pk).first()
+            if source is None:
+                messages.error(request, "Die gewählte Vorsaison wurde nicht gefunden.")
+                return redirect(
+                    reverse(LEAGUE_SEASON_LEAGUE_SETUP, kwargs={"pk": season.pk})
+                )
+        else:
+            source = previous_season(season)
+            if source is None:
+                messages.warning(
+                    request,
+                    "Keine Vorsaison gefunden – es wurde nichts übernommen.",
+                )
+                return redirect(
+                    reverse(LEAGUE_SEASON_LEAGUE_SETUP, kwargs={"pk": season.pk})
+                )
+
+        summary = copy_league_teams(source, season)
+        messages.success(
+            request,
+            f"{summary.created} Zuordnung(en) übernommen, "
+            f"{summary.skipped} übersprungen. (aus {source.name})",
+        )
+        return redirect(reverse(LEAGUE_SEASON_LEAGUE_SETUP, kwargs={"pk": season.pk}))
+
+
+class SeasonLeagueTeamAssignView(StaffOnlyMixin, View):
+    """Manual per-league team assignment. Updates an existing row instead of
+    creating a second one for the same (season, league)."""
+
+    def get(self, request, *args, **kwargs):
+        return redirect(
+            reverse(LEAGUE_SEASON_LEAGUE_SETUP, kwargs={"pk": self.kwargs["pk"]})
+        )
+
+    def post(self, request, *args, **kwargs):
+        season = get_object_or_404(Season, pk=self.kwargs["pk"])
+        league = get_object_or_404(League, pk=self.kwargs["league_pk"])
+        setup_url = reverse(LEAGUE_SEASON_LEAGUE_SETUP, kwargs={"pk": season.pk})
+
+        form = SeasonLeagueTeamAssignForm(request.POST)
+        if not form.is_valid():
+            messages.error(
+                request,
+                f"Die Teamauswahl für {league.name} konnte nicht gespeichert werden.",
+            )
+            return redirect(setup_url)
+
+        assignment = (
+            SeasonLeagueTeam.objects.filter(season=season, league=league)
+            .order_by("pk")
+            .first()
+        )
+        if assignment is None:
+            assignment = SeasonLeagueTeam.objects.create(season=season, league=league)
+        assignment.teams.set(form.cleaned_data["teams"])
+        messages.success(request, f"Teams für {league.name} gespeichert.")
+        return redirect(setup_url)

@@ -13,6 +13,13 @@
 <div class="d-flex gap-2 mb-3">
 {% include 'utils/season_filter.html' with url_pattern=season_year_pattern  %}
 {% include 'utils/league_filter.html' with  url_pattern=league_year_url_pattern %}
+    {% if request.user.is_staff %}
+        <a class="btn btn-outline-secondary btn-sm"
+           href="{% url 'league-season-list' %}"
+           title="Saisons, Ligen und Teams verwalten">
+            <i class="bi bi-calendar3"></i> Saisons
+        </a>
+    {% endif %}
     {% if request.GET.showAllGames == "true" %}
         <a class="btn btn-info btn-sm ms-auto"
            {% if selected_league %}

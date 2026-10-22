@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 from django_webtest import WebTest
@@ -29,6 +30,11 @@ from gamedays.forms import (
     GameinfoForm,
 )
 from gamedays.models import Gameday, League, Gameinfo, TeamLog, Gameresult, GameSetup
+from league_manager.constants import (
+    MAINTENANCE_CONFIG_CACHE_KEY,
+    MAINTENANCE_CONFIG_CACHE_TTL,
+    MAINTENANCE_SCOPE_OFF,
+)
 from gamedays.service.builders import TableContextBuilder
 from gamedays.service.gameday_service import (
     EmptySchedule,
@@ -125,6 +131,17 @@ class TestGamedayDetailView(TestCase):
         # see TestGamedayDetailViewCanMigrate for its query cost when a
         # staff/author request actually triggers it.)
         ###
+        # The DB-guard/maintenance caches are process-global and short-lived: a
+        # cold cache adds a SiteConfiguration lookup and flips the count,
+        # depending on which test ran before on this xdist worker. Pin them
+        # directly instead of racing a warm-up request (same pattern as
+        # matchreport/tests/test_views.py::_pin_request_path_caches).
+        cache.set("db_connection_status", True, 10)
+        cache.set(
+            MAINTENANCE_CONFIG_CACHE_KEY,
+            {"scope": MAINTENANCE_SCOPE_OFF, "patterns": []},
+            MAINTENANCE_CONFIG_CACHE_TTL,
+        )
         with self.assertNumQueries(7):  # Exactly 1 query expected
             resp = self.client.get(
                 reverse(LEAGUE_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk})
