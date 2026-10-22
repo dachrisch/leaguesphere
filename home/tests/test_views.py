@@ -200,9 +200,10 @@ def test_home_does_not_repeat_a_destination(client):
 
     main = content.split("<main", 1)[1].split("</main>", 1)[0]
     designer = "/gamedays/gameday/design/"
-    # The step links the designer; the card must not also render a button for it
-    # (the nav carries one more, which is chrome outside <main>).
-    assert main.count(f'href="{designer}"') == 1
+    # The step links the designer (with the season/league it was opened for);
+    # the card must not also render a button for it. The nav carries one more,
+    # which is chrome outside <main>.
+    assert main.count(f'href="{designer}') == 1
     assert "Spieltag im Designer anlegen" in main
     assert main.count("Spieltag manuell anlegen") == 1
     # ... and it is a quiet fallback link, not a button competing with the step.

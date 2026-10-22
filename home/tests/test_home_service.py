@@ -401,9 +401,10 @@ def test_staff_nudge_opens_the_designer_for_the_next_season_and_league():
     )
 
     nudge = next(c for c in context["cards"] if c["key"] == "staff_gameday_nudge")
-    primary = next(link for link in nudge["links"] if link["primary"])
-    assert f"league={league.pk}" in primary["url"]
-    assert f"season={next_season.pk}" in primary["url"]
+    # The gameday step is the designer link (the card has no extra button).
+    designer_step = next(step for step in nudge["steps"] if step["key"] == "gameday")
+    assert f"league={league.pk}" in designer_step["url"]
+    assert f"season={next_season.pk}" in designer_step["url"]
 
 
 @pytest.mark.django_db
@@ -416,6 +417,6 @@ def test_staff_nudge_omits_the_season_while_it_is_missing():
     )
 
     nudge = next(c for c in context["cards"] if c["key"] == "staff_gameday_nudge")
-    primary = next(link for link in nudge["links"] if link["primary"])
-    assert f"league={league.pk}" in primary["url"]
-    assert "season=" not in primary["url"]
+    designer_step = next(step for step in nudge["steps"] if step["key"] == "gameday")
+    assert f"league={league.pk}" in designer_step["url"]
+    assert "season=" not in designer_step["url"]
