@@ -96,6 +96,9 @@ class AccessRequest(models.Model):
     objects = AccessRequestQuerySet.as_manager()
 
     class Meta:
+        # The sidecar writes this table with hand-written SQL (no Django), so
+        # the name is pinned to what `deployed/dba/tick.sh` selects from.
+        db_table = "dbaccess_request"
         ordering = ["-created_at"]
         indexes = [models.Index(fields=["state", "created_at"])]
         permissions = [
@@ -210,6 +213,8 @@ class AccessEvent(models.Model):
     from_ip = models.GenericIPAddressField(null=True, blank=True)
 
     class Meta:
+        # See AccessRequest.Meta.db_table: `tick.sh` appends to this table.
+        db_table = "dbaccess_event"
         ordering = ["-at"]
 
     def __str__(self):

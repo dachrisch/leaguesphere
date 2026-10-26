@@ -94,3 +94,18 @@ def test_log_appends_an_event():
     access_request.log("someone", "requested", detail="tables: divisions")
 
     assert list(access_request.events.values_list("action", flat=True)) == ["requested"]
+
+
+def test_table_names_match_the_sidecar_sql():
+    """`deployed/dba/tick.sh` writes these two tables with hand-written SQL.
+
+    Django's default name is `<app>_<model>` (dbaccess_accessrequest), which
+    silently disagreed with the sidecar's `dbaccess_request` until a stage
+    rehearsal caught it: the sidecar saw "table doesn't exist" on every tick
+    and no account was ever minted. Pinning the names here keeps the two
+    halves of the feature in sync.
+    """
+    from dbaccess.models import AccessEvent
+
+    assert AccessRequest._meta.db_table == "dbaccess_request"
+    assert AccessEvent._meta.db_table == "dbaccess_event"

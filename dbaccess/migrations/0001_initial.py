@@ -50,6 +50,7 @@ class Migration(migrations.Migration):
                 ('requester', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='dbaccess_requests', to=settings.AUTH_USER_MODEL)),
             ],
             options={
+                'db_table': 'dbaccess_request',
                 'ordering': ['-created_at'],
                 'permissions': [('approve_requests', 'Can approve temporary database access requests')],
             },
@@ -66,12 +67,13 @@ class Migration(migrations.Migration):
                 ('request', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='events', to='dbaccess.accessrequest')),
             ],
             options={
+                'db_table': 'dbaccess_event',
                 'ordering': ['-at'],
             },
         ),
         migrations.AddIndex(
             model_name='accessrequest',
-            index=models.Index(fields=['state', 'created_at'], name='dbaccess_ac_state_5471f9_idx'),
+            index=models.Index(fields=['state', 'created_at'], name='dbaccess_re_state_b416fe_idx'),
         ),
         migrations.AddConstraint(
             model_name='accessrequest',
