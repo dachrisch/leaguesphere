@@ -39,13 +39,14 @@ services:
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/opt/dba/tick.sh"]
     command: ["--loop"]
-    env_file:
-      # Rendered by Ansible next to this file. `required: false` keeps
-      # `docker compose config` and CI working without it; a container started
-      # without it fails loudly on its own first tick (tick.sh checks its env).
-      - path: dba.env
-        required: false
+    # Rendered by Ansible (ls_dbeaver_access) next to this file. Plain string,
+    # not the `required: false` mapping: CI still runs compose v1, which cannot
+    # parse that form. A stack that starts without it fails on the first tick -
+    # tick.sh refuses to run with an incomplete environment.
+    env_file: dba.env
     volumes:
+      # Directory mount, world-readable (the container drops ALL capabilities):
+      # see the note in docker-compose.yaml.
       - "./dba:/opt/dba:ro"
     networks:
       - backend
