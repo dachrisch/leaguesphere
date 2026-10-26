@@ -50,6 +50,12 @@ ignore:
   - "**/test_*.py"
   - "**/*_test.py"
 
+  # Schema files. The pytest shards run with --nomigrations (migrations are not
+  # applied during tests), so these files are never imported and would sit at 0%
+  # in the patch denominator - which makes any new app fail the 90% patch gate
+  # for a reason that has nothing to do with its code.
+  - "**/migrations/**"
+
   # Static and build output directories
   - "**/static/**"
   - "**/dist/**"
