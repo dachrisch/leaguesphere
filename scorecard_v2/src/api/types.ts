@@ -76,8 +76,8 @@ export interface Game {
   /** `Gameresult` pk of the away row (see the warning above). */
   id_away: string;
   /**
-   * True only when both teams of the game passed the passcheck. Optional
-   * because a backend without the whistle annotation omits it: `undefined`
+   * True only when both teams of the game passed the passcheck. Optional for
+   * version skew/rollback only — the endpoint always sends it now. `undefined`
    * means "unknown" (render no chip), which is not the same as `false`.
    */
   passcheck?: boolean;
@@ -185,13 +185,14 @@ export interface GameLogHalf {
 }
 
 /**
- * `GET /api/game/<gameId>/roster/` — added by the passcheck/roster task.
- * Jersey plus surname only; pass numbers never leave the server.
+ * `GET /api/game/<gameId>/roster` — jersey plus surname for both teams.
+ * Pass numbers never leave the server. `name` is `null` when the person has
+ * neither a surname nor a first name.
  */
 export interface RosterPlayer {
   side: "home" | "away";
   jersey: number;
-  name: string;
+  name: string | null;
 }
 
 /**

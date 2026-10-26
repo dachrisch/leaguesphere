@@ -74,13 +74,21 @@ function summarise(games: Game[]) {
 }
 
 function rowName(game: Game, tag: GameTag): string {
-  return [
+  const parts = [
     formatGameTime(game.scheduled),
     `Feld ${game.field}`,
     `${teamLabel(game.home)} gegen ${teamLabel(game.away)}`,
     formatGameScore(game.points_home, game.points_away),
     tag.label,
-  ].join(", ");
+  ];
+  // The chip is visual only; without this the passcheck state is invisible to
+  // screen readers.
+  if (game.passcheck === true) {
+    parts.push("Passcheck geprüft");
+  } else if (game.passcheck === false) {
+    parts.push("kein Passcheck");
+  }
+  return parts.join(", ");
 }
 
 function RowBody({ game, tag }: { game: Game; tag: GameTag }) {
