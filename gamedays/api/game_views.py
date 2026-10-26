@@ -3,6 +3,7 @@ import logging
 from collections import OrderedDict
 from http import HTTPStatus
 
+from django.db import transaction
 from django.db.models import F, Q
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import UpdateAPIView, RetrieveUpdateAPIView
@@ -242,25 +243,33 @@ class GameSetupCreateOrUpdateView(RetrieveUpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         pk = kwargs.get("pk")
-        game_setup, is_game_setup_created = GameSetup.objects.get_or_create(
-            gameinfo_id=pk
-        )
+        game_setup = GameSetup.objects.filter(gameinfo_id=pk).first()
         serializer = GameSetupSerializer(instance=game_setup, data=request.data)
-        if is_game_setup_created:
-            game_service = GameService(pk)
-            try:
-                game_service.update_gamestart(request.user)
-            except IllegalGameTransition as e:
-                logger.warning("Rejected gamestart for game %s: %s", pk, e)
-                return Response(
-                    {"detail": "Dieser Spielstatus erlaubt keinen Spielstart."},
-                    status=HTTPStatus.CONFLICT,
-                )
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=HTTPStatus.OK)
-        else:
+        # Validate before touching anything: a malformed payload must not leave
+        # a setup row behind (it would make the game look prepared).
+        if not serializer.is_valid():
             return Response(serializer.errors, status=HTTPStatus.BAD_REQUEST)
+
+        is_game_setup_created = game_setup is None
+        try:
+            # Starting the game, writing its log entry and creating the setup
+            # row are one unit. A rejected transition (409) must roll back to
+            # the state before the request, otherwise the retry sees an
+            # existing row and silently skips `update_gamestart` — returning
+            # 200 for a game that never started.
+            with transaction.atomic():
+                if is_game_setup_created:
+                    GameService(pk).update_gamestart(request.user)
+                    serializer.save(gameinfo_id=pk)
+                else:
+                    serializer.save()
+        except IllegalGameTransition as e:
+            logger.warning("Rejected gamestart for game %s: %s", pk, e)
+            return Response(
+                {"detail": "Dieser Spielstatus erlaubt keinen Spielstart."},
+                status=HTTPStatus.CONFLICT,
+            )
+        return Response(serializer.data, status=HTTPStatus.OK)
 
 
 class GamesToWhistleAPIView(APIView):
