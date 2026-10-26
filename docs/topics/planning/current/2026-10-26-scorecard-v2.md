@@ -30,9 +30,44 @@ the correction already lives in the tasks below.
 | An expired licence should block the start | The current app only displays licence state and never blocks. Blocking could strand a gameday; v2 warns and needs an explicit "Trotzdem starten" | Task 7 |
 | A penalty's "gegen wen" is free choice | `GET /api/config/scorecard/penalties` already carries `isPenaltyAgainstOpponent`, and the old app derives the team from it. The picker must default from that flag, not contradict it | Task 12 |
 
-Two product decisions remain open and are marked in their tasks: whether
-licence problems block the start (Task 7) and whether v2 gets a new help topic
-or updates `ergebnisse-erfassen` (Task 22).
+Two product decisions were resolved on 2026-10-26 (see Tasks 7 and 22):
+licence problems warn instead of blocking the start, and v2 gets a new
+`spieltag-v2` help topic while `ergebnisse-erfassen` stays untouched.
+
+### Handover and environment (2026-10-26)
+
+This plan supersedes the passcheck v2 field-app plan
+(`docs/plans/2026-10-26-passcheck-v2-field-app.md` on
+`feat/passcheck-v2-field-app`); that branch is abandoned and none of its code is
+required here. Task 1 is already committed on this branch (`8fa9fe93`, follow-up
+`842f1d36`).
+
+Baseline recorded before Task 2:
+
+| Check | Result |
+|---|---|
+| `pytest scorecard/tests.py gamedays/tests/api scorecard_v2 --ds=test_settings` | **123 passed, 1 xfailed** |
+| `npm --prefix scorecard run test:run` | **27 files / 111 passed, 1 skipped** |
+| `npm --prefix scorecard run eslint` | **0 errors** |
+
+Local environment (this container, not CI): the worktree `.venv` is unusable —
+`uv sync --extra test` fails on musl (`playwright==1.62.0` has no musllinux
+wheel) — and there is no MySQL on `127.0.0.1:3306`. Run the backend tests with
+the repo's shared interpreter and SQLite:
+
+```bash
+/root/dev/dachrisch/leaguesphere/.venv/bin/python -m pytest … --ds=test_settings
+```
+
+CI still uses `uv run pytest` against its MySQL service; that path is unchanged.
+
+Three gaps found in the plan and fixed below:
+
+| Gap | Fix |
+|---|---|
+| A new `package.json` is not bumped by release-please | Add `scorecard_v2/package.json` to `release-please-config.json` `extra-files` **and** `scripts/check_version_sequence.py` `VERSION_FILES` |
+| A new CI parameter is not enough | Add `run-scorecard-v2` to the `\.circleci/.*` "validate everything" block as well as `config.yml` parameters |
+| The help skill needs more than a registry entry | Screenshot under `league_manager/static/help/img/`, plus a line in `templates/llms-full.txt` (`test_help.py` enforces both) |
 
 ---
 
@@ -325,6 +360,12 @@ React 19, `idb`; dev: `typescript`, `@types/react`, `@types/react-dom`,
 `@testing-library/react`, `@testing-library/jest-dom`,
 `@testing-library/user-event`, `fake-indexeddb`, `eslint`,
 `typescript-eslint`, `eslint-plugin-react-hooks`.
+
+Commit `package-lock.json` (CI runs `npm ci`). Register the new version file in
+`release-please-config.json` (`extra-files`) and
+`scripts/check_version_sequence.py` (`VERSION_FILES`) — both enumerate every SPA
+`package.json`, and a missing entry means release-please silently stops bumping
+v2. Use the current root version as the initial value.
 
 Commit `feat(scorecard-v2): add the TypeScript build`.
 
@@ -882,12 +923,21 @@ Commit `feat(scorecard-v2): wire the full flow`.
 > existing `ergebnisse-erfassen` topic is left alone until the old app is
 > retired (which this plan does not do).
 
+The topic also needs its screenshot at
+`league_manager/static/help/img/spieltag-v2.png` and a link line in
+`templates/llms-full.txt`; `league_manager/tests/test_help.py` fails without
+both. Capture the screenshot from staging once `/scorecard/v2/` is deployed.
+
 **CI**
 
 ```yaml
 # config.yml and continue.yml parameters
 run-scorecard-v2: { type: boolean, default: false }
 ```
+
+`\.circleci/.*` in `scope-mapping.txt` is the "validate everything" block: add
+`run-scorecard-v2 true` there too, otherwise a CI-config change never exercises
+the new job.
 
 Add a `scorecard_v2_js` job modelled on `scorecard_js` (`continue.yml:280`)
 running `npm ci`, `npm run eslint`, `npm run typecheck`, `npm run test:run`,
