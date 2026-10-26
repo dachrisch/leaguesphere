@@ -1,0 +1,482 @@
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+
+import { ApiError, apiDelete, apiPut } from "../api/client";
+import type {
+  Game,
+  GameLog,
+  GameLogEvent,
+  GameLogTeam,
+  LogEntry,
+} from "../api/types";
+import TrackingScreen from "./Tracking";
+
+vi.mock("../api/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../api/client")>();
+  return {
+    ...actual,
+    apiPut: vi.fn(),
+    apiDelete: vi.fn(),
+  };
+});
+
+const apiPutMock = apiPut as unknown as Mock;
+const apiDeleteMock = apiDelete as unknown as Mock;
+
+const GAME: Game = {
+  id: 42,
+  scheduled: "13:30:00",
+  field: 2,
+  officials: "Crew Rhein",
+  officialsId: 7,
+  stage: "Vorrunde",
+  standing: "",
+  home: "Ravens",
+  away: "Wolves",
+  points_home: null,
+  points_away: null,
+  status: "1. Halbzeit",
+  id_home: "11",
+  id_away: "12",
+  passcheck: true,
+};
+
+/** Local wall-clock time as ISO, so `formatLogTime` is timezone-independent. */
+function isoAt(hour: number, minute: number): string {
+  return new Date(2026, 9, 26, hour, minute).toISOString();
+}
+
+interface EventOverrides {
+  id?: number;
+  sequence?: number;
+  team?: string | null;
+  event?: string;
+  player?: number | null;
+  input?: string | null;
+  half?: number;
+  cop?: boolean;
+  isDeleted?: boolean;
+  time?: string;
+}
+
+function logEvent(overrides: EventOverrides = {}): GameLogEvent {
+  return {
+    id: 1,
+    sequence: 1,
+    team: "Ravens",
+    event: "Touchdown",
+    player: null,
+    input: null,
+    half: 1,
+    cop: false,
+    isDeleted: false,
+    time: isoAt(12, 0),
+    ...overrides,
+  };
+}
+
+function team(overrides: Partial<GameLogTeam> = {}): GameLogTeam {
+  return {
+    id: 1,
+    name: "Ravens",
+    score: 0,
+    firsthalf: { score: 0, entries: [] },
+    secondhalf: { score: 0, entries: [] },
+    ...overrides,
+  };
+}
+
+interface LogOverrides {
+  isFirstHalf?: boolean;
+  inPossession?: string | null;
+  home?: GameLogTeam;
+  away?: GameLogTeam;
+  events?: GameLogEvent[];
+  /** Omit `events` entirely to imitate a server that predates the addition. */
+  withoutEvents?: boolean;
+}
+
+function makeLog(overrides: LogOverrides = {}): GameLog {
+  return {
+    gameId: 42,
+    isFirstHalf: overrides.isFirstHalf ?? true,
+    inPossession: overrides.inPossession ?? null,
+    ...(overrides.withoutEvents === true
+      ? {}
+      : { events: overrides.events ?? [] }),
+    home: overrides.home ?? team(),
+    away:
+      overrides.away ??
+      team({ id: 2, name: "Wolves", score: 0 }),
+  };
+}
+
+function entry(overrides: Partial<LogEntry> = {}): LogEntry {
+  return { sequence: 1, time: isoAt(12, 0), ...overrides };
+}
+
+async function clickUndo(name: RegExp): Promise<void> {
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name }));
+}
+
+beforeEach(() => {
+  apiPutMock.mockReset();
+  apiDeleteMock.mockReset();
+  apiPutMock.mockResolvedValue(undefined);
+});
+
+describe("Tracking score header", () => {
+  it("shows both teams, the big score, possession and the half", () => {
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({
+          isFirstHalf: false,
+          inPossession: "Ravens",
+          home: team({ score: 20 }),
+          away: team({ id: 2, name: "Wolves", score: 7 }),
+        })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    const board = screen.getByLabelText("Spielstand");
+    expect(within(board).getByText("20")).toBeInTheDocument();
+    expect(within(board).getByText("7")).toBeInTheDocument();
+    expect(within(board).getByText("am Ball")).toBeInTheDocument();
+    expect(within(board).getByText("2. Halbzeit")).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", { name: /^Ravens, 20 Punkte, am Ball/ }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", { name: /^Wolves, 7 Punkte, nicht am Ball/ }),
+    ).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("derives the half from the payload instead of defaulting to the first", () => {
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({ isFirstHalf: false })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("2. Halbzeit")).toBeInTheDocument();
+    expect(screen.queryByText("1. Halbzeit")).not.toBeInTheDocument();
+  });
+
+  it("shows no possession marker when the payload has none", () => {
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({ inPossession: null })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("am Ball")).not.toBeInTheDocument();
+  });
+});
+
+describe("Tracking possession", () => {
+  it("sends the team name and switches the marker optimistically", async () => {
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({ inPossession: "Ravens" })}
+        onFinalize={vi.fn()}
+      />,
+    );
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: /^Wolves/ }));
+
+    expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/possession", {
+      team: "Wolves",
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /^Wolves/ }),
+      ).toHaveAttribute("aria-pressed", "true"),
+    );
+  });
+
+  it("rolls the marker back when the request fails", async () => {
+    apiPutMock.mockRejectedValueOnce(
+      new ApiError(500, { detail: "Server weg" }, "Server weg"),
+    );
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({ inPossession: "Ravens" })}
+        onFinalize={vi.fn()}
+      />,
+    );
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: /^Wolves/ }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("Server weg"),
+    );
+    expect(screen.getByRole("button", { name: /^Wolves/ })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(screen.getByRole("button", { name: /^Ravens/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+});
+
+describe("Tracking event log", () => {
+  it("renders every event kind newest first with its detail", () => {
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({
+          events: [
+            logEvent({ id: 1, event: "Spielzeit", input: "12:34", time: isoAt(12, 34) }),
+            logEvent({ id: 2, event: "Auszeit", team: "Wolves", input: "1:30" }),
+            logEvent({ id: 3, event: "Safety (+1)", player: 7 }),
+            logEvent({ id: 4, event: "First Down" }),
+            logEvent({ id: 5, event: "Interception", cop: true }),
+            logEvent({ id: 6, event: "Strafe", team: "Wolves", input: "Holding Defense" }),
+            logEvent({ id: 7, event: "1-Extra-Punkt", player: 7 }),
+            logEvent({ id: 8, event: "Touchdown", player: 23 }),
+          ],
+        })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Spielzeit 12:34")).toBeInTheDocument();
+    expect(screen.getByText("Auszeit Wolves")).toBeInTheDocument();
+    expect(screen.getByText("Safety · Ravens")).toBeInTheDocument();
+    expect(screen.getByText("+1 Punkt")).toBeInTheDocument();
+    expect(screen.getByText("1st Down Ravens")).toBeInTheDocument();
+    expect(screen.getByText("Interception Ravens")).toBeInTheDocument();
+    expect(screen.getByText("Strafe gegen Wolves")).toBeInTheDocument();
+    expect(screen.getByText("Holding Defense")).toBeInTheDocument();
+    expect(screen.getByText("1 Extrapunkt Ravens")).toBeInTheDocument();
+    expect(screen.getByText("Touchdown Ravens")).toBeInTheDocument();
+    expect(screen.getByText("#23")).toBeInTheDocument();
+
+    const rows = screen.getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("Spielzeit 12:34");
+    expect(rows[0]).toHaveTextContent("12:34");
+    expect(rows[rows.length - 1]).toHaveTextContent("Touchdown Ravens");
+  });
+
+  it("keeps a deleted row visible, struck through and without undo", () => {
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({
+          events: [
+            logEvent({ id: 1, event: "Strafe", team: "Wolves", isDeleted: true }),
+            logEvent({ id: 2, event: "Touchdown" }),
+          ],
+        })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    const rows = screen.getAllByRole("listitem");
+    expect(rows[0]).toHaveClass("deleted");
+    expect(
+      within(rows[0]).queryByRole("button", { name: /Rückgängig/ }),
+    ).not.toBeInTheDocument();
+    expect(within(rows[1]).getByRole("button", { name: /Rückgängig/ })).toBeInTheDocument();
+  });
+
+  it("shows the empty state when there is nothing to log", () => {
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({ events: [] })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Noch keine Einträge")).toBeInTheDocument();
+  });
+
+  it("falls back to the scoring entries of an older server", () => {
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({
+          withoutEvents: true,
+          home: team({
+            score: 7,
+            firsthalf: { score: 7, entries: [entry({ sequence: 4, td: 23, pat1: 7 })] },
+          }),
+        })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Touchdown Ravens")).toBeInTheDocument();
+    expect(screen.getByText("1 Extrapunkt Ravens")).toBeInTheDocument();
+  });
+});
+
+describe("Tracking undo", () => {
+  it("undoes a scoring play by sequence", async () => {
+    apiDeleteMock.mockResolvedValue(makeLog());
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({
+          events: [logEvent({ id: 5, sequence: 3, event: "Touchdown" })],
+        })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    await clickUndo(/Rückgängig: Touchdown Ravens/);
+
+    expect(apiDeleteMock).toHaveBeenCalledWith("/api/gamelog/42", {
+      sequence: 3,
+    });
+  });
+
+  it("undoes an excluded event by team_log_id", async () => {
+    apiDeleteMock.mockResolvedValue(makeLog());
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({
+          events: [
+            logEvent({
+              id: 6,
+              sequence: 0,
+              event: "Strafe",
+              team: "Wolves",
+              input: "Holding Defense",
+            }),
+          ],
+        })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    await clickUndo(/Rückgängig: Strafe gegen Wolves/);
+
+    expect(apiDeleteMock).toHaveBeenCalledWith("/api/gamelog/42", {
+      team_log_id: 6,
+    });
+  });
+
+  it("undoes a game marker by row id, not by the shared sequence 0", async () => {
+    apiDeleteMock.mockResolvedValue(makeLog());
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({
+          events: [
+            logEvent({
+              id: 9,
+              sequence: 0,
+              half: 0,
+              team: null,
+              event: "Spiel gestartet",
+            }),
+          ],
+        })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    await clickUndo(/Rückgängig: Spiel gestartet/);
+
+    expect(apiDeleteMock).toHaveBeenCalledWith("/api/gamelog/42", {
+      team_log_id: 9,
+    });
+  });
+
+  it("replaces the log with the delete response", async () => {
+    apiDeleteMock.mockResolvedValue(
+      makeLog({
+        inPossession: "Wolves",
+        home: team({ score: 14 }),
+        away: team({ id: 2, name: "Wolves", score: 7 }),
+        events: [
+          logEvent({ id: 10, sequence: 0, event: "First Down", team: "Wolves" }),
+          logEvent({ id: 5, sequence: 3, event: "Touchdown", isDeleted: true }),
+        ],
+      }),
+    );
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({
+          inPossession: "Ravens",
+          home: team({ score: 20 }),
+          away: team({ id: 2, name: "Wolves", score: 7 }),
+          events: [logEvent({ id: 5, sequence: 3, event: "Touchdown" })],
+        })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    await clickUndo(/Rückgängig: Touchdown Ravens/);
+
+    const board = screen.getByLabelText("Spielstand");
+    await waitFor(() => expect(within(board).getByText("14")).toBeInTheDocument());
+    expect(within(board).getByText("am Ball")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^Wolves, 7 Punkte, am Ball/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1st Down Wolves")).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")[1]).toHaveClass("deleted");
+  });
+
+  it("keeps the log and shows the server detail when undo fails", async () => {
+    apiDeleteMock.mockRejectedValueOnce(
+      new ApiError(403, { detail: "Keine Berechtigung." }, "Keine Berechtigung."),
+    );
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({
+          events: [logEvent({ id: 5, sequence: 3, event: "Touchdown" })],
+        })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    await clickUndo(/Rückgängig: Touchdown Ravens/);
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("Keine Berechtigung."),
+    );
+    expect(screen.getByText("Touchdown Ravens")).toBeInTheDocument();
+  });
+});
+
+describe("Tracking finalize", () => {
+  it("hands the finalise flow to the caller", async () => {
+    const onFinalize = vi.fn();
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog()}
+        onFinalize={onFinalize}
+      />,
+    );
+    const user = userEvent.setup();
+
+    await user.click(
+      screen.getByRole("button", { name: "Spielende und Bestätigung" }),
+    );
+
+    expect(onFinalize).toHaveBeenCalledTimes(1);
+  });
+});
