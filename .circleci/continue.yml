@@ -41,6 +41,9 @@ parameters:
   run-passcheck:
     type: boolean
     default: false
+  run-field:
+    type: boolean
+    default: false
   run-designer:
     type: boolean
     default: false
@@ -259,7 +262,7 @@ jobs:
       - checkout
       - setup_uv
       - python_shard_test:
-          paths: "passcheck/tests/ gameday_designer/tests/ journey/tests.py journey/api/tests/ matchreport/tests/"
+          paths: "passcheck/tests/ field/tests/ gameday_designer/tests/ journey/tests.py journey/api/tests/ matchreport/tests/"
           junit: "test-results-designer.xml"
           cov_flag: "python-designer"
 
@@ -396,6 +399,35 @@ jobs:
       - run:
           name: "JavaScript Build"
           command: npm --prefix passcheck/ run build
+
+  field_js:
+    executor:
+      name: node/default
+      tag: "24.17"
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - node/install-packages:
+          app-dir: field/
+      - run:
+          name: "JavaScript Test Suite"
+          command: npm --prefix field/ run test:run
+      - codecov/upload:
+          dir: field/coverage
+          flags: field
+      - run:
+          name: "TypeScript Typecheck"
+          command: npm --prefix field/ run typecheck
+      - run:
+          name: "JavaScript Linter"
+          command: |
+            mkdir -p /tmp/eslint
+            npm --prefix field/ run eslint:junit
+      - store_test_results:
+          path: /tmp/eslint
+      - run:
+          name: "JavaScript Build"
+          command: npm --prefix field/ run build
 
   gameday_designer_js:
     executor:
@@ -1213,6 +1245,8 @@ workflows:
           filters: "(pipeline.parameters.run-liveticker == true)"
       - passcheck_js:
           filters: "(pipeline.parameters.run-passcheck == true)"
+      - field_js:
+          filters: "(pipeline.parameters.run-field == true)"
       - gameday_designer_js:
           filters: "(pipeline.parameters.run-designer == true)"
       - journey_dashboard_js:
@@ -1238,6 +1272,7 @@ workflows:
             - scorecard_v2_js
             - liveticker_js
             - passcheck_js
+            - field_js
             - gameday_designer_js
             - journey_dashboard_js
             - share_js

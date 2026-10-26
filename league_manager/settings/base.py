@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "accounts",
     "knox",
     "passcheck",
+    "field",
     "gameday_designer",
     "matchreport",
     "journey",

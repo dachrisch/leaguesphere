@@ -48,6 +48,7 @@ VERSION_FILES = {
     "league_manager/__init__.py": "init",
     "liveticker/package.json": "package-json",
     "passcheck/package.json": "package-json",
+    "field/package.json": "package-json",
     "scorecard/package.json": "package-json",
     "scorecard_v2/package.json": "package-json",
     "gameday_designer/package.json": "package-json",
@@ -209,6 +210,9 @@ def check_feature_branch(
             "edit the changelog"
         )
     for path in VERSION_FILES:
+        if path not in base_files:
+            # New version file introduced by this branch; nothing to compare.
+            continue
         base_version = base_files.get(path)
         head_version = head_files.get(path)
         if head_version is None:

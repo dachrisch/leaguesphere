@@ -1,0 +1,48 @@
+:root {
+  color-scheme: light;
+  --field-ink: #101619;
+  --field-paper: #f4f1e8;
+  --field-muted: #6e7678;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--field-paper);
+  color: var(--field-ink);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+
+.field-app {
+  min-height: 100dvh;
+  padding: 16px;
+}
+
+.field-header {
+  border-bottom: 1px solid var(--field-ink);
+  padding-bottom: 8px;
+}
+
+.field-kicker {
+  margin: 0;
+  color: var(--field-muted);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.field-header h1 {
+  margin: 2px 0 0;
+  font-size: 28px;
+  letter-spacing: -0.03em;
+}
