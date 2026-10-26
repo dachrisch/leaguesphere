@@ -66,6 +66,8 @@ db.demo.sqlite3
 test_db_shared.sqlite3
 .claude/scheduled_tasks.lock
 .static/
+# Consent-gated pass photos (PASS_PHOTO_ROOT) never belong in git.
+/league_manager/private/
 
 # Flask stuff:
 instance/
