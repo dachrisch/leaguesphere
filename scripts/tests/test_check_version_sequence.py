@@ -36,6 +36,7 @@ FILES_AT_BASE = {
     "liveticker/package.json": "4.23.0",
     "passcheck/package.json": "4.23.0",
     "scorecard/package.json": "4.23.0",
+    "scorecard_v2/package.json": "4.23.0",
     "gameday_designer/package.json": "4.23.0",
     "journey_dashboard/package.json": "4.23.0",
     "uv.lock": "4.23.0",
@@ -185,3 +186,20 @@ class TestFeatureBranches:
             head_changelog=changelog_for("4.24.0", BASE),
         )
         assert any("CHANGELOG" in e for e in errors)
+
+    def test_version_file_introduced_by_the_branch_passes(self, guard):
+        """A new SPA package.json is absent from master by definition."""
+        base_files = {
+            path: version
+            for path, version in FILES_AT_BASE.items()
+            if path != "scorecard_v2/package.json"
+        }
+        errors = guard.check_feature_branch(
+            base_manifest=BASE,
+            head_manifest=BASE,
+            base_files=base_files,
+            head_files=dict(FILES_AT_BASE),
+            base_changelog=CHANGELOG_AT_BASE,
+            head_changelog=CHANGELOG_AT_BASE,
+        )
+        assert errors == []

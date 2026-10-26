@@ -18,7 +18,9 @@ branch), i.e. at PR time, before anything is merged:
   to ``origin/master`` (only release-please may touch them); version
   files must either match master or carry a staging suffix (``-rc.N`` /
   ``+demo.N``) from the ``deploy.yaml`` flow, which has to be reset to
-  the master state before merge.
+  the master state before merge. A version file the branch *introduces*
+  (absent from master, e.g. a new SPA ``package.json``) has no base
+  version and is therefore only required to exist and parse.
 
 Exit 0 when everything is in sequence, 1 with a human-readable reason
 otherwise (fail closed when the base state cannot be determined).
@@ -45,6 +47,7 @@ VERSION_FILES = {
     "liveticker/package.json": "package-json",
     "passcheck/package.json": "package-json",
     "scorecard/package.json": "package-json",
+    "scorecard_v2/package.json": "package-json",
     "gameday_designer/package.json": "package-json",
     "journey_dashboard/package.json": "package-json",
     "uv.lock": "uv-lock",
@@ -209,6 +212,10 @@ def check_feature_branch(
         if head_version is None:
             errors.append(f"{path}: missing from version check")
             continue
+        if base_version is None:
+            # Introduced by this branch (the file does not exist on master),
+            # so there is no previous version to compare against.
+            continue
         if head_version == base_version:
             continue
         try:
@@ -266,11 +273,14 @@ def collect_state(base_ref: str) -> tuple[dict | None, str | None]:
         base_manifest = json.loads(manifest_raw)["."]
     except (json.JSONDecodeError, KeyError) as exc:
         return None, f"could not parse base manifest ({exc}) - failing closed"
-    base_files: dict[str, str] = {}
+    base_files: dict[str, str | None] = {}
     for path in VERSION_FILES:
         content = _git(["show", f"{base_ref}:{path}"])
         if content is None:
-            return None, f"could not read {path} from {base_ref} - failing closed"
+            # A version file the branch introduces is absent from the base
+            # tree; `check_feature_branch` skips it instead of comparing.
+            base_files[path] = None
+            continue
         try:
             base_files[path] = read_version_from_text(path, content)
         except ValueError as exc:
