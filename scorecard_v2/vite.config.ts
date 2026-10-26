@@ -20,13 +20,11 @@ export default defineConfig({
         // type="module"), so it must be IIFE. The default `es` format lets the
         // bundler emit `import.meta` (e.g. from deps), which throws "Cannot
         // use 'import.meta' outside a module" in a classic script and stops
-        // the app from mounting.
+        // the app from mounting. With one entry and no dynamic imports, IIFE
+        // is also what keeps the output a single scorecard_v2.js file.
         format: "iife",
         entryFileNames: "scorecard_v2.js",
         assetFileNames: "scorecard_v2-[name][extname]",
-        // One bundle, no code splitting: Django loads exactly one file.
-        manualChunks: undefined,
-        inlineDynamicImports: true,
       },
     },
   },

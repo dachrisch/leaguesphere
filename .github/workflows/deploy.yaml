@@ -93,7 +93,8 @@ jobs:
 
           git add league_manager/__init__.py \
             liveticker/package.json passcheck/package.json \
-            scorecard/package.json gameday_designer/package.json \
+            scorecard/package.json scorecard_v2/package.json \
+            gameday_designer/package.json \
             journey_dashboard/package.json \
             pyproject.toml uv.lock
 
