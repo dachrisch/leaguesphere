@@ -412,6 +412,24 @@ class PasscheckServicePlayers:
             team_id=team_id,
         ).exists()
 
+    def can_read_photo(self, user, playerlist, gameday) -> bool:
+        """Staff, or the official of a game on today's gameday the player belongs to."""
+        if user.is_staff:
+            return True
+        today = settings.DEBUG_DATE if settings.DEBUG else datetime.date.today()
+        if gameday.date != today:
+            return False
+        scheduled_team_ids = Gameresult.objects.filter(
+            gameinfo__gameday_id=gameday.pk,
+            gameinfo__officials__name=user.username,
+        ).values_list("team_id", flat=True)
+        if playerlist.team_id in scheduled_team_ids:
+            return True
+        return TeamRelationship.objects.filter(
+            team_id__in=scheduled_team_ids,
+            additional_teams__id=playerlist.team_id,
+        ).exists()
+
     def validate_roster(self, team_id, gameday, roster) -> dict:
         """Return field-keyed errors for a submitted gameday roster.
 

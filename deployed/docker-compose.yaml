@@ -69,6 +69,9 @@ services:
       # A named volume survives Watchtower blue-green recreates, unlike the
       # container filesystem, so uploaded team logos persist across releases.
       - media:/app/league_manager/media
+      # Consent-gated pass photos live outside MEDIA_ROOT (never served by
+      # nginx); their own volume keeps them across releases.
+      - pass-photos:/app/league_manager/private/pass_photos
     restart: unless-stopped
     healthcheck:
       interval: 15s
@@ -183,3 +186,5 @@ volumes:
   # Shared user uploads (Team.logo and friends). Named (not bind-mounted) so
   # blue-green container swaps keep the files.
   media:
+  # Consent-gated pass photos; never exposed under /media/.
+  pass-photos:
