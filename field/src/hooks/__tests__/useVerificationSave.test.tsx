@@ -4,6 +4,7 @@ import { beforeEach, expect, vi } from "vitest";
 import { saveRoster } from "../../api/passcheck";
 import { useVerificationSave } from "../useVerificationSave";
 import type { ApiError } from "../../api/client";
+import { clearOutbox, pendingCount } from "../../offline/outbox";
 
 vi.mock("../../api/passcheck", () => ({
   saveRoster: vi.fn(),
@@ -17,9 +18,10 @@ const input = {
   entries: [{ id: 12, jersey_number: 7 }],
 };
 
-beforeEach(() => {
+beforeEach(async () => {
   mockedSave.mockReset();
   localStorage.clear();
+  await clearOutbox();
 });
 
 it("maps a 400 body onto the sheet errors", async () => {
@@ -68,6 +70,18 @@ it("surfaces a device conflict and keeps the client id for the retry", async () 
   expect(second.client_id).toBe(first.client_id);
   expect(second.device_id).toBe(first.device_id);
   expect(result.current.state).toEqual({ status: "done" });
+});
+
+it("queues a save when the network is down", async () => {
+  mockedSave.mockRejectedValueOnce({ status: 0, message: "Network Error" });
+  const { result } = renderHook(() => useVerificationSave(1, 7));
+
+  await act(async () => {
+    await result.current.save(input);
+  });
+
+  expect(result.current.state).toEqual({ status: "queued" });
+  expect(await pendingCount()).toBe(1);
 });
 
 it("uses a fresh client id after the flow is reset", async () => {

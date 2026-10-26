@@ -103,3 +103,21 @@ it("explains a device conflict", () => {
     "anderen Gerät geführt"
   );
 });
+
+it("blocks saving while the outbox still has entries", () => {
+  render(
+    <VerificationSheet
+      teamName="Home"
+      checkedCount={14}
+      minimumStrength={11}
+      pendingCount={2}
+      onSave={vi.fn()}
+      onClose={vi.fn()}
+    />
+  );
+
+  expect(screen.getByText(/2 Einträge warten/)).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Passliste speichern" })
+  ).toBeDisabled();
+});
