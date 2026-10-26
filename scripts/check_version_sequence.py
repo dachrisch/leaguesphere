@@ -189,7 +189,7 @@ def check_release_please_branch(
 def check_feature_branch(
     base_manifest: str,
     head_manifest: str,
-    base_files: dict[str, str],
+    base_files: dict[str, str | None],
     head_files: dict[str, str],
     base_changelog: str,
     head_changelog: str,
