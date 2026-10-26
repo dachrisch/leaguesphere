@@ -12,12 +12,11 @@ See [current/](./current/) for active planning work.
 - [2026-10-13 In-App Help Section](./current/2026-10-13-in-app-help-section-design.md): design for the first in-app help, Markdown topics rendered server-side, bilingual-ready
 - [2026-10-13 Help Videos & Howtos](./current/2026-10-13-help-videos-and-howtos-plan.md): walkthrough videos for the headline 2026 features, wired into the in-app help topics
 - [2026-10-15 League Management & Result Recording Help Videos](./current/2026-10-15-league-and-results-help-videos-plan.md): three new help topics + walkthrough videos for running a gameday, recording results, and reading officials stats
+- [2026-10-26 Passcheck v2 Field App](./current/2026-10-26-passcheck-v2-field-app.md): field-ready passcheck UI (`/field/`) alongside the unchanged `/passcheck/` — server-side roster binding, permission-checked photos, idempotent writes, offline outbox
 - [2026-10-26 Scorecard v2](./current/2026-10-26-scorecard-v2.md): offline-capable field app at `/scorecard/v2/` (PWA + IndexedDB outbox, idempotent writes, device lock) while `/scorecard/` stays untouched
 
 ### Completed Plans
 See [history/](./history/) for completed and archived plans.
-
-- [2026-10-26 Passcheck v2 Field App](./history/2026-10-26-passcheck-v2-field-app.md): abandoned in favour of Scorecard v2; kept for the backend hardening it documents
 
 ## Overview
 
