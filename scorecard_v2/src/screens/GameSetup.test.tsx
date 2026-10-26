@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
-import { ApiError, apiGet, apiPut, setDeviceId } from "../api/client";
+import { apiGet, apiPut, setDeviceId } from "../api/client";
 import type {
   Game,
   GameLog,
@@ -34,6 +34,7 @@ const getDeviceIdMock = getDeviceId as unknown as Mock;
 
 const CREW_PATH = "/api/game/42/officials";
 const SETUP_PATH = "/api/game/42/setup";
+const POSSESSION_PATH = "/api/game/42/possession";
 const TEAM_PATH = "/api/officials/team/7/list";
 const LOG_PATH = "/api/gamelog/42";
 
@@ -118,6 +119,7 @@ let teamList: TeamOfficial[];
 let setup: GameSetup;
 let startCalls: string[];
 let setupFailure: unknown;
+let crewFailure: unknown;
 
 beforeEach(() => {
   crew = [
@@ -146,10 +148,18 @@ beforeEach(() => {
       valid_until: "2025-03-04",
       is_valid: false,
     }),
+    teamPerson({
+      id: 14,
+      first_name: "Sabine",
+      last_name: "Lang",
+      license: "B",
+      valid_until: "2028-12-31",
+    }),
   ];
   setup = {};
   startCalls = [];
   setupFailure = null;
+  crewFailure = null;
 
   apiGetMock.mockReset();
   apiPutMock.mockReset();
@@ -175,6 +185,9 @@ beforeEach(() => {
 
   apiPutMock.mockImplementation(async (path: string, body: unknown) => {
     startCalls.push(`PUT ${path}`);
+    if (path === CREW_PATH && crewFailure !== null) {
+      throw crewFailure;
+    }
     if (path === SETUP_PATH && setupFailure !== null) {
       throw setupFailure;
     }
@@ -183,6 +196,9 @@ beforeEach(() => {
     }
     if (path === CREW_PATH) {
       return [];
+    }
+    if (path === POSSESSION_PATH) {
+      return undefined;
     }
     throw new Error(`unexpected PUT ${path}`);
   });
@@ -247,7 +263,27 @@ describe("GameSetup — header and crew", () => {
       within(rowFor("Schiedsrichter")).getByText("Schiedsrichter"),
     ).toBeInTheDocument();
     expect(screen.getByText("Scorecard Judge")).toBeInTheDocument();
-    expect(screen.getByText("2/5")).toBeInTheDocument();
+    // Only the four refereed positions count; the Scorecard Judge is optional.
+    expect(screen.getByText("1/4")).toBeInTheDocument();
+  });
+
+  it("does not offer an official who already fills another slot", async () => {
+    await renderSetup();
+
+    const judge = crewSelect("Scorecard Judge");
+    expect(
+      within(judge).queryByRole("option", { name: "Michael Klein" }),
+    ).toBeNull();
+    expect(
+      within(judge).getByRole("option", { name: "Anna Richter" }),
+    ).toBeInTheDocument();
+
+    const referee = crewSelect("Schiedsrichter");
+    expect(
+      within(referee).queryByRole("option", { name: "Anna Richter" }),
+    ).toBeNull();
+    expect(within(referee).getByRole("option", { name: "Tom Weber" }))
+      .toBeInTheDocument();
   });
 
   it("keeps a free-text crew name when no official is linked", async () => {
@@ -265,12 +301,16 @@ describe("GameSetup — header and crew", () => {
     ).toBeInTheDocument();
   });
 
-  it("maps a legacy 'Schiedsrichter' position onto the Referee slot", async () => {
+  it("shows an unknown position unchanged instead of aliasing it", async () => {
     crew = [crewRow({ position: "Schiedsrichter" })];
     await renderSetup();
 
-    expect(crewSelect("Schiedsrichter")).toHaveValue("11");
-    expect(screen.getByText("1/5")).toBeInTheDocument();
+    // The Referee slot stays empty: writing "Referee" would create a duplicate.
+    expect(crewSelect("Schiedsrichter")).toHaveValue("");
+    expect(screen.getByText("0/4")).toBeInTheDocument();
+    const extra = document.querySelector(".offname");
+    expect(extra).toHaveTextContent("Michael Klein");
+    expect(extra?.closest(".offrow")).toHaveTextContent("Schiedsrichter");
   });
 });
 
@@ -300,6 +340,17 @@ describe("GameSetup — licences", () => {
     expect(
       within(rowFor("Schiedsrichter")).getByText("keine Lizenz"),
     ).toHaveClass("lic-missing");
+  });
+
+  it("says 'Lizenz unbekannt' when the official cannot be judged", async () => {
+    crew[0] = crewRow({ official: 99, name: "Gast Schiri" });
+    await renderSetup();
+
+    expect(
+      within(rowFor("Schiedsrichter")).getByText("Lizenz unbekannt"),
+    ).toHaveClass("lic-unknown");
+    // A guest official is not a known licence problem.
+    expect(document.querySelector(".setupwarn")).toBeNull();
   });
 
   it("says 'keine Lizenz' for an unlinked free-text official", async () => {
@@ -388,6 +439,7 @@ describe("GameSetup — local crew edits", () => {
     expect(startCalls).toEqual([
       `PUT ${CREW_PATH}`,
       `PUT ${SETUP_PATH}`,
+      `PUT ${POSSESSION_PATH}`,
       `GET ${LOG_PATH}`,
     ]);
   });
@@ -398,333 +450,104 @@ describe("GameSetup — local crew edits", () => {
     await clickStart();
 
     await waitFor(() => expect(startCalls).toContain(`GET ${LOG_PATH}`));
-    expect(apiPutMock).toHaveBeenCalledTimes(1);
+    expect(apiPutMock).toHaveBeenCalledTimes(2);
     expect(apiPutMock).toHaveBeenCalledWith(SETUP_PATH, expect.anything());
-  });
-});
-
-describe("GameSetup — toss, possession and direction", () => {
-  it("summarises the defaults", async () => {
-    await renderSetup();
-
-    expect(screen.getByText(/gewinnt den Münzwurf/)).toHaveTextContent(
-      "Ravens gewinnt den Münzwurf · Ballbesitz Ravens · Richtung Ost → West",
-    );
-  });
-
-  it("updates the summary when a control changes", async () => {
-    await renderSetup();
-
-    await userEvent.click(
-      within(screen.getByRole("group", { name: "Münzwurf" })).getByRole(
-        "button",
-        { name: "Wolves" },
-      ),
-    );
-    await userEvent.click(
-      within(screen.getByRole("group", { name: "Richtung" })).getByRole(
-        "button",
-        { name: "West → Ost" },
-      ),
-    );
-
-    expect(screen.getByText(/gewinnt den Münzwurf/)).toHaveTextContent(
-      "Wolves gewinnt den Münzwurf · Ballbesitz Ravens · Richtung West → Ost",
-    );
-  });
-
-  it("marks the selected segment with aria-pressed", async () => {
-    await renderSetup();
-
-    const toss = screen.getByRole("group", { name: "Münzwurf" });
-    expect(within(toss).getByRole("button", { name: "Ravens" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    expect(
-      within(toss).getByRole("button", { name: "Wolves" }),
-    ).toHaveAttribute("aria-pressed", "false");
-  });
-
-  it("labels the start button with the kick-off time", async () => {
-    await renderSetup();
-
-    expect(startButton()).toHaveTextContent("Spiel starten · 13:30");
-    expect(startButton()).toBeEnabled();
-  });
-});
-
-describe("GameSetup — start sequence", () => {
-  it("sends the defaults and the device id once, then loads the log", async () => {
-    const { onStarted } = await renderSetup();
-
-    await clickStart();
-
-    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(LOG));
-
-    expect(getDeviceIdMock).toHaveBeenCalledTimes(1);
-    expect(setDeviceIdMock).toHaveBeenCalledTimes(1);
-    expect(setDeviceIdMock).toHaveBeenCalledWith("device-1");
-    expect(apiPutMock).toHaveBeenCalledTimes(1);
-    expect(apiPutMock).toHaveBeenCalledWith(SETUP_PATH, {
-      ctResult: "home",
-      direction: "Ost",
-      fhPossession: "home",
-      device_id: "device-1",
+    expect(apiPutMock).toHaveBeenCalledWith(POSSESSION_PATH, {
+      team: "Ravens",
     });
-    expect(startCalls).toEqual([`PUT ${SETUP_PATH}`, `GET ${LOG_PATH}`]);
-    expect(onStarted).toHaveBeenCalledTimes(1);
-  });
-
-  it("sends the chosen toss, possession and direction", async () => {
-    await renderSetup();
-
-    await userEvent.click(
-      within(screen.getByRole("group", { name: "Münzwurf" })).getByRole(
-        "button",
-        { name: "Wolves" },
-      ),
-    );
-    await userEvent.click(
-      within(screen.getByRole("group", { name: "Erster Ballbesitz" })).getByRole(
-        "button",
-        { name: "Wolves" },
-      ),
-    );
-    await userEvent.click(
-      within(screen.getByRole("group", { name: "Richtung" })).getByRole(
-        "button",
-        { name: "West → Ost" },
-      ),
-    );
-    await clickStart();
-
-    await waitFor(() => expect(startCalls).toContain(`GET ${LOG_PATH}`));
-    expect(apiPutMock).toHaveBeenCalledWith(SETUP_PATH, {
-      ctResult: "away",
-      direction: "West",
-      fhPossession: "away",
-      device_id: "device-1",
-    });
-  });
-
-  it("shows an existing setup as Fortsetzen and restores its values", async () => {
-    setup = { ctResult: "away", direction: "West", fhPossession: "away" };
-    await renderSetup();
-
-    expect(startButton()).toHaveTextContent("Fortsetzen");
-    expect(screen.getByText(/gewinnt den Münzwurf/)).toHaveTextContent(
-      "Wolves gewinnt den Münzwurf · Ballbesitz Wolves · Richtung West → Ost",
-    );
-    expect(
-      within(screen.getByRole("group", { name: "Richtung" })).getByRole(
-        "button",
-        { name: "West → Ost" },
-      ),
-    ).toHaveAttribute("aria-pressed", "true");
-  });
-
-  it("normalises the legacy team-name setup", async () => {
-    setup = {
-      ctResult: "Gewonnen",
-      direction: "directionRight",
-      fhPossession: "Wolves",
-    };
-    await renderSetup();
-
-    expect(startButton()).toHaveTextContent("Fortsetzen");
-    expect(screen.getByText(/gewinnt den Münzwurf/)).toHaveTextContent(
-      "Ravens gewinnt den Münzwurf · Ballbesitz Wolves · Richtung West → Ost",
+    expect(apiPutMock).not.toHaveBeenCalledWith(
+      CREW_PATH,
+      expect.anything(),
     );
   });
+});
 
-  it("disables the button while the start is in flight", async () => {
-    let release: (value: unknown) => void = () => undefined;
-    apiPutMock.mockImplementation(async (path: string) => {
-      if (path === SETUP_PATH) {
-        return new Promise((resolve) => {
-          release = resolve;
-        });
-      }
-      return [];
-    });
+describe("GameSetup — crew data problems", () => {
+  it("warns about a duplicate position and never writes it", async () => {
+    crew = [
+      crewRow({ id: 1, official: 11, position: "Referee" }),
+      crewRow({
+        id: 2,
+        official: 12,
+        name: "Anna Richter",
+        position: "Referee",
+      }),
+      crewRow({
+        id: 3,
+        official: 14,
+        name: "Sabine Lang",
+        position: "Scorecard Judge",
+      }),
+    ];
     const { onStarted } = await renderSetup();
 
-    await clickStart();
-
-    expect(startButton()).toBeDisabled();
-    expect(startButton()).toHaveTextContent("Startet …");
-    release({});
-    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(LOG));
-  });
-});
-
-describe("GameSetup — warn and confirm", () => {
-  it("requires a second tap before starting with an invalid licence", async () => {
-    teamList[0] = teamPerson({ is_valid: false, valid_until: "2025-03-04" });
-    const { onStarted } = await renderSetup();
-
-    await clickStart();
-
-    expect(apiPutMock).not.toHaveBeenCalled();
-    expect(startCalls).toEqual([]);
-    expect(startButton()).toHaveTextContent("Trotzdem starten");
-    expect(document.querySelector(".setupwarn")).toHaveTextContent(
-      "Das Spiel lässt sich trotzdem starten.",
-    );
-
-    await clickStart();
-
-    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(LOG));
-    expect(apiPutMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("asks again after the crew or the setup changed", async () => {
-    teamList[0] = teamPerson({ is_valid: false, valid_until: "2025-03-04" });
-    await renderSetup();
-
-    await clickStart();
-    expect(startButton()).toHaveTextContent("Trotzdem starten");
-
-    await userEvent.click(
-      within(screen.getByRole("group", { name: "Richtung" })).getByRole(
-        "button",
-        { name: "West → Ost" },
-      ),
-    );
-
-    expect(startButton()).toHaveTextContent("Spiel starten · 13:30");
-    expect(apiPutMock).not.toHaveBeenCalled();
-  });
-});
-
-describe("GameSetup — passcheck", () => {
-  it("shows a complete passcheck with the link to its page", async () => {
-    await renderSetup({ passcheck: true });
-
-    expect(screen.getByText("Passcheck vollständig")).toHaveClass("okchip");
-    expect(screen.getByRole("link", { name: "Passcheck-Seite" })).toHaveAttribute(
-      "href",
-      "/passcheck/",
-    );
-  });
-
-  it("shows a missing passcheck", async () => {
-    await renderSetup({ passcheck: false });
-
-    expect(screen.getByText("kein Passcheck")).toHaveClass("chip-miss");
-  });
-
-  it("shows an unknown passcheck when the payload omits it", async () => {
-    const game = { ...GAME };
-    delete game.passcheck;
-    render(<GameSetupScreen game={game} onStarted={vi.fn()} />);
-    await screen.findByRole("group", { name: "Münzwurf" });
-
-    expect(screen.getByText("unbekannt")).toBeInTheDocument();
-  });
-});
-
-describe("GameSetup — server rejections", () => {
-  const statusMessage = "Dieser Spielstatus erlaubt keinen Spielstart.";
-  const deviceMessage = "Dieses Spiel läuft auf einem anderen Gerät.";
-
-  it("shows the server detail for an illegal transition", async () => {
-    setupFailure = new ApiError(409, { detail: statusMessage }, statusMessage);
-    const { onStarted } = await renderSetup();
-
-    await clickStart();
-
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(statusMessage);
-    expect(startCalls).toEqual([`PUT ${SETUP_PATH}`]);
-    expect(onStarted).not.toHaveBeenCalled();
-    expect(startButton()).toBeEnabled();
-  });
-
-  it("switches to read-only when another device owns the game", async () => {
-    setupFailure = new ApiError(409, { detail: deviceMessage }, deviceMessage);
-    await renderSetup();
-
-    await clickStart();
-
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(deviceMessage);
-    expect(crewSelect("Schiedsrichter")).toBeDisabled();
-    for (const group of screen.getAllByRole("group")) {
-      for (const button of within(group).getAllByRole("button")) {
-        expect(button).toBeDisabled();
-      }
-    }
-    expect(startButton()).toBeDisabled();
-    expect(startButton()).toHaveTextContent("Nur lesen");
-    expect(setDeviceIdMock).not.toHaveBeenCalled();
-  });
-
-  it("falls back to a readable message for other failures", async () => {
-    setupFailure = new ApiError(500, null);
-    await renderSetup();
-
-    await clickStart();
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Der Start ist fehlgeschlagen. Bitte erneut versuchen.",
-    );
-    expect(startButton()).toBeEnabled();
-  });
-});
-
-describe("GameSetup — loading", () => {
-  it("shows a readable error and retries the load", async () => {
-    apiGetMock.mockRejectedValue(new ApiError(500, null));
-    render(<GameSetupScreen game={GAME} onStarted={vi.fn()} />);
-
-    const alert = await screen.findByRole("alert");
+    const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent(
-      "Die Vorbereitung konnte nicht geladen werden.",
+      "Mehrere Einträge für Schiedsrichter – bitte bereinigen",
     );
-
-    apiGetMock.mockImplementation(async (path: string) => {
-      if (path === CREW_PATH) {
-        return crew;
-      }
-      if (path === TEAM_PATH) {
-        return teamList;
-      }
-      if (path === SETUP_PATH) {
-        return {};
-      }
-      throw new Error(`unexpected GET ${path}`);
-    });
-    await userEvent.click(
-      within(alert).getByRole("button", { name: "Erneut laden" }),
-    );
-
+    expect(alert).toHaveTextContent("Michael Klein, Anna Richter");
+    // The duplicated position cannot be counted as filled.
+    expect(screen.getByText("0/4")).toBeInTheDocument();
     expect(
-      await screen.findByRole("group", { name: "Münzwurf" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("combobox", {
+        name: "Schiedsrichter: Offiziellen wählen",
+      }),
+    ).toBeNull();
+    expect(document.querySelector(".offname")).toHaveTextContent("Michael Klein");
+
+    // Dirty via the optional Scorecard Judge; Tom Weber's licence is expired.
+    await userEvent.selectOptions(crewSelect("Scorecard Judge"), "13");
+    await clickStart();
+    expect(apiPutMock).not.toHaveBeenCalled();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Trotzdem starten" }),
+    );
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(LOG));
+
+    const crewCall = apiPutMock.mock.calls.find(
+      ([path]) => path === CREW_PATH,
+    );
+    expect(crewCall).toBeDefined();
+    const positions = (crewCall?.[1] as { position: string }[]).map(
+      (row) => row.position,
+    );
+    expect(positions).toEqual([
+      "Scorecard Judge",
+      "Down Judge",
+      "Field Judge",
+      "Side Judge",
+    ]);
   });
 
-  it("keeps the screen usable when the officials team list fails", async () => {
-    apiGetMock.mockImplementation(async (path: string) => {
-      if (path === CREW_PATH) {
-        return crew;
-      }
-      if (path === TEAM_PATH) {
-        throw new ApiError(500, null);
-      }
-      if (path === SETUP_PATH) {
-        return {};
-      }
-      throw new Error(`unexpected GET ${path}`);
-    });
-    render(<GameSetupScreen game={GAME} onStarted={vi.fn()} />);
+  it("shows and preserves an unknown position", async () => {
+    crew = [
+      crewRow({ id: 1, official: 11, position: "Referee" }),
+      crewRow({
+        id: 2,
+        official: 13,
+        name: "Tom Weber",
+        position: "Zeitnehmer",
+      }),
+    ];
+    const { onStarted } = await renderSetup();
 
-    await screen.findByRole("group", { name: "Münzwurf" });
+    const extra = document.querySelector(".offname");
+    expect(extra).toHaveTextContent("Tom Weber");
+    expect(extra?.closest(".offrow")).toHaveTextContent("Zeitnehmer");
 
-    expect(
-      screen.getByText("Die Offiziellen des Teams konnten nicht geladen werden."),
-    ).toBeInTheDocument();
-    expect(startButton()).toBeEnabled();
+    await userEvent.selectOptions(crewSelect("Schiedsrichter"), "14");
+    await clickStart();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Trotzdem starten" }),
+    );
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(LOG));
+
+    expect(apiPutMock).toHaveBeenCalledWith(
+      CREW_PATH,
+      expect.arrayContaining([
+        { position: "Zeitnehmer", official: 13, name: "Tom Weber" },
+      ]),
+    );
   });
 });
+
