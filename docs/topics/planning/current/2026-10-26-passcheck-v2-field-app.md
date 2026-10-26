@@ -83,6 +83,8 @@ must be installed from its own lockfile.
 | 5 API client + games screen | done | `724a2598` |
 | 6 Roster screen (tap, undo, timer) | done | `7c1e3de4` |
 | 7 Player sheet (rules, jersey, photo viewer) | done | `b00b4a4e` |
+| 8 Verification sheet + idempotent save flow | done | `2ccf1e5e` |
+| 9 Offline shell, outbox, sync-on-reconnect | done | `a18a709c` |
 
 Deviations from the task text below (the task text is kept for history):
 
@@ -116,6 +118,13 @@ Deviations from the task text below (the task text is kept for history):
   takes separate `warnings` (e.g. no photo) that do not block confirmation.
 - The roster screen flattens the main and additional-team rosters, because the
   API's `additionalTeams` entries carry no team id.
+- The service worker is served by a Django view from `field/public/sw.js`
+  (`Cache-Control: no-cache`, `Service-Worker-Allowed: /field/`); it caches only
+  the shell + bundle, never `/api/**`, and registers only in production builds.
+- The outbox (`idb-keyval`) is single-flight; a network failure queues the save
+  under its `client_id`, and boot/`online` drain it through the same endpoint.
+  `fake-indexeddb` backs the tests. `pendingCount` is a prop on the roster,
+  verification and done sheets (flow wiring lands in Task 11).
 
 ---
 
