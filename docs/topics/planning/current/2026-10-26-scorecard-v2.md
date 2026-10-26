@@ -34,40 +34,36 @@ Two product decisions were resolved on 2026-10-26 (see Tasks 7 and 22):
 licence problems warn instead of blocking the start, and v2 gets a new
 `spieltag-v2` help topic while `ergebnisse-erfassen` stays untouched.
 
-### Handover and environment (2026-10-26)
+### Execution notes (2026-10-26)
 
-This plan supersedes the passcheck v2 field-app plan
-(`docs/plans/2026-10-26-passcheck-v2-field-app.md` on
-`feat/passcheck-v2-field-app`); that branch is abandoned and none of its code is
-required here. Task 1 is already committed on this branch (`8fa9fe93`, follow-up
-`842f1d36`).
-
-Baseline recorded before Task 2:
+Baseline recorded before Task 2, with the commands that actually run here:
 
 | Check | Result |
 |---|---|
-| `pytest scorecard/tests.py gamedays/tests/api scorecard_v2 --ds=test_settings` | **123 passed, 1 xfailed** |
+| `pytest scorecard/tests.py gamedays/tests/api scorecard_v2` (see below) | **123 passed, 1 xfailed** |
 | `npm --prefix scorecard run test:run` | **27 files / 111 passed, 1 skipped** |
 | `npm --prefix scorecard run eslint` | **0 errors** |
 
 Local environment (this container, not CI): the worktree `.venv` is unusable —
 `uv sync --extra test` fails on musl (`playwright==1.62.0` has no musllinux
 wheel) — and there is no MySQL on `127.0.0.1:3306`. Run the backend tests with
-the repo's shared interpreter and SQLite:
+the repo's shared interpreter and the SQLite settings:
 
 ```bash
-/root/dev/dachrisch/leaguesphere/.venv/bin/python -m pytest … --ds=test_settings
+DJANGO_SETTINGS_MODULE=league_manager.settings.test_sqlite PYTHONPATH="$PWD" \
+  /root/dev/dachrisch/leaguesphere/.venv/bin/python -m pytest \
+  scorecard/tests.py gamedays/tests/api scorecard_v2 -q -p no:cacheprovider
 ```
 
 CI still uses `uv run pytest` against its MySQL service; that path is unchanged.
 
-Three gaps found in the plan and fixed below:
+Three integration requirements that are easy to miss:
 
-| Gap | Fix |
+| Requirement | What it needs |
 |---|---|
 | A new `package.json` is not bumped by release-please | Add `scorecard_v2/package.json` to `release-please-config.json` `extra-files` **and** `scripts/check_version_sequence.py` `VERSION_FILES` |
 | A new CI parameter is not enough | Add `run-scorecard-v2` to the `\.circleci/.*` "validate everything" block as well as `config.yml` parameters |
-| The help skill needs more than a registry entry | Screenshot under `league_manager/static/help/img/`, plus a line in `templates/llms-full.txt` (`test_help.py` enforces both) |
+| The help topic needs more than a registry entry | A screenshot under `league_manager/static/help/img/`, referenced from the topic Markdown, plus a line in `league_manager/templates/llms-full.txt` (the skill's `templates/llms-full.txt`); `test_help.py` checks the images, `test_ai_readiness.py` the llms list |
 
 ---
 
@@ -925,8 +921,10 @@ Commit `feat(scorecard-v2): wire the full flow`.
 
 The topic also needs its screenshot at
 `league_manager/static/help/img/spieltag-v2.png` and a link line in
-`templates/llms-full.txt`; `league_manager/tests/test_help.py` fails without
-both. Capture the screenshot from staging once `/scorecard/v2/` is deployed.
+`league_manager/templates/llms-full.txt` (the skill's `templates/llms-full.txt`);
+`test_help.py` checks that every image referenced from the content exists and
+`test_ai_readiness.py` that the llms list links every topic. Capture the
+screenshot from staging once `/scorecard/v2/` is deployed.
 
 **CI**
 
