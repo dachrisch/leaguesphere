@@ -24,6 +24,7 @@ the correction already lives in the tasks below.
 | The roster is a simple query | `Gameresult.team` is **nullable** for bracket placeholders; a naive `.get().team` raises 500 on exactly the games the designer creates | Task 6 |
 | A service worker may cache `/api/**` | Those responses are per-user. Caching them leaks a previous user's log on a shared device; preload into IndexedDB instead | Tasks 17, 20 |
 | The device lock protects the game | It only guards `PUT /setup`. The log `POST` needs the same check or a second device can still write | Task 16 |
+| `id_home`/`id_away` are team ids | They are **`Gameresult` PKs** (pandas merge keeps `id_y`), so `id_home in verified` is false for every game. Resolve them through `Gameresult` first | Task 6 |
 | v2 Python tests belong in `python-core` | The existing scorecard backend tests run in the `python-live` shard (`scorecard/tests.py` + liveticker); v2 belongs there | Task 22 |
 | The bundle is built somewhere | `container/nginx.Dockerfile` builds each app in its own node stage and `container/start_dev_server.sh` lists every app for dev builds | Task 22 |
 | Captains can be proposed from the roster | `Playerlist` has no captain flag and `GameSetup.homeCaptain/awayCaptain` are free-text. Propose **surnames**, never invent a captain relation | Task 15 |
@@ -381,11 +382,13 @@ Commit `feat(scorecard-v2): add api client`.
 
 ## Task 4: Types and gameday screen
 
-**Files:** `src/api/types.ts`, `src/screens/GamedayList.tsx`, tests
+**Files:** `src/api/types.ts`, `src/screens/GamedayList.tsx`, `src/components/AppHeader.tsx`, `src/components/Screen.tsx`, `src/styles/tokens.css`, `src/styles/app.css`, `gamedays/api/serializers.py`, tests
 
-Types for `Gameday`, `Game`, `Official`, `GameSetup`, `LogEntry`, `GameLog`, `RosterPlayer`, `Penalty`, `PendingOp`.
+Types for `Gameday`, `Game`, `Official`, `GameSetup`, `LogEntry`, `GameLog`, `RosterPlayer`, `Penalty`. `PendingOp` belongs to the outbox (Task 18) and is deliberately not declared here.
 
-Tests: renders name + league, calls `onSelect`, empty state "Keine Spieltage für heute".
+The design foundation lands with this screen: self-hosted Barlow Condensed/Inter, dark tokens, shared header/screen chrome, list primitives. Backend addition: `league_display` on `GamedaySerializer`, because `/api/gameday/list` otherwise returns only the league pk and the card's subtitle cannot name the league.
+
+Tests: renders name, league and date, calls `onSelect`, empty state "Keine Spieltage für heute", missing address hides the meta row, impossible dates fall back to the raw string.
 
 Commit.
 
@@ -412,6 +415,7 @@ Commit.
 
 ```python
 def test_games_to_whistle_reports_passcheck_state(self): ...
+def test_games_to_whistle_passcheck_is_true_for_two_verified_teams(self): ...
 def test_game_roster_lists_both_teams_without_pass_numbers(self): ...
 def test_game_roster_is_empty_for_a_bracket_placeholder(self): ...
 def test_game_roster_requires_authentication(self): ...
@@ -420,17 +424,25 @@ def test_game_roster_requires_authentication(self): ...
 **Implementation**
 
 ```python
-# GamesToWhistleAPIView.get — annotate, don't touch the pandas wrapper
+# GamesToWhistleAPIView.get — annotate, don't touch the pandas wrapper.
+# id_home/id_away are Gameresult pks (the merge keeps `id_y`), not team pks.
+game_ids = [game["id"] for game in games_to_whistle]
+team_by_result = dict(
+    Gameresult.objects.filter(gameinfo_id__in=game_ids).values_list("id", "team_id")
+)
 verified = set(
     PasscheckVerification.objects.filter(gameday_id=kwargs["pk"]).values_list("team_id", flat=True)
 )
 for game in games_to_whistle:
-    home, away = game.get("id_home"), game.get("id_away")
+    home = team_by_result.get(str(game.get("id_home", "")))
+    away = team_by_result.get(str(game.get("id_away", "")))
     game["passcheck"] = home in verified and away in verified
 ```
 
-`home`/`away` are `NaN`/`None` for placeholder games; the membership test is
-false for both, which is the correct answer.
+`id_home`/`id_away` arrive as strings (pandas `astype("string")`, `""` for a
+placeholder), so stringify the `Gameresult` keys before lookup. A test must
+prove the flag is true for a fully verified game — the naive team-id comparison
+would make it false everywhere.
 
 ```python
 # GameRosterAPIView.get — jersey + surname only, never pass numbers
