@@ -2,7 +2,8 @@ import { useRef, useState } from "react";
 
 import { saveRoster } from "../api/passcheck";
 import type { ApiError } from "../api/client";
-import type { RosterWriteEntry } from "../api/types";
+import type { RosterWriteEntry, SaveRosterPayload } from "../api/types";
+import { enqueue } from "../offline/outbox";
 
 const DEVICE_ID_KEY = "field_device_id";
 
@@ -16,6 +17,7 @@ export type SaveState =
   | { status: "idle" }
   | { status: "saving" }
   | { status: "done" }
+  | { status: "queued" }
   | { status: "error"; errors: Record<string, string>; conflict: string | null };
 
 export function getDeviceId(): string {
@@ -35,18 +37,30 @@ export function useVerificationSave(teamId: number, gamedayId: number) {
     // Reuse the id for retries of the same attempt; a reset starts a new one.
     clientIdRef.current ??= crypto.randomUUID();
     deviceIdRef.current ??= getDeviceId();
+    const payload: SaveRosterPayload = {
+      official_name: officialName,
+      note,
+      roster: entries,
+      client_id: clientIdRef.current,
+      device_id: deviceIdRef.current,
+    };
     setState({ status: "saving" });
     try {
-      await saveRoster(teamId, gamedayId, {
-        official_name: officialName,
-        note,
-        roster: entries,
-        client_id: clientIdRef.current,
-        device_id: deviceIdRef.current,
-      });
+      await saveRoster(teamId, gamedayId, payload);
       setState({ status: "done" });
     } catch (error) {
       const apiError = error as ApiError;
+      if (apiError.status === 0) {
+        await enqueue({
+          id: clientIdRef.current,
+          teamId,
+          gamedayId,
+          payload,
+          createdAt: Date.now(),
+        });
+        setState({ status: "queued" });
+        return;
+      }
       const errors =
         apiError.status === 400
           ? ((apiError.body as { errors?: Record<string, string> } | undefined)
