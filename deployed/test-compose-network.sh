@@ -16,6 +16,19 @@ MYSQL_PWD=ci_test_password
 DEBUG=False
 EOF
 
+# The db-access sidecar reads its own env file. CI has no provisioner, so this
+# is a placeholder that keeps `docker compose up` parseable; the container's
+# tick loop simply fails to connect and logs it, which is what the network test
+# expects of a service it does not exercise.
+cat > dba.env <<EOF
+DBACCESS_HOST=mysql-mock.example.com
+DBACCESS_PORT=3306
+DBACCESS_USER=ci_provisioner
+DBACCESS_PASSWORD=ci_provisioner_password
+DBACCESS_DB=ci_test_db
+DBACCESS_HOST_PATTERN=172.25.%
+EOF
+
 # Create CI compose file with mock env
 if [ "$ENV_NAME" = "staging" ]; then
   sed 's/env_file: ls.env.staging/env_file: ls.env.ci/g' "$COMPOSE_FILE" > docker-compose.ci.yaml
@@ -70,6 +83,6 @@ echo "✅ All connectivity tests passed!"
 
 # Cleanup
 docker compose -f docker-compose.ci.yaml down -v
-rm -f docker-compose.ci.yaml ls.env.ci
+rm -f docker-compose.ci.yaml ls.env.ci dba.env
 
 exit 0

@@ -107,11 +107,72 @@ services:
       - io.portainer.accesscontrol.teams=leaguesphere
       - com.centurylinklabs.watchtower.scope=prod
 
+  # Loopback-only TCP endpoint for the shared dbeaver_tunnel SSH account.
+  # Deliberately a separate service: adding `ports:` to `db` recreates the prod
+  # database container. Two network facts drive the wiring (both measured on a
+  # scratch stack, see docs/plans/2026-10-25-prod-db-temp-credentials.md):
+  #   * a port published from a container whose ONLY network is internal:true is
+  #     silently dropped - no listener, no error - so the sidecar needs one
+  #     non-internal network;
+  #   * a multi-homed container dials its peer over that non-internal network, so
+  #     joining `database` would make MySQL see 172.24.x and the 172.25.% grant
+  #     would refuse the login. Hence `tunnel`, which db is NOT on.
+  db-tunnel:
+    image: alpine/socat:1.8.1.3
+    container_name: ${COMPOSE_PROJECT_NAME}.db-tunnel
+    restart: unless-stopped
+    command: TCP-LISTEN:33063,fork,reuseaddr TCP:db:3306
+    ports:
+      - "127.0.0.1:33063:33063"
+    networks:
+      - backend
+      - tunnel
+    labels:
+      - traefik.enable=false
+      - io.portainer.accesscontrol.teams=leaguesphere
+
+  # Mints and drops the temporary MySQL accounts. It is the only component in
+  # the stack holding a credential that can CREATE USER, so it gets the smallest
+  # possible surface: no published port, no volume, read-only rootfs, no new
+  # privileges, its own env file, and deliberately NO watchtower label -
+  # auto-swapping a container with this privilege is a supply-chain hole.
+  # It talks to the app only through rows in the application schema.
+  db-access:
+    image: mariadb:latest
+    container_name: ${COMPOSE_PROJECT_NAME}.db-access
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/opt/dba/tick.sh"]
+    command: ["--loop"]
+    env_file:
+      # Rendered by Ansible next to this file. `required: false` keeps
+      # `docker compose config` and CI working without it; a container started
+      # without it fails loudly on its own first tick (tick.sh checks its env).
+      - path: dba.env
+        required: false
+    volumes:
+      - "./dba:/opt/dba:ro"
+    networks:
+      - backend          # 172.25.x only: the grant host depends on it
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - traefik.enable=false
+      - io.portainer.accesscontrol.teams=leaguesphere
+
 networks:
   backend:
     internal: true
   database:
     internal: false  # Allow external connectivity for MySQL
+  # Publish-only bridge for db-tunnel: a port can only be published from a
+  # non-internal network, and joining `database` would flip the DB connection's
+  # source IP to 172.24.x. No other service joins it.
+  tunnel:
+    internal: false
   proxy:
     external: true
 

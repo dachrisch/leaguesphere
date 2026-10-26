@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "journey",
     "share",
     "home",
+    "dbaccess",
 ]
 
 MIDDLEWARE = [
@@ -238,6 +239,20 @@ EQUIPMENT_APPROVAL_ENDPOINT = os.environ.get("EQUIPMENT_APPROVAL_ENDPOINT")
 EQUIPMENT_APPROVAL_TOKEN = os.environ.get("EQUIPMENT_APPROVAL_TOKEN")
 
 JOURNEY_INACTIVITY_MINUTES = int(os.environ.get("JOURNEY_INACTIVITY_MINUTES", 30))
+
+# --- temporary database access (dbaccess) ----------------------------------
+# Feature switch for the request/approval surface. Off unless the deployment
+# says otherwise, so a stack without a provisioner sidecar cannot accept
+# requests it could never fulfil.
+DBACCESS_ENABLED = os.environ.get("DBACCESS_ENABLED", "false") == "true"
+# Fernet key for the credential reveal. Deliberately NOT in the database: the
+# ciphertext it protects sits in dbaccess_request.secret_ct, which lands in the
+# hourly backup, so this key is what makes a restored backup useless for
+# reading credentials.
+DBACCESS_SECRET_KEY = os.environ.get("DBACCESS_SECRET_KEY")
+# Mirrors the constant the host reaper enforces. The database constraint in
+# dbaccess.models pins the application side.
+DBACCESS_TTL_CAP_HOURS = int(os.environ.get("DBACCESS_TTL_CAP_HOURS", 8))
 
 LOGGING = {
     "version": 1,

@@ -30,6 +30,35 @@ services:
       # portainer team
       - io.portainer.accesscontrol.teams=leaguesphere
 
+  # Same executor as prod (see docker-compose.yaml): mints and drops the
+  # temporary accounts for this stack. Stage already publishes 33062 for the
+  # dbeaver_stage tunnel, so there is no socat service here - only the minting.
+  db-access:
+    image: mariadb:latest
+    container_name: ${COMPOSE_PROJECT_NAME}.db-access
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/opt/dba/tick.sh"]
+    command: ["--loop"]
+    env_file:
+      # Rendered by Ansible next to this file. `required: false` keeps
+      # `docker compose config` and CI working without it; a container started
+      # without it fails loudly on its own first tick (tick.sh checks its env).
+      - path: dba.env
+        required: false
+    volumes:
+      - "./dba:/opt/dba:ro"
+    networks:
+      - backend
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - traefik.enable=false
+      - io.portainer.accesscontrol.teams=leaguesphere
+
   www:
     image: leaguesphere/frontend:staging
     env_file: .env.staging

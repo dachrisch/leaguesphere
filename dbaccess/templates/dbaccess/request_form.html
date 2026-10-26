@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="container py-4" style="max-width: 720px">
+        <h1 class="h4">Request temporary database access</h1>
+        <p class="text-muted small">
+            A second person has to approve this. The account is created within about fifteen
+            seconds of approval and stops working at the hard cap, whether or not anyone
+            remembers it.
+        </p>
+
+        <form method="post">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <div class="form-text">{{ field.help_text }}</div>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+
+            <button class="btn btn-primary" type="submit">Submit for approval</button>
+            <a class="btn btn-link" href="{% url 'dbaccess-list' %}">Cancel</a>
+        </form>
+    </div>
+{% endblock %}

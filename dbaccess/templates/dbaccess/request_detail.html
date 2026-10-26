@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="container py-4" style="max-width: 860px">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <h1 class="h4 mb-3">
+            <code>{{ access_request.person }}</code>
+            <span class="badge bg-secondary align-middle">{{ access_request.state }}</span>
+        </h1>
+
+        <dl class="row small">
+            <dt class="col-sm-3">Database user</dt>
+            <dd class="col-sm-9"><code>{{ access_request.db_user|default:"not minted yet" }}</code></dd>
+            <dt class="col-sm-3">Tables</dt>
+            <dd class="col-sm-9"><code>{{ access_request.tables_csv }}</code></dd>
+            <dt class="col-sm-3">TTL</dt>
+            <dd class="col-sm-9">{{ access_request.ttl_hours }} h, hard cap
+                <strong>{{ access_request.expires_at|date:"d.m.Y H:i" }}</strong></dd>
+            <dt class="col-sm-3">Requested by</dt>
+            <dd class="col-sm-9">{{ access_request.requester }}</dd>
+            <dt class="col-sm-3">Approver</dt>
+            <dd class="col-sm-9">{{ access_request.approver|default:"—" }}</dd>
+            <dt class="col-sm-3">Purpose</dt>
+            <dd class="col-sm-9">{{ access_request.purpose|linebreaksbr }}</dd>
+            {% if access_request.failure_reason %}
+                <dt class="col-sm-3 text-danger">Failure</dt>
+                <dd class="col-sm-9 text-danger">{{ access_request.failure_reason }}</dd>
+            {% endif %}
+        </dl>
+
+        <div class="d-flex flex-wrap gap-2 my-3">
+            {% if can_approve %}
+                <form method="post" action="{% url 'dbaccess-decide' access_request.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="decision" value="approve">
+                    <button class="btn btn-success btn-sm" type="submit">Approve</button>
+                </form>
+                <form method="post" action="{% url 'dbaccess-decide' access_request.pk %}"
+                      class="d-flex gap-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="decision" value="deny">
+                    <input class="form-control form-control-sm" name="reason"
+                           placeholder="Reason for denial" required>
+                    <button class="btn btn-outline-danger btn-sm" type="submit">Deny</button>
+                </form>
+            {% endif %}
+
+            {% if may_reveal and access_request.state == 'active' %}
+                <form method="post" action="{% url 'dbaccess-reveal' access_request.pk %}">
+                    {% csrf_token %}
+                    <button class="btn btn-outline-primary btn-sm" type="submit">Show password</button>
+                </form>
+            {% endif %}
+
+            {% if access_request.state == 'active' or access_request.state == 'approved' %}
+                <form method="post" action="{% url 'dbaccess-revoke' access_request.pk %}">
+                    {% csrf_token %}
+                    <button class="btn btn-outline-danger btn-sm" type="submit">Revoke now</button>
+                </form>
+            {% endif %}
+        </div>
+
+        <h2 class="h6 text-uppercase text-muted mt-4">Audit trail</h2>
+        <ul class="list-unstyled small">
+            {% for event in events %}
+                <li class="border-bottom py-1">
+                    <code>{{ event.at|date:"d.m. H:i:s" }}</code>
+                    <strong>{{ event.actor }}</strong> {{ event.action }}
+                    {% if event.detail %}<span class="text-muted">— {{ event.detail }}</span>{% endif %}
+                </li>
+            {% empty %}
+                <li class="text-muted">Nothing recorded yet.</li>
+            {% endfor %}
+        </ul>
+
+        <a class="btn btn-link btn-sm px-0" href="{% url 'dbaccess-list' %}">Back to the list</a>
+    </div>
+{% endblock %}
