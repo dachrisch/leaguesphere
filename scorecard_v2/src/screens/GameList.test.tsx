@@ -2,14 +2,20 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { gameTag } from "../components/tag";
 import GameList, {
   formatGameScore,
   formatGameTime,
-  gameTag,
   type GameListGame,
 } from "./GameList";
 
-function makeGame(overrides: Partial<GameListGame> = {}): GameListGame {
+/**
+ * `Gameinfo.status` is free text on the wire, so the fixture builder accepts
+ * any string (legacy capitalisation, unknown state) and narrows to the type.
+ */
+type GameOverrides = Omit<Partial<GameListGame>, "status"> & { status?: string };
+
+function makeGame(overrides: GameOverrides = {}): GameListGame {
   return {
     id: 1,
     scheduled: "13:30:00",
@@ -26,7 +32,7 @@ function makeGame(overrides: Partial<GameListGame> = {}): GameListGame {
     id_home: "11",
     id_away: "12",
     ...overrides,
-  };
+  } as GameListGame;
 }
 
 function renderList(
@@ -83,7 +89,7 @@ describe("GameList", () => {
   it("renders the scheduled time without seconds", () => {
     renderList([makeGame({ scheduled: "13:30:00" })]);
 
-    const row = screen.getByRole("button", { name: /Ravens – Wolves/ });
+    const row = screen.getByRole("button", { name: /Ravens gegen Wolves/ });
     expect(row.querySelector(".game-time")?.textContent).toBe("13:30");
   });
 
@@ -92,7 +98,7 @@ describe("GameList", () => {
     (scheduled) => {
       renderList([makeGame({ scheduled })]);
 
-      const row = screen.getByRole("button", { name: /Ravens – Wolves/ });
+      const row = screen.getByRole("button", { name: /Ravens gegen Wolves/ });
       expect(row.querySelector(".game-time")?.textContent).toBe("–");
     },
   );
@@ -104,6 +110,15 @@ describe("GameList", () => {
 
     expect(rowFor("Ravens – Wolves").querySelector(".game-score")?.textContent)
       .toBe("7:21");
+  });
+
+  it("renders a 0:0 result instead of treating it as missing", () => {
+    renderList([
+      makeGame({ status: "beendet", points_home: 0, points_away: 0 }),
+    ]);
+
+    expect(rowFor("Ravens – Wolves").querySelector(".game-score")?.textContent)
+      .toBe("0:0");
   });
 
   it.each([
@@ -120,7 +135,7 @@ describe("GameList", () => {
   it("renders field, teams, officials and the status tag", () => {
     renderList([makeGame({ points_home: 7, points_away: 21 })]);
 
-    const row = screen.getByRole("button", { name: /Ravens – Wolves/ });
+    const row = screen.getByRole("button", { name: /Ravens gegen Wolves/ });
     expect(row).toHaveTextContent("Feld 2");
     expect(row).toHaveTextContent("M. Klein");
     expect(row).toHaveTextContent("offen");
@@ -187,6 +202,14 @@ describe("GameList", () => {
     expect(rowFor("Ravens – Wolves").querySelector(".game-sub")).toBeNull();
   });
 
+  it("shows the chip without a dangling separator when no official is set", () => {
+    renderList([makeGame({ officials: "", passcheck: true })]);
+
+    const sub = rowFor("Ravens – Wolves").querySelector(".game-sub");
+    expect(sub?.textContent).toBe("Passcheck");
+    expect(screen.getByText("Passcheck")).toHaveClass("chip-ok");
+  });
+
   it("renders unresolved bracket teams as dashes", () => {
     renderList([makeGame({ home: null, away: null })]);
 
@@ -197,7 +220,7 @@ describe("GameList", () => {
     const game = makeGame({ status: "Geplant" });
     const { onSelect, onResume } = renderList([game]);
 
-    const row = screen.getByRole("button", { name: /Ravens – Wolves/ });
+    const row = screen.getByRole("button", { name: /Ravens gegen Wolves/ });
     expect(row).toHaveAttribute("type", "button");
 
     await userEvent.click(row);
@@ -212,7 +235,7 @@ describe("GameList", () => {
     const { onSelect, onResume } = renderList([game]);
 
     await userEvent.click(
-      screen.getByRole("button", { name: /Ravens – Wolves/ }),
+      screen.getByRole("button", { name: /Ravens gegen Wolves/ }),
     );
 
     expect(onResume).toHaveBeenCalledWith(game);
@@ -224,7 +247,7 @@ describe("GameList", () => {
     const { onSelect } = renderList([game]);
 
     await userEvent.click(
-      screen.getByRole("button", { name: /Ravens – Wolves/ }),
+      screen.getByRole("button", { name: /Ravens gegen Wolves/ }),
     );
 
     expect(onSelect).toHaveBeenCalledWith(game);
@@ -234,7 +257,7 @@ describe("GameList", () => {
     const game = makeGame();
     const { onSelect } = renderList([game]);
 
-    const row = screen.getByRole("button", { name: /Ravens – Wolves/ });
+    const row = screen.getByRole("button", { name: /Ravens gegen Wolves/ });
     row.focus();
     expect(row).toHaveFocus();
 
@@ -265,12 +288,89 @@ describe("GameList", () => {
     expect(onResume).not.toHaveBeenCalled();
   });
 
-  it("names each actionable row by both teams and the score", () => {
+  it("gives each actionable row an explicit accessible name", () => {
     renderList([makeGame({ points_home: 7, points_away: 21 })]);
 
-    expect(
-      screen.getByRole("button", { name: /Ravens – Wolves.*7:21/ }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button")).toHaveAccessibleName(
+      "13:30, Feld 2, Ravens gegen Wolves, 7:21, offen",
+    );
+  });
+
+  it("names a missing score with an en dash", () => {
+    renderList([makeGame({ points_home: null, points_away: null })]);
+
+    expect(screen.getByRole("button")).toHaveAccessibleName(
+      "13:30, Feld 2, Ravens gegen Wolves, –, offen",
+    );
+  });
+
+  it("keeps the accessible name in the running vocabulary", () => {
+    renderList([
+      makeGame({
+        status: "1. Halbzeit",
+        points_home: 20,
+        points_away: 7,
+      }),
+    ]);
+
+    expect(screen.getByRole("button")).toHaveAccessibleName(
+      "13:30, Feld 2, Ravens gegen Wolves, 20:7, läuft",
+    );
+  });
+
+  it("treats a legacy capitalised Beendet as finished", () => {
+    renderList([
+      makeGame({ status: "Beendet", points_home: 7, points_away: 21 }),
+    ]);
+
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(rowFor("Ravens – Wolves").querySelector(".tag")?.textContent).toBe(
+      "beendet",
+    );
+  });
+
+  it("keeps an unknown status open and tappable", async () => {
+    const game = makeGame({ status: "Abgesagt" });
+    const { onSelect } = renderList([game]);
+
+    const row = screen.getByRole("button", { name: /Ravens gegen Wolves/ });
+    expect(row.querySelector(".tag")?.textContent).toBe("offen");
+
+    await userEvent.click(row);
+
+    expect(onSelect).toHaveBeenCalledWith(game);
+  });
+
+  it("dispatches a mixed list to exactly one select and one resume", async () => {
+    const finished = makeGame({
+      id: 1,
+      status: "beendet",
+      points_home: 7,
+      points_away: 21,
+    });
+    const planned = makeGame({ id: 2, home: "Hawks", away: "Ravens" });
+    const running = makeGame({
+      id: 3,
+      status: "1. Halbzeit",
+      home: "Eagles",
+      away: "Coyotes",
+    });
+    const { onSelect, onResume } = renderList([finished, planned, running]);
+
+    expect(screen.getAllByRole("button")).toHaveLength(2);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Hawks gegen Ravens/ }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /Eagles gegen Coyotes/ }),
+    );
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith(planned);
+    expect(onResume).toHaveBeenCalledTimes(1);
+    expect(onResume).toHaveBeenCalledWith(running);
+    expect(rowFor("Ravens – Wolves").tagName).toBe("DIV");
   });
 
   it("renders an empty state when the gameday has no games", () => {
@@ -296,10 +396,13 @@ describe("gameTag", () => {
   it.each([
     ["Geplant", "open", "offen", "select"],
     ["", "open", "offen", "select"],
+    ["Abgesagt", "open", "offen", "select"],
     ["Gestartet", "live", "läuft", "resume"],
     ["1. Halbzeit", "live", "läuft", "resume"],
     ["2. Halbzeit", "live", "läuft", "resume"],
     ["beendet", "done", "beendet", "none"],
+    ["Beendet", "done", "beendet", "none"],
+    [" BEENDET ", "done", "beendet", "none"],
   ] as const)(
     "maps %j to %s / %s / %s",
     (status, variant, label, action) => {
@@ -312,6 +415,7 @@ describe("formatGameTime", () => {
   it("pins the payload format: HH:MM:SS becomes HH:MM", () => {
     expect(formatGameTime("13:30:00")).toBe("13:30");
     expect(formatGameTime("09:05:00")).toBe("09:05");
+    expect(formatGameTime("9:05:00")).toBe("09:05");
     expect(formatGameTime("00:00:00")).toBe("00:00");
   });
 

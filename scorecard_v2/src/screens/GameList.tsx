@@ -1,6 +1,6 @@
-import type { Game, GameStatus } from "../api/types";
+import type { Game } from "../api/types";
 import Screen from "../components/Screen";
-import type { TagVariant } from "./GamedayList";
+import { gameTag, type GameTag } from "../components/tag";
 
 /**
  * A game as this screen reads it: the whistle row plus the passcheck flag.
@@ -13,23 +13,12 @@ export type GameListGame = Game & { passcheck?: boolean };
 
 interface GameListProps {
   games: GameListGame[];
-  /** Guard: this screen renders games, never gamedays (Task 21 owns routing). */
-  gamedays?: never;
   onSelect: (game: Game) => void;
   onResume: (game: Game) => void;
   /** Gameday name; Task 21 passes it, the default keeps the screen usable alone. */
   title?: string;
   /** Gameday date and venue, shown under the title. */
   subtitle?: string;
-}
-
-/** How a row reacts to a tap. A finished game is inert, not merely disabled. */
-export type GameRowAction = "select" | "resume" | "none";
-
-export interface GameTag {
-  variant: TagVariant;
-  label: string;
-  action: GameRowAction;
 }
 
 const CLOCK = /^(\d{1,2}):(\d{2})(?::\d{2})?$/;
@@ -75,37 +64,32 @@ function teamLabel(name: string | null): string {
 }
 
 /**
- * German status vocabulary shared with the gameday screen: a planned game is
- * open, a started one is running, a finished one is done and no longer
- * actionable. `""` comes from designer-built rows and behaves like `Geplant`.
+ * Counts per summary bucket. Keyed by the row action rather than the tag
+ * variant, so a future variant cannot silently land in "offen".
  */
-export function gameTag(status: GameStatus): GameTag {
-  if (status === "beendet") {
-    return { variant: "done", label: "beendet", action: "none" };
-  }
-  if (
-    status === "Gestartet" ||
-    status === "1. Halbzeit" ||
-    status === "2. Halbzeit"
-  ) {
-    return { variant: "live", label: "läuft", action: "resume" };
-  }
-  return { variant: "open", label: "offen", action: "select" };
-}
-
 function summarise(games: GameListGame[]) {
   const counts = { done: 0, live: 0, open: 0 };
   for (const game of games) {
     const tag = gameTag(game.status);
-    if (tag.variant === "done") {
+    if (tag.action === "none") {
       counts.done += 1;
-    } else if (tag.variant === "live") {
+    } else if (tag.action === "resume") {
       counts.live += 1;
     } else {
       counts.open += 1;
     }
   }
   return counts;
+}
+
+function rowName(game: GameListGame, tag: GameTag): string {
+  return [
+    formatGameTime(game.scheduled),
+    `Feld ${game.field}`,
+    `${teamLabel(game.home)} gegen ${teamLabel(game.away)}`,
+    formatGameScore(game.points_home, game.points_away),
+    tag.label,
+  ].join(", ");
 }
 
 function RowBody({ game, tag }: { game: GameListGame; tag: GameTag }) {
@@ -181,20 +165,24 @@ export default function GameList({
           <ul className="game-list">
             {games.map((game) => {
               const tag = gameTag(game.status);
+              const handleClick =
+                tag.action === "none"
+                  ? undefined
+                  : () =>
+                      tag.action === "resume"
+                        ? onResume(game)
+                        : onSelect(game);
               return (
                 <li key={game.id}>
-                  {tag.action === "none" ? (
+                  {handleClick === undefined ? (
                     <div className="game-row">
                       <RowBody game={game} tag={tag} />
                     </div>
                   ) : (
                     <button
+                      aria-label={rowName(game, tag)}
                       className="game-row"
-                      onClick={() =>
-                        tag.action === "resume"
-                          ? onResume(game)
-                          : onSelect(game)
-                      }
+                      onClick={handleClick}
                       type="button"
                     >
                       <RowBody game={game} tag={tag} />

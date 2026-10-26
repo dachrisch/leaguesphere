@@ -1,5 +1,6 @@
 import type { Gameday } from "../api/types";
 import Screen from "../components/Screen";
+import type { TagVariant } from "../components/tag";
 
 interface GamedayListProps {
   gamedays: Gameday[];
@@ -7,8 +8,6 @@ interface GamedayListProps {
   /** ISO `YYYY-MM-DD`; defaults to the device's today. */
   today?: string;
 }
-
-export type TagVariant = "live" | "done" | "open" | "soon";
 
 export interface DayTag {
   variant: TagVariant;
@@ -107,6 +106,7 @@ export default function GamedayList({
               return (
                 <li key={gameday.id}>
                   <button
+                    aria-label={`${gameday.name}, ${formatGamedayDate(gameday.date)}, ${gameday.league_display}, ${tag.label}`}
                     className="day-card"
                     onClick={() => onSelect(gameday)}
                     type="button"
