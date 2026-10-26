@@ -1,13 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import type { RosterEntry, RosterResponse } from "../api/types";
+import type {
+  RosterEntry,
+  RosterResponse,
+  RosterWriteEntry,
+} from "../api/types";
 import PlayerRow from "../components/PlayerRow";
 import UndoBar from "../components/UndoBar";
 import { useSessionTimer } from "../hooks/useSessionTimer";
 
 type Props = {
   roster: RosterResponse;
+  checkedIds: Set<number>;
+  onToggle: (player: RosterEntry) => void;
   onOpenPlayer: (player: RosterEntry) => void;
+  jerseyOverrides?: Record<number, number>;
+  onFinalize?: (entries: RosterWriteEntry[]) => void;
   onBack?: () => void;
   onOpenPhoto?: (player: RosterEntry) => void;
   clock?: () => number;
@@ -25,7 +33,11 @@ function formatSeconds(seconds: number): string {
 
 function RosterScreen({
   roster,
+  checkedIds,
+  onToggle,
   onOpenPlayer,
+  jerseyOverrides = {},
+  onFinalize,
   onBack,
   onOpenPhoto,
   clock = Date.now,
@@ -46,12 +58,7 @@ function RosterScreen({
     [sections]
   );
 
-  const [checkedIds, setCheckedIds] = useState<Set<number>>(
-    () => new Set(players.filter((player) => player.isSelected).map((p) => p.id))
-  );
-  const [averageSeconds, setAverageSeconds] = useState<number | null>(null);
   const [undo, setUndo] = useState<RosterEntry | null>(null);
-  const startedAtRef = useRef<number | null>(null);
   const timer = useSessionTimer(clock);
 
   useEffect(() => {
@@ -60,38 +67,41 @@ function RosterScreen({
     return () => window.clearTimeout(timeout);
   }, [undo]);
 
+  const averageSeconds =
+    checkedIds.size > 0 && timer.startedAt !== null
+      ? timer.elapsedMs / 1000 / checkedIds.size
+      : null;
+
   const toggle = (player: RosterEntry) => {
     if (player.validationError) {
       onOpenPlayer(player);
       return;
     }
-
-    const next = new Set(checkedIds);
-    if (next.has(player.id)) {
-      next.delete(player.id);
-      setCheckedIds(next);
+    if (checkedIds.has(player.id)) {
       setUndo(null);
-      return;
+    } else {
+      timer.start();
+      setUndo(player);
     }
-
-    const now = clock();
-    if (startedAtRef.current === null) {
-      startedAtRef.current = now;
-    }
-    timer.start();
-    next.add(player.id);
-    setCheckedIds(next);
-    setUndo(player);
-    setAverageSeconds((now - startedAtRef.current) / 1000 / next.size);
+    onToggle(player);
   };
 
   const undoLast = () => {
     if (!undo) return;
-    const next = new Set(checkedIds);
-    next.delete(undo.id);
-    setCheckedIds(next);
-    setAverageSeconds(null);
+    onToggle(undo);
     setUndo(null);
+  };
+
+  const finalize = () => {
+    if (!onFinalize) return;
+    onFinalize(
+      players
+        .filter((player) => checkedIds.has(player.id))
+        .map((player) => ({
+          id: player.id,
+          jersey_number: jerseyOverrides[player.id] ?? player.jersey_number,
+        }))
+    );
   };
 
   return (
@@ -138,6 +148,9 @@ function RosterScreen({
               <PlayerRow
                 key={player.id}
                 player={player}
+                jerseyNumber={
+                  jerseyOverrides[player.id] ?? player.jersey_number
+                }
                 checked={checkedIds.has(player.id)}
                 onToggle={() => toggle(player)}
                 onOpenPlayer={() => onOpenPlayer(player)}
@@ -149,6 +162,14 @@ function RosterScreen({
           </div>
         ))}
       </div>
+
+      {onFinalize && (
+        <div className="roster-actions">
+          <button type="button" className="sheet-primary" onClick={finalize}>
+            Prüfung abschließen
+          </button>
+        </div>
+      )}
 
       {undo && (
         <UndoBar
