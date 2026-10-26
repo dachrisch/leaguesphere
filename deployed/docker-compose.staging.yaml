@@ -156,6 +156,7 @@ services:
       - egress
     volumes:
       - media:/app/league_manager/media
+      - pass-photos:/app/league_manager/private/pass_photos
     depends_on:
       mysql:
         condition: service_healthy
@@ -178,3 +179,4 @@ networks:
 
 volumes:
   media:
+  pass-photos:
