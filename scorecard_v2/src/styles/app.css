@@ -281,6 +281,160 @@ button,
   background: var(--fill-soft);
 }
 
+/* ------------------------------------------------------------ game list -- */
+
+.sumline {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-1) 0 var(--space-4);
+}
+
+.sumline > div {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-lg);
+}
+
+.sumline b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.1;
+  color: var(--fg);
+}
+
+.game-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.game-row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  width: 100%;
+  min-height: calc(var(--touch) + var(--space-2));
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  color: var(--fg);
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-lg);
+}
+
+button.game-row {
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+button.game-row:hover {
+  border-color: var(--line-strong);
+}
+
+button.game-row:active {
+  transform: scale(0.995);
+  background: var(--panel2);
+}
+
+.game-time {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.game-field {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.game-main {
+  min-width: 0;
+}
+
+.game-pair {
+  display: block;
+  overflow: hidden;
+  font-size: var(--fs-base);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-sub {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  min-width: 54px;
+}
+
+.game-score {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.chip-ok,
+.chip-miss {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.chip-ok {
+  color: var(--away-text);
+  background: var(--away-wash);
+}
+
+.chip-miss {
+  color: var(--amber);
+  background: var(--amber-wash);
+}
+
 /* --------------------------------------------------------- empty state --- */
 
 .empty-state {
@@ -325,7 +479,8 @@ button,
     scroll-behavior: auto !important;
   }
 
-  .day-card:active {
+  .day-card:active,
+  button.game-row:active {
     transform: none;
   }
 }
