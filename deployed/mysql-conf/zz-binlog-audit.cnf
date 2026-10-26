@@ -35,6 +35,9 @@ expire_logs_days           = 2
 
 # --- who did what ----------------------------------------------------------
 plugin_load_add               = server_audit
+# The plugin loads ACTIVE with logging OFF unless this is set here - the first
+# prod deploy proved it: plugin ACTIVE, no server_audit.log written at all.
+server_audit_logging          = ON
 server_audit_events           = CONNECT,QUERY_DML_NO_SELECT
 # The application writes constantly and would bury the humans this log exists
 # for. Both stack's application accounts are listed so one file is valid on
@@ -44,4 +47,4 @@ server_audit_output_type      = file
 server_audit_file_path        = /var/lib/mysql/server_audit.log
 server_audit_file_rotate_size = 50M
 server_audit_file_rotations   = 9
-server_audit_timestamp_format = %Y-%m-%d %H:%M:%S
+server_audit_timestamp_format = %Y-%m-%d %H:%i:%S
