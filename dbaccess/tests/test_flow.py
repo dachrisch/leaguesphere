@@ -47,7 +47,8 @@ def test_submitting_a_request_records_it_and_the_event(client, staff, tables):
     response = client.post(
         reverse("dbaccess-create"),
         {
-            "person": "NN",
+            # Ignored on purpose: the handle comes from the login, not the form.
+            "person": "someone-else",
             "purpose": "fix the standings",
             "ticket_url": "https://example.invalid/T-1",
             "ttl_hours": 2,
@@ -59,24 +60,16 @@ def test_submitting_a_request_records_it_and_the_event(client, staff, tables):
     created = AccessRequest.objects.get()
     assert created.state == AccessRequest.State.REQUESTED
     assert created.requester == staff
-    assert created.person == "nn"  # lowercased on the way in
+    assert created.person == "staff"  # taken from the login, not the post
     assert created.tables_csv == "divisions,team"  # sorted
     assert created.events.filter(action="requested").exists()
 
 
 @pytest.mark.django_db
-def test_the_form_refuses_a_handle_with_symbols(staff, tables):
-    form = AccessRequestForm(
-        data={
-            "person": "n-n",
-            "purpose": "x",
-            "ttl_hours": 2,
-            "tables": [GrantableTable.objects.get(name="divisions").pk],
-        }
-    )
+def test_the_form_has_no_person_field(staff, tables):
+    form = AccessRequestForm()
 
-    assert not form.is_valid()
-    assert "person" in form.errors
+    assert "person" not in form.fields
 
 
 @pytest.mark.django_db

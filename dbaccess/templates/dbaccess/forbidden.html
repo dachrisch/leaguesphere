@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="py-5 mx-auto" style="max-width: 620px">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="h5 mb-2">{{ title }}</h1>
+                <p class="text-muted small mb-4">{{ detail }}</p>
+
+                <div class="d-flex flex-wrap gap-2">
+                    {% if access_request %}
+                        <a class="btn btn-outline-secondary btn-sm"
+                           href="{% url 'dbaccess-detail' access_request.pk %}">Back to the request</a>
+                    {% endif %}
+                    <a class="btn btn-link btn-sm text-decoration-none"
+                       href="{% url 'dbaccess-list' %}">Temporary database access</a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

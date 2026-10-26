@@ -1,0 +1,16 @@
+{% comment %}
+One Bootstrap 5 field: label, widget, help text, errors. The widgets carry their
+own `form-control` / `form-select` class in dbaccess/forms.py.
+{% endcomment %}
+<div class="mb-3">
+    <label class="form-label fw-semibold" for="{{ field.id_for_label }}">
+        {{ field.label }}{% if field.field.required %} <span class="text-danger" aria-hidden="true">*</span>{% endif %}
+    </label>
+    {{ field }}
+    {% if field.help_text %}
+        <div class="form-text">{{ field.help_text }}</div>
+    {% endif %}
+    {% for error in field.errors %}
+        <div class="text-danger small mt-1">{{ error }}</div>
+    {% endfor %}
+</div>

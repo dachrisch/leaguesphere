@@ -77,6 +77,33 @@ def test_an_approver_cannot_approve_their_own_request(client, approver):
 
 
 @pytest.mark.django_db
+def test_the_detail_page_does_not_offer_a_decision_on_your_own_request(client, approver):
+    """The button the two-person rule forbids must not be there at all."""
+    access_request = _request(approver)
+    client.force_login(approver)
+
+    response = client.get(reverse("dbaccess-detail", args=[access_request.pk]))
+
+    assert response.status_code == 200
+    assert response.context["is_mine"] is True
+    assert response.context["can_approve"] is False
+    assert reverse("dbaccess-decide", args=[access_request.pk]).encode() not in response.content
+
+
+@pytest.mark.django_db
+def test_the_detail_page_offers_the_decision_to_another_approver(
+    client, requester, approver
+):
+    access_request = _request(requester)
+    client.force_login(approver)
+
+    response = client.get(reverse("dbaccess-detail", args=[access_request.pk]))
+
+    assert response.context["can_approve"] is True
+    assert reverse("dbaccess-decide", args=[access_request.pk]).encode() in response.content
+
+
+@pytest.mark.django_db
 def test_a_second_person_can_approve_and_it_is_recorded(client, requester, approver):
     access_request = _request(requester)
     client.force_login(approver)

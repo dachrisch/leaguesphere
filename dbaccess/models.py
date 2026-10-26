@@ -29,6 +29,22 @@ from django.utils import timezone
 # on the host with no knowledge of this file.
 TTL_CAP_HOURS = 8
 
+# `tick.sh` builds the account name as `dbeaver_prod_<person>` and
+# `AccessRequest.db_user` is 32 characters wide, so the handle has 19.
+HANDLE_LENGTH = 32 - len("dbeaver_prod_")
+
+
+def access_handle(username: str) -> str:
+    """The handle a request is filed under: the requester's login, sanitised.
+
+    Nobody types this any more - it is derived from the account that is asking,
+    so every temporary MySQL user traces back to exactly one named human. MySQL
+    account names accept only letters and digits here (the account is created
+    with hand-written SQL in the sidecar), hence the stripping.
+    """
+    return "".join(ch for ch in (username or "").lower() if ch.isalnum())[:HANDLE_LENGTH]
+
+
 
 class AccessRequestQuerySet(models.QuerySet):
     def pending(self):
