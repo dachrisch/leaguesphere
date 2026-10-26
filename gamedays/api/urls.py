@@ -7,6 +7,7 @@ from gamedays.api.game_views import (
     GameFinalizeUpdateView,
     GameSetupCreateOrUpdateView,
     GamesToWhistleAPIView,
+    GameRosterAPIView,
     ConfigPenalties,
     GamePossessionAPIView,
 )
@@ -121,6 +122,11 @@ urlpatterns = [
         "game/<int:pk>/setup",
         GameSetupCreateOrUpdateView.as_view(),
         name=API_GAME_SETUP,
+    ),
+    path(
+        "game/<int:pk>/roster",
+        GameRosterAPIView.as_view(),
+        name="api-game-roster",
     ),
     path(
         "game/<int:pk>/officials",

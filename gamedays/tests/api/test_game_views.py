@@ -14,9 +14,17 @@ from gamedays.constants import (
     API_GAME_HALFTIME,
     API_GAME_OFFICIALS,
     API_GAME_SETUP,
+    API_GAMEDAY_WHISTLEGAMES,
 )
 from gamedays.models import Gameinfo, Gameresult, GameOfficial, GameSetup, TeamLog, Team
 from gamedays.tests.setup_factories.db_setup import DBSetup
+from gamedays.tests.setup_factories.factories import PersonFactory
+from passcheck.models import PasscheckVerification
+from passcheck.tests.setup_factories.factories_passcheck import (
+    PlayerFactory,
+    PlayerlistFactory,
+    PlayerlistGamedayFactory,
+)
 
 
 class TestRetrieveUpdateOfficials(WebTest):
@@ -690,6 +698,128 @@ class TestGameFinalize(WebTest):
         )
         assert response.status_code == HTTPStatus.OK
         assert Gameinfo.objects.first().status == "beendet"
+
+
+class TestGamesToWhistlePasscheck(WebTest):
+    """The whistle rows carry the passcheck state the v2 game list renders.
+
+    ``PasscheckVerification`` is one row per team per gameday; a game counts as
+    verified only when *both* of its teams are. The trap: ``id_home``/``id_away``
+    in the whistle payload are ``Gameresult`` pks, not ``Team`` pks.
+    """
+
+    def setUp(self):
+        self.gameday = DBSetup().g62_status_empty()
+        self.game = Gameinfo.objects.filter(gameday=self.gameday).first()
+        self.home = Gameresult.objects.get(gameinfo=self.game, isHome=True).team
+        self.away = Gameresult.objects.get(gameinfo=self.game, isHome=False).team
+
+    def _whistle_rows(self):
+        response = self.app.get(
+            reverse(
+                API_GAMEDAY_WHISTLEGAMES,
+                kwargs={"pk": self.gameday.pk, "team": "*"},
+            ),
+            headers=DBSetup().get_token_header(),
+        )
+        assert response.status_code == HTTPStatus.OK
+        return response.json
+
+    def test_games_to_whistle_reports_passcheck_state(self):
+        rows = self._whistle_rows()
+
+        assert rows
+        assert all(row["passcheck"] is False for row in rows)
+        assert [row["id"] for row in rows].count(self.game.pk) == 1
+
+    def test_games_to_whistle_passcheck_is_true_for_two_verified_teams(self):
+        for team in (self.home, self.away):
+            PasscheckVerification.objects.create(
+                gameday=self.gameday,
+                team=team,
+                official_name="Kontrolle",
+                user=self.gameday.author,
+            )
+
+        rows = {row["id"]: row for row in self._whistle_rows()}
+
+        assert rows[self.game.pk]["passcheck"] is True
+        assert [game_id for game_id, row in rows.items() if row["passcheck"]] == [
+            self.game.pk
+        ]
+
+
+class TestGameRosterAPIView(WebTest):
+    def setUp(self):
+        self.gameday = DBSetup().g62_status_empty()
+        self.game = Gameinfo.objects.filter(gameday=self.gameday).first()
+        self.home = Gameresult.objects.get(gameinfo=self.game, isHome=True).team
+        self.away = Gameresult.objects.get(gameinfo=self.game, isHome=False).team
+
+    def _add_player(self, team, jersey, last_name):
+        playerlist = PlayerlistFactory(
+            team=team,
+            player=PlayerFactory(
+                person=PersonFactory(first_name="Test", last_name=last_name),
+                pass_number="12345",
+            ),
+            jersey_number=jersey,
+        )
+        PlayerlistGamedayFactory(
+            playerlist=playerlist, gameday=self.gameday, gameday_jersey=jersey
+        )
+
+    def _roster(self, game):
+        return self.app.get(
+            reverse("api-game-roster", kwargs={"pk": game.pk}),
+            headers=DBSetup().get_token_header(),
+        )
+
+    def test_game_roster_lists_both_teams_without_pass_numbers(self):
+        self._add_player(self.home, 7, "Muster")
+        self._add_player(self.home, 9, "Beispiel")
+        self._add_player(self.away, 11, "Testmann")
+
+        response = self._roster(self.game)
+
+        assert response.status_code == HTTPStatus.OK
+        assert sorted(response.json, key=lambda row: (row["side"], row["jersey"])) == [
+            {"side": "away", "jersey": 11, "name": "Testmann"},
+            {"side": "home", "jersey": 7, "name": "Muster"},
+            {"side": "home", "jersey": 9, "name": "Beispiel"},
+        ]
+        assert {row["side"] for row in response.json} == {"home", "away"}
+        # Jersey and surname only — the pass number never leaves the server.
+        assert all(set(row) == {"side", "jersey", "name"} for row in response.json)
+        assert "12345" not in response.text
+
+    def test_game_roster_is_empty_for_a_bracket_placeholder(self):
+        # A roster exists for a real team of the gameday; the placeholder game
+        # still has to answer empty instead of dumping every player of the day.
+        self._add_player(self.home, 7, "Muster")
+        placeholder = Gameinfo.objects.create(
+            gameday=self.gameday,
+            scheduled="09:00",
+            field=1,
+            stage="Finalrunde",
+            standing="P5",
+            officials=Team.objects.first(),
+        )
+        Gameresult.objects.create(gameinfo=placeholder, team=None, isHome=True)
+        Gameresult.objects.create(gameinfo=placeholder, team=None, isHome=False)
+
+        response = self._roster(placeholder)
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.json == []
+
+    def test_game_roster_requires_authentication(self):
+        response = self.app.get(
+            reverse("api-game-roster", kwargs={"pk": self.game.pk}),
+            expect_errors=True,
+        )
+
+        assert response.status_code == HTTPStatus.UNAUTHORIZED
 
 
 class TestConfigPenaltiesAPIView(WebTest):
