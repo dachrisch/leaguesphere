@@ -15,16 +15,26 @@
  * Device lock: while a game is open the caller sets the device id once via
  * {@link setDeviceId}; it is attached as `X-Scorecard-Device` to every request
  * until cleared. Module-level state is deliberate — the header describes the
- * browser session, not one caller — and is reset in tests.
+ * browser session, not one caller — and is reset in tests. A request may
+ * override it via {@link RequestOptions.deviceId}, so the outbox can flush
+ * game A's queued writes while the UI already shows game B.
  */
 
-const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const UNSAFE_METHODS = new Set(["POST", "PUT", "DELETE"]);
 
 const GENERIC_ERROR_MESSAGE = "Die Anfrage ist fehlgeschlagen.";
 const NETWORK_ERROR_MESSAGE = "Keine Verbindung zum Server.";
 const CSRF_COOKIE = "csrftoken";
 
-type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+type Method = "GET" | "POST" | "PUT" | "DELETE";
+
+export interface RequestOptions {
+  /**
+   * Overrides the module-level device id (the outbox stamps the id captured at
+   * enqueue time). `null` means "send no header" even if one is set globally.
+   */
+  deviceId?: string | null;
+}
 
 export class ApiError extends Error {
   readonly status: number;
@@ -44,10 +54,10 @@ let deviceId: string | null = null;
 
 /**
  * Attach `X-Scorecard-Device` to every following request, or clear it with
- * `null` when the open game is left.
+ * `null`. Whitespace-only ids clear it too.
  */
 export function setDeviceId(id: string | null): void {
-  deviceId = id === "" ? null : id;
+  deviceId = id?.trim() || null;
 }
 
 function decodeCookieValue(value: string): string {
@@ -99,22 +109,28 @@ async function request<T>(
   method: Method,
   path: string,
   body?: unknown,
+  opts?: RequestOptions,
 ): Promise<T> {
+  const serializedBody = body == null ? undefined : JSON.stringify(body);
   const headers: Record<string, string> = { Accept: "application/json" };
-  if (body !== undefined) {
+  if (serializedBody !== undefined) {
     headers["Content-Type"] = "application/json";
   }
   if (UNSAFE_METHODS.has(method)) {
     const csrfToken = readCookie(CSRF_COOKIE);
-    if (csrfToken !== null) {
+    if (csrfToken) {
       headers["X-CSRFToken"] = csrfToken;
     }
   }
-  if (deviceId !== null) {
-    headers["X-Scorecard-Device"] = deviceId;
+  // An explicit `null` override wins over the module-level id; only an absent
+  // (or `undefined`) override falls back to it.
+  const requestedDeviceId =
+    opts?.deviceId === undefined ? deviceId : opts.deviceId;
+  const headerDeviceId =
+    requestedDeviceId === null ? null : requestedDeviceId.trim() || null;
+  if (headerDeviceId !== null) {
+    headers["X-Scorecard-Device"] = headerDeviceId;
   }
-
-  const serializedBody = body === undefined ? undefined : JSON.stringify(body);
 
   let response: Response;
   try {
@@ -146,18 +162,49 @@ async function request<T>(
   return parsed as T;
 }
 
-export function apiGet<T>(path: string): Promise<T> {
-  return request<T>("GET", path);
+/**
+ * GET `path`. A 204 or empty body resolves to `undefined`; type it as
+ * `apiGet<void>` for endpoints that answer without a payload.
+ */
+export function apiGet<T>(path: string, opts?: RequestOptions): Promise<T> {
+  return request<T>("GET", path, undefined, opts);
 }
 
-export function apiPost<T>(path: string, body?: unknown): Promise<T> {
-  return request<T>("POST", path, body);
+/**
+ * POST `path` with an optional JSON body (`null`/`undefined` sends none).
+ * A 204 or empty body resolves to `undefined`; type it as `apiPost<void>` for
+ * endpoints that answer without a payload.
+ */
+export function apiPost<T>(
+  path: string,
+  body?: unknown,
+  opts?: RequestOptions,
+): Promise<T> {
+  return request<T>("POST", path, body, opts);
 }
 
-export function apiPut<T>(path: string, body?: unknown): Promise<T> {
-  return request<T>("PUT", path, body);
+/**
+ * PUT `path` with an optional JSON body (`null`/`undefined` sends none).
+ * A 204 or empty body resolves to `undefined`; type it as `apiPut<void>` for
+ * endpoints that answer without a payload.
+ */
+export function apiPut<T>(
+  path: string,
+  body?: unknown,
+  opts?: RequestOptions,
+): Promise<T> {
+  return request<T>("PUT", path, body, opts);
 }
 
-export function apiDelete<T>(path: string, body?: unknown): Promise<T> {
-  return request<T>("DELETE", path, body);
+/**
+ * DELETE `path` with an optional JSON body (`null`/`undefined` sends none).
+ * A 204 or empty body resolves to `undefined`; type it as `apiDelete<void>`
+ * for endpoints that answer without a payload.
+ */
+export function apiDelete<T>(
+  path: string,
+  body?: unknown,
+  opts?: RequestOptions,
+): Promise<T> {
+  return request<T>("DELETE", path, body, opts);
 }
