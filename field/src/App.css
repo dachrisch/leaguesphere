@@ -325,6 +325,25 @@ body {
   font-size: 13px;
 }
 
+.field-label {
+  display: block;
+  margin: 12px 0 4px;
+  color: var(--field-muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.field-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #dbd5c5;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--field-ink);
+  font: inherit;
+}
+
 .rule-blocked {
   padding: 9px 11px;
   border-radius: 9px;
