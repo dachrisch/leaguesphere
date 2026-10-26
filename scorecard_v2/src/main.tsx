@@ -1,6 +1,18 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+// Self-hosted fonts: the field app must render without a network, so no
+// Google Fonts CDN. Latin subset only — the UI is German.
+import "@fontsource/barlow-condensed/latin-600.css";
+import "@fontsource/barlow-condensed/latin-700.css";
+import "@fontsource/barlow-condensed/latin-800.css";
+import "@fontsource/inter/latin-400.css";
+import "@fontsource/inter/latin-500.css";
+import "@fontsource/inter/latin-600.css";
+import "@fontsource/inter/latin-700.css";
+
+import "./styles/tokens.css";
+import "./styles/app.css";
 import App from "./App";
 
 const container = document.getElementById("scorecard-v2-app");

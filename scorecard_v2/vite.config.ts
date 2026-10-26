@@ -3,6 +3,9 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  // Relative asset URLs: the stylesheet references the self-hosted font files
+  // sitting next to it, and Django may serve them from any STATIC_URL prefix.
+  base: "./",
   // Nothing is served from a public/ dir; without this a future public/ would
   // be copied into the JS output dir Django serves.
   publicDir: false,
@@ -13,6 +16,11 @@ export default defineConfig({
   build: {
     outDir: "static/scorecard_v2/js",
     emptyOutDir: true,
+    // With the default split, Vite only extracts CSS for es/cjs output; an
+    // IIFE build would inject a <style> tag from JS and inline absolute font
+    // URLs. Django serves the stylesheet from STATIC_URL instead, so emit one
+    // bundle next to the JS entry.
+    cssCodeSplit: false,
     rollupOptions: {
       input: "src/main.tsx",
       output: {
@@ -24,7 +32,14 @@ export default defineConfig({
         // is also what keeps the output a single scorecard_v2.js file.
         format: "iife",
         entryFileNames: "scorecard_v2.js",
-        assetFileNames: "scorecard_v2-[name][extname]",
+        // Fonts keep their descriptive names; the stylesheet gets the stable
+        // name the Django template links.
+        assetFileNames: (assetInfo) => {
+          const name = assetInfo.names[0] ?? "";
+          return name.endsWith(".css")
+            ? "scorecard_v2.css"
+            : "scorecard_v2-[name][extname]";
+        },
       },
     },
   },
