@@ -36,11 +36,10 @@ licence problems warn instead of blocking the start, and v2 gets a new
 
 ### Handover and environment (2026-10-26)
 
-This plan supersedes the passcheck v2 field-app plan (archived at
-[`docs/topics/planning/history/2026-10-26-passcheck-v2-field-app.md`](../history/2026-10-26-passcheck-v2-field-app.md));
-the `/field/` app is not being built and none of that branch's code is required
-here. Task 1 is already committed on `feat/scorecard-v2` (`8fa9fe93`, follow-up
-`842f1d36`).
+This plan runs in parallel with the passcheck v2 field-app plan
+([`docs/topics/planning/current/2026-10-26-passcheck-v2-field-app.md`](./2026-10-26-passcheck-v2-field-app.md));
+the two apps share no state and are delivered independently. Task 1 is already
+committed on `feat/scorecard-v2` (`8fa9fe93`, follow-up `842f1d36`).
 
 Baseline recorded before Task 2:
 
