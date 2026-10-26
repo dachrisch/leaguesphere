@@ -1,34 +1,42 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h1 class="h4 mb-0">Temporary database access</h1>
-            <a class="btn btn-primary btn-sm" href="{% url 'dbaccess-create' %}">New request</a>
+    <div class="py-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+            <div>
+                <h1 class="h4 mb-1">Temporary database access</h1>
+                <p class="text-muted small mb-0">
+                    Every session is asked for, approved by a second person, and dies at its cap.
+                </p>
+            </div>
+            <a class="btn btn-primary" href="{% url 'dbaccess-create' %}">New request</a>
         </div>
 
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-
         {% if can_approve and pending %}
-            <h2 class="h6 text-uppercase text-muted mt-4">Waiting for a decision</h2>
-            <div class="table-responsive">
+            <h2 class="h6 text-uppercase text-muted">Waiting for a decision</h2>
+            <div class="table-responsive mb-4">
                 <table class="table table-sm align-middle">
                     <thead>
                     <tr>
-                        <th>Person</th><th>Tables</th><th>TTL</th><th>Asked by</th><th></th>
+                        <th>Person</th>
+                        <th>Tables</th>
+                        <th>Valid for</th>
+                        <th class="d-none d-md-table-cell">Asked by</th>
+                        <th></th>
                     </tr>
                     </thead>
                     <tbody>
                     {% for item in pending %}
                         <tr>
-                            <td><code>{{ item.person }}</code></td>
-                            <td class="small">{{ item.tables_csv }}</td>
+                            <td><code>dbeaver_prod_{{ item.person }}</code></td>
+                            <td class="small text-muted">{{ item.tables_csv }}</td>
                             <td>{{ item.ttl_hours }} h</td>
-                            <td>{{ item.requester }}</td>
+                            <td class="d-none d-md-table-cell">
+                                {{ item.requester }}
+                                {% if item.requester_id == request.user.id %}
+                                    <span class="badge bg-light text-dark border">you</span>
+                                {% endif %}
+                            </td>
                             <td class="text-end">
                                 <a class="btn btn-outline-secondary btn-sm"
                                    href="{% url 'dbaccess-detail' item.pk %}">Review</a>
@@ -40,29 +48,27 @@
             </div>
         {% endif %}
 
-        <h2 class="h6 text-uppercase text-muted mt-4">History</h2>
+        <h2 class="h6 text-uppercase text-muted">History</h2>
         <div class="table-responsive">
             <table class="table table-sm align-middle">
                 <thead>
                 <tr>
-                    <th>Person</th><th>State</th><th>Tables</th><th>Expires</th><th>Asked</th><th></th>
+                    <th>Person</th>
+                    <th>State</th>
+                    <th>Tables</th>
+                    <th>Expires</th>
+                    <th class="d-none d-md-table-cell">Asked</th>
+                    <th></th>
                 </tr>
                 </thead>
                 <tbody>
                 {% for item in requests %}
                     <tr>
-                        <td><code>{{ item.person }}</code></td>
-                        <td>
-                            <span class="badge
-                                {% if item.state == 'active' %}bg-success
-                                {% elif item.state == 'requested' %}bg-warning text-dark
-                                {% elif item.state == 'approved' %}bg-info text-dark
-                                {% elif item.state == 'dropped' or item.state == 'expired' %}bg-secondary
-                                {% else %}bg-light text-dark{% endif %}">{{ item.state }}</span>
-                        </td>
-                        <td class="small">{{ item.tables_csv }}</td>
+                        <td><code>dbeaver_prod_{{ item.person }}</code></td>
+                        <td>{% include "dbaccess/_state_badge.html" with state=item.state %}</td>
+                        <td class="small text-muted">{{ item.tables_csv }}</td>
                         <td class="small">{{ item.expires_at|date:"d.m. H:i" }}</td>
-                        <td class="small">{{ item.created_at|date:"d.m. H:i" }}</td>
+                        <td class="small d-none d-md-table-cell">{{ item.created_at|date:"d.m. H:i" }}</td>
                         <td class="text-end">
                             <a class="btn btn-outline-secondary btn-sm"
                                href="{% url 'dbaccess-detail' item.pk %}">Open</a>

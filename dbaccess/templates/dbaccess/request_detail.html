@@ -1,83 +1,168 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <div class="container py-4" style="max-width: 860px">
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
+    <div class="py-3">
+        <a class="small text-decoration-none" href="{% url 'dbaccess-list' %}">&larr; Temporary database access</a>
 
-        <h1 class="h4 mb-3">
-            <code>{{ access_request.person }}</code>
-            <span class="badge bg-secondary align-middle">{{ access_request.state }}</span>
-        </h1>
-
-        <dl class="row small">
-            <dt class="col-sm-3">Database user</dt>
-            <dd class="col-sm-9"><code>{{ access_request.db_user|default:"not minted yet" }}</code></dd>
-            <dt class="col-sm-3">Tables</dt>
-            <dd class="col-sm-9"><code>{{ access_request.tables_csv }}</code></dd>
-            <dt class="col-sm-3">TTL</dt>
-            <dd class="col-sm-9">{{ access_request.ttl_hours }} h, hard cap
-                <strong>{{ access_request.expires_at|date:"d.m.Y H:i" }}</strong></dd>
-            <dt class="col-sm-3">Requested by</dt>
-            <dd class="col-sm-9">{{ access_request.requester }}</dd>
-            <dt class="col-sm-3">Approver</dt>
-            <dd class="col-sm-9">{{ access_request.approver|default:"—" }}</dd>
-            <dt class="col-sm-3">Purpose</dt>
-            <dd class="col-sm-9">{{ access_request.purpose|linebreaksbr }}</dd>
-            {% if access_request.failure_reason %}
-                <dt class="col-sm-3 text-danger">Failure</dt>
-                <dd class="col-sm-9 text-danger">{{ access_request.failure_reason }}</dd>
-            {% endif %}
-        </dl>
-
-        <div class="d-flex flex-wrap gap-2 my-3">
-            {% if can_approve %}
-                <form method="post" action="{% url 'dbaccess-decide' access_request.pk %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="decision" value="approve">
-                    <button class="btn btn-success btn-sm" type="submit">Approve</button>
-                </form>
-                <form method="post" action="{% url 'dbaccess-decide' access_request.pk %}"
-                      class="d-flex gap-2">
-                    {% csrf_token %}
-                    <input type="hidden" name="decision" value="deny">
-                    <input class="form-control form-control-sm" name="reason"
-                           placeholder="Reason for denial" required>
-                    <button class="btn btn-outline-danger btn-sm" type="submit">Deny</button>
-                </form>
-            {% endif %}
-
-            {% if may_reveal and access_request.state == 'active' %}
-                <form method="post" action="{% url 'dbaccess-reveal' access_request.pk %}">
-                    {% csrf_token %}
-                    <button class="btn btn-outline-primary btn-sm" type="submit">Show password</button>
-                </form>
-            {% endif %}
-
-            {% if access_request.state == 'active' or access_request.state == 'approved' %}
-                <form method="post" action="{% url 'dbaccess-revoke' access_request.pk %}">
-                    {% csrf_token %}
-                    <button class="btn btn-outline-danger btn-sm" type="submit">Revoke now</button>
-                </form>
-            {% endif %}
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mt-2 mb-4">
+            <div>
+                <h1 class="h4 mb-1"><code>dbeaver_prod_{{ access_request.person }}</code></h1>
+                <p class="text-muted small mb-0">
+                    Asked by {{ access_request.requester }}
+                    on {{ access_request.created_at|date:"d.m.Y H:i" }}
+                    {% if access_request.approver %} &middot; decided by {{ access_request.approver }}{% endif %}
+                </p>
+            </div>
+            <div class="fs-6">{% include "dbaccess/_state_badge.html" with state=access_request.state %}</div>
         </div>
 
-        <h2 class="h6 text-uppercase text-muted mt-4">Audit trail</h2>
-        <ul class="list-unstyled small">
-            {% for event in events %}
-                <li class="border-bottom py-1">
-                    <code>{{ event.at|date:"d.m. H:i:s" }}</code>
-                    <strong>{{ event.actor }}</strong> {{ event.action }}
-                    {% if event.detail %}<span class="text-muted">— {{ event.detail }}</span>{% endif %}
-                </li>
-            {% empty %}
-                <li class="text-muted">Nothing recorded yet.</li>
-            {% endfor %}
-        </ul>
+        <div class="row g-4">
+            <div class="col-lg-7 order-2 order-lg-1">
+                <div class="card">
+                    <div class="card-header bg-body-tertiary small text-uppercase text-muted fw-semibold">
+                        The request
+                    </div>
+                    <div class="card-body">
+                        <h2 class="h6">What needs fixing</h2>
+                        <p class="mb-4">{{ access_request.purpose|linebreaksbr }}</p>
 
-        <a class="btn btn-link btn-sm px-0" href="{% url 'dbaccess-list' %}">Back to the list</a>
+                        <h2 class="h6">Tables it may update</h2>
+                        <p class="mb-4">
+                            {% for table in access_request.tables %}
+                                <code class="d-inline-block bg-body-tertiary border rounded px-2 py-1 mb-1">{{ table }}</code>
+                            {% empty %}
+                                <span class="text-muted">none recorded</span>
+                            {% endfor %}
+                        </p>
+
+                        <dl class="row small mb-0">
+                            <dt class="col-sm-4 fw-normal text-muted">Database user</dt>
+                            <dd class="col-sm-8">
+                                {% if access_request.db_user %}
+                                    <code>{{ access_request.db_user }}</code>
+                                    {% if access_request.grant_host %}
+                                        <span class="text-muted">from <code>{{ access_request.grant_host }}</code></span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">not minted yet</span>
+                                {% endif %}
+                            </dd>
+
+                            <dt class="col-sm-4 fw-normal text-muted">Valid for</dt>
+                            <dd class="col-sm-8">
+                                {{ access_request.ttl_hours }} h, hard cap
+                                <strong>{{ access_request.expires_at|date:"d.m.Y H:i" }}</strong>
+                            </dd>
+
+                            {% if access_request.ticket_url %}
+                                <dt class="col-sm-4 fw-normal text-muted">Ticket</dt>
+                                <dd class="col-sm-8">
+                                    <a href="{{ access_request.ticket_url }}" rel="noreferrer noopener">
+                                        {{ access_request.ticket_url }}
+                                    </a>
+                                </dd>
+                            {% endif %}
+                        </dl>
+
+                        {% if access_request.failure_reason %}
+                            <div class="alert alert-danger small mt-4 mb-0">
+                                <strong>The last attempt failed.</strong>
+                                {{ access_request.failure_reason }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <h2 class="h6 text-uppercase text-muted mt-4 mb-3">Audit trail</h2>
+                <ul class="list-unstyled small mb-0">
+                    {% for event in events %}
+                        <li class="d-flex gap-3 py-2 border-bottom">
+                            <code class="text-muted flex-shrink-0">{{ event.at|date:"d.m. H:i:s" }}</code>
+                            <span>
+                                <strong>{{ event.actor }}</strong>
+                                <span class="text-muted">{{ event.action }}</span>
+                                {% if event.detail %}
+                                    <span class="d-block text-muted">{{ event.detail }}</span>
+                                {% endif %}
+                            </span>
+                        </li>
+                    {% empty %}
+                        <li class="text-muted">Nothing recorded yet.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="col-lg-5 order-1 order-lg-2">
+                <div class="card">
+                    <div class="card-header bg-body-tertiary small text-uppercase text-muted fw-semibold">
+                        What you can do
+                    </div>
+                    <div class="card-body">
+                        {% if access_request.state == 'requested' %}
+                            {% if is_mine %}
+                                <p class="small text-muted mb-0">
+                                    You asked for this one, so somebody else has to approve or
+                                    reject it. A second person is the point of the whole flow.
+                                </p>
+                            {% elif can_approve %}
+                                <form method="post" action="{% url 'dbaccess-decide' access_request.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="decision" value="approve">
+                                    <button class="btn btn-success w-100" type="submit">Approve</button>
+                                </form>
+                                <hr>
+                                <form method="post" action="{% url 'dbaccess-decide' access_request.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="decision" value="deny">
+                                    <label class="form-label small fw-semibold" for="deny-reason">
+                                        Reason for rejection
+                                    </label>
+                                    <textarea class="form-control form-control-sm mb-2" id="deny-reason"
+                                              name="reason" rows="2" required></textarea>
+                                    <button class="btn btn-outline-danger w-100" type="submit">Reject</button>
+                                </form>
+                            {% else %}
+                                <p class="small text-muted mb-0">
+                                    Waiting for somebody with the approver permission.
+                                </p>
+                            {% endif %}
+                        {% elif access_request.state == 'rejected' %}
+                            <p class="small text-muted mb-0">
+                                Rejected{% if access_request.approver %} by {{ access_request.approver }}{% endif %}.
+                                No account was created.
+                            </p>
+                        {% elif access_request.state == 'active' or access_request.state == 'approved' or access_request.state == 'revoke_requested' %}
+                            <p class="small text-muted mb-0">
+                                The account works until
+                                <strong>{{ access_request.expires_at|date:"d.m.Y H:i" }}</strong> — unless it is
+                                revoked or the cap passes first.
+                            </p>
+                        {% elif access_request.state == 'dropped' or access_request.state == 'expired' %}
+                            <p class="small text-muted mb-0">
+                                The account is gone. Nothing to do here but read the trail.
+                            </p>
+                        {% else %}
+                            <p class="small text-muted mb-0">
+                                The last attempt failed; see the error on the left.
+                            </p>
+                        {% endif %}
+
+                        {% if may_reveal and access_request.state == 'active' %}
+                            <form method="post" action="{% url 'dbaccess-reveal' access_request.pk %}" class="mt-3">
+                                {% csrf_token %}
+                                <button class="btn btn-primary w-100" type="submit">Show password</button>
+                            </form>
+                        {% endif %}
+
+                        {% if access_request.state == 'active' or access_request.state == 'approved' %}
+                            <form method="post" action="{% url 'dbaccess-revoke' access_request.pk %}" class="mt-3">
+                                {% csrf_token %}
+                                <button class="btn btn-outline-danger w-100" type="submit">Revoke now</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 {% endblock %}

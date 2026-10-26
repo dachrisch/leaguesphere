@@ -15,7 +15,7 @@ from django.views.generic import DetailView, ListView
 from django.views.generic.edit import CreateView
 
 from dbaccess.forms import AccessRequestForm
-from dbaccess.models import AccessRequest
+from dbaccess.models import AccessRequest, access_handle
 
 APPROVE_PERMISSION = "dbaccess.approve_requests"
 
@@ -29,6 +29,21 @@ def can_approve(user) -> bool:
 def _ip(request) -> str | None:
     forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
     return (forwarded.split(",")[0].strip() or request.META.get("REMOTE_ADDR")) or None
+
+
+def _forbidden(request, title: str, detail: str, access_request=None):
+    """A refusal that still looks like the app.
+
+    The status stays 403 - this is a real refusal, not a redirect - but a bare
+    ``HttpResponseForbidden`` dropped the person on a page with no header, no
+    way back and no explanation.
+    """
+    return render(
+        request,
+        "dbaccess/forbidden.html",
+        {"title": title, "detail": detail, "access_request": access_request},
+        status=403,
+    )
 
 
 class StaffRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -60,8 +75,23 @@ class RequestCreateView(StaffRequiredMixin, CreateView):
     form_class = AccessRequestForm
     template_name = "dbaccess/request_form.html"
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["handle"] = access_handle(self.request.user.username)
+        return context
+
     def form_valid(self, form):
+        handle = access_handle(self.request.user.username)
+        if not handle:
+            form.add_error(
+                None,
+                "Your login name has no letters or digits in it, so no database account "
+                "can be named after you. Ask an admin to rename the account first.",
+            )
+            return self.form_invalid(form)
+
         request_obj = form.save(commit=False)
+        request_obj.person = handle
         request_obj.requester = self.request.user
         request_obj.state = AccessRequest.State.REQUESTED
         request_obj.save()
@@ -82,9 +112,14 @@ class RequestDetailView(StaffRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["can_approve"] = can_approve(self.request.user) and (
+        is_mine = self.object.requester_id == self.request.user.id
+        may_approve = can_approve(self.request.user)
+        # The two-person rule is enforced in DecideView; the button simply must
+        # not be offered to the person who asked.
+        context["can_approve"] = may_approve and not is_mine and (
             self.object.approver_id is None
         )
+        context["is_mine"] = is_mine
         context["may_reveal"] = self.object.can_be_revealed_by(self.request.user)
         context["events"] = self.object.events.all()[:25]
         return context
@@ -101,9 +136,20 @@ class DecideView(StaffRequiredMixin, DetailView):
         decision = request.POST.get("decision")
 
         if not can_approve(request.user):
-            return HttpResponseForbidden("Approver permission required.")
+            return _forbidden(
+                request,
+                "Approver permission required",
+                "Approving and rejecting are limited to people holding the "
+                "dbaccess.approve_requests permission.",
+            )
         if access_request.requester_id == request.user.id:
-            return HttpResponseForbidden("You cannot decide your own request.")
+            return _forbidden(
+                request,
+                "You cannot decide your own request",
+                "Temporary production access needs a second person to agree. "
+                "Someone else has to approve or reject this one.",
+                access_request=access_request,
+            )
         if access_request.state != AccessRequest.State.REQUESTED:
             messages.error(request, "Only a requested session can be decided.")
             return redirect("dbaccess-detail", pk=access_request.pk)

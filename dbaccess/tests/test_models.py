@@ -7,8 +7,27 @@ from cryptography.fernet import Fernet
 from django.core.exceptions import ImproperlyConfigured
 from django.db import IntegrityError, transaction
 
-from dbaccess.models import AccessRequest, TTL_CAP_HOURS
+from dbaccess.models import AccessRequest, HANDLE_LENGTH, TTL_CAP_HOURS, access_handle
 from gamedays.tests.setup_factories.factories import UserFactory
+
+
+def test_access_handle_is_the_login_lowercased_and_stripped():
+    assert access_handle("ChrisD") == "chrisd"
+    assert access_handle("max.mustermann") == "maxmustermann"
+    assert access_handle("first-last_99") == "firstlast99"
+
+
+def test_access_handle_fits_the_database_user_column():
+    """`db_user` is 32 characters and `dbeaver_prod_` eats 13 of them."""
+    handle = access_handle("a" * 60)
+
+    assert len(handle) == HANDLE_LENGTH
+    assert len(f"dbeaver_prod_{handle}") == 32
+
+
+def test_access_handle_of_a_login_without_letters_or_digits_is_empty():
+    assert access_handle("___") == ""
+    assert access_handle("") == ""
 
 
 def _request(**kwargs):
