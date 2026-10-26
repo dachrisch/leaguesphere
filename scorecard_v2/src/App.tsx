@@ -10,9 +10,5 @@ function handleSelect(gameday: Gameday): void {
 }
 
 export default function App() {
-  return (
-    <div className="app-shell">
-      <GamedayList gamedays={[]} onSelect={handleSelect} />
-    </div>
-  );
+  return <GamedayList gamedays={[]} onSelect={handleSelect} />;
 }

@@ -2,12 +2,11 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 // Self-hosted fonts: the field app must render without a network, so no
-// Google Fonts CDN. Latin subset only — the UI is German.
-import "@fontsource/barlow-condensed/latin-600.css";
+// Google Fonts CDN. Only the weights app.css uses are shipped, latin subset
+// only — the UI is German.
 import "@fontsource/barlow-condensed/latin-700.css";
 import "@fontsource/barlow-condensed/latin-800.css";
 import "@fontsource/inter/latin-400.css";
-import "@fontsource/inter/latin-500.css";
 import "@fontsource/inter/latin-600.css";
 import "@fontsource/inter/latin-700.css";
 

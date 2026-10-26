@@ -18,6 +18,8 @@ export interface Gameday {
   season: number;
   /** League pk, not a display name. */
   league: number;
+  /** `league.name` — read-only display field added for the mobile clients. */
+  league_display: string;
   /** `YYYY-MM-DD`. */
   date: string;
   /** `HH:MM` — the serializer formats the TimeField. */
@@ -145,7 +147,8 @@ export interface LogEntry {
   pat2?: number | null;
   /** Overtime jersey. */
   OT?: number | null;
-  [event: string]: string | number | boolean | null | undefined;
+  /** Any other event name; the value is the jersey or `null`. */
+  [event: string]: unknown;
 }
 
 /** `GET /api/gamelog/<gameId>/` (`GameLogSerializer`). */
@@ -162,7 +165,7 @@ export interface GameLogTeam {
   /** Team pk, `null` for an unresolved bracket placeholder. */
   id: number | null;
   /** Team description, or the resolved placeholder name. */
-  name: string;
+  name: string | null;
   /** Total score (`firsthalf.score + secondhalf.score`). */
   score: number;
   firsthalf: GameLogHalf;
@@ -194,3 +197,5 @@ export interface Penalty {
   subtext: string;
   isPenaltyAgainstOpponent: boolean;
 }
+
+// `PendingOp` (the outbox record) is deliberately deferred to the outbox task.

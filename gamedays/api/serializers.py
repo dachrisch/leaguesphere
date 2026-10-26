@@ -2,7 +2,7 @@ import logging
 from datetime import UTC, datetime, time
 
 from django.db import transaction
-from rest_framework.fields import SerializerMethodField, IntegerField
+from rest_framework.fields import CharField, SerializerMethodField, IntegerField
 from rest_framework.serializers import ModelSerializer, Serializer
 
 from gamedays.models import (
@@ -59,6 +59,9 @@ class GamedaySerializer(ModelSerializer):
     resource_urls = ResourceUrlSerializer(
         many=True, source="resourceurl_set", required=False
     )
+    # The mobile clients need the league name, not just the pk; the field is
+    # read-only so the existing write payload stays unchanged.
+    league_display = CharField(source="league.name", read_only=True)
 
     class Meta:
         model = Gameday

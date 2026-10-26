@@ -7,49 +7,44 @@
  */
 
 :root {
+  color-scheme: dark;
+
   /* Surfaces */
   --bg: #070a0f;
   --panel: #11161f;
   --panel2: #171e29;
-  --panel3: #1e2735;
 
-  /* Text */
-  --text: #f3f5f8;
+  /* Text — `--muted` stays above 4.5:1 on both panels. */
+  --fg: #f3f5f8;
   --muted: #8b95a7;
-  --faint: #6e7888;
 
   /* Hairlines and translucent fills */
   --line: rgba(255, 255, 255, 0.09);
   --line-soft: rgba(255, 255, 255, 0.06);
+  --line-strong: rgba(255, 255, 255, 0.16);
   --fill-soft: rgba(255, 255, 255, 0.07);
 
-  /* Team and status accents */
-  --red: #ff3b30;
-  --green: #2fbf71;
-  --amber: #f2a33c;
+  /* Team and status accents. `--home`/`--away` are the semantic names every
+     screen uses; the washes and tag text derive from them. */
   --home: #e5322d;
   --away: #2fbf71;
-
-  /* Translucent accent washes for tags and badges */
-  --home-wash: rgba(229, 50, 45, 0.14);
+  --amber: #f2a33c;
   --home-text: #ff7b76;
-  --away-wash: rgba(47, 191, 113, 0.12);
   --away-text: #7ce0a9;
-  --amber-wash: rgba(242, 163, 60, 0.14);
   --soon-text: #9aa5b6;
+  --home-wash: color-mix(in srgb, var(--home) 14%, transparent);
+  --away-wash: color-mix(in srgb, var(--away) 12%, transparent);
+  --amber-wash: color-mix(in srgb, var(--amber) 14%, transparent);
 
-  /* Typography */
+  /* Typography. Barlow Condensed for headings and numerals, Inter for body. */
   --font-display: "Barlow Condensed", "Inter", system-ui, sans-serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-num: "Barlow Condensed", "Inter", ui-monospace, monospace;
-  --text-xs: 9px;
-  --text-sm: 10px;
-  --text-md: 12px;
-  --text-base: 14px;
-  --text-lg: 16px;
-  --text-xl: 22px;
-  --text-2xl: 30px;
-  --text-hero: 40px;
+  --fs-xs: 11px;
+  --fs-sm: 11px;
+  --fs-md: 12px;
+  --fs-base: 14px;
+  --fs-xl: 22px;
+  --fs-2xl: 30px;
 
   /* Spacing scale (4px base) */
   --space-1: 4px;
@@ -58,27 +53,21 @@
   --space-4: 12px;
   --space-5: 16px;
   --space-6: 20px;
-  --space-7: 28px;
   --space-8: 40px;
 
   /* Radii */
-  --radius-sm: 8px;
-  --radius-md: 12px;
   --radius-lg: 14px;
-  --radius-xl: 20px;
   --radius-pill: 999px;
 
   /* Elevation */
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
     0 8px 24px rgba(0, 0, 0, 0.35);
-  --shadow-raised: 0 18px 48px rgba(0, 0, 0, 0.55);
 
   /* Interaction */
   --touch: 44px;
   --focus-ring: 2px solid var(--amber);
   --focus-offset: 2px;
   --transition-fast: 120ms ease;
-  --transition-base: 180ms ease;
 
   /* Layout shell */
   --shell-width: 560px;

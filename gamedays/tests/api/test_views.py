@@ -33,6 +33,20 @@ class TestGamedayAPIViews(WebTest):
         assert len(response.json) == 2
 
 
+class TestGamedayListLeagueDisplay(WebTest):
+    def test_gameday_list_includes_league_display(self):
+        gameday = DBSetup().g62_status_empty()
+        Gameday.objects.filter(pk=gameday.pk).update(
+            date=datetime.today().strftime("%Y-%m-%d")
+        )
+
+        response = self.app.get(reverse(API_GAMEDAY_LIST))
+
+        assert response.status_code == HTTPStatus.OK
+        row = next(item for item in response.json if item["id"] == gameday.pk)
+        assert row["league_display"] == gameday.league.name
+
+
 class TestGamedayRetrieveUpdate(WebTest):
 
     def test_api_retrieve_gameday(self):
