@@ -230,6 +230,48 @@ class TestFeatureBranches:
             for e in errors
         )
 
+    def test_new_version_file_may_carry_a_staging_suffix(self, guard):
+        """The deploy flow may pre-stage a new file as <manifest>+demo.N."""
+        base_files = {
+            path: version
+            for path, version in FILES_AT_BASE.items()
+            if path != "scorecard_v2/package.json"
+        }
+        head_files = dict(FILES_AT_BASE)
+        head_files["scorecard_v2/package.json"] = f"{BASE}+demo.1"
+        errors = guard.check_feature_branch(
+            base_manifest=BASE,
+            head_manifest=BASE,
+            base_files=base_files,
+            head_files=head_files,
+            base_changelog=CHANGELOG_AT_BASE,
+            head_changelog=CHANGELOG_AT_BASE,
+        )
+        assert errors == []
+
+    def test_new_version_file_with_a_foreign_stem_and_suffix_fails(self, guard):
+        """A staging suffix does not license a different base version."""
+        base_files = {
+            path: version
+            for path, version in FILES_AT_BASE.items()
+            if path != "scorecard_v2/package.json"
+        }
+        head_files = dict(FILES_AT_BASE)
+        head_files["scorecard_v2/package.json"] = "4.24.0+demo.1"
+        errors = guard.check_feature_branch(
+            base_manifest=BASE,
+            head_manifest=BASE,
+            base_files=base_files,
+            head_files=head_files,
+            base_changelog=CHANGELOG_AT_BASE,
+            head_changelog=CHANGELOG_AT_BASE,
+        )
+        assert any(
+            "scorecard_v2/package.json" in e
+            and "new version file must start at the base manifest version" in e
+            for e in errors
+        )
+
 
 class TestBaseState:
     def test_present_but_unreadable_base_file_fails_closed(self, guard, monkeypatch):
@@ -240,8 +282,8 @@ class TestBaseState:
         def fake_git(args):
             if args[0] == "fetch":
                 return ""  # best effort, nothing to fetch
-            if args[0] == "cat-file":
-                return ""  # every version file exists in the base tree
+            if args[0] == "ls-tree":
+                return args[-1]  # every version file exists in the base tree
             assert args[0] == "show", args
             revision = args[1]
             if revision == f"{base_ref}:{guard.MANIFEST_PATH}":
@@ -259,3 +301,27 @@ class TestBaseState:
 
         assert state is None
         assert error == f"could not read {unreadable} from {base_ref} - failing closed"
+
+    def test_unlistable_base_file_fails_closed(self, guard, monkeypatch):
+        """A failed listing is not an absent file, so it must not mean 'new'."""
+        base_ref = "origin/master"
+
+        def fake_git(args):
+            if args[0] == "fetch":
+                return ""
+            if args[0] == "ls-tree":
+                return None  # object/network error while listing the tree
+            assert args[0] == "show", args
+            revision = args[1]
+            if revision == f"{base_ref}:{guard.MANIFEST_PATH}":
+                return json.dumps({".": BASE})
+            if revision == f"{base_ref}:{guard.CHANGELOG_PATH}":
+                return CHANGELOG_AT_BASE
+            return None
+
+        monkeypatch.setattr(guard, "_git", fake_git)
+
+        state, error = guard.collect_state(base_ref)
+
+        assert state is None
+        assert error == f"could not list pyproject.toml in {base_ref} - failing closed"

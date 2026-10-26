@@ -20,8 +20,9 @@ branch), i.e. at PR time, before anything is merged:
   ``+demo.N``) from the ``deploy.yaml`` flow, which has to be reset to
   the master state before merge. A version file the branch *introduces*
   (absent from master, e.g. a new SPA ``package.json``) has no base
-  version, so it must start at the base manifest version; a base entry
-  that exists but cannot be read still fails closed.
+  version, so it must start at the base manifest version (a staging
+  ``-rc.N``/``+demo.N`` suffix on that same stem is allowed); a base
+  entry that exists but cannot be listed or read still fails closed.
 
 Exit 0 when everything is in sequence, 1 with a human-readable reason
 otherwise (fail closed when the base state cannot be determined).
@@ -214,9 +215,20 @@ def check_feature_branch(
             errors.append(f"{path}: missing from version check")
             continue
         if base_version is None:
-            # Introduced by this branch (no tree entry on master): the only
-            # safe starting point is the base manifest version.
-            if head_version != base_manifest:
+            # Introduced by this branch (no tree entry on master): the stem
+            # must match the base manifest, a staging suffix is allowed.
+            try:
+                head_stem, suffix = split_suffix(head_version)
+                base_stem = parse_stable(base_manifest)
+            except ValueError:
+                errors.append(
+                    f"{path} has unparsable version {head_version!r} "
+                    f"or base manifest {base_manifest!r}"
+                )
+                continue
+            if (suffix == "" and head_version != base_manifest) or (
+                suffix != "" and head_stem != base_stem
+            ):
                 errors.append(
                     f"{path} is {head_version!r} but a new version file must "
                     f"start at the base manifest version {base_manifest!r}"
@@ -281,10 +293,14 @@ def collect_state(base_ref: str) -> tuple[dict | None, str | None]:
         return None, f"could not parse base manifest ({exc}) - failing closed"
     base_files: dict[str, str | None] = {}
     for path in VERSION_FILES:
-        if _git(["cat-file", "-e", f"{base_ref}:{path}"]) is None:
-            # `cat-file -e` fails only when the tree entry is missing: the
-            # branch introduces this version file (checked against the base
-            # manifest by `check_feature_branch`).
+        listed = _git(["ls-tree", "-r", "--name-only", base_ref, "--", path])
+        if listed is None:
+            # A failed listing (bad ref, object/network error) must never be
+            # mistaken for "the branch introduces this file".
+            return None, f"could not list {path} in {base_ref} - failing closed"
+        if listed.strip() == "":
+            # Empty output = no tree entry on base: the branch introduces this
+            # version file (checked against the base manifest below).
             base_files[path] = None
             continue
         content = _git(["show", f"{base_ref}:{path}"])
