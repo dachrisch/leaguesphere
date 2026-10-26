@@ -68,13 +68,14 @@ must be installed from its own lockfile.
 | O3 | Hardening | Roster `PUT` gets a permission check (staff, or the officials team of a game on that gameday, today only) plus unique constraints with dedupe migrations. |
 | O4 | Device recovery | Staff-only `manage.py reset_passcheck_device` (management command). |
 
-### Backend batch status
+### Implementation status
 
 | Task | Status | Commit |
 |---|---|---|
 | 1 Roster validation + `PUT` permission | done | `38609ec1` |
 | 2 Atomic/idempotent write + device lock + constraints + reset | done | `416f3817` |
 | 3 Private photos + permission-checked endpoint + import | done | `a3a0a562` |
+| 4 `field` app, Vite scaffold, CI/deploy wiring | done | `330cc9d6` |
 
 Deviations from the task text below (the task text is kept for history):
 
@@ -96,6 +97,12 @@ Deviations from the task text below (the task text is kept for history):
 - `client_id` must be a UUID; an invalid one is a `400` (`errors.client_id`).
   `device_id` is trimmed/truncated to 64 chars.
 - The unique constraints ship with dedupe migrations (keep newest row per key).
+- Task 4 also wires the deploy path (`container/nginx.Dockerfile` build stage,
+  `container/start_dev_server.sh`), release-please/version-file registration and
+  a `field/tests/` run in the python-designer shard. The Vite bundle is ignored
+  (`field/static/field/js/*`); `field/package-lock.json` is committed.
+  `scripts/check_version_sequence.py` now tolerates a version file that does not
+  exist on master yet (new app), with a test.
 
 ---
 
