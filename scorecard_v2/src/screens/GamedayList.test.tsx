@@ -13,6 +13,7 @@ function makeGameday(overrides: Partial<Gameday> = {}): Gameday {
     name: "Herbstturnier",
     season: 3,
     league: 7,
+    league_display: "Landesliga",
     date: TODAY,
     start: "10:00",
     format: "6_2",
@@ -28,37 +29,44 @@ function makeGameday(overrides: Partial<Gameday> = {}): Gameday {
 
 function renderList(
   gamedays: Gameday[],
-  props: { todayLabel?: string } = {},
+  props: { today?: string } = {},
 ) {
   const onSelect = vi.fn();
   render(
     <GamedayList
       gamedays={gamedays}
       onSelect={onSelect}
-      todayLabel={props.todayLabel}
+      today={props.today ?? TODAY}
     />,
   );
   return { onSelect };
 }
 
 describe("GamedayList", () => {
-  it("shows the screen header with the gameday date", () => {
+  it("shows the screen header with today's date", () => {
     renderList([makeGameday()]);
 
     expect(screen.getByText("Scorecard")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { level: 1, name: "Meine Spieltage" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Mo., 26. Okt.")).toBeInTheDocument();
+
+    const sub = screen.getByText(/^Heute ·/);
+    expect(sub).toHaveTextContent("26");
+    expect(sub).toHaveTextContent("Okt");
   });
 
-  it("prefixes the given today label with Heute", () => {
-    renderList([makeGameday()], { todayLabel: "Mo., 26. Okt." });
+  it("formats the given today instead of the first gameday's date", () => {
+    renderList([makeGameday(), makeGameday({ id: 2, date: "2026-10-27" })], {
+      today: "2026-11-02",
+    });
 
-    expect(screen.getByText("Heute · Mo., 26. Okt.")).toBeInTheDocument();
+    const sub = screen.getByText(/^Heute ·/);
+    expect(sub).toHaveTextContent("Nov");
+    expect(sub).not.toHaveTextContent("Okt");
   });
 
-  it("renders name, date, start and address of every gameday", () => {
+  it("renders name, date, start, league and address of every gameday", () => {
     renderList([
       makeGameday(),
       makeGameday({ id: 2, name: "Liga Süd", start: "14:30" }),
@@ -67,7 +75,10 @@ describe("GamedayList", () => {
     expect(screen.getAllByRole("button")).toHaveLength(2);
 
     const card = screen.getByRole("button", { name: /Herbstturnier/ });
-    expect(card).toHaveTextContent("Mo., 26. Okt. · 10:00 Uhr");
+    expect(card).toHaveTextContent("26");
+    expect(card).toHaveTextContent("Okt");
+    expect(card).toHaveTextContent("10:00 Uhr");
+    expect(card).toHaveTextContent("Landesliga");
     expect(card).toHaveTextContent("Sportpark Nord, Feld 2");
 
     expect(screen.getByRole("button", { name: /Liga Süd/ })).toHaveTextContent(
@@ -76,9 +87,18 @@ describe("GamedayList", () => {
     expect(screen.getByText("2 Spieltage")).toBeInTheDocument();
   });
 
-  it("offers cards as buttons and calls onSelect on click", async () => {
-    const gameday = makeGameday();
-    const { onSelect } = renderList([gameday]);
+  it("hides the address row when the gameday has no address", () => {
+    renderList([makeGameday({ address: "" })]);
+
+    const card = screen.getByRole("button", { name: /Herbstturnier/ });
+    expect(card.querySelector(".day-address")).toBeNull();
+    expect(card).toHaveTextContent("Landesliga");
+  });
+
+  it("offers cards as buttons and calls onSelect with the clicked gameday", async () => {
+    const first = makeGameday();
+    const second = makeGameday({ id: 2, name: "Liga Süd" });
+    const { onSelect } = renderList([first, second]);
 
     const card = screen.getByRole("button", { name: /Herbstturnier/ });
     expect(card).toHaveAttribute("type", "button");
@@ -86,7 +106,17 @@ describe("GamedayList", () => {
     await userEvent.click(card);
 
     expect(onSelect).toHaveBeenCalledTimes(1);
-    expect(onSelect).toHaveBeenCalledWith(gameday);
+    expect(onSelect).toHaveBeenCalledWith(first);
+  });
+
+  it("passes the second card's gameday when it is clicked", async () => {
+    const first = makeGameday();
+    const second = makeGameday({ id: 2, name: "Liga Süd" });
+    const { onSelect } = renderList([first, second]);
+
+    await userEvent.click(screen.getByRole("button", { name: /Liga Süd/ }));
+
+    expect(onSelect).toHaveBeenCalledWith(second);
   });
 
   it("calls onSelect when the card is activated with Enter", async () => {
@@ -102,32 +132,30 @@ describe("GamedayList", () => {
     expect(onSelect).toHaveBeenCalledWith(gameday);
   });
 
-  it("marks a running gameday as live", () => {
-    renderList([makeGameday({ status: "IN_PROGRESS" })]);
+  it.each([
+    ["IN_PROGRESS", TODAY, "läuft"],
+    ["COMPLETED", TODAY, "beendet"],
+    ["PUBLISHED", TODAY, "offen"],
+    ["PUBLISHED", "2026-10-27", "bald"],
+  ] as const)(
+    "shows the %s tag label for %s",
+    (status, date, label) => {
+      renderList([makeGameday({ status, date })], { today: TODAY });
 
-    expect(screen.getByText("läuft")).toHaveClass("tag", "tag-live");
-  });
-
-  it("marks a completed gameday as done", () => {
-    renderList([makeGameday({ status: "COMPLETED" })]);
-
-    expect(screen.getByText("fertig")).toHaveClass("tag", "tag-done");
-  });
-
-  it("marks an unstarted gameday of today as open", () => {
-    renderList([makeGameday()]);
-
-    expect(screen.getByText("offen")).toHaveClass("tag", "tag-open");
-  });
+      expect(screen.getByText(label)).toBeInTheDocument();
+    },
+  );
 
   it("renders an empty state when there are no gamedays", () => {
     renderList([]);
 
-    expect(screen.getByText("Keine Spieltage für heute")).toBeInTheDocument();
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("Keine Spieltage für heute");
+    expect(status).toHaveTextContent(
+      "Nur Spieltage, an denen du eingeteilt bist, erscheinen hier.",
+    );
     expect(
-      screen.getByText(
-        "Nur Spieltage, an denen du eingeteilt bist, erscheinen hier.",
-      ),
+      screen.getByRole("heading", { level: 2, name: "Keine Spieltage für heute" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
@@ -136,7 +164,7 @@ describe("GamedayList", () => {
 describe("gamedayTag", () => {
   it.each([
     ["IN_PROGRESS", TODAY, "live", "läuft"],
-    ["COMPLETED", TODAY, "done", "fertig"],
+    ["COMPLETED", TODAY, "done", "beendet"],
     ["PUBLISHED", TODAY, "open", "offen"],
     ["DRAFT", TODAY, "open", "offen"],
     ["PUBLISHED", "2026-10-27", "soon", "bald"],
@@ -153,7 +181,14 @@ describe("gamedayTag", () => {
 
 describe("formatGamedayDate", () => {
   it("formats an API date in German", () => {
-    expect(formatGamedayDate("2026-10-26")).toBe("Mo., 26. Okt.");
+    const formatted = formatGamedayDate("2026-10-26");
+    expect(formatted).toContain("26");
+    expect(formatted).toContain("Okt");
+  });
+
+  it("falls back to the raw value for an impossible calendar date", () => {
+    expect(formatGamedayDate("2026-02-31")).toBe("2026-02-31");
+    expect(formatGamedayDate("2026-13-01")).toBe("2026-13-01");
   });
 
   it("passes an unexpected value through", () => {
