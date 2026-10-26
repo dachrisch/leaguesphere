@@ -30,6 +30,57 @@ services:
       # portainer team
       - io.portainer.accesscontrol.teams=leaguesphere
 
+  # Loopback-only TCP endpoint for the shared dbeaver_stage SSH account.
+  # Mirrors prod's db-tunnel, and for the same measured reason: publishing the
+  # mysql port directly (33062) delivers the *host's* address, so a forwarded
+  # login arrives as 192.168.0.1 and the minted accounts' `172.26.%` grant
+  # refuses it with 1045. This socat dials mysql over `backend` (172.26.x) and
+  # publishes from `tunnel`, which is the only non-internal network it shares
+  # with nothing else.
+  db-tunnel:
+    image: alpine/socat:1.8.1.3
+    container_name: ${COMPOSE_PROJECT_NAME}.db-tunnel
+    restart: unless-stopped
+    command: TCP-LISTEN:33064,fork,reuseaddr TCP:mysql:3306
+    ports:
+      - "127.0.0.1:33064:33064"
+    networks:
+      - backend
+      - tunnel
+    labels:
+      - traefik.enable=false
+      - io.portainer.accesscontrol.teams=leaguesphere
+
+  # Same executor as prod (see docker-compose.yaml): mints and drops the
+  # temporary accounts for this stack. No socat of its own - db-tunnel above
+  # is the one the SSH tunnel lands on.
+  db-access:
+    image: mariadb:latest
+    container_name: ${COMPOSE_PROJECT_NAME}.db-access
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/opt/dba/tick.sh"]
+    command: ["--loop"]
+    # Rendered by Ansible (ls_dbeaver_access) next to this file. Plain string,
+    # not the `required: false` mapping: CI still runs compose v1, which cannot
+    # parse that form. A stack that starts without it fails on the first tick -
+    # tick.sh refuses to run with an incomplete environment.
+    env_file: dba.env
+    volumes:
+      # Directory mount, world-readable (the container drops ALL capabilities):
+      # see the note in docker-compose.yaml.
+      - "./dba:/opt/dba:ro"
+    networks:
+      - backend
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - traefik.enable=false
+      - io.portainer.accesscontrol.teams=leaguesphere
+
   www:
     image: leaguesphere/frontend:staging
     env_file: .env.staging
@@ -116,6 +167,11 @@ networks:
   db_access:
     internal: false
   egress:
+    internal: false
+  # Publish-only bridge for db-tunnel: a port can only be published from a
+  # non-internal network, and joining `db_access` would flip the connection's
+  # source address away from 172.26.x. No other service joins this network.
+  tunnel:
     internal: false
   proxy:
     external: true

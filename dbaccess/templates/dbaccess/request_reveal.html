@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="py-3" style="max-width: 720px">
+        <h1 class="h4">Connection details</h1>
+        <p class="text-muted small">
+            Shown once per click, and every reveal is recorded. The password is meaningless
+            after <strong>{{ access_request.expires_at|date:"d.m.Y H:i" }}</strong>.
+        </p>
+
+        <table class="table table-sm">
+            <tbody>
+            <tr><th style="width: 34%">SSH host / user</th>
+                <td><code>{{ tunnel.host }}</code> / <code>{{ tunnel.user }}</code></td></tr>
+            <tr><th>Tunnel key</th>
+                <td class="small">Vaultwarden: <code>{{ tunnel.key_item }}</code></td></tr>
+            <tr><th>Main host / port</th>
+                <td><code>127.0.0.1</code> / <code>{{ tunnel.port }}</code></td></tr>
+            <tr><th>Database</th>
+                <td><code>{{ db_name }}</code></td></tr>
+            <tr><th>User</th>
+                <td><code>{{ access_request.db_user }}</code>
+                    {% if access_request.grant_host %}
+                        <span class="text-muted small">&mdash; accepted only from
+                            <code>{{ access_request.grant_host }}</code></span>
+                    {% endif %}
+                </td></tr>
+            <tr><th>Password</th>
+                <td><code class="fs-5">{{ password }}</code></td></tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-warning small mb-0">
+            Turn auto-commit off before you touch anything. Every write needs a scoped
+            <code>SELECT</code> first, and the pre-session <code>bak_&lt;table&gt;_&lt;date&gt;</code>
+            copies already exist — do not try to create your own, the account has no
+            <code>CREATE</code>.
+        </div>
+
+        <a class="btn btn-link btn-sm px-0 mt-3"
+           href="{% url 'dbaccess-detail' access_request.pk %}">Back to the session</a>
+    </div>
+{% endblock %}

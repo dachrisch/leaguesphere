@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="py-3" style="max-width: 780px">
+        <a class="small text-decoration-none" href="{% url 'dbaccess-list' %}">&larr; Temporary database access</a>
+        <h1 class="h4 mt-2 mb-1">Request temporary production access</h1>
+        <p class="text-muted small mb-4">
+            A second person has to approve this. The account is created within about fifteen
+            seconds of approval and stops working at the hard cap, whether or not anyone
+            remembers it.
+        </p>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="card mb-4">
+                <div class="card-header bg-body-tertiary small text-uppercase text-muted fw-semibold">
+                    The account
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <code class="fs-6">dbeaver_prod_{{ handle }}</code>
+                        <span class="badge bg-light text-dark border">named after you</span>
+                    </div>
+                    <p class="form-text mb-0 mt-2">
+                        Taken from your login (<code>{{ request.user.username }}</code>), so every
+                        temporary account traces back to one named person. It can read the whole
+                        schema and update only the tables you pick below.
+                    </p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-body-tertiary small text-uppercase text-muted fw-semibold">
+                    The reason
+                </div>
+                <div class="card-body">
+                    {% include "dbaccess/_field.html" with field=form.purpose %}
+                    <div class="row g-3">
+                        <div class="col-sm-5">
+                            {% include "dbaccess/_field.html" with field=form.ttl_hours %}
+                        </div>
+                        <div class="col-sm-7">
+                            {% include "dbaccess/_field.html" with field=form.ticket_url %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-body-tertiary d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <span class="small text-uppercase text-muted fw-semibold">Tables</span>
+                    <span class="small text-muted">
+                        <strong id="table-count">0</strong> of {{ form.tables.field.queryset|length }} selected
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="input-group input-group-sm mb-2">
+                        <span class="input-group-text">Filter</span>
+                        <input class="form-control" id="table-filter" type="search"
+                               placeholder="team, gameday, …" autocomplete="off"
+                               aria-label="Filter the table list">
+                        <button class="btn btn-outline-secondary" type="button" id="table-clear">
+                            Clear selection
+                        </button>
+                    </div>
+                    <label class="visually-hidden" for="{{ form.tables.id_for_label }}">
+                        {{ form.tables.label }}
+                    </label>
+                    {{ form.tables }}
+                    {% if form.tables.help_text %}
+                        <div class="form-text">{{ form.tables.help_text }}</div>
+                    {% endif %}
+                    {% for error in form.tables.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <button class="btn btn-primary" type="submit">Submit for approval</button>
+                <a class="btn btn-link text-decoration-none" href="{% url 'dbaccess-list' %}">Cancel</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        (function () {
+            const select = document.getElementById("{{ form.tables.id_for_label }}");
+            const filter = document.getElementById("table-filter");
+            const clear = document.getElementById("table-clear");
+            const count = document.getElementById("table-count");
+            if (!select || !filter || !clear || !count) {
+                return;
+            }
+
+            function refreshCount() {
+                count.textContent = Array.from(select.options).filter(function (o) {
+                    return o.selected;
+                }).length;
+            }
+
+            filter.addEventListener("input", function () {
+                const needle = filter.value.trim().toLowerCase();
+                Array.from(select.options).forEach(function (option) {
+                    const hit = !needle || option.text.toLowerCase().indexOf(needle) !== -1;
+                    // `hidden` covers the spec, `display` covers the browsers
+                    // that ignore it on <option>.
+                    option.hidden = !hit;
+                    option.style.display = hit ? "" : "none";
+                });
+            });
+
+            clear.addEventListener("click", function () {
+                Array.from(select.options).forEach(function (option) {
+                    option.selected = false;
+                });
+                refreshCount();
+            });
+
+            select.addEventListener("change", refreshCount);
+            refreshCount();
+        })();
+    </script>
+{% endblock %}

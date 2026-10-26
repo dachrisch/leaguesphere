@@ -170,6 +170,7 @@ urlpatterns = [
     path("passcheck/", include("passcheck.urls")),
     path("matchreport/", include("matchreport.urls")),
     path("dal/", include("league_manager.dal.urls")),
+    path("dbaccess/", include("dbaccess.urls")),
     path("demo-info/", DemoInfoView.as_view(), name="demo_info"),
     path("", RedirectView.as_view(pattern_name=LEAGUE_GAMEDAY_LIST, permanent=True)),
     path(

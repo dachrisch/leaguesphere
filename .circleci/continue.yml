@@ -188,7 +188,7 @@ jobs:
       - checkout
       - setup_uv
       - python_shard_test:
-          paths: "league_manager/tests/ share/tests/ home/tests/"
+          paths: "league_manager/tests/ share/tests/ home/tests/ dbaccess/tests/"
           junit: "test-results-core.xml"
           cov_flag: "python-core"
 
@@ -675,6 +675,14 @@ jobs:
             MYSQL_DATABASE=ci_test_db
             MYSQL_PASSWORD=ci_test_password
             DEBUG=False
+            EOF
+            cat > dba.env \<<EOF
+            DBACCESS_HOST=db
+            DBACCESS_PORT=3306
+            DBACCESS_USER=ci_provisioner
+            DBACCESS_PASSWORD=ci_test_password
+            DBACCESS_DB=ci_test_db
+            DBACCESS_HOST_PATTERN=172.25.%
             EOF
             sed -e 's/env_file: ls.env/env_file: ls.env.ci/g' \
                 -e 's|image: leaguesphere/backend:latest|image: backend:latest|g' \

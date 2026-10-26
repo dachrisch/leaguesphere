@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "journey",
     "share",
     "home",
+    "dbaccess",
 ]
 
 MIDDLEWARE = [
@@ -238,6 +239,30 @@ EQUIPMENT_APPROVAL_ENDPOINT = os.environ.get("EQUIPMENT_APPROVAL_ENDPOINT")
 EQUIPMENT_APPROVAL_TOKEN = os.environ.get("EQUIPMENT_APPROVAL_TOKEN")
 
 JOURNEY_INACTIVITY_MINUTES = int(os.environ.get("JOURNEY_INACTIVITY_MINUTES", 30))
+
+# --- temporary database access (dbaccess) ----------------------------------
+# Feature switch for the request/approval surface. Off unless the deployment
+# says otherwise, so a stack without a provisioner sidecar cannot accept
+# requests it could never fulfil.
+DBACCESS_ENABLED = os.environ.get("DBACCESS_ENABLED", "false") == "true"
+# Fernet key for the credential reveal. Deliberately NOT in the database: the
+# ciphertext it protects sits in dbaccess_request.secret_ct, which lands in the
+# hourly backup, so this key is what makes a restored backup useless for
+# reading credentials.
+DBACCESS_SECRET_KEY = os.environ.get("DBACCESS_SECRET_KEY")
+# Mirrors the constant the host reaper enforces. The database constraint in
+# dbaccess.models pins the application side.
+DBACCESS_TTL_CAP_HOURS = int(os.environ.get("DBACCESS_TTL_CAP_HOURS", 8))
+# What the reveal page tells a person to connect to. These are properties of the
+# host and stack, not of the request: stage's tunnel lands on a different
+# account and port than prod's (its socat listener), so a hardcoded prod value
+# would send a stage reader to a port that answers 1045.
+DBACCESS_TUNNEL_HOST = os.environ.get("DBACCESS_TUNNEL_HOST", "servy.lehel.xyz")
+DBACCESS_TUNNEL_USER = os.environ.get("DBACCESS_TUNNEL_USER", "dbeaver_tunnel")
+DBACCESS_TUNNEL_PORT = os.environ.get("DBACCESS_TUNNEL_PORT", "33063")
+DBACCESS_TUNNEL_KEY_ITEM = os.environ.get(
+    "DBACCESS_TUNNEL_KEY_ITEM", "dbeaver prod tunnel key (servy)"
+)
 
 LOGGING = {
     "version": 1,
