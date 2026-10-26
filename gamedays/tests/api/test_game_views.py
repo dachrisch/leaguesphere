@@ -1,11 +1,16 @@
 import json
 import pathlib
 import re
+from datetime import timedelta
 from http import HTTPStatus
 
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django_webtest import WebTest
 from rest_framework.reverse import reverse
+from rest_framework.test import APITestCase
 
+from gamedays.api.game_views import GamesToWhistleAPIView
 from gamedays.constants import (
     API_GAMELOG,
     API_CONFIG_SCORECARD_PENALTIES,
@@ -710,9 +715,23 @@ class TestGamesToWhistlePasscheck(WebTest):
 
     def setUp(self):
         self.gameday = DBSetup().g62_status_empty()
-        self.game = Gameinfo.objects.filter(gameday=self.gameday).first()
-        self.home = Gameresult.objects.get(gameinfo=self.game, isHome=True).team
-        self.away = Gameresult.objects.get(gameinfo=self.game, isHome=False).team
+        # Pick a game whose home team was created *after* the away team: a
+        # team-pk sort would put away first, so the test really pins the
+        # requested home-first, jersey-ordered output.
+        self.game = next(
+            game
+            for game in Gameinfo.objects.filter(gameday=self.gameday)
+            if game.gameresult_set.get(isHome=True).team_id
+            > game.gameresult_set.get(isHome=False).team_id
+        )
+        self.home_result = Gameresult.objects.get(gameinfo=self.game, isHome=True)
+        self.away_result = Gameresult.objects.get(gameinfo=self.game, isHome=False)
+        self.home = self.home_result.team
+        self.away = self.away_result.team
+        # The test only discriminates while a Gameresult pk differs from its
+        # Team pk — equal values would let a team-pk comparison pass by luck.
+        assert str(self.home_result.pk) != str(self.home_result.team_id)
+        assert str(self.away_result.pk) != str(self.away_result.team_id)
 
     def _whistle_rows(self):
         response = self.app.get(
@@ -748,55 +767,23 @@ class TestGamesToWhistlePasscheck(WebTest):
             self.game.pk
         ]
 
+    def test_games_to_whistle_passcheck_ignores_other_gamedays(self):
+        # Same two teams verified for *another* gameday: this gameday's game
+        # must stay unverified, so the flag has to be scoped by gameday.
+        other_gameday = DBSetup().create_empty_gameday()
+        for team in (self.home, self.away):
+            PasscheckVerification.objects.create(
+                gameday=other_gameday,
+                team=team,
+                official_name="Kontrolle",
+                user=self.gameday.author,
+            )
 
-class TestGameRosterAPIView(WebTest):
-    def setUp(self):
-        self.gameday = DBSetup().g62_status_empty()
-        self.game = Gameinfo.objects.filter(gameday=self.gameday).first()
-        self.home = Gameresult.objects.get(gameinfo=self.game, isHome=True).team
-        self.away = Gameresult.objects.get(gameinfo=self.game, isHome=False).team
+        rows = {row["id"]: row for row in self._whistle_rows()}
 
-    def _add_player(self, team, jersey, last_name):
-        playerlist = PlayerlistFactory(
-            team=team,
-            player=PlayerFactory(
-                person=PersonFactory(first_name="Test", last_name=last_name),
-                pass_number="12345",
-            ),
-            jersey_number=jersey,
-        )
-        PlayerlistGamedayFactory(
-            playerlist=playerlist, gameday=self.gameday, gameday_jersey=jersey
-        )
+        assert rows[self.game.pk]["passcheck"] is False
 
-    def _roster(self, game):
-        return self.app.get(
-            reverse("api-game-roster", kwargs={"pk": game.pk}),
-            headers=DBSetup().get_token_header(),
-        )
-
-    def test_game_roster_lists_both_teams_without_pass_numbers(self):
-        self._add_player(self.home, 7, "Muster")
-        self._add_player(self.home, 9, "Beispiel")
-        self._add_player(self.away, 11, "Testmann")
-
-        response = self._roster(self.game)
-
-        assert response.status_code == HTTPStatus.OK
-        assert sorted(response.json, key=lambda row: (row["side"], row["jersey"])) == [
-            {"side": "away", "jersey": 11, "name": "Testmann"},
-            {"side": "home", "jersey": 7, "name": "Muster"},
-            {"side": "home", "jersey": 9, "name": "Beispiel"},
-        ]
-        assert {row["side"] for row in response.json} == {"home", "away"}
-        # Jersey and surname only — the pass number never leaves the server.
-        assert all(set(row) == {"side", "jersey", "name"} for row in response.json)
-        assert "12345" not in response.text
-
-    def test_game_roster_is_empty_for_a_bracket_placeholder(self):
-        # A roster exists for a real team of the gameday; the placeholder game
-        # still has to answer empty instead of dumping every player of the day.
-        self._add_player(self.home, 7, "Muster")
+    def test_games_to_whistle_reports_false_for_a_bracket_placeholder(self):
         placeholder = Gameinfo.objects.create(
             gameday=self.gameday,
             scheduled="09:00",
@@ -808,16 +795,175 @@ class TestGameRosterAPIView(WebTest):
         Gameresult.objects.create(gameinfo=placeholder, team=None, isHome=True)
         Gameresult.objects.create(gameinfo=placeholder, team=None, isHome=False)
 
-        response = self._roster(placeholder)
+        rows = {row["id"]: row for row in self._whistle_rows()}
+
+        assert rows[placeholder.pk]["passcheck"] is False
+
+    def test_passcheck_annotation_costs_two_queries(self):
+        games = [
+            {
+                "id": self.game.pk,
+                "id_home": str(self.home_result.pk),
+                "id_away": str(self.away_result.pk),
+            }
+        ]
+
+        with CaptureQueriesContext(connection) as queries:
+            GamesToWhistleAPIView._annotate_passcheck(games, self.gameday.pk)
+
+        assert len(queries.captured_queries) == 2
+        assert games[0]["passcheck"] is False
+
+
+class TestGameRosterAPIView(APITestCase):
+    def setUp(self):
+        self.gameday = DBSetup().g62_status_empty()
+        # Home team created *after* the away team, so only an explicit
+        # home-first sort produces the expected order (see the roster test).
+        self.game = next(
+            game
+            for game in Gameinfo.objects.filter(gameday=self.gameday)
+            if game.gameresult_set.get(isHome=True).team_id
+            > game.gameresult_set.get(isHome=False).team_id
+        )
+        self.home = Gameresult.objects.get(gameinfo=self.game, isHome=True).team
+        self.away = Gameresult.objects.get(gameinfo=self.game, isHome=False).team
+        self.client.force_authenticate(user=self.gameday.author)
+
+    def _add_player(
+        self,
+        team,
+        jersey,
+        last_name,
+        *,
+        first_name="Test",
+        gameday=None,
+        left_on=None,
+        joined_on=None,
+    ):
+        playerlist = PlayerlistFactory(
+            team=team,
+            player=PlayerFactory(
+                person=PersonFactory(first_name=first_name, last_name=last_name),
+                pass_number="12345",
+            ),
+            jersey_number=jersey,
+            left_on=left_on,
+            joined_on=joined_on or self.gameday.date,
+        )
+        PlayerlistGamedayFactory(
+            playerlist=playerlist,
+            gameday=gameday or self.gameday,
+            gameday_jersey=jersey,
+        )
+
+    def _roster(self, game):
+        return self.client.get(reverse("api-game-roster", kwargs={"pk": game.pk}))
+
+    def _placeholder_game(self):
+        placeholder = Gameinfo.objects.create(
+            gameday=self.gameday,
+            scheduled="09:00",
+            field=1,
+            stage="Finalrunde",
+            standing="P5",
+            officials=Team.objects.first(),
+        )
+        Gameresult.objects.create(gameinfo=placeholder, team=None, isHome=True)
+        Gameresult.objects.create(gameinfo=placeholder, team=None, isHome=False)
+        return placeholder
+
+    def test_game_roster_lists_only_active_players_of_this_game(self):
+        self._add_player(self.home, 7, "Muster")
+        self._add_player(self.home, 9, "", first_name="NurVorname")
+        self._add_player(self.away, 11, "Testmann")
+
+        # Left before the gameday: snapshotted, but no longer eligible.
+        self._add_player(
+            self.home,
+            12,
+            "Ehemalig",
+            left_on=self.gameday.date - timedelta(days=1),
+        )
+        # Active, but on a team that does not play this game.
+        other_team_id = (
+            Gameresult.objects.filter(
+                gameinfo__gameday=self.gameday, team__isnull=False
+            )
+            .exclude(team_id__in=[self.home.pk, self.away.pk])
+            .values_list("team_id", flat=True)
+            .first()
+        )
+        self._add_player(Team.objects.get(pk=other_team_id), 13, "Fremdteam")
+        # A home player snapshotted for a different gameday only.
+        self._add_player(
+            self.home,
+            14,
+            "AndererTag",
+            gameday=DBSetup().create_empty_gameday(),
+        )
+        # Joined after the gameday: not yet eligible.
+        self._add_player(
+            self.home,
+            15,
+            "Zukunft",
+            joined_on=self.gameday.date + timedelta(days=1),
+        )
+
+        response = self._roster(self.game)
 
         assert response.status_code == HTTPStatus.OK
-        assert response.json == []
+        assert response.data == [
+            {"side": "home", "jersey": 7, "name": "Muster"},
+            {"side": "home", "jersey": 9, "name": "NurVorname"},
+            {"side": "away", "jersey": 11, "name": "Testmann"},
+        ]
+        # Home first, then by jersey — no sorting in the test that could hide
+        # a regression in the server-side order.
+        assert [row["side"] for row in response.data] == ["home", "home", "away"]
+        # Jersey and surname only — the pass number never leaves the server.
+        assert all(set(row) == {"side", "jersey", "name"} for row in response.data)
+        assert "12345" not in response.text
+
+    def test_game_roster_name_falls_back_to_first_name_then_null(self):
+        self._add_player(self.home, 7, "", first_name="")
+        self._add_player(self.home, 9, "", first_name="NurVorname")
+
+        response = self._roster(self.game)
+
+        assert response.data == [
+            {"side": "home", "jersey": 7, "name": None},
+            {"side": "home", "jersey": 9, "name": "NurVorname"},
+        ]
+
+    def test_game_roster_query_count_is_flat(self):
+        url = reverse("api-game-roster", kwargs={"pk": self.game.pk})
+
+        with self.assertNumQueries(3):
+            response = self.client.get(url)
+        assert response.status_code == HTTPStatus.OK
+
+        for jersey in range(1, 41):
+            self._add_player(self.home, jersey, f"Spieler{jersey}")
+
+        with self.assertNumQueries(3):
+            response = self.client.get(url)
+        assert len(response.data) == 40
+
+    def test_game_roster_is_empty_for_a_bracket_placeholder(self):
+        # A roster exists for a real team of the gameday; the placeholder game
+        # still has to answer empty instead of dumping every player of the day.
+        self._add_player(self.home, 7, "Muster")
+
+        response = self._roster(self._placeholder_game())
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.data == []
 
     def test_game_roster_requires_authentication(self):
-        response = self.app.get(
-            reverse("api-game-roster", kwargs={"pk": self.game.pk}),
-            expect_errors=True,
-        )
+        self.client.force_authenticate(user=None)
+
+        response = self._roster(self.game)
 
         assert response.status_code == HTTPStatus.UNAUTHORIZED
 
