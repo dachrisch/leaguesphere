@@ -90,7 +90,8 @@ describe("apiGet", () => {
     expect(init.method).toBe("GET");
     expect(init.credentials).toBe("same-origin");
     expect(init.body).toBeUndefined();
-    expect(headers).toEqual({ Accept: "application/json" });
+    expect(headers).toMatchObject({ Accept: "application/json" });
+    expect(headers["X-CSRFToken"]).toBeUndefined();
   });
 
   it("does not send a CSRF header even when the cookie is present", async () => {
@@ -112,6 +113,12 @@ describe("apiGet", () => {
     fetchMock.mockResolvedValue(new Response("", { status: 200 }));
 
     await expect(apiGet("/api/gamelog/1")).resolves.toBeUndefined();
+  });
+
+  it("resolves a non-JSON 2xx body as raw text", async () => {
+    fetchMock.mockResolvedValue(new Response("ok", { status: 200 }));
+
+    await expect(apiGet("/api/ping")).resolves.toBe("ok");
   });
 });
 
@@ -136,6 +143,7 @@ describe("ApiError", () => {
     const error = await expectApiError(apiGet("/api/gamelog/1"));
 
     expect(error.status).toBe(500);
+    expect(error.body).toBe("<html>kaputt</html>");
     expect(error.detail).toBeUndefined();
     expect(error.message).toBe("Die Anfrage ist fehlgeschlagen.");
   });
@@ -251,6 +259,34 @@ describe("unsafe methods", () => {
     expect(error.status).toBe(403);
     expect(error.detail).toBe("CSRF Failed");
   });
+
+  it("sends an undecodable cookie value raw and proceeds", async () => {
+    document.cookie = "csrftoken=%E0%A4%A";
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
+
+    await expect(apiPost("/api/gamelog/1", {})).resolves.toEqual({ ok: true });
+
+    expect(lastCall().headers["X-CSRFToken"]).toBe("%E0%A4%A");
+  });
+
+  it("sends no body and no JSON content type without a payload", async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(jsonResponse({ ok: true })),
+    );
+
+    await apiPost("/api/game/1/halftime");
+
+    let { init, headers } = lastCall();
+    expect(init.method).toBe("POST");
+    expect(init.body).toBeUndefined();
+    expect(headers["Content-Type"]).toBeUndefined();
+
+    await apiPost("/api/game/1/halftime", null);
+
+    ({ init, headers } = lastCall());
+    expect(init.body).toBeUndefined();
+    expect(headers["Content-Type"]).toBeUndefined();
+  });
 });
 
 describe("device header", () => {
@@ -275,5 +311,38 @@ describe("device header", () => {
 
     await apiGet("/api/gamelog/3");
     expect(lastCall().headers["X-Scorecard-Device"]).toBeUndefined();
+
+    setDeviceId("   ");
+
+    await apiGet("/api/gamelog/4");
+    expect(lastCall().headers["X-Scorecard-Device"]).toBeUndefined();
+  });
+
+  it("lets a request override the module-level device id", async () => {
+    setDeviceId("A");
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(jsonResponse({ ok: true })),
+    );
+
+    await apiGet("/api/gamelog/1", { deviceId: "B" });
+    expect(lastCall().headers["X-Scorecard-Device"]).toBe("B");
+
+    await apiPost("/api/gamelog/1", {}, { deviceId: "B" });
+    expect(lastCall().headers["X-Scorecard-Device"]).toBe("B");
+
+    await apiPut("/api/game/1/possession", { team: "Heim" }, { deviceId: "B" });
+    expect(lastCall().headers["X-Scorecard-Device"]).toBe("B");
+
+    await apiDelete("/api/gamelog/1", { sequence: 3 }, { deviceId: "B" });
+    expect(lastCall().headers["X-Scorecard-Device"]).toBe("B");
+
+    await apiGet("/api/gamelog/1", { deviceId: null });
+    expect(lastCall().headers["X-Scorecard-Device"]).toBeUndefined();
+
+    await apiGet("/api/gamelog/1", { deviceId: "   " });
+    expect(lastCall().headers["X-Scorecard-Device"]).toBeUndefined();
+
+    await apiGet("/api/gamelog/1");
+    expect(lastCall().headers["X-Scorecard-Device"]).toBe("A");
   });
 });
