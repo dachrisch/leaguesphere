@@ -19,6 +19,7 @@ from gamedays.api.serializers import (
 )
 from gamedays.models import Team, Gameinfo, GameSetup, Gameresult, TeamLog
 from gamedays.service.game_service import GameService
+from gamedays.service.gamelog import game_events
 from gamedays.service.wrapper.gameinfo_wrapper import IllegalGameTransition
 from gamedays.service.gameday_service import GamedayService
 from gamedays.service.model_helper import GameresultHelper, TeamLogHelper
@@ -87,6 +88,7 @@ class GameLogAPIView(APIView):
                 score_away_fh=GameresultHelper.get_gameresult_score(False, is_fh=True),
                 score_away_sh=GameresultHelper.get_gameresult_score(False, is_sh=True),
                 gameday_date=F("gameday__date"),
+                inPossession=F("in_possession"),
             )
             .values(
                 *GameLogSerializer.ALL_FIELD_VALUES,
@@ -98,6 +100,16 @@ class GameLogAPIView(APIView):
         if not gamelog.exists():
             raise NotFound(detail=f"No game found for gameId {game_id}")
         gamelog = list(gamelog)[0]
+        if not gamelog.get(GameLogSerializer.IN_POSSESSION):
+            # A blank stored value means "no possession", not "the empty team".
+            gamelog[GameLogSerializer.IN_POSSESSION] = None
+        gamelog.update(
+            {
+                GameLogSerializer.EVENTS: game_events(
+                    game_id, gamelog.get(GameLogSerializer.GAMEDAY_DATE)
+                )
+            }
+        )
         gamelog.update(
             {
                 GameLogSerializer.TEAMLOG_HOME: list(
@@ -144,18 +156,37 @@ class GameLogAPIView(APIView):
     def delete(self, request: Request, *args, **kwargs):
         game_id = kwargs.get("id")
         sequence = request.data.get("sequence")
+        team_log_id = request.data.get("team_log_id")
         try:
             game = Gameinfo.objects.get(pk=game_id)
         except Gameinfo.DoesNotExist:
             raise NotFound(
                 detail=f"Could not delete team logs ... gameId {game_id} not found"
             )
-        if not self._can_delete_log_entry(request.user, game, sequence):
-            raise PermissionDenied(
-                detail="You do not have permission to delete this game log entry."
-            )
-        game_service = GameService(game_id)
-        gamelog = game_service.delete_gamelog(sequence)
+        if team_log_id is not None:
+            # The v2 log undoes one row at a time: a penalty (sequence 0) must
+            # not take every timeout of the game with it.
+            try:
+                team_log_id = int(team_log_id)
+            except (TypeError, ValueError):
+                raise ValidationError({"team_log_id": "must be an integer"})
+            if not TeamLog.objects.filter(gameinfo=game, pk=team_log_id).exists():
+                raise NotFound(
+                    detail=f"Could not delete team log {team_log_id} of game {game_id}"
+                )
+            if not self._can_delete_team_log(request.user, game, team_log_id):
+                raise PermissionDenied(
+                    detail="You do not have permission to delete this game log entry."
+                )
+            game_service = GameService(game_id)
+            gamelog = game_service.delete_gamelog_entry(team_log_id)
+        else:
+            if not self._can_delete_log_entry(request.user, game, sequence):
+                raise PermissionDenied(
+                    detail="You do not have permission to delete this game log entry."
+                )
+            game_service = GameService(game_id)
+            gamelog = game_service.delete_gamelog(sequence)
         return Response(
             json.loads(gamelog.as_json(), object_pairs_hook=OrderedDict),
             status=HTTPStatus.OK,
@@ -178,6 +209,19 @@ class GameLogAPIView(APIView):
             return True
         return TeamLog.objects.filter(
             gameinfo=game, sequence=sequence, isDeleted=False, author=user
+        ).exists()
+
+    @staticmethod
+    def _can_delete_team_log(user, game: Gameinfo, team_log_id) -> bool:
+        """The same permission rule as {@link _can_delete_log_entry}, per row."""
+        if not user.is_authenticated:
+            return False
+        if user.is_staff:
+            return True
+        if game.gameday.author_id == user.pk:
+            return True
+        return TeamLog.objects.filter(
+            gameinfo=game, pk=team_log_id, isDeleted=False, author=user
         ).exists()
 
 

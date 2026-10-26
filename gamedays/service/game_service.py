@@ -97,9 +97,17 @@ class GameService(object):
     def delete_gamelog(self, sequence):
         return self._write_gamelog(lambda: self._mark_entries_as_deleted(sequence))
 
+    def delete_gamelog_entry(self, team_log_id):
+        return self._write_gamelog(lambda: self._mark_entry_as_deleted(team_log_id))
+
     def _mark_entries_as_deleted(self, sequence) -> GameLog:
         gamelog = self.get_gamelog()
         gamelog.mark_entries_as_deleted(sequence)
+        return gamelog
+
+    def _mark_entry_as_deleted(self, team_log_id) -> GameLog:
+        gamelog = self.get_gamelog()
+        gamelog.mark_entry_as_deleted(team_log_id)
         return gamelog
 
     def _write_gamelog(self, write) -> GameLog:

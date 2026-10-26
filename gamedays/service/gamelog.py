@@ -1,11 +1,12 @@
 import json
+from datetime import UTC, datetime, time
 
 from django.db import transaction
 from django.db.models import QuerySet
 from django.utils import timezone
 
 from gamedays.models import Gameinfo, Gameresult, TeamLog
-from gamedays.service.utils import AsJsonEncoder
+from gamedays.service.utils import AsJsonEncoder, utc_time_as_iso
 
 EXCLUDED_EVENTS = ["Strafe", "Spielzeit", "Auszeit", "First Down"]
 
@@ -108,6 +109,51 @@ class GameLogCreator(object):
         return number
 
 
+def gameday_ref_now(gameday_date):
+    """Anchor log times to the gameday date, not to the request time.
+
+    A snapshot also serves past gamedays; anchoring at noon UTC lets
+    ``utc_time_as_iso`` resolve the date of both 00:05 and 23:59 ticks to the
+    gameday's date.
+    """
+    if gameday_date is None:
+        return None
+    return datetime.combine(gameday_date, time(12, 0), tzinfo=UTC)
+
+
+def game_events(gameinfo_id, gameday_date=None) -> list[dict]:
+    """Every ``TeamLog`` row of a game as one flat, newest-first list.
+
+    ``GameLog._get_entries_for_team_and_half`` deliberately drops the
+    non-scoring events (penalties, timeouts, first downs, time) because the
+    old scorecard's play list cannot render them. The v2 log shows them and
+    undoes them one by one, so it needs the raw rows. Ordering is newest
+    first: ``created_time`` then the sequence, which keeps a touchdown and its
+    conversion adjacent.
+    """
+    ref_now = gameday_ref_now(gameday_date)
+    rows = (
+        TeamLog.objects.filter(gameinfo_id=gameinfo_id)
+        .select_related("team")
+        .order_by("-created_time", "-sequence")
+    )
+    return [
+        {
+            "id": row.pk,
+            "sequence": row.sequence,
+            "team": row.team.name if row.team is not None else None,
+            "event": row.event,
+            "player": row.player,
+            "input": row.input,
+            "half": row.half,
+            "cop": row.cop,
+            "isDeleted": row.isDeleted,
+            "time": utc_time_as_iso(row.created_time, ref_now=ref_now),
+        }
+        for row in rows
+    ]
+
+
 class GameLog(object):
     home_firsthalf_entries: QuerySet[TeamLog] = None
     away_firsthalf_entries: QuerySet[TeamLog] = None
@@ -128,6 +174,10 @@ class GameLog(object):
 
     def as_json(self):
         self.gamelog.is_first_half = self.is_firsthalf()
+        self.gamelog.in_possession = self.gameinfo.in_possession or None
+        self.gamelog.events = game_events(
+            self.gameinfo.pk, self.gameinfo.gameday.date
+        )
         self.gamelog.home.score = self.get_home_score()
         self.gamelog.away.score = self.get_away_score()
         self.gamelog.home.firsthalf.score = self._calc_score(
@@ -266,6 +316,17 @@ class GameLog(object):
             isDeleted=True, updated_at=timezone.now()
         )
 
+    def mark_entry_as_deleted(self, team_log_id):
+        """Mark exactly one row, leaving a sibling of the same sequence alone.
+
+        Used by the v2 log's per-event undo: a penalty shares sequence 0 with
+        every other excluded event, so deleting by sequence would wipe them
+        all.
+        """
+        TeamLog.objects.filter(gameinfo=self.gameinfo, pk=team_log_id).update(
+            isDeleted=True, updated_at=timezone.now()
+        )
+
 
 class Half(object):
     def __init__(self):
@@ -300,11 +361,15 @@ class GameLogObject(object):
         self.home = Team(home, home_id)
         self.away = Team(away, away_id)
         self.is_first_half = True
+        self.in_possession = None
+        self.events = []
 
     def as_json(self):
         return dict(
             gameId=self.gameId,
             isFirstHalf=self.is_first_half,
+            inPossession=self.in_possession,
+            events=self.events,
             home=self.home,
             away=self.away,
         )
