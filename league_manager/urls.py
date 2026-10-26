@@ -163,6 +163,7 @@ urlpatterns = [
     path("journeys/", include("journey.urls")),
     path("officials/", include("officials.urls")),
     path("teammanager/", include("teammanager.urls")),
+    path("scorecard/v2/", include("scorecard_v2.urls")),
     path("scorecard/", include("scorecard.urls")),
     path("liveticker/", include("liveticker.urls")),
     path("leaguetable/", include("league_table.urls")),
