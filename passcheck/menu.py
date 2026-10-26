@@ -1,3 +1,4 @@
+from field.urls import FIELD_APP
 from gamedays.menu import GamedaysMenuAdmin
 from league_manager.base_menu import BaseMenu, MenuItem, MenuDivider
 from passcheck.urls import (
@@ -31,6 +32,7 @@ class PasscheckMenu(BaseMenu):
             [
                 MenuDivider.create(),
                 MenuItem.create(name="Scorecard / Passcheck", url=PASSCHECK_APP),
+                MenuItem.create(name="Feld-Ansicht", url=FIELD_APP),
             ]
         )
         return default_menu
