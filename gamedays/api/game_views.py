@@ -3,7 +3,7 @@ import logging
 from collections import OrderedDict
 from http import HTTPStatus
 
-from django.db.models import F
+from django.db.models import F, Q
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import UpdateAPIView, RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -311,13 +311,19 @@ class GameRosterAPIView(APIView):
     pass number. ``IsAuthenticated`` is explicit: the DRF default is
     ``IsAuthenticatedOrReadOnly``, which would expose surnames and jerseys to
     anonymous visitors.
+
+    Eligibility mirrors the passcheck (``get_roster_with_validation``): a
+    player is active on the gameday date, not merely "currently on the team".
+    The ``PlayerlistGameday`` snapshot pins the roster to this day. Duplicate
+    jersey numbers are returned as they are — the passcheck validation flags
+    that data problem, and hiding a duplicate here would mask it.
     """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
         try:
-            game = Gameinfo.objects.get(pk=pk)
+            game = Gameinfo.objects.select_related("gameday").get(pk=pk)
         except Gameinfo.DoesNotExist:
             raise NotFound(detail=f"No game found for gameId {pk}")
 
@@ -334,21 +340,35 @@ class GameRosterAPIView(APIView):
             PlayerlistGameday.objects.filter(
                 gameday_id=game.gameday_id,
                 playerlist__team_id__in=sides,
-                playerlist__left_on__isnull=True,
+            )
+            .filter(playerlist__joined_on__lte=game.gameday.date)
+            .filter(
+                Q(playerlist__left_on__isnull=True)
+                | Q(playerlist__left_on__gt=game.gameday.date)
             )
             .select_related("playerlist__player__person")
-            .order_by("playerlist__team_id", "gameday_jersey")
         )
         return Response(
             [
                 {
                     "side": sides[row.playerlist.team_id],
                     "jersey": row.gameday_jersey,
-                    "name": row.playerlist.player.person.last_name,
+                    "name": self._display_name(row.playerlist.player.person),
                 }
-                for row in rows
+                for row in sorted(
+                    rows,
+                    key=lambda row: (
+                        sides[row.playerlist.team_id] != "home",
+                        row.gameday_jersey,
+                        row.playerlist_id,
+                    ),
+                )
             ]
         )
+
+    @staticmethod
+    def _display_name(person):
+        return person.last_name or person.first_name or None
 
 
 class GamePossessionAPIView(APIView):
