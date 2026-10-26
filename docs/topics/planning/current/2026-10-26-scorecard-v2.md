@@ -456,8 +456,8 @@ starten") is required. **It does not hard-block the start** — the current app
 never blocks, and refusing to start a game because a licence lapsed would
 strand a gameday. Record the warning in the UI copy, not in the database.
 
-> Open product decision: if licences *should* block, change this task before
-> starting it. Everything else in the flow assumes warn-and-confirm.
+> **Decision (2026-10-26): warn, do not block.** The start stays available
+> behind an explicit second tap. Every other task assumes warn-and-confirm.
 
 Commit.
 
@@ -877,9 +877,10 @@ Commit `feat(scorecard-v2): wire the full flow`.
 
 **Help topic**
 
-> Open product decision: v2 gets a **new** topic ("Scorecard v2", marked beta)
-> or the existing `ergebnisse-erfassen` topic is updated. Pick one before
-> writing; shipping both would document the same flow twice.
+> **Decision (2026-10-26): a new topic.** `spieltag-v2` is added to
+> `registry.py`, titled "Scorecard v2" and marked beta in its summary; the
+> existing `ergebnisse-erfassen` topic is left alone until the old app is
+> retired (which this plan does not do).
 
 **CI**
 
