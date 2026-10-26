@@ -1,5 +1,10 @@
 # Passcheck v2 Field App Implementation Plan
 
+> **Status: abandoned (2026-10-26).** Superseded by
+> [Scorecard v2](../current/2026-10-26-scorecard-v2.md); the `/field/` app is not
+> being built. The backend hardening in Tasks 1–3 was implemented on
+> `feat/passcheck-v2-field-app` and is not part of the Scorecard v2 plan.
+>
 > **For the agent:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task.
 
 **Goal:** Ship a field-ready passcheck UI (`/field/`) that a referee can run one-handed on a phone — one tap per player, big pass photo, jersey numbers from the roster, and an offline outbox that survives a dead network — **while the old passcheck keeps running unchanged alongside it**.
