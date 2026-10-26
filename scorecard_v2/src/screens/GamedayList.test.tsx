@@ -102,6 +102,9 @@ describe("GamedayList", () => {
 
     const card = screen.getByRole("button", { name: /Herbstturnier/ });
     expect(card).toHaveAttribute("type", "button");
+    expect(card).toHaveAccessibleName(
+      "Herbstturnier, Mo., 26. Okt., Landesliga, offen",
+    );
 
     await userEvent.click(card);
 
