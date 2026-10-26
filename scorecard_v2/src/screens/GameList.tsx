@@ -2,17 +2,8 @@ import type { Game } from "../api/types";
 import Screen from "../components/Screen";
 import { gameTag, type GameTag } from "../components/tag";
 
-/**
- * A game as this screen reads it: the whistle row plus the passcheck flag.
- *
- * The API does not send `passcheck` until Task 6, so it is optional here —
- * absent means "unknown" and renders no chip, which is different from the
- * explicit `false` ("kein Passcheck").
- */
-export type GameListGame = Game & { passcheck?: boolean };
-
 interface GameListProps {
-  games: GameListGame[];
+  games: Game[];
   onSelect: (game: Game) => void;
   onResume: (game: Game) => void;
   /** Gameday name; Task 21 passes it, the default keeps the screen usable alone. */
@@ -67,7 +58,7 @@ function teamLabel(name: string | null): string {
  * Counts per summary bucket. Keyed by the row action rather than the tag
  * variant, so a future variant cannot silently land in "offen".
  */
-function summarise(games: GameListGame[]) {
+function summarise(games: Game[]) {
   const counts = { done: 0, live: 0, open: 0 };
   for (const game of games) {
     const tag = gameTag(game.status);
@@ -82,7 +73,7 @@ function summarise(games: GameListGame[]) {
   return counts;
 }
 
-function rowName(game: GameListGame, tag: GameTag): string {
+function rowName(game: Game, tag: GameTag): string {
   return [
     formatGameTime(game.scheduled),
     `Feld ${game.field}`,
@@ -92,7 +83,7 @@ function rowName(game: GameListGame, tag: GameTag): string {
   ].join(", ");
 }
 
-function RowBody({ game, tag }: { game: GameListGame; tag: GameTag }) {
+function RowBody({ game, tag }: { game: Game; tag: GameTag }) {
   const officials = game.officials.trim();
   const passcheck = game.passcheck;
   const hasChip = passcheck === true || passcheck === false;
