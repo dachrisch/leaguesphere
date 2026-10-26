@@ -6,6 +6,7 @@ from http import HTTPStatus
 from django.db.models import F
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import UpdateAPIView, RetrieveUpdateAPIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -20,6 +21,7 @@ from gamedays.service.game_service import GameService
 from gamedays.service.wrapper.gameinfo_wrapper import IllegalGameTransition
 from gamedays.service.gameday_service import GamedayService
 from gamedays.service.model_helper import GameresultHelper, TeamLogHelper
+from passcheck.models import PasscheckVerification, PlayerlistGameday
 
 logger = logging.getLogger(__name__)
 
@@ -266,7 +268,87 @@ class GamesToWhistleAPIView(APIView):
         gs = GamedayService.create(kwargs["pk"])
         games_to_whistle = gs.get_games_to_whistle(kwargs.get("team"))
         games_to_whistle = games_to_whistle.to_json(orient="records")
-        return Response(json.loads(games_to_whistle, object_pairs_hook=OrderedDict))
+        games_to_whistle = json.loads(
+            games_to_whistle, object_pairs_hook=OrderedDict
+        )
+        self._annotate_passcheck(games_to_whistle, kwargs["pk"])
+        return Response(games_to_whistle)
+
+    @staticmethod
+    def _annotate_passcheck(games_to_whistle, gameday_id):
+        """Add the passcheck state the scorecard game list renders.
+
+        ``PasscheckVerification`` holds one row per verified team per gameday;
+        a game is fully checked only when both of its teams are verified.
+
+        Caution: the pandas merge in ``GamedayModelWrapper`` keeps both ``id``
+        columns, and ``id_home``/``id_away`` are the renamed ``Gameresult`` pks
+        (``id_y``) — not ``Team`` pks. They arrive as strings (``""`` for an
+        unresolved bracket placeholder), so the lookup keys are stringified.
+        """
+        game_ids = [game["id"] for game in games_to_whistle]
+        team_by_result = {
+            str(result_id): team_id
+            for result_id, team_id in Gameresult.objects.filter(
+                gameinfo_id__in=game_ids
+            ).values_list("id", "team_id")
+        }
+        verified = set(
+            PasscheckVerification.objects.filter(gameday_id=gameday_id).values_list(
+                "team_id", flat=True
+            )
+        )
+        for game in games_to_whistle:
+            home = team_by_result.get(str(game.get("id_home", "")))
+            away = team_by_result.get(str(game.get("id_away", "")))
+            game["passcheck"] = home in verified and away in verified
+
+
+class GameRosterAPIView(APIView):
+    """Jersey plus surname for both teams of a game.
+
+    The touchdown sheet picks players from this list, so it must never leak the
+    pass number. ``IsAuthenticated`` is explicit: the DRF default is
+    ``IsAuthenticatedOrReadOnly``, which would expose surnames and jerseys to
+    anonymous visitors.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            game = Gameinfo.objects.get(pk=pk)
+        except Gameinfo.DoesNotExist:
+            raise NotFound(detail=f"No game found for gameId {pk}")
+
+        sides = {
+            row["team_id"]: "home" if row["isHome"] else "away"
+            for row in Gameresult.objects.filter(
+                gameinfo=game, team__isnull=False
+            ).values("team_id", "isHome")
+        }
+        if not sides:  # bracket placeholder: both teams are still unknown
+            return Response([])
+
+        rows = (
+            PlayerlistGameday.objects.filter(
+                gameday_id=game.gameday_id,
+                playerlist__team_id__in=sides,
+                playerlist__left_on__isnull=True,
+            )
+            .select_related("playerlist__player__person")
+            .order_by("playerlist__team_id", "gameday_jersey")
+        )
+        return Response(
+            [
+                {
+                    "side": sides[row.playerlist.team_id],
+                    "jersey": row.gameday_jersey,
+                    "name": row.playerlist.player.person.last_name,
+                }
+                for row in rows
+            ]
+        )
 
 
 class GamePossessionAPIView(APIView):
