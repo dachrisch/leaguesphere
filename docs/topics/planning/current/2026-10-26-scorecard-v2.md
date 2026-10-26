@@ -427,9 +427,12 @@ def test_game_roster_requires_authentication(self): ...
 # GamesToWhistleAPIView.get — annotate, don't touch the pandas wrapper.
 # id_home/id_away are Gameresult pks (the merge keeps `id_y`), not team pks.
 game_ids = [game["id"] for game in games_to_whistle]
-team_by_result = dict(
-    Gameresult.objects.filter(gameinfo_id__in=game_ids).values_list("id", "team_id")
-)
+team_by_result = {
+    str(result_id): team_id
+    for result_id, team_id in Gameresult.objects.filter(
+        gameinfo_id__in=game_ids
+    ).values_list("id", "team_id")
+}
 verified = set(
     PasscheckVerification.objects.filter(gameday_id=kwargs["pk"]).values_list("team_id", flat=True)
 )
@@ -547,6 +550,10 @@ Commit.
 **Files:** `src/components/sheets/TouchdownSheet.tsx`, `src/components/JerseyPicker.tsx`, tests
 
 Tests: roster of the possession team, save disabled until jersey, `+1` posts the two-event payload, `+2`, none, numeric fallback when the roster is empty.
+
+Heading: use "Bestätigter Kader" only when `game.passcheck === true`,
+otherwise "Kader". The roster endpoint is deliberately unfiltered — a game
+whose passcheck never ran still needs the numeric fallback.
 
 Commit.
 
