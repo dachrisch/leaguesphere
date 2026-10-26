@@ -76,6 +76,9 @@ must be installed from its own lockfile.
 | 2 Atomic/idempotent write + device lock + constraints + reset | done | `416f3817` |
 | 3 Private photos + permission-checked endpoint + import | done | `a3a0a562` |
 | 4 `field` app, Vite scaffold, CI/deploy wiring | done | `330cc9d6` |
+| 5 API client + games screen | done | `724a2598` |
+| 6 Roster screen (tap, undo, timer) | done | `7c1e3de4` |
+| 7 Player sheet (rules, jersey, photo viewer) | done | `b00b4a4e` |
 
 Deviations from the task text below (the task text is kept for history):
 
@@ -103,6 +106,12 @@ Deviations from the task text below (the task text is kept for history):
   (`field/static/field/js/*`); `field/package-lock.json` is committed.
   `scripts/check_version_sequence.py` now tolerates a version file that does not
   exist on master yet (new app), with a test.
+- Photos are fetched as authenticated blobs (`apiGetBlobUrl` / `fetchPhotoUrl`)
+  and shown from an object URL; a plain `<img src>` would 401 under Knox.
+- `validationError` from the eligibility validator is a hard block; the sheet
+  takes separate `warnings` (e.g. no photo) that do not block confirmation.
+- The roster screen flattens the main and additional-team rosters, because the
+  API's `additionalTeams` entries carry no team id.
 
 ---
 
