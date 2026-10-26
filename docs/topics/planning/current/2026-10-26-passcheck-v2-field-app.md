@@ -68,6 +68,35 @@ must be installed from its own lockfile.
 | O3 | Hardening | Roster `PUT` gets a permission check (staff, or the officials team of a game on that gameday, today only) plus unique constraints with dedupe migrations. |
 | O4 | Device recovery | Staff-only `manage.py reset_passcheck_device` (management command). |
 
+### Backend batch status
+
+| Task | Status | Commit |
+|---|---|---|
+| 1 Roster validation + `PUT` permission | done | `38609ec1` |
+| 2 Atomic/idempotent write + device lock + constraints + reset | done | `416f3817` |
+| 3 Private photos + permission-checked endpoint + import | done | `a3a0a562` |
+
+Deviations from the task text below (the task text is kept for history):
+
+- Tests live in `passcheck/tests/api/test_roster_write.py`,
+  `passcheck/tests/service/test_verification_write.py`,
+  `passcheck/tests/api/test_photos.py` and
+  `passcheck/tests/test_import_pass_photos.py` (repo `TestCase` + factories, no
+  pytest fixtures).
+- `validate_roster()` lives in `PasscheckServicePlayers` and runs inside
+  `create_roster_and_passcheck_verification()`; the view only maps errors.
+  A missing `EligibilityRule` skips the strength checks (legacy gamedays/tests).
+- `all_relevant_team_ids()` now follows `TeamRelationship.team → additional_teams`
+  (the old code read the reverse accessor, so an extra team's rows were never
+  deleted/validated under the main team).
+- Photo route is
+  `GET /api/passcheck/photos/<playerlist_id>/gameday/<gameday_id>`; storage is
+  `PASS_PHOTO_ROOT` (outside `MEDIA_ROOT`, mounted as its own `pass-photos`
+  volume); the response uses the stored MIME type, `no-store` and `nosniff`.
+- `client_id` must be a UUID; an invalid one is a `400` (`errors.client_id`).
+  `device_id` is trimmed/truncated to 64 chars.
+- The unique constraints ship with dedupe migrations (keep newest row per key).
+
 ---
 
 ## Decisions locked before Task 1
