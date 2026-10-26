@@ -9,6 +9,7 @@ type Props = {
   errors?: Record<string, string>;
   conflict?: string | null;
   saving?: boolean;
+  pendingCount?: number;
   onSave: (officialName: string, note: string) => void | Promise<void>;
   onClose: () => void;
 };
@@ -22,6 +23,7 @@ function VerificationSheet({
   errors,
   conflict,
   saving = false,
+  pendingCount = 0,
   onSave,
   onClose,
 }: Props) {
@@ -30,7 +32,10 @@ function VerificationSheet({
 
   const minimumReached = checkedCount >= minimumStrength;
   const canSave =
-    minimumReached && officialName.trim().length > 0 && !saving;
+    minimumReached &&
+    officialName.trim().length > 0 &&
+    !saving &&
+    pendingCount === 0;
   const playerErrors = Object.entries(errors ?? {}).filter(
     ([key]) => key !== "team"
   );
@@ -86,6 +91,12 @@ function VerificationSheet({
             {message}
           </p>
         ))}
+
+        {pendingCount > 0 && (
+          <p className="rule-warning" role="status">
+            {pendingCount} Einträge warten auf Übertragung.
+          </p>
+        )}
 
         {conflict && (
           <p className="rule-blocked" role="alert">

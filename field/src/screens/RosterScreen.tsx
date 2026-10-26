@@ -11,6 +11,7 @@ type Props = {
   onBack?: () => void;
   onOpenPhoto?: (player: RosterEntry) => void;
   clock?: () => number;
+  pendingCount?: number;
 };
 
 const UNDO_TIMEOUT_MS = 5000;
@@ -28,6 +29,7 @@ function RosterScreen({
   onBack,
   onOpenPhoto,
   clock = Date.now,
+  pendingCount = 0,
 }: Props) {
   const sections = useMemo(
     () => [
@@ -121,6 +123,12 @@ function RosterScreen({
           </span>
         )}
       </div>
+
+      {pendingCount > 0 && (
+        <p className="offline-banner" role="status">
+          {pendingCount} Einträge warten auf Übertragung.
+        </p>
+      )}
 
       <div className="roster-list">
         {sections.map((section, index) => (
