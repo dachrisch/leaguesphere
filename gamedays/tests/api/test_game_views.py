@@ -124,6 +124,45 @@ class TestGameSetup(WebTest):
         assert first_game.status == "2. Halbzeit"
         assert str(first_game.gameStarted) == "11:00:00"
 
+    def test_invalid_setup_payload_does_not_create_a_row(self):
+        DBSetup().g62_status_empty()
+        game = Gameinfo.objects.last()
+        response = self.app.put_json(
+            reverse(API_GAME_SETUP, kwargs={"pk": game.pk}),
+            {
+                "ctResult": "x" * 101,
+                "direction": "Ost",
+                "fhPossession": "home",
+            },
+            headers=DBSetup().get_token_header(),
+            status=HTTPStatus.BAD_REQUEST,
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert not GameSetup.objects.filter(gameinfo=game).exists()
+        assert Gameinfo.objects.get(pk=game.pk).status != "1. Halbzeit"
+
+    def test_rejected_start_leaves_no_setup_row(self):
+        DBSetup().g62_status_empty()
+        game = Gameinfo.objects.last()
+        game.status = "1. Halbzeit"
+        game.save()
+        assert not GameSetup.objects.filter(gameinfo=game).exists()
+
+        response = self.app.put_json(
+            reverse(API_GAME_SETUP, kwargs={"pk": game.pk}),
+            {
+                "ctResult": "won",
+                "direction": "arrow_forward",
+                "fhPossession": "HOME",
+            },
+            headers=DBSetup().get_token_header(),
+            status=HTTPStatus.CONFLICT,
+        )
+
+        assert response.status_code == HTTPStatus.CONFLICT
+        assert response.json["detail"] == "Dieser Spielstatus erlaubt keinen Spielstart."
+        assert not GameSetup.objects.filter(gameinfo=game).exists()
+
     def test_game_setup_get(self):
         DBSetup().g62_status_empty()
         last_game = Gameinfo.objects.last()
