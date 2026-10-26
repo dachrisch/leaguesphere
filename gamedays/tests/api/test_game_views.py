@@ -1,7 +1,7 @@
 import json
 import pathlib
 import re
-from datetime import timedelta
+from datetime import timedelta, time
 from http import HTTPStatus
 
 from django.db import connection
@@ -240,11 +240,106 @@ class TestGameLog(WebTest):
         expected_gamelog["away"]["id"] = Gameresult.objects.get(
             gameinfo=gameinfo, isHome=False
         ).team_id
-        assert self.without_time(response.json) == expected_gamelog
+        payload = response.json
+        # The scoring-entry contract is unchanged; the v2 additions (the raw
+        # event list and possession) are covered by their own tests below.
+        payload.pop("events")
+        payload.pop("inPossession")
+        assert self.without_time(payload) == expected_gamelog
         for side in ("home", "away"):
             for half in ("firsthalf", "secondhalf"):
                 for entry in response.json[side][half]["entries"]:
                     assert entry["time"].endswith("+00:00")
+
+    def test_get_team_log_exposes_possession_and_events(self):
+        gameinfo = DBSetup().create_teamlog_home_and_away()
+        gameinfo.in_possession = "Home"
+        gameinfo.save()
+        TeamLog.objects.create(
+            gameinfo=gameinfo,
+            team=Team.objects.get(name="Home"),
+            sequence=0,
+            event="Strafe",
+            input="Holding Defense",
+            player=23,
+            half=1,
+            author=gameinfo.gameday.author,
+            created_time=time(12, 34),
+        )
+
+        response = self.app.get(reverse(API_GAMELOG, kwargs={"id": gameinfo.pk}))
+
+        assert response.status_code == HTTPStatus.OK
+        payload = response.json
+        assert payload["inPossession"] == "Home"
+        penalty = next(
+            event for event in payload["events"] if event["event"] == "Strafe"
+        )
+        assert penalty["team"] == "Home"
+        assert penalty["input"] == "Holding Defense"
+        assert penalty["player"] == 23
+        assert penalty["half"] == 1
+        assert penalty["cop"] is False
+        assert penalty["isDeleted"] is False
+        assert penalty["time"].endswith("+00:00")
+        assert set(penalty) == {
+            "id",
+            "sequence",
+            "team",
+            "event",
+            "player",
+            "input",
+            "half",
+            "cop",
+            "isDeleted",
+            "time",
+        }
+
+    def test_get_team_log_events_are_newest_first(self):
+        DBSetup().g62_status_empty()
+        gameinfo = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=gameinfo, isHome=True).team
+        author = gameinfo.gameday.author
+        TeamLog.objects.create(
+            gameinfo=gameinfo,
+            team=home,
+            sequence=1,
+            event="Touchdown",
+            player=7,
+            value=6,
+            half=1,
+            author=author,
+            created_time=time(10, 0),
+        )
+        TeamLog.objects.create(
+            gameinfo=gameinfo,
+            team=home,
+            sequence=0,
+            event="Strafe",
+            input="Holding",
+            half=1,
+            author=author,
+            created_time=time(11, 0),
+        )
+
+        response = self.app.get(reverse(API_GAMELOG, kwargs={"id": gameinfo.pk}))
+
+        assert response.status_code == HTTPStatus.OK
+        assert [event["event"] for event in response.json["events"]] == [
+            "Strafe",
+            "Touchdown",
+        ]
+
+    def test_get_team_log_possession_is_null_when_unset(self):
+        DBSetup().g62_status_empty()
+        gameinfo = Gameinfo.objects.first()
+        gameinfo.in_possession = ""
+        gameinfo.save()
+
+        response = self.app.get(reverse(API_GAMELOG, kwargs={"id": gameinfo.pk}))
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.json["inPossession"] is None
 
     def test_post_team_log(self):
         DBSetup().g62_status_empty()
@@ -265,7 +360,15 @@ class TestGameLog(WebTest):
         )
         assert response.status_code == HTTPStatus.CREATED
         assert TeamLog.objects.first().author == another_user
-        assert response.json == {
+        payload = response.json
+        assert payload.pop("inPossession") == "A1"
+        events = payload.pop("events")
+        assert {event["event"] for event in events} == {
+            "Touchdown",
+            "1-Extra-Punkt",
+        }
+        assert {event["team"] for event in events} == {"A1"}
+        assert payload == {
             "away": {
                 "id": Team.objects.get(name="A2").pk,
                 "firsthalf": {"entries": [], "score": 0},
@@ -304,7 +407,10 @@ class TestGameLog(WebTest):
             headers=DBSetup().get_token_header(),
         )
         assert response.status_code == HTTPStatus.CREATED
-        assert response.json == {
+        payload = response.json
+        assert payload.pop("inPossession") == "A1"
+        assert len(payload.pop("events")) == 2
+        assert payload == {
             "gameId": first_game.pk,
             "away": {
                 "id": Team.objects.get(name="A2").pk,
@@ -388,7 +494,10 @@ class TestGameLog(WebTest):
             headers=DBSetup().get_token_header(),
         )
         assert response.status_code == HTTPStatus.CREATED
-        assert response.json == {
+        payload = response.json
+        assert payload.pop("inPossession") == "A1"
+        assert len(payload.pop("events")) == 1
+        assert payload == {
             "gameId": first_game.pk,
             "isFirstHalf": True,
             "home": {
@@ -558,6 +667,92 @@ class TestGameLog(WebTest):
         assert response.status_code == HTTPStatus.OK
         assert TeamLog.objects.filter(
             gameinfo=first_game, sequence=1, isDeleted=True
+        ).exists()
+
+
+    def test_delete_team_log_by_row_id_marks_only_that_row(self):
+        gameinfo = DBSetup().create_teamlog_home_and_away()
+        touchdown = TeamLog.objects.get(
+            gameinfo=gameinfo, sequence=2, event="Touchdown"
+        )
+        conversion = TeamLog.objects.get(
+            gameinfo=gameinfo, sequence=2, event="2-Extra-Punkte"
+        )
+
+        response = self.app.delete_json(
+            reverse(API_GAMELOG, kwargs={"id": gameinfo.pk}),
+            {"team_log_id": touchdown.pk},
+            headers=DBSetup().get_token_header(),
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        touchdown.refresh_from_db()
+        conversion.refresh_from_db()
+        assert touchdown.isDeleted
+        assert not conversion.isDeleted
+        # Touchdown 6 points gone, the sibling conversion stays: 42 - 6.
+        assert response.json["home"]["score"] == 36
+        events = {event["id"]: event for event in response.json["events"]}
+        assert events[touchdown.pk]["isDeleted"] is True
+        assert events[conversion.pk]["isDeleted"] is False
+
+    def test_delete_team_log_by_row_id_requires_permission(self):
+        gameinfo = DBSetup().create_teamlog_home_and_away()
+        row = TeamLog.objects.filter(gameinfo=gameinfo, event="Touchdown").first()
+        unrelated = DBSetup().create_new_user(username="unrelated-row", is_staff=False)
+
+        response = self.app.delete_json(
+            reverse(API_GAMELOG, kwargs={"id": gameinfo.pk}),
+            {"team_log_id": row.pk},
+            headers=DBSetup().get_token_header(unrelated),
+            expect_errors=True,
+        )
+
+        assert response.status_code == HTTPStatus.FORBIDDEN
+        row.refresh_from_db()
+        assert not row.isDeleted
+
+    def test_delete_team_log_by_row_id_of_another_game_is_not_found(self):
+        gameinfo = DBSetup().create_teamlog_home_and_away()
+        other_game = DBSetup().create_teamlog_home_and_away()
+        foreign = TeamLog.objects.filter(gameinfo=other_game).first()
+
+        response = self.app.delete_json(
+            reverse(API_GAMELOG, kwargs={"id": gameinfo.pk}),
+            {"team_log_id": foreign.pk},
+            headers=DBSetup().get_token_header(),
+            expect_errors=True,
+        )
+
+        assert response.status_code == HTTPStatus.NOT_FOUND
+        foreign.refresh_from_db()
+        assert not foreign.isDeleted
+
+    def test_delete_team_log_by_sequence_is_unchanged(self):
+        gameinfo = DBSetup().create_teamlog_home_and_away()
+        TeamLog.objects.create(
+            gameinfo=gameinfo,
+            team=Team.objects.get(name="Home"),
+            sequence=0,
+            event="Strafe",
+            input="Holding",
+            half=1,
+            author=gameinfo.gameday.author,
+        )
+
+        response = self.app.delete_json(
+            reverse(API_GAMELOG, kwargs={"id": gameinfo.pk}),
+            {"sequence": 2},
+            headers=DBSetup().get_token_header(),
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        assert TeamLog.objects.filter(
+            gameinfo=gameinfo, sequence=2, isDeleted=False
+        ).count() == 0
+        # Sequence 0 rows (the penalty) are not touched by a play delete.
+        assert TeamLog.objects.filter(
+            gameinfo=gameinfo, event="Strafe", isDeleted=False
         ).exists()
 
 
