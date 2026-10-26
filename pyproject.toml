@@ -24,6 +24,8 @@ dependencies = [
     "mysqlclient==2.2.8",
     "requests==2.34.2",
     "openpyxl==3.1.5",
+    # Temporary DB access: Fernet for the one-time credential reveal.
+    "cryptography==50.0.2",
 ]
 
 [project.optional-dependencies]
