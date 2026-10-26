@@ -50,6 +50,16 @@ it("shows an empty state when the team has no games today", async () => {
   ).toBeInTheDocument();
 });
 
+it("links back to the classic passcheck", async () => {
+  const loadGames = vi.fn().mockResolvedValue(response);
+
+  render(<GamesScreen loadGames={loadGames} onOpen={vi.fn()} />);
+
+  expect(
+    await screen.findByRole("link", { name: "Zur klassischen Ansicht" })
+  ).toHaveAttribute("href", "/passcheck/");
+});
+
 it("shows the API error when games cannot be loaded", async () => {
   const loadGames = vi
     .fn()
