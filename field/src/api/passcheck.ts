@@ -1,4 +1,4 @@
-import { apiGet, apiPut } from "./client";
+import { apiGet, apiGetBlobUrl, apiPut } from "./client";
 import type {
   GamesResponse,
   RosterResponse,
@@ -26,4 +26,13 @@ export const saveRoster = (
   apiPut<void>(
     `/api/passcheck/roster/${teamId}/gameday/${gamedayId}`,
     payload
+  );
+
+/** The photo endpoint is Knox-protected; the caller gets an object URL. */
+export const fetchPhotoUrl = (
+  playerlistId: number,
+  gamedayId: number
+): Promise<string> =>
+  apiGetBlobUrl(
+    `/api/passcheck/photos/${playerlistId}/gameday/${gamedayId}`
   );
