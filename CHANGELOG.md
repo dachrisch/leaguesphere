@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.44.0](https://github.com/dachrisch/leaguesphere/compare/v4.43.1...v4.44.0) (2026-10-26)
+
+
+### Features
+
+* **dbaccess:** request, approve and mint temporary DB accounts ([#2093](https://github.com/dachrisch/leaguesphere/issues/2093)) ([c972fdf](https://github.com/dachrisch/leaguesphere/commit/c972fdfcf58c74fb84555979666dabfc354c3673))
+* **db:** enable binlog and statement audit ([#2092](https://github.com/dachrisch/leaguesphere/issues/2092)) ([8ea3dc3](https://github.com/dachrisch/leaguesphere/commit/8ea3dc30841f43db5c863f25104f74b6c10173fc))
+
 ## [4.43.1](https://github.com/dachrisch/leaguesphere/compare/v4.43.0...v4.43.1) (2026-10-22)
 
 
