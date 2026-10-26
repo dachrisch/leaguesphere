@@ -11,6 +11,7 @@ from passcheck.service.passcheck_service import (
     PasscheckService,
     PasscheckServicePlayers,
     PasscheckException,
+    RosterValidationError,
 )
 from passcheck.service.request_api_service import RequestApiService
 
@@ -84,16 +85,27 @@ class PasscheckRosterAPIView(APIView):
                 status=HTTPStatus.OK,
             )
         except PasscheckException:
-            raise PermissionDenied(detail=f"Permission denied for Gameday: {gameday_id}")
+            raise PermissionDenied(
+                detail=f"Permission denied for Gameday: {gameday_id}"
+            )
         except LookupError as exception:
-            raise NotFound(detail=f"Not found for Team: {team_id} on Gameday: {gameday_id} -> {exception}")
+            raise NotFound(
+                detail=f"Not found for Team: {team_id} on Gameday: {gameday_id} -> {exception}"
+            )
 
     def put(self, request, **kwargs):
         data = request.data
         team_id = kwargs.get("pk")
         gameday_id = kwargs.get("gameday")
         passcheckservice = PasscheckServicePlayers()
-        passcheckservice.create_roster_and_passcheck_verification(
-            team_id, gameday_id, request.user, data
-        )
+        if not passcheckservice.can_write_roster(request.user, team_id, gameday_id):
+            raise PermissionDenied(
+                detail="Passcheck nur für Offizielle dieses Spieltags."
+            )
+        try:
+            passcheckservice.create_roster_and_passcheck_verification(
+                team_id, gameday_id, request.user, data
+            )
+        except RosterValidationError as exception:
+            return Response({"errors": exception.errors}, status=HTTPStatus.BAD_REQUEST)
         return Response(status=HTTPStatus.OK)
