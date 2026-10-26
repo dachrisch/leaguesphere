@@ -71,6 +71,10 @@ const roster: RosterResponse = {
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
+  Object.defineProperty(URL, "revokeObjectURL", {
+    configurable: true,
+    value: vi.fn(),
+  });
   mockedGames.mockResolvedValue(games);
   mockedRoster.mockResolvedValue(roster);
   mockedSave.mockResolvedValue(undefined);
@@ -112,4 +116,96 @@ it("offers the classic passcheck as a way back", async () => {
   expect(
     await screen.findByRole("link", { name: "Zur klassischen Ansicht" })
   ).toHaveAttribute("href", "/passcheck/");
+});
+
+it("shows the consented photo and applies a jersey change", async () => {
+  const user = userEvent.setup();
+  mockedPhoto.mockResolvedValue("blob:photo-1");
+  render(<App />);
+
+  await user.click(await screen.findByRole("button", { name: /Home/ }));
+  await screen.findByText(/0 von 2/);
+
+  await user.click(
+    screen.getByRole("button", {
+      name: "Trikotnummer von Jonas Brenner1 ändern",
+    })
+  );
+  await user.click(await screen.findByRole("button", { name: "Foto ansehen" }));
+
+  expect(
+    screen.getByRole("img", { name: "Passfoto von Jonas Brenner1" })
+  ).toHaveAttribute("src", "blob:photo-1");
+
+  await user.click(screen.getByRole("button", { name: "Nächste Nummer" }));
+  await user.click(screen.getByRole("button", { name: "Bestätigen" }));
+
+  expect(screen.getByText(/1 von 2/)).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", {
+      name: "Trikotnummer von Jonas Brenner1 ändern",
+    })
+  ).toHaveTextContent("2");
+});
+
+it("opens the record for a blocked player and explains the block", async () => {
+  const user = userEvent.setup();
+  mockedRoster.mockResolvedValue({
+    ...roster,
+    team: {
+      ...roster.team,
+      roster: [
+        { ...player(1), validationError: "Maximum an Spieltagen erreicht." },
+      ],
+    },
+  });
+  render(<App />);
+
+  await user.click(await screen.findByRole("button", { name: /Home/ }));
+  await user.click(
+    await screen.findByRole("button", { name: "Jonas Brenner1" })
+  );
+
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Maximum an Spieltagen erreicht."
+  );
+  expect(
+    screen.queryByRole("button", { name: "Bestätigen" })
+  ).not.toBeInTheDocument();
+});
+
+it("shows a roster error with a way back", async () => {
+  const user = userEvent.setup();
+  mockedRoster.mockRejectedValue({ message: "Ihr spielt heute nicht." });
+  render(<App />);
+
+  await user.click(await screen.findByRole("button", { name: /Home/ }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Ihr spielt heute nicht."
+  );
+  await user.click(
+    screen.getByRole("button", { name: "Zurück zu den Spielen" })
+  );
+  expect(await screen.findByText("Meine Spiele")).toBeInTheDocument();
+});
+
+it("returns to the games after a saved verification", async () => {
+  const user = userEvent.setup();
+  render(<App />);
+
+  await user.click(await screen.findByRole("button", { name: /Home/ }));
+  await user.click(await screen.findByRole("button", { name: "Jonas Brenner1" }));
+  await user.click(
+    screen.getByRole("button", { name: "Prüfung abschließen" })
+  );
+  await user.type(screen.getByLabelText("Abgenommen durch"), "M. Weber");
+  await user.click(screen.getByRole("button", { name: "Passliste speichern" }));
+  await screen.findByRole("heading", { name: "Passliste gespeichert" });
+
+  await user.click(
+    screen.getByRole("button", { name: "Zurück zu den Spielen" })
+  );
+
+  expect(await screen.findByText("Meine Spiele")).toBeInTheDocument();
 });
