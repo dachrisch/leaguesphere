@@ -87,6 +87,11 @@ services:
       - "./mysql-data:/var/lib/mysql"
       - "./mysql-backup:/backup"
       - "./mysql-init:/docker-entrypoint-initdb.d:ro"
+      # Directory mount (not a single file): `git pull` replaces files by
+      # rename, which leaves a file bind-mount pointing at a dead inode.
+      # Enables binlog (PITR) + the statement audit plugin; the restart
+      # semantics are documented at the top of the mounted file.
+      - "./mysql-conf:/etc/mysql/conf.d:ro"
     env_file: ls.env
     networks:
       - backend

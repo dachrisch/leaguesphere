@@ -10,6 +10,9 @@ services:
     volumes:
       - "./mysql-data:/var/lib/mysql"
       - "./mysql-init:/docker-entrypoint-initdb.d:ro"
+      # Same config as prod: binlog + statement audit. A directory mount, so a
+      # `git pull` cannot leave the container reading a dead inode.
+      - "./mysql-conf:/etc/mysql/conf.d:ro"
     env_file: ls.env.staging
     ports:
       - "127.0.0.1:33062:3306"

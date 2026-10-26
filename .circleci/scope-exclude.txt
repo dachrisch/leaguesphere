@@ -47,6 +47,7 @@ container/deploy\.sh
 container/test_db_dump\.sql
 container/test_user\.sql
 deployed/mysql-init/.*
+deployed/mysql-conf/.*
 
 # --- committed test artifacts (regenerated locally, not source) ---
 (.*/)?junit\.xml
