@@ -121,3 +121,169 @@ body {
   background: #e4f1eb;
   color: #0c5c46;
 }
+
+.roster-screen {
+  padding-bottom: 80px;
+}
+
+.roster-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.roster-title {
+  min-width: 0;
+}
+
+.roster-title h1 {
+  margin: 2px 0 0;
+  font-size: 24px;
+  letter-spacing: -0.03em;
+}
+
+.icon-btn {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #dbd5c5;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 18px;
+}
+
+.roster-meter {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 10px 0 8px;
+  color: var(--field-muted);
+  font-size: 13px;
+}
+
+.roster-average {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.roster-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.group-head {
+  margin: 12px 2px 4px;
+  color: var(--field-muted);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.player-row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 40px;
+  gap: 10px;
+  align-items: center;
+  min-height: 68px;
+  padding: 7px 8px;
+  border: 1px solid #dbd5c5;
+  border-radius: 13px;
+  background: #fff;
+  text-align: left;
+}
+
+.player-row.checked {
+  border-color: #bedccd;
+  background: #f1f8f4;
+}
+
+.player-row.blocked {
+  border-color: #edcdcb;
+  background: #fdf3f2;
+}
+
+.player-photo {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 0;
+  border-radius: 10px;
+  background: #ede8da;
+  color: #8a8f90;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.player-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.player-name {
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-blocked {
+  color: #b3232f;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.player-jersey {
+  border: 1px solid #e3ddce;
+  border-radius: 7px;
+  background: #fbfaf5;
+  color: #3e484d;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.undo-bar {
+  position: fixed;
+  right: 12px;
+  bottom: 14px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #101619;
+  color: #fcfbf6;
+  box-shadow: 0 10px 30px -12px rgba(16, 22, 25, 0.6);
+}
+
+.undo-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.undo-button {
+  border: 0;
+  background: none;
+  color: #9fe0c4;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.undo-close {
+  border: 0;
+  background: none;
+  color: #cfd4d2;
+  font-size: 18px;
+}
