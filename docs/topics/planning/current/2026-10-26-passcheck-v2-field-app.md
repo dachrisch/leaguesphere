@@ -59,14 +59,14 @@ must be installed from its own lockfile.
 11. **Task 2 snippet bug.** `all_relevant_team_ids` is used before it is defined in the proposed function body; keep the existing computation at the top.
 12. **Sibling plan overlap.** `docs/topics/planning/current/2026-10-26-scorecard-v2.md` proposes a separate `scorecard_v2` app/shell at `/scorecard/v2/`, while this plan calls `field/` "the shell the scorecard joins in M2". Decide which is true before M2; it does not block M1, but the roadmap text should not promise both.
 
-### Open decisions (resolve before Task 1)
+### Resolved pre-flight decisions (2026-10-26)
 
-| # | Question | Recommendation |
+| # | Decision | Resolution |
 |---|---|---|
-| O1 | Photo contract: `Playerlist.pk + gameday`, private storage, blob fetch? | **Yes** — see corrections 4–5. |
-| O2 | Keep the plan in `docs/plans/` or move it to `docs/topics/planning/current/`? | **Move** (repo convention) and fix the README link. |
-| O3 | Add hardening outside the plan: permission check on `PUT /api/passcheck/roster/…` (today any authenticated user can write any team), unique constraints on `PasscheckVerification(team, gameday)` and `PlayerlistGameday(playerlist, gameday)`? | **Yes, at least the PUT permission**; the constraints are safe but need a data check first. |
-| O4 | Device lock recovery: a reinstalled phone gets a new `device_id` and a `409` forever. | Add a staff-only reset (admin action or `manage.py reset_passcheck_device`). |
+| O1 | Photo contract | `GET /api/passcheck/photos/<playerlist_id>/gameday/<gameday_id>`; private storage outside `MEDIA_ROOT`; the client fetches blobs with the Knox token (see corrections 4–5). |
+| O2 | Plan location | Moved to `docs/topics/planning/current/2026-10-26-passcheck-v2-field-app.md`; README link fixed. |
+| O3 | Hardening | Roster `PUT` gets a permission check (staff, or the officials team of a game on that gameday, today only) plus unique constraints with dedupe migrations. |
+| O4 | Device recovery | Staff-only `manage.py reset_passcheck_device` (management command). |
 
 ---
 
@@ -79,6 +79,9 @@ must be installed from its own lockfile.
 | P3 | **One writing device per team and gameday, for v2 clients**, enforced server-side via `device_id`; only a request that declares a *different* device gets `409`. | Roadmap D1. Without it a stale phone can overwrite a finished check; without the client check the old app would be locked out (see below). |
 | P4 | **A photo is served only if `photo_consent_at` is set** and the requester is an official of that gameday. | Roadmap D2. No consent, no bytes — not "served but hidden in the UI". |
 | P5 | **No feature switch.** `/field/` is opt-in by URL until M3, `/passcheck/` stays default. | Rollback per gameday without deployment, as promised in the roadmap. |
+| P6 | **Only the officiating team may write a roster.** `PUT /api/passcheck/roster/…` accepts staff, or a user whose team is `Gameinfo.officials` for a game on that gameday involving the target team, on that gameday's date. | Today any authenticated user can write any team (`views.py:91`). Parallel operation does not require that hole. |
+| P7 | **Uniqueness is enforced in the database**: one verification per `(team, gameday)` and one gameday roster row per `(playerlist, gameday)`. Migrations dedupe existing rows first. | `update_or_create` on an unconstrained table can produce duplicates under a race; the API then starts raising `MultipleObjectsReturned`. |
+| P8 | **Pass photos live outside `MEDIA_ROOT`** and are served only by the permission-checked endpoint. | nginx serves `/media/` unauthenticated with `expires 7d`; `MEDIA_ROOT` storage would leak consent-protected photos. |
 
 ---
 
