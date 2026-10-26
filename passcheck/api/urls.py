@@ -1,5 +1,6 @@
 from django.urls import path
 
+from passcheck.api.photo_views import PassPhotoAPIView
 from passcheck.api.views import (
     PasscheckRosterAPIView,
     PasscheckGamesAPIView,
@@ -12,6 +13,7 @@ API_PASSCHECK_LIST = "api-passcheck-list"
 API_PASSCHECK_SERVICE = "api-passcheck-service"
 API_PASSCHECK_SERVICE_PLAYERS = "api-passcheck-service-players"
 API_PASSCHECK_EQUIPMENT_APPROVAL_URL = "api-passcheck-equipment-approval-url"
+API_PASSCHECK_PHOTO = "api-passcheck-photo"
 
 # Mapping which URL connects to which view
 urlpatterns = [
@@ -35,5 +37,10 @@ urlpatterns = [
         "roster/<int:pk>/gameday/<int:gameday>",
         PasscheckRosterAPIView.as_view(),
         name=API_PASSCHECK_SERVICE_PLAYERS,
+    ),
+    path(
+        "photos/<int:playerlist_id>/gameday/<int:gameday>",
+        PassPhotoAPIView.as_view(),
+        name=API_PASSCHECK_PHOTO,
     ),
 ]
