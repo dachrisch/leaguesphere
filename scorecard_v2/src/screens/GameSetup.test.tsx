@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
-import { apiGet, apiPut, setDeviceId } from "../api/client";
+import { ApiError, apiGet, apiPut, setDeviceId } from "../api/client";
 import type {
   Game,
   GameLog,
@@ -402,6 +402,163 @@ describe("GameSetup — local crew edits", () => {
     expect(apiPutMock).toHaveBeenCalledWith(SETUP_PATH, expect.anything());
   });
 });
+
+describe("GameSetup — toss, possession and direction", () => {
+  it("summarises the defaults", async () => {
+    await renderSetup();
+
+    expect(screen.getByText(/gewinnt den Münzwurf/)).toHaveTextContent(
+      "Ravens gewinnt den Münzwurf · Ballbesitz Ravens · Richtung Ost → West",
+    );
+  });
+
+  it("updates the summary when a control changes", async () => {
+    await renderSetup();
+
+    await userEvent.click(
+      within(screen.getByRole("group", { name: "Münzwurf" })).getByRole(
+        "button",
+        { name: "Wolves" },
+      ),
+    );
+    await userEvent.click(
+      within(screen.getByRole("group", { name: "Richtung" })).getByRole(
+        "button",
+        { name: "West → Ost" },
+      ),
+    );
+
+    expect(screen.getByText(/gewinnt den Münzwurf/)).toHaveTextContent(
+      "Wolves gewinnt den Münzwurf · Ballbesitz Ravens · Richtung West → Ost",
+    );
+  });
+
+  it("marks the selected segment with aria-pressed", async () => {
+    await renderSetup();
+
+    const toss = screen.getByRole("group", { name: "Münzwurf" });
+    expect(within(toss).getByRole("button", { name: "Ravens" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(
+      within(toss).getByRole("button", { name: "Wolves" }),
+    ).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("labels the start button with the kick-off time", async () => {
+    await renderSetup();
+
+    expect(startButton()).toHaveTextContent("Spiel starten · 13:30");
+    expect(startButton()).toBeEnabled();
+  });
+});
+
+describe("GameSetup — start sequence", () => {
+  it("sends the defaults and the device id once, then loads the log", async () => {
+    const { onStarted } = await renderSetup();
+
+    await clickStart();
+
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(LOG));
+
+    expect(getDeviceIdMock).toHaveBeenCalledTimes(1);
+    expect(setDeviceIdMock).toHaveBeenCalledTimes(1);
+    expect(setDeviceIdMock).toHaveBeenCalledWith("device-1");
+    expect(apiPutMock).toHaveBeenCalledTimes(1);
+    expect(apiPutMock).toHaveBeenCalledWith(SETUP_PATH, {
+      ctResult: "home",
+      direction: "Ost",
+      fhPossession: "home",
+      device_id: "device-1",
+    });
+    expect(startCalls).toEqual([`PUT ${SETUP_PATH}`, `GET ${LOG_PATH}`]);
+    expect(onStarted).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends the chosen toss, possession and direction", async () => {
+    await renderSetup();
+
+    await userEvent.click(
+      within(screen.getByRole("group", { name: "Münzwurf" })).getByRole(
+        "button",
+        { name: "Wolves" },
+      ),
+    );
+    await userEvent.click(
+      within(screen.getByRole("group", { name: "Erster Ballbesitz" })).getByRole(
+        "button",
+        { name: "Wolves" },
+      ),
+    );
+    await userEvent.click(
+      within(screen.getByRole("group", { name: "Richtung" })).getByRole(
+        "button",
+        { name: "West → Ost" },
+      ),
+    );
+    await clickStart();
+
+    await waitFor(() => expect(startCalls).toContain(`GET ${LOG_PATH}`));
+    expect(apiPutMock).toHaveBeenCalledWith(SETUP_PATH, {
+      ctResult: "away",
+      direction: "West",
+      fhPossession: "away",
+      device_id: "device-1",
+    });
+  });
+
+  it("shows an existing setup as Fortsetzen and restores its values", async () => {
+    setup = { ctResult: "away", direction: "West", fhPossession: "away" };
+    await renderSetup();
+
+    expect(startButton()).toHaveTextContent("Fortsetzen");
+    expect(screen.getByText(/gewinnt den Münzwurf/)).toHaveTextContent(
+      "Wolves gewinnt den Münzwurf · Ballbesitz Wolves · Richtung West → Ost",
+    );
+    expect(
+      within(screen.getByRole("group", { name: "Richtung" })).getByRole(
+        "button",
+        { name: "West → Ost" },
+      ),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("normalises the legacy team-name setup", async () => {
+    setup = {
+      ctResult: "Gewonnen",
+      direction: "directionRight",
+      fhPossession: "Wolves",
+    };
+    await renderSetup();
+
+    expect(startButton()).toHaveTextContent("Fortsetzen");
+    expect(screen.getByText(/gewinnt den Münzwurf/)).toHaveTextContent(
+      "Ravens gewinnt den Münzwurf · Ballbesitz Wolves · Richtung West → Ost",
+    );
+  });
+
+  it("disables the button while the start is in flight", async () => {
+    let release: (value: unknown) => void = () => undefined;
+    apiPutMock.mockImplementation(async (path: string) => {
+      if (path === SETUP_PATH) {
+        return new Promise((resolve) => {
+          release = resolve;
+        });
+      }
+      return [];
+    });
+    const { onStarted } = await renderSetup();
+
+    await clickStart();
+
+    expect(startButton()).toBeDisabled();
+    expect(startButton()).toHaveTextContent("Startet …");
+    release({});
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(LOG));
+  });
+});
+
 describe("GameSetup — warn and confirm", () => {
   it("requires a second tap before starting with an invalid licence", async () => {
     teamList[0] = teamPerson({ is_valid: false, valid_until: "2025-03-04" });
@@ -441,3 +598,133 @@ describe("GameSetup — warn and confirm", () => {
   });
 });
 
+describe("GameSetup — passcheck", () => {
+  it("shows a complete passcheck with the link to its page", async () => {
+    await renderSetup({ passcheck: true });
+
+    expect(screen.getByText("Passcheck vollständig")).toHaveClass("okchip");
+    expect(screen.getByRole("link", { name: "Passcheck-Seite" })).toHaveAttribute(
+      "href",
+      "/passcheck/",
+    );
+  });
+
+  it("shows a missing passcheck", async () => {
+    await renderSetup({ passcheck: false });
+
+    expect(screen.getByText("kein Passcheck")).toHaveClass("chip-miss");
+  });
+
+  it("shows an unknown passcheck when the payload omits it", async () => {
+    const game = { ...GAME };
+    delete game.passcheck;
+    render(<GameSetupScreen game={game} onStarted={vi.fn()} />);
+    await screen.findByRole("group", { name: "Münzwurf" });
+
+    expect(screen.getByText("unbekannt")).toBeInTheDocument();
+  });
+});
+
+describe("GameSetup — server rejections", () => {
+  const statusMessage = "Dieser Spielstatus erlaubt keinen Spielstart.";
+  const deviceMessage = "Dieses Spiel läuft auf einem anderen Gerät.";
+
+  it("shows the server detail for an illegal transition", async () => {
+    setupFailure = new ApiError(409, { detail: statusMessage }, statusMessage);
+    const { onStarted } = await renderSetup();
+
+    await clickStart();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(statusMessage);
+    expect(startCalls).toEqual([`PUT ${SETUP_PATH}`]);
+    expect(onStarted).not.toHaveBeenCalled();
+    expect(startButton()).toBeEnabled();
+  });
+
+  it("switches to read-only when another device owns the game", async () => {
+    setupFailure = new ApiError(409, { detail: deviceMessage }, deviceMessage);
+    await renderSetup();
+
+    await clickStart();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(deviceMessage);
+    expect(crewSelect("Schiedsrichter")).toBeDisabled();
+    for (const group of screen.getAllByRole("group")) {
+      for (const button of within(group).getAllByRole("button")) {
+        expect(button).toBeDisabled();
+      }
+    }
+    expect(startButton()).toBeDisabled();
+    expect(startButton()).toHaveTextContent("Nur lesen");
+    expect(setDeviceIdMock).not.toHaveBeenCalled();
+  });
+
+  it("falls back to a readable message for other failures", async () => {
+    setupFailure = new ApiError(500, null);
+    await renderSetup();
+
+    await clickStart();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Der Start ist fehlgeschlagen. Bitte erneut versuchen.",
+    );
+    expect(startButton()).toBeEnabled();
+  });
+});
+
+describe("GameSetup — loading", () => {
+  it("shows a readable error and retries the load", async () => {
+    apiGetMock.mockRejectedValue(new ApiError(500, null));
+    render(<GameSetupScreen game={GAME} onStarted={vi.fn()} />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(
+      "Die Vorbereitung konnte nicht geladen werden.",
+    );
+
+    apiGetMock.mockImplementation(async (path: string) => {
+      if (path === CREW_PATH) {
+        return crew;
+      }
+      if (path === TEAM_PATH) {
+        return teamList;
+      }
+      if (path === SETUP_PATH) {
+        return {};
+      }
+      throw new Error(`unexpected GET ${path}`);
+    });
+    await userEvent.click(
+      within(alert).getByRole("button", { name: "Erneut laden" }),
+    );
+
+    expect(
+      await screen.findByRole("group", { name: "Münzwurf" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the screen usable when the officials team list fails", async () => {
+    apiGetMock.mockImplementation(async (path: string) => {
+      if (path === CREW_PATH) {
+        return crew;
+      }
+      if (path === TEAM_PATH) {
+        throw new ApiError(500, null);
+      }
+      if (path === SETUP_PATH) {
+        return {};
+      }
+      throw new Error(`unexpected GET ${path}`);
+    });
+    render(<GameSetupScreen game={GAME} onStarted={vi.fn()} />);
+
+    await screen.findByRole("group", { name: "Münzwurf" });
+
+    expect(
+      screen.getByText("Die Offiziellen des Teams konnten nicht geladen werden."),
+    ).toBeInTheDocument();
+    expect(startButton()).toBeEnabled();
+  });
+});
