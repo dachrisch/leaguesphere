@@ -394,7 +394,7 @@ export default function GameSetupScreen({
   /**
    * Fetch crew, team officials and setup. Deliberately does not touch the
    * loading flags before the first await: a synchronous `setState` in an effect
-   * cascades, so the initial state is already "loading" and {@link retry}
+   * cascades, so the initial state is already "loading" and {@link retryLoad}
    * raises it again for a user-initiated reload.
    */
   const load = useCallback(async () => {

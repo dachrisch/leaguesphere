@@ -204,6 +204,13 @@ class GameSetupSerializer(ModelSerializer):
     class Meta:
         model = GameSetup
         fields = ["ctResult", "direction", "fhPossession"]
+        # v1 submits its untouched form fields as empty strings (or omits an
+        # undefined coin toss). The game still has to start — only a truly
+        # invalid value (wrong type, over max_length) may reject the request.
+        extra_kwargs = {
+            field: {"required": False, "allow_blank": True}
+            for field in ("ctResult", "direction", "fhPossession")
+        }
 
 
 class GameFinalizer(ModelSerializer):

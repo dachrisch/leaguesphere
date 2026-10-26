@@ -130,9 +130,9 @@ class TestGameSetup(WebTest):
         response = self.app.put_json(
             reverse(API_GAME_SETUP, kwargs={"pk": game.pk}),
             {
-                "ctResult": "x" * 101,
-                "direction": "Ost",
-                "fhPossession": "home",
+                "ctResult": "won",
+                "direction": "x" * 101,
+                "fhPossession": "HOME",
             },
             headers=DBSetup().get_token_header(),
             status=HTTPStatus.BAD_REQUEST,
@@ -140,6 +140,31 @@ class TestGameSetup(WebTest):
         assert response.status_code == HTTPStatus.BAD_REQUEST
         assert not GameSetup.objects.filter(gameinfo=game).exists()
         assert Gameinfo.objects.get(pk=game.pk).status != "1. Halbzeit"
+
+    def test_blank_legacy_setup_payload_still_starts_the_game(self):
+        """v1 sends its untouched form fields as empty strings."""
+        DBSetup().g62_status_empty()
+        game = Gameinfo.objects.last()
+        assert not GameSetup.objects.filter(gameinfo=game).exists()
+
+        response = self.app.put_json(
+            reverse(API_GAME_SETUP, kwargs={"pk": game.pk}),
+            {"ctResult": "", "direction": "", "fhPossession": ""},
+            headers=DBSetup().get_token_header(),
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.json == {
+            "ctResult": "",
+            "direction": "",
+            "fhPossession": "",
+        }
+        setup = GameSetup.objects.get(gameinfo=game)
+        assert setup.ctResult == ""
+        assert setup.direction == ""
+        assert setup.fhPossession == ""
+        game.refresh_from_db()
+        assert game.status == "1. Halbzeit"
 
     def test_rejected_start_leaves_no_setup_row(self):
         DBSetup().g62_status_empty()
