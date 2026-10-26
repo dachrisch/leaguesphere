@@ -7,9 +7,11 @@ has no privilege to create an account with.
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.http import HttpResponseForbidden
+from django.db import connection
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView
 from django.views.generic.edit import CreateView
@@ -189,7 +191,17 @@ class RevealView(StaffRequiredMixin, DetailView):
         return render(
             request,
             "dbaccess/request_reveal.html",
-            {"access_request": access_request, "password": password},
+            {
+                "access_request": access_request,
+                "password": password,
+                "db_name": connection.settings_dict["NAME"],
+                "tunnel": {
+                    "host": settings.DBACCESS_TUNNEL_HOST,
+                    "user": settings.DBACCESS_TUNNEL_USER,
+                    "port": settings.DBACCESS_TUNNEL_PORT,
+                    "key_item": settings.DBACCESS_TUNNEL_KEY_ITEM,
+                },
+            },
         )
 
 
