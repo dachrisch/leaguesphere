@@ -10,6 +10,7 @@ Rule summary (see module docstring):
 """
 
 import importlib.util
+import json
 import os
 
 import pytest
@@ -188,18 +189,73 @@ class TestFeatureBranches:
         assert any("CHANGELOG" in e for e in errors)
 
     def test_version_file_introduced_by_the_branch_passes(self, guard):
-        """A new SPA package.json is absent from master by definition."""
+        """A new SPA package.json starts at the base manifest version."""
         base_files = {
             path: version
             for path, version in FILES_AT_BASE.items()
             if path != "scorecard_v2/package.json"
         }
+        head_files = dict(FILES_AT_BASE)
+        head_files["scorecard_v2/package.json"] = BASE
         errors = guard.check_feature_branch(
             base_manifest=BASE,
             head_manifest=BASE,
             base_files=base_files,
-            head_files=dict(FILES_AT_BASE),
+            head_files=head_files,
             base_changelog=CHANGELOG_AT_BASE,
             head_changelog=CHANGELOG_AT_BASE,
         )
         assert errors == []
+
+    def test_new_version_file_must_start_at_the_base_manifest_version(self, guard):
+        """A new file may not invent a version the manifest does not carry."""
+        base_files = {
+            path: version
+            for path, version in FILES_AT_BASE.items()
+            if path != "scorecard_v2/package.json"
+        }
+        head_files = dict(FILES_AT_BASE)
+        head_files["scorecard_v2/package.json"] = "4.24.0"
+        errors = guard.check_feature_branch(
+            base_manifest=BASE,
+            head_manifest=BASE,
+            base_files=base_files,
+            head_files=head_files,
+            base_changelog=CHANGELOG_AT_BASE,
+            head_changelog=CHANGELOG_AT_BASE,
+        )
+        assert any(
+            "scorecard_v2/package.json" in e
+            and "new version file must start at the base manifest version" in e
+            for e in errors
+        )
+
+
+class TestBaseState:
+    def test_present_but_unreadable_base_file_fails_closed(self, guard, monkeypatch):
+        """A file that exists on master but cannot be read is not 'new'."""
+        base_ref = "origin/master"
+        unreadable = "scorecard/package.json"
+
+        def fake_git(args):
+            if args[0] == "fetch":
+                return ""  # best effort, nothing to fetch
+            if args[0] == "cat-file":
+                return ""  # every version file exists in the base tree
+            assert args[0] == "show", args
+            revision = args[1]
+            if revision == f"{base_ref}:{guard.MANIFEST_PATH}":
+                return json.dumps({".": BASE})
+            if revision == f"{base_ref}:{guard.CHANGELOG_PATH}":
+                return CHANGELOG_AT_BASE
+            path = revision.split(":", 1)[1]
+            if path == unreadable:
+                return None  # tree entry exists, blob read fails
+            return guard._read_working_tree(path)
+
+        monkeypatch.setattr(guard, "_git", fake_git)
+
+        state, error = guard.collect_state(base_ref)
+
+        assert state is None
+        assert error == f"could not read {unreadable} from {base_ref} - failing closed"
