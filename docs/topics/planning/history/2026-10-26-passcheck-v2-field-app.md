@@ -1,6 +1,11 @@
 # Passcheck v2 Field App Implementation Plan
 
 > **For the agent:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task.
+>
+> **Status (2026-10-27):** complete on `feat/passcheck-v2-field-app` (Tasks
+> 1–11). The manual field protocol and the staged screenshot re-capture remain
+> as post-merge checks. Runs in parallel with
+> [Scorecard v2](../current/2026-10-26-scorecard-v2.md).
 
 **Goal:** Ship a field-ready passcheck UI (`/field/`) that a referee can run one-handed on a phone — one tap per player, big pass photo, jersey numbers from the roster, and an offline outbox that survives a dead network — **while the old passcheck keeps running unchanged alongside it**.
 
@@ -81,6 +86,8 @@ must be installed from its own lockfile.
 | 7 Player sheet (rules, jersey, photo viewer) | done | `b00b4a4e` |
 | 8 Verification sheet + idempotent save flow | done | `2ccf1e5e` |
 | 9 Offline shell, outbox, sync-on-reconnect | done | `a18a709c` |
+| 10 Feature doc + in-app help + screenshot | done | pending commit |
+| 11 Flow wiring + v1 link + noindex | done | `5a5ab9b9` |
 
 Deviations from the task text below (the task text is kept for history):
 

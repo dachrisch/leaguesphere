@@ -19,6 +19,8 @@ See [current/](./current/) for active planning work.
 ### Completed Plans
 See [history/](./history/) for completed and archived plans.
 
+- [2026-10-26 Passcheck v2 Field App](./history/2026-10-26-passcheck-v2-field-app.md): field-ready passcheck UI (`/field/`) beside the unchanged `/passcheck/`; shipped with backend validation, permission-checked photos, idempotent writes and an offline outbox
+
 ## Overview
 
 This directory tracks project plans and completed work. Plans use YYYY-MM-DD-name.md naming.
