@@ -1,10 +1,16 @@
 type Props = {
   teamName: string;
   checkedCount: number;
+  pendingCount?: number;
   onBackToGames: () => void;
 };
 
-function DoneSheet({ teamName, checkedCount, onBackToGames }: Props) {
+function DoneSheet({
+  teamName,
+  checkedCount,
+  pendingCount = 0,
+  onBackToGames,
+}: Props) {
   return (
     <div className="sheet-backdrop">
       <section
@@ -22,6 +28,12 @@ function DoneSheet({ teamName, checkedCount, onBackToGames }: Props) {
         <p className="sheet-meta">
           {checkedCount} Spieler für {teamName} geprüft.
         </p>
+
+        {pendingCount > 0 && (
+          <p className="rule-warning" role="status">
+            {pendingCount} Einträge warten auf Übertragung.
+          </p>
+        )}
 
         <footer className="sheet-foot">
           <button

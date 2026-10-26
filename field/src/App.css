@@ -166,6 +166,15 @@ body {
   white-space: nowrap;
 }
 
+.offline-banner {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: #fcf2de;
+  color: #7a4e0c;
+  font-size: 13px;
+}
+
 .roster-list {
   display: flex;
   flex-direction: column;
