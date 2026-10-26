@@ -4,6 +4,7 @@ import type { RosterEntry } from "../api/types";
 
 type Props = {
   player: RosterEntry;
+  jerseyNumber?: number;
   checked: boolean;
   onToggle: () => void;
   onOpenPlayer: () => void;
@@ -12,6 +13,7 @@ type Props = {
 
 function PlayerRow({
   player,
+  jerseyNumber = player.jersey_number,
   checked,
   onToggle,
   onOpenPlayer,
@@ -69,7 +71,7 @@ function PlayerRow({
           onOpenPlayer();
         }}
       >
-        {player.jersey_number}
+        {jerseyNumber}
       </button>
     </div>
   );

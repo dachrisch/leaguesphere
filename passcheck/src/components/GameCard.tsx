@@ -32,6 +32,9 @@ function GameCard({game}: Props) {
             </Button>
           </div>
         </Card.Body>
+        <Card.Footer>
+          <a href={`/field/?gameday=${game.gameday_id}`}>Feld-Ansicht</a>
+        </Card.Footer>
       </Card>
     </div>
   );

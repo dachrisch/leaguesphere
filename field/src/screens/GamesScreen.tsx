@@ -65,6 +65,9 @@ function GamesScreen({ onOpen, loadGames = fetchGames, gamedayId }: Props) {
               />
             ))
           )}
+          <footer className="games-foot">
+            <a href="/passcheck/">Zur klassischen Ansicht</a>
+          </footer>
         </>
       )}
     </section>
