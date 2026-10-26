@@ -12,6 +12,7 @@ from passcheck.service.passcheck_service import (
     PasscheckServicePlayers,
     PasscheckException,
     RosterValidationError,
+    DeviceConflictError,
 )
 from passcheck.service.request_api_service import RequestApiService
 
@@ -108,4 +109,12 @@ class PasscheckRosterAPIView(APIView):
             )
         except RosterValidationError as exception:
             return Response({"errors": exception.errors}, status=HTTPStatus.BAD_REQUEST)
+        except DeviceConflictError:
+            return Response(
+                {
+                    "detail": "Diese Passliste wird bereits auf einem anderen "
+                    "Gerät geführt."
+                },
+                status=HTTPStatus.CONFLICT,
+            )
         return Response(status=HTTPStatus.OK)

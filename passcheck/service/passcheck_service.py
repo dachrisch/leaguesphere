@@ -1,6 +1,8 @@
 import datetime
+import uuid
 
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Count, Q, Value, OuterRef, Exists, Subquery, IntegerField
 
 from gamedays.api.serializers import GamedayInfoSerializer
@@ -34,6 +36,14 @@ class RosterValidationError(Exception):
     def __init__(self, errors: dict):
         self.errors = errors
         super().__init__("invalid roster")
+
+
+class DeviceConflictError(Exception):
+    """A different v2 device already owns this team's gameday check."""
+
+    def __init__(self, device_id: str = ""):
+        self.device_id = device_id
+        super().__init__("device conflict")
 
 
 class PasscheckService:
@@ -473,19 +483,54 @@ class PasscheckServicePlayers:
             )
         ) + [team_id]
 
+    @staticmethod
+    def _parse_client_id(value):
+        if value in (None, ""):
+            return None
+        try:
+            return uuid.UUID(str(value))
+        except (TypeError, ValueError, AttributeError):
+            raise RosterValidationError({"client_id": "client_id muss eine UUID sein."})
+
+    @transaction.atomic
     def create_roster_and_passcheck_verification(self, team_id, gameday_id, user, data):
-        gameday = Gameday.objects.get(pk=gameday_id)
+        gameday = Gameday.objects.select_for_update().get(pk=gameday_id)
         errors = self.validate_roster(team_id, gameday, data.get("roster") or [])
         if errors:
             raise RosterValidationError(errors)
+
+        client_id = self._parse_client_id(data.get("client_id"))
+        device_id = (data.get("device_id") or "").strip()[:64]
+        existing = PasscheckVerification.objects.filter(
+            team_id=team_id, gameday_id=gameday_id
+        ).first()
+        if (
+            existing is not None
+            and client_id is not None
+            and existing.client_id == client_id
+        ):
+            return existing
+        if (
+            existing is not None
+            and device_id
+            and existing.device_id
+            and existing.device_id != device_id
+        ):
+            raise DeviceConflictError(existing.device_id)
 
         PlayerlistGameday.objects.filter(
             playerlist__team__in=self.all_relevant_team_ids(team_id),
             gameday=gameday_id,
         ).delete()
         self._create_roster(gameday_id, data["roster"])
-        self._create_passcheck_verification(
-            gameday_id, team_id, user, data.get("official_name"), data.get("note")
+        return self._create_passcheck_verification(
+            gameday_id,
+            team_id,
+            user,
+            data.get("official_name"),
+            data.get("note"),
+            client_id=client_id,
+            device_id=device_id,
         )
 
     # noinspection PyMethodMayBeStatic
@@ -504,9 +549,16 @@ class PasscheckServicePlayers:
 
     # noinspection PyMethodMayBeStatic
     def _create_passcheck_verification(
-        self, gameday_id, team_id, user, official_name, note
+        self,
+        gameday_id,
+        team_id,
+        user,
+        official_name,
+        note,
+        client_id=None,
+        device_id="",
     ):
-        PasscheckVerification.objects.update_or_create(
+        verification, _ = PasscheckVerification.objects.update_or_create(
             team_id=team_id,
             gameday_id=gameday_id,
             defaults={
@@ -515,8 +567,11 @@ class PasscheckServicePlayers:
                 "gameday_id": gameday_id,
                 "team_id": team_id,
                 "note": note,
+                "client_id": client_id,
+                "device_id": device_id,
             },
         )
+        return verification
 
 
 class TeamData(dict):
