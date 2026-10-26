@@ -2,20 +2,17 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import type { Game } from "../api/types";
 import { gameTag } from "../components/tag";
-import GameList, {
-  formatGameScore,
-  formatGameTime,
-  type GameListGame,
-} from "./GameList";
+import GameList, { formatGameScore, formatGameTime } from "./GameList";
 
 /**
  * `Gameinfo.status` is free text on the wire, so the fixture builder accepts
  * any string (legacy capitalisation, unknown state) and narrows to the type.
  */
-type GameOverrides = Omit<Partial<GameListGame>, "status"> & { status?: string };
+type GameOverrides = Omit<Partial<Game>, "status"> & { status?: string };
 
-function makeGame(overrides: GameOverrides = {}): GameListGame {
+function makeGame(overrides: GameOverrides = {}): Game {
   return {
     id: 1,
     scheduled: "13:30:00",
@@ -32,11 +29,11 @@ function makeGame(overrides: GameOverrides = {}): GameListGame {
     id_home: "11",
     id_away: "12",
     ...overrides,
-  } as GameListGame;
+  } as Game;
 }
 
 function renderList(
-  games: GameListGame[],
+  games: Game[],
   props: { title?: string; subtitle?: string } = {},
 ) {
   const onSelect = vi.fn();

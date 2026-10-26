@@ -75,6 +75,12 @@ export interface Game {
   id_home: string;
   /** `Gameresult` pk of the away row (see the warning above). */
   id_away: string;
+  /**
+   * True only when both teams of the game passed the passcheck. Optional
+   * because a backend without the whistle annotation omits it: `undefined`
+   * means "unknown" (render no chip), which is not the same as `false`.
+   */
+  passcheck?: boolean;
 }
 
 /**
