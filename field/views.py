@@ -16,9 +16,7 @@ class ServiceWorkerView(View):
 
     def get(self, request):
         path = Path(__file__).resolve().parent / "public" / "sw.js"
-        response = FileResponse(
-            open(path, "rb"), content_type="application/javascript"
-        )
+        response = FileResponse(open(path, "rb"), content_type="application/javascript")
         response["Service-Worker-Allowed"] = "/field/"
         response["Cache-Control"] = "no-cache"
         return response
