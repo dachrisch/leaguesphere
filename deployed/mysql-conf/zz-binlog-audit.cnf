@@ -1,0 +1,47 @@
+# LeagueSphere database: binary logging (PITR) + statement audit.
+# Mounted read-only at /etc/mysql/conf.d/zz-binlog-audit.cnf.
+#
+# WHY ONE FILE FOR BOTH FEATURES: log_bin cannot be set at runtime
+# ("ERROR 1238: Variable 'log_bin' is a read only variable"), so enabling it
+# costs a db container restart. The audit plugin is free once that is paid.
+#
+# WHY THE "zz-" PREFIX: /etc/mysql/my.cnf includes mariadb.conf.d/ before
+# conf.d/, and a later option wins on a conflicting value. This file is last.
+#
+# CHANGING THIS FILE LATER: mysqld reads it only at startup, and a deploy does
+# NOT recreate the container when only the file content changes (the compose
+# service definition is unchanged, so `recreate: auto` sees no diff). After
+# editing, restart it deliberately:
+#     cd /var/jail/home/leaguesphere/container/deployed
+#     docker compose -p leaguesphere --env-file .env up -d --force-recreate db
+#
+# Rollback is removing the mount from docker-compose.yaml, not deleting this
+# file. See docs/plans/2026-10-26-mariadb-binlog-and-audit.md in the
+# infrastructure repo for the drill and the reading runbook.
+
+[mysqld]
+# --- point-in-time recovery ------------------------------------------------
+server_id                  = 1
+log_bin                    = /var/lib/mysql/binlog
+binlog_format              = ROW
+binlog_row_image           = FULL
+binlog_annotate_row_events = ON
+sync_binlog                = 1
+max_binlog_size            = 256M
+# Two days: this is both the PITR window and the bound on how much binlog every
+# hourly prepared set carries into restic. Raise it only together with a disk
+# check - the host is above 85% used.
+expire_logs_days           = 2
+
+# --- who did what ----------------------------------------------------------
+plugin_load_add               = server_audit
+server_audit_events           = CONNECT,QUERY_DML_NO_SELECT
+# The application writes constantly and would bury the humans this log exists
+# for. Both stack's application accounts are listed so one file is valid on
+# prod (web35_8) and on stage/test (leaguesphere_stage).
+server_audit_excl_users       = web35_8,leaguesphere_stage
+server_audit_output_type      = file
+server_audit_file_path        = /var/lib/mysql/server_audit.log
+server_audit_file_rotate_size = 50M
+server_audit_file_rotations   = 9
+server_audit_timestamp_format = %Y-%m-%d %H:%M:%S
