@@ -3,6 +3,9 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  // Nothing is served from a public/ dir; without this a future public/ would
+  // be copied into the JS output dir Django serves.
+  publicDir: false,
   server: {
     port: 3004,
     proxy: { "/api": "http://localhost:8000" },

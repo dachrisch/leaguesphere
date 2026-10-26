@@ -314,7 +314,7 @@ test run:
 
 ## Task 2: Vite + TypeScript build
 
-**Files:** `scorecard_v2/package.json`, `package-lock.json`, `vite.config.ts`, `vitest.config.ts`, `tsconfig.json`, `tsconfig.node.json`, `eslint.config.mjs`, `index.html`, `src/main.tsx`, `src/App.tsx`, `src/App.test.tsx`, `.gitignore`
+**Files:** `scorecard_v2/package.json`, `package-lock.json`, `vite.config.ts`, `vitest.config.ts`, `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json`, `eslint.config.mjs`, `index.html`, `src/main.tsx`, `src/App.tsx`, `src/App.test.tsx`, `.gitignore`
 
 Same shape as the old scorecard build, because Django loads a classic script:
 
@@ -921,7 +921,7 @@ Commit `feat(scorecard-v2): wire the full flow`.
 
 The topic also needs its screenshot at
 `league_manager/static/help/img/spieltag-v2.png` and a link line in
-`league_manager/templates/llms-full.txt` (the skill's `templates/llms-full.txt`);
+`league_manager/templates/llms-full.txt` (step 5 of the skill);
 `test_help.py` checks that every image referenced from the content exists and
 `test_ai_readiness.py` that the llms list links every topic. Capture the
 screenshot from staging once `/scorecard/v2/` is deployed.
@@ -939,7 +939,7 @@ the new job.
 
 Add a `scorecard_v2_js` job modelled on `scorecard_js` (`continue.yml:280`)
 running `npm ci`, `npm run eslint`, `npm run typecheck`, `npm run test:run`,
-`npm run build`; add the workflow entry next to `scorecard_js` (`continue.yml:1148`).
+`npm run build`; add the workflow entry next to `scorecard_js` (`continue.yml:1140`).
 The `e2e` job (`continue.yml:435-475`) must also `npm ci && npm run build` for
 `scorecard_v2` and run `scorecard_v2/tests/e2e/` beside the old flow.
 
