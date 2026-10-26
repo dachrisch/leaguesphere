@@ -41,6 +41,8 @@ league_manager/.* run-migrations true
 
 # --- home (personal home page): presentation only, core shard + image ---
 home/.* run-python-core true
+dbaccess/.* run-python-core true
+dbaccess/.* run-build-backend true
 home/.* run-build-backend true
 
 # --- gamedays + league_table (coupled fixtures/models: one shard) ---
