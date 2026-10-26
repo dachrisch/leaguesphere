@@ -44,6 +44,7 @@ VERSION_FILES = {
     "league_manager/__init__.py": "init",
     "liveticker/package.json": "package-json",
     "passcheck/package.json": "package-json",
+    "field/package.json": "package-json",
     "scorecard/package.json": "package-json",
     "gameday_designer/package.json": "package-json",
     "journey_dashboard/package.json": "package-json",
@@ -204,6 +205,9 @@ def check_feature_branch(
             "edit the changelog"
         )
     for path in VERSION_FILES:
+        if path not in base_files:
+            # New version file introduced by this branch; nothing to compare.
+            continue
         base_version = base_files.get(path)
         head_version = head_files.get(path)
         if head_version is None:
@@ -270,7 +274,10 @@ def collect_state(base_ref: str) -> tuple[dict | None, str | None]:
     for path in VERSION_FILES:
         content = _git(["show", f"{base_ref}:{path}"])
         if content is None:
-            return None, f"could not read {path} from {base_ref} - failing closed"
+            # A version file that does not exist on master yet (new app in
+            # this branch) has no base state to compare against; the
+            # release-please branch check still requires it once merged.
+            continue
         try:
             base_files[path] = read_version_from_text(path, content)
         except ValueError as exc:
