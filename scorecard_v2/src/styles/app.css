@@ -532,6 +532,23 @@ button.game-row:active {
   min-width: 0;
 }
 
+/* Read-only name of an unknown or duplicated crew row. */
+.offname {
+  display: block;
+  min-height: var(--touch);
+  padding: var(--space-2);
+  overflow: hidden;
+  font-size: var(--fs-base);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--panel2);
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+}
+
 .offsel {
   width: 100%;
   min-height: var(--touch);
@@ -576,6 +593,11 @@ button.game-row:active {
 
 .lic-missing {
   color: var(--muted);
+}
+
+/* Cannot be judged: a guest official or an unavailable team list. */
+.lic-unknown {
+  color: var(--soon-text);
 }
 
 .seg {
@@ -630,6 +652,8 @@ button.game-row:active {
 }
 
 .setlink {
+  display: inline-flex;
+  align-items: center;
   align-self: flex-start;
   min-height: var(--touch);
   padding: 0;
@@ -638,6 +662,22 @@ button.game-row:active {
   color: var(--amber);
   text-decoration: none;
   cursor: pointer;
+}
+
+/* Warning under a crew row (duplicate position). */
+.offwarn {
+  margin: 2px 0 var(--space-2);
+  font-size: var(--fs-xs);
+}
+
+.finishednote {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--fs-base);
+  line-height: 1.5;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
 }
 
 .setlink:hover {
