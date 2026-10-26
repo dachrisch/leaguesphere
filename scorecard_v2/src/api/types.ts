@@ -117,11 +117,32 @@ export type Officials = Official[];
  * `{}` until the game has been prepared, so every field is optional. `PUT`
  * starts the game when it creates the row, and rejects the transition when the
  * game is already running.
+ *
+ * v2 writes `ctResult`/`fhPossession` as `home`/`away` and `direction` as
+ * `Ost`/`West`. The old app wrote team names and `directionLeft`/`Right`, so
+ * reads normalise those legacy values.
  */
 export interface GameSetup {
   ctResult?: string;
   direction?: string;
   fhPossession?: string;
+  /** Added by the device lock (Task 16); ignored by older servers. */
+  device_id?: string;
+}
+
+/**
+ * One entry of `GET /api/officials/team/<teamId>/list/`
+ * (`OfficialTeamListScorecardSerializer`). `license` is the licence label
+ * (`null` when the person has none) and `valid_until` is `YYYY-MM-DD`.
+ */
+export interface TeamOfficial {
+  id: number;
+  first_name: string;
+  last_name: string;
+  team: string;
+  license: string | null;
+  valid_until: string | null;
+  is_valid: boolean;
 }
 
 /**
