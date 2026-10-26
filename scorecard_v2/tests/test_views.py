@@ -21,6 +21,7 @@ class TestScorecardV2View(WebTest):
         response = self.app.get(reverse("scorecard-v2-home"))
         assert 'id="scorecard-v2-app"' in response.text
         assert "/static/scorecard_v2/js/scorecard_v2.js" in response.text
+        assert "/static/scorecard_v2/js/scorecard_v2.css" in response.text
         assert "csrftoken" in response.client.cookies
 
     def test_old_scorecard_route_is_untouched(self):
