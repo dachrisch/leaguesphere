@@ -749,6 +749,385 @@ button.game-row:active {
   cursor: not-allowed;
 }
 
+/* ------------------------------------------------------------- tracking -- */
+
+.tracking {
+  /* Board and footer stay put; the log takes the remaining height. */
+  min-height: 0;
+}
+
+.board {
+  flex: 0 0 auto;
+  padding: var(--space-3) var(--page-gutter) var(--space-4);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--home) 8%, transparent),
+    transparent
+  );
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.scoreline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.scoreline > * {
+  min-width: 0;
+}
+
+.team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  min-height: var(--touch);
+  padding: var(--space-1) 2px;
+  color: var(--fg);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.team.home {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.team.away {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.team:hover {
+  border-color: var(--line-soft);
+}
+
+.team.hasball {
+  background: var(--fill-soft);
+  border-color: var(--line);
+}
+
+.team:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.crest {
+  display: grid;
+  width: 34px;
+  height: 38px;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: 800;
+  line-height: 1;
+  color: #0b1017;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  /* A drawn shield, not a crest image: no logo URLs in the app. */
+  clip-path: polygon(50% 0, 100% 16%, 100% 68%, 50% 100%, 0 68%, 0 16%);
+}
+
+.team.home .crest {
+  background: var(--home);
+}
+
+.team.away .crest {
+  background: var(--away);
+}
+
+.tname {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.poss {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 88px;
+}
+
+.score {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.score .sep {
+  color: var(--muted);
+}
+
+.half {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.trackerror {
+  flex: 0 0 auto;
+  margin: var(--space-2) var(--page-gutter) 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--home-text);
+  background: var(--home-wash);
+  border: 1px solid color-mix(in srgb, var(--home) 35%, transparent);
+  border-radius: var(--radius-lg);
+}
+
+.logblock {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: var(--space-2);
+}
+
+.loghead {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--page-gutter);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.loghead h2 {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.logerror {
+  flex: 0 0 auto;
+  margin: 0 var(--page-gutter) var(--space-2);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--amber);
+}
+
+.logrows {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0 var(--page-gutter) var(--space-3);
+  overflow-y: auto;
+  list-style: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.logempty {
+  padding: var(--space-8) var(--page-gutter);
+  font-size: var(--fs-base);
+  text-align: center;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-lg);
+  margin: 0 var(--page-gutter);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: calc(var(--touch) + var(--space-2));
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.ev {
+  display: grid;
+  width: 34px;
+  height: 28px;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: var(--muted);
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.ev-td,
+.ev-safety {
+  color: var(--home-text);
+  background: var(--home-wash);
+  border-color: color-mix(in srgb, var(--home) 30%, transparent);
+}
+
+.ev-pat,
+.ev-first {
+  color: var(--away-text);
+  background: var(--away-wash);
+  border-color: color-mix(in srgb, var(--away) 30%, transparent);
+}
+
+.ev-pen,
+.ev-to,
+.ev-time {
+  color: var(--amber);
+  background: var(--amber-wash);
+  border-color: color-mix(in srgb, var(--amber) 30%, transparent);
+}
+
+.ev-int {
+  color: var(--fg);
+  background: var(--fill-soft);
+}
+
+.rowmain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rowprimary {
+  font-size: var(--fs-base);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.rowsub {
+  font-size: var(--fs-xs);
+  line-height: 1.35;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.rowright {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.rowtime {
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+.undo {
+  min-width: var(--touch);
+  min-height: var(--touch);
+  padding: 0 var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--amber);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.undo:hover {
+  border-color: var(--line-strong);
+  background: var(--panel2);
+}
+
+.undo:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.row.deleted .rowprimary,
+.row.deleted .rowsub,
+.row.deleted .rowtime {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.row.deleted .ev {
+  opacity: 0.5;
+}
+
+/* Task 10+11 fill the action grid; the slot is reserved here. */
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  padding: 0 var(--page-gutter) var(--space-3);
+}
+
+.action {
+  min-height: var(--touch);
+  padding: var(--space-2);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--fg);
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.trackfoot {
+  flex: 0 0 auto;
+  padding: var(--space-3) var(--page-gutter) var(--bottom-safe);
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+}
+
 /* --------------------------------------------------------- empty state --- */
 
 .empty-state {
@@ -780,6 +1159,22 @@ button.game-row:active {
 @media (max-width: 380px) {
   :root {
     --page-gutter: var(--space-4);
+  }
+
+  .score {
+    font-size: var(--fs-xl);
+  }
+
+  .clock {
+    min-width: 74px;
+  }
+
+  .row {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+  }
+
+  .ev {
+    width: 30px;
   }
 }
 

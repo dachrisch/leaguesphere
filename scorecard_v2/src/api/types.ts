@@ -183,8 +183,40 @@ export interface GameLog {
   gameId: number;
   /** False once the halftime marker exists. */
   isFirstHalf: boolean;
+  /** Team *name* currently in possession, `null` before/without one. */
+  inPossession: string | null;
+  /**
+   * Every raw `TeamLog` row, newest first — including the non-scoring events
+   * (penalties, timeouts, first downs, time) the per-half `entries` omit.
+   * Optional for version skew: an older server sends only the scoring entries.
+   */
+  events?: GameLogEvent[];
   home: GameLogTeam;
   away: GameLogTeam;
+}
+
+/**
+ * One raw `TeamLog` row of {@link GameLog.events}.
+ *
+ * Unlike {@link LogEntry} (a rendered play), this is one database row: a
+ * touchdown and its conversion are two events, and a penalty is visible.
+ */
+export interface GameLogEvent {
+  /** `TeamLog` pk — the identity a per-row undo sends as `team_log_id`. */
+  id: number;
+  sequence: number;
+  /** Team name, `null` for a game-level marker (start, halftime, end). */
+  team: string | null;
+  /** Wire event name ("Touchdown", "Strafe", "First Down", …). */
+  event: string;
+  player: number | null;
+  /** Free text: the penalty name, the time, a kickoff note, … */
+  input: string | null;
+  half: number;
+  cop: boolean;
+  isDeleted: boolean;
+  /** ISO-8601 UTC; anchors the row's local `HH:MM`. */
+  time: string;
 }
 
 /** One side of a {@link GameLog}, split by half. */

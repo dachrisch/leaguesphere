@@ -104,6 +104,7 @@ function teamPerson(overrides: TeamOverrides = {}): TeamOfficial {
 const LOG: GameLog = {
   gameId: 42,
   isFirstHalf: true,
+  inPossession: null,
   home: {
     id: 1,
     name: "Ravens",
