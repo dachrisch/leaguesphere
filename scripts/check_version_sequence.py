@@ -20,7 +20,8 @@ branch), i.e. at PR time, before anything is merged:
   ``+demo.N``) from the ``deploy.yaml`` flow, which has to be reset to
   the master state before merge. A version file the branch *introduces*
   (absent from master, e.g. a new SPA ``package.json``) has no base
-  version and is therefore only required to exist and parse.
+  version, so it must start at the base manifest version; a base entry
+  that exists but cannot be read still fails closed.
 
 Exit 0 when everything is in sequence, 1 with a human-readable reason
 otherwise (fail closed when the base state cannot be determined).
@@ -213,8 +214,13 @@ def check_feature_branch(
             errors.append(f"{path}: missing from version check")
             continue
         if base_version is None:
-            # Introduced by this branch (the file does not exist on master),
-            # so there is no previous version to compare against.
+            # Introduced by this branch (no tree entry on master): the only
+            # safe starting point is the base manifest version.
+            if head_version != base_manifest:
+                errors.append(
+                    f"{path} is {head_version!r} but a new version file must "
+                    f"start at the base manifest version {base_manifest!r}"
+                )
             continue
         if head_version == base_version:
             continue
@@ -275,12 +281,17 @@ def collect_state(base_ref: str) -> tuple[dict | None, str | None]:
         return None, f"could not parse base manifest ({exc}) - failing closed"
     base_files: dict[str, str | None] = {}
     for path in VERSION_FILES:
-        content = _git(["show", f"{base_ref}:{path}"])
-        if content is None:
-            # A version file the branch introduces is absent from the base
-            # tree; `check_feature_branch` skips it instead of comparing.
+        if _git(["cat-file", "-e", f"{base_ref}:{path}"]) is None:
+            # `cat-file -e` fails only when the tree entry is missing: the
+            # branch introduces this version file (checked against the base
+            # manifest by `check_feature_branch`).
             base_files[path] = None
             continue
+        content = _git(["show", f"{base_ref}:{path}"])
+        if content is None:
+            # The entry exists but its blob is unreadable (partial clone,
+            # fetch failure): never mistake that for a new file.
+            return None, f"could not read {path} from {base_ref} - failing closed"
         try:
             base_files[path] = read_version_from_text(path, content)
         except ValueError as exc:
