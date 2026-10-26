@@ -79,6 +79,10 @@ gameday_designer/templates/.* run-python-designer true
 # --- frontends (src + configs trigger job + image build) ---
 scorecard/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc|\.prettierignore) run-scorecard true
 scorecard/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc|\.prettierignore) run-build-frontend true
+# TODO(Task 22): reroute to run-scorecard-v2 once that parameter and job
+# exist; check_scope_coverage.py rejects undeclared parameters.
+scorecard_v2/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html) run-scorecard true
+scorecard_v2/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html) run-build-frontend true
 liveticker/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc) run-liveticker true
 liveticker/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc) run-build-frontend true
 passcheck/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|jest\.config\.js|index\.html|public/.*|\.npmrc|exclude-files\.txt) run-passcheck true
@@ -101,7 +105,7 @@ scorecard/tests/e2e/.* run-python-live true
 gameday_designer/tests/e2e/.* run-python-designer true
 
 # --- committed static assets (collectstatic / nginx image input) ---
-(gamedays|league_manager|liveticker|officials|passcheck|scorecard|teammanager|gameday_designer|share)/static/.* run-build-frontend true
+(gamedays|league_manager|liveticker|officials|passcheck|scorecard|scorecard_v2|teammanager|gameday_designer|share)/static/.* run-build-frontend true
 
 # --- container images ---
 (container/app\.Dockerfile|container/entrypoint.*\.sh) run-build-backend true
