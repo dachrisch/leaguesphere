@@ -2,6 +2,7 @@
   "name": "leaguesphere-hardening",
   "private": true,
   "version": "0.1.0",
+  "license": "AGPL-3.0-or-later",
   "description": "Reusable headless-Chrome hardening harness for demo.leaguesphere.app (playwright-core driving system Chromium).",
   "type": "commonjs",
   "scripts": {

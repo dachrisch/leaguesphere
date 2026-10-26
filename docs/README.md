@@ -19,6 +19,9 @@ Welcome to the LeagueSphere documentation. Everything you need to know about the
 2. [Contributor Guide](./topics/guides/contributor-guide.md) — How to contribute code
 3. [Architecture Overview](./topics/architecture/architecture-overview.md) — Understand the system
 
+**Want to know what you may do with the code?**
+- [Licensing](./topics/guides/licensing.md) — AGPL-3.0-or-later for leagues, hosts and forks
+
 **Want to learn about a specific feature?** 
 - See [Features](./topics/features/) for feature-specific documentation
 

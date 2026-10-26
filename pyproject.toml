@@ -1,10 +1,14 @@
 [build-system]
-requires = ["setuptools"]
+# setuptools >= 77 is required for PEP 639 SPDX licence expressions
+# (`license = "AGPL-3.0-or-later"` + `license-files`).
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "leaguesphere"
 version = "4.44.2"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
     "Django==6.0.8",

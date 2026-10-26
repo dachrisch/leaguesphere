@@ -2,6 +2,7 @@
   "name": "scorecard",
   "version": "4.44.2",
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "main": "index.js",
   "directories": {
     "test": "__tests__"

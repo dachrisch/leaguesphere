@@ -6,6 +6,7 @@ Step-by-step how-to guides, setup instructions, and workflows.
 
 - [Setup Guide](./setup-guide.md) — Getting started with the project
 - [Contributor Guide](./contributor-guide.md) — Development workflow, code standards
+- [Licensing](./licensing.md) — AGPL-3.0-or-later explained: self-hosting, commercial use, compliance
 - [Demo Guide](./demo.md) — Running and understanding the demo environment
 - [Agent Workflow](./agent-workflow.md) — How agents integrate with the project
 - [Code Style Guides](./code-style/) — Language-specific coding standards

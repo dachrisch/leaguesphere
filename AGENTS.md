@@ -2,7 +2,7 @@
 
 This file provides high-signal technical instructions for **all autonomous agents** (Claude, Gemini, etc.) operating in this repository.
 
-> **CRITICAL:** For project-wide standards, build/test commands, and deployment safety policies, you MUST refer to the **[LeagueSphere Contributor Guide](docs/guides/contributor-guide.md)**.
+> **CRITICAL:** For project-wide standards, build/test commands, and deployment safety policies, you MUST refer to the **[LeagueSphere Contributor Guide](docs/topics/guides/contributor-guide.md)**.
 
 ## 🤖 Universal Agent Guidelines
 
