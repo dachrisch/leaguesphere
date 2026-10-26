@@ -302,6 +302,19 @@ jobs:
       - run:
           name: "JavaScript Build"
           command: npm --prefix scorecard/ run build
+      # TODO(Task 22): split into a scorecard_v2_js job and delete these steps.
+      - node/install-packages:
+          app-dir: scorecard_v2/
+      - run:
+          name: "Scorecard v2 JS (temporary shard)"
+          command: |
+            npm --prefix scorecard_v2/ run test:run
+            npm --prefix scorecard_v2/ run typecheck
+            npm --prefix scorecard_v2/ run build
+            if grep -q "import.meta" scorecard_v2/static/scorecard_v2/js/scorecard_v2.js; then
+              echo "IIFE bundle must not contain import.meta" >&2
+              exit 1
+            fi
 
   liveticker_js:
     executor:
