@@ -4,7 +4,7 @@ from django.conf import settings
 from django.db.models import Count, Q, Value, OuterRef, Exists, Subquery, IntegerField
 
 from gamedays.api.serializers import GamedayInfoSerializer
-from gamedays.models import Team, Gameinfo, Gameday
+from gamedays.models import Team, Gameinfo, Gameresult, Gameday
 from gamedays.service.model_helper import GameresultHelper
 from league_manager.utils.view_utils import UserRequestPermission
 from passcheck.api.serializers import (
@@ -26,6 +26,14 @@ from passcheck.service.eligibility_validation import EligibilityValidator
 
 class PasscheckException(Exception):
     pass
+
+
+class RosterValidationError(Exception):
+    """A submitted roster violates the season rules; ``errors`` is field-keyed."""
+
+    def __init__(self, errors: dict):
+        self.errors = errors
+        super().__init__("invalid roster")
 
 
 class PasscheckService:
@@ -378,14 +386,102 @@ class PasscheckService:
 
 
 class PasscheckServicePlayers:
-    def create_roster_and_passcheck_verification(self, team_id, gameday_id, user, data):
-        all_relevant_team_ids = list(
-            Team.objects.get(pk=team_id)
-            .relationship_additional_teams.all()
-            .values_list("team__id", flat=True)
+    def can_write_roster(self, user, team_id, gameday_id) -> bool:
+        """Staff, or the official of a game on today's gameday involving the team."""
+        if user.is_staff:
+            return True
+        gameday = Gameday.objects.filter(pk=gameday_id).first()
+        if gameday is None:
+            return False
+        today = settings.DEBUG_DATE if settings.DEBUG else datetime.date.today()
+        if gameday.date != today:
+            return False
+        return Gameresult.objects.filter(
+            gameinfo__gameday_id=gameday_id,
+            gameinfo__officials__name=user.username,
+            team_id=team_id,
+        ).exists()
+
+    def validate_roster(self, team_id, gameday, roster) -> dict:
+        """Return field-keyed errors for a submitted gameday roster.
+
+        An empty dict means the roster may be written. Season rules without an
+        ``EligibilityRule`` are not enforced (the read endpoint 404s in that
+        case; legacy gamedays/tests have no rule).
+        """
+        if not isinstance(roster, list):
+            return {"roster": "Kader muss eine Liste sein."}
+
+        team_ids = self.all_relevant_team_ids(team_id)
+        allowed = (
+            Playerlist.objects.filter(team_id__in=team_ids)
+            .filter(Q(joined_on__lte=gameday.date))
+            .filter(Q(left_on__isnull=True) | Q(left_on__gt=gameday.date))
+        )
+        allowed_ids = set(allowed.values_list("pk", flat=True))
+
+        errors = {}
+        seen_ids = set()
+        seen_jerseys = {}
+        valid_players = 0
+        for entry in roster:
+            player_id = entry.get("id") if isinstance(entry, dict) else None
+            if not isinstance(player_id, int) or isinstance(player_id, bool):
+                errors[str(player_id)] = "Nicht im Kader dieses Spieltags."
+                continue
+            if player_id not in allowed_ids:
+                errors[str(player_id)] = "Nicht im Kader dieses Spieltags."
+                continue
+            if player_id in seen_ids:
+                errors[str(player_id)] = "Spieler ist doppelt in der Aufstellung."
+                continue
+            seen_ids.add(player_id)
+
+            jersey = entry.get("jersey_number")
+            if (
+                not isinstance(jersey, int)
+                or isinstance(jersey, bool)
+                or not 0 <= jersey <= 99
+            ):
+                errors[str(player_id)] = "Trikotnummer muss zwischen 0 und 99 liegen."
+                continue
+            if jersey in seen_jerseys:
+                errors[str(player_id)] = f"Trikotnummer #{jersey} ist bereits vergeben."
+                continue
+            seen_jerseys[jersey] = player_id
+            valid_players += 1
+
+        rule = EligibilityRule.objects.filter(league_id=gameday.league_id).first()
+        if rule is not None:
+            minimum = rule.minimum_player_strength
+            maximum = rule.maximum_player_strength
+            if minimum and valid_players < minimum:
+                errors["team"] = (
+                    f"Mindestspielstärke {minimum} nicht erreicht "
+                    f"({valid_players} geprüft)."
+                )
+            if maximum and valid_players > maximum:
+                errors["team"] = f"Maximalspielstärke {maximum} überschritten."
+        return errors
+
+    @staticmethod
+    def all_relevant_team_ids(team_id) -> list:
+        """The team plus the teams it draws players from (Durchlässigkeit)."""
+        return list(
+            TeamRelationship.objects.filter(team_id=team_id).values_list(
+                "additional_teams__id", flat=True
+            )
         ) + [team_id]
+
+    def create_roster_and_passcheck_verification(self, team_id, gameday_id, user, data):
+        gameday = Gameday.objects.get(pk=gameday_id)
+        errors = self.validate_roster(team_id, gameday, data.get("roster") or [])
+        if errors:
+            raise RosterValidationError(errors)
+
         PlayerlistGameday.objects.filter(
-            playerlist__team__in=all_relevant_team_ids, gameday=gameday_id
+            playerlist__team__in=self.all_relevant_team_ids(team_id),
+            gameday=gameday_id,
         ).delete()
         self._create_roster(gameday_id, data["roster"])
         self._create_passcheck_verification(
