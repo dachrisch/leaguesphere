@@ -3,6 +3,7 @@
 import pytest
 from cryptography.fernet import Fernet
 from django.contrib.auth.models import Permission
+from django.db import connection
 from django.urls import reverse
 
 from dbaccess.models import AccessRequest, GrantableTable
@@ -159,6 +160,32 @@ def test_reveal_hands_the_password_over_once_and_logs_it(client, requester, sett
     access_request.refresh_from_db()
     assert access_request.secret is None
     assert access_request.events.filter(action="revealed").exists()
+
+
+@pytest.mark.django_db
+def test_the_reveal_page_uses_the_configured_tunnel_and_database(
+    client, requester, settings
+):
+    """Stage reads a different tunnel account and port than prod."""
+    settings.DBACCESS_SECRET_KEY = Fernet.generate_key().decode()
+    settings.DBACCESS_TUNNEL_USER = "dbeaver_stage"
+    settings.DBACCESS_TUNNEL_PORT = "33064"
+    settings.DBACCESS_TUNNEL_KEY_ITEM = "dbeaver stage tunnel key (lehel)"
+    access_request = _request(requester, state=AccessRequest.State.ACTIVE, secret="pw123")
+    client.force_login(requester)
+
+    response = client.post(reverse("dbaccess-reveal", args=[access_request.pk]))
+
+    body = response.content.decode()
+    assert "dbeaver_stage" in body
+    assert "33064" in body
+    assert "dbeaver stage tunnel key (lehel)" in body
+    assert "dbeaver_tunnel" not in body
+    assert "33063" not in body
+    # The sqlite test name is a URI whose "&" would be escaped in the HTML, so
+    # compare the context value instead of the rendered string.
+    assert response.context["db_name"] == connection.settings_dict["NAME"]
+    assert response.context["tunnel"]["port"] == "33064"
 
 
 @pytest.mark.django_db

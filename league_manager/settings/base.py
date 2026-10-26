@@ -253,6 +253,16 @@ DBACCESS_SECRET_KEY = os.environ.get("DBACCESS_SECRET_KEY")
 # Mirrors the constant the host reaper enforces. The database constraint in
 # dbaccess.models pins the application side.
 DBACCESS_TTL_CAP_HOURS = int(os.environ.get("DBACCESS_TTL_CAP_HOURS", 8))
+# What the reveal page tells a person to connect to. These are properties of the
+# host and stack, not of the request: stage's tunnel lands on a different
+# account and port than prod's (its socat listener), so a hardcoded prod value
+# would send a stage reader to a port that answers 1045.
+DBACCESS_TUNNEL_HOST = os.environ.get("DBACCESS_TUNNEL_HOST", "servy.lehel.xyz")
+DBACCESS_TUNNEL_USER = os.environ.get("DBACCESS_TUNNEL_USER", "dbeaver_tunnel")
+DBACCESS_TUNNEL_PORT = os.environ.get("DBACCESS_TUNNEL_PORT", "33063")
+DBACCESS_TUNNEL_KEY_ITEM = os.environ.get(
+    "DBACCESS_TUNNEL_KEY_ITEM", "dbeaver prod tunnel key (servy)"
+)
 
 LOGGING = {
     "version": 1,
