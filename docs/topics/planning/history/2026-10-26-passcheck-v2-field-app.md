@@ -77,17 +77,17 @@ must be installed from its own lockfile.
 
 | Task | Status | Commit |
 |---|---|---|
-| 1 Roster validation + `PUT` permission | done | `a004c72a` |
-| 2 Atomic/idempotent write + device lock + constraints + reset | done | `4a409240` |
-| 3 Private photos + permission-checked endpoint + import | done | `d499bb58` |
-| 4 `field` app, Vite scaffold, CI/deploy wiring | done | `a483145f` |
-| 5 API client + games screen | done | `fa069642` |
-| 6 Roster screen (tap, undo, timer) | done | `247e23ce` |
-| 7 Player sheet (rules, jersey, photo viewer) | done | `8354efc9` |
-| 8 Verification sheet + idempotent save flow | done | `fb2c839f` |
-| 9 Offline shell, outbox, sync-on-reconnect | done | `13a5a0a9` |
-| 10 Feature doc + in-app help + screenshot | done | `5492e2b8` |
-| 11 Flow wiring + v1 link + noindex | done | `d79b4dc9` |
+| 1 Roster validation + `PUT` permission | done | `c985d5e4` |
+| 2 Atomic/idempotent write + device lock + constraints + reset | done | `520cb74c` |
+| 3 Private photos + permission-checked endpoint + import | done | `88e5eaf1` |
+| 4 `field` app, Vite scaffold, CI/deploy wiring | done | `e055614c` |
+| 5 API client + games screen | done | `8ff84d22` |
+| 6 Roster screen (tap, undo, timer) | done | `edc7232f` |
+| 7 Player sheet (rules, jersey, photo viewer) | done | `6833ba38` |
+| 8 Verification sheet + idempotent save flow | done | `c496c9fc` |
+| 9 Offline shell, outbox, sync-on-reconnect | done | `64b67bcb` |
+| 10 Feature doc + in-app help + screenshot | done | `8dc7674b` |
+| 11 Flow wiring + v1 link + noindex | done | `3027e06d` |
 
 Deviations from the task text below (the task text is kept for history):
 
