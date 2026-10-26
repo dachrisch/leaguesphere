@@ -46,3 +46,78 @@ body {
   font-size: 28px;
   letter-spacing: -0.03em;
 }
+
+.games-officials {
+  margin: 12px 0 4px;
+  color: var(--field-muted);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.game-card {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid #dbd5c5;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.game-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #e6e0d2;
+}
+
+.game-time {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.game-field {
+  color: var(--field-muted);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.team-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 52px;
+  padding: 6px 2px;
+  border: 0;
+  border-bottom: 1px solid #f2eee2;
+  background: none;
+  font: inherit;
+  text-align: left;
+}
+
+.team-row:last-child {
+  border-bottom: 0;
+}
+
+.team-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.chip {
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: #f0eee6;
+  color: #5c6469;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.chip.checked {
+  background: #e4f1eb;
+  color: #0c5c46;
+}
