@@ -301,6 +301,26 @@ describe("GameList", () => {
     );
   });
 
+  it("includes a checked passcheck in the accessible row name", () => {
+    renderList([
+      makeGame({ points_home: 7, points_away: 21, passcheck: true }),
+    ]);
+
+    expect(screen.getByRole("button")).toHaveAccessibleName(
+      "13:30, Feld 2, Ravens gegen Wolves, 7:21, offen, Passcheck geprüft",
+    );
+  });
+
+  it("includes a missing passcheck in the accessible row name", () => {
+    renderList([
+      makeGame({ points_home: 7, points_away: 21, passcheck: false }),
+    ]);
+
+    expect(screen.getByRole("button")).toHaveAccessibleName(
+      "13:30, Feld 2, Ravens gegen Wolves, 7:21, offen, kein Passcheck",
+    );
+  });
+
   it("keeps the accessible name in the running vocabulary", () => {
     renderList([
       makeGame({
