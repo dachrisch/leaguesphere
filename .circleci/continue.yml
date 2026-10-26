@@ -239,7 +239,7 @@ jobs:
       - checkout
       - setup_uv
       - python_shard_test:
-          paths: "liveticker/tests/ scorecard/tests.py"
+          paths: "liveticker/tests/ scorecard/tests.py scorecard_v2/tests/"
           junit: "test-results-live.xml"
           cov_flag: "python-live"
 

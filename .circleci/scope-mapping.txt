@@ -56,8 +56,8 @@ home/.* run-build-backend true
 ((officials|accounts|teammanager)/migrations/.*) run-migrations true
 
 # --- liveticker + scorecard backends (live shard) ---
-(liveticker/.*\.py|liveticker/(api|service|tests)/.*|scorecard/.*\.py) run-python-live true
-(liveticker/.*\.py|liveticker/(api|service|tests)/.*|scorecard/.*\.py) run-build-backend true
+(liveticker/.*\.py|liveticker/(api|service|tests)/.*|scorecard/.*\.py|scorecard_v2/.*\.py) run-python-live true
+(liveticker/.*\.py|liveticker/(api|service|tests)/.*|scorecard/.*\.py|scorecard_v2/.*\.py) run-build-backend true
 ((liveticker|scorecard)/migrations/.*) run-migrations true
 
 # --- passcheck + designer backends + journey + matchreport (designer shard) ---
@@ -69,7 +69,7 @@ home/.* run-build-backend true
 (journey|matchreport)/.* run-build-backend true
 ((passcheck|gameday_designer|journey|matchreport)/migrations/.*) run-migrations true
 passcheck/templates/.* run-python-designer true
-(scorecard|liveticker)/templates/.* run-python-live true
+((liveticker|scorecard|scorecard_v2)/templates/.*) run-python-live true
 gameday_designer/templates/.* run-python-designer true
 
 # --- cross-cutting tests + CI scripts ---
