@@ -32,16 +32,20 @@ const toApiError = (error: AxiosError): ApiError => {
   return { status, message, body };
 };
 
+const fail = (error: unknown): never => {
+  const apiError = toApiError(error as AxiosError);
+  if (apiError.status === 401) {
+    window.location.assign(LOGIN_URL);
+  }
+  throw apiError;
+};
+
 const resolve = async <T>(pending: Promise<AxiosResponse<T>>): Promise<T> => {
   try {
     const response = await pending;
     return response.data;
   } catch (error) {
-    const apiError = toApiError(error as AxiosError);
-    if (apiError.status === 401) {
-      window.location.assign(LOGIN_URL);
-    }
-    throw apiError;
+    return fail(error);
   }
 };
 
@@ -50,3 +54,19 @@ export const apiGet = <T>(url: string): Promise<T> =>
 
 export const apiPut = <T>(url: string, body: unknown): Promise<T> =>
   resolve<T>(axios.put<T>(url, body, requestConfig()));
+
+/**
+ * Photos are Knox-protected, so an <img src> cannot load them; fetch the
+ * bytes and hand the component an object URL (revoke it on unmount).
+ */
+export const apiGetBlobUrl = async (url: string): Promise<string> => {
+  try {
+    const response = await axios.get<Blob>(url, {
+      ...requestConfig(),
+      responseType: "blob",
+    });
+    return URL.createObjectURL(response.data);
+  } catch (error) {
+    return fail(error);
+  }
+};
