@@ -57,13 +57,14 @@ DJANGO_SETTINGS_MODULE=league_manager.settings.test_sqlite PYTHONPATH="$PWD" \
 
 CI still uses `uv run pytest` against its MySQL service; that path is unchanged.
 
-Three integration requirements that are easy to miss:
+Four integration requirements that are easy to miss:
 
 | Requirement | What it needs |
 |---|---|
 | A new `package.json` is not bumped by release-please | Add `scorecard_v2/package.json` to `release-please-config.json` `extra-files` **and** `scripts/check_version_sequence.py` `VERSION_FILES` |
 | A new CI parameter is not enough | Add `run-scorecard-v2` to the `\.circleci/.*` "validate everything" block as well as `config.yml` parameters |
 | The help topic needs more than a registry entry | A screenshot under `league_manager/static/help/img/`, referenced from the topic Markdown, plus a line in `league_manager/templates/llms-full.txt` (the skill's `templates/llms-full.txt`); `test_help.py` checks the images, `test_ai_readiness.py` the llms list |
+| The demo/release version bump stages files explicitly | `.github/workflows/deploy.yaml` and `release-please-finalize.yaml` both rewrite every SPA `package.json` **and** `git add` it; an app missing from either list silently stays on the old version |
 
 ---
 
@@ -332,7 +333,6 @@ export default defineConfig({
         format: "iife",
         entryFileNames: "scorecard_v2.js",
         assetFileNames: "scorecard_v2-[name][extname]",
-        inlineDynamicImports: true,
       },
     },
   },

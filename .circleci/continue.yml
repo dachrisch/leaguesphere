@@ -310,6 +310,7 @@ jobs:
           command: |
             npm --prefix scorecard_v2/ run test:run
             npm --prefix scorecard_v2/ run typecheck
+            npm --prefix scorecard_v2/ run eslint
             npm --prefix scorecard_v2/ run build
             if grep -q "import.meta" scorecard_v2/static/scorecard_v2/js/scorecard_v2.js; then
               echo "IIFE bundle must not contain import.meta" >&2
