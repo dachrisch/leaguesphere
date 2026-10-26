@@ -210,6 +210,17 @@ HELP_TOPICS = [
         order=36,
     ),
     HelpTopic(
+        slug="passcheck-feld",
+        group="spielbetrieb",
+        title={"de": "Passcheck Feld-Ansicht", "en": "Passcheck field view"},
+        summary={
+            "de": "Spieler am Feld in einem Tipp prüfen – mit Foto, Trikotnummer und Offline-Puffer.",
+            "en": "Check players at the field with one tap – photo, jersey number and an offline buffer.",
+        },
+        icon="bi-phone",
+        order=37,
+    ),
+    HelpTopic(
         slug="offizielle-statistik",
         group="spielbetrieb",
         title={
