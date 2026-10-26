@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from uuid import uuid4
 
 from django.test import TestCase
 from django.urls import reverse
@@ -149,6 +150,32 @@ class TestRosterWriteValidation(RosterWriteTestSetup):
                 team=self.team, gameday=self.gameday
             ).exists()
         )
+
+
+class TestRosterWriteIdempotency(RosterWriteTestSetup):
+    def test_same_client_id_twice_creates_one_verification(self):
+        client_id = str(uuid4())
+        roster = [{"id": self.player.pk, "jersey_number": 7}]
+
+        self.put(roster, client_id=client_id, device_id="A")
+        response = self.put(roster, client_id=client_id, device_id="A")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            PasscheckVerification.objects.filter(
+                team=self.team, gameday=self.gameday
+            ).count(),
+            1,
+        )
+
+    def test_second_device_gets_a_conflict(self):
+        roster = [{"id": self.player.pk, "jersey_number": 7}]
+        self.put(roster, client_id=str(uuid4()), device_id="A")
+
+        response = self.put(roster, client_id=str(uuid4()), device_id="B")
+
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("Gerät", response.json()["detail"])
 
 
 class TestRosterWritePermission(RosterWriteTestSetup):
