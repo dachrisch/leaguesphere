@@ -588,3 +588,185 @@ body {
 .team-row:focus-visible {
   outline-offset: 0;
 }
+
+/* ---------------------------------------------------------------- shell -- */
+:root {
+  --shell-width: 560px;
+  --page-gutter: 16px;
+  --header-pad-top: max(8px, env(safe-area-inset-top));
+  --bottom-safe: max(16px, env(safe-area-inset-bottom));
+}
+
+.passcheck-v2-app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--shell-width);
+  height: 100dvh;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 0 var(--page-gutter);
+}
+
+.games-screen,
+.roster-screen {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding-bottom: 0;
+}
+
+.app-header {
+  flex: 0 0 auto;
+  padding: var(--header-pad-top) 0 12px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary) 10%, var(--surface)) 0%,
+    var(--surface) 100%
+  );
+}
+
+.appbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  min-height: var(--touch);
+  margin-bottom: 12px;
+}
+
+.appbar-left,
+.appbar-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.appbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.appbar-iconbtn {
+  padding: 0 8px;
+}
+
+.appbar-logout {
+  padding: 0 2px;
+}
+
+.appbar-badge {
+  display: inline-flex;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--success-wash);
+  color: var(--away-text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-chip.pending {
+  background: var(--warning-wash);
+  color: var(--warning);
+}
+
+.kicker {
+  margin: 0;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.app-title {
+  margin: 4px 0 0;
+  color: var(--heading);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.app-sub {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.games-body,
+.roster-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 0 var(--bottom-safe);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.games-foot,
+.roster-footer {
+  flex: 0 0 auto;
+  padding: 8px 0 var(--bottom-safe);
+  border-top: 1px solid var(--line);
+}
+
+.games-foot {
+  margin: 0;
+}
+
+.roster-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.roster-finalize {
+  width: 100%;
+}
+
+.undo-bar {
+  position: static;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  margin: 0;
+}
+
+.offline-banner {
+  margin: 8px 0;
+}
+
+.sheet-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.theme-toggle.compact {
+  padding: 0 8px;
+}

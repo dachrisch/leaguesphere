@@ -5,9 +5,9 @@ import type {
   RosterResponse,
   RosterWriteEntry,
 } from "../api/types";
+import AppHeader from "../components/AppHeader";
 import PlayerRow from "../components/PlayerRow";
-import ThemeToggle from "../components/ThemeToggle";
-import { ChevronLeftIcon } from "../components/icons";
+import StatusChip from "../components/StatusChip";
 import UndoBar from "../components/UndoBar";
 import { useSessionTimer } from "../hooks/useSessionTimer";
 
@@ -22,6 +22,8 @@ type Props = {
   onOpenPhoto?: (player: RosterEntry) => void;
   clock?: () => number;
   pendingCount?: number;
+  gamedayLabel?: string;
+  onLogout?: () => void;
 };
 
 const UNDO_TIMEOUT_MS = 5000;
@@ -44,6 +46,8 @@ function RosterScreen({
   onOpenPhoto,
   clock = Date.now,
   pendingCount = 0,
+  gamedayLabel,
+  onLogout,
 }: Props) {
   const sections = useMemo(
     () => [
@@ -108,79 +112,69 @@ function RosterScreen({
 
   return (
     <section className="roster-screen">
-      <header className="roster-head">
-        {onBack && (
+      <AppHeader
+        kicker="Passcheck v2"
+        title={roster.team.name}
+        sub={gamedayLabel}
+        onBack={onBack}
+        onLogout={onLogout}
+        badge={<StatusChip pending={pendingCount} />}
+      />
+
+      <div className="roster-body">
+        <div className="roster-meter">
+          <span className="roster-count" aria-live="polite">
+            {checkedIds.size} von {players.length} geprüft
+          </span>
+          {averageSeconds !== null && (
+            <span className="roster-average">
+              Ø {formatSeconds(averageSeconds)} s/Spieler
+            </span>
+          )}
+        </div>
+
+        <div className="roster-list">
+          {sections.map((section, index) => (
+            <div key={`${section.name}-${index}`}>
+              {index > 0 && <p className="group-head">{section.name}</p>}
+              {section.players.map((player) => (
+                <PlayerRow
+                  key={player.id}
+                  player={player}
+                  jerseyNumber={
+                    jerseyOverrides[player.id] ?? player.jersey_number
+                  }
+                  checked={checkedIds.has(player.id)}
+                  onToggle={() => toggle(player)}
+                  onOpenPlayer={() => onOpenPlayer(player)}
+                  onOpenPhoto={
+                    onOpenPhoto ? () => onOpenPhoto(player) : undefined
+                  }
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <footer className="roster-footer">
+        {undo && (
+          <UndoBar
+            playerName={`${undo.first_name} ${undo.last_name}`}
+            onUndo={undoLast}
+            onDismiss={() => setUndo(null)}
+          />
+        )}
+        {onFinalize && (
           <button
             type="button"
-            className="icon-btn"
-            aria-label="Zurück"
-            onClick={onBack}
+            className="sheet-primary roster-finalize"
+            onClick={finalize}
           >
-            <ChevronLeftIcon size={18} />
-          </button>
-        )}
-        <div className="roster-title">
-          <p className="passcheck-kicker">Passcheck v2</p>
-          <h1>{roster.team.name}</h1>
-        </div>
-        <ThemeToggle />
-      </header>
-
-      <div className="roster-meter">
-        <span className="roster-count" aria-live="polite">
-          {checkedIds.size} von {players.length} geprüft
-        </span>
-        {averageSeconds !== null && (
-          <span className="roster-average">
-            Ø {formatSeconds(averageSeconds)} s/Spieler
-          </span>
-        )}
-      </div>
-
-      {pendingCount > 0 && (
-        <p className="offline-banner" role="status">
-          {pendingCount} Einträge warten auf Übertragung.
-        </p>
-      )}
-
-      <div className="roster-list">
-        {sections.map((section, index) => (
-          <div key={`${section.name}-${index}`}>
-            {index > 0 && <p className="group-head">{section.name}</p>}
-            {section.players.map((player) => (
-              <PlayerRow
-                key={player.id}
-                player={player}
-                jerseyNumber={
-                  jerseyOverrides[player.id] ?? player.jersey_number
-                }
-                checked={checkedIds.has(player.id)}
-                onToggle={() => toggle(player)}
-                onOpenPlayer={() => onOpenPlayer(player)}
-                onOpenPhoto={
-                  onOpenPhoto ? () => onOpenPhoto(player) : undefined
-                }
-              />
-            ))}
-          </div>
-        ))}
-      </div>
-
-      {onFinalize && (
-        <div className="roster-actions">
-          <button type="button" className="sheet-primary" onClick={finalize}>
             Prüfung abschließen
           </button>
-        </div>
-      )}
-
-      {undo && (
-        <UndoBar
-          playerName={`${undo.first_name} ${undo.last_name}`}
-          onUndo={undoLast}
-          onDismiss={() => setUndo(null)}
-        />
-      )}
+        )}
+      </footer>
     </section>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 
 import { CloseIcon } from "../components/icons";
+import ThemeToggle from "../components/ThemeToggle";
 
 type Props = {
   teamName: string;
@@ -61,14 +62,17 @@ function VerificationSheet({
             <p className="passcheck-kicker">Passcheck v2</p>
             <h2>Passliste abschließen</h2>
           </div>
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Schließen"
-            onClick={onClose}
-          >
-            <CloseIcon size={18} />
-          </button>
+          <div className="sheet-head-actions">
+            <ThemeToggle compact />
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Schließen"
+              onClick={onClose}
+            >
+              <CloseIcon size={18} />
+            </button>
+          </div>
         </header>
 
         <p className="sheet-meta">

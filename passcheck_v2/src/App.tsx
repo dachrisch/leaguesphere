@@ -8,6 +8,7 @@ import type {
 } from "./api/types";
 import { useVerificationSave } from "./hooks/useVerificationSave";
 import { pendingCount as readPendingCount } from "./offline/outbox";
+import AppHeader from "./components/AppHeader";
 import GamesScreen from "./screens/GamesScreen";
 import RosterScreen from "./screens/RosterScreen";
 import DoneSheet from "./sheets/DoneSheet";
@@ -139,6 +140,15 @@ function App() {
     setRoute({ name: "roster", teamId, gamedayId });
   };
 
+  const logout = () => {
+    try {
+      localStorage.removeItem("token");
+    } catch {
+      // Ignore blocked storage; the redirect still ends the session.
+    }
+    window.location.assign("/login/?next=/passcheck/v2/");
+  };
+
   const backToGames = () => {
     save.reset();
     setDone(false);
@@ -187,7 +197,12 @@ function App() {
   if (route.name === "games") {
     return (
       <main className="passcheck-v2-app">
-        <GamesScreen onOpen={openRoster} gamedayId={initialGamedayId()} />
+        <GamesScreen
+          onOpen={openRoster}
+          gamedayId={initialGamedayId()}
+          pendingCount={pending}
+          onLogout={logout}
+        />
       </main>
     );
   }
@@ -195,10 +210,23 @@ function App() {
   if (rosterError) {
     return (
       <main className="passcheck-v2-app">
-        <p role="alert">{rosterError}</p>
-        <button type="button" className="sheet-secondary" onClick={backToGames}>
-          Zurück zu den Spielen
-        </button>
+        <AppHeader
+          kicker="Passcheck v2"
+          title="Kader"
+          sub={rosterError}
+          onBack={backToGames}
+          onLogout={logout}
+        />
+        <div className="games-body">
+          <p role="alert">{rosterError}</p>
+          <button
+            type="button"
+            className="sheet-secondary"
+            onClick={backToGames}
+          >
+            Zurück zu den Spielen
+          </button>
+        </div>
       </main>
     );
   }
@@ -206,7 +234,7 @@ function App() {
   if (!roster) {
     return (
       <main className="passcheck-v2-app">
-        <p>loading...</p>
+        <AppHeader kicker="Passcheck v2" title="Kader" onLogout={logout} />
       </main>
     );
   }
@@ -220,6 +248,8 @@ function App() {
         onOpenPlayer={setPlayer}
         jerseyOverrides={numbers}
         pendingCount={pending}
+        gamedayLabel={`Spieltag ${route.gamedayId}`}
+        onLogout={logout}
         onBack={backToGames}
         onFinalize={(nextEntries) => {
           setEntries(nextEntries);
