@@ -2264,19 +2264,21 @@ button.game-row:active {
 /* ----------------------------------------------------------- app footer -- */
 
 /*
- * LeagueSphere's small print. Non-interactive, outside every action area: it
- * follows the scroll content on list screens (and the result), and sits above
- * the tracking action bar — never over a CTA, never as a scroll region of its
- * own. The safe-area padding comes from the container it ends (`.vscroll` or
- * `.trackfoot`), so the footer only adds rhythm.
+ * LeagueSphere's small print. Non-interactive, pinned to the bottom of the
+ * shell: list screens and the result keep it at the viewport edge even when
+ * their content is short, and the scroll area grows/scrolls above it. The
+ * tracking screen overrides the bottom safe-area padding because its action
+ * bar owns it.
  */
 .app-footer {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  margin-top: var(--space-6);
-  padding: var(--space-2) 0;
+  padding: var(--space-2) var(--page-gutter)
+    calc(var(--space-2) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line-soft);
   font-size: var(--fs-xs);
   line-height: 1.4;
   text-align: center;

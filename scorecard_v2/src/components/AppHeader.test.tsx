@@ -162,7 +162,7 @@ describe("AppHeader", () => {
     );
   });
 
-  it("puts the footer after the screen content", () => {
+  it("pins the footer below the scroll content", () => {
     const { container } = render(
       <Screen kicker="Scorecard" title="Feld 2">
         <p>Inhalt</p>
@@ -170,10 +170,10 @@ describe("AppHeader", () => {
     );
 
     const main = container.querySelector("main.vscroll") as HTMLElement;
-    expect([...main.children].map((child) => child.tagName)).toEqual([
-      "P",
-      "FOOTER",
-    ]);
+    const footer = container.querySelector(".app-footer");
+    expect([...main.children].map((child) => child.tagName)).toEqual(["P"]);
+    expect(main.nextElementSibling).toBe(footer);
+    expect(footer?.parentElement?.classList.contains("app-shell")).toBe(true);
   });
 
   it("omits the badge slot when the screen has nothing to report", () => {
