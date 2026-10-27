@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.44.1](https://github.com/dachrisch/leaguesphere/compare/v4.44.0...v4.44.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* **db:** switch the statement audit on and fix its timestamps ([#2099](https://github.com/dachrisch/leaguesphere/issues/2099)) ([db47954](https://github.com/dachrisch/leaguesphere/commit/db4795484051233f7d14b1b6b956709b0a7b4f92))
+
 ## [4.44.0](https://github.com/dachrisch/leaguesphere/compare/v4.43.1...v4.44.0) (2026-10-26)
 
 
