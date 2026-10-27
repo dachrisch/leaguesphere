@@ -1,5 +1,5 @@
 /**
- * A team's logo, or the initials circle when it has none.
+ * A team's logo, or the initials disc when it has none.
  *
  * The directory is optional decoration: the image only appears when the team
  * name is in the lookup (see `api/teams.ts`), and a file the server can no
@@ -9,6 +9,9 @@
  *
  * The image is `alt=""` on purpose: the team name is always the adjacent text,
  * so a name in `alt` would be read twice.
+ *
+ * `className` carries the size/shape: the list disc by default,
+ * `teamlogo-inline` in the preparation header, `teamlogo-crest` on the board.
  */
 import { useState } from "react";
 
@@ -25,9 +28,9 @@ interface TeamLogoProps {
 
 /**
  * The logo URL for a name, plus the guard that drops an image the browser
- * cannot load. Shared by the crest-rendering screens so both behave alike.
+ * cannot load, so a stale `logo` path falls back to the initials.
  */
-export function useTeamLogo(name: string | null): {
+function useTeamLogo(name: string | null): {
   src: string | null;
   onError: () => void;
 } {
