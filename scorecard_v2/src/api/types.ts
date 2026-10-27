@@ -223,7 +223,7 @@ export interface GameLogEvent {
 export interface GameLogTeam {
   /** Team pk, `null` for an unresolved bracket placeholder. */
   id: number | null;
-  /** Team description, or the resolved placeholder name. */
+  /** Team name (`Team.name`), or the resolved placeholder name. */
   name: string | null;
   /** Total score (`firsthalf.score + secondhalf.score`). */
   score: number;
