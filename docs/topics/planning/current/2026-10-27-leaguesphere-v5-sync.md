@@ -8,9 +8,9 @@
 
 ---
 
-## 1. ORFD (offd.de) — Moodle migration onto LeagueSphere infrastructure
+## 1. offd (offd.de) — referee training Moodle migrated onto LeagueSphere infrastructure
 
-Christoph runs the referee training platform (ORFD) as a Moodle instance on cheap shared webhosting.
+Christoph runs the referee training platform (offd) as a Moodle instance on cheap shared webhosting.
 
 **Current state**
 - Shared webhosting, FTP access only, ~15 €/month, no managed access, small package.
@@ -155,7 +155,7 @@ Explicitly **after v2 runs cleanly** (v3 in Christoph's numbering).
 - Then a written **roadmap** so everyone works off the same plan.
 - **North star (Christian):** the two apps must be *ready* — hand them to someone in the middle of nowhere and they work, without follow-up work.
 - Winter break is the build window; the idea of a collaborative/hackathon weekend was floated.
-- ORFD must be resolved before January (training season).
+- offd must be resolved before January (training season).
 
 ---
 
@@ -172,7 +172,7 @@ Explicitly **after v2 runs cleanly** (v3 in Christoph's numbering).
 
 | # | Question | Owner |
 |---|---|---|
-| 1 | Who pays for / owns the ORFD hosting, and how is the AvD financing settled? | Christian, Christoph |
+| 1 | Who pays for / owns the offd hosting, and how is the AvD financing settled? | Christian, Christoph |
 | 2 | Moodle migration mechanics + storage sizing (does video ever land there?) | Christian |
 | 3 | Leon's position on event sourcing and scorecard scope | Christian, Leon |
 | 4 | Passcheck sync cadence (season start / weekly / per gameday) | Christoph |
@@ -184,5 +184,5 @@ Explicitly **after v2 runs cleanly** (v3 in Christoph's numbering).
 1. Talk to **Leon** this week — align scorecard scope and the event model.
 2. Christoph's talk with **Hübi** — Game Day API for gameday hand-over and officials back-sync.
 3. Draft the roadmap (only after 1 + 2).
-4. ORFD: measure the 14 GB, pick the image, prototype a blank Moodle on LeagueSphere infra.
+4. offd: measure the 14 GB, pick the image, prototype a blank Moodle on LeagueSphere infra.
 5. Schedule the collaborative weekend.
