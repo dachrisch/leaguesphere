@@ -244,7 +244,7 @@ class TestPrecacheAssets:
 class TestCacheVersion:
     def test_version_is_the_app_version_plus_a_build_stamp(self):
         version = views.cache_version()
-        app_version, _, stamp = version.partition("-")
+        app_version, _, stamp = version.rpartition("-")
 
         assert app_version == league_manager.__version__
         assert len(stamp) == 12
