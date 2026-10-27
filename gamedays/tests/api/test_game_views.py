@@ -205,6 +205,80 @@ class TestGameSetup(WebTest):
         assert response.status_code == HTTPStatus.OK
         assert response.json == {}
 
+    def test_setup_device_lock_first_device_wins(self):
+        DBSetup().g62_status_empty()
+        game = Gameinfo.objects.last()
+
+        def put(device_id=None):
+            payload = {
+                "ctResult": "won",
+                "direction": "arrow_forward",
+                "fhPossession": "HOME",
+            }
+            if device_id is not None:
+                payload["device_id"] = device_id
+            return self.app.put_json(
+                reverse(API_GAME_SETUP, kwargs={"pk": game.pk}),
+                payload,
+                headers=DBSetup().get_token_header(),
+                expect_errors=True,
+            )
+
+        assert put("device-a").status_code == HTTPStatus.OK
+        assert GameSetup.objects.get(gameinfo=game).device_id == "device-a"
+
+        conflict = put("device-b")
+        assert conflict.status_code == HTTPStatus.CONFLICT
+        assert conflict.json == {
+            "detail": "Dieses Spiel läuft auf einem anderen Gerät.",
+            "device_id": "device-a",
+        }
+        assert GameSetup.objects.get(gameinfo=game).device_id == "device-a"
+
+        # The device holding the lock (and the old app, which sends none) may
+        # keep writing the setup.
+        assert put("device-a").status_code == HTTPStatus.OK
+        assert put().status_code == HTTPStatus.OK
+        assert GameSetup.objects.get(gameinfo=game).device_id == "device-a"
+
+    def test_setup_without_device_id_is_still_accepted(self):
+        DBSetup().g62_status_empty()
+        game = Gameinfo.objects.last()
+
+        response = self.app.put_json(
+            reverse(API_GAME_SETUP, kwargs={"pk": game.pk}),
+            {"ctResult": "won", "direction": "arrow_forward", "fhPossession": "HOME"},
+            headers=DBSetup().get_token_header(),
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        assert GameSetup.objects.get(gameinfo=game).device_id == ""
+
+    def test_setup_response_keeps_the_old_contract(self):
+        """device_id is write-only: the v1 client must see the same body."""
+        DBSetup().g62_status_empty()
+        game = Gameinfo.objects.last()
+
+        response = self.app.put_json(
+            reverse(API_GAME_SETUP, kwargs={"pk": game.pk}),
+            {
+                "ctResult": "won",
+                "direction": "arrow_forward",
+                "fhPossession": "HOME",
+                "device_id": "device-a",
+            },
+            headers=DBSetup().get_token_header(),
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.json == {
+            "ctResult": "won",
+            "direction": "arrow_forward",
+            "fhPossession": "HOME",
+        }
+        get_response = self.app.get(reverse(API_GAME_SETUP, kwargs={"pk": game.pk}))
+        assert "device_id" not in get_response.json
+
 
 class TestGameLog(WebTest):
     @staticmethod

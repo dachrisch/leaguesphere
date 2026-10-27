@@ -28,6 +28,42 @@ from passcheck.models import PasscheckVerification, PlayerlistGameday
 
 logger = logging.getLogger(__name__)
 
+DEVICE_LOCK_DETAIL = "Dieses Spiel läuft auf einem anderen Gerät."
+
+
+def _device_conflict(stored: str, incoming: str):
+    """409 when ``incoming`` may not write, ``None`` when it may.
+
+    An empty ``incoming`` is the old app (it sends no device at all) and is
+    always allowed; the first non-empty id wins and only staff can release it.
+    """
+    if incoming and stored and incoming != stored:
+        return Response(
+            {"detail": DEVICE_LOCK_DETAIL, "device_id": stored},
+            status=HTTPStatus.CONFLICT,
+        )
+    return None
+
+
+def _stored_device(game_id) -> str:
+    return (
+        GameSetup.objects.filter(gameinfo_id=game_id)
+        .values_list("device_id", flat=True)
+        .first()
+        or ""
+    )
+
+
+def _requested_device(request: Request, data) -> str:
+    """The device a write claims: the header first, then the body.
+
+    The v2 client sends both (`X-Scorecard-Device` on every request and
+    ``device_id`` in the setup payload); the old app sends neither.
+    """
+    device = request.headers.get("X-Scorecard-Device") or data.get("device_id")
+    return str(device).strip() if device else ""
+
+
 def _client_id(raw):
     """``None`` when no id was sent (old app), a UUID, or a 400."""
     if raw in (None, ""):
@@ -157,6 +193,12 @@ class GameLogAPIView(APIView):
             _validate_gamelog_payload(data)
             client_id = _client_id(data.get("client_id"))
             game_service = GameService(data.get("gameId"))
+            game = game_service.gameinfo.gameinfo
+            conflict = _device_conflict(
+                _stored_device(game.pk), _requested_device(request, data)
+            )
+            if conflict is not None:
+                return conflict
             gamelog, applied = game_service.create_gamelog_once(
                 data.get("team"),
                 data.get("event"),
@@ -327,6 +369,7 @@ class GameSetupCreateOrUpdateView(RetrieveUpdateAPIView):
             return Response(serializer.errors, status=HTTPStatus.BAD_REQUEST)
 
         is_game_setup_created = game_setup is None
+        incoming_device = serializer.validated_data.get("device_id") or ""
         try:
             # Starting the game, writing its log entry and creating the setup
             # row are one unit. A rejected transition (409) must roll back to
@@ -338,6 +381,16 @@ class GameSetupCreateOrUpdateView(RetrieveUpdateAPIView):
                     GameService(pk).update_gamestart(request.user)
                     serializer.save(gameinfo_id=pk)
                 else:
+                    # The lock is deliberately checked under its row lock, so
+                    # two devices cannot both see an empty lock and claim it.
+                    locked = GameSetup.objects.select_for_update().get(pk=game_setup.pk)
+                    conflict = _device_conflict(locked.device_id, incoming_device)
+                    if conflict is not None:
+                        return conflict
+                    if locked.device_id and not incoming_device:
+                        # The first non-empty id wins: a blank field (or an
+                        # absent one) must never release the lock.
+                        serializer.validated_data.pop("device_id", None)
                     serializer.save()
         except IllegalGameTransition as e:
             logger.warning("Rejected gamestart for game %s: %s", pk, e)
@@ -346,6 +399,32 @@ class GameSetupCreateOrUpdateView(RetrieveUpdateAPIView):
                 status=HTTPStatus.CONFLICT,
             )
         return Response(serializer.data, status=HTTPStatus.OK)
+
+
+class GameDeviceLockAPIView(APIView):
+    """Release the device lock of a game (staff only).
+
+    Without this a lost or replaced phone would lock the game for good.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, *args, **kwargs):
+        if not request.user.is_staff:
+            raise PermissionDenied(
+                detail="Nur die Turnierleitung kann die Gerätesperre aufheben."
+            )
+        pk = kwargs.get("pk")
+        try:
+            game = Gameinfo.objects.get(pk=pk)
+        except Gameinfo.DoesNotExist:
+            raise NotFound(detail=f"No game found for gameId {pk}")
+        game_setup = GameSetup.objects.filter(gameinfo=game).first()
+        if game_setup is None:
+            raise NotFound(detail=f"No game setup found for gameId {pk}")
+        game_setup.device_id = ""
+        game_setup.save(update_fields=["device_id"])
+        return Response(status=HTTPStatus.NO_CONTENT)
 
 
 class GamesToWhistleAPIView(APIView):

@@ -6,6 +6,7 @@ from gamedays.api.game_views import (
     GameHalftimeAPIView,
     GameFinalizeUpdateView,
     GameSetupCreateOrUpdateView,
+    GameDeviceLockAPIView,
     GamesToWhistleAPIView,
     GameRosterAPIView,
     ConfigPenalties,
@@ -38,6 +39,7 @@ from gamedays.constants import (
     API_GAME_HALFTIME,
     API_GAME_OFFICIALS,
     API_GAME_SETUP,
+    API_GAME_DEVICE,
 )
 
 router = DefaultRouter()
@@ -122,6 +124,11 @@ urlpatterns = [
         "game/<int:pk>/setup",
         GameSetupCreateOrUpdateView.as_view(),
         name=API_GAME_SETUP,
+    ),
+    path(
+        "game/<int:pk>/device",
+        GameDeviceLockAPIView.as_view(),
+        name=API_GAME_DEVICE,
     ),
     path(
         "game/<int:pk>/roster",
