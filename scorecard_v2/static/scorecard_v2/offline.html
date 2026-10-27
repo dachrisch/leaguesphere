@@ -3,23 +3,38 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta name="theme-color" content="#070a0f"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#111820" media="(prefers-color-scheme: dark)"/>
   <title>Keine Verbindung – LeagueSphere Scorecard</title>
   <!-- Self-contained on purpose: this page is what the service worker shows
        when the network is gone, so it must not need a stylesheet, a font or a
        script from anywhere else. Colours mirror src/styles/tokens.css. -->
   <style>
     :root {
-      color-scheme: dark;
-      --bg: #070a0f;
-      --panel: #11161f;
-      --fg: #f3f5f8;
-      --muted: #8b95a7;
-      --home: #e5322d;
-      /* Darker than --home: #fff on #e5322d is only 4.35:1, below AA for the
-         retry button. This is 5.39:1. */
-      --home-action: #cc2822;
-      --line: rgba(255, 255, 255, 0.09);
+      color-scheme: light;
+      --bg: #fafafa;
+      --panel: #ffffff;
+      --fg: #333333;
+      --muted: #5f6b76;
+      --home: #c0392b;
+      /* Darkened from the team red: #fff on #c0392b is 5.4:1. */
+      --home-action: #a43325;
+      --line: #dee2e6;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --bg: #111820;
+        --panel: #1a232c;
+        --fg: #e9ecef;
+        --muted: #adb5bd;
+        --home: #d9534f;
+        /* #fff on #b32722 is 5.9:1. */
+        --home-action: #b32722;
+        --line: #35414d;
+      }
     }
 
     * { box-sizing: border-box; }
@@ -40,7 +55,7 @@
       max-width: 22rem;
       padding: 28px 22px;
       border: 1px solid var(--line);
-      border-radius: 14px;
+      border-radius: 8px;
       background: var(--panel);
     }
 
@@ -50,9 +65,9 @@
       width: 56px;
       height: 56px;
       margin: 0 auto 16px;
-      border-radius: 14px;
+      border-radius: 8px;
       background: var(--home);
-      color: #fff;
+      color: #ffffff;
       font-size: 22px;
       font-weight: 800;
       letter-spacing: 0.02em;
@@ -76,9 +91,9 @@
       width: 100%;
       padding: 0 16px;
       border: 0;
-      border-radius: 999px;
+      border-radius: 8px;
       background: var(--home-action);
-      color: #fff;
+      color: #ffffff;
       font: inherit;
       font-weight: 600;
       cursor: pointer;

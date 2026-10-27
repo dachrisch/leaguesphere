@@ -25,13 +25,13 @@ body {
   overflow-x: clip;
   background:
     radial-gradient(
-      1100px 700px at 20% -10%,
-      color-mix(in srgb, var(--home) 10%, transparent),
+      1100px 700px at 15% -10%,
+      color-mix(in srgb, var(--primary) 10%, transparent),
       transparent 60%
     ),
     radial-gradient(
       900px 600px at 100% 0%,
-      color-mix(in srgb, var(--away) 7%, transparent),
+      color-mix(in srgb, var(--away) 5%, transparent),
       transparent 55%
     ),
     var(--bg);
@@ -57,6 +57,7 @@ h3 {
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: -0.01em;
+  color: var(--heading);
 }
 
 button {
@@ -110,12 +111,12 @@ button,
 
 .app-header {
   flex: 0 0 auto;
-  padding: var(--header-pad-top) var(--page-gutter) var(--space-5);
-  border-bottom: 1px solid var(--line-soft);
+  padding: var(--header-pad-top) var(--page-gutter) var(--space-4);
+  border-bottom: 1px solid var(--line);
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--home) 7%, transparent),
-    transparent
+    color-mix(in srgb, var(--primary) 10%, var(--surface)) 0%,
+    var(--surface) 100%
   );
 }
 
@@ -126,7 +127,7 @@ button,
   letter-spacing: 0.18em;
   line-height: 1;
   text-transform: uppercase;
-  color: var(--amber);
+  color: var(--primary);
 }
 
 .app-title {
@@ -134,6 +135,7 @@ button,
   font-size: var(--fs-2xl);
   font-weight: 800;
   letter-spacing: -0.02em;
+  color: var(--heading);
 }
 
 .app-sub {
@@ -626,7 +628,7 @@ button.game-row:active {
 }
 
 .seg button.sel {
-  color: #0b1017;
+  color: var(--on-strong);
   background: var(--fg);
   border-color: var(--fg);
 }
@@ -730,6 +732,10 @@ button.game-row:active {
 }
 
 .startbtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   width: 100%;
   min-height: 52px;
   padding: var(--space-3) var(--space-4);
@@ -737,15 +743,21 @@ button.game-row:active {
   font-size: var(--fs-xl);
   font-weight: 700;
   letter-spacing: 0.01em;
-  color: #0b1017;
-  background: var(--fg);
+  color: var(--primary-contrast);
+  background: var(--primary);
   border-radius: var(--radius-lg);
   cursor: pointer;
   transition: opacity var(--transition-fast);
 }
 
+.startbtn svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}
+
 .startbtn:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
@@ -758,19 +770,18 @@ button.game-row:active {
 
 .board {
   flex: 0 0 auto;
-  padding: var(--space-3) var(--page-gutter) var(--space-4);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--home) 8%, transparent),
-    transparent
-  );
-  border-bottom: 1px solid var(--line-soft);
+  margin: var(--space-2) var(--page-gutter) 0;
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
 }
 
 .scoreline {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: var(--space-2);
+  gap: var(--space-3);
   align-items: center;
 }
 
@@ -780,15 +791,15 @@ button.game-row:active {
 
 .team {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-2);
   width: 100%;
   min-height: var(--touch);
-  padding: var(--space-1) 2px;
+  padding: 2px;
   color: var(--fg);
   border: 1px solid transparent;
-  border-radius: var(--radius-lg);
+  border-radius: 10px;
   cursor: pointer;
   transition:
     border-color var(--transition-fast),
@@ -796,13 +807,24 @@ button.game-row:active {
 }
 
 .team.home {
-  align-items: flex-start;
   text-align: left;
 }
 
 .team.away {
-  align-items: flex-end;
+  flex-direction: row-reverse;
   text-align: right;
+}
+
+.teamtext {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.team.away .teamtext {
+  align-items: flex-end;
 }
 
 .team:hover {
@@ -828,8 +850,8 @@ button.game-row:active {
   font-size: var(--fs-md);
   font-weight: 800;
   line-height: 1;
-  color: #0b1017;
-  background: var(--panel2);
+  color: var(--on-accent);
+  background: var(--surface-2);
   border: 1px solid var(--line);
   /* A drawn shield, not a crest image: no logo URLs in the app. */
   clip-path: polygon(50% 0, 100% 16%, 100% 68%, 50% 100%, 0 68%, 0 16%);
@@ -856,20 +878,36 @@ button.game-row:active {
 }
 
 .poss {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  padding: 1px 5px;
+  overflow: hidden;
   font-size: var(--fs-xs);
   font-weight: 600;
-  letter-spacing: 0.08em;
-  line-height: 1.3;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  text-overflow: ellipsis;
   text-transform: uppercase;
-  color: var(--amber);
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.poss svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
 }
 
 .clock {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  min-width: 88px;
+  gap: 1px;
+  min-width: 96px;
 }
 
 .score {
@@ -877,12 +915,13 @@ button.game-row:active {
   align-items: baseline;
   gap: 2px;
   font-family: var(--font-display);
-  font-size: var(--fs-2xl);
+  font-size: 58px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
-  line-height: 1;
+  line-height: 0.95;
   white-space: nowrap;
+  color: var(--heading);
 }
 
 .score .sep {
@@ -925,7 +964,7 @@ button.game-row:active {
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
-  padding: var(--space-1) var(--page-gutter);
+  padding: var(--space-2) var(--page-gutter) var(--space-1);
   font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -974,7 +1013,7 @@ button.game-row:active {
   grid-template-columns: 34px minmax(0, 1fr) auto;
   gap: var(--space-2);
   align-items: center;
-  min-height: calc(var(--touch) + var(--space-2));
+  min-height: calc(var(--touch) + var(--space-1));
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--line-soft);
 }
@@ -982,7 +1021,7 @@ button.game-row:active {
 .ev {
   display: grid;
   width: 34px;
-  height: 28px;
+  height: 30px;
   place-items: center;
   font-family: var(--font-display);
   font-size: var(--fs-xs);
@@ -993,6 +1032,11 @@ button.game-row:active {
   background: var(--panel2);
   border: 1px solid var(--line);
   border-radius: 8px;
+}
+
+.ev svg {
+  width: 18px;
+  height: 18px;
 }
 
 .ev-td,
@@ -1059,12 +1103,16 @@ button.game-row:active {
 }
 
 .undo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
   min-width: var(--touch);
   min-height: var(--touch);
   padding: 0 var(--space-2);
   font-size: var(--fs-xs);
   font-weight: 600;
-  color: var(--amber);
+  color: var(--warning);
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -1072,6 +1120,12 @@ button.game-row:active {
   transition:
     border-color var(--transition-fast),
     background var(--transition-fast);
+}
+
+.undo svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
 }
 
 .undo:hover {
@@ -1099,26 +1153,29 @@ button.game-row:active {
 .actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
-  padding: 0 var(--page-gutter) var(--space-3);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--page-gutter) 0;
 }
 
 /* Touchdown first: full width, in the possession team's colour. */
 .tdbtn {
   grid-column: 1 / -1;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-2);
   align-items: center;
-  justify-content: center;
-  min-height: 56px;
-  padding: var(--space-3);
+  min-height: 64px;
+  padding: 0 var(--space-4);
+  text-align: left;
   font-family: var(--font-display);
   font-size: var(--fs-xl);
   font-weight: 800;
   letter-spacing: 0.01em;
   line-height: 1.1;
-  color: #0b1017;
-  background: var(--fg);
+  color: var(--on-accent);
+  background: var(--primary);
   border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
   cursor: pointer;
   transition: opacity var(--transition-fast);
 }
@@ -1132,25 +1189,68 @@ button.game-row:active {
 }
 
 .tdbtn:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-.action {
-  min-height: var(--touch);
-  padding: var(--space-2);
-  font-size: var(--fs-md);
+.tdbtn-icon {
+  width: 26px;
+  height: 26px;
+}
+
+.tdbtn-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tdbtn-hint {
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
   font-weight: 600;
-  line-height: 1.3;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: 56px;
+  padding: var(--space-1);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
   color: var(--fg);
-  background: var(--panel2);
+  background: var(--surface-2);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+/* Eight tiles in three columns: the last one spans two and closes the row. */
+.actions > .action:last-child {
+  grid-column: span 2;
+}
+
+.action:hover:not(:disabled) {
+  border-color: var(--line-strong);
+}
+
+.action-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--primary);
 }
 
 .action:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
@@ -1180,7 +1280,7 @@ button.game-row:active {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: rgba(3, 6, 9, 0.72);
+  background: var(--overlay);
   -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
 }
@@ -1197,7 +1297,7 @@ button.game-row:active {
   border: 1px solid var(--line);
   border-bottom: 0;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  box-shadow: 0 -18px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-sheet);
 }
 
 .sheethead {
@@ -1349,13 +1449,13 @@ button.game-row:active {
 }
 
 .jersey.sel {
-  color: #0b1017;
+  color: var(--on-strong);
   background: var(--fg);
   border-color: var(--fg);
 }
 
 .jersey.sel .jerseyname {
-  color: #0b1017;
+  color: var(--on-strong);
   opacity: 0.75;
 }
 
@@ -1388,7 +1488,7 @@ button.game-row:active {
 }
 
 .jerseychip.sel {
-  color: #0b1017;
+  color: var(--on-strong);
   background: var(--fg);
   border-color: var(--fg);
 }
@@ -1484,7 +1584,7 @@ button.game-row:active {
 }
 
 .pat.sel {
-  color: #0b1017;
+  color: var(--on-warning);
   background: var(--amber);
   border-color: var(--amber);
 }
@@ -1521,13 +1621,13 @@ button.game-row:active {
 }
 
 .penalty.sel {
-  color: #0b1017;
+  color: var(--on-strong);
   background: var(--fg);
   border-color: var(--fg);
 }
 
 .penalty.sel .penaltysub {
-  color: #0b1017;
+  color: var(--on-strong);
   opacity: 0.7;
 }
 
@@ -1586,7 +1686,7 @@ button.game-row:active {
 }
 
 .teampickbtn.sel {
-  color: #0b1017;
+  color: var(--on-strong);
   background: var(--fg);
   border-color: var(--fg);
 }
@@ -1600,20 +1700,30 @@ button.game-row:active {
 
 .halfblock {
   flex: 0 0 auto;
-  padding: 0 var(--page-gutter) var(--space-3);
+  padding: var(--space-2) var(--page-gutter) 0;
 }
 
 .halfbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   width: 100%;
-  min-height: var(--touch);
+  min-height: 48px;
   padding: var(--space-2);
   font-size: var(--fs-base);
   font-weight: 600;
   color: var(--fg);
-  background: var(--panel2);
+  background: var(--surface-2);
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
+}
+
+.halfbtn svg {
+  width: 18px;
+  height: 18px;
+  color: var(--primary);
 }
 
 .halfbtn:disabled {
@@ -1647,7 +1757,7 @@ button.game-row:active {
   flex: 0 0 auto;
   padding: var(--space-3) var(--page-gutter) var(--bottom-safe);
   border-top: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  background: var(--surface);
 }
 
 /* --------------------------------------------------- finalise & result --- */
@@ -1941,11 +2051,11 @@ button.game-row:active {
   }
 
   .score {
-    font-size: var(--fs-xl);
+    font-size: 56px;
   }
 
   .clock {
-    min-width: 74px;
+    min-width: 88px;
   }
 
   .row {
@@ -1963,9 +2073,17 @@ button.game-row:active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2);
   min-height: var(--touch);
   margin-bottom: var(--space-2);
+}
+
+.appbar-left,
+.appbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
 }
 
 .appbar-btn {
@@ -1988,11 +2106,21 @@ button.game-row:active {
 .appbar-icon {
   width: 16px;
   height: 16px;
+  flex: 0 0 auto;
 }
 
 .appbar-logout {
   padding: 0 0 0 var(--space-2);
-  color: var(--amber);
+  color: var(--warning);
+}
+
+.theme-toggle {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+}
+
+.theme-toggle:hover {
+  background: var(--fill-soft);
 }
 
 /* --------------------------------------------------------- sync badge --- */
@@ -2002,7 +2130,7 @@ button.game-row:active {
   flex: 0 0 auto;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-2) var(--page-gutter) 0;
+  padding: var(--space-1) var(--page-gutter) 0;
 }
 
 .syncbadge {
@@ -2010,8 +2138,8 @@ button.game-row:active {
   align-items: center;
   align-self: flex-start;
   gap: var(--space-2);
-  min-height: 32px;
-  padding: 4px 10px;
+  min-height: 28px;
+  padding: 2px 10px;
   font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -2176,7 +2304,7 @@ button.syncbadge {
 }
 
 .scopebtn.sel {
-  color: #0b1017;
+  color: var(--on-strong);
   background: var(--fg);
   border-color: var(--fg);
 }

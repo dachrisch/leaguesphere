@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -271,7 +271,7 @@ describe("GameList", () => {
     });
     const { onSelect, onResume } = renderList([game]);
 
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(within(screen.getByRole("main")).queryByRole("button")).not.toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
 
     const row = rowFor("Ravens – Wolves");
@@ -288,7 +288,7 @@ describe("GameList", () => {
   it("gives each actionable row an explicit accessible name", () => {
     renderList([makeGame({ points_home: 7, points_away: 21 })]);
 
-    expect(screen.getByRole("button")).toHaveAccessibleName(
+    expect(within(screen.getByRole("main")).getByRole("button")).toHaveAccessibleName(
       "13:30, Feld 2, Ravens gegen Wolves, 7:21, offen",
     );
   });
@@ -296,7 +296,7 @@ describe("GameList", () => {
   it("names a missing score with an en dash", () => {
     renderList([makeGame({ points_home: null, points_away: null })]);
 
-    expect(screen.getByRole("button")).toHaveAccessibleName(
+    expect(within(screen.getByRole("main")).getByRole("button")).toHaveAccessibleName(
       "13:30, Feld 2, Ravens gegen Wolves, –, offen",
     );
   });
@@ -306,7 +306,7 @@ describe("GameList", () => {
       makeGame({ points_home: 7, points_away: 21, passcheck: true }),
     ]);
 
-    expect(screen.getByRole("button")).toHaveAccessibleName(
+    expect(within(screen.getByRole("main")).getByRole("button")).toHaveAccessibleName(
       "13:30, Feld 2, Ravens gegen Wolves, 7:21, offen, Passcheck geprüft",
     );
   });
@@ -316,7 +316,7 @@ describe("GameList", () => {
       makeGame({ points_home: 7, points_away: 21, passcheck: false }),
     ]);
 
-    expect(screen.getByRole("button")).toHaveAccessibleName(
+    expect(within(screen.getByRole("main")).getByRole("button")).toHaveAccessibleName(
       "13:30, Feld 2, Ravens gegen Wolves, 7:21, offen, kein Passcheck",
     );
   });
@@ -330,7 +330,7 @@ describe("GameList", () => {
       }),
     ]);
 
-    expect(screen.getByRole("button")).toHaveAccessibleName(
+    expect(within(screen.getByRole("main")).getByRole("button")).toHaveAccessibleName(
       "13:30, Feld 2, Ravens gegen Wolves, 20:7, läuft",
     );
   });
@@ -340,7 +340,7 @@ describe("GameList", () => {
       makeGame({ status: "Beendet", points_home: 7, points_away: 21 }),
     ]);
 
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(within(screen.getByRole("main")).queryByRole("button")).not.toBeInTheDocument();
     expect(rowFor("Ravens – Wolves").querySelector(".tag")?.textContent).toBe(
       "beendet",
     );
@@ -374,7 +374,7 @@ describe("GameList", () => {
     });
     const { onSelect, onResume } = renderList([finished, planned, running]);
 
-    expect(screen.getAllByRole("button")).toHaveLength(2);
+    expect(within(screen.getByRole("main")).getAllByRole("button")).toHaveLength(2);
 
     await userEvent.click(
       screen.getByRole("button", { name: /Hawks gegen Ravens/ }),
@@ -404,7 +404,7 @@ describe("GameList", () => {
         name: "Keine Spiele für diesen Spieltag",
       }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(within(screen.getByRole("main")).queryByRole("button")).not.toBeInTheDocument();
     expect(container.querySelector(".sumline")).toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -72,7 +72,7 @@ describe("GamedayList", () => {
       makeGameday({ id: 2, name: "Liga Süd", start: "14:30" }),
     ]);
 
-    expect(screen.getAllByRole("button")).toHaveLength(2);
+    expect(within(screen.getByRole("main")).getAllByRole("button")).toHaveLength(2);
 
     const card = screen.getByRole("button", { name: /Herbstturnier/ });
     expect(card).toHaveTextContent("26");
@@ -160,7 +160,7 @@ describe("GamedayList", () => {
     expect(
       screen.getByRole("heading", { level: 2, name: "Keine Spieltage für heute" }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(within(screen.getByRole("main")).queryByRole("button")).not.toBeInTheDocument();
   });
 });
 

@@ -286,8 +286,8 @@ class TestManifest:
         assert manifest["scope"] == "/scorecard/v2/"
         assert manifest["display"] == "standalone"
         assert manifest["lang"] == "de"
-        assert manifest["background_color"] == "#070a0f"
-        assert manifest["theme_color"] == "#070a0f"
+        assert manifest["background_color"] == "#fafafa"
+        assert manifest["theme_color"] == "#5f788a"
 
     def test_icons_are_pngs_of_the_declared_size(self):
         manifest = json.loads(_static_file(MANIFEST))
@@ -341,9 +341,13 @@ class TestAppShell:
     def test_static_app_shell_has_no_server_data(self):
         html = _static_file(APP_SHELL).decode()
 
-        assert '<html lang="de">' in html
+        assert '<html data-theme="auto" lang="de">' in html
         assert 'id="scorecard-v2-app"' in html
-        assert '<meta content="#070a0f" name="theme-color"/>' in html
+        assert '<meta content="light dark" name="color-scheme"/>' in html
+        assert 'media="(prefers-color-scheme: light)" name="theme-color"' in html
+        assert 'media="(prefers-color-scheme: dark)" name="theme-color"' in html
+        assert 'content="#fafafa"' in html
+        assert 'content="#111820"' in html
         assert 'rel="manifest"' in html
         assert "/static/scorecard_v2/manifest.webmanifest" in html
         assert "/static/scorecard_v2/js/scorecard_v2.css" in html
@@ -362,7 +366,9 @@ class TestPageLinks(WebTest):
         assert 'lang="de"' in response.text
         assert 'rel="manifest"' in response.text
         assert "/static/scorecard_v2/manifest.webmanifest" in response.text
+        assert 'name="color-scheme"' in response.text
         assert 'name="theme-color"' in response.text
-        assert 'content="#070a0f"' in response.text
+        assert 'content="#fafafa"' in response.text
+        assert 'content="#111820"' in response.text
         assert 'rel="apple-touch-icon"' in response.text
         assert "/static/scorecard_v2/icons/icon-192.png" in response.text

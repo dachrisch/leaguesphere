@@ -14,12 +14,17 @@ import "./styles/tokens.css";
 import "./styles/app.css";
 import App from "./App";
 import { registerServiceWorker } from "./serviceWorker";
+import { initTheme } from "./theme";
 
 const container = document.getElementById("scorecard-v2-app");
 
 if (container === null) {
   throw new Error("Scorecard v2: #scorecard-v2-app is missing");
 }
+
+// Before the first paint: the template ships `data-theme="auto"`, this turns
+// the saved choice into the concrete light/dark value and follows the OS.
+initTheme();
 
 createRoot(container).render(
   <StrictMode>

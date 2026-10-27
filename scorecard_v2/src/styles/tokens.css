@@ -1,47 +1,71 @@
 /*
  * Design tokens for scorecard v2.
  *
- * The app is used on a phone, outdoors, one-handed: dark, high contrast, big
- * targets. Screens must not hard-code colours or spacing — take them from here
- * so a later change (e.g. a pitch-side contrast pass) stays one edit.
+ * Three layers, one meaning each:
+ *   :root                  – light (LeagueSphere: #fafafa body, white cards)
+ *   [data-theme="dark"]    – an explicit dark choice, resolved by theme.ts
+ *   @media … dark + auto   – the pre-JS / no-JS default before theme.ts runs
+ *
+ * Screens must not hard-code colours: take them from here so a later contrast
+ * pass stays one edit. The old names (`--panel`, `--amber`, …) are kept as
+ * aliases so the primitives in app.css read the same in both themes.
  */
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* Surfaces */
-  --bg: #070a0f;
-  --panel: #11161f;
-  --panel2: #171e29;
+  /* Surfaces — LeagueSphere light: #fafafa body, white content, #ddd hairlines. */
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-2: #f1f3f5;
+  --panel: var(--surface);
+  --panel2: var(--surface-2);
 
-  /* Text — `--muted` stays above 4.5:1 on both panels. */
-  --fg: #f3f5f8;
-  --muted: #8b95a7;
+  /* Text. `--muted` stays above 4.5:1 on both surfaces. */
+  --fg: #333333;
+  --heading: #444444;
+  --muted: #5f6b76;
 
-  /* Hairlines and translucent fills */
-  --line: rgba(255, 255, 255, 0.09);
-  --line-soft: rgba(255, 255, 255, 0.06);
-  --line-strong: rgba(255, 255, 255, 0.16);
-  --fill-soft: rgba(255, 255, 255, 0.07);
+  /* Brand and links. Bootstrap's #428bca is only 4.0:1 on white, so text links
+     use the darkened #2f6f9f; the original stays available as --link-soft. */
+  --primary: #5f788a;
+  --primary-contrast: #ffffff;
+  --link: #2f6f9f;
+  --link-soft: #428bca;
 
-  /* Team and status accents. `--home`/`--away` are the semantic names every
-     screen uses; the washes and tag text derive from them. */
-  --home: #e5322d;
-  --away: #2fbf71;
-  --amber: #f2a33c;
-  --home-text: #ff7b76;
-  --away-text: #7ce0a9;
-  --soon-text: #9aa5b6;
-  --home-wash: color-mix(in srgb, var(--home) 14%, transparent);
-  --away-wash: color-mix(in srgb, var(--away) 12%, transparent);
-  --amber-wash: color-mix(in srgb, var(--amber) 14%, transparent);
+  /* Team and status accents (Bootstrap semantics). */
+  --home: #c0392b;
+  --away: #198754;
+  --warning: #9a5b00;
+  --amber: var(--warning);
+  --home-text: #a43325;
+  --away-text: #146c43;
+  --soon-text: #5f6b76;
+
+  /* Text on filled controls. */
+  --on-accent: #ffffff;
+  --on-strong: #ffffff;
+  --on-warning: #ffffff;
+
+  /* Hairlines and translucent fills. */
+  --line: #dee2e6;
+  --line-soft: #e9ecef;
+  --line-strong: #ced4da;
+  --fill-soft: #f1f3f5;
+  --overlay: rgba(33, 37, 41, 0.48);
+  --shadow-sheet: 0 -18px 40px rgba(33, 37, 41, 0.22);
+
+  /* Washes derive from the accents; the *-text tokens carry the contrast. */
+  --home-wash: color-mix(in srgb, var(--home) 11%, transparent);
+  --away-wash: color-mix(in srgb, var(--away) 11%, transparent);
+  --amber-wash: color-mix(in srgb, var(--amber) 12%, transparent);
 
   /* Typography. Barlow Condensed for headings and numerals, Inter for body. */
   --font-display: "Barlow Condensed", "Inter", system-ui, sans-serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --fs-xs: 11px;
-  --fs-sm: 11px;
-  --fs-md: 12px;
+  --fs-xs: 12px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
   --fs-base: 14px;
   --fs-xl: 22px;
   --fs-2xl: 30px;
@@ -56,22 +80,120 @@
   --space-8: 40px;
 
   /* Radii */
-  --radius-lg: 14px;
+  --radius-lg: 8px;
   --radius-pill: 999px;
 
   /* Elevation */
-  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
-    0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-card: 0 1px 2px rgba(16, 24, 32, 0.06),
+    0 2px 8px rgba(16, 24, 32, 0.05);
 
   /* Interaction */
   --touch: 44px;
-  --focus-ring: 2px solid var(--amber);
+  --focus-ring: 2px solid var(--link);
   --focus-offset: 2px;
   --transition-fast: 120ms ease;
 
   /* Layout shell */
   --shell-width: 560px;
   --page-gutter: var(--space-5);
-  --header-pad-top: max(var(--space-6), env(safe-area-inset-top));
+  --header-pad-top: max(var(--space-3), env(safe-area-inset-top));
   --bottom-safe: max(var(--space-5), env(safe-area-inset-bottom));
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Steel-tinted neutrals rather than the mock's pure black. */
+  --bg: #111820;
+  --surface: #1a232c;
+  --surface-2: #222d37;
+  --panel: var(--surface);
+  --panel2: var(--surface-2);
+
+  --fg: #e9ecef;
+  --heading: #f1f3f5;
+  --muted: #adb5bd;
+
+  --primary: #8aa2b3;
+  --primary-contrast: #111820;
+  --link: #8ec1ea;
+  --link-soft: #6fa8d6;
+
+  --home: #d9534f;
+  --away: #2f9e6b;
+  --warning: #d9a441;
+  --amber: var(--warning);
+  --home-text: #ff918b;
+  --away-text: #74d6a4;
+  --soon-text: #adb5bd;
+
+  --on-accent: #111820;
+  --on-strong: #111820;
+  --on-warning: #111820;
+
+  --line: #35414d;
+  --line-soft: #2a3540;
+  --line-strong: #4b5a68;
+  --fill-soft: #222d37;
+  --overlay: rgba(3, 6, 9, 0.72);
+  --shadow-sheet: 0 -18px 40px rgba(0, 0, 0, 0.5);
+
+  --home-wash: color-mix(in srgb, var(--home) 18%, transparent);
+  --away-wash: color-mix(in srgb, var(--away) 16%, transparent);
+  --amber-wash: color-mix(in srgb, var(--amber) 16%, transparent);
+
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 4px 14px rgba(0, 0, 0, 0.28);
+
+  --focus-ring: 2px solid var(--warning);
+}
+
+/* Before theme.ts runs, `<html data-theme="auto">` follows the OS. */
+@media (prefers-color-scheme: dark) {
+  [data-theme="auto"] {
+    color-scheme: dark;
+
+    --bg: #111820;
+    --surface: #1a232c;
+    --surface-2: #222d37;
+    --panel: var(--surface);
+    --panel2: var(--surface-2);
+
+    --fg: #e9ecef;
+    --heading: #f1f3f5;
+    --muted: #adb5bd;
+
+    --primary: #8aa2b3;
+    --primary-contrast: #111820;
+    --link: #8ec1ea;
+    --link-soft: #6fa8d6;
+
+    --home: #d9534f;
+    --away: #2f9e6b;
+    --warning: #d9a441;
+    --amber: var(--warning);
+    --home-text: #ff918b;
+    --away-text: #74d6a4;
+    --soon-text: #adb5bd;
+
+    --on-accent: #111820;
+    --on-strong: #111820;
+    --on-warning: #111820;
+
+    --line: #35414d;
+    --line-soft: #2a3540;
+    --line-strong: #4b5a68;
+    --fill-soft: #222d37;
+    --overlay: rgba(3, 6, 9, 0.72);
+    --shadow-sheet: 0 -18px 40px rgba(0, 0, 0, 0.5);
+
+    --home-wash: color-mix(in srgb, var(--home) 18%, transparent);
+    --away-wash: color-mix(in srgb, var(--away) 16%, transparent);
+    --amber-wash: color-mix(in srgb, var(--amber) 16%, transparent);
+
+    --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
+      0 4px 14px rgba(0, 0, 0, 0.28);
+
+    --focus-ring: 2px solid var(--warning);
+  }
 }

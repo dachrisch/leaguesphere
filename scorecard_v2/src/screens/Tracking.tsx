@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type ComponentType,
 } from "react";
 
 import type {
@@ -25,6 +26,20 @@ import EventLog, {
 import ScoreHeader, { isPossessing } from "../components/ScoreHeader";
 import SnapshotHint from "../components/SnapshotHint";
 import SyncBadge, { pauseReason } from "../components/SyncBadge";
+import {
+  ArrowRight,
+  Check,
+  Clock,
+  Flag,
+  Football,
+  Interception,
+  Pause,
+  PlusCircle,
+  Shield,
+  Stopwatch,
+  SwapArrows,
+  type IconProps,
+} from "../components/icons";
 import MoreSheet, { type MoreMode } from "../components/sheets/MoreSheet";
 import PenaltySheet from "../components/sheets/PenaltySheet";
 import SeriesSheet, {
@@ -44,6 +59,10 @@ interface TrackingScreenProps {
   game: Game;
   /** Log loaded by the preparation screen; the server payload is the truth. */
   initialLog: GameLog;
+  /** Gameday name for the header context line. */
+  gamedayName?: string;
+  /** League display name for the header context line. */
+  leagueLabel?: string;
   /**
    * When the shown log came from the snapshot instead of the network, the age
    * of that stored payload. A game that ended an hour ago then reads as stored
@@ -72,13 +91,38 @@ type SheetState =
   | { kind: "more"; mode: MoreMode };
 
 /** The series/time tiles of the composer grid. */
-const SERIES_TILES: { mode: SeriesMode; label: string }[] = [
-  { mode: "first", label: "1st Down" },
-  { mode: "turnover", label: "Turnover" },
-  { mode: "interception", label: "Interception" },
-  { mode: "time", label: "Spielzeit" },
-  { mode: "timeout", label: "Auszeit" },
+const SERIES_TILES: {
+  mode: SeriesMode;
+  label: string;
+  Icon: ComponentType<IconProps>;
+}[] = [
+  { mode: "first", label: "1st Down", Icon: ArrowRight },
+  { mode: "turnover", label: "Turnover", Icon: SwapArrows },
+  { mode: "interception", label: "Interception", Icon: Interception },
+  { mode: "time", label: "Spielzeit", Icon: Stopwatch },
+  { mode: "timeout", label: "Auszeit", Icon: Clock },
 ];
+
+/**
+ * Header title: the field and the round, the two facts an official needs to be
+ * sure they opened the right game. `standing` stands in when a game carries no
+ * stage (designer-built rows often only have the bracket label).
+ */
+export function trackingTitle(game: Game): string {
+  const stage = game.stage.trim() || game.standing.trim();
+  return stage === "" ? `Feld ${game.field}` : `Feld ${game.field} · ${stage}`;
+}
+
+/** Header context: gameday and league, each part optional. */
+export function trackingSubtitle(
+  gamedayName?: string,
+  leagueLabel?: string,
+): string | undefined {
+  const parts = [gamedayName?.trim(), leagueLabel?.trim()].filter(
+    (part): part is string => part !== undefined && part !== "",
+  );
+  return parts.length === 0 ? undefined : parts.join(" · ");
+}
 
 const CONFIRMATION: Record<string, string> = {
   Touchdown: "Touchdown gespeichert",
@@ -219,6 +263,8 @@ export function describeSaved(events: GameLogEventInput[]): string {
 export default function TrackingScreen({
   game,
   initialLog,
+  gamedayName,
+  leagueLabel,
   staleSince = null,
   onFinalize,
   session: providedSession,
@@ -620,7 +666,8 @@ export default function TrackingScreen({
         kicker="Scorecard"
         onBack={onBack}
         onLogout={onLogout}
-        title="Spiel läuft"
+        sub={trackingSubtitle(gamedayName, leagueLabel)}
+        title={trackingTitle(game)}
       />
       <SyncBadge gameId={game.id} />
       <SnapshotHint updatedAt={staleSince} />
@@ -675,17 +722,22 @@ export default function TrackingScreen({
           onClick={() => openSheet({ kind: "touchdown" })}
           type="button"
         >
-          {touchdownLabel}
+          <Football className="tdbtn-icon" size={26} />
+          <span className="tdbtn-label">{touchdownLabel}</span>
+          <span aria-hidden="true" className="tdbtn-hint">
+            3 Tipps
+          </span>
         </button>
-        {SERIES_TILES.map((tile) => (
+        {SERIES_TILES.map(({ mode, label, Icon }) => (
           <button
             className="action"
             disabled={composerDisabled}
-            key={tile.mode}
-            onClick={() => openSheet({ kind: "series", mode: tile.mode })}
+            key={mode}
+            onClick={() => openSheet({ kind: "series", mode })}
             type="button"
           >
-            {tile.label}
+            <Icon className="action-icon" size={20} />
+            <span>{label}</span>
           </button>
         ))}
         <button
@@ -694,7 +746,8 @@ export default function TrackingScreen({
           onClick={() => openSheet({ kind: "penalty" })}
           type="button"
         >
-          Strafe
+          <Flag className="action-icon" size={20} />
+          <span>Strafe</span>
         </button>
         <button
           className="action"
@@ -702,7 +755,8 @@ export default function TrackingScreen({
           onClick={() => openSheet({ kind: "more", mode: "safety" })}
           type="button"
         >
-          Safety
+          <Shield className="action-icon" size={20} />
+          <span>Safety</span>
         </button>
         <button
           className="action"
@@ -710,7 +764,8 @@ export default function TrackingScreen({
           onClick={() => openSheet({ kind: "more", mode: "overtime" })}
           type="button"
         >
-          Overtime
+          <PlusCircle className="action-icon" size={20} />
+          <span>Overtime</span>
         </button>
       </section>
       {log.isFirstHalf && !finished ? (
@@ -733,6 +788,7 @@ export default function TrackingScreen({
                   onClick={() => void startHalftime()}
                   type="button"
                 >
+                  <Pause size={18} />
                   {halftimePending ? "Halbzeit …" : "Halbzeit starten"}
                 </button>
               </div>
@@ -744,6 +800,7 @@ export default function TrackingScreen({
               onClick={() => setConfirmHalftime(true)}
               type="button"
             >
+              <Pause size={18} />
               Halbzeit
             </button>
           )}
@@ -775,6 +832,7 @@ export default function TrackingScreen({
           onClick={() => onFinalize(log)}
           type="button"
         >
+          <Check size={20} />
           Spielende und Bestätigung
         </button>
         {readOnly ? (
