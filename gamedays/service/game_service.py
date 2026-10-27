@@ -4,7 +4,7 @@ import time
 
 from django.db import OperationalError, transaction
 
-from gamedays.models import Team, TeamLog
+from gamedays.models import Team, TeamLog, GameLogSubmission
 from gamedays.service.gamelog import GameLog, GameLogCreator
 from gamedays.service.wrapper.gameinfo_wrapper import GameinfoWrapper
 from gamedays.service.wrapper.gameresult_wrapper import GameresultWrapper
@@ -50,11 +50,38 @@ class GameService(object):
         return GameLog(self.gameinfo.gameinfo)
 
     def create_gamelog(self, team_name, event, user, half):
-        # ToDo extract to TeamWrapper
-        team = self._resolve_team(team_name)
-        return self._write_gamelog(
-            GameLogCreator(self.gameinfo.gameinfo, team, event, user, half).create
-        )
+        gamelog, _ = self.create_gamelog_once(team_name, event, user, half)
+        return gamelog
+
+    def create_gamelog_once(self, team_name, event, user, half, client_id=None):
+        """Write ``event`` at most once per ``client_id`` (offline retries).
+
+        Returns ``(gamelog, applied)``. ``applied`` is ``False`` for a repeated
+        submission: the current log is answered and nothing is written.
+
+        The ``GameLogSubmission`` row is claimed in the very transaction that
+        writes the rows. A write that raises therefore leaves no claim behind,
+        so the retry can still apply it; a crash between the two is impossible.
+        """
+        team = self._resolve_team(team_name)  # ToDo extract to TeamWrapper
+        write = GameLogCreator(self.gameinfo.gameinfo, team, event, user, half).create
+        if client_id is None:
+            # The old app sends no client id: every post creates rows.
+            return self._write_gamelog(write), True
+
+        applied = True
+
+        def claim():
+            nonlocal applied
+            _, created = GameLogSubmission.objects.get_or_create(
+                gameinfo=self.gameinfo.gameinfo, client_id=client_id
+            )
+            if created:
+                return None
+            applied = False
+            return self.get_gamelog()
+
+        return self._write_gamelog(write, claim), applied
 
     @staticmethod
     def _resolve_team(team_identifier) -> Team:
@@ -110,7 +137,7 @@ class GameService(object):
         gamelog.mark_entry_as_deleted(team_log_id)
         return gamelog
 
-    def _write_gamelog(self, write) -> GameLog:
+    def _write_gamelog(self, write, claim=None) -> GameLog:
         """Run a gamelog ``write`` and shift the stored scores by its effect.
 
         Only the change the write makes to the gamelog half scores is applied,
@@ -118,6 +145,12 @@ class GameService(object):
         survives scorecard writes (#1988). Snapshot, write and score update run
         in one transaction holding the game's result rows locked, so concurrent
         writes to the same game apply their changes one after the other.
+
+        ``claim`` is called inside that transaction before the write. It
+        returns ``None`` to let the write run, or an already current ``GameLog``
+        when the submission was applied before — in that case nothing is
+        written and that log is returned. Running it inside the transaction is
+        what keeps a claim and its rows together on a failed write.
 
         Concurrent writers contend on the Gameresult + Gameinfo row locks and
         the TeamLog inserts, so InnoDB deadlocks (1213) / lock-wait timeouts
@@ -129,6 +162,10 @@ class GameService(object):
             try:
                 with transaction.atomic():
                     self.gameresult.lock()
+                    if claim is not None:
+                        existing = claim()
+                        if existing is not None:
+                            return existing
                     before = self._half_scores(self.get_gamelog())
                     gamelog = write()
                     after = self._half_scores(gamelog)

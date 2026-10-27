@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 from collections import OrderedDict
 from http import HTTPStatus
 
@@ -26,6 +27,15 @@ from gamedays.service.model_helper import GameresultHelper, TeamLogHelper
 from passcheck.models import PasscheckVerification, PlayerlistGameday
 
 logger = logging.getLogger(__name__)
+
+def _client_id(raw):
+    """``None`` when no id was sent (old app), a UUID, or a 400."""
+    if raw in (None, ""):
+        return None
+    try:
+        return uuid.UUID(str(raw))
+    except (AttributeError, TypeError, ValueError):
+        raise ValidationError({"client_id": "must be a UUID"})
 
 
 def _validate_gamelog_payload(data):
@@ -145,13 +155,19 @@ class GameLogAPIView(APIView):
         try:
             data = request.data
             _validate_gamelog_payload(data)
+            client_id = _client_id(data.get("client_id"))
             game_service = GameService(data.get("gameId"))
-            gamelog = game_service.create_gamelog(
-                data.get("team"), data.get("event"), request.user, data.get("half")
+            gamelog, applied = game_service.create_gamelog_once(
+                data.get("team"),
+                data.get("event"),
+                request.user,
+                data.get("half"),
+                client_id=client_id,
             )
             return Response(
                 json.loads(gamelog.as_json(), object_pairs_hook=OrderedDict),
-                status=HTTPStatus.CREATED,
+                # A repeated submission wrote nothing, so it is a 200.
+                status=HTTPStatus.CREATED if applied else HTTPStatus.OK,
             )
         except Gameinfo.DoesNotExist:
             raise NotFound(
