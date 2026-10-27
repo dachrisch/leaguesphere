@@ -4,9 +4,10 @@ import { ApiError, apiPut } from "../api/client";
 import type { Game, GameLog, GameLogTeam, RosterPlayer } from "../api/types";
 import FinalScore from "../components/FinalScore";
 import Screen from "../components/Screen";
-import SyncBadge from "../components/SyncBadge";
+import SyncBadge, { SyncDetails } from "../components/SyncBadge";
 import { errorMessage } from "../components/sheets/errors";
 import { cachedGet, snapshotKey } from "../offline/snapshot";
+import { useSyncStatus } from "../session/useSyncStatus";
 
 interface FinalizeScreenProps {
   game: Game;
@@ -120,6 +121,8 @@ export default function FinalizeScreen({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // One read of the outbox for the chip and its details, not one each.
+  const status = useSyncStatus(game.id);
   // A ref, not state: two taps in the same tick both read the old state and
   // would send the result twice.
   const inFlight = useRef(false);
@@ -220,6 +223,7 @@ export default function FinalizeScreen({
 
   return (
     <Screen
+      badge={<SyncBadge gameId={game.id} status={status} variant="inline" />}
       kicker="Scorecard"
       onBack={onBack}
       onLogout={onLogout}
@@ -232,12 +236,10 @@ export default function FinalizeScreen({
       <div className="finalize">
         <FinalScore away={log.away} home={log.home} />
 
-        {/* The guard below says "not yet"; the badge is how the official gets
-            there: resume a pause, retry or drop a rejected write — the same
-            affordances the tracking screen offers. */}
-        {pendingWrites + failedWrites > 0 ? (
-          <SyncBadge gameId={game.id} />
-        ) : null}
+        {/* The guard below says "not yet"; the details are how the official
+            gets there: resume a pause, retry or drop a rejected write — the
+            same affordances the tracking screen offers. */}
+        <SyncDetails gameId={game.id} status={status} />
 
         <button
           className="editbtn"

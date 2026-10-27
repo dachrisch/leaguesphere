@@ -2,8 +2,16 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import SyncBadge, { failedLabel, pauseReason, syncLabel } from "./SyncBadge";
+import SyncBadge, {
+  badgeState,
+  failedLabel,
+  hasDetails,
+  pauseReason,
+  SyncDetails,
+  syncLabel,
+} from "./SyncBadge";
 import type { SyncStatus } from "../session/useSyncStatus";
+import type { StoredOp } from "../offline/types";
 
 const status = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
 const flushAll = vi.hoisted(() => vi.fn());
@@ -205,5 +213,199 @@ describe("SyncBadge", () => {
     await userEvent.click(screen.getByRole("button", { name: /1 abgelehnt/ }));
 
     expect(flushAll).toHaveBeenCalledTimes(1);
+  });
+});
+
+/** A stored op, for the lists only {@link SyncDetails} renders. */
+function op(overrides: Partial<StoredOp> = {}): StoredOp {
+  return {
+    id: "op-1",
+    gameId: 42,
+    kind: "event",
+    payload: {},
+    createdAt: 1,
+    attempts: 0,
+    deviceId: null,
+    seq: 1,
+    failed: false,
+    failedReason: null,
+    failedAt: null,
+    ...overrides,
+  };
+}
+
+describe("the inline chip", () => {
+  it("renders the state on its own, without the block or its details", () => {
+    use(makeStatus({ failed: 1, failedOps: [op({ failed: true })] }));
+    const { container } = render(<SyncBadge gameId={42} variant="inline" />);
+
+    expect(
+      screen.getByRole("button", { name: /1 abgelehnt/ }),
+    ).toBeInTheDocument();
+    // The app bar gets one chip; the lists stay with the screen.
+    expect(container.querySelector(".syncbar")).toBeNull();
+    expect(container.querySelector(".syncfailed")).toBeNull();
+  });
+
+  it("is a plain labelled span while there is nothing to retry", () => {
+    use(makeStatus());
+    render(<SyncBadge gameId={42} variant="inline" />);
+
+    expect(screen.getByText("Synchron")).toBeInTheDocument();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.getByTitle("Übertragung: Synchron")).toBeInTheDocument();
+  });
+
+  it("names the action on the tappable chip", async () => {
+    use(makeStatus({ pending: 2 }));
+    render(<SyncBadge gameId={42} variant="inline" />);
+
+    const chip = screen.getByRole("button", {
+      name: "Übertragung: 2 warten – jetzt versuchen",
+    });
+    expect(chip).toHaveAttribute("title", "Übertragung: 2 warten – jetzt versuchen");
+    await userEvent.click(chip);
+
+    expect(flushAll).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders from a status the screen already holds", () => {
+    // The screen read the outbox once; the hook would say "Synchron" here.
+    use(makeStatus());
+    render(<SyncBadge status={makeStatus({ pending: 1 })} variant="inline" />);
+    expect(screen.getByText("1 warten")).toBeInTheDocument();
+
+    render(<SyncDetails status={makeStatus({ paused: "device" })} />);
+    expect(
+      screen.getByRole("region", { name: "Übertragungsdetails" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders no details from a clean status it was handed", () => {
+    use(makeStatus({ failed: 1 }));
+    const { container } = render(<SyncDetails status={makeStatus()} />);
+
+    expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("SyncDetails", () => {
+  it("renders nothing while the queue is clean", () => {
+    use(makeStatus());
+    const { container } = render(<SyncDetails gameId={42} />);
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("explains a pause and drops the ops only the session blocks", async () => {
+    const current = makeStatus({
+      paused: "auth",
+      pending: 1,
+      pendingOps: [op({ id: "op-stuck" })],
+    });
+    use(current);
+    render(<SyncDetails gameId={42} />);
+
+    expect(
+      screen.getByText(/Die Anmeldung ist abgelaufen/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("1 Eintrag wartet auf die Anmeldung"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Verwerfen" }));
+    expect(current.drop).toHaveBeenCalledWith("op-stuck");
+  });
+
+  it("counts several blocked ops in the plural", () => {
+    use(
+      makeStatus({
+        paused: "auth",
+        pending: 2,
+        pendingOps: [op({ id: "op-a" }), op({ id: "op-b" })],
+      }),
+    );
+    render(<SyncDetails gameId={42} />);
+
+    expect(
+      screen.getByText("2 Einträge warten auf die Anmeldung"),
+    ).toBeInTheDocument();
+  });
+
+  it("lists rejected ops with retry and drop", async () => {
+    const current = makeStatus({
+      failed: 1,
+      failedOps: [op({ failed: true, failedReason: "Ungültiger Eintrag" })],
+    });
+    use(current);
+    render(<SyncDetails gameId={42} />);
+
+    expect(screen.getByText("1 Eintrag abgelehnt")).toBeInTheDocument();
+    expect(screen.getByText("Ungültiger Eintrag")).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Erneut versuchen" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Verwerfen" }));
+
+    expect(current.retry).toHaveBeenCalledWith("op-1");
+    expect(current.drop).toHaveBeenCalledWith("op-1");
+  });
+
+  it("falls back to a generic reason for a rejection without one", () => {
+    use(makeStatus({ failed: 1, failedOps: [op({ failed: true })] }));
+    render(<SyncDetails gameId={42} />);
+
+    expect(screen.getByText("Unbekannter Fehler")).toBeInTheDocument();
+  });
+});
+
+describe("badgeState", () => {
+  it("maps one status onto the chip's word, tone and action", () => {
+    expect(badgeState(makeStatus())).toMatchObject({
+      label: "Synchron",
+      tone: "ok",
+      actionable: false,
+    });
+    expect(badgeState(makeStatus({ pending: 2 }))).toMatchObject({
+      label: "2 warten",
+      tone: "wait",
+      actionable: true,
+    });
+    expect(badgeState(makeStatus({ pending: 2, online: false }))).toMatchObject({
+      label: "Offline · 2",
+      tone: "off",
+      actionable: true,
+    });
+    expect(badgeState(makeStatus({ paused: "device", pending: 1 }))).toMatchObject({
+      label: "Pausiert · anderes Gerät",
+      tone: "off",
+      actionable: true,
+    });
+  });
+
+  it("only offers the droppable list for an expired session", () => {
+    const stuck = op({ id: "op-stuck" });
+
+    expect(
+      badgeState(makeStatus({ paused: "auth", pending: 1, pendingOps: [stuck] }))
+        .droppable,
+    ).toEqual([stuck]);
+    expect(
+      badgeState(makeStatus({ paused: "device", pending: 1, pendingOps: [stuck] }))
+        .droppable,
+    ).toEqual([]);
+  });
+});
+
+describe("hasDetails", () => {
+  it("is false only for a clean, unpaused queue", () => {
+    expect(hasDetails(makeStatus())).toBe(false);
+    expect(hasDetails(makeStatus({ pending: 1 }))).toBe(false);
+    expect(hasDetails(makeStatus({ failed: 1 }))).toBe(true);
+    expect(hasDetails(makeStatus({ paused: "device" }))).toBe(true);
+    expect(
+      hasDetails(makeStatus({ paused: "auth", pending: 1, pendingOps: [op()] })),
+    ).toBe(true);
   });
 });
