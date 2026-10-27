@@ -33,6 +33,15 @@
   --link: #2f6f9f;
   --link-soft: #428bca;
 
+  /* The steel app bar. `--bar-fg` is what the controls and the sync chip read
+     on `--primary`; only the chip's dot keeps a state tint, because coloured
+     small text cannot reach 4.5:1 on steel. */
+  --bar-fg: var(--primary-contrast);
+  --bar-hover: color-mix(in srgb, var(--primary-contrast) 18%, transparent);
+  --bar-dot-ok: #a8ecbb;
+  --bar-dot-wait: #ffd98a;
+  --bar-dot-off: #ffc9c4;
+
   /* Team and status accents (Bootstrap semantics). */
   --home: #c0392b;
   --away: #198754;
@@ -119,6 +128,13 @@
   --link: #8ec1ea;
   --link-soft: #6fa8d6;
 
+  /* Light steel bar on a dark page: dark controls and dark state dots. */
+  --bar-fg: var(--primary-contrast);
+  --bar-hover: color-mix(in srgb, var(--primary-contrast) 16%, transparent);
+  --bar-dot-ok: #0b4a2c;
+  --bar-dot-wait: #6b3f00;
+  --bar-dot-off: #7a1710;
+
   --home: #d9534f;
   --away: #2f9e6b;
   --warning: #d9a441;
@@ -167,6 +183,12 @@
     --primary-contrast: #111820;
     --link: #8ec1ea;
     --link-soft: #6fa8d6;
+
+    --bar-fg: var(--primary-contrast);
+    --bar-hover: color-mix(in srgb, var(--primary-contrast) 16%, transparent);
+    --bar-dot-ok: #0b4a2c;
+    --bar-dot-wait: #6b3f00;
+    --bar-dot-off: #7a1710;
 
     --home: #d9534f;
     --away: #2f9e6b;

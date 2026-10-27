@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { CurrentUserProvider } from "../app/currentUser";
 import AppHeader from "./AppHeader";
 import Screen from "./Screen";
 
@@ -83,6 +84,96 @@ describe("AppHeader", () => {
     expect(order[0]).toContain("appbar-badge");
     expect(order[1]).toContain("theme-toggle");
     expect(order[2]).toContain("appbar-logout");
+  });
+
+  it("puts the avatar between the badge and the theme switch", () => {
+    const { container } = render(
+      <CurrentUserProvider user={{ id: 1, username: "scorecard-test" }}>
+        <AppHeader
+          badge={<span>3 warten</span>}
+          kicker="Scorecard"
+          onBack={vi.fn()}
+          onLogout={vi.fn()}
+          title="Feld 2"
+        />
+      </CurrentUserProvider>,
+    );
+
+    const bar = container.querySelector(".appbar-right");
+    const order = [...(bar as HTMLElement).children].map(
+      (child) => child.className,
+    );
+    expect(order).toHaveLength(4);
+    expect(order[0]).toContain("appbar-badge");
+    expect(order[1]).toContain("avatar");
+    expect(order[2]).toContain("theme-toggle");
+    expect(order[3]).toContain("appbar-logout");
+    expect(
+      screen.getByRole("img", { name: "Angemeldet als scorecard-test" }),
+    ).toHaveTextContent("ST");
+  });
+
+  it("leaves the avatar out when no user is signed in", () => {
+    const { container } = render(
+      <AppHeader kicker="Scorecard" title="Feld 2" />,
+    );
+
+    expect(container.querySelector(".avatar")).toBeNull();
+  });
+
+  it("puts the LeagueSphere wordmark before the screen kicker", () => {
+    const { container } = render(
+      <AppHeader kicker="Scorecard" title="Feld 2" />,
+    );
+
+    const meta = container.querySelector(".app-meta");
+    expect(meta).not.toBeNull();
+    expect(
+      within(meta as HTMLElement).getByText("LeagueSphere"),
+    ).toBeInTheDocument();
+    expect(
+      within(meta as HTMLElement).getByText("Scorecard"),
+    ).toBeInTheDocument();
+    expect(meta?.querySelector(".wordmark-icon")).not.toBeNull();
+
+    // Wordmark · kicker, in that order.
+    const order = [...(meta as HTMLElement).children].map(
+      (child) => child.className,
+    );
+    expect(order).toEqual(["wordmark", "wordmark-sep", "kicker"]);
+  });
+
+  it("keeps the bar on the steel band and the title on the page surface", () => {
+    const { container } = render(
+      <AppHeader kicker="Scorecard" title="Feld 2" />,
+    );
+
+    const header = container.querySelector(".app-header");
+    const bar = container.querySelector(".appbar") as HTMLElement;
+    const heading = within(header as HTMLElement).getByRole("heading", {
+      level: 1,
+    });
+
+    // The bar is the band; kicker and title are siblings below it, on the page.
+    expect(header).toContainElement(bar);
+    expect(bar).not.toContainElement(heading);
+    expect(bar).not.toContainElement(
+      container.querySelector(".kicker") as HTMLElement,
+    );
+  });
+
+  it("puts the footer after the screen content", () => {
+    const { container } = render(
+      <Screen kicker="Scorecard" title="Feld 2">
+        <p>Inhalt</p>
+      </Screen>,
+    );
+
+    const main = container.querySelector("main.vscroll") as HTMLElement;
+    expect([...main.children].map((child) => child.tagName)).toEqual([
+      "P",
+      "FOOTER",
+    ]);
   });
 
   it("omits the badge slot when the screen has nothing to report", () => {

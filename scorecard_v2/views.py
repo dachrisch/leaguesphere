@@ -48,6 +48,13 @@ class ScorecardV2View(LoginRequiredMixin, TemplateView):
     template_name = "scorecard_v2/index.html"
     login_url = "login"
 
+    def get_context_data(self, **kwargs):
+        # The footer shows the running build; the static offline shell has no
+        # such meta and simply leaves the version out.
+        context = super().get_context_data(**kwargs)
+        context["version"] = league_manager.__version__
+        return context
+
 
 class ServiceWorkerView(View):
     """The app's service worker, served from the app scope.
