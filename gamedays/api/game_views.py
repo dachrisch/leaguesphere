@@ -19,7 +19,7 @@ from gamedays.api.serializers import (
 )
 from gamedays.models import Team, Gameinfo, GameSetup, Gameresult, TeamLog
 from gamedays.service.game_service import GameService
-from gamedays.service.gamelog import game_events
+from gamedays.service.gamelog import gameday_ref_now, serialize_events
 from gamedays.service.wrapper.gameinfo_wrapper import IllegalGameTransition
 from gamedays.service.gameday_service import GamedayService
 from gamedays.service.model_helper import GameresultHelper, TeamLogHelper
@@ -105,8 +105,17 @@ class GameLogAPIView(APIView):
             gamelog[GameLogSerializer.IN_POSSESSION] = None
         gamelog.update(
             {
-                GameLogSerializer.EVENTS: game_events(
-                    game_id, gamelog.get(GameLogSerializer.GAMEDAY_DATE)
+                GameLogSerializer.EVENTS: serialize_events(
+                    TeamLog.objects.filter(gameinfo_id=game_id),
+                    {
+                        gamelog.get("home_id"): gamelog.get(
+                            GameLogSerializer.HOME_TEAM
+                        ),
+                        gamelog.get("away_id"): gamelog.get(
+                            GameLogSerializer.AWAY_TEAM
+                        ),
+                    },
+                    gameday_ref_now(gamelog.get(GameLogSerializer.GAMEDAY_DATE)),
                 )
             }
         )
@@ -157,35 +166,44 @@ class GameLogAPIView(APIView):
         game_id = kwargs.get("id")
         sequence = request.data.get("sequence")
         team_log_id = request.data.get("team_log_id")
+        has_sequence = sequence is not None
+        has_team_log_id = team_log_id is not None
+        if has_sequence == has_team_log_id:
+            raise ValidationError(
+                {
+                    "detail": "Send exactly one of 'sequence' (whole play) or "
+                    "'team_log_id' (one row)."
+                }
+            )
         try:
             game = Gameinfo.objects.get(pk=game_id)
         except Gameinfo.DoesNotExist:
             raise NotFound(
                 detail=f"Could not delete team logs ... gameId {game_id} not found"
             )
-        if team_log_id is not None:
+        game_service = GameService(game_id)
+        if has_team_log_id:
             # The v2 log undoes one row at a time: a penalty (sequence 0) must
             # not take every timeout of the game with it.
             try:
                 team_log_id = int(team_log_id)
             except (TypeError, ValueError):
                 raise ValidationError({"team_log_id": "must be an integer"})
-            if not TeamLog.objects.filter(gameinfo=game, pk=team_log_id).exists():
+            row = TeamLog.objects.filter(gameinfo=game, pk=team_log_id).first()
+            if row is None:
                 raise NotFound(
                     detail=f"Could not delete team log {team_log_id} of game {game_id}"
                 )
-            if not self._can_delete_team_log(request.user, game, team_log_id):
+            if not self._can_delete_team_log(request.user, game, row):
                 raise PermissionDenied(
                     detail="You do not have permission to delete this game log entry."
                 )
-            game_service = GameService(game_id)
-            gamelog = game_service.delete_gamelog_entry(team_log_id)
+            gamelog = game_service.delete_gamelog_entry(row.pk)
         else:
             if not self._can_delete_log_entry(request.user, game, sequence):
                 raise PermissionDenied(
                     detail="You do not have permission to delete this game log entry."
                 )
-            game_service = GameService(game_id)
             gamelog = game_service.delete_gamelog(sequence)
         return Response(
             json.loads(gamelog.as_json(), object_pairs_hook=OrderedDict),
@@ -212,7 +230,7 @@ class GameLogAPIView(APIView):
         ).exists()
 
     @staticmethod
-    def _can_delete_team_log(user, game: Gameinfo, team_log_id) -> bool:
+    def _can_delete_team_log(user, game: Gameinfo, row: TeamLog) -> bool:
         """The same permission rule as {@link _can_delete_log_entry}, per row."""
         if not user.is_authenticated:
             return False
@@ -220,9 +238,7 @@ class GameLogAPIView(APIView):
             return True
         if game.gameday.author_id == user.pk:
             return True
-        return TeamLog.objects.filter(
-            gameinfo=game, pk=team_log_id, isDeleted=False, author=user
-        ).exists()
+        return not row.isDeleted and row.author_id == user.pk
 
 
 class GameHalftimeAPIView(APIView):
