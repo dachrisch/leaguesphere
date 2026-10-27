@@ -16,14 +16,14 @@ Last updated: 2026-10-27 (L1 opens with the person search).
 
 ## Delivery layers
 
-Each feature is one layer PR, stacked on the layer below it until it reaches `master`. A layer is a reviewable unit, not a theme: the person-matching work is one layer, the clock confirmations are another.
+Each feature is one layer PR, stacked on the layer below it until it reaches `master`. A layer is a reviewable unit, not a theme: the person-matching work is one layer, the clock confirmations are another. The concrete chain (branches, specs, acceptance, subagent protocol) is the [Scorecard — Layer Plan](./2026-10-27-scorecard-layers-plan.md).
 
 | Layer | Branch | PR | Ships | Status |
 |---|---|---|---|---|
 | L0 | `feat/scorecard-v2` | [#2104](https://github.com/dachrisch/leaguesphere/pull/2104) | Scorecard v2 at `/scorecard/v2/` (offline outbox, device lock, possession model, penalty search, dark/light theme) | open, design awaiting approval |
 | L1 | `feat/scorecard-v2-person-search` | [#2113](https://github.com/dachrisch/leaguesphere/pull/2113) | Person search across the database + linked/free-text state on the officials crew (`I1.5`, `I1.6`, `I2.1`–`I2.6`) | in review |
 | L2 | `feat/passcheck-v2` | [#2114](https://github.com/dachrisch/leaguesphere/pull/2114) | Passcheck v2 at `/passcheck/v2/` — **left the stack** on 2026-10-27: rebased on `master`, only Passcheck code, merged independently of the scorecard layers | open |
-| L3+ | per-feature branches, stacked on L1 | — | the `next` rows below, in the suggested order | not started |
+| L3+ | per-feature branches, stacked on L1 | — | the `next` rows below, in the [layer plan](./2026-10-27-scorecard-layers-plan.md)'s order | not started |
 
 Scorecard layers merge bottom-up (`L0 → L1 → L3 …`); each squash merge sends the layers above it `--onto` the new `master`. Passcheck no longer participates — it is a parallel track with no shared files, and its migration (`gamedays/0046_person_photo`) will be renumbered to `0048` after #2104 lands, because the scorecard ships `0046`/`0047`. L1 adds no migration.
 
