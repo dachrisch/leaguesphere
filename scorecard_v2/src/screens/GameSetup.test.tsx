@@ -121,6 +121,14 @@ const LOG: GameLog = {
   },
 };
 
+/**
+ * The log the screen hands over after a start: the payload it read plus the
+ * opening possession it just wrote (the read predates the write).
+ */
+function startedLog(inPossession: string = "Ravens"): GameLog {
+  return { ...LOG, inPossession };
+}
+
 let crew: Official[];
 let teamList: TeamOfficial[];
 let setup: GameSetup;
@@ -430,7 +438,7 @@ describe("GameSetup — local crew edits", () => {
       screen.getByRole("button", { name: "Trotzdem starten" }),
     );
 
-    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(LOG));
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
 
     expect(apiPutMock).toHaveBeenNthCalledWith(1, CREW_PATH, [
       {
@@ -446,8 +454,8 @@ describe("GameSetup — local crew edits", () => {
     expect(startCalls).toEqual([
       `PUT ${CREW_PATH}`,
       `PUT ${SETUP_PATH}`,
-      `PUT ${POSSESSION_PATH}`,
       `GET ${LOG_PATH}`,
+      `PUT ${POSSESSION_PATH}`,
     ]);
   });
 
@@ -509,7 +517,7 @@ describe("GameSetup — crew data problems", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Trotzdem starten" }),
     );
-    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(LOG));
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
 
     const crewCall = apiPutMock.mock.calls.find(
       ([path]) => path === CREW_PATH,
@@ -547,7 +555,7 @@ describe("GameSetup — crew data problems", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Trotzdem starten" }),
     );
-    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(LOG));
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
 
     expect(apiPutMock).toHaveBeenCalledWith(
       CREW_PATH,
@@ -615,7 +623,7 @@ describe("GameSetup — start sequence", () => {
 
     await clickStart();
 
-    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(LOG));
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
 
     expect(getDeviceIdMock).toHaveBeenCalledTimes(1);
     expect(setDeviceIdMock).toHaveBeenCalledTimes(1);
@@ -632,8 +640,8 @@ describe("GameSetup — start sequence", () => {
     });
     expect(startCalls).toEqual([
       `PUT ${SETUP_PATH}`,
-      `PUT ${POSSESSION_PATH}`,
       `GET ${LOG_PATH}`,
+      `PUT ${POSSESSION_PATH}`,
     ]);
     expect(onStarted).toHaveBeenCalledTimes(1);
   });
@@ -671,6 +679,27 @@ describe("GameSetup — start sequence", () => {
     expect(apiPutMock).toHaveBeenCalledWith(POSSESSION_PATH, {
       team: "Wolves",
     });
+  });
+
+  it("writes the opening possession with the log's team name", async () => {
+    // The games list shows `Team.description`; `PUT /possession` only accepts
+    // `Team.name`, which the log carries. Sending the row label 400s the start
+    // after the setup was already accepted, so the log is read first.
+    const { onStarted } = await renderSetup({
+      home: "The rising bird team from the north",
+      away: "Speed and precision football",
+    });
+
+    await clickStart();
+
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
+    expect(apiPutMock).toHaveBeenCalledWith(POSSESSION_PATH, { team: "Ravens" });
+    expect(apiPutMock).not.toHaveBeenCalledWith(POSSESSION_PATH, {
+      team: "The rising bird team from the north",
+    });
+    expect(startCalls.indexOf(`GET ${LOG_PATH}`)).toBeLessThan(
+      startCalls.indexOf(`PUT ${POSSESSION_PATH}`),
+    );
   });
 
   it("shows an existing setup as Fortsetzen and restores its values", async () => {
@@ -734,7 +763,7 @@ describe("GameSetup — start sequence", () => {
     expect(startButton()).toBeDisabled();
     expect(startButton()).toHaveTextContent("Startet …");
     release({});
-    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(LOG));
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
   });
 });
 
@@ -761,7 +790,7 @@ describe("GameSetup — start failures and guards", () => {
     crewFailure = null;
     await clickStart();
 
-    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(LOG));
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
     expect(apiPutMock).toHaveBeenCalledWith(SETUP_PATH, expect.anything());
   });
 
@@ -795,20 +824,16 @@ describe("GameSetup — start failures and guards", () => {
       "Der Start ist fehlgeschlagen. Bitte erneut versuchen.",
     );
     expect(startButton()).toHaveTextContent("Fortsetzen");
-    expect(startCalls).toEqual([
-      `PUT ${SETUP_PATH}`,
-      `PUT ${POSSESSION_PATH}`,
-      `GET ${LOG_PATH}`,
-    ]);
+    expect(startCalls).toEqual([`PUT ${SETUP_PATH}`, `GET ${LOG_PATH}`]);
 
     await clickStart();
 
-    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(LOG));
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
     expect(startCalls).toEqual([
       `PUT ${SETUP_PATH}`,
+      `GET ${LOG_PATH}`,
+      `GET ${LOG_PATH}`,
       `PUT ${POSSESSION_PATH}`,
-      `GET ${LOG_PATH}`,
-      `GET ${LOG_PATH}`,
     ]);
     expect(
       apiPutMock.mock.calls.filter(([path]) => path === SETUP_PATH),
@@ -836,7 +861,7 @@ describe("GameSetup — start failures and guards", () => {
     await waitFor(() => expect(apiPutMock).toHaveBeenCalledTimes(1));
     expect(apiPutMock).toHaveBeenCalledWith(SETUP_PATH, expect.anything());
     release({});
-    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(LOG));
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
   });
 
   it("shows a finished game as a notice without a start button", async () => {
@@ -880,7 +905,7 @@ describe("GameSetup — warn and confirm", () => {
 
     await clickStart();
 
-    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(LOG));
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
     expect(apiPutMock).toHaveBeenCalledTimes(2);
   });
 
@@ -1001,7 +1026,7 @@ describe("GameSetup — server rejections", () => {
       screen.getByRole("button", { name: "Erneut prüfen" }),
     );
 
-    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(LOG));
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
     expect(
       apiPutMock.mock.calls.filter(([path]) => path === SETUP_PATH),
     ).toHaveLength(2);

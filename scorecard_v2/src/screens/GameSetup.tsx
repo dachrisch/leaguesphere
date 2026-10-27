@@ -630,20 +630,27 @@ export default function GameSetupScreen({
         // that lost the lock must not start stamping its id on later requests.
         setDeviceId(deviceId);
       }
+      // The log is read before the opening possession is written, not after:
+      // `PUT /possession` stores the team *name* (`Team.name`) and the log is
+      // the only payload that carries it. The game row in the list shows the
+      // long `Team.description`, which the endpoint rejects with a 400 — the
+      // start would otherwise stop right after the setup was accepted.
+      const log = await cachedGet<GameLog>(snapshotKey.log(id), logPath);
+      let inPossession = log.inPossession ?? null;
       if (!possessionSent) {
-        const team = sideTeam(possession);
-        if (team !== null && team.trim() !== "") {
+        const team = possession === "home" ? log.home?.name : log.away?.name;
+        if (team !== null && team !== undefined && team.trim() !== "") {
           await apiPut<void>(possessionPath, { team });
+          // The log above predates the write and cannot carry the marker yet.
+          // The server accepted exactly this team; the next payload replaces
+          // it anyway.
+          inPossession = team;
         }
         setPossessionSent(true);
       }
-      const log = await cachedGet<GameLog>(
-        snapshotKey.log(id),
-        logPath,
-      );
       inFlight.current = false;
       setSaving(false);
-      onStarted(log);
+      onStarted({ ...log, inPossession });
     } catch (startFailure) {
       inFlight.current = false;
       setSaving(false);
