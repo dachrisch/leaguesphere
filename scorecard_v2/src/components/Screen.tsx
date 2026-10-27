@@ -21,8 +21,9 @@ interface ScreenProps {
  * scrollable content area. Every screen (gameday list, game list, …) uses this
  * instead of repeating the `.app-shell` / `.app-header` / `<main>` markup.
  *
- * The LeagueSphere footer is part of the scroll content, after the screen's own
- * last block, so it can never overlap a CTA or add a scrollbar of its own.
+ * The LeagueSphere footer is a sibling of the scroll area, pinned to the
+ * bottom of the screen: short screens do not leave it floating mid-page, and
+ * long screens scroll behind/above it instead of pushing it out of view.
  */
 export default function Screen({
   kicker,
@@ -43,10 +44,8 @@ export default function Screen({
         sub={sub}
         title={title}
       />
-      <main className="vscroll">
-        {children}
-        <AppFooter />
-      </main>
+      <main className="vscroll">{children}</main>
+      <AppFooter />
     </div>
   );
 }
