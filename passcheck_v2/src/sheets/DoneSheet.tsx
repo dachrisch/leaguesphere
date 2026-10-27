@@ -1,3 +1,5 @@
+import ThemeToggle from "../components/ThemeToggle";
+
 type Props = {
   teamName: string;
   checkedCount: number;
@@ -23,6 +25,7 @@ function DoneSheet({
             <p className="passcheck-kicker">Passcheck v2</p>
             <h2>Passliste gespeichert</h2>
           </div>
+          <ThemeToggle compact />
         </header>
 
         <p className="sheet-meta">

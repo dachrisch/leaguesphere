@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { RosterEntry } from "../api/types";
 import PhotoViewer from "../components/PhotoViewer";
 import { CloseIcon } from "../components/icons";
+import ThemeToggle from "../components/ThemeToggle";
 
 type Props = {
   player: RosterEntry;
@@ -60,14 +61,17 @@ function PlayerSheet({
             <p className="passcheck-kicker">{teamName}</p>
             <h2>{name}</h2>
           </div>
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Schließen"
-            onClick={onClose}
-          >
-            <CloseIcon size={18} />
-          </button>
+          <div className="sheet-head-actions">
+            <ThemeToggle compact />
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Schließen"
+              onClick={onClose}
+            >
+              <CloseIcon size={18} />
+            </button>
+          </div>
         </header>
 
         <p className="sheet-meta">Passnummer {player.pass_number}</p>

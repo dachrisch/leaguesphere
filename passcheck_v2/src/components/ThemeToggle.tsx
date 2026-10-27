@@ -15,7 +15,11 @@ function ThemeIcon({ preference }: { preference: ThemePreference }) {
   return <AutoIcon size={16} />;
 }
 
-function ThemeToggle() {
+type Props = {
+  compact?: boolean;
+};
+
+function ThemeToggle({ compact = false }: Props) {
   const [preference, setPreference] = useState<ThemePreference>(
     getThemePreference
   );
@@ -30,13 +34,13 @@ function ThemeToggle() {
   return (
     <button
       type="button"
-      className="theme-toggle"
+      className={compact ? "theme-toggle compact" : "theme-toggle"}
       aria-label={`Design: ${label}`}
       title={`Design: ${label}`}
       onClick={cycle}
     >
       <ThemeIcon preference={preference} />
-      <span>{label}</span>
+      {!compact && <span>{label}</span>}
     </button>
   );
 }
