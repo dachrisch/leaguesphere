@@ -203,13 +203,19 @@ class GameinfoSerializer(ModelSerializer):
 class GameSetupSerializer(ModelSerializer):
     class Meta:
         model = GameSetup
-        fields = ["ctResult", "direction", "fhPossession"]
+        fields = ["ctResult", "direction", "fhPossession", "device_id"]
         # v1 submits its untouched form fields as empty strings (or omits an
         # undefined coin toss). The game still has to start — only a truly
         # invalid value (wrong type, over max_length) may reject the request.
         extra_kwargs = {
-            field: {"required": False, "allow_blank": True}
-            for field in ("ctResult", "direction", "fhPossession")
+            **{
+                field: {"required": False, "allow_blank": True}
+                for field in ("ctResult", "direction", "fhPossession")
+            },
+            # The per-game device lock is write-only: the endpoints that need
+            # to read it already answer with it on a 409, and keeping it out of
+            # the GET/PUT body leaves the old app's setup contract unchanged.
+            "device_id": {"required": False, "allow_blank": True, "write_only": True},
         }
 
 
