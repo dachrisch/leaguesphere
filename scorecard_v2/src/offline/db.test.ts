@@ -13,6 +13,7 @@ import {
   OPS_STORE,
   SNAPSHOTS_STORE,
   openOutboxDatabase,
+  upgradeOutbox,
 } from "./db";
 import type { StoredOp } from "./types";
 
@@ -101,5 +102,25 @@ describe("openOutboxDatabase", () => {
     ]);
     expect(await upgraded.get(OPS_STORE, "op-1")).toEqual(RECORD);
     upgraded.close();
+  });
+});
+
+describe("upgradeOutbox", () => {
+  it("adds only the missing store when the queue already exists", () => {
+    const created: string[] = [];
+    const database = {
+      objectStoreNames: {
+        contains: (name: string) => name === OPS_STORE,
+      },
+      createObjectStore: (name: string) => {
+        created.push(name);
+        return {};
+      },
+    };
+
+    upgradeOutbox(database as never);
+
+    // The v1 queue is untouched, the snapshot store is added.
+    expect(created).toEqual([SNAPSHOTS_STORE]);
   });
 });

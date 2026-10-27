@@ -171,3 +171,34 @@ describe("Sheet", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });
+
+describe("Sheet defaults", () => {
+  it("is dismissable when the caller does not say it is busy", async () => {
+    const onClose = vi.fn();
+    render(
+      <Sheet onClose={onClose} title="Ohne busy">
+        <p>Inhalt</p>
+      </Sheet>,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("aria-busy", "false");
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("restores nothing when no element had focus", () => {
+    const spy = vi
+      .spyOn(document, "activeElement", "get")
+      .mockReturnValue(null as unknown as Element);
+    const { unmount } = render(
+      <Sheet onClose={vi.fn()} title="Ohne Fokus">
+        <p>Inhalt</p>
+      </Sheet>,
+    );
+
+    expect(() => unmount()).not.toThrow();
+    spy.mockRestore();
+  });
+});

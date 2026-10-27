@@ -202,3 +202,144 @@ describe("replayOps", () => {
     expect(shown).toBe(base);
   });
 });
+
+describe("replayOps edge payloads", () => {
+  it("drops a jersey that is not a finite number", () => {
+    const { log: shown } = replayOps(log(), [
+      op({
+        payload: {
+          team: "Ravens",
+          half: 1,
+          event: [{ name: "Touchdown", player: "keine" }],
+        },
+      }),
+    ]);
+
+    expect(shown.home.score).toBe(0);
+    expect(shown.events?.[0].player).toBeNull();
+  });
+
+  it("scores nothing for an event it does not know", () => {
+    const { log: shown } = replayOps(log(), [
+      op({
+        payload: {
+          team: "Ravens",
+          half: 1,
+          event: [{ name: "Notiz", player: 5 }],
+        },
+      }),
+    ]);
+
+    expect(shown.home.score).toBe(0);
+    expect(shown.events?.[0].event).toBe("Notiz");
+  });
+
+  it("adds no score when the payload names no team", () => {
+    const { log: shown } = replayOps(log(), [
+      op({
+        payload: { half: 2, event: [{ name: "Touchdown", player: 23 }] },
+      }),
+    ]);
+
+    expect(shown.home.score).toBe(0);
+    expect(shown.away.score).toBe(0);
+    // The row is still shown, credited to no team.
+    expect(shown.events?.[0].team).toBeNull();
+    expect(shown.events?.[0].half).toBe(2);
+  });
+
+  it("gives the ball to the other team and no team at all", () => {
+    const toWolves = replayOps(log(), [
+      op({ kind: "possession", payload: { team: "Wolves" } }),
+    ]);
+    expect(toWolves.log.inPossession).toBe("Wolves");
+
+    const cleared = replayOps(log(), [op({ kind: "possession", payload: {} })]);
+    expect(cleared.log.inPossession).toBeNull();
+  });
+
+  it("replays a delete by team_log_id and skips rows that are already gone", () => {
+    const base = log({
+      home: team({
+        score: 6,
+        firsthalf: { score: 6, entries: [] },
+      }),
+      events: [
+        event({ id: 10, isDeleted: true, player: 7 }),
+        event({ id: 11, sequence: 2, event: "Touchdown", player: 7 }),
+      ],
+    });
+    const { log: shown } = replayOps(base, [
+      op({ kind: "delete", payload: { team_log_id: 10 } }),
+      op({ seq: 2, kind: "delete", payload: { team_log_id: 11 } }),
+    ]);
+
+    const rows = shown.events ?? [];
+    expect(rows.find((row) => row.id === 10)?.isDeleted).toBe(true);
+    expect(rows.find((row) => row.id === 11)?.isDeleted).toBe(true);
+    // Only the live row's touchdown came back off the score.
+    expect(shown.home.score).toBe(0);
+  });
+
+  it("ignores a delete for a row of no team", () => {
+    const base = log({
+      events: [
+        event({ id: 5, team: null, sequence: 0, event: "Spiel gestartet" }),
+      ],
+    });
+    const { log: shown } = replayOps(base, [
+      op({ kind: "delete", payload: { team_log_id: 5 } }),
+    ]);
+
+    expect(shown.events?.[0].isDeleted).toBe(true);
+    expect(shown.home.score).toBe(0);
+    expect(shown.away.score).toBe(0);
+  });
+
+  it("does not replay a half-time into the second half twice", () => {
+    const base = log({ isFirstHalf: false });
+    const { log: shown } = replayOps(base, [op({ kind: "halftime", payload: {} })]);
+
+    expect(shown.isFirstHalf).toBe(false);
+    expect(shown.events).toEqual([]);
+  });
+
+  it("replays a first-half half-time with the marker row", () => {
+    const { log: shown, opByEventId } = replayOps(log(), [
+      op({ kind: "halftime", payload: {} }),
+    ]);
+
+    expect(shown.isFirstHalf).toBe(false);
+    expect(shown.events?.[0].event).toBe("2. Halbzeit gestartet");
+    expect(opByEventId.size).toBe(1);
+  });
+});
+
+describe("replayOps team resolution", () => {
+  it("credits the away team and ignores a name in no lineup", () => {
+    const { log: shown } = replayOps(log(), [
+      op({
+        seq: 1,
+        payload: {
+          team: "Wolves",
+          half: 2,
+          event: [{ name: "Touchdown", player: 11 }],
+        },
+      }),
+      op({
+        seq: 2,
+        id: "op-unbekannt",
+        payload: {
+          team: "Fremde",
+          half: 1,
+          event: [{ name: "Touchdown", player: 12 }],
+        },
+      }),
+    ]);
+
+    expect(shown.away.score).toBe(6);
+    expect(shown.away.secondhalf.score).toBe(6);
+    expect(shown.home.score).toBe(0);
+    expect(shown.events).toHaveLength(2);
+  });
+});

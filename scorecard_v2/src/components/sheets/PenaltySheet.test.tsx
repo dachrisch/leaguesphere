@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
@@ -336,5 +336,120 @@ describe("PenaltySheet", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Die Strafen konnten nicht geladen werden.",
     );
+  });
+});
+
+describe("PenaltySheet — the remaining states", () => {
+  it("shows a loading note while the roster is still on its way", async () => {
+    renderSheet({ roster: null });
+
+    await screen.findByRole("group", { name: "Strafen" });
+    expect(screen.getByText("Kader lädt …")).toBeInTheDocument();
+  });
+
+  it("says the penalty is for the whole team when no roster is loaded", async () => {
+    renderSheet({ roster: [] });
+
+    await screen.findByRole("group", { name: "Strafen" });
+    expect(
+      screen.getByText(
+        "Kein Kader geladen – die Strafe wird für das ganze Team gespeichert.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("lets the official charge the opponent by hand", async () => {
+    const { onSubmit } = renderSheet();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: /^Strafe 02/ }));
+    // "Strafe 02" is an offense penalty, so Ravens is the default.
+    expect(teamButton("Ravens")).toHaveAttribute("aria-pressed", "true");
+    await user.click(teamButton("Wolves"));
+    await user.click(saveButton());
+
+    expect(teamButton("Wolves")).toHaveAttribute("aria-pressed", "true");
+    expect(onSubmit).toHaveBeenCalledWith(
+      [{ name: "Strafe", input: "Strafe 02" }],
+      "Wolves",
+    );
+  });
+
+  it("drops a picked jersey with 'Ganzes Team'", async () => {
+    const { onSubmit } = renderSheet();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: /^Strafe 02/ }));
+    await user.click(screen.getByRole("button", { name: "Trikot 23, Schulz" }));
+    await user.click(screen.getByRole("button", { name: "Ganzes Team" }));
+    await user.click(saveButton());
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      [{ name: "Strafe", input: "Strafe 02" }],
+      "Ravens",
+    );
+  });
+
+  it("offers a nameless jersey without an invented name", async () => {
+    const { onSubmit } = renderSheet({
+      roster: [
+        { side: "home", jersey: 9, name: null },
+        { side: "away", jersey: 11, name: "Wolf" },
+      ],
+    });
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: /^Strafe 02/ }));
+    await user.click(screen.getByRole("button", { name: "Trikot 9" }));
+    await user.click(saveButton());
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      [{ name: "Strafe", player: 9, input: "Strafe 02" }],
+      "Ravens",
+    );
+  });
+
+  it("ignores a second tap in the same tick", async () => {
+    const submit = vi.fn<Submit>(
+      () =>
+        new Promise<void>(() => {
+          // Never settles: the sheet stays busy.
+        }),
+    );
+    renderSheet({ onSubmit: submit });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /^Strafe 02/ }));
+
+    fireEvent.click(saveButton());
+    fireEvent.click(saveButton());
+
+    expect(submit).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not update state when the catalogue lands after unmount", async () => {
+    let reject: (error: unknown) => void = () => undefined;
+    apiGetMock.mockImplementation(
+      () =>
+        new Promise((_resolve, rejectPromise) => {
+          reject = rejectPromise;
+        }),
+    );
+    const { unmount } = render(
+      <PenaltySheet
+        onClose={vi.fn()}
+        onSubmit={vi.fn<Submit>(async () => undefined)}
+        opponentName="Wolves"
+        roster={ROSTER}
+        side="home"
+        teamName="Ravens"
+      />,
+    );
+
+    unmount();
+    reject(new ApiError(500, null, "spät"));
+
+    // Nothing to assert on screen; the point is that no state update and no
+    // unhandled rejection escapes after the unmount.
+    await Promise.resolve();
   });
 });

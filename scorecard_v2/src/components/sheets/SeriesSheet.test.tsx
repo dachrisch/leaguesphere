@@ -1,9 +1,15 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { ApiError } from "../../api/client";
 import type { GameLogEventInput, RosterPlayer } from "../../api/types";
-import SeriesSheet, { type SeriesMode } from "./SeriesSheet";
+import SeriesSheet, {
+  isTimeMode,
+  maxMinutes,
+  timeError,
+  type SeriesMode,
+} from "./SeriesSheet";
 
 const ROSTER: RosterPlayer[] = [
   { side: "home", jersey: 7, name: "Meier" },
@@ -203,5 +209,80 @@ describe("SeriesSheet", () => {
 
     expect(screen.getByText("Kader lädt …")).toBeInTheDocument();
     expect(screen.queryByText(/Kein Kader geladen/)).not.toBeInTheDocument();
+  });
+});
+
+describe("SeriesSheet validation helpers", () => {
+  it("knows which modes take a clock", () => {
+    expect(isTimeMode("time")).toBe(true);
+    expect(isTimeMode("timeout")).toBe(true);
+    expect(isTimeMode("first")).toBe(false);
+  });
+
+  it("allows a longer Auszeit than Spielzeit and words the error", () => {
+    expect(maxMinutes("time")).toBe(59);
+    expect(maxMinutes("timeout")).toBe(99);
+    expect(timeError("timeout", "100", "00")).toBe(
+      "Die Auszeit muss zwischen 0:00 und 99:59 liegen.",
+    );
+    expect(timeError("time", "60", "00")).toBe(
+      "Die Spielzeit muss zwischen 00:00 und 59:59 liegen.",
+    );
+    expect(timeError("timeout", "99", "59")).toBeNull();
+  });
+});
+
+describe("SeriesSheet edge inputs", () => {
+  it("ignores a second tap in the same tick", async () => {
+    let release: () => void = () => undefined;
+    const submit = vi.fn<Submit>(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    renderSheet("first", submit);
+
+    fireEvent.click(saveButton());
+    fireEvent.click(saveButton());
+
+    expect(submit).toHaveBeenCalledTimes(1);
+    release();
+  });
+
+  it("keeps the sheet open with the failure and re-enables save", async () => {
+    const submit = vi.fn<Submit>(async () => {
+      throw new ApiError(400, { detail: "Ungültig." }, "Ungültig.");
+    });
+    const { onClose } = renderSheet("first", submit);
+
+    await userEvent.setup().click(saveButton());
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Ungültig.");
+    expect(onClose).not.toHaveBeenCalled();
+    expect(saveButton()).toBeEnabled();
+  });
+
+  it("drops a picked jersey with 'Ohne Nummer'", async () => {
+    const { onSubmit } = renderSheet("first");
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Trikot 23, Schulz" }));
+    await user.click(screen.getByRole("button", { name: "Ohne Nummer" }));
+    await user.click(saveButton());
+
+    expect(onSubmit).toHaveBeenCalledWith([{ name: "First Down" }]);
+  });
+
+  it("offers a nameless jersey without an invented name", async () => {
+    const { onSubmit } = renderSheet("first", undefined, [
+      { side: "home", jersey: 9, name: null },
+    ]);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Trikot 9" }));
+    await user.click(saveButton());
+
+    expect(onSubmit).toHaveBeenCalledWith([{ name: "First Down", player: 9 }]);
   });
 });
