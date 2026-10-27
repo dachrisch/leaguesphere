@@ -219,20 +219,19 @@ def check_feature_branch(
             errors.append(f"{path}: missing from version check")
             continue
         if base_version is None:
-            # Introduced by this branch (no tree entry on master): the stem
-            # must match the base manifest, a staging suffix is allowed.
+            # Introduced by this branch (no tree entry on master). The stable
+            # version must be the base manifest version; a staging suffix is a
+            # deploy bump and may move the patch/minor/major forward.
             try:
-                head_stem, suffix = split_suffix(head_version)
-                base_stem = parse_stable(base_manifest)
+                _head_stem, suffix = split_suffix(head_version)
+                parse_stable(base_manifest)
             except ValueError:
                 errors.append(
                     f"{path} has unparsable version {head_version!r} "
                     f"or base manifest {base_manifest!r}"
                 )
                 continue
-            if (suffix == "" and head_version != base_manifest) or (
-                suffix != "" and head_stem != base_stem
-            ):
+            if suffix == "" and head_version != base_manifest:
                 errors.append(
                     f"{path} is {head_version!r} but a new version file must "
                     f"start at the base manifest version {base_manifest!r}"

@@ -264,15 +264,15 @@ class TestFeatureBranches:
         )
         assert errors == []
 
-    def test_new_version_file_with_a_foreign_stem_and_suffix_fails(self, guard):
-        """A staging suffix does not license a different base version."""
+    def test_new_version_file_may_be_bumped_for_a_staging_deploy(self, guard):
+        """The deploy workflow bumps every package.json to the next rc."""
         base_files = {
             path: version
             for path, version in FILES_AT_BASE.items()
             if path != "scorecard_v2/package.json"
         }
         head_files = dict(FILES_AT_BASE)
-        head_files["scorecard_v2/package.json"] = "4.24.0+demo.1"
+        head_files["scorecard_v2/package.json"] = "4.24.1-rc.1"
         errors = guard.check_feature_branch(
             base_manifest=BASE,
             head_manifest=BASE,
@@ -281,11 +281,7 @@ class TestFeatureBranches:
             base_changelog=CHANGELOG_AT_BASE,
             head_changelog=CHANGELOG_AT_BASE,
         )
-        assert any(
-            "scorecard_v2/package.json" in e
-            and "new version file must start at the base manifest version" in e
-            for e in errors
-        )
+        assert errors == []
 
 
 class TestBaseState:
