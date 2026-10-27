@@ -35,7 +35,10 @@ only control static assets, and its scope could never leak into the old app.
 1. **Meine Spieltage** — today's gamedays (`GET /api/gameday/list`).
 2. **Spiele** — the games of one gameday, per crew or the whole gameday
    (`GET /api/gameday/<id>/officials/<team>`, `team=*` for all), with status and
-   passcheck state.
+   passcheck state. Team logos from the public team directory accompany the
+   names here, in the score header and in the preparation header; the directory
+   is cached in IndexedDB, so a device keeps them offline after one load, and a
+   team without one (or a missing file) keeps the initials circle.
 3. **Vorbereitung** — crew and licences, coin toss, first possession,
    direction, passcheck link, **Spiel starten**. A crew slot is filled by
    searching the whole officials directory; the row says **verknüpft** (linked
