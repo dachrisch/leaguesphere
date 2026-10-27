@@ -1,3 +1,5 @@
+import { CloseIcon, UndoIcon } from "./icons";
+
 type Props = {
   playerName: string;
   onUndo: () => void;
@@ -9,6 +11,7 @@ function UndoBar({ playerName, onUndo, onDismiss }: Props) {
     <div className="undo-bar" role="status">
       <span className="undo-text">{playerName} geprüft</span>
       <button type="button" className="undo-button" onClick={onUndo}>
+        <UndoIcon size={16} />
         Rückgängig
       </button>
       <button
@@ -17,7 +20,7 @@ function UndoBar({ playerName, onUndo, onDismiss }: Props) {
         aria-label="Hinweis schließen"
         onClick={onDismiss}
       >
-        ×
+        <CloseIcon size={16} />
       </button>
     </div>
   );
