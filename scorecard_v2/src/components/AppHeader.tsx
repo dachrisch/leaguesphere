@@ -7,7 +7,8 @@ import { ChevronLeft, Football } from "./icons";
 interface AppHeaderProps {
   kicker: string;
   title: string;
-  sub?: string;
+  /** One context line; a node when it carries inline art (team logos). */
+  sub?: ReactNode;
   /** Renders a back button when the flow can go back. */
   onBack?: () => void;
   /** Renders the logout action (shared field devices). */

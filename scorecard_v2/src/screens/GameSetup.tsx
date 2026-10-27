@@ -18,6 +18,8 @@ import type {
 } from "../api/types";
 import Screen from "../components/Screen";
 import PersonPicker from "../components/PersonPicker";
+import TeamLogo from "../components/TeamLogo";
+import { initials } from "../components/initials";
 import { getDeviceId } from "../device";
 import { cachedGet, snapshotKey } from "../offline/snapshot";
 import { formatGameTime } from "./GameList";
@@ -270,17 +272,6 @@ function describeStartError(error: unknown): {
     message: detail || "Der Start ist fehlgeschlagen. Bitte erneut versuchen.",
     readOnly: false,
   };
-}
-
-function initials(name: string | null): string {
-  if (name === null) {
-    return "?";
-  }
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return parts
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
 }
 
 /**
@@ -707,9 +698,17 @@ export default function GameSetupScreen({
       kicker="Scorecard"
       onBack={onBack}
       onLogout={onLogout}
-      sub={`${teamLabel(home)} – ${teamLabel(away)} · ${formatGameTime(
-        scheduled,
-      )} · Feld ${field}`}
+      sub={
+        <>
+          <span className="app-sub-teams">
+            <TeamLogo className="teamlogo-inline" name={home} />
+            <TeamLogo className="teamlogo-inline" name={away} />
+          </span>
+          {`${teamLabel(home)} – ${teamLabel(away)} · ${formatGameTime(
+            scheduled,
+          )} · Feld ${field}`}
+        </>
+      }
       title="Vorbereitung"
     >
       {loading ? (
