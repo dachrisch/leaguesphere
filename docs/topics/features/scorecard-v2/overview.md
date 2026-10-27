@@ -41,7 +41,8 @@ only control static assets, and its scope could never leak into the old app.
    touchdown with the roster's jerseys (numeric fallback when there is none),
    PAT, first down, turnover, interception, penalty with search, safety,
    overtime, Spielzeit, Auszeit, half-time, and **Rückgängig** per entry. The
-   header carries the gameday and league, and a toggle switches auto/light/dark.
+   app bar carries the sync chip, the theme switch and **Abmelden** on every
+   screen; the header adds the gameday and league.
 5. **Spielende** — captains from the roster (suggestions only, free text),
    optional note, then **Ergebnis abschicken**.
 6. **Ergebnis gesendet** — final and half-time score from the server payload.

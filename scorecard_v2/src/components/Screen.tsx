@@ -10,6 +10,8 @@ interface ScreenProps {
   onBack?: () => void;
   /** Header logout action. */
   onLogout?: () => void;
+  /** Compact status chip in the top bar (the sync badge). */
+  badge?: ReactNode;
   children: ReactNode;
 }
 
@@ -24,11 +26,13 @@ export default function Screen({
   sub,
   onBack,
   onLogout,
+  badge,
   children,
 }: ScreenProps) {
   return (
     <div className="app-shell">
       <AppHeader
+        badge={badge}
         kicker={kicker}
         onBack={onBack}
         onLogout={onLogout}

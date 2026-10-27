@@ -26,8 +26,8 @@ wie die bisherige Scorecard
 5. **Spielende und Bestätigung** öffnet den Abschluss: beide Captains
    bestätigen, dann **Ergebnis abschicken**.
 
-Oben rechts wechselt **Auto**, **Hell** und **Dunkel** die Darstellung; **Auto**
-folgt der Einstellung des Geräts.
+Oben rechts wechselt das Symbol neben **Abmelden** die Darstellung zwischen
+**Auto**, **Hell** und **Dunkel**; **Auto** folgt der Einstellung des Geräts.
 
 ## Ohne Netz
 
@@ -39,8 +39,9 @@ Netz brauchst du zum **Spiel starten**, zum Bearbeiten der Offiziellen, zum
 **Ergebnis abschicken** und für ein Spiel, das dieses Gerät noch nie geöffnet
 hat. Das Ergebnis lässt sich erst senden, wenn die Warteschlange leer ist.
 
-Unter dem Kopf siehst du den Stand der Übertragung: **Synchron**, **N warten**
-oder **Offline**. Abgelehnte Einträge kannst du dort erneut versuchen oder
+Oben in der Leiste zeigt dir der Punkt den Stand der Übertragung: **Synchron**,
+**N warten** oder **Offline**; ein Tipp versucht es sofort erneut. Abgelehnte
+Einträge erscheinen darunter und lassen sich dort erneut versuchen oder
 verwerfen.
 
 ## Zweites Gerät

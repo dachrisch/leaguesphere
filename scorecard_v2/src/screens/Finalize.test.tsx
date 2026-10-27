@@ -394,6 +394,16 @@ describe("submitting the result", () => {
 });
 
 describe("the outbox guard", () => {
+  it("keeps the sync chip in the app bar next to the theme switch", async () => {
+    await renderFinalize({ failedWrites: 2 });
+
+    const header = screen.getByRole("banner");
+    expect(header.querySelector(".appbar-badge")).not.toBeNull();
+    expect(
+      within(header).getByRole("button", { name: "Design: automatisch" }),
+    ).toBeInTheDocument();
+  });
+
   it("blocks the send while entries wait for the transfer", async () => {
     await renderFinalize({ pendingWrites: 3 });
 

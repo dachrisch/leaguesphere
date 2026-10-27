@@ -16,12 +16,14 @@ afterEach(() => {
 });
 
 describe("ThemeToggle", () => {
-  it("starts on auto with a German label and an icon", () => {
+  it("is an icon-only control whose label names the chosen mode", () => {
     const { container } = render(<ThemeToggle />);
     const button = screen.getByRole("button", { name: "Design: automatisch" });
 
+    // The bar is tight at 360px: no visible word, but the name stays on the
+    // control as accessible name and tooltip.
+    expect(button.textContent).toBe("");
     expect(button).toHaveAttribute("title", "Design: automatisch");
-    expect(button).toHaveTextContent("Auto");
     expect(container.querySelector("svg")).toHaveAttribute(
       "aria-hidden",
       "true",
@@ -34,25 +36,21 @@ describe("ThemeToggle", () => {
     render(<ThemeToggle />);
 
     await user.click(screen.getByRole("button", { name: "Design: automatisch" }));
-    expect(
-      screen.getByRole("button", { name: "Design: hell" }),
-    ).toBeInTheDocument();
+    let button = screen.getByRole("button", { name: "Design: hell" });
+    expect(button).toHaveAttribute("title", "Design: hell");
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
     expect(document.documentElement.dataset.theme).toBe("light");
-    expect(screen.getByRole("button")).toHaveTextContent("Hell");
 
-    await user.click(screen.getByRole("button", { name: "Design: hell" }));
-    expect(
-      screen.getByRole("button", { name: "Design: dunkel" }),
-    ).toBeInTheDocument();
+    await user.click(button);
+    button = screen.getByRole("button", { name: "Design: dunkel" });
+    expect(button).toHaveAttribute("title", "Design: dunkel");
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
     expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(screen.getByRole("button")).toHaveTextContent("Dunkel");
 
-    await user.click(screen.getByRole("button", { name: "Design: dunkel" }));
+    await user.click(button);
     expect(
       screen.getByRole("button", { name: "Design: automatisch" }),
-    ).toBeInTheDocument();
+    ).toHaveAttribute("title", "Design: automatisch");
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("auto");
     expect(document.documentElement.dataset.theme).toBe("light");
   });
