@@ -103,3 +103,23 @@ it("hides the photo until the official taps it", async () => {
   expect(image).toHaveAttribute("referrerpolicy", "no-referrer");
   expect(screen.getByText(/no-store/)).toBeInTheDocument();
 });
+
+it("stops the jersey stepper at the upper bound", async () => {
+  const user = userEvent.setup();
+
+  render(
+    <PlayerSheet
+      player={player({ jersey_number: 99 })}
+      teamName="Home"
+      checkedNumbers={[]}
+      onConfirm={vi.fn()}
+      onClose={vi.fn()}
+    />
+  );
+
+  await user.click(screen.getByRole("button", { name: "Nächste Nummer" }));
+
+  expect(screen.getByRole("spinbutton", { name: "Trikotnummer" })).toHaveValue(
+    99
+  );
+});

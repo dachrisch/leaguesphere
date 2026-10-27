@@ -63,3 +63,21 @@ it("flushes in creation order and stops at the first failure", async () => {
   expect(send.mock.calls[0][0].id).toBe("c1");
   expect((await list()).map((item) => item.id)).toEqual(["c2"]);
 });
+
+it("coalesces concurrent flushes into one in-flight request", async () => {
+  await enqueue(entry("c1"));
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const send = vi.fn(() => gate);
+
+  const first = flush(send);
+  const second = flush(send);
+
+  expect(second).toBe(first);
+  release();
+
+  await expect(first).resolves.toEqual({ sent: 1, pending: 0 });
+  expect(send).toHaveBeenCalledTimes(1);
+});

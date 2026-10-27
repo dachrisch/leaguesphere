@@ -138,7 +138,7 @@ function RosterScreen({
       </header>
 
       <div className="roster-meter">
-        <span className="roster-count">
+        <span className="roster-count" aria-live="polite">
           {checkedIds.size} von {players.length} geprüft
         </span>
         {averageSeconds !== null && (

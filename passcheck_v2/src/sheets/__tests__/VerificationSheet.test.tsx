@@ -121,3 +121,21 @@ it("blocks saving while the outbox still has entries", () => {
     screen.getByRole("button", { name: "Passliste speichern" })
   ).toBeDisabled();
 });
+
+it("disables the save button while a save is in flight", () => {
+  render(
+    <VerificationSheet
+      teamName="Home"
+      checkedCount={14}
+      minimumStrength={11}
+      initialOfficialName="M. Weber"
+      saving
+      onSave={vi.fn()}
+      onClose={vi.fn()}
+    />
+  );
+
+  expect(
+    screen.getByRole("button", { name: "Passliste speichern" })
+  ).toBeDisabled();
+});
