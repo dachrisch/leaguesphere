@@ -22,10 +22,10 @@ Each feature is one layer PR, stacked on the layer below it until it reaches `ma
 |---|---|---|---|---|
 | L0 | `feat/scorecard-v2` | [#2104](https://github.com/dachrisch/leaguesphere/pull/2104) | Scorecard v2 at `/scorecard/v2/` (offline outbox, device lock, possession model, penalty search, dark/light theme) | open, design awaiting approval |
 | L1 | `feat/scorecard-v2-person-search` | [#2113](https://github.com/dachrisch/leaguesphere/pull/2113) | Person search across the database + linked/free-text state on the officials crew (`I1.5`, `I1.6`, `I2.1`–`I2.6`) | in review |
-| L2 | `feat/passcheck-v2` | [#2101](https://github.com/dachrisch/leaguesphere/pull/2101) | Passcheck v2 at `/passcheck/v2/` | open |
-| L3+ | per-feature branches, each stacked on the one above | — | the `next` rows below, in the suggested order | not started |
+| L2 | `feat/passcheck-v2` | [#2114](https://github.com/dachrisch/leaguesphere/pull/2114) | Passcheck v2 at `/passcheck/v2/` — **left the stack** on 2026-10-27: rebased on `master`, only Passcheck code, merged independently of the scorecard layers | open |
+| L3+ | per-feature branches, stacked on L1 | — | the `next` rows below, in the suggested order | not started |
 
-Layers merge bottom-up: `L0 → L1 → L2 → …`. When a layer is squash-merged, the layers above it are rebased `--onto` the new `master`.
+Scorecard layers merge bottom-up (`L0 → L1 → L3 …`); each squash merge sends the layers above it `--onto` the new `master`. Passcheck no longer participates — it is a parallel track with no shared files, and its migration (`gamedays/0046_person_photo`) will be renumbered to `0048` after #2104 lands, because the scorecard ships `0046`/`0047`. L1 adds no migration.
 
 ## Status vocabulary
 
@@ -45,7 +45,7 @@ Layers merge bottom-up: `L0 → L1 → L2 → …`. When a layer is squash-merge
 - **Help topic.** Every change an operator can see updates `/help/spieltag-v2/` (German) with a fresh screenshot — see `.opencode/skills/add-help-topic/SKILL.md`.
 - **Feature doc.** `docs/topics/features/scorecard-v2/overview.md` describes the flow; it is updated in the same layer.
 - **Scoped CI.** New frontend paths need `run-scorecard-v2` in `.circleci/scope-mapping.txt`; `scripts/check_scope_coverage.py` is the safety net.
-- **Version files** (`scripts/check_version_sequence.py`, `release-please-config.json`, `.circleci/`, `container/`, `deployed/`) belong to L0 and L2; feature layers leave them alone.
+- **Version files** (`scripts/check_version_sequence.py`, `release-please-config.json`, `.circleci/`, `container/`, `deployed/`) belong to L0 and to the parallel Passcheck track (#2114); feature layers leave them alone.
 
 ---
 
