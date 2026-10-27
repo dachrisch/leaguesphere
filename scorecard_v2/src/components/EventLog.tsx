@@ -282,16 +282,18 @@ export function describeRow(row: LogRow): Described {
       };
     case "Safety (+1)":
     case "Safety (+2)":
-    case "Safety":
+    case "Safety": {
+      const points = row.event.endsWith("(+1)")
+        ? "+1 Punkt"
+        : row.event.endsWith("(+2)")
+          ? "+2 Punkte"
+          : null;
       return {
         kind: "safety",
         primary: `Safety · ${team}`,
-        secondary: row.event.endsWith("(+1)")
-          ? "+1 Punkt"
-          : row.event.endsWith("(+2)")
-            ? "+2 Punkte"
-            : jerseyText(row.player),
+        secondary: join(points, jerseyText(row.player)),
       };
+    }
     case "Strafe":
       return {
         kind: "pen",
@@ -339,6 +341,12 @@ interface EventLogProps {
   onUndo: (row: LogRow) => void;
   /** Key of the row whose undo is in flight; its button is disabled. */
   undoKey?: string | null;
+  /**
+   * True while another write owns the screen (half-time). Undo waits: a
+   * `DELETE` answer that lands after the half switch still describes the first
+   * half and would put the screen back there.
+   */
+  disabled?: boolean;
   /** Undo failure shown above the list. */
   error?: string | null;
 }
@@ -353,6 +361,7 @@ export default function EventLog({
   rows,
   onUndo,
   undoKey = null,
+  disabled = false,
   error = null,
 }: EventLogProps) {
   return (
@@ -401,7 +410,7 @@ export default function EventLog({
                     <button
                       aria-label={`Rückgängig: ${described.primary}`}
                       className="undo"
-                      disabled={undoKey !== null}
+                      disabled={disabled || undoKey !== null}
                       onClick={() => onUndo(row)}
                       type="button"
                     >
