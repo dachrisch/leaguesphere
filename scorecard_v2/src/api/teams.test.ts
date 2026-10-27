@@ -182,6 +182,51 @@ describe("loadTeamLogos", () => {
     await expect(loadTeamLogos()).resolves.toEqual(new Map());
   });
 
+  it("stops when the server repeats a `next` link instead of fetching it twice", async () => {
+    const repeated = "/api/teams/?page=2&page_size=1000";
+    apiGetMock.mockImplementation(async () => page([], repeated));
+
+    await loadTeamLogos();
+
+    // Page 1, then page 2 once: the second link points at a page already read.
+    expect(apiGetMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps a good cache when the answer carries no teams", async () => {
+    await writeSnapshot<[string, string][]>(snapshotKey.teams(), [
+      [teamKey("Renegades"), RENEGADES_LOGO],
+    ]);
+    // A degraded payload: the list key was renamed, so nothing parses.
+    apiGetMock.mockResolvedValue({
+      count: 0,
+      next: null,
+      previous: null,
+      entries: [],
+    } as unknown as TeamsPage);
+
+    const logos = await loadTeamLogos();
+
+    expect(logos.get(teamKey("Renegades"))).toBe(RENEGADES_LOGO);
+    const saved = await readSnapshot<[string, string][]>(snapshotKey.teams());
+    expect(saved?.value).toEqual([[teamKey("Renegades"), RENEGADES_LOGO]]);
+  });
+
+  it("still has the logo on the next offline boot after a degraded answer", async () => {
+    await writeSnapshot<[string, string][]>(snapshotKey.teams(), [
+      [teamKey("Renegades"), RENEGADES_LOGO],
+    ]);
+    apiGetMock.mockResolvedValue(page([]));
+    await loadTeamLogos();
+
+    // The next boot has no network at all.
+    vi.spyOn(globalThis.navigator, "onLine", "get").mockReturnValue(false);
+    apiGetMock.mockRejectedValue(new ApiError(0, null, "offline"));
+
+    const logos = await loadTeamLogos();
+
+    expect(logos.get(teamKey("Renegades"))).toBe(RENEGADES_LOGO);
+  });
+
   it("survives a bucket that answers with a bare list", async () => {
     apiGetMock.mockResolvedValue(TEAMS);
 
