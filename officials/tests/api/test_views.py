@@ -454,6 +454,10 @@ class TestOfficialsSearchList(WebTest):
         response = self._search("hans", expect_errors=True, limit="abc")
         assert response.status_code == HTTPStatus.BAD_REQUEST
 
+    def test_rejects_a_non_numeric_team(self):
+        response = self._search("hans", expect_errors=True, team="crew")
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+
     def test_rejects_a_limit_below_one(self):
         response = self._search("hans", expect_errors=True, limit=0)
         assert response.status_code == HTTPStatus.BAD_REQUEST
