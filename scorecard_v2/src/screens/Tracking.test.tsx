@@ -20,7 +20,7 @@ import type {
   Penalty,
   RosterPlayer,
 } from "../api/types";
-import TrackingScreen, { describeSaved, writeTeam } from "./Tracking";
+import TrackingScreen, { describeSaved, flipsPossession, writeTeam } from "./Tracking";
 
 vi.mock("../api/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api/client")>();
@@ -901,6 +901,7 @@ describe("Tracking composer state", () => {
     expect(screen.getByRole("button", { name: "1st Down" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Strafe" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Safety" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Overtime" })).toBeDisabled();
     expect(screen.getByText("Dieses Spiel ist beendet.")).toBeInTheDocument();
   });
 
@@ -910,6 +911,7 @@ describe("Tracking composer state", () => {
     expect(screen.getByRole("button", { name: /^Touchdown$/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Turnover" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Strafe" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Safety" })).toBeDisabled();
     expect(
       screen.getByText("Ballbesitz wählen, um Einträge zu erfassen."),
     ).toBeInTheDocument();
@@ -923,11 +925,15 @@ describe("Tracking composer state", () => {
     ).toBeInTheDocument();
   });
 
-  it("offers the penalty tile as an entry", () => {
+  it("offers the penalty and more-event tiles as entries", () => {
     renderTracking();
 
     expect(screen.getByRole("button", { name: "Strafe" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Safety" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Safety" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Overtime" })).toBeEnabled();
+    expect(
+      screen.queryByTitle("Folgt in einem späteren Schritt."),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -969,14 +975,16 @@ describe("Tracking entry lifecycle", () => {
     await pickJersey(user, 23);
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
+    // The touchdown hands the ball to Wolves, so the tile the official
+    // returns to is Wolves' — same element, new label.
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: /^Touchdown Ravens$/ }),
+        screen.getByRole("button", { name: /^Touchdown Wolves$/ }),
       ).toHaveFocus(),
     );
   });
 
-  it("records a second touchdown after the first", async () => {
+  it("records a second touchdown after the first, for the new possession", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
     renderTracking();
@@ -988,25 +996,28 @@ describe("Tracking entry lifecycle", () => {
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
+    expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/possession", {
+      team: "Wolves",
+    });
 
-    const tile = screen.getByRole("button", { name: /^Touchdown Ravens$/ });
+    const tile = screen.getByRole("button", { name: /^Touchdown Wolves$/ });
     expect(tile).toBeEnabled();
     await user.click(tile);
 
     expect(
       screen.getByRole("button", { name: "Spieler wählen" }),
     ).toBeDisabled();
-    await pickJersey(user, 7);
+    await pickJersey(user, 11);
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
     await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(2));
     expect(apiPostMock).toHaveBeenLastCalledWith("/api/gamelog/42", {
       gameId: 42,
-      team: "Ravens",
+      team: "Wolves",
       half: 1,
       event: [
-        { name: "Touchdown", player: 7 },
-        { name: "1-Extra-Punkt", player: 7 },
+        { name: "Touchdown", player: 11 },
+        { name: "1-Extra-Punkt", player: 11 },
       ],
     });
   });
@@ -1046,6 +1057,173 @@ describe("Tracking entry lifecycle", () => {
   });
 });
 
+describe("Possession flip rule", () => {
+  const FLIPS = [
+    "Touchdown",
+    "Turnover",
+    "Interception",
+    "Safety (+1)",
+    "Safety (+2)",
+    "Overtime",
+  ];
+  const KEEPS = ["Strafe", "Spielzeit", "Auszeit", "First Down"];
+
+  it.each(FLIPS)("hands the ball over after %s", (name) => {
+    expect(flipsPossession([{ name }])).toBe(true);
+  });
+
+  it.each(KEEPS)("keeps the ball after %s", (name) => {
+    expect(flipsPossession([{ name }])).toBe(false);
+  });
+
+  it("treats a touchdown and its conversion as one play", () => {
+    expect(
+      flipsPossession([
+        { name: "Touchdown", player: 23 },
+        { name: "1-Extra-Punkt", player: 23 },
+      ]),
+    ).toBe(true);
+  });
+});
+
+describe("Tracking possession flip", () => {
+  it("flips to the other team after a touchdown and repaints the tile", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Touchdown Ravens$/);
+    await pickJersey(user, 23);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/possession", {
+      team: "Wolves",
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /^Touchdown Wolves$/ }),
+      ).toHaveClass("tdbtn", "away"),
+    );
+  });
+
+  it("does not flip after an Auszeit", async () => {
+    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Auszeit$/);
+    await user.type(screen.getByRole("textbox", { name: "Minuten" }), "1");
+    await user.type(screen.getByRole("textbox", { name: "Sekunden" }), "30");
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(1));
+    expect(apiPutMock).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("button", { name: /^Touchdown Ravens$/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the ball after a first down and after a penalty", async () => {
+    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    routeGets();
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^1st Down$/);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    await openSheet(user, /^Strafe$/);
+    await user.click(
+      await screen.findByRole("button", { name: /^Holding Defense/ }),
+    );
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(2));
+    expect(apiPutMock).not.toHaveBeenCalled();
+  });
+
+  it("flips exactly once per event", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Turnover$/);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    // The turnover credits the possessing team and hands Ravens' ball to
+    // Wolves; the second turnover is recorded by Wolves and flips it back.
+    await openSheet(user, /^Turnover$/);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await waitFor(() => expect(apiPutMock).toHaveBeenCalledTimes(2));
+
+    expect(apiPutMock.mock.calls[0][1]).toEqual({ team: "Wolves" });
+    expect(apiPutMock.mock.calls[1][1]).toEqual({ team: "Ravens" });
+    expect(
+      screen.getByRole("button", { name: /^Touchdown Ravens$/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the log and shows the error when the flip fails", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    apiPostMock.mockResolvedValue(
+      makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({ id: 5, sequence: 1, event: "Touchdown", player: 23 }),
+        ],
+      }),
+    );
+    apiPutMock.mockRejectedValueOnce(
+      new ApiError(500, { detail: "Ballbesitz nicht änderbar" }, "Ballbesitz nicht änderbar"),
+    );
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Touchdown Ravens$/);
+    await pickJersey(user, 23);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Ballbesitz nicht änderbar",
+      ),
+    );
+    expect(screen.getAllByRole("listitem")[0]).toHaveTextContent(
+      "Touchdown Ravens",
+    );
+    expect(
+      screen.getByRole("button", { name: /^Touchdown Ravens$/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the new possession while the flip is still in flight", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    apiPutMock.mockReturnValue(new Promise(() => undefined));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Touchdown Ravens$/);
+    await pickJersey(user, 23);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    const tile = await screen.findByRole("button", {
+      name: /^Touchdown Wolves$/,
+    });
+    expect(tile).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Strafe" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Safety" })).toBeDisabled();
+  });
+});
+
 describe("Tracking penalties", () => {
   it("records the picked penalty for the team the flag names", async () => {
     routeGets();
@@ -1075,11 +1253,186 @@ describe("Tracking penalties", () => {
   });
 });
 
+describe("Tracking safety and overtime", () => {
+  it("records a safety for the opponent and hands them the ball", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    const dialog = await openSheet(user, /^Safety$/);
+    expect(dialog).toHaveAccessibleName("Safety");
+    expect(
+      screen.queryByRole("button", { name: "Trikotnummer 23, Schulz" }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      await screen.findByRole("button", { name: "Trikotnummer 11, Wolf" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    expect(apiPostMock).toHaveBeenCalledWith("/api/gamelog/42", {
+      gameId: 42,
+      team: "Wolves",
+      half: 1,
+      event: [{ name: "Safety (+2)", player: 11 }],
+    });
+    expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/possession", {
+      team: "Wolves",
+    });
+  });
+
+  it("records an overtime with a jersey", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Overtime$/);
+    await user.click(
+      await screen.findByRole("button", { name: "Trikotnummer 7, Meier" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    expect(apiPostMock).toHaveBeenCalledWith("/api/gamelog/42", {
+      gameId: 42,
+      team: "Ravens",
+      half: 1,
+      event: [{ name: "Overtime", player: 7 }],
+    });
+  });
+});
+
+describe("Tracking half-time", () => {
+  function markerLog(): GameLog {
+    return makeLog({
+      isFirstHalf: false,
+      inPossession: "Wolves",
+      events: [
+        logEvent({
+          id: 9,
+          sequence: 0,
+          half: 2,
+          team: null,
+          event: "2. Halbzeit gestartet",
+        }),
+      ],
+    });
+  }
+
+  it("asks before it starts the half", async () => {
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Halbzeit" }));
+
+    expect(screen.getByText("Halbzeit starten?")).toBeInTheDocument();
+    expect(apiPutMock).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Abbrechen" }));
+    expect(screen.queryByText("Halbzeit starten?")).not.toBeInTheDocument();
+    expect(apiPutMock).not.toHaveBeenCalled();
+  });
+
+  it("writes the half-time, switches the half, flips possession and reloads the log", async () => {
+    routeGets({ log: markerLog() });
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Halbzeit" }));
+    await user.click(screen.getByRole("button", { name: "Halbzeit starten" }));
+
+    expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/halftime", {});
+    expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/possession", {
+      team: "Wolves",
+    });
+    await waitFor(() =>
+      expect(screen.getByText("2. Halbzeit")).toBeInTheDocument(),
+    );
+    expect(apiGetMock).toHaveBeenCalledWith("/api/gamelog/42");
+    expect(screen.getByText("2. Halbzeit gestartet")).toBeInTheDocument();
+    // The second half has no half-time button any more.
+    expect(screen.queryByRole("button", { name: "Halbzeit" })).toBeNull();
+  });
+
+  it("records the next entry in the second half for the new possession", async () => {
+    routeGets({ log: markerLog() });
+    apiPostMock.mockResolvedValue(markerLog());
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Halbzeit" }));
+    await user.click(screen.getByRole("button", { name: "Halbzeit starten" }));
+    await waitFor(() =>
+      expect(screen.getByText("2. Halbzeit")).toBeInTheDocument(),
+    );
+
+    await openSheet(user, /^1st Down$/);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    expect(apiPostMock).toHaveBeenCalledWith("/api/gamelog/42", {
+      gameId: 42,
+      team: "Wolves",
+      half: 2,
+      event: [{ name: "First Down" }],
+    });
+  });
+
+  it("shows the server detail when the half-time transition is rejected", async () => {
+    apiPutMock.mockRejectedValueOnce(
+      new ApiError(
+        409,
+        { detail: "Dieser Spielstatus erlaubt keine Halbzeit." },
+        "Dieser Spielstatus erlaubt keine Halbzeit.",
+      ),
+    );
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Halbzeit" }));
+    await user.click(screen.getByRole("button", { name: "Halbzeit starten" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Dieser Spielstatus erlaubt keine Halbzeit.",
+      ),
+    );
+    expect(apiPutMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("1. Halbzeit")).toBeInTheDocument();
+  });
+
+  it("keeps the second half when the log reload fails", async () => {
+    apiGetMock.mockImplementation((path: string) => {
+      if (path === "/api/game/42/roster") {
+        return Promise.resolve(ROSTER);
+      }
+      return Promise.reject(new ApiError(500, null, "Server weg"));
+    });
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Halbzeit" }));
+    await user.click(screen.getByRole("button", { name: "Halbzeit starten" }));
+
+    await waitFor(() =>
+      expect(screen.getByText("2. Halbzeit")).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("button", { name: /^Touchdown Wolves$/ }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("Tracking confirmation text", () => {
   it("names a penalty and its jersey", () => {
     const events: GameLogEventInput[] = [
       { name: "Strafe", player: 23, input: "Holding Defense" },
     ];
     expect(describeSaved(events)).toBe("Strafe gespeichert · Holding Defense");
+  });
+
+  it("names a safety", () => {
+    expect(describeSaved([{ name: "Safety (+2)", player: 11 }])).toBe(
+      "Safety gespeichert · #11",
+    );
   });
 });

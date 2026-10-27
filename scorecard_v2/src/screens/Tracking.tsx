@@ -15,6 +15,7 @@ import EventLog, {
   type LogRow,
 } from "../components/EventLog";
 import ScoreHeader, { isPossessing } from "../components/ScoreHeader";
+import MoreSheet, { type MoreMode } from "../components/sheets/MoreSheet";
 import PenaltySheet from "../components/sheets/PenaltySheet";
 import SeriesSheet, {
   type SeriesMode,
@@ -32,11 +33,12 @@ interface TrackingScreenProps {
 
 type Side = RosterPlayer["side"];
 
-/** The open sheet: the touchdown entry, a series/time entry, or a penalty. */
+/** The open sheet: the touchdown entry, a series/time entry, or a more event. */
 type SheetState =
   | { kind: "touchdown" }
   | { kind: "series"; mode: SeriesMode }
-  | { kind: "penalty" };
+  | { kind: "penalty" }
+  | { kind: "more"; mode: MoreMode };
 
 /** The series/time tiles of the composer grid. */
 const SERIES_TILES: { mode: SeriesMode; label: string }[] = [
@@ -55,7 +57,31 @@ const CONFIRMATION: Record<string, string> = {
   Spielzeit: "Spielzeit gespeichert",
   Auszeit: "Auszeit gespeichert",
   Strafe: "Strafe gespeichert",
+  "Safety (+1)": "Safety gespeichert",
+  "Safety (+2)": "Safety gespeichert",
+  Overtime: "Overtime gespeichert",
 };
+
+/**
+ * Events after which the ball stays where it is.
+ *
+ * Everything else hands the ball to the other team — a touchdown, a turnover,
+ * an interception, a safety and an overtime score all kick off again. v1 also
+ * flipped on an `Auszeit`, which was a bug: a timeout is called by the team in
+ * possession and does not change it. A write group (touchdown + conversion)
+ * counts as one play; if any of its rows keeps the ball, the group does.
+ */
+const KEEP_POSSESSION = new Set([
+  "Strafe",
+  "Spielzeit",
+  "Auszeit",
+  "First Down",
+]);
+
+/** Whether a successful write hands the ball to the other team. */
+export function flipsPossession(events: GameLogEventInput[]): boolean {
+  return !events.some((event) => KEEP_POSSESSION.has(event.name));
+}
 
 /**
  * The team a submission is recorded for.
@@ -127,11 +153,15 @@ export default function TrackingScreen({
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [posting, setPosting] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
+  const [confirmHalftime, setConfirmHalftime] = useState(false);
+  const [halftimePending, setHalftimePending] = useState(false);
+  const [halftimeError, setHalftimeError] = useState<string | null>(null);
   // Refs, not state: two taps in the same tick both see the old state and
   // would otherwise fire two writes.
   const possessionInFlight = useRef(false);
   const undoInFlight = useRef(false);
   const postInFlight = useRef(false);
+  const halftimeInFlight = useRef(false);
 
   const rows = useMemo(() => logRows(log), [log]);
   const finished = game.status.trim().toLowerCase() === "beendet";
@@ -265,8 +295,14 @@ export default function TrackingScreen({
    * {@link IgnoredWrite} — resolving would close the sheet and look saved.
    *
    * `team` overrides the possessing team for the entries that are recorded for
-   * a team the sheet picked (a penalty charged to the opponent). Everything
-   * else is credited by {@link writeTeam}.
+   * a team the sheet picked (a penalty charged to the opponent, a safety
+   * scored by the defense). Everything else is credited by {@link writeTeam}.
+   *
+   * A successful write hands the ball over for the change-of-possession events
+   * ({@link flipsPossession}); the flip is a separate `PUT` because the server
+   * does not move the ball for us. It is awaited so a second tap cannot start
+   * from a stale possession, and a failed flip keeps the log (the next reload
+   * reads the truth) while showing why.
    */
   const submit = async (
     events: GameLogEventInput[],
@@ -295,10 +331,59 @@ export default function TrackingScreen({
       const next = await apiPost<GameLog>(`/api/gamelog/${game.id}`, body);
       replaceLog(next);
       setConfirmation(describeSaved(events));
+      if (flipsPossession(events) && opponentName !== null) {
+        await takePossession(opponentName);
+      }
     } finally {
       postInFlight.current = false;
       setPosting(false);
     }
+  };
+
+  /**
+   * Halbzeit: the server writes the marker and moves the game to the second
+   * half; the possession switch is ours (v1 flipped to the team that did not
+   * start the game).
+   *
+   * The half is switched locally as soon as the `PUT` is accepted, so the log
+   * and the next write are in the second half even if the log reload below
+   * fails. A rejected transition (409) leaves everything as it was and shows
+   * the server's `detail`.
+   */
+  const startHalftime = async (): Promise<void> => {
+    if (halftimeInFlight.current || !log.isFirstHalf) {
+      return;
+    }
+    halftimeInFlight.current = true;
+    setHalftimePending(true);
+    setHalftimeError(null);
+    setConfirmHalftime(false);
+    try {
+      await apiPut<void>(`/api/game/${game.id}/halftime`, {});
+    } catch (failure) {
+      setHalftimeError(
+        errorMessage(
+          failure,
+          "Die Halbzeit konnte nicht gestartet werden. Bitte erneut versuchen.",
+        ),
+      );
+      halftimeInFlight.current = false;
+      setHalftimePending(false);
+      return;
+    }
+    setLog((current) => ({ ...current, isFirstHalf: false }));
+    if (opponentName !== null) {
+      await takePossession(opponentName);
+    }
+    try {
+      // The marker row ("2. Halbzeit gestartet") only exists server-side.
+      replaceLog(await apiGet<GameLog>(`/api/gamelog/${game.id}`));
+    } catch {
+      // The half is already switched; the refresh only adds the marker. The
+      // next write answers with the whole log anyway.
+    }
+    halftimeInFlight.current = false;
+    setHalftimePending(false);
   };
 
   const openSheet = (next: SheetState): void => {
@@ -368,13 +453,62 @@ export default function TrackingScreen({
         </button>
         <button
           className="action"
-          disabled
-          title="Folgt in einem späteren Schritt."
+          disabled={composerDisabled}
+          onClick={() => openSheet({ kind: "more", mode: "safety" })}
           type="button"
         >
           Safety
         </button>
+        <button
+          className="action"
+          disabled={composerDisabled}
+          onClick={() => openSheet({ kind: "more", mode: "overtime" })}
+          type="button"
+        >
+          Overtime
+        </button>
       </section>
+      {log.isFirstHalf && !finished ? (
+        <section aria-label="Halbzeit" className="halfblock">
+          {confirmHalftime ? (
+            <>
+              <p className="halfask">Halbzeit starten?</p>
+              <div className="halfactions">
+                <button
+                  className="action"
+                  disabled={halftimePending}
+                  onClick={() => setConfirmHalftime(false)}
+                  type="button"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  className="halfbtn"
+                  disabled={halftimePending}
+                  onClick={() => void startHalftime()}
+                  type="button"
+                >
+                  {halftimePending ? "Halbzeit …" : "Halbzeit starten"}
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              className="halfbtn"
+              disabled={halftimePending || posting}
+              onClick={() => setConfirmHalftime(true)}
+              type="button"
+            >
+              Halbzeit
+            </button>
+          )}
+          {halftimeError === null ? null : (
+            <p className="trackerror" role="alert">
+              {halftimeError}
+            </p>
+          )}
+        </section>
+      ) : null}
       {finished ? (
         <p className="finishednote" role="status">
           Dieses Spiel ist beendet.
@@ -420,8 +554,19 @@ export default function TrackingScreen({
             side={possessionSide}
             teamName={possessionName}
           />
-        ) : (
+        ) : sheet.kind === "penalty" ? (
           <PenaltySheet
+            onClose={() => setSheet(null)}
+            onSubmit={submit}
+            opponentName={opponentName ?? ""}
+            roster={roster}
+            side={possessionSide}
+            teamName={possessionName}
+          />
+        ) : (
+          <MoreSheet
+            key={sheet.mode}
+            mode={sheet.mode}
             onClose={() => setSheet(null)}
             onSubmit={submit}
             opponentName={opponentName ?? ""}
