@@ -16,6 +16,7 @@ See [current/](./current/) for active planning work.
 - [2026-10-27 LeagueSphere v5 Sync — Intake](./current/2026-10-27-leaguesphere-v5-sync.md): projects and open threads from the call with Christoph (offd/Moodle migration, Scorecard v2/v3, event sourcing, Game Day coexistence, Passcheck API); intake only, roadmap deferred
 - [2026-10-27 Scorecard — Ideas & Findings](./current/2026-10-27-scorecard-ideas.md): every scorecard idea from that call in one place (v2 review findings, person matching, clock confirmations, sport templates, event sourcing, v3 capture, input UX, integrations)
 - [2026-10-27 Scorecard — Feature Plan & Status](./current/2026-10-27-scorecard-feature-plan.md): those ideas as one tracked row each (ID, layer, status); all of them are to be added, the delivery layers ship bottom-up
+- [2026-10-27 Scorecard — Layer Plan](./current/2026-10-27-scorecard-layers-plan.md): the concrete stack (L2 logos → L3 crew labels → L4 period templates → L5 start confirmation) with per-layer specs, acceptance and the subagent protocol
 
 ### Completed Plans
 See [history/](./history/) for completed and archived plans.
