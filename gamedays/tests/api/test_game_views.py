@@ -3,6 +3,7 @@ import pathlib
 import re
 from datetime import timedelta, time
 from http import HTTPStatus
+from uuid import uuid4
 
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
@@ -983,6 +984,79 @@ class TestGameLog(WebTest):
         row.refresh_from_db()
         assert not row.isDeleted
 
+    def test_post_team_log_on_a_finished_game_is_rejected(self):
+        DBSetup().g62_status_empty()
+        game: Gameinfo = Gameinfo.objects.first()
+        game.status = "beendet"
+        game.save()
+        rows_before = TeamLog.objects.filter(gameinfo=game).count()
+
+        response = self.app.post_json(
+            reverse(API_GAMELOG, kwargs={"id": game.pk}),
+            {
+                "team": "A1",
+                "gameId": game.pk,
+                "half": 1,
+                "event": [{"name": "Touchdown", "player": "19"}],
+            },
+            headers=DBSetup().get_token_header(),
+            expect_errors=True,
+        )
+
+        assert response.status_code == HTTPStatus.CONFLICT
+        assert response.json == {"detail": "Dieses Spiel ist beendet."}
+        assert TeamLog.objects.filter(gameinfo=game).count() == rows_before
+
+    def test_delete_team_log_on_a_finished_game_is_rejected(self):
+        gameinfo = DBSetup().create_teamlog_home_and_away()
+        gameinfo.status = "beendet"
+        gameinfo.save()
+        row = TeamLog.objects.filter(gameinfo=gameinfo, sequence=2).first()
+
+        response = self.app.delete_json(
+            reverse(API_GAMELOG, kwargs={"id": gameinfo.pk}),
+            {"sequence": 2},
+            headers=DBSetup().get_token_header(),
+            expect_errors=True,
+        )
+
+        assert response.status_code == HTTPStatus.CONFLICT
+        assert response.json == {"detail": "Dieses Spiel ist beendet."}
+        row.refresh_from_db()
+        assert not row.isDeleted
+
+    def test_replayed_client_id_on_a_finished_game_still_answers(self):
+        # An op applied just before the result, whose answer was lost, is
+        # replayed after the game is closed. The replay wrote nothing, so the
+        # dedupe must win over the finished guard: a 409 would pin the op in
+        # the outbox forever.
+        DBSetup().g62_status_empty()
+        game: Gameinfo = Gameinfo.objects.first()
+        client_id = str(uuid4())
+        url = reverse(API_GAMELOG, kwargs={"id": game.pk})
+        body = {
+            "team": "A1",
+            "gameId": game.pk,
+            "half": 1,
+            "event": [{"name": "First Down"}],
+            "client_id": client_id,
+        }
+        first = self.app.post_json(
+            url, body, headers=DBSetup().get_token_header()
+        )
+        assert first.status_code == HTTPStatus.CREATED
+        rows_after_first = TeamLog.objects.filter(gameinfo=game).count()
+        game.status = "beendet"
+        game.save()
+
+        replay = self.app.post_json(
+            url, body, headers=DBSetup().get_token_header()
+        )
+
+        assert replay.status_code == HTTPStatus.OK
+        assert replay.json == first.json
+        assert TeamLog.objects.filter(gameinfo=game).count() == rows_after_first
+
     def test_delete_without_an_identifier_is_a_400(self):
         gameinfo = DBSetup().create_teamlog_home_and_away()
         deleted_before = set(
@@ -1127,6 +1201,19 @@ class TestManualScoreSurvivesGamelogWrites(WebTest):
         )
         assert response.status_code == HTTPStatus.OK
 
+    @staticmethod
+    def _reopen(game):
+        """Keep the game running after the editor closed it.
+
+        The designer's result editor sets the game to ``beendet``; the log
+        endpoints reject writes to a closed game (409 "Dieses Spiel ist
+        beendet."), because the result is the final word and the scorecard
+        navigates away after sending it. This regression is about the score
+        arithmetic, so it keeps its subject on a game that is still running.
+        """
+        game.status = "1. Halbzeit"
+        game.save()
+
     def _post_touchdown(self, game, team):
         response = self.app.post_json(
             reverse(API_GAMELOG, kwargs={"id": game.pk}),
@@ -1162,6 +1249,7 @@ class TestManualScoreSurvivesGamelogWrites(WebTest):
         self._enter_manual_score(
             game, {"home": 14, "away": 7}, {"home": 28, "away": 14}
         )
+        self._reopen(game)
 
         self._post_touchdown(game, "A1")
         assert self._scores(game) == ((21, 14, 14), (7, 7, 35))
@@ -1176,6 +1264,7 @@ class TestManualScoreSurvivesGamelogWrites(WebTest):
         self._enter_manual_score(
             game, {"home": 21, "away": 7}, {"home": 35, "away": 14}
         )
+        self._reopen(game)
 
         self._delete_sequence(game, 1)
         assert self._scores(game) == ((14, 14, 14), (7, 7, 28))
@@ -1186,6 +1275,7 @@ class TestManualScoreSurvivesGamelogWrites(WebTest):
         self._enter_manual_score(
             game, {"home": 14, "away": 7}, {"home": 28, "away": 14}
         )
+        self._reopen(game)
         self._post_touchdown(game, "A1")
 
         self._delete_sequence(game, 1)
