@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -112,6 +112,52 @@ describe("Sheet", () => {
 
     await user.tab({ shift: true });
     expect(save).toHaveFocus();
+  });
+
+  it("cannot be dismissed while a write is in flight", async () => {
+    const onClose = vi.fn();
+    render(
+      <Sheet
+        busy
+        footer={<button type="button">Speichern …</button>}
+        onClose={onClose}
+        title="Titel"
+      >
+        <p>Inhalt</p>
+      </Sheet>,
+    );
+    const user = userEvent.setup();
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("aria-busy", "true");
+
+    await user.keyboard("{Escape}");
+    await user.click(dialog.parentElement as HTMLElement);
+    const close = screen.getByRole("button", { name: "Schließen" });
+    expect(close).toHaveAttribute("aria-disabled", "true");
+    await user.click(close);
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("does not close when a press starts inside and ends on the scrim", async () => {
+    render(<Opener />);
+    const dialog = await open();
+    const scrim = dialog.parentElement as HTMLElement;
+
+    fireEvent.pointerDown(screen.getByText("Inhalt"));
+    fireEvent.pointerUp(scrim);
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("locks the page scroll while open and releases it on close", async () => {
+    const { unmount } = render(<Opener />);
+    await open();
+    expect(document.body.style.overflow).toBe("hidden");
+
+    unmount();
+    expect(document.body.style.overflow).toBe("");
   });
 
   it("shows the failure without closing", async () => {

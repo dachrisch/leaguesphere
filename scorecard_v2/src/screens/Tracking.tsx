@@ -18,7 +18,7 @@ import ScoreHeader, { isPossessing } from "../components/ScoreHeader";
 import SeriesSheet, {
   type SeriesMode,
 } from "../components/sheets/SeriesSheet";
-import { errorMessage } from "../components/sheets/Sheet";
+import { errorMessage, IgnoredWrite } from "../components/sheets/errors";
 import TouchdownSheet from "../components/sheets/TouchdownSheet";
 
 interface TrackingScreenProps {
@@ -54,6 +54,30 @@ const CONFIRMATION: Record<string, string> = {
   Spielzeit: "Spielzeit gespeichert",
   Auszeit: "Auszeit gespeichert",
 };
+
+/**
+ * The team a submission is recorded for.
+ *
+ * Everything is credited to the possessing team, except an interception: the
+ * defense statistics read the row's team as the team that made the play, and
+ * v1 records it for the opponent. Sending the passer would credit every
+ * interception to the wrong side.
+ *
+ * Throws when the write must not happen at all, so the calling sheet keeps its
+ * state and shows why.
+ */
+export function writeTeam(
+  events: GameLogEventInput[],
+  possession: string | null,
+  opponent: string | null,
+): string {
+  const intercepts = events.some((event) => event.name === "Interception");
+  const team = intercepts ? opponent : possession;
+  if (possession === null || team === null) {
+    throw new IgnoredWrite("Kein Ballbesitz – bitte Team wählen.");
+  }
+  return team;
+}
 
 /** Short confirmation after a write, with the jersey or time it recorded. */
 export function describeSaved(events: GameLogEventInput[]): string {
@@ -95,7 +119,9 @@ export default function TrackingScreen({
   const [possessionError, setPossessionError] = useState<string | null>(null);
   const [undoKey, setUndoKey] = useState<string | null>(null);
   const [undoError, setUndoError] = useState<string | null>(null);
-  const [roster, setRoster] = useState<RosterPlayer[]>([]);
+  // `null` until the roster request settles — an empty array would be a real
+  // "no roster" and must not be shown while the fetch is still running.
+  const [roster, setRoster] = useState<RosterPlayer[] | null>(null);
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [posting, setPosting] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
@@ -196,36 +222,63 @@ export default function TrackingScreen({
     }
   };
 
-  const possessionTeam = possession;
+  const logTeamName = (team: typeof log.home): string | null => {
+    const name = team.name?.trim();
+    return name === undefined || name === "" ? null : name;
+  };
+
   const possessionSide: Side | null =
-    possessionTeam === null
+    possession === null
       ? null
-      : isPossessing(log.home, possessionTeam)
+      : isPossessing(log.home, possession)
         ? "home"
-        : isPossessing(log.away, possessionTeam)
+        : isPossessing(log.away, possession)
           ? "away"
           : null;
+
+  const opponentSide: Side | null =
+    possessionSide === "home"
+      ? "away"
+      : possessionSide === "away"
+        ? "home"
+        : null;
+
+  /**
+   * Display names resolved through the log, so a possession stored as a team
+   * pk still reads "Touchdown Ravens" and not "Touchdown 12".
+   */
+  const possessionName =
+    (possessionSide === "home"
+      ? logTeamName(log.home)
+      : possessionSide === "away"
+        ? logTeamName(log.away)
+        : null) ?? possession;
+  const opponentName =
+    opponentSide === "home" ? logTeamName(log.home) : logTeamName(log.away);
 
   /**
    * Write one play. The sheet that called it stays open until this resolves,
    * so a rejected write keeps the picked jersey on screen together with the
-   * server's `detail`.
+   * server's `detail`. A write that must not happen rejects as
+   * {@link IgnoredWrite} — resolving would close the sheet and look saved.
    */
   const submit = async (events: GameLogEventInput[]): Promise<void> => {
-    if (
-      postInFlight.current ||
-      finished ||
-      possessionTeam === null ||
-      possessionSide === null
-    ) {
-      return;
+    if (postInFlight.current) {
+      throw new IgnoredWrite("Der Eintrag wird gerade gespeichert.");
     }
+    if (finished) {
+      throw new IgnoredWrite("Dieses Spiel ist beendet.");
+    }
+    if (possessionSide === null) {
+      throw new IgnoredWrite("Kein Ballbesitz – bitte Team wählen.");
+    }
+    const team = writeTeam(events, possessionName, opponentName);
     postInFlight.current = true;
     setPosting(true);
     setConfirmation(null);
     const body: GameLogWrite = {
       gameId: game.id,
-      team: possessionTeam,
+      team,
       half: log.isFirstHalf ? 1 : 2,
       event: events,
     };
@@ -245,9 +298,13 @@ export default function TrackingScreen({
   };
 
   const composerDisabled =
-    posting || finished || possessionTeam === null || possessionSide === null;
+    posting ||
+    possessionPending ||
+    finished ||
+    possessionSide === null ||
+    possessionName === null;
   const touchdownLabel =
-    possessionTeam === null ? "Touchdown" : `Touchdown ${possessionTeam}`;
+    possessionName === null ? "Touchdown" : `Touchdown ${possessionName}`;
 
   return (
     <div className="app-shell tracking">
@@ -313,7 +370,7 @@ export default function TrackingScreen({
         <p className="finishednote" role="status">
           Dieses Spiel ist beendet.
         </p>
-      ) : possessionTeam === null ? (
+      ) : possessionName === null ? (
         <p className="trackhint">Ballbesitz wählen, um Einträge zu erfassen.</p>
       ) : null}
       <EventLog
@@ -329,8 +386,8 @@ export default function TrackingScreen({
       </footer>
 
       {sheet !== null &&
-      possessionTeam !== null &&
-      possessionSide !== null ? (
+      possessionSide !== null &&
+      possessionName !== null ? (
         sheet.kind === "touchdown" ? (
           <TouchdownSheet
             onClose={() => setSheet(null)}
@@ -338,7 +395,7 @@ export default function TrackingScreen({
             passcheck={game.passcheck === true}
             roster={roster}
             side={possessionSide}
-            teamName={possessionTeam}
+            teamName={possessionName}
           />
         ) : (
           <SeriesSheet
@@ -346,9 +403,10 @@ export default function TrackingScreen({
             mode={sheet.mode}
             onClose={() => setSheet(null)}
             onSubmit={submit}
+            opponentName={opponentName ?? "–"}
             roster={roster}
             side={possessionSide}
-            teamName={possessionTeam}
+            teamName={possessionName}
           />
         )
       ) : null}

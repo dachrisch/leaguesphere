@@ -18,7 +18,7 @@ import type {
   LogEntry,
   RosterPlayer,
 } from "../api/types";
-import TrackingScreen from "./Tracking";
+import TrackingScreen, { writeTeam } from "./Tracking";
 
 vi.mock("../api/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api/client")>();
@@ -811,19 +811,29 @@ describe("Tracking series and time entry", () => {
     );
   });
 
-  it("records an interception for the possessing team", async () => {
-    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Wolves" }));
-    renderTracking({ log: makeLog({ inPossession: "Wolves" }) });
+  it("records an interception for the defender, not the passer", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
     const user = userEvent.setup();
 
-    await openSheet(user, /^Interception$/);
+    const dialog = await openSheet(user, /^Interception$/);
+    expect(dialog).toHaveAccessibleName("Interception");
+    expect(
+      await screen.findByRole("button", { name: "Trikot 11, Wolf" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Trikot 23, Schulz" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Trikot 11, Wolf" }));
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
     expect(apiPostMock).toHaveBeenCalledWith("/api/gamelog/42", {
       gameId: 42,
       team: "Wolves",
       half: 1,
-      event: [{ name: "Interception" }],
+      event: [{ name: "Interception", player: 11 }],
     });
   });
 
@@ -867,10 +877,133 @@ describe("Tracking composer state", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows the team name when possession is stored as a pk", () => {
+    renderTracking({ log: makeLog({ inPossession: "1" }) });
+
+    expect(
+      screen.getByRole("button", { name: "Touchdown Ravens" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders the penalty and safety tiles disabled", () => {
     renderTracking();
 
     expect(screen.getByRole("button", { name: "Strafe" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Safety" })).toBeDisabled();
+  });
+});
+
+describe("Tracking write guard", () => {
+  it("credits an interception to the opponent", () => {
+    expect(
+      writeTeam([{ name: "Interception", player: 11 }], "Ravens", "Wolves"),
+    ).toBe("Wolves");
+  });
+
+  it("credits every other event to the possessing team", () => {
+    expect(
+      writeTeam(
+        [
+          { name: "Touchdown", player: 23 },
+          { name: "1-Extra-Punkt", player: 23 },
+        ],
+        "Ravens",
+        "Wolves",
+      ),
+    ).toBe("Ravens");
+  });
+
+  it("rejects a write without possession with a message", () => {
+    expect(() =>
+      writeTeam([{ name: "Touchdown", player: 23 }], null, "Wolves"),
+    ).toThrow("Kein Ballbesitz – bitte Team wählen.");
+  });
+});
+
+describe("Tracking entry lifecycle", () => {
+  it("returns focus to the touchdown tile after a successful save", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Touchdown Ravens$/);
+    await pickJersey(user, 23);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /^Touchdown Ravens$/ }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it("records a second touchdown after the first", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Touchdown Ravens$/);
+    await pickJersey(user, 23);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    const tile = screen.getByRole("button", { name: /^Touchdown Ravens$/ });
+    expect(tile).toBeEnabled();
+    await user.click(tile);
+
+    expect(
+      screen.getByRole("button", { name: "Spieler wählen" }),
+    ).toBeDisabled();
+    await pickJersey(user, 7);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(2));
+    expect(apiPostMock).toHaveBeenLastCalledWith("/api/gamelog/42", {
+      gameId: 42,
+      team: "Ravens",
+      half: 1,
+      event: [
+        { name: "Touchdown", player: 7 },
+        { name: "1-Extra-Punkt", player: 7 },
+      ],
+    });
+  });
+
+  it("falls back to a typed number when the roster request fails", async () => {
+    apiGetMock.mockRejectedValue(new ApiError(500, null, "Server weg"));
+    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Touchdown Ravens$/);
+    const input = await screen.findByRole("textbox", { name: /Trikotnummer/ });
+    await user.type(input, "51");
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    expect(apiPostMock).toHaveBeenCalledWith("/api/gamelog/42", {
+      gameId: 42,
+      team: "Ravens",
+      half: 1,
+      event: [
+        { name: "Touchdown", player: 51 },
+        { name: "1-Extra-Punkt", player: 51 },
+      ],
+    });
+  });
+
+  it("disables the composer while a possession change is in flight", () => {
+    apiPutMock.mockReturnValue(new Promise(() => undefined));
+    renderTracking();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Wolves/ }));
+
+    expect(
+      screen.getByRole("button", { name: /^Touchdown Wolves$/ }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "1st Down" })).toBeDisabled();
   });
 });

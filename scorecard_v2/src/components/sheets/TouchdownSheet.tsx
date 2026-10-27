@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { GameLogEventInput, RosterPlayer } from "../../api/types";
 import JerseyPicker from "../JerseyPicker";
-import Sheet, { errorMessage } from "./Sheet";
+import { errorMessage } from "./errors";
+import Sheet from "./Sheet";
 
 /** Conversion choice: 1, 2 or none (`+0`). */
 export type Conversion = 0 | 1 | 2;
@@ -50,8 +51,12 @@ interface TouchdownSheetProps {
   teamName: string;
   /** Side of the possession team; the roster is filtered by it. */
   side: RosterPlayer["side"];
-  /** Both sides as loaded from `GET /api/game/<id>/roster`. */
-  roster: RosterPlayer[];
+  /**
+   * Both sides as loaded from `GET /api/game/<id>/roster`, `null` while the
+   * request is still running. Until it settles the sheet shows a loading note
+   * instead of guessing that the roster is empty.
+   */
+  roster: RosterPlayer[] | null;
   /** Only a fully checked game may call its roster "bestätigt". */
   passcheck?: boolean;
   /**
@@ -82,20 +87,27 @@ export default function TouchdownSheet({
   const [conversion, setConversion] = useState<Conversion>(1);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Ref, not state: a synchronous double tap both see `posting === false`
+  // before React re-renders, and the second submit would resolve immediately.
+  const saving = useRef(false);
 
-  const players = roster.filter((player) => player.side === side);
-  const ready = jersey !== null && !posting;
+  const players =
+    roster === null ? [] : roster.filter((player) => player.side === side);
+  const loading = roster === null;
+  const ready = jersey !== null && !posting && !loading;
 
   const save = async (): Promise<void> => {
-    if (!ready || jersey === null) {
+    if (saving.current || !ready || jersey === null) {
       return;
     }
+    saving.current = true;
     setPosting(true);
     setError(null);
     try {
       await onSubmit(touchdownEvents(jersey, conversion));
       onClose();
     } catch (failure) {
+      saving.current = false;
       setPosting(false);
       setError(
         errorMessage(
@@ -108,6 +120,7 @@ export default function TouchdownSheet({
 
   return (
     <Sheet
+      busy={posting}
       error={error}
       footer={
         <button
@@ -116,7 +129,7 @@ export default function TouchdownSheet({
           onClick={() => void save()}
           type="button"
         >
-          {posting ? "Speichert …" : jersey === null ? "Spieler wählen" : "Speichern"}
+          {posting ? "Speichern …" : jersey === null ? "Spieler wählen" : "Speichern"}
         </button>
       }
       onClose={onClose}
@@ -130,15 +143,21 @@ export default function TouchdownSheet({
       <h3 className="sheetsection">
         {passcheck ? "Bestätigter Kader" : "Kader"}
       </h3>
-      <JerseyPicker
-        disabled={posting}
-        onChange={setJersey}
-        players={players}
-        value={jersey}
-      />
-      {players.length === 0 ? null : (
-        <p className="sheetnote">Nur bestätigte Nummern.</p>
+      {loading ? (
+        <p className="sheetnote" role="status">
+          Kader lädt …
+        </p>
+      ) : (
+        <JerseyPicker
+          disabled={posting}
+          onChange={setJersey}
+          players={players}
+          value={jersey}
+        />
       )}
+      {passcheck && !loading && players.length > 0 ? (
+        <p className="sheetnote">Nur bestätigte Nummern.</p>
+      ) : null}
 
       <h3 className="sheetsection">Extrapunkt</h3>
       <div aria-label="Extrapunkt" className="patrow" role="group">
