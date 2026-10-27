@@ -1,12 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
-import { apiDelete, apiGet, apiPost, apiPut } from "../api/client";
 import type {
   Game,
   GameLog,
   GameLogEventInput,
   GameLogWrite,
   GameSetup,
+  Penalty,
   RosterPlayer,
 } from "../api/types";
 import AppHeader from "../components/AppHeader";
@@ -16,6 +23,7 @@ import EventLog, {
   type LogRow,
 } from "../components/EventLog";
 import ScoreHeader, { isPossessing } from "../components/ScoreHeader";
+import SyncBadge, { pauseReason } from "../components/SyncBadge";
 import MoreSheet, { type MoreMode } from "../components/sheets/MoreSheet";
 import PenaltySheet from "../components/sheets/PenaltySheet";
 import SeriesSheet, {
@@ -23,13 +31,28 @@ import SeriesSheet, {
 } from "../components/sheets/SeriesSheet";
 import { errorMessage, IgnoredWrite } from "../components/sheets/errors";
 import TouchdownSheet from "../components/sheets/TouchdownSheet";
+import { cachedGet, snapshotKey } from "../offline/snapshot";
+import {
+  createGameSession,
+  type GameSession,
+} from "../session/gameSession";
+import { getRuntime } from "../session/runtime";
+import { useSyncStatus } from "../session/useSyncStatus";
 
 interface TrackingScreenProps {
   game: Game;
   /** Log loaded by the preparation screen; the server payload is the truth. */
   initialLog: GameLog;
-  /** Task 15 owns the finalise screen; this only navigates. */
-  onFinalize: () => void;
+  /** Finalise with the log as the screen currently shows it. */
+  onFinalize: (log: GameLog) => void;
+  /**
+   * The write session. The flow passes one when it already built it; without
+   * it the screen creates (and owns) its own.
+   */
+  session?: GameSession;
+  /** Header chrome owned by the flow. */
+  onBack?: () => void;
+  onLogout?: () => void;
 }
 
 type Side = RosterPlayer["side"];
@@ -173,10 +196,13 @@ export function describeSaved(events: GameLogEventInput[]): string {
  * Live tracking shell: score header, possession switch, the action block, the
  * event log and undo.
  *
- * The log is never edited locally. Every write answers with the full server
- * payload (`DELETE` directly, `PUT /possession` none), so the score and the
- * rows always come from the server. Undo keeps deleted rows visible and
- * struck through — the log is an audit trail, not a list of live plays.
+ * Every write goes through {@link GameSession}: online it reaches the API and
+ * the answer replaces the log; offline (or after a lost answer) it is queued
+ * and the screen shows the last server payload plus the queued ops, marked
+ * provisional. The score is never recomputed — the field app only adds the
+ * queued deltas to the server's score until the next payload replaces both.
+ * Undo keeps deleted rows visible and struck through; undoing a row that never
+ * left the device removes its queued op instead of calling `DELETE`.
  *
  * Event writes carry the possession team and the half from the payload —
  * never a guess from the current time. The roster is loaded once; without it
@@ -187,8 +213,20 @@ export default function TrackingScreen({
   game,
   initialLog,
   onFinalize,
+  session: providedSession,
+  onBack,
+  onLogout,
 }: TrackingScreenProps) {
-  const [log, setLog] = useState<GameLog>(initialLog);
+  const runtime = getRuntime();
+  const [session] = useState<GameSession>(
+    () =>
+      providedSession ??
+      createGameSession({
+        gameId: game.id,
+        initialLog,
+        runtime,
+      }),
+  );
   const [possession, setPossession] = useState<string | null>(
     initialLog.inPossession ?? null,
   );
@@ -216,14 +254,54 @@ export default function TrackingScreen({
   const postInFlight = useRef(false);
   const halftimeInFlight = useRef(false);
 
+  /**
+   * The live log from the session. The subscription also adopts the server's
+   * possession marker, except while this screen is changing it (a log answer
+   * still describes the state *before* the tap).
+   */
+  const subscribeLog = useCallback(
+    (onStoreChange: () => void) =>
+      session.subscribe((next, source) => {
+        // Only an authoritative payload may move the possession marker: a
+        // write's answer still describes the state before the tap.
+        if (
+          source === "refresh" &&
+          !possessionInFlight.current &&
+          Object.prototype.hasOwnProperty.call(next, "inPossession")
+        ) {
+          setPossession(next.inPossession ?? null);
+        }
+        onStoreChange();
+      }),
+    [session],
+  );
+  const log = useSyncExternalStore(subscribeLog, session.getLog, session.getLog);
+
   const rows = useMemo(() => logRows(log), [log]);
   const finished = game.status.trim().toLowerCase() === "beendet";
+  const status = useSyncStatus(game.id);
+  // The server said this device may not write (another device holds the game,
+  // or the session expired). Read-only with the reason, not a silent failure.
+  const readOnly = status.paused === "device" || status.paused === "auth";
+  const stopReason = pauseReason(status.paused);
+
+  useEffect(() => {
+    // Warm the penalty catalogue while the network is still there: the sheet
+    // may only be opened on the sideline, with no connection left.
+    void cachedGet<Penalty[]>(
+      snapshotKey.penalties(),
+      "/api/config/scorecard/penalties",
+    ).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     let active = true;
     // The roster is the only source for the jersey grid. A failure leaves it
     // empty on purpose: the sheets then offer the numeric fallback.
-    apiGet<RosterPlayer[]>(`/api/game/${game.id}/roster`)
+    cachedGet<RosterPlayer[]>(
+      snapshotKey.roster(game.id),
+      `/api/game/${game.id}/roster`,
+    )
       .then((players) => {
         if (active) {
           setRoster(players ?? []);
@@ -244,7 +322,10 @@ export default function TrackingScreen({
     // Read once, long before the half-time: the setup holds the opening
     // possession, which decides who starts the second half. A failed read
     // leaves it `null` and the half-time falls back to switching the ball.
-    apiGet<GameSetup>(`/api/game/${game.id}/setup`)
+    cachedGet<GameSetup>(
+      snapshotKey.setup(game.id),
+      `/api/game/${game.id}/setup`,
+    )
       .then((payload) => {
         if (active) {
           setSetup(payload ?? {});
@@ -259,41 +340,15 @@ export default function TrackingScreen({
   }, [game.id]);
 
   /**
-   * Replace the log with a server answer.
-   *
-   * `inPossession` is only adopted when the payload carries it **and** the
-   * caller says it is fresh: a `POST` answers with the possession as it was
-   * *before* the change of possession the play itself causes, and a stale
-   * `DELETE` must not undo the optimistic marker either. The client owns the
-   * marker after its own write and re-reads the truth when a write fails.
-   */
-  const replaceLog = (
-    next: GameLog,
-    { adoptPossession = true }: { adoptPossession?: boolean } = {},
-  ): void => {
-    setLog(next);
-    if (
-      adoptPossession &&
-      !possessionInFlight.current &&
-      Object.prototype.hasOwnProperty.call(next, "inPossession")
-    ) {
-      setPossession(next.inPossession ?? null);
-    }
-  };
-
-  /**
    * Ask the server which team holds the ball and take that answer.
    *
-   * Used after a failed possession `PUT`: the optimistic marker is a guess, the
-   * log is the truth. The adoption is direct rather than through
-   * {@link replaceLog} because the failed change is still "in flight" here and
-   * would otherwise be skipped. A read that fails too leaves the last known
-   * value in place — the next write or reload corrects it.
+   * Used after a failed possession change: the optimistic marker is a guess,
+   * the log is the truth. A read that fails too keeps the last known value —
+   * the next write or reload corrects it.
    */
   const resyncPossession = async (): Promise<void> => {
     try {
-      const fresh = await apiGet<GameLog>(`/api/gamelog/${game.id}`);
-      setLog(fresh);
+      const fresh = await session.refresh();
       if (Object.prototype.hasOwnProperty.call(fresh, "inPossession")) {
         setPossession(fresh.inPossession ?? null);
       }
@@ -303,7 +358,7 @@ export default function TrackingScreen({
   };
 
   const takePossession = async (teamName: string): Promise<void> => {
-    if (possessionInFlight.current || teamName === possession) {
+    if (possessionInFlight.current || teamName === possession || readOnly) {
       return;
     }
     const previous = possession;
@@ -312,9 +367,9 @@ export default function TrackingScreen({
     setPossessionPending(true);
     setPossessionError(null);
     try {
-      await apiPut<void>(`/api/game/${game.id}/possession`, {
-        team: teamName,
-      });
+      // Online this is a `PUT`; offline (or after a lost answer) the session
+      // queues it and resolves, so the marker stays where the tap put it.
+      await session.setPossession(teamName);
     } catch (failure) {
       // Show the correction at once (no flicker), then let the server decide:
       // the `PUT` may have been rejected after it was applied.
@@ -333,18 +388,20 @@ export default function TrackingScreen({
   };
 
   const undo = async (row: LogRow): Promise<void> => {
-    if (undoInFlight.current || halftimePending) {
+    if (undoInFlight.current || halftimePending || readOnly) {
       return;
     }
     undoInFlight.current = true;
     setUndoKey(row.key);
     setUndoError(null);
     try {
-      const next = await apiDelete<GameLog>(
-        `/api/gamelog/${game.id}`,
-        undoBody(row),
-      );
-      replaceLog(next);
+      // A row with a synthetic (negative) id never reached the server: the
+      // session drops that queued op locally and never sends `DELETE`.
+      const local =
+        row.teamLogId !== null && row.teamLogId < 0
+          ? row.teamLogId
+          : undefined;
+      await session.undo(undoBody(row), local);
     } catch (failure) {
       setUndoError(
         errorMessage(
@@ -421,6 +478,11 @@ export default function TrackingScreen({
     if (possessionSide === null) {
       throw new IgnoredWrite("Kein Ballbesitz – bitte Team wählen.");
     }
+    if (readOnly) {
+      throw new IgnoredWrite(
+        stopReason ?? "Dieses Gerät darf keine Einträge schreiben.",
+      );
+    }
     const team = teamOverride ?? writeTeam(events, possessionName, opponentName);
     postInFlight.current = true;
     setPosting(true);
@@ -432,10 +494,10 @@ export default function TrackingScreen({
       event: events,
     };
     try {
-      const next = await apiPost<GameLog>(`/api/gamelog/${game.id}`, body);
-      // The answer still carries the possession of *before* this play; the
-      // marker follows the flip below (or the server, if the flip fails).
-      replaceLog(next, { adoptPossession: false });
+      // Online this is a `POST`; offline (or after a lost answer) the session
+      // queues the op with its `client_id` and shows it optimistically. The
+      // answer is the whole log, so it replaces what is on screen.
+      await session.writeEvent(body);
       setConfirmation(describeSaved(events));
       if (flipsPossession(events) && opponentName !== null) {
         await takePossession(opponentName);
@@ -470,7 +532,7 @@ export default function TrackingScreen({
    * the server's `detail`.
    */
   const startHalftime = async (): Promise<void> => {
-    if (halftimeInFlight.current || !log.isFirstHalf) {
+    if (halftimeInFlight.current || !log.isFirstHalf || readOnly) {
       return;
     }
     if (possessionInFlight.current) {
@@ -486,7 +548,9 @@ export default function TrackingScreen({
     setHalftimeError(null);
     setConfirmHalftime(false);
     try {
-      await apiPut<void>(`/api/game/${game.id}/halftime`, {});
+      // Online a `PUT`; offline the op is queued and the half flips locally so
+      // the next entry already belongs to the second half.
+      await session.halftime();
     } catch (failure) {
       setHalftimeError(
         errorMessage(
@@ -498,18 +562,15 @@ export default function TrackingScreen({
       setHalftimePending(false);
       return;
     }
-    setLog((current) => ({ ...current, isFirstHalf: false }));
     const target = secondHalfTeam();
     if (target !== null) {
       await takePossession(target);
     }
     try {
-      // The marker row ("2. Halbzeit gestartet") only exists server-side. The
-      // half switch is already local, so a payload from an older server cannot
-      // put the game back into the first half, and the possession stays the one
-      // this screen just set.
-      const fresh = await apiGet<GameLog>(`/api/gamelog/${game.id}`);
-      replaceLog({ ...fresh, isFirstHalf: false }, { adoptPossession: false });
+      // The marker row ("2. Halbzeit gestartet") arrives with the log. A
+      // payload from an older server cannot put the screen back into the first
+      // half: the session already flipped it.
+      await session.refresh();
     } catch {
       // The half is already switched; the refresh only adds the marker. The
       // next write answers with the whole log anyway.
@@ -528,6 +589,7 @@ export default function TrackingScreen({
     possessionPending ||
     halftimePending ||
     finished ||
+    readOnly ||
     possessionSide === null ||
     possessionName === null;
   const touchdownLabel =
@@ -538,14 +600,48 @@ export default function TrackingScreen({
    * either skip the flip or answer with a stale half, so the block waits.
    */
   const halftimeDisabled =
-    halftimePending || posting || possessionPending || undoKey !== null;
+    halftimePending ||
+    posting ||
+    possessionPending ||
+    undoKey !== null ||
+    readOnly;
 
   return (
     <div className="app-shell tracking">
-      <AppHeader kicker="Scorecard" title="Spiel läuft" />
+      <AppHeader
+        kicker="Scorecard"
+        onBack={onBack}
+        onLogout={onLogout}
+        title="Spiel läuft"
+      />
+      <SyncBadge gameId={game.id} />
+      {stopReason === null ? null : (
+        <div className="syncstop" role="alert">
+          <p>
+            {status.paused === "device"
+              ? "Schreiben gesperrt – ein anderes Gerät hält dieses Spiel."
+              : "Schreiben gesperrt – bitte neu anmelden."}
+          </p>
+          <button
+            className="setlink"
+            onClick={() => void status.resume()}
+            type="button"
+          >
+            Erneut prüfen
+          </button>
+        </div>
+      )}
+      {status.pending > 0 ? (
+        <p className="vorlaeufig">
+          Spielstand vorläufig ·{" "}
+          {status.pending === 1
+            ? "1 Eintrag noch nicht übertragen"
+            : `${status.pending} Einträge noch nicht übertragen`}
+        </p>
+      ) : null}
       <ScoreHeader
         away={log.away}
-        disabled={possessionPending || halftimePending}
+        disabled={possessionPending || halftimePending || readOnly}
         home={log.home}
         isFirstHalf={log.isFirstHalf}
         onPossession={(teamName) => void takePossession(teamName)}
@@ -657,16 +753,26 @@ export default function TrackingScreen({
         <p className="trackhint">Ballbesitz wählen, um Einträge zu erfassen.</p>
       ) : null}
       <EventLog
-        disabled={halftimePending}
+        disabled={halftimePending || readOnly}
         error={undoError}
         onUndo={(row) => void undo(row)}
         rows={rows}
         undoKey={undoKey}
       />
       <footer className="trackfoot">
-        <button className="startbtn" onClick={onFinalize} type="button">
+        <button
+          className="startbtn"
+          disabled={readOnly}
+          onClick={() => onFinalize(log)}
+          type="button"
+        >
           Spielende und Bestätigung
         </button>
+        {readOnly ? (
+          <p className="setupnote">
+            Nur lesend – Einträge sind auf diesem Gerät gesperrt.
+          </p>
+        ) : null}
       </footer>
 
       {sheet !== null &&

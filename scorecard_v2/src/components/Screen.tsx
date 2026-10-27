@@ -6,6 +6,10 @@ interface ScreenProps {
   kicker: string;
   title: string;
   sub?: string;
+  /** Header back button, owned by the flow in App.tsx. */
+  onBack?: () => void;
+  /** Header logout action. */
+  onLogout?: () => void;
   children: ReactNode;
 }
 
@@ -18,11 +22,19 @@ export default function Screen({
   kicker,
   title,
   sub,
+  onBack,
+  onLogout,
   children,
 }: ScreenProps) {
   return (
     <div className="app-shell">
-      <AppHeader kicker={kicker} sub={sub} title={title} />
+      <AppHeader
+        kicker={kicker}
+        onBack={onBack}
+        onLogout={onLogout}
+        sub={sub}
+        title={title}
+      />
       <main className="vscroll">{children}</main>
     </div>
   );

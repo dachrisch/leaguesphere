@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
-import { apiGet } from "../../api/client";
 import type { GameLogEventInput, Penalty, RosterPlayer } from "../../api/types";
+import { cachedGet, snapshotKey } from "../../offline/snapshot";
 import { jerseyOptions } from "../JerseyPicker";
 import { errorMessage } from "./errors";
 import Sheet from "./Sheet";
@@ -123,7 +123,9 @@ export default function PenaltySheet({
 
   useEffect(() => {
     let active = true;
-    apiGet<Penalty[]>(PENALTIES_PATH)
+    // Preloaded: the penalty catalogue is the one list the sheet needs with no
+    // network, and it rarely changes.
+    cachedGet<Penalty[]>(snapshotKey.penalties(), PENALTIES_PATH)
       .then((list) => {
         if (active) {
           setPenalties(list ?? []);

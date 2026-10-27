@@ -1957,6 +1957,223 @@ button.game-row:active {
   }
 }
 
+/* --------------------------------------------------------- flow chrome -- */
+
+.appbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--touch);
+  margin-bottom: var(--space-2);
+}
+
+.appbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--touch);
+  padding: 0 var(--space-2) 0 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.appbar-btn:hover {
+  color: var(--fg);
+}
+
+.appbar-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.appbar-logout {
+  padding: 0 0 0 var(--space-2);
+  color: var(--amber);
+}
+
+/* --------------------------------------------------------- sync badge --- */
+
+.syncbar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--page-gutter) 0;
+}
+
+.syncbadge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--space-2);
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-pill);
+}
+
+button.syncbadge {
+  cursor: pointer;
+}
+
+.syncdot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.syncbadge-ok {
+  color: var(--away-text);
+}
+
+.syncbadge-wait {
+  color: var(--amber);
+}
+
+.syncbadge-off {
+  color: var(--home-text);
+}
+
+.syncwhy {
+  max-width: 100%;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.syncfailed {
+  padding: var(--space-3);
+  background: var(--home-wash);
+  border: 1px solid color-mix(in srgb, var(--home) 35%, transparent);
+  border-radius: var(--radius-lg);
+}
+
+.syncfailed-head {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--home-text);
+}
+
+.syncfailed-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.syncfailed-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+
+.syncfailed-op {
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.syncfailed-reason {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.syncfailed-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.synclink {
+  min-height: var(--touch);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--amber);
+  cursor: pointer;
+}
+
+.syncstop {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  margin: var(--space-2) var(--page-gutter) 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--amber);
+  background: var(--amber-wash);
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
+  border-radius: var(--radius-lg);
+}
+
+.syncstop p {
+  overflow-wrap: anywhere;
+}
+
+.vorlaeufig {
+  flex: 0 0 auto;
+  margin: var(--space-1) var(--page-gutter) 0;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+/* The "my games / all games" scope switch above the game list. */
+.scopebar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-1) 2px var(--space-3);
+}
+
+.scopebtn {
+  min-height: var(--touch);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.scopebtn.sel {
+  color: #0b1017;
+  background: var(--fg);
+  border-color: var(--fg);
+}
+
+.scopehint {
+  min-width: 0;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

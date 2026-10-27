@@ -1,25 +1,31 @@
 import { useEffect, useRef, useState } from "react";
 
-import { apiGet, apiPut } from "../api/client";
+import { ApiError, apiPut } from "../api/client";
 import type { Game, GameLog, GameLogTeam, RosterPlayer } from "../api/types";
 import FinalScore from "../components/FinalScore";
 import Screen from "../components/Screen";
 import { errorMessage } from "../components/sheets/errors";
+import { cachedGet, snapshotKey } from "../offline/snapshot";
 
 interface FinalizeScreenProps {
   game: Game;
   log: GameLog;
-  /**
-   * Outbox entries still waiting for the server. Task 20 wires the count; the
-   * guard here is what keeps a result from leaving the device without them.
-   */
-  pendingWrites?: number;
+  /** Outbox entries still waiting for the server — the finalise guard. */
+  pendingWrites: number;
   /** Outbox entries the server rejected. They exist locally but not server-side. */
-  failedWrites?: number;
+  failedWrites: number;
   /** Back to tracking — the "Spielstand bearbeiten" link. */
   onBack: () => void;
   /** Called with the log once the server accepted the result. */
   onFinalized: (log: GameLog) => void;
+  /**
+   * Called on a `409` when the game may already be finished on the server
+   * (another device, a lost answer). Resolves with the log to show on the
+   * result screen, or `null` when the conflict is something else.
+   */
+  onFinalizeConflict?: () => Promise<GameLog | null>;
+  /** Header chrome owned by the flow. */
+  onLogout?: () => void;
 }
 
 type Side = "home" | "away";
@@ -94,10 +100,12 @@ export function rejectedReason(count: number): string {
 export default function FinalizeScreen({
   game,
   log,
-  pendingWrites = 0,
-  failedWrites = 0,
+  pendingWrites,
+  failedWrites,
   onBack,
   onFinalized,
+  onFinalizeConflict,
+  onLogout,
 }: FinalizeScreenProps) {
   const [roster, setRoster] = useState<RosterPlayer[] | null>(null);
   const [captains, setCaptains] = useState<Record<Side, string>>({
@@ -119,7 +127,7 @@ export default function FinalizeScreen({
     let active = true;
     // Suggestions only. A failed read leaves the fields free text — the
     // captain's name is written by the official, not by the roster.
-    apiGet<RosterPlayer[]>(`/api/game/${game.id}/roster`)
+    cachedGet<RosterPlayer[]>(snapshotKey.roster(game.id), `/api/game/${game.id}/roster`)
       .then((players) => {
         if (active) {
           setRoster(players ?? []);
@@ -137,9 +145,13 @@ export default function FinalizeScreen({
 
   const bothConfirmed = confirmed.home && confirmed.away;
   const anyConfirmed = confirmed.home || confirmed.away;
+  // The result is the one write that may never be queued: it closes the game
+  // for everyone else, so it needs the server now.
+  const offline = globalThis.navigator?.onLine === false;
   const writeReasons = [
     pendingWrites > 0 ? pendingReason(pendingWrites) : null,
     failedWrites > 0 ? rejectedReason(failedWrites) : null,
+    offline ? "Offline – das Ergebnis lässt sich erst online senden" : null,
   ].filter((reason): reason is string => reason !== null);
   const submitDisabled = saving || !bothConfirmed || writeReasons.length > 0;
   const describedBy = [
@@ -176,6 +188,20 @@ export default function FinalizeScreen({
       });
       onFinalized(log);
     } catch (failure) {
+      // A 409 can mean the game is already finished (another device sent the
+      // result, or an earlier answer was lost). Re-read and show the result
+      // instead of an error the official cannot act on.
+      if (
+        failure instanceof ApiError &&
+        failure.status === 409 &&
+        onFinalizeConflict !== undefined
+      ) {
+        const finished = await onFinalizeConflict();
+        if (finished !== null) {
+          onFinalized(finished);
+          return;
+        }
+      }
       // 409 means the game is not in a state that allows an end (and 400 a bad
       // payload); both answer with the server's `detail`. The confirmations and
       // the note stay put so the retry does not repeat the work.
@@ -194,6 +220,8 @@ export default function FinalizeScreen({
   return (
     <Screen
       kicker="Scorecard"
+      onBack={onBack}
+      onLogout={onLogout}
       sub={`${teamLabel(log.home, game.home)} – ${teamLabel(
         log.away,
         game.away,

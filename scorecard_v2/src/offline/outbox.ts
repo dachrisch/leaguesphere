@@ -43,6 +43,8 @@ export interface Outbox {
   retry(id: string): Promise<void>;
   /** Drop every op of one game, pending and failed. */
   clear(gameId: number): Promise<void>;
+  /** Drop the whole queue, every game (logout on a shared device). */
+  clearAll(): Promise<void>;
 }
 
 /**
@@ -232,6 +234,13 @@ export function createOutbox(open: DatabaseFactory = openOutboxDatabase): Outbox
       const tx = db.transaction(OPS_STORE, "readwrite");
       await Promise.all(keys.map((key) => tx.store.delete(key)));
       await tx.done;
+    },
+
+    async clearAll(): Promise<void> {
+      // Logout, not a repair: the whole store goes in one transaction, so a
+      // shared device cannot keep a previous official's events behind.
+      const db = await database();
+      await db.clear(OPS_STORE);
     },
   };
 }

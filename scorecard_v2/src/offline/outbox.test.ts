@@ -306,6 +306,18 @@ describe("clear", () => {
   it("accepts clearing a game that has no ops", async () => {
     await expect(outbox.clear(99)).resolves.toBeUndefined();
   });
+
+  it("clears every game on logout", async () => {
+    await outbox.enqueue(op({ id: "g1-a", gameId: 1 }));
+    await outbox.enqueue(op({ id: "g2-a", gameId: 2 }));
+    await outbox.markFailed("g2-a", "HTTP 400");
+
+    await outbox.clearAll();
+
+    await expect(outbox.gameIds()).resolves.toEqual([]);
+    expect(await outbox.pending(1)).toEqual([]);
+    expect(await outbox.failed(2)).toEqual([]);
+  });
 });
 
 describe("shared storage", () => {

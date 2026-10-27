@@ -111,23 +111,27 @@ beforeEach(() => {
 interface RenderOverrides {
   pendingWrites?: number;
   failedWrites?: number;
+  /** What the 409 re-read finds: a finished log, or `null` (a real error). */
+  conflictLog?: GameLog | null;
 }
 
 async function renderFinalize(overrides: RenderOverrides = {}) {
   const onBack = vi.fn();
   const onFinalized = vi.fn();
+  const onFinalizeConflict = vi.fn(async () => overrides.conflictLog ?? null);
   const view = render(
     <FinalizeScreen
-      failedWrites={overrides.failedWrites}
+      failedWrites={overrides.failedWrites ?? 0}
       game={GAME}
       log={LOG}
       onBack={onBack}
+      onFinalizeConflict={onFinalizeConflict}
       onFinalized={onFinalized}
-      pendingWrites={overrides.pendingWrites}
+      pendingWrites={overrides.pendingWrites ?? 0}
     />,
   );
   await screen.findByRole("group", { name: "Ravens: Captain" });
-  return { onBack, onFinalized, ...view };
+  return { onBack, onFinalized, onFinalizeConflict, ...view };
 }
 
 function captainGroup(team: string): HTMLElement {
@@ -330,6 +334,27 @@ describe("submitting the result", () => {
       "längere Pause",
     );
     expect(submitButton()).toBeEnabled();
+  });
+
+  it("shows the result when a 409 says the game is already finished", async () => {
+    finalizeFailure = new ApiError(
+      409,
+      { detail: "Dieser Spielstatus erlaubt kein Spielende." },
+      "Dieser Spielstatus erlaubt kein Spielende.",
+    );
+    const finished: GameLog = { ...LOG, isFirstHalf: false };
+    const { onFinalized, onFinalizeConflict } = await renderFinalize({
+      conflictLog: finished,
+    });
+
+    await confirmBoth();
+    await userEvent.click(submitButton());
+
+    await waitFor(() => expect(onFinalizeConflict).toHaveBeenCalledTimes(1));
+    expect(onFinalized).toHaveBeenCalledWith(finished);
+    expect(
+      screen.queryByText("Dieser Spielstatus erlaubt kein Spielende."),
+    ).not.toBeInTheDocument();
   });
 
   it("falls back to its own message on an error without a detail", async () => {
