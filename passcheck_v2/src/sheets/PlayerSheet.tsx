@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import type { RosterEntry } from "../api/types";
 import PhotoViewer from "../components/PhotoViewer";
+import { CloseIcon } from "../components/icons";
 
 type Props = {
   player: RosterEntry;
@@ -65,7 +66,7 @@ function PlayerSheet({
             aria-label="Schließen"
             onClick={onClose}
           >
-            ×
+            <CloseIcon size={18} />
           </button>
         </header>
 

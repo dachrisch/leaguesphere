@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { fetchGames } from "../api/passcheck";
 import type { GamesResponse } from "../api/types";
 import GameCard from "../components/GameCard";
+import ThemeToggle from "../components/ThemeToggle";
 
 type Props = {
   onOpen: (teamId: number, gamedayId: number) => void;
@@ -43,8 +44,11 @@ function GamesScreen({ onOpen, loadGames = fetchGames, gamedayId }: Props) {
   return (
     <section className="games-screen">
       <header className="passcheck-header">
-        <p className="passcheck-kicker">Passcheck v2</p>
-        <h1>Meine Spiele</h1>
+        <div>
+          <p className="passcheck-kicker">Passcheck v2</p>
+          <h1>Meine Spiele</h1>
+        </div>
+        <ThemeToggle />
       </header>
 
       {state.status === "loading" && <p>loading...</p>}

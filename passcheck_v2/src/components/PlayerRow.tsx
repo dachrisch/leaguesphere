@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from "react";
 
 import type { RosterEntry } from "../api/types";
+import { PhotoIcon } from "./icons";
 
 type Props = {
   player: RosterEntry;
@@ -52,11 +53,11 @@ function PlayerRow({
             onOpenPhoto();
           }}
         >
-          Foto
+          <PhotoIcon size={18} />
         </button>
       ) : (
         <span className="player-photo" aria-hidden="true">
-          Foto
+          <PhotoIcon size={18} />
         </span>
       )}
       <span className="player-main">
