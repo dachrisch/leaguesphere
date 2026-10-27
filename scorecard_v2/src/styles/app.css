@@ -614,6 +614,141 @@ button.game-row:active {
   color: var(--muted);
 }
 
+/* Searchable crew picker (§2 of the 2026-10-27 review: suggest while typing,
+   show whether a name is linked). Rows keep the 44px target of .offsel. */
+.pp {
+  min-width: 0;
+}
+
+.ppbtn {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+}
+
+.ppname {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pplink {
+  flex: 0 0 auto;
+  padding: 1px var(--space-1);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  border: 1px solid currentcolor;
+  border-radius: 999px;
+}
+
+.pplink-on {
+  color: var(--away-text);
+}
+
+.pplink-free {
+  color: var(--amber);
+}
+
+.pppanel {
+  padding: var(--space-2);
+  margin-top: var(--space-1);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 8px);
+}
+
+.ppinput {
+  width: 100%;
+}
+
+.pplist {
+  padding: 0;
+  margin: var(--space-1) 0 0;
+  list-style: none;
+}
+
+.ppoption {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 var(--space-2);
+  align-items: center;
+  min-height: var(--touch);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.ppoption.sel {
+  background: var(--panel2);
+}
+
+.ppoption-busy {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.ppperson {
+  grid-column: 1;
+  font-size: var(--fs-base);
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.ppteam {
+  grid-column: 1;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.ppbusy {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.ppnote {
+  margin: var(--space-1) 0 0;
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.ppfree {
+  width: 100%;
+  min-height: var(--touch);
+  margin-top: var(--space-1);
+  font: inherit;
+  font-size: var(--fs-base);
+  color: var(--link);
+  background: none;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.ppfree:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.ppclear {
+  width: 100%;
+  min-height: var(--touch);
+  margin-top: var(--space-1);
+  font: inherit;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 .lic {
   font-size: var(--fs-xs);
   line-height: 1.35;
