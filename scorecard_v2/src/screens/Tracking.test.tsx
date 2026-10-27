@@ -1400,6 +1400,20 @@ describe("Tracking half-time", () => {
     expect(screen.getByText("1. Halbzeit")).toBeInTheDocument();
   });
 
+  it("keeps the composer closed while the half-time is being written", async () => {
+    apiPutMock.mockReturnValue(new Promise(() => undefined));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Halbzeit" }));
+    await user.click(screen.getByRole("button", { name: "Halbzeit starten" }));
+
+    expect(screen.getByRole("button", { name: /^Touchdown Ravens$/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "1st Down" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Strafe" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Wolves/ })).toBeDisabled();
+  });
+
   it("keeps the second half when the log reload fails", async () => {
     apiGetMock.mockImplementation((path: string) => {
       if (path === "/api/game/42/roster") {

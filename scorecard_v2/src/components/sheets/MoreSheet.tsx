@@ -171,7 +171,7 @@ export default function MoreSheet({
     >
       <p className="sheetnote">
         {safety
-          ? `Sicherheit in der eigenen Endzone – ${points === 1 ? "1 Punkt" : `${points} Punkte`} für ${opponentName}.`
+          ? `Sicherheit gegen ${teamName} – ${points === 1 ? "1 Punkt" : `${points} Punkte`} für ${opponentName}.`
           : `Overtime ${teamName}`}
       </p>
 
