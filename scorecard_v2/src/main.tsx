@@ -13,6 +13,7 @@ import "@fontsource/inter/latin-700.css";
 import "./styles/tokens.css";
 import "./styles/app.css";
 import App from "./App";
+import { registerServiceWorker } from "./serviceWorker";
 
 const container = document.getElementById("scorecard-v2-app");
 
@@ -25,3 +26,5 @@ createRoot(container).render(
     <App />
   </StrictMode>,
 );
+
+registerServiceWorker();
