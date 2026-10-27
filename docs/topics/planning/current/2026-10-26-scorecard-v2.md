@@ -593,6 +593,14 @@ Commit.
 
 Tests: safety for the opponent + possession flip; overtime; half-time PUT + half switch; possession PUT uses the team **name**.
 
+**Possession flip rule (inherited from v1, with one correction):** after a successful
+`POST /api/gamelog` the client flips possession for `Touchdown`, `Turnover`,
+`Interception`, `Safety`, `Overtime`, and keeps it for `Strafe`, `Spielzeit`,
+`Auszeit`, `First Down`. v1 also flipped on `Auszeit` (its exclusion list has only
+three entries) — that is a bug, not parity. The flip goes through
+`PUT /api/game/<id>/possession`, must respect an in-flight possession change, and
+must only adopt the server's `inPossession` on failure.
+
 Commit.
 
 ---
