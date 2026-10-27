@@ -23,6 +23,7 @@ import EventLog, {
   type LogRow,
 } from "../components/EventLog";
 import ScoreHeader, { isPossessing } from "../components/ScoreHeader";
+import SnapshotHint from "../components/SnapshotHint";
 import SyncBadge, { pauseReason } from "../components/SyncBadge";
 import MoreSheet, { type MoreMode } from "../components/sheets/MoreSheet";
 import PenaltySheet from "../components/sheets/PenaltySheet";
@@ -43,6 +44,12 @@ interface TrackingScreenProps {
   game: Game;
   /** Log loaded by the preparation screen; the server payload is the truth. */
   initialLog: GameLog;
+  /**
+   * When the shown log came from the snapshot instead of the network, the age
+   * of that stored payload. A game that ended an hour ago then reads as stored
+   * data, not as a live one.
+   */
+  staleSince?: number | null;
   /** Finalise with the log as the screen currently shows it. */
   onFinalize: (log: GameLog) => void;
   /**
@@ -212,6 +219,7 @@ export function describeSaved(events: GameLogEventInput[]): string {
 export default function TrackingScreen({
   game,
   initialLog,
+  staleSince = null,
   onFinalize,
   session: providedSession,
   onBack,
@@ -615,6 +623,7 @@ export default function TrackingScreen({
         title="Spiel läuft"
       />
       <SyncBadge gameId={game.id} />
+      <SnapshotHint updatedAt={staleSince} />
       {stopReason === null ? null : (
         <div className="syncstop" role="alert">
           <p>

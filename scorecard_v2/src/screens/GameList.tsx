@@ -1,5 +1,6 @@
 import type { Game } from "../api/types";
 import Screen from "../components/Screen";
+import SnapshotHint from "../components/SnapshotHint";
 import { gameTag, type GameTag } from "../components/tag";
 
 interface GameListProps {
@@ -14,6 +15,8 @@ interface GameListProps {
   allGames?: boolean;
   /** Switches between "my games" and the whole gameday (`?team=*`). */
   onToggleAll?: () => void;
+  /** Age of a stored games list; `null` when it came from the server. */
+  staleSince?: number | null;
   /** Header chrome owned by the flow. */
   onBack?: () => void;
   onLogout?: () => void;
@@ -144,6 +147,7 @@ export default function GameList({
   subtitle,
   allGames = false,
   onToggleAll,
+  staleSince = null,
   onBack,
   onLogout,
 }: GameListProps) {
@@ -157,6 +161,7 @@ export default function GameList({
       sub={subtitle}
       title={title ?? "Spiele"}
     >
+      <SnapshotHint updatedAt={staleSince} />
       {onToggleAll === undefined ? null : (
         <div className="scopebar">
           <button

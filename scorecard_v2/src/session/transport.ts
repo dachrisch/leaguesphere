@@ -3,9 +3,12 @@
  *
  * The queue stores `kind` + `payload` (see offline/types.ts); this module is
  * the only place that knows the endpoints, so the outbox itself stays free of
- * API details. It also publishes the server's answer, because a log write
- * returns the whole log and the screen has to adopt it ("the server payload
- * always wins").
+ * API details. It also carries the server's answer, because a log write returns
+ * the whole log and the screen has to adopt it ("the server payload always
+ * wins"). Publishing is deliberately two-phase: {@link Transport.send} returns
+ * the answer, and the engine calls {@link Transport.landed} once the op has
+ * left the queue — publishing inside `send` would let the screen replay the
+ * still-queued op on top of the server's own numbers.
  */
 import { ApiError, apiDelete, apiPost, apiPut } from "../api/client";
 import type { GameLog } from "../api/types";
@@ -43,10 +46,10 @@ function isAppliedHalftime(error: unknown): boolean {
 }
 
 export function createTransport(
-  onLog: (gameId: number, log: GameLog) => void,
+  onLog: (gameId: number, log: GameLog, landedOpId?: string) => void,
 ): Transport {
   return {
-    async send(op: PendingOp): Promise<void> {
+    async send(op: PendingOp): Promise<unknown> {
       const options = deviceOption(op);
       const path = `/api/gamelog/${op.gameId}`;
 
@@ -54,19 +57,11 @@ export function createTransport(
         // `client_id` is the op id: a replay after a lost answer is applied at
         // most once and answered with the current log.
         const body = { ...(op.payload as object), client_id: op.id };
-        const log = await apiPost<GameLog>(path, body, options);
-        if (isGameLog(log)) {
-          onLog(op.gameId, log);
-        }
-        return;
+        return apiPost<GameLog>(path, body, options);
       }
 
       if (op.kind === "delete") {
-        const log = await apiDelete<GameLog>(path, op.payload, options);
-        if (isGameLog(log)) {
-          onLog(op.gameId, log);
-        }
-        return;
+        return apiDelete<GameLog>(path, op.payload, options);
       }
 
       if (op.kind === "possession") {
@@ -75,16 +70,25 @@ export function createTransport(
           op.payload,
           options,
         );
-        return;
+        return undefined;
       }
 
       try {
         await apiPut<void>(`/api/game/${op.gameId}/halftime`, {}, options);
+        return undefined;
       } catch (error) {
         if (isAppliedHalftime(error)) {
-          return;
+          return undefined;
         }
         throw error;
+      }
+    },
+
+    landed(op: PendingOp, result: unknown): void {
+      if (isGameLog(result)) {
+        // The op id lets the open screen drop the row it still has in memory;
+        // the queue entry itself is already gone.
+        onLog(op.gameId, result, op.id);
       }
     },
   };

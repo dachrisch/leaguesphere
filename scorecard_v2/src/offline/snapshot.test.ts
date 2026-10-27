@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vite
 import { ApiError, apiGet } from "../api/client";
 import {
   cachedGet,
+  cachedGetMeta,
   createSnapshotStore,
   readSnapshot,
   resetSnapshotStore,
@@ -52,6 +53,41 @@ describe("snapshot store", () => {
 
     await expect(store.read(snapshotKey.log(1))).resolves.toBeUndefined();
     await expect(store.read(snapshotKey.roster(1))).resolves.toBeUndefined();
+  });
+
+  it("drops one snapshot without touching the others", async () => {
+    const store = createSnapshotStore();
+    await store.write(snapshotKey.log(1), { gameId: 1 });
+    await store.write(snapshotKey.setup(1), { fhPossession: "home" });
+    await store.write(snapshotKey.roster(1), []);
+
+    await store.remove(snapshotKey.log(1));
+
+    await expect(store.read(snapshotKey.log(1))).resolves.toBeUndefined();
+    await expect(store.read(snapshotKey.setup(1))).resolves.toBeDefined();
+    await expect(store.read(snapshotKey.roster(1))).resolves.toBeDefined();
+  });
+});
+
+describe("cachedGetMeta", () => {
+  it("marks a network answer as fresh and a stored one with its timestamp", async () => {
+    apiGetMock.mockResolvedValue([{ id: 1 }]);
+
+    const fresh = await cachedGetMeta<{ id: number }[]>(
+      snapshotKey.gamedays(),
+      "/api/gameday/list/",
+    );
+
+    expect(fresh.updatedAt).toBeNull();
+
+    apiGetMock.mockRejectedValue(new ApiError(0, null, "Keine Verbindung"));
+    const stored = await cachedGetMeta<{ id: number }[]>(
+      snapshotKey.gamedays(),
+      "/api/gameday/list/",
+    );
+
+    expect(stored.value).toEqual([{ id: 1 }]);
+    expect(typeof stored.updatedAt).toBe("number");
   });
 });
 

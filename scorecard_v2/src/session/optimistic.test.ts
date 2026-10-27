@@ -101,6 +101,35 @@ describe("replayOps", () => {
     expect(shown.events?.[0].player).toBeNull();
   });
 
+  it("mirrors the server's jersey coercion before scoring", () => {
+    // `_coerce_player` truncates a decimal string and drops anything outside
+    // 0..32767 to `None` (which scores nothing). A promise the server does not
+    // keep is worse than a late score.
+    const { log: shown } = replayOps(log(), [
+      op({
+        payload: {
+          team: "Ravens",
+          half: 1,
+          event: [
+            { name: "Touchdown", player: 51.85 },
+            { name: "Touchdown", player: 40000 },
+            { name: "Touchdown", player: -1 },
+            { name: "Touchdown", player: "23" as unknown as number },
+          ],
+        },
+      }),
+    ]);
+
+    // 51.85 -> 51 (6 points); 40000 and -1 are dropped (0 each); "23" -> 23.
+    expect(shown.home.score).toBe(12);
+    expect((shown.events ?? []).map((entry) => entry.player)).toEqual([
+      23,
+      null,
+      null,
+      51,
+    ]);
+  });
+
   it("marks a pending delete and takes its points back", () => {
     const base = log({
       events: [event({ id: 10, sequence: 2, player: 23 })],

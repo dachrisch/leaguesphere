@@ -11,7 +11,7 @@ import App from "../App";
 import { apiDelete, apiGet, apiPost, apiPut } from "../api/client";
 import { ApiError } from "../api/client";
 import type { Gameday, Game, GameLog, GameLogTeam } from "../api/types";
-import { resetSnapshotStore } from "../offline/snapshot";
+import { resetSnapshotStore, readSnapshot, snapshotKey } from "../offline/snapshot";
 import { resetRuntime } from "../session/runtime";
 
 vi.mock("../api/client", async (importOriginal) => {
@@ -228,6 +228,19 @@ describe("the whole flow", () => {
     expect(
       await screen.findByRole("heading", { name: "Ergebnis gesendet" }),
     ).toBeInTheDocument();
+
+    // The game is finished from now on: the games snapshot says so and the
+    // per-game preload is gone, so an offline boot cannot reopen it as running.
+    await waitFor(async () => {
+      const saved = await readSnapshot<{ team: string; games: Game[] }>(
+        snapshotKey.games(1),
+      );
+      expect(
+        saved?.value.games.find((entry) => entry.id === 42)?.status,
+      ).toBe("beendet");
+    });
+    await expect(readSnapshot(snapshotKey.log(42))).resolves.toBeUndefined();
+    await expect(readSnapshot(snapshotKey.setup(42))).resolves.toBeUndefined();
 
     // The write order is the flow: start, first possession, the event, then
     // the result.

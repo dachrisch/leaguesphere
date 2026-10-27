@@ -211,7 +211,7 @@ describe("online writes", () => {
     await expect(session.writeEvent(WRITE)).rejects.toThrow(
       "anderen Gerät",
     );
-    expect(runtime.sync.state().paused).toBe("device");
+    expect(runtime.sync.stateFor(42).paused).toBe("device");
   });
 
   it("re-reads the log through the snapshot-backed refresh", async () => {
@@ -248,7 +248,77 @@ describe("online writes", () => {
   });
 });
 
+describe("undo guards", () => {
+  it("never drops an op that is being sent right now", async () => {
+    setOnline(false);
+    runtime = createRuntime({ outbox });
+    session = makeSession();
+    const shown = await session.writeEvent(WRITE);
+    const localId = shown.events?.[0].id ?? 0;
+    const [op] = await outbox.pending(42);
+
+    setOnline(true);
+    const gate: { release?: () => void } = {};
+    apiPostMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          gate.release = () => resolve(serverLog({ home: team({ score: 7 }) }));
+        }),
+    );
+    const flushing = runtime.sync.resume();
+    await vi.waitFor(() => expect(runtime.sync.sendingOp(42)).toBe(op.id));
+
+    // Removing the row now would hide an entry the server is about to create.
+    await expect(session.undo({ sequence: 1 }, localId)).rejects.toThrow(
+      "gerade übertragen",
+    );
+    await expect(outbox.get(op.id)).resolves.toBeDefined();
+
+    gate.release?.();
+    await flushing;
+    await vi.waitFor(async () => expect(outbox.get(op.id)).resolves.toBeUndefined());
+  });
+
+  it("sends nothing for a synthetic row whose op is gone", async () => {
+    setOnline(true);
+    runtime = createRuntime({ outbox });
+    session = makeSession();
+
+    // A negative id is a local replay id, never a `TeamLog` pk: sending it as
+    // `team_log_id` would be a request for a row that cannot exist.
+    await session.undo({ team_log_id: -5 }, -5);
+
+    expect(apiDeleteMock).not.toHaveBeenCalled();
+    expect(await outbox.pending(42)).toEqual([]);
+  });
+});
+
 describe("flush", () => {
+  it("never shows a flushed write twice", async () => {
+    // The answer is published while the op is still queued if `send` publishes:
+    // the session then replays the pending touchdown on top of the server's
+    // score and the screen flashes the double count.
+    setOnline(false);
+    runtime = createRuntime({ outbox });
+    session = makeSession();
+    const scores: number[] = [];
+    session.subscribe((shown) => scores.push(shown.home.score));
+
+    await session.writeEvent(WRITE);
+    expect(session.getLog().home.score).toBe(7);
+
+    setOnline(true);
+    apiPostMock.mockResolvedValue(serverLog({ home: team({ score: 7 }) }));
+    await runtime.sync.resume();
+
+    await vi.waitFor(() => expect(session.getLog().home.score).toBe(7));
+    await vi.waitFor(async () =>
+      expect(await outbox.pending(42)).toEqual([]),
+    );
+    // 14 would be the queued touchdown added a second time.
+    expect(scores).not.toContain(14);
+  });
+
   it("drains the queue in tap order and adopts the last server log", async () => {
     setOnline(false);
     runtime = createRuntime({ outbox });

@@ -4,6 +4,7 @@ import { ApiError, apiPut } from "../api/client";
 import type { Game, GameLog, GameLogTeam, RosterPlayer } from "../api/types";
 import FinalScore from "../components/FinalScore";
 import Screen from "../components/Screen";
+import SyncBadge from "../components/SyncBadge";
 import { errorMessage } from "../components/sheets/errors";
 import { cachedGet, snapshotKey } from "../offline/snapshot";
 
@@ -230,6 +231,13 @@ export default function FinalizeScreen({
     >
       <div className="finalize">
         <FinalScore away={log.away} home={log.home} />
+
+        {/* The guard below says "not yet"; the badge is how the official gets
+            there: resume a pause, retry or drop a rejected write — the same
+            affordances the tracking screen offers. */}
+        {pendingWrites + failedWrites > 0 ? (
+          <SyncBadge gameId={game.id} />
+        ) : null}
 
         <button
           className="editbtn"

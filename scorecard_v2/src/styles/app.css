@@ -2141,6 +2141,20 @@ button.syncbadge {
   color: var(--muted);
 }
 
+/* "Zwischengespeichert · HH:MM": this screen renders a stored payload. */
+.snaphint {
+  flex: 0 0 auto;
+  margin: var(--space-1) var(--page-gutter) 0;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.snaphint::before {
+  content: "◷";
+  margin-right: var(--space-1);
+}
+
 /* The "my games / all games" scope switch above the game list. */
 .scopebar {
   display: flex;

@@ -11,10 +11,14 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import type { Game, GameLog, Gameday } from "./api/types";
 import {
+  dropGameSnapshots,
   loadGamedays,
   loadGames,
+  loadGamesMeta,
   loadLog,
+  loadLogMeta,
   loadUser,
+  markGameFinished,
   messageOf,
   type CurrentUser,
 } from "./app/load";
@@ -101,6 +105,10 @@ export default function App() {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [allGames, setAllGames] = useState(initialAllGames);
   const [games, setGames] = useState<Loadable<Game[]>>({ status: "loading" });
+  /** Age of the shown games list when it came from the snapshot (offline). */
+  const [gamesStaleSince, setGamesStaleSince] = useState<number | null>(null);
+  /** Age of the shown log when it came from the snapshot (offline). */
+  const [logStaleSince, setLogStaleSince] = useState<number | null>(null);
   /** Bumped by "Erneut laden": the games effect refetches. */
   const [reloadGames, setReloadGames] = useState(0);
   // A running game's log is fetched before the tracking screen can open; the
@@ -156,9 +164,10 @@ export default function App() {
       return;
     }
     let active = true;
-    void loadGames(gamedayId, team).then(
-      (list) => {
+    void loadGamesMeta(gamedayId, team).then(
+      ({ value: list, updatedAt }) => {
         if (active) {
+          setGamesStaleSince(updatedAt);
           setGames({ status: "ready", data: list });
         }
       },
@@ -225,8 +234,9 @@ export default function App() {
     resumeTarget.current = game;
     setLogRequest({ status: "loading" });
     try {
-      const log = await loadLog(game.id);
+      const { value: log, updatedAt } = await loadLogMeta(game.id);
       setLogRequest(null);
+      setLogStaleSince(updatedAt);
       dispatch({ type: "tracking", game, log });
     } catch (error) {
       setLogRequest({
@@ -263,8 +273,11 @@ export default function App() {
       // rows must stay replayable (and undoable) instead of becoming base
       // data of a new session.
       const game = state.game;
-      void loadLog(game.id)
-        .then((fresh) => dispatch({ type: "tracking", game, log: fresh }))
+      void loadLogMeta(game.id)
+        .then(({ value: fresh, updatedAt }) => {
+          setLogStaleSince(updatedAt);
+          dispatch({ type: "tracking", game, log: fresh });
+        })
         .catch(() => dispatch({ type: "back" }));
       return;
     }
@@ -404,6 +417,7 @@ export default function App() {
         onResume={(game) => void resumeGame(game)}
         onSelect={(game) => dispatch({ type: "setup", game })}
         onToggleAll={toggleAll}
+        staleSince={gamesStaleSince}
         subtitle={subtitle}
         title={gameday.name}
       />
@@ -431,6 +445,8 @@ export default function App() {
         onBack={handleBack}
         onLogout={doLogout}
         onStarted={(startedLog) => {
+          // The start answered with a fresh log; it is not stored data.
+          setLogStaleSince(null);
           dispatch({ type: "tracking", game, log: startedLog });
           refreshGamesSnapshot();
         }}
@@ -460,6 +476,7 @@ export default function App() {
         onBack={handleBack}
         onFinalize={(current) => dispatch({ type: "finalize", log: current })}
         onLogout={doLogout}
+        staleSince={logStaleSince}
       />
     );
   }
@@ -472,9 +489,16 @@ export default function App() {
         log={log}
         onBack={handleBack}
         onFinalizeConflict={resolveFinalizeConflict}
-        onFinalized={(finished) =>
-          dispatch({ type: "result", log: finished })
-        }
+        onFinalized={(finished) => {
+          // The result is the server's; from now on this game is finished. The
+          // games snapshot is updated and the per-game log/setup preload is
+          // dropped, so an offline boot shows "beendet" instead of reopening a
+          // closed game and writing to it.
+          setGamesStaleSince(null);
+          void markGameFinished(gameday.id, game.id);
+          void dropGameSnapshots(game.id);
+          dispatch({ type: "result", log: finished });
+        }}
         onLogout={doLogout}
         pendingWrites={syncStatus.pending}
       />

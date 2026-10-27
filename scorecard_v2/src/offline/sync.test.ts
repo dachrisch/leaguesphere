@@ -106,6 +106,28 @@ describe("flush", () => {
     });
   });
 
+  it("removes a delivered op before the server answer is published", async () => {
+    // Publishing inside `send` lets the screen adopt the server log while the
+    // op is still queued, so the optimistic replay adds it a second time (a
+    // doubled score for a frame). The answer may only be published after the
+    // row is gone.
+    const seen: number[] = [];
+    const sync = start({
+      send: async () => "server-log",
+      landed: (sent) => {
+        void outbox
+          .pending(sent.gameId)
+          .then((rows) => seen.push(rows.length), () => seen.push(-1));
+      },
+    });
+    await outbox.enqueue(op({ id: "a" }));
+
+    await sync.flush(1);
+    await settle(2);
+
+    expect(seen).toEqual([0]);
+  });
+
   it("does not touch another game's queue", async () => {
     const sent: string[] = [];
     const sync = start({ send: async (op_) => void sent.push(op_.id) });
@@ -420,6 +442,63 @@ describe("pauses", () => {
     },
   );
 
+  it("fails a 403 whose detail is about this op, and keeps draining", async () => {
+    // The per-row permission check (`_can_delete_team_log`) answers 403 with an
+    // actionable detail. That op can never succeed, so it must not pause the
+    // queue of the whole game — it belongs in `failed`, with retry/drop.
+    const reason = "You do not have permission to delete this game log entry.";
+    const send = vi.fn<Transport["send"]>(async (sent: Op) => {
+      if (sent.id === "undo") {
+        throw new ApiError(403, { detail: reason }, reason);
+      }
+    });
+    const sync = start({ send });
+    await outbox.enqueue(
+      op({ id: "undo", kind: "delete", payload: { team_log_id: 9 } }),
+    );
+    await outbox.enqueue(op({ id: "next", createdAt: 200 }));
+
+    await sync.flush(1);
+
+    expect(send.mock.calls.map(([sent]) => sent.id)).toEqual(["undo", "next"]);
+    expect(await outbox.pending(1)).toEqual([]);
+    expect((await outbox.failed(1)).map((entry) => entry.id)).toEqual(["undo"]);
+    expect((await outbox.failed(1))[0]?.failedReason).toBe(reason);
+    expect(sync.state()).toMatchObject({ pending: 0, failed: 1, paused: null });
+  });
+
+  it("pauses on a 403 without a detail, the old expired-session answer", async () => {
+    const send = vi.fn<Transport["send"]>(async () => {
+      throw new ApiError(403, undefined);
+    });
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "a", createdAt: 100 }));
+    await outbox.enqueue(op({ id: "b", createdAt: 200 }));
+
+    await sync.flush(1);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(await outbox.failed(1)).toEqual([]);
+    expect(sync.state()).toMatchObject({ pending: 2, failed: 0, paused: "auth" });
+  });
+
+  it("pauses on a 403 that names the session or CSRF", async () => {
+    const send = vi.fn<Transport["send"]>(async () => {
+      throw new ApiError(
+        403,
+        "CSRF verification failed. Request aborted.",
+        "CSRF verification failed. Request aborted.",
+      );
+    });
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+
+    await sync.flush(1);
+
+    expect(await outbox.failed(1)).toEqual([]);
+    expect(sync.state()).toMatchObject({ pending: 1, failed: 0, paused: "auth" });
+  });
+
   it("pauses on the device lock and keeps every op", async () => {
     const send = vi.fn<Transport["send"]>(async () => {
       throw deviceLock();
@@ -436,7 +515,54 @@ describe("pauses", () => {
       "b",
     ]);
     expect(await outbox.failed(1)).toEqual([]);
-    expect(sync.state()).toMatchObject({ pending: 2, failed: 0, paused: "device" });
+    // The lock belongs to this game only (see `pausedFor`).
+    expect(sync.stateFor(1)).toMatchObject({
+      pending: 2,
+      failed: 0,
+      paused: "device",
+    });
+  });
+
+  it("pauses only the game the other device holds", async () => {
+    const send = vi.fn<Transport["send"]>(async (sent: Op) => {
+      if (sent.gameId === 1) {
+        throw deviceLock();
+      }
+    });
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "g1", gameId: 1, createdAt: 100 }));
+    await outbox.enqueue(op({ id: "g2", gameId: 2, createdAt: 200 }));
+
+    await sync.flush(1);
+
+    expect(sync.pausedFor(1)).toBe("device");
+    expect(sync.pausedFor(2)).toBeNull();
+    expect(sync.stateFor(1).paused).toBe("device");
+    expect(sync.stateFor(2).paused).toBeNull();
+
+    // Game 2 has nothing to do with the conflict and still drains.
+    await sync.flush(2);
+
+    expect(await outbox.pending(2)).toEqual([]);
+    expect((await outbox.pending(1)).map((entry) => entry.id)).toEqual(["g1"]);
+  });
+
+  it("keeps the session pause app-wide", async () => {
+    const send = vi.fn<Transport["send"]>(async (sent: Op) => {
+      if (sent.gameId === 1) {
+        throw new ApiError(401, { detail: "Anmeldung abgelaufen." });
+      }
+    });
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "g1", gameId: 1, createdAt: 100 }));
+    await outbox.enqueue(op({ id: "g2", gameId: 2, createdAt: 200 }));
+
+    await sync.flush(1);
+
+    expect(sync.pausedFor(1)).toBe("auth");
+    expect(sync.pausedFor(2)).toBe("auth");
+    await sync.flush(2);
+    expect((await outbox.pending(2)).map((entry) => entry.id)).toEqual(["g2"]);
   });
 
   it("detects the device lock from the device_id in the body", async () => {
@@ -448,7 +574,7 @@ describe("pauses", () => {
 
     await sync.flush(1);
 
-    expect(sync.state().paused).toBe("device");
+    expect(sync.pausedFor(1)).toBe("device");
     expect(await outbox.pending(1)).toHaveLength(1);
   });
 
@@ -461,7 +587,7 @@ describe("pauses", () => {
 
     await sync.flush(1);
 
-    expect(sync.state().paused).toBe("device");
+    expect(sync.pausedFor(1)).toBe("device");
     expect(await outbox.pending(1)).toHaveLength(1);
   });
 
@@ -820,7 +946,7 @@ describe("cross-tab", () => {
     await first.flush(1);
     await settle(2);
 
-    expect(other.state().paused).toBe("device");
+    expect(other.pausedFor(1)).toBe("device");
     expect(await outbox.pending(1)).toHaveLength(1);
   });
 

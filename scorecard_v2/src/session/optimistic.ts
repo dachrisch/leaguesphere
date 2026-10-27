@@ -31,6 +31,30 @@ const SCORING_VALUES: Record<string, number> = {
   "Safety (+2)": 2,
 };
 
+/**
+ * Mirrors `GameLogCreator._coerce_player` (`gamedays/service/gamelog.py`):
+ * `TeamLog.player` is an unsigned small integer, and anything that is not a
+ * jersey number in `0..32767` is dropped to `None` — which scores nothing.
+ * A jersey of `"51.85"` is truncated to 51 there; without the same rule here the
+ * optimistic score would promise points the server never writes.
+ */
+const PLAYER_MIN = 0;
+const PLAYER_MAX = 32767;
+
+export function coercePlayer(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  const number = Math.trunc(Number(value));
+  if (!Number.isFinite(number)) {
+    return null;
+  }
+  if (number < PLAYER_MIN || number > PLAYER_MAX) {
+    return null;
+  }
+  return number;
+}
+
 /** Events the server stores with `sequence = 0`. */
 const EXCLUDED_EVENTS = new Set([
   "Strafe",
@@ -67,9 +91,11 @@ interface PossessionPayload {
 }
 
 function pointsOf(name: string, player: number | null | undefined): number {
-  if (player === null || player === undefined) {
-    // The server stores value 0 when a scoring event has no jersey, so a
-    // touchdown without one scores nothing. Mirror that.
+  // The server stores value 0 when a scoring event has no usable jersey, so a
+  // touchdown without one scores nothing. Mirror that, including the range
+  // check: an out-of-range jersey is dropped server-side and must not score
+  // here either.
+  if (coercePlayer(player) === null) {
     return 0;
   }
   return SCORING_VALUES[name] ?? 0;
@@ -161,7 +187,7 @@ export function replayOps(base: GameLog, ops: StoredOp[]): ReplayResult {
       );
       const sequence = needsSequence ? nextSeq++ : 0;
       for (const entry of inputs) {
-        const player = entry.player ?? null;
+        const player = coercePlayer(entry.player);
         const value = pointsOf(entry.name, player);
         if (side !== null) {
           withDelta(log, side, half, value);
