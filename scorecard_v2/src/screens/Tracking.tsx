@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { ApiError, apiDelete, apiPut } from "../api/client";
 import type { Game, GameLog } from "../api/types";
@@ -44,32 +44,40 @@ export default function TrackingScreen({
 }: TrackingScreenProps) {
   const [log, setLog] = useState<GameLog>(initialLog);
   const [possession, setPossession] = useState<string | null>(
-    initialLog.inPossession,
+    initialLog.inPossession ?? null,
   );
   const [possessionPending, setPossessionPending] = useState(false);
   const [possessionError, setPossessionError] = useState<string | null>(null);
   const [undoKey, setUndoKey] = useState<string | null>(null);
   const [undoError, setUndoError] = useState<string | null>(null);
+  // Refs, not state: two taps in the same tick both see the old state and
+  // would otherwise fire two writes.
+  const possessionInFlight = useRef(false);
+  const undoInFlight = useRef(false);
 
   const rows = useMemo(() => logRows(log), [log]);
 
   /**
    * Replace the log with a server answer. `inPossession` is only adopted when
-   * the payload carries it, so an older server does not silently drop the
-   * possession the screen already shows.
+   * the payload carries it **and** no possession change is in flight: a stale
+   * DELETE response must not undo the optimistic marker.
    */
   const replaceLog = (next: GameLog): void => {
     setLog(next);
-    if (Object.prototype.hasOwnProperty.call(next, "inPossession")) {
+    if (
+      !possessionInFlight.current &&
+      Object.prototype.hasOwnProperty.call(next, "inPossession")
+    ) {
       setPossession(next.inPossession ?? null);
     }
   };
 
   const takePossession = async (teamName: string): Promise<void> => {
-    if (possessionPending || teamName === possession) {
+    if (possessionInFlight.current || teamName === possession) {
       return;
     }
     const previous = possession;
+    possessionInFlight.current = true;
     setPossession(teamName);
     setPossessionPending(true);
     setPossessionError(null);
@@ -86,14 +94,16 @@ export default function TrackingScreen({
         ),
       );
     } finally {
+      possessionInFlight.current = false;
       setPossessionPending(false);
     }
   };
 
   const undo = async (row: LogRow): Promise<void> => {
-    if (undoKey !== null) {
+    if (undoInFlight.current) {
       return;
     }
+    undoInFlight.current = true;
     setUndoKey(row.key);
     setUndoError(null);
     try {
@@ -110,6 +120,7 @@ export default function TrackingScreen({
         ),
       );
     } finally {
+      undoInFlight.current = false;
       setUndoKey(null);
     }
   };
