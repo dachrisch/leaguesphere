@@ -17,6 +17,7 @@ import type {
   Penalty,
   RosterPlayer,
 } from "../api/types";
+import AppFooter from "../components/AppFooter";
 import AppHeader from "../components/AppHeader";
 import EventLog, {
   logRows,
@@ -828,6 +829,7 @@ export default function TrackingScreen({
         rows={rows}
         undoKey={undoKey}
       />
+      <AppFooter />
       <footer className="trackfoot">
         <button
           className="startbtn"

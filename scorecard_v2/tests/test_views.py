@@ -1,3 +1,4 @@
+import league_manager
 from django.contrib.auth.models import User
 from django.urls import resolve, reverse
 from django_webtest import WebTest
@@ -28,3 +29,13 @@ class TestScorecardV2View(WebTest):
         assert reverse("scorecard-home") == "/scorecard/"
         assert reverse("scorecard-v2-home") == "/scorecard/v2/"
         assert resolve("/scorecard/").func.view_class.__name__ == "ScorecardView"
+
+    def test_page_carries_the_version_for_the_footer(self):
+        user = User.objects.create_user("official", password="x")
+        self.app.set_user(user)
+        response = self.app.get(reverse("scorecard-v2-home"))
+
+        assert (
+            f'<meta content="{league_manager.__version__}" name="app-version"/>'
+            in response.text
+        )
