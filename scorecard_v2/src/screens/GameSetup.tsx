@@ -18,12 +18,16 @@ import type {
 } from "../api/types";
 import Screen from "../components/Screen";
 import { getDeviceId } from "../device";
+import { cachedGet, snapshotKey } from "../offline/snapshot";
 import { formatGameTime } from "./GameList";
 
 interface GameSetupScreenProps {
   game: Game;
   /** Called with the freshly loaded log once the server accepted the start. */
   onStarted: (log: GameLog) => void;
+  /** Header chrome owned by the flow. */
+  onBack?: () => void;
+  onLogout?: () => void;
 }
 
 type Side = "home" | "away";
@@ -358,6 +362,8 @@ function Segmented({
 export default function GameSetupScreen({
   game,
   onStarted,
+  onBack,
+  onLogout,
 }: GameSetupScreenProps) {
   const { id, officialsId, home, away, field, scheduled } = game;
   const crewPath = `/api/game/${id}/officials`;
@@ -367,6 +373,8 @@ export default function GameSetupScreen({
   const logPath = `/api/gamelog/${id}`;
 
   const finished = game.status.trim().toLowerCase() === "beendet";
+  // The start assigns the device lock server-side; it cannot be queued.
+  const offline = globalThis.navigator?.onLine === false;
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -405,7 +413,9 @@ export default function GameSetupScreen({
           setTeamError(true);
           return [];
         }),
-        apiGet<GameSetupPayload>(setupPath),
+        // Preloaded: a device that reloads with no network still shows what
+        // was agreed on the coin toss.
+        cachedGet<GameSetupPayload>(snapshotKey.setup(id), setupPath),
       ]);
       setSlots(slotsFromCrew(crew ?? []));
       setTeamOfficials(team ?? []);
@@ -425,7 +435,7 @@ export default function GameSetupScreen({
       );
       setLoading(false);
     }
-  }, [crewPath, setupPath, teamPath, home, away]);
+  }, [crewPath, setupPath, teamPath, home, away, id]);
 
   useEffect(() => {
     // `load` only writes state after its first `await`; the rule cannot see
@@ -585,6 +595,12 @@ export default function GameSetupScreen({
     if (inFlight.current || loading || finished) {
       return;
     }
+    if (offline) {
+      setError(
+        "Das Spiel kann nur mit Verbindung gestartet werden. Bitte Netz suchen und erneut versuchen.",
+      );
+      return;
+    }
     if (!force && readOnly) {
       return;
     }
@@ -621,7 +637,10 @@ export default function GameSetupScreen({
         }
         setPossessionSent(true);
       }
-      const log = await apiGet<GameLog>(logPath);
+      const log = await cachedGet<GameLog>(
+        snapshotKey.log(id),
+        logPath,
+      );
       inFlight.current = false;
       setSaving(false);
       onStarted(log);
@@ -646,6 +665,8 @@ export default function GameSetupScreen({
   let startLabel: string;
   if (readOnly) {
     startLabel = "Nur lesen";
+  } else if (offline) {
+    startLabel = "Start nur online";
   } else if (saving) {
     startLabel = "Startet …";
   } else if (confirmPending) {
@@ -659,6 +680,8 @@ export default function GameSetupScreen({
   return (
     <Screen
       kicker="Scorecard"
+      onBack={onBack}
+      onLogout={onLogout}
       sub={`${teamLabel(home)} – ${teamLabel(away)} · ${formatGameTime(
         scheduled,
       )} · Feld ${field}`}
@@ -899,7 +922,7 @@ export default function GameSetupScreen({
                   licenceIssues.length > 0 ? "crew-licence-warning" : undefined
                 }
                 className="startbtn"
-                disabled={saving || readOnly}
+                disabled={saving || readOnly || offline}
                 onClick={() => void runStart()}
                 type="button"
               >

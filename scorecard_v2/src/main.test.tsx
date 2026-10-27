@@ -9,6 +9,18 @@ const { registerServiceWorker } = vi.hoisted(() => ({
 // jsdom has no service worker; the mock keeps the mount test from trying.
 vi.mock("./serviceWorker", () => ({ registerServiceWorker }));
 
+vi.mock("./api/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./api/client")>();
+  return {
+    ...actual,
+    apiGet: vi.fn((path: string) =>
+      path === "/api/gameday/list/"
+        ? Promise.resolve([])
+        : Promise.resolve({ id: 1, username: "crew" }),
+    ),
+  };
+});
+
 describe("main", () => {
   beforeEach(() => {
     vi.resetModules();

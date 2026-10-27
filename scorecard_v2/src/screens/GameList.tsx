@@ -10,6 +10,13 @@ interface GameListProps {
   title?: string;
   /** Gameday date and venue, shown under the title. */
   subtitle?: string;
+  /** True while the whole gameday is shown, not only the user's crew. */
+  allGames?: boolean;
+  /** Switches between "my games" and the whole gameday (`?team=*`). */
+  onToggleAll?: () => void;
+  /** Header chrome owned by the flow. */
+  onBack?: () => void;
+  onLogout?: () => void;
 }
 
 const CLOCK = /^(\d{1,2}):(\d{2})(?::\d{2})?$/;
@@ -135,11 +142,36 @@ export default function GameList({
   onResume,
   title,
   subtitle,
+  allGames = false,
+  onToggleAll,
+  onBack,
+  onLogout,
 }: GameListProps) {
   const counts = summarise(games);
 
   return (
-    <Screen kicker="Scorecard" sub={subtitle} title={title ?? "Spiele"}>
+    <Screen
+      kicker="Scorecard"
+      onBack={onBack}
+      onLogout={onLogout}
+      sub={subtitle}
+      title={title ?? "Spiele"}
+    >
+      {onToggleAll === undefined ? null : (
+        <div className="scopebar">
+          <button
+            aria-pressed={allGames}
+            className={allGames ? "scopebtn sel" : "scopebtn"}
+            onClick={onToggleAll}
+            type="button"
+          >
+            {allGames ? "Alle Spiele" : "Meine Spiele"}
+          </button>
+          <span className="scopehint">
+            {allGames ? "Ganzer Spieltag" : "Nur deine Einteilung"}
+          </span>
+        </div>
+      )}
       {games.length === 0 ? (
         <div className="empty-state" role="status">
           <h2 className="empty-title">Keine Spiele für diesen Spieltag</h2>
