@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.0.2](https://github.com/dachrisch/leaguesphere/compare/v5.0.1...v5.0.2) (2026-10-27)
+
+
+### Documentation
+
+* **planning:** intake from the 2026-10-27 LeagueSphere v5 sync ([9bd84c4](https://github.com/dachrisch/leaguesphere/commit/9bd84c4fdeefc5dc0f66514ae12f7884c3eb35eb))
+* **planning:** write the referee training platform as offd, not orfd ([8dfb160](https://github.com/dachrisch/leaguesphere/commit/8dfb160743a1d777a169278c218531be3af27fe5))
+
 ## [5.0.1](https://github.com/dachrisch/leaguesphere/compare/v5.0.0...v5.0.1) (2026-10-27)
 
 
