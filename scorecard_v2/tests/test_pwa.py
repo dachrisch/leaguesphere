@@ -244,10 +244,18 @@ class TestPrecacheAssets:
 class TestCacheVersion:
     def test_version_is_the_app_version_plus_a_build_stamp(self):
         version = views.cache_version()
-        app_version, _, stamp = version.partition("-")
+        app_version, _, stamp = version.partition("@")
 
         assert app_version == league_manager.__version__
         assert len(stamp) == 12
+
+    def test_version_keeps_rc_and_demo_suffixes_intact(self, monkeypatch):
+        """Staging/demo bumps contain '-' and '+'; the delimiter must not."""
+        for version in ("5.0.2-rc.1", "5.0.2+demo.1"):
+            monkeypatch.setattr(league_manager, "__version__", version)
+            app_version, _, stamp = views.cache_version().partition("@")
+            assert app_version == version
+            assert len(stamp) == 12
 
     def test_version_changes_when_a_precached_asset_changes(
         self, tmp_path, monkeypatch
