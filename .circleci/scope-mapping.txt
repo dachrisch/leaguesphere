@@ -16,7 +16,7 @@
 \.circleci/.* run-scorecard true
 \.circleci/.* run-liveticker true
 \.circleci/.* run-passcheck true
-\.circleci/.* run-field true
+\.circleci/.* run-passcheck-v2 true
 \.circleci/.* run-designer true
 \.circleci/.* run-journey true
 \.circleci/.* run-share true
@@ -84,11 +84,11 @@ liveticker/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest
 liveticker/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc) run-build-frontend true
 passcheck/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|jest\.config\.js|index\.html|public/.*|\.npmrc|exclude-files\.txt) run-passcheck true
 passcheck/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|jest\.config\.js|index\.html|public/.*|\.npmrc|exclude-files\.txt) run-build-frontend true
-field/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*|\.npmrc) run-field true
-field/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*|\.npmrc) run-build-frontend true
-field/.*\.py run-python-designer true
-field/.*\.py run-build-backend true
-field/(static|templates)/.* run-build-frontend true
+passcheck_v2/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*|\.npmrc) run-passcheck-v2 true
+passcheck_v2/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*|\.npmrc) run-build-frontend true
+passcheck_v2/.*\.py run-python-designer true
+passcheck_v2/.*\.py run-build-backend true
+passcheck_v2/(static|templates)/.* run-build-frontend true
 gameday_designer/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*|\.npmrc) run-designer true
 gameday_designer/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*|\.npmrc) run-build-frontend true
 journey_dashboard/.* run-journey true

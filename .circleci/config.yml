@@ -62,7 +62,7 @@ parameters:
   run-passcheck:
     type: boolean
     default: false
-  run-field:
+  run-passcheck-v2:
     type: boolean
     default: false
   run-designer:
