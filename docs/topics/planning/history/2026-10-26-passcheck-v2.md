@@ -10,7 +10,7 @@
 > **Status (2026-10-27):** complete on `feat/passcheck-v2-passcheck-v2-app` (Tasks
 > 1–11). The manual field protocol and the staged screenshot re-capture remain
 > as post-merge checks. Runs in parallel with
-> [Scorecard v2](../current/2026-10-26-scorecard-v2.md).
+> Scorecard v2 (PR #2104).
 
 **Goal:** Ship a passcheck-ready passcheck UI (`/passcheck/v2/`) that a referee can run one-handed on a phone — one tap per player, big pass photo, jersey numbers from the roster, and an offline outbox that survives a dead network — **while the old passcheck keeps running unchanged alongside it**.
 
@@ -82,17 +82,17 @@ must be installed from its own lockfile.
 
 | Task | Status | Commit |
 |---|---|---|
-| 1 Roster validation + `PUT` permission | done | `d18ff565` |
-| 2 Atomic/idempotent write + device lock + constraints + reset | done | `58d91a9a` |
-| 3 Private photos + permission-checked endpoint + import | done | `efc82fee` |
-| 4 `passcheck_v2` app, Vite scaffold, CI/deploy wiring | done | `fb709579` |
-| 5 API client + games screen | done | `2a6dc092` |
-| 6 Roster screen (tap, undo, timer) | done | `7448586c` |
-| 7 Player sheet (rules, jersey, photo viewer) | done | `86b2adc2` |
-| 8 Verification sheet + idempotent save flow | done | `0b7c9edd` |
-| 9 Offline shell, outbox, sync-on-reconnect | done | `fb7599d8` |
-| 10 Feature doc + in-app help + screenshot | done | `8d8eab10` |
-| 11 Flow wiring + v1 link + noindex | done | `1ff355e3` |
+| 1 Roster validation + `PUT` permission | done | `b789fb28` |
+| 2 Atomic/idempotent write + device lock + constraints + reset | done | `568a8804` |
+| 3 Private photos + permission-checked endpoint + import | done | `d9abf825` |
+| 4 `passcheck_v2` app, Vite scaffold, CI/deploy wiring | done | `c7dd1232` |
+| 5 API client + games screen | done | `ffe9e456` |
+| 6 Roster screen (tap, undo, timer) | done | `f7959694` |
+| 7 Player sheet (rules, jersey, photo viewer) | done | `be2c6af7` |
+| 8 Verification sheet + idempotent save flow | done | `58021281` |
+| 9 Offline shell, outbox, sync-on-reconnect | done | `183be238` |
+| 10 Feature doc + in-app help + screenshot | done | `7432e9f2` |
+| 11 Flow wiring + v1 link + noindex | done | `9cfac009` |
 
 Deviations from the task text below (the task text is kept for history):
 
