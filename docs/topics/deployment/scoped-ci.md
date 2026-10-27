@@ -23,7 +23,7 @@ into two files driven by the `circleci/path-filtering` orb:
    tests always gate builds — plus the always-run `scope_anchor` noop:
    a job whose entire `requires` list is filtered out is itself skipped
    even when its own filter is true, so without the anchor a
-   backend-only change would skip `build_frontend` (all five `*_js`
+   backend-only change would skip `build_frontend` (all `*_js`
    jobs filtered) and `test_compose_network` (which unconditionally
    loads both images) would hard-fail on `docker load` (pipelines 5503,
    5525). The anchor guarantees at least one requirement always
@@ -60,7 +60,7 @@ into two files driven by the `circleci/path-filtering` orb:
 | `python-core` | `uv run pytest league_manager/tests/ share/tests/ home/tests/ -n 4` |
 | `python-gamedays` | `uv run pytest gamedays/ league_table/ -n 4` |
 | `python-officials` | `uv run pytest officials/tests/ teammanager/ -n 4` (accounts is a test stub; its scope only opens the shard) |
-| `python-live` | `uv run pytest liveticker/tests/ scorecard/tests.py -n 4` |
+| `python-live` | `uv run pytest liveticker/tests/ scorecard/tests.py scorecard_v2/tests/ -n 4` |
 | `python-designer` | `uv run pytest passcheck/tests/ gameday_designer/tests/ journey/tests.py journey/api/tests/ matchreport/tests/ -n 4` |
 | `python-cross` | `uv run pytest tests/ scripts/tests/ -n 4` |
 
