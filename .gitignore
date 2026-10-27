@@ -152,6 +152,7 @@ server*
 # Frontend build artifacts (built in Docker)
 scorecard/static/scorecard/js/*.js
 scorecard/static/scorecard/js/*.css
+scorecard_v2/static/scorecard_v2/js/
 liveticker/static/liveticker/js/*.js
 liveticker/static/liveticker/js/*.css
 passcheck/static/passcheck/js/*.js

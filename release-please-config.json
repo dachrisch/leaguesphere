@@ -14,6 +14,7 @@
         {"type": "json", "path": "passcheck/package.json", "jsonpath": "$.version"},
         {"type": "json", "path": "passcheck_v2/package.json", "jsonpath": "$.version"},
         {"type": "json", "path": "scorecard/package.json", "jsonpath": "$.version"},
+        {"type": "json", "path": "scorecard_v2/package.json", "jsonpath": "$.version"},
         {"type": "json", "path": "gameday_designer/package.json", "jsonpath": "$.version"}
       ]
     }

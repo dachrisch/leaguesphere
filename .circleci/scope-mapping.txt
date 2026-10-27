@@ -14,6 +14,7 @@
 \.circleci/.* run-python-designer true
 \.circleci/.* run-python-cross true
 \.circleci/.* run-scorecard true
+\.circleci/.* run-scorecard-v2 true
 \.circleci/.* run-liveticker true
 \.circleci/.* run-passcheck true
 \.circleci/.* run-passcheck-v2 true
@@ -57,9 +58,13 @@ home/.* run-build-backend true
 ((officials|accounts|teammanager)/migrations/.*) run-migrations true
 
 # --- liveticker + scorecard backends (live shard) ---
-(liveticker/.*\.py|liveticker/(api|service|tests)/.*|scorecard/.*\.py) run-python-live true
-(liveticker/.*\.py|liveticker/(api|service|tests)/.*|scorecard/.*\.py) run-build-backend true
+(liveticker/.*\.py|liveticker/(api|service|tests)/.*|scorecard/.*\.py|scorecard_v2/.*\.py) run-python-live true
+(liveticker/.*\.py|liveticker/(api|service|tests)/.*|scorecard/.*\.py|scorecard_v2/.*\.py) run-build-backend true
 ((liveticker|scorecard)/migrations/.*) run-migrations true
+# Both scorecards (and the ticker) are built on the gamedays APIs: their tests
+# assert the wire contract, so an API change must run them even when the
+# gamedays shard covers the app.
+gamedays/api/.* run-python-live true
 
 # --- passcheck + designer backends + journey + matchreport (designer shard) ---
 (passcheck/.*\.py|passcheck/(api|service|tests)/.*) run-python-designer true
@@ -70,7 +75,7 @@ home/.* run-build-backend true
 (journey|matchreport)/.* run-build-backend true
 ((passcheck|gameday_designer|journey|matchreport)/migrations/.*) run-migrations true
 passcheck/templates/.* run-python-designer true
-(scorecard|liveticker)/templates/.* run-python-live true
+((liveticker|scorecard|scorecard_v2)/templates/.*) run-python-live true
 gameday_designer/templates/.* run-python-designer true
 
 # --- cross-cutting tests + CI scripts ---
@@ -80,6 +85,8 @@ gameday_designer/templates/.* run-python-designer true
 # --- frontends (src + configs trigger job + image build) ---
 scorecard/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc|\.prettierignore) run-scorecard true
 scorecard/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc|\.prettierignore) run-build-frontend true
+scorecard_v2/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html) run-scorecard-v2 true
+scorecard_v2/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html) run-build-frontend true
 liveticker/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc) run-liveticker true
 liveticker/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc) run-build-frontend true
 passcheck/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|jest\.config\.js|index\.html|public/.*|\.npmrc|exclude-files\.txt) run-passcheck true
@@ -104,10 +111,11 @@ share/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|ts
 share/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*) run-build-frontend true
 # e2e sources stay covered by their shards (e2e job itself is always-run).
 scorecard/tests/e2e/.* run-python-live true
+scorecard_v2/tests/e2e/.* run-python-live true
 gameday_designer/tests/e2e/.* run-python-designer true
 
 # --- committed static assets (collectstatic / nginx image input) ---
-(gamedays|league_manager|liveticker|officials|passcheck|scorecard|teammanager|gameday_designer|share)/static/.* run-build-frontend true
+(gamedays|league_manager|liveticker|officials|passcheck|scorecard|scorecard_v2|teammanager|gameday_designer|share)/static/.* run-build-frontend true
 
 # --- container images ---
 (container/app\.Dockerfile|container/entrypoint.*\.sh) run-build-backend true

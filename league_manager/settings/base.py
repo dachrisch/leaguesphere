@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "league_manager.apps.LeagueManagerConfig",
     "rest_framework",
     "scorecard",
+    "scorecard_v2",
     "liveticker",
     "league_table",
     "corsheaders",

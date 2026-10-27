@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#070a0f"/>
+  <title>Keine Verbindung – LeagueSphere Scorecard</title>
+  <!-- Self-contained on purpose: this page is what the service worker shows
+       when the network is gone, so it must not need a stylesheet, a font or a
+       script from anywhere else. Colours mirror src/styles/tokens.css. -->
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070a0f;
+      --panel: #11161f;
+      --fg: #f3f5f8;
+      --muted: #8b95a7;
+      --home: #e5322d;
+      /* Darker than --home: #fff on #e5322d is only 4.35:1, below AA for the
+         retry button. This is 5.39:1. */
+      --home-action: #cc2822;
+      --line: rgba(255, 255, 255, 0.09);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      text-align: center;
+    }
+
+    main {
+      max-width: 22rem;
+      padding: 28px 22px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+    }
+
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 16px;
+      border-radius: 14px;
+      background: var(--home);
+      color: #fff;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    p {
+      margin: 0 0 20px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
+    button {
+      min-height: 44px;
+      width: 100%;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--home-action);
+      color: #fff;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:focus-visible {
+      outline: 2px solid var(--fg);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <div class="mark" aria-hidden="true">LS</div>
+  <h1>Keine Verbindung</h1>
+  <p>Diese App wurde auf diesem Gerät noch nicht gespeichert. Verbinde dich
+    einmal mit dem Internet und lade die Seite neu.</p>
+  <button type="button" onclick="location.reload()">Neu laden</button>
+</main>
+</body>
+</html>

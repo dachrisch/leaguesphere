@@ -2,9 +2,9 @@ import logging
 import random
 import time
 
-from django.db import OperationalError, transaction
+from django.db import IntegrityError, OperationalError, transaction
 
-from gamedays.models import Team, TeamLog
+from gamedays.models import Team, TeamLog, GameLogSubmission
 from gamedays.service.gamelog import GameLog, GameLogCreator
 from gamedays.service.wrapper.gameinfo_wrapper import GameinfoWrapper
 from gamedays.service.wrapper.gameresult_wrapper import GameresultWrapper
@@ -16,16 +16,25 @@ logger = logging.getLogger(__name__)
 # "try restarting transaction" -- concurrent scorecard writes to the same
 # game must do exactly that instead of surfacing a 500 (#2006).
 _RETRYABLE_MYSQL_CODES = frozenset({1213, 1205})
+# SQLite (dev/demo/tests) has no row locks: a second writer gets a database
+# lock error instead of waiting. That is the same "try again" situation.
+_RETRYABLE_SQLITE_MESSAGES = ("database is locked", "database table is locked")
 _WRITE_MAX_ATTEMPTS = 3
 
 
 def _is_retryable_lock_error(error: Exception) -> bool:
-    """True for MySQL deadlock / lock-wait-timeout OperationalErrors."""
+    """True for MySQL deadlock / lock-wait-timeout OperationalErrors.
+
+    SQLite's database-lock errors count too: without row locks the competing
+    transaction has to be retried like a deadlock victim.
+    """
     args = getattr(error, "args", ())
     if args and args[0] in _RETRYABLE_MYSQL_CODES:
         return True
     message = str(error).lower()
-    return "deadlock found" in message or "lock wait timeout exceeded" in message
+    if "deadlock found" in message or "lock wait timeout exceeded" in message:
+        return True
+    return any(retryable in message for retryable in _RETRYABLE_SQLITE_MESSAGES)
 
 
 class GameService(object):
@@ -50,11 +59,53 @@ class GameService(object):
         return GameLog(self.gameinfo.gameinfo)
 
     def create_gamelog(self, team_name, event, user, half):
-        # ToDo extract to TeamWrapper
-        team = self._resolve_team(team_name)
-        return self._write_gamelog(
-            GameLogCreator(self.gameinfo.gameinfo, team, event, user, half).create
-        )
+        gamelog, _ = self.create_gamelog_once(team_name, event, user, half)
+        return gamelog
+
+    def create_gamelog_once(self, team_name, event, user, half, client_id=None):
+        """Write ``event`` at most once per ``client_id`` (offline retries).
+
+        Returns ``(gamelog, applied)``. ``applied`` is ``False`` for a repeated
+        submission: the current log is answered and nothing is written.
+
+        The ``GameLogSubmission`` row is claimed in the very transaction that
+        writes the rows. A write that raises therefore leaves no claim behind,
+        so the retry can still apply it; a crash between the two is impossible.
+
+        The claim itself is a plain ``create()`` inside a savepoint, not
+        ``get_or_create()``: under concurrent identical retries both requests
+        can pass the existence check, and the loser then gets an
+        ``IntegrityError`` from the unique constraint instead of a row. The
+        savepoint keeps the outer transaction usable after that error, so the
+        loser simply answers with the now-current log -- exactly one write,
+        two 200/201s. ``get_or_create()`` would let that IntegrityError escape
+        as a 500.
+        """
+        team = self._resolve_team(team_name)  # ToDo extract to TeamWrapper
+        write = GameLogCreator(self.gameinfo.gameinfo, team, event, user, half).create
+        if client_id is None:
+            # The old app sends no client id: every post creates rows.
+            return self._write_gamelog(write), True
+
+        state = {"applied": True}
+
+        def claim():
+            try:
+                # Savepoint: a duplicate key must not poison the enclosing
+                # transaction, which still has to read the current log.
+                with transaction.atomic():
+                    GameLogSubmission.objects.create(
+                        gameinfo=self.gameinfo.gameinfo, client_id=client_id
+                    )
+            except IntegrityError:
+                # Somebody else already claimed this submission (and, because
+                # the claim shares its transaction, also committed its rows).
+                state["applied"] = False
+                return self.get_gamelog()
+            return None
+
+        gamelog = self._write_gamelog(write, claim)
+        return gamelog, state["applied"]
 
     @staticmethod
     def _resolve_team(team_identifier) -> Team:
@@ -97,12 +148,20 @@ class GameService(object):
     def delete_gamelog(self, sequence):
         return self._write_gamelog(lambda: self._mark_entries_as_deleted(sequence))
 
+    def delete_gamelog_entry(self, team_log_id):
+        return self._write_gamelog(lambda: self._mark_entry_as_deleted(team_log_id))
+
     def _mark_entries_as_deleted(self, sequence) -> GameLog:
         gamelog = self.get_gamelog()
         gamelog.mark_entries_as_deleted(sequence)
         return gamelog
 
-    def _write_gamelog(self, write) -> GameLog:
+    def _mark_entry_as_deleted(self, team_log_id) -> GameLog:
+        gamelog = self.get_gamelog()
+        gamelog.mark_entry_as_deleted(team_log_id)
+        return gamelog
+
+    def _write_gamelog(self, write, claim=None) -> GameLog:
         """Run a gamelog ``write`` and shift the stored scores by its effect.
 
         Only the change the write makes to the gamelog half scores is applied,
@@ -111,9 +170,16 @@ class GameService(object):
         in one transaction holding the game's result rows locked, so concurrent
         writes to the same game apply their changes one after the other.
 
+        ``claim`` is called inside that transaction before the write. It
+        returns ``None`` to let the write run, or an already current ``GameLog``
+        when the submission was applied before — in that case nothing is
+        written and that log is returned. Running it inside the transaction is
+        what keeps a claim and its rows together on a failed write.
+
         Concurrent writers contend on the Gameresult + Gameinfo row locks and
         the TeamLog inserts, so InnoDB deadlocks (1213) / lock-wait timeouts
-        (1205) are expected under load. Retry the whole transaction a few
+        (1205) are expected under load. SQLite (dev/demo/tests, no row locks)
+        reports a database lock instead. Retry the whole transaction a few
         times with backoff instead of failing the request (#2006).
         """
         last_error = None
@@ -121,6 +187,10 @@ class GameService(object):
             try:
                 with transaction.atomic():
                     self.gameresult.lock()
+                    if claim is not None:
+                        existing = claim()
+                        if existing is not None:
+                            return existing
                     before = self._half_scores(self.get_gamelog())
                     gamelog = write()
                     after = self._half_scores(gamelog)

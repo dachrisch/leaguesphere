@@ -18,7 +18,11 @@ branch), i.e. at PR time, before anything is merged:
   to ``origin/master`` (only release-please may touch them); version
   files must either match master or carry a staging suffix (``-rc.N`` /
   ``+demo.N``) from the ``deploy.yaml`` flow, which has to be reset to
-  the master state before merge.
+  the master state before merge. A version file the branch *introduces*
+  (absent from master, e.g. a new SPA ``package.json``) has no base
+  version, so it must start at the base manifest version (a staging
+  ``-rc.N``/``+demo.N`` suffix on that same stem is allowed); a base
+  entry that exists but cannot be listed or read still fails closed.
 
 Exit 0 when everything is in sequence, 1 with a human-readable reason
 otherwise (fail closed when the base state cannot be determined).
@@ -46,6 +50,7 @@ VERSION_FILES = {
     "passcheck/package.json": "package-json",
     "passcheck_v2/package.json": "package-json",
     "scorecard/package.json": "package-json",
+    "scorecard_v2/package.json": "package-json",
     "gameday_designer/package.json": "package-json",
     "journey_dashboard/package.json": "package-json",
     "uv.lock": "uv-lock",
@@ -187,7 +192,7 @@ def check_release_please_branch(
 def check_feature_branch(
     base_manifest: str,
     head_manifest: str,
-    base_files: dict[str, str],
+    base_files: dict[str, str | None],
     head_files: dict[str, str],
     base_changelog: str,
     head_changelog: str,
@@ -212,6 +217,26 @@ def check_feature_branch(
         head_version = head_files.get(path)
         if head_version is None:
             errors.append(f"{path}: missing from version check")
+            continue
+        if base_version is None:
+            # Introduced by this branch (no tree entry on master): the stem
+            # must match the base manifest, a staging suffix is allowed.
+            try:
+                head_stem, suffix = split_suffix(head_version)
+                base_stem = parse_stable(base_manifest)
+            except ValueError:
+                errors.append(
+                    f"{path} has unparsable version {head_version!r} "
+                    f"or base manifest {base_manifest!r}"
+                )
+                continue
+            if (suffix == "" and head_version != base_manifest) or (
+                suffix != "" and head_stem != base_stem
+            ):
+                errors.append(
+                    f"{path} is {head_version!r} but a new version file must "
+                    f"start at the base manifest version {base_manifest!r}"
+                )
             continue
         if head_version == base_version:
             continue
@@ -270,14 +295,23 @@ def collect_state(base_ref: str) -> tuple[dict | None, str | None]:
         base_manifest = json.loads(manifest_raw)["."]
     except (json.JSONDecodeError, KeyError) as exc:
         return None, f"could not parse base manifest ({exc}) - failing closed"
-    base_files: dict[str, str] = {}
+    base_files: dict[str, str | None] = {}
     for path in VERSION_FILES:
+        listed = _git(["ls-tree", "-r", "--name-only", base_ref, "--", path])
+        if listed is None:
+            # A failed listing (bad ref, object/network error) must never be
+            # mistaken for "the branch introduces this file".
+            return None, f"could not list {path} in {base_ref} - failing closed"
+        if listed.strip() == "":
+            # Empty output = no tree entry on base: the branch introduces this
+            # version file (checked against the base manifest below).
+            base_files[path] = None
+            continue
         content = _git(["show", f"{base_ref}:{path}"])
         if content is None:
-            # A version file that does not exist on master yet (new app in
-            # this branch) has no base state to compare against; the
-            # release-please branch check still requires it once merged.
-            continue
+            # The entry exists but its blob is unreadable (partial clone,
+            # fetch failure): never mistake that for a new file.
+            return None, f"could not read {path} from {base_ref} - failing closed"
         try:
             base_files[path] = read_version_from_text(path, content)
         except ValueError as exc:

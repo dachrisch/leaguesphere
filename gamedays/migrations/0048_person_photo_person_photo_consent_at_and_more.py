@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("gamedays", "0045_team_updated_at"),
+        ("gamedays", "0047_alter_gamelogsubmission_created_at"),
     ]
 
     operations = [

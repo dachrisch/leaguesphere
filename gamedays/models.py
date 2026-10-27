@@ -298,11 +298,34 @@ class GameSetup(models.Model):
     awayCaptain = models.CharField(max_length=100, blank=True)
     hasFinalScoreChanged = models.BooleanField(default=False)
     note = models.TextField(default=None, blank=True, null=True)
+    device_id = models.CharField(max_length=64, blank=True, default="")
 
     objects: QuerySet["GameSetup"] = models.Manager()
 
     def __str__(self):
         return f"{self.gameinfo.pk}"
+
+
+class GameLogSubmission(models.Model):
+    """One client submission; guarantees at-most-once log writes offline."""
+
+    gameinfo = models.ForeignKey(Gameinfo, on_delete=models.CASCADE)
+    client_id = models.UUIDField()
+    # The purge command scans by age; without an index every run is a full
+    # table scan of a table that grows with every log write.
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    objects: QuerySet["GameLogSubmission"] = models.Manager()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["gameinfo", "client_id"], name="unique_submission_per_game"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.gameinfo.pk}__{self.client_id}"
 
 
 class TeamLog(BumpUpdatedAtOnSaveMixin, models.Model):

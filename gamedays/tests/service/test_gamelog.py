@@ -1,5 +1,5 @@
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 from unittest import mock
 
 from django.contrib.auth.models import User
@@ -48,6 +48,8 @@ class TestGamelog(TestCase):
             {
                 "gameId": 81,
                 "isFirstHalf": True,
+                "inPossession": None,
+                "events": [],
                 "home": {
                     "id": 11,
                     "name": "White",
@@ -64,6 +66,82 @@ class TestGamelog(TestCase):
                 },
             }
         )
+
+    def test_as_json_carries_possession_and_raw_events(self):
+        gameinfo = DBSetup().create_teamlog_home_and_away()
+        gameinfo.in_possession = "Home"
+        gameinfo.save()
+        TeamLog.objects.create(
+            gameinfo=gameinfo,
+            team=Team.objects.get(name="Home"),
+            sequence=0,
+            event="Strafe",
+            input="Holding Defense",
+            player=23,
+            half=1,
+            author=gameinfo.gameday.author,
+            created_time=time(12, 34),
+        )
+
+        payload = json.loads(GameLog(gameinfo).as_json())
+
+        assert payload["inPossession"] == "Home"
+        assert len(payload["events"]) == TeamLog.objects.filter(
+            gameinfo=gameinfo
+        ).count()
+        penalty = next(
+            event for event in payload["events"] if event["event"] == "Strafe"
+        )
+        assert penalty["team"] == "Home"
+        assert penalty["input"] == "Holding Defense"
+        assert penalty["time"].startswith(
+            f"{gameinfo.gameday.date.isoformat()}T12:34:00"
+        )
+
+    def test_events_are_newest_first_by_insertion(self):
+        DBSetup().g62_status_empty()
+        gameinfo = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=gameinfo, isHome=True).team
+        author = gameinfo.gameday.author
+        TeamLog.objects.create(
+            gameinfo=gameinfo,
+            team=home,
+            sequence=1,
+            event="Touchdown",
+            player=7,
+            value=6,
+            half=1,
+            author=author,
+            created_time=time(10, 0),
+        )
+        TeamLog.objects.create(
+            gameinfo=gameinfo,
+            team=home,
+            sequence=0,
+            event="Auszeit",
+            input="1:30",
+            half=1,
+            author=author,
+            created_time=time(11, 0),
+        )
+
+        payload = json.loads(GameLog(gameinfo).as_json())
+
+        assert [event["event"] for event in payload["events"]] == [
+            "Auszeit",
+            "Touchdown",
+        ]
+
+    def test_as_json_before_a_game_has_a_possession(self):
+        DBSetup().g62_status_empty()
+        gameinfo = Gameinfo.objects.first()
+        gameinfo.in_possession = ""
+        gameinfo.save()
+
+        payload = json.loads(GameLog(gameinfo).as_json())
+
+        assert payload["inPossession"] is None
+        assert payload["events"] == []
 
     def test_create_entries(self):
         first_game_entry = DBSetup().create_teamlog_home_and_away()

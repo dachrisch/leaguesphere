@@ -199,6 +199,17 @@ HELP_TOPICS = [
         video="https://www.youtube.com/embed/lW-sky-op6M",
     ),
     HelpTopic(
+        slug="spieltag-v2",
+        group="spielbetrieb",
+        title={"de": "Scorecard v2", "en": "Scorecard v2"},
+        summary={
+            "de": "Beta: die neue Erfassung am Feld – vom Spieltag über die Vorbereitung bis zum Ergebnis, auch offline.",
+            "en": "Beta: the new field app – from the gameday through preparation to the result, offline included.",
+        },
+        icon="bi-clipboard2-check",
+        order=36,
+    ),
+    HelpTopic(
         slug="passcheck-v2",
         group="spielbetrieb",
         title={"de": "Passcheck v2", "en": "Passcheck v2"},

@@ -41,7 +41,7 @@ All opt-in; without `include` the payload carries gameday entries only.
 | Token | Adds |
 |---|---|
 | `games` | `gamedays[].games[]`: id, scheduled, field, stage, standing, status, `results[]` (`team_id`, `team_name` short code or placeholder label, `fh`, `sh`, `pa`, `isHome`), `halftime_score`, `final_score`. |
-| `logs` | `games[].log`: the full event log, same shape as the game log page. Every entry has `sequence` and `time` (UTC ISO-8601 on the gameday's date), plus `isDeleted` when corrected. `cop` entries also carry `player` (jersey number or `null`). |
+| `logs` | `games[].log`: the full event log, same shape as the game log page. It carries `inPossession` (team name or `null`) and `events[]`: every raw row, newest first, including the penalties, timeouts, first downs and time the per-half `entries` omit. Every `events[]` row has `id`, `sequence`, `team` (name or `null`), `event`, `player`, `input`, `half`, `cop`, `isDeleted` and `time` (UTC ISO-8601 on the gameday's date). The per-half `entries` keep their `sequence` and `time`, plus `isDeleted` when corrected; `cop` entries also carry `player` (jersey number or `null`). |
 | `teams` | Top-level `teams: {"<id>": {name, description, logo}}` for every team in scope (result teams plus `team` filter). `description` is the full name; `logo` is an absolute URL or `null`. |
 | `standings` | Top-level `standings[]`: one entry per league-season in scope that has a table (`league {id, slug, name}`, `season {id, slug, name}`, `ranking` = tie-break step keys in order, `rows[]` with `rank` (within group), `group`, `standing`, `team_id`, `team__description`, `wins`, `draws`, `losses`, `games_played`, `pf`, `pa`, `diff`, `win_points`, `win_quotient`). Covers the whole league-season, not just the scope's teams. Cups/tournaments have no table. |
 | `live` | Implies `games`. Today's games that are not `beendet` get `live {status, time, home {name, score, isInPossession}, away {…}, ticks[] {text, team, time}}` (latest 5 ticks, same text as the liveticker). |
@@ -49,7 +49,13 @@ All opt-in; without `include` the payload carries gameday entries only.
 `logs[].time` is the stored UTC time-of-day recombined with the gameday's
 date, not the response date, so historical snapshots stay correct.
 Entries that share a sequence (a touchdown and its conversion) share one
-`time`.
+`time`; the raw `events[]` rows keep their own times.
+
+`logs[].events[]` is ordered newest first by insertion id, not by
+`created_time`'s time-of-day: a 23:59 row must not sort before the 00:05 row
+entered after midnight. A touchdown and its conversion stay adjacent, and
+`events[].input` is `null` (never an empty string) when the event has no
+detail.
 
 ## Envelope
 

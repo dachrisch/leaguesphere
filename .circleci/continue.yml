@@ -32,6 +32,9 @@ parameters:
   run-scorecard:
     type: boolean
     default: false
+  run-scorecard-v2:
+    type: boolean
+    default: false
   run-liveticker:
     type: boolean
     default: false
@@ -242,7 +245,7 @@ jobs:
       - checkout
       - setup_uv
       - python_shard_test:
-          paths: "liveticker/tests/ scorecard/tests.py"
+          paths: "liveticker/tests/ scorecard/tests.py scorecard_v2/tests/"
           junit: "test-results-live.xml"
           cov_flag: "python-live"
 
@@ -305,6 +308,42 @@ jobs:
       - run:
           name: "JavaScript Build"
           command: npm --prefix scorecard/ run build
+
+  scorecard_v2_js:
+    executor:
+      name: node/default
+      tag: "24.17"
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - node/install-packages:
+          app-dir: scorecard_v2/
+      - run:
+          name: "JavaScript Test Suite"
+          command: npm --prefix scorecard_v2/ run test:run
+      - codecov/upload:
+          dir: scorecard_v2/coverage
+          flags: scorecard-v2
+      - run:
+          name: "TypeScript Typecheck"
+          command: npm --prefix scorecard_v2/ run typecheck
+      - run:
+          name: "JavaScript Linter"
+          command: |
+            mkdir -p /tmp/eslint
+            npm --prefix scorecard_v2/ run eslint:junit
+      - store_test_results:
+          path: /tmp/eslint
+      - run:
+          name: "JavaScript Build"
+          command: |
+            npm --prefix scorecard_v2/ run build
+            # The Django template loads a classic <script>; an `es` chunk would
+            # throw on import.meta and never mount.
+            if grep -q "import.meta" scorecard_v2/static/scorecard_v2/js/scorecard_v2.js; then
+              echo "IIFE bundle must not contain import.meta" >&2
+              exit 1
+            fi
 
   liveticker_js:
     executor:
@@ -481,10 +520,15 @@ jobs:
       - node/install-packages:
           app-dir: scorecard/
       - node/install-packages:
+          app-dir: scorecard_v2/
+      - node/install-packages:
           app-dir: gameday_designer/
       - run:
           name: Build scorecard
           command: npm --prefix scorecard/ run build
+      - run:
+          name: Build scorecard_v2
+          command: npm --prefix scorecard_v2/ run build
       - run:
           name: Build gameday_designer
           command: npm --prefix gameday_designer/ run build
@@ -502,6 +546,17 @@ jobs:
           command: |
             uv run pytest scorecard/tests/e2e/ -v \
               --junitxml=test-reports/e2e-scorecard-results.xml
+      - run:
+          name: Run scorecard_v2 e2e tests
+          environment:
+            SECRET_KEY: 123456-TEST
+            MYSQL_HOST: 127.0.0.1
+            MYSQL_DB_NAME: test_test_db
+            MYSQL_USER: root
+            MYSQL_PWD: ""
+          command: |
+            uv run pytest scorecard_v2/tests/e2e/ -v \
+              --junitxml=test-reports/e2e-scorecard-v2-results.xml
       - run:
           name: Run gameday_designer e2e tests
           environment:
@@ -628,6 +683,11 @@ jobs:
               docker logs test_container
               exit 1
             fi
+
+            # The image must actually serve the v2 bundle (Task 22 DoD: builds and serves).
+            docker run --rm --network test_network curlimages/curl -fsS \
+              http://test_container/static/scorecard_v2/js/scorecard_v2.js > /dev/null
+            echo "scorecard_v2 bundle is served by the frontend image"
 
   check_migrations:
     docker:
@@ -1115,7 +1175,7 @@ workflows:
       # plus the always-run `scope_anchor` noop: a job whose `requires`
       # list is entirely filtered out is itself skipped (even when its
       # own filter is true), so without the anchor a backend-only change
-      # would skip build_frontend (all five *_js jobs filtered) and
+      # would skip build_frontend (every *_js job filtered) and
       # test_compose_network would then hard-fail on `docker load` of the
       # missing frontend.tar (observed on pipelines 5503 and 5525). The
       # anchor guarantees at least one requirement always remains, so a
@@ -1179,6 +1239,8 @@ workflows:
               only: /.*/
       - scorecard_js:
           filters: "(pipeline.parameters.run-scorecard == true)"
+      - scorecard_v2_js:
+          filters: "(pipeline.parameters.run-scorecard-v2 == true)"
       - liveticker_js:
           filters: "(pipeline.parameters.run-liveticker == true)"
       - passcheck_js:
@@ -1207,6 +1269,7 @@ workflows:
           requires:
             - scope_anchor
             - scorecard_js
+            - scorecard_v2_js
             - liveticker_js
             - passcheck_js
             - passcheck_v2_js

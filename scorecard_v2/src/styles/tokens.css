@@ -1,0 +1,77 @@
+/*
+ * Design tokens for scorecard v2.
+ *
+ * The app is used on a phone, outdoors, one-handed: dark, high contrast, big
+ * targets. Screens must not hard-code colours or spacing — take them from here
+ * so a later change (e.g. a pitch-side contrast pass) stays one edit.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --bg: #070a0f;
+  --panel: #11161f;
+  --panel2: #171e29;
+
+  /* Text — `--muted` stays above 4.5:1 on both panels. */
+  --fg: #f3f5f8;
+  --muted: #8b95a7;
+
+  /* Hairlines and translucent fills */
+  --line: rgba(255, 255, 255, 0.09);
+  --line-soft: rgba(255, 255, 255, 0.06);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --fill-soft: rgba(255, 255, 255, 0.07);
+
+  /* Team and status accents. `--home`/`--away` are the semantic names every
+     screen uses; the washes and tag text derive from them. */
+  --home: #e5322d;
+  --away: #2fbf71;
+  --amber: #f2a33c;
+  --home-text: #ff7b76;
+  --away-text: #7ce0a9;
+  --soon-text: #9aa5b6;
+  --home-wash: color-mix(in srgb, var(--home) 14%, transparent);
+  --away-wash: color-mix(in srgb, var(--away) 12%, transparent);
+  --amber-wash: color-mix(in srgb, var(--amber) 14%, transparent);
+
+  /* Typography. Barlow Condensed for headings and numerals, Inter for body. */
+  --font-display: "Barlow Condensed", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --fs-xs: 11px;
+  --fs-sm: 11px;
+  --fs-md: 12px;
+  --fs-base: 14px;
+  --fs-xl: 22px;
+  --fs-2xl: 30px;
+
+  /* Spacing scale (4px base) */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 20px;
+  --space-8: 40px;
+
+  /* Radii */
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* Elevation */
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 8px 24px rgba(0, 0, 0, 0.35);
+
+  /* Interaction */
+  --touch: 44px;
+  --focus-ring: 2px solid var(--amber);
+  --focus-offset: 2px;
+  --transition-fast: 120ms ease;
+
+  /* Layout shell */
+  --shell-width: 560px;
+  --page-gutter: var(--space-5);
+  --header-pad-top: max(var(--space-6), env(safe-area-inset-top));
+  --bottom-safe: max(var(--space-5), env(safe-area-inset-bottom));
+}
