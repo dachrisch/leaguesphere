@@ -129,7 +129,7 @@ def cache_version():
     The bundle filename is fixed, so the version is what tells a device that a
     deploy shipped different bytes: a new stamp → a new cache → a fresh install.
     """
-    return f"{league_manager.__version__}-{_build_stamp()}"
+    return f"{league_manager.__version__}@{_build_stamp()}"
 
 
 def _static_root():
