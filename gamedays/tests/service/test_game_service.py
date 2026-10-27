@@ -3,14 +3,16 @@ import threading
 import time
 import unittest
 from unittest import mock
+from uuid import uuid4
 
 from django.db import OperationalError, connection
 from django.test import TestCase, TransactionTestCase
 
-from gamedays.models import Team, Gameinfo, Gameresult, TeamLog
+from gamedays.models import Team, Gameinfo, Gameresult, GameLogSubmission, TeamLog
 from gamedays.service.game_service import GameService
 from gamedays.service.gamelog import GameLog
 from gamedays.service.wrapper.gameinfo_wrapper import IllegalGameTransition
+from gamedays.service.wrapper.gameresult_wrapper import GameresultWrapper
 from gamedays.tests.setup_factories.db_setup import DBSetup
 
 
@@ -387,3 +389,66 @@ class TestConcurrentGamelogWrites(TransactionTestCase):
         )
         assert len(sequences) == self.WRITERS
         assert len(set(sequences)) == self.WRITERS
+
+
+class TestConcurrentIdenticalSubmissions(TransactionTestCase):
+    """Concurrent retries of ONE op must write once and never 500.
+
+    The claim is a ``create()`` under the unique constraint, so the loser gets
+    an ``IntegrityError`` (a duplicate), not a second row -- and answers with
+    the log the winner committed. This runs on every backend, SQLite included:
+    without row locks the competing transaction takes a database lock, which
+    ``_is_retryable_lock_error`` retries. No ``skipUnless`` here on purpose --
+    this is exactly the race the claim has to survive (#2006 follow-up).
+    """
+
+    WRITERS = 3
+
+    def test_concurrent_retries_apply_exactly_once(self):
+        gameday = DBSetup().g62_status_empty()
+        game = Gameinfo.objects.first()
+        home = Gameresult.objects.get(gameinfo=game, isHome=True).team
+        client_id = uuid4()
+        applied = []
+        errors = []
+        real_lock = GameresultWrapper.lock
+
+        def slow_lock(wrapper):
+            # Park every thread inside its open transaction so the claims
+            # really overlap instead of running one-after-another.
+            time.sleep(0.2)
+            return real_lock(wrapper)
+
+        def write():
+            try:
+                _, was_applied = GameService(game.pk).create_gamelog_once(
+                    home.pk, TOUCHDOWN_WITH_PAT, gameday.author, 1,
+                    client_id=client_id,
+                )
+                applied.append(was_applied)
+            except Exception as error:  # pragma: no cover - reported below
+                errors.append(error)
+            finally:
+                connection.close()
+
+        with mock.patch.object(GameresultWrapper, "lock", slow_lock):
+            threads = [threading.Thread(target=write) for _ in range(self.WRITERS)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+
+        assert errors == []
+        # Exactly one request applied the write; every other one answered with
+        # the already current log.
+        assert applied.count(True) == 1
+        assert applied.count(False) == self.WRITERS - 1
+        assert (
+            GameLogSubmission.objects.filter(
+                gameinfo=game, client_id=client_id
+            ).count()
+            == 1
+        )
+        assert (
+            TeamLog.objects.filter(gameinfo=game, event="Touchdown").count() == 1
+        )

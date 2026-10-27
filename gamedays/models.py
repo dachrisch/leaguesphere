@@ -310,7 +310,9 @@ class GameLogSubmission(models.Model):
 
     gameinfo = models.ForeignKey(Gameinfo, on_delete=models.CASCADE)
     client_id = models.UUIDField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    # The purge command scans by age; without an index every run is a full
+    # table scan of a table that grows with every log write.
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     objects: QuerySet["GameLogSubmission"] = models.Manager()
 

@@ -18,7 +18,14 @@ from gamedays.api.serializers import (
     GameSetupSerializer,
     GameLogSerializer,
 )
-from gamedays.models import Team, Gameinfo, GameSetup, Gameresult, TeamLog
+from gamedays.models import (
+    Team,
+    Gameinfo,
+    GameSetup,
+    GameLogSubmission,
+    Gameresult,
+    TeamLog,
+)
 from gamedays.service.game_service import GameService
 from gamedays.service.gamelog import gameday_ref_now, serialize_events
 from gamedays.service.wrapper.gameinfo_wrapper import IllegalGameTransition
@@ -46,8 +53,12 @@ def _device_conflict(stored: str, incoming: str):
 
 
 def _stored_device(game_id) -> str:
+    # ``order_by("pk")`` + ``.first()``: historic duplicate setup rows (there
+    # is no unique constraint on gameinfo) must not turn a lock read into a
+    # MultipleObjectsReturned 500.
     return (
         GameSetup.objects.filter(gameinfo_id=game_id)
+        .order_by("pk")
         .values_list("device_id", flat=True)
         .first()
         or ""
@@ -64,12 +75,26 @@ def _requested_device(request: Request, data) -> str:
     return str(device).strip() if device else ""
 
 
+def _device_lock_response(request: Request, game_id, data=None):
+    """409 when the calling device may not write this game, else ``None``.
+
+    Every write to a game goes through this: a stale second tab must not be
+    able to undo, start the second half, set possession or finalize a game
+    that another device holds. A missing device id is still allowed (old app).
+    """
+    return _device_conflict(
+        _stored_device(game_id),
+        _requested_device(request, request.data if data is None else data),
+    )
+
+
 def _client_id(raw):
     """``None`` when no id was sent (old app), a UUID, or a 400."""
     if raw in (None, ""):
         return None
     try:
-        return uuid.UUID(str(raw))
+        # A padded id (copy/paste, sloppy serializer) is still that id.
+        return uuid.UUID(str(raw).strip())
     except (AttributeError, TypeError, ValueError):
         raise ValidationError({"client_id": "must be a UUID"})
 
@@ -194,9 +219,23 @@ class GameLogAPIView(APIView):
             client_id = _client_id(data.get("client_id"))
             game_service = GameService(data.get("gameId"))
             game = game_service.gameinfo.gameinfo
-            conflict = _device_conflict(
-                _stored_device(game.pk), _requested_device(request, data)
-            )
+            if client_id is not None and GameLogSubmission.objects.filter(
+                gameinfo=game, client_id=client_id
+            ).exists():
+                # Already applied (and its rows committed -- the claim shares
+                # the write's transaction). Answer with the current log and
+                # write nothing. This has to be checked BEFORE the device
+                # lock: after a staff release plus a handover the replay comes
+                # from a device that no longer holds the lock, and a 409 would
+                # pin the op in the outbox forever, blocking the finalize.
+                return Response(
+                    json.loads(
+                        game_service.get_gamelog().as_json(),
+                        object_pairs_hook=OrderedDict,
+                    ),
+                    status=HTTPStatus.OK,
+                )
+            conflict = _device_lock_response(request, game.pk, data)
             if conflict is not None:
                 return conflict
             gamelog, applied = game_service.create_gamelog_once(
@@ -239,6 +278,11 @@ class GameLogAPIView(APIView):
             raise NotFound(
                 detail=f"Could not delete team logs ... gameId {game_id} not found"
             )
+        # Undo is a write like any other: a stale second tab must not delete
+        # entries of a game another device holds.
+        conflict = _device_lock_response(request, game.pk)
+        if conflict is not None:
+            return conflict
         game_service = GameService(game_id)
         if has_team_log_id:
             # The v2 log undoes one row at a time: a penalty (sequence 0) must
@@ -306,6 +350,9 @@ class GameHalftimeAPIView(APIView):
             game_service = GameService(pk)
         except Gameinfo.DoesNotExist:
             raise NotFound(detail=f"No game found for gameId {pk}")
+        conflict = _device_lock_response(request, pk)
+        if conflict is not None:
+            return conflict
         try:
             game_service.update_halftime(request.user)
         except IllegalGameTransition as e:
@@ -329,6 +376,9 @@ class GameFinalizeUpdateView(UpdateAPIView):
             game_service = GameService(pk)
         except Gameinfo.DoesNotExist:
             raise NotFound(detail=f"No game found for gameId {pk}")
+        conflict = _device_lock_response(request, pk)
+        if conflict is not None:
+            return conflict
         try:
             game_service.update_game_finished(request.user)
         except IllegalGameTransition as e:
@@ -337,7 +387,10 @@ class GameFinalizeUpdateView(UpdateAPIView):
                 {"detail": "Dieser Spielstatus erlaubt kein Spielende."},
                 status=HTTPStatus.CONFLICT,
             )
-        game_setup, _ = GameSetup.objects.get_or_create(gameinfo_id=pk)
+        # Historic duplicate setup rows must not raise MultipleObjectsReturned.
+        game_setup = GameSetup.objects.filter(gameinfo_id=pk).order_by("pk").first()
+        if game_setup is None:
+            game_setup = GameSetup.objects.create(gameinfo_id=pk)
         serializer = GameFinalizer(instance=game_setup, data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -352,46 +405,70 @@ class GameSetupCreateOrUpdateView(RetrieveUpdateAPIView):
 
     def get(self, request, *args, **kwargs):
         game_id = kwargs.get("pk")
-        try:
-            game_setup = GameSetup.objects.get(gameinfo_id=game_id)
-            serializer = GameSetupSerializer(game_setup)
-            return Response(serializer.data, status=HTTPStatus.OK)
-        except GameSetup.DoesNotExist:
+        # ``order_by("pk").first()`` instead of ``get``: a historic duplicate
+        # setup row must not 500 this read.
+        game_setup = (
+            GameSetup.objects.filter(gameinfo_id=game_id).order_by("pk").first()
+        )
+        if game_setup is None:
             return Response(data={}, status=HTTPStatus.OK)
+        serializer = GameSetupSerializer(game_setup)
+        return Response(serializer.data, status=HTTPStatus.OK)
 
     def update(self, request, *args, **kwargs):
         pk = kwargs.get("pk")
-        game_setup = GameSetup.objects.filter(gameinfo_id=pk).first()
-        serializer = GameSetupSerializer(instance=game_setup, data=request.data)
-        # Validate before touching anything: a malformed payload must not leave
-        # a setup row behind (it would make the game look prepared).
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=HTTPStatus.BAD_REQUEST)
-
-        is_game_setup_created = game_setup is None
-        incoming_device = serializer.validated_data.get("device_id") or ""
         try:
-            # Starting the game, writing its log entry and creating the setup
-            # row are one unit. A rejected transition (409) must roll back to
-            # the state before the request, otherwise the retry sees an
-            # existing row and silently skips `update_gamestart` — returning
-            # 200 for a game that never started.
             with transaction.atomic():
-                if is_game_setup_created:
+                # Serialize EVERY setup write for this game on the game row
+                # itself. ``GameSetup.gameinfo`` has no unique constraint, so
+                # two concurrent first-time PUTs could otherwise both see "no
+                # row yet" and each create one (no migration is added for this,
+                # because existing databases may already hold duplicates).
+                # Locking the Gameinfo row keeps the device check, the
+                # transition and the row creation one-after-another.
+                Gameinfo.objects.select_for_update().get(pk=pk)
+                game_setup = (
+                    GameSetup.objects.filter(gameinfo_id=pk).order_by("pk").first()
+                )
+                serializer = GameSetupSerializer(instance=game_setup, data=request.data)
+                # Validate before touching anything: a malformed payload must
+                # not leave a setup row behind (it would make the game look
+                # prepared).
+                if not serializer.is_valid():
+                    return Response(serializer.errors, status=HTTPStatus.BAD_REQUEST)
+
+                incoming_device = _requested_device(request, serializer.validated_data)
+                conflict = _device_conflict(
+                    game_setup.device_id if game_setup is not None else "",
+                    incoming_device,
+                )
+                if conflict is not None:
+                    return conflict
+                if incoming_device:
+                    # Store the normalised id (stripped, header wins over the
+                    # body) so later reads compare like with like.
+                    serializer.validated_data["device_id"] = incoming_device
+                elif "device_id" in serializer.validated_data:
+                    # ``null``/blank is never a device: store the empty value
+                    # instead of NULL, and never treat it as a release.
+                    serializer.validated_data["device_id"] = ""
+                if game_setup is None:
+                    # Starting the game, writing its log entry and creating
+                    # the setup row are one unit. A rejected transition (409)
+                    # must roll back to the state before the request,
+                    # otherwise the retry sees an existing row and silently
+                    # skips `update_gamestart` -- returning 200 for a game
+                    # that never started.
                     GameService(pk).update_gamestart(request.user)
                     serializer.save(gameinfo_id=pk)
                 else:
-                    # The lock is deliberately checked under its row lock, so
-                    # two devices cannot both see an empty lock and claim it.
-                    locked = GameSetup.objects.select_for_update().get(pk=game_setup.pk)
-                    conflict = _device_conflict(locked.device_id, incoming_device)
-                    if conflict is not None:
-                        return conflict
-                    if locked.device_id and not incoming_device:
+                    if game_setup.device_id and not incoming_device:
                         # The first non-empty id wins: a blank field (or an
                         # absent one) must never release the lock.
                         serializer.validated_data.pop("device_id", None)
                     serializer.save()
+        except Gameinfo.DoesNotExist:
+            raise NotFound(detail=f"No game found for gameId {pk}")
         except IllegalGameTransition as e:
             logger.warning("Rejected gamestart for game %s: %s", pk, e)
             return Response(
@@ -419,7 +496,9 @@ class GameDeviceLockAPIView(APIView):
             game = Gameinfo.objects.get(pk=pk)
         except Gameinfo.DoesNotExist:
             raise NotFound(detail=f"No game found for gameId {pk}")
-        game_setup = GameSetup.objects.filter(gameinfo=game).first()
+        game_setup = (
+            GameSetup.objects.filter(gameinfo=game).order_by("pk").first()
+        )
         if game_setup is None:
             raise NotFound(detail=f"No game setup found for gameId {pk}")
         game_setup.device_id = ""
@@ -542,6 +621,9 @@ class GamePossessionAPIView(APIView):
             game_service = GameService(pk)
         except Gameinfo.DoesNotExist:
             raise NotFound(detail=f"No game found for gameId {pk}")
+        conflict = _device_lock_response(request, pk)
+        if conflict is not None:
+            return conflict
         team = request.data.get("team")
         home = Gameresult.objects.get(
             gameinfo=game_service.gameinfo.gameinfo, isHome=True

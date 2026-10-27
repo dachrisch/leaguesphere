@@ -3,6 +3,7 @@ from io import StringIO
 from uuid import uuid4
 
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import TestCase
 from django.utils import timezone
 
@@ -42,3 +43,14 @@ class PurgeGameLogSubmissionsTest(TestCase):
 
         assert GameLogSubmission.objects.filter(pk=just_inside.pk).exists()
         assert not GameLogSubmission.objects.filter(pk=just_outside.pk).exists()
+
+    def test_non_positive_days_is_rejected(self):
+        """``--days 0`` would delete every submission (re-enabling double
+        writes for outboxes that are still retrying) -- refuse instead."""
+        recent = self.submission(age_days=1)
+
+        for days in ("0", "-1"):
+            with self.assertRaisesMessage(CommandError, "--days must be >= 1"):
+                call_command("purge_gamelog_submissions", "--days", days)
+
+        assert GameLogSubmission.objects.filter(pk=recent.pk).exists()

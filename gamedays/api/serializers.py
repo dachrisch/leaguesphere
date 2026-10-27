@@ -215,7 +215,15 @@ class GameSetupSerializer(ModelSerializer):
             # The per-game device lock is write-only: the endpoints that need
             # to read it already answer with it on a 409, and keeping it out of
             # the GET/PUT body leaves the old app's setup contract unchanged.
-            "device_id": {"required": False, "allow_blank": True, "write_only": True},
+            # ``allow_null``: a client that has no device id yet sends null
+            # (a plain JSON field default); that must not 400 -- it is mapped
+            # to the empty value, never to a lock release.
+            "device_id": {
+                "required": False,
+                "allow_blank": True,
+                "allow_null": True,
+                "write_only": True,
+            },
         }
 
 

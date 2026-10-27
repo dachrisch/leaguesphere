@@ -2,7 +2,7 @@ import logging
 import random
 import time
 
-from django.db import OperationalError, transaction
+from django.db import IntegrityError, OperationalError, transaction
 
 from gamedays.models import Team, TeamLog, GameLogSubmission
 from gamedays.service.gamelog import GameLog, GameLogCreator
@@ -16,16 +16,25 @@ logger = logging.getLogger(__name__)
 # "try restarting transaction" -- concurrent scorecard writes to the same
 # game must do exactly that instead of surfacing a 500 (#2006).
 _RETRYABLE_MYSQL_CODES = frozenset({1213, 1205})
+# SQLite (dev/demo/tests) has no row locks: a second writer gets a database
+# lock error instead of waiting. That is the same "try again" situation.
+_RETRYABLE_SQLITE_MESSAGES = ("database is locked", "database table is locked")
 _WRITE_MAX_ATTEMPTS = 3
 
 
 def _is_retryable_lock_error(error: Exception) -> bool:
-    """True for MySQL deadlock / lock-wait-timeout OperationalErrors."""
+    """True for MySQL deadlock / lock-wait-timeout OperationalErrors.
+
+    SQLite's database-lock errors count too: without row locks the competing
+    transaction has to be retried like a deadlock victim.
+    """
     args = getattr(error, "args", ())
     if args and args[0] in _RETRYABLE_MYSQL_CODES:
         return True
     message = str(error).lower()
-    return "deadlock found" in message or "lock wait timeout exceeded" in message
+    if "deadlock found" in message or "lock wait timeout exceeded" in message:
+        return True
+    return any(retryable in message for retryable in _RETRYABLE_SQLITE_MESSAGES)
 
 
 class GameService(object):
@@ -62,6 +71,15 @@ class GameService(object):
         The ``GameLogSubmission`` row is claimed in the very transaction that
         writes the rows. A write that raises therefore leaves no claim behind,
         so the retry can still apply it; a crash between the two is impossible.
+
+        The claim itself is a plain ``create()`` inside a savepoint, not
+        ``get_or_create()``: under concurrent identical retries both requests
+        can pass the existence check, and the loser then gets an
+        ``IntegrityError`` from the unique constraint instead of a row. The
+        savepoint keeps the outer transaction usable after that error, so the
+        loser simply answers with the now-current log -- exactly one write,
+        two 200/201s. ``get_or_create()`` would let that IntegrityError escape
+        as a 500.
         """
         team = self._resolve_team(team_name)  # ToDo extract to TeamWrapper
         write = GameLogCreator(self.gameinfo.gameinfo, team, event, user, half).create
@@ -69,19 +87,25 @@ class GameService(object):
             # The old app sends no client id: every post creates rows.
             return self._write_gamelog(write), True
 
-        applied = True
+        state = {"applied": True}
 
         def claim():
-            nonlocal applied
-            _, created = GameLogSubmission.objects.get_or_create(
-                gameinfo=self.gameinfo.gameinfo, client_id=client_id
-            )
-            if created:
-                return None
-            applied = False
-            return self.get_gamelog()
+            try:
+                # Savepoint: a duplicate key must not poison the enclosing
+                # transaction, which still has to read the current log.
+                with transaction.atomic():
+                    GameLogSubmission.objects.create(
+                        gameinfo=self.gameinfo.gameinfo, client_id=client_id
+                    )
+            except IntegrityError:
+                # Somebody else already claimed this submission (and, because
+                # the claim shares its transaction, also committed its rows).
+                state["applied"] = False
+                return self.get_gamelog()
+            return None
 
-        return self._write_gamelog(write, claim), applied
+        gamelog = self._write_gamelog(write, claim)
+        return gamelog, state["applied"]
 
     @staticmethod
     def _resolve_team(team_identifier) -> Team:
@@ -154,7 +178,8 @@ class GameService(object):
 
         Concurrent writers contend on the Gameresult + Gameinfo row locks and
         the TeamLog inserts, so InnoDB deadlocks (1213) / lock-wait timeouts
-        (1205) are expected under load. Retry the whole transaction a few
+        (1205) are expected under load. SQLite (dev/demo/tests, no row locks)
+        reports a database lock instead. Retry the whole transaction a few
         times with backoff instead of failing the request (#2006).
         """
         last_error = None
