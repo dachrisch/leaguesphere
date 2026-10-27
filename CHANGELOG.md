@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.0.1](https://github.com/dachrisch/leaguesphere/compare/v5.0.0...v5.0.1) (2026-10-27)
+
+
+### Documentation
+
+* **license:** keep LICENSE byte-identical to the AGPL text ([1074fd2](https://github.com/dachrisch/leaguesphere/commit/1074fd27f1f21339a4f422462afb137bf54f4d36))
+* **license:** keep LICENSE byte-identical to the AGPL text ([303dbe5](https://github.com/dachrisch/leaguesphere/commit/303dbe503a949cd56031519b7c9416d84fde79be))
+
 ## [5.0.0](https://github.com/dachrisch/leaguesphere/compare/v4.44.2...v5.0.0) (2026-10-27)
 
 
