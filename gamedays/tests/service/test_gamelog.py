@@ -98,7 +98,7 @@ class TestGamelog(TestCase):
             f"{gameinfo.gameday.date.isoformat()}T12:34:00"
         )
 
-    def test_events_are_newest_first(self):
+    def test_events_are_newest_first_by_insertion(self):
         DBSetup().g62_status_empty()
         gameinfo = Gameinfo.objects.first()
         home = Gameresult.objects.get(gameinfo=gameinfo, isHome=True).team

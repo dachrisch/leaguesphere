@@ -121,30 +121,29 @@ def gameday_ref_now(gameday_date):
     return datetime.combine(gameday_date, time(12, 0), tzinfo=UTC)
 
 
-def game_events(gameinfo_id, gameday_date=None) -> list[dict]:
-    """Every ``TeamLog`` row of a game as one flat, newest-first list.
+def serialize_events(teamlog_rows, team_names, ref_now=None) -> list[dict]:
+    """Shape ``TeamLog`` rows into the additive, flat ``events`` list.
 
-    ``GameLog._get_entries_for_team_and_half`` deliberately drops the
-    non-scoring events (penalties, timeouts, first downs, time) because the
-    old scorecard's play list cannot render them. The v2 log shows them and
-    undoes them one by one, so it needs the raw rows. Ordering is newest
-    first: ``created_time`` then the sequence, which keeps a touchdown and its
-    conversion adjacent.
+    ``team_names`` maps a team pk to its display name, so callers that already
+    have the two results (the gamelog endpoint, the snapshot) never trigger a
+    per-row ``team`` query. One helper for every producer keeps the payload
+    shape from drifting.
+
+    Ordering is newest first by primary key, not by ``created_time``: that
+    column is a UTC time-of-day, so a 23:59 row would sort before the 00:05
+    row entered after midnight. Insertion order is chronological and keeps a
+    touchdown and its conversion adjacent.
     """
-    ref_now = gameday_ref_now(gameday_date)
-    rows = (
-        TeamLog.objects.filter(gameinfo_id=gameinfo_id)
-        .select_related("team")
-        .order_by("-created_time", "-sequence")
-    )
+    rows = sorted(teamlog_rows, key=lambda row: row.pk, reverse=True)
     return [
         {
             "id": row.pk,
             "sequence": row.sequence,
-            "team": row.team.name if row.team is not None else None,
+            "team": team_names.get(row.team_id),
             "event": row.event,
             "player": row.player,
-            "input": row.input,
+            # An empty string would render as an empty detail line.
+            "input": row.input or None,
             "half": row.half,
             "cop": row.cop,
             "isDeleted": row.isDeleted,
@@ -175,9 +174,7 @@ class GameLog(object):
     def as_json(self):
         self.gamelog.is_first_half = self.is_firsthalf()
         self.gamelog.in_possession = self.gameinfo.in_possession or None
-        self.gamelog.events = game_events(
-            self.gameinfo.pk, self.gameinfo.gameday.date
-        )
+        self.gamelog.events = self.game_events()
         self.gamelog.home.score = self.get_home_score()
         self.gamelog.away.score = self.get_away_score()
         self.gamelog.home.firsthalf.score = self._calc_score(
@@ -211,6 +208,24 @@ class GameLog(object):
 
     def get_away_team(self):
         return self.gamelog.away.name
+
+    def game_events(self):
+        """Every raw row of this game, including the non-scoring events.
+
+        ``_get_entries_for_team_and_half`` deliberately drops penalties,
+        timeouts, first downs and time because the old scorecard's play list
+        cannot render them. The v2 log shows and undoes them one by one.
+        """
+        team_names = {
+            team.id: team.name
+            for team in (self.gamelog.home, self.gamelog.away)
+            if team.id is not None
+        }
+        return serialize_events(
+            TeamLog.objects.filter(gameinfo=self.gameinfo),
+            team_names,
+            gameday_ref_now(self.gameinfo.gameday.date),
+        )
 
     def get_entries_home_firsthalf(self):
         if self.home_firsthalf_entries:
