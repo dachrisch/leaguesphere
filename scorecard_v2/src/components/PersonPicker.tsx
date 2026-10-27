@@ -161,9 +161,6 @@ export default function PersonPicker({
   };
 
   const applyFreeText = (): void => {
-    if (!canFreeText) {
-      return;
-    }
     onFreeText(query.trim());
     close();
   };
