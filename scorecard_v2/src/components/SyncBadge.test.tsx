@@ -21,6 +21,7 @@ function makeStatus(overrides: Partial<SyncStatus> = {}): SyncStatus {
     pending: 0,
     failed: 0,
     failedOps: [],
+    pendingOps: [],
     syncing: false,
     paused: null,
     online: true,
@@ -42,22 +43,22 @@ beforeEach(() => {
 
 describe("syncLabel", () => {
   it("names every contract state", () => {
-    expect(syncLabel({ paused: null, pending: 0, online: true })).toBe(
+    expect(syncLabel({ paused: null, pending: 0, failed: 0, online: true })).toBe(
       "Synchron",
     );
-    expect(syncLabel({ paused: null, pending: 3, online: true })).toBe(
+    expect(syncLabel({ paused: null, pending: 3, failed: 0, online: true })).toBe(
       "3 warten",
     );
-    expect(syncLabel({ paused: null, pending: 2, online: false })).toBe(
+    expect(syncLabel({ paused: null, pending: 2, failed: 0, online: false })).toBe(
       "Offline · 2",
     );
-    expect(syncLabel({ paused: "offline", pending: 0, online: false })).toBe(
+    expect(syncLabel({ paused: "offline", pending: 0, failed: 0, online: false })).toBe(
       "Offline",
     );
-    expect(syncLabel({ paused: "device", pending: 1, online: true })).toBe(
+    expect(syncLabel({ paused: "device", pending: 1, failed: 0, online: true })).toBe(
       "Pausiert · anderes Gerät",
     );
-    expect(syncLabel({ paused: "auth", pending: 1, online: true })).toBe(
+    expect(syncLabel({ paused: "auth", pending: 1, failed: 0, online: true })).toBe(
       "Pausiert · Anmeldung",
     );
   });
@@ -71,6 +72,15 @@ describe("syncLabel", () => {
   it("counts rejected entries", () => {
     expect(failedLabel(1)).toBe("1 Eintrag abgelehnt");
     expect(failedLabel(2)).toBe("2 Einträge abgelehnt");
+  });
+
+  it("names rejected entries in the badge itself", () => {
+    expect(syncLabel({ paused: null, pending: 0, failed: 1, online: true })).toBe(
+      "1 abgelehnt",
+    );
+    expect(syncLabel({ paused: null, pending: 2, failed: 1, online: true })).toBe(
+      "2 warten · 1 abgelehnt",
+    );
   });
 });
 
@@ -147,5 +157,53 @@ describe("SyncBadge", () => {
 
     expect(current.retry).toHaveBeenCalledWith("op-1");
     expect(current.drop).toHaveBeenCalledWith("op-1");
+  });
+
+  it("offers Verwerfen for an op the expired session blocks", async () => {
+    const current = makeStatus({
+      paused: "auth",
+      pending: 1,
+      pendingOps: [
+        {
+          id: "op-stuck",
+          gameId: 42,
+          kind: "event",
+          payload: {},
+          createdAt: 1,
+          attempts: 0,
+          deviceId: null,
+          seq: 1,
+          failed: false,
+          failedReason: null,
+          failedAt: null,
+        },
+      ],
+    });
+    use(current);
+    render(<SyncBadge gameId={42} />);
+
+    expect(screen.getByText("Pausiert · Anmeldung")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Verwerfen" }));
+
+    expect(current.drop).toHaveBeenCalledWith("op-stuck");
+  });
+
+  it("keeps a device pause free of drop affordances for other work", () => {
+    // A device lock is a read-only answer for one game; it must not invite the
+    // official to throw away ops that are only waiting.
+    use(makeStatus({ paused: "device", pending: 1, pendingOps: [] }));
+    render(<SyncBadge gameId={42} />);
+
+    expect(screen.queryByRole("button", { name: "Verwerfen" })).toBeNull();
+  });
+
+  it("makes a rejected entry reachable from the badge", async () => {
+    const current = makeStatus({ failed: 1 });
+    use(current);
+    render(<SyncBadge gameId={42} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /1 abgelehnt/ }));
+
+    expect(flushAll).toHaveBeenCalledTimes(1);
   });
 });

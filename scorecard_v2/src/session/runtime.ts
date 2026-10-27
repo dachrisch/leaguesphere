@@ -26,8 +26,16 @@ export interface Runtime {
   /** Any sync-state/count change. */
   subscribe(listener: () => void): () => void;
   /** A server log for one game (a flush answer or a re-read). */
-  subscribeLog(gameId: number, listener: (log: GameLog) => void): () => void;
-  publishLog(gameId: number, log: GameLog): void;
+  subscribeLog(
+    gameId: number,
+    listener: (log: GameLog, landedOpId?: string) => void,
+  ): () => void;
+  /**
+   * Publish a server log. `landedOpId` names the queued op the answer belongs
+   * to: the queue row is gone by now, and a screen that still holds it in
+   * memory must drop it instead of replaying it on top of the same answer.
+   */
+  publishLog(gameId: number, log: GameLog, landedOpId?: string): void;
   /** Start the one-time boot work: device header plus an initial flush. */
   start(): void;
   dispose(): void;
@@ -45,7 +53,10 @@ export function createRuntime(deps: RuntimeDeps = {}): Runtime {
   const snapshots = deps.snapshots ?? createSnapshotStore();
 
   const listeners = new Set<Listener>();
-  const logListeners = new Map<number, Set<(log: GameLog) => void>>();
+  const logListeners = new Map<
+    number,
+    Set<(log: GameLog, landedOpId?: string) => void>
+  >();
   let started = false;
   let disposed = false;
 
@@ -61,17 +72,23 @@ export function createRuntime(deps: RuntimeDeps = {}): Runtime {
 
   const sync: Sync = createSync(
     outbox,
-    createTransport((gameId, log) => publishLog(gameId, log)),
+    createTransport((gameId, log, landedOpId) =>
+      publishLog(gameId, log, landedOpId),
+    ),
     () => notify(),
   );
 
-  function publishLog(gameId: number, log: GameLog): void {
+  function publishLog(
+    gameId: number,
+    log: GameLog,
+    landedOpId?: string,
+  ): void {
     if (disposed) {
       return;
     }
     for (const listener of [...(logListeners.get(gameId) ?? [])]) {
       try {
-        listener(log);
+        listener(log, landedOpId);
       } catch {
         // A subscriber is not allowed to break a flush.
       }
@@ -93,7 +110,7 @@ export function createRuntime(deps: RuntimeDeps = {}): Runtime {
 
     subscribeLog(
       gameId: number,
-      listener: (log: GameLog) => void,
+      listener: (log: GameLog, landedOpId?: string) => void,
     ): () => void {
       const set = logListeners.get(gameId) ?? new Set();
       set.add(listener);

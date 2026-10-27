@@ -8,8 +8,10 @@
  *   offline → enqueue directly, without a request that cannot succeed.
  *
  * Undoing a row that never reached the server removes the queued op locally
- * and never sends `DELETE`. Everything else is left to the sync engine, which
- * replays the queue in tap order. The displayed log is always
+ * and never sends `DELETE` — unless that op is being sent right now, in which
+ * case the undo is refused with an explanation (removing it would hide a row
+ * the server is about to create). Everything else is left to the sync engine,
+ * which replays the queue in tap order. The displayed log is always
  * {@link replayOps}(last server payload, queued ops) — nothing is recomputed
  * from scratch, and the next server payload replaces it.
  */
@@ -47,6 +49,8 @@ export interface GameSession {
   /**
    * Undo one log row. `localEventId` is the synthetic (negative) id of a row
    * that came from the queue; it removes that op instead of calling DELETE.
+   * Rejects while the engine is sending that op (the row is about to exist
+   * server-side), and resolves without a request when the op is gone.
    */
   undo(payload: UndoPayload, localEventId?: number): Promise<GameLog>;
   setPossession(team: string): Promise<void>;
@@ -111,9 +115,15 @@ export function createGameSession({
 
   function attach(): void {
     if (detachLog === null) {
-      detachLog = runtime.subscribeLog(gameId, (log) => {
+      detachLog = runtime.subscribeLog(gameId, (log, landedOpId) => {
         // A queued op landed: the server payload (with the queue's remainder)
-        // is authoritative, including the possession marker.
+        // is authoritative, including the possession marker. The op this
+        // answer belongs to is already gone from IndexedDB but may still be in
+        // this screen's in-memory queue — replaying it here would add it on
+        // top of its own answer (a doubled score).
+        if (landedOpId !== undefined) {
+          pending = pending.filter((op) => op.id !== landedOpId);
+        }
         adopt(log, "refresh");
       });
     }
@@ -170,15 +180,17 @@ export function createGameSession({
     if (status === 401) {
       runtime.sync.pause("auth");
     } else if (status === 409 && isDeviceLockError(error)) {
-      runtime.sync.pause("device");
+      runtime.sync.pause("device", gameId);
     }
   }
 
   function adopt(log: GameLog, source: "write" | "refresh" = "write"): void {
-    base = log;
+    // A caller may hand over the rendered (optimistic) log; its synthetic rows
+    // must never become base data, or the next replay duplicates them.
+    base = serverOnly(log);
     // The preload is server data only; the optimistic view is rebuilt from
     // this payload and the durable queue, never stored.
-    void writeSnapshot(snapshotKey.log(gameId), log);
+    void writeSnapshot(snapshotKey.log(gameId), base);
     recompute(source);
   }
 
@@ -284,11 +296,23 @@ export function createGameSession({
       if (localEventId !== undefined) {
         const queuedId = opByEventId.get(localEventId);
         if (queuedId !== undefined) {
+          if (runtime.sync.sendingOp(gameId) === queuedId) {
+            // The engine is sending this very op. Removing it now would hide a
+            // row the server is about to create; queueing a `DELETE` is no
+            // better, because the row's server id is not known yet.
+            throw new Error(
+              "Der Eintrag wird gerade übertragen. Bitte gleich noch einmal versuchen.",
+            );
+          }
           // Never reached the server: drop the op and rebuild the view.
           await runtime.outbox.remove(queuedId);
           await loadPending();
           return current;
         }
+        // The op behind this synthetic row is gone (another tab, a reload), so
+        // its negative id is not a server id: sending it would be a bogus
+        // `team_log_id`. Nothing to undo.
+        return current;
       }
       if (offline()) {
         await enqueue("delete", payload);

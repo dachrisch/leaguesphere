@@ -7,9 +7,13 @@
  *   it receives, so an op is only skipped when the server will never accept it
  *   (`400`/`422` → failed). A network failure or a `5xx` stops the flush and
  *   keeps the rest: reordering a game's events is worse than a late sync.
- * - **Pauses instead of deletions.** `401`/`403` (expired session) and a `409`
- *   device-lock answer must not destroy a game's events; they pause the queue
- *   until the app calls {@link Sync.resume} (`"device"` also means read-only).
+ * - **Pauses instead of deletions.** `401`, a `403` about the session/CSRF and
+ *   a `409` device-lock answer must not destroy a game's events; they pause the
+ *   queue until the app calls {@link Sync.resume} (`"device"` also means
+ *   read-only). A `403` with an actionable detail ("not your row to undo") is
+ *   not a session problem: it fails that one op so it lands in `failed` with
+ *   retry/drop instead of wedging the game's queue forever. A device lock is
+ *   recorded per game, so it never makes another game read-only.
  * - **One drainer.** An in-module promise per game stops a double tap from
  *   sending twice, and `navigator.locks` stops a second tab from draining the
  *   same game. When a browser has no lock manager, a module-level guard shared
@@ -34,8 +38,21 @@ const BACKOFF_START_MS = 1_000;
 const BACKOFF_MAX_MS = 30_000;
 
 export interface Transport {
-  /** Rejects with an `ApiError`-shaped error; resolves means "delivered". */
-  send(op: PendingOp): Promise<void>;
+  /**
+   * Rejects with an `ApiError`-shaped error; resolves with the server's answer
+   * (a log payload for a log write, `undefined` for the rest). The queue does
+   * not interpret the answer — it hands it back to {@link Transport.landed}.
+   */
+  send(op: PendingOp): Promise<unknown>;
+  /**
+   * The op is gone from the queue: publish what `send` resolved with.
+   *
+   * Deliberately separate from {@link Transport.send}: publishing inside the
+   * request lets the screen adopt the server's log while the op is still
+   * queued, and the optimistic replay then adds it a second time (a doubled
+   * score for one frame).
+   */
+  landed?(op: PendingOp, result: unknown): void;
 }
 
 export interface SyncState {
@@ -44,6 +61,10 @@ export interface SyncState {
   /** Ops the server rejected; they need a retry or a drop. */
   failed: number;
   syncing: boolean;
+  /**
+   * The pause blocking the game in question (see {@link Sync.stateFor}), or the
+   * app-wide pause for {@link Sync.state}. `device` is per game.
+   */
   paused: "offline" | "auth" | "device" | null;
 }
 
@@ -71,19 +92,40 @@ export interface Sync {
    * is correct after a reload. The finalise guard in Task 20 consumes this.
    */
   counts(gameId: number): Promise<SyncCounts>;
+  /** The engine-wide state, for a badge that is not tied to one game. */
   state(): SyncState;
-  /** Stop sending until {@link Sync.resume}. Default reason: `"offline"`. */
-  pause(reason?: PauseReason): void;
-  /** Clear a pause and drain again (after a re-login, or a staff unlock). */
-  resume(): Promise<void>;
+  /**
+   * The state as it applies to one game. A device lock is per game, so game B
+   * must keep syncing (and stay writable) while game A is read-only.
+   */
+  stateFor(gameId: number): SyncState;
+  /** The pause blocking one game, if any (`null` when it may drain). */
+  pausedFor(gameId: number): PauseReason | null;
+  /**
+   * The op the engine is sending for a game right now, or `null`. The session
+   * needs it: undoing a synthetic row whose op is in flight must not remove it
+   * locally, or the row would vanish on screen but stay on the server.
+   */
+  sendingOp(gameId: number): string | null;
+  /**
+   * Stop sending. `offline`/`auth` are app-wide; a `device` pause belongs to
+   * one game (another device holds it) and takes its id.
+   */
+  pause(reason?: PauseReason, gameId?: number): void;
+  /**
+   * Clear a pause and drain again (after a re-login, or a staff unlock). With a
+   * `gameId` only that game's device pause goes; the app-wide pauses are
+   * lifted either way, because a re-login unlocks every game.
+   */
+  resume(gameId?: number): Promise<void>;
   /** Remove listeners, timers and the channel. The queue itself survives. */
   dispose(): void;
 }
 
 type SyncMessage =
   | { type: "changed"; gameId: number }
-  | { type: "paused"; reason: PauseReason; manual?: boolean }
-  | { type: "resumed" };
+  | { type: "paused"; reason: PauseReason; gameId?: number; manual?: boolean }
+  | { type: "resumed"; gameId?: number };
 
 type Verdict =
   | {
@@ -248,6 +290,37 @@ export function isDeviceLockError(error: unknown): boolean {
 }
 
 /**
+ * What separates "the session is gone" from "this one row is not yours".
+ *
+ * `401` is always the session. `403` is ambiguous: Django/DRF use it for an
+ * expired session, a missing CSRF token, *and* the per-row permission check
+ * (`_can_delete_team_log`), which comes with an actionable `detail`. Only a
+ * message that names the session/CSRF — or one with no detail at all, the old
+ * server's answer — may pause the queue.
+ */
+const SESSION_DETAIL =
+  /(csrf|session|sitzung|abgelaufen|expired|anmeld|auslogg|log\s?in|login|authenticat|authentifizier|credentials|sign\s?in)/i;
+
+/** The first human-readable reason the server sent, if any. */
+function detailOf(error: unknown): string | null {
+  return fieldOf(error, "detail") ?? firstErrorString(bodyOf(error));
+}
+
+function isSessionError(error: unknown): boolean {
+  const detail = detailOf(error);
+  return detail === null || SESSION_DETAIL.test(detail);
+}
+
+/**
+ * A 4xx answer can be an HTML page (a proxy, a misrouted request). The failed
+ * row shows one line, so the reason is clipped instead of printing the page.
+ */
+function shortReason(text: string, max = 200): string {
+  const trimmed = text.trim();
+  return trimmed.length <= max ? trimmed : `${trimmed.slice(0, max - 1)}…`;
+}
+
+/**
  * Classify a send failure. `400`/`422` are the only statuses the plan names as
  * "rejected", but every other non-transient, non-auth status means the same
  * thing: re-sending that exact payload will fail again, so it must not block
@@ -268,8 +341,20 @@ export function classify(error: unknown): Verdict {
   if (status >= 500 || status === 408) {
     return { kind: "transient", reason: "server" };
   }
-  if (status === 401 || status === 403) {
+  if (status === 401) {
     return { kind: "auth" };
+  }
+  if (status === 403) {
+    // A per-row "not yours to undo" is a rejection: the op can never succeed,
+    // and pausing would wedge the whole game's queue for good.
+    if (isSessionError(error)) {
+      return { kind: "auth" };
+    }
+    const detail = detailOf(error);
+    return {
+      kind: "rejected",
+      reason: detail === null ? `HTTP ${status}` : shortReason(detail),
+    };
   }
   if (status === 409 && isDeviceLockError(error)) {
     return { kind: "device" };
@@ -279,7 +364,7 @@ export function classify(error: unknown): Verdict {
     firstErrorString(bodyOf(error)) ??
     fieldOf(error, "message") ??
     `HTTP ${status}`;
-  return { kind: "rejected", reason };
+  return { kind: "rejected", reason: shortReason(reason) };
 }
 
 function isPauseReason(value: unknown): value is PauseReason {
@@ -312,6 +397,13 @@ export function createSync(
 
   let paused: PauseReason | null =
     globalThis.navigator?.onLine === false ? "offline" : null;
+  // A device lock is per game: game A held by another device must not turn
+  // game B read-only or stall B's queue. `paused` stays the app-wide pause
+  // (offline, expired session) and is the fallback for an unscoped device
+  // pause ("this whole device is read-only").
+  const devicePauses = new Map<number, PauseReason>();
+  /** The op each game's drain is sending right now (undo guard). */
+  const sending = new Map<number, string>();
   // A pause the app asked for (`pause()`) is only lifted by `resume()`; the
   // ones the engine detects itself are retried by the backoff and `online`.
   // It is sticky across tabs: a manual pause carries `manual: true` on the
@@ -331,6 +423,11 @@ export function createSync(
 
   function isSyncing(): boolean {
     return activeFlushes > 0;
+  }
+
+  /** The pause that blocks one game: its own device lock first, then the app. */
+  function pausedFor(gameId: number): PauseReason | null {
+    return devicePauses.get(gameId) ?? paused;
   }
 
   async function totals(): Promise<SyncCounts> {
@@ -392,6 +489,22 @@ export function createSync(
     void emit();
   }
 
+  /**
+   * The server answered that another device holds `gameId`. Only that game
+   * stops; the other games' queues are untouched and keep draining.
+   */
+  function pauseDevice(gameId: number): void {
+    if (devicePauses.get(gameId) === "device") {
+      // A second op of the same game found the same lock: report the blocked
+      // queue instead of announcing the same pause twice.
+      void emit();
+      return;
+    }
+    devicePauses.set(gameId, "device");
+    broadcast({ type: "paused", reason: "device", gameId });
+    void emit();
+  }
+
   /** Drop one game's timer but keep its backoff step. */
   function clearRetryTimer(gameId: number): void {
     const entry = retries.get(gameId);
@@ -446,7 +559,7 @@ export function createSync(
       if (paused === "offline" && !manualPause) {
         setPaused(null);
       }
-      if (paused !== null) {
+      if (pausedFor(gameId) !== null) {
         return;
       }
       void flush(gameId);
@@ -455,9 +568,12 @@ export function createSync(
   }
 
   async function attempt(op: PendingOp): Promise<Outcome> {
+    sending.set(op.gameId, op.id);
+    let result: unknown;
     try {
-      await transport.send(op);
+      result = await transport.send(op);
     } catch (error) {
+      sending.delete(op.gameId);
       // Undoing something that is already gone is a successful replay: the
       // server answers 404 once another tab (or an earlier attempt whose
       // answer was lost) deleted the row or the game.
@@ -482,16 +598,25 @@ export function createSync(
         return { kind: "paused" };
       }
       if (verdict.kind === "device") {
-        setPaused("device");
+        // Only this game is held: the others keep draining.
+        pauseDevice(op.gameId);
         return { kind: "paused" };
       }
       await outbox.markFailed(op.id, verdict.reason);
       broadcast({ type: "changed", gameId: op.gameId });
       return { kind: "rejected" };
     }
-    // A duplicate `client_id` is answered with `200` and the current log, so a
-    // replayed op resolves like a fresh one and is removed here.
-    await outbox.remove(op.id);
+    try {
+      // A duplicate `client_id` is answered with `200` and the current log, so
+      // a replayed op resolves like a fresh one and is removed here.
+      await outbox.remove(op.id);
+    } finally {
+      // The undo guard must see "in flight" until the row is really gone.
+      sending.delete(op.gameId);
+    }
+    // Publish only now: while the op was still queued, the screen's optimistic
+    // replay would add this answer to a queue that still contains it.
+    transport.landed?.(op, result);
     broadcast({ type: "changed", gameId: op.gameId });
     return { kind: "sent" };
   }
@@ -505,7 +630,7 @@ export function createSync(
     clearRetryTimer(gameId);
     let stopped: { reason: "offline" | "server"; retryAfterMs?: number } | null =
       null;
-    while (!disposed && paused === null) {
+    while (!disposed && pausedFor(gameId) === null) {
       const op = await outbox.peek(gameId);
       if (op === undefined) {
         break;
@@ -583,7 +708,7 @@ export function createSync(
     if (disposed) {
       return;
     }
-    if (paused !== null) {
+    if (pausedFor(gameId) !== null) {
       // Report the blocked queue instead of silently doing nothing, so a badge
       // that was mounted after the pause still shows the right count.
       await emit();
@@ -674,6 +799,18 @@ export function createSync(
       return;
     }
     if (message.type === "paused" && isPauseReason(message.reason)) {
+      if (
+        message.reason === "device" &&
+        typeof message.gameId === "number"
+      ) {
+        // A device lock is one game's answer, never the other tab's whole app.
+        if (message.manual === true) {
+          manualPause = true;
+        }
+        devicePauses.set(message.gameId, "device");
+        void emit();
+        return;
+      }
       // A pause the user asked for belongs to the whole app, not one tab: keep
       // it manual here too, or this tab's visibility retry would lift it and
       // broadcast `resumed` back.
@@ -687,6 +824,13 @@ export function createSync(
       // Another tab's app resumed (re-login, staff unlock): the queue is shared,
       // so the local pause --- including a manual one --- goes with it.
       manualPause = false;
+      if (typeof message.gameId === "number") {
+        if (devicePauses.delete(message.gameId)) {
+          void emit();
+        }
+        return;
+      }
+      devicePauses.clear();
       setPaused(null, false);
     }
   }
@@ -741,17 +885,46 @@ export function createSync(
       return { ...last, syncing: isSyncing(), paused };
     },
 
-    pause(reason: PauseReason = "offline"): void {
+    stateFor(gameId: number): SyncState {
+      return { ...last, syncing: isSyncing(), paused: pausedFor(gameId) };
+    },
+
+    pausedFor,
+
+    sendingOp(gameId: number): string | null {
+      return sending.get(gameId) ?? null;
+    },
+
+    pause(reason: PauseReason = "offline", gameId?: number): void {
       manualPause = true;
       clearRetries();
+      if (reason === "device" && gameId !== undefined) {
+        devicePauses.set(gameId, "device");
+        broadcast({ type: "paused", reason, gameId, manual: true });
+        void emit();
+        return;
+      }
+      // An unscoped device pause means the whole device is read-only; the
+      // app-wide pause is the safe answer when no game names the conflict.
       setPaused(reason);
     },
 
-    async resume(): Promise<void> {
+    async resume(gameId?: number): Promise<void> {
       manualPause = false;
       clearRetries();
+      if (gameId === undefined) {
+        devicePauses.clear();
+        setPaused(null);
+        await flushAll();
+        return;
+      }
+      if (devicePauses.delete(gameId)) {
+        broadcast({ type: "resumed", gameId });
+      }
+      // A re-login or a staff unlock lifts the app-wide pause for every game;
+      // each game still checks its own device pause before draining.
       setPaused(null);
-      await flushAll();
+      await flush(gameId);
     },
 
     dispose(): void {

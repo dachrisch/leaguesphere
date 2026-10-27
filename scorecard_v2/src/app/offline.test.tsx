@@ -12,6 +12,7 @@ import { ApiError, apiGet, apiPost } from "../api/client";
 import type { Gameday, Game, GameLog, GameLogTeam } from "../api/types";
 import {
   resetSnapshotStore,
+  removeSnapshot,
   snapshotKey,
   writeSnapshot,
 } from "../offline/snapshot";
@@ -215,6 +216,91 @@ describe("offline capture", () => {
     );
     // The optimistic row was replaced by the server's row, not duplicated.
     expect(screen.getAllByText("1st Down Ravens")).toHaveLength(1);
+  });
+
+  it("shows stored data as stored, not as live", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: /Herbsttag/ }));
+
+    // The games list came from IndexedDB: the official can tell the list is not
+    // the server's current answer.
+    expect(
+      await screen.findByText(/Zwischengespeichert · \d{2}:\d{2}/),
+    ).toBeInTheDocument();
+  });
+
+  it("boots a finished game as finished and does not reopen it", async () => {
+    // What the finalise handler leaves behind: the game is `beendet` in the
+    // games snapshot and the log/setup preload is gone.
+    await writeSnapshot(snapshotKey.games(1), {
+      team: "crew",
+      games: [{ ...GAME, status: "beendet", points_home: 7, points_away: 0 }],
+    });
+    await removeSnapshot(snapshotKey.log(42));
+    await removeSnapshot(snapshotKey.setup(42));
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: /Herbsttag/ }));
+
+    const pair = await screen.findByText("Ravens – Wolves");
+    const row = pair.closest(".game-row");
+    // A finished game is not a button: there is no way back into tracking (the
+    // server would reject every write with `Dieses Spiel ist beendet.`).
+    expect(pair.closest("button")).toBeNull();
+    expect(row).not.toBeNull();
+    expect(within(row as HTMLElement).getByText("beendet")).toBeInTheDocument();
+  });
+
+  it("shows the queue on the finalise screen and lets a rejected write go", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openGame(user);
+
+    await user.click(screen.getByRole("button", { name: "1st Down" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Speichern",
+      }),
+    );
+    await waitFor(async () =>
+      expect(await getRuntime().outbox.pending(42)).toHaveLength(1),
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Spielende und Bestätigung" }),
+    );
+    expect(
+      await screen.findByRole("heading", { name: "Spielende" }),
+    ).toBeInTheDocument();
+    // The badge is the way out of the guard: it names the unsent write and the
+    // result cannot be sent.
+    expect(screen.getByRole("button", { name: /Offline · 1/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Ergebnis abschicken" }),
+    ).toBeDisabled();
+
+    // The server rejects the entry while the official is on this screen.
+    const [pending] = await getRuntime().outbox.pending(42);
+    await getRuntime().outbox.markFailed(pending.id, "Eintrag ungültig.");
+    await getRuntime().sync.flush(42);
+
+    // The badge lists the rejected entry; the guard above names it too.
+    expect(
+      (await screen.findAllByText("1 Eintrag abgelehnt")).length,
+    ).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: "Verwerfen" }));
+
+    await waitFor(async () =>
+      expect(await getRuntime().outbox.failed(42)).toEqual([]),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Verwerfen" }),
+      ).not.toBeInTheDocument(),
+    );
   });
 
   it("keeps the undo of an unsynced event local", async () => {

@@ -2,7 +2,8 @@
  * Live outbox/sync state for the badge and the guards.
  *
  * Counts are read per game from IndexedDB (the durable truth), the pause and
- * "syncing" flags from the engine's in-memory state. Every sync notification
+ * "syncing" flags from the engine's state. The pause is asked per game, because
+ * a device lock on one game says nothing about another. Every sync notification
  * refreshes both, so a drained queue updates the badge without a re-render of
  * the whole flow.
  */
@@ -17,6 +18,12 @@ export interface SyncStatus {
   failed: number;
   /** The rejected ops themselves, oldest first, for retry/drop. */
   failedOps: StoredOp[];
+  /**
+   * The pending ops of the game, oldest first. A session pause blocks them all,
+   * and the badge offers "Verwerfen" so an official can move on from a game
+   * whose writes will never be accepted.
+   */
+  pendingOps: StoredOp[];
   syncing: boolean;
   paused: PauseReason | null;
   online: boolean;
@@ -31,6 +38,7 @@ interface Counts {
   pending: number;
   failed: number;
   failedOps: StoredOp[];
+  pendingOps: StoredOp[];
   syncing: boolean;
   paused: PauseReason | null;
   online: boolean;
@@ -40,6 +48,7 @@ const EMPTY: Counts = {
   pending: 0,
   failed: 0,
   failedOps: [],
+  pendingOps: [],
   syncing: false,
   paused: null,
   online: true,
@@ -50,27 +59,32 @@ export function useSyncStatus(gameId: number | null): SyncStatus {
   const [counts, setCounts] = useState<Counts>(EMPTY);
 
   const read = useCallback(async (): Promise<Counts> => {
-    const state = runtime.sync.state();
+    // A device lock is one game's state; an auth/offline pause is the app's.
+    const state =
+      gameId === null ? runtime.sync.state() : runtime.sync.stateFor(gameId);
     const online = globalThis.navigator?.onLine !== false;
     if (gameId === null) {
       return {
         pending: state.pending,
         failed: state.failed,
         failedOps: [],
+        pendingOps: [],
         syncing: state.syncing,
         paused: state.paused,
         online,
       };
     }
     try {
-      const [game, failedOps] = await Promise.all([
+      const [game, failedOps, pendingOps] = await Promise.all([
         runtime.sync.counts(gameId),
         runtime.outbox.failed(gameId),
+        runtime.outbox.pending(gameId),
       ]);
       return {
         pending: game.pending,
         failed: game.failed,
         failedOps,
+        pendingOps,
         syncing: state.syncing,
         paused: state.paused,
         online,
@@ -82,6 +96,7 @@ export function useSyncStatus(gameId: number | null): SyncStatus {
         pending: state.pending,
         failed: state.failed,
         failedOps: [],
+        pendingOps: [],
         syncing: state.syncing,
         paused: state.paused,
         online,
@@ -118,9 +133,11 @@ export function useSyncStatus(gameId: number | null): SyncStatus {
   }, [read, runtime]);
 
   const resume = useCallback(async (): Promise<void> => {
-    await runtime.sync.resume();
+    // Only this game's device pause is lifted here; the engine keeps the
+    // app-wide pause in step, so a re-login still unlocks every game.
+    await runtime.sync.resume(gameId ?? undefined);
     refresh();
-  }, [refresh, runtime]);
+  }, [gameId, refresh, runtime]);
 
   const retry = useCallback(
     async (id: string): Promise<void> => {

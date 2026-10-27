@@ -49,6 +49,8 @@ export interface StoredSnapshot<T> {
 export interface SnapshotStore {
   read<T>(key: string): Promise<StoredSnapshot<T> | undefined>;
   write<T>(key: string, value: T): Promise<void>;
+  /** Drop one cached read (a game that has ended, a stale setup). */
+  remove(key: string): Promise<void>;
   /** Drop every cached read (logout). */
   clearAll(): Promise<void>;
 }
@@ -86,6 +88,11 @@ export function createSnapshotStore(
       await db.put(SNAPSHOTS_STORE, record);
     },
 
+    async remove(key: string): Promise<void> {
+      const db = await database();
+      await db.delete(SNAPSHOTS_STORE, key);
+    },
+
     async clearAll(): Promise<void> {
       const db = await database();
       await db.clear(SNAPSHOTS_STORE);
@@ -108,14 +115,6 @@ export function resetSnapshotStore(): void {
   defaultStore = null;
 }
 
-async function savedValue<T>(key: string): Promise<T | undefined> {
-  try {
-    return (await snapshots().read<T>(key))?.value;
-  } catch {
-    return undefined;
-  }
-}
-
 export async function readSnapshot<T>(
   key: string,
 ): Promise<StoredSnapshot<T> | undefined> {
@@ -135,6 +134,57 @@ export async function writeSnapshot<T>(key: string, value: T): Promise<void> {
   }
 }
 
+/** Drop one cached read. Resolves even when IndexedDB is unavailable. */
+export async function removeSnapshot(key: string): Promise<void> {
+  try {
+    await snapshots().remove(key);
+  } catch {
+    // Same as a failed write: the next online read refreshes it anyway.
+  }
+}
+
+/** A read that says where its payload came from. */
+export interface Fetched<T> {
+  value: T;
+  /**
+   * When the cached copy was stored, or `null` when the value came from the
+   * network just now. A screen shows a "Zwischengespeichert" hint for a value
+   * that is older than this render.
+   */
+  updatedAt: number | null;
+}
+
+/**
+ * {@link cachedGet} with the age of the answer.
+ *
+ * Same rules — the network wins, the snapshot is the fallback — but the caller
+ * learns whether it is looking at a stored payload, which is the difference
+ * between "the game is running" and "the game was running when we last had a
+ * connection".
+ */
+export async function cachedGetMeta<T>(
+  key: string,
+  path: string,
+): Promise<Fetched<T>> {
+  if (globalThis.navigator?.onLine === false) {
+    const saved = await readSnapshot<T>(key);
+    if (saved !== undefined) {
+      return { value: saved.value, updatedAt: saved.updatedAt };
+    }
+  }
+  try {
+    const fresh = await apiGet<T>(path);
+    await writeSnapshot(key, fresh);
+    return { value: fresh, updatedAt: null };
+  } catch (error) {
+    const saved = await readSnapshot<T>(key);
+    if (saved !== undefined) {
+      return { value: saved.value, updatedAt: saved.updatedAt };
+    }
+    throw error;
+  }
+}
+
 /**
  * Read `path`, refresh its snapshot, and fall back to the last stored payload
  * when the request fails (offline, 5xx, an aborted connection).
@@ -145,21 +195,5 @@ export async function writeSnapshot<T>(key: string, value: T): Promise<void> {
  * a guarantee.
  */
 export async function cachedGet<T>(key: string, path: string): Promise<T> {
-  if (globalThis.navigator?.onLine === false) {
-    const saved = await savedValue<T>(key);
-    if (saved !== undefined) {
-      return saved;
-    }
-  }
-  try {
-    const fresh = await apiGet<T>(path);
-    await writeSnapshot(key, fresh);
-    return fresh;
-  } catch (error) {
-    const saved = await savedValue<T>(key);
-    if (saved !== undefined) {
-      return saved;
-    }
-    throw error;
-  }
+  return (await cachedGetMeta<T>(key, path)).value;
 }
