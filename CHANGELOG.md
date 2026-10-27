@@ -1,5 +1,25 @@
 # Changelog
 
+## [5.0.0](https://github.com/dachrisch/leaguesphere/compare/v4.44.2...v5.0.0) (2026-10-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **license:** LeagueSphere is licensed under AGPL-3.0-or-later instead of CC0-1.0. Releases up to and including v4.43.x were published under CC0-1.0 and remain irrevocably public domain. Self-hosting remains free and commercial use remains permitted; a modified instance offered to users over a network must publish the source of that version (AGPL §13).
+
+### Features
+
+* **help:** staff-only dbaccess topic with DBeaver screenshots ([#2105](https://github.com/dachrisch/leaguesphere/issues/2105)) ([1edf950](https://github.com/dachrisch/leaguesphere/commit/1edf9501bd5eaaeb4cae7fc8848c273ed2acf678))
+* **license:** relicense LeagueSphere to AGPL-3.0-or-later ([5fd14b0](https://github.com/dachrisch/leaguesphere/commit/5fd14b0018384f714f9fde5179a903c09a040061))
+
+
+### Bug Fixes
+
+* **ci:** also exempt release-please branches from DCO ([b51be19](https://github.com/dachrisch/leaguesphere/commit/b51be19132ecd4e20c936f77de7a755b12bb6a6c))
+* **ci:** also exempt release-please branches from DCO ([5568af3](https://github.com/dachrisch/leaguesphere/commit/5568af3afcde73e8e9f31232a166a9e7221559af))
+* **ci:** exempt automation PRs from the DCO gate ([1f16d26](https://github.com/dachrisch/leaguesphere/commit/1f16d2664cb7cf1225e08e2f11a898daa499c1b9))
+* **ci:** exempt automation PRs from the DCO gate ([d73e0e4](https://github.com/dachrisch/leaguesphere/commit/d73e0e491b38cecfcbd393dbea0f4c9784379ee7))
+
 ## [4.44.2](https://github.com/dachrisch/leaguesphere/compare/v4.44.1...v4.44.2) (2026-10-27)
 
 
