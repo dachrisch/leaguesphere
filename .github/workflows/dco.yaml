@@ -2,8 +2,12 @@
 #
 # Runs on GitHub Actions on purpose: the scoped CircleCI pipeline stays
 # untouched (no new pipeline parameters or path rules), and a DCO check needs
-# no build environment. Every commit in the pull request must carry a
-# `Signed-off-by:` trailer — see CONTRIBUTING.md.
+# no build environment. Every human-authored commit in the pull request must
+# carry a `Signed-off-by:` trailer — see CONTRIBUTING.md.
+#
+# Automation PRs (release-please, Renovate, Dependabot, GitHub Actions) are
+# exempt: their commits are machine-generated and cannot sign the DCO. Without
+# the exemption every release and dependency PR fails the gate.
 name: 📝 DCO
 
 on:
@@ -17,6 +21,7 @@ permissions:
 jobs:
   dco:
     name: Signed-off-by on every commit
+    if: ${{ github.event.pull_request.user.type != 'Bot' }}
     runs-on: ubuntu-latest
     steps:
       - name: Collect PR commits
