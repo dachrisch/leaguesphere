@@ -272,7 +272,7 @@ describe("GameList", () => {
     const { onSelect, onResume } = renderList([game]);
 
     expect(within(screen.getByRole("main")).queryByRole("button")).not.toBeInTheDocument();
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(within(screen.getByRole("main")).queryByRole("link")).not.toBeInTheDocument();
 
     const row = rowFor("Ravens – Wolves");
     expect(row.tagName).toBe("DIV");

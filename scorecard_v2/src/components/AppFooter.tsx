@@ -15,21 +15,31 @@ export function appVersion(): string | null {
 /**
  * LeagueSphere's small print under every screen.
  *
- * Not a link and not a control: the field app is opened from a bookmark, so the
- * footer only says where the official is. Screens place it after their scroll
- * content — the tracking screen above its action bar — so it never covers a CTA
- * and never adds a scrollbar of its own.
+ * Mirrors the main app's footer: the product line plus Impressum and
+ * Datenschutz. The links open in a new tab so leaving the field app never
+ * discards an in-progress game. Not a control: the screen keeps its CTA.
  */
 export default function AppFooter() {
   const version = appVersion();
 
   return (
     <footer className="app-footer">
-      <Football className="app-footer-icon" size={15} />
-      <span className="app-footer-brand">LeagueSphere</span>
-      <span>
-        {" · Scorecard v2"}
-        {version === null ? null : ` · v${version}`}
+      <span className="app-footer-brand">
+        <Football className="app-footer-icon" size={15} />
+        <span className="app-footer-name">LeagueSphere</span>
+        <span>
+          {" · Scorecard v2"}
+          {version === null ? null : ` · v${version}`}
+        </span>
+      </span>
+      <span className="app-footer-legal">
+        <a href="https://www.bumbleflies.de/impressum" rel="noopener noreferrer" target="_blank">
+          Impressum
+        </a>
+        <span aria-hidden="true">·</span>
+        <a href="https://www.bumbleflies.de/datenschutz" rel="noopener noreferrer" target="_blank">
+          Datenschutz
+        </a>
       </span>
     </footer>
   );

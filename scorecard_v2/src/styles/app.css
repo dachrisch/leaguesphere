@@ -2273,9 +2273,10 @@ button.game-row:active {
 .app-footer {
   display: flex;
   flex: 0 0 auto;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
+  gap: 2px var(--space-3);
   padding: var(--space-2) var(--page-gutter)
     calc(var(--space-2) + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line-soft);
@@ -2284,6 +2285,29 @@ button.game-row:active {
   text-align: center;
   color: var(--muted);
   user-select: none;
+}
+
+.app-footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.app-footer-legal {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.app-footer-legal a {
+  color: var(--muted);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--muted) 45%, transparent);
+  text-underline-offset: 2px;
+}
+
+.app-footer-legal a:hover {
+  color: var(--fg);
 }
 
 .app-footer-icon {
