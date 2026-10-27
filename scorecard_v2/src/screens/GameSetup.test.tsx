@@ -16,6 +16,7 @@ import type {
   Official,
   TeamOfficial,
 } from "../api/types";
+import { TeamLogosProvider } from "../app/teamLogos";
 import { getDeviceId } from "../device";
 import GameSetupScreen from "./GameSetup";
 
@@ -291,6 +292,34 @@ describe("GameSetup — header and crew", () => {
     expect(
       screen.getByText("Ravens – Wolves · 13:30 · Feld 2"),
     ).toBeInTheDocument();
+  });
+
+  it("puts the two team logos in the header context line", async () => {
+    const logos = new Map([
+      ["ravens", "https://example.test/media/teammanager/logos/ravens.png"],
+      ["wolves", "https://example.test/media/teammanager/logos/wolves.png"],
+    ]);
+    render(
+      <TeamLogosProvider logos={logos}>
+        <GameSetupScreen game={GAME} onStarted={vi.fn()} />
+      </TeamLogosProvider>,
+    );
+    await screen.findByRole("group", { name: "Münzwurf" });
+
+    const sub = document.querySelector(".app-sub") as HTMLElement;
+    const images = Array.from(sub.querySelectorAll("img"));
+    expect(images.map((image) => image.getAttribute("src"))).toEqual([
+      logos.get("ravens"),
+      logos.get("wolves"),
+    ]);
+    // The context line stays one readable sentence, not a logo wall.
+    expect(sub).toHaveTextContent("Ravens – Wolves · 13:30 · Feld 2");
+  });
+
+  it("renders the context line without logos when the directory is unknown", async () => {
+    await renderSetup();
+
+    expect(document.querySelectorAll(".app-sub img")).toHaveLength(0);
   });
 
   it("shows crew names and their roles", async () => {
