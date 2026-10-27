@@ -102,8 +102,11 @@ function sameOriginPath(link: string): string {
 /** The directory, every page of it. A bucket that answers with a list works. */
 async function fetchTeams(): Promise<TeamDirectoryEntry[]> {
   const entries: TeamDirectoryEntry[] = [];
+  // A page that links to itself would otherwise be fetched MAX_PAGES times.
+  const visited = new Set<string>();
   let path: string | null = `/api/teams/?page_size=${PAGE_SIZE}`;
-  for (let page = 0; path !== null && page < MAX_PAGES; page += 1) {
+  while (path !== null && visited.size < MAX_PAGES) {
+    visited.add(path);
     const body: TeamsPage | TeamDirectoryEntry[] = await apiGet<
       TeamsPage | TeamDirectoryEntry[]
     >(path);
@@ -112,7 +115,9 @@ async function fetchTeams(): Promise<TeamDirectoryEntry[]> {
       break;
     }
     entries.push(...(body.results ?? []));
-    path = body.next === null ? null : sameOriginPath(body.next);
+    const next: string | null =
+      body.next === null ? null : sameOriginPath(body.next);
+    path = next !== null && !visited.has(next) ? next : null;
   }
   return entries;
 }
@@ -143,6 +148,11 @@ async function readCachedLogos(): Promise<Map<string, string> | undefined> {
  *
  * Never rejects: without a network and without a cache the map is empty and the
  * screens fall back to the initials.
+ *
+ * An answer without a single logo never replaces the cache. A degraded payload
+ * (a renamed list key, a transient empty page) parses to an empty map, and
+ * writing that over a good cache would leave every later offline boot — the
+ * one case the cache exists for — without logos.
  */
 export async function loadTeamLogos(): Promise<TeamLogos> {
   const cached = await readCachedLogos();
@@ -151,6 +161,9 @@ export async function loadTeamLogos(): Promise<TeamLogos> {
   }
   try {
     const logos = teamLogosFrom(await fetchTeams());
+    if (logos.size === 0) {
+      return cached ?? logos;
+    }
     await writeSnapshot<StoredPairs>(snapshotKey.teams(), [...logos]);
     return logos;
   } catch {
