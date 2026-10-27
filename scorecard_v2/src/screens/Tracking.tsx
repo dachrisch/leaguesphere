@@ -15,6 +15,9 @@ import EventLog, {
   type LogRow,
 } from "../components/EventLog";
 import ScoreHeader, { isPossessing } from "../components/ScoreHeader";
+import SeriesSheet, {
+  type SeriesMode,
+} from "../components/sheets/SeriesSheet";
 import { errorMessage } from "../components/sheets/Sheet";
 import TouchdownSheet from "../components/sheets/TouchdownSheet";
 
@@ -28,16 +31,19 @@ interface TrackingScreenProps {
 
 type Side = RosterPlayer["side"];
 
+/** The open sheet: the touchdown entry or one of the series/time entries. */
+type SheetState = { kind: "touchdown" } | { kind: "series"; mode: SeriesMode };
+
 /**
- * The remaining entry tiles. They are visible but disabled until their sheets
- * land, so the official sees that the slot exists.
+ * The five series/time tiles. Penalty (Task 12) and Safety (Task 13) are
+ * rendered disabled next to them so the official sees the slot exists.
  */
-const PLACEHOLDER_TILES = [
-  "1st Down",
-  "Turnover",
-  "Interception",
-  "Spielzeit",
-  "Auszeit",
+const SERIES_TILES: { mode: SeriesMode; label: string }[] = [
+  { mode: "first", label: "1st Down" },
+  { mode: "turnover", label: "Turnover" },
+  { mode: "interception", label: "Interception" },
+  { mode: "time", label: "Spielzeit" },
+  { mode: "timeout", label: "Auszeit" },
 ];
 
 const CONFIRMATION: Record<string, string> = {
@@ -90,7 +96,7 @@ export default function TrackingScreen({
   const [undoKey, setUndoKey] = useState<string | null>(null);
   const [undoError, setUndoError] = useState<string | null>(null);
   const [roster, setRoster] = useState<RosterPlayer[]>([]);
-  const [sheet, setSheet] = useState(false);
+  const [sheet, setSheet] = useState<SheetState | null>(null);
   const [posting, setPosting] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
   // Refs, not state: two taps in the same tick both see the old state and
@@ -233,9 +239,9 @@ export default function TrackingScreen({
     }
   };
 
-  const openSheet = (): void => {
+  const openSheet = (next: SheetState): void => {
     setConfirmation(null);
-    setSheet(true);
+    setSheet(next);
   };
 
   const composerDisabled =
@@ -270,20 +276,20 @@ export default function TrackingScreen({
             possessionSide === null ? "tdbtn" : `tdbtn ${possessionSide}`
           }
           disabled={composerDisabled}
-          onClick={openSheet}
+          onClick={() => openSheet({ kind: "touchdown" })}
           type="button"
         >
           {touchdownLabel}
         </button>
-        {PLACEHOLDER_TILES.map((label) => (
+        {SERIES_TILES.map((tile) => (
           <button
             className="action"
-            disabled
-            key={label}
-            title="Folgt in einem späteren Schritt."
+            disabled={composerDisabled}
+            key={tile.mode}
+            onClick={() => openSheet({ kind: "series", mode: tile.mode })}
             type="button"
           >
-            {label}
+            {tile.label}
           </button>
         ))}
         <button
@@ -322,15 +328,29 @@ export default function TrackingScreen({
         </button>
       </footer>
 
-      {sheet && possessionTeam !== null && possessionSide !== null ? (
-        <TouchdownSheet
-          onClose={() => setSheet(false)}
-          onSubmit={submit}
-          passcheck={game.passcheck === true}
-          roster={roster}
-          side={possessionSide}
-          teamName={possessionTeam}
-        />
+      {sheet !== null &&
+      possessionTeam !== null &&
+      possessionSide !== null ? (
+        sheet.kind === "touchdown" ? (
+          <TouchdownSheet
+            onClose={() => setSheet(null)}
+            onSubmit={submit}
+            passcheck={game.passcheck === true}
+            roster={roster}
+            side={possessionSide}
+            teamName={possessionTeam}
+          />
+        ) : (
+          <SeriesSheet
+            key={sheet.mode}
+            mode={sheet.mode}
+            onClose={() => setSheet(null)}
+            onSubmit={submit}
+            roster={roster}
+            side={possessionSide}
+            teamName={possessionTeam}
+          />
+        )
       ) : null}
     </div>
   );

@@ -1351,9 +1351,39 @@ button.game-row:active {
   cursor: not-allowed;
 }
 
+.jerseychips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
 
+.jerseychip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  min-height: var(--touch);
+  padding: 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--fg);
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
 
+.jerseychip.sel {
+  color: #0b1017;
+  background: var(--fg);
+  border-color: var(--fg);
+}
 
+.jerseychip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .sheetfield {
   display: flex;
@@ -1390,9 +1420,32 @@ button.game-row:active {
   font-variant-numeric: tabular-nums;
 }
 
+.timefields {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
 
+.timefields .sheetfield {
+  width: 84px;
+}
 
+.sheetinput-clock {
+  min-height: 52px;
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
 
+.timesep {
+  padding-bottom: var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--muted);
+}
 
 .patrow {
   display: grid;
