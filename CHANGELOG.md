@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.44.2](https://github.com/dachrisch/leaguesphere/compare/v4.44.1...v4.44.2) (2026-10-27)
+
+
+### Bug Fixes
+
+* **dbaccess:** grant reads table by table, and withhold the credentials ([#2102](https://github.com/dachrisch/leaguesphere/issues/2102)) ([9ccd65e](https://github.com/dachrisch/leaguesphere/commit/9ccd65e8921cfdeb6b9d437b9b5d70fa38389202))
+
 ## [4.44.1](https://github.com/dachrisch/leaguesphere/compare/v4.44.0...v4.44.1) (2026-10-27)
 
 
