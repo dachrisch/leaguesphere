@@ -36,6 +36,24 @@ from passcheck.models import PasscheckVerification, PlayerlistGameday
 logger = logging.getLogger(__name__)
 
 DEVICE_LOCK_DETAIL = "Dieses Spiel läuft auf einem anderen Gerät."
+GAME_FINISHED_DETAIL = "Dieses Spiel ist beendet."
+
+
+def _finished_game_response(game) -> Response | None:
+    """409 once a game is `beendet`, ``None`` while it is still open.
+
+    A finished game is the final word: the old app navigates away from the
+    scorecard after the result, and v2 must not append to (or undo) a log the
+    result already covers. Clients replay their queue, so this is the guard
+    that a stale tab or a late flush runs into — not a silent extra row.
+    """
+    if str(getattr(game, "status", "") or "").strip().lower() == "beendet":
+        return Response(
+            {"detail": GAME_FINISHED_DETAIL},
+            status=HTTPStatus.CONFLICT,
+        )
+    return None
+
 
 
 def _device_conflict(stored: str, incoming: str):
@@ -235,6 +253,9 @@ class GameLogAPIView(APIView):
                     ),
                     status=HTTPStatus.OK,
                 )
+            finished = _finished_game_response(game)
+            if finished is not None:
+                return finished
             conflict = _device_lock_response(request, game.pk, data)
             if conflict is not None:
                 return conflict
@@ -278,6 +299,10 @@ class GameLogAPIView(APIView):
             raise NotFound(
                 detail=f"Could not delete team logs ... gameId {game_id} not found"
             )
+        # A finished game cannot be undone: the result already covers the log.
+        finished = _finished_game_response(game)
+        if finished is not None:
+            return finished
         # Undo is a write like any other: a stale second tab must not delete
         # entries of a game another device holds.
         conflict = _device_lock_response(request, game.pk)
