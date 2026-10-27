@@ -229,8 +229,11 @@ function retryAfterMsOf(error: unknown): number | undefined {
 /**
  * The server marks a device conflict in the body (`device_id`) rather than a
  * flag; the German detail text is only the fallback for an older answer.
+ *
+ * Exported for the session layer, which pauses the queue on the same answer
+ * when the official's own write is rejected (the outbox path uses it too).
  */
-function looksLikeDeviceLock(error: unknown): boolean {
+export function isDeviceLockError(error: unknown): boolean {
   const body = bodyOf(error);
   if (typeof body === "object" && body !== null && "device_id" in body) {
     return true;
@@ -268,7 +271,7 @@ export function classify(error: unknown): Verdict {
   if (status === 401 || status === 403) {
     return { kind: "auth" };
   }
-  if (status === 409 && looksLikeDeviceLock(error)) {
+  if (status === 409 && isDeviceLockError(error)) {
     return { kind: "device" };
   }
   const reason =
@@ -609,6 +612,17 @@ export function createSync(
   }
 
   async function flushAll(): Promise<void> {
+    // Read the store first: a reloaded tab (or another tab's enqueue) has
+    // games the engine never flushed, and the boot flush must not race the
+    // constructor's own `gameIds()` read. A failed read still drains what the
+    // engine already knows.
+    try {
+      for (const gameId of await outbox.gameIds()) {
+        knownGames.add(gameId);
+      }
+    } catch {
+      // IndexedDB unavailable: fall back to the games this engine saw.
+    }
     await Promise.all([...knownGames].map((gameId) => flush(gameId)));
   }
 
