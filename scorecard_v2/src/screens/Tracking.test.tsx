@@ -783,6 +783,71 @@ describe("Tracking touchdown entry", () => {
   });
 });
 
+describe("Tracking series and time entry", () => {
+  it("records the second half's Spielzeit with the payload half", async () => {
+    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    renderTracking({
+      log: makeLog({ isFirstHalf: false, inPossession: "Ravens" }),
+    });
+    const user = userEvent.setup();
+
+    const dialog = await openSheet(user, /^Spielzeit$/);
+    expect(dialog).toHaveAccessibleName("Spielzeit");
+    await user.type(screen.getByRole("textbox", { name: "Minuten" }), "12");
+    await user.type(screen.getByRole("textbox", { name: "Sekunden" }), "34");
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    expect(apiPostMock).toHaveBeenCalledWith("/api/gamelog/42", {
+      gameId: 42,
+      team: "Ravens",
+      half: 2,
+      event: [{ name: "Spielzeit", input: "12:34" }],
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Spielzeit gespeichert · 12:34",
+    );
+  });
+
+  it("records an interception for the possessing team", async () => {
+    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Wolves" }));
+    renderTracking({ log: makeLog({ inPossession: "Wolves" }) });
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Interception$/);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    expect(apiPostMock).toHaveBeenCalledWith("/api/gamelog/42", {
+      gameId: 42,
+      team: "Wolves",
+      half: 1,
+      event: [{ name: "Interception" }],
+    });
+  });
+
+  it("records a first down with an optional jersey", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^1st Down$/);
+    await user.click(
+      await screen.findByRole("button", { name: "Trikot 7, Meier" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    expect(apiPostMock).toHaveBeenCalledWith("/api/gamelog/42", {
+      gameId: 42,
+      team: "Ravens",
+      half: 1,
+      event: [{ name: "First Down", player: 7 }],
+    });
+  });
+});
+
 describe("Tracking composer state", () => {
   it("disables the entry buttons for a finished game", () => {
     renderTracking({ game: { ...GAME, status: "beendet" } });
