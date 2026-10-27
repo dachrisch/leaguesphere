@@ -5,9 +5,12 @@
 # which are templates, fixtures, translations and JSON that cannot hold a
 # comment header), the licensing information lives here as path annotations.
 #
-# The licence is stored twice on purpose:
-#   - LICENSE                     human-facing copy (copyright preamble + text)
-#   - LICENSES/AGPL-3.0-or-later.txt  verbatim copy required by REUSE
+# The licence is stored twice on purpose, both copies byte-identical to the
+# FSF text:
+#   - LICENSE                         GitHub/licence-detection copy
+#   - LICENSES/AGPL-3.0-or-later.txt  copy required by REUSE
+# Copyright information lives in NOTICE, never in LICENSE: a preamble there
+# makes GitHub report the licence as "Other" instead of AGPL-3.0.
 #
 # Run `reuse lint` (also enforced in .github/workflows/reuse.yaml) after adding
 # files that are *not* covered by the project licence — for example vendored

@@ -3,7 +3,10 @@ Copyright (C) 2020-2026 Christian Daehn and LeagueSphere contributors
 
 This product is licensed under the GNU Affero General Public License,
 version 3 or later (SPDX: AGPL-3.0-or-later). The full licence text is in
-LICENSE, with a verbatim copy in LICENSES/AGPL-3.0-or-later.txt.
+LICENSE — byte-for-byte the GNU AGPL version 3, unmodified — with an
+identical copy in LICENSES/AGPL-3.0-or-later.txt. Copyright information
+lives in this file, not in LICENSE, so that licence-detection tooling
+(GitHub, REUSE, scanners) recognises the licence exactly.
 
 Releases up to and including v4.43.x were dedicated to the public domain
 under CC0 1.0 Universal. That dedication is irrevocable: those releases
