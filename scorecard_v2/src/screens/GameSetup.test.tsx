@@ -350,6 +350,51 @@ describe("GameSetup — header and crew", () => {
   });
 });
 
+describe("GameSetup — guest officials", () => {
+  it("keeps a guest as free text and writes the name, not a link", async () => {
+    const { onStarted } = await renderSetup();
+
+    await userEvent.click(crewButton("Schiedsrichter"));
+    await userEvent.type(
+      screen.getByLabelText("Schiedsrichter: Person suchen"),
+      "Gast Schiri",
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Als Freitext übernehmen" }),
+    );
+    expect(crewButton("Schiedsrichter")).toHaveTextContent("Freitext");
+    expect(crewButton("Schiedsrichter")).toHaveTextContent("Gast Schiri");
+
+    await clickStart();
+
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
+    expect(apiPutMock).toHaveBeenNthCalledWith(1, CREW_PATH, [
+      { position: "Scorecard Judge", official: 12, name: "Anna Richter" },
+      { position: "Referee", official: null, name: "Gast Schiri" },
+      { position: "Down Judge", official: null, name: null },
+      { position: "Field Judge", official: null, name: null },
+      { position: "Side Judge", official: null, name: null },
+    ]);
+  });
+
+  it("cannot be started without a connection", async () => {
+    Object.defineProperty(globalThis.navigator, "onLine", {
+      configurable: true,
+      value: false,
+    });
+    try {
+      await renderSetup();
+      expect(startButton()).toHaveTextContent("Start nur online");
+      expect(startButton()).toBeDisabled();
+    } finally {
+      Object.defineProperty(globalThis.navigator, "onLine", {
+        configurable: true,
+        value: true,
+      });
+    }
+  });
+});
+
 describe("GameSetup — licences", () => {
   it("marks a valid licence", async () => {
     await renderSetup();
