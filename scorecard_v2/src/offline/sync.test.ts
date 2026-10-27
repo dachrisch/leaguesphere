@@ -10,7 +10,9 @@ import { createOutbox, type Outbox } from "./outbox";
 import {
   CHANNEL_NAME,
   DEVICE_LOCK_DETAIL,
+  classify,
   createSync,
+  isDeviceLockError,
   type Sync,
   type SyncState,
   type Transport,
@@ -1025,6 +1027,51 @@ describe("cross-tab", () => {
     expect(FakeChannel.all).toEqual([]);
   });
 
+  it("keeps a manual device pause another tab announced", async () => {
+    const sync = start({ send: async () => undefined });
+    const [peer] = FakeChannel.all;
+
+    peer?.onmessage?.({
+      data: { type: "paused", reason: "device", gameId: 1, manual: true },
+    } as MessageEvent);
+    await settle(2);
+
+    expect(sync.pausedFor(1)).toBe("device");
+    // The manual flag survives, so this tab's visibility retry cannot lift it.
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    document.dispatchEvent(new Event("visibilitychange"));
+    await settle(2);
+    expect(sync.pausedFor(1)).toBe("device");
+  });
+
+  it("keeps a manual app-wide pause another tab announced", async () => {
+    const sync = start({ send: async () => undefined });
+    const [peer] = FakeChannel.all;
+
+    peer?.onmessage?.({
+      data: { type: "paused", reason: "auth", manual: true },
+    } as MessageEvent);
+    await settle(2);
+
+    expect(sync.state().paused).toBe("auth");
+  });
+
+  it("lifts one game's device pause when another tab resumes that game", async () => {
+    const first = start({ send: async () => undefined });
+    const other = start({ send: async () => undefined });
+    const [, otherPeer] = FakeChannel.all;
+
+    first.pause("device", 1);
+    await settle(2);
+    expect(other.pausedFor(1)).toBe("device");
+
+    // The staff unlock happened in the first tab.
+    otherPeer?.onmessage?.({ data: { type: "resumed", gameId: 1 } } as MessageEvent);
+    await settle(2);
+
+    expect(other.pausedFor(1)).toBeNull();
+  });
+
   it(`uses the "${CHANNEL_NAME}" channel name`, () => {
     start({ send: async () => undefined });
 
@@ -1128,5 +1175,666 @@ describe("navigator.locks", () => {
     await secondFlush;
 
     expect(await outbox.pending(1)).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The classification and pause details the happy paths never reach.
+// ---------------------------------------------------------------------------
+
+describe("classify", () => {
+  it("treats a missing, non-numeric or non-finite status as 'not delivered'", () => {
+    expect(classify("kaputt")).toEqual({
+      kind: "transient",
+      reason: "offline",
+    });
+    expect(classify({})).toEqual({ kind: "transient", reason: "offline" });
+    expect(classify({ status: "500" })).toEqual({
+      kind: "transient",
+      reason: "offline",
+    });
+    expect(classify({ status: Number.NaN })).toEqual({
+      kind: "transient",
+      reason: "offline",
+    });
+    expect(classify(null)).toEqual({ kind: "transient", reason: "offline" });
+  });
+
+  it("retries 5xx and 408 as a server problem", () => {
+    expect(classify({ status: 500 })).toEqual({
+      kind: "transient",
+      reason: "server",
+    });
+    expect(classify({ status: 408 })).toEqual({
+      kind: "transient",
+      reason: "server",
+    });
+  });
+
+  it("classifies 401 as the session and a per-row 403 as a rejection", () => {
+    expect(classify({ status: 401 })).toEqual({ kind: "auth" });
+    expect(
+      classify({ status: 403, detail: "Nicht dein Eintrag." }),
+    ).toEqual({ kind: "rejected", reason: "Nicht dein Eintrag." });
+  });
+
+  it("treats a 403 whose detail is not text as a session problem", () => {
+    expect(classify({ status: 403, body: { detail: 42 } })).toEqual({
+      kind: "auth",
+    });
+    // A DRF field error names no session, so it is a rejection.
+    expect(
+      classify({ status: 403, body: { event: ["Unbekanntes Ereignis."] } }),
+    ).toEqual({ kind: "rejected", reason: "Unbekanntes Ereignis." });
+  });
+
+  it("falls back to the status when a 403 carries no detail", () => {
+    // `detailOf` is null only when the body has nothing readable, which
+    // `isSessionError` treats as the old expired-session answer; the explicit
+    // status text is only the last resort for a rejection.
+    expect(classify({ status: 403, body: [] })).toEqual({ kind: "auth" });
+    expect(classify({ status: 418 })).toEqual({
+      kind: "rejected",
+      reason: "HTTP 418",
+    });
+  });
+
+  it("falls back to the message and then the status for a rejection", () => {
+    expect(classify({ status: 422, message: "Feld fehlt." })).toEqual({
+      kind: "rejected",
+      reason: "Feld fehlt.",
+    });
+    expect(classify({ status: 422, body: { event: ["Feld fehlt."] } })).toEqual(
+      { kind: "rejected", reason: "Feld fehlt." },
+    );
+    expect(classify({ status: 422 })).toEqual({
+      kind: "rejected",
+      reason: "HTTP 422",
+    });
+  });
+
+  it("clips a long rejection reason to one line", () => {
+    const long = "x".repeat(400);
+    const verdict = classify({ status: 400, detail: long });
+
+    expect(verdict).toMatchObject({ kind: "rejected" });
+    if (verdict.kind === "rejected") {
+      expect(verdict.reason).toHaveLength(200);
+      expect(verdict.reason.endsWith("…")).toBe(true);
+    }
+  });
+
+  it("reads a 429 Retry-After as milliseconds, seconds or a date", () => {
+    expect(
+      classify({ status: 429, retryAfterMs: 5_000 }),
+    ).toMatchObject({ kind: "transient", retryAfterMs: 5_000 });
+    expect(classify({ status: 429, retryAfter: 3 })).toMatchObject({
+      retryAfterMs: 3_000,
+    });
+    expect(classify({ status: 429, retryAfter: "7" })).toMatchObject({
+      retryAfterMs: 7_000,
+    });
+    expect(classify({ status: 429, retryAfter: -5 })).toMatchObject({
+      retryAfterMs: 0,
+    });
+    const date = new Date(Date.now() + 10_000).toUTCString();
+    const fromDate = classify({ status: 429, retryAfter: date });
+    expect(fromDate).toMatchObject({ kind: "transient" });
+    if (fromDate.kind === "transient") {
+      expect(fromDate.retryAfterMs).toBeGreaterThan(0);
+      expect(fromDate.retryAfterMs).toBeLessThanOrEqual(10_000);
+    }
+  });
+
+  it("falls back to the exponential step for an unreadable Retry-After", () => {
+    expect(classify({ status: 429, retryAfter: "" })).toEqual({
+      kind: "transient",
+      reason: "server",
+      retryAfterMs: undefined,
+    });
+    expect(classify({ status: 429, retryAfter: "irgendwann" })).toMatchObject({
+      retryAfterMs: undefined,
+    });
+    expect(classify({ status: 429 })).toMatchObject({
+      retryAfterMs: undefined,
+    });
+    expect(classify({ status: 429, retryAfterMs: Number.NaN })).toMatchObject({
+      retryAfterMs: undefined,
+    });
+  });
+
+  it("reads Retry-After from a Headers-like getter and from a plain object", () => {
+    const headers = {
+      get: (name: string) => (name === "retry-after" ? "4" : null),
+    };
+    expect(classify({ status: 429, headers })).toMatchObject({
+      retryAfterMs: 4_000,
+    });
+    expect(
+      classify({ status: 429, headers: { "Retry-After": "5" } }),
+    ).toMatchObject({ retryAfterMs: 5_000 });
+    expect(classify({ status: 429, headers: { other: "5" } })).toMatchObject({
+      retryAfterMs: undefined,
+    });
+    expect(classify({ status: 429, headers: "keine" })).toMatchObject({
+      retryAfterMs: undefined,
+    });
+  });
+
+  it("ignores a getter that throws", () => {
+    const headers = {
+      get: () => {
+        throw new Error("kaputt");
+      },
+    };
+    expect(classify({ status: 429, headers })).toMatchObject({
+      retryAfterMs: undefined,
+    });
+  });
+});
+
+describe("isDeviceLockError", () => {
+  it("detects the lock in the body, the detail and the message", () => {
+    expect(isDeviceLockError({ body: { device_id: "device-b" } })).toBe(true);
+    expect(
+      isDeviceLockError({ body: { detail: DEVICE_LOCK_DETAIL } }),
+    ).toBe(true);
+    expect(isDeviceLockError({ detail: DEVICE_LOCK_DETAIL })).toBe(true);
+    expect(isDeviceLockError({ message: DEVICE_LOCK_DETAIL })).toBe(true);
+  });
+
+  it("rejects anything else", () => {
+    expect(isDeviceLockError({ body: null })).toBe(false);
+    expect(isDeviceLockError({ body: { detail: "Etwas anderes." } })).toBe(
+      false,
+    );
+    expect(isDeviceLockError("kaputt")).toBe(false);
+    expect(isDeviceLockError({})).toBe(false);
+  });
+});
+
+describe("pause and resume details", () => {
+  it("does not announce a pause that is already set", async () => {
+    const states: SyncState[] = [];
+    const sync = start({ send: async () => undefined }, (state) =>
+      states.push(state),
+    );
+
+    sync.pause("auth");
+    await settle(2);
+    const announced = states.length;
+    sync.pause("auth");
+    await settle(2);
+
+    expect(states.length).toBe(announced);
+  });
+
+  it("an unscoped device pause blocks every game", async () => {
+    const send = vi.fn<Transport["send"]>(async () => undefined);
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+
+    sync.pause("device");
+
+    expect(sync.pausedFor(1)).toBe("device");
+    expect(sync.pausedFor(2)).toBe("device");
+    await sync.flush(1);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("resume(gameId) lifts only one game's device pause", async () => {
+    const send = vi.fn<Transport["send"]>(async () => undefined);
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "g1", gameId: 1, createdAt: 100 }));
+    await outbox.enqueue(op({ id: "g2", gameId: 2, createdAt: 200 }));
+
+    sync.pause("device", 1);
+    sync.pause("device", 2);
+    expect(sync.stateFor(1).paused).toBe("device");
+
+    await sync.resume(1);
+
+    expect(sync.pausedFor(1)).toBeNull();
+    expect(sync.pausedFor(2)).toBe("device");
+    expect(await outbox.pending(1)).toEqual([]);
+    expect((await outbox.pending(2)).map((entry) => entry.id)).toEqual(["g2"]);
+  });
+
+  it("resume(gameId) also lifts an app-wide pause", async () => {
+    const send = vi.fn<Transport["send"]>(async () => undefined);
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+
+    sync.pause("auth");
+
+    await sync.resume(1);
+
+    expect(sync.state().paused).toBeNull();
+    expect(await outbox.pending(1)).toEqual([]);
+  });
+
+  it("keeps an auth pause when the browser goes offline", async () => {
+    const sync = start({ send: async () => undefined });
+    sync.pause("auth");
+    await settle(2);
+
+    globalThis.dispatchEvent(new Event("offline"));
+    await settle(2);
+
+    expect(sync.state().paused).toBe("auth");
+  });
+
+  it("reports the op that is being sent right now", async () => {
+    const resolvers: Array<() => void> = [];
+    const send = vi.fn<Transport["send"]>(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvers.push(resolve);
+        }),
+    );
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "inflight" }));
+
+    const flushing = sync.flush(1);
+    await settle(4);
+    expect(sync.sendingOp(1)).toBe("inflight");
+    expect(sync.sendingOp(2)).toBeNull();
+
+    resolvers.shift()?.();
+    await settle();
+    await flushing;
+    expect(sync.sendingOp(1)).toBeNull();
+  });
+});
+
+describe("broken stores and subscribers", () => {
+  function brokenOutbox(overrides: Partial<Outbox> = {}): Outbox {
+    return {
+      enqueue: async () => undefined,
+      pending: async () => [],
+      peek: async () => undefined,
+      get: async () => undefined,
+      gameIds: async () => [],
+      remove: async () => undefined,
+      markFailed: async () => undefined,
+      failed: async () => [],
+      retry: async () => undefined,
+      clear: async () => undefined,
+      clearAll: async () => undefined,
+      ...overrides,
+    };
+  }
+
+  it("keeps the last counts when a store read fails while emitting", async () => {
+    const sync = createSync(
+      brokenOutbox({
+        pending: async () => {
+          throw new Error("IndexedDB weg");
+        },
+      }),
+      { send: async () => undefined },
+      () => undefined,
+    );
+    syncs.push(sync);
+
+    // `flush` registers the game, then `emit` fails to count it.
+    await sync.flush(7);
+
+    expect(sync.state()).toMatchObject({ pending: 0, failed: 0, syncing: false });
+  });
+
+  it("survives a subscriber that throws", async () => {
+    const sync = createSync(
+      outbox,
+      { send: async () => undefined },
+      () => {
+        throw new Error("kaputt");
+      },
+    );
+    syncs.push(sync);
+    await outbox.enqueue(op({ id: "a" }));
+
+    await expect(sync.flush(1)).resolves.toBeUndefined();
+
+    expect(await outbox.pending(1)).toEqual([]);
+  });
+
+  it("drains the games it knows when the store cannot list them", async () => {
+    let known = false;
+    let drained = false;
+    const store = brokenOutbox({
+      gameIds: async () => {
+        if (!known) {
+          known = true;
+          throw new Error("IndexedDB weg");
+        }
+        return [];
+      },
+      pending: async (gameId) =>
+        gameId === 1 && !drained ? [{ ...op({ id: "a" }), seq: 1 } as never] : [],
+      peek: async (gameId) => {
+        if (gameId !== 1 || drained) {
+          return undefined;
+        }
+        drained = true;
+        return { ...op({ id: "a" }), seq: 1 } as never;
+      },
+    });
+    const send = vi.fn<Transport["send"]>(async () => undefined);
+    const sync = createSync(store, { send }, () => undefined);
+    syncs.push(sync);
+
+    // The first flush registers game 1; the boot read then fails and
+    // `flushAll` still drains what this engine knows.
+    await sync.flush(1);
+    await sync.flushAll();
+
+    expect(send).toHaveBeenCalled();
+  });
+
+  it("closes quietly when the lock manager itself throws", async () => {
+    let acquired = false;
+    Object.defineProperty(globalThis.navigator, "locks", {
+      configurable: true,
+      value: {
+        request: async (
+          _name: string,
+          _options: unknown,
+          callback: (lock: { name: string } | null) => Promise<unknown>,
+        ) => {
+          // The callback ran (the lock was acquired), then the wrapper broke:
+          // replaying the drain would double-send.
+          acquired = true;
+          await callback({ name: "outbox-1" });
+          throw new Error("Lock kaputt");
+        },
+      },
+    });
+    const send = vi.fn<Transport["send"]>(async () => undefined);
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+
+    await sync.flush(1);
+
+    expect(acquired).toBe(true);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(await outbox.pending(1)).toEqual([]);
+  });
+
+  it("replays the drain when the lock could not be acquired at all", async () => {
+    Object.defineProperty(globalThis.navigator, "locks", {
+      configurable: true,
+      value: {
+        request: async () => {
+          throw new Error("Lock kaputt");
+        },
+      },
+    });
+    const send = vi.fn<Transport["send"]>(async () => undefined);
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+
+    await sync.flush(1);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(await outbox.pending(1)).toEqual([]);
+  });
+
+  it("does nothing when a flush arrives after dispose", async () => {
+    const send = vi.fn<Transport["send"]>(async () => undefined);
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+    sync.dispose();
+    syncs = [];
+
+    await sync.flush(1);
+
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("creates and disposes without globals it does not need", () => {
+    vi.stubGlobal("BroadcastChannel", undefined);
+    vi.stubGlobal("addEventListener", undefined);
+    const send = vi.fn<Transport["send"]>(async () => undefined);
+    const sync = createSync(outbox, { send }, () => undefined);
+
+    expect(() => sync.dispose()).not.toThrow();
+  });
+
+  it("keeps sending when a cross-tab broadcast fails", async () => {
+    class ThrowingChannel {
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      postMessage(): void {
+        throw new Error("Kanal kaputt");
+      }
+      close(): void {
+        throw new Error("schon zu");
+      }
+    }
+    vi.stubGlobal("BroadcastChannel", ThrowingChannel);
+    const send = vi.fn<Transport["send"]>(async () => undefined);
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+
+    await expect(sync.flush(1)).resolves.toBeUndefined();
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(() => sync.dispose()).not.toThrow();
+    syncs = [];
+  });
+});
+
+describe("retry timers", () => {
+  it("clears an offline pause it set itself when the timer fires", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    let attempts = 0;
+    const send = vi.fn<Transport["send"]>(async () => {
+      attempts += 1;
+      if (attempts === 1) {
+        throw new ApiError(0, null, "Keine Verbindung.");
+      }
+    });
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+    await sync.flush(1);
+    expect(sync.state().paused).toBe("offline");
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    await settle();
+
+    expect(sync.state().paused).toBeNull();
+    expect(await outbox.pending(1)).toEqual([]);
+  });
+
+  it("does not retry while a manual pause is in force", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const send = vi.fn<Transport["send"]>(async () => {
+      throw new ApiError(503, null, "Wartung");
+    });
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+    await sync.flush(1);
+    expect(send).toHaveBeenCalledTimes(1);
+
+    sync.pause("auth");
+    await vi.advanceTimersByTimeAsync(30_000);
+    await settle();
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(sync.state().paused).toBe("auth");
+  });
+
+  it("a resume clears a pending backoff and tries at once", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const send = vi.fn<Transport["send"]>(async () => {
+      throw new ApiError(503, null, "Wartung");
+    });
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+    await sync.flush(1);
+    expect(send).toHaveBeenCalledTimes(1);
+
+    send.mockImplementation(async () => undefined);
+    await sync.resume();
+
+    expect(await outbox.pending(1)).toEqual([]);
+    // The timer was dropped, so advancing time must not send a second time.
+    await vi.advanceTimersByTimeAsync(30_000);
+    await settle();
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the queue when a delete is rejected for another reason", async () => {
+    const reason = "Eintrag gehört zu einem anderen Team.";
+    const send = vi.fn<Transport["send"]>(async () => {
+      throw new ApiError(403, { detail: reason }, reason);
+    });
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "undo", kind: "delete", payload: {} }));
+
+    await sync.flush(1);
+
+    expect((await outbox.failed(1))[0]?.failedReason).toBe(reason);
+  });
+});
+
+describe("more defensive branches", () => {
+  it("flattens a deeply nested field error", () => {
+    expect(
+      classify({
+        status: 400,
+        body: { a: { b: { c: { d: ["Zu tief."] } } } },
+      }),
+    ).toEqual({ kind: "rejected", reason: "HTTP 400" });
+    expect(classify({ status: 400, body: { a: ["", "  ", "Gut."] } })).toEqual(
+      { kind: "rejected", reason: "Gut." },
+    );
+  });
+
+  it("still syncs when BroadcastChannel cannot be constructed", async () => {
+    class BrokenChannel {
+      constructor() {
+        throw new Error("kein Kanal");
+      }
+    }
+    vi.stubGlobal("BroadcastChannel", BrokenChannel);
+    const send = vi.fn<Transport["send"]>(async () => undefined);
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+
+    await sync.flush(1);
+
+    expect(await outbox.pending(1)).toEqual([]);
+  });
+
+  it("stays quiet when paused after dispose", async () => {
+    const onState = vi.fn();
+    const sync = start({ send: async () => undefined }, onState);
+    sync.dispose();
+    syncs = [];
+    onState.mockClear();
+
+    sync.pause("auth");
+
+    expect(onState).not.toHaveBeenCalled();
+  });
+
+  it("stops before the loop when it was disposed under the lock", async () => {
+    const send = vi.fn<Transport["send"]>(async () => undefined);
+    const sync = start({ send });
+    Object.defineProperty(globalThis.navigator, "locks", {
+      configurable: true,
+      value: {
+        request: async (
+          _name: string,
+          _options: unknown,
+          callback: (lock: { name: string } | null) => Promise<unknown>,
+        ) => {
+          sync.dispose();
+          return callback({ name: "outbox-1" });
+        },
+      },
+    });
+    await outbox.enqueue(op({ id: "a" }));
+
+    await sync.flush(1);
+
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("drains at once after a manual pause is lifted with a dead timer", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const send = vi.fn<Transport["send"]>(async () => {
+      throw new ApiError(503, null, "Wartung");
+    });
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+    await sync.flush(1);
+    sync.pause("auth");
+    // The backoff fires while the app pause is in force: its timer is gone but
+    // the step stays.
+    await vi.advanceTimersByTimeAsync(1_000);
+    await settle();
+
+    send.mockImplementation(async () => undefined);
+    await sync.resume();
+
+    expect(await outbox.pending(1)).toEqual([]);
+  });
+});
+
+describe("queued browser events", () => {
+  it("ignores an online event delivered after dispose", async () => {
+    const online = new Set<EventListener>();
+    const offline = new Set<EventListener>();
+    const realAdd = globalThis.addEventListener.bind(globalThis);
+    vi.spyOn(globalThis, "addEventListener").mockImplementation(
+      (type: string, listener: EventListenerOrEventListenerObject) => {
+        const fn = listener as EventListener;
+        if (type === "online") online.add(fn);
+        if (type === "offline") offline.add(fn);
+        realAdd(type, listener);
+      },
+    );
+    const send = vi.fn<Transport["send"]>(async () => undefined);
+    const sync = start({ send });
+    const [onOnline] = [...online];
+    const [onOffline] = [...offline];
+
+    sync.dispose();
+    syncs = [];
+
+    expect(() => onOnline?.(new Event("online"))).not.toThrow();
+    expect(() => onOffline?.(new Event("offline"))).not.toThrow();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("stops at a pause another tab announced while the backoff runs", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    class PeerChannel {
+      static all: PeerChannel[] = [];
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      constructor(readonly name: string) {
+        PeerChannel.all.push(this);
+      }
+      postMessage(): void {}
+      close(): void {}
+    }
+    vi.stubGlobal("BroadcastChannel", PeerChannel);
+    const send = vi.fn<Transport["send"]>(async () => {
+      throw new ApiError(503, null, "Wartung");
+    });
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+    await sync.flush(1);
+    expect(send).toHaveBeenCalledTimes(1);
+
+    const [peer] = PeerChannel.all;
+    peer?.onmessage?.({ data: { type: "paused", reason: "auth" } } as MessageEvent);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await settle();
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(sync.state().paused).toBe("auth");
   });
 });

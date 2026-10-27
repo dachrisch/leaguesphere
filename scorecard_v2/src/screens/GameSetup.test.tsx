@@ -1105,3 +1105,157 @@ describe("GameSetup — loading", () => {
     expect(startButton()).toBeEnabled();
   });
 });
+
+describe("GameSetup — the remaining data shapes", () => {
+  it("labels a stored row without a position", async () => {
+    crew = [crewRow({ official: null, name: null, position: "   " })];
+    await renderSetup();
+
+    expect(screen.getByText("Ohne Position")).toBeInTheDocument();
+    // The nameless free-text row renders as a dash, not as "undefined".
+    expect(screen.getByText("–")).toBeInTheDocument();
+  });
+
+  it("names an unknown official the team list does not know", async () => {
+    crew = [crewRow({ official: 99, name: null, position: "Referee" })];
+    await renderSetup();
+
+    expect(crewSelect("Schiedsrichter")).toHaveValue("99");
+    expect(
+      within(rowFor("Schiedsrichter")).getByRole("option", {
+        name: "Offizieller 99",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(rowFor("Schiedsrichter")).getByText("Lizenz unbekannt"),
+    ).toBeInTheDocument();
+  });
+
+  it("clears a crew slot back to nobody", async () => {
+    crew = [crewRow({ official: 11, position: "Referee" })];
+    await renderSetup();
+
+    await userEvent.selectOptions(crewSelect("Schiedsrichter"), "");
+
+    expect(crewSelect("Schiedsrichter")).toHaveValue("");
+    expect(
+      within(rowFor("Schiedsrichter")).getByRole("option", {
+        name: "Offiziellen wählen",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows an expired licence whose expiry date is unknown", async () => {
+    teamList = [
+      teamPerson({ id: 11, license: "B", valid_until: null, is_valid: false }),
+    ];
+    crew = [crewRow({ official: 11, position: "Referee" })];
+    await renderSetup();
+
+    expect(
+      within(rowFor("Schiedsrichter")).getByText("abgelaufen"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows an unparsable expiry date as it is", async () => {
+    teamList = [
+      teamPerson({ id: 11, license: "B", valid_until: "bald", is_valid: false }),
+    ];
+    crew = [crewRow({ official: 11, position: "Referee" })];
+    await renderSetup();
+
+    expect(
+      within(rowFor("Schiedsrichter")).getByText("abgelaufen seit bald"),
+    ).toBeInTheDocument();
+  });
+
+  it("counts a complete refereed crew", async () => {
+    crew = [
+      crewRow({ id: 1, official: 11, name: null, position: "Referee" }),
+      crewRow({ id: 2, official: 12, name: null, position: "Down Judge" }),
+      crewRow({ id: 3, official: 13, name: null, position: "Field Judge" }),
+      crewRow({ id: 4, official: 14, name: null, position: "Side Judge" }),
+    ];
+    await renderSetup();
+
+    expect(screen.getByText("vollständig")).toBeInTheDocument();
+  });
+
+  it("reads a saved setup that already uses the v2 side tokens", async () => {
+    setup = { ctResult: "home", fhPossession: "Wolves", direction: "Ost" };
+    await renderSetup();
+
+    expect(startButton()).toHaveTextContent("Fortsetzen");
+    expect(screen.getByText(/gewinnt den Münzwurf/)).toHaveTextContent(
+      "Ravens gewinnt den Münzwurf · Ballbesitz Wolves · Richtung Ost → West",
+    );
+  });
+
+  it("falls back to its own message when the load fails without a detail", async () => {
+    apiGetMock.mockRejectedValue(new TypeError("Failed to fetch"));
+    render(<GameSetupScreen game={GAME} onStarted={vi.fn()} />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Die Vorbereitung konnte nicht geladen werden.",
+    );
+  });
+
+  it("starts without a possession write when the log has no team name", async () => {
+    const nameless: GameLog = {
+      ...LOG,
+      home: { ...LOG.home, name: null },
+      inPossession: null,
+    };
+    apiGetMock.mockImplementation(async (path: string) => {
+      switch (path) {
+        case CREW_PATH:
+          return crew;
+        case TEAM_PATH:
+          return teamList;
+        case SETUP_PATH:
+          return setup;
+        case LOG_PATH:
+          return nameless;
+        default:
+          throw new Error(`unexpected GET ${path}`);
+      }
+    });
+    const { onStarted } = await renderSetup();
+
+    await clickStart();
+
+    await waitFor(() =>
+      expect(onStarted).toHaveBeenCalledWith({ ...nameless, inPossession: null }),
+    );
+    expect(
+      apiPutMock.mock.calls.filter(([path]) => path === POSSESSION_PATH),
+    ).toHaveLength(0);
+  });
+});
+
+describe("GameSetup — odd saved values and bodies", () => {
+  it("falls back to the home side for an unrecognised saved toss", async () => {
+    setup = { ctResult: "irgendwas", fhPossession: "auch-egal" };
+    await renderSetup();
+
+    expect(screen.getByText(/gewinnt den Münzwurf/)).toHaveTextContent(
+      "Ravens gewinnt den Münzwurf · Ballbesitz Ravens",
+    );
+  });
+
+  it("treats a 409 without a body as a status problem, not a device lock", async () => {
+    setupFailure = new ApiError(
+      409,
+      null,
+      "Dieser Spielstatus erlaubt keinen Spielstart.",
+    );
+    await renderSetup();
+
+    await clickStart();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Dieser Spielstatus erlaubt keinen Spielstart.",
+    );
+    expect(startButton()).toBeEnabled();
+  });
+});

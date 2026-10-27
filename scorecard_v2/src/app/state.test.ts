@@ -28,6 +28,12 @@ describe("flowReducer", () => {
     expect(result.phase).toBe("result");
   });
 
+  it("resets the whole flow for a new gameday list", () => {
+    const games = flowReducer(initialFlowState, { type: "games", gameday: GAMEDAY });
+
+    expect(flowReducer(games, { type: "gamedays" })).toEqual(initialFlowState);
+  });
+
   it("goes back one screen at a time", () => {
     const result = initialFlowState;
     const gamesState = flowReducer(result, { type: "games", gameday: GAMEDAY });
@@ -61,5 +67,10 @@ describe("flowReducer", () => {
       phase: "games",
       game: null,
     });
+
+    // The list is the first screen: back from it changes nothing.
+    expect(flowReducer(initialFlowState, { type: "back" })).toBe(
+      initialFlowState,
+    );
   });
 });

@@ -7,7 +7,9 @@ import { openDB } from "idb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  DB_NAME,
   DB_VERSION,
+  OPS_STORE,
   upgradeOutbox,
   type OutboxSchema,
 } from "./db";
@@ -317,6 +319,142 @@ describe("clear", () => {
     await expect(outbox.gameIds()).resolves.toEqual([]);
     expect(await outbox.pending(1)).toEqual([]);
     expect(await outbox.failed(2)).toEqual([]);
+  });
+});
+
+describe("legacy and broken rows", () => {
+  /** Writes a row the way an older app version (or a by-hand repair) left it. */
+  async function writeRaw(record: Record<string, unknown>): Promise<void> {
+    const db = await openDB<OutboxSchema>(DB_NAME, DB_VERSION, {
+      upgrade: upgradeOutbox,
+    });
+    await db.put(OPS_STORE, record as never);
+    db.close();
+  }
+
+  function legacy(overrides: Record<string, unknown> = {}) {
+    return {
+      id: "legacy",
+      gameId: 1,
+      kind: "event",
+      payload: {},
+      createdAt: 100,
+      failed: false,
+      failedReason: null,
+      failedAt: null,
+      ...overrides,
+    };
+  }
+
+  it("orders rows without a seq by createdAt, oldest first", async () => {
+    await writeRaw(legacy({ id: "late", createdAt: 300 }));
+    await writeRaw(legacy({ id: "early", createdAt: 100 }));
+
+    expect((await outbox.pending(1)).map((entry) => entry.id)).toEqual([
+      "early",
+      "late",
+    ]);
+  });
+
+  it("puts a seq-less row before a stamped one and breaks a tie by id", async () => {
+    // One row with a seq, one without: the stamp does not decide, createdAt does.
+    await writeRaw(legacy({ id: "b", seq: 9, createdAt: 100 }));
+    await writeRaw(legacy({ id: "a", createdAt: 100 }));
+
+    expect((await outbox.pending(1)).map((entry) => entry.id)).toEqual([
+      "a",
+      "b",
+    ]);
+  });
+
+  it("ignores a row whose game id is not a number", async () => {
+    await writeRaw(legacy({ id: "broken", gameId: "eins" }));
+    await writeRaw(legacy({ id: "fine", gameId: 2 }));
+
+    expect(await outbox.gameIds()).toEqual([2]);
+  });
+
+  it("counts a failure of a row that never carried an attempt count", async () => {
+    await writeRaw(legacy({ id: "legacy" }));
+
+    await outbox.markFailed("legacy", "HTTP 422");
+
+    expect((await outbox.failed(1))[0]?.attempts).toBe(1);
+  });
+});
+
+describe("the injected factory", () => {
+  it("rethrows a non-ConstraintError from the write unchanged", async () => {
+    const failure = new Error("Platte voll");
+    const broken = createOutbox(async () => {
+      throw failure;
+    });
+
+    await expect(broken.enqueue(op({ id: "a" }))).rejects.toBe(failure);
+  });
+
+  it("rethrows an error that is not an object", async () => {
+    const broken = createOutbox(async () => {
+      throw "kaputt";
+    });
+
+    await expect(broken.enqueue(op({ id: "a" }))).rejects.toBe("kaputt");
+  });
+
+  it("rethrows a write failure inside the transaction unchanged", async () => {
+    // The store rejects with something that is not an object: `errorName` has
+    // no name to match, so the original value travels on.
+    const broken = createOutbox(async () => {
+      const tx = {
+        store: {
+          index: () => ({ getAll: async () => [] }),
+          add: () => {
+            throw "kaputt";
+          },
+        },
+        done: Promise.resolve(),
+      };
+      return { transaction: () => tx } as never;
+    });
+
+    await expect(broken.enqueue(op({ id: "a" }))).rejects.toBe("kaputt");
+  });
+
+  it("rethrows an object error with a name that is not a string", async () => {
+    const failure = { name: 42, message: "kaputt" };
+    const broken = createOutbox(async () => {
+      const tx = {
+        store: {
+          index: () => ({ getAll: async () => [] }),
+          add: () => {
+            throw failure;
+          },
+        },
+        done: Promise.resolve(),
+      };
+      return { transaction: () => tx } as never;
+    });
+
+    await expect(broken.enqueue(op({ id: "a" }))).rejects.toBe(failure);
+  });
+
+  it("retries a failed open instead of caching the failure", async () => {
+    const failure = new Error("kein Zugriff");
+    let attempts = 0;
+    const flaky = createOutbox(() => {
+      attempts += 1;
+      if (attempts === 1) {
+        return Promise.reject(failure);
+      }
+      return openDB<OutboxSchema>(DB_NAME, DB_VERSION, {
+        upgrade: upgradeOutbox,
+      });
+    });
+
+    await expect(flaky.pending(1)).rejects.toBe(failure);
+
+    await expect(flaky.pending(1)).resolves.toEqual([]);
+    expect(attempts).toBe(2);
   });
 });
 

@@ -113,3 +113,78 @@ describe("logout", () => {
     );
   });
 });
+
+describe("cookies and defaults", () => {
+  function clearCookies(): void {
+    for (const cookie of document.cookie.split(";")) {
+      const name = cookie.split("=")[0]?.trim();
+      if (name !== undefined && name !== "") {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      }
+    }
+  }
+
+  it("reads a malformed csrf cookie as it is", async () => {
+    clearCookies();
+    // A stray cookie without a value and a broken percent escape before the
+    // token: both must not stop the logout.
+    document.cookie = "stray";
+    document.cookie = "csrftoken=%E0%A4%A";
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await logout(vi.fn(), vi.fn().mockReturnValue(true));
+
+    const request = fetchMock.mock.calls[0][1] as RequestInit;
+    expect((request.headers as Record<string, string>)["X-CSRFToken"]).toBe(
+      "%E0%A4%A",
+    );
+  });
+
+  it("sends no csrf field when the cookie is missing", async () => {
+    clearCookies();
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await logout(vi.fn(), vi.fn().mockReturnValue(true));
+
+    const request = fetchMock.mock.calls[0][1] as RequestInit;
+    expect((request.headers as Record<string, string>)["X-CSRFToken"]).toBeUndefined();
+    expect(String(request.body)).not.toContain("csrfmiddlewaretoken");
+  });
+
+  it("reads a broken store as nothing queued", async () => {
+    vi.spyOn(getRuntime().outbox, "gameIds").mockRejectedValue(
+      new Error("IndexedDB weg"),
+    );
+
+    await expect(queuedWrites()).resolves.toEqual({ pending: 0, failed: 0 });
+  });
+
+  it("asks the browser when no confirm was injected", async () => {
+    const runtime = getRuntime();
+    await runtime.outbox.enqueue(queuedOp("op-1"));
+    const confirm = vi.fn().mockReturnValue(false);
+    vi.stubGlobal("confirm", confirm);
+    const navigate = vi.fn();
+
+    await logout(navigate);
+
+    expect(confirm).toHaveBeenCalledWith(
+      "1 Eintrag ist noch nicht übertragen. Trotzdem abmelden?",
+    );
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("does not ask when the browser has no confirm at all", async () => {
+    vi.stubGlobal("confirm", undefined);
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null));
+    vi.stubGlobal("fetch", fetchMock);
+    const navigate = vi.fn();
+
+    await logout(navigate);
+
+    expect(fetchMock).toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith("/");
+  });
+});

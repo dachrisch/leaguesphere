@@ -467,3 +467,92 @@ describe("header", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("team labels", () => {
+  it("falls back to the game row when the log carries no team name", async () => {
+    render(
+      <FinalizeScreen
+        failedWrites={0}
+        game={GAME}
+        log={{
+          ...LOG,
+          home: { ...LOG.home, name: "   " },
+          away: { ...LOG.away, name: null },
+        }}
+        onBack={vi.fn()}
+        onFinalized={vi.fn()}
+        pendingWrites={0}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("group", { name: "Ravens: Captain" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: "Wolves: Captain" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Ravens – Wolves · Bestätigung/)).toBeInTheDocument();
+  });
+
+  it("shows a dash when neither the log nor the game names a team", async () => {
+    render(
+      <FinalizeScreen
+        failedWrites={0}
+        game={{ ...GAME, home: "", away: "" }}
+        log={{
+          ...LOG,
+          home: { ...LOG.home, name: null },
+          away: { ...LOG.away, name: "" },
+        }}
+        onBack={vi.fn()}
+        onFinalized={vi.fn()}
+        pendingWrites={0}
+      />,
+    );
+
+    expect((await screen.findAllByRole("group", { name: "–: Captain" }))).toHaveLength(2);
+    expect(screen.getByText(/– – – · Bestätigung/)).toBeInTheDocument();
+  });
+});
+
+describe("without the conflict handler", () => {
+  it("shows the 409 as an error instead of re-reading", async () => {
+    finalizeFailure = new ApiError(
+      409,
+      { detail: "Das Spiel ist bereits beendet." },
+      "Das Spiel ist bereits beendet.",
+    );
+    render(
+      <FinalizeScreen
+        failedWrites={0}
+        game={GAME}
+        log={LOG}
+        onBack={vi.fn()}
+        onFinalized={vi.fn()}
+        pendingWrites={0}
+      />,
+    );
+    await screen.findByRole("group", { name: "Ravens: Captain" });
+    const user = userEvent.setup();
+    for (const side of ["Ravens", "Wolves"]) {
+      await user.type(
+        within(screen.getByRole("group", { name: `${side}: Captain` })).getByRole(
+          "combobox",
+        ),
+        "Meier",
+      );
+      await user.click(
+        within(screen.getByRole("group", { name: `${side}: Captain` })).getByRole(
+          "button",
+          { name: "Bestätigen" },
+        ),
+      );
+    }
+
+    await user.click(submitButton());
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Das Spiel ist bereits beendet.",
+    );
+  });
+});

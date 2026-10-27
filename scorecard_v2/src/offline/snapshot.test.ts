@@ -3,12 +3,21 @@ import "fake-indexeddb/auto";
 import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
+import { openDB } from "idb";
+
 import { ApiError, apiGet } from "../api/client";
+import {
+  DB_NAME,
+  DB_VERSION,
+  upgradeOutbox,
+  type OutboxSchema,
+} from "./db";
 import {
   cachedGet,
   cachedGetMeta,
   createSnapshotStore,
   readSnapshot,
+  removeSnapshot,
   resetSnapshotStore,
   snapshotKey,
   writeSnapshot,
@@ -134,5 +143,39 @@ describe("cachedGet", () => {
     await expect(
       cachedGet(snapshotKey.games(3), "/api/gameday/3/officials/crew"),
     ).rejects.toThrow("Server weg");
+  });
+});
+
+describe("a failing store open", () => {
+  it("retries instead of caching the failure", async () => {
+    const failure = new Error("kein Zugriff");
+    let attempts = 0;
+    const store = createSnapshotStore(() => {
+      attempts += 1;
+      if (attempts === 1) {
+        return Promise.reject(failure);
+      }
+      return openDB<OutboxSchema>(DB_NAME, DB_VERSION, {
+        upgrade: upgradeOutbox,
+      });
+    });
+
+    await expect(store.read("gamedays")).rejects.toBe(failure);
+
+    await expect(store.read("gamedays")).resolves.toBeUndefined();
+    expect(attempts).toBe(2);
+  });
+
+  it("reads an unavailable store as no snapshot", async () => {
+    vi.stubGlobal("indexedDB", undefined);
+    resetSnapshotStore();
+
+    await expect(readSnapshot("gamedays")).resolves.toBeUndefined();
+  });
+
+  it("ignores an impossible read through the module helpers", async () => {
+    // A remove/write on a store that never opened must still resolve: these
+    // helpers are best effort by contract.
+    await expect(removeSnapshot("nie-geschrieben")).resolves.toBeUndefined();
   });
 });

@@ -381,3 +381,192 @@ describe("flush", () => {
     expect(session.getLog().inPossession).toBe("Wolves");
   });
 });
+
+describe("the not-delivered fallbacks", () => {
+  beforeEach(() => {
+    setOnline(true);
+    runtime = createRuntime({ outbox });
+    session = makeSession();
+  });
+
+  it("queues a delete the network never delivered", async () => {
+    apiDeleteMock.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    await session.undo({ sequence: 3 });
+
+    const pending = await outbox.pending(42);
+    expect(pending).toHaveLength(1);
+    expect(pending[0].kind).toBe("delete");
+    expect(pending[0].payload).toEqual({ sequence: 3 });
+  });
+
+  it("queues a possession change the network never delivered", async () => {
+    apiPutMock.mockRejectedValue(new ApiError(0, null, "Keine Verbindung"));
+
+    await session.setPossession("Wolves");
+
+    const pending = await outbox.pending(42);
+    expect(pending).toHaveLength(1);
+    expect(pending[0].kind).toBe("possession");
+    expect(pending[0].payload).toEqual({ team: "Wolves" });
+  });
+
+  it("queues a half-time the network never delivered", async () => {
+    apiPutMock.mockRejectedValue(new ApiError(0, null, "Keine Verbindung"));
+
+    await session.halftime();
+
+    const pending = await outbox.pending(42);
+    expect(pending).toHaveLength(1);
+    expect(pending[0].kind).toBe("halftime");
+    // The replay already flips the half and adds the marker row.
+    expect(session.getLog().isFirstHalf).toBe(false);
+  });
+
+  it("keeps a rejected possession change out of the queue", async () => {
+    apiPutMock.mockRejectedValue(
+      new ApiError(400, { detail: "Team unbekannt." }, "Team unbekannt."),
+    );
+
+    await expect(session.setPossession("Wolves")).rejects.toThrow(
+      "Team unbekannt.",
+    );
+    await expect(outbox.pending(42)).resolves.toEqual([]);
+  });
+
+  it("keeps a rejected half-time out of the queue", async () => {
+    apiPutMock.mockRejectedValue(
+      new ApiError(409, { detail: "Keine Halbzeit." }, "Keine Halbzeit."),
+    );
+
+    await expect(session.halftime()).rejects.toThrow("Keine Halbzeit.");
+    await expect(outbox.pending(42)).resolves.toEqual([]);
+  });
+
+  it("pauses the queue on an expired session", async () => {
+    apiPostMock.mockRejectedValue(
+      new ApiError(401, { detail: "Anmeldung abgelaufen." }, "Anmeldung abgelaufen."),
+    );
+
+    await expect(session.writeEvent(WRITE)).rejects.toThrow("abgelaufen");
+    expect(runtime.sync.state().paused).toBe("auth");
+  });
+
+  it("answers a refresh offline from the local view", async () => {
+    const before = session.getLog();
+    setOnline(false);
+
+    await expect(session.refresh()).resolves.toBe(before);
+    expect(apiGetMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("listener lifecycle", () => {
+  beforeEach(() => {
+    setOnline(false);
+    runtime = createRuntime({ outbox });
+  });
+
+  it("detaches the runtime listeners with the last subscriber", async () => {
+    session = createGameSession({ gameId: 42, initialLog: serverLog(), runtime });
+    const unsubscribe = session.subscribe(() => undefined);
+
+    unsubscribe();
+
+    // Publishing after the last subscriber is harmless: nothing listens.
+    expect(() => runtime.publishLog(42, serverLog())).not.toThrow();
+    expect(session.getLog().inPossession).toBe("Ravens");
+  });
+
+  it("can be disposed twice", () => {
+    session = makeSession();
+
+    expect(() => {
+      session.dispose();
+      session.dispose();
+    }).not.toThrow();
+  });
+});
+
+describe("the successful direct writes", () => {
+  beforeEach(() => {
+    setOnline(true);
+    runtime = createRuntime({ outbox });
+    session = makeSession();
+  });
+
+  it("adopts the whole log the delete answered with", async () => {
+    apiDeleteMock.mockResolvedValue(
+      serverLog({ home: team({ score: 0 }), inPossession: "Wolves" }),
+    );
+
+    const shown = await session.undo({ sequence: 1 });
+
+    expect(apiDeleteMock).toHaveBeenCalledWith("/api/gamelog/42", {
+      sequence: 1,
+    });
+    expect(shown.inPossession).toBe("Wolves");
+    expect(session.getLog().inPossession).toBe("Wolves");
+  });
+
+  it("keeps a rejected delete out of the queue", async () => {
+    apiDeleteMock.mockRejectedValue(
+      new ApiError(403, { detail: "Nicht dein Eintrag." }, "Nicht dein Eintrag."),
+    );
+
+    await expect(session.undo({ sequence: 1 })).rejects.toThrow(
+      "Nicht dein Eintrag.",
+    );
+    await expect(outbox.pending(42)).resolves.toEqual([]);
+  });
+
+  it("flips the half after the server accepted the half-time", async () => {
+    apiPutMock.mockResolvedValue(undefined);
+
+    await session.halftime();
+
+    expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/halftime", {});
+    expect(session.getLog().isFirstHalf).toBe(false);
+  });
+});
+
+describe("a reloaded queue", () => {
+  it("rebuilds the view from the rows a previous tab left", async () => {
+    runtime = createRuntime({ outbox });
+    await outbox.enqueue({
+      id: "left-over",
+      gameId: 42,
+      kind: "event",
+      payload: {
+        gameId: 42,
+        team: "Ravens",
+        half: 1,
+        event: [{ name: "First Down" }],
+      },
+      createdAt: 1,
+      attempts: 0,
+      deviceId: "device-a",
+    });
+    setOnline(false);
+    session = createGameSession({ gameId: 42, initialLog: serverLog(), runtime });
+
+    await vi.waitFor(() =>
+      expect(session.getLog().events?.map((event) => event.event)).toContain(
+        "First Down",
+      ),
+    );
+  });
+
+  it("keeps the base log when the queue cannot be read", async () => {
+    runtime = createRuntime({ outbox });
+    const failure = vi
+      .spyOn(outbox, "pending")
+      .mockRejectedValue(new Error("IndexedDB weg"));
+    setOnline(false);
+
+    session = createGameSession({ gameId: 42, initialLog: serverLog(), runtime });
+
+    await vi.waitFor(() => expect(failure).toHaveBeenCalled());
+    expect(session.getLog().events).toEqual([]);
+  });
+});

@@ -35,6 +35,14 @@ describe("main", () => {
     ).toBeInTheDocument();
   });
 
+  it("refuses to mount into a page without the container", async () => {
+    document.body.innerHTML = "";
+
+    await expect(import("./main")).rejects.toThrow(
+      "Scorecard v2: #scorecard-v2-app is missing",
+    );
+  });
+
   it("registers the service worker", async () => {
     await import("./main");
 

@@ -27,7 +27,7 @@ import TrackingScreen, {
   secondHalfPossession,
   writeTeam,
 } from "./Tracking";
-import { resetRuntime } from "../session/runtime";
+import { getRuntime, resetRuntime } from "../session/runtime";
 import { resetSnapshotStore } from "../offline/snapshot";
 
 vi.mock("../api/client", async (importOriginal) => {
@@ -1792,5 +1792,127 @@ describe("Tracking confirmation text", () => {
     expect(describeSaved([{ name: "Safety (+2)", player: 11 }])).toBe(
       "Safety gespeichert · #11",
     );
+  });
+});
+
+describe("Tracking confirmation wording", () => {
+  it("says what happened even without a payload", () => {
+    expect(describeSaved([])).toBe("Eintrag gespeichert");
+  });
+
+  it("falls back to the event name for a write it has no phrase for", () => {
+    expect(describeSaved([{ name: "Kickoff" }])).toBe("Kickoff gespeichert");
+    expect(describeSaved([{ name: "Kickoff", player: 7 }])).toBe(
+      "Kickoff gespeichert · #7",
+    );
+  });
+});
+
+describe("Tracking sync state", () => {
+  type Runtime = ReturnType<typeof getRuntime>;
+
+  function stubStatus(
+    runtime: Runtime,
+    state: { pending: number; failed: number; paused: "offline" | "auth" | "device" | null },
+  ): void {
+    vi.spyOn(runtime.outbox, "pending").mockResolvedValue(
+      Array.from({ length: state.pending }, (_, index) => ({
+        id: `op-${index}`,
+        gameId: 42,
+        kind: "event" as const,
+        payload: {},
+        createdAt: index,
+        attempts: 0,
+        deviceId: "device-a",
+        seq: index + 1,
+        failed: false,
+        failedReason: null,
+        failedAt: null,
+      })),
+    );
+    vi.spyOn(runtime.outbox, "failed").mockResolvedValue([]);
+    vi.spyOn(runtime.sync, "counts").mockResolvedValue({
+      pending: state.pending,
+      failed: state.failed,
+    });
+    vi.spyOn(runtime.sync, "stateFor").mockReturnValue({
+      pending: state.pending,
+      failed: state.failed,
+      syncing: false,
+      paused: state.paused,
+    });
+  }
+
+  it("names a single unsent entry in the singular", async () => {
+    const runtime = getRuntime();
+    stubStatus(runtime, { pending: 1, failed: 0, paused: null });
+
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({ inPossession: "Ravens" })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByText(/1 Eintrag noch nicht übertragen/),
+    ).toBeInTheDocument();
+  });
+
+  it("counts several unsent entries in the plural", async () => {
+    const runtime = getRuntime();
+    stubStatus(runtime, { pending: 3, failed: 0, paused: "offline" });
+
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({ inPossession: "Ravens" })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByText(/3 Einträge noch nicht übertragen/),
+    ).toBeInTheDocument();
+  });
+
+  it("explains a device lock and offers the retry", async () => {
+    const runtime = getRuntime();
+    stubStatus(runtime, { pending: 0, failed: 0, paused: "device" });
+    const resume = vi.spyOn(runtime.sync, "resume").mockResolvedValue();
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({ inPossession: "Ravens" })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByText(
+        "Schreiben gesperrt – ein anderes Gerät hält dieses Spiel.",
+      ),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Erneut prüfen" }));
+
+    expect(resume).toHaveBeenCalledWith(42);
+  });
+
+  it("explains an expired session", async () => {
+    const runtime = getRuntime();
+    stubStatus(runtime, { pending: 0, failed: 0, paused: "auth" });
+
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({ inPossession: "Ravens" })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByText("Schreiben gesperrt – bitte neu anmelden."),
+    ).toBeInTheDocument();
   });
 });
