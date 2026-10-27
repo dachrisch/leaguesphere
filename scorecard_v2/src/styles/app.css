@@ -427,17 +427,29 @@ button.game-row:active {
   min-width: 0;
 }
 
+/* Logos and names share one line: crest, "Home – Away", crest. The names keep
+   the two-line clamp; the crests keep their box. */
 .game-pair {
-  display: -webkit-box;
-  overflow: hidden;
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-width: 0;
   font-size: var(--fs-base);
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.25;
+}
+
+.game-pair-names {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
   overflow-wrap: anywhere;
   white-space: normal;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  /* A long pairing ("Nürnberg Renegades – Erlangen Sharks") needs three lines
+     beside the two crests; two would cut the away name off. */
+  -webkit-line-clamp: 3;
 }
 
 .game-sub {
@@ -1043,7 +1055,7 @@ button.game-row:active {
   color: var(--on-accent);
   background: var(--surface-2);
   border: 1px solid var(--line);
-  /* A drawn shield, not a crest image: no logo URLs in the app. */
+  /* A drawn shield for a team without a logo; a real logo replaces it. */
   clip-path: polygon(50% 0, 100% 16%, 100% 68%, 50% 100%, 0 68%, 0 16%);
 }
 
@@ -1053,6 +1065,57 @@ button.game-row:active {
 
 .team.away .crest {
   background: var(--away);
+}
+
+/* A real team logo where the drawn crest used to be. Neutral tile so the same
+   rule works in both themes and for every club colour. */
+.crestlogo {
+  flex: 0 0 auto;
+  width: var(--space-8);
+  height: var(--space-8);
+  padding: 2px;
+  object-fit: contain;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+/* Team logos in lists, and the initials circle they fall back to. Both take the
+   same box, so a row does not jump when the directory arrives after the text. */
+.teamlogo {
+  display: grid;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+}
+
+.teamlogo-img {
+  padding: 2px;
+  background: var(--surface);
+  object-fit: contain;
+}
+
+/* The preparation header's context line: small crests inline with the names,
+   not a second row of their own. */
+.teamlogo-inline {
+  width: var(--space-6);
+  height: var(--space-6);
+}
+
+.app-sub-teams {
+  display: inline-flex;
+  gap: var(--space-1);
+  margin-right: var(--space-2);
+  vertical-align: middle;
 }
 
 .tname {

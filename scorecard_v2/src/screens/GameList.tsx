@@ -1,6 +1,7 @@
 import type { Game } from "../api/types";
 import Screen from "../components/Screen";
 import SnapshotHint from "../components/SnapshotHint";
+import TeamLogo from "../components/TeamLogo";
 import { gameTag, type GameTag } from "../components/tag";
 
 interface GameListProps {
@@ -114,7 +115,11 @@ function RowBody({ game, tag }: { game: Game; tag: GameTag }) {
       </span>
       <span className="game-main">
         <span className="game-pair">
-          {teamLabel(game.home)} – {teamLabel(game.away)}
+          <TeamLogo name={game.home} />
+          <span className="game-pair-names">
+            {teamLabel(game.home)} – {teamLabel(game.away)}
+          </span>
+          <TeamLogo name={game.away} />
         </span>
         {officials !== "" || hasChip ? (
           <span className="game-sub">

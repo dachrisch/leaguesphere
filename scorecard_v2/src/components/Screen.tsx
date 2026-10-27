@@ -6,7 +6,8 @@ import AppHeader from "./AppHeader";
 interface ScreenProps {
   kicker: string;
   title: string;
-  sub?: string;
+  /** One context line; a node when it carries inline art (team logos). */
+  sub?: ReactNode;
   /** Header back button, owned by the flow in App.tsx. */
   onBack?: () => void;
   /** Header logout action. */

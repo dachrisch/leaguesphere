@@ -1,4 +1,5 @@
 import type { GameLogTeam } from "../api/types";
+import { useTeamLogo } from "./TeamLogo";
 import { Football } from "./icons";
 
 interface ScoreHeaderProps {
@@ -19,7 +20,7 @@ function displayName(team: GameLogTeam): string {
   return name === undefined || name === "" ? "–" : name;
 }
 
-/** Crest placeholder: one initial, never a logo URL. */
+/** Crest placeholder for a team without a logo: one initial. */
 export function crestInitial(team: GameLogTeam): string {
   const name = team.name?.trim();
   return name === undefined || name === "" ? "?" : name[0].toUpperCase();
@@ -64,6 +65,7 @@ function Team({
   const label = `${name}, ${team.score} ${points}, ${
     possessing ? "am Ball" : "nicht am Ball"
   }`;
+  const logo = useTeamLogo(team.name);
 
   return (
     <button
@@ -78,9 +80,20 @@ function Team({
       }}
       type="button"
     >
-      <span aria-hidden="true" className="crest">
-        {crestInitial(team)}
-      </span>
+      {logo.src === null ? (
+        <span aria-hidden="true" className="crest">
+          {crestInitial(team)}
+        </span>
+      ) : (
+        // A real crest replaces the drawn shield: the logo is already a shape,
+        // clipping it to the shield would cut its corners off.
+        <img
+          alt=""
+          className="crestlogo"
+          onError={logo.onError}
+          src={logo.src}
+        />
+      )}
       <span className="teamtext">
         <span className="tname">{name}</span>
         {possessing ? (
@@ -95,8 +108,9 @@ function Team({
 }
 
 /**
- * Score board: both teams with a crest placeholder, the big score, the
- * possession marker and the half label. Tapping a team hands it the ball.
+ * Score board: both teams with their logo (or a crest placeholder), the big
+ * score, the possession marker and the half label. Tapping a team hands it the
+ * ball.
  */
 export default function ScoreHeader({
   home,
