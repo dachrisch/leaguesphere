@@ -126,6 +126,8 @@ Deviations from the task text below (the task text is kept for history):
   takes separate `warnings` (e.g. no photo) that do not block confirmation.
 - The roster screen flattens the main and additional-team rosters, because the
   API's `additionalTeams` entries carry no team id.
+- `maximum_player_strength = -1` means "no maximum"; the field rehearsal caught
+  a false rejection and the service now accepts it (regression test included).
 - The service worker is served by a Django view from `passcheck_v2/public/sw.js`
   (`Cache-Control: no-cache`, `Service-Worker-Allowed: /passcheck/v2/`); it caches only
   the shell + bundle, never `/api/**`, and registers only in production builds.
