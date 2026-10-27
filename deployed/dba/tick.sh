@@ -132,26 +132,45 @@ sql "$DB" -e "
 
     pw=$(head -c 512 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24)
 
-    if ! sql "$DB" <<SQL; then
+    # Reads are granted table by table from the curated list, NOT as `db`.*:
+    # schema-wide SELECT also hands out auth_user's password hashes,
+    # django_session, the OAuth2 bearer tokens and - worst - every live row of
+    # dbaccess_request.secret, which is the plaintext credential of a session
+    # nobody has revealed yet. The list lives in the application schema, so a
+    # deploy that adds a table only needs `dbaccess_sync_tables` to widen it.
+    read_tables=$(sql "$DB" -e "SELECT name FROM dbaccess_grantabletable
+                                 WHERE grantable=1 ORDER BY name")
+    if [ -z "$read_tables" ]; then
+        fail_row "$id" "the allow-list is empty - run dbaccess_sync_tables"
+        continue
+    fi
+
+    if ! {
+        cat <<SQL
 CREATE USER IF NOT EXISTS '${user}'@'${PATTERN}' IDENTIFIED BY '${pw}';
 ALTER USER '${user}'@'${PATTERN}' IDENTIFIED BY '${pw}';
 ALTER USER '${user}'@'${PATTERN}'
   WITH MAX_STATEMENT_TIME 60 MAX_USER_CONNECTIONS 4;
 REVOKE ALL PRIVILEGES, GRANT OPTION FROM '${user}'@'${PATTERN}';
-GRANT SELECT ON \`${DB}\`.* TO '${user}'@'${PATTERN}';
 SQL
-        fail_row "$id" "could not create the account"
+        for t in $read_tables; do
+            case $t in *[!A-Za-z0-9_]*) continue;; esac
+            printf "GRANT SELECT ON \`%s\`.\`%s\` TO '%s'@'%s';\n" \
+                "$DB" "$t" "$user" "$PATTERN"
+        done
+        for t in $valid_tables; do
+            # the table itself, and the snapshot taken a moment ago so the
+            # runbook's "verify the safety copy" step still works
+            printf "GRANT SELECT, UPDATE ON \`%s\`.\`%s\` TO '%s'@'%s';\n" \
+                "$DB" "$t" "$user" "$PATTERN"
+            printf "GRANT SELECT ON \`%s\`.\`bak_%s_%s\` TO '%s'@'%s';\n" \
+                "$DB" "$t" "$today" "$user" "$PATTERN"
+        done
+    } | sql "$DB"; then
+        drop_account "$user" "$PATTERN" ""
+        fail_row "$id" "could not create the account or grant its reads"
         continue
     fi
-
-    for t in $valid_tables; do
-        if ! sql "$DB" -e "GRANT SELECT, UPDATE ON \`${DB}\`.\`${t}\`
-                             TO '${user}'@'${PATTERN}'"; then
-            drop_account "$user" "$PATTERN" ""
-            fail_row "$id" "could not grant on $t"
-            continue 2
-        fi
-    done
 
     sql "$DB" -e "
         UPDATE dbaccess_request

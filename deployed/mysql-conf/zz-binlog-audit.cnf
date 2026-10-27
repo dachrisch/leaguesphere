@@ -38,7 +38,10 @@ plugin_load_add               = server_audit
 # The plugin loads ACTIVE with logging OFF unless this is set here - the first
 # prod deploy proved it: plugin ACTIVE, no server_audit.log written at all.
 server_audit_logging          = ON
-server_audit_events           = CONNECT,QUERY_DML_NO_SELECT
+# QUERY, not QUERY_DML_NO_SELECT: a temporary account's SELECTs are exactly what
+# an audit of the session is for. The application accounts are excluded below,
+# so this does not drown the file in app traffic.
+server_audit_events           = CONNECT,QUERY
 # The application writes constantly and would bury the humans this log exists
 # for. Both stack's application accounts are listed so one file is valid on
 # prod (web35_8) and on stage/test (leaguesphere_stage).

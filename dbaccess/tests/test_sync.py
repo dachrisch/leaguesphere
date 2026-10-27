@@ -14,7 +14,19 @@ def test_sync_marks_identity_tables_as_never_grantable():
     assert rows, "the test database has at least the auth tables"
     assert rows["auth_user"].grantable is False
     assert rows["auth_user"].note
-    assert rows["dbaccess_grantabletable"].grantable is True
+    # the allow-list itself, the request table (plaintext credential until the
+    # first reveal) and every bearer-token table stay out of reach
+    assert rows["dbaccess_grantabletable"].grantable is False
+    assert rows["dbaccess_request"].grantable is False
+    assert rows["dbaccess_event"].grantable is False
+    for name in (
+        "knox_authtoken",
+        "oauth2_provider_accesstoken",
+        "oauth2_provider_refreshtoken",
+        "officials_moodleremembertoken",
+    ):
+        if name in rows:  # not every optional app is installed in the test DB
+            assert rows[name].grantable is False, name
 
 
 @pytest.mark.django_db
