@@ -21,7 +21,7 @@ Each feature is one layer PR, stacked on the layer below it until it reaches `ma
 | Layer | Branch | PR | Ships | Status |
 |---|---|---|---|---|
 | L0 | `feat/scorecard-v2` | [#2104](https://github.com/dachrisch/leaguesphere/pull/2104) | Scorecard v2 at `/scorecard/v2/` (offline outbox, device lock, possession model, penalty search, dark/light theme) | open, design awaiting approval |
-| L1 | `feat/scorecard-v2-person-search` | this branch | Person search across the database + linked/free-text state on the officials crew (`I1.5`, `I1.6`, `I2.1`–`I2.6`) | in progress |
+| L1 | `feat/scorecard-v2-person-search` | [#2113](https://github.com/dachrisch/leaguesphere/pull/2113) | Person search across the database + linked/free-text state on the officials crew (`I1.5`, `I1.6`, `I2.1`–`I2.6`) | in review |
 | L2 | `feat/passcheck-v2` | [#2101](https://github.com/dachrisch/leaguesphere/pull/2101) | Passcheck v2 at `/passcheck/v2/` | open |
 | L3+ | per-feature branches, each stacked on the one above | — | the `next` rows below, in the suggested order | not started |
 

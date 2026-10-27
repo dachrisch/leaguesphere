@@ -29,6 +29,13 @@ wie die bisherige Scorecard
 Oben rechts wechselt das Symbol neben **Abmelden** die Darstellung zwischen
 **Auto**, **Hell** und **Dunkel**; **Auto** folgt der Einstellung des Geräts.
 
+**Offizielle eintragen:** Tippe in der Vorbereitung auf eine Position und suche
+nach dem Nachnamen. Die Vorschläge kommen aus dem ganzen Verzeichnis, mit Team
+und Lizenz. **verknüpft** heißt: der Eintrag gehört zu einer Person im
+Verzeichnis. **Freitext** heißt: es ist nur ein Name gespeichert – er braucht
+Vor- und Nachnamen und wird nur angeboten, wenn niemand gefunden wurde. Wer
+schon in einer anderen Position steht, lässt sich nicht wählen.
+
 ## Ohne Netz
 
 Einmal geöffnet, funktioniert die Erfassung auch ohne Verbindung: Einträge,
