@@ -1,0 +1,31 @@
+# Developer Certificate of Origin (DCO) gate.
+#
+# Runs on GitHub Actions on purpose: the scoped CircleCI pipeline stays
+# untouched (no new pipeline parameters or path rules), and a DCO check needs
+# no build environment. Every commit in the pull request must carry a
+# `Signed-off-by:` trailer — see CONTRIBUTING.md.
+name: 📝 DCO
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  dco:
+    name: Signed-off-by on every commit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Collect PR commits
+        id: get-pr-commits
+        uses: tim-actions/get-pr-commits@master
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check Signed-off-by trailers
+        uses: tim-actions/dco@v1.1.0
+        with:
+          commits: ${{ steps.get-pr-commits.outputs.commits }}

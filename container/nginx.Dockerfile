@@ -25,6 +25,17 @@ COPY . ${APP_DIR}
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-editable
 
+# Third-party notices for the Python dependencies that ship with this image
+# (see app.Dockerfile). Generated in a throwaway venv so pip-licenses itself
+# never ends up in the shipped environment.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv venv /tmp/licences && \
+    uv pip install --python /tmp/licences/bin/python pip-licenses==5.5.5 && \
+    /tmp/licences/bin/pip-licenses \
+        --python /app/.venv/bin/python \
+        --format=plain --with-urls \
+        --ignore-packages leaguesphere > /app/THIRD_PARTY_LICENSES
+
 # remove existing js files (will be packed below)
 RUN rm -rf liveticker/static/liveticker/js
 RUN rm -rf scorecard/static/scorecard/js
@@ -97,6 +108,13 @@ RUN npm ci
 RUN npm run build
 
 FROM nginx:stable
+
+LABEL org.opencontainers.image.title="LeagueSphere frontend" \
+      org.opencontainers.image.source="https://github.com/dachrisch/leaguesphere" \
+      org.opencontainers.image.licenses="AGPL-3.0-or-later"
+
+# Bundled dependency notices (generated in the python-builder stage above).
+COPY --from=python-builder /app/THIRD_PARTY_LICENSES /THIRD_PARTY_LICENSES
 
 COPY --from=python-builder /app/league_manager/league_manager/static /static
 COPY --from=node-builder /liveticker-app/static /static

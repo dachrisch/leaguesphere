@@ -1,0 +1,23 @@
+# REUSE licensing metadata.
+#
+# LeagueSphere is licensed as a whole under AGPL-3.0-or-later. Rather than
+# hand-adding an SPDX header to every one of the ~1,700 tracked files (most of
+# which are templates, fixtures, translations and JSON that cannot hold a
+# comment header), the licensing information lives here as path annotations.
+#
+# The licence is stored twice on purpose:
+#   - LICENSE                     human-facing copy (copyright preamble + text)
+#   - LICENSES/AGPL-3.0-or-later.txt  verbatim copy required by REUSE
+#
+# Run `reuse lint` (also enforced in .github/workflows/reuse.yaml) after adding
+# files that are *not* covered by the project licence — for example vendored
+# third-party code or assets with their own terms. Such files need their own
+# `[[annotations]]` block below, or an SPDX header in the file itself.
+version = 1
+
+# Project source, templates, fixtures, translations, docs and tooling.
+[[annotations]]
+path = "**"
+precedence = "closest"
+SPDX-FileCopyrightText = "2020-2026 Christian Daehn and LeagueSphere contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"

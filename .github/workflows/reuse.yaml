@@ -1,0 +1,23 @@
+# REUSE compliance: every tracked file must carry licensing information.
+#
+# LeagueSphere declares it once in REUSE.toml as path annotations instead of
+# hand-adding SPDX headers to ~1,700 files. This runs on GitHub Actions (not
+# the scoped CircleCI pipeline) on a clean checkout, so node_modules/, .venv/
+# and other gitignored paths stay out of scope.
+name: ⚖️ REUSE compliance
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  reuse:
+    name: reuse lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: fsfe/reuse-action@v6

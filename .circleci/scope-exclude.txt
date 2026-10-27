@@ -35,8 +35,13 @@ fe_template/.*
 renovate\.json
 release-please-config\.json
 \.release-please-manifest\.json
-LICENSE
 package-lock\.json
+
+# --- legal / licensing metadata (never affects builds or tests) ---
+LICENSE
+LICENSES/.*
+NOTICE
+REUSE\.toml
 
 # --- local-only helpers, fixtures, and sample envs ---
 \.env\.demo
