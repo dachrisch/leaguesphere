@@ -38,6 +38,7 @@ function PlayerRow({
       role="button"
       tabIndex={0}
       aria-label={name}
+      aria-pressed={checked}
       onClick={onToggle}
       onKeyDown={handleKeyDown}
     >

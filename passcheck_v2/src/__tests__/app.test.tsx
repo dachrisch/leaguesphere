@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, expect, vi } from "vitest";
+import { afterEach, beforeEach, expect, vi } from "vitest";
 
 import App from "../App";
 import {
@@ -26,6 +26,7 @@ const mockedGames = vi.mocked(fetchGames);
 const mockedRoster = vi.mocked(fetchRoster);
 const mockedSave = vi.mocked(saveRoster);
 const mockedPhoto = vi.mocked(fetchPhotoUrl);
+const revokeObjectURL = vi.fn();
 
 const games: GamesResponse = {
   officialsTeamName: "Officials",
@@ -73,12 +74,16 @@ beforeEach(() => {
   localStorage.clear();
   Object.defineProperty(URL, "revokeObjectURL", {
     configurable: true,
-    value: vi.fn(),
+    value: revokeObjectURL,
   });
   mockedGames.mockResolvedValue(games);
   mockedRoster.mockResolvedValue(roster);
   mockedSave.mockResolvedValue(undefined);
   mockedPhoto.mockRejectedValue(new Error("no photo"));
+});
+
+afterEach(() => {
+  window.history.replaceState({}, "", "/");
 });
 
 it("walks from the game list to a saved verification", async () => {
@@ -140,6 +145,7 @@ it("shows the consented photo and applies a jersey change", async () => {
   await user.click(screen.getByRole("button", { name: "Nächste Nummer" }));
   await user.click(screen.getByRole("button", { name: "Bestätigen" }));
 
+  expect(revokeObjectURL).toHaveBeenCalled();
   expect(screen.getByText(/1 von 2/)).toBeInTheDocument();
   expect(
     screen.getByRole("button", {
@@ -208,4 +214,12 @@ it("returns to the games after a saved verification", async () => {
   );
 
   expect(await screen.findByText("Meine Spiele")).toBeInTheDocument();
+});
+
+it("uses the gameday from the URL", async () => {
+  window.history.replaceState({}, "", "/passcheck/v2/?gameday=7");
+  render(<App />);
+
+  expect(await screen.findByText("Meine Spiele")).toBeInTheDocument();
+  expect(mockedGames).toHaveBeenCalledWith(7);
 });

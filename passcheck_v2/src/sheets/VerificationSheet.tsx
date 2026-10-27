@@ -113,6 +113,7 @@ function VerificationSheet({
           value={officialName}
           onChange={(event) => setOfficialName(event.target.value)}
           autoComplete="name"
+          autoFocus
           required
         />
 
