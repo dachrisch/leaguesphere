@@ -8,7 +8,12 @@ from rest_framework.reverse import reverse
 
 from gamedays.models import Team
 from gamedays.tests.setup_factories.db_setup import DBSetup
-from officials.api.urls import API_OFFICIALS_FOR_TEAM, API_OFFICIALS_SEARCH_BY_NAME
+from gamedays.tests.setup_factories.factories import TeamFactory
+from officials.api.urls import (
+    API_OFFICIALS_FOR_TEAM,
+    API_OFFICIALS_SEARCH_BY_NAME,
+    API_OFFICIALS_SEARCH_LIST,
+)
 from officials.models import Official
 from officials.tests.setup_factories.db_setup_officials import DbSetupOfficials
 from officials.tests.setup_factories.factories_officials import (
@@ -224,3 +229,148 @@ class TestOfficialsSearchName(WebTest):
         )
         assert response.status_code == HTTPStatus.BAD_REQUEST
         assert response.json[0] == "Vorname muss mindestens 3 Zeichen haben"
+
+
+class TestOfficialsSearchList(WebTest):
+    """Progressive person search for the scorecard's typing picker.
+
+    The sibling `API_OFFICIALS_SEARCH_BY_NAME` is the opposite contract: both
+    names required, three characters in the first one, one team excluded, `404`
+    when nothing matches. A picker that suggests while the operator types
+    cannot be built on it, so this endpoint is separate on purpose.
+    """
+
+    _valid_until = staticmethod(_valid_until)
+
+    def setUp(self):
+        DBSetup().create_new_user()
+
+    def _search(self, name: str = "", expect_errors: bool = False, **params):
+        return self.app.get(
+            reverse(API_OFFICIALS_SEARCH_LIST),
+            {"name": name, **params},
+            expect_errors=expect_errors,
+            headers=DBSetup().get_token_header(),
+        )
+
+    def _official(self, first_name, last_name, team, external_id):
+        return OfficialFactory(
+            first_name=first_name,
+            last_name=last_name,
+            team=team,
+            external_id=external_id,
+        )
+
+    def test_requires_a_name(self):
+        response = self._search("   ", expect_errors=True)
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+
+    def test_rejects_a_single_character(self):
+        response = self._search("f", expect_errors=True)
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+
+    def test_finds_official_by_last_name_and_reports_the_licence(self):
+        DbSetupOfficials().create_officials_and_team()
+        official = Official.objects.get(first_name="Franzi")
+        response = self._search("fed")
+        assert response.status_code == HTTPStatus.OK
+        assert response.json == [
+            {
+                "team": official.team.description,
+                "id": official.pk,
+                "first_name": "Franzi",
+                "last_name": "Fedora",
+                "license": "F1",
+                "is_valid": True,
+                "valid_until": self._valid_until(official),
+            }
+        ]
+
+    def test_finds_official_by_first_name(self):
+        team = TeamFactory(name="Lions")
+        official = self._official("Franziska", "Weber", team, 201)
+        response = self._search("fran")
+        assert [row["id"] for row in response.json] == [official.pk]
+
+    def test_searches_every_team_not_only_one(self):
+        lions = TeamFactory(name="Lions")
+        bears = TeamFactory(name="Bears")
+        home = self._official("Hans", "Berg", lions, 202)
+        guest = self._official("Hanna", "Bergmann", bears, 203)
+        response = self._search("berg")
+        assert response.status_code == HTTPStatus.OK
+        assert [row["id"] for row in response.json] == [home.pk, guest.pk]
+
+    def test_multi_word_query_matches_across_both_name_fields(self):
+        team = TeamFactory(name="Lions")
+        official = self._official("Anna Maria", "Mueller", team, 204)
+        response = self._search("maria mueller")
+        assert [row["id"] for row in response.json] == [official.pk]
+
+    def test_query_tokens_may_all_hit_the_last_name(self):
+        team = TeamFactory(name="Lions")
+        official = self._official("Hans", "van der Berg", team, 205)
+        response = self._search("van berg")
+        assert [row["id"] for row in response.json] == [official.pk]
+
+    def test_matching_ignores_case(self):
+        DbSetupOfficials().create_officials_and_team()
+        official = Official.objects.get(first_name="Franzi")
+        response = self._search("FRA FED")
+        assert [row["id"] for row in response.json] == [official.pk]
+
+    def test_no_match_returns_an_empty_list(self):
+        DbSetupOfficials().create_officials_and_team()
+        response = self._search("niemand")
+        assert response.status_code == HTTPStatus.OK
+        assert response.json == []
+
+    def test_puts_the_given_team_first_without_hiding_the_others(self):
+        lions = TeamFactory(name="Lions")
+        bears = TeamFactory(name="Bears")
+        home = self._official("Andreas", "Zimmer", lions, 206)
+        guest = self._official("Andreas", "Berg", bears, 207)
+        # Sorted by surname the guest is first; the requested team moves up.
+        assert [row["id"] for row in self._search("andreas").json] == [
+            guest.pk,
+            home.pk,
+        ]
+        assert [row["id"] for row in self._search("andreas", team=lions.pk).json] == [
+            home.pk,
+            guest.pk,
+        ]
+
+    def test_default_limit_is_ten(self):
+        team = TeamFactory(name="Lions")
+        for index in range(12):
+            self._official("Hans", f"Berg{index}", team, 300 + index)
+        response = self._search("hans")
+        assert len(response.json) == 10
+
+    def test_honours_a_smaller_limit(self):
+        team = TeamFactory(name="Lions")
+        for index in range(5):
+            self._official("Hans", f"Berg{index}", team, 320 + index)
+        response = self._search("hans", limit=3)
+        assert len(response.json) == 3
+
+    def test_rejects_a_non_numeric_limit(self):
+        response = self._search("hans", expect_errors=True, limit="abc")
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+
+    def test_rejects_a_limit_below_one(self):
+        response = self._search("hans", expect_errors=True, limit=0)
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+
+    def test_query_count_does_not_depend_on_result_count(self):
+        team = TeamFactory(name="Lions")
+        self._official("Hans", "Berg", team, 401)
+        self._official("Hanna", "Bergmann", team, 402)
+        with CaptureQueriesContext(connection) as few:
+            self._search("hans")
+        for index in range(6):
+            self._official("Hansi", f"Bergmann{index}", team, 410 + index)
+        with CaptureQueriesContext(connection) as many:
+            response = self._search("han")
+        assert response.status_code == HTTPStatus.OK
+        assert len(many) == len(few)
