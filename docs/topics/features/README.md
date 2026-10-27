@@ -8,7 +8,7 @@ Current features:
 - [What's New 2026](./whats-new-2026.md) — Major user-facing features shipped since late 2025
 - [Gameday Designer](./gameday-designer/) — Flowchart-based game schedule design
 - [Gameday Live Updates](./liveticker/) — Real-time game progress updates
-- [Score Card Entry](./scorecard/) — Game result and score entry
+- [Scorecard v2](./scorecard-v2/overview.md) — `/scorecard/v2/`: the offline-capable field app (beta); the old `/scorecard/` keeps working
 - [League Table](./league-table/) — League standings and team statistics
 - [Season Rollover](./season-rollover/overview.md) — Staff flow from a new season to league/team assignment and the first gameday
 - [Personal Home](./personal-home/overview.md) — `/home/`: next gameday, checks, season break, official and staff states
