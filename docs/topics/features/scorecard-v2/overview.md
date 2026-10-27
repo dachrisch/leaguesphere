@@ -11,6 +11,8 @@ Status: **beta**. Both apps are bookmarks; nothing links v2 from the old app.
 
 - Plan and task list:
   [Scorecard v2 plan](../../planning/current/2026-10-26-scorecard-v2.md)
+- Follow-up backlog (every idea from the 2026-10-27 review, with status):
+  [Scorecard feature plan](../../planning/current/2026-10-27-scorecard-feature-plan.md)
 - Help topic: [Scorecard v2](/help/spieltag-v2/) (in-app, German)
 
 ## URL and routing
