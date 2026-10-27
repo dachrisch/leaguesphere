@@ -139,7 +139,13 @@ class TestHelpRegistry(TestCase):
                 ), f"{topic.slug}: video must be a YouTube /embed/ URL"
 
 
-PROMISED_TOPICS = ["spieltage", "ligatabellen", "teams-offizielle", "share-widget"]
+PROMISED_TOPICS = [
+    "spieltage",
+    "ligatabellen",
+    "teams-offizielle",
+    "share-widget",
+    "spieltag-v2",
+]
 
 # Topics added with the personal home (#2078) and the season rollover (#2079).
 HOME_TOPICS = ["startseite"]
