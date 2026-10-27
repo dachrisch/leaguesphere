@@ -237,3 +237,65 @@ describe("PersonPicker — clearing", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("PersonPicker — keyboard navigation", () => {
+  it("moves the highlight with the arrow keys", async () => {
+    renderPicker();
+    const input = await openPicker();
+    await userEvent.type(input, "kle");
+    const options = await screen.findAllByRole("option");
+    expect(options[0]).toHaveAttribute("aria-selected", "true");
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(options[1]).toHaveAttribute("aria-selected", "true");
+    await userEvent.keyboard("{ArrowUp}");
+    expect(options[0]).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("skips a person who already fills another slot", async () => {
+    const { onPick } = renderPicker({ taken: new Set([11]) });
+    const input = await openPicker();
+    await userEvent.type(input, "kl");
+    await screen.findAllByRole("option");
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{Enter}");
+    expect(onPick).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 12, last_name: "Richter" }),
+    );
+  });
+
+  it("does nothing when there is nothing to move through", async () => {
+    renderPicker({ search: async () => [] });
+    const input = await openPicker();
+    await userEvent.type(input, "niemand");
+    await screen.findByText("Niemanden gefunden");
+    await userEvent.keyboard("{ArrowDown}{ArrowUp}");
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
+  });
+
+  it("drops an answer that arrives after the picker was closed", async () => {
+    let answer: ((people: TeamOfficial[]) => void) | undefined;
+    const pending = (): Promise<TeamOfficial[]> =>
+      new Promise((resolve) => {
+        answer = resolve;
+      });
+    const view = render(
+      <PersonPicker
+        label="Schiedsrichter"
+        onFreeText={vi.fn()}
+        onPick={vi.fn()}
+        search={pending}
+        teamId={7}
+        value={LINKED}
+      />,
+    );
+    const input = await openPicker();
+    await userEvent.type(input, "kle");
+    // Let the debounce fire so the request is in flight, then unmount.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    view.unmount();
+    answer?.([]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
+  });
+});
