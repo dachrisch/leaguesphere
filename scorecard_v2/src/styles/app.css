@@ -1650,6 +1650,205 @@ button.game-row:active {
   background: color-mix(in srgb, var(--bg) 92%, transparent);
 }
 
+/* ------------------------------------------------------------- finalise --- */
+
+.finalize {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Final score plus both halves — read-only, no possession markers. */
+.finalboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-lg);
+}
+
+.finalpair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.finalteam {
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.finalhome {
+  text-align: right;
+}
+
+.finalaway {
+  text-align: left;
+}
+
+.finalpoints {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.finalsep {
+  margin: 0 var(--space-1);
+  color: var(--muted);
+}
+
+.finalhalves {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-md);
+  font-variant-numeric: tabular-nums;
+}
+
+.finalhalves th,
+.finalhalves td {
+  padding: 1px 0;
+  text-align: right;
+}
+
+.finalhalves thead th {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.finalhalves th[scope="row"] {
+  padding-right: var(--space-3);
+  font-weight: 600;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.finalhalves tbody th,
+.finalhalves tbody td {
+  color: var(--fg);
+}
+
+/* Secondary action: back to tracking without starting anything. */
+.editbtn {
+  width: 100%;
+  min-height: var(--touch);
+  padding: 0 var(--space-4);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--panel2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.editbtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Captain rows: team label, free-text name with roster suggestions, toggle. */
+.captain + .captain {
+  margin-top: var(--space-3);
+}
+
+.captainteam {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+  font-family: var(--font-display);
+  font-size: var(--fs-base);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
+}
+
+.captainsub {
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.captainrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.captaininput {
+  flex: 1 1 170px;
+  min-width: 0;
+}
+
+.captaininput:disabled {
+  /* The confirmed name is the verified data of this screen: still readable,
+     only visibly not editable. */
+  opacity: 0.75;
+}
+
+.captainconfirm {
+  flex: 0 0 auto;
+  min-height: var(--touch);
+  padding: 0 var(--space-4);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--fg);
+  background: var(--panel2);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    opacity var(--transition-fast);
+}
+
+.captainconfirm[aria-pressed="true"] {
+  color: var(--away-text);
+  background: var(--away-wash);
+  border-color: color-mix(in srgb, var(--away) 45%, transparent);
+}
+
+.captainconfirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.finalnote {
+  min-height: 76px;
+  padding: var(--space-3);
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.finalfoot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.finalfoot .setupnote {
+  margin: 0;
+}
+
 /* --------------------------------------------------------- empty state --- */
 
 .empty-state {
