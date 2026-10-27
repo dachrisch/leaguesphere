@@ -6,6 +6,8 @@ import type {
   RosterWriteEntry,
 } from "../api/types";
 import PlayerRow from "../components/PlayerRow";
+import ThemeToggle from "../components/ThemeToggle";
+import { ChevronLeftIcon } from "../components/icons";
 import UndoBar from "../components/UndoBar";
 import { useSessionTimer } from "../hooks/useSessionTimer";
 
@@ -114,27 +116,14 @@ function RosterScreen({
             aria-label="Zurück"
             onClick={onBack}
           >
-            <svg
-              viewBox="0 0 24 24"
-              width="18"
-              height="18"
-              aria-hidden="true"
-            >
-              <path
-                d="M15 5l-7 7 7 7"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <ChevronLeftIcon size={18} />
           </button>
         )}
         <div className="roster-title">
           <p className="passcheck-kicker">Passcheck v2</p>
           <h1>{roster.team.name}</h1>
         </div>
+        <ThemeToggle />
       </header>
 
       <div className="roster-meter">

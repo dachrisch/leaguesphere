@@ -4,7 +4,10 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./App.css";
 import { registerServiceWorker } from "./offline/registerSW";
+import { initTheme } from "./theme";
 import { flushOutbox } from "./offline/sync";
+
+initTheme();
 
 if (import.meta.env.PROD) {
   registerServiceWorker();
