@@ -488,7 +488,7 @@ class PasscheckServicePlayers:
                     f"Mindestspielstärke {minimum} nicht erreicht "
                     f"({valid_players} geprüft)."
                 )
-            if maximum and valid_players > maximum:
+            if maximum is not None and maximum >= 0 and valid_players > maximum:
                 errors["team"] = f"Maximalspielstärke {maximum} überschritten."
         return errors
 
