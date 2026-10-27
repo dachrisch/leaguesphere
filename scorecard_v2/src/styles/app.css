@@ -1466,6 +1466,11 @@ button.game-row:active {
   gap: var(--space-2);
 }
 
+/* Safety only offers two values; a third empty column would read as a bug. */
+.patrow.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .pat {
   min-height: 52px;
   font-family: var(--font-display);

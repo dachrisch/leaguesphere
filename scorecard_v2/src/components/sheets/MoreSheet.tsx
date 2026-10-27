@@ -195,7 +195,7 @@ export default function MoreSheet({
       {safety ? (
         <>
           <h3 className="sheetsection">Punkte</h3>
-          <div aria-label="Punkte" className="patrow" role="group">
+          <div aria-label="Punkte" className="patrow two" role="group">
             {([1, 2] as const).map((value) => (
               <button
                 aria-pressed={points === value}
