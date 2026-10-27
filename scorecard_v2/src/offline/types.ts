@@ -17,12 +17,14 @@ export interface PendingOp {
   kind: OpKind;
   /** Endpoint-specific body. Opaque to the queue. */
   payload: unknown;
-  /** Ordering key inside one game: the queue is FIFO by this, then by `id`. */
+  /**
+   * Wall-clock time of the tap. The queue orders by its own monotonic `seq`;
+   * this is only the fallback for rows written before `seq` existed.
+   */
   createdAt: number;
   /**
-   * Send attempts the enqueuer stamped. The queue stores it and the engine
-   * never rewrites it — the Outbox interface has no "count an attempt" write,
-   * and inventing one would make every flush a second IndexedDB round-trip.
+   * Send attempts: stamped by the enqueuer and incremented by the outbox on
+   * every failure, so a rejected op carries how often it was tried.
    */
   attempts: number;
   /**
@@ -41,6 +43,12 @@ export interface PendingOp {
  * vanish silently between two flushes.
  */
 export interface StoredOp extends PendingOp {
+  /**
+   * Monotonic per-game insertion order, stamped inside `enqueue`'s write
+   * transaction. Rows written before this field existed fall back to
+   * `createdAt`.
+   */
+  seq: number;
   failed: boolean;
   failedReason: string | null;
   failedAt: number | null;

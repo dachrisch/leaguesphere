@@ -41,24 +41,50 @@ afterEach(() => {
 });
 
 describe("enqueue and pending", () => {
-  it("keeps one game's ops in FIFO order, not insertion order", async () => {
+  it("keeps one game's ops in insertion order", async () => {
+    // `createdAt` says the opposite; the queue order is what the official
+    // tapped, so `seq` wins.
     await outbox.enqueue(op({ id: "c", createdAt: 300 }));
     await outbox.enqueue(op({ id: "a", createdAt: 100 }));
     await outbox.enqueue(op({ id: "b", createdAt: 200 }));
 
     const pending = await outbox.pending(1);
 
-    expect(pending.map((entry) => entry.id)).toEqual(["a", "b", "c"]);
+    expect(pending.map((entry) => entry.id)).toEqual(["c", "a", "b"]);
   });
 
-  it("breaks a createdAt tie by id so two ops cannot swap between flushes", async () => {
+  it("breaks a createdAt tie by insertion order, not by id", async () => {
     await outbox.enqueue(op({ id: "b", createdAt: 100 }));
     await outbox.enqueue(op({ id: "a", createdAt: 100 }));
 
     expect((await outbox.pending(1)).map((entry) => entry.id)).toEqual([
-      "a",
       "b",
+      "a",
     ]);
+  });
+
+  it("keeps insertion order for two ops queued in the same millisecond", async () => {
+    const now = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_123);
+    await outbox.enqueue(op({ id: "second-tap", createdAt: Date.now() }));
+    await outbox.enqueue(op({ id: "first-tap", createdAt: Date.now() }));
+    now.mockRestore();
+
+    const pending = await outbox.pending(1);
+
+    expect(pending.map((entry) => entry.id)).toEqual(["second-tap", "first-tap"]);
+    expect(pending.map((entry) => entry.createdAt)).toEqual([
+      1_700_000_000_123, 1_700_000_000_123,
+    ]);
+    expect(pending.map((entry) => entry.seq)).toEqual([1, 2]);
+  });
+
+  it("stamps a monotonic seq per game, starting at 1", async () => {
+    await outbox.enqueue(op({ id: "g1-a", gameId: 1 }));
+    await outbox.enqueue(op({ id: "g2-a", gameId: 2 }));
+    await outbox.enqueue(op({ id: "g1-b", gameId: 1 }));
+
+    expect((await outbox.pending(1)).map((entry) => entry.seq)).toEqual([1, 2]);
+    expect((await outbox.pending(2)).map((entry) => entry.seq)).toEqual([1]);
   });
 
   it("round-trips the payload and the captured device id", async () => {
@@ -81,6 +107,7 @@ describe("enqueue and pending", () => {
       payload: { sequence: 3, event: [{ name: "Strafe", input: "Holding" }] },
       deviceId: "device-b",
       attempts: 2,
+      seq: 1,
     });
   });
 
@@ -136,7 +163,8 @@ describe("enqueue and pending", () => {
     await outbox.enqueue(op({ id: "b", createdAt: 200 }));
     await outbox.enqueue(op({ id: "a", createdAt: 100 }));
 
-    expect((await outbox.peek(1))?.id).toBe("a");
+    // Insertion order wins over `createdAt`: "b" was queued first.
+    expect((await outbox.peek(1))?.id).toBe("b");
   });
 });
 
@@ -209,9 +237,55 @@ describe("markFailed and retry", () => {
     ]);
   });
 
+  it("counts one attempt per failure in the same write", async () => {
+    await outbox.enqueue(op({ id: "a", attempts: 0 }));
+
+    await outbox.markFailed("a", "HTTP 500");
+    await outbox.markFailed("a", "HTTP 500");
+
+    expect((await outbox.failed(1))[0]?.attempts).toBe(2);
+    expect((await outbox.get("a"))?.attempts).toBe(2);
+  });
+
+  it("keeps the attempts an enqueuer stamped until a failure increments them", async () => {
+    await outbox.enqueue(op({ id: "a", attempts: 3 }));
+
+    expect((await outbox.peek(1))?.attempts).toBe(3);
+
+    await outbox.markFailed("a", "HTTP 422");
+
+    expect((await outbox.failed(1))[0]?.attempts).toBe(4);
+  });
+
   it("ignores a failure or retry for an id that is gone", async () => {
     await expect(outbox.markFailed("nope", "HTTP 400")).resolves.toBeUndefined();
     await expect(outbox.retry("nope")).resolves.toBeUndefined();
+  });
+});
+
+describe("get and gameIds", () => {
+  it("returns a stored row by id, failed or pending", async () => {
+    await outbox.enqueue(op({ id: "a" }));
+    expect(await outbox.get("a")).toMatchObject({ id: "a", failed: false });
+
+    await outbox.markFailed("a", "HTTP 422");
+    expect(await outbox.get("a")).toMatchObject({ id: "a", failed: true });
+
+    expect(await outbox.get("nope")).toBeUndefined();
+  });
+
+  it("lists every game with a row, pending or failed, once", async () => {
+    await outbox.enqueue(op({ id: "g1-a", gameId: 1 }));
+    await outbox.enqueue(op({ id: "g1-b", gameId: 1 }));
+    await outbox.enqueue(op({ id: "g2-a", gameId: 2 }));
+    await outbox.markFailed("g1-a", "HTTP 422");
+
+    expect((await outbox.gameIds()).sort()).toEqual([1, 2]);
+    expect((await createOutbox().gameIds()).sort()).toEqual([1, 2]);
+  });
+
+  it("reports no games for an empty queue", async () => {
+    expect(await outbox.gameIds()).toEqual([]);
   });
 });
 

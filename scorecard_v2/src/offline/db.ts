@@ -38,9 +38,9 @@ export function upgradeOutbox(database: IDBPDatabase<OutboxSchema>): void {
   }
   const store = database.createObjectStore(OPS_STORE, { keyPath: "id" });
   // Only a per-game index: one game holds hundreds of ops at most, so ordering
-  // by `createdAt` in memory is cheaper than a compound index — the failed rows
-  // have to be filtered out anyway, which an index on the sort key could not
-  // do.
+  // by the `seq` stamped at enqueue time is cheaper than a compound index — the
+  // failed rows have to be filtered out anyway, which an index on the sort key
+  // could not do.
   store.createIndex(GAME_INDEX, "gameId");
 }
 

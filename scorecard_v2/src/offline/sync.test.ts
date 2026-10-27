@@ -211,6 +211,88 @@ describe("flush", () => {
     expect((await outbox.failed(2))[0]?.failedReason).toBe("HTTP 404");
   });
 
+  it("treats a 404 on a delete as a successful replay", async () => {
+    // Another tab (or an earlier attempt whose answer was lost) already deleted
+    // the row; the server's 404 is the confirmation that there is nothing left.
+    const send = vi.fn<Transport["send"]>(async () => {
+      throw new ApiError(
+        404,
+        { detail: "Could not delete team log 7 of game 1" },
+        "Could not delete team log 7 of game 1",
+      );
+    });
+    const sync = start({ send });
+    await outbox.enqueue(
+      op({ id: "undo-7", kind: "delete", payload: { team_log_id: 7 } }),
+    );
+
+    await sync.flush(1);
+
+    expect(await outbox.pending(1)).toEqual([]);
+    expect(await outbox.failed(1)).toEqual([]);
+    expect(sync.state()).toMatchObject({ pending: 0, failed: 0, paused: null });
+  });
+
+  it("sends a possession op and clears it from the queue", async () => {
+    const send = vi.fn<Transport["send"]>(async () => undefined);
+    const sync = start({ send });
+    await outbox.enqueue(
+      op({ id: "pat", kind: "possession", payload: { team: "home" } }),
+    );
+
+    await sync.flush(1);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]?.[0]).toMatchObject({
+      id: "pat",
+      kind: "possession",
+    });
+    expect(await outbox.pending(1)).toEqual([]);
+    expect(await outbox.failed(1)).toEqual([]);
+  });
+
+  it("still rejects a 404 for a possession, which only deletes replay", async () => {
+    const sync = start({
+      send: async () => {
+        throw new ApiError(404, { detail: "Spielzug nicht gefunden." });
+      },
+    });
+    await outbox.enqueue(op({ id: "pat", kind: "possession" }));
+
+    await sync.flush(1);
+
+    expect(await outbox.pending(1)).toEqual([]);
+    expect((await outbox.failed(1)).map((entry) => entry.id)).toEqual(["pat"]);
+  });
+
+  it("flattens a DRF field error into the failed reason", async () => {
+    const sync = start({
+      send: async () => {
+        throw new ApiError(400, { team_log_id: ["must be an integer"] });
+      },
+    });
+    await outbox.enqueue(op({ id: "a", kind: "delete" }));
+
+    await sync.flush(1);
+
+    expect((await outbox.failed(1))[0]?.failedReason).toBe(
+      "must be an integer",
+    );
+  });
+
+  it("counts the failed attempts on the stored op", async () => {
+    const sync = start({
+      send: async () => {
+        throw new ApiError(422, { detail: "Eintrag ungültig." });
+      },
+    });
+    await outbox.enqueue(op({ id: "a" }));
+
+    await sync.flush(1);
+
+    expect((await outbox.failed(1))[0]?.attempts).toBe(1);
+  });
+
   it("treats a duplicate client_id answered with 200 as delivered", async () => {
     // The first attempt reached the server but the answer was lost; the replay
     // is answered with the current log and a 200, which the transport resolves.
@@ -264,6 +346,36 @@ describe("flush", () => {
 
     expect(send).toHaveBeenCalledTimes(2);
     expect(await outbox.pending(1)).toEqual([]);
+  });
+
+  it("stays syncing until the last of two concurrent games finishes", async () => {
+    const resolvers = new Map<number, () => void>();
+    const send = vi.fn<Transport["send"]>(
+      (sent) =>
+        new Promise<void>((resolve) => {
+          resolvers.set(sent.gameId, resolve);
+        }),
+    );
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "g1", gameId: 1, createdAt: 100 }));
+    await outbox.enqueue(op({ id: "g2", gameId: 2, createdAt: 200 }));
+
+    const first = sync.flush(1);
+    const second = sync.flush(2);
+    await settle(4);
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(sync.state().syncing).toBe(true);
+
+    resolvers.get(1)?.();
+    await settle();
+    // One game is still in flight: the state must not claim to be done.
+    expect(sync.state().syncing).toBe(true);
+
+    resolvers.get(2)?.();
+    await settle();
+    await Promise.all([first, second]);
+
+    expect(sync.state().syncing).toBe(false);
   });
 
   it("leaves the queue alone when the transport is empty", async () => {
@@ -330,6 +442,19 @@ describe("pauses", () => {
   it("detects the device lock from the device_id in the body", async () => {
     const send = vi.fn<Transport["send"]>(async () => {
       throw new ApiError(409, { device_id: "device-b" });
+    });
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+
+    await sync.flush(1);
+
+    expect(sync.state().paused).toBe("device");
+    expect(await outbox.pending(1)).toHaveLength(1);
+  });
+
+  it("detects the device lock from the detail text when the body has no device_id", async () => {
+    const send = vi.fn<Transport["send"]>(async () => {
+      throw new ApiError(409, { detail: `Hinweis: ${DEVICE_LOCK_DETAIL}` });
     });
     const sync = start({ send });
     await outbox.enqueue(op({ id: "a" }));
@@ -435,6 +560,83 @@ describe("retries", () => {
     expect(await outbox.pending(1)).toHaveLength(1);
   });
 
+  it("keeps a failed game's retry armed while another game flushes", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const send = vi.fn<Transport["send"]>(async (sent: Op) => {
+      if (sent.gameId === 1) {
+        throw new ApiError(503, "<html>kaputt</html>");
+      }
+    });
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "g1", gameId: 1, createdAt: 100 }));
+    await outbox.enqueue(op({ id: "g2", gameId: 2, createdAt: 200 }));
+
+    await sync.flush(1);
+    expect(send).toHaveBeenCalledTimes(1);
+    // A successful flush of game 2 must not clear game 1's timer.
+    await sync.flush(2);
+    expect(await outbox.pending(2)).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(999);
+    await settle();
+    expect(send).toHaveBeenCalledTimes(2);
+
+    await vi.advanceTimersByTimeAsync(1);
+    await settle();
+    expect(send).toHaveBeenCalledTimes(3);
+    expect(send.mock.calls.filter(([sent]) => sent.gameId === 1)).toHaveLength(2);
+    expect(send.mock.calls.filter(([sent]) => sent.gameId === 2)).toHaveLength(1);
+  });
+
+  it("honours Retry-After on a 429 instead of the exponential step", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    let attempts = 0;
+    const send = vi.fn<Transport["send"]>(async () => {
+      attempts += 1;
+      if (attempts === 1) {
+        throw Object.assign(new ApiError(429, null, "Zu viele Anfragen."), {
+          retryAfterMs: 5_000,
+        });
+      }
+    });
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+
+    await sync.flush(1);
+    expect(send).toHaveBeenCalledTimes(1);
+
+    // The first backoff step would be 1 s; the server asked for 5 s.
+    await vi.advanceTimersByTimeAsync(4_999);
+    await settle();
+    expect(send).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    await settle();
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it("caps a long Retry-After at 30 s", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    let attempts = 0;
+    const send = vi.fn<Transport["send"]>(async () => {
+      attempts += 1;
+      if (attempts === 1) {
+        throw Object.assign(new ApiError(429, null, "Zu viele Anfragen."), {
+          headers: { "Retry-After": "120" },
+        });
+      }
+    });
+    const sync = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+
+    await sync.flush(1);
+    await vi.advanceTimersByTimeAsync(29_999);
+    await settle();
+    expect(send).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    await settle();
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps the queue when the browser goes offline", async () => {
     const send = vi.fn<Transport["send"]>(async () => undefined);
     const sync = start({ send });
@@ -528,9 +730,31 @@ describe("counts", () => {
   });
 });
 
+describe("creation", () => {
+  it("knows the games a reload left in the store", async () => {
+    await outbox.enqueue(op({ id: "g1", gameId: 1 }));
+    await outbox.enqueue(op({ id: "g1-b", gameId: 1 }));
+    await outbox.enqueue(op({ id: "g2", gameId: 2 }));
+    await outbox.markFailed("g2", "HTTP 422");
+
+    const sync = start({ send: async () => undefined });
+    await settle(4);
+
+    expect(sync.state()).toMatchObject({ pending: 2, failed: 1 });
+  });
+
+  it("starts with empty counts when the store is empty", async () => {
+    const sync = start({ send: async () => undefined });
+    await settle(4);
+
+    expect(sync.state()).toMatchObject({ pending: 0, failed: 0 });
+  });
+});
+
 describe("cross-tab", () => {
   class FakeChannel {
     static all: FakeChannel[] = [];
+    static sent: unknown[] = [];
     onmessage: ((event: MessageEvent) => void) | null = null;
     readonly name: string;
 
@@ -540,6 +764,7 @@ describe("cross-tab", () => {
     }
 
     postMessage(data: unknown): void {
+      FakeChannel.sent.push(data);
       for (const peer of FakeChannel.all) {
         if (peer !== this && peer.name === this.name) {
           peer.onmessage?.({ data } as MessageEvent);
@@ -554,6 +779,7 @@ describe("cross-tab", () => {
 
   beforeEach(() => {
     FakeChannel.all = [];
+    FakeChannel.sent = [];
     vi.stubGlobal("BroadcastChannel", FakeChannel);
   });
 
@@ -610,6 +836,47 @@ describe("cross-tab", () => {
     await settle(2);
 
     expect(other.state().paused).toBeNull();
+  });
+
+  it("keeps a manual pause through another tab's visibility retry", async () => {
+    const send = vi.fn<Transport["send"]>(async () => undefined);
+    const first = start({ send });
+    const other = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+
+    first.pause("offline");
+    await settle(2);
+    expect(other.state().paused).toBe("offline");
+
+    // The second tab was throttled and comes back: its own retry must not lift
+    // a pause the user asked for, nor broadcast `resumed` to the first tab.
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    document.dispatchEvent(new Event("visibilitychange"));
+    await settle(2);
+
+    expect(other.state().paused).toBe("offline");
+    expect(first.state().paused).toBe("offline");
+    expect(send).not.toHaveBeenCalled();
+
+    // An explicit resume is what clears a manual pause — in both tabs.
+    await first.resume();
+    await settle(2);
+
+    expect(first.state().paused).toBeNull();
+    expect(other.state().paused).toBeNull();
+  });
+
+  it("broadcasts a delete replay the server answered with 404", async () => {
+    const sync = start({
+      send: async () => {
+        throw new ApiError(404, { detail: "schon weg" });
+      },
+    });
+    await outbox.enqueue(op({ id: "undo", kind: "delete" }));
+
+    await sync.flush(1);
+
+    expect(FakeChannel.sent).toContainEqual({ type: "changed", gameId: 1 });
   });
 
   it("ignores foreign messages and a closed channel", async () => {
@@ -707,5 +974,33 @@ describe("navigator.locks", () => {
     await sync.flush(1);
 
     expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps one drainer across two engines in the same tab without a lock manager", async () => {
+    const resolvers: Array<() => void> = [];
+    const send = vi.fn<Transport["send"]>(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvers.push(resolve);
+        }),
+    );
+    const first = start({ send });
+    const second = start({ send });
+    await outbox.enqueue(op({ id: "a" }));
+
+    void first.flush(1);
+    await settle(4);
+    expect(send).toHaveBeenCalledTimes(1);
+
+    const secondFlush = second.flush(1);
+    await settle(2);
+
+    expect(send).toHaveBeenCalledTimes(1);
+
+    resolvers.shift()?.();
+    await settle();
+    await secondFlush;
+
+    expect(await outbox.pending(1)).toEqual([]);
   });
 });

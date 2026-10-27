@@ -44,6 +44,7 @@ describe("openOutboxDatabase", () => {
       createdAt: 1,
       attempts: 0,
       deviceId: null,
+      seq: 1,
       failed: false,
       failedReason: null,
       failedAt: null,
