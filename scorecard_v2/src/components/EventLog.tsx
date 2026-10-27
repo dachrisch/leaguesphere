@@ -19,6 +19,17 @@ const SCORING_KEYS: Record<string, string> = {
   OT: "Overtime",
 };
 
+/**
+ * Game-level markers. Deleting one only strikes the log row: it cannot revert
+ * `Gameinfo.gameStarted` / `gameHalftime` / `gameFinished`, so undo would lie
+ * about the game state. They stay visible and non-undoable.
+ */
+const MARKER_EVENTS = new Set([
+  "Spiel gestartet",
+  "2. Halbzeit gestartet",
+  "Spiel beendet",
+]);
+
 const FALLBACK_IGNORED_KEYS = new Set([
   "sequence",
   "time",
@@ -93,6 +104,11 @@ export function undoBody(
   return { sequence: row.sequence };
 }
 
+/** Markers are shown but not undoable; see {@link MARKER_EVENTS}. */
+export function isMarker(row: LogRow): boolean {
+  return MARKER_EVENTS.has(row.event);
+}
+
 function jersey(value: unknown): number | null {
   return typeof value === "number" ? value : null;
 }
@@ -114,7 +130,7 @@ function eventToRow(event: GameLogEvent): LogRow {
     team: event.team,
     event: event.event,
     player: event.player,
-    input: event.input,
+    input: event.input?.trim() || null,
     half: event.half,
     cop: event.cop,
     isDeleted: event.isDeleted,
@@ -356,6 +372,7 @@ export default function EventLog({
         <ol className="logrows">
           {rows.map((row) => {
             const described = describeRow(row);
+            const undoable = !row.isDeleted && !isMarker(row);
             return (
               <li
                 className={row.isDeleted ? "row deleted" : "row"}
@@ -380,17 +397,17 @@ export default function EventLog({
                   <time className="rowtime" dateTime={row.time ?? undefined}>
                     {formatLogTime(row.time)}
                   </time>
-                  {row.isDeleted ? null : (
+                  {undoable ? (
                     <button
                       aria-label={`Rückgängig: ${described.primary}`}
                       className="undo"
-                      disabled={undoKey === row.key}
+                      disabled={undoKey !== null}
                       onClick={() => onUndo(row)}
                       type="button"
                     >
                       Rückgängig
                     </button>
-                  )}
+                  ) : null}
                 </span>
               </li>
             );

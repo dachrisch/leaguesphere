@@ -1,4 +1,11 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
@@ -205,6 +212,24 @@ describe("Tracking possession", () => {
     );
   });
 
+  it("sends only one possession change for two rapid taps", () => {
+    apiPutMock.mockReturnValue(new Promise(() => undefined));
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({ inPossession: "Ravens" })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    const wolves = screen.getByRole("button", { name: /^Wolves/ });
+    fireEvent.click(wolves);
+    fireEvent.click(wolves);
+
+    expect(apiPutMock).toHaveBeenCalledTimes(1);
+    expect(wolves).toBeDisabled();
+  });
+
   it("rolls the marker back when the request fails", async () => {
     apiPutMock.mockRejectedValueOnce(
       new ApiError(500, { detail: "Server weg" }, "Server weg"),
@@ -235,7 +260,7 @@ describe("Tracking possession", () => {
 });
 
 describe("Tracking event log", () => {
-  it("renders every event kind newest first with its detail", () => {
+  it("renders every event kind with its detail", () => {
     render(
       <TrackingScreen
         game={GAME}
@@ -273,6 +298,29 @@ describe("Tracking event log", () => {
     expect(rows[rows.length - 1]).toHaveTextContent("Touchdown Ravens");
   });
 
+  it("passes the server's event order through unchanged", () => {
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({
+          events: [
+            logEvent({ id: 1, event: "Touchdown", time: isoAt(12, 5) }),
+            logEvent({
+              id: 9,
+              event: "First Down",
+              time: isoAt(12, 30),
+            }),
+          ],
+        })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    const rows = screen.getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("Touchdown Ravens");
+    expect(rows[1]).toHaveTextContent("1st Down Ravens");
+  });
+
   it("keeps a deleted row visible, struck through and without undo", () => {
     render(
       <TrackingScreen
@@ -293,6 +341,28 @@ describe("Tracking event log", () => {
       within(rows[0]).queryByRole("button", { name: /Rückgängig/ }),
     ).not.toBeInTheDocument();
     expect(within(rows[1]).getByRole("button", { name: /Rückgängig/ })).toBeInTheDocument();
+  });
+
+  it("does not render an empty detail line for an empty input", () => {
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({
+          events: [
+            logEvent({
+              id: 1,
+              sequence: 0,
+              event: "Auszeit",
+              input: "",
+            }),
+          ],
+        })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    const row = screen.getAllByRole("listitem")[0];
+    expect(row.querySelector(".rowsub")).toBeNull();
   });
 
   it("shows the empty state when there is nothing to log", () => {
@@ -374,8 +444,7 @@ describe("Tracking undo", () => {
     });
   });
 
-  it("undoes a game marker by row id, not by the shared sequence 0", async () => {
-    apiDeleteMock.mockResolvedValue(makeLog());
+  it("does not offer undo for a game marker", () => {
     render(
       <TrackingScreen
         game={GAME}
@@ -394,11 +463,61 @@ describe("Tracking undo", () => {
       />,
     );
 
-    await clickUndo(/Rückgängig: Spiel gestartet/);
+    expect(screen.getByText("Spiel gestartet")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Rückgängig/ }),
+    ).not.toBeInTheDocument();
+    expect(apiDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it("undoes a change-of-possession play by sequence", async () => {
+    apiDeleteMock.mockResolvedValue(makeLog());
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({
+          events: [
+            logEvent({
+              id: 7,
+              sequence: 6,
+              event: "Turnover",
+              cop: true,
+            }),
+          ],
+        })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    await clickUndo(/Rückgängig: Turnover Ravens/);
 
     expect(apiDeleteMock).toHaveBeenCalledWith("/api/gamelog/42", {
-      team_log_id: 9,
+      sequence: 6,
     });
+  });
+
+  it("sends only one delete for two rapid undo taps", () => {
+    apiDeleteMock.mockReturnValue(new Promise(() => undefined));
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({
+          events: [
+            logEvent({ id: 5, sequence: 2, event: "Touchdown" }),
+            logEvent({ id: 6, sequence: 3, event: "Touchdown", player: 7 }),
+          ],
+        })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    const buttons = screen.getAllByRole("button", { name: /Rückgängig/ });
+    fireEvent.click(buttons[0]);
+    fireEvent.click(buttons[1]);
+
+    expect(apiDeleteMock).toHaveBeenCalledTimes(1);
+    expect(buttons[0]).toBeDisabled();
+    expect(buttons[1]).toBeDisabled();
   });
 
   it("replaces the log with the delete response", async () => {
@@ -436,6 +555,47 @@ describe("Tracking undo", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("1st Down Wolves")).toBeInTheDocument();
     expect(screen.getAllByRole("listitem")[1]).toHaveClass("deleted");
+  });
+
+  it("does not adopt stale possession from a delete while a possession PUT is in flight", async () => {
+    let resolvePut: (() => void) | undefined;
+    apiPutMock.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolvePut = resolve;
+      }),
+    );
+    apiDeleteMock.mockResolvedValue(
+      makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({ id: 5, sequence: 3, event: "Touchdown", isDeleted: true }),
+        ],
+      }),
+    );
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({
+          inPossession: "Ravens",
+          events: [logEvent({ id: 5, sequence: 3, event: "Touchdown" })],
+        })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    const wolves = screen.getByRole("button", { name: /^Wolves/ });
+    fireEvent.click(wolves);
+    await clickUndo(/Rückgängig: Touchdown Ravens/);
+
+    expect(wolves).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", { name: /^Ravens/ }),
+    ).toHaveAttribute("aria-pressed", "false");
+
+    await act(async () => {
+      resolvePut?.();
+    });
+    expect(wolves).toHaveAttribute("aria-pressed", "true");
   });
 
   it("keeps the log and shows the server detail when undo fails", async () => {

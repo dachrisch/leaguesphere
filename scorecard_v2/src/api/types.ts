@@ -184,7 +184,7 @@ export interface GameLog {
   /** False once the halftime marker exists. */
   isFirstHalf: boolean;
   /** Team *name* currently in possession, `null` before/without one. */
-  inPossession: string | null;
+  inPossession?: string | null;
   /**
    * Every raw `TeamLog` row, newest first — including the non-scoring events
    * (penalties, timeouts, first downs, time) the per-half `entries` omit.
