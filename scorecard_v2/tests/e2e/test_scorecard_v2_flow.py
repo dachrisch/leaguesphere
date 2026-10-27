@@ -121,7 +121,7 @@ def test_scorecard_v2_flow_from_gameday_to_result(live_server, page: Page):
 
     # ---- Start: officials, setup, opening possession and the log. ---------
     page.get_by_role("button", name="Spiel starten").click()
-    expect(page.get_by_role("heading", name="Spiel läuft")).to_be_visible(timeout=30000)
+    expect(page.get_by_role("heading", name="Feld 1 · Vorrunde")).to_be_visible(timeout=30000)
     # The score header reads the team *names*, and the possession marker proves
     # the opening possession was accepted (the list label would have 400'd).
     board = page.get_by_role("region", name="Spielstand")

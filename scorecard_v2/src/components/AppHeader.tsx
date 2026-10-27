@@ -1,3 +1,6 @@
+import ThemeToggle from "./ThemeToggle";
+import { ChevronLeft } from "./icons";
+
 interface AppHeaderProps {
   kicker: string;
   title: string;
@@ -8,7 +11,11 @@ interface AppHeaderProps {
   onLogout?: () => void;
 }
 
-/** Screen chrome: kicker, one title and an optional context line. */
+/**
+ * Screen chrome: the navigation bar (back, theme, logout), the kicker, one
+ * title and an optional context line. The theme switch lives here so it is
+ * reachable from every screen, including the loading and error panels.
+ */
 export default function AppHeader({
   kicker,
   title,
@@ -16,39 +23,24 @@ export default function AppHeader({
   onBack,
   onLogout,
 }: AppHeaderProps) {
-  const hasBar = onBack !== undefined || onLogout !== undefined;
-
   return (
     <header className="app-header">
-      {hasBar ? (
-        <div className="appbar">
-          {onBack === undefined ? (
-            <span />
-          ) : (
+      <div className="appbar">
+        <div className="appbar-left">
+          {onBack === undefined ? null : (
             <button
               aria-label="Zurück"
               className="appbar-btn"
               onClick={onBack}
               type="button"
             >
-              <svg
-                aria-hidden="true"
-                className="appbar-icon"
-                focusable="false"
-                viewBox="0 0 16 16"
-              >
-                <path
-                  d="M10 3L5 8l5 5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.8"
-                />
-              </svg>
+              <ChevronLeft className="appbar-icon" size={16} />
               Zurück
             </button>
           )}
+        </div>
+        <div className="appbar-right">
+          <ThemeToggle />
           {onLogout === undefined ? null : (
             <button
               className="appbar-btn appbar-logout"
@@ -59,7 +51,7 @@ export default function AppHeader({
             </button>
           )}
         </div>
-      ) : null}
+      </div>
       <p className="kicker">{kicker}</p>
       <h1 className="app-title">{title}</h1>
       {sub === undefined ? null : <p className="app-sub">{sub}</p>}

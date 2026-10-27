@@ -18,13 +18,16 @@ wie die bisherige Scorecard
 2. Prüfe in der Vorbereitung die Offiziellen und ihre Lizenzen, halte
    **Münzwurf**, **Erster Ballbesitz** und **Richtung** fest und tippe auf
    **Spiel starten**.
-3. Erfasse im **Spiel läuft** jeden Spielzug über **Touchdown**, **1st Down**,
-   **Turnover**, **Interception**, **Strafe**, **Safety**, **Overtime**,
-   **Spielzeit** oder **Auszeit**.
+3. Erfasse im laufenden Spiel (oben stehen Feld und Runde) jeden Spielzug über
+   **Touchdown**, **1st Down**, **Turnover**, **Interception**, **Strafe**,
+   **Safety**, **Overtime**, **Spielzeit** oder **Auszeit**.
 4. **Rückgängig** nimmt einen Eintrag zurück, **Halbzeit** wechselt in die
    zweite Halbzeit.
 5. **Spielende und Bestätigung** öffnet den Abschluss: beide Captains
    bestätigen, dann **Ergebnis abschicken**.
+
+Oben rechts wechselt **Auto**, **Hell** und **Dunkel** die Darstellung; **Auto**
+folgt der Einstellung des Geräts.
 
 ## Ohne Netz
 

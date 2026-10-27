@@ -115,7 +115,7 @@ async function openGame(
   await user.click(
     await screen.findByRole("button", { name: /Ravens gegen Wolves/ }),
   );
-  await screen.findByRole("heading", { name: "Spiel läuft" });
+  await screen.findByRole("heading", { name: "Feld 2 · Vorrunde" });
 }
 
 beforeEach(async () => {
