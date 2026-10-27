@@ -258,4 +258,32 @@ export interface Penalty {
   isPenaltyAgainstOpponent: boolean;
 }
 
+/**
+ * One event of a `POST /api/gamelog/<gameId>` body. The server writes exactly
+ * one `TeamLog` row per entry and resolves the scoring value from the name.
+ *
+ * `player` is the jersey (never a name or a pk). A scoring event counts only
+ * when `player` is set: the server stores value 0 otherwise, so a touchdown
+ * without a jersey scores nothing. `input` is the free text a row shows —
+ * the time for `Spielzeit`/`Auszeit`, the penalty name for `Strafe`.
+ */
+export interface GameLogEventInput {
+  name: string;
+  player?: number;
+  input?: string;
+}
+
+/**
+ * Body of `POST /api/gamelog/<gameId>`. A touchdown and its conversion are two
+ * entries of one request, so they share a sequence.
+ */
+export interface GameLogWrite {
+  gameId: number;
+  /** Team *name* (the backend also resolves a pk); the possessing team. */
+  team: string;
+  /** 1 or 2 — never derived from the current time. */
+  half: number;
+  event: GameLogEventInput[];
+}
+
 // `PendingOp` (the outbox record) is deliberately deferred to the outbox task.

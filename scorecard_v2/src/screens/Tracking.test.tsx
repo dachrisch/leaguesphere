@@ -9,13 +9,14 @@ import {
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
-import { ApiError, apiDelete, apiPut } from "../api/client";
+import { ApiError, apiDelete, apiGet, apiPost, apiPut } from "../api/client";
 import type {
   Game,
   GameLog,
   GameLogEvent,
   GameLogTeam,
   LogEntry,
+  RosterPlayer,
 } from "../api/types";
 import TrackingScreen from "./Tracking";
 
@@ -23,6 +24,8 @@ vi.mock("../api/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api/client")>();
   return {
     ...actual,
+    apiGet: vi.fn(),
+    apiPost: vi.fn(),
     apiPut: vi.fn(),
     apiDelete: vi.fn(),
   };
@@ -30,6 +33,8 @@ vi.mock("../api/client", async (importOriginal) => {
 
 const apiPutMock = apiPut as unknown as Mock;
 const apiDeleteMock = apiDelete as unknown as Mock;
+const apiGetMock = apiGet as unknown as Mock;
+const apiPostMock = apiPost as unknown as Mock;
 
 const GAME: Game = {
   id: 42,
@@ -131,7 +136,13 @@ async function clickUndo(name: RegExp): Promise<void> {
 beforeEach(() => {
   apiPutMock.mockReset();
   apiDeleteMock.mockReset();
+  apiPostMock.mockReset();
+  apiGetMock.mockReset();
   apiPutMock.mockResolvedValue(undefined);
+  apiPostMock.mockResolvedValue(makeLog());
+  // The roster request only matters for the entry sheets; a pending promise
+  // keeps the unrelated tests free of state updates after they finished.
+  apiGetMock.mockReturnValue(new Promise(() => undefined));
 });
 
 describe("Tracking score header", () => {
@@ -638,5 +649,163 @@ describe("Tracking finalize", () => {
     );
 
     expect(onFinalize).toHaveBeenCalledTimes(1);
+  });
+});
+
+const ROSTER: RosterPlayer[] = [
+  { side: "home", jersey: 7, name: "Meier" },
+  { side: "home", jersey: 23, name: "Schulz" },
+  { side: "away", jersey: 11, name: "Wolf" },
+];
+
+function renderTracking(
+  overrides: { game?: Game; log?: GameLog } = {},
+): void {
+  render(
+    <TrackingScreen
+      game={overrides.game ?? GAME}
+      initialLog={overrides.log ?? makeLog({ inPossession: "Ravens" })}
+      onFinalize={vi.fn()}
+    />,
+  );
+}
+
+async function openSheet(
+  user: ReturnType<typeof userEvent.setup>,
+  name: string | RegExp,
+): Promise<HTMLElement> {
+  await user.click(screen.getByRole("button", { name }));
+  return screen.findByRole("dialog");
+}
+
+async function pickJersey(
+  user: ReturnType<typeof userEvent.setup>,
+  jersey: number,
+): Promise<void> {
+  await user.click(
+    await screen.findByRole("button", {
+      name: new RegExp(`^Trikotnummer ${jersey}`),
+    }),
+  );
+}
+
+describe("Tracking touchdown entry", () => {
+  it("loads the roster and offers only the possessing side's jerseys", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    renderTracking();
+    const user = userEvent.setup();
+
+    const dialog = await openSheet(user, /^Touchdown Ravens$/);
+
+    expect(dialog).toHaveAccessibleName("Wer hat gepunktet?");
+    expect(
+      await screen.findByRole("button", { name: "Trikotnummer 23, Schulz" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Wolf/ }),
+    ).not.toBeInTheDocument();
+    expect(apiGetMock).toHaveBeenCalledWith("/api/game/42/roster");
+  });
+
+  it("posts the touchdown and replaces the log with the response", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    apiPostMock.mockResolvedValue(
+      makeLog({
+        inPossession: "Ravens",
+        home: team({ score: 7, firsthalf: { score: 7, entries: [] } }),
+        events: [
+          logEvent({ id: 10, sequence: 1, event: "1-Extra-Punkt", player: 23 }),
+          logEvent({ id: 9, sequence: 1, event: "Touchdown", player: 23 }),
+        ],
+      }),
+    );
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Touchdown Ravens$/);
+    await pickJersey(user, 23);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    expect(apiPostMock).toHaveBeenCalledWith("/api/gamelog/42", {
+      gameId: 42,
+      team: "Ravens",
+      half: 1,
+      event: [
+        { name: "Touchdown", player: 23 },
+        { name: "1-Extra-Punkt", player: 23 },
+      ],
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    const board = screen.getByLabelText("Spielstand");
+    expect(within(board).getByText("7")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Touchdown gespeichert · #23",
+    );
+  });
+
+  it("keeps the sheet open with the server detail when the write fails", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    apiPostMock.mockRejectedValue(
+      new ApiError(
+        409,
+        { detail: "Dieses Spiel läuft auf einem anderen Gerät." },
+        "Dieses Spiel läuft auf einem anderen Gerät.",
+      ),
+    );
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Touchdown Ravens$/);
+    await pickJersey(user, 23);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Dieses Spiel läuft auf einem anderen Gerät.",
+    );
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("disables the composer while a write is in flight", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    apiPostMock.mockReturnValue(new Promise(() => undefined));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Touchdown Ravens$/);
+    await pickJersey(user, 23);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    expect(screen.getByRole("button", { name: /^Touchdown Ravens$/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "1st Down" })).toBeDisabled();
+  });
+});
+
+describe("Tracking composer state", () => {
+  it("disables the entry buttons for a finished game", () => {
+    renderTracking({ game: { ...GAME, status: "beendet" } });
+
+    expect(screen.getByRole("button", { name: /^Touchdown Ravens$/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "1st Down" })).toBeDisabled();
+    expect(screen.getByText("Dieses Spiel ist beendet.")).toBeInTheDocument();
+  });
+
+  it("asks for possession before an entry can be recorded", () => {
+    renderTracking({ log: makeLog({ inPossession: null }) });
+
+    expect(screen.getByRole("button", { name: /^Touchdown$/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Turnover" })).toBeDisabled();
+    expect(
+      screen.getByText("Ballbesitz wählen, um Einträge zu erfassen."),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the penalty and safety tiles disabled", () => {
+    renderTracking();
+
+    expect(screen.getByRole("button", { name: "Strafe" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Safety" })).toBeDisabled();
   });
 });
