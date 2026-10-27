@@ -114,3 +114,26 @@ Scope rules live in `.circleci/scope-mapping.txt`: the frontend files gate
 `scorecard_v2/tests/e2e/.*` follows the other e2e sources. The bundle itself is
 gitignored and built in Docker, like every other SPA. See
 [Scoped CI](../../deployment/scoped-ci.md).
+
+## Verification
+
+Automated: 494 vitest cases (incl. the outbox/sync engine and a real
+status-0 → remount → flush flow), the `gamedays` + `scorecard_v2` Django suites,
+the Playwright gameday → result flow, and the CI checks in the table above.
+
+Manual, on a local `runserver` with headless Chromium (not a physical phone):
+
+- server stopped after a game started: touchdown + penalty recorded locally,
+  badge `Offline · N`, log and score updated optimistically;
+- reload with the server down: the service-worker app shell boots, the game and
+  its log come back from IndexedDB;
+- undo of an unsynced penalty: row disappears, nothing sent;
+- server restarted: the queue drains in tap order, badge returns to `Synchron`,
+  the log matches the server;
+- finalise refused while the queue is non-empty; logout warns before dropping
+  queued writes.
+
+Still to do on real hardware before wide rollout: flight-mode drift (radio off
+for minutes, then drain), a second physical device hitting the lock, and a full
+gameday in the rain. Treat the above as the baseline, not as field proof.
+

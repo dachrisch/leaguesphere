@@ -328,7 +328,6 @@ jobs:
           name: "JavaScript Linter"
           command: |
             mkdir -p /tmp/eslint
-            npm --prefix scorecard_v2/ run eslint
             npm --prefix scorecard_v2/ run eslint:junit
       - store_test_results:
           path: /tmp/eslint
@@ -652,6 +651,11 @@ jobs:
               docker logs test_container
               exit 1
             fi
+
+            # The image must actually serve the v2 bundle (Task 22 DoD: builds and serves).
+            docker run --rm --network test_network curlimages/curl -fsS \
+              http://test_container/static/scorecard_v2/js/scorecard_v2.js > /dev/null
+            echo "scorecard_v2 bundle is served by the frontend image"
 
   check_migrations:
     docker:

@@ -98,7 +98,7 @@ if [ "$HOT_MODE" = true ]; then
             SHOULD_WATCH=false
             if [[ "$HOT_APPS" == "all" ]]; then
                 SHOULD_WATCH=true
-            elif [[ "$HOT_APPS" == *"$app"* ]]; then
+            elif [[ "$HOT_APPS" == "$app" ]]; then
                 SHOULD_WATCH=true
             fi
 
