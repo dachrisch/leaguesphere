@@ -194,6 +194,15 @@ beforeEach(() => {
         startCalls.push(`GET ${path}`);
         return LOG;
       default:
+        if (path.startsWith("/api/officials/search/list")) {
+          const query =
+            new URL(path, "http://localhost").searchParams.get("name") ?? "";
+          return teamList.filter((person) =>
+            `${person.first_name} ${person.last_name}`
+              .toLowerCase()
+              .includes(query.toLowerCase()),
+          );
+        }
         throw new Error(`unexpected GET ${path}`);
     }
   });
@@ -239,18 +248,33 @@ function startButton(): HTMLButtonElement {
   return button;
 }
 
-function crewSelect(label: string): HTMLSelectElement {
-  return screen.getByRole("combobox", {
+function crewButton(label: string): HTMLButtonElement {
+  return screen.getByRole("button", {
     name: `${label}: Offiziellen wählen`,
-  }) as HTMLSelectElement;
+  }) as HTMLButtonElement;
+}
+
+/** The read-only name of an unknown or duplicated row. */
+function crewReadOnly(): HTMLElement | null {
+  return document.querySelector<HTMLElement>(".offname");
 }
 
 function rowFor(label: string): HTMLElement {
-  const row = crewSelect(label).closest(".offrow");
+  const row = crewButton(label).closest(".offrow");
   if (!(row instanceof HTMLElement)) {
     throw new Error(`no crew row for ${label}`);
   }
   return row;
+}
+
+/** Open the slot's picker, search for a person and take the suggestion. */
+async function pickCrew(label: string, person: string): Promise<void> {
+  await userEvent.click(crewButton(label));
+  const input = screen.getByLabelText(`${label}: Person suchen`);
+  await userEvent.type(input, person.split(" ").slice(-1)[0]);
+  await userEvent.click(
+    await screen.findByRole("option", { name: new RegExp(person) }),
+  );
 }
 
 async function clickStart(): Promise<void> {
@@ -272,8 +296,9 @@ describe("GameSetup — header and crew", () => {
   it("shows crew names and their roles", async () => {
     await renderSetup();
 
-    expect(crewSelect("Schiedsrichter")).toHaveValue("11");
-    expect(crewSelect("Scorecard Judge")).toHaveValue("12");
+    expect(crewButton("Schiedsrichter")).toHaveTextContent("Michael Klein");
+    expect(crewButton("Schiedsrichter")).toHaveTextContent("verknüpft");
+    expect(crewButton("Scorecard Judge")).toHaveTextContent("Anna Richter");
     expect(
       within(rowFor("Schiedsrichter")).getByText("Schiedsrichter"),
     ).toBeInTheDocument();
@@ -282,35 +307,29 @@ describe("GameSetup — header and crew", () => {
     expect(screen.getByText("1/4")).toBeInTheDocument();
   });
 
-  it("does not offer an official who already fills another slot", async () => {
+  it("suggests people across the directory and flags who already fills a slot", async () => {
     await renderSetup();
 
-    const judge = crewSelect("Scorecard Judge");
-    expect(
-      within(judge).queryByRole("option", { name: "Michael Klein" }),
-    ).toBeNull();
-    expect(
-      within(judge).getByRole("option", { name: "Anna Richter" }),
-    ).toBeInTheDocument();
+    await userEvent.click(crewButton("Scorecard Judge"));
+    const input = screen.getByLabelText("Scorecard Judge: Person suchen");
+    await userEvent.type(input, "klein");
+    const busy = await screen.findByRole("option", { name: /Michael Klein/ });
+    expect(busy).toHaveAttribute("aria-disabled", "true");
+    expect(busy).toHaveTextContent("bereits gesetzt");
 
-    const referee = crewSelect("Schiedsrichter");
-    expect(
-      within(referee).queryByRole("option", { name: "Anna Richter" }),
-    ).toBeNull();
-    expect(within(referee).getByRole("option", { name: "Tom Weber" }))
-      .toBeInTheDocument();
+    await userEvent.clear(input);
+    await userEvent.type(input, "richter");
+    const free = await screen.findByRole("option", { name: /Anna Richter/ });
+    expect(free).not.toHaveAttribute("aria-disabled");
+    expect(free).toHaveTextContent("Crew Rhein");
   });
 
   it("keeps a free-text crew name when no official is linked", async () => {
     crew[0] = crewRow({ official: null, name: "Gast Schiri" });
     await renderSetup();
 
-    expect(crewSelect("Schiedsrichter")).toHaveValue("");
-    expect(
-      within(rowFor("Schiedsrichter")).getByRole("option", {
-        name: "Gast Schiri",
-      }),
-    ).toBeInTheDocument();
+    expect(crewButton("Schiedsrichter")).toHaveTextContent("Gast Schiri");
+    expect(crewButton("Schiedsrichter")).toHaveTextContent("Freitext");
     expect(
       within(rowFor("Schiedsrichter")).getByText("keine Lizenz"),
     ).toBeInTheDocument();
@@ -321,9 +340,11 @@ describe("GameSetup — header and crew", () => {
     await renderSetup();
 
     // The Referee slot stays empty: writing "Referee" would create a duplicate.
-    expect(crewSelect("Schiedsrichter")).toHaveValue("");
+    expect(crewButton("Schiedsrichter")).toHaveTextContent(
+      "Offiziellen wählen",
+    );
     expect(screen.getByText("0/4")).toBeInTheDocument();
-    const extra = document.querySelector(".offname");
+    const extra = crewReadOnly();
     expect(extra).toHaveTextContent("Michael Klein");
     expect(extra?.closest(".offrow")).toHaveTextContent("Schiedsrichter");
   });
@@ -418,9 +439,9 @@ describe("GameSetup — local crew edits", () => {
   it("keeps a changed official local until the start", async () => {
     await renderSetup();
 
-    await userEvent.selectOptions(crewSelect("Schiedsrichter"), "13");
+    await pickCrew("Schiedsrichter", "Tom Weber");
 
-    expect(crewSelect("Schiedsrichter")).toHaveValue("13");
+    expect(crewButton("Schiedsrichter")).toHaveTextContent("Tom Weber");
     expect(apiPutMock).not.toHaveBeenCalled();
     expect(
       within(rowFor("Schiedsrichter")).getByText("abgelaufen seit 04.03.2025"),
@@ -429,7 +450,7 @@ describe("GameSetup — local crew edits", () => {
 
   it("sends all five slots before the setup when the crew changed", async () => {
     const { onStarted } = await renderSetup();
-    await userEvent.selectOptions(crewSelect("Schiedsrichter"), "13");
+    await pickCrew("Schiedsrichter", "Tom Weber");
 
     await clickStart();
     // Tom Weber's licence is expired, so the first tap only confirms.
@@ -504,14 +525,14 @@ describe("GameSetup — crew data problems", () => {
     // The duplicated position cannot be counted as filled.
     expect(screen.getByText("0/4")).toBeInTheDocument();
     expect(
-      screen.queryByRole("combobox", {
+      screen.queryByRole("button", {
         name: "Schiedsrichter: Offiziellen wählen",
       }),
     ).toBeNull();
-    expect(document.querySelector(".offname")).toHaveTextContent("Michael Klein");
+    expect(crewReadOnly()).toHaveTextContent("Michael Klein");
 
     // Dirty via the optional Scorecard Judge; Tom Weber's licence is expired.
-    await userEvent.selectOptions(crewSelect("Scorecard Judge"), "13");
+    await pickCrew("Scorecard Judge", "Tom Weber");
     await clickStart();
     expect(apiPutMock).not.toHaveBeenCalled();
     await userEvent.click(
@@ -546,11 +567,11 @@ describe("GameSetup — crew data problems", () => {
     ];
     const { onStarted } = await renderSetup();
 
-    const extra = document.querySelector(".offname");
+    const extra = crewReadOnly();
     expect(extra).toHaveTextContent("Tom Weber");
     expect(extra?.closest(".offrow")).toHaveTextContent("Zeitnehmer");
 
-    await userEvent.selectOptions(crewSelect("Schiedsrichter"), "14");
+    await pickCrew("Schiedsrichter", "Sabine Lang");
     await clickStart();
     await userEvent.click(
       screen.getByRole("button", { name: "Trotzdem starten" }),
@@ -770,7 +791,7 @@ describe("GameSetup — start sequence", () => {
 describe("GameSetup — start failures and guards", () => {
   it("does not start when saving the crew is rejected", async () => {
     const { onStarted } = await renderSetup();
-    await userEvent.selectOptions(crewSelect("Schiedsrichter"), "14");
+    await pickCrew("Schiedsrichter", "Sabine Lang");
     crewFailure = new ApiError(
       400,
       { detail: "Offizielle konnten nicht gespeichert werden." },
@@ -869,7 +890,7 @@ describe("GameSetup — start failures and guards", () => {
 
     expect(screen.getByText("Dieses Spiel ist beendet.")).toBeInTheDocument();
     expect(document.querySelector(".startbtn")).toBeNull();
-    expect(crewSelect("Schiedsrichter")).toBeDisabled();
+    expect(crewButton("Schiedsrichter")).toBeDisabled();
     expect(
       within(screen.getByRole("group", { name: "Richtung" })).getByRole(
         "button",
@@ -982,7 +1003,7 @@ describe("GameSetup — server rejections", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(deviceMessage);
-    expect(crewSelect("Schiedsrichter")).toBeDisabled();
+    expect(crewButton("Schiedsrichter")).toBeDisabled();
     for (const group of screen.getAllByRole("group")) {
       for (const button of within(group).getAllByRole("button")) {
         expect(button).toBeDisabled();
@@ -1006,7 +1027,7 @@ describe("GameSetup — server rejections", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Konflikt beim Start.");
     expect(startButton()).toHaveTextContent("Nur lesen");
-    expect(crewSelect("Schiedsrichter")).toBeDisabled();
+    expect(crewButton("Schiedsrichter")).toBeDisabled();
   });
 
   it("offers a retry after the device lock was released", async () => {
@@ -1120,12 +1141,8 @@ describe("GameSetup — the remaining data shapes", () => {
     crew = [crewRow({ official: 99, name: null, position: "Referee" })];
     await renderSetup();
 
-    expect(crewSelect("Schiedsrichter")).toHaveValue("99");
-    expect(
-      within(rowFor("Schiedsrichter")).getByRole("option", {
-        name: "Offizieller 99",
-      }),
-    ).toBeInTheDocument();
+    expect(crewButton("Schiedsrichter")).toHaveTextContent("Offizieller 99");
+    expect(crewButton("Schiedsrichter")).toHaveTextContent("verknüpft");
     expect(
       within(rowFor("Schiedsrichter")).getByText("Lizenz unbekannt"),
     ).toBeInTheDocument();
@@ -1135,14 +1152,14 @@ describe("GameSetup — the remaining data shapes", () => {
     crew = [crewRow({ official: 11, position: "Referee" })];
     await renderSetup();
 
-    await userEvent.selectOptions(crewSelect("Schiedsrichter"), "");
+    await userEvent.click(crewButton("Schiedsrichter"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Auswahl entfernen" }),
+    );
 
-    expect(crewSelect("Schiedsrichter")).toHaveValue("");
-    expect(
-      within(rowFor("Schiedsrichter")).getByRole("option", {
-        name: "Offiziellen wählen",
-      }),
-    ).toBeInTheDocument();
+    expect(crewButton("Schiedsrichter")).toHaveTextContent(
+      "Offiziellen wählen",
+    );
   });
 
   it("shows an expired licence whose expiry date is unknown", async () => {

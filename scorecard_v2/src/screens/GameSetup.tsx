@@ -17,6 +17,7 @@ import type {
   TeamOfficial,
 } from "../api/types";
 import Screen from "../components/Screen";
+import PersonPicker from "../components/PersonPicker";
 import { getDeviceId } from "../device";
 import { cachedGet, snapshotKey } from "../offline/snapshot";
 import { formatGameTime } from "./GameList";
@@ -527,21 +528,38 @@ export default function GameSetupScreen({
       (slot.official !== null || (slot.name ?? "").trim() !== ""),
   ).length;
 
-  const chooseOfficial = (index: number, raw: string): void => {
-    const official = raw === "" ? null : Number(raw);
-    const person =
-      official === null ? undefined : teamByOfficial.get(official);
+  const pickPerson = (index: number, person: TeamOfficial): void => {
     setSlots((current) =>
-      current.map((slot, position) => {
-        if (position !== index) {
-          return slot;
-        }
-        return {
-          ...slot,
-          official,
-          name: person === undefined ? null : personName(person),
-        };
-      }),
+      current.map((slot, position) =>
+        position === index
+          ? { ...slot, official: person.id, name: personName(person) }
+          : slot,
+      ),
+    );
+    setDirty(true);
+    setConfirmPending(false);
+  };
+
+  /**
+   * A guest official who is not in the directory: stored as a name, never as a
+   * link. `PersonPicker` only offers this when nothing matched and both names
+   * are present, so a resolvable person is not replaced by free text.
+   */
+  const enterFreeText = (index: number, name: string): void => {
+    setSlots((current) =>
+      current.map((slot, position) =>
+        position === index ? { ...slot, official: null, name } : slot,
+      ),
+    );
+    setDirty(true);
+    setConfirmPending(false);
+  };
+
+  const clearSlot = (index: number): void => {
+    setSlots((current) =>
+      current.map((slot, position) =>
+        position === index ? { ...slot, official: null, name: null } : slot,
+      ),
     );
     setDirty(true);
     setConfirmPending(false);
@@ -736,15 +754,8 @@ export default function GameSetupScreen({
             {slots.map((slot, index) => {
               const licence = licenceOf(slot);
               const name = displayName(slot);
-              const selected =
-                slot.official === null ? "" : String(slot.official);
-              const personMissing =
-                slot.official !== null && !teamByOfficial.has(slot.official);
               const editable = slot.known && !slot.duplicate;
               const taken = editable ? takenByOthers(index) : new Set<number>();
-              const options = teamOfficials.filter(
-                (person) => person.id === slot.official || !taken.has(person.id),
-              );
               const duplicateNames = slot.duplicate
                 ? slot.rows
                     .map((row) => rowDisplayName(row, teamByOfficial))
@@ -759,31 +770,25 @@ export default function GameSetupScreen({
                     </span>
                     <span className="offnm">
                       {editable ? (
-                        <select
-                          aria-label={`${slot.label}: Offiziellen wählen`}
-                          className="offsel"
+                        <PersonPicker
                           disabled={readOnly || finished}
-                          onChange={(event) =>
-                            chooseOfficial(index, event.target.value)
+                          label={slot.label}
+                          onClear={() => clearSlot(index)}
+                          onFreeText={(freeText) =>
+                            enterFreeText(index, freeText)
                           }
-                          value={selected}
-                        >
-                          {personMissing ? (
-                            <option value={selected}>
-                              {name ?? `Offizieller ${selected}`}
-                            </option>
-                          ) : null}
-                          <option value="">
-                            {slot.official === null && name !== null
-                              ? name
-                              : "Offiziellen wählen"}
-                          </option>
-                          {options.map((person) => (
-                            <option key={person.id} value={person.id}>
-                              {personName(person)}
-                            </option>
-                          ))}
-                        </select>
+                          onPick={(person) => pickPerson(index, person)}
+                          taken={taken}
+                          teamId={officialsId}
+                          value={{
+                            official: slot.official,
+                            name:
+                              name ??
+                              (slot.official === null
+                                ? null
+                                : `Offizieller ${slot.official}`),
+                          }}
+                        />
                       ) : (
                         <span className="offname">{name ?? "–"}</span>
                       )}
