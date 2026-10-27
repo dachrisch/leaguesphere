@@ -1591,6 +1591,52 @@ button.game-row:active {
   cursor: not-allowed;
 }
 
+/* ------------------------------------------------------------ halftime --- */
+
+.halfblock {
+  flex: 0 0 auto;
+  padding: 0 var(--page-gutter) var(--space-3);
+}
+
+.halfbtn {
+  width: 100%;
+  min-height: var(--touch);
+  padding: var(--space-2);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--panel2);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.halfbtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.halfask {
+  margin-bottom: var(--space-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--amber);
+}
+
+.halfactions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.halfactions .action,
+.halfactions .halfbtn {
+  flex: 1 1 0;
+  width: auto;
+}
+
+.halfblock .trackerror {
+  margin: var(--space-2) 0 0;
+}
 
 .trackfoot {
   flex: 0 0 auto;
