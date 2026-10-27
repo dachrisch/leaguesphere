@@ -1101,7 +1101,9 @@ class TestGameLogQueryCounts(APITestCase):
         # deterministic regardless of test order.
         self.client.get(reverse(API_GAMELOG, kwargs={"id": game.pk}))
 
-        with self.assertNumQueries(42):
+        # 43: the device-lock read (one extra SELECT on GameSetup) is part of
+        # every write, undo included.
+        with self.assertNumQueries(43):
             response = self.client.delete(
                 reverse(API_GAMELOG, kwargs={"id": game.pk}),
                 {"team_log_id": row.pk},

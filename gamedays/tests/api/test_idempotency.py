@@ -233,6 +233,64 @@ class TestDeviceLock(GamelogSubmissionTestCase):
         ).exists()
         assert not self.submissions().exists()
 
+    def test_log_post_from_another_device_in_the_body_is_rejected(self):
+        """The device may ride in the payload instead of the header."""
+        assert self.put_setup("device-a").status_code == 200
+
+        conflict = self.client.post(
+            self.url, {**self.payload(), "device_id": "device-b"}, format="json"
+        )
+
+        assert conflict.status_code == 409
+        assert conflict.json() == {
+            "detail": "Dieses Spiel läuft auf einem anderen Gerät.",
+            "device_id": "device-a",
+        }
+        assert not TeamLog.objects.filter(
+            gameinfo=self.game, event="Touchdown"
+        ).exists()
+        assert not self.submissions().exists()
+
+    def test_padded_device_ids_are_normalised(self):
+        """A padded id in the setup body is stored stripped and matches the
+        (also padded) header of later writes."""
+        assert self.put_setup("  device-a  ").status_code == 200
+        assert GameSetup.objects.get(gameinfo=self.game).device_id == "device-a"
+
+        assert self.post_log("  device-a  ").status_code == 201
+        assert self.post_log("  device-b  ").status_code == 409
+
+    def test_padded_client_id_is_still_the_same_submission(self):
+        client_id = str(uuid4())
+
+        first = self.client.post(
+            self.url, self.payload(f"  {client_id}  "), format="json"
+        )
+        second = self.client.post(self.url, self.payload(client_id), format="json")
+
+        assert first.status_code == 201
+        assert second.status_code == 200
+        assert self.submissions().count() == 1
+        assert (
+            TeamLog.objects.filter(gameinfo=self.game, event="Touchdown").count() == 1
+        )
+
+    def test_null_device_id_on_setup_is_accepted(self):
+        """``null`` is not a device: it must not 400 and must not release."""
+        response = self.client.put(
+            reverse("api-game-setup", kwargs={"pk": self.game.pk}),
+            {
+                "ctResult": "won",
+                "direction": "arrow_forward",
+                "fhPossession": "HOME",
+                "device_id": None,
+            },
+            format="json",
+        )
+
+        assert response.status_code == 200
+        assert GameSetup.objects.get(gameinfo=self.game).device_id == ""
+
     def test_log_post_from_the_locking_device_is_accepted(self):
         assert self.put_setup("device-a").status_code == 200
 
@@ -267,6 +325,185 @@ class TestDeviceLock(GamelogSubmissionTestCase):
         assert response.status_code == 204
         # The other device can now take the game over.
         assert self.post_log("device-b").status_code == 201
+
+    def test_release_lets_the_new_device_claim_the_setup(self):
+        assert self.put_setup("device-a").status_code == 200
+        self.authenticate(DBSetup().create_new_user(username="staff", is_staff=True))
+        assert (
+            self.client.delete(
+                reverse("api-game-device", kwargs={"pk": self.game.pk})
+            ).status_code
+            == 204
+        )
+
+        assert self.put_setup("device-b").status_code == 200
+        assert GameSetup.objects.get(gameinfo=self.game).device_id == "device-b"
+
+    def test_replayed_op_is_accepted_after_a_handover(self):
+        """A replayed, already-applied op must drain its outbox even when the
+        lock moved on: the device check only guards NEW submissions.
+
+        Without this the replay would 409 forever after a staff release plus a
+        handover, and the outbox could never clear -- blocking the finalize.
+        """
+        client_id = str(uuid4())
+        assert self.put_setup("device-a").status_code == 200
+        assert self.post_log("device-a", client_id).status_code == 201
+
+        self.authenticate(DBSetup().create_new_user(username="staff", is_staff=True))
+        assert (
+            self.client.delete(
+                reverse("api-game-device", kwargs={"pk": self.game.pk})
+            ).status_code
+            == 204
+        )
+        self.authenticate(self.user)
+        # Device B takes the game over.
+        assert self.put_setup("device-b").status_code == 200
+        assert GameSetup.objects.get(gameinfo=self.game).device_id == "device-b"
+
+        # Device A retries the op it already got a 201 for.
+        replay = self.post_log("device-a", client_id)
+
+        assert replay.status_code == 200
+        assert replay.json()["gameId"] == self.game.pk
+        assert (
+            TeamLog.objects.filter(gameinfo=self.game, event="Touchdown").count() == 1
+        )
+        assert self.submissions().count() == 1
+
+    def test_historic_duplicate_setup_rows_do_not_break_the_lock(self):
+        """Two setup rows for one game (no unique constraint, historic data)
+        must neither 500 the read/release nor hide the lock."""
+        assert self.put_setup("device-a").status_code == 200
+        first = GameSetup.objects.get(gameinfo=self.game)
+        GameSetup.objects.create(
+            gameinfo=self.game,
+            ctResult="won",
+            direction="arrow_forward",
+            fhPossession="HOME",
+            device_id="device-z",
+        )
+
+        response = self.client.get(
+            reverse("api-game-setup", kwargs={"pk": self.game.pk})
+        )
+        assert response.status_code == 200
+
+        # The lock is read from (and enforced by) the oldest row.
+        assert self.post_log("device-a").status_code == 201
+        assert self.post_log("device-b").status_code == 409
+
+        self.authenticate(DBSetup().create_new_user(username="staff", is_staff=True))
+        release = self.client.delete(
+            reverse("api-game-device", kwargs={"pk": self.game.pk})
+        )
+        assert release.status_code == 204
+        first.refresh_from_db()
+        assert first.device_id == ""
+
+    def put_with_device(self, url_name, data=None, device=None):
+        headers = {"HTTP_X_SCORECARD_DEVICE": device} if device else {}
+        return self.client.put(
+            reverse(url_name, kwargs={"pk": self.game.pk}),
+            data or {},
+            format="json",
+            **headers,
+        )
+
+    def test_halftime_from_another_device_is_rejected(self):
+        assert self.put_setup("device-a").status_code == 200
+
+        conflict = self.put_with_device("api-game-halftime", device="device-b")
+
+        assert conflict.status_code == 409
+        assert conflict.json() == {
+            "detail": "Dieses Spiel läuft auf einem anderen Gerät.",
+            "device_id": "device-a",
+        }
+        assert Gameinfo.objects.get(pk=self.game.pk).status == "1. Halbzeit"
+
+        assert (
+            self.put_with_device("api-game-halftime", device="device-a").status_code
+            == 200
+        )
+
+    def test_finalize_from_another_device_is_rejected(self):
+        assert self.put_setup("device-a").status_code == 200
+
+        conflict = self.put_with_device(
+            "api-game-finalize", {"note": "x"}, device="device-b"
+        )
+
+        assert conflict.status_code == 409
+        assert conflict.json() == {
+            "detail": "Dieses Spiel läuft auf einem anderen Gerät.",
+            "device_id": "device-a",
+        }
+        assert Gameinfo.objects.get(pk=self.game.pk).status == "1. Halbzeit"
+
+        # The locking device may finalize.
+        assert (
+            self.put_with_device(
+                "api-game-finalize", {"note": "x"}, device="device-a"
+            ).status_code
+            == 200
+        )
+        assert Gameinfo.objects.get(pk=self.game.pk).status == "beendet"
+
+    def test_possession_from_another_device_is_rejected(self):
+        assert self.put_setup("device-a").status_code == 200
+        home = Gameresult.objects.get(gameinfo=self.game, isHome=True).team
+        away = Gameresult.objects.get(gameinfo=self.game, isHome=False).team
+        target = home.name if self.game.in_possession == away.name else away.name
+
+        conflict = self.put_with_device(
+            "api-game-possession", {"team": target}, device="device-b"
+        )
+
+        assert conflict.status_code == 409
+        assert conflict.json() == {
+            "detail": "Dieses Spiel läuft auf einem anderen Gerät.",
+            "device_id": "device-a",
+        }
+        assert Gameinfo.objects.get(pk=self.game.pk).in_possession != target
+
+        assert (
+            self.put_with_device(
+                "api-game-possession", {"team": target}, device="device-a"
+            ).status_code
+            == 200
+        )
+        assert Gameinfo.objects.get(pk=self.game.pk).in_possession == target
+
+    def test_undo_from_another_device_is_rejected(self):
+        assert self.put_setup("device-a").status_code == 200
+        assert self.post_log("device-a").status_code == 201
+        row = TeamLog.objects.get(gameinfo=self.game, event="Touchdown")
+
+        conflict = self.client.delete(
+            self.url,
+            {"team_log_id": row.pk},
+            format="json",
+            HTTP_X_SCORECARD_DEVICE="device-b",
+        )
+
+        assert conflict.status_code == 409
+        assert conflict.json() == {
+            "detail": "Dieses Spiel läuft auf einem anderen Gerät.",
+            "device_id": "device-a",
+        }
+        assert not TeamLog.objects.get(pk=row.pk).isDeleted
+
+        response = self.client.delete(
+            self.url,
+            {"team_log_id": row.pk},
+            format="json",
+            HTTP_X_SCORECARD_DEVICE="device-a",
+        )
+
+        assert response.status_code == 200
+        assert TeamLog.objects.get(pk=row.pk).isDeleted
 
     def test_normal_user_cannot_release_the_device_lock(self):
         assert self.put_setup("device-a").status_code == 200

@@ -7,7 +7,7 @@ job; run it from cron/Ofelia.
 
 from datetime import timedelta
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from gamedays.models import GameLogSubmission
@@ -26,6 +26,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         days = options["days"]
+        # ``--days 0`` (or a negative) would put the cutoff at now/in the
+        # future and delete EVERY submission -- i.e. re-enable duplicate
+        # writes for every still-retrying outbox. Refuse instead.
+        if days < 1:
+            raise CommandError("--days must be >= 1")
         cutoff = timezone.now() - timedelta(days=days)
         deleted, _ = GameLogSubmission.objects.filter(created_at__lt=cutoff).delete()
         self.stdout.write(
