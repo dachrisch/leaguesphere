@@ -394,6 +394,7 @@ export default function TrackingScreen({
   const composerDisabled =
     posting ||
     possessionPending ||
+    halftimePending ||
     finished ||
     possessionSide === null ||
     possessionName === null;
@@ -405,7 +406,7 @@ export default function TrackingScreen({
       <AppHeader kicker="Scorecard" title="Spiel läuft" />
       <ScoreHeader
         away={log.away}
-        disabled={possessionPending}
+        disabled={possessionPending || halftimePending}
         home={log.home}
         isFirstHalf={log.isFirstHalf}
         onPossession={(teamName) => void takePossession(teamName)}
