@@ -37,7 +37,10 @@ only control static assets, and its scope could never leak into the old app.
    (`GET /api/gameday/<id>/officials/<team>`, `team=*` for all), with status and
    passcheck state.
 3. **Vorbereitung** — crew and licences, coin toss, first possession,
-   direction, passcheck link, **Spiel starten**. An invalid licence warns and
+   direction, passcheck link, **Spiel starten**. A crew slot is filled by
+   searching the whole officials directory; the row says **verknüpft** (linked
+   to a person) or **Freitext** (a guest who is not in it — first and last name
+   required, offered only while nobody matches). An invalid licence warns and
    needs a second tap; it never blocks the start.
 4. **Feld · Runde** (the tracking screen) — score header with possession,
    touchdown with the roster's jerseys (numeric fallback when there is none),
@@ -53,6 +56,9 @@ What the backend had to grow (all additive):
 
 - `GET /api/game/<id>/roster` — jersey + surname per side, `[]` for a bracket
   placeholder;
+- `GET /api/officials/search/list` — progressive, database-wide person search
+  for the crew picker (one name part is enough, a `team` param only ranks that
+  team first, "nobody" is an empty list);
 - `passcheck` on the games-to-whistle payload;
 - `league_display` on the gameday list;
 - `GameLogSubmission` and `GameSetup.device_id` (migrations `0046`, `0047`).
