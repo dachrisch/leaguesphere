@@ -79,79 +79,95 @@ Passcheck v2 is stacked on Scorecard v2, so the first stage build that contains
 it is the combined `deploy.yaml` run from `feat/passcheck-v2` after rc.3. Do not
 deploy or run the field protocol before that build.
 
-### Seed a gameday and 14-player roster
+### Planned stage fixture
 
-Run on the stage container with the app's settings. Replace the team, league,
-season and user placeholders with stage values; run it once (it is not
-idempotent for players).
+The stage DB already has the teams and rosters; only the gameday/game wiring is
+created for the test:
+
+| Item | Value |
+|---|---|
+| League | `OL_Ost`, pk **31** |
+| Season | pk **6** |
+| Gameday | **Passcheck v2 Testtag**, today (server-local), start **13:30**, format **6_2**, status **PUBLISHED** |
+| Home team | **Staaken Bats**, pk **262** (14 active `Playerlist` rows) |
+| Away team | **Vorpommern Vandals**, pk **110** (14 active `Playerlist` rows) |
+| Officials team/user | **passcheck-test**, team pk **706**, staff user **358** |
+| Eligibility rule | existing rule pk **39** for league 31, `eligible_in` 31, `maximum_player_strength` 100 — **reuse, do not overwrite** |
+| Photos | pass numbers **9447**, **1115514**, **1116146** from team 262 |
+
+Run this once on stage (it is idempotent for the gameday/game, not for players —
+it creates none):
 
 ```python
-from datetime import date, timedelta
+from datetime import date
 
 from django.contrib.auth.models import User
+from django.utils import timezone
 
-from gamedays.models import Gameday, Gameinfo, Gameresult, League, Person, Season, Team
-from passcheck.models import EligibilityRule, Player, Playerlist
+from gamedays.models import Gameday, Gameinfo, Gameresult, League, Season, Team
 
-officials = Team.objects.get(name="<OFFICIALS_TEAM>")
-home = Team.objects.get(name="<HOME_TEAM>")
-away = Team.objects.get(name="<AWAY_TEAM>")
-league = League.objects.get(name="<LEAGUE>")
-season = Season.objects.get(name="<SEASON>")
-user = User.objects.get(username=officials.name)
+league = League.objects.get(pk=31)
+season = Season.objects.get(pk=6)
+officials = Team.objects.get(pk=706)
+home = Team.objects.get(pk=262)
+away = Team.objects.get(pk=110)
+user = User.objects.get(username="passcheck-test")
 
 gameday, _ = Gameday.objects.get_or_create(
-    name="Passcheck Feldtest",
+    name="Passcheck v2 Testtag",
     date=date.today(),
-    defaults={"league": league, "season": season, "start": "10:00", "author": user},
+    defaults={
+        "league": league,
+        "season": season,
+        "start": "13:30",
+        "format": "6_2",
+        "author": user,
+    },
 )
+gameday.status = Gameday.STATUS_PUBLISHED
+gameday.published_at = gameday.published_at or timezone.now()
+gameday.save(update_fields=["status", "published_at"])
+
 game, _ = Gameinfo.objects.get_or_create(
     gameday=gameday,
     field=1,
-    defaults={"scheduled": "10:00", "officials": officials, "stage": "", "standing": ""},
+    defaults={
+        "scheduled": "13:30",
+        "officials": officials,
+        "stage": "",
+        "standing": "",
+    },
 )
 Gameresult.objects.get_or_create(gameinfo=game, team=home, isHome=True)
 Gameresult.objects.get_or_create(gameinfo=game, team=away, isHome=False)
 
-rule, _ = EligibilityRule.objects.get_or_create(
-    league=league,
-    defaults={"max_gamedays": 99, "minimum_player_strength": 1, "maximum_player_strength": -1},
+print(f"GAMEDAY {gameday.pk}; officials {officials.name}; game {game.pk}")
+print(
+    home.playerlist_set.filter(left_on__isnull=True).count(),
+    away.playerlist_set.filter(left_on__isnull=True).count(),
 )
-rule.eligible_in.add(league)
-
-for number in range(1, 15):
-    person = Person.objects.create(
-        first_name=f"Testspieler {number:02d}", last_name="Passcheck", year_of_birth=1995
-    )
-    player = Player.objects.create(person=person, pass_number=f"9{number:04d}")
-    Playerlist.objects.create(
-        team=home,
-        player=player,
-        jersey_number=number,
-        joined_on=date.today() - timedelta(days=30),
-    )
-
-print(f"GAMEDAY {gameday.pk}; officials team {officials.name}; 14 players for {home.name}")
 ```
 
-`maximum_player_strength=-1` means "no maximum" and is accepted (regression
-covered by `test_accepts_when_the_maximum_strength_is_disabled`).
+The output must show **14 14**. Do not create players; the rosters already
+exist.
 
 ### Import the three consenting photos
 
-Name each file after the player's `pass_number` (`.jpg`, `.png` or `.webp`):
+The three players are from team 262 with pass numbers `9447`, `1115514` and
+`1116146`. Name the files `<pass_number>.jpg` (or `.png`/`.webp`) and run:
 
 ```bash
 python manage.py import_pass_photos --dir /tmp/passcheck-photos --dry-run
 python manage.py import_pass_photos --dir /tmp/passcheck-photos --consent
 ```
 
-Only run `--consent` for photos with written consent.
+Only run `--consent` for photos with written consent. The endpoint serves a
+photo only when `photo_consent_at` is set.
 
 ### Field protocol
 
-1. Log in as the officials team, open `/passcheck/v2/?gameday=<id>`, start at
-   the first player and stop after the last; record `Ø s/Spieler`.
+1. Log in as `passcheck-test`, open `/passcheck/v2/?gameday=<id>`, start at the
+   first player and stop after the last; record `Ø s/Spieler`.
 2. After player 5, enable airplane mode, finish the roster and save.
 3. Reconnect and confirm exactly one `PasscheckVerification` and the same stats
    in the match report.
@@ -159,6 +175,8 @@ Only run `--consent` for photos with written consent.
    read-only (`409`).
 5. Open `/passcheck/` for the same team: the roster matches, and
    `navigator.serviceWorker.controller` is `null` there.
+6. Open one consented photo, then revoke consent for one player and confirm it
+   becomes `404`.
 
 ```python
 from passcheck.models import PasscheckVerification, PlayerlistGameday
