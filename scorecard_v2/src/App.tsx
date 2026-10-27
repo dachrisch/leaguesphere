@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import type { Game, GameLog, Gameday } from "./api/types";
+import { CurrentUserProvider, useCurrentUser } from "./app/currentUser";
 import {
   dropGameSnapshots,
   loadGamedays,
@@ -98,11 +99,43 @@ function initialAllGames(): boolean {
 }
 
 export default function App() {
+  const [user, setUser] = useState<CurrentUser | null>(null);
+  const loadedUser = useRef(false);
+
+  useEffect(() => {
+    // StrictMode mounts twice in development; one `/accounts/auth/user/` is
+    // enough, and the header only needs it for the avatar.
+    if (loadedUser.current) {
+      return;
+    }
+    loadedUser.current = true;
+    void loadUser()
+      .then(setUser)
+      .catch(() => {
+        // Without a user the games list falls back to `*` (the whole gameday)
+        // and, offline, to the snapshot of this gameday.
+        setUser(null);
+      });
+  }, []);
+
+  return (
+    <CurrentUserProvider user={user}>
+      <Flow />
+    </CurrentUserProvider>
+  );
+}
+
+/**
+ * The flow itself. It reads the user from the context instead of a prop: only
+ * the games filter and the header avatar need it, and the header sits four
+ * levels below on every screen.
+ */
+function Flow() {
+  const user = useCurrentUser();
   const [state, dispatch] = useReducer(flowReducer, initialFlowState);
   const [gamedays, setGamedays] = useState<Loadable<Gameday[]>>({
     status: "loading",
   });
-  const [user, setUser] = useState<CurrentUser | null>(null);
   const [allGames, setAllGames] = useState(initialAllGames);
   const [games, setGames] = useState<Loadable<Game[]>>({ status: "loading" });
   /** Age of the shown games list when it came from the snapshot (offline). */
@@ -147,13 +180,6 @@ export default function App() {
     // drains what a previous session left in the outbox.
     getRuntime().start();
     void loadGamedayList();
-    void loadUser()
-      .then(setUser)
-      .catch(() => {
-        // Without a user the games list falls back to `*` (the whole gameday)
-        // and, offline, to the snapshot of this gameday.
-        setUser(null);
-      });
   }, [loadGamedayList]);
 
   const gamedayId = state.gameday?.id ?? null;

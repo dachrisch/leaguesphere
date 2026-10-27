@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 
 import ThemeToggle from "./ThemeToggle";
-import { ChevronLeft } from "./icons";
+import UserAvatar from "./UserAvatar";
+import { ChevronLeft, Football } from "./icons";
 
 interface AppHeaderProps {
   kicker: string;
@@ -20,13 +21,14 @@ interface AppHeaderProps {
 }
 
 /**
- * Screen chrome: the navigation bar (back, status, theme, logout), the kicker,
- * one title and an optional context line. The theme switch lives here so it is
- * reachable from every screen, including the loading and error panels.
+ * Screen chrome: the navigation bar (back, status, avatar, theme, logout), the
+ * LeagueSphere brand line with the kicker, one title and an optional context
+ * line. The theme switch lives here so it is reachable from every screen,
+ * including the loading and error panels.
  *
  * The bar is icon-only except for the German "Abmelden": at 360px it still
- * holds a back button, the sync chip, the theme switch and the logout action
- * without scrolling sideways.
+ * holds a back button, the sync chip, the avatar, the theme switch and the
+ * logout action without scrolling sideways.
  */
 export default function AppHeader({
   kicker,
@@ -56,6 +58,7 @@ export default function AppHeader({
           {badge === undefined ? null : (
             <span className="appbar-badge">{badge}</span>
           )}
+          <UserAvatar />
           <ThemeToggle />
           {onLogout === undefined ? null : (
             <button
@@ -68,7 +71,16 @@ export default function AppHeader({
           )}
         </div>
       </div>
-      <p className="kicker">{kicker}</p>
+      <p className="app-meta">
+        <span className="wordmark">
+          <Football className="wordmark-icon" size={16} />
+          <span className="wordmark-text">LeagueSphere</span>
+        </span>
+        <span aria-hidden="true" className="wordmark-sep">
+          ·
+        </span>
+        <span className="kicker">{kicker}</span>
+      </p>
       <h1 className="app-title">{title}</h1>
       {sub === undefined ? null : <p className="app-sub">{sub}</p>}
     </header>
