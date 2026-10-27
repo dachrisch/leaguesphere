@@ -3,11 +3,10 @@ import {
   useId,
   useRef,
   type KeyboardEvent,
+  type PointerEvent,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-
-import { ApiError } from "../../api/client";
 
 /**
  * Focusable descendants in DOM order. `[tabindex="-1"]` is excluded on
@@ -23,28 +22,17 @@ const FOCUSABLE = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(", ");
 
-/**
- * The server `detail` when there is one, the caller's fallback otherwise.
- *
- * Sheets keep their own error line while they stay open, so every one of them
- * needs the same unwrapping of {@link ApiError}.
- */
-export function errorMessage(error: unknown, fallback: string): string {
-  if (
-    error instanceof ApiError &&
-    typeof error.detail === "string" &&
-    error.detail.trim() !== ""
-  ) {
-    return error.detail;
-  }
-  return fallback;
-}
-
 export interface SheetProps {
   /** Sheet heading; also the dialog's accessible name. */
   title: string;
   /** Close request — scrim, the close button and Escape all end up here. */
   onClose: () => void;
+  /**
+   * A write is in flight. Dismissing the sheet now would hide a failure and
+   * invite a duplicate score, so Escape, the scrim and the close button are
+   * all inert until the write settles.
+   */
+  busy?: boolean;
   /** Failure shown above the footer; the sheet stays open until it is fixed. */
   error?: string | null;
   /** Sticky footer, one full-width primary action per sheet. */
@@ -59,12 +47,17 @@ export interface SheetProps {
  * it and no ancestor stacking context can hide it. Focus moves into the sheet
  * on open (the dialog itself, which announces its title) and returns to the
  * element that opened it — an official who cancels lands back on the tile they
- * tapped. Escape, a tap on the scrim and the close button all close it; the
- * sheets that write are the only ones that can keep it open.
+ * tapped. Escape, a tap on the scrim and the close button all close it, except
+ * while {@link SheetProps.busy | busy}.
+ *
+ * The background cannot scroll while the sheet is open: the app shell is a
+ * fixed-height column with its own scrollers, but iOS still moves the page
+ * behind a fixed overlay without an explicit lock.
  */
 export default function Sheet({
   title,
   onClose,
+  busy = false,
   error = null,
   footer,
   children,
@@ -72,12 +65,17 @@ export default function Sheet({
   const titleId = useId();
   const sheet = useRef<HTMLDivElement>(null);
   const restoreTo = useRef<HTMLElement | null>(null);
+  /** Element the pointer went down on; a drag must not close the sheet. */
+  const pressedOn = useRef<EventTarget | null>(null);
 
   useEffect(() => {
     const active = document.activeElement;
     restoreTo.current = active instanceof HTMLElement ? active : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     sheet.current?.focus();
     return () => {
+      document.body.style.overflow = previousOverflow;
       const target = restoreTo.current;
       if (
         target !== null &&
@@ -92,7 +90,9 @@ export default function Sheet({
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     if (event.key === "Escape") {
       event.stopPropagation();
-      onClose();
+      if (!busy) {
+        onClose();
+      }
       return;
     }
     if (event.key !== "Tab") {
@@ -115,17 +115,28 @@ export default function Sheet({
     }
   };
 
+  const onScrimPointerDown = (event: PointerEvent<HTMLDivElement>): void => {
+    pressedOn.current = event.target;
+  };
+
+  const onScrimPointerUp = (event: PointerEvent<HTMLDivElement>): void => {
+    // Both ends on the scrim itself: a press started inside the sheet and
+    // released outside (or a drag across it) is not a dismissal.
+    const startedHere = pressedOn.current === event.currentTarget;
+    pressedOn.current = null;
+    if (!busy && startedHere && event.target === event.currentTarget) {
+      onClose();
+    }
+  };
+
   return createPortal(
     <div
       className="sheetoverlay"
-      onClick={(event) => {
-        // Only the scrim itself: a click inside the sheet bubbles up here too.
-        if (event.target === event.currentTarget) {
-          onClose();
-        }
-      }}
+      onPointerDown={onScrimPointerDown}
+      onPointerUp={onScrimPointerUp}
     >
       <div
+        aria-busy={busy}
         aria-labelledby={titleId}
         aria-modal="true"
         className="sheet"
@@ -138,7 +149,12 @@ export default function Sheet({
           <h2 className="sheettitle" id={titleId}>
             {title}
           </h2>
-          <button className="sheetclose" onClick={onClose} type="button">
+          <button
+            aria-disabled={busy}
+            className="sheetclose"
+            onClick={busy ? undefined : onClose}
+            type="button"
+          >
             Schließen
           </button>
         </div>

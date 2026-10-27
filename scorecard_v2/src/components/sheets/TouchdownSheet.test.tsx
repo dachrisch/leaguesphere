@@ -1,9 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "../../api/client";
 import type { GameLogEventInput, RosterPlayer } from "../../api/types";
+import { IgnoredWrite } from "./errors";
 import TouchdownSheet from "./TouchdownSheet";
 
 const ROSTER: RosterPlayer[] = [
@@ -17,7 +18,7 @@ type Submit = (events: GameLogEventInput[]) => Promise<void>;
 function renderSheet(
   overrides: {
     side?: RosterPlayer["side"];
-    roster?: RosterPlayer[];
+    roster?: RosterPlayer[] | null;
     passcheck?: boolean;
     onSubmit?: Submit;
   } = {},
@@ -29,7 +30,7 @@ function renderSheet(
       onClose={onClose}
       onSubmit={onSubmit}
       passcheck={overrides.passcheck ?? false}
-      roster={overrides.roster ?? ROSTER}
+      roster={overrides.roster === undefined ? ROSTER : overrides.roster}
       side={overrides.side ?? "home"}
       teamName="Ravens"
     />,
@@ -44,7 +45,9 @@ async function pick(jersey: number): Promise<void> {
 }
 
 function saveButton(): HTMLElement {
-  return screen.getByRole("button", { name: /^(Speichern|Speichert …|Spieler wählen)$/ });
+  return screen.getByRole("button", {
+    name: /^(Speichern|Speichern …|Spieler wählen)$/,
+  });
 }
 
 describe("TouchdownSheet", () => {
@@ -163,7 +166,7 @@ describe("TouchdownSheet", () => {
     await userEvent.setup().click(saveButton());
 
     expect(saveButton()).toBeDisabled();
-    expect(saveButton()).toHaveTextContent("Speichert …");
+    expect(saveButton()).toHaveTextContent("Speichern …");
     expect(screen.getByRole("button", { name: "+1" })).toBeDisabled();
     expect(
       screen.getByRole("button", { name: "Trikotnummer 7, Meier" }),
@@ -184,14 +187,112 @@ describe("TouchdownSheet", () => {
     );
   });
 
+  it("cannot be dismissed while the write is in flight", async () => {
+    let resolveSubmit: (() => void) | undefined;
+    const onSubmit = vi.fn<Submit>(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSubmit = resolve;
+        }),
+    );
+    const { onClose } = renderSheet({ onSubmit });
+    const user = userEvent.setup();
+
+    await pick(23);
+    await user.click(saveButton());
+
+    const dialog = screen.getByRole("dialog");
+    await user.keyboard("{Escape}");
+    await user.click(dialog.parentElement as HTMLElement);
+    const close = screen.getByRole("button", { name: "Schließen" });
+    expect(close).toHaveAttribute("aria-disabled", "true");
+    await user.click(close);
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveAttribute("aria-busy", "true");
+
+    await act(async () => {
+      resolveSubmit?.();
+    });
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+
+  it("submits once for a synchronous double tap", async () => {
+    const onSubmit = vi.fn<Submit>(() => new Promise<void>(() => undefined));
+    renderSheet({ onSubmit });
+
+    await pick(23);
+    const save = saveButton();
+    fireEvent.click(save);
+    fireEvent.click(save);
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it("clamps a typed number to two digits and disables save when cleared", () => {
+    renderSheet({ roster: [] });
+    const input = screen.getByRole("textbox", { name: /Trikotnummer/ });
+
+    fireEvent.change(input, { target: { value: "100" } });
+    expect(input).toHaveValue("10");
+    expect(saveButton()).toBeEnabled();
+
+    fireEvent.change(input, { target: { value: "" } });
+    expect(saveButton()).toBeDisabled();
+  });
+
+  it("keeps the picked jersey and the sheet open after a failure", async () => {
+    const onSubmit = vi.fn<Submit>(async () => {
+      throw new ApiError(500, { detail: "Server weg" }, "Server weg");
+    });
+    renderSheet({ onSubmit });
+
+    await pick(23);
+    await userEvent.setup().click(saveButton());
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Server weg");
+    expect(
+      screen.getByRole("button", { name: "Trikotnummer 23, Schulz" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(saveButton()).toBeEnabled();
+  });
+
+  it("shows the guard's reason when the write is not attempted", async () => {
+    const onSubmit = vi.fn<Submit>(async () => {
+      throw new IgnoredWrite("Kein Ballbesitz – bitte Team wählen.");
+    });
+    renderSheet({ onSubmit });
+
+    await pick(23);
+    await userEvent.setup().click(saveButton());
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Kein Ballbesitz – bitte Team wählen.",
+    );
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("waits for the roster instead of guessing it is empty", () => {
+    renderSheet({ roster: null });
+
+    expect(screen.getByText("Kader lädt …")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: /Trikotnummer/ }),
+    ).not.toBeInTheDocument();
+    expect(saveButton()).toBeDisabled();
+  });
+
   it("calls the roster bestätigt only after a passed passcheck", () => {
     renderSheet({ passcheck: true });
     expect(screen.getByText("Bestätigter Kader")).toBeInTheDocument();
+    expect(screen.getByText("Nur bestätigte Nummern.")).toBeInTheDocument();
   });
 
   it("calls the roster plain Kader without a passcheck", () => {
     renderSheet();
     expect(screen.getByText("Kader")).toBeInTheDocument();
     expect(screen.queryByText("Bestätigter Kader")).not.toBeInTheDocument();
+    expect(screen.queryByText("Nur bestätigte Nummern.")).not.toBeInTheDocument();
   });
 });

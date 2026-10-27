@@ -1192,6 +1192,7 @@ button.game-row:active {
   max-width: var(--shell-width);
   max-height: 92dvh;
   padding: var(--space-3) var(--page-gutter) 0;
+  overflow: hidden;
   background: var(--panel);
   border: 1px solid var(--line);
   border-bottom: 0;
@@ -1229,6 +1230,18 @@ button.game-row:active {
 .sheetclose:hover {
   color: var(--fg);
   background: var(--fill-soft);
+}
+
+/* Busy: the button stays visible and labelled but cannot dismiss the sheet. */
+.sheetclose[aria-disabled="true"] {
+  color: var(--muted);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sheetclose[aria-disabled="true"]:hover {
+  color: var(--muted);
+  background: none;
 }
 
 .sheetbody {

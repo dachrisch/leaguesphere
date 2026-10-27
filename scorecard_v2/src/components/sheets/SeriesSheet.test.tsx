@@ -13,7 +13,11 @@ const ROSTER: RosterPlayer[] = [
 
 type Submit = (events: GameLogEventInput[]) => Promise<void>;
 
-function renderSheet(mode: SeriesMode, onSubmit?: Submit, roster = ROSTER) {
+function renderSheet(
+  mode: SeriesMode,
+  onSubmit?: Submit,
+  roster: RosterPlayer[] | null = ROSTER,
+) {
   const submit = onSubmit ?? vi.fn<Submit>(async () => undefined);
   const onClose = vi.fn();
   render(
@@ -21,6 +25,7 @@ function renderSheet(mode: SeriesMode, onSubmit?: Submit, roster = ROSTER) {
       mode={mode}
       onClose={onClose}
       onSubmit={submit}
+      opponentName="Wolves"
       roster={roster}
       side="home"
       teamName="Ravens"
@@ -30,7 +35,7 @@ function renderSheet(mode: SeriesMode, onSubmit?: Submit, roster = ROSTER) {
 }
 
 function saveButton(): HTMLElement {
-  return screen.getByRole("button", { name: /^(Speichern|Speichert …)$/ });
+  return screen.getByRole("button", { name: /^(Speichern|Speichern …)$/ });
 }
 
 describe("SeriesSheet", () => {
@@ -63,18 +68,31 @@ describe("SeriesSheet", () => {
     await userEvent.setup().click(saveButton());
 
     expect(onSubmit).toHaveBeenCalledWith([{ name: "Turnover" }]);
+    expect(screen.getByText(/im Spielverlauf/)).toBeInTheDocument();
   });
 
-  it("records an interception for the possessing team", async () => {
+  it("records an interception for the defender with the defender's jersey", async () => {
     const { onSubmit } = renderSheet("interception");
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: "Trikot 7, Meier" }));
+    expect(
+      screen.getByRole("group", {
+        name: "Trikotnummer Verteidiger (optional)",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Trikot 7, Meier" }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Trikot 11, Wolf" }));
     await user.click(saveButton());
 
     expect(onSubmit).toHaveBeenCalledWith([
-      { name: "Interception", player: 7 },
+      { name: "Interception", player: 11 },
     ]);
+    expect(screen.getByText(/Interception durch Wolves/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Ballbesitz wechselt im Spielverlauf zu Wolves/),
+    ).toBeInTheDocument();
   });
 
   it("records an interception without a jersey", async () => {
@@ -168,17 +186,22 @@ describe("SeriesSheet", () => {
     await userEvent.setup().click(saveButton());
 
     expect(saveButton()).toBeDisabled();
-    expect(saveButton()).toHaveTextContent("Speichert …");
+    expect(saveButton()).toHaveTextContent("Speichern …");
   });
 
   it("omits the jersey picker when the roster is empty", () => {
-    renderSheet("interception", undefined, []);
+    renderSheet("first", undefined, []);
 
     expect(
       screen.queryByRole("group", { name: "Trikotnummer (optional)" }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByText(/Kein Kader geladen/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Kein Kader geladen/)).toBeInTheDocument();
+  });
+
+  it("waits for the roster instead of showing the empty note", () => {
+    renderSheet("interception", undefined, null);
+
+    expect(screen.getByText("Kader lädt …")).toBeInTheDocument();
+    expect(screen.queryByText(/Kein Kader geladen/)).not.toBeInTheDocument();
   });
 });

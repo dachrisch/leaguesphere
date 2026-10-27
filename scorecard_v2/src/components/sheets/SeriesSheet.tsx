@@ -1,11 +1,17 @@
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import type { GameLogEventInput, RosterPlayer } from "../../api/types";
 import { jerseyOptions } from "../JerseyPicker";
-import Sheet, { errorMessage } from "./Sheet";
+import { errorMessage } from "./errors";
+import Sheet from "./Sheet";
 
 /** Which series/time entry the sheet is showing. */
-export type SeriesMode = "first" | "turnover" | "interception" | "time" | "timeout";
+export type SeriesMode =
+  | "first"
+  | "turnover"
+  | "interception"
+  | "time"
+  | "timeout";
 
 interface ModeInfo {
   title: string;
@@ -108,9 +114,15 @@ interface SeriesSheetProps {
   mode: SeriesMode;
   /** Possession team — the side the entry is recorded for. */
   teamName: string;
+  /** The other team; the defender of an interception. */
+  opponentName: string;
+  /** Side of the possession team. */
   side: RosterPlayer["side"];
-  /** Both sides as loaded from `GET /api/game/<id>/roster`. */
-  roster: RosterPlayer[];
+  /**
+   * Both sides as loaded from `GET /api/game/<id>/roster`, `null` while the
+   * request is still running.
+   */
+  roster: RosterPlayer[] | null;
   /**
    * Writes the events and resolves once the server answered with the new log.
    * Rejects on failure — the sheet then stays open and shows the message.
@@ -122,14 +134,15 @@ interface SeriesSheetProps {
 /**
  * One sheet for the five series and time entries.
  *
- * Interceptions are recorded **for the possessing team** — that is the team
- * that threw the ball. The server marks the row as a change of possession
- * (`cop`), so the payload team must not be flipped here; sending the opponent
- * would charge the interception to the wrong side.
+ * An interception is credited to the **defender** — the team that did not have
+ * the ball — because the defense statistics read the row's team as the team
+ * that made the play. The jersey list therefore comes from the opponent's
+ * roster and the write payload names the opponent, not the passer.
  */
 export default function SeriesSheet({
   mode,
   teamName,
+  opponentName,
   side,
   roster,
   onSubmit,
@@ -146,16 +159,31 @@ export default function SeriesSheet({
   const [touched, setTouched] = useState(false);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // See TouchdownSheet: two synchronous taps must not both reach onSubmit.
+  const saving = useRef(false);
 
-  const players = roster.filter((player) => player.side === side);
+  const intercepts = mode === "interception";
+  const jerseySide: RosterPlayer["side"] = intercepts
+    ? side === "home"
+      ? "away"
+      : "home"
+    : side;
+  const displayTeam = intercepts ? opponentName : teamName;
+
+  const players =
+    roster === null
+      ? []
+      : roster.filter((player) => player.side === jerseySide);
   const options = jerseyOptions(players);
+  const loading = roster === null;
   const validation = time ? timeError(mode, minutes, seconds) : null;
   const ready = !posting && validation === null;
 
   const save = async (): Promise<void> => {
-    if (!ready) {
+    if (saving.current || !ready) {
       return;
     }
+    saving.current = true;
     setPosting(true);
     setError(null);
     try {
@@ -164,6 +192,7 @@ export default function SeriesSheet({
       );
       onClose();
     } catch (failure) {
+      saving.current = false;
       setPosting(false);
       setError(
         errorMessage(
@@ -176,6 +205,7 @@ export default function SeriesSheet({
 
   return (
     <Sheet
+      busy={posting}
       error={error}
       footer={
         <button
@@ -184,13 +214,13 @@ export default function SeriesSheet({
           onClick={() => void save()}
           type="button"
         >
-          {posting ? "Speichert …" : "Speichern"}
+          {posting ? "Speichern …" : "Speichern"}
         </button>
       }
       onClose={onClose}
       title={info.title}
     >
-      <p className="sheetnote">{teamName}</p>
+      <p className="sheetnote">{displayTeam}</p>
 
       {time ? (
         <div className="timefields">
@@ -258,14 +288,26 @@ export default function SeriesSheet({
 
       {!time && info.jersey ? (
         <>
-          <h3 className="sheetsection">Trikotnummer (optional)</h3>
-          {players.length === 0 ? (
+          <h3 className="sheetsection">
+            {intercepts
+              ? "Trikotnummer Verteidiger (optional)"
+              : "Trikotnummer (optional)"}
+          </h3>
+          {loading ? (
+            <p className="sheetnote" role="status">
+              Kader lädt …
+            </p>
+          ) : players.length === 0 ? (
             <p className="sheetnote">
               Kein Kader geladen – der Eintrag wird ohne Nummer gespeichert.
             </p>
           ) : (
             <div
-              aria-label="Trikotnummer (optional)"
+              aria-label={
+                intercepts
+                  ? "Trikotnummer Verteidiger (optional)"
+                  : "Trikotnummer (optional)"
+              }
               className="jerseychips"
               role="group"
             >
@@ -309,13 +351,14 @@ export default function SeriesSheet({
 
       {mode === "turnover" ? (
         <p className="sheetnote">
-          Turnover {teamName} – der Ballbesitz wechselt nach dem Eintrag.
+          Turnover {teamName}. Der Ballbesitz wechselt im Spielverlauf.
         </p>
       ) : null}
 
-      {mode === "interception" ? (
+      {intercepts ? (
         <p className="sheetnote">
-          Interception durch {teamName}. Der Ballbesitz wechselt zum Gegner.
+          Interception durch {opponentName}. Der Ballbesitz wechselt im
+          Spielverlauf zu {opponentName}.
         </p>
       ) : null}
     </Sheet>

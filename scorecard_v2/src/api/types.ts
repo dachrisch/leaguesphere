@@ -282,7 +282,7 @@ export interface GameLogWrite {
   /** Team *name* (the backend also resolves a pk); the possessing team. */
   team: string;
   /** 1 or 2 — never derived from the current time. */
-  half: number;
+  half: 1 | 2;
   event: GameLogEventInput[];
 }
 
