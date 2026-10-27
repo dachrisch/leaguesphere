@@ -19,26 +19,28 @@ from django.views.generic import TemplateView, View
 
 APP_SCOPE = "/scorecard/v2/"
 
-# Everything the field app needs to boot with the network gone. Paths are
-# relative to the static root and are rendered into the worker at
-# /scorecard/v2/sw.js; tests/test_pwa.py asserts each one still resolves, so a
-# change in vite.config.ts output naming fails loudly instead of shipping a
-# worker whose install throws.
+# Committed statics every install must have. Paths are relative to the static
+# root and are rendered into the worker at /scorecard/v2/sw.js;
+# tests/test_pwa.py asserts each one resolves.
 PRECACHE_ASSETS = (
+    # The offline boot shell. It is static on purpose (no CSRF token, no
+    # server data); the Django-rendered page is never cached.
+    "scorecard_v2/app-shell.html",
+    # Only used when the shell itself could not be precached.
     "scorecard_v2/offline.html",
     "scorecard_v2/manifest.webmanifest",
     "scorecard_v2/icons/icon-192.png",
     "scorecard_v2/icons/icon-512.png",
-    "scorecard_v2/js/scorecard_v2.js",
-    "scorecard_v2/js/scorecard_v2.css",
-    # woff2 only: the stylesheet lists `.woff` fallbacks too, but every browser
-    # the app supports reads woff2 and both formats would double the precache.
-    "scorecard_v2/js/scorecard_v2-inter-latin-400-normal.woff2",
-    "scorecard_v2/js/scorecard_v2-inter-latin-600-normal.woff2",
-    "scorecard_v2/js/scorecard_v2-inter-latin-700-normal.woff2",
-    "scorecard_v2/js/scorecard_v2-barlow-condensed-latin-700-normal.woff2",
-    "scorecard_v2/js/scorecard_v2-barlow-condensed-latin-800-normal.woff2",
+    "scorecard_v2/icons/icon-512-maskable.png",
 )
+
+# Build output is discovered, not hard-coded: vite.config.ts may rename or add
+# files (bundle, CSS, woff/woff2), and a stale list would 404 on install.
+APP_STATIC_DIR = "scorecard_v2"
+PRECACHE_BUILD_DIR = "js"
+# A committed static used to locate the app's static directory (staticfiles
+# can serve several roots, so it is not derived from BASE_DIR).
+PRECACHE_ANCHOR = f"{APP_STATIC_DIR}/manifest.webmanifest"
 
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")
@@ -76,19 +78,49 @@ class ServiceWorkerView(View):
                 "precache_urls": json.dumps(precache_urls()),
                 "app_scope": APP_SCOPE,
                 "static_prefix": _static_path("scorecard_v2/"),
+                "app_shell_url": static("scorecard_v2/app-shell.html"),
                 "offline_url": static("scorecard_v2/offline.html"),
             }
         )
         return HttpResponse(
             body,
-            content_type="application/javascript",
+            content_type="application/javascript; charset=utf-8",
             headers={"Cache-Control": "no-cache"},
         )
 
 
+def precache_assets(static_root=None):
+    """Every static file an install stores: committed assets plus build output."""
+    return tuple(PRECACHE_ASSETS) + build_assets(static_root)
+
+
+def build_assets(static_root=None):
+    """The files currently in the build directory, sorted.
+
+    ``static_root`` is the app's static directory (the one containing ``js``);
+    it is injectable so tests can point at a temp dir and prove the listing is
+    dynamic instead of a hard-coded tuple.
+    """
+    if static_root is None:
+        static_root = _static_root()
+    if static_root is None:
+        return ()
+    directory = os.path.join(static_root, PRECACHE_BUILD_DIR)
+    if not os.path.isdir(directory):
+        return ()
+    names = sorted(
+        name
+        for name in os.listdir(directory)
+        if os.path.isfile(os.path.join(directory, name))
+    )
+    return tuple(
+        f"{APP_STATIC_DIR}/{PRECACHE_BUILD_DIR}/{name}" for name in names
+    )
+
+
 def precache_urls():
     """Absolute (STATIC_URL-prefixed) URLs the worker installs."""
-    return [static(asset) for asset in PRECACHE_ASSETS]
+    return [static(asset) for asset in precache_assets()]
 
 
 def cache_version():
@@ -100,12 +132,19 @@ def cache_version():
     return f"{league_manager.__version__}-{_build_stamp()}"
 
 
+def _static_root():
+    anchor = finders.find(PRECACHE_ANCHOR)
+    if anchor is None:
+        return None
+    return os.path.dirname(anchor)
+
+
 def _build_stamp():
     digest = hashlib.sha256()
-    for asset in PRECACHE_ASSETS:
+    for asset in precache_assets():
         path = finders.find(asset)
         if path is None:
-            # Missing build output: install will fail loudly on the device, and
+            # Missing build output: install fails loudly on the device, and
             # tests/test_pwa.py fails first. Nothing to stamp here.
             continue
         stat = os.stat(path)

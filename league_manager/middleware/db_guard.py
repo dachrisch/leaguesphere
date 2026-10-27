@@ -5,7 +5,11 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.http import HttpResponse
 
-from league_manager.constants import STATIC_INFO_PATHS, STATIC_INFO_PREFIXES
+from league_manager.constants import (
+    SERVICE_WORKER_PATHS,
+    STATIC_INFO_PATHS,
+    STATIC_INFO_PREFIXES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +49,11 @@ class DatabaseGuardMiddleware:
 </html>"""
 
     def __call__(self, request):
+        # The worker must stay reachable during an outage: a redirect here
+        # would leave installed devices on their first cached build forever.
+        if request.path in SERVICE_WORKER_PATHS:
+            return self.get_response(request)
+
         # Determine error URL
         try:
             error_url = reverse("database-error")
