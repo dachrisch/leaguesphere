@@ -23,6 +23,10 @@ class HelpTopic:
     video: Optional[str] = None
     tutorial: Optional[str] = None
     featured: bool = False
+    # Staff-only topics are hidden from everyone else: no index card, no
+    # sidebar entry, and the topic URL returns 404. Content may contain
+    # internal details (hosts, credentials handling) that must not be public.
+    staff_only: bool = False
 
 
 HELP_GROUPS: Dict[str, Dict[str, object]] = {
@@ -41,6 +45,10 @@ HELP_GROUPS: Dict[str, Dict[str, object]] = {
     "funktionen": {
         "title": {"de": "Funktionen", "en": "Features"},
         "order": 30,
+    },
+    "staff": {
+        "title": {"de": "Nur für Staff", "en": "Staff only"},
+        "order": 40,
     },
 }
 
@@ -205,6 +213,18 @@ HELP_TOPICS = [
         order=40,
         video="https://www.youtube.com/embed/g9QuDwGZhK8",
     ),
+    HelpTopic(
+        slug="dbaccess",
+        group="staff",
+        title={"de": "Temporärer Datenbankzugang", "en": "Temporary database access"},
+        summary={
+            "de": "Befristeten Produktionszugang beantragen, freigeben lassen und in DBeaver verbinden.",
+            "en": "Request temporary production access, get it approved and connect with DBeaver.",
+        },
+        icon="bi-database-lock",
+        order=10,
+        staff_only=True,
+    ),
 ]
 
 
@@ -229,3 +249,8 @@ def ordered_topics():
 
 def featured_topics():
     return [topic for topic in ordered_topics() if topic.featured]
+
+
+def visible_to(topic: HelpTopic, user) -> bool:
+    """Staff-only topics exist only for staff users."""
+    return not topic.staff_only or bool(getattr(user, "is_staff", False))

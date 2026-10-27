@@ -141,11 +141,21 @@ class TestLlmsHelpLinks(TestCase):
         response = self.client.get("/llms.txt")
         self.assertContains(response, "/help/")
 
-    def test_llms_full_txt_links_help_index_and_every_topic(self):
+    def test_llms_full_txt_links_help_index_and_every_public_topic(self):
         response = self.client.get("/llms-full.txt")
         self.assertContains(response, "/help/")
         for topic in HELP_TOPICS:
+            if topic.staff_only:
+                continue
             self.assertContains(response, f"/help/{topic.slug}/")
+
+    def test_llms_full_txt_does_not_advertise_staff_only_topics(self):
+        """Staff-only help must not be listed in the public AI index."""
+        response = self.client.get("/llms-full.txt")
+        for topic in HELP_TOPICS:
+            if not topic.staff_only:
+                continue
+            self.assertNotContains(response, f"/help/{topic.slug}/")
 
 
 class TestSecurityTxtEndpoint(TestCase):

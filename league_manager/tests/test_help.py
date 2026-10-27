@@ -1,6 +1,7 @@
 from pathlib import Path
 import re
 
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import translation
@@ -20,6 +21,8 @@ class TestHelpIndex(TestCase):
 
         content = response.content.decode()
         for topic in HELP_TOPICS:
+            if topic.staff_only:
+                continue
             assert escape(topic.title["de"]) in content
 
     def test_help_index_links_to_in_app_whats_new_page(self):
@@ -201,3 +204,69 @@ class TestPromisedSections(TestCase):
                 assert (
                     static_dir / ref.removeprefix("/static/")
                 ).exists(), f"{md_file.name} references missing image {ref}"
+
+
+class TestStaffOnlyHelpTopic(TestCase):
+    """The dbaccess topic must not be reachable without a staff login."""
+
+    def setUp(self):
+        user_model = get_user_model()
+        self.staff = user_model.objects.create_user(
+            username="staff-member", password="pw-for-test", is_staff=True
+        )
+        self.member = user_model.objects.create_user(
+            username="normal-member", password="pw-for-test"
+        )
+
+    def _topic_url(self):
+        return reverse("help-topic", kwargs={"slug": "dbaccess"})
+
+    def test_anonymous_gets_404_for_staff_only_topic(self):
+        assert self.client.get(self._topic_url()).status_code == 404
+
+    def test_non_staff_gets_404_for_staff_only_topic(self):
+        self.client.force_login(self.member)
+
+        assert self.client.get(self._topic_url()).status_code == 404
+
+    def test_staff_gets_topic_with_screenshots(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(self._topic_url())
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "/static/help/img/dbaccess-dbeaver-main.png" in content
+        assert "/static/help/img/dbaccess-dbeaver-ssh.png" in content
+
+    def test_index_hides_topic_and_group_from_non_staff(self):
+        self.client.force_login(self.member)
+
+        content = self.client.get(reverse("help-index")).content.decode()
+
+        assert "Temporärer Datenbankzugang" not in content
+        assert "Nur für Staff" not in content
+
+    def test_index_lists_topic_and_group_for_staff(self):
+        self.client.force_login(self.staff)
+
+        content = self.client.get(reverse("help-index")).content.decode()
+
+        assert "Temporärer Datenbankzugang" in content
+        assert "Nur für Staff" in content
+
+    def test_sidebar_of_other_topic_hides_staff_topic_from_non_staff(self):
+        self.client.force_login(self.member)
+
+        response = self.client.get(
+            reverse("help-topic", kwargs={"slug": "getting-started"})
+        )
+
+        assert self._topic_url() not in response.content.decode()
+
+    def test_prev_next_skips_staff_only_topic_for_non_staff(self):
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("help-topic", kwargs={"slug": "startseite"}))
+
+        assert self._topic_url() not in response.content.decode()

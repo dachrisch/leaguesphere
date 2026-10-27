@@ -155,6 +155,7 @@ from league_manager.help.registry import (
     get_topic,
     localized,
     ordered_topics,
+    visible_to,
 )
 
 
@@ -228,13 +229,15 @@ def _topic_context(topic, lang):
     }
 
 
-def _help_groups_context(lang, include_featured=True):
-    topics = ordered_topics()
+def _help_groups_context(lang, include_featured=True, user=None):
+    topics = [topic for topic in ordered_topics() if visible_to(topic, user)]
     if not include_featured:
         topics = [topic for topic in topics if not topic.featured]
     groups = []
     for key, meta in sorted(HELP_GROUPS.items(), key=lambda item: item[1]["order"]):
-        group_topics = [_topic_context(topic, lang) for topic in topics if topic.group == key]
+        group_topics = [
+            _topic_context(topic, lang) for topic in topics if topic.group == key
+        ]
         if group_topics:
             groups.append(
                 {
@@ -252,11 +255,16 @@ class HelpIndexView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         lang = loader.normalize_language(get_language())
+        user = self.request.user
         context["title"] = localized({"de": "Hilfe", "en": "Help"}, lang)
         context["featured_topics"] = [
-            _topic_context(topic, lang) for topic in featured_topics()
+            _topic_context(topic, lang)
+            for topic in featured_topics()
+            if visible_to(topic, user)
         ]
-        context["help_groups"] = _help_groups_context(lang, include_featured=False)
+        context["help_groups"] = _help_groups_context(
+            lang, include_featured=False, user=user
+        )
         return context
 
 
@@ -267,7 +275,7 @@ class HelpTopicView(TemplateView):
         context = super().get_context_data(**kwargs)
         slug = kwargs.get("slug")
         topic = get_topic(slug)
-        if topic is None:
+        if topic is None or not visible_to(topic, self.request.user):
             raise Http404(f"Unknown help topic: {slug}")
 
         lang = loader.normalize_language(get_language())
@@ -275,15 +283,15 @@ class HelpTopicView(TemplateView):
         context["topic"] = _topic_context(topic, lang)
         context["topic_html"] = mark_safe(loader.render_topic(topic, lang))
 
-        topics = ordered_topics()
+        topics = [
+            item for item in ordered_topics() if visible_to(item, self.request.user)
+        ]
         index = topics.index(topic)
         context["prev_topic"] = (
             _topic_context(topics[index - 1], lang) if index > 0 else None
         )
         context["next_topic"] = (
-            _topic_context(topics[index + 1], lang)
-            if index < len(topics) - 1
-            else None
+            _topic_context(topics[index + 1], lang) if index < len(topics) - 1 else None
         )
-        context["help_groups"] = _help_groups_context(lang)
+        context["help_groups"] = _help_groups_context(lang, user=self.request.user)
         return context

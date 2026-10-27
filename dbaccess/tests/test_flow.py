@@ -135,6 +135,15 @@ def test_an_approver_sees_the_queue(client, staff, tables):
 
 
 @pytest.mark.django_db
+def test_the_list_page_links_the_staff_help_guide(client, staff):
+    client.force_login(staff)
+
+    response = client.get(reverse("dbaccess-list"))
+
+    assert reverse("help-topic", args=["dbaccess"]) in response.content.decode()
+
+
+@pytest.mark.django_db
 def test_the_detail_page_offers_reveal_only_while_active(client, staff, settings):
     settings.DBACCESS_SECRET_KEY = Fernet.generate_key().decode()
     access_request = AccessRequest.objects.create(

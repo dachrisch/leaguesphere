@@ -54,7 +54,9 @@ league_manager/
    Markdown link: `[Spieltage](/help/spieltage/)`.
 5. **Add the topic to `templates/llms-full.txt`** (the "Help" list). A test
    asserts that file links the help index and *every* registry topic, so a new
-   topic without this line fails `test_ai_readiness.py`.
+   topic without this line fails `test_ai_readiness.py`. Staff-only topics are
+   the exception: they are not listed in the public `llms-full.txt` (and the
+   test skips them).
 6. **Run the tests** (they enforce registry↔content, image existence and the
    llms-full list):
    ```bash
@@ -112,6 +114,10 @@ If the topic is longer than the page it documents, cut it.
   only when it's a genuinely new area.
 - **Featured** topics (`featured=True`) render as a highlight card on the index
   and are excluded from the grouped list.
+- **Staff-only** topics (`staff_only=True`) are hidden from everyone else: no
+  index card, no sidebar entry, and the URL returns 404. Use it for internal
+  runbooks (hosts, credentials handling) that must not be public — e.g.
+  `dbaccess`. Do not list them in `llms-full.txt`.
 - **Videos/tutorials**: set `video` (embed URL) or `tutorial` (link) on the
   topic when available; leave `None` otherwise.
 - **Bilingual**: only `.de.md` is required. Add `<slug>.en.md` later — the

@@ -9,7 +9,11 @@
                     Every session is asked for, approved by a second person, and dies at its cap.
                 </p>
             </div>
-            <a class="btn btn-primary" href="{% url 'dbaccess-create' %}">New request</a>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <a class="btn btn-outline-secondary"
+                   href="{% url 'help-topic' 'dbaccess' %}">Guide</a>
+                <a class="btn btn-primary" href="{% url 'dbaccess-create' %}">New request</a>
+            </div>
         </div>
 
         {% if can_approve and pending %}
