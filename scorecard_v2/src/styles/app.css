@@ -995,7 +995,9 @@ button.game-row:active {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: var(--space-2);
+  /* Tight: a 40 px crest plus a wider gap pushes a short name onto a second,
+     mid-word line at 360 px. */
+  gap: var(--space-1);
   width: 100%;
   min-height: var(--touch);
   padding: 2px;
@@ -1043,50 +1045,17 @@ button.game-row:active {
   opacity: 0.7;
 }
 
-.crest {
-  display: grid;
-  width: 34px;
-  height: 38px;
-  place-items: center;
-  font-family: var(--font-display);
-  font-size: var(--fs-md);
-  font-weight: 800;
-  line-height: 1;
-  color: var(--on-accent);
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  /* A drawn shield for a team without a logo; a real logo replaces it. */
-  clip-path: polygon(50% 0, 100% 16%, 100% 68%, 50% 100%, 0 68%, 0 16%);
-}
+/* Team logos, and the initials disc they fall back to. Every variant takes the
+   same box for both states, so a screen does not jump when the directory
+   arrives after the text or a logo file is missing.
 
-.team.home .crest {
-  background: var(--home);
-}
-
-.team.away .crest {
-  background: var(--away);
-}
-
-/* A real team logo where the drawn crest used to be. Neutral tile so the same
-   rule works in both themes and for every club colour. */
-.crestlogo {
-  flex: 0 0 auto;
-  width: var(--space-8);
-  height: var(--space-8);
-  padding: 2px;
-  object-fit: contain;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-}
-
-/* Team logos in lists, and the initials circle they fall back to. Both take the
-   same box, so a row does not jump when the directory arrives after the text. */
+   Sizes are one property: a variant only retunes `--teamlogo-size`. */
 .teamlogo {
+  --teamlogo-size: var(--crest-list);
   display: grid;
   flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
+  width: var(--teamlogo-size);
+  height: var(--teamlogo-size);
   place-items: center;
   overflow: hidden;
   font-family: var(--font-display);
@@ -1098,6 +1067,8 @@ button.game-row:active {
   border-radius: 50%;
 }
 
+/* The image itself: a neutral tile, so the same rule works in both themes and
+   for every club colour. */
 .teamlogo-img {
   padding: 2px;
   background: var(--surface);
@@ -1107,8 +1078,35 @@ button.game-row:active {
 /* The preparation header's context line: small crests inline with the names,
    not a second row of their own. */
 .teamlogo-inline {
-  width: var(--space-6);
-  height: var(--space-6);
+  --teamlogo-size: var(--space-6);
+}
+
+/* The board crest: one box for the logo and for the initials shield. A real
+   logo replaces the drawn shield, so the image drops the clip and turns into a
+   neutral tile — it is already a shape, clipping would cut its corners off. */
+.teamlogo-crest {
+  --teamlogo-size: var(--crest-board);
+  font-size: var(--fs-md);
+  font-weight: 800;
+  color: var(--on-accent);
+  background: var(--surface-2);
+  border-color: transparent;
+  border-radius: var(--radius-lg);
+  clip-path: polygon(50% 0, 100% 16%, 100% 68%, 50% 100%, 0 68%, 0 16%);
+}
+
+.team.home .teamlogo-crest:not(.teamlogo-img) {
+  background: var(--home);
+}
+
+.team.away .teamlogo-crest:not(.teamlogo-img) {
+  background: var(--away);
+}
+
+.teamlogo-crest.teamlogo-img {
+  background: var(--surface);
+  border-color: var(--line);
+  clip-path: none;
 }
 
 .app-sub-teams {

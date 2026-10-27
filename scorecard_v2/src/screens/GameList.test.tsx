@@ -1,4 +1,9 @@
-import { render, screen, within } from "@testing-library/react";
+import {
+  render as renderComponent,
+  screen,
+  within,
+} from "@testing-library/react";
+import type { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -57,6 +62,13 @@ function rowFor(pair: string): Element {
     throw new Error(`no row around ${pair}`);
   }
   return row;
+}
+
+/** The rows read the team directory from the provider; none here by default. */
+function render(ui: ReactElement) {
+  return renderComponent(
+    <TeamLogosProvider logos={new Map()}>{ui}</TeamLogosProvider>,
+  );
 }
 
 describe("GameList", () => {
@@ -415,7 +427,7 @@ describe("GameList — team logos", () => {
   const AWAY_LOGO = "https://example.test/media/teammanager/logos/wolves.png";
 
   function renderWithLogos(logos: Map<string, string>, games: Game[]) {
-    return render(
+    return renderComponent(
       <TeamLogosProvider logos={logos}>
         <GameList games={games} onResume={vi.fn()} onSelect={vi.fn()} />
       </TeamLogosProvider>,

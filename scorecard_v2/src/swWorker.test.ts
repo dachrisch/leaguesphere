@@ -17,6 +17,9 @@ const APP_SHELL = "/static/scorecard_v2/app-shell.html";
 const OFFLINE = "/static/scorecard_v2/offline.html";
 const BUNDLE = "/static/scorecard_v2/js/scorecard_v2.js";
 const CSS = "/static/scorecard_v2/js/scorecard_v2.css";
+const TEAM_LOGO = "/media/teammanager/logos/ravens.png";
+/** Mirrors `MEDIA_CACHE_LIMIT` in the worker: how many logos it keeps. */
+const LOGO_CACHE_LIMIT = 60;
 const VERSION = "4.43.1-abc123def456";
 const PRECACHE_PATHS = [
   APP_SHELL,
@@ -101,6 +104,8 @@ function renderWorker(precache: string[]): string {
 interface FakeCache {
   put(request: string | FakeRequest, response: FakeResponse): Promise<void>;
   match(request: string | FakeRequest): Promise<FakeResponse | undefined>;
+  keys(): Promise<FakeRequest[]>;
+  delete(request: string | FakeRequest): Promise<boolean>;
 }
 
 function createCaches(failWrites: boolean) {
@@ -128,6 +133,17 @@ function createCaches(failWrites: boolean) {
         },
         async match(request) {
           return cache.get(requestPath(request));
+        },
+        async keys() {
+          // Insertion order, like a real Cache.
+          return [...cache.keys()].map((path) => ({
+            method: "GET",
+            mode: "cors",
+            url: `${ORIGIN}${path}`,
+          }));
+        },
+        async delete(request) {
+          return cache.delete(requestPath(request));
         },
       };
     },
@@ -203,6 +219,10 @@ function createWorker(
 
 function navigation(url: string): FakeRequest {
   return { method: "GET", mode: "navigate", url };
+}
+
+function asset(path: string): FakeRequest {
+  return { method: "GET", mode: "cors", url: `${ORIGIN}${path}` };
 }
 
 describe("rendered service worker", () => {
@@ -325,5 +345,81 @@ describe("rendered service worker", () => {
     });
 
     expect(result).toEqual(expect.objectContaining({ url: BUNDLE }));
+  });
+
+  it("caches a team logo so an offline boot still shows it", async () => {
+    const worker = createWorker();
+
+    const online = await worker.dispatchFetch(asset(TEAM_LOGO));
+    expect(online).toEqual(expect.objectContaining({ url: TEAM_LOGO }));
+    expect(worker.caches.store.get(worker.runtimeName)?.has(TEAM_LOGO)).toBe(
+      true,
+    );
+
+    worker.fetchMock.mockRejectedValue(new Error("offline"));
+    const offline = await worker.dispatchFetch(asset(TEAM_LOGO));
+
+    expect(offline).toEqual(expect.objectContaining({ url: TEAM_LOGO }));
+  });
+
+  it("lets a never-cached logo fail offline, so the app falls back to initials", async () => {
+    const worker = createWorker({
+      fetch: () => Promise.reject(new Error("offline")),
+    });
+
+    await expect(worker.dispatchFetch(asset(TEAM_LOGO))).rejects.toThrow(
+      "offline",
+    );
+  });
+
+  it("leaves other /media/ paths to the browser", () => {
+    const worker = createWorker();
+
+    expect(
+      worker.dispatchFetch(asset("/media/other/handout.pdf")),
+    ).toBeUndefined();
+    expect(
+      worker.dispatchFetch(asset("/media/teammanager/news/banner.png")),
+    ).toBeUndefined();
+    expect(worker.caches.store.get(worker.runtimeName)?.size ?? 0).toBe(0);
+  });
+
+  it("keeps the logo cache bounded to the newest entries", async () => {
+    const worker = createWorker();
+    const total = LOGO_CACHE_LIMIT + 2;
+
+    for (let index = 0; index < total; index += 1) {
+      await worker.dispatchFetch(
+        asset(`/media/teammanager/logos/logo-${index}.png`),
+      );
+    }
+
+    const cached = [...(worker.caches.store.get(worker.runtimeName)?.keys() ?? [])];
+    expect(cached).toHaveLength(LOGO_CACHE_LIMIT);
+    expect(cached).not.toContain("/media/teammanager/logos/logo-0.png");
+    expect(cached).not.toContain("/media/teammanager/logos/logo-1.png");
+    expect(cached).toContain(
+      `/media/teammanager/logos/logo-${total - 1}.png`,
+    );
+    // Static assets live in the same runtime cache and are never pruned.
+    await worker.dispatchFetch({
+      method: "GET",
+      mode: "no-cors",
+      url: `${ORIGIN}${BUNDLE}`,
+    });
+    expect(worker.caches.store.get(worker.runtimeName)?.has(BUNDLE)).toBe(true);
+  });
+
+  it("still never caches /api/ requests", async () => {
+    const worker = createWorker();
+
+    expect(
+      worker.dispatchFetch({
+        method: "GET",
+        mode: "cors",
+        url: `${ORIGIN}/api/teams/`,
+      }),
+    ).toBeUndefined();
+    expect(worker.caches.store.get(worker.runtimeName)?.size ?? 0).toBe(0);
   });
 });
