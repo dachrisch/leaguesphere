@@ -1,5 +1,8 @@
 import league_manager
+from pathlib import Path
+
 from django.contrib.auth.models import User
+from django.contrib.staticfiles import finders
 from django.urls import resolve, reverse
 from django_webtest import WebTest
 
@@ -39,3 +42,19 @@ class TestScorecardV2View(WebTest):
             f'<meta content="{league_manager.__version__}" name="app-version"/>'
             in response.text
         )
+
+    def test_page_and_offline_shell_carry_the_league_favicon(self):
+        user = User.objects.create_user("official", password="x")
+        self.app.set_user(user)
+        response = self.app.get(reverse("scorecard-v2-home"))
+
+        assert "/static/league_manager/favicon.svg" in response.text
+        assert finders.find("league_manager/favicon.svg") is not None
+        assert finders.find("league_manager/favicon.ico") is not None
+        shell = (
+            Path(__file__).resolve().parent.parent
+            / "static"
+            / "scorecard_v2"
+            / "app-shell.html"
+        ).read_text()
+        assert "/static/league_manager/favicon.svg" in shell

@@ -30,10 +30,24 @@ describe("AppFooter", () => {
     expect(footer.querySelector(".app-footer-icon")).not.toBeNull();
   });
 
-  it("is not interactive", () => {
+  it("links Impressum and Datenschutz like the main app", () => {
     render(<AppFooter />);
 
-    expect(screen.queryByRole("link")).toBeNull();
+    const impressum = screen.getByRole("link", { name: "Impressum" });
+    const datenschutz = screen.getByRole("link", { name: "Datenschutz" });
+
+    expect(impressum).toHaveAttribute(
+      "href",
+      "https://www.bumbleflies.de/impressum",
+    );
+    expect(datenschutz).toHaveAttribute(
+      "href",
+      "https://www.bumbleflies.de/datenschutz",
+    );
+    for (const link of [impressum, datenschutz]) {
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    }
     expect(screen.queryByRole("button")).toBeNull();
   });
 
