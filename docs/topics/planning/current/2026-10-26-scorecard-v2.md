@@ -2,7 +2,7 @@
 
 > **REQUIRED SUB-SKILL:** Use `executing-plans` (or `subagent-driven-development`) to implement this plan task by task.
 
-**Goal:** Build Scorecard v2 as a complete, offline-capable field app served from `/scorecard/v2/` — gameday selection, preparation, live tracking, offline capture and the finalised result — while the existing scorecard keeps running untouched at `/scorecard/`.
+**Goal:** Build Scorecard v2 as a complete, offline-capable Passcheck v2 served from `/scorecard/v2/` — gameday selection, preparation, live tracking, offline capture and the finalised result — while the existing scorecard keeps running untouched at `/scorecard/`.
 
 **Architecture:** A new Django app `scorecard_v2` serves one login-gated page with a Vite/React/TypeScript SPA. It writes the same `TeamLog`, `GameSetup` and `GameOfficial` rows the old app writes, using the existing endpoints plus two additive backend changes: idempotent log submissions (`GameLogSubmission`) and a per-game device lock (`GameSetup.device_id`). A service worker plus an IndexedDB outbox make capture work without a network.
 
@@ -36,8 +36,8 @@ licence problems warn instead of blocking the start, and v2 gets a new
 
 ### Handover and environment (2026-10-26)
 
-This plan runs in parallel with the passcheck v2 field-app plan
-([`docs/topics/planning/current/2026-10-26-passcheck-v2-field-app.md`](./2026-10-26-passcheck-v2-field-app.md));
+This plan runs in parallel with the
+[Passcheck v2 plan](./2026-10-26-passcheck-v2.md);
 the two apps share no state and are delivered independently. Task 1 is already
 committed on `feat/scorecard-v2` (`8fa9fe93`, follow-up `842f1d36`).
 

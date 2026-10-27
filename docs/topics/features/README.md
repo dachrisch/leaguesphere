@@ -14,7 +14,7 @@ Current features:
 - [Personal Home](./personal-home/overview.md) — `/home/`: next gameday, checks, season break, official and staff states
 - [Share Widget](./share-widget/) — Embeddable scores/fixtures/standings for club sites
 - [Public API](./public-api/) — `/api/snapshot/`, the only public, cross-origin readable endpoint
-- [Passcheck Field App](./passcheck-field-app.md) — `/field/`, the phone-first passcheck beside the unchanged `/passcheck/`
+- [Passcheck v2](./passcheck-v2.md) — `/passcheck/v2/`, the phone-first passcheck beside the unchanged `/passcheck/`
 
 ## Overview
 

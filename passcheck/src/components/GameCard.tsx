@@ -33,7 +33,7 @@ function GameCard({game}: Props) {
           </div>
         </Card.Body>
         <Card.Footer>
-          <a href={`/field/?gameday=${game.gameday_id}`}>Feld-Ansicht</a>
+          <a href={`/passcheck/v2/?gameday=${game.gameday_id}`}>Passcheck v2</a>
         </Card.Footer>
       </Card>
     </div>
