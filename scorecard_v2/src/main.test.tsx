@@ -1,13 +1,33 @@
 import "@testing-library/jest-dom/vitest";
-import { screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { registerServiceWorker } = vi.hoisted(() => ({
   registerServiceWorker: vi.fn(),
 }));
 
+/** Every root `main.tsx` creates, so the test can unmount it again. */
+const { roots } = vi.hoisted(() => ({
+  roots: [] as { unmount: () => void }[],
+}));
+
 // jsdom has no service worker; the mock keeps the mount test from trying.
 vi.mock("./serviceWorker", () => ({ registerServiceWorker }));
+
+// `main.tsx` mounts into the real DOM at import time and never unmounts. Left
+// running, the app writes state after the test file's jsdom is gone, React then
+// renders without a `window` and the whole run turns red at random.
+vi.mock("react-dom/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-dom/client")>();
+  return {
+    ...actual,
+    createRoot: (container: Element | DocumentFragment) => {
+      const root = actual.createRoot(container);
+      roots.push(root);
+      return root;
+    },
+  };
+});
 
 vi.mock("./api/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./api/client")>();
@@ -21,12 +41,20 @@ vi.mock("./api/client", async (importOriginal) => {
   };
 });
 
-describe("main", () => {
-  beforeEach(() => {
-    vi.resetModules();
-    document.body.innerHTML = '<div id="scorecard-v2-app"></div>';
-  });
+beforeEach(() => {
+  vi.resetModules();
+  document.body.innerHTML = '<div id="scorecard-v2-app"></div>';
+});
 
+afterEach(async () => {
+  await act(async () => {
+    for (const root of roots.splice(0)) {
+      root.unmount();
+    }
+  });
+});
+
+describe("main", () => {
   it("mounts the app into the Django shell container", async () => {
     await import("./main");
 

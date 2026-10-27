@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import ThemeToggle from "./ThemeToggle";
 import { ChevronLeft } from "./icons";
 
@@ -9,12 +11,22 @@ interface AppHeaderProps {
   onBack?: () => void;
   /** Renders the logout action (shared field devices). */
   onLogout?: () => void;
+  /**
+   * Compact status chip for the top bar (the sync badge), placed before the
+   * theme switch and the logout action. Everything that does not fit in the
+   * bar belongs on the screen, not in the header.
+   */
+  badge?: ReactNode;
 }
 
 /**
- * Screen chrome: the navigation bar (back, theme, logout), the kicker, one
- * title and an optional context line. The theme switch lives here so it is
+ * Screen chrome: the navigation bar (back, status, theme, logout), the kicker,
+ * one title and an optional context line. The theme switch lives here so it is
  * reachable from every screen, including the loading and error panels.
+ *
+ * The bar is icon-only except for the German "Abmelden": at 360px it still
+ * holds a back button, the sync chip, the theme switch and the logout action
+ * without scrolling sideways.
  */
 export default function AppHeader({
   kicker,
@@ -22,6 +34,7 @@ export default function AppHeader({
   sub,
   onBack,
   onLogout,
+  badge,
 }: AppHeaderProps) {
   return (
     <header className="app-header">
@@ -30,16 +43,19 @@ export default function AppHeader({
           {onBack === undefined ? null : (
             <button
               aria-label="Zurück"
-              className="appbar-btn"
+              className="appbar-btn appbar-iconbtn"
               onClick={onBack}
+              title="Zurück"
               type="button"
             >
-              <ChevronLeft className="appbar-icon" size={16} />
-              Zurück
+              <ChevronLeft className="appbar-icon" size={18} />
             </button>
           )}
         </div>
         <div className="appbar-right">
+          {badge === undefined ? null : (
+            <span className="appbar-badge">{badge}</span>
+          )}
           <ThemeToggle />
           {onLogout === undefined ? null : (
             <button

@@ -25,7 +25,7 @@ import EventLog, {
 } from "../components/EventLog";
 import ScoreHeader, { isPossessing } from "../components/ScoreHeader";
 import SnapshotHint from "../components/SnapshotHint";
-import SyncBadge, { pauseReason } from "../components/SyncBadge";
+import SyncBadge, { pauseReason, SyncDetails } from "../components/SyncBadge";
 import {
   ArrowRight,
   Check,
@@ -663,13 +663,16 @@ export default function TrackingScreen({
   return (
     <div className="app-shell tracking">
       <AppHeader
+        badge={
+          <SyncBadge gameId={game.id} status={status} variant="inline" />
+        }
         kicker="Scorecard"
         onBack={onBack}
         onLogout={onLogout}
         sub={trackingSubtitle(gamedayName, leagueLabel)}
         title={trackingTitle(game)}
       />
-      <SyncBadge gameId={game.id} />
+      <SyncDetails gameId={game.id} status={status} />
       <SnapshotHint updatedAt={staleSince} />
       {stopReason === null ? null : (
         <div className="syncstop" role="alert">

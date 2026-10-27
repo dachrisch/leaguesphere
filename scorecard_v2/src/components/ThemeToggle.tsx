@@ -8,13 +8,6 @@ import {
 } from "../theme";
 import { Auto, Moon, Sun } from "./icons";
 
-/** The visible short label next to the icon. */
-const SHORT: Record<Theme, string> = {
-  auto: "Auto",
-  light: "Hell",
-  dark: "Dunkel",
-};
-
 /** The accessible name and tooltip: "Design: automatisch". */
 const LABEL: Record<Theme, string> = {
   auto: "Design: automatisch",
@@ -27,9 +20,11 @@ const ICON = { auto: Auto, light: Sun, dark: Moon } as const;
 /**
  * Header control that cycles auto → light → dark.
  *
- * It shows the *chosen* mode, not the resolved colour: "Auto" stays "Auto"
- * even while the OS is dark. The icon and the label change together, so the
- * state is never colour-only.
+ * Compact on purpose: the bar has to hold the back button, the sync chip, this
+ * switch and "Abmelden" at 360px. The icon carries the state, the accessible
+ * name and the tooltip carry the chosen mode ("Design: hell") — it shows the
+ * *chosen* mode, not the resolved colour, so "automatisch" stays chosen while
+ * the OS is dark. The icon changes with the choice, never colour alone.
  */
 export default function ThemeToggle() {
   const [theme, setThemeState] = useState<Theme>(() => getTheme());
@@ -44,13 +39,12 @@ export default function ThemeToggle() {
   return (
     <button
       aria-label={LABEL[theme]}
-      className="appbar-btn theme-toggle"
+      className="appbar-btn appbar-iconbtn theme-toggle"
       onClick={cycle}
       title={LABEL[theme]}
       type="button"
     >
-      <Icon className="appbar-icon" size={16} />
-      {SHORT[theme]}
+      <Icon className="appbar-icon" size={18} />
     </button>
   );
 }

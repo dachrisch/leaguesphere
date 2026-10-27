@@ -1920,6 +1920,60 @@ describe("Tracking sync state", () => {
 });
 
 describe("Tracking header and action icons", () => {
+  it("keeps the sync chip and the theme switch in the app bar", () => {
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({ inPossession: "Ravens" })}
+        onBack={vi.fn()}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    const header = screen.getByRole("banner");
+    const slot = header.querySelector(".appbar-badge");
+    expect(slot).not.toBeNull();
+    expect(within(slot as HTMLElement).getByText("Synchron")).toBeInTheDocument();
+    // One chip in the bar, no full-width row of its own below the header.
+    expect(document.querySelector(".app-shell > .syncbar")).toBeNull();
+    expect(
+      within(header).getByRole("button", { name: "Design: automatisch" }),
+    ).toBeInTheDocument();
+    const back = within(header).getByRole("button", { name: "Zurück" });
+    expect(back.textContent).toBe("");
+    expect(back).toHaveAttribute("title", "Zurück");
+  });
+
+  it("keeps a paused queue's details below the header, not in the bar", async () => {
+    const runtime = getRuntime();
+    vi.spyOn(runtime.sync, "counts").mockResolvedValue({
+      pending: 0,
+      failed: 0,
+    });
+    vi.spyOn(runtime.sync, "stateFor").mockReturnValue({
+      pending: 0,
+      failed: 0,
+      syncing: false,
+      paused: "auth",
+    });
+
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({ inPossession: "Ravens" })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByText(/Die Anmeldung ist abgelaufen/),
+    ).toBeInTheDocument();
+    expect(document.querySelector(".app-shell > .syncdetails")).not.toBeNull();
+    expect(
+      within(screen.getByRole("banner")).getByText("Pausiert · Anmeldung"),
+    ).toBeInTheDocument();
+  });
+
   it("names the field and round, with gameday and league as context", () => {
     render(
       <TrackingScreen

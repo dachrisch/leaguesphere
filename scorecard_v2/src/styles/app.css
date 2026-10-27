@@ -111,7 +111,7 @@ button,
 
 .app-header {
   flex: 0 0 auto;
-  padding: var(--header-pad-top) var(--page-gutter) var(--space-4);
+  padding: var(--header-pad-top) var(--page-gutter) var(--space-3);
   border-bottom: 1px solid var(--line);
   background: linear-gradient(
     180deg,
@@ -131,7 +131,7 @@ button,
 }
 
 .app-title {
-  margin-top: var(--space-2);
+  margin-top: var(--space-1);
   font-size: var(--fs-2xl);
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -139,7 +139,7 @@ button,
 }
 
 .app-sub {
-  margin-top: var(--space-2);
+  margin-top: var(--space-1);
   font-size: var(--fs-md);
   color: var(--muted);
   font-variant-numeric: tabular-nums;
@@ -764,8 +764,17 @@ button.game-row:active {
 /* ------------------------------------------------------------- tracking -- */
 
 .tracking {
-  /* Board and footer stay put; the log takes the remaining height. */
+  /* The screen owns the viewport: header, board, actions and footer keep their
+     height, the log takes the rest and is the only scrolling region. */
   min-height: 0;
+}
+
+.tracking > .app-header,
+.tracking > .board,
+.tracking > .actions,
+.tracking > .finishednote,
+.tracking > .trackfoot {
+  flex: 0 0 auto;
 }
 
 .board {
@@ -866,6 +875,7 @@ button.game-row:active {
 }
 
 .tname {
+  display: -webkit-box;
   max-width: 100%;
   overflow: hidden;
   font-family: var(--font-display);
@@ -873,8 +883,10 @@ button.game-row:active {
   font-weight: 700;
   letter-spacing: 0.01em;
   line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* A long club name wraps to two lines; the crest stays centred beside it. */
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .poss {
@@ -964,7 +976,7 @@ button.game-row:active {
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
-  padding: var(--space-2) var(--page-gutter) var(--space-1);
+  padding: var(--space-1) var(--page-gutter) 2px;
   font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -991,11 +1003,26 @@ button.game-row:active {
   flex: 1 1 auto;
   min-height: 0;
   margin: 0;
-  padding: 0 var(--page-gutter) var(--space-3);
+  /* The last row must clear the footer: a tap target cut in half reads as a
+     layout bug, so the list always leaves a gutter below its content. */
+  padding: 0 var(--page-gutter) var(--space-4);
   overflow-y: auto;
   list-style: none;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  /* The fold under the log fades instead of slicing a row in half: the cut is
+     the scroll affordance, not a clipped tap target. The padding below keeps a
+     fully scrolled last row outside the fade. */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - var(--space-4)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - var(--space-4)),
+    transparent 100%
+  );
 }
 
 .logempty {
@@ -1152,6 +1179,7 @@ button.game-row:active {
 /* Task 10+11 fill the action grid; the slot is reserved here. */
 .actions {
   display: grid;
+  flex: 0 0 auto;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
   padding: var(--space-3) var(--page-gutter) 0;
@@ -1164,7 +1192,7 @@ button.game-row:active {
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: var(--space-2);
   align-items: center;
-  min-height: 64px;
+  min-height: 60px;
   padding: 0 var(--space-4);
   text-align: left;
   font-family: var(--font-display);
@@ -1218,7 +1246,7 @@ button.game-row:active {
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
-  min-height: 56px;
+  min-height: 52px;
   padding: var(--space-1);
   font-size: var(--fs-sm);
   font-weight: 600;
@@ -2074,8 +2102,9 @@ button.game-row:active {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
+  min-width: 0;
   min-height: var(--touch);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 .appbar-left,
@@ -2103,24 +2132,35 @@ button.game-row:active {
   color: var(--fg);
 }
 
-.appbar-icon {
-  width: 16px;
-  height: 16px;
+/* Back and theme: the icon alone keeps the bar inside 360px. */
+.appbar-iconbtn {
   flex: 0 0 auto;
-}
-
-.appbar-logout {
-  padding: 0 0 0 var(--space-2);
-  color: var(--warning);
-}
-
-.theme-toggle {
-  padding: 0 var(--space-2);
+  justify-content: center;
+  width: 34px;
+  padding: 0;
   border-radius: var(--radius-pill);
 }
 
-.theme-toggle:hover {
+.appbar-iconbtn:hover {
   background: var(--fill-soft);
+}
+
+.appbar-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.appbar-badge {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.appbar-logout {
+  flex: 0 0 auto;
+  padding: 0 0 0 var(--space-1);
+  color: var(--warning);
 }
 
 /* --------------------------------------------------------- sync badge --- */
@@ -2153,6 +2193,43 @@ button.game-row:active {
 
 button.syncbadge {
   cursor: pointer;
+}
+
+/* The app-bar chip: no pill, no own row — a dot and one word. It keeps the
+   full bar height as its tap target, without drawing a box. */
+.syncbadge-inline {
+  gap: var(--space-1);
+  min-height: var(--touch);
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+  text-transform: none;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  white-space: nowrap;
+}
+
+.syncbadge-inline .syncdot {
+  width: 6px;
+  height: 6px;
+}
+
+.syncbadge-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Details below the header: only rendered while there is something to resolve. */
+.syncdetails {
+  gap: var(--space-2);
+  padding-top: var(--space-3);
 }
 
 .syncdot {
