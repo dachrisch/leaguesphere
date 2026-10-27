@@ -5,8 +5,10 @@ import Screen from "../components/Screen";
 interface ResultScreenProps {
   game: Game;
   log: GameLog;
-  /** Start again — the state machine returns to the gameday list (Task 21). */
+  /** Start again — the state machine returns to the game list. */
   onDone: () => void;
+  /** Header chrome owned by the flow. */
+  onLogout?: () => void;
 }
 
 /** The log name wins; the game row fills in for an unresolved placeholder. */
@@ -23,10 +25,16 @@ function teamName(team: GameLogTeam, fallback: string | null): string {
  * server answered with and offers nothing but the way back. Editing is over —
  * a finished game is read-only everywhere else too.
  */
-export default function ResultScreen({ game, log, onDone }: ResultScreenProps) {
+export default function ResultScreen({
+  game,
+  log,
+  onDone,
+  onLogout,
+}: ResultScreenProps) {
   return (
     <Screen
       kicker="Scorecard"
+      onLogout={onLogout}
       sub={`${teamName(log.home, game.home)} – ${teamName(
         log.away,
         game.away,

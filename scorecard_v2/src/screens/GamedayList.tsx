@@ -7,6 +7,9 @@ interface GamedayListProps {
   onSelect: (gameday: Gameday) => void;
   /** ISO `YYYY-MM-DD`; defaults to the device's today. */
   today?: string;
+  /** Header chrome owned by the flow (Task 21). */
+  onBack?: () => void;
+  onLogout?: () => void;
 }
 
 export interface DayTag {
@@ -80,6 +83,8 @@ export default function GamedayList({
   gamedays,
   onSelect,
   today,
+  onBack,
+  onLogout,
 }: GamedayListProps) {
   // One clock read per render: the header, the tags and the "today" default
   // must agree even if the render straddles midnight.
@@ -89,7 +94,13 @@ export default function GamedayList({
     gamedays.length === 1 ? "1 Spieltag" : `${gamedays.length} Spieltage`;
 
   return (
-    <Screen kicker="Scorecard" sub={sub} title="Meine Spieltage">
+    <Screen
+      kicker="Scorecard"
+      onBack={onBack}
+      onLogout={onLogout}
+      sub={sub}
+      title="Meine Spieltage"
+    >
       {gamedays.length === 0 ? (
         <div className="empty-state" role="status">
           <h2 className="empty-title">Keine Spieltage für heute</h2>
