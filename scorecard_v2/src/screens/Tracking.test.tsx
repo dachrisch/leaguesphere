@@ -25,6 +25,8 @@ import TrackingScreen, {
   describeSaved,
   flipsPossession,
   secondHalfPossession,
+  trackingSubtitle,
+  trackingTitle,
   writeTeam,
 } from "./Tracking";
 import { getRuntime, resetRuntime } from "../session/runtime";
@@ -194,7 +196,7 @@ describe("Tracking score header", () => {
     const board = screen.getByLabelText("Spielstand");
     expect(within(board).getByText("20")).toBeInTheDocument();
     expect(within(board).getByText("7")).toBeInTheDocument();
-    expect(within(board).getByText("am Ball")).toBeInTheDocument();
+    expect(within(board).getByText("Ball")).toBeInTheDocument();
     expect(within(board).getByText("2. Halbzeit")).toBeInTheDocument();
 
     expect(
@@ -227,7 +229,7 @@ describe("Tracking score header", () => {
       />,
     );
 
-    expect(screen.queryByText("am Ball")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ball")).not.toBeInTheDocument();
   });
 });
 
@@ -591,7 +593,7 @@ describe("Tracking undo", () => {
 
     const board = screen.getByLabelText("Spielstand");
     await waitFor(() => expect(within(board).getByText("14")).toBeInTheDocument());
-    expect(within(board).getByText("am Ball")).toBeInTheDocument();
+    expect(within(board).getByText("Ball")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /^Wolves, 7 Punkte, am Ball/ }),
     ).toBeInTheDocument();
@@ -1914,5 +1916,103 @@ describe("Tracking sync state", () => {
     expect(
       await screen.findByText("Schreiben gesperrt – bitte neu anmelden."),
     ).toBeInTheDocument();
+  });
+});
+
+describe("Tracking header and action icons", () => {
+  it("names the field and round, with gameday and league as context", () => {
+    render(
+      <TrackingScreen
+        game={GAME}
+        gamedayName="Herbsttag"
+        initialLog={makeLog({ inPossession: "Ravens" })}
+        leagueLabel="Landesliga"
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Feld 2 · Vorrunde" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Herbsttag · Landesliga")).toBeInTheDocument();
+  });
+
+  it("falls back from stage to standing to the field alone", () => {
+    expect(trackingTitle(GAME)).toBe("Feld 2 · Vorrunde");
+    expect(trackingTitle({ ...GAME, stage: "", standing: "Halbfinale" })).toBe(
+      "Feld 2 · Halbfinale",
+    );
+    expect(trackingTitle({ ...GAME, stage: " ", standing: "" })).toBe("Feld 2");
+    expect(trackingSubtitle()).toBeUndefined();
+    expect(trackingSubtitle(" ", "")).toBeUndefined();
+    expect(trackingSubtitle("Herbsttag")).toBe("Herbsttag");
+  });
+
+  it("puts an icon on the touchdown button, every tile and the footer", () => {
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({ inPossession: "Ravens" })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    const touchdown = screen.getByRole("button", {
+      name: /^Touchdown Ravens$/,
+    });
+    expect(touchdown.querySelector("svg")).not.toBeNull();
+    expect(within(touchdown).getByText("3 Tipps")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+
+    for (const name of [
+      "1st Down",
+      "Turnover",
+      "Interception",
+      "Spielzeit",
+      "Auszeit",
+      "Strafe",
+      "Safety",
+      "Overtime",
+    ]) {
+      const tile = screen.getByRole("button", { name });
+      expect(tile.querySelector("svg"), name).not.toBeNull();
+    }
+
+    expect(
+      screen.getByRole("button", { name: "Halbzeit" }).querySelector("svg"),
+    ).not.toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Spielende und Bestätigung" })
+        .querySelector("svg"),
+    ).not.toBeNull();
+  });
+
+  it("uses kind icons in the log and an undo icon on the button", () => {
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({
+          inPossession: "Ravens",
+          events: [logEvent({ id: 3, event: "Touchdown", player: 23 })],
+        })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    const row = document.querySelector(".row");
+    expect(row?.querySelector(".ev svg")).not.toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Rückgängig: Touchdown Ravens" })
+        .querySelector("svg"),
+    ).not.toBeNull();
+    expect(
+      screen
+        .getByRole("region", { name: "Spielstand" })
+        .querySelector(".poss svg"),
+    ).not.toBeNull();
   });
 });

@@ -177,7 +177,7 @@ describe("the whole flow", () => {
 
     // 4. Tracking: one first down, so a log write happens.
     expect(
-      await screen.findByRole("heading", { name: "Spiel läuft" }),
+      await screen.findByRole("heading", { name: "Feld 2 · Vorrunde" }),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "1st Down" }));
     await user.click(
@@ -203,7 +203,7 @@ describe("the whole flow", () => {
       screen.getByRole("button", { name: "Spielstand bearbeiten" }),
     );
     expect(
-      await screen.findByRole("heading", { name: "Spiel läuft" }),
+      await screen.findByRole("heading", { name: "Feld 2 · Vorrunde" }),
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(

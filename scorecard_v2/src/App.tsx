@@ -472,7 +472,9 @@ export default function App() {
     return (
       <TrackingScreen
         game={game}
+        gamedayName={gameday.name}
         initialLog={log}
+        leagueLabel={gameday.league_display}
         onBack={handleBack}
         onFinalize={(current) => dispatch({ type: "finalize", log: current })}
         onLogout={doLogout}

@@ -436,7 +436,7 @@ describe("opening a running game", () => {
     await user.click(screen.getByRole("button", { name: "Erneut laden" }));
 
     expect(
-      await screen.findByRole("heading", { name: "Spiel läuft" }),
+      await screen.findByRole("heading", { name: "Feld 2 · Vorrunde" }),
     ).toBeInTheDocument();
   });
 
@@ -454,7 +454,7 @@ describe("opening a running game", () => {
   it("refetches the games after leaving tracking", async () => {
     const user = userEvent.setup();
     await openRunningGame(user);
-    await screen.findByRole("heading", { name: "Spiel läuft" });
+    await screen.findByRole("heading", { name: "Feld 2 · Vorrunde" });
     const before = calls.filter(
       (call) => call === "GET /api/gameday/1/officials/crew",
     ).length;
@@ -472,7 +472,7 @@ describe("opening a running game", () => {
   it("guards the tab only while a game is running", async () => {
     const user = userEvent.setup();
     await openRunningGame(user);
-    await screen.findByRole("heading", { name: "Spiel läuft" });
+    await screen.findByRole("heading", { name: "Feld 2 · Vorrunde" });
 
     const running = new Event("beforeunload", { cancelable: true });
     globalThis.dispatchEvent(running);
@@ -527,7 +527,7 @@ describe("starting a game", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: "Spiel läuft" }),
+      await screen.findByRole("heading", { name: "Feld 2 · Vorrunde" }),
     ).toBeInTheDocument();
     // The best-effort snapshot refresh runs behind the tracking screen.
     await waitFor(() =>
@@ -543,7 +543,7 @@ describe("the finalise screen", () => {
     user: ReturnType<typeof userEvent.setup>,
   ): Promise<void> {
     await openRunningGame(user);
-    await screen.findByRole("heading", { name: "Spiel läuft" });
+    await screen.findByRole("heading", { name: "Feld 2 · Vorrunde" });
     await user.click(
       screen.getByRole("button", { name: "Spielende und Bestätigung" }),
     );
@@ -571,7 +571,7 @@ describe("the finalise screen", () => {
       screen.getByRole("button", { name: "Spielstand bearbeiten" }),
     );
 
-    await screen.findByRole("heading", { name: "Spiel läuft" });
+    await screen.findByRole("heading", { name: "Feld 2 · Vorrunde" });
     await waitFor(() =>
       expect(
         calls.filter((call) => call === "GET /api/gamelog/42"),
@@ -590,7 +590,7 @@ describe("the finalise screen", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: "Spiel läuft" }),
+      await screen.findByRole("heading", { name: "Feld 2 · Vorrunde" }),
     ).toBeInTheDocument();
     // The log it already held is still shown; no error panel appeared.
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();

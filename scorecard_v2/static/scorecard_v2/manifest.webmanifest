@@ -9,8 +9,8 @@
   "scope": "/scorecard/v2/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#070a0f",
-  "theme_color": "#070a0f",
+  "background_color": "#fafafa",
+  "theme_color": "#5f788a",
   "icons": [
     {
       "src": "icons/icon-192.png",

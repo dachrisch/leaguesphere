@@ -1,4 +1,19 @@
+import type { ComponentType } from "react";
+
 import type { GameLog, GameLogEvent, LogEntry } from "../api/types";
+import {
+  ArrowRight,
+  Clock,
+  Flag,
+  Football,
+  Interception,
+  PlusCircle,
+  Shield,
+  Stopwatch,
+  Undo,
+  Whistle,
+  type IconProps,
+} from "./icons";
 
 /**
  * The event names `GameLog._get_entries_for_team_and_half` filters out of the
@@ -54,16 +69,17 @@ export type EventKind =
   | "time"
   | "note";
 
-const KIND_LABEL: Record<EventKind, string> = {
-  td: "TD",
-  pat: "PAT",
-  pen: "PEN",
-  int: "INT",
-  first: "1ST",
-  safety: "SAF",
-  to: "TO",
-  time: "ZEIT",
-  note: "•",
+/** One icon per kind; the visible row text still carries the meaning. */
+const KIND_ICON: Record<EventKind, ComponentType<IconProps>> = {
+  td: Football,
+  pat: PlusCircle,
+  pen: Flag,
+  int: Interception,
+  first: ArrowRight,
+  safety: Shield,
+  to: Clock,
+  time: Stopwatch,
+  note: Whistle,
 };
 
 /** One rendered log line — a raw event or a reconstructed scoring entry. */
@@ -381,6 +397,7 @@ export default function EventLog({
         <ol className="logrows">
           {rows.map((row) => {
             const described = describeRow(row);
+            const KindIcon = KIND_ICON[described.kind];
             const undoable = !row.isDeleted && !isMarker(row);
             return (
               <li
@@ -391,7 +408,7 @@ export default function EventLog({
                   aria-hidden="true"
                   className={`ev ev-${described.kind}`}
                 >
-                  {KIND_LABEL[described.kind]}
+                  <KindIcon size={18} />
                 </span>
                 <span className="rowmain">
                   <span className="rowprimary">{described.primary}</span>
@@ -414,6 +431,7 @@ export default function EventLog({
                       onClick={() => onUndo(row)}
                       type="button"
                     >
+                      <Undo size={14} />
                       Rückgängig
                     </button>
                   ) : null}

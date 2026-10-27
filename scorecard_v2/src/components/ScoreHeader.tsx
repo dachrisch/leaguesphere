@@ -1,4 +1,5 @@
 import type { GameLogTeam } from "../api/types";
+import { Football } from "./icons";
 
 interface ScoreHeaderProps {
   home: GameLogTeam;
@@ -80,8 +81,15 @@ function Team({
       <span aria-hidden="true" className="crest">
         {crestInitial(team)}
       </span>
-      <span className="tname">{name}</span>
-      {possessing ? <span className="poss">am Ball</span> : null}
+      <span className="teamtext">
+        <span className="tname">{name}</span>
+        {possessing ? (
+          <span className="poss">
+            <Football size={12} />
+            Ball
+          </span>
+        ) : null}
+      </span>
     </button>
   );
 }

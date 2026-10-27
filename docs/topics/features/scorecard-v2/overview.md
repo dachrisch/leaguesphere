@@ -37,10 +37,11 @@ only control static assets, and its scope could never leak into the old app.
 3. **Vorbereitung** — crew and licences, coin toss, first possession,
    direction, passcheck link, **Spiel starten**. An invalid licence warns and
    needs a second tap; it never blocks the start.
-4. **Spiel läuft** — score header with possession, touchdown with the roster's
-   jerseys (numeric fallback when there is none), PAT, first down, turnover,
-   interception, penalty with search, safety, overtime, Spielzeit, Auszeit,
-   half-time, and **Rückgängig** per entry.
+4. **Feld · Runde** (the tracking screen) — score header with possession,
+   touchdown with the roster's jerseys (numeric fallback when there is none),
+   PAT, first down, turnover, interception, penalty with search, safety,
+   overtime, Spielzeit, Auszeit, half-time, and **Rückgängig** per entry. The
+   header carries the gameday and league, and a toggle switches auto/light/dark.
 5. **Spielende** — captains from the roster (suggestions only, free text),
    optional note, then **Ergebnis abschicken**.
 6. **Ergebnis gesendet** — final and half-time score from the server payload.
