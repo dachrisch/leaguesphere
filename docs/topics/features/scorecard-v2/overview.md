@@ -37,8 +37,10 @@ only control static assets, and its scope could never leak into the old app.
    (`GET /api/gameday/<id>/officials/<team>`, `team=*` for all), with status and
    passcheck state. Team logos from the public team directory accompany the
    names here, in the score header and in the preparation header; the directory
-   is cached in IndexedDB, so a device keeps them offline after one load, and a
-   team without one (or a missing file) keeps the initials circle.
+   is cached in IndexedDB and the logo files are cached by the service worker
+   (bounded, `/media/teammanager/logos/` only), so a device keeps them offline
+   after one load, and a team without one (or a file that cannot be loaded)
+   keeps the initials disc.
 3. **Vorbereitung** — crew and licences, coin toss, first possession,
    direction, passcheck link, **Spiel starten**. A crew slot is filled by
    searching the whole officials directory; the row says **verknüpft** (linked

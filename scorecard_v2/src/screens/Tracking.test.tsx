@@ -1,15 +1,17 @@
 import {
   act,
   fireEvent,
-  render,
+  render as renderComponent,
   screen,
   waitFor,
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 import { ApiError, apiDelete, apiGet, apiPost, apiPut } from "../api/client";
+import { TeamLogosProvider } from "../app/teamLogos";
 import type {
   Game,
   GameLog,
@@ -177,6 +179,17 @@ beforeEach(() => {
   // keeps the unrelated tests free of state updates after they finished.
   apiGetMock.mockReturnValue(new Promise(() => undefined));
 });
+
+/**
+ * The score board reads the team directory from the provider. Every case is a
+ * screen on its own, so the wrapper supplies an empty map: no logos, which is
+ * what these tests assert around.
+ */
+function render(ui: ReactElement) {
+  return renderComponent(
+    <TeamLogosProvider logos={new Map()}>{ui}</TeamLogosProvider>,
+  );
+}
 
 describe("Tracking score header", () => {
   it("shows both teams, the big score, possession and the half", () => {

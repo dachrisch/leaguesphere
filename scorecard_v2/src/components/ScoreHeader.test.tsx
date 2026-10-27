@@ -56,17 +56,36 @@ describe("ScoreHeader — team logos", () => {
     expect(images.every((image) => image.getAttribute("alt") === "")).toBe(true);
   });
 
-  it("keeps the drawn crest with the initial for a team without a logo", () => {
+  it("keeps the drawn crest with the initials of the team name", () => {
     const { container } = renderHeader(
+      team("Nürnberg Renegades"),
+      team("Wolves"),
+      new Map(),
+    );
+
+    const crests = Array.from(
+      container.querySelectorAll("span.teamlogo-crest"),
+    );
+    // One initials rule everywhere: two words carry two letters.
+    expect(crests.map((crest) => crest.textContent)).toEqual(["NR", "W"]);
+    expect(container.querySelectorAll("img")).toHaveLength(0);
+  });
+
+  it("uses one crest box for the logo and for the initials", () => {
+    const withLogo = renderHeader(
       team("Ravens"),
       team("Wolves"),
       new Map([["ravens", HOME_LOGO]]),
     );
+    const image = withLogo.container.querySelector("img");
+    expect(image).toHaveClass("teamlogo", "teamlogo-crest");
+    withLogo.unmount();
 
-    expect(container.querySelectorAll("img")).toHaveLength(1);
-    const crests = container.querySelectorAll(".crest");
-    expect(crests).toHaveLength(1);
-    expect(crests[0]).toHaveTextContent("W");
+    const withInitials = renderHeader(team("Ravens"), team("Wolves"), new Map());
+    const shield = withInitials.container.querySelector(".teamlogo-crest");
+    expect(shield?.tagName).toBe("SPAN");
+    // Same footprint: the size class is shared, only the content differs.
+    expect(shield).toHaveClass("teamlogo", "teamlogo-crest");
   });
 
   it("still renders both names and the score", () => {
