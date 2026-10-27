@@ -8,6 +8,10 @@
 # Automation PRs (release-please, Renovate, Dependabot, GitHub Actions) are
 # exempt: their commits are machine-generated and cannot sign the DCO. Without
 # the exemption every release and dependency PR fails the gate.
+#
+# Two checks, because release-please opens its PR with a maintainer PAT: the PR
+# author is a normal user, not a GitHub App bot, so its branch prefix is the
+# only reliable marker. Renovate/Dependabot do use bot accounts.
 name: 📝 DCO
 
 on:
@@ -21,7 +25,7 @@ permissions:
 jobs:
   dco:
     name: Signed-off-by on every commit
-    if: ${{ github.event.pull_request.user.type != 'Bot' }}
+    if: ${{ github.event.pull_request.user.type != 'Bot' && !startsWith(github.head_ref, 'release-please--') }}
     runs-on: ubuntu-latest
     steps:
       - name: Collect PR commits
