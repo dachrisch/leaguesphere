@@ -16,11 +16,17 @@ import type {
   GameLogEvent,
   GameLogEventInput,
   GameLogTeam,
+  GameSetup,
   LogEntry,
   Penalty,
   RosterPlayer,
 } from "../api/types";
-import TrackingScreen, { describeSaved, flipsPossession, writeTeam } from "./Tracking";
+import TrackingScreen, {
+  describeSaved,
+  flipsPossession,
+  secondHalfPossession,
+  writeTeam,
+} from "./Tracking";
 
 vi.mock("../api/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api/client")>();
@@ -124,6 +130,23 @@ function makeLog(overrides: LogOverrides = {}): GameLog {
       overrides.away ??
       team({ id: 2, name: "Wolves", score: 0 }),
   };
+}
+
+/** The server log right after a half-time: second half, marker row, ball at Wolves. */
+function markerLog(): GameLog {
+  return makeLog({
+    isFirstHalf: false,
+    inPossession: "Wolves",
+    events: [
+      logEvent({
+        id: 9,
+        sequence: 0,
+        half: 2,
+        team: null,
+        event: "2. Halbzeit gestartet",
+      }),
+    ],
+  });
 }
 
 function entry(overrides: Partial<LogEntry> = {}): LogEntry {
@@ -296,7 +319,7 @@ describe("Tracking event log", () => {
     expect(screen.getByText("Spielzeit 12:34")).toBeInTheDocument();
     expect(screen.getByText("Auszeit Wolves")).toBeInTheDocument();
     expect(screen.getByText("Safety · Ravens")).toBeInTheDocument();
-    expect(screen.getByText("+1 Punkt")).toBeInTheDocument();
+    expect(screen.getByText("+1 Punkt · #7")).toBeInTheDocument();
     expect(screen.getByText("1st Down Ravens")).toBeInTheDocument();
     expect(screen.getByText("Interception Ravens")).toBeInTheDocument();
     expect(screen.getByText("Strafe gegen Wolves")).toBeInTheDocument();
@@ -677,6 +700,7 @@ function routeGets(
     roster?: RosterPlayer[];
     penalties?: Penalty[];
     log?: GameLog;
+    setup?: GameSetup;
   } = {},
 ): void {
   apiGetMock.mockImplementation((path: string) => {
@@ -688,6 +712,9 @@ function routeGets(
     }
     if (path === "/api/gamelog/42") {
       return Promise.resolve(routes.log ?? makeLog());
+    }
+    if (path === "/api/game/42/setup") {
+      return Promise.resolve(routes.setup ?? {});
     }
     return Promise.reject(new Error(`unexpected GET ${path}`));
   });
@@ -1086,6 +1113,34 @@ describe("Possession flip rule", () => {
   });
 });
 
+describe("Second-half possession rule", () => {
+  it("gives the second half to the side that did not receive the kickoff", () => {
+    expect(
+      secondHalfPossession({ fhPossession: "home" }, "Ravens", "Wolves"),
+    ).toBe("Wolves");
+    expect(
+      secondHalfPossession({ fhPossession: "away" }, "Ravens", "Wolves"),
+    ).toBe("Ravens");
+  });
+
+  it("reads the team name an older setup stored", () => {
+    expect(
+      secondHalfPossession({ fhPossession: "Wolves" }, "Ravens", "Wolves"),
+    ).toBe("Ravens");
+    expect(
+      secondHalfPossession({ fhPossession: "ravens" }, "Ravens", "Wolves"),
+    ).toBe("Wolves");
+  });
+
+  it("returns null without a usable first possession", () => {
+    expect(secondHalfPossession({}, "Ravens", "Wolves")).toBeNull();
+    expect(secondHalfPossession(null, "Ravens", "Wolves")).toBeNull();
+    expect(
+      secondHalfPossession({ fhPossession: "Unbekannt" }, "Ravens", "Wolves"),
+    ).toBeNull();
+  });
+});
+
 describe("Tracking possession flip", () => {
   it("flips to the other team after a touchdown and repaints the tile", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
@@ -1172,7 +1227,19 @@ describe("Tracking possession flip", () => {
   });
 
   it("keeps the log and shows the error when the flip fails", async () => {
-    apiGetMock.mockResolvedValue(ROSTER);
+    apiGetMock.mockImplementation((path: string) => {
+      if (path === "/api/gamelog/42") {
+        return Promise.resolve(
+          makeLog({
+            inPossession: "Ravens",
+            events: [
+              logEvent({ id: 5, sequence: 1, event: "Touchdown", player: 23 }),
+            ],
+          }),
+        );
+      }
+      return Promise.resolve(ROSTER);
+    });
     apiPostMock.mockResolvedValue(
       makeLog({
         inPossession: "Ravens",
@@ -1202,6 +1269,78 @@ describe("Tracking possession flip", () => {
     expect(
       screen.getByRole("button", { name: /^Touchdown Ravens$/ }),
     ).toBeInTheDocument();
+  });
+
+  it("takes the possession from the log, not from a captured value, when the flip fails", async () => {
+    // The server rejected the flip but reports the ball with Wolves anyway (a
+    // second device may have changed it). The next entry must follow the
+    // server, not the marker this screen remembered.
+    apiGetMock.mockImplementation((path: string) => {
+      if (path === "/api/gamelog/42") {
+        return Promise.resolve(makeLog({ inPossession: "Wolves" }));
+      }
+      return Promise.resolve(ROSTER);
+    });
+    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    apiPutMock.mockRejectedValueOnce(
+      new ApiError(500, { detail: "Ballbesitz nicht änderbar" }, "Ballbesitz nicht änderbar"),
+    );
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Touchdown Ravens$/);
+    await pickJersey(user, 23);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /^Touchdown Wolves$/ }),
+      ).toBeInTheDocument(),
+    );
+
+    await openSheet(user, /^1st Down$/);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(2));
+    expect(apiPostMock).toHaveBeenLastCalledWith("/api/gamelog/42", {
+      gameId: 42,
+      team: "Wolves",
+      half: 1,
+      event: [{ name: "First Down" }],
+    });
+  });
+
+  it("does not take the possession from the POST response", async () => {
+    // The write answers with the possession of *before* the play. Adopting it
+    // would fight the flip and make the next entry belong to the wrong team.
+    apiGetMock.mockResolvedValue(ROSTER);
+    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Wolves" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^1st Down$/);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("button", { name: /^Touchdown Ravens$/ }),
+    ).toBeInTheDocument();
+    expect(apiPutMock).not.toHaveBeenCalled();
+
+    await openSheet(user, /^Auszeit$/);
+    await user.type(screen.getByRole("textbox", { name: "Minuten" }), "1");
+    await user.type(screen.getByRole("textbox", { name: "Sekunden" }), "00");
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(2));
+    expect(apiPostMock).toHaveBeenLastCalledWith("/api/gamelog/42", {
+      gameId: 42,
+      team: "Ravens",
+      half: 1,
+      event: [{ name: "Auszeit", input: "1:00" }],
+    });
   });
 
   it("shows the new possession while the flip is still in flight", async () => {
@@ -1303,22 +1442,6 @@ describe("Tracking safety and overtime", () => {
 });
 
 describe("Tracking half-time", () => {
-  function markerLog(): GameLog {
-    return makeLog({
-      isFirstHalf: false,
-      inPossession: "Wolves",
-      events: [
-        logEvent({
-          id: 9,
-          sequence: 0,
-          half: 2,
-          team: null,
-          event: "2. Halbzeit gestartet",
-        }),
-      ],
-    });
-  }
-
   it("asks before it starts the half", async () => {
     renderTracking();
     const user = userEvent.setup();
@@ -1433,6 +1556,182 @@ describe("Tracking half-time", () => {
     expect(
       screen.getByRole("button", { name: /^Touchdown Wolves$/ }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("Tracking half-time possession", () => {
+  it("asks the setup instead of flipping the current possession", async () => {
+    // Ravens received the opening kickoff, so the second half belongs to
+    // Wolves — and Wolves still have the ball, so nothing changes. Flipping
+    // the current possession would hand it to Ravens, which is the bug.
+    routeGets({
+      setup: { fhPossession: "home" },
+      log: makeLog({ isFirstHalf: false, inPossession: "Wolves" }),
+    });
+    renderTracking({ log: makeLog({ inPossession: "Wolves" }) });
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Halbzeit" }));
+    await user.click(screen.getByRole("button", { name: "Halbzeit starten" }));
+
+    await waitFor(() =>
+      expect(screen.getByText("2. Halbzeit")).toBeInTheDocument(),
+    );
+    expect(apiGetMock).toHaveBeenCalledWith("/api/game/42/setup");
+    expect(apiPutMock).toHaveBeenCalledTimes(1);
+    expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/halftime", {});
+    expect(
+      screen.getByRole("button", { name: /^Touchdown Wolves$/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("hands the ball over when the kickoff team still has it", async () => {
+    // Wolves received the opening kickoff and still have the ball, so the
+    // second half belongs to Ravens — the one case where both rules agree,
+    // kept so the switch is still written.
+    routeGets({
+      setup: { fhPossession: "away" },
+      log: makeLog({ isFirstHalf: false, inPossession: "Ravens" }),
+    });
+    renderTracking({ log: makeLog({ inPossession: "Wolves" }) });
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Halbzeit" }));
+    await user.click(screen.getByRole("button", { name: "Halbzeit starten" }));
+
+    await waitFor(() =>
+      expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/possession", {
+        team: "Ravens",
+      }),
+    );
+    expect(
+      screen.getByRole("button", { name: /^Touchdown Ravens$/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("falls back to flipping the current possession without a setup", async () => {
+    routeGets({ setup: {}, log: markerLog() });
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Halbzeit" }));
+    await user.click(screen.getByRole("button", { name: "Halbzeit starten" }));
+
+    await waitFor(() =>
+      expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/possession", {
+        team: "Wolves",
+      }),
+    );
+  });
+
+  it("falls back when the setup cannot be read", async () => {
+    apiGetMock.mockImplementation((path: string) => {
+      if (path === "/api/game/42/setup") {
+        return Promise.reject(new ApiError(500, null, "Server weg"));
+      }
+      if (path === "/api/gamelog/42") {
+        return Promise.resolve(markerLog());
+      }
+      return Promise.resolve(ROSTER);
+    });
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Halbzeit" }));
+    await user.click(screen.getByRole("button", { name: "Halbzeit starten" }));
+
+    await waitFor(() =>
+      expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/possession", {
+        team: "Wolves",
+      }),
+    );
+    expect(screen.getByText("2. Halbzeit")).toBeInTheDocument();
+  });
+
+  it("reads the setup once, when the screen opens", () => {
+    routeGets();
+    renderTracking();
+
+    expect(apiGetMock).toHaveBeenCalledWith("/api/game/42/setup");
+    expect(
+      apiGetMock.mock.calls.filter(
+        ([path]) => path === "/api/game/42/setup",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("writes the marker before the ball and reloads the log afterwards", async () => {
+    const order: string[] = [];
+    apiGetMock.mockImplementation((path: string) => {
+      order.push(`GET ${path}`);
+      if (path === "/api/game/42/setup") {
+        return Promise.resolve({ fhPossession: "home" });
+      }
+      if (path === "/api/gamelog/42") {
+        return Promise.resolve(markerLog());
+      }
+      return Promise.resolve(ROSTER);
+    });
+    apiPutMock.mockImplementation((path: string) => {
+      order.push(`PUT ${path}`);
+      return Promise.resolve(undefined);
+    });
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Halbzeit" }));
+    await user.click(screen.getByRole("button", { name: "Halbzeit starten" }));
+    await waitFor(() =>
+      expect(screen.getByText("2. Halbzeit")).toBeInTheDocument(),
+    );
+
+    expect(order.slice(order.indexOf("PUT /api/game/42/halftime"))).toEqual([
+      "PUT /api/game/42/halftime",
+      "PUT /api/game/42/possession",
+      "GET /api/gamelog/42",
+    ]);
+  });
+
+  it("does not start the half-time while a possession change is in flight", () => {
+    apiPutMock.mockReturnValue(new Promise(() => undefined));
+    renderTracking();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Wolves/ }));
+
+    expect(screen.getByRole("button", { name: "Halbzeit" })).toBeDisabled();
+    expect(apiPutMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not start the half-time while an undo is in flight", () => {
+    apiDeleteMock.mockReturnValue(new Promise(() => undefined));
+    renderTracking({
+      log: makeLog({
+        inPossession: "Ravens",
+        events: [logEvent({ id: 5, sequence: 3, event: "Touchdown" })],
+      }),
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Rückgängig/ }));
+
+    expect(screen.getByRole("button", { name: "Halbzeit" })).toBeDisabled();
+  });
+
+  it("keeps undo inert while the half-time is being written", () => {
+    apiPutMock.mockReturnValue(new Promise(() => undefined));
+    renderTracking({
+      log: makeLog({
+        inPossession: "Ravens",
+        events: [logEvent({ id: 5, sequence: 3, event: "Touchdown" })],
+      }),
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Halbzeit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Halbzeit starten" }));
+
+    const undo = screen.getByRole("button", { name: /Rückgängig/ });
+    expect(undo).toBeDisabled();
+    fireEvent.click(undo);
+    expect(apiDeleteMock).not.toHaveBeenCalled();
   });
 });
 

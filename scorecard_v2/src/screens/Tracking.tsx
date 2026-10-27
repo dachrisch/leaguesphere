@@ -6,6 +6,7 @@ import type {
   GameLog,
   GameLogEventInput,
   GameLogWrite,
+  GameSetup,
   RosterPlayer,
 } from "../api/types";
 import AppHeader from "../components/AppHeader";
@@ -84,6 +85,54 @@ export function flipsPossession(events: GameLogEventInput[]): boolean {
 }
 
 /**
+ * Read a stored first possession back into a side. v2 writes `home`/`away`,
+ * the old app wrote the team name, and `{}` means "no setup".
+ */
+function setupSide(
+  value: string | undefined,
+  home: string | null,
+  away: string | null,
+): Side | null {
+  const token = (value ?? "").trim().toLowerCase();
+  if (token === "") {
+    return null;
+  }
+  if (token === "home") {
+    return "home";
+  }
+  if (token === "away") {
+    return "away";
+  }
+  if (home !== null && token === home.trim().toLowerCase()) {
+    return "home";
+  }
+  if (away !== null && token === away.trim().toLowerCase()) {
+    return "away";
+  }
+  return null;
+}
+
+/**
+ * The team that starts the second half: the side that did **not** receive the
+ * opening kickoff, exactly like v1 (`Details.handleHalftime` flips
+ * `gameSetup.fhPossession`, not the current possession).
+ *
+ * Returns `null` when the setup carries no usable first possession — the caller
+ * then falls back to handing the ball to the other team.
+ */
+export function secondHalfPossession(
+  setup: GameSetup | null | undefined,
+  home: string | null,
+  away: string | null,
+): string | null {
+  const first = setupSide(setup?.fhPossession, home, away);
+  if (first === null) {
+    return null;
+  }
+  return first === "home" ? away : home;
+}
+
+/**
  * The team a submission is recorded for.
  *
  * Everything is credited to the possessing team, except an interception: the
@@ -150,6 +199,10 @@ export default function TrackingScreen({
   // `null` until the roster request settles — an empty array would be a real
   // "no roster" and must not be shown while the fetch is still running.
   const [roster, setRoster] = useState<RosterPlayer[] | null>(null);
+  // The first possession decides who starts the second half. `null` while the
+  // request runs (or after it failed): the half-time then falls back to
+  // handing the ball to the other team.
+  const [setup, setSetup] = useState<GameSetup | null>(null);
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [posting, setPosting] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
@@ -186,18 +239,66 @@ export default function TrackingScreen({
     };
   }, [game.id]);
 
+  useEffect(() => {
+    let active = true;
+    // Read once, long before the half-time: the setup holds the opening
+    // possession, which decides who starts the second half. A failed read
+    // leaves it `null` and the half-time falls back to switching the ball.
+    apiGet<GameSetup>(`/api/game/${game.id}/setup`)
+      .then((payload) => {
+        if (active) {
+          setSetup(payload ?? {});
+        }
+      })
+      .catch(() => {
+        // Nothing to do: `null` already means "no setup to trust".
+      });
+    return () => {
+      active = false;
+    };
+  }, [game.id]);
+
   /**
-   * Replace the log with a server answer. `inPossession` is only adopted when
-   * the payload carries it **and** no possession change is in flight: a stale
-   * DELETE response must not undo the optimistic marker.
+   * Replace the log with a server answer.
+   *
+   * `inPossession` is only adopted when the payload carries it **and** the
+   * caller says it is fresh: a `POST` answers with the possession as it was
+   * *before* the change of possession the play itself causes, and a stale
+   * `DELETE` must not undo the optimistic marker either. The client owns the
+   * marker after its own write and re-reads the truth when a write fails.
    */
-  const replaceLog = (next: GameLog): void => {
+  const replaceLog = (
+    next: GameLog,
+    { adoptPossession = true }: { adoptPossession?: boolean } = {},
+  ): void => {
     setLog(next);
     if (
+      adoptPossession &&
       !possessionInFlight.current &&
       Object.prototype.hasOwnProperty.call(next, "inPossession")
     ) {
       setPossession(next.inPossession ?? null);
+    }
+  };
+
+  /**
+   * Ask the server which team holds the ball and take that answer.
+   *
+   * Used after a failed possession `PUT`: the optimistic marker is a guess, the
+   * log is the truth. The adoption is direct rather than through
+   * {@link replaceLog} because the failed change is still "in flight" here and
+   * would otherwise be skipped. A read that fails too leaves the last known
+   * value in place — the next write or reload corrects it.
+   */
+  const resyncPossession = async (): Promise<void> => {
+    try {
+      const fresh = await apiGet<GameLog>(`/api/gamelog/${game.id}`);
+      setLog(fresh);
+      if (Object.prototype.hasOwnProperty.call(fresh, "inPossession")) {
+        setPossession(fresh.inPossession ?? null);
+      }
+    } catch {
+      // Keep the local value; nothing else to do here.
     }
   };
 
@@ -215,6 +316,8 @@ export default function TrackingScreen({
         team: teamName,
       });
     } catch (failure) {
+      // Show the correction at once (no flicker), then let the server decide:
+      // the `PUT` may have been rejected after it was applied.
       setPossession(previous);
       setPossessionError(
         errorMessage(
@@ -222,6 +325,7 @@ export default function TrackingScreen({
           "Der Ballbesitz konnte nicht geändert werden. Bitte erneut versuchen.",
         ),
       );
+      await resyncPossession();
     } finally {
       possessionInFlight.current = false;
       setPossessionPending(false);
@@ -229,7 +333,7 @@ export default function TrackingScreen({
   };
 
   const undo = async (row: LogRow): Promise<void> => {
-    if (undoInFlight.current) {
+    if (undoInFlight.current || halftimePending) {
       return;
     }
     undoInFlight.current = true;
@@ -329,7 +433,9 @@ export default function TrackingScreen({
     };
     try {
       const next = await apiPost<GameLog>(`/api/gamelog/${game.id}`, body);
-      replaceLog(next);
+      // The answer still carries the possession of *before* this play; the
+      // marker follows the flip below (or the server, if the flip fails).
+      replaceLog(next, { adoptPossession: false });
       setConfirmation(describeSaved(events));
       if (flipsPossession(events) && opponentName !== null) {
         await takePossession(opponentName);
@@ -341,9 +447,22 @@ export default function TrackingScreen({
   };
 
   /**
+   * The team that starts the second half: the side that did **not** receive the
+   * opening kickoff, exactly like v1 (`GameSetup.fhPossession`), whatever the
+   * last play did — the teams change ends at half-time, so "flip the ball" is
+   * only right when the half happened to end with the ball away from the
+   * kickoff side. {@link setup} is read once when the screen opens, so the
+   * half-time never waits for it; without a usable setup the ball simply goes
+   * to the other team.
+   */
+  const secondHalfTeam = (): string | null =>
+    secondHalfPossession(setup, logTeamName(log.home), logTeamName(log.away)) ??
+    opponentName;
+
+  /**
    * Halbzeit: the server writes the marker and moves the game to the second
-   * half; the possession switch is ours (v1 flipped to the team that did not
-   * start the game).
+   * half; the possession switch is ours, because the server keeps the first
+   * possession.
    *
    * The half is switched locally as soon as the `PUT` is accepted, so the log
    * and the next write are in the second half even if the log reload below
@@ -352,6 +471,14 @@ export default function TrackingScreen({
    */
   const startHalftime = async (): Promise<void> => {
     if (halftimeInFlight.current || !log.isFirstHalf) {
+      return;
+    }
+    if (possessionInFlight.current) {
+      // Without this the flip below would silently do nothing and the second
+      // half would start with whoever the manual change left in possession.
+      setHalftimeError(
+        "Der Ballbesitz wird gerade geändert. Bitte kurz warten.",
+      );
       return;
     }
     halftimeInFlight.current = true;
@@ -372,12 +499,17 @@ export default function TrackingScreen({
       return;
     }
     setLog((current) => ({ ...current, isFirstHalf: false }));
-    if (opponentName !== null) {
-      await takePossession(opponentName);
+    const target = secondHalfTeam();
+    if (target !== null) {
+      await takePossession(target);
     }
     try {
-      // The marker row ("2. Halbzeit gestartet") only exists server-side.
-      replaceLog(await apiGet<GameLog>(`/api/gamelog/${game.id}`));
+      // The marker row ("2. Halbzeit gestartet") only exists server-side. The
+      // half switch is already local, so a payload from an older server cannot
+      // put the game back into the first half, and the possession stays the one
+      // this screen just set.
+      const fresh = await apiGet<GameLog>(`/api/gamelog/${game.id}`);
+      replaceLog({ ...fresh, isFirstHalf: false }, { adoptPossession: false });
     } catch {
       // The half is already switched; the refresh only adds the marker. The
       // next write answers with the whole log anyway.
@@ -400,6 +532,13 @@ export default function TrackingScreen({
     possessionName === null;
   const touchdownLabel =
     possessionName === null ? "Touchdown" : `Touchdown ${possessionName}`;
+  /**
+   * Starting the half writes two things in a row (the marker, then the ball).
+   * A possession change or an undo still on its way would land in between and
+   * either skip the flip or answer with a stale half, so the block waits.
+   */
+  const halftimeDisabled =
+    halftimePending || posting || possessionPending || undoKey !== null;
 
   return (
     <div className="app-shell tracking">
@@ -485,7 +624,7 @@ export default function TrackingScreen({
                 </button>
                 <button
                   className="halfbtn"
-                  disabled={halftimePending}
+                  disabled={halftimeDisabled}
                   onClick={() => void startHalftime()}
                   type="button"
                 >
@@ -496,7 +635,7 @@ export default function TrackingScreen({
           ) : (
             <button
               className="halfbtn"
-              disabled={halftimePending || posting}
+              disabled={halftimeDisabled}
               onClick={() => setConfirmHalftime(true)}
               type="button"
             >
@@ -518,6 +657,7 @@ export default function TrackingScreen({
         <p className="trackhint">Ballbesitz wählen, um Einträge zu erfassen.</p>
       ) : null}
       <EventLog
+        disabled={halftimePending}
         error={undoError}
         onUndo={(row) => void undo(row)}
         rows={rows}
