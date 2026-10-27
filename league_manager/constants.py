@@ -29,6 +29,12 @@ STATIC_INFO_PATHS = {
 # directory (covers security.txt and agent-card.json).
 STATIC_INFO_PREFIXES = ("/static/", "/media/", "/.well-known/")
 
+# The Scorecard v2 service worker must stay reachable while the database is
+# down or the site is in maintenance. A worker update answered with a redirect
+# would leave every installed device on its first cached build. Single source
+# of truth: both guard middlewares exempt these paths.
+SERVICE_WORKER_PATHS = ("/scorecard/v2/sw.js",)
+
 
 def static_info_url_pattern(key: str) -> str:
     """URL pattern for a STATIC_INFO_PATHS entry (paths carry a leading

@@ -10,6 +10,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db import DatabaseError, InterfaceError, OperationalError
 
 from league_manager.constants import MAINTENANCE_CONFIG_CACHE_KEY
+from league_manager.middleware.db_guard import DatabaseGuardMiddleware
 from league_manager.middleware.maintenance import MaintenanceModeMiddleware
 
 
@@ -86,3 +87,35 @@ def test_maintenance_middleware_does_not_cache_fallback_after_db_error():
         middleware(request=type("Req", (), {"path_info": "/home/", "method": "GET"})())
 
     assert cache.get(MAINTENANCE_CONFIG_CACHE_KEY) is None
+
+
+def test_maintenance_mode_keeps_the_service_worker_reachable():
+    """A full-maintenance redirect must not strand installed devices on their
+    first cached build: the worker has to stay fetchable."""
+    middleware = MaintenanceModeMiddleware(lambda request: "worker-response")
+    cache.set(
+        MAINTENANCE_CONFIG_CACHE_KEY,
+        {"scope": "full", "patterns": []},
+        30,
+    )
+
+    result = middleware(
+        request=type("Req", (), {"path_info": "/scorecard/v2/sw.js", "method": "GET"})()
+    )
+
+    assert result == "worker-response"
+
+
+def test_db_guard_keeps_the_service_worker_reachable():
+    middleware = DatabaseGuardMiddleware(lambda request: "worker-response")
+    cache.delete("db_connection_status")
+
+    result = middleware(
+        request=type(
+            "Req",
+            (),
+            {"path": "/scorecard/v2/sw.js", "path_info": "/scorecard/v2/sw.js"},
+        )()
+    )
+
+    assert result == "worker-response"

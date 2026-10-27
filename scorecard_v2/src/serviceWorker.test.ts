@@ -1,6 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { registerServiceWorker } from "./serviceWorker";
+import {
+  registerServiceWorker,
+  shouldRegisterServiceWorker,
+} from "./serviceWorker";
 
 function stubServiceWorker(register: (url: string) => Promise<unknown>): void {
   Object.defineProperty(navigator, "serviceWorker", {
@@ -10,7 +13,12 @@ function stubServiceWorker(register: (url: string) => Promise<unknown>): void {
 }
 
 describe("registerServiceWorker", () => {
+  beforeEach(() => {
+    window.history.replaceState({}, "", "/scorecard/v2/");
+  });
+
   afterEach(() => {
+    window.history.replaceState({}, "", "/");
     delete (navigator as { serviceWorker?: unknown }).serviceWorker;
     vi.restoreAllMocks();
   });
@@ -28,6 +36,28 @@ describe("registerServiceWorker", () => {
     expect("serviceWorker" in navigator).toBe(false);
 
     expect(() => registerServiceWorker()).not.toThrow();
+  });
+
+  it("does not register outside the app scope", () => {
+    const register = vi.fn(() => Promise.resolve());
+    stubServiceWorker(register);
+    window.history.replaceState({}, "", "/scorecard/");
+
+    registerServiceWorker();
+
+    expect(register).not.toHaveBeenCalled();
+  });
+
+  it("does not register from the Vite dev server", () => {
+    const register = vi.fn(() => Promise.resolve());
+    stubServiceWorker(register);
+
+    expect(
+      shouldRegisterServiceWorker({ pathname: "/scorecard/v2/", port: "3004" }),
+    ).toBe(false);
+    expect(
+      shouldRegisterServiceWorker({ pathname: "/scorecard/v2", port: "" }),
+    ).toBe(true);
   });
 
   it("warns instead of failing when registration is rejected", async () => {

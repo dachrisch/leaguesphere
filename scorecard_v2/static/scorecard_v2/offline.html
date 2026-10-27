@@ -16,6 +16,9 @@
       --fg: #f3f5f8;
       --muted: #8b95a7;
       --home: #e5322d;
+      /* Darker than --home: #fff on #e5322d is only 4.35:1, below AA for the
+         retry button. This is 5.39:1. */
+      --home-action: #cc2822;
       --line: rgba(255, 255, 255, 0.09);
     }
 
@@ -74,7 +77,7 @@
       padding: 0 16px;
       border: 0;
       border-radius: 999px;
-      background: var(--home);
+      background: var(--home-action);
       color: #fff;
       font: inherit;
       font-weight: 600;
@@ -91,8 +94,8 @@
 <main>
   <div class="mark" aria-hidden="true">LS</div>
   <h1>Keine Verbindung</h1>
-  <p>Die Scorecard braucht einmal eine Verbindung zum Laden. Prüfe WLAN oder
-    mobile Daten und lade die Seite neu.</p>
+  <p>Diese App wurde auf diesem Gerät noch nicht gespeichert. Verbinde dich
+    einmal mit dem Internet und lade die Seite neu.</p>
   <button type="button" onclick="location.reload()">Neu laden</button>
 </main>
 </body>

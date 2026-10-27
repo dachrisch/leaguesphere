@@ -1,7 +1,12 @@
 """Tests for the Scorecard v2 PWA shell: worker, manifest and icons."""
 
 import json
+import os
+import re
+import shutil
 import struct
+import subprocess
+import tempfile
 
 import league_manager
 import pytest
@@ -14,7 +19,9 @@ from scorecard_v2 import views
 
 MANIFEST = "scorecard_v2/manifest.webmanifest"
 # Build output: gitignored, produced by `npm --prefix scorecard_v2 run build`.
-BUILD_PREFIX = "scorecard_v2/js/"
+BUILD_DIR = "scorecard_v2/js"
+BUILD_ENTRY = "scorecard_v2/js/scorecard_v2.js"
+APP_SHELL = "scorecard_v2/app-shell.html"
 
 
 def _static_file(asset):
@@ -30,6 +37,25 @@ def _png_size(data):
     return width, height
 
 
+def _relative_luminance(hex_colour):
+    channels = [int(hex_colour.lstrip("#")[i : i + 2], 16) / 255 for i in (0, 2, 4)]
+
+    def linear(channel):
+        if channel <= 0.03928:
+            return channel / 12.92
+        return ((channel + 0.055) / 1.055) ** 2.4
+
+    red, green, blue = (linear(channel) for channel in channels)
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+
+
+def _contrast(first, second):
+    high, low = sorted(
+        (_relative_luminance(first), _relative_luminance(second)), reverse=True
+    )
+    return (high + 0.05) / (low + 0.05)
+
+
 class TestServiceWorkerView(WebTest):
     def test_worker_is_served_anonymously_without_a_login_redirect(self):
         response = self.app.get(reverse("scorecard-v2-sw"), status=200)
@@ -37,6 +63,14 @@ class TestServiceWorkerView(WebTest):
         assert response.content_type == "application/javascript"
         assert response.headers["Cache-Control"] == "no-cache"
         assert "{{" not in response.text, "template placeholders left unrendered"
+
+    def test_worker_is_javascript_with_an_explicit_charset(self):
+        response = self.app.get(reverse("scorecard-v2-sw"))
+
+        assert (
+            response.headers["Content-Type"]
+            == "application/javascript; charset=utf-8"
+        )
 
     def test_worker_lives_on_the_app_scope(self):
         assert reverse("scorecard-v2-sw") == "/scorecard/v2/sw.js"
@@ -47,18 +81,45 @@ class TestServiceWorkerView(WebTest):
         assert views.cache_version() in response.text
         assert f'const CACHE_VERSION = "{views.cache_version()}";' in response.text
 
-    def test_worker_precaches_the_offline_shell_and_assets_only(self):
+    def test_worker_gives_the_precache_its_own_cache_name(self):
+        source = self.app.get(reverse("scorecard-v2-sw")).text
+
+        assert 'const PRECACHE_PREFIX = CACHE_PREFIX + "precache-";' in source
+        assert 'const RUNTIME_PREFIX = CACHE_PREFIX + "runtime-";' in source
+        assert "const PRECACHE_NAME = PRECACHE_PREFIX + CACHE_VERSION;" in source
+
+    def _rendered_precache(self):
         response = self.app.get(reverse("scorecard-v2-sw"))
         marker = "const PRECACHE_URLS = "
         start = response.text.index(marker) + len(marker)
         precache, _ = json.JSONDecoder().raw_decode(response.text[start:])
+        return precache
 
-        assert "/static/scorecard_v2/offline.html" in precache
-        assert "/static/scorecard_v2/js/scorecard_v2.js" in precache
+    def test_worker_precaches_the_app_shell_and_committed_statics_only(self):
+        precache = self._rendered_precache()
+
+        assert "/static/scorecard_v2/app-shell.html" in precache
         for url in precache:
             assert url.startswith("/static/scorecard_v2/"), url
             assert "/api/" not in url, url
             assert not url.startswith(views.APP_SCOPE), url
+
+    @pytest.mark.skipif(
+        finders.find(BUILD_ENTRY) is None,
+        reason="frontend build missing: run `npm --prefix scorecard_v2 run build`",
+    )
+    def test_worker_precache_includes_the_build_output_when_it_exists(self):
+        precache = self._rendered_precache()
+
+        assert f"/static/{BUILD_ENTRY}" in precache
+        assert "/static/scorecard_v2/js/scorecard_v2.css" in precache
+        build_directory = os.path.dirname(finders.find(BUILD_ENTRY))
+        built = {
+            f"/static/scorecard_v2/js/{name}"
+            for name in os.listdir(build_directory)
+            if os.path.isfile(os.path.join(build_directory, name))
+        }
+        assert built <= set(precache), built - set(precache)
 
     def test_worker_never_caches_api_or_the_authenticated_page(self):
         source = self.app.get(reverse("scorecard-v2-sw")).text
@@ -69,45 +130,112 @@ class TestServiceWorkerView(WebTest):
         navigation = source.split("async function networkFirstNavigation", 1)[1]
         navigation = navigation.split("async function networkFirstStatic", 1)[0]
         assert "cache.put" not in navigation
+        assert "APP_SHELL_URL" in navigation
         # Only static assets are written, and only successful same-origin ones.
         static_handler = source.split("async function networkFirstStatic", 1)[1]
         assert "cache.put(request, response.clone())" in static_handler
         assert 'if (request.method !== "GET")' in source
 
-    def test_logout_message_clears_the_caches(self):
+    def test_navigation_falls_back_to_the_static_app_shell(self):
+        source = self.app.get(reverse("scorecard-v2-sw")).text
+        navigation = source.split("async function networkFirstNavigation", 1)[1]
+        navigation = navigation.split("async function networkFirstStatic", 1)[0]
+
+        assert "matchPrecache(APP_SHELL_URL)" in navigation
+        assert "OFFLINE_URL" in navigation
+        assert "fetchWithTimeout(request, NAVIGATION_TIMEOUT_MS)" in navigation
+
+    def test_navigation_timeout_is_about_four_seconds(self):
+        source = self.app.get(reverse("scorecard-v2-sw")).text
+
+        assert "const NAVIGATION_TIMEOUT_MS = 4000;" in source
+        assert "new AbortController()" in source
+
+    def test_bare_app_scope_without_a_trailing_slash_is_a_navigation(self):
+        source = self.app.get(reverse("scorecard-v2-sw")).text
+
+        assert 'APP_SCOPE.replace(/\\/+$/, "")' in source
+        assert "pathname === APP_SCOPE_BARE" in source
+
+    def test_logout_message_clears_only_runtime_caches(self):
         source = self.app.get(reverse("scorecard-v2-sw")).text
 
         assert 'data.type === "logout"' in source
-        assert "caches.delete" in source
+        logout = source.split('if (data.type === "logout")', 1)[1]
+        logout = logout.split('if (data.type === "skip-waiting")', 1)[0]
+        assert "clearRuntimeCaches" in logout
+        cleared = source.split("async function clearRuntimeCaches", 1)[1]
+        assert "RUNTIME_PREFIX" in cleared
+        assert "PRECACHE_PREFIX" not in cleared
 
     def test_old_caches_are_dropped_on_activate(self):
         source = self.app.get(reverse("scorecard-v2-sw")).text
         activate = source.split('addEventListener("activate"', 1)[1]
 
-        assert "key !== CACHE_NAME" in activate
+        assert "key !== PRECACHE_NAME" in activate
+        assert "key !== RUNTIME_NAME" in activate
         assert "clients.claim" in activate
+
+    def test_rendered_worker_is_valid_javascript(self):
+        node = shutil.which("node")
+        if node is None:
+            pytest.skip(
+                "node is not installed here; src/swWorker.test.ts executes the worker"
+            )
+
+        body = self.app.get(reverse("scorecard-v2-sw")).text
+        with tempfile.NamedTemporaryFile(
+            "w", suffix=".js", delete=False, encoding="utf-8"
+        ) as handle:
+            handle.write(body)
+            path = handle.name
+        try:
+            result = subprocess.run(
+                [node, "--check", path], capture_output=True, text=True
+            )
+        finally:
+            os.unlink(path)
+
+        assert result.returncode == 0, result.stderr
 
 
 class TestPrecacheAssets:
     def test_committed_precache_assets_resolve(self):
         missing = [
-            asset
-            for asset in views.PRECACHE_ASSETS
-            if not asset.startswith(BUILD_PREFIX) and finders.find(asset) is None
-        ]
-
-        assert missing == []
-
-    @pytest.mark.skipif(
-        finders.find("scorecard_v2/js/scorecard_v2.js") is None,
-        reason="frontend build missing: run `npm --prefix scorecard_v2 run build`",
-    )
-    def test_built_precache_assets_resolve(self):
-        missing = [
             asset for asset in views.PRECACHE_ASSETS if finders.find(asset) is None
         ]
 
         assert missing == []
+
+    def test_app_shell_is_a_committed_precache_asset(self):
+        assert APP_SHELL in views.PRECACHE_ASSETS
+
+    def test_build_assets_are_discovered_from_the_directory(self, tmp_path):
+        build = tmp_path / "js"
+        build.mkdir()
+        (build / "scorecard_v2.js").write_text("bundle")
+        (build / "scorecard_v2.css").write_text("css")
+        (build / "extra.woff2").write_text("font")
+        (build / "nested").mkdir()
+
+        assert views.build_assets(str(tmp_path)) == (
+            "scorecard_v2/js/extra.woff2",
+            "scorecard_v2/js/scorecard_v2.css",
+            "scorecard_v2/js/scorecard_v2.js",
+        )
+
+    def test_precache_assets_combine_committed_and_build_files(self, tmp_path):
+        build = tmp_path / "js"
+        build.mkdir()
+        (build / "scorecard_v2.js").write_text("bundle")
+
+        assets = views.precache_assets(str(tmp_path))
+
+        assert assets[: len(views.PRECACHE_ASSETS)] == views.PRECACHE_ASSETS
+        assert assets[-1] == "scorecard_v2/js/scorecard_v2.js"
+
+    def test_missing_build_directory_is_not_an_error(self, tmp_path):
+        assert views.build_assets(str(tmp_path)) == ()
 
     def test_worker_template_resolves(self):
         assert finders.find("scorecard_v2/sw.js") is not None
@@ -166,15 +294,27 @@ class TestManifest:
 
         assert sizes == {"192x192": (192, 192), "512x512": (512, 512)}
 
-    def test_the_512_icon_is_maskable(self):
+    def test_the_maskable_icon_is_a_dedicated_padded_512(self):
         manifest = json.loads(_static_file(MANIFEST))
 
         maskable = [icon for icon in manifest["icons"] if "maskable" in icon["purpose"]]
 
         assert [icon["sizes"] for icon in maskable] == ["512x512"]
+        # A padded copy: the full-bleed art of icon-512.png would lose its
+        # corners in Android's mask.
+        assert maskable[0]["src"] == "icons/icon-512-maskable.png"
+        assert _png_size(_static_file(f"scorecard_v2/{maskable[0]['src']}")) == (
+            512,
+            512,
+        )
+        any_icons = [icon for icon in manifest["icons"] if "any" in icon["purpose"]]
+        assert [icon["src"] for icon in any_icons] == [
+            "icons/icon-192.png",
+            "icons/icon-512.png",
+        ]
 
 
-class TestOfflineShell:
+class TestAppShell:
     def test_offline_shell_is_self_contained(self):
         html = _static_file("scorecard_v2/offline.html").decode()
 
@@ -182,6 +322,27 @@ class TestOfflineShell:
         assert "<script src=" not in html
         assert "<link" not in html
         assert "Keine Verbindung" in html
+
+    def test_retry_button_meets_the_contrast_minimum(self):
+        html = _static_file("scorecard_v2/offline.html").decode()
+        background = re.search(r"--home-action:\s*(#[0-9a-fA-F]{6})", html)
+        assert background is not None
+
+        assert _contrast(background.group(1), "#ffffff") >= 4.5
+
+    def test_static_app_shell_has_no_server_data(self):
+        html = _static_file(APP_SHELL).decode()
+
+        assert '<html lang="de">' in html
+        assert 'id="scorecard-v2-app"' in html
+        assert '<meta content="#070a0f" name="theme-color"/>' in html
+        assert 'rel="manifest"' in html
+        assert "/static/scorecard_v2/manifest.webmanifest" in html
+        assert "/static/scorecard_v2/js/scorecard_v2.css" in html
+        assert "/static/scorecard_v2/js/scorecard_v2.js" in html
+        assert "{% csrf_token %}" not in html
+        assert "csrfmiddlewaretoken" not in html
+        assert "{{" not in html and "{%" not in html
 
 
 class TestPageLinks(WebTest):
