@@ -36,7 +36,7 @@ FILES_AT_BASE = {
     "league_manager/__init__.py": "4.23.0",
     "liveticker/package.json": "4.23.0",
     "passcheck/package.json": "4.23.0",
-    "field/package.json": "4.23.0",
+    "passcheck_v2/package.json": "4.23.0",
     "scorecard/package.json": "4.23.0",
     "scorecard_v2/package.json": "4.23.0",
     "gameday_designer/package.json": "4.23.0",
@@ -144,7 +144,7 @@ class TestFeatureBranches:
     def test_new_version_file_missing_on_master_is_allowed(self, guard):
         """A new app's package.json has no base state to compare against."""
         base_files = dict(FILES_AT_BASE)
-        del base_files["field/package.json"]
+        del base_files["passcheck_v2/package.json"]
         errors = guard.check_feature_branch(
             base_manifest=BASE,
             head_manifest=BASE,

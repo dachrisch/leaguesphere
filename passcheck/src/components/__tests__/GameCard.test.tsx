@@ -97,9 +97,9 @@ describe('GameCard', () => {
   it('links to the field view for this gameday', () => {
     render(<GameCard game={mockGame} />);
 
-    expect(screen.getByRole('link', { name: 'Feld-Ansicht' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Passcheck v2' })).toHaveAttribute(
       'href',
-      '/field/?gameday=1'
+      '/passcheck/v2/?gameday=1'
     );
   });
 });

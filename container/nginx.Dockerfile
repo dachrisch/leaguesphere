@@ -91,11 +91,11 @@ RUN rm -rf static/passcheck/js
 RUN npm ci
 RUN npm run build
 
-ARG APP_DIR="/field-app"
+ARG APP_DIR="/passcheck-v2-app"
 WORKDIR ${APP_DIR}
 
-COPY field ${APP_DIR}
-RUN rm -rf static/field/js
+COPY passcheck_v2 ${APP_DIR}
+RUN rm -rf static/passcheck_v2/js
 
 RUN npm ci
 RUN npm run build
@@ -140,7 +140,7 @@ COPY --from=node-builder /liveticker-app/static /static
 COPY --from=node-builder /scorecard-app/static /static
 COPY --from=node-builder /scorecard-v2-app/static /static
 COPY --from=node-builder /passcheck-app/static /static
-COPY --from=node-builder /field-app/static /static
+COPY --from=node-builder /passcheck-v2-app/static /static
 COPY --from=node-builder /gameday-designer-app/static /static
 COPY --from=node-builder /journey-dashboard-app/static /static
 COPY --from=node-builder /share-app/static /static

@@ -157,7 +157,7 @@ liveticker/static/liveticker/js/*.js
 liveticker/static/liveticker/js/*.css
 passcheck/static/passcheck/js/*.js
 passcheck/static/passcheck/js/*.css
-field/static/field/js/*
+passcheck_v2/static/passcheck_v2/js/*
 gameday_designer/static/gameday_designer/js/*.js
 gameday_designer/static/gameday_designer/js/*.css
 gameday_designer/static/gameday_designer/js/*.woff

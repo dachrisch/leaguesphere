@@ -62,6 +62,7 @@ include = [
     "locust_testing*",
     "officials*",
     "passcheck*",
+    "passcheck_v2*",
     "scorecard*",
     "scorecard_v2*",
     "teammanager*",

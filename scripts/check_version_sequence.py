@@ -48,7 +48,7 @@ VERSION_FILES = {
     "league_manager/__init__.py": "init",
     "liveticker/package.json": "package-json",
     "passcheck/package.json": "package-json",
-    "field/package.json": "package-json",
+    "passcheck_v2/package.json": "package-json",
     "scorecard/package.json": "package-json",
     "scorecard_v2/package.json": "package-json",
     "gameday_designer/package.json": "package-json",
