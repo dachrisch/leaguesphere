@@ -23,7 +23,8 @@ Each feature is one layer PR, stacked on the layer below it until it reaches `ma
 | L0 | `feat/scorecard-v2` | [#2104](https://github.com/dachrisch/leaguesphere/pull/2104) | Scorecard v2 at `/scorecard/v2/` (offline outbox, device lock, possession model, penalty search, dark/light theme) | open, design awaiting approval |
 | L1 | `feat/scorecard-v2-person-search` | [#2113](https://github.com/dachrisch/leaguesphere/pull/2113) | Person search across the database + linked/free-text state on the officials crew (`I1.5`, `I1.6`, `I2.1`–`I2.6`) | in review |
 | L2 | `feat/passcheck-v2` | [#2114](https://github.com/dachrisch/leaguesphere/pull/2114) | Passcheck v2 at `/passcheck/v2/` — **left the stack** on 2026-10-27: rebased on `master`, only Passcheck code, merged independently of the scorecard layers | open |
-| L3+ | per-feature branches, stacked on L1 | — | the `next` rows below, in the [layer plan](./2026-10-27-scorecard-layers-plan.md)'s order | not started |
+| L2 | `feat/scorecard-v2-team-logos` | [#2115](https://github.com/dachrisch/leaguesphere/pull/2115) | Team logos in list, preparation and score header, cached for offline (`I1.7`, logo half of `I8.1`) | in review |
+| L3+ | per-feature branches, stacked on L2 | — | the `next` rows below, in the [layer plan](./2026-10-27-scorecard-layers-plan.md)'s order | not started |
 
 Scorecard layers merge bottom-up (`L0 → L1 → L3 …`); each squash merge sends the layers above it `--onto` the new `master`. Passcheck no longer participates — it is a parallel track with no shared files, and its migration (`gamedays/0046_person_photo`) will be renumbered to `0048` after #2104 lands, because the scorecard ships `0046`/`0047`. L1 adds no migration.
 
@@ -59,7 +60,7 @@ Scorecard layers merge bottom-up (`L0 → L1 → L3 …`); each squash merge sen
 | `I1.4` | Required fields enforced instead of accepted-then-cleaned-up | `next` | Partly there in L0 (licence warning before start, captains must be confirmed); the general rule is not enforced |
 | `I1.5` | Free-text names leave records unlinked; the suggestion list is never used | `in layer` | L1 |
 | `I1.6` | Person search covers only the current team, not the whole database | `in layer` | L1 |
-| `I1.7` | Team logos are not used at all yet | `next` | Small layer, frontend-only: `Team.logo` already serialises; also §8 |
+| `I1.7` | Team logos are not used at all yet | `in layer` | L2 (#2115): list, preparation and score header, cached for offline |
 
 ## §2 Person matching & data quality (the biggest operator complaint)
 
@@ -128,7 +129,7 @@ Explicitly after v2 runs cleanly.
 
 | ID | Idea | Status | Layer / note |
 |---|---|---|---|
-| `I8.1` | Team logos and colours move to the central team entity and are used by scorecard, widgets, liveticker | `next` | Same layer as `I1.7`; `Team.logo` exists, the scorecard ignores it |
+| `I8.1` | Team logos and colours move to the central team entity and are used by scorecard, widgets, liveticker | `in layer` | L2 ships the logo half for the scorecard (`Team.logo` as the single source); colours are not on the model yet — own decision, own layer |
 | `I8.2` | Does the scorecard need its own Kader, or does Passcheck create it? | `blocked` | Deferred to the Leon session (`Q3`) |
 
 ## §9 Integrations & portability
