@@ -10,7 +10,9 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import type { Game, GameLog, Gameday } from "./api/types";
+import { loadTeamLogos, type TeamLogos } from "./api/teams";
 import { CurrentUserProvider, useCurrentUser } from "./app/currentUser";
+import { TeamLogosProvider } from "./app/teamLogos";
 import {
   dropGameSnapshots,
   loadGamedays,
@@ -100,6 +102,7 @@ function initialAllGames(): boolean {
 
 export default function App() {
   const [user, setUser] = useState<CurrentUser | null>(null);
+  const [logos, setLogos] = useState<TeamLogos>(() => new Map());
   const loadedUser = useRef(false);
 
   useEffect(() => {
@@ -116,11 +119,17 @@ export default function App() {
         // and, offline, to the snapshot of this gameday.
         setUser(null);
       });
+    // The team directory is loaded once for the whole tab; offline or rejected
+    // it answers with the cached map or an empty one, so screens keep their
+    // initials and no error reaches the user.
+    void loadTeamLogos().then(setLogos);
   }, []);
 
   return (
     <CurrentUserProvider user={user}>
-      <Flow />
+      <TeamLogosProvider logos={logos}>
+        <Flow />
+      </TeamLogosProvider>
     </CurrentUserProvider>
   );
 }

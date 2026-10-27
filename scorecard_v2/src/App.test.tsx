@@ -31,6 +31,22 @@ const GAMEDAY: Gameday = {
   resource_urls: [],
 };
 
+const TEAMS_PATH = "/api/teams/?page_size=1000";
+
+const TEAMS_PAGE = {
+  count: 1,
+  next: null,
+  previous: null,
+  results: [
+    {
+      id: 1,
+      name: "Ravens",
+      description: "Ravens",
+      logo: "https://example.test/media/teammanager/logos/ravens.png",
+    },
+  ],
+};
+
 beforeEach(() => {
   resetRuntime();
   resetSnapshotStore();
@@ -61,5 +77,37 @@ describe("App", () => {
     expect(
       await screen.findByRole("button", { name: /Testtag/ }),
     ).toBeInTheDocument();
+  });
+
+  it("reads the team directory once per boot", async () => {
+    apiGetMock.mockImplementation((path: string) => {
+      if (path === "/api/gameday/list/") {
+        return Promise.resolve([GAMEDAY]);
+      }
+      if (path === "/accounts/auth/user/") {
+        return Promise.resolve({ id: 1, username: "crew" });
+      }
+      if (path === TEAMS_PATH) {
+        return Promise.resolve(TEAMS_PAGE);
+      }
+      return Promise.reject(new Error(`unexpected GET ${path}`));
+    });
+
+    render(<App />);
+    await screen.findByRole("button", { name: /Testtag/ });
+
+    expect(
+      apiGetMock.mock.calls.filter(([path]) => path === TEAMS_PATH),
+    ).toHaveLength(1);
+  });
+
+  it("shows the gamedays even when the team directory fails", async () => {
+    // The default mock rejects every path but the gameday list and the user.
+    render(<App />);
+
+    expect(
+      await screen.findByRole("button", { name: /Testtag/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
