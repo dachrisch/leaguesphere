@@ -1489,6 +1489,109 @@ button.game-row:active {
   cursor: not-allowed;
 }
 
+/* ----------------------------------------------------------- penalties --- */
+
+/* The 50-item list scrolls inside the sheet body; the footer stays visible. */
+.penaltylist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.penalty {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--touch);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--fs-base);
+  text-align: left;
+  color: var(--fg);
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.penalty.sel {
+  color: #0b1017;
+  background: var(--fg);
+  border-color: var(--fg);
+}
+
+.penalty.sel .penaltysub {
+  color: #0b1017;
+  opacity: 0.7;
+}
+
+.penalty:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.penaltyname {
+  min-width: 0;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.penaltysub {
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.penaltymore {
+  min-height: var(--touch);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--amber);
+  background: none;
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.penaltymore:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Which team the entry is charged to: two equal halves. */
+.teampick {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.teampickbtn {
+  min-height: var(--touch);
+  padding: var(--space-2);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.teampickbtn.sel {
+  color: #0b1017;
+  background: var(--fg);
+  border-color: var(--fg);
+}
+
+.teampickbtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
 .trackfoot {
   flex: 0 0 auto;
   padding: var(--space-3) var(--page-gutter) var(--bottom-safe);

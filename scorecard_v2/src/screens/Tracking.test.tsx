@@ -14,11 +14,13 @@ import type {
   Game,
   GameLog,
   GameLogEvent,
+  GameLogEventInput,
   GameLogTeam,
   LogEntry,
+  Penalty,
   RosterPlayer,
 } from "../api/types";
-import TrackingScreen, { writeTeam } from "./Tracking";
+import TrackingScreen, { describeSaved, writeTeam } from "./Tracking";
 
 vi.mock("../api/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api/client")>();
@@ -658,6 +660,39 @@ const ROSTER: RosterPlayer[] = [
   { side: "away", jersey: 11, name: "Wolf" },
 ];
 
+/** The penalty catalogue the sheet loads itself. */
+const PENALTIES: Penalty[] = [
+  { name: "Holding Defense", subtext: "BS/LoD 10", isPenaltyAgainstOpponent: true },
+  { name: "Fehlstart", subtext: "DB/5", isPenaltyAgainstOpponent: false },
+  { name: "Abschirmen (Blocken) Offense", subtext: "BS/5", isPenaltyAgainstOpponent: false },
+];
+
+/**
+ * Route the GETs of one screen: the roster, the penalty catalogue and the log
+ * reload after half-time. Unrouted paths fail loudly so a forgotten stub is a
+ * test error instead of a silently pending promise.
+ */
+function routeGets(
+  routes: {
+    roster?: RosterPlayer[];
+    penalties?: Penalty[];
+    log?: GameLog;
+  } = {},
+): void {
+  apiGetMock.mockImplementation((path: string) => {
+    if (path === "/api/game/42/roster") {
+      return Promise.resolve(routes.roster ?? ROSTER);
+    }
+    if (path === "/api/config/scorecard/penalties") {
+      return Promise.resolve(routes.penalties ?? PENALTIES);
+    }
+    if (path === "/api/gamelog/42") {
+      return Promise.resolve(routes.log ?? makeLog());
+    }
+    return Promise.reject(new Error(`unexpected GET ${path}`));
+  });
+}
+
 function renderTracking(
   overrides: { game?: Game; log?: GameLog } = {},
 ): void {
@@ -864,6 +899,8 @@ describe("Tracking composer state", () => {
 
     expect(screen.getByRole("button", { name: /^Touchdown Ravens$/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: "1st Down" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Strafe" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Safety" })).toBeDisabled();
     expect(screen.getByText("Dieses Spiel ist beendet.")).toBeInTheDocument();
   });
 
@@ -872,6 +909,7 @@ describe("Tracking composer state", () => {
 
     expect(screen.getByRole("button", { name: /^Touchdown$/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Turnover" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Strafe" })).toBeDisabled();
     expect(
       screen.getByText("Ballbesitz wählen, um Einträge zu erfassen."),
     ).toBeInTheDocument();
@@ -885,10 +923,10 @@ describe("Tracking composer state", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the penalty and safety tiles disabled", () => {
+  it("offers the penalty tile as an entry", () => {
     renderTracking();
 
-    expect(screen.getByRole("button", { name: "Strafe" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Strafe" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Safety" })).toBeDisabled();
   });
 });
@@ -1005,5 +1043,43 @@ describe("Tracking entry lifecycle", () => {
       screen.getByRole("button", { name: /^Touchdown Wolves$/ }),
     ).toBeDisabled();
     expect(screen.getByRole("button", { name: "1st Down" })).toBeDisabled();
+  });
+});
+
+describe("Tracking penalties", () => {
+  it("records the picked penalty for the team the flag names", async () => {
+    routeGets();
+    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    const dialog = await openSheet(user, /^Strafe$/);
+    expect(dialog).toHaveAccessibleName("Strafe");
+    await user.click(
+      await screen.findByRole("button", { name: /^Holding Defense/ }),
+    );
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    expect(apiPostMock).toHaveBeenCalledWith("/api/gamelog/42", {
+      gameId: 42,
+      team: "Wolves",
+      half: 1,
+      event: [{ name: "Strafe", input: "Holding Defense" }],
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Strafe gespeichert · Holding Defense",
+    );
+  });
+});
+
+describe("Tracking confirmation text", () => {
+  it("names a penalty and its jersey", () => {
+    const events: GameLogEventInput[] = [
+      { name: "Strafe", player: 23, input: "Holding Defense" },
+    ];
+    expect(describeSaved(events)).toBe("Strafe gespeichert · Holding Defense");
   });
 });

@@ -15,6 +15,7 @@ import EventLog, {
   type LogRow,
 } from "../components/EventLog";
 import ScoreHeader, { isPossessing } from "../components/ScoreHeader";
+import PenaltySheet from "../components/sheets/PenaltySheet";
 import SeriesSheet, {
   type SeriesMode,
 } from "../components/sheets/SeriesSheet";
@@ -31,13 +32,13 @@ interface TrackingScreenProps {
 
 type Side = RosterPlayer["side"];
 
-/** The open sheet: the touchdown entry or one of the series/time entries. */
-type SheetState = { kind: "touchdown" } | { kind: "series"; mode: SeriesMode };
+/** The open sheet: the touchdown entry, a series/time entry, or a penalty. */
+type SheetState =
+  | { kind: "touchdown" }
+  | { kind: "series"; mode: SeriesMode }
+  | { kind: "penalty" };
 
-/**
- * The five series/time tiles. Penalty (Task 12) and Safety (Task 13) are
- * rendered disabled next to them so the official sees the slot exists.
- */
+/** The series/time tiles of the composer grid. */
 const SERIES_TILES: { mode: SeriesMode; label: string }[] = [
   { mode: "first", label: "1st Down" },
   { mode: "turnover", label: "Turnover" },
@@ -53,6 +54,7 @@ const CONFIRMATION: Record<string, string> = {
   Interception: "Interception gespeichert",
   Spielzeit: "Spielzeit gespeichert",
   Auszeit: "Auszeit gespeichert",
+  Strafe: "Strafe gespeichert",
 };
 
 /**
@@ -261,8 +263,15 @@ export default function TrackingScreen({
    * so a rejected write keeps the picked jersey on screen together with the
    * server's `detail`. A write that must not happen rejects as
    * {@link IgnoredWrite} — resolving would close the sheet and look saved.
+   *
+   * `team` overrides the possessing team for the entries that are recorded for
+   * a team the sheet picked (a penalty charged to the opponent). Everything
+   * else is credited by {@link writeTeam}.
    */
-  const submit = async (events: GameLogEventInput[]): Promise<void> => {
+  const submit = async (
+    events: GameLogEventInput[],
+    teamOverride?: string,
+  ): Promise<void> => {
     if (postInFlight.current) {
       throw new IgnoredWrite("Der Eintrag wird gerade gespeichert.");
     }
@@ -272,7 +281,7 @@ export default function TrackingScreen({
     if (possessionSide === null) {
       throw new IgnoredWrite("Kein Ballbesitz – bitte Team wählen.");
     }
-    const team = writeTeam(events, possessionName, opponentName);
+    const team = teamOverride ?? writeTeam(events, possessionName, opponentName);
     postInFlight.current = true;
     setPosting(true);
     setConfirmation(null);
@@ -351,8 +360,8 @@ export default function TrackingScreen({
         ))}
         <button
           className="action"
-          disabled
-          title="Folgt in einem späteren Schritt."
+          disabled={composerDisabled}
+          onClick={() => openSheet({ kind: "penalty" })}
           type="button"
         >
           Strafe
@@ -387,7 +396,10 @@ export default function TrackingScreen({
 
       {sheet !== null &&
       possessionSide !== null &&
-      possessionName !== null ? (
+      possessionName !== null &&
+      (sheet.kind === "touchdown" ||
+        sheet.kind === "series" ||
+        opponentName !== null) ? (
         sheet.kind === "touchdown" ? (
           <TouchdownSheet
             onClose={() => setSheet(null)}
@@ -397,13 +409,22 @@ export default function TrackingScreen({
             side={possessionSide}
             teamName={possessionName}
           />
-        ) : (
+        ) : sheet.kind === "series" ? (
           <SeriesSheet
             key={sheet.mode}
             mode={sheet.mode}
             onClose={() => setSheet(null)}
             onSubmit={submit}
             opponentName={opponentName ?? "–"}
+            roster={roster}
+            side={possessionSide}
+            teamName={possessionName}
+          />
+        ) : (
+          <PenaltySheet
+            onClose={() => setSheet(null)}
+            onSubmit={submit}
+            opponentName={opponentName ?? ""}
             roster={roster}
             side={possessionSide}
             teamName={possessionName}
