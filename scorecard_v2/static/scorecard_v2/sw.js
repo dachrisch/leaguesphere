@@ -14,6 +14,11 @@
  *   - /static/scorecard_v2/**: network first, runtime cache fallback, then the
  *     install-time precache. The bundle name is fixed by vite.config.ts, so
  *     cache-first would pin a stale build.
+ *   - /media/teammanager/logos/**: network first into the same runtime cache,
+ *     trimmed to the newest MEDIA_CACHE_LIMIT responses. A club can replace its
+ *     file under the untouched URL, and an offline boot must still show crests
+ *     instead of the initials fallback. Every other /media/ path belongs to
+ *     another app and is left alone.
  *   - /api/**: never touched. The outbox owns match data, not the worker.
  *   - non-GET: not intercepted.
  *
@@ -35,6 +40,10 @@ const APP_SCOPE_BARE = APP_SCOPE.replace(/\/+$/, "");
 const STATIC_PREFIX = "{{ static_prefix }}";
 const APP_SHELL_URL = "{{ app_shell_url }}";
 const OFFLINE_URL = "{{ offline_url }}";
+// Mirrors `Team.logo`'s upload_to in gamedays/models.py. Only this media path is
+// cached: /media/ also serves other apps' files, and those are not ours.
+const TEAM_LOGO_PREFIX = "/media/teammanager/logos/";
+const MEDIA_CACHE_LIMIT = 60;
 const NAVIGATION_TIMEOUT_MS = 4000;
 const PRECACHE_URLS = {{ precache_urls|safe }};
 
@@ -109,6 +118,11 @@ self.addEventListener("fetch", (event) => {
 
   if (url.pathname.startsWith(STATIC_PREFIX)) {
     event.respondWith(networkFirstStatic(request));
+    return;
+  }
+
+  if (url.pathname.startsWith(TEAM_LOGO_PREFIX)) {
+    event.respondWith(networkFirstMedia(request));
   }
 });
 
@@ -178,6 +192,48 @@ async function networkFirstStatic(request) {
     }
   }
   return response;
+}
+
+/**
+ * Team logos: network first, runtime-cache fallback.
+ *
+ * Not cache-first: a club can replace `logo.png` without changing its URL, and
+ * the field app must not show last season's crest. The cache is trimmed after
+ * every write so a season of logos cannot grow the session cache without bound.
+ * Static assets share this cache and are never pruned.
+ */
+async function networkFirstMedia(request) {
+  let response;
+  try {
+    response = await fetch(request);
+  } catch (error) {
+    const cached = await matchRuntime(request);
+    if (cached) {
+      return cached;
+    }
+    // Nothing stored: the <img> fails and the app shows the initials instead.
+    throw error;
+  }
+
+  if (response.ok && response.type === "basic") {
+    try {
+      const cache = await caches.open(RUNTIME_NAME);
+      await cache.put(request, response.clone());
+      await trimMedia(cache);
+    } catch (error) {
+      // A cache write failure must never fail a good logo response.
+    }
+  }
+  return response;
+}
+
+async function trimMedia(cache) {
+  const keys = await cache.keys();
+  const logos = keys.filter(
+    (key) => new URL(key.url).pathname.startsWith(TEAM_LOGO_PREFIX),
+  );
+  const stale = logos.slice(0, Math.max(0, logos.length - MEDIA_CACHE_LIMIT));
+  await Promise.all(stale.map((key) => cache.delete(key)));
 }
 
 async function fetchWithTimeout(request, timeoutMs) {

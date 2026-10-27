@@ -1,10 +1,11 @@
 import {
   fireEvent,
-  render,
+  render as renderComponent,
   screen,
   waitFor,
   within,
 } from "@testing-library/react";
+import type { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
@@ -282,6 +283,13 @@ async function clickStart(): Promise<void> {
   await userEvent.click(startButton());
 }
 
+/** The header reads the team directory from the provider; none here. */
+function render(ui: ReactElement) {
+  return renderComponent(
+    <TeamLogosProvider logos={new Map()}>{ui}</TeamLogosProvider>,
+  );
+}
+
 describe("GameSetup — header and crew", () => {
   it("renders the preparation header with the game context", async () => {
     await renderSetup();
@@ -299,7 +307,7 @@ describe("GameSetup — header and crew", () => {
       ["ravens", "https://example.test/media/teammanager/logos/ravens.png"],
       ["wolves", "https://example.test/media/teammanager/logos/wolves.png"],
     ]);
-    render(
+    renderComponent(
       <TeamLogosProvider logos={logos}>
         <GameSetupScreen game={GAME} onStarted={vi.fn()} />
       </TeamLogosProvider>,

@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import { TeamLogosProvider } from "../app/teamLogos";
 import TeamLogo from "./TeamLogo";
@@ -63,9 +63,16 @@ describe("TeamLogo", () => {
     expect(container.querySelector(".teamlogo")).toHaveTextContent("R");
   });
 
-  it("keeps the initials when no provider is mounted (a screen test)", () => {
-    render(<TeamLogo name="Ravens" />);
+  it("fails loudly when no provider is mounted", () => {
+    // Deleting the provider in App must not silently drop every logo: the
+    // missing context is a wiring bug, not "this team has no crest".
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
 
-    expect(screen.getByText("R")).toHaveClass("teamlogo");
+    expect(() => render(<TeamLogo name="Ravens" />)).toThrow(
+      /TeamLogosProvider/,
+    );
+    consoleError.mockRestore();
   });
 });
