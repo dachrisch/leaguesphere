@@ -26,3 +26,21 @@ export function initialsOf(username: string | null | undefined): string {
   }
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
+
+/**
+ * Initials of a team or person name, for the circle shown when there is no
+ * logo: `Nürnberg Renegades` → `NR`, `Ravens` → `R`.
+ *
+ * A missing name has no letter, so the circle shows `?` instead of collapsing —
+ * a bracket placeholder still needs a crest to sit next to its `–`.
+ */
+export function initials(name: string | null): string {
+  if (name === null) {
+    return "?";
+  }
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
