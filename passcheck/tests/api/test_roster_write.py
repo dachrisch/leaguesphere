@@ -85,6 +85,18 @@ class TestRosterWriteValidation(RosterWriteTestSetup):
         self.assertEqual(response.status_code, 400)
         self.assertIn(str(self.player.pk), response.json()["errors"])
 
+    def test_accepts_when_the_maximum_strength_is_disabled(self):
+        EligibilityRule.objects.create(
+            league=self.gameday.league,
+            max_gamedays=10,
+            minimum_player_strength=0,
+            maximum_player_strength=-1,
+        )
+
+        response = self.put([{"id": self.player.pk, "jersey_number": 7}])
+
+        self.assertEqual(response.status_code, 200)
+
     def test_rejects_below_minimum_player_strength(self):
         EligibilityRule.objects.create(
             league=self.gameday.league,
