@@ -74,25 +74,25 @@ must be installed from its own lockfile.
 | # | Decision | Resolution |
 |---|---|---|
 | O1 | Photo contract | `GET /api/passcheck/photos/<playerlist_id>/gameday/<gameday_id>`; private storage outside `MEDIA_ROOT`; the client fetches blobs with the Knox token (see corrections 4–5). |
-| O2 | Plan location | Moved to `docs/topics/planning/current/2026-10-26-passcheck-v2-passcheck-v2-app.md`; README link fixed. |
+| O2 | Plan location | Moved to `docs/topics/planning/current/2026-10-26-passcheck-v2.md`; README link fixed. |
 | O3 | Hardening | Roster `PUT` gets a permission check (staff, or the officials team of a game on that gameday, today only) plus unique constraints with dedupe migrations. |
 | O4 | Device recovery | Staff-only `manage.py reset_passcheck_device` (management command). |
 
 ### Implementation status
 
-| Task | Status | Commit |
-|---|---|---|
-| 1 Roster validation + `PUT` permission | done | `b789fb28` |
-| 2 Atomic/idempotent write + device lock + constraints + reset | done | `568a8804` |
-| 3 Private photos + permission-checked endpoint + import | done | `d9abf825` |
-| 4 `passcheck_v2` app, Vite scaffold, CI/deploy wiring | done | `c7dd1232` |
-| 5 API client + games screen | done | `ffe9e456` |
-| 6 Roster screen (tap, undo, timer) | done | `f7959694` |
-| 7 Player sheet (rules, jersey, photo viewer) | done | `be2c6af7` |
-| 8 Verification sheet + idempotent save flow | done | `58021281` |
-| 9 Offline shell, outbox, sync-on-reconnect | done | `183be238` |
-| 10 Feature doc + in-app help + screenshot | done | `7432e9f2` |
-| 11 Flow wiring + v1 link + noindex | done | `9cfac009` |
+| Task | Status |
+|---|---|
+| 1 Roster validation + `PUT` permission | done |
+| 2 Atomic/idempotent write + device lock + constraints + reset | done |
+| 3 Private photos + permission-checked endpoint + import | done |
+| 4 `passcheck_v2` app, Vite scaffold, CI/deploy wiring | done |
+| 5 API client + games screen | done |
+| 6 Roster screen (tap, undo, timer) | done |
+| 7 Player sheet (rules, jersey, photo viewer) | done |
+| 8 Verification sheet + idempotent save flow | done |
+| 9 Offline shell, outbox, sync-on-reconnect | done |
+| 10 Feature doc + in-app help + screenshot | done |
+| 11 Flow wiring + v1 link + noindex | done |
 
 Deviations from the task text below (the task text is kept for history):
 
