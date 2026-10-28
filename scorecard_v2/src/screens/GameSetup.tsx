@@ -25,6 +25,7 @@ import StartConfirmation, {
   type StartCrewLine,
 } from "../components/sheets/StartConfirmation";
 import TeamLogo from "../components/TeamLogo";
+import { ChevronRight, SwapArrows, Whistle } from "../components/icons";
 import { initials } from "../components/initials";
 import { getDeviceId } from "../device";
 import { cachedGet, snapshotKey } from "../offline/snapshot";
@@ -64,13 +65,14 @@ interface CrewWrite {
   name: string | null;
 }
 
-type LicenceState = "valid" | "expired" | "missing" | "unknown";
+type LicenceState = "valid" | "expired" | "missing" | "unknown" | "empty";
 
 const LICENCE_TONE: Record<LicenceState, string> = {
   valid: "ok",
   expired: "warn",
   missing: "missing",
   unknown: "unknown",
+  empty: "empty",
 };
 
 interface Licence {
@@ -174,6 +176,15 @@ function slotsFromCrew(
 function hasSavedSetup(setup: GameSetupPayload): boolean {
   return [setup.ctResult, setup.direction, setup.fhPossession].some(
     (value) => typeof value === "string" && value.trim() !== "",
+  );
+}
+
+/** A slot counts as staffed when it links somebody or stores a free-text name. */
+function slotHasValue(slot: CrewSlot): boolean {
+  return (
+    slot.official !== null ||
+    (slot.name ?? "").trim() !== "" ||
+    slot.rows.length > 0
   );
 }
 
@@ -289,8 +300,8 @@ function Segmented({
   onChange,
 }: SegmentedProps) {
   return (
-    <section className="block">
-      <h2 className="blockhead">{label}</h2>
+    <section className="segfield">
+      <h3 className="segtitle">{label}</h3>
       <div aria-label={label} className="seg" role="group">
         {options.map((option) => (
           <button
@@ -451,7 +462,11 @@ export default function GameSetupScreen({
   const licenceOf = useCallback(
     (slot: CrewSlot): Licence => {
       if (slot.official === null) {
-        return { state: "missing", label: "keine Lizenz" };
+        // An empty slot has no licence to judge: "fehlt" says what it is, a
+        // missing-licence claim would be about nobody.
+        return (slot.name ?? "").trim() === ""
+          ? { state: "empty", label: "fehlt" }
+          : { state: "missing", label: "keine Lizenz" };
       }
       const person = teamByOfficial.get(slot.official);
       if (person === undefined) {
@@ -498,6 +513,22 @@ export default function GameSetupScreen({
   );
 
   /**
+   * Whether this row carries an invalid licence that the sheet will warn about.
+   * The row says so inline ("Start trotzdem möglich") instead of the screen
+   * printing a second, global paragraph.
+   */
+  const licenceWarns = useCallback(
+    (slot: CrewSlot): boolean => {
+      if (slot.official === null) {
+        return false;
+      }
+      const person = teamByOfficial.get(slot.official);
+      return person !== undefined && !person.is_valid;
+    },
+    [teamByOfficial],
+  );
+
+  /**
    * Completeness is the league's decision (`required` per slot), not a fixed
    * set of positions. Duplicate rows never count: they cannot be written.
    */
@@ -507,6 +538,29 @@ export default function GameSetupScreen({
       !slot.duplicate &&
       (slot.official !== null || (slot.name ?? "").trim() !== ""),
   ).length;
+
+  /**
+   * Presentation order, not wire order: the league's required positions first,
+   * an optional slot with somebody in it next, then the optional slots still
+   * waiting for a name (rendered as one compact "hinzufügen" row each). A
+   * stored position the league does not configure is a data problem and stays
+   * at the bottom, read-only. Each entry keeps its index into `slots` so the
+   * picker edits the right row and the save keeps the server's order.
+   */
+  const orderedSlots = useMemo(
+    () =>
+      [
+        ...slots.filter((slot) => slot.required),
+        ...slots.filter(
+          (slot) => !slot.required && slot.known && slotHasValue(slot),
+        ),
+        ...slots.filter(
+          (slot) => !slot.required && slot.known && !slotHasValue(slot),
+        ),
+        ...slots.filter((slot) => !slot.known),
+      ].map((slot) => ({ slot, index: slots.indexOf(slot) })),
+    [slots],
+  );
 
   const pickPerson = (index: number, person: TeamOfficial): void => {
     setSlots((current) =>
@@ -725,23 +779,28 @@ export default function GameSetupScreen({
     startLabel = `Spiel starten · ${formatGameTime(scheduled)}`;
   }
 
+  // One source of truth for "may this start?": the banner and the confirmation
+  // sheet both read `startBlockers`, so they cannot drift apart.
+  const blockers = startBlockers({
+    crew: crewLines,
+    tossTeam,
+    possessionTeam,
+    direction,
+  });
+  const ready = blockers.length === 0;
+  const officialsSectionId = "prep-officials";
+  const configSectionId = "prep-config";
+  const counter =
+    requiredSlots.length === 0
+      ? "keine Pflichtposition"
+      : `${requiredFilled}/${requiredSlots.length} besetzt`;
+
   return (
     <Screen
       kicker="Scorecard"
       onBack={onBack}
       onLogout={onLogout}
-      sub={
-        <>
-          <span className="app-sub-teams">
-            <TeamLogo className="teamlogo-inline" name={home} />
-            <TeamLogo className="teamlogo-inline" name={away} />
-          </span>
-          {`${teamLabel(home)} – ${teamLabel(away)} · ${formatGameTime(
-            scheduled,
-          )} · Feld ${field}`}
-        </>
-      }
-      title="Vorbereitung"
+      title="Spiel vorbereiten"
     >
       {loading ? (
         <p className="setupnote" role="status">
@@ -760,46 +819,132 @@ export default function GameSetupScreen({
 
       {!loading && loadError === null ? (
         <div className="prep">
+          <section aria-label="Begegnung" className="matchcard">
+            <div className="matchteams">
+              <div className="matchteam">
+                <TeamLogo className="teamlogo-match" name={home} />
+                <span className="matchteam-name">{teamLabel(home)}</span>
+              </div>
+              <span aria-hidden="true" className="matchvs">
+                VS.
+              </span>
+              <div className="matchteam matchteam-away">
+                <TeamLogo className="teamlogo-match" name={away} />
+                <span className="matchteam-name">{teamLabel(away)}</span>
+              </div>
+            </div>
+            <p className="matchcontext">
+              {formatGameTime(scheduled)} · Feld {field}
+            </p>
+          </section>
+
           {finished ? (
             <p className="finishednote" role="status">
               Dieses Spiel ist beendet.
             </p>
           ) : null}
 
-          <section className="block">
-            <div className="blockhead">
-              <h2>Offizielle</h2>
-              {requiredFilled === requiredSlots.length ? (
-                <span className="okchip">vollständig</span>
-              ) : (
-                <span className="chip-miss">
-                  {requiredFilled}/{requiredSlots.length}
+          <div className="prepgrid">
+            <section aria-labelledby={officialsSectionId} className="block">
+              <div className="blockhead">
+                <h2 className="sectionhead" id={officialsSectionId}>
+                  <span aria-hidden="true" className="sectionicon">
+                    <Whistle size={16} />
+                  </span>
+                  <span aria-hidden="true" className="sectionnum">
+                    1.
+                  </span>
+                  Offizielle
+                </h2>
+                <span
+                  className={
+                    requiredFilled === requiredSlots.length
+                      ? "okchip"
+                      : "chip-miss"
+                  }
+                >
+                  {counter}
                 </span>
-              )}
-            </div>
-            {teamError ? (
-              <p className="setupnote" role="status">
-                Die Offiziellen des Teams konnten nicht geladen werden.
-              </p>
-            ) : null}
-            {slots.map((slot, index) => {
-              const licence = licenceOf(slot);
-              const name = displayName(slot);
-              const editable = slot.known && !slot.duplicate;
-              const taken = editable ? takenByOthers(index) : new Set<number>();
-              const duplicateNames = slot.duplicate
-                ? slot.rows
-                    .map((row) => rowDisplayName(row, teamByOfficial))
-                    .filter((value): value is string => value !== null)
-                    .join(", ")
-                : "";
-              return (
-                <Fragment key={`${slot.known ? "known" : "extra"}-${index}`}>
-                  <div className="offrow">
-                    <span aria-hidden="true" className="offava">
-                      {initials(name)}
+              </div>
+              {teamError ? (
+                <p className="setupnote" role="status">
+                  Die Offiziellen des Teams konnten nicht geladen werden.
+                </p>
+              ) : null}
+
+              {orderedSlots.map(({ slot, index }) => {
+                const licence = licenceOf(slot);
+                const name = displayName(slot);
+                const editable = slot.known && !slot.duplicate;
+                const optionalEmpty =
+                  !slot.required && slot.known && !slotHasValue(slot);
+                const taken = editable
+                  ? takenByOthers(index)
+                  : new Set<number>();
+                const duplicateNames = slot.duplicate
+                  ? slot.rows
+                      .map((row) => rowDisplayName(row, teamByOfficial))
+                      .filter((value): value is string => value !== null)
+                      .join(", ")
+                  : "";
+
+                const content = (shownName: string, freeText: boolean) => (
+                  <>
+                    <span
+                      aria-hidden="true"
+                      className={`offava${optionalEmpty ? " offava-add" : ""}`}
+                    >
+                      {optionalEmpty ? "+" : initials(name)}
                     </span>
-                    <span className="offnm">
+                    <span className="offbody">
+                      {optionalEmpty ? (
+                        <>
+                          <span className="offadd">
+                            {slot.label} hinzufügen
+                          </span>
+                          <span className="offhint">
+                            Optional · ohne Pflicht zur Besetzung
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="offrole">{slot.label}</span>
+                          <span className="offmember">
+                            {shownName}
+                            {freeText ? (
+                              <span className="pplink pplink-free">
+                                Freitext
+                              </span>
+                            ) : null}
+                          </span>
+                          {licenceWarns(slot) ? (
+                            <span className="offhint offhint-warn">
+                              Start trotzdem möglich
+                            </span>
+                          ) : null}
+                        </>
+                      )}
+                    </span>
+                    <span className="offmeta">
+                      {optionalEmpty ? null : (
+                        <span
+                          className={`lic lic-${LICENCE_TONE[licence.state]}`}
+                        >
+                          {licence.label}
+                        </span>
+                      )}
+                      {editable ? (
+                        <ChevronRight className="offchev" size={16} />
+                      ) : null}
+                    </span>
+                  </>
+                );
+
+                return (
+                  <Fragment key={`${slot.known ? "known" : "extra"}-${index}`}>
+                    <div
+                      className={`offrow${optionalEmpty ? " offrow-optional" : ""}`}
+                    >
                       {editable ? (
                         <PersonPicker
                           disabled={readOnly || finished}
@@ -811,6 +956,19 @@ export default function GameSetupScreen({
                           onPick={(person) => pickPerson(index, person)}
                           taken={taken}
                           teamId={officialsId}
+                          trigger={({ open, toggle, displayName, linked, empty }) => (
+                            <button
+                              aria-expanded={open}
+                              aria-haspopup="listbox"
+                              aria-label={`${slot.label}: Offiziellen wählen`}
+                              className={`offcard${optionalEmpty ? " offcard-add" : ""}`}
+                              disabled={readOnly || finished}
+                              onClick={toggle}
+                              type="button"
+                            >
+                              {content(displayName, !linked && !empty)}
+                            </button>
+                          )}
                           value={{
                             official: slot.official,
                             name:
@@ -821,148 +979,108 @@ export default function GameSetupScreen({
                           }}
                         />
                       ) : (
-                        <span className="offname">{name ?? "–"}</span>
+                        <div className="offcard offcard-static">
+                          {content(name ?? "–", false)}
+                        </div>
                       )}
-                      <span className="offrole">{slot.label}</span>
-                    </span>
-                    <span className={`lic lic-${LICENCE_TONE[licence.state]}`}>
-                      {licence.label}
-                    </span>
-                  </div>
-                  {slot.duplicate ? (
-                    <p className="setupwarn offwarn" role="alert">
-                      Mehrere Einträge für {slot.label} – bitte bereinigen
-                      {duplicateNames !== "" ? ` (${duplicateNames})` : ""}
-                    </p>
-                  ) : null}
-                </Fragment>
-              );
-            })}
-            <p className="setupnote">
-              Welche Positionen es gibt und welche für die Vollständigkeit
-              zählen, legt die Liga fest.
-            </p>
-          </section>
+                    </div>
+                    {slot.duplicate ? (
+                      <p className="setupwarn offwarn" role="alert">
+                        Mehrere Einträge für {slot.label} – bitte bereinigen
+                        {duplicateNames !== "" ? ` (${duplicateNames})` : ""}
+                      </p>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
 
-          {licenceIssues.length > 0 ? (
-            <div
-              className="setupwarn"
-              id="crew-licence-warning"
-              role="status"
-            >
-              <b>
-                {licenceIssues.length === 1
-                  ? "1 Lizenz ist nicht gültig"
-                  : `${licenceIssues.length} Lizenzen sind nicht gültig`}
-              </b>
-              <span>
-                {licenceIssues
-                  .map((issue) => `${issue.name} (${issue.role})`)
-                  .join(", ")}
-              </span>
-              <span>
-                Das Spiel lässt sich trotzdem starten.
-              </span>
-            </div>
-          ) : null}
+              <p className="setupnote passcheckline">
+                <span className="passchecklabel">Passcheck</span>
+                {game.passcheck === true ? (
+                  <span className="okchip">Passcheck vollständig</span>
+                ) : game.passcheck === false ? (
+                  <span className="chip-miss">kein Passcheck</span>
+                ) : (
+                  <span className="tag tag-soon">unbekannt</span>
+                )}
+                <a
+                  className="setlink passchecklink"
+                  href="/passcheck/"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  Passcheck-Seite
+                </a>
+              </p>
+              <p className="setupnote">
+                Die Passprüfung läuft auf der Passcheck-Seite (neuer Tab – die
+                Vorbereitung bleibt erhalten).
+              </p>
+            </section>
 
-          <Segmented
-            disabled={readOnly || finished}
-            label="Münzwurf"
-            onChange={(value) => {
-              setToss(value as Side);
-              resetStartPhases();
-            }}
-            options={[
-              { value: "home", label: teamLabel(home) },
-              { value: "away", label: teamLabel(away) },
-            ]}
-            value={toss}
-          />
-
-          <Segmented
-            disabled={readOnly || finished}
-            label="Erster Ballbesitz"
-            onChange={(value) => {
-              setPossession(value as Side);
-              resetStartPhases();
-            }}
-            options={[
-              { value: "home", label: teamLabel(home) },
-              { value: "away", label: teamLabel(away) },
-            ]}
-            value={possession}
-          />
-
-          <Segmented
-            disabled={readOnly || finished}
-            label="Richtung"
-            onChange={(value) => {
-              setDirection(value as Direction);
-              resetStartPhases();
-            }}
-            options={[
-              {
-                value: "Ost",
-                label: <DirectionText from="Ost" to="West" />,
-              },
-              {
-                value: "West",
-                label: <DirectionText from="West" to="Ost" />,
-              },
-            ]}
-            value={direction}
-          />
-
-          <section className="block">
-            <div className="blockhead">
-              <h2>Passcheck</h2>
-              {game.passcheck === true ? (
-                <span className="okchip">Passcheck vollständig</span>
-              ) : game.passcheck === false ? (
-                <span className="chip-miss">kein Passcheck</span>
-              ) : (
-                <span className="tag tag-soon">unbekannt</span>
-              )}
-            </div>
-            <p className="setupnote">
-              Die Passprüfung selbst läuft auf der{" "}
-              <a
-                className="setlink"
-                href="/passcheck/"
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                Passcheck-Seite
-              </a>{" "}
-              (neuer Tab – die Vorbereitung bleibt erhalten).
-            </p>
-          </section>
-
-          <p className="setupnote" id="setup-summary">
-            {toss === null || possession === null || direction === null ? (
-              <>
-                Noch offen:{" "}
-                {[
-                  toss === null ? "Münzwurf" : null,
-                  possession === null ? "Erster Ballbesitz" : null,
-                  direction === null ? "Richtung" : null,
-                ]
-                  .filter((label) => label !== null)
-                  .join(", ")}
-                . Der Start braucht alle drei Angaben.
-              </>
-            ) : (
-              <>
-                {teamLabel(sideTeam(toss))} gewinnt den Münzwurf · Ballbesitz{" "}
-                {teamLabel(sideTeam(possession))} · Richtung{" "}
-                <DirectionText
-                  from={direction}
-                  to={direction === "Ost" ? "West" : "Ost"}
+            <section aria-labelledby={configSectionId} className="block">
+              <div className="blockhead">
+                <h2 className="sectionhead" id={configSectionId}>
+                  <span aria-hidden="true" className="sectionicon">
+                    <SwapArrows size={16} />
+                  </span>
+                  <span aria-hidden="true" className="sectionnum">
+                    2.
+                  </span>
+                  Spielkonfiguration
+                </h2>
+              </div>
+              <div className="configgrid">
+                <Segmented
+                  disabled={readOnly || finished}
+                  label="Münzwurf gewonnen von"
+                  onChange={(value) => {
+                    setToss(value as Side);
+                    resetStartPhases();
+                  }}
+                  options={[
+                    { value: "home", label: teamLabel(home) },
+                    { value: "away", label: teamLabel(away) },
+                  ]}
+                  value={toss}
                 />
-              </>
-            )}
-          </p>
+
+                <Segmented
+                  disabled={readOnly || finished}
+                  label="Erster Ballbesitz"
+                  onChange={(value) => {
+                    setPossession(value as Side);
+                    resetStartPhases();
+                  }}
+                  options={[
+                    { value: "home", label: teamLabel(home) },
+                    { value: "away", label: teamLabel(away) },
+                  ]}
+                  value={possession}
+                />
+
+                <Segmented
+                  disabled={readOnly || finished}
+                  label="Spielrichtung"
+                  onChange={(value) => {
+                    setDirection(value as Direction);
+                    resetStartPhases();
+                  }}
+                  options={[
+                    {
+                      value: "Ost",
+                      label: <DirectionText from="Ost" to="West" />,
+                    },
+                    {
+                      value: "West",
+                      label: <DirectionText from="West" to="Ost" />,
+                    },
+                  ]}
+                  value={direction}
+                />
+              </div>
+            </section>
+          </div>
 
           {error !== null ? (
             <div className="seterror" role="alert">
@@ -976,19 +1094,34 @@ export default function GameSetupScreen({
           ) : null}
 
           {finished ? null : (
-            <div className="setupfoot">
-              <button
-                aria-describedby={
-                  licenceIssues.length > 0 ? "crew-licence-warning" : undefined
-                }
-                className="startbtn"
-                disabled={saving || readOnly || offline}
-                onClick={openConfirmation}
-                type="button"
-              >
-                {startLabel}
-              </button>
-            </div>
+            <>
+              {ready ? (
+                <div className="readybar readybar-ok" role="status">
+                  <b>Bereit zum Starten</b>
+                  <span>Alle Pflichtangaben sind gesetzt.</span>
+                </div>
+              ) : (
+                <div className="readybar readybar-miss" id="readiness" role="status">
+                  <b>Angaben fehlen</b>
+                  <ul>
+                    {blockers.map((blocker) => (
+                      <li key={blocker}>{blocker}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="setupfoot">
+                <button
+                  className="startbtn"
+                  disabled={saving || readOnly || offline}
+                  onClick={openConfirmation}
+                  type="button"
+                >
+                  {startLabel}
+                </button>
+              </div>
+            </>
           )}
         </div>
       ) : null}

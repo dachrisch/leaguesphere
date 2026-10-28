@@ -15,7 +15,7 @@ export type ResolvedTheme = "light" | "dark";
 
 export const THEME_STORAGE_KEY = "scorecard-v2-theme";
 
-/** The order the header toggle cycles through. */
+/** The menu order, and the order {@link nextTheme} cycles through. */
 export const THEME_ORDER: readonly Theme[] = ["auto", "light", "dark"];
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";

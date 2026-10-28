@@ -95,13 +95,13 @@ export function startBlockers(facts: StartFacts): string[] {
     }
   }
   if (facts.tossTeam === null) {
-    blockers.push("Münzwurf: keine Mannschaft gewählt.");
+    blockers.push("Münzwurf gewonnen von: keine Mannschaft gewählt.");
   }
   if (facts.possessionTeam === null) {
     blockers.push("Erster Ballbesitz: keine Mannschaft gewählt.");
   }
   if (facts.direction === null) {
-    blockers.push("Richtung: keine Seite gewählt.");
+    blockers.push("Spielrichtung: keine Seite gewählt.");
   }
   return blockers;
 }
@@ -246,13 +246,13 @@ export default function StartConfirmation({
 
       <h3 className="sheetsection">Münzwurf und Ballbesitz</h3>
       <dl className="startlist">
-        <Line label="Münzwurf">
+        <Line label="Münzwurf gewonnen von">
           {tossTeam ?? <span className="startmiss">nicht gewählt</span>}
         </Line>
         <Line label="Erster Ballbesitz">
           {possessionTeam ?? <span className="startmiss">nicht gewählt</span>}
         </Line>
-        <Line label="Richtung">
+        <Line label="Spielrichtung">
           {direction === null ? (
             <span className="startmiss">nicht gewählt</span>
           ) : (

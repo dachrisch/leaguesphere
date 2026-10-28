@@ -191,12 +191,12 @@ describe("the whole flow", () => {
     // 3. Preparation; the three start fields have no default, then the start
     // button opens the confirmation and its second tap starts.
     expect(
-      await screen.findByRole("heading", { name: "Vorbereitung" }),
+      await screen.findByRole("heading", { name: "Spiel vorbereiten" }),
     ).toBeInTheDocument();
     const picks = [
-      ["Münzwurf", "Ravens"],
+      ["Münzwurf gewonnen von", "Ravens"],
       ["Erster Ballbesitz", "Ravens"],
-      ["Richtung", "Ost → West"],
+      ["Spielrichtung", "Ost → West"],
     ] as const;
     for (const [group, option] of picks) {
       await user.click(
