@@ -1,3 +1,5 @@
+import "fake-indexeddb/auto";
+
 import {
   fireEvent,
   render as renderComponent,
@@ -5,6 +7,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { IDBFactory } from "fake-indexeddb";
 import type { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
@@ -20,6 +23,11 @@ import type {
 } from "../api/types";
 import { TeamLogosProvider } from "../app/teamLogos";
 import { getDeviceId } from "../device";
+import {
+  readSnapshot,
+  resetSnapshotStore,
+  snapshotKey,
+} from "../offline/snapshot";
 import GameSetupScreen from "./GameSetup";
 
 vi.mock("../api/client", async (importOriginal) => {
@@ -151,6 +159,10 @@ let setupFailure: unknown;
 let crewFailure: unknown;
 
 beforeEach(() => {
+  // The screen preloads reads into IndexedDB; a fresh database per test keeps
+  // one case's cache out of the next one.
+  vi.stubGlobal("indexedDB", new IDBFactory());
+  resetSnapshotStore();
   crew = [
     crewRow(),
     crewRow({
@@ -791,6 +803,40 @@ describe("GameSetup — crew slots per league", () => {
       "Side Judge",
     ]);
     expect(screen.getByText("1/4")).toBeInTheDocument();
+  });
+
+  it("preloads the slots so a reload without that request keeps the labels", async () => {
+    positions = [
+      { position: "Zeitnehmer", label: "Protokoll", order: 1, required: false },
+      { position: "Referee", label: "Head Referee", order: 2, required: true },
+    ];
+    // Only the configured slots, so the rendered roles are exactly those two.
+    crew = [crewRow()];
+
+    const first = await renderSetup();
+    expect(crewButton("Head Referee")).toHaveTextContent("Michael Klein");
+    // The read preloads the slots through the snapshot layer.
+    await expect(
+      readSnapshot(snapshotKey.crewPositions(42)),
+    ).resolves.toMatchObject({ value: positions });
+    first.unmount();
+
+    // Reload while that one request fails (server down, 5xx): the stored copy
+    // still carries the league's labels and order.
+    const online = apiGetMock.getMockImplementation();
+    apiGetMock.mockImplementation(async (path: string) => {
+      if (path === POSITIONS_PATH) {
+        throw new TypeError("Failed to fetch");
+      }
+      return online?.(path);
+    });
+    await renderSetup();
+
+    const roles = Array.from(document.querySelectorAll(".offrole")).map(
+      (role) => role.textContent,
+    );
+    expect(roles).toEqual(["Protokoll", "Head Referee"]);
+    expect(crewButton("Head Referee")).toHaveTextContent("Michael Klein");
   });
 
   it("cannot prepare the crew when the slots cannot be loaded", async () => {

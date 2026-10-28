@@ -30,7 +30,8 @@ class TestCrewPositionsForGameAPIView(WebTest):
         assert response.status_code == HTTPStatus.OK
         assert response.json == DEFAULT_CREW_POSITIONS
 
-    def test_a_configured_league_answers_its_slots_in_order(self):
+    def test_a_configured_league_answers_overrides_on_the_defaults(self):
+        # One relabel and one extra slot: the standard crew must survive both.
         CrewPosition.objects.create(
             league=self.gameday.league,
             position="Referee",
@@ -40,9 +41,9 @@ class TestCrewPositionsForGameAPIView(WebTest):
         )
         CrewPosition.objects.create(
             league=self.gameday.league,
-            position="Scorekeeper",
+            position="Zeitnehmer",
             label="Protokoll",
-            order=1,
+            order=6,
             required=False,
         )
 
@@ -50,17 +51,19 @@ class TestCrewPositionsForGameAPIView(WebTest):
 
         assert response.status_code == HTTPStatus.OK
         assert response.json == [
-            {
-                "position": "Scorekeeper",
-                "label": "Protokoll",
-                "order": 1,
-                "required": False,
-            },
+            DEFAULT_CREW_POSITIONS[0],
             {
                 "position": "Referee",
                 "label": "Head Referee",
                 "order": 2,
                 "required": True,
+            },
+            *DEFAULT_CREW_POSITIONS[2:],
+            {
+                "position": "Zeitnehmer",
+                "label": "Protokoll",
+                "order": 6,
+                "required": False,
             },
         ]
 
