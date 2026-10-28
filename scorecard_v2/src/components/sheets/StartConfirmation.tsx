@@ -7,18 +7,24 @@ import Sheet from "./Sheet";
  * One crew slot as the start confirmation restates it.
  *
  * `label` is the league's display name for the position, `name` the person
- * stored in it (`null` when the slot is empty). `freetext` marks a guest who is
- * only a string, `required` the league's completeness flag, and `editable`
- * whether this screen can still change the slot at all — a duplicate row or a
- * position the league does not configure is shown but cannot be fixed here, so
- * it never becomes the reason a start is refused.
+ * stored in it as the screen can display it — which is `null` both for an empty
+ * slot **and** for a linked official the team list cannot resolve. `filled` is
+ * the slot's own state (`official` set or a non-blank name) and is what decides
+ * whether a required slot is missing: a crewed gameday whose names are unknown
+ * must still start. `freetext` marks a guest who is only a string, `required`
+ * the league's completeness flag, `editable` whether this screen can still
+ * change the slot at all — a duplicate row or a position the league does not
+ * configure is shown but cannot be fixed here, so it never becomes the reason a
+ * start is refused.
  */
 export interface StartCrewLine {
   label: string;
   name: string | null;
+  filled: boolean;
   freetext: boolean;
   required: boolean;
   editable: boolean;
+  duplicate: boolean;
 }
 
 /** Everything the confirmation needs to decide whether the start may happen. */
@@ -54,10 +60,14 @@ function hasBothNames(name: string): boolean {
  * The German reasons that keep the game from starting; empty when it may.
  *
  * A wrong setup entry costs the whole game, so incomplete input is refused with
- * a specific reason instead of being confirmed. Only slots this screen can
- * still edit are judged: a required slot the league does not configure, or a
- * duplicate row, is a data problem the operator cannot fix here — blocking on
- * it would strand the gameday.
+ * a specific reason instead of being confirmed. The test is always the slot's
+ * own state, never the display name: a linked official the team list cannot
+ * resolve has no name, and refusing that would strand a fully crewed gameday.
+ * Only slots this screen can still edit are judged — a required slot the league
+ * does not configure, or a duplicate row, is a data problem the operator cannot
+ * fix here. A free-text name only has to carry both names where the league
+ * requires the slot; an optional guest called "N.N." is restated but not
+ * refused.
  */
 export function startBlockers(facts: StartFacts): string[] {
   const blockers: string[] = [];
@@ -65,7 +75,7 @@ export function startBlockers(facts: StartFacts): string[] {
     if (!line.editable) {
       continue;
     }
-    if (line.name === null || line.name.trim() === "") {
+    if (!line.filled) {
       if (line.required) {
         blockers.push(
           `Offizielle: ${line.label} fehlt – die Liga verlangt diese Position.`,
@@ -73,7 +83,12 @@ export function startBlockers(facts: StartFacts): string[] {
       }
       continue;
     }
-    if (line.freetext && !hasBothNames(line.name)) {
+    if (
+      line.required &&
+      line.freetext &&
+      line.name !== null &&
+      !hasBothNames(line.name)
+    ) {
       blockers.push(
         `Offizielle: ${line.label} – Freitextname „${line.name}“ braucht Vor- und Nachnamen.`,
       );
@@ -142,6 +157,9 @@ export default function StartConfirmation({
     direction,
   });
   const blocked = blockers.length > 0;
+  const duplicates = crew
+    .filter((line) => line.duplicate)
+    .map((line) => `Offizielle: ${line.label} ist doppelt belegt.`);
   const [directionFrom, directionTo] =
     direction === "West" ? ["West", "Ost"] : ["Ost", "West"];
 
@@ -175,6 +193,17 @@ export default function StartConfirmation({
         Gerät. Eine Spieluhr läuft in der App nicht.
       </p>
 
+      {blocked ? (
+        <div className="sheetwarn" id="start-blockers" role="alert">
+          <b>Start nicht möglich</b>
+          <ul>
+            {blockers.map((blocker) => (
+              <li key={blocker}>{blocker}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <h3 className="sheetsection">Spiel</h3>
       <dl className="startlist">
         <Line label="Begegnung">
@@ -196,6 +225,10 @@ export default function StartConfirmation({
                   <span className="startopt"> Freitext</span>
                 ) : null}
               </>
+            ) : line.filled ? (
+              // A linked official the team list cannot resolve: the slot is
+              // staffed, only the name is unknown. Never "fehlt".
+              <span className="startopt">eingetragen</span>
             ) : line.required ? (
               <span className="startmiss">fehlt</span>
             ) : (
@@ -204,6 +237,9 @@ export default function StartConfirmation({
           </Line>
         ))}
       </dl>
+      {duplicates.length > 0 ? (
+        <p className="sheetwarn">{duplicates.join(" ")}</p>
+      ) : null}
       <p className="sheetnote">
         Pflicht sind die Positionen, die die Liga für die Vollständigkeit zählt.
       </p>
@@ -249,17 +285,6 @@ export default function StartConfirmation({
               .join(", ")}
           </span>{" "}
           <span>Das Spiel lässt sich trotzdem starten.</span>
-        </div>
-      ) : null}
-
-      {blocked ? (
-        <div className="sheetwarn" id="start-blockers">
-          <b>Start nicht möglich</b>
-          <ul>
-            {blockers.map((blocker) => (
-              <li key={blocker}>{blocker}</li>
-            ))}
-          </ul>
         </div>
       ) : null}
     </Sheet>
