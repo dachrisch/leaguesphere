@@ -1,4 +1,11 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { searchOfficials } from "../api/people";
 import type { TeamOfficial } from "../api/types";
@@ -7,6 +14,22 @@ import type { TeamOfficial } from "../api/types";
 export interface PersonValue {
   official: number | null;
   name: string | null;
+}
+
+/**
+ * What a custom closed-state trigger needs to draw itself. The trigger owns the
+ * button; the picker only says which state it is in and hands over the toggle.
+ */
+export interface PickTriggerState {
+  open: boolean;
+  /** The stored name, or "Offiziellen wählen" while the slot is empty. */
+  displayName: string;
+  /** Linked to a directory person (as opposed to free text or empty). */
+  linked: boolean;
+  /** Neither a link nor a name. */
+  empty: boolean;
+  disabled: boolean;
+  toggle: () => void;
 }
 
 interface PersonPickerProps {
@@ -24,6 +47,12 @@ interface PersonPickerProps {
   onFreeText: (name: string) => void;
   /** Clears the slot back to "nobody". Omitted → no clear action is shown. */
   onClear?: () => void;
+  /**
+   * Custom closed-state trigger (a whole crew card row, say). The picker logic
+   * — search, free text, focus and keyboard handling — stays the same; only the
+   * button that opens it moves into the caller.
+   */
+  trigger?: (state: PickTriggerState) => ReactNode;
 }
 
 const MIN_QUERY_LENGTH = 2;
@@ -75,6 +104,7 @@ export default function PersonPicker({
   onPick,
   onFreeText,
   onClear,
+  trigger,
 }: PersonPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -131,11 +161,22 @@ export default function PersonPicker({
   const hasResults = people.length > 0;
   const canFreeText = isFullName(query);
   const displayName = value.name?.trim() || "Offiziellen wählen";
+  const linked = value.official !== null;
+  const empty =
+    value.official === null && (value.name ?? "").trim() === "";
 
   const close = (): void => {
     setOpen(false);
     setQuery("");
     setResult(null);
+  };
+
+  const toggle = (): void => {
+    if (open) {
+      close();
+    } else {
+      setOpen(true);
+    }
   };
 
   const pick = (person: TeamOfficial): void => {
@@ -178,22 +219,33 @@ export default function PersonPicker({
 
   return (
     <div className="pp">
-      <button
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        aria-label={`${label}: Offiziellen wählen`}
-        className="offsel ppbtn"
-        disabled={disabled}
-        onClick={() => (open ? close() : setOpen(true))}
-        type="button"
-      >
-        <span className="ppname">{displayName}</span>
-        <span
-          className={`pplink ${value.official === null ? "pplink-free" : "pplink-on"}`}
+      {trigger === undefined ? (
+        <button
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          aria-label={`${label}: Offiziellen wählen`}
+          className="offsel ppbtn"
+          disabled={disabled}
+          onClick={toggle}
+          type="button"
         >
-          {value.official === null ? "Freitext" : "verknüpft"}
-        </span>
-      </button>
+          <span className="ppname">{displayName}</span>
+          <span
+            className={`pplink ${linked ? "pplink-on" : "pplink-free"}`}
+          >
+            {linked ? "verknüpft" : "Freitext"}
+          </span>
+        </button>
+      ) : (
+        trigger({
+          open,
+          displayName,
+          linked,
+          empty,
+          disabled,
+          toggle,
+        })
+      )}
 
       {open ? (
         <div className="pppanel">

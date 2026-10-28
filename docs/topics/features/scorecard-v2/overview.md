@@ -36,40 +36,52 @@ only control static assets, and its scope could never leak into the old app.
 2. **Spiele** — the games of one gameday, per crew or the whole gameday
    (`GET /api/gameday/<id>/officials/<team>`, `team=*` for all), with status and
    passcheck state. Team logos from the public team directory accompany the
-   names here, in the score header and in the preparation header; the directory
+   names here, in the score header and in the preparation team card; the
+   directory
    is cached in IndexedDB and the logo files are cached by the service worker
    (bounded, `/media/teammanager/logos/` only), so a device keeps them offline
    after one load, and a team without one (or a file that cannot be loaded)
    keeps the initials disc.
-3. **Vorbereitung** — crew and licences, coin toss, first possession,
-   direction, passcheck link, **Spiel starten**. The crew slots are *the
-   league's*: which positions exist, how they are labelled and which of them
-   count towards the completeness chip is configured per league
-   (`officials.CrewPosition`, edited in the Django admin). Configured rows are
-   overrides **on top of** the built-in five (Scorecard Judge optional, Referee
-   / Down Judge / Field Judge / Side Judge required): relabelling one slot
-   keeps the others, a new position is added after them, and a league without
-   rows gets the defaults — the officials step is never empty. Hiding a default
-   position is not part of this layer (it belongs to the crew template / count
-   work); it would need another column. A crew slot is filled by searching the whole officials
-   directory; the row says **verknüpft** (linked to a person) or **Freitext**
-   (a guest who is not in it — first and last name required, offered only while
-   nobody matches). A stored position the league does not configure stays
-   visible read-only and is written back unchanged: the API upserts by the
-   exact `GameOfficial.position` string, never by the label. An invalid licence
-   warns and needs a second tap; it never blocks the start. Toss, first
-   possession and direction have no default, and the first tap on **Spiel
-   starten** only opens a confirmation that restates teams, kick-off and field,
-   the crew with the league's labels, toss, possession, direction, licences and
-   passcheck, refuses an empty `required` slot, a free-text name without both
-   names and an unchosen toss/possession/direction with a named reason, and says
-   that starting writes the setup while no clock runs in the app.
+3. **Spiel vorbereiten** — a team card (both crests, the team descriptions,
+   kick-off and field), then two numbered sections. **1. Offizielle**: crew and
+   licences as card rows (initials, role, person, a licence dot chip and a
+   chevron that opens the picker), the league's required positions first and a
+   `n/m besetzt` counter. An empty optional position is a compact dashed
+   **<Position> hinzufügen** row ("Optional · ohne Pflicht zur Besetzung");
+   once somebody is assigned it becomes a normal row. **2. Spielkonfiguration**:
+   one card with **Münzwurf gewonnen von**, **Erster Ballbesitz** and
+   **Spielrichtung**, each a full-width two-option switch. A readiness banner
+   above the start action is the single source of truth: green **Bereit zum
+   Starten**, or amber **Angaben fehlen** with exactly the missing facts. The
+   crew slots are *the league's*: which positions exist, how they are labelled
+   and which of them count towards the completeness chip is configured per
+   league (`officials.CrewPosition`, edited in the Django admin). Configured
+   rows are overrides **on top of** the built-in five (Scorecard Judge
+   optional, Referee / Down Judge / Field Judge / Side Judge required):
+   relabelling one slot keeps the others, a new position is added after them,
+   and a league without rows gets the defaults — the officials step is never
+   empty. Hiding a default position is not part of this layer (it belongs to
+   the crew template / count work); it would need another column. A crew slot
+   is filled by searching the whole officials directory; the row marks a guest
+   as **Freitext** (a person who is not in it — first and last name required,
+   offered only while nobody matches). A stored position the league does not
+   configure stays visible read-only and is written back unchanged: the API
+   upserts by the exact `GameOfficial.position` string, never by the label. An
+   invalid licence shows an inline hint and needs a second tap; it never blocks
+   the start. Toss, first possession and direction have no default, and the
+   first tap on **Spiel starten** only opens a confirmation that restates
+   teams, kick-off and field, the crew with the league's labels, toss,
+   possession, direction, licences and passcheck, refuses an empty `required`
+   slot, a free-text name without both names and an unchosen
+   toss/possession/direction with a named reason, and says that starting writes
+   the setup while no clock runs in the app.
 4. **Feld · Runde** (the tracking screen) — score header with possession,
    touchdown with the roster's jerseys (numeric fallback when there is none),
    PAT, first down, turnover, interception, penalty with search, safety,
    overtime, Spielzeit, Auszeit, half-time, and **Rückgängig** per entry. The
-   app bar carries the sync chip, the theme switch and **Abmelden** on every
-   screen; the header adds the gameday and league.
+   app bar carries the sync chip and the account menu (avatar: identity,
+   **Auto**/**Hell**/**Dunkel**, **Abmelden**) on every screen; the header adds
+   the gameday and league.
 5. **Spielende** — captains from the roster (suggestions only, free text),
    optional note, then **Ergebnis abschicken**.
 6. **Ergebnis gesendet** — final and half-time score from the server payload.

@@ -25,14 +25,28 @@ describe("AppHeader", () => {
     expect(screen.getByText("Herbsttag · Landesliga")).toBeInTheDocument();
   });
 
-  it("keeps the theme switch in the bar on a screen without any action", () => {
-    render(<AppHeader kicker="Scorecard" title="Feld 2" />);
+  it("keeps the bar to back, badge and the account menu", () => {
+    const { container } = render(
+      <AppHeader
+        badge={<span>3 warten</span>}
+        kicker="Scorecard"
+        onBack={vi.fn()}
+        onLogout={vi.fn()}
+        title="Feld 2"
+      />,
+    );
 
+    // The standalone theme button and the word "Abmelden" are gone.
     expect(
-      screen.getByRole("button", { name: "Design: automatisch" }),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Zurück" })).toBeNull();
+      screen.queryByRole("button", { name: "Design: automatisch" }),
+    ).toBeNull();
     expect(screen.queryByRole("button", { name: "Abmelden" })).toBeNull();
+
+    const right = container.querySelector(".appbar-right") as HTMLElement;
+    const order = [...right.children].map((child) => child.className);
+    expect(order).toHaveLength(2);
+    expect(order[0]).toContain("appbar-badge");
+    expect(order[1]).toContain("account");
   });
 
   it("makes back icon-only but keeps its name and tooltip", async () => {
@@ -48,77 +62,47 @@ describe("AppHeader", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps Abmelden as a word next to the icon-only controls", async () => {
-    const onLogout = vi.fn();
+  it("opens the account menu with the identity and logout", async () => {
     const user = userEvent.setup();
-    render(<AppHeader kicker="Scorecard" onLogout={onLogout} title="Feld 2" />);
-
-    const logout = screen.getByRole("button", { name: "Abmelden" });
-    expect(logout).toHaveTextContent("Abmelden");
-
-    await user.click(logout);
-    expect(onLogout).toHaveBeenCalledTimes(1);
-  });
-
-  it("puts the badge in the bar, before theme and logout", () => {
-    const { container } = render(
-      <AppHeader
-        badge={<span>3 warten</span>}
-        kicker="Scorecard"
-        onBack={vi.fn()}
-        onLogout={vi.fn()}
-        title="Feld 2"
-      />,
-    );
-
-    const bar = container.querySelector(".appbar-right");
-    expect(bar).not.toBeNull();
-    const slot = container.querySelector(".appbar-badge");
-    expect(slot).toContainElement(screen.getByText("3 warten"));
-
-    // Badge → theme → logout: the chip never pushes the actions apart.
-    const order = [...(bar as HTMLElement).children].map(
-      (child) => child.className,
-    );
-    expect(order).toHaveLength(3);
-    expect(order[0]).toContain("appbar-badge");
-    expect(order[1]).toContain("theme-toggle");
-    expect(order[2]).toContain("appbar-logout");
-  });
-
-  it("puts the avatar between the badge and the theme switch", () => {
-    const { container } = render(
+    const onLogout = vi.fn();
+    render(
       <CurrentUserProvider user={{ id: 1, username: "scorecard-test" }}>
         <AppHeader
-          badge={<span>3 warten</span>}
           kicker="Scorecard"
-          onBack={vi.fn()}
-          onLogout={vi.fn()}
+          onLogout={onLogout}
           title="Feld 2"
         />
       </CurrentUserProvider>,
     );
 
-    const bar = container.querySelector(".appbar-right");
-    const order = [...(bar as HTMLElement).children].map(
-      (child) => child.className,
-    );
-    expect(order).toHaveLength(4);
-    expect(order[0]).toContain("appbar-badge");
-    expect(order[1]).toContain("avatar");
-    expect(order[2]).toContain("theme-toggle");
-    expect(order[3]).toContain("appbar-logout");
+    const trigger = screen.getByRole("button", { name: "Konto" });
     expect(
-      screen.getByRole("img", { name: "Angemeldet als scorecard-test" }),
+      trigger.querySelector(".avatar"),
     ).toHaveTextContent("ST");
+    expect(trigger.querySelector(".avatar")).toHaveAttribute(
+      "title",
+      "Angemeldet als scorecard-test",
+    );
+
+    await user.click(trigger);
+
+    const menu = screen.getByRole("dialog", { name: "Konto" });
+    expect(menu).toHaveTextContent("Angemeldet als scorecard-test");
+    expect(
+      within(menu).getByRole("button", { name: "Auto" }),
+    ).toBeInTheDocument();
+
+    await user.click(within(menu).getByRole("button", { name: "Abmelden" }));
+    expect(onLogout).toHaveBeenCalledTimes(1);
   });
 
-  it("leaves the avatar out when no user is signed in", () => {
+  it("keeps the account trigger even without a signed-in user", () => {
     const { container } = render(
       <AppHeader kicker="Scorecard" title="Feld 2" />,
     );
 
-    expect(container.querySelector(".avatar")).toBeNull();
+    expect(screen.getByRole("button", { name: "Konto" })).toBeInTheDocument();
+    expect(container.querySelector(".avatar svg")).not.toBeNull();
   });
 
   it("puts the LeagueSphere wordmark before the screen kicker", () => {
@@ -182,10 +166,11 @@ describe("AppHeader", () => {
     );
 
     expect(container.querySelector(".appbar-badge")).toBeNull();
+    // Only the account menu remains on the right.
     expect(container.querySelectorAll(".appbar-right > *")).toHaveLength(1);
   });
 
-  it("passes the badge through the shared screen frame", () => {
+  it("passes the badge through the shared screen frame", async () => {
     render(
       <Screen
         badge={<span>Offline · 2</span>}
@@ -199,8 +184,10 @@ describe("AppHeader", () => {
 
     const header = screen.getByRole("banner");
     expect(within(header).getByText("Offline · 2")).toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(within(header).getByRole("button", { name: "Konto" }));
     expect(
-      within(header).getByRole("button", { name: "Design: automatisch" }),
+      within(header).getByRole("button", { name: "Auto" }),
     ).toBeInTheDocument();
   });
 });

@@ -1,15 +1,17 @@
 import { useState } from "react";
 
-import {
-  getTheme,
-  nextTheme,
-  setTheme,
-  type Theme,
-} from "../theme";
+import { getTheme, setTheme, THEME_ORDER, type Theme } from "../theme";
 import { Auto, Moon, Sun } from "./icons";
 
-/** The accessible name and tooltip: "Design: automatisch". */
+/** The visible label of each choice. */
 const LABEL: Record<Theme, string> = {
+  auto: "Auto",
+  light: "Hell",
+  dark: "Dunkel",
+};
+
+/** The tooltip: "Design: automatisch". */
+const TITLE: Record<Theme, string> = {
   auto: "Design: automatisch",
   light: "Design: hell",
   dark: "Design: dunkel",
@@ -18,33 +20,39 @@ const LABEL: Record<Theme, string> = {
 const ICON = { auto: Auto, light: Sun, dark: Moon } as const;
 
 /**
- * Header control that cycles auto → light → dark.
+ * The theme choice inside the account menu: Auto / Hell / Dunkel.
  *
- * Compact on purpose: the bar has to hold the back button, the sync chip, this
- * switch and "Abmelden" at 360px. The icon carries the state, the accessible
- * name and the tooltip carry the chosen mode ("Design: hell") — it shows the
- * *chosen* mode, not the resolved colour, so "automatisch" stays chosen while
- * the OS is dark. The icon changes with the choice, never colour alone.
+ * Three visible options instead of the old cycling icon, because the menu has
+ * room for the words and an explicit choice is quicker than cycling. The icon
+ * carries the choice as well, so the state never rests on colour alone.
+ * `theme.ts` owns storage and the resolved `data-theme`; this component only
+ * reports the chosen mode.
  */
 export default function ThemeToggle() {
   const [theme, setThemeState] = useState<Theme>(() => getTheme());
-  const Icon = ICON[theme];
-
-  const cycle = (): void => {
-    const next = nextTheme(theme);
-    setTheme(next);
-    setThemeState(next);
-  };
 
   return (
-    <button
-      aria-label={LABEL[theme]}
-      className="appbar-btn appbar-iconbtn theme-toggle"
-      onClick={cycle}
-      title={LABEL[theme]}
-      type="button"
-    >
-      <Icon className="appbar-icon" size={18} />
-    </button>
+    <div aria-label="Design" className="themegroup" role="group">
+      {THEME_ORDER.map((option) => {
+        const Icon = ICON[option];
+        const selected = option === theme;
+        return (
+          <button
+            aria-pressed={selected}
+            className={selected ? "sel" : undefined}
+            key={option}
+            onClick={() => {
+              setTheme(option);
+              setThemeState(option);
+            }}
+            title={TITLE[option]}
+            type="button"
+          >
+            <Icon className="themeicon" size={16} />
+            <span>{LABEL[option]}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }

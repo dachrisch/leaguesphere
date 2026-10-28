@@ -150,7 +150,7 @@ def _open_game(page: Page, live_server_url: str, gameday_name: str) -> None:
     expect(rows.first).to_contain_text(AWAY_DESCRIPTION)
     rows.first.click()
 
-    expect(page.get_by_role("heading", name="Vorbereitung")).to_be_visible(
+    expect(page.get_by_role("heading", name="Spiel vorbereiten")).to_be_visible(
         timeout=20000
     )
     expect(page.get_by_role("heading", name="Offizielle")).to_be_visible()
@@ -162,7 +162,7 @@ def _choose_start_fields(page: Page) -> None:
     The segment buttons are `role="group"` with the screen's own labels, and
     each option is named like the team it stores (the list's description).
     """
-    page.get_by_role("group", name="Münzwurf").get_by_role(
+    page.get_by_role("group", name="Münzwurf gewonnen von").get_by_role(
         "button", name=HOME_DESCRIPTION, exact=True
     ).click()
     page.get_by_role("group", name="Erster Ballbesitz").get_by_role(
@@ -171,7 +171,7 @@ def _choose_start_fields(page: Page) -> None:
     # The arrow is a drawn SVG with an sr-only "→", so the accessible name is
     # "Ost → West"; the pattern tolerates whitespace normalisation and a missing
     # arrow glyph while still pinning the direction.
-    page.get_by_role("group", name="Richtung").get_by_role(
+    page.get_by_role("group", name="Spielrichtung").get_by_role(
         "button", name=re.compile(r"^Ost\s*→?\s*West$")
     ).click()
 
@@ -193,7 +193,7 @@ def test_scorecard_v2_flow_from_gameday_to_result(live_server, page: Page):
     _open_game(page, live_server.url, gameday_name)
     # The seeded crew counts as complete: no required slot is empty, so the only
     # thing between the tap and the game is the confirmation.
-    expect(page.get_by_text("vollständig", exact=True)).to_be_visible()
+    expect(page.get_by_text("4/4 besetzt", exact=True)).to_be_visible()
     _choose_start_fields(page)
 
     # ---- Start: confirmation, then officials, setup, possession and the log.
@@ -283,8 +283,11 @@ def test_scorecard_v2_start_is_refused_without_a_crew(live_server, page: Page):
     expect(blockers).to_contain_text(
         "Offizielle: Schiedsrichter fehlt – die Liga verlangt diese Position."
     )
-    expect(blockers).to_contain_text("Münzwurf: keine Mannschaft gewählt.")
+    expect(blockers).to_contain_text(
+        "Münzwurf gewonnen von: keine Mannschaft gewählt."
+    )
     expect(blockers).to_contain_text("Erster Ballbesitz: keine Mannschaft gewählt.")
+    expect(blockers).to_contain_text("Spielrichtung: keine Seite gewählt.")
 
     blocked = sheet.get_by_role("button", name="Angaben fehlen")
     expect(blocked).to_be_disabled()
@@ -295,7 +298,7 @@ def test_scorecard_v2_start_is_refused_without_a_crew(live_server, page: Page):
     # Nothing left the device: a write would have opened tracking (the start
     # navigates on success), so the preparation still being on screen is the
     # visible proof. The database check below makes it explicit.
-    expect(page.get_by_role("heading", name="Vorbereitung")).to_be_visible()
+    expect(page.get_by_role("heading", name="Spiel vorbereiten")).to_be_visible()
     expect(page.get_by_role("button", name="Spiel starten")).to_be_enabled()
 
     assert not GameSetup.objects.filter(gameinfo=game).exists()
