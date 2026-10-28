@@ -2,9 +2,12 @@
 
 The scorecard's preparation screen offers a league's `CrewPosition` rows in
 `order` and shows `label`. `position` stays the exact `GameOfficial.position`
-wire value, so it is easy to get wrong by hand: the built-in defaults are
-therefore copied into a league with `manage.py seed_crew_positions`, and this
-page is used to translate and reorder them afterwards.
+wire value, so it is easy to get wrong by hand: `manage.py seed_crew_positions`
+pre-fills the standard slots, and this page renames and reorders them.
+
+Rows are overrides on top of the built-in defaults — relabelling "Referee" keeps
+the other four slots, and a new position is added after them. No row can remove
+a default position; that is the crew-template/count layer, not this one.
 """
 
 from django.contrib import admin

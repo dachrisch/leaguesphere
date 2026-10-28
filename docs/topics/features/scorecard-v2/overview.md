@@ -45,10 +45,13 @@ only control static assets, and its scope could never leak into the old app.
    direction, passcheck link, **Spiel starten**. The crew slots are *the
    league's*: which positions exist, how they are labelled and which of them
    count towards the completeness chip is configured per league
-   (`officials.CrewPosition`, edited in the Django admin). A league without
-   configuration keeps the built-in five (Scorecard Judge optional, Referee /
-   Down Judge / Field Judge / Side Judge required) — the officials step is
-   never empty. A crew slot is filled by searching the whole officials
+   (`officials.CrewPosition`, edited in the Django admin). Configured rows are
+   overrides **on top of** the built-in five (Scorecard Judge optional, Referee
+   / Down Judge / Field Judge / Side Judge required): relabelling one slot
+   keeps the others, a new position is added after them, and a league without
+   rows gets the defaults — the officials step is never empty. Hiding a default
+   position is not part of this layer (it belongs to the crew template / count
+   work); it would need another column. A crew slot is filled by searching the whole officials
    directory; the row says **verknüpft** (linked to a person) or **Freitext**
    (a guest who is not in it — first and last name required, offered only while
    nobody matches). A stored position the league does not configure stays

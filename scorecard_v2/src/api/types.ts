@@ -118,9 +118,9 @@ export type Officials = Official[];
  *
  * `position` is the exact `GameOfficial.position` wire value and is written
  * back verbatim; `label` is only what the operator reads. `required` decides
- * whether an empty slot counts against the completeness chip. A league
- * without configuration answers the built-in defaults, so the list is never
- * empty.
+ * whether an empty slot counts against the completeness chip. The server sends
+ * the league's overrides merged onto the built-in defaults, so the list always
+ * holds at least the five standard slots and is never empty.
  */
 export interface CrewPosition {
   position: string;
