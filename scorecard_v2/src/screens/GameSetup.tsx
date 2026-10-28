@@ -567,18 +567,23 @@ export default function GameSetupScreen({
   /**
    * What the confirmation restates, in the sheet's own shape.
    *
-   * `editable` mirrors the picker: a duplicate row or a position the league
-   * does not configure is shown but cannot be fixed here, so it never becomes
-   * the reason a start is refused.
+   * `filled` is the slot's own state, not the resolved display name: the team
+   * list can fail, or a stored row can carry no name, and a linked official then
+   * has no name while the slot is clearly staffed (the picker says "Offizieller
+   * 99" and the completeness chip counts it). `editable` mirrors the picker: a
+   * duplicate row or a position the league does not configure is shown but
+   * cannot be fixed here, so it never becomes the reason a start is refused.
    */
   const crewLines: StartCrewLine[] = slots.map((slot) => {
     const name = displayName(slot);
     return {
       label: slot.label,
       name,
+      filled: slot.official !== null || (slot.name ?? "").trim() !== "",
       freetext: slot.official === null && name !== null,
       required: slot.required,
       editable: slot.known && !slot.duplicate,
+      duplicate: slot.duplicate,
     };
   });
 

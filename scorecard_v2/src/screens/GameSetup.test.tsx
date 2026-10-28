@@ -201,6 +201,8 @@ let teamList: TeamOfficial[];
 let positions: CrewPosition[];
 let setup: GameSetup;
 let startCalls: string[];
+/** Every request the screen made, GETs included, for "nothing on tap 1". */
+let requests: string[];
 let setupFailure: unknown;
 let crewFailure: unknown;
 
@@ -261,6 +263,7 @@ beforeEach(() => {
   positions = DEFAULT_POSITIONS;
   setup = {};
   startCalls = [];
+  requests = [];
   setupFailure = null;
   crewFailure = null;
 
@@ -271,6 +274,7 @@ beforeEach(() => {
   getDeviceIdMock.mockReturnValue("device-1");
 
   apiGetMock.mockImplementation(async (path: string) => {
+    requests.push(`GET ${path}`);
     switch (path) {
       case CREW_PATH:
         return crew;
@@ -298,6 +302,7 @@ beforeEach(() => {
   });
 
   apiPutMock.mockImplementation(async (path: string, body: unknown) => {
+    requests.push(`PUT ${path}`);
     startCalls.push(`PUT ${path}`);
     if (path === CREW_PATH && crewFailure !== null) {
       throw crewFailure;
@@ -771,6 +776,13 @@ describe("GameSetup — crew data problems", () => {
     await chooseDefaults();
     await tapStart();
     expect(apiPutMock).not.toHaveBeenCalled();
+    // Named as information, never as the reason the start is refused.
+    expect(startSheet()).toHaveTextContent(
+      "Offizielle: Schiedsrichter ist doppelt belegt.",
+    );
+    expect(
+      within(startSheet()).queryByRole("button", { name: "Angaben fehlen" }),
+    ).toBeNull();
     await confirmStart();
     await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
 
@@ -1230,6 +1242,8 @@ describe("GameSetup — start confirmation", () => {
     await chooseDefaults();
     await pickCrew("Scorecard Judge", "Sabine Lang");
     apiPutMock.mockClear();
+    // Everything so far was the load and the local edits.
+    requests = [];
 
     await tapStart();
 
@@ -1243,8 +1257,10 @@ describe("GameSetup — start confirmation", () => {
     expect(startSheet()).toHaveTextContent("Passcheckvollständig");
     expect(startSheet()).toHaveTextContent("Wolves");
     expect(startSheet()).toHaveTextContent("Ost");
-    // The first tap only opens the sheet: nothing written, nothing read.
+    // The first tap only opens the sheet: no write, and not even a re-read of
+    // crew, positions, setup or log.
     expect(apiPutMock).not.toHaveBeenCalled();
+    expect(requests).toEqual([]);
     expect(startCalls).toEqual([]);
   });
 
@@ -1344,6 +1360,67 @@ describe("GameSetup — start confirmation", () => {
     await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
   });
 
+  it("starts when a linked official's name cannot be resolved", async () => {
+    // The team list fails, so no linked official has a display name: the picker
+    // says "Offizieller 99" and the chip counts the slot as filled. The sheet
+    // must not call that slot missing — a crewed gameday has to start.
+    positions = [
+      { position: "Referee", label: "Schiedsrichter", order: 1, required: true },
+    ];
+    crew = [crewRow({ id: 1, official: 99, name: null, position: "Referee" })];
+    const online = apiGetMock.getMockImplementation();
+    apiGetMock.mockImplementation(async (path: string) => {
+      if (path === TEAM_PATH) {
+        throw new ApiError(500, null);
+      }
+      return online?.(path);
+    });
+    const { onStarted } = await renderSetup();
+    await chooseDefaults();
+
+    expect(screen.getByText("vollständig")).toBeInTheDocument();
+    expect(
+      screen.getByText("Die Offiziellen des Teams konnten nicht geladen werden."),
+    ).toBeInTheDocument();
+
+    await tapStart();
+
+    expect(startSheet()).toHaveTextContent("eingetragen");
+    expect(
+      within(startSheet()).queryByText("fehlt", { selector: ".startmiss" }),
+    ).toBeNull();
+    expect(
+      within(startSheet()).queryByRole("button", { name: "Angaben fehlen" }),
+    ).toBeNull();
+
+    await confirmStart();
+
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
+  });
+
+  it("starts when the team list does not know the linked official", async () => {
+    // The other unresolvable path: the team request works, the person is simply
+    // not in it (a guest official stored as a link). Same rule, same result.
+    positions = [
+      { position: "Referee", label: "Schiedsrichter", order: 1, required: true },
+    ];
+    crew = [crewRow({ id: 1, official: 99, name: null, position: "Referee" })];
+    const { onStarted } = await renderSetup();
+    await chooseDefaults();
+
+    expect(
+      within(rowFor("Schiedsrichter")).getByText("Lizenz unbekannt"),
+    ).toBeInTheDocument();
+    expect(crewButton("Schiedsrichter")).toHaveTextContent("Offizieller 99");
+
+    await tapStart();
+
+    expect(startSheet()).toHaveTextContent("eingetragen");
+    await confirmStart();
+
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
+  });
+
   it("refuses a free-text name without a first and a last name", async () => {
     crew = [crewRow({ official: null, name: "Schiri" })];
     await renderSetup();
@@ -1357,6 +1434,36 @@ describe("GameSetup — start confirmation", () => {
     expect(within(startSheet()).getByRole("button", { name: "Angaben fehlen" }))
       .toBeDisabled();
     expect(apiPutMock).not.toHaveBeenCalled();
+  });
+
+  it("restates a one-word free text in an optional slot without blocking", async () => {
+    positions = [
+      { position: "Referee", label: "Schiedsrichter", order: 1, required: true },
+      { position: "Additional", label: "Zeitnehmer", order: 2, required: false },
+    ];
+    crew = [
+      crewRow(),
+      crewRow({
+        id: 2,
+        official: null,
+        name: "N.N.",
+        position: "Additional",
+      }),
+    ];
+    const { onStarted } = await renderSetup();
+    await chooseDefaults();
+
+    await tapStart();
+
+    // An optional guest can be fixed on the crew card; it never strands the game.
+    expect(startSheet()).toHaveTextContent("N.N.");
+    expect(
+      within(startSheet()).getByRole("button", { name: "Jetzt starten" }),
+    ).toBeEnabled();
+
+    await confirmStart();
+
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
   });
 
   it("refuses a start before toss, possession and direction are chosen", async () => {
@@ -1545,10 +1652,12 @@ describe("GameSetup — warn and confirm", () => {
       "crew-licence-warning",
     );
 
+    requests = [];
     await tapStart();
 
     // Warned, not blocked: the sheet repeats the licence problem and its
-    // second tap starts. The confirmation *is* the licence confirmation.
+    // second tap starts. The confirmation *is* the licence confirmation, so the
+    // start takes exactly two taps — never three.
     const sheet = within(startSheet());
     expect(sheet.getByText("1 Lizenz ist nicht gültig")).toBeInTheDocument();
     expect(
@@ -1557,13 +1666,26 @@ describe("GameSetup — warn and confirm", () => {
     expect(
       sheet.getByText("Das Spiel lässt sich trotzdem starten."),
     ).toBeInTheDocument();
-    expect(apiPutMock).not.toHaveBeenCalled();
-    expect(startCalls).toEqual([]);
+    // The footer names the licence case instead of "Jetzt starten"…
+    expect(
+      sheet.queryByRole("button", { name: "Jetzt starten" }),
+    ).toBeNull();
+    const second = sheet.getByRole("button", { name: "Trotzdem starten" });
+    expect(second).toBeEnabled();
+    expect(requests).toEqual([]);
+    expect(onStarted).not.toHaveBeenCalled();
 
-    await confirmStart();
+    // …and one tap on it finishes: tap 1 opened, tap 2 started.
+    await userEvent.click(second);
 
     await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
-    expect(apiPutMock).toHaveBeenCalledTimes(2);
+    expect(onStarted).toHaveBeenCalledTimes(1);
+    expect(startCalls).toEqual([
+      `PUT ${SETUP_PATH}`,
+      `GET ${LOG_PATH}`,
+      `PUT ${POSSESSION_PATH}`,
+    ]);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("asks again after a dismissed confirmation", async () => {
