@@ -12,7 +12,11 @@ Owns official-specific data and links officials to games (`GameOfficial` lives i
 
 ## Key models (`models.py`)
 `Official`, `OfficialGamedaySignup`, `OfficialLicense`, `OfficialLicenseHistory`,
-`OfficialExternalGames` (plus `Empty*` null-object variants).
+`OfficialExternalGames` (plus `Empty*` null-object variants), and
+`CrewPosition` — the scorecard's crew slots *per league* (`position` is the
+exact `GameOfficial.position` wire value, `label` the display name, `order` the
+sequence, `required` decides the completeness counter). A league without rows
+gets the built-in defaults, so the table holds overrides only.
 
 ## Service layer (`service/`)
 - `official_service.py`, `officials_repository_service.py` — core logic + data access.
@@ -29,6 +33,12 @@ Owns official-specific data and links officials to games (`GameOfficial` lives i
   (public - shared with `game_official_licenses.py` below). Reads `league_table.models` directly;
   consumed by [matchreport](../matchreport/CLAUDE.md)'s gameday list/detail views, not from within
   this app.
+- `crew_positions.py` — the crew slots the scorecard offers for a game
+  (`crew_positions_for_game` resolves game → gameday → league;
+  `crew_positions_for_league` answers the configured rows or
+  `DEFAULT_CREW_POSITIONS`, never an empty list). Edited per league in the
+  Django admin; `manage.py seed_crew_positions <liga|--all>` copies the
+  defaults into a league once so they can be relabelled.
 - `game_official_licenses.py` — resolves the currently valid license per refereed position
   (Referee/Down Judge/Field Judge/Side Judge) for a batch of games; consumed by matchreport's
   gameday-list CSV export.
@@ -41,7 +51,10 @@ Owns official-specific data and links officials to games (`GameOfficial` lives i
 - `moodle/` — external Moodle license-report integration.
 
 ## API & routes
-- `api/` (`views.py`, `serializers.py`, `urls.py`) — official data endpoints.
+- `api/` (`views.py`, `serializers.py`, `urls.py`) — official data endpoints,
+  incl. `GET /api/officials/crew-positions/game/<id>` for the scorecard's
+  preparation screen (`[{position, label, order, required}]`, configured or
+  default — same shape).
 - `urls.py`: `moodle-report/` — license report export.
 
 ## Conventions & gotchas

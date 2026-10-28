@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 import { ApiError, apiGet, apiPut, setDeviceId } from "../api/client";
 import type {
+  CrewPosition,
   Game,
   GameLog,
   GameSetup,
@@ -45,6 +46,16 @@ const SETUP_PATH = "/api/game/42/setup";
 const POSSESSION_PATH = "/api/game/42/possession";
 const TEAM_PATH = "/api/officials/team/7/list";
 const LOG_PATH = "/api/gamelog/42";
+const POSITIONS_PATH = "/api/officials/crew-positions/game/42";
+
+/** What the backend answers for a league without configuration. */
+const DEFAULT_POSITIONS: CrewPosition[] = [
+  { position: "Scorecard Judge", label: "Scorecard Judge", order: 1, required: false },
+  { position: "Referee", label: "Schiedsrichter", order: 2, required: true },
+  { position: "Down Judge", label: "Down Judge", order: 3, required: true },
+  { position: "Field Judge", label: "Field Judge", order: 4, required: true },
+  { position: "Side Judge", label: "Side Judge", order: 5, required: true },
+];
 
 const GAME: Game = {
   id: 42,
@@ -133,6 +144,7 @@ function startedLog(inPossession: string = "Ravens"): GameLog {
 
 let crew: Official[];
 let teamList: TeamOfficial[];
+let positions: CrewPosition[];
 let setup: GameSetup;
 let startCalls: string[];
 let setupFailure: unknown;
@@ -173,6 +185,7 @@ beforeEach(() => {
       valid_until: "2028-12-31",
     }),
   ];
+  positions = DEFAULT_POSITIONS;
   setup = {};
   startCalls = [];
   setupFailure = null;
@@ -192,6 +205,8 @@ beforeEach(() => {
         return teamList;
       case SETUP_PATH:
         return setup;
+      case POSITIONS_PATH:
+        return positions;
       case LOG_PATH:
         startCalls.push(`GET ${path}`);
         return LOG;
@@ -669,6 +684,139 @@ describe("GameSetup — crew data problems", () => {
   });
 });
 
+describe("GameSetup — crew slots per league", () => {
+  it("renders the configured slots in the configured order and labels", async () => {
+    positions = [
+      { position: "Referee", label: "Head Referee", order: 1, required: true },
+      {
+        position: "Scorecard Judge",
+        label: "Protokoll",
+        order: 2,
+        required: false,
+      },
+    ];
+    await renderSetup();
+
+    const roles = Array.from(document.querySelectorAll(".offrole")).map(
+      (role) => role.textContent,
+    );
+    expect(roles).toEqual(["Head Referee", "Protokoll"]);
+    expect(crewButton("Head Referee")).toHaveTextContent("Michael Klein");
+    expect(crewButton("Protokoll")).toHaveTextContent("Anna Richter");
+  });
+
+  it("counts only the configured required slots", async () => {
+    positions = [
+      { position: "Referee", label: "Head Referee", order: 1, required: true },
+      {
+        position: "Side Judge",
+        label: "Seitenrichter",
+        order: 2,
+        required: true,
+      },
+      { position: "Down Judge", label: "Linienrichter", order: 3, required: false },
+    ];
+    await renderSetup();
+
+    // Referee is filled, Side Judge is not; Down Judge is optional.
+    expect(screen.getByText("1/2")).toBeInTheDocument();
+    expect(screen.queryByText("1/4")).toBeNull();
+  });
+
+  it("is complete when a league marks no slot as required", async () => {
+    positions = [
+      { position: "Referee", label: "Head Referee", order: 1, required: false },
+    ];
+    await renderSetup();
+
+    expect(screen.getByText("vollständig")).toBeInTheDocument();
+    expect(screen.queryByText("0/0")).toBeNull();
+  });
+
+  it("writes the configured wire value, not the label", async () => {
+    positions = [
+      { position: "Referee", label: "Head Referee", order: 1, required: true },
+    ];
+    const { onStarted } = await renderSetup();
+
+    await pickCrew("Head Referee", "Sabine Lang");
+    await clickStart();
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
+
+    expect(apiPutMock).toHaveBeenCalledWith(CREW_PATH, [
+      { position: "Referee", official: 14, name: "Sabine Lang" },
+      // The unconfigured stored row survives the save untouched.
+      { position: "Scorecard Judge", official: 12, name: "Anna Richter" },
+    ]);
+  });
+
+  it("keeps a stored position the league does not configure read-only", async () => {
+    positions = [
+      { position: "Referee", label: "Head Referee", order: 1, required: true },
+    ];
+    crew = [
+      crewRow(),
+      crewRow({
+        id: 2,
+        official: 12,
+        name: "Anna Richter",
+        position: "Scorecard Judge",
+      }),
+    ];
+    await renderSetup();
+
+    expect(crewButton("Head Referee")).toHaveTextContent("Michael Klein");
+    // "Scorecard Judge" is not configured, so it can only be shown verbatim.
+    const extra = crewReadOnly();
+    expect(extra).toHaveTextContent("Anna Richter");
+    expect(extra?.closest(".offrow")).toHaveTextContent("Scorecard Judge");
+    expect(
+      screen.queryByRole("button", {
+        name: "Scorecard Judge: Offiziellen wählen",
+      }),
+    ).toBeNull();
+  });
+
+  it("keeps the defaults when the league has no configuration", async () => {
+    await renderSetup();
+
+    const roles = Array.from(document.querySelectorAll(".offrole")).map(
+      (role) => role.textContent,
+    );
+    expect(roles).toEqual([
+      "Scorecard Judge",
+      "Schiedsrichter",
+      "Down Judge",
+      "Field Judge",
+      "Side Judge",
+    ]);
+    expect(screen.getByText("1/4")).toBeInTheDocument();
+  });
+
+  it("cannot prepare the crew when the slots cannot be loaded", async () => {
+    apiGetMock.mockImplementation(async (path: string) => {
+      if (path === POSITIONS_PATH) {
+        throw new Error("boom");
+      }
+      if (path === CREW_PATH) {
+        return crew;
+      }
+      if (path === TEAM_PATH) {
+        return teamList;
+      }
+      if (path === SETUP_PATH) {
+        return setup;
+      }
+      throw new Error(`unexpected GET ${path}`);
+    });
+    render(<GameSetupScreen game={GAME} onStarted={vi.fn()} />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Die Vorbereitung konnte nicht geladen werden.",
+    );
+  });
+});
+
 describe("GameSetup — toss, possession and direction", () => {
   it("summarises the defaults", async () => {
     await renderSetup();
@@ -907,6 +1055,8 @@ describe("GameSetup — start failures and guards", () => {
           return teamList;
         case SETUP_PATH:
           return setup;
+        case POSITIONS_PATH:
+          return positions;
         case LOG_PATH: {
           logCalls += 1;
           startCalls.push(`GET ${path}`);
@@ -1169,6 +1319,9 @@ describe("GameSetup — loading", () => {
       if (path === SETUP_PATH) {
         return {};
       }
+      if (path === POSITIONS_PATH) {
+        return positions;
+      }
       throw new Error(`unexpected GET ${path}`);
     });
     await userEvent.click(
@@ -1190,6 +1343,9 @@ describe("GameSetup — loading", () => {
       }
       if (path === SETUP_PATH) {
         return {};
+      }
+      if (path === POSITIONS_PATH) {
+        return positions;
       }
       throw new Error(`unexpected GET ${path}`);
     });
@@ -1313,6 +1469,8 @@ describe("GameSetup — the remaining data shapes", () => {
           return teamList;
         case SETUP_PATH:
           return setup;
+        case POSITIONS_PATH:
+          return positions;
         case LOG_PATH:
           return nameless;
         default:
