@@ -58,7 +58,7 @@ into two files driven by the `circleci/path-filtering` orb:
 | Shard | Pytest paths (local equivalent) |
 |---|---|
 | `python-core` | `uv run pytest league_manager/tests/ share/tests/ home/tests/ -n 4` |
-| `python-gamedays` | `uv run pytest gamedays/ league_table/ -n 4` |
+| `python-gamedays` | `uv run pytest gamedays/ league_table/ gameevents/ -n 4` |
 | `python-officials` | `uv run pytest officials/tests/ teammanager/ -n 4` (accounts is a test stub; its scope only opens the shard) |
 | `python-live` | `uv run pytest liveticker/tests/ scorecard/tests.py scorecard_v2/tests/ -n 4` |
 | `python-designer` | `uv run pytest passcheck/tests/ gameday_designer/tests/ journey/tests.py journey/api/tests/ matchreport/tests/ -n 4` |
