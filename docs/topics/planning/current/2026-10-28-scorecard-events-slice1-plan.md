@@ -85,6 +85,30 @@ Implemented decisions (`gameevents/service/feed.py`):
 
 **Acceptance:** with the flag off, byte-identical payload to today (snapshot test); with it on, an event-sourced game reports the same score, period and last 5 ticks as the row-based path (comparison test on the same fixture); the ETag still changes when a new event arrives.
 
+Implemented decisions (`liveticker/service/liveticker_service.py`,
+`liveticker/api/views.py`, `league_manager/settings/base.py`):
+
+- **ticks stay a `TeamLog`-shaped read.** The projected rows *are* the
+  projection, so the existing query keeps the ordering (`-created_time`),
+  author, text vocabulary and timestamps the widget renders. Re-deriving tick
+  dicts from feed envelopes would be a second render path that could disagree
+  with the row one during the transition; the flag changes the score/period
+  source only.
+- flag on, an event-sourced game takes its **total score** from `GameState`.
+  `Gameresult`'s half scores are still maintained by the write path, so the
+  total equals `fh + sh` for a consistent game (the parity test asserts it).
+- **period** is applied as the displayed half (`1. Halbzeit`/`2. Halbzeit`)
+  only for a game whose `Gameinfo.status` is already in progress; selection is
+  untouched. A finished game keeps `beendet`, so the widget still shows its
+  "already finished" state.
+- a `needs_reconciliation` projection is skipped **for that game** and the row
+  path answers instead (never a 409 or a blank game in public). One warning per
+  request names all affected games, not one per game.
+- the ETag adds `GameState` (`count`, `max(last_seq)`, score sums,
+  `updated_at`) **only when the flag is on**, so a possession event that writes
+  no `TeamLog` row still invalidates the response. Flag off keeps the pre-T5
+  validator byte-identical.
+
 ## T6 — reconciliation and rebuild
 
 **Files:** `gameevents/management/commands/{check_game_projection,rebuild_game_projection}.py`, tests, docs
