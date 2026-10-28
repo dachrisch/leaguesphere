@@ -331,7 +331,7 @@ async function renderSetup(overrides: Partial<Game> = {}) {
       onStarted={onStarted}
     />,
   );
-  await screen.findByRole("group", { name: "Münzwurf" });
+  await screen.findByRole("group", { name: "Münzwurf gewonnen von" });
   return { onStarted, ...view };
 }
 
@@ -361,9 +361,9 @@ async function choose(group: string, option: string): Promise<void> {
  * field is refused before the start instead of being written as "home/Ost".
  */
 async function chooseDefaults(): Promise<void> {
-  await choose("Münzwurf", "Ravens");
+  await choose("Münzwurf gewonnen von", "Ravens");
   await choose("Erster Ballbesitz", "Ravens");
-  await choose("Richtung", "Ost → West");
+  await choose("Spielrichtung", "Ost → West");
 }
 
 /** First tap on the screen button: opens the confirmation, writes nothing. */
@@ -394,7 +394,7 @@ function crewButton(label: string): HTMLButtonElement {
 
 /** The read-only name of an unknown or duplicated row. */
 function crewReadOnly(): HTMLElement | null {
-  return document.querySelector<HTMLElement>(".offname");
+  return document.querySelector<HTMLElement>(".offcard-static .offmember");
 }
 
 function rowFor(label: string): HTMLElement {
@@ -423,18 +423,22 @@ function render(ui: ReactElement) {
 }
 
 describe("GameSetup — header and crew", () => {
-  it("renders the preparation header with the game context", async () => {
+  it("titles the screen and puts the matchup in a team card", async () => {
     await renderSetup();
 
     expect(
-      screen.getByRole("heading", { level: 1, name: "Vorbereitung" }),
+      screen.getByRole("heading", { level: 1, name: "Spiel vorbereiten" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("Ravens – Wolves · 13:30 · Feld 2"),
-    ).toBeInTheDocument();
+    const card = screen.getByRole("region", { name: "Begegnung" });
+    expect(card).toHaveTextContent("Ravens");
+    expect(card).toHaveTextContent("Wolves");
+    expect(card).toHaveTextContent("VS.");
+    expect(card).toHaveTextContent("13:30 · Feld 2");
+    // The old inline crests in the header subtitle are gone; the card owns it.
+    expect(document.querySelector(".app-sub")).toBeNull();
   });
 
-  it("puts the two team logos in the header context line", async () => {
+  it("puts the two team logos in the team card", async () => {
     const logos = new Map([
       ["ravens", "https://example.test/media/teammanager/logos/ravens.png"],
       ["wolves", "https://example.test/media/teammanager/logos/wolves.png"],
@@ -444,36 +448,36 @@ describe("GameSetup — header and crew", () => {
         <GameSetupScreen game={GAME} onStarted={vi.fn()} />
       </TeamLogosProvider>,
     );
-    await screen.findByRole("group", { name: "Münzwurf" });
+    await screen.findByRole("group", { name: "Münzwurf gewonnen von" });
 
-    const sub = document.querySelector(".app-sub") as HTMLElement;
-    const images = Array.from(sub.querySelectorAll("img"));
+    const images = Array.from(
+      screen.getByRole("region", { name: "Begegnung" }).querySelectorAll("img"),
+    );
     expect(images.map((image) => image.getAttribute("src"))).toEqual([
       logos.get("ravens"),
       logos.get("wolves"),
     ]);
-    // The context line stays one readable sentence, not a logo wall.
-    expect(sub).toHaveTextContent("Ravens – Wolves · 13:30 · Feld 2");
   });
 
-  it("renders the context line without logos when the directory is unknown", async () => {
+  it("falls back to the initials discs when the directory is unknown", async () => {
     await renderSetup();
 
-    expect(document.querySelectorAll(".app-sub img")).toHaveLength(0);
+    const card = screen.getByRole("region", { name: "Begegnung" });
+    expect(card.querySelectorAll("img")).toHaveLength(0);
+    expect(card.querySelectorAll(".teamlogo-match")).toHaveLength(2);
   });
 
   it("shows crew names and their roles", async () => {
     await renderSetup();
 
     expect(crewButton("Schiedsrichter")).toHaveTextContent("Michael Klein");
-    expect(crewButton("Schiedsrichter")).toHaveTextContent("verknüpft");
     expect(crewButton("Scorecard Judge")).toHaveTextContent("Anna Richter");
     expect(
       within(rowFor("Schiedsrichter")).getByText("Schiedsrichter"),
     ).toBeInTheDocument();
     expect(screen.getByText("Scorecard Judge")).toBeInTheDocument();
     // Only the four refereed positions count; the Scorecard Judge is optional.
-    expect(screen.getByText("1/4")).toBeInTheDocument();
+    expect(screen.getByText("1/4 besetzt")).toBeInTheDocument();
   });
 
   it("suggests people across the directory and flags who already fills a slot", async () => {
@@ -512,7 +516,7 @@ describe("GameSetup — header and crew", () => {
     expect(crewButton("Schiedsrichter")).toHaveTextContent(
       "Offiziellen wählen",
     );
-    expect(screen.getByText("0/4")).toBeInTheDocument();
+    expect(screen.getByText("0/4 besetzt")).toBeInTheDocument();
     const extra = crewReadOnly();
     expect(extra).toHaveTextContent("Michael Klein");
     expect(extra?.closest(".offrow")).toHaveTextContent("Schiedsrichter");
@@ -618,7 +622,7 @@ describe("GameSetup — licences", () => {
     ).toBeInTheDocument();
   });
 
-  it("warns once for several invalid licences instead of per person", async () => {
+  it("marks each invalid licence inline instead of a global paragraph", async () => {
     teamList[0] = teamPerson({ is_valid: false, valid_until: "2025-03-04" });
     teamList[1] = teamPerson({
       id: 12,
@@ -630,28 +634,29 @@ describe("GameSetup — licences", () => {
     });
     const { container } = await renderSetup();
 
-    const warnings = container.querySelectorAll(".setupwarn");
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toHaveTextContent("2 Lizenzen sind nicht gültig");
-    expect(warnings[0]).toHaveTextContent("Michael Klein (Schiedsrichter)");
-    expect(warnings[0]).toHaveTextContent("Anna Richter (Scorecard Judge)");
-    expect(warnings[0]).toHaveTextContent(
-      "Das Spiel lässt sich trotzdem starten.",
-    );
+    const hints = container.querySelectorAll(".offhint-warn");
+    expect(hints).toHaveLength(2);
+    expect(hints[0]).toHaveTextContent("Start trotzdem möglich");
+    expect(hints[1]).toHaveTextContent("Start trotzdem möglich");
+    // The old global paragraph and its footnote are gone.
+    expect(container.querySelector(".setupwarn")).toBeNull();
+    expect(screen.queryByText(/zählen/)).toBeNull();
   });
 
   it("shows no warning while every assigned licence is valid", async () => {
-    await renderSetup();
+    const { container } = await renderSetup();
 
     expect(document.querySelector(".setupwarn")).toBeNull();
+    expect(container.querySelectorAll(".offhint-warn")).toHaveLength(0);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("does not warn about a free-text official without a licence", async () => {
     crew[0] = crewRow({ official: null, name: "Gast Schiri" });
-    await renderSetup();
+    const { container } = await renderSetup();
 
     expect(document.querySelector(".setupwarn")).toBeNull();
+    expect(container.querySelectorAll(".offhint-warn")).toHaveLength(0);
   });
 });
 
@@ -763,7 +768,7 @@ describe("GameSetup — crew data problems", () => {
     );
     expect(alert).toHaveTextContent("Michael Klein, Anna Richter");
     // The duplicated position cannot be counted as filled, the other three can.
-    expect(screen.getByText("3/4")).toBeInTheDocument();
+    expect(screen.getByText("3/4 besetzt")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", {
         name: "Schiedsrichter: Offiziellen wählen",
@@ -885,8 +890,8 @@ describe("GameSetup — crew slots per league", () => {
     await renderSetup();
 
     // Referee is filled, Side Judge is not; Down Judge is optional.
-    expect(screen.getByText("1/2")).toBeInTheDocument();
-    expect(screen.queryByText("1/4")).toBeNull();
+    expect(screen.getByText("1/2 besetzt")).toBeInTheDocument();
+    expect(screen.queryByText("1/4 besetzt")).toBeNull();
   });
 
   it("is complete when a league marks no slot as required", async () => {
@@ -895,8 +900,8 @@ describe("GameSetup — crew slots per league", () => {
     ];
     await renderSetup();
 
-    expect(screen.getByText("vollständig")).toBeInTheDocument();
-    expect(screen.queryByText("0/0")).toBeNull();
+    expect(screen.getByText("keine Pflichtposition")).toBeInTheDocument();
+    expect(screen.queryByText("0/0 besetzt")).toBeNull();
   });
 
   it("writes the configured wire value, not the label", async () => {
@@ -950,14 +955,71 @@ describe("GameSetup — crew slots per league", () => {
     const roles = Array.from(document.querySelectorAll(".offrole")).map(
       (role) => role.textContent,
     );
+    // Required positions first, the optional Scorecard Judge last.
     expect(roles).toEqual([
-      "Scorecard Judge",
       "Schiedsrichter",
       "Down Judge",
       "Field Judge",
       "Side Judge",
+      "Scorecard Judge",
     ]);
-    expect(screen.getByText("1/4")).toBeInTheDocument();
+    expect(screen.getByText("1/4 besetzt")).toBeInTheDocument();
+  });
+
+  it("puts every required position before an optional one", async () => {
+    positions = [
+      { position: "Scorecard Judge", label: "Protokoll", order: 1, required: false },
+      { position: "Referee", label: "Head Referee", order: 2, required: true },
+      { position: "Side Judge", label: "Seitenrichter", order: 3, required: true },
+      { position: "Down Judge", label: "Linienrichter", order: 4, required: false },
+    ];
+    await renderSetup();
+
+    const roles = Array.from(document.querySelectorAll(".offrole")).map(
+      (role) => role.textContent,
+    );
+    // The server's order is kept inside each group; required wins the group.
+    expect(roles).toEqual(["Head Referee", "Seitenrichter", "Protokoll"]);
+  });
+
+  it("renders an empty optional slot as a compact add row", async () => {
+    positions = [
+      { position: "Referee", label: "Head Referee", order: 1, required: true },
+      {
+        position: "Scorecard Judge",
+        label: "Scorecard Judge",
+        order: 2,
+        required: false,
+      },
+    ];
+    // No crew row for the optional slot: it must not become a full row.
+    crew = [crewRow()];
+    await renderSetup();
+
+    const add = document.querySelector(".offcard-add");
+    expect(add).toHaveTextContent("Scorecard Judge hinzufügen");
+    expect(add).toHaveTextContent("Optional · ohne Pflicht zur Besetzung");
+    expect(document.querySelector(".offrow-optional")).not.toBeNull();
+    // It is the same picker: one tap opens it, a pick turns it into a row.
+    await pickCrew("Scorecard Judge", "Anna Richter");
+    expect(crewButton("Scorecard Judge")).toHaveTextContent("Anna Richter");
+    expect(document.querySelector(".offcard-add")).toBeNull();
+  });
+
+  it("shows an optional slot with somebody in it as a normal row", async () => {
+    positions = [
+      { position: "Referee", label: "Head Referee", order: 1, required: true },
+      {
+        position: "Scorecard Judge",
+        label: "Scorecard Judge",
+        order: 2,
+        required: false,
+      },
+    ];
+    await renderSetup();
+
+    expect(document.querySelector(".offcard-add")).toBeNull();
+    expect(crewButton("Scorecard Judge")).toHaveTextContent("Anna Richter");
   });
 
   it("preloads the slots so a reload without that request keeps the labels", async () => {
@@ -990,14 +1052,18 @@ describe("GameSetup — crew slots per league", () => {
     const roles = Array.from(document.querySelectorAll(".offrole")).map(
       (role) => role.textContent,
     );
-    expect(roles).toEqual(["Protokoll", "Head Referee"]);
+    // Required first; the empty optional slot is an add row, not a role row.
+    expect(roles).toEqual(["Head Referee"]);
+    expect(document.querySelector(".offcard-add")).toHaveTextContent(
+      "Protokoll hinzufügen",
+    );
     expect(crewButton("Head Referee")).toHaveTextContent("Michael Klein");
   });
 
   it("refuses an empty slot list instead of an officials step without positions", async () => {
     // The endpoint never answers `[]` (a league without rows gets the five
     // defaults). An empty list must not become a crew section with no slots
-    // and a "vollständig" chip — it is unusable configuration.
+    // and a "besetzt" chip — it is unusable configuration.
     positions = [];
     render(<GameSetupScreen game={GAME} onStarted={vi.fn()} />);
 
@@ -1005,7 +1071,7 @@ describe("GameSetup — crew slots per league", () => {
       "Die Vorbereitung konnte nicht geladen werden.",
     );
     expect(document.querySelector(".offrow")).toBeNull();
-    expect(screen.queryByText("vollständig")).toBeNull();
+    expect(screen.queryByText(/besetzt/)).toBeNull();
   });
 
   it("cannot prepare the crew when the slots cannot be loaded", async () => {
@@ -1032,14 +1098,19 @@ describe("GameSetup — crew slots per league", () => {
   });
 });
 
-describe("GameSetup — toss, possession and direction", () => {
+describe("GameSetup — configuration and readiness", () => {
   it("starts without a preselection and names what is still open", async () => {
     await renderSetup();
 
-    expect(document.querySelector("#setup-summary")).toHaveTextContent(
-      "Noch offen: Münzwurf, Erster Ballbesitz, Richtung.",
+    expect(screen.getByText("Angaben fehlen")).toBeInTheDocument();
+    expect(document.querySelector("#readiness")).toHaveTextContent(
+      "Münzwurf gewonnen von: keine Mannschaft gewählt.",
     );
-    for (const group of ["Münzwurf", "Erster Ballbesitz", "Richtung"]) {
+    for (const group of [
+      "Münzwurf gewonnen von",
+      "Erster Ballbesitz",
+      "Spielrichtung",
+    ]) {
       for (const button of within(
         screen.getByRole("group", { name: group }),
       ).getAllByRole("button")) {
@@ -1048,32 +1119,56 @@ describe("GameSetup — toss, possession and direction", () => {
     }
   });
 
-  it("summarises the choices once all three are made", async () => {
+  it("uses the renamed labels for the three configuration groups", async () => {
     await renderSetup();
-    await chooseDefaults();
 
-    expect(screen.getByText(/gewinnt den Münzwurf/)).toHaveTextContent(
-      "Ravens gewinnt den Münzwurf · Ballbesitz Ravens · Richtung Ost → West",
-    );
+    for (const label of [
+      "Münzwurf gewonnen von",
+      "Erster Ballbesitz",
+      "Spielrichtung",
+    ]) {
+      expect(screen.getByRole("group", { name: label })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole("group", { name: "Münzwurf" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Richtung" })).toBeNull();
   });
 
-  it("updates the summary when a control changes", async () => {
+  it("turns the readiness banner green once every required fact is set", async () => {
+    crew = completeCrew();
     await renderSetup();
+
+    expect(screen.getByText("Angaben fehlen")).toBeInTheDocument();
     await chooseDefaults();
 
-    await choose("Münzwurf", "Wolves");
-    await choose("Richtung", "West → Ost");
+    const ready = screen.getByRole("status");
+    expect(ready).toHaveTextContent("Bereit zum Starten");
+    expect(ready).toHaveTextContent("Alle Pflichtangaben sind gesetzt.");
+    expect(screen.queryByText("Angaben fehlen")).toBeNull();
+  });
 
-    expect(screen.getByText(/gewinnt den Münzwurf/)).toHaveTextContent(
-      "Wolves gewinnt den Münzwurf · Ballbesitz Ravens · Richtung West → Ost",
+  it("lists exactly the missing required fields in the banner", async () => {
+    crew = completeCrew();
+    await renderSetup();
+
+    const banner = screen.getByText("Angaben fehlen").closest(".readybar");
+    expect(banner).toHaveTextContent(
+      "Münzwurf gewonnen von: keine Mannschaft gewählt.",
     );
+    expect(banner).toHaveTextContent(
+      "Erster Ballbesitz: keine Mannschaft gewählt.",
+    );
+    expect(banner).toHaveTextContent("Spielrichtung: keine Seite gewählt.");
+
+    await chooseDefaults();
+
+    expect(screen.queryByText("Spielrichtung: keine Seite gewählt.")).toBeNull();
   });
 
   it("marks the selected segment with aria-pressed", async () => {
     await renderSetup();
     await chooseDefaults();
 
-    const toss = screen.getByRole("group", { name: "Münzwurf" });
+    const toss = screen.getByRole("group", { name: "Münzwurf gewonnen von" });
     expect(within(toss).getByRole("button", { name: "Ravens" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -1126,9 +1221,9 @@ describe("GameSetup — start sequence", () => {
     crew = completeCrew();
     await renderSetup();
 
-    await choose("Münzwurf", "Wolves");
+    await choose("Münzwurf gewonnen von", "Wolves");
     await choose("Erster Ballbesitz", "Wolves");
-    await choose("Richtung", "West → Ost");
+    await choose("Spielrichtung", "West → Ost");
     await clickStart();
 
     await waitFor(() => expect(startCalls).toContain(`GET ${LOG_PATH}`));
@@ -1153,9 +1248,9 @@ describe("GameSetup — start sequence", () => {
       away: "Speed and precision football",
     });
     // The segments are labelled with the row's long team descriptions.
-    await choose("Münzwurf", "The rising bird team from the north");
+    await choose("Münzwurf gewonnen von", "The rising bird team from the north");
     await choose("Erster Ballbesitz", "The rising bird team from the north");
-    await choose("Richtung", "Ost → West");
+    await choose("Spielrichtung", "Ost → West");
 
     await clickStart();
 
@@ -1174,11 +1269,18 @@ describe("GameSetup — start sequence", () => {
     await renderSetup();
 
     expect(startButton()).toHaveTextContent("Fortsetzen");
-    expect(screen.getByText(/gewinnt den Münzwurf/)).toHaveTextContent(
-      "Wolves gewinnt den Münzwurf · Ballbesitz Wolves · Richtung West → Ost",
-    );
     expect(
-      within(screen.getByRole("group", { name: "Richtung" })).getByRole(
+      within(
+        screen.getByRole("group", { name: "Münzwurf gewonnen von" }),
+      ).getByRole("button", { name: "Wolves" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      within(
+        screen.getByRole("group", { name: "Erster Ballbesitz" }),
+      ).getByRole("button", { name: "Wolves" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      within(screen.getByRole("group", { name: "Spielrichtung" })).getByRole(
         "button",
         { name: "West → Ost" },
       ),
@@ -1195,9 +1297,16 @@ describe("GameSetup — start sequence", () => {
     await renderSetup();
 
     expect(startButton()).toHaveTextContent("Fortsetzen");
-    expect(screen.getByText(/gewinnt den Münzwurf/)).toHaveTextContent(
-      "Wolves gewinnt den Münzwurf · Ballbesitz Wolves · Richtung West → Ost",
-    );
+    expect(
+      within(
+        screen.getByRole("group", { name: "Münzwurf gewonnen von" }),
+      ).getByRole("button", { name: "Wolves" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      within(
+        screen.getByRole("group", { name: "Erster Ballbesitz" }),
+      ).getByRole("button", { name: "Wolves" }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   it("maps a lost legacy toss to the home side", async () => {
@@ -1208,9 +1317,17 @@ describe("GameSetup — start sequence", () => {
     };
     await renderSetup();
 
-    expect(screen.getByText(/gewinnt den Münzwurf/)).toHaveTextContent(
-      "Ravens gewinnt den Münzwurf · Ballbesitz Ravens · Richtung West → Ost",
-    );
+    expect(
+      within(
+        screen.getByRole("group", { name: "Münzwurf gewonnen von" }),
+      ).getByRole("button", { name: "Ravens" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      within(screen.getByRole("group", { name: "Spielrichtung" })).getByRole(
+        "button",
+        { name: "West → Ost" },
+      ),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   it("disables the button while the start is in flight", async () => {
@@ -1378,7 +1495,7 @@ describe("GameSetup — start confirmation", () => {
     const { onStarted } = await renderSetup();
     await chooseDefaults();
 
-    expect(screen.getByText("vollständig")).toBeInTheDocument();
+    expect(screen.getByText("1/1 besetzt")).toBeInTheDocument();
     expect(
       screen.getByText("Die Offiziellen des Teams konnten nicht geladen werden."),
     ).toBeInTheDocument();
@@ -1472,9 +1589,9 @@ describe("GameSetup — start confirmation", () => {
     await tapStart();
 
     for (const reason of [
-      "Münzwurf: keine Mannschaft gewählt.",
+      "Münzwurf gewonnen von: keine Mannschaft gewählt.",
       "Erster Ballbesitz: keine Mannschaft gewählt.",
-      "Richtung: keine Seite gewählt.",
+      "Spielrichtung: keine Seite gewählt.",
     ]) {
       expect(startSheet()).toHaveTextContent(reason);
     }
@@ -1628,7 +1745,7 @@ describe("GameSetup — start failures and guards", () => {
     expect(document.querySelector(".startbtn")).toBeNull();
     expect(crewButton("Schiedsrichter")).toBeDisabled();
     expect(
-      within(screen.getByRole("group", { name: "Richtung" })).getByRole(
+      within(screen.getByRole("group", { name: "Spielrichtung" })).getByRole(
         "button",
         { name: "Ost → West" },
       ),
@@ -1644,13 +1761,10 @@ describe("GameSetup — warn and confirm", () => {
     const { onStarted } = await renderSetup();
     await chooseDefaults();
 
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Das Spiel lässt sich trotzdem starten.",
-    );
-    expect(startButton()).toHaveAttribute(
-      "aria-describedby",
-      "crew-licence-warning",
-    );
+    expect(
+      within(rowFor("Schiedsrichter")).getByText("Start trotzdem möglich"),
+    ).toBeInTheDocument();
+    expect(startButton()).not.toHaveAttribute("aria-describedby");
 
     requests = [];
     await tapStart();
@@ -1730,7 +1844,7 @@ describe("GameSetup — passcheck", () => {
     const game = { ...GAME };
     delete game.passcheck;
     render(<GameSetupScreen game={game} onStarted={vi.fn()} />);
-    await screen.findByRole("group", { name: "Münzwurf" });
+    await screen.findByRole("group", { name: "Münzwurf gewonnen von" });
 
     expect(screen.getByText("unbekannt")).toBeInTheDocument();
   });
@@ -1868,7 +1982,7 @@ describe("GameSetup — loading", () => {
     );
 
     expect(
-      await screen.findByRole("group", { name: "Münzwurf" }),
+      await screen.findByRole("group", { name: "Münzwurf gewonnen von" }),
     ).toBeInTheDocument();
   });
 
@@ -1890,7 +2004,7 @@ describe("GameSetup — loading", () => {
     });
     render(<GameSetupScreen game={GAME} onStarted={vi.fn()} />);
 
-    await screen.findByRole("group", { name: "Münzwurf" });
+    await screen.findByRole("group", { name: "Münzwurf gewonnen von" });
 
     expect(
       screen.getByText("Die Offiziellen des Teams konnten nicht geladen werden."),
@@ -1919,7 +2033,6 @@ describe("GameSetup — the remaining data shapes", () => {
     await renderSetup();
 
     expect(crewButton("Schiedsrichter")).toHaveTextContent("Offizieller 99");
-    expect(crewButton("Schiedsrichter")).toHaveTextContent("verknüpft");
     expect(
       within(rowFor("Schiedsrichter")).getByText("Lizenz unbekannt"),
     ).toBeInTheDocument();
@@ -1972,7 +2085,7 @@ describe("GameSetup — the remaining data shapes", () => {
     ];
     await renderSetup();
 
-    expect(screen.getByText("vollständig")).toBeInTheDocument();
+    expect(screen.getByText("4/4 besetzt")).toBeInTheDocument();
   });
 
   it("reads a saved setup that already uses the v2 side tokens", async () => {
@@ -1980,9 +2093,16 @@ describe("GameSetup — the remaining data shapes", () => {
     await renderSetup();
 
     expect(startButton()).toHaveTextContent("Fortsetzen");
-    expect(screen.getByText(/gewinnt den Münzwurf/)).toHaveTextContent(
-      "Ravens gewinnt den Münzwurf · Ballbesitz Wolves · Richtung Ost → West",
-    );
+    expect(
+      within(
+        screen.getByRole("group", { name: "Münzwurf gewonnen von" }),
+      ).getByRole("button", { name: "Ravens" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      within(
+        screen.getByRole("group", { name: "Erster Ballbesitz" }),
+      ).getByRole("button", { name: "Wolves" }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   it("falls back to its own message when the load fails without a detail", async () => {
@@ -2036,9 +2156,16 @@ describe("GameSetup — odd saved values and bodies", () => {
     setup = { ctResult: "irgendwas", fhPossession: "auch-egal" };
     await renderSetup();
 
-    expect(screen.getByText(/gewinnt den Münzwurf/)).toHaveTextContent(
-      "Ravens gewinnt den Münzwurf · Ballbesitz Ravens",
-    );
+    expect(
+      within(
+        screen.getByRole("group", { name: "Münzwurf gewonnen von" }),
+      ).getByRole("button", { name: "Ravens" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      within(
+        screen.getByRole("group", { name: "Erster Ballbesitz" }),
+      ).getByRole("button", { name: "Ravens" }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   it("treats a 409 without a body as a status problem, not a device lock", async () => {

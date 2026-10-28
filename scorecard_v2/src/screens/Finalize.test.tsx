@@ -394,13 +394,13 @@ describe("submitting the result", () => {
 });
 
 describe("the outbox guard", () => {
-  it("keeps the sync chip in the app bar next to the theme switch", async () => {
+  it("keeps the sync chip in the app bar next to the account menu", async () => {
     await renderFinalize({ failedWrites: 2 });
 
     const header = screen.getByRole("banner");
     expect(header.querySelector(".appbar-badge")).not.toBeNull();
     expect(
-      within(header).getByRole("button", { name: "Design: automatisch" }),
+      within(header).getByRole("button", { name: "Konto" }),
     ).toBeInTheDocument();
   });
 
