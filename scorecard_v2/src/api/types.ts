@@ -113,6 +113,23 @@ export interface Official {
 export type Officials = Official[];
 
 /**
+ * One crew slot of `GET /api/officials/crew-positions/game/<gameId>`
+ * (`CrewPositionScorecardSerializer`), configured per league.
+ *
+ * `position` is the exact `GameOfficial.position` wire value and is written
+ * back verbatim; `label` is only what the operator reads. `required` decides
+ * whether an empty slot counts against the completeness chip. A league
+ * without configuration answers the built-in defaults, so the list is never
+ * empty.
+ */
+export interface CrewPosition {
+  position: string;
+  label: string;
+  order: number;
+  required: boolean;
+}
+
+/**
  * `GET/PUT /api/game/<pk>/setup/` (`GameSetupSerializer`). The GET answers
  * `{}` until the game has been prepared, so every field is optional. `PUT`
  * starts the game when it creates the row, and rejects the transition when the

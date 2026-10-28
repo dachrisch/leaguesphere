@@ -10,6 +10,7 @@ import {
 
 import { ApiError, apiGet, apiPut, setDeviceId } from "../api/client";
 import type {
+  CrewPosition,
   Game,
   GameLog,
   GameSetup as GameSetupPayload,
@@ -36,32 +37,13 @@ interface GameSetupScreenProps {
 type Side = "home" | "away";
 type Direction = "Ost" | "West";
 
-/**
- * The crew positions the old scorecard writes (`Official.*` in
- * `scorecard/src/actions/objects.js`). `position` is the exact wire value and
- * is written back unchanged — the backend upserts by that string, so mapping
- * a stored position onto another name would update nothing and create a
- * duplicate row instead.
- *
- * `refereed` marks the four positions that make a crew complete; the
- * Scorecard Judge is optional.
- */
-const CREW_SLOTS = [
-  { position: "Scorecard Judge", label: "Scorecard Judge", refereed: false },
-  { position: "Referee", label: "Schiedsrichter", refereed: true },
-  { position: "Down Judge", label: "Down Judge", refereed: true },
-  { position: "Field Judge", label: "Field Judge", refereed: true },
-  { position: "Side Judge", label: "Side Judge", refereed: true },
-] as const;
-
-const REFEREED_POSITIONS = new Set<string>(
-  CREW_SLOTS.filter((slot) => slot.refereed).map((slot) => slot.position),
-);
-
 interface CrewSlot {
   /** Exact stored position; sent back verbatim when the slot is saved. */
   position: string;
+  /** The league's display name for the position, or the raw position. */
   label: string;
+  /** Whether an empty slot counts against the completeness counter. */
+  required: boolean;
   /** All stored rows for this position; more than one is a data problem. */
   rows: Official[];
   /** First row, editable in place. Unknown and duplicate slots stay read-only. */
@@ -125,15 +107,21 @@ function rowDisplayName(
 }
 
 /**
- * One slot per known position plus one read-only slot per unknown position.
+ * One slot per configured position plus one read-only slot per unknown one.
  *
- * Positions are matched byte-for-byte: the API upserts by `position`, so a
- * "clever" alias would leave the stored row untouched and create a second one.
- * Unknown positions are kept and shown; duplicate positions are marked so the
- * screen can refuse to write them (the backend's `get_or_create` would raise
- * `MultipleObjectsReturned`).
+ * The slots come from the league's configuration
+ * (`GET /api/officials/crew-positions/game/<id>`), already in display order:
+ * associations name and order their crew differently, and only the league
+ * knows which slots make a crew complete. `position` stays the exact wire
+ * value — the API upserts by that string, so a "clever" alias would leave the
+ * stored row untouched and create a second one. Unknown positions are kept and
+ * shown; duplicate positions are marked so the screen can refuse to write them
+ * (the backend's `get_or_create` would raise `MultipleObjectsReturned`).
  */
-function slotsFromCrew(crew: Official[]): CrewSlot[] {
+function slotsFromCrew(
+  crew: Official[],
+  positions: CrewPosition[],
+): CrewSlot[] {
   const byPosition = new Map<string, Official[]>();
   for (const row of crew) {
     const rows = byPosition.get(row.position);
@@ -144,12 +132,13 @@ function slotsFromCrew(crew: Official[]): CrewSlot[] {
     }
   }
 
-  const slots: CrewSlot[] = CREW_SLOTS.map((slot) => {
+  const slots: CrewSlot[] = positions.map((slot) => {
     const rows = byPosition.get(slot.position) ?? [];
     byPosition.delete(slot.position);
     return {
       position: slot.position,
       label: slot.label,
+      required: slot.required,
       rows,
       official: rows[0]?.official ?? null,
       name: rows[0]?.name ?? null,
@@ -162,6 +151,9 @@ function slotsFromCrew(crew: Official[]): CrewSlot[] {
     slots.push({
       position,
       label: position.trim() === "" ? "Ohne Position" : position,
+      // A position the league does not configure is a data problem, not a
+      // slot: it is shown read-only and never counts as required.
+      required: false,
       rows,
       official: rows[0]?.official ?? null,
       name: rows[0]?.name ?? null,
@@ -361,6 +353,7 @@ export default function GameSetupScreen({
   const crewPath = `/api/game/${id}/officials`;
   const setupPath = `/api/game/${id}/setup`;
   const teamPath = `/api/officials/team/${officialsId}/list`;
+  const positionsPath = `/api/officials/crew-positions/game/${id}`;
   const possessionPath = `/api/game/${id}/possession`;
   const logPath = `/api/gamelog/${id}`;
 
@@ -399,7 +392,7 @@ export default function GameSetupScreen({
    */
   const load = useCallback(async () => {
     try {
-      const [crew, team, setup] = await Promise.all([
+      const [crew, team, setup, positions] = await Promise.all([
         apiGet<Official[]>(crewPath),
         apiGet<TeamOfficial[]>(teamPath).catch(() => {
           setTeamError(true);
@@ -408,8 +401,11 @@ export default function GameSetupScreen({
         // Preloaded: a device that reloads with no network still shows what
         // was agreed on the coin toss.
         cachedGet<GameSetupPayload>(snapshotKey.setup(id), setupPath),
+        // The league's slots are configuration, not game state: preload them
+        // too, so a reload without network still shows the right role names.
+        cachedGet<CrewPosition[]>(snapshotKey.crewPositions(id), positionsPath),
       ]);
-      setSlots(slotsFromCrew(crew ?? []));
+      setSlots(slotsFromCrew(crew ?? [], positions ?? []));
       setTeamOfficials(team ?? []);
       const saved = hasSavedSetup(setup ?? {});
       setHasSetup(saved);
@@ -427,7 +423,7 @@ export default function GameSetupScreen({
       );
       setLoading(false);
     }
-  }, [crewPath, setupPath, teamPath, home, away, id]);
+  }, [crewPath, setupPath, teamPath, positionsPath, home, away, id]);
 
   useEffect(() => {
     // `load` only writes state after its first `await`; the rule cannot see
@@ -512,10 +508,14 @@ export default function GameSetupScreen({
     [slots, teamByOfficial, displayName],
   );
 
-  const refereedFilled = slots.filter(
+  /**
+   * Completeness is the league's decision (`required` per slot), not a fixed
+   * set of positions. Duplicate rows never count: they cannot be written.
+   */
+  const requiredSlots = slots.filter((slot) => slot.required);
+  const requiredFilled = requiredSlots.filter(
     (slot) =>
       !slot.duplicate &&
-      REFEREED_POSITIONS.has(slot.position) &&
       (slot.official !== null || (slot.name ?? "").trim() !== ""),
   ).length;
 
@@ -737,11 +737,11 @@ export default function GameSetupScreen({
           <section className="block">
             <div className="blockhead">
               <h2>Offizielle</h2>
-              {refereedFilled === REFEREED_POSITIONS.size ? (
+              {requiredFilled === requiredSlots.length ? (
                 <span className="okchip">vollständig</span>
               ) : (
                 <span className="chip-miss">
-                  {refereedFilled}/{REFEREED_POSITIONS.size}
+                  {requiredFilled}/{requiredSlots.length}
                 </span>
               )}
             </div>
@@ -807,8 +807,8 @@ export default function GameSetupScreen({
               );
             })}
             <p className="setupnote">
-              Schiedsrichter, Down Judge, Field Judge und Side Judge zählen für
-              die Vollständigkeit; der Scorecard Judge ist optional.
+              Welche Positionen es gibt und welche für die Vollständigkeit
+              zählen, legt die Liga fest.
             </p>
           </section>
 
