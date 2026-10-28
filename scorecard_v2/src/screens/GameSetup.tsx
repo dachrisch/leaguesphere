@@ -109,8 +109,9 @@ function rowDisplayName(
 /**
  * One slot per configured position plus one read-only slot per unknown one.
  *
- * The slots come from the league's configuration
- * (`GET /api/officials/crew-positions/game/<id>`), already in display order:
+ * The slots come from the league's configuration merged onto the server's
+ * defaults (`GET /api/officials/crew-positions/game/<id>`), already in display
+ * order:
  * associations name and order their crew differently, and only the league
  * knows which slots make a crew complete. `position` stays the exact wire
  * value — the API upserts by that string, so a "clever" alias would leave the
