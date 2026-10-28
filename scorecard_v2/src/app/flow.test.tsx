@@ -101,6 +101,20 @@ function routeGet(path: string, teamName = "crew"): unknown {
       return [GAME];
     case "/api/game/42/officials":
       return [];
+    case "/api/officials/crew-positions/game/42":
+      // The league has no configuration, so the backend answers the defaults.
+      return [
+        {
+          position: "Scorecard Judge",
+          label: "Scorecard Judge",
+          order: 1,
+          required: false,
+        },
+        { position: "Referee", label: "Schiedsrichter", order: 2, required: true },
+        { position: "Down Judge", label: "Down Judge", order: 3, required: true },
+        { position: "Field Judge", label: "Field Judge", order: 4, required: true },
+        { position: "Side Judge", label: "Side Judge", order: 5, required: true },
+      ];
     case "/api/officials/team/7/list":
       return [];
     case "/api/game/42/setup":
