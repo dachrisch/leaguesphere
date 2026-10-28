@@ -25,6 +25,7 @@ from officials.api.serializers import (
     GameOfficialAllInfoSerializer,
     OfficialSerializer,
     OfficialGamelistSerializer,
+    prefetch_official_license_history,
 )
 from officials.constants import OFFICIALS_STATISTICS_FOR_SEASON
 from officials.forms import (
@@ -850,17 +851,22 @@ class OfficialAssociationListView(View):
             created_at__gt=f"{year - 1}-04-01"
         ).exclude(license__id=4)
         officials_with_valid_licenses = valid_licenses.values("official").distinct()
-        official_list = Official.objects.filter(
-            Q(
-                id__in=officials_with_valid_licenses,
-                team__association__abbr=association_abbreviation,
+        official_list = (
+            Official.objects.filter(
+                Q(
+                    id__in=officials_with_valid_licenses,
+                    team__association__abbr=association_abbreviation,
+                )
+                | Q(
+                    id__in=officials_with_valid_licenses,
+                    team=Official.OHNE_TEAM_ID,
+                    association__abbr=association_abbreviation,
+                )
             )
-            | Q(
-                id__in=officials_with_valid_licenses,
-                team=Official.OHNE_TEAM_ID,
-                association__abbr=association_abbreviation,
-            )
-        ).order_by("team__description", "last_name")
+            .select_related("team__association", "association")
+            .prefetch_related(prefetch_official_license_history())
+            .order_by("team__description", "last_name")
+        )
         return render(
             request,
             self.template_name,

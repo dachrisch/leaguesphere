@@ -247,6 +247,14 @@ class MoodleAuth:
 
 
 class MoodleApi:
+    # Moodle webservice calls are made while rendering user-facing pages, so a
+    # hanging upstream must fail fast instead of blocking a request until the
+    # reverse proxy times out (nginx defaults to 60s -> HTTP 504).
+    REQUEST_TIMEOUT = 10
+    # `core_user_get_users_by_field` accepts several ids per call; chunk them so
+    # neither the request payload nor the response gets unreasonably large.
+    USER_INFO_BATCH_SIZE = 100
+
     def __init__(self):
         self.moodle_url = (
             f"{settings.MOODLE_URL}/moodle/webservice/rest/server.php"
@@ -265,6 +273,7 @@ class MoodleApi:
                     "password": password,
                     "service": "moodle_mobile_app",
                 },
+                timeout=self.REQUEST_TIMEOUT,
             ).json()
         )
 
@@ -318,6 +327,34 @@ class MoodleApi:
             )
         )
 
+    def get_user_infos_by_ids(self, user_ids) -> dict:
+        """Fetch many users in a handful of calls instead of one call per id.
+
+        Returns a mapping of ``str(external_id) -> ApiUserInfo``. Ids Moodle
+        does not know are simply missing from the mapping. Values are sent as
+        a POST body, so a few hundred ids cannot overflow the URL length limit.
+        """
+        unique_ids = list(
+            dict.fromkeys(
+                str(user_id)
+                for user_id in user_ids
+                if user_id is not None and str(user_id).strip() != ""
+            )
+        )
+        user_infos = {}
+        for start in range(0, len(unique_ids), self.USER_INFO_BATCH_SIZE):
+            batch = unique_ids[start : start + self.USER_INFO_BATCH_SIZE]
+            raw_users = self._send_request(
+                "&wsfunction=core_user_get_users_by_field&field=id",
+                data=[
+                    (f"values[{index}]", user_id) for index, user_id in enumerate(batch)
+                ],
+            )
+            for raw_user in raw_users:
+                user_info = ApiUserInfo(raw_user)
+                user_infos[str(user_info.get_id())] = user_info
+        return user_infos
+
     def update_user(self, api_user: ApiUpdateUser):
         self._send_request(
             f"&wsfunction=core_user_update_users&users[0][id]={api_user.user_id}"
@@ -327,5 +364,8 @@ class MoodleApi:
             f"&users[0][customfields][1][value]={api_user.license_name}"
         )
 
-    def _send_request(self, additional_params) -> dict:
-        return requests.get(f"{self.moodle_url}{additional_params}").json()
+    def _send_request(self, additional_params, data=None) -> dict:
+        url = f"{self.moodle_url}{additional_params}"
+        if data is None:
+            return requests.get(url, timeout=self.REQUEST_TIMEOUT).json()
+        return requests.post(url, data=data, timeout=self.REQUEST_TIMEOUT).json()
