@@ -1,20 +1,53 @@
-"""Pure projector: event -> (game state, ``TeamLog`` rows).
+"""Pure projector: events -> game state plus the ``TeamLog`` rows to write.
 
 This module deliberately imports no Django code. ``GameStateValue``,
-``TeamLogRow`` and ``GameEventValue`` are plain dataclasses, so the whole
-meaning of an event can be unit-tested without a database (and the same code
-can later run in a worker).
+``TeamLogRow``, ``GameEventValue`` and ``Projection`` are plain dataclasses, so
+the meaning of an event can be unit-tested without a database (and the same
+code can later run in a worker).
 
 The projected rows reproduce ``gamedays.service.gamelog.GameLogCreator``
-exactly -- event names, player, input, value, half, cop, isDeleted -- including
-its quirks, because every existing consumer (liveticker, statistics, match
-report, league table) reads ``TeamLog`` and must not notice the switch. See
-``gameevents/tests/golden_cases.py`` for the fixture table and
-``test_projector_golden.py`` for the comparison against the real writer.
+exactly -- event names, player, input, value, half, cop, isDeleted **and
+sequence** -- including its quirks, because every existing consumer
+(liveticker, statistics, match report, league table) reads ``TeamLog`` and must
+not notice the switch. See ``gameevents/tests/golden_cases.py`` for the fixture
+table and ``test_projector_golden.py`` for the comparison against the real
+writers.
 
-``correction`` reverses an earlier event without touching it: the projector
-emits deleted copies of the target's rows and subtracts the target's points.
-The target row itself is never mutated or removed.
+Grouping / sequence
+-------------------
+``Projection.rows`` are to be inserted; ``Projection.deleted_sequences`` and
+``Projection.restored_sequences`` name existing ``TeamLog.sequence`` groups the
+caller must mark ``isDeleted=True`` / ``False`` in place. Rows are never
+deleted physically.
+
+The unit of grouping is the **submission**, not the event: one legacy POST
+carries a touchdown and its conversion and the legacy writer stores both with
+one ``TeamLog.sequence``. A submission is identified by its events sharing one
+``client_id``; ``project_submission`` assigns every row it produces one
+sequence, the smallest event ``seq`` in that submission (event ``seq`` values
+are per-game, strictly increasing, and the first event of a submission is
+therefore unique). Excluded rows (``Strafe``, ``Spielzeit``, ``Auszeit``,
+``First Down``) and the period markers keep sequence 0, exactly as today.
+``apply`` is the per-event entry point: it projects state/score and rows, but
+leaves ``TeamLogRow.sequence`` at 0 until ``project_submission`` assigns it.
+
+Corrections
+-----------
+A ``correction`` inserts no row. It resolves its target event to the target's
+legacy sequence and returns that sequence in ``deleted_sequences`` (or, when
+the target is itself a correction, in ``restored_sequences``); it also reverses
+the target's score effect. The target row is never removed. The service that
+loads a stored correction must resolve two things for the projector:
+
+- ``GameEventValue.legacy_sequence`` on the target (the sequence of the
+  target's submission), and
+- ``GameEventValue.undo_rows`` with the rows the target's legacy sequence
+  currently projects, so undoing a touchdown+conversion group reverses the
+  whole group's score. Empty ``undo_rows`` means "project the target alone";
+  rows already marked ``isDeleted`` are not subtracted.
+
+Undoing a correction restores the sequences the first correction deleted and
+adds back the score it removed, so an undo of an undo is symmetric.
 
 Envelope -> projected row (slice 1)::
 
@@ -25,24 +58,39 @@ Envelope -> projected row (slice 1)::
     series / first_down            -> First Down
     possession / turnover          -> Turnover (cop)
     possession / interception      -> Interception (cop)
-    possession / home, away        -> Turnover (cop) + state.in_possession
+    possession / home, away        -> state only (no TeamLog row)
     timeout / home, away           -> Auszeit, input from payload
     time / clock                   -> Spielzeit, input from payload
     period / start, half_time, end -> Spiel gestartet / 2. Halbzeit gestartet /
                                       Spiel beendet (half=0, no team)
-    correction / undo              -> deleted copies of ``undo_of``'s rows
+    correction / undo              -> deleted/restored sequences, no row
 
 ``series`` is not in the plan's short type list, but scorecard v2 sends First
 Down today and the golden test must reproduce its row; it is the smallest
-addition that keeps the vocabulary honest.
+addition that keeps the vocabulary honest. ``pat1``/``pat2`` use distinct codes
+while safety carries ``payload.points``: that asymmetry is deliberate until
+slice 2's sport definitions replace both.
+
+Only user-data problems raise the typed ``InvalidEnvelope`` /
+``UnsupportedEventCode``; the append endpoint maps those to 400. Bugs surface
+as ordinary exceptions (500).
 """
 
 from dataclasses import dataclass, field, replace
 from typing import Any, Optional
 
+
+class InvalidEnvelope(Exception):
+    """The event envelope cannot be projected (client error -> HTTP 400)."""
+
+
+class UnsupportedEventCode(InvalidEnvelope):
+    """The envelope's ``code`` is unknown for its type (client error -> 400)."""
+
+
 # Mirrors gamedays.service.gamelog.SCORING_EVENT_VALUES / EXCLUDED_EVENTS.
-# Kept local so this module stays Django-free; test_projector.py asserts the
-# two copies agree.
+# Kept local so this module stays Django-free; the golden tests assert the two
+# copies agree.
 SCORING_EVENT_VALUES = {
     "Touchdown": 6,
     "Overtime": 1,
@@ -54,12 +102,14 @@ SCORING_EVENT_VALUES = {
 EXCLUDED_EVENTS = ("Strafe", "Spielzeit", "Auszeit", "First Down")
 
 # Rows the current writer stores with sequence 0: the excluded events and the
-# half/game markers (GameService._create_log_entry).
-_ZERO_SEQUENCE_EVENTS = frozenset(EXCLUDED_EVENTS) | {
-    "Spiel gestartet",
-    "2. Halbzeit gestartet",
-    "Spiel beendet",
+# half/game markers (GameService._create_log_entry). Duplicated literals are
+# guarded against drift by test_projector.py.
+_MARKER_EVENTS = {
+    "start": "Spiel gestartet",
+    "half_time": "2. Halbzeit gestartet",
+    "end": "Spiel beendet",
 }
+_ZERO_SEQUENCE_EVENTS = frozenset(EXCLUDED_EVENTS) | frozenset(_MARKER_EVENTS.values())
 
 _SIDES = ("home", "away")
 
@@ -78,8 +128,9 @@ class TeamLogRow:
     """One projected ``TeamLog`` row, in the shape today's writer produces.
 
     ``side`` names the team the row belongs to (``None`` for the period
-    markers, whose ``TeamLog.team`` is null). ``sequence`` is carried for the
-    persistence layer; the frozen golden contract does not compare it.
+    markers, whose ``TeamLog.team`` is null). ``sequence`` is assigned by
+    ``project_submission`` (one sequence per submission); it stays 0 for
+    excluded rows and markers, matching the legacy writer.
     """
 
     event: str
@@ -98,8 +149,10 @@ class GameEventValue:
     """The projector's view of one ``GameEvent`` row.
 
     ``undo_of`` holds the *target event itself* rather than its database id, so
-    ``apply`` stays pure. The append service resolves the FK and passes the
-    target here.
+    ``apply`` stays pure. ``legacy_sequence`` is the sequence of the event's
+    submission (set by the service for stored events); ``undo_rows`` is the
+    current projection of that sequence, supplied only when this event is a
+    correction's target.
     """
 
     type: str
@@ -109,15 +162,39 @@ class GameEventValue:
     period: int = 1
     payload: dict = field(default_factory=dict)
     seq: Optional[int] = None
+    legacy_sequence: Optional[int] = None
     undo_of: Optional["GameEventValue"] = None
+    undo_rows: tuple[TeamLogRow, ...] = ()
+
+
+@dataclass(frozen=True)
+class Projection:
+    """Everything one event/submission changes in the projection.
+
+    ``rows`` are inserted; ``deleted_sequences`` are ``TeamLog.sequence``
+    groups to mark deleted; ``restored_sequences`` are groups to mark alive
+    again (undo of an undo). No row is ever removed physically.
+    """
+
+    state: GameStateValue
+    rows: list[TeamLogRow] = field(default_factory=list)
+    deleted_sequences: list[int] = field(default_factory=list)
+    restored_sequences: list[int] = field(default_factory=list)
 
 
 def _side(value: Optional[str]) -> Optional[str]:
     if value in (None, ""):
         return None
     if value not in _SIDES:
-        raise ValueError(f"unknown side {value!r}")
+        raise InvalidEnvelope(f"unknown side {value!r}")
     return value
+
+
+def _require_side(event: GameEventValue) -> str:
+    side = _side(event.side)
+    if side is None:
+        raise InvalidEnvelope(f"{event.type} event needs side home|away")
+    return side
 
 
 def _advance(state: GameStateValue, event: GameEventValue, **changes) -> GameStateValue:
@@ -141,7 +218,7 @@ def _row(
     cop: bool = False,
     isDeleted: bool = False,
 ) -> TeamLogRow:
-    sequence = 0 if name in _ZERO_SEQUENCE_EVENTS else (event.seq or 0)
+    # Sequence is assigned once per submission by project_submission.
     return TeamLogRow(
         event=name,
         side=_side(side),
@@ -151,7 +228,21 @@ def _row(
         half=event.period if half is None else half,
         cop=cop,
         isDeleted=isDeleted,
-        sequence=sequence,
+        sequence=0,
+    )
+
+
+def _projection(
+    state: GameStateValue,
+    rows: Optional[list[TeamLogRow]] = None,
+    deleted: Optional[list[int]] = None,
+    restored: Optional[list[int]] = None,
+) -> Projection:
+    return Projection(
+        state=state,
+        rows=list(rows or []),
+        deleted_sequences=list(deleted or []),
+        restored_sequences=list(restored or []),
     )
 
 
@@ -167,11 +258,13 @@ def _duration(payload: dict, *, pad_minutes: bool) -> Optional[str]:
     return f"{minutes}:{seconds:02d}"
 
 
-def _apply_score(state: GameStateValue, event: GameEventValue):
+def _apply_score(state: GameStateValue, event: GameEventValue) -> Projection:
     if event.code == "safety":
         points = event.payload.get("points")
         if points not in (1, 2):
-            raise ValueError(f"safety needs points 1 or 2, got {points!r}")
+            raise UnsupportedEventCode(
+                f"safety needs payload.points 1 or 2, got {points!r}"
+            )
         name = f"Safety (+{points})"
         value = points
     else:
@@ -183,10 +276,10 @@ def _apply_score(state: GameStateValue, event: GameEventValue):
                 "overtime": "Overtime",
             }[event.code]
         except KeyError:
-            raise ValueError(f"unknown score code {event.code!r}") from None
+            raise UnsupportedEventCode(f"unknown score code {event.code!r}") from None
         value = SCORING_EVENT_VALUES[name]
 
-    side = _side(event.side)
+    side = _require_side(event)
     # Quirk kept from GameLogCreator: a scoring row without a jersey is stored
     # with value 0, so it must not move the score either.
     row_value = value if event.player is not None else 0
@@ -195,104 +288,159 @@ def _apply_score(state: GameStateValue, event: GameEventValue):
     changes: dict[str, Any] = {}
     if side == "home":
         changes["score_home"] = state.score_home + row_value
-    elif side == "away":
+    else:
         changes["score_away"] = state.score_away + row_value
-    return _advance(state, event, **changes), [row]
+    return _projection(_advance(state, event, **changes), [row])
 
 
-def _apply_penalty(state: GameStateValue, event: GameEventValue):
+def _apply_penalty(state: GameStateValue, event: GameEventValue) -> Projection:
     # The configured penalty name travels as TeamLog.input, exactly as the
     # legacy payload's ``input`` did.
     row = _row(
         event,
         "Strafe",
-        side=event.side,
+        side=_require_side(event),
         player=event.player,
         input=event.code,
     )
-    return _advance(state, event), [row]
+    return _projection(_advance(state, event), [row])
 
 
-def _apply_series(state: GameStateValue, event: GameEventValue):
+def _apply_series(state: GameStateValue, event: GameEventValue) -> Projection:
     if event.code != "first_down":
-        raise ValueError(f"unknown series code {event.code!r}")
-    row = _row(event, "First Down", side=event.side, player=event.player)
-    return _advance(state, event), [row]
+        raise UnsupportedEventCode(f"unknown series code {event.code!r}")
+    row = _row(event, "First Down", side=_require_side(event), player=event.player)
+    return _projection(_advance(state, event), [row])
 
 
-def _apply_possession(state: GameStateValue, event: GameEventValue):
+def _apply_possession(state: GameStateValue, event: GameEventValue) -> Projection:
     if event.code in _SIDES:
-        # A plain possession change. TeamLog has one change-of-possession
-        # vocabulary (cop=True, "Ballabgabe" in the liveticker), so the row
-        # reuses "Turnover"; no new event name is introduced.
-        row = _row(event, "Turnover", side=event.code, cop=True)
-        return _advance(state, event, in_possession=event.code), [row]
+        # Today's write path only sets Gameinfo.in_possession for a plain
+        # possession change; there is no TeamLog row and therefore no tick to
+        # invent here.
+        return _projection(_advance(state, event, in_possession=event.code))
     if event.code in ("turnover", "interception"):
         name = "Turnover" if event.code == "turnover" else "Interception"
         row = _row(
             event,
             name,
-            side=event.side,
+            side=_require_side(event),
             player=event.player,
             cop=True,
         )
-        return _advance(state, event), [row]
-    raise ValueError(f"unknown possession code {event.code!r}")
+        return _projection(_advance(state, event), [row])
+    raise UnsupportedEventCode(f"unknown possession code {event.code!r}")
 
 
-def _apply_timeout(state: GameStateValue, event: GameEventValue):
-    side = event.code if event.code in _SIDES else event.side
+def _apply_timeout(state: GameStateValue, event: GameEventValue) -> Projection:
+    side = event.code if event.code in _SIDES else _require_side(event)
     input_value = event.payload.get("input") or _duration(
         event.payload, pad_minutes=False
     )
     row = _row(event, "Auszeit", side=side, input=input_value)
-    return _advance(state, event), [row]
+    return _projection(_advance(state, event), [row])
 
 
-def _apply_time(state: GameStateValue, event: GameEventValue):
+def _apply_time(state: GameStateValue, event: GameEventValue) -> Projection:
     input_value = event.payload.get("input") or _duration(
         event.payload, pad_minutes=True
     )
-    row = _row(event, "Spielzeit", side=event.side, input=input_value)
-    return _advance(state, event), [row]
+    row = _row(event, "Spielzeit", side=_require_side(event), input=input_value)
+    return _projection(_advance(state, event), [row])
 
 
-def _apply_period(state: GameStateValue, event: GameEventValue):
+def _apply_period(state: GameStateValue, event: GameEventValue) -> Projection:
     if event.code == "start":
-        name, period = "Spiel gestartet", 1
+        name, period = _MARKER_EVENTS["start"], 1
     elif event.code == "half_time":
-        name, period = "2. Halbzeit gestartet", 2
+        name, period = _MARKER_EVENTS["half_time"], 2
     elif event.code == "end":
-        name, period = "Spiel beendet", event.period
+        name, period = _MARKER_EVENTS["end"], event.period
     else:
-        raise ValueError(f"unknown period code {event.code!r}")
-    # The markers are written with half=0, sequence=0 and no team, matching
-    # GameService._create_log_entry.
-    row = _row(event, name, half=0)
-    return _advance(state, event, period=period), [row]
+        raise UnsupportedEventCode(f"unknown period code {event.code!r}")
+    # Markers are written with half=0, sequence=0 and no team, matching
+    # GameService._create_log_entry. That path relies on TeamLog.input's ""
+    # default, unlike GameLogCreator, which passes None through.
+    row = _row(event, name, half=0, input="")
+    return _projection(_advance(state, event, period=period), [row])
 
 
-def _apply_correction(state: GameStateValue, event: GameEventValue):
-    target = event.undo_of
+@dataclass(frozen=True)
+class _CorrectionEffect:
+    """What a correction does to the projection (signed score deltas)."""
+
+    deleted: tuple[int, ...] = ()
+    restored: tuple[int, ...] = ()
+    score_home: int = 0
+    score_away: int = 0
+    possession_change: bool = False
+
+
+def _target_rows(target: GameEventValue) -> list[TeamLogRow]:
+    if target.undo_rows:
+        return list(target.undo_rows)
+    return list(apply(GameStateValue(), target).rows)
+
+
+def _correction_effect(correction: GameEventValue) -> _CorrectionEffect:
+    target = correction.undo_of
     if target is None:
-        raise ValueError("correction event has no undo_of target")
+        raise InvalidEnvelope("correction event has no undo_of target")
 
-    # Project the target from a neutral state to recover exactly the rows it
-    # would have written (and therefore its score effect).
-    _, target_rows = apply(GameStateValue(), target)
-    deleted_rows = [replace(row, isDeleted=True) for row in target_rows]
+    if target.type == "correction":
+        # Undoing a correction reverses that correction's own effect: restore
+        # what it deleted, re-delete what it restored and add its subtraction
+        # back. This is what keeps an undo of an undo symmetric.
+        inner = _correction_effect(target)
+        return _CorrectionEffect(
+            deleted=inner.restored,
+            restored=inner.deleted,
+            score_home=-inner.score_home,
+            score_away=-inner.score_away,
+            possession_change=inner.possession_change,
+        )
 
+    rows = _target_rows(target)
+    # Never subtract a row that is already deleted (an earlier correction owns
+    # it); only live rows are part of the score that must be reversed.
+    live_rows = [row for row in rows if not row.isDeleted]
+    deleted: tuple[int, ...] = ()
+    if rows:
+        if target.legacy_sequence is not None:
+            sequence = target.legacy_sequence
+        elif all(row.event in _ZERO_SEQUENCE_EVENTS for row in rows):
+            # Penalties, clocks and markers always live in sequence 0; the
+            # service need not resolve a sequence for them.
+            sequence = 0
+        else:
+            raise ValueError(
+                "correction target has no legacy_sequence; "
+                "the service must resolve the target's submission"
+            )
+        deleted = (sequence,)
+    return _CorrectionEffect(
+        deleted=deleted,
+        score_home=-sum(row.value for row in live_rows if row.side == "home"),
+        score_away=-sum(row.value for row in live_rows if row.side == "away"),
+        possession_change=target.type == "possession" and target.code in _SIDES,
+    )
+
+
+def _apply_correction(state: GameStateValue, event: GameEventValue) -> Projection:
+    effect = _correction_effect(event)
     changes: dict[str, Any] = {
-        "score_home": state.score_home
-        - sum(row.value for row in target_rows if row.side == "home"),
-        "score_away": state.score_away
-        - sum(row.value for row in target_rows if row.side == "away"),
+        "score_home": state.score_home + effect.score_home,
+        "score_away": state.score_away + effect.score_away,
     }
-    if target.type == "possession" and target.code in _SIDES:
+    if effect.possession_change:
         changes["in_possession"] = event.payload.get("restore_in_possession")
     # A corrected period marker cannot un-happen the period in the projection;
     # the deleted marker row is the record. Keep the current period.
-    return _advance(state, event, period=state.period, **changes), deleted_rows
+    return _projection(
+        _advance(state, event, period=state.period, **changes),
+        deleted=list(effect.deleted),
+        restored=list(effect.restored),
+    )
 
 
 _HANDLERS = {
@@ -307,11 +455,52 @@ _HANDLERS = {
 }
 
 
-def apply(state: GameStateValue, event: GameEventValue):
-    """Project one event onto ``state``; return the new state and its rows."""
+def apply(state: GameStateValue, event: GameEventValue) -> Projection:
+    """Project one event; rows carry sequence 0 until a submission assigns it."""
 
     try:
         handler = _HANDLERS[event.type]
     except KeyError:
-        raise ValueError(f"unknown event type {event.type!r}") from None
+        raise InvalidEnvelope(f"unknown event type {event.type!r}") from None
     return handler(state, event)
+
+
+def project_submission(
+    state: GameStateValue, events: list[GameEventValue]
+) -> Projection:
+    """Project one submission (one ``client_id``) and assign its sequence.
+
+    Every row the submission produces shares one legacy sequence -- the
+    smallest event ``seq`` in the submission, which is unique per game because
+    event ``seq`` values are allocated as ``max+1``. A submission with only
+    excluded rows/markers keeps sequence 0, and a correction submission
+    inserts no rows at all (it only names sequences to delete/restore).
+    """
+
+    events = list(events)
+    sequence = min(
+        (event.seq for event in events if event.seq is not None),
+        default=0,
+    )
+    state_out = state
+    rows: list[TeamLogRow] = []
+    deleted: list[int] = []
+    restored: list[int] = []
+    for event in events:
+        projection = apply(state_out, event)
+        state_out = projection.state
+        rows.extend(
+            replace(
+                row,
+                sequence=0 if row.event in _ZERO_SEQUENCE_EVENTS else sequence,
+            )
+            for row in projection.rows
+        )
+        deleted.extend(projection.deleted_sequences)
+        restored.extend(projection.restored_sequences)
+    return Projection(
+        state=state_out,
+        rows=rows,
+        deleted_sequences=sorted(set(deleted)),
+        restored_sequences=sorted(set(restored)),
+    )
