@@ -106,7 +106,7 @@ The app writes only events; a server-side service derives score, period, penalti
 
 | ID | Idea | Status | Layer / note |
 |---|---|---|---|
-| `I5.1` | Event-only writes with a per-event sequence counter; consumers derive state | `blocked` | Needs Leon (`Q1`) and decides whether it lands in v2 or v3. L0 already ships the pieces that make it cheap later: idempotent submissions, a per-game device lock, a snapshot of the log |
+| `I5.1` | Event-only writes with a per-event sequence counter; consumers derive state | `next` | **Designed** ([event architecture](./2026-10-28-scorecard-event-architecture.md)): slice 1 = event store + projection channel + liveticker. Decisions taken 2026-10-28; `Q1`'s default (events lead for v2 games) is in force pending Leon, and slice 1 does not depend on it |
 
 ## §6 v3 — live event capture and statistics
 
@@ -140,7 +140,7 @@ Explicitly after v2 runs cleanly.
 | ID | Idea | Status | Layer / note |
 |---|---|---|---|
 | `I9.1` | Game Day creates referee assignments; LeagueSphere pulls them into the officials step | `next` | Contract is `Q5` |
-| `I9.2` | Liveticker fed by scorecard events, so referees stop re-typing results | `next` | Depends on `I5.1` |
+| `I9.2` | Liveticker fed by scorecard events, so referees stop re-typing results | `next` | Depends on `I5.1`; slice 1 makes the liveticker the **first** consumer of the event projection, so this lands with the store rather than after it |
 | `I9.3` | Telegram channel subscriptions per team/league, driven by the same events | `next` | Depends on `I5.1` |
 | `I9.4` | Fantasy football off the captured data | `v3+` | Concrete association request, explicitly not scoped |
 | `I9.5` | Keep the API boundary clean so the app could run against another association's backend | `next` | Standing constraint on every layer; no distribution or licensing commitment |
@@ -162,7 +162,7 @@ Not tracked: automated capture (camera + AI, several observers, hybrid) is beyon
 
 | ID | Question | Blocks |
 |---|---|---|
-| `Q1` | Event sourcing: yes/no, and does it land in v2 or v3? | `I5.1`, `I6.x`, `I9.2`, `I9.3` |
+| `Q1` | Event sourcing: yes/no, and does it land in v2 or v3? | `I5.1`, `I6.x`, `I9.2`, `I9.3` — **default in force** (events lead for v2 games); Leon's answer still decides the global scope |
 | `Q2` | Does the scorecard own statistics capture, or only score + penalties? | `I6.3` |
 | `Q3` | Kader: does the scorecard require a roster, or does Passcheck create it? | `I8.2` |
 | `Q4` | Which template fields belong to league vs. gameday vs. sport? | `I1.3`, `I4.x` |
