@@ -241,9 +241,10 @@ describe("markGameFinished", () => {
 });
 
 describe("dropGameSnapshots", () => {
-  it("drops the log and the setup but keeps the roster and penalties", async () => {
+  it("drops the log, the setup and the crew positions but keeps the roster and penalties", async () => {
     await writeSnapshot(snapshotKey.log(42), LOG);
     await writeSnapshot(snapshotKey.setup(42), { ctResult: "home" });
+    await writeSnapshot(snapshotKey.crewPositions(42), []);
     await writeSnapshot(snapshotKey.roster(42), []);
     await writeSnapshot(snapshotKey.penalties(), []);
 
@@ -251,6 +252,11 @@ describe("dropGameSnapshots", () => {
 
     await expect(readSnapshot(snapshotKey.log(42))).resolves.toBeUndefined();
     await expect(readSnapshot(snapshotKey.setup(42))).resolves.toBeUndefined();
+    // Per game keyed, and a finished game has no preparation screen: keeping
+    // it would leave one entry per finished game on the device.
+    await expect(
+      readSnapshot(snapshotKey.crewPositions(42)),
+    ).resolves.toBeUndefined();
     await expect(readSnapshot(snapshotKey.roster(42))).resolves.toBeDefined();
     await expect(readSnapshot(snapshotKey.penalties())).resolves.toBeDefined();
   });
