@@ -1,4 +1,6 @@
 import os
+from unittest.mock import patch
+
 import pytest
 from django.conf import settings
 
@@ -90,3 +92,69 @@ class TestMoodleApi:
         assert user_info.get_last_name() == "Testuser"
         assert user_info.get_team() == "Ich finde mein Team nicht."
         assert user_info.get_team_id() == "-99"
+
+
+class TestMoodleApiBatchUserInfos:
+    @staticmethod
+    def _moodle_response(user_ids):
+        return [
+            {"id": int(user_id), "email": f"user{user_id}@example.com"}
+            for user_id in user_ids
+        ]
+
+    @patch("officials.service.moodle.moodle_api.requests")
+    def test_users_are_requested_in_batches(self, requests_mock):
+        requests_mock.post.side_effect = [
+            _FakeResponse(self._moodle_response(range(100))),
+            _FakeResponse(self._moodle_response(range(100, 150))),
+        ]
+
+        user_infos = MoodleApi().get_user_infos_by_ids(range(150))
+
+        assert requests_mock.post.call_count == 2
+        assert requests_mock.get.call_count == 0
+        assert len(user_infos) == 150
+        first_batch_data = requests_mock.post.call_args_list[0].kwargs["data"]
+        assert ("values[0]", "0") in first_batch_data
+        assert ("values[99]", "99") in first_batch_data
+        assert user_infos["42"].get_email() == "user42@example.com"
+
+    @patch("officials.service.moodle.moodle_api.requests")
+    def test_requests_time_out(self, requests_mock):
+        requests_mock.post.return_value = _FakeResponse([])
+
+        MoodleApi().get_user_infos_by_ids([1])
+
+        assert (
+            requests_mock.post.call_args.kwargs["timeout"] == MoodleApi.REQUEST_TIMEOUT
+        )
+
+    @patch("officials.service.moodle.moodle_api.requests")
+    def test_duplicate_ids_are_requested_once(self, requests_mock):
+        requests_mock.post.return_value = _FakeResponse(self._moodle_response([7]))
+
+        user_infos = MoodleApi().get_user_infos_by_ids([7, 7, "7", None])
+
+        assert requests_mock.post.call_count == 1
+        assert requests_mock.post.call_args.kwargs["data"] == [("values[0]", "7")]
+        assert list(user_infos) == ["7"]
+
+    @patch("officials.service.moodle.moodle_api.requests")
+    def test_moodle_error_payload_yields_no_user_infos(self, requests_mock):
+        requests_mock.post.return_value = _FakeResponse(
+            {
+                "exception": "moodle_exception",
+                "errorcode": "invalidtoken",
+                "message": "Invalid token - token not found",
+            }
+        )
+
+        assert MoodleApi().get_user_infos_by_ids([1, 2, 3]) == {}
+
+
+class _FakeResponse:
+    def __init__(self, json_data):
+        self._json_data = json_data
+
+    def json(self):
+        return self._json_data

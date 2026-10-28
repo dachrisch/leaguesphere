@@ -1,6 +1,6 @@
 import datetime
 
-from django.db.models import QuerySet, Max
+from django.db.models import Prefetch, QuerySet, Max
 from rest_framework.fields import (
     CharField,
     SerializerMethodField,
@@ -21,6 +21,24 @@ from officials.models import (
 )
 from officials.service.boff_license_calculation import LicenseStrategy
 from officials.service.moodle.moodle_service import MoodleService
+
+PREFETCHED_LICENSE_HISTORY = "prefetched_license_history"
+
+
+def prefetch_official_license_history():
+    """Prefetch the newest relevant license history of every official.
+
+    ``OfficialSerializer`` needs the newest license three times per row
+    (``license``, ``is_valid``, ``valid_until``). Prefetching keeps the whole
+    list at a single extra query instead of three per official.
+    """
+    return Prefetch(
+        "officiallicensehistory_set",
+        queryset=OfficialLicenseHistory.objects.select_related("license")
+        .exclude(license=LicenseStrategy.NO_LICENSE)
+        .order_by_rank("-created_at__year"),
+        to_attr=PREFETCHED_LICENSE_HISTORY,
+    )
 
 
 class OfficialExternalGamesSerializer(ModelSerializer):
@@ -65,7 +83,6 @@ class OfficialSerializer(ModelSerializer):
     wants_to_whistle = SerializerMethodField()
     license = SerializerMethodField()
     email = SerializerMethodField()
-    moodle_service = None
 
     class Meta:
         model = Official
@@ -74,8 +91,29 @@ class OfficialSerializer(ModelSerializer):
     def __init__(self, is_staff=False, fetch_email=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.is_staff = is_staff
-        if fetch_email:
-            self.moodle_service = MoodleService()
+        self.fetch_email = fetch_email and is_staff
+        self.emails_by_external_id = self._fetch_emails_by_external_id()
+        self._license_history_by_official_id = {}
+
+    def _fetch_emails_by_external_id(self) -> dict:
+        """Resolve every e-mail with a handful of Moodle calls, not one per row."""
+        if not self.fetch_email:
+            return {}
+        external_ids = [
+            str(official.external_id)
+            for official in self._iter_officials()
+            if getattr(official, "external_id", None) not in (None, "")
+        ]
+        if not external_ids:
+            return {}
+        return MoodleService().get_user_emails_by_external_ids(external_ids)
+
+    def _iter_officials(self):
+        if self.instance is None:
+            return []
+        if isinstance(self.instance, Official):
+            return [self.instance]
+        return self.instance
 
     def get_last_name(self, obj: Official):
         return self._obfuscate_text_if_needed(obj.last_name)
@@ -93,10 +131,9 @@ class OfficialSerializer(ModelSerializer):
         return license_history.license.name
 
     def get_email(self, obj: Official):
-        if not self.moodle_service or not self.is_staff:
+        if not self.fetch_email:
             return ""
-        user_info = self.moodle_service.get_user_info_by(external_id=obj.external_id)
-        return user_info.get_email()
+        return self.emails_by_external_id.get(str(obj.external_id), "")
 
     # noinspection PyMethodMayBeStatic
     def get_association(self, obj):
@@ -125,13 +162,24 @@ class OfficialSerializer(ModelSerializer):
 
     # noinspection PyMethodMayBeStatic
     def _get_license_history(self, obj):
-        newest_license: OfficialLicenseHistory = (
-            obj.officiallicensehistory_set.exclude(license=LicenseStrategy.NO_LICENSE)
-            .order_by_rank("-created_at__year")
-            .first()
-        )
+        cached_license_history = self._license_history_by_official_id.get(obj.pk)
+        if cached_license_history is not None:
+            return cached_license_history
+        prefetched_license_history = getattr(obj, PREFETCHED_LICENSE_HISTORY, None)
+        if prefetched_license_history is not None:
+            newest_license = (
+                prefetched_license_history[0] if prefetched_license_history else None
+            )
+        else:
+            newest_license: OfficialLicenseHistory = (
+                obj.officiallicensehistory_set.select_related("license")
+                .exclude(license=LicenseStrategy.NO_LICENSE)
+                .order_by_rank("-created_at__year")
+                .first()
+            )
         if newest_license is None:
-            return EmptyOfficialLicenseHistory()
+            newest_license = EmptyOfficialLicenseHistory()
+        self._license_history_by_official_id[obj.pk] = newest_license
         return newest_license
 
 

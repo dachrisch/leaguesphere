@@ -1,6 +1,9 @@
 from datetime import datetime, date
+from unittest.mock import patch
 
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 
 from officials.api.serializers import (
     GameOfficialAllInfoSerializer,
@@ -9,7 +12,9 @@ from officials.api.serializers import (
     OfficialGameCountSerializer,
 )
 from officials.models import Official
+from officials.service.moodle.moodle_service import MoodleService
 from officials.tests.setup_factories.db_setup_officials import DbSetupOfficials
+from officials.tests.setup_factories.factories_officials import OfficialFactory
 
 
 class TestGameOfficialAllInfoSerializer:
@@ -117,6 +122,79 @@ class TestOfficialSerializer(TestCase):
             "team": official.team.description,
             "valid_until": date(today.year + 1, today.month, today.day),
         }
+
+    @patch.object(MoodleService, "get_user_info_by")
+    @patch.object(MoodleService, "get_user_emails_by_external_ids")
+    def test_emails_for_many_officials_are_fetched_in_one_batch(
+        self, get_user_emails_by_external_ids, get_user_info_by
+    ):
+        DbSetupOfficials().create_officials_and_team()
+        team = Official.objects.first().team
+        OfficialFactory(first_name="Eva", last_name="Extra", team=team, external_id=99)
+        get_user_emails_by_external_ids.return_value = {
+            "5": "franzi@example.com",
+            "7": "julia@example.com",
+            "99": "eva@example.com",
+        }
+        officials = Official.objects.order_by("pk")
+
+        result = OfficialSerializer(
+            instance=officials, is_staff=True, fetch_email=True, many=True
+        ).data
+
+        get_user_info_by.assert_not_called()
+        get_user_emails_by_external_ids.assert_called_once()
+        requested_ids = get_user_emails_by_external_ids.call_args.args[0]
+        assert sorted(requested_ids) == ["5", "7", "99"]
+        assert [entry["email"] for entry in result] == [
+            "franzi@example.com",
+            "julia@example.com",
+            "eva@example.com",
+        ]
+
+    @patch.object(MoodleService, "get_user_emails_by_external_ids")
+    def test_missing_moodle_user_results_in_empty_email(
+        self, get_user_emails_by_external_ids
+    ):
+        DbSetupOfficials().create_officials_and_team()
+        get_user_emails_by_external_ids.return_value = {"5": "franzi@example.com"}
+        officials = Official.objects.order_by("pk")
+
+        result = OfficialSerializer(
+            instance=officials, is_staff=True, fetch_email=True, many=True
+        ).data
+
+        assert [entry["email"] for entry in result] == [
+            "franzi@example.com",
+            "",
+        ]
+
+    @patch.object(MoodleService, "get_user_emails_by_external_ids")
+    def test_no_email_is_fetched_for_anonymous_users(
+        self, get_user_emails_by_external_ids
+    ):
+        DbSetupOfficials().create_officials_and_team()
+
+        result = OfficialSerializer(
+            instance=Official.objects.order_by("pk"), fetch_email=True, many=True
+        ).data
+
+        get_user_emails_by_external_ids.assert_not_called()
+        assert [entry["email"] for entry in result] == ["", ""]
+
+    def test_license_history_is_queried_once_for_single_official(self):
+        DbSetupOfficials().create_officials_full_setup()
+        official = Official.objects.first()
+        with CaptureQueriesContext(connection) as queries:
+            result = OfficialSerializer(instance=official, is_staff=True).data
+
+        license_queries = [
+            query
+            for query in queries.captured_queries
+            if "officiallicensehistory" in query["sql"].lower()
+        ]
+        assert result["license"] == "F1"
+        assert len(license_queries) == 1
 
 
 class TestOfficialGamelistSerializer(TestCase):

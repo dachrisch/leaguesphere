@@ -289,6 +289,17 @@ class MoodleService:
     def get_user_info_by(self, external_id) -> ApiUserInfo:
         return self.moodle_api.get_user_info_by_id(external_id)
 
+    def get_user_emails_by_external_ids(self, external_ids) -> dict:
+        """Resolve many Moodle e-mails at once: ``str(external_id) -> email``.
+
+        Unknown ids are not part of the result (callers default to "").
+        """
+        user_infos = self.moodle_api.get_user_infos_by_ids(external_ids)
+        return {
+            external_id: user_info.get_email()
+            for external_id, user_info in user_infos.items()
+        }
+
     def login(self, username, password) -> int:
         self.moodle_api.confirm_user_auth(username, password)
         try:
