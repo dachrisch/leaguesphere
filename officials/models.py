@@ -14,7 +14,7 @@ from django.db.models import (
     Sum,
 )
 
-from gamedays.models import Association, Team, Gameday
+from gamedays.models import Association, Team, Gameday, League
 
 
 class Official(models.Model):
@@ -198,3 +198,59 @@ class OfficialExternalGames(models.Model):
 
     def __str__(self):
         return f"{self.official.last_name}__{self.date}: {self.number_games}"
+
+
+class CrewPosition(models.Model):
+    """One crew slot a league's scorecard offers for a game.
+
+    `position` is the **wire value** written into `GameOfficial.position`, not
+    a display string: the scorecard upserts a crew row by that exact string, so
+    renaming it would leave the stored row untouched and create a second one.
+    The operator sees `label`; `order` is the display sequence and `required`
+    decides whether an empty slot counts against the completeness counter.
+
+    A league without rows has no configuration and gets the built-in defaults
+    (`officials.service.crew_positions.DEFAULT_CREW_POSITIONS`); the table only
+    holds *overrides*. That is why the defaults are not seeded here: a league
+    created tomorrow must get them without a data migration.
+    """
+
+    league = models.ForeignKey(
+        League,
+        on_delete=models.CASCADE,
+        related_name="crew_positions",
+        help_text="Die Liga, für die diese Position gilt.",
+    )
+    position = models.CharField(
+        max_length=100,
+        help_text="Exakt der Wert, der in GameOfficial.position gespeichert wird "
+        '(z. B. "Referee"). Nicht übersetzen – ein anderer Wert erzeugt einen '
+        "zweiten Eintrag statt den vorhandenen zu ändern.",
+    )
+    label = models.CharField(
+        max_length=100,
+        help_text="Anzeigename für die Bedienung (z. B. Schiedsrichter).",
+    )
+    order = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Reihenfolge in der Vorbereitung; kleinste Zahl zuerst.",
+    )
+    required = models.BooleanField(
+        default=True,
+        help_text="Zählt dieses Feld für die Vollständigkeit der Crew?",
+    )
+
+    objects: QuerySet = models.Manager()
+
+    class Meta:
+        ordering = ["league_id", "order", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["league", "position"], name="unique_crewposition_per_league"
+            ),
+        ]
+        verbose_name = "Crew-Position"
+        verbose_name_plural = "Crew-Positionen"
+
+    def __str__(self):
+        return f"{self.league}: {self.order} {self.label} ({self.position})"

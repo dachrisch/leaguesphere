@@ -379,3 +379,17 @@ class GameOfficialAllInfoSerializer(Serializer):
                 "name": f"{game_official[self.OFFICIAL_FIRST_NAME_C]} {game_official[self.OFFICIAL_LAST_NAME_C]}",
             }
         return {"is_mapped": False, "name": game_official.get(self.NAME_C)}
+
+
+class CrewPositionScorecardSerializer(Serializer):
+    """One crew slot for the scorecard's preparation screen.
+
+    `position` is the exact wire value the screen writes back into
+    `GameOfficial.position`; `label` is what the operator sees. A configured
+    league and the built-in defaults answer the same shape.
+    """
+
+    position = CharField()
+    label = CharField()
+    order = IntegerField()
+    required = BooleanField()
