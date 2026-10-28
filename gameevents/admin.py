@@ -40,5 +40,7 @@ class GameStateAdmin(ReadOnlyAdmin):
         "period",
         "in_possession",
         "last_seq",
+        "needs_reconciliation",
     )
+    list_filter = ("needs_reconciliation",)
     readonly_fields = [field.name for field in GameState._meta.fields]
