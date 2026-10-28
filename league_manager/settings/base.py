@@ -35,6 +35,7 @@ CORS_EXPOSE_HEADERS = ("ETag", "Retry-After")
 
 INSTALLED_APPS = [
     "gamedays.apps.GamedaysConfig",
+    "gameevents.apps.GameeventsConfig",
     "crispy_forms",
     "crispy_bootstrap5",
     "dal",
