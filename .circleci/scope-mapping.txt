@@ -51,6 +51,12 @@ home/.* run-build-backend true
 (gamedays|league_table)/.* run-build-backend true
 ((gamedays|league_table)/migrations/.*) run-migrations true
 
+# --- gameevents (event store + projector): projects into gamedays.TeamLog,
+#     so it runs with the gamedays shard ---
+gameevents/.* run-python-gamedays true
+gameevents/.* run-build-backend true
+gameevents/migrations/.* run-migrations true
+
 # --- officials + accounts + teammanager (identity shard) ---
 (officials|accounts|teammanager)/.* run-python-officials true
 (officials|accounts|teammanager)/.* run-build-backend true

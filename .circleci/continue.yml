@@ -208,7 +208,7 @@ jobs:
       - checkout
       - setup_uv
       - python_shard_test:
-          paths: "gamedays/ league_table/"
+          paths: "gamedays/ league_table/ gameevents/"
           junit: "test-results-gamedays.xml"
           cov_flag: "python-gamedays"
 
