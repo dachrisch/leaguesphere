@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime
 from typing import List
 
@@ -6,6 +7,8 @@ import requests
 from django.conf import settings
 
 from officials.service.boff_license_calculation import LicenseStrategy
+
+logger = logging.getLogger(__name__)
 
 
 class FieldNotFoundException(Exception):
@@ -350,6 +353,20 @@ class MoodleApi:
                     (f"values[{index}]", user_id) for index, user_id in enumerate(batch)
                 ],
             )
+            if not isinstance(raw_users, list):
+                # Moodle answers with an error object (invalid token, disabled
+                # webservice, maintenance) instead of a list. Degrade to "no
+                # e-mails" - as the single-user lookup always did - instead of
+                # blowing up the page that renders this list.
+                logger.warning(
+                    "Moodle user lookup returned no user list: %s",
+                    (
+                        raw_users.get("errorcode")
+                        if isinstance(raw_users, dict)
+                        else type(raw_users).__name__
+                    ),
+                )
+                return {}
             for raw_user in raw_users:
                 user_info = ApiUserInfo(raw_user)
                 user_infos[str(user_info.get_id())] = user_info
@@ -364,7 +381,8 @@ class MoodleApi:
             f"&users[0][customfields][1][value]={api_user.license_name}"
         )
 
-    def _send_request(self, additional_params, data=None) -> dict:
+    def _send_request(self, additional_params, data=None) -> dict | list:
+        """Moodle answers with a list for most getters, a dict for single objects."""
         url = f"{self.moodle_url}{additional_params}"
         if data is None:
             return requests.get(url, timeout=self.REQUEST_TIMEOUT).json()

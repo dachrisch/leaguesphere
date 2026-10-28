@@ -139,6 +139,18 @@ class TestMoodleApiBatchUserInfos:
         assert requests_mock.post.call_args.kwargs["data"] == [("values[0]", "7")]
         assert list(user_infos) == ["7"]
 
+    @patch("officials.service.moodle.moodle_api.requests")
+    def test_moodle_error_payload_yields_no_user_infos(self, requests_mock):
+        requests_mock.post.return_value = _FakeResponse(
+            {
+                "exception": "moodle_exception",
+                "errorcode": "invalidtoken",
+                "message": "Invalid token - token not found",
+            }
+        )
+
+        assert MoodleApi().get_user_infos_by_ids([1, 2, 3]) == {}
+
 
 class _FakeResponse:
     def __init__(self, json_data):
