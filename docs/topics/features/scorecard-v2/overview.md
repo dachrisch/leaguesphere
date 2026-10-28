@@ -123,6 +123,8 @@ The stage database is reset every night. To get a finished test gameday for
 **today**, run the management command inside the stage container:
 
 ```bash
+scripts/seed_stage_scorecard_demo.sh
+# or, without the wrapper:
 ssh cda@lehel.xyz "docker exec leaguesphere_stage.staging-app \
     python manage.py seed_scorecard_demo"
 ```
