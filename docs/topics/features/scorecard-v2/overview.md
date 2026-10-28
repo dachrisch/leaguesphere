@@ -57,7 +57,13 @@ only control static assets, and its scope could never leak into the old app.
    nobody matches). A stored position the league does not configure stays
    visible read-only and is written back unchanged: the API upserts by the
    exact `GameOfficial.position` string, never by the label. An invalid licence
-   warns and needs a second tap; it never blocks the start.
+   warns and needs a second tap; it never blocks the start. Toss, first
+   possession and direction have no default, and the first tap on **Spiel
+   starten** only opens a confirmation that restates teams, kick-off and field,
+   the crew with the league's labels, toss, possession, direction, licences and
+   passcheck, refuses an empty `required` slot, a free-text name without both
+   names and an unchosen toss/possession/direction with a named reason, and says
+   that starting writes the setup while no clock runs in the app.
 4. **Feld · Runde** (the tracking screen) — score header with possession,
    touchdown with the roster's jerseys (numeric fallback when there is none),
    PAT, first down, turnover, interception, penalty with search, safety,
