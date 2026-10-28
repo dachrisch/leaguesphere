@@ -1,12 +1,20 @@
-"""The canonical scorecard write path: ``POST /api/game/<id>/events``.
+"""The scorecard write path and the feed it feeds.
 
-The app can move from ``POST /api/gamelog/<id>`` to this endpoint without a
-protocol change (the legacy body is accepted and translated), and a client
-that already speaks envelopes posts them directly. Either way one request is
-one submission: appended, projected into ``TeamLog`` and ``GameState``, and
-answered with the resulting state and cursor -- in one transaction.
+``POST /api/game/<id>/events``
+    The app can move from ``POST /api/gamelog/<id>`` to this endpoint without a
+    protocol change (the legacy body is accepted and translated), and a client
+    that already speaks envelopes posts them directly. Either way one request
+    is one submission: appended, projected into ``TeamLog`` and ``GameState``,
+    and answered with the resulting state and cursor -- in one transaction.
 
-Responses:
+``GET /api/game/<id>/feed?after=<seq>``
+    ``{state, events, cursor}`` for a poller. ``ETag`` is the cursor for an
+    event-sourced game (and a row-derived validator for a legacy one), so an
+    unchanged feed round-trips to ``304``. A flagged projection answers
+    ``409 {"detail", "needs_reconciliation": true}`` and never a score. The
+    read contract lives in ``gameevents/service/feed.py``.
+
+Write responses:
 
 - ``201 {state, cursor}`` -- applied;
 - ``200 {state, cursor}`` -- this ``client_id`` was already applied, nothing
@@ -33,6 +41,7 @@ views both gain the lock there). Do not reimplement it here.
 
 from http import HTTPStatus
 
+from django.http import HttpResponseNotModified
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -44,6 +53,12 @@ from gameevents.service.append import (
     append_submission,
     project_game,
     side_for_team,
+)
+from gameevents.service.feed import (
+    ProjectionUnavailable,
+    etag_matches,
+    get_feed,
+    state_body,
 )
 from gameevents.service.legacy import from_legacy_entries
 from gameevents.service.projector import GameEventValue, GameStateValue, InvalidEnvelope
@@ -68,21 +83,77 @@ def device_lock_response(request, game_id, data=None):
     return helper(request, game_id, data)
 
 
-def _state_body(state: GameStateValue) -> dict:
-    return {
-        "score_home": state.score_home,
-        "score_away": state.score_away,
-        "period": state.period,
-        "in_possession": state.in_possession or None,
-        "last_seq": state.last_seq,
-    }
-
-
 def _response(state: GameStateValue, status: int) -> Response:
     return Response(
-        {"state": _state_body(state), "cursor": state.last_seq},
+        {"state": state_body(state), "cursor": state.last_seq},
         status=status,
     )
+
+
+class GameFeedAPIView(APIView):
+    """``GET /api/game/<id>/feed?after=<seq>`` -- the poller's read model.
+
+    Read-only and public like the other game read endpoints (the project's
+    default ``IsAuthenticatedOrReadOnly``); writing the feed is the append
+    endpoint's job.
+    """
+
+    def get(self, request, game_id):
+        try:
+            game = Gameinfo.objects.get(pk=game_id)
+        except Gameinfo.DoesNotExist:
+            raise NotFound(detail=f"No game found for gameId {game_id}")
+
+        after = self._after(request)
+        if after is None:
+            return Response(
+                {"detail": "after must be a non-negative integer"},
+                status=HTTPStatus.BAD_REQUEST,
+            )
+
+        try:
+            feed = get_feed(game, after)
+        except ProjectionUnavailable as error:
+            # A flagged projection is not a game state. Say so explicitly:
+            # a consumer must not show a score it cannot trust.
+            return Response(
+                {
+                    "detail": str(error),
+                    "needs_reconciliation": True,
+                },
+                status=HTTPStatus.CONFLICT,
+            )
+
+        if etag_matches(request.headers.get("If-None-Match"), feed.etag):
+            not_modified = HttpResponseNotModified()
+            not_modified["ETag"] = feed.etag
+            return not_modified
+
+        response = Response(
+            {
+                "state": state_body(feed.state),
+                "events": feed.events,
+                "cursor": feed.cursor,
+            }
+        )
+        response["ETag"] = feed.etag
+        # The body is cheap but always conditional: a proxy may store it, it
+        # must revalidate with the ETag before serving it again.
+        response["Cache-Control"] = "no-cache"
+        return response
+
+    @staticmethod
+    def _after(request):
+        """``after`` as a non-negative int, or ``None`` for a 400."""
+
+        raw = request.query_params.get("after")
+        if raw in (None, ""):
+            return 0
+        try:
+            after = int(raw)
+        except (TypeError, ValueError):
+            return None
+        return after if after >= 0 else None
 
 
 class GameEventsAPIView(APIView):

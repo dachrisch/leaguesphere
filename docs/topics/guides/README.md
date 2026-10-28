@@ -9,6 +9,7 @@ Step-by-step how-to guides, setup instructions, and workflows.
 - [Licensing](./licensing.md) — AGPL-3.0-or-later explained: self-hosting, commercial use, compliance
 - [Demo Guide](./demo.md) — Running and understanding the demo environment
 - [Agent Workflow](./agent-workflow.md) — How agents integrate with the project
+- [Scorecard Event Store](./scorecard-events-operations.md) — Feed endpoint and the projection check/rebuild commands
 - [Code Style Guides](./code-style/) — Language-specific coding standards
 - [Product Guidelines](./product.md) — Product philosophy and principles
 

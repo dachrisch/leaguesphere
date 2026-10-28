@@ -67,6 +67,16 @@ Envelope: `type` + `code` + `side` + `player` + `period` + `payload`.
 
 **Acceptance:** `after` returns only newer events; ETag round-trips to 304; a legacy game answers a coherent state; a finished game's state matches its rows.
 
+Implemented decisions (`gameevents/service/feed.py`):
+
+- events are served in the append envelope plus `seq`/`undo_of`/`source`;
+- a legacy game's ETag is derived from its rows and `Gameinfo.updated_at`, not
+  `"0"` -- a constant validator would answer `304` for a score that changed;
+- an empty game (no rows, no events) is a coherent `200` (0:0, period 1,
+  cursor 0), not a `404`: "not started" must differ from "wrong game id";
+- the reconciliation flag is checked for event-sourced games only; a legacy
+  game's rows are the source of truth, so it is always served from them.
+
 ## T5 — the liveticker consumes the feed (behind a flag)
 
 **Files:** `liveticker/service/liveticker_service.py`, `liveticker/api/views.py`, tests, `league_manager/settings/base.py`
@@ -83,11 +93,33 @@ Envelope: `type` + `code` + `side` + `player` + `period` + `payload`.
 - `rebuild_game_projection --game ID`: truncates the projection for that game and replays the log; refuses when the game is `legacy`.
 - **Acceptance:** a deliberately corrupted `<state>`/row is detected with the offending seq; rebuild restores equality; both refuse to touch legacy games.
 
+Implemented decisions (`gameevents/service/reconcile.py`, `gameevents/management/commands/`):
+
+- ownership is by `TeamLog.sequence`: the log owns the groups it produced
+  (`> 0`) and never sequence 0 (the shared bucket of penalties, clocks and
+  markers the scorecard also wrote before the log existed). Rebuild therefore
+  repairs a mixed game instead of deleting pre-log rows;
+- a state-only difference has no row to point at and is reported at the log's
+  last `seq`; a row difference reports its own (lower) sequence;
+- `check --all` is five queries for the whole gameday (events, states, rows,
+  results, game ids), independent of event count; a legacy game is skipped,
+  never failed; drift exits non-zero;
+- `rebuild` refuses a legacy game because there is no log to replay, and does
+  not touch `Gameresult` (that table is maintained by the write path, not
+  projected).
+
 ---
 
 ## Order and gates
 
-T1 → T2 (golden test) → T3 → T4 → T5 (flag off by default) → T6.
+T1 → T2 (golden test) → T3 → T4 → **T6** → T5 (flag off by default).
+
+T6 moved ahead of T5 (this plan first listed T5 before T6): reconciliation has
+to exist **before** the liveticker reads event-derived state. Otherwise the
+first game the log cannot express (a legacy undo, flagged
+`needs_reconciliation`) would reach a consumer with no command that can repair
+and verify it. The implemented order is therefore **T4 (feed) → T6
+(check/rebuild) → T5 (consume the feed)**.
 
 Each task: failing test first, `pytest` green, `check_migrations`, `check_scope_coverage.py` updated for the new app, one signed commit. T5 stays behind the flag, so the slice can merge without changing what stage serves.
 
