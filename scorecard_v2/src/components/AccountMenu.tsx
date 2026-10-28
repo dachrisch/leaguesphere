@@ -1,4 +1,10 @@
-import { useEffect, useId, useRef, useState } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FocusEvent,
+} from "react";
 
 import { useCurrentUser } from "../app/currentUser";
 import ThemeToggle from "./ThemeToggle";
@@ -63,8 +69,24 @@ export default function AccountMenu({ onLogout }: AccountMenuProps) {
     }
   }, [open]);
 
+  /**
+   * Tab may leave the menu without an Escape or a pointer event. When focus
+   * moves to anything outside the account trigger + panel, the menu closes;
+   * focus itself is left where the keyboard put it.
+   */
+  const onBlur = (event: FocusEvent<HTMLDivElement>): void => {
+    if (!open) {
+      return;
+    }
+    const next = event.relatedTarget;
+    if (next instanceof Node && root.current?.contains(next)) {
+      return;
+    }
+    setOpen(false);
+  };
+
   return (
-    <div className="account" ref={root}>
+    <div className="account" onBlur={onBlur} ref={root}>
       <button
         aria-expanded={open}
         aria-haspopup="dialog"

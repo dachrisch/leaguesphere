@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -65,6 +65,19 @@ describe("AccountMenu", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
 
     await user.click(document.body);
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("closes when Tab moves focus out of the menu", async () => {
+    const user = userEvent.setup();
+    const { trigger } = renderMenu(vi.fn());
+    await user.click(trigger);
+
+    // React's onBlur is focusout: a focus move to the page closes the panel.
+    fireEvent.focusOut(screen.getByRole("button", { name: "Auto" }), {
+      relatedTarget: document.body,
+    });
 
     expect(screen.queryByRole("dialog")).toBeNull();
   });

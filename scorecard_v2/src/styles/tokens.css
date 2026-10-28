@@ -108,10 +108,10 @@
   --focus-offset: 2px;
   --transition-fast: 120ms ease;
 
-  /* Layout shell. Widen it at the preparation screen's breakpoints: the
-     screen is usable one-handed on a phone and a two-column desk view on a
-     tablet or laptop. */
+  /* Layout shell. `--shell-width-prep` widens only the preparation screen;
+     every other screen (and every sheet) keeps the comfortable phone measure. */
   --shell-width: 560px;
+  --shell-width-prep: var(--shell-width);
   --page-gutter: var(--space-5);
   --header-pad-top: max(var(--space-3), env(safe-area-inset-top));
   --bottom-safe: max(var(--space-5), env(safe-area-inset-bottom));
@@ -228,17 +228,19 @@
   }
 }
 
-/* Wider than a phone: more room for the same single column, and at 900px the
-   preparation screen puts the officials beside the configuration. */
+/* Wider than a phone: the preparation screen gets more room for the same
+   single column, and at 900px it puts the officials beside the configuration.
+   `--shell-width` itself stays at 560px so lists, the board and the bottom
+   sheets do not stretch. */
 @media (min-width: 600px) {
   :root {
-    --shell-width: 760px;
+    --shell-width-prep: 760px;
   }
 }
 
 @media (min-width: 900px) {
   :root {
-    --shell-width: 1040px;
+    --shell-width-prep: 1040px;
     --page-gutter: var(--space-6);
   }
 }
