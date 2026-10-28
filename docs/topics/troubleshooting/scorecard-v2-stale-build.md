@@ -41,11 +41,18 @@ and the app reloads once when the new worker takes control
   registry (`leaguesphere/backend:staging` digest) before suspecting the build.
   The stage host pulls on its own schedule; being one image behind for a few
   minutes is normal.
-- **Not the manifest MIME.** It used to be served as
-  `application/octet-stream` because nginx has no `.webmanifest` mapping; the
-  `types` block in `container/nginx*.conf` now declares
-  `application/manifest+json`. If the manifest still shows the wrong type, that
-  block is missing from the deployed nginx config.
+- **Not the image you just deployed.** The manifest is still served as
+  `application/octet-stream` because nginx has no `.webmanifest` mapping. The
+  fix lives in `container/nginx*.conf` (a `location` that sets
+  `default_type application/manifest+json`), but **staging does not read that
+  file from the image**: the frontend container mounts
+  `/var/jail/home/leaguesphere/container-stage/container/nginx.staging.conf`
+  from the host, and Ansible syncs `container/` from **master**. A change that
+  only exists in a tag therefore cannot flip the header.
+  It lands once the change is on master and the stage deploy syncs
+  `container/` — the same class of gap as a host-mounted volume.
+  `test_frontend_image` validates the *image*, which the stage mount then
+  overrides.
 
 ## Related
 
