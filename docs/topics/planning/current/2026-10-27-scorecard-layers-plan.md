@@ -27,6 +27,12 @@ Rules that keep the chain usable:
 5. **Every layer ships its help text** (`/help/spieltag-v2/`, German, short) and a line in `docs/topics/features/scorecard-v2/overview.md`.
 6. **Definition of done per layer:** failing test first, `pytest` + `vitest` green, `eslint`/`tsc` clean, `check_scope_coverage.py` OK, `codecov/patch` ≥ 90% of the diff, tracker rows flipped, PR body with a verification table.
 
+## Order change (2026-10-28)
+
+**Period templates moved behind the start confirmation.** L4 as planned assumes a 4-period game can be recorded, but the v2 write model is two-half only: `TeamLog.half` (1/2), `Gameinfo.status` (`1. Halbzeit`/`2. Halbzeit`), the per-half `entries` in the log payload and the liveticker all assume halves. A "Quarter" label on top of that would be a lie, and giving it real support is a backend layer of its own (model, aggregation, status transitions, liveticker, old-app compatibility).
+
+So the chain continues with the **start confirmation** (self-contained, no data-model change) and the period template becomes `L6`, blocked on a quarters design decision. Nothing about the sport-template direction from the call changes — only the order in which it is safe to build.
+
 ## Execution protocol (subagent-driven)
 
 Per layer, in order:
@@ -83,8 +89,9 @@ A layer is not started until the one below it is pushed, so `git rebase --onto` 
 
 ---
 
-## L4 — Period templates (game format)
+## L5 — Period templates (game format) — deferred until quarters are designed
 
+**Blocked:** the two-half write model above. Do not start this layer by adding labels; the layer has to bring `TeamLog`/status/aggregation support for four periods first.
 **Branch:** `feat/scorecard-v2-period-templates` (base L3)
 **Ideas:** `I4.4`, `I4.5`, `I4.2`, second half of `I4.1` (`Q4` answered by L3's league-level choice)
 **Why:** "Halbzeit" is wrong for a 4×12 tackle game, and the coin toss in the review needs receive/defer/side with a mirrored second half. This is the sport template in its smallest honest form.
@@ -103,9 +110,9 @@ A layer is not started until the one below it is pushed, so `git rebase --onto` 
 
 ---
 
-## L5 — Start confirmation and required fields
+## L4 — Start confirmation and required fields
 
-**Branch:** `feat/scorecard-v2-start-confirmation` (base L4)
+**Branch:** `feat/scorecard-v2-start-confirmation` (base L3)
 **Ideas:** `I3.1` (confirmation half), `I3.3`, `I3.4`, `I1.4`
 **Why:** the review's complaint is that a wrong setup entry costs the whole game and that bad input is accepted. A confirmation before **Spiel starten** is the cheap half of the clock story and does not need the v3 clock.
 
