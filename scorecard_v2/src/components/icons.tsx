@@ -206,3 +206,22 @@ export function ChevronLeft(props: IconProps) {
     </Svg>
   );
 }
+
+/** Forward affordance: the row opens something. */
+export function ChevronRight(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M9 5l7 7-7 7" />
+    </Svg>
+  );
+}
+
+/** Account fallback: no initials, so the menu trigger gets a head-and-shoulders. */
+export function User(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="8.5" r="3.5" />
+      <path d="M5 20a7 7 0 0 1 14 0" />
+    </Svg>
+  );
+}

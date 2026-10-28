@@ -11,7 +11,7 @@
  * so a name in `alt` would be read twice.
  *
  * `className` carries the size/shape: the list disc by default,
- * `teamlogo-inline` in the preparation header, `teamlogo-crest` on the board.
+ * `teamlogo-match` in the preparation card, `teamlogo-crest` on the board.
  */
 import { useState } from "react";
 
@@ -22,7 +22,7 @@ import { initials } from "./initials";
 interface TeamLogoProps {
   /** `Team.name` or `Team.description`; the lookup knows both. */
   name: string | null;
-  /** Extra class for the caller's size/shape (e.g. `teamlogo-inline`). */
+  /** Extra class for the caller's size/shape (e.g. `teamlogo-match`). */
   className?: string;
 }
 

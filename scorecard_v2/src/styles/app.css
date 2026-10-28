@@ -502,9 +502,82 @@ button.game-row:active {
 
 /* -------------------------------------------------------- preparation --- */
 
+/* Team vs team: the one place the screen states who plays whom. Crests are
+   decoration; the names wrap at word boundaries and never truncate. */
+.matchcard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-lg);
+}
+
+.matchteams {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.matchteam {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.matchteam-away {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.matchteam-name {
+  min-width: 0;
+  font-size: var(--fs-base);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--heading);
+  overflow-wrap: anywhere;
+}
+
+.matchvs {
+  flex: 0 0 auto;
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.matchcontext {
+  font-size: var(--fs-sm);
+  text-align: center;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .prep {
   display: flex;
   flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Officials and configuration: one column on a phone, side by side once the
+   shell is wide enough to give each card a readable measure. */
+.prepgrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.configgrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-2);
 }
 
@@ -529,11 +602,37 @@ button.game-row:active {
   color: var(--muted);
 }
 
-/* The section heading is an h2 for structure, but wears the blockhead type. */
+/* The section heading is an h2 for structure, but wears the blockhead type.
+   The number is aria-hidden: the heading reads "Offizielle", the eye sees
+   "1. Offizielle". */
 .blockhead h2 {
   font: inherit;
   letter-spacing: inherit;
   text-transform: inherit;
+}
+
+.sectionhead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.sectionicon {
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  color: var(--primary);
+  background: var(--fill-soft);
+  border-radius: 6px;
+}
+
+.sectionnum {
+  flex: 0 0 auto;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .okchip {
@@ -549,27 +648,78 @@ button.game-row:active {
   background: var(--away-wash);
 }
 
+/* Crew rows: one tappable card row per position. The whole row is the picker
+   trigger (a real button with the position in its name); the chevron is the
+   visual affordance, not the only hit target. */
 .offrow {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
-  gap: var(--space-2);
-  align-items: center;
-  padding: var(--space-1) 0;
+  position: relative;
+  margin: 0;
 }
 
 .offrow + .offrow {
   margin-top: var(--space-1);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--line-soft);
+}
+
+.offcard {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+  width: 100%;
+  min-height: calc(var(--touch) + var(--space-2));
+  padding: var(--space-2);
+  font: inherit;
+  text-align: left;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.offcard:hover {
+  background: var(--fill-soft);
+  border-color: var(--line-soft);
+}
+
+.offcard:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.offcard:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* A static row is a data problem the operator cannot fix here: same geometry,
+   no button, no chevron. */
+.offcard-static {
+  cursor: default;
+}
+
+.offcard-static:hover {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* The optional slot nobody has taken: dashed, compact, one line of invitation
+   plus the "not mandatory" hint. */
+.offcard-add {
+  border-style: dashed;
+  border-color: var(--line);
 }
 
 .offava {
   display: grid;
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
   place-items: center;
   font-family: var(--font-display);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--muted);
   background: var(--panel2);
@@ -577,25 +727,65 @@ button.game-row:active {
   border-radius: 50%;
 }
 
-.offnm {
+.offava-add {
+  font-size: var(--fs-base);
+  color: var(--primary);
+  background: transparent;
+  border-style: dashed;
+}
+
+.offbody {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   min-width: 0;
 }
 
-/* Read-only name of an unknown or duplicated crew row. */
-.offname {
-  display: block;
-  min-height: var(--touch);
-  padding: var(--space-2);
-  overflow: hidden;
+/* Role first, the person second: the slot is what the league asks for. */
+.offrole {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  color: var(--heading);
+  overflow-wrap: anywhere;
+}
+
+.offmember {
   font-size: var(--fs-base);
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.35;
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+
+.offadd {
+  font-size: var(--fs-base);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--primary);
+  overflow-wrap: anywhere;
+}
+
+.offhint {
+  font-size: var(--fs-xs);
+  line-height: 1.3;
   color: var(--muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  background: var(--panel2);
-  border: 1px dashed var(--line);
-  border-radius: 10px;
+}
+
+.offhint-warn {
+  color: var(--amber);
+}
+
+.offmeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.offchev {
+  flex: 0 0 auto;
+  color: var(--muted);
 }
 
 .offsel {
@@ -761,27 +951,78 @@ button.game-row:active {
   text-decoration: underline;
 }
 
+/* Licence status as a dot chip: the word carries the state, the dot repeats it
+   for a glance. Sized for the narrowest row (320px). */
 .lic {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 1px 6px;
   font-size: var(--fs-xs);
-  line-height: 1.35;
-  text-align: right;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  border-radius: var(--radius-pill);
+}
+
+.lic::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  background: currentcolor;
+  border-radius: 50%;
 }
 
 .lic-ok {
   color: var(--away-text);
+  background: var(--away-wash);
 }
 
 .lic-warn {
   color: var(--amber);
+  background: var(--amber-wash);
 }
 
 .lic-missing {
   color: var(--muted);
+  background: var(--fill-soft);
 }
 
 /* Cannot be judged: a guest official or an unavailable team list. */
 .lic-unknown {
   color: var(--soon-text);
+  background: var(--fill-soft);
+}
+
+/* Nobody in the slot: no licence claim at all. */
+.lic-empty {
+  color: var(--muted);
+  background: transparent;
+}
+
+.lic-empty::before {
+  background: var(--line-strong);
+}
+
+.segfield {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/* The three configuration labels: condensed caps, one step below the section
+   heading so the card keeps a single hierarchy. */
+.segtitle {
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .seg {
@@ -809,10 +1050,13 @@ button.game-row:active {
     color var(--transition-fast);
 }
 
+/* Selection has to survive sunlight and dark mode: filled brand surface, a
+   contrasting ring and a bold label — three signals, not colour alone. */
 .seg button.sel {
   color: var(--on-strong);
-  background: var(--fg);
-  border-color: var(--fg);
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary-contrast);
 }
 
 .seg button:disabled {
@@ -883,6 +1127,64 @@ button.game-row:active {
 
 .setupwarn b {
   font-size: var(--fs-md);
+}
+
+/* Readiness: the single statement above the start action. Green means every
+   required fact is set; amber names exactly what is missing. */
+.readybar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+}
+
+.readybar b {
+  font-size: var(--fs-md);
+}
+
+.readybar ul {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.readybar-ok {
+  color: var(--away-text);
+  background: var(--away-wash);
+  border-color: color-mix(in srgb, var(--away) 32%, transparent);
+}
+
+.readybar-miss {
+  color: var(--amber);
+  background: var(--amber-wash);
+  border-color: color-mix(in srgb, var(--amber) 35%, transparent);
+}
+
+/* Passcheck sits in the officials card as one status line plus its link. */
+.passcheckline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line-soft);
+}
+
+.passchecklabel {
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.passchecklink {
+  margin-left: auto;
 }
 
 .seterror {
@@ -1075,10 +1377,12 @@ button.game-row:active {
   object-fit: contain;
 }
 
-/* The preparation header's context line: small crests inline with the names,
-   not a second row of their own. */
-.teamlogo-inline {
-  --teamlogo-size: var(--space-6);
+/* The preparation card's crests: large enough to recognise across a table,
+   smaller than the board shield. */
+.teamlogo-match {
+  --teamlogo-size: var(--crest-match);
+  font-size: var(--fs-md);
+  font-weight: 800;
 }
 
 /* The board crest: one box for the logo and for the initials shield. A real
@@ -1107,13 +1411,6 @@ button.game-row:active {
   background: var(--surface);
   border-color: var(--line);
   clip-path: none;
-}
-
-.app-sub-teams {
-  display: inline-flex;
-  gap: var(--space-1);
-  margin-right: var(--space-2);
-  vertical-align: middle;
 }
 
 .tname {
@@ -2460,12 +2757,6 @@ button.game-row:active {
   overflow: hidden;
 }
 
-.appbar-logout {
-  flex: 0 0 auto;
-  padding: 0 0 0 var(--space-1);
-  color: var(--bar-fg);
-}
-
 /* The signed-in official: initials, not a photo — there is no avatar model.
    Inverted against the bar, so it reads as a badge on steel in both themes. */
 .avatar {
@@ -2484,6 +2775,128 @@ button.game-row:active {
   background: var(--primary-contrast);
   border-radius: 50%;
   user-select: none;
+}
+
+.avatar-icon {
+  display: block;
+}
+
+/* --------------------------------------------------------- account menu -- */
+
+.account {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.account-trigger {
+  flex: 0 0 auto;
+  justify-content: center;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-pill);
+}
+
+.account-trigger:hover {
+  background: var(--bar-hover);
+}
+
+/* Anchored under the avatar and clamped to the viewport, so the menu never
+   pushes a 320px phone sideways. */
+.accountmenu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: calc(-1 * var(--space-2));
+  z-index: 30;
+  width: min(280px, calc(100vw - 2 * var(--space-4)));
+  padding: var(--space-3);
+  color: var(--fg);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.accountmenu:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.accounthead {
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.accountname {
+  margin-top: 2px;
+  font-size: var(--fs-base);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--heading);
+  overflow-wrap: anywhere;
+}
+
+.accountlabel {
+  margin-top: var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.themegroup {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.themegroup button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: calc(var(--touch) + 4px);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.themegroup button.sel {
+  color: var(--on-strong);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.themeicon {
+  flex: 0 0 auto;
+}
+
+.accountlogout {
+  width: 100%;
+  min-height: var(--touch);
+  margin-top: var(--space-2);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--home-text);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.accountlogout:hover {
+  background: var(--home-wash);
 }
 
 /* The chip on the bar: its label is bar text, its dot keeps the state tint. */
@@ -2796,6 +3209,93 @@ button.syncbadge {
   font-size: var(--fs-xs);
   color: var(--muted);
   overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------- preparation layout -- */
+
+/* 320–359px: the tightest phone. Stacked teams, compact gutters, labels wrap
+   instead of truncating; the start bar stays sticky. */
+@media (max-width: 359px) {
+  :root {
+    --page-gutter: var(--space-3);
+  }
+
+  .matchcard {
+    padding: var(--space-3);
+  }
+
+  .matchteams {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  .matchteam,
+  .matchteam-away {
+    flex-direction: row;
+    text-align: left;
+  }
+
+  .matchvs {
+    align-self: center;
+  }
+
+  .offcard {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    padding: var(--space-2) var(--space-1);
+  }
+
+  .offava {
+    width: 30px;
+    height: 30px;
+  }
+
+  .seg button {
+    white-space: normal;
+  }
+}
+
+/* 360–599px: the default single column with comfortable 44px targets and the
+   sticky start bar; nothing extra to declare beyond the base rules. */
+
+/* 600–899px: more generous spacing, and the three configuration controls may
+   use two columns (the third spans the row). */
+@media (min-width: 600px) {
+  .prep {
+    gap: var(--space-4);
+  }
+
+  .matchcard,
+  .block,
+  .readybar {
+    padding: var(--space-4) var(--space-5);
+  }
+
+  .configgrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .configgrid .segfield:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ≥900px: a centred, wider shell with the officials beside the configuration;
+   the configuration card goes back to three stacked controls. */
+@media (min-width: 900px) {
+  .prepgrid {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: var(--space-4);
+  }
+
+  .configgrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .configgrid .segfield:last-child {
+    grid-column: auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -138,7 +138,7 @@ describe("startBlockers", () => {
       ),
     ).toEqual([
       "Offizielle: Schiedsrichter – Freitextname „Schiri“ braucht Vor- und Nachnamen.",
-      "Münzwurf: keine Mannschaft gewählt.",
+      "Münzwurf gewonnen von: keine Mannschaft gewählt.",
     ]);
   });
 
@@ -156,9 +156,9 @@ describe("startBlockers", () => {
         facts({ tossTeam: null, possessionTeam: null, direction: null }),
       ),
     ).toEqual([
-      "Münzwurf: keine Mannschaft gewählt.",
+      "Münzwurf gewonnen von: keine Mannschaft gewählt.",
       "Erster Ballbesitz: keine Mannschaft gewählt.",
-      "Richtung: keine Seite gewählt.",
+      "Spielrichtung: keine Seite gewählt.",
     ]);
   });
 });
@@ -268,7 +268,7 @@ describe("StartConfirmation — what it restates", () => {
     expect(sheet.getByText("Wolves")).toBeInTheDocument();
     const directionRow = Array.from(
       dialog().querySelectorAll(".startrow"),
-    ).find((row) => row.textContent?.startsWith("Richtung"));
+    ).find((row) => row.textContent?.startsWith("Spielrichtung"));
     expect(directionRow).toHaveTextContent("West");
     expect(directionRow).toHaveTextContent("Ost");
     // The arrow is drawn: the character is an sr-only text alternative.
@@ -334,7 +334,7 @@ describe("StartConfirmation — refusing and confirming", () => {
     expect(blockers).toHaveTextContent(
       "Offizielle: Schiedsrichter fehlt – die Liga verlangt diese Position.",
     );
-    expect(blockers).toHaveTextContent("Münzwurf: keine Mannschaft gewählt.");
+    expect(blockers).toHaveTextContent("Münzwurf gewonnen von: keine Mannschaft gewählt.");
 
     // A long sheet scrolls: the reasons must be the first thing after the lead
     // sentence, not the last block below the fold, and they are announced.

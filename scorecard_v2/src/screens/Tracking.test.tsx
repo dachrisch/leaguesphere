@@ -1949,8 +1949,9 @@ describe("Tracking header and action icons", () => {
     expect(within(slot as HTMLElement).getByText("Synchron")).toBeInTheDocument();
     // One chip in the bar, no full-width row of its own below the header.
     expect(document.querySelector(".app-shell > .syncbar")).toBeNull();
+    // The theme choice lives in the account menu; the bar keeps the trigger.
     expect(
-      within(header).getByRole("button", { name: "Design: automatisch" }),
+      within(header).getByRole("button", { name: "Konto" }),
     ).toBeInTheDocument();
     const back = within(header).getByRole("button", { name: "Zurück" });
     expect(back.textContent).toBe("");

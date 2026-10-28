@@ -93,9 +93,10 @@
   --radius-pill: 999px;
 
   /* Team crests (tokens.css owns the sizes so the list and the board cannot
-     drift apart): a list disc and the board shield. */
+     drift apart): a list disc, the board shield and the preparation card. */
   --crest-list: 32px;
   --crest-board: var(--space-8);
+  --crest-match: 52px;
 
   /* Elevation */
   --shadow-card: 0 1px 2px rgba(16, 24, 32, 0.06),
@@ -107,7 +108,9 @@
   --focus-offset: 2px;
   --transition-fast: 120ms ease;
 
-  /* Layout shell */
+  /* Layout shell. Widen it at the preparation screen's breakpoints: the
+     screen is usable one-handed on a phone and a two-column desk view on a
+     tablet or laptop. */
   --shell-width: 560px;
   --page-gutter: var(--space-5);
   --header-pad-top: max(var(--space-3), env(safe-area-inset-top));
@@ -222,5 +225,20 @@
       0 4px 14px rgba(0, 0, 0, 0.28);
 
     --focus-ring: 2px solid var(--warning);
+  }
+}
+
+/* Wider than a phone: more room for the same single column, and at 900px the
+   preparation screen puts the officials beside the configuration. */
+@media (min-width: 600px) {
+  :root {
+    --shell-width: 760px;
+  }
+}
+
+@media (min-width: 900px) {
+  :root {
+    --shell-width: 1040px;
+    --page-gutter: var(--space-6);
   }
 }

@@ -1,55 +1,55 @@
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { CurrentUserProvider } from "../app/currentUser";
 import UserAvatar from "./UserAvatar";
 
 describe("UserAvatar", () => {
-  it("shows the initials and names the user for assistive tech", () => {
-    render(
+  it("shows the initials over the account title", () => {
+    const { container } = render(
       <CurrentUserProvider user={{ id: 1, username: "scorecard-test" }}>
         <UserAvatar />
       </CurrentUserProvider>,
     );
 
-    const avatar = screen.getByRole("img", {
-      name: "Angemeldet als scorecard-test",
-    });
+    const avatar = container.querySelector(".avatar");
     expect(avatar).toHaveTextContent("ST");
     expect(avatar).toHaveAttribute("title", "Angemeldet als scorecard-test");
   });
 
-  it("is not an interactive control", () => {
-    render(
+  it("is decorative: the account button carries the accessible name", () => {
+    const { container } = render(
       <CurrentUserProvider user={{ id: 1, username: "max" }}>
         <UserAvatar />
       </CurrentUserProvider>,
     );
 
-    expect(screen.queryByRole("button")).toBeNull();
-    expect(screen.getByRole("img")).toHaveTextContent("M");
+    const avatar = container.querySelector(".avatar");
+    expect(avatar).toHaveAttribute("aria-hidden", "true");
+    expect(avatar).toHaveTextContent("M");
+    expect(container.querySelector("img, [role='img']")).toBeNull();
   });
 
-  it("renders nothing without a user", () => {
+  it("falls back to the account glyph without a user", () => {
     const { container } = render(
       <CurrentUserProvider user={null}>
         <UserAvatar />
       </CurrentUserProvider>,
     );
 
-    expect(container.querySelector(".avatar")).toBeNull();
+    const avatar = container.querySelector(".avatar");
+    expect(avatar).toHaveTextContent("");
+    expect(avatar).toHaveAttribute("title", "Konto");
+    expect(avatar?.querySelector("svg")).not.toBeNull();
   });
 
-  it("renders nothing outside a provider and for an empty username", () => {
+  it("treats an empty username like no user", () => {
     const { container } = render(
-      <>
+      <CurrentUserProvider user={{ id: 2, username: "  " }}>
         <UserAvatar />
-        <CurrentUserProvider user={{ id: 2, username: "  " }}>
-          <UserAvatar />
-        </CurrentUserProvider>
-      </>,
+      </CurrentUserProvider>,
     );
 
-    expect(container.querySelector(".avatar")).toBeNull();
+    expect(container.querySelector(".avatar svg")).not.toBeNull();
   });
 });
