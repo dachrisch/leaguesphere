@@ -26,7 +26,8 @@ Each feature is one layer PR, stacked on the layer below it until it reaches `ma
 | L2 | `feat/scorecard-v2-team-logos` | [#2115](https://github.com/dachrisch/leaguesphere/pull/2115) | Team logos in list, preparation and score header, cached for offline (`I1.7`, logo half of `I8.1`) | in review |
 | L3 | `feat/scorecard-v2-crew-labels` | this layer | Crew positions configured per league: labels, order and which slots count as required, with the five built-ins as the default (`I1.3`, first half of `I4.1`) | in review |
 | L4 | `feat/scorecard-v2-start-confirmation` | this layer | Two-step start: a confirmation restates what will start and refuses incomplete input (`I1.4`, confirmation half of `I3.1`, `I3.3`, `I3.4`) | in review |
-| L5+ | per-feature branches, stacked on L4 | — | the `next` rows below, in the [layer plan](./2026-10-27-scorecard-layers-plan.md)'s order | not started |
+| L5 | `feat/scorecard-v2-prep-layout` | [#2120](https://github.com/dachrisch/leaguesphere/pull/2120) | Preparation screen as designed 2026-10-28: crest card, numbered sections, required/optional split, grouped configuration, readiness banner, account menu, 320–900 px layouts (presentation only) | in review |
+| L6+ | per-feature branches, stacked on L5 | — | the `next` rows below, in the [layer plan](./2026-10-27-scorecard-layers-plan.md)'s order | not started |
 
 Scorecard layers merge bottom-up (`L0 → L1 → L3 …`); each squash merge sends the layers above it `--onto` the new `master`. Passcheck no longer participates — it is a parallel track with no shared files, and its migration (`gamedays/0046_person_photo`) will be renumbered to `0048` after #2104 lands, because the scorecard ships `0046`/`0047`. L1 adds no migration.
 
