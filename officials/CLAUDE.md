@@ -15,8 +15,12 @@ Owns official-specific data and links officials to games (`GameOfficial` lives i
 `OfficialExternalGames` (plus `Empty*` null-object variants), and
 `CrewPosition` — the scorecard's crew slots *per league* (`position` is the
 exact `GameOfficial.position` wire value, `label` the display name, `order` the
-sequence, `required` decides the completeness counter). A league without rows
-gets the built-in defaults, so the table holds overrides only.
+sequence, `required` decides the completeness counter). Rows are **overrides on
+top of** the built-in five (`DEFAULT_CREW_POSITIONS`), not a replacement: a row
+relabels/reorders an existing position or adds a new one after the defaults, and
+one row can never delete a slot — hiding a default is not expressible yet (the
+crew-template/count layer). The table therefore only holds overrides; a league
+without rows behaves like today.
 
 ## Service layer (`service/`)
 - `official_service.py`, `officials_repository_service.py` — core logic + data access.
@@ -35,10 +39,11 @@ gets the built-in defaults, so the table holds overrides only.
   this app.
 - `crew_positions.py` — the crew slots the scorecard offers for a game
   (`crew_positions_for_game` resolves game → gameday → league;
-  `crew_positions_for_league` answers the configured rows or
-  `DEFAULT_CREW_POSITIONS`, never an empty list). Edited per league in the
-  Django admin; `manage.py seed_crew_positions <liga|--all>` copies the
-  defaults into a league once so they can be relabelled.
+  `crew_positions_for_league` merges the league's rows onto
+  `DEFAULT_CREW_POSITIONS`, sorted by `order` with a stable default-sequence
+  tie-break — never an empty list). Edited per league in the Django admin;
+  `manage.py seed_crew_positions <liga|--all>` pre-fills a league's labels with
+  the defaults once (the defaults are active either way).
 - `game_official_licenses.py` — resolves the currently valid license per refereed position
   (Referee/Down Judge/Field Judge/Side Judge) for a batch of games; consumed by matchreport's
   gameday-list CSV export.

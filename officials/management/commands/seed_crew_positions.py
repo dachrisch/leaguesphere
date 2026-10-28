@@ -9,9 +9,11 @@ from officials.service.crew_positions import DEFAULT_CREW_POSITIONS
 
 class Command(BaseCommand):
     help = (
-        "Legt für eine Liga die Standard-Crew-Positionen an (Scorecard Judge "
-        "optional, Schiedsrichter/Down Judge/Field Judge/Side Judge "
-        "erforderlich). Bereits vorhandene Positionen bleiben unverändert."
+        "Legt für eine Liga die Standard-Crew-Positionen als Zeilen an, damit "
+        "sie umbenannt werden können (Scorecard Judge optional, "
+        "Schiedsrichter/Down Judge/Field Judge/Side Judge erforderlich). Die "
+        "Standard-Positionen gelten ohnehin als Vorgabe; die Zeilen füllen nur "
+        "die Namen vor. Bereits vorhandene Positionen bleiben unverändert."
     )
 
     def add_arguments(self, parser):
