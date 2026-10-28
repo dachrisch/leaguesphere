@@ -129,6 +129,14 @@ A layer is not started until the one below it is pushed, so `git rebase --onto` 
 
 ---
 
+## L5 — Preparation-screen layout (delivered 2026-10-28)
+
+**Branch:** `feat/scorecard-v2-prep-layout` · **PR:** [#2120](https://github.com/dachrisch/leaguesphere/pull/2120) · base L4.
+
+A design review of the preparation screen (referee on a phone, outdoors, under time pressure) produced the layout that now ships: crest card, `1. Offizielle` with required-first card rows and the optional position behind an add-row, one `2. Spielkonfiguration` card with the three renamed switches, a state-aware readiness banner above the sticky start bar, an account menu that owns theme + logout, and the 320/360/600/900 px table (wider shell **prep-only**, so sheets and lists keep 560 px). Presentation only — L4's two-tap start, blockers and offline behaviour are unchanged.
+
+Copy that moved with it: `Vorbereitung` → `Spiel vorbereiten`, `Richtung` → `Spielrichtung`, `Münzwurf` → `Münzwurf gewonnen von`, `vollständig` → `4/4 besetzt`. `I2.2` was rewritten to match what actually ships: guests keep the yellow **Freitext** tag, linked state is stated in the picker rather than as a green chip on the row.
+
 ## Not in this chain
 
 | Idea | Why not now |
