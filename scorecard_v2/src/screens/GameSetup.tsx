@@ -402,11 +402,21 @@ export default function GameSetupScreen({
         // Preloaded: a device that reloads with no network still shows what
         // was agreed on the coin toss.
         cachedGet<GameSetupPayload>(snapshotKey.setup(id), setupPath),
-        // The league's slots are configuration, not game state: preload them
-        // too, so a reload without network still shows the right role names.
+        // The league's slots are configuration, not game state, so the last
+        // answer is preloaded: if *this* request alone fails (5xx, aborted),
+        // the stored slots keep labels and order right. The crew itself is a
+        // plain request, so a truly offline reload still ends in the load
+        // error below.
         cachedGet<CrewPosition[]>(snapshotKey.crewPositions(id), positionsPath),
       ]);
-      setSlots(slotsFromCrew(crew ?? [], positions ?? []));
+      if ((positions ?? []).length === 0) {
+        // The endpoint answers the five built-in defaults for a league without
+        // configuration, so an empty list is a broken answer, not "no slots".
+        // Without positions there is nothing to fill in, and an officials step
+        // with zero rows (and a "vollständig" chip) would be a lie.
+        throw new Error("Die Crew-Positionen des Spiels sind leer.");
+      }
+      setSlots(slotsFromCrew(crew ?? [], positions));
       setTeamOfficials(team ?? []);
       const saved = hasSavedSetup(setup ?? {});
       setHasSetup(saved);

@@ -175,7 +175,7 @@ all overridable.
 
 ## Verification
 
-Automated: 855 vitest cases (incl. the outbox/sync engine and a real
+Automated: 857 vitest cases (incl. the outbox/sync engine and a real
 status-0 → remount → flush flow), the `gamedays` + `officials` +
 `scorecard_v2` Django suites, the Playwright gameday → result flow, and the CI
 checks in the table above.
