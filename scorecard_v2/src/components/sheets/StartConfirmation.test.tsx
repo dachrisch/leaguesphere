@@ -9,13 +9,22 @@ import StartConfirmation, {
 } from "./StartConfirmation";
 
 function crewLine(overrides: Partial<StartCrewLine> = {}): StartCrewLine {
-  return {
+  const line: StartCrewLine = {
     label: "Schiedsrichter",
     name: "Michael Klein",
+    filled: true,
     freetext: false,
     required: true,
     editable: true,
+    duplicate: false,
     ...overrides,
+  };
+  // `filled` is the slot's own state, not the resolved name: a linked official
+  // the team list cannot resolve has no name and is still a filled slot.
+  return {
+    ...line,
+    filled:
+      overrides.filled ?? (line.name !== null && line.name.trim() !== ""),
   };
 }
 
@@ -68,12 +77,53 @@ describe("startBlockers", () => {
     ).toEqual([]);
   });
 
-  it("refuses a required slot the screen cannot edit", () => {
+  it("restates a required slot the screen cannot edit without blocking on it", () => {
     // The operator cannot fix a duplicate or an unknown position here, so the
     // slot is restated but never becomes the reason a start is refused.
     expect(
       startBlockers(
-        facts({ crew: [crewLine({ name: null, editable: false })] }),
+        facts({
+          crew: [crewLine({ name: null, filled: false, editable: false })],
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("does not block on a linked official whose name could not be resolved", () => {
+    // The team list failed (or the row carries no name): the screen counts the
+    // slot as filled and the picker says "Offizieller 99". The sheet must agree,
+    // or a fully crewed gameday could not be started at all.
+    expect(
+      startBlockers(
+        facts({ crew: [crewLine({ name: null, filled: true })] }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("only blocks a one-token free text where the league requires the slot", () => {
+    expect(
+      startBlockers(
+        facts({
+          crew: [
+            crewLine({ name: "Michael Klein" }),
+            crewLine({
+              label: "Zeitnehmer",
+              name: "N.N.",
+              freetext: true,
+              required: false,
+            }),
+          ],
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("never blocks on a duplicated position", () => {
+    expect(
+      startBlockers(
+        facts({
+          crew: [crewLine({ duplicate: true, editable: false, filled: false })],
+        }),
       ),
     ).toEqual([]);
   });
@@ -156,6 +206,40 @@ describe("StartConfirmation — what it restates", () => {
     // A required empty slot is named as missing, an optional one as not needed.
     expect(rows).toContain("Linienrichterfehlt");
     expect(rows).toContain("Protokollnicht nötig");
+  });
+
+  it("shows a filled slot without a resolvable name as entered, not missing", () => {
+    render(
+      <StartConfirmation
+        {...baseProps()}
+        crew={[crewLine({ name: null, filled: true })]}
+      />,
+    );
+
+    expect(dialog()).toHaveTextContent("eingetragen");
+    expect(
+      within(dialog()).queryByRole("button", { name: "Angaben fehlen" }),
+    ).toBeNull();
+    // "fehlt" would be a claim about a slot that is filled.
+    expect(
+      within(dialog()).queryByText("fehlt", { selector: ".startmiss" }),
+    ).toBeNull();
+  });
+
+  it("names a duplicated position as information without blocking", () => {
+    render(
+      <StartConfirmation
+        {...baseProps()}
+        crew={[crewLine({ duplicate: true, editable: false })]}
+      />,
+    );
+
+    expect(dialog()).toHaveTextContent(
+      "Offizielle: Schiedsrichter ist doppelt belegt.",
+    );
+    expect(
+      within(dialog()).getByRole("button", { name: "Jetzt starten" }),
+    ).toBeEnabled();
   });
 
   it("marks a crew member who is only stored as free text", () => {
@@ -251,6 +335,11 @@ describe("StartConfirmation — refusing and confirming", () => {
       "Offizielle: Schiedsrichter fehlt – die Liga verlangt diese Position.",
     );
     expect(blockers).toHaveTextContent("Münzwurf: keine Mannschaft gewählt.");
+
+    // A long sheet scrolls: the reasons must be the first thing after the lead
+    // sentence, not the last block below the fold, and they are announced.
+    expect(sheet.getByRole("alert")).toHaveTextContent("Start nicht möglich");
+    expect(blockers?.nextElementSibling).toHaveClass("sheetsection");
 
     const action = sheet.getByRole("button", { name: "Angaben fehlen" });
     expect(action).toBeDisabled();
