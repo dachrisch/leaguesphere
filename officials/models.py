@@ -209,10 +209,13 @@ class CrewPosition(models.Model):
     The operator sees `label`; `order` is the display sequence and `required`
     decides whether an empty slot counts against the completeness counter.
 
-    A league without rows has no configuration and gets the built-in defaults
-    (`officials.service.crew_positions.DEFAULT_CREW_POSITIONS`); the table only
-    holds *overrides*. That is why the defaults are not seeded here: a league
-    created tomorrow must get them without a data migration.
+    Rows are **overrides on top of** the built-in defaults
+    (`officials.service.crew_positions.DEFAULT_CREW_POSITIONS`), never a
+    replacement: a row with a known `position` relabels/reorders it, a row with
+    a new `position` adds a slot, and every default nobody touched stays. One
+    row therefore cannot make the standard crew disappear. Hiding a default
+    position is deliberately not expressible yet (that is the crew template /
+    count layer); it would need a flag, i.e. another migration.
     """
 
     league = models.ForeignKey(
