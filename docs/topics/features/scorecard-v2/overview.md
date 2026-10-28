@@ -117,6 +117,30 @@ Scope rules live in `.circleci/scope-mapping.txt`: the frontend files gate
 gitignored and built in Docker, like every other SPA. See
 [Scoped CI](../../deployment/scoped-ci.md).
 
+## Testdata on stage
+
+The stage database is reset every night. To get a finished test gameday for
+**today**, run the management command inside the stage container:
+
+```bash
+ssh cda@lehel.xyz "docker exec leaguesphere_stage.staging-app \
+    python manage.py seed_scorecard_demo"
+```
+
+It creates (in a dedicated `Scorecard Demo League`, never the real leagues):
+
+- one published gameday for today with four games (13:30 / 14:40, fields 1/2),
+- four demo teams with 14 players and jerseys each,
+- a `scorecard-test` staff user (password `ScorecardV2!2026`) and an officials
+  crew with valid licences,
+- confirmed rosters and Passcheck for the first game only, so both chip states
+  are visible.
+
+Rerunning the command on the same day updates those rows instead of duplicating
+them. Useful options: `--date YYYY-MM-DD`, `--name`, `--username`,
+`--players-per-team`. The user/password, gameday name and team/league names are
+all overridable.
+
 ## Verification
 
 Automated: 494 vitest cases (incl. the outbox/sync engine and a real
