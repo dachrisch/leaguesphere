@@ -13,6 +13,9 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from gameevents.models import GameEvent
+from gameevents.service.append import append_legacy as shadow_append
+from gameevents.service.projector import InvalidEnvelope
 from gamedays.api.serializers import (
     GameFinalizer,
     GameSetupSerializer,
@@ -235,37 +238,54 @@ class GameLogAPIView(APIView):
             data = request.data
             _validate_gamelog_payload(data)
             client_id = _client_id(data.get("client_id"))
-            game_service = GameService(data.get("gameId"))
-            game = game_service.gameinfo.gameinfo
-            if client_id is not None and GameLogSubmission.objects.filter(
-                gameinfo=game, client_id=client_id
-            ).exists():
-                # Already applied (and its rows committed -- the claim shares
-                # the write's transaction). Answer with the current log and
-                # write nothing. This has to be checked BEFORE the device
-                # lock: after a staff release plus a handover the replay comes
-                # from a device that no longer holds the lock, and a 409 would
-                # pin the op in the outbox forever, blocking the finalize.
-                return Response(
-                    json.loads(
-                        game_service.get_gamelog().as_json(),
-                        object_pairs_hook=OrderedDict,
-                    ),
-                    status=HTTPStatus.OK,
+            with transaction.atomic():
+                # Rows and events are one unit. Locking the game row before the
+                # write serialises this endpoint with the canonical endpoint's
+                # sequence allocation; GameLogCreator re-locks the same row
+                # inside the write (a no-op in this transaction), so every
+                # write here holds Gameinfo before Gameresult.
+                game = Gameinfo.objects.select_for_update().get(pk=data.get("gameId"))
+                game_service = GameService(game.pk)
+                if client_id is not None and GameLogSubmission.objects.filter(
+                    gameinfo=game, client_id=client_id
+                ).exists():
+                    # Already applied (and its rows committed -- the claim shares
+                    # the write's transaction). Answer with the current log and
+                    # write nothing. This has to be checked BEFORE the device
+                    # lock: after a staff release plus a handover the replay comes
+                    # from a device that no longer holds the lock, and a 409 would
+                    # pin the op in the outbox forever, blocking the finalize.
+                    return Response(
+                        json.loads(
+                            game_service.get_gamelog().as_json(),
+                            object_pairs_hook=OrderedDict,
+                        ),
+                        status=HTTPStatus.OK,
+                    )
+                finished = _finished_game_response(game)
+                if finished is not None:
+                    return finished
+                conflict = _device_lock_response(request, game.pk, data)
+                if conflict is not None:
+                    return conflict
+                gamelog, applied = game_service.create_gamelog_once(
+                    data.get("team"),
+                    data.get("event"),
+                    request.user,
+                    data.get("half"),
+                    client_id=client_id,
                 )
-            finished = _finished_game_response(game)
-            if finished is not None:
-                return finished
-            conflict = _device_lock_response(request, game.pk, data)
-            if conflict is not None:
-                return conflict
-            gamelog, applied = game_service.create_gamelog_once(
-                data.get("team"),
-                data.get("event"),
-                request.user,
-                data.get("half"),
-                client_id=client_id,
-            )
+                # The legacy writer already inserted the TeamLog rows, so the
+                # shadow records the events only (write_rows=False) and moves
+                # GameState to their projection.
+                shadow_append(
+                    game,
+                    team=data.get("team"),
+                    entries=data.get("event"),
+                    half=data.get("half"),
+                    client_id=client_id,
+                    author=request.user,
+                )
             return Response(
                 json.loads(gamelog.as_json(), object_pairs_hook=OrderedDict),
                 # A repeated submission wrote nothing, so it is a 200.
@@ -279,6 +299,10 @@ class GameLogAPIView(APIView):
             raise NotFound(
                 detail=f'Could not create team logs ... team {request.data.get("team")} not found'
             )
+        except InvalidEnvelope as error:
+            # An event name the store cannot represent (e.g. a client typo):
+            # the whole request is rolled back, rows included.
+            return Response({"detail": str(error)}, status=HTTPStatus.BAD_REQUEST)
 
     def delete(self, request: Request, *args, **kwargs):
         game_id = kwargs.get("id")

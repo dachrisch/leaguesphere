@@ -162,6 +162,11 @@ class GameEventValue:
     period: int = 1
     payload: dict = field(default_factory=dict)
     seq: Optional[int] = None
+    # The submission (the client outbox id) this event belongs to. The
+    # projector does not use it for meaning, but a submission is the unit that
+    # shares one legacy ``TeamLog.sequence``, so replay and correction
+    # resolution group by it. ``None`` for values that were never stored.
+    client_id: Optional[str] = None
     legacy_sequence: Optional[int] = None
     undo_of: Optional["GameEventValue"] = None
     undo_rows: tuple[TeamLogRow, ...] = ()

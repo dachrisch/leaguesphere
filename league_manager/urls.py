@@ -148,6 +148,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("database-error/", database_error_view, name="database-error"),
     # ToDo: fix gameday urls
+    path("api/", include("gameevents.api.urls")),
     path("api/", include("gamedays.api.urls")),
     path("api/league-table/", include("league_table.api.urls")),
     path("api/designer/", include("gameday_designer.urls")),
