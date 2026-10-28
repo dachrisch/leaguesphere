@@ -1,21 +1,24 @@
 from datetime import date, timedelta
 from http import HTTPStatus
+from unittest.mock import patch
 
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django_webtest import WebTest
 from rest_framework.reverse import reverse
 
-from gamedays.models import Team
+from gamedays.models import Association, Team
 from gamedays.tests.setup_factories.db_setup import DBSetup
 from officials.api.urls import API_OFFICIALS_FOR_TEAM, API_OFFICIALS_SEARCH_BY_NAME
-from officials.models import Official
+from officials.models import Official, OfficialLicense
+from officials.service.moodle.moodle_service import MoodleService
 from officials.tests.setup_factories.db_setup_officials import DbSetupOfficials
 from officials.tests.setup_factories.factories_officials import (
     OfficialFactory,
     OfficialLicenseFactory,
     OfficialLicenseHistoryFactory,
 )
+from officials.urls import OFFICIALS_ASSOCIATION_LIST
 
 
 def _valid_until(official: Official) -> str:
@@ -224,3 +227,70 @@ class TestOfficialsSearchName(WebTest):
         )
         assert response.status_code == HTTPStatus.BAD_REQUEST
         assert response.json[0] == "Vorname muss mindestens 3 Zeichen haben"
+
+
+class TestOfficialAssociationListView(WebTest):
+    def _url(self):
+        return reverse(OFFICIALS_ASSOCIATION_LIST, kwargs={"abbr": "ABBR"})
+
+    def _login_staff(self):
+        self.app.set_user(DBSetup().create_new_user("staff user", is_staff=True))
+
+    def _create_officials(self) -> Team:
+        team = DbSetupOfficials().create_officials_and_team()
+        team.association = Association.objects.get(abbr="ABBR")
+        team.save()
+        return team
+
+    @staticmethod
+    def _rendered_rows(response) -> int:
+        return response.text.count('<th scope="row">')
+
+    @patch.object(MoodleService, "get_user_info_by")
+    @patch.object(MoodleService, "get_user_emails_by_external_ids")
+    def test_staff_sees_emails_fetched_in_one_batch(
+        self, get_user_emails_by_external_ids, get_user_info_by
+    ):
+        self._create_officials()
+        self._login_staff()
+        get_user_emails_by_external_ids.return_value = {
+            "5": "franzi@example.com",
+            "7": "julia@example.com",
+        }
+
+        response = self.app.get(self._url())
+
+        assert response.status_code == HTTPStatus.OK
+        assert self._rendered_rows(response) == 2
+        get_user_info_by.assert_not_called()
+        get_user_emails_by_external_ids.assert_called_once()
+        assert sorted(get_user_emails_by_external_ids.call_args.args[0]) == ["5", "7"]
+        assert "franzi@example.com" in response.text
+        assert "julia@example.com" in response.text
+
+    @patch.object(MoodleService, "get_user_emails_by_external_ids", return_value={})
+    def test_query_count_for_staff_does_not_grow_with_officials(
+        self, get_user_emails_by_external_ids
+    ):
+        team = self._create_officials()
+        self._login_staff()
+        self.app.get(self._url())  # warm up one-time session/request caches
+        with CaptureQueriesContext(connection) as two_officials:
+            two_officials_response = self.app.get(self._url())
+
+        license_f1 = OfficialLicense.objects.get(pk=1)
+        for i in range(5):
+            extra_official = OfficialFactory(
+                first_name=f"Extra{i}",
+                last_name=f"Official{i}",
+                team=team,
+                association=team.association,
+                external_id=f"extra-{i}",
+            )
+            OfficialLicenseHistoryFactory(license=license_f1, official=extra_official)
+        with CaptureQueriesContext(connection) as seven_officials:
+            seven_officials_response = self.app.get(self._url())
+
+        assert self._rendered_rows(two_officials_response) == 2
+        assert self._rendered_rows(seven_officials_response) == 7
+        assert len(seven_officials) == len(two_officials)
