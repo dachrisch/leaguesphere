@@ -24,7 +24,8 @@ Each feature is one layer PR, stacked on the layer below it until it reaches `ma
 | L1 | `feat/scorecard-v2-person-search` | [#2113](https://github.com/dachrisch/leaguesphere/pull/2113) | Person search across the database + linked/free-text state on the officials crew (`I1.5`, `I1.6`, `I2.1`–`I2.6`) | in review |
 | L2 | `feat/passcheck-v2` | [#2114](https://github.com/dachrisch/leaguesphere/pull/2114) | Passcheck v2 at `/passcheck/v2/` — **left the stack** on 2026-10-27: rebased on `master`, only Passcheck code, merged independently of the scorecard layers | open |
 | L2 | `feat/scorecard-v2-team-logos` | [#2115](https://github.com/dachrisch/leaguesphere/pull/2115) | Team logos in list, preparation and score header, cached for offline (`I1.7`, logo half of `I8.1`) | in review |
-| L3+ | per-feature branches, stacked on L2 | — | the `next` rows below, in the [layer plan](./2026-10-27-scorecard-layers-plan.md)'s order | not started |
+| L3 | `feat/scorecard-v2-crew-labels` | this layer | Crew positions configured per league: labels, order and which slots count as required, with the five built-ins as the default (`I1.3`, first half of `I4.1`) | in review |
+| L4+ | per-feature branches, stacked on L3 | — | the `next` rows below, in the [layer plan](./2026-10-27-scorecard-layers-plan.md)'s order | not started |
 
 Scorecard layers merge bottom-up (`L0 → L1 → L3 …`); each squash merge sends the layers above it `--onto` the new `master`. Passcheck no longer participates — it is a parallel track with no shared files, and its migration (`gamedays/0046_person_photo`) will be renumbered to `0048` after #2104 lands, because the scorecard ships `0046`/`0047`. L1 adds no migration.
 
@@ -56,7 +57,7 @@ Scorecard layers merge bottom-up (`L0 → L1 → L3 …`); each squash merge sen
 |---|---|---|---|
 | `I1.1` | The other team must be selectable — record what the opponent does, not only "my" team | `next` | v2 already records both sides through possession (touchdown/PAT for the side in possession, penalties against the opponent, turnovers flip possession). An explicit per-event side picker is **not** built; needs a design decision before a layer |
 | `I1.2` | Dark/light theme distinction | `shipped` | L0: `ThemeToggle`, `theme.ts`, tokens in `styles/tokens.css` |
-| `I1.3` | Referee/operator labels configured per league | `next` | New layer; needs a config model + migration and a decision on league vs. gameday vs. sport scoping (`Q4`) |
+| `I1.3` | Referee/operator labels configured per league | `in layer` | L3: `CrewPosition` per league (overrides on the five defaults, admin + `seed_crew_positions`), delivered per game and cached for offline |
 | `I1.4` | Required fields enforced instead of accepted-then-cleaned-up | `next` | Partly there in L0 (licence warning before start, captains must be confirmed); the general rule is not enforced |
 | `I1.5` | Free-text names leave records unlinked; the suggestion list is never used | `in layer` | L1 |
 | `I1.6` | Person search covers only the current team, not the whole database | `in layer` | L1 |
