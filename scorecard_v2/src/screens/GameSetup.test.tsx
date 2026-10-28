@@ -839,6 +839,20 @@ describe("GameSetup — crew slots per league", () => {
     expect(crewButton("Head Referee")).toHaveTextContent("Michael Klein");
   });
 
+  it("refuses an empty slot list instead of an officials step without positions", async () => {
+    // The endpoint never answers `[]` (a league without rows gets the five
+    // defaults). An empty list must not become a crew section with no slots
+    // and a "vollständig" chip — it is unusable configuration.
+    positions = [];
+    render(<GameSetupScreen game={GAME} onStarted={vi.fn()} />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Die Vorbereitung konnte nicht geladen werden.",
+    );
+    expect(document.querySelector(".offrow")).toBeNull();
+    expect(screen.queryByText("vollständig")).toBeNull();
+  });
+
   it("cannot prepare the crew when the slots cannot be loaded", async () => {
     apiGetMock.mockImplementation(async (path: string) => {
       if (path === POSITIONS_PATH) {

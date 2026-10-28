@@ -27,6 +27,20 @@ def test_the_changelist_can_create_and_filter_by_league():
 
 
 @pytest.mark.django_db
+def test_the_wire_value_cannot_be_edited_in_the_changelist():
+    """`position` is the upsert key; an inline edit is a trap.
+
+    The scorecard matches a stored `GameOfficial` byte-for-byte by `position`,
+    so one careless edit in the list would create a second row instead of
+    renaming the existing one. Only label/order/required are list-editable.
+    """
+    model_admin = CrewPositionAdmin(CrewPosition, admin.site)
+
+    assert "position" not in model_admin.list_editable
+    assert set(model_admin.list_editable) == {"order", "label", "required"}
+
+
+@pytest.mark.django_db
 def test_a_superuser_opens_the_crew_position_pages(client):
     league = LeagueFactory()
     superuser = UserFactory(username="root", is_staff=True, is_superuser=True)
