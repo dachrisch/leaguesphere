@@ -53,6 +53,16 @@ class GameEvent(models.Model):
     )
     seq = models.PositiveIntegerField()
     client_id = models.CharField(max_length=64)
+    # The ``TeamLog.sequence`` the legacy writer used for this submission, if
+    # this event was recorded by the shadow. The projector normally derives a
+    # submission's sequence from its smallest event ``seq``; the legacy writer
+    # instead allocates ``max(sequence)+1``, so on a game that mixes both
+    # write paths the two numbers diverge and a correction would delete the
+    # wrong row group. Persisting it keeps the projection exact. ``None`` means
+    # "this submission has its own projector sequence"; excluded-only
+    # submissions (penalties, clocks, timeouts, markers) have ``None`` too --
+    # their rows live in sequence 0, which the projector handles itself.
+    legacy_sequence = models.PositiveIntegerField(null=True, blank=True)
     type = models.CharField(max_length=32, choices=Type.choices)
     code = models.CharField(max_length=64)
     side = models.CharField(
