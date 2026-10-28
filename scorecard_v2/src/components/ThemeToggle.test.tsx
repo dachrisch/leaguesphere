@@ -15,54 +15,50 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+function choice(name: string): HTMLButtonElement {
+  return screen.getByRole("button", { name }) as HTMLButtonElement;
+}
+
 describe("ThemeToggle", () => {
-  it("is an icon-only control whose label names the chosen mode", () => {
-    const { container } = render(<ThemeToggle />);
-    const button = screen.getByRole("button", { name: "Design: automatisch" });
-
-    // The bar is tight at 360px: no visible word, but the name stays on the
-    // control as accessible name and tooltip.
-    expect(button.textContent).toBe("");
-    expect(button).toHaveAttribute("title", "Design: automatisch");
-    expect(container.querySelector("svg")).toHaveAttribute(
-      "aria-hidden",
-      "true",
-    );
-  });
-
-  it("cycles auto → light → dark → auto and persists each choice", async () => {
-    const user = userEvent.setup();
-    vi.stubGlobal("matchMedia", undefined);
+  it("is a labelled group with the three choices", () => {
     render(<ThemeToggle />);
 
-    await user.click(screen.getByRole("button", { name: "Design: automatisch" }));
-    let button = screen.getByRole("button", { name: "Design: hell" });
-    expect(button).toHaveAttribute("title", "Design: hell");
-    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
-    expect(document.documentElement.dataset.theme).toBe("light");
-
-    await user.click(button);
-    button = screen.getByRole("button", { name: "Design: dunkel" });
-    expect(button).toHaveAttribute("title", "Design: dunkel");
-    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
-    expect(document.documentElement.dataset.theme).toBe("dark");
-
-    await user.click(button);
+    const group = screen.getByRole("group", { name: "Design" });
+    expect(group).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Design: automatisch" }),
-    ).toHaveAttribute("title", "Design: automatisch");
-    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("auto");
-    expect(document.documentElement.dataset.theme).toBe("light");
+      screen.getAllByRole("button").map((button) => button.textContent),
+    ).toEqual(["Auto", "Hell", "Dunkel"]);
   });
 
-  it("starts from a stored dark choice", () => {
+  it("marks the stored choice with aria-pressed", () => {
     localStorage.setItem(THEME_STORAGE_KEY, "dark");
     vi.stubGlobal("matchMedia", undefined);
 
     render(<ThemeToggle />);
 
-    expect(
-      screen.getByRole("button", { name: "Design: dunkel" }),
-    ).toBeInTheDocument();
+    expect(choice("Dunkel")).toHaveAttribute("aria-pressed", "true");
+    expect(choice("Auto")).toHaveAttribute("aria-pressed", "false");
+    expect(choice("Hell")).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("persists and applies a click on Hell", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("matchMedia", undefined);
+    render(<ThemeToggle />);
+
+    await user.click(choice("Hell"));
+
+    expect(choice("Hell")).toHaveAttribute("aria-pressed", "true");
+    expect(choice("Auto")).toHaveAttribute("aria-pressed", "false");
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
+    expect(document.documentElement.dataset.theme).toBe("light");
+
+    await user.click(choice("Dunkel"));
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+
+    await user.click(choice("Auto"));
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("auto");
+    expect(document.documentElement.dataset.theme).toBe("light");
   });
 });

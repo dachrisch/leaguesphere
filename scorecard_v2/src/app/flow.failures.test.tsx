@@ -323,6 +323,7 @@ describe("the gameday list", () => {
     await screen.findByRole("button", { name: /Herbsttag/ });
     expect(await queuedWrites()).toEqual({ pending: 1, failed: 0 });
 
+    await user.click(screen.getByRole("button", { name: "Konto" }));
     await user.click(screen.getByRole("button", { name: "Abmelden" }));
 
     await waitFor(() =>
@@ -516,7 +517,7 @@ describe("the preparation", () => {
     await user.click(
       await screen.findByRole("button", { name: /Ravens gegen Wolves/ }),
     );
-    await screen.findByRole("heading", { name: "Vorbereitung" });
+    await screen.findByRole("heading", { name: "Spiel vorbereiten" });
     const before = calls.filter(
       (call) => call === "GET /api/gameday/1/officials/crew",
     ).length;
@@ -538,15 +539,15 @@ describe("starting a game", () => {
     await user.click(
       await screen.findByRole("button", { name: /Ravens gegen Wolves/ }),
     );
-    await screen.findByRole("heading", { name: "Vorbereitung" });
+    await screen.findByRole("heading", { name: "Spiel vorbereiten" });
     const before = calls.filter(
       (call) => call === "GET /api/gameday/1/officials/crew",
     ).length;
 
     const picks = [
-      ["Münzwurf", "Ravens"],
+      ["Münzwurf gewonnen von", "Ravens"],
       ["Erster Ballbesitz", "Ravens"],
-      ["Richtung", "Ost → West"],
+      ["Spielrichtung", "Ost → West"],
     ] as const;
     for (const [group, option] of picks) {
       await user.click(
