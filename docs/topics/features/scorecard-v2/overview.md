@@ -52,7 +52,9 @@ only control static assets, and its scope could never leak into the old app.
    one card with **Münzwurf gewonnen von**, **Erster Ballbesitz** and
    **Spielrichtung**, each a full-width two-option switch. A readiness banner
    above the start action is the single source of truth: green **Bereit zum
-   Starten**, or amber **Angaben fehlen** with exactly the missing facts. The
+   Starten**, amber **Angaben fehlen** with exactly the missing facts, and
+   **Start nur online** / **Nur lesen** when the disabled start bar has that
+   reason instead. The
    crew slots are *the league's*: which positions exist, how they are labelled
    and which of them count towards the completeness chip is configured per
    league (`officials.CrewPosition`, edited in the Django admin). Configured

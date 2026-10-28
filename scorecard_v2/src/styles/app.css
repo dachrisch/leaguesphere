@@ -109,6 +109,12 @@ button,
   overflow: clip;
 }
 
+/* Only the preparation screen opts into the wider measure at tablet/desk
+   widths; lists, the board and the sheets keep `--shell-width`. */
+.app-shell-wide {
+  max-width: var(--shell-width-prep);
+}
+
 .app-header {
   flex: 0 0 auto;
   padding: 0 var(--page-gutter) var(--space-3);
@@ -767,6 +773,19 @@ button.game-row:active {
   overflow-wrap: anywhere;
 }
 
+/* Decorative separator between the add invitation and its "not mandatory"
+   hint; the hint already reads as a sentence. */
+.offaddline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: baseline;
+}
+
+.offsep {
+  color: var(--muted);
+}
+
 .offhint {
   font-size: var(--fs-xs);
   line-height: 1.3;
@@ -1034,12 +1053,14 @@ button.game-row:active {
 .seg button {
   min-height: var(--touch);
   padding: var(--space-2);
-  overflow: hidden;
   font-size: var(--fs-base);
   font-weight: 600;
+  line-height: 1.25;
   color: var(--fg);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* A long team description wraps instead of being clipped; it is the label
+     the operator has to read, so no ellipsis at any width. */
+  white-space: normal;
+  overflow-wrap: anywhere;
   background: var(--panel2);
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -1856,7 +1877,7 @@ button.game-row:active {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: var(--shell-width);
+  max-width: min(var(--shell-width), 640px);
   max-height: 92dvh;
   padding: var(--space-3) var(--page-gutter) 0;
   overflow: hidden;
@@ -2808,7 +2829,10 @@ button.game-row:active {
   right: calc(-1 * var(--space-2));
   z-index: 30;
   width: min(280px, calc(100vw - 2 * var(--space-4)));
+  max-height: min(70dvh, 420px);
   padding: var(--space-3);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   color: var(--fg);
   background: var(--panel);
   border: 1px solid var(--line);
@@ -3249,9 +3273,48 @@ button.syncbadge {
     width: 30px;
     height: 30px;
   }
+}
 
-  .seg button {
+/* ≤479px: the licence chip gets its own line under the role/name. At 320px a
+   row is ~264px wide inside the card: ~226px for the role/name column and the
+   full 264px for the chip, whose longest realistic value
+   ("abgelaufen seit 04.03.2025") is ~172px. At 359px it is ~303px/~265px, at
+   375px ~295px/~253px, and at 479px ~399px/~357px. */
+@media (max-width: 479px) {
+  .offcard {
+    grid-template-areas:
+      "avatar body"
+      "meta meta";
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .offava {
+    grid-area: avatar;
+  }
+
+  .offbody {
+    grid-area: body;
+  }
+
+  .offmeta {
+    grid-area: meta;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    padding-top: 2px;
+  }
+
+  /* The add row has no chip, only the chevron: keep it on the right edge. */
+  .offrow-optional .offmeta {
+    justify-content: flex-end;
+  }
+
+  .lic {
+    flex: 0 1 auto;
+    min-width: 0;
     white-space: normal;
+    line-height: 1.35;
+    text-align: left;
   }
 }
 
@@ -3271,6 +3334,10 @@ button.syncbadge {
     padding: var(--space-4) var(--space-5);
   }
 
+  /* Two columns: at the 760px shell each button is ~166px wide (760 − 32
+     gutters − 40 card padding = 688; (688 − 8) / 2 = 340 per field;
+     (340 − 8) / 2 = 166). Labels wrap, so a 34-character team description
+     takes two lines instead of being clipped. */
   .configgrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-3);

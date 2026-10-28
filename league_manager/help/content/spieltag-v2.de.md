@@ -47,7 +47,9 @@ eine normale Zeile.
 
 **Spiel starten bestätigen:** Über **Spiel starten** steht die Zeile **Bereit
 zum Starten**, sobald alle Pflichtangaben gesetzt sind; fehlt etwas, listet
-**Angaben fehlen** genau auf, was noch fehlt. **Spiel starten** öffnet zuerst
+**Angaben fehlen** genau auf, was noch fehlt. Ohne Verbindung oder bei einem
+gesperrten Spiel steht dort **Start nur online** bzw. **Nur lesen**. **Spiel
+starten** öffnet zuerst
 eine Übersicht: Begegnung, Anstoß, Feld, Offizielle, Münzwurf gewonnen von,
 erster Ballbesitz, Spielrichtung, Passcheck und Lizenzwarnungen. **Jetzt
 starten** schreibt die Vorbereitung und sperrt das Spiel für dieses Gerät – eine

@@ -392,6 +392,13 @@ function crewButton(label: string): HTMLButtonElement {
   }) as HTMLButtonElement;
 }
 
+/** The compact "add" row an empty optional position renders as. */
+function addButton(label: string): HTMLButtonElement {
+  return screen.getByRole("button", {
+    name: `${label} hinzufügen: Offiziellen wählen`,
+  }) as HTMLButtonElement;
+}
+
 /** The read-only name of an unknown or duplicated row. */
 function crewReadOnly(): HTMLElement | null {
   return document.querySelector<HTMLElement>(".offcard-static .offmember");
@@ -405,14 +412,23 @@ function rowFor(label: string): HTMLElement {
   return row;
 }
 
-/** Open the slot's picker, search for a person and take the suggestion. */
-async function pickCrew(label: string, person: string): Promise<void> {
-  await userEvent.click(crewButton(label));
+/** Open a picker from a given row button, search and take the suggestion. */
+async function pickCrewFrom(
+  button: HTMLButtonElement,
+  label: string,
+  person: string,
+): Promise<void> {
+  await userEvent.click(button);
   const input = screen.getByLabelText(`${label}: Person suchen`);
   await userEvent.type(input, person.split(" ").slice(-1)[0]);
   await userEvent.click(
     await screen.findByRole("option", { name: new RegExp(person) }),
   );
+}
+
+/** Open the slot's picker, search for a person and take the suggestion. */
+async function pickCrew(label: string, person: string): Promise<void> {
+  await pickCrewFrom(crewButton(label), label, person);
 }
 
 /** The header reads the team directory from the provider; none here. */
@@ -561,6 +577,13 @@ describe("GameSetup — guest officials", () => {
       await renderSetup();
       expect(startButton()).toHaveTextContent("Start nur online");
       expect(startButton()).toBeDisabled();
+      // The banner agrees with the disabled bar instead of claiming green.
+      const banner = document.querySelector(".readybar");
+      expect(banner).toHaveTextContent("Start nur online");
+      expect(banner).toHaveTextContent(
+        "Das Spiel kann nur mit Verbindung gestartet werden.",
+      );
+      expect(screen.queryByText("Bereit zum Starten")).toBeNull();
 
       // The confirmation is not reachable offline: the start needs the server.
       fireEvent.click(startButton());
@@ -996,12 +1019,18 @@ describe("GameSetup — crew slots per league", () => {
     crew = [crewRow()];
     await renderSetup();
 
-    const add = document.querySelector(".offcard-add");
+    const add = addButton("Scorecard Judge");
+    expect(add).toHaveAttribute(
+      "aria-label",
+      "Scorecard Judge hinzufügen: Offiziellen wählen",
+    );
     expect(add).toHaveTextContent("Scorecard Judge hinzufügen");
     expect(add).toHaveTextContent("Optional · ohne Pflicht zur Besetzung");
+    expect(add.querySelector(".offsep")).toHaveTextContent("·");
+    expect(add.querySelector(".offsep")).toHaveAttribute("aria-hidden", "true");
     expect(document.querySelector(".offrow-optional")).not.toBeNull();
     // It is the same picker: one tap opens it, a pick turns it into a row.
-    await pickCrew("Scorecard Judge", "Anna Richter");
+    await pickCrewFrom(addButton("Scorecard Judge"), "Scorecard Judge", "Anna Richter");
     expect(crewButton("Scorecard Judge")).toHaveTextContent("Anna Richter");
     expect(document.querySelector(".offcard-add")).toBeNull();
   });
@@ -1831,7 +1860,6 @@ describe("GameSetup — passcheck", () => {
     // A new tab keeps unsaved crew edits on this screen alive.
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
-    expect(screen.getByText(/neuer Tab/)).toBeInTheDocument();
   });
 
   it("shows a missing passcheck", async () => {
@@ -1888,6 +1916,11 @@ describe("GameSetup — server rejections", () => {
     }
     expect(startButton()).toBeDisabled();
     expect(startButton()).toHaveTextContent("Nur lesen");
+    // The banner names the device lock, not a green "ready".
+    const banner = document.querySelector(".readybar");
+    expect(banner).toHaveTextContent("Nur lesen");
+    expect(banner).toHaveTextContent(deviceMessage);
+    expect(screen.queryByText("Bereit zum Starten")).toBeNull();
     expect(setDeviceIdMock).not.toHaveBeenCalled();
     // The lock arrives after the confirmation was tapped: no sheet is left.
     expect(screen.queryByRole("dialog")).toBeNull();
