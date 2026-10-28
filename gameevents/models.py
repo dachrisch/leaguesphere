@@ -105,7 +105,18 @@ class GameState(models.Model):
     """The current projection of one game's events.
 
     ``last_seq`` is the feed cursor; the score is what the projected
-    ``TeamLog`` rows currently sum to, so the two never disagree.
+    ``TeamLog`` rows currently sum to, so the two never disagree -- unless
+    ``needs_reconciliation`` says otherwise.
+
+    ``needs_reconciliation`` is the honest escape hatch for a legacy undo the
+    log cannot express: ``DELETE /api/gamelog/<id>`` can delete a row that no
+    stored event produced (written before the store existed, or by a path
+    outside slice 1). The rows stay deleted (``gamedays.service`` owns them),
+    but no event is invented; instead the projection admits it is out of date.
+    A flagged state is **not authoritative**: the feed/liveticker migration
+    (T4/T5) must not serve it as the game's state, and only a rebuild
+    (``rebuild_game_projection``, T6) clears the flag. ``reconciliation_note``
+    says what could not be represented.
     """
 
     game = models.OneToOneField(
@@ -118,7 +129,13 @@ class GameState(models.Model):
     period = models.PositiveSmallIntegerField(default=1)
     in_possession = models.CharField(max_length=8, null=True, blank=True)
     last_seq = models.PositiveIntegerField(default=0)
+    needs_reconciliation = models.BooleanField(default=False)
+    reconciliation_note = models.CharField(max_length=255, blank=True, default="")
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.game_id} {self.score_home}:{self.score_away} (seq {self.last_seq})"
+        flag = " [needs reconciliation]" if self.needs_reconciliation else ""
+        return (
+            f"{self.game_id} {self.score_home}:{self.score_away} "
+            f"(seq {self.last_seq}){flag}"
+        )

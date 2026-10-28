@@ -15,10 +15,20 @@ Responses:
   store's next ones;
 - ``400`` -- invalid/unknown envelope or legacy event name, nothing stored.
 
-Scope note: this endpoint projects into ``TeamLog`` and ``GameState`` only. It
-does not touch ``Gameresult`` (the result table the league table reads); the
-legacy writer still maintains that, and the app keeps posting to it, so the
-event path is not a drop-in replacement for ``Gameresult`` in slice 1.
+Scope note: this endpoint projects into ``TeamLog``, ``GameState`` **and**
+``Gameresult``. The result table is not re-derived here -- the projected rows
+are inserted through ``GameService.write_projected_gamelog``, i.e. the same
+half-score diff the legacy writer applies -- so a canonical submission leaves
+``Gameresult`` exactly where ``POST /api/gamelog`` would, and the liveticker's
+live list, the league table and the finalisation keep working.
+
+Device lock: **not yet enforced here.** ``feat/scorecard-v2`` adds
+``_device_lock_response`` (``GameSetup.device_id`` + ``X-Scorecard-Device``) to
+``gamedays/api/game_views.py``; this module already calls it and stands down
+when it is absent, which is the whole point of the delegation below. The lock
+therefore becomes effective only once that branch merges -- the expected merge
+conflict is in ``gamedays/api/game_views.py`` (the gamelog ``delete``/``post``
+views both gain the lock there). Do not reimplement it here.
 """
 
 from http import HTTPStatus

@@ -16,6 +16,7 @@ from rest_framework.views import APIView
 from gameevents.models import GameEvent
 from gameevents.service.append import append_legacy as shadow_append
 from gameevents.service.projector import InvalidEnvelope
+from gameevents.service.undo import record_legacy_undo
 from gamedays.api.serializers import (
     GameFinalizer,
     GameSetupSerializer,
@@ -317,45 +318,57 @@ class GameLogAPIView(APIView):
                     "'team_log_id' (one row)."
                 }
             )
-        try:
-            game = Gameinfo.objects.get(pk=game_id)
-        except Gameinfo.DoesNotExist:
-            raise NotFound(
-                detail=f"Could not delete team logs ... gameId {game_id} not found"
-            )
-        # A finished game cannot be undone: the result already covers the log.
-        finished = _finished_game_response(game)
-        if finished is not None:
-            return finished
-        # Undo is a write like any other: a stale second tab must not delete
-        # entries of a game another device holds.
-        conflict = _device_lock_response(request, game.pk)
-        if conflict is not None:
-            return conflict
-        game_service = GameService(game_id)
-        if has_team_log_id:
-            # The v2 log undoes one row at a time: a penalty (sequence 0) must
-            # not take every timeout of the game with it.
+        # One transaction: the legacy delete and the correction event that
+        # records it are both or neither, and locking the game row serialises
+        # this with both append paths' sequence allocation.
+        with transaction.atomic():
             try:
-                team_log_id = int(team_log_id)
-            except (TypeError, ValueError):
-                raise ValidationError({"team_log_id": "must be an integer"})
-            row = TeamLog.objects.filter(gameinfo=game, pk=team_log_id).first()
-            if row is None:
+                game = Gameinfo.objects.select_for_update().get(pk=game_id)
+            except Gameinfo.DoesNotExist:
                 raise NotFound(
-                    detail=f"Could not delete team log {team_log_id} of game {game_id}"
+                    detail=f"Could not delete team logs ... gameId {game_id} not found"
                 )
-            if not self._can_delete_team_log(request.user, game, row):
-                raise PermissionDenied(
-                    detail="You do not have permission to delete this game log entry."
+            # A finished game cannot be undone: the result already covers the log.
+            finished = _finished_game_response(game)
+            if finished is not None:
+                return finished
+            # Undo is a write like any other: a stale second tab must not delete
+            # entries of a game another device holds.
+            conflict = _device_lock_response(request, game.pk)
+            if conflict is not None:
+                return conflict
+            game_service = GameService(game_id)
+            if has_team_log_id:
+                # The v2 log undoes one row at a time: a penalty (sequence 0) must
+                # not take every timeout of the game with it.
+                try:
+                    team_log_id = int(team_log_id)
+                except (TypeError, ValueError):
+                    raise ValidationError({"team_log_id": "must be an integer"})
+                row = TeamLog.objects.filter(gameinfo=game, pk=team_log_id).first()
+                if row is None:
+                    raise NotFound(
+                        detail=f"Could not delete team log {team_log_id} of game {game_id}"
+                    )
+                if not self._can_delete_team_log(request.user, game, row):
+                    raise PermissionDenied(
+                        detail="You do not have permission to delete this game log entry."
+                    )
+                gamelog = game_service.delete_gamelog_entry(row.pk)
+                record_legacy_undo(
+                    game, team_log_id=row.pk, author=request.user
                 )
-            gamelog = game_service.delete_gamelog_entry(row.pk)
-        else:
-            if not self._can_delete_log_entry(request.user, game, sequence):
-                raise PermissionDenied(
-                    detail="You do not have permission to delete this game log entry."
+            else:
+                if not self._can_delete_log_entry(request.user, game, sequence):
+                    raise PermissionDenied(
+                        detail="You do not have permission to delete this game log entry."
+                    )
+                gamelog = game_service.delete_gamelog(sequence)
+                # The rows are deleted; the log must say so too, or GameState
+                # keeps a score the rows no longer have.
+                record_legacy_undo(
+                    game, sequence=sequence, author=request.user
                 )
-            gamelog = game_service.delete_gamelog(sequence)
         return Response(
             json.loads(gamelog.as_json(), object_pairs_hook=OrderedDict),
             status=HTTPStatus.OK,
