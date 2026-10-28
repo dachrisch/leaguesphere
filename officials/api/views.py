@@ -7,8 +7,13 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from officials.api.serializers import OfficialTeamListScorecardSerializer
+from gamedays.models import Gameinfo
+from officials.api.serializers import (
+    CrewPositionScorecardSerializer,
+    OfficialTeamListScorecardSerializer,
+)
 from officials.models import Official
+from officials.service.crew_positions import crew_positions_for_game
 from officials.service.game_official_licenses import resolve_current_licenses
 
 SEARCH_MIN_TERM_LENGTH = 2
@@ -153,3 +158,26 @@ class OfficialsSearchList(APIView):
             return int(raw)
         except ValueError:
             raise ValidationError(detail="'team' muss eine Zahl sein")
+
+
+class CrewPositionsForGameAPIView(APIView):
+    """The crew slots the scorecard should offer for one game.
+
+    The preparation screen only knows the game id, so the league is resolved
+    server-side (game → gameday → league). Serving it here rather than on the
+    game endpoint keeps the scorecard's own surface in the officials app, and a
+    league without configuration answers the built-in defaults — same shape
+    either way, never an empty list.
+    """
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    # noinspection PyMethodMayBeStatic
+    def get(self, request: Request, **kwargs):
+        game_id = kwargs.get("pk")
+        try:
+            positions = crew_positions_for_game(game_id)
+        except Gameinfo.DoesNotExist:
+            raise NotFound(f"Spiel {game_id} wurde nicht gefunden") from None
+        serializer = CrewPositionScorecardSerializer(instance=positions, many=True)
+        return Response(serializer.data, status=HTTPStatus.OK)
