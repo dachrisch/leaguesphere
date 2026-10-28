@@ -34,6 +34,26 @@ Read-only and public, like the other game read endpoints.
 - `409 {"detail": "…", "needs_reconciliation": true}` means the projection is
   flagged: it is **not** served as a score. Run the rebuild below.
 
+## `SCORECARD_EVENT_FEED`
+
+Default **off** (`false`; set the environment variable to `true` to enable).
+With the flag off the liveticker runs exactly the query it ran before the
+event store existed.
+
+With the flag on, a live game that has events takes its total score from
+`GameState` and, while `Gameinfo.status` is in progress, the half it displays
+from `GameState.period` (`1. Halbzeit`/`2. Halbzeit`). Which games are live,
+upcoming or the previous slot is still selected from `Gameinfo.status` — the
+projection never changes the selection. Ticks remain the projected `TeamLog`
+rows, so their ordering and text are the ones the widget has always rendered.
+
+A game whose projection is flagged `needs_reconciliation` falls back to its
+`TeamLog` rows for that response (one warning per liveticker request names the
+games); the public widget never sees the feed's `409` and never blanks a game.
+The liveticker ETag includes the projection's `last_seq` while the flag is on,
+so an event that writes no tick (a plain possession change) still invalidates a
+cached response.
+
 ## `check_game_projection`
 
 ```bash
