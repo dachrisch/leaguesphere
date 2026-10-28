@@ -2,6 +2,7 @@
 
 import pytest
 from django.core.management import call_command
+from django.core.management.base import CommandError
 
 from gamedays.tests.setup_factories.factories import LeagueFactory
 from officials.models import CrewPosition
@@ -78,7 +79,7 @@ def test_all_seeds_every_league():
 
 @pytest.mark.django_db
 def test_an_unknown_league_is_reported_not_silently_ignored():
-    with pytest.raises(Exception) as error:
+    with pytest.raises(CommandError) as error:
         call_command("seed_crew_positions", "gibt-es-nicht")
 
     assert "gibt-es-nicht" in str(error.value)
