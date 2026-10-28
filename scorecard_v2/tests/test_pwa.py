@@ -31,6 +31,33 @@ def _static_file(asset):
         return handle.read()
 
 
+def test_app_shell_assets_match_the_precache_list():
+    """The offline shell must reference the files the worker precaches.
+
+    ``app-shell.html`` is a committed static, so its ``/static/...`` paths are
+    written by hand while the worker builds its list from ``static()``. If the
+    two ever drift — a renamed bundle, a moved manifest — the offline boot
+    renders a shell whose script 404s, and the failure is invisible online.
+    """
+    shell = _static_file(APP_SHELL).decode("utf-8")
+    # Only what the boot needs: the bundle, its stylesheet and the manifest.
+    # The favicons are cosmetic and may 404 offline without consequence.
+    referenced = set(
+        re.findall(r'(?:href|src)="(/static/[^"]+\.(?:js|css|webmanifest))"', shell)
+    )
+    assert referenced, "the app shell references no boot assets at all"
+
+    precached = {
+        f"/static/{asset}" for asset in views.precache_assets()
+    }
+
+    missing = referenced - precached
+    assert not missing, (
+        "app-shell.html references assets the worker does not precache: "
+        f"{sorted(missing)}"
+    )
+
+
 def _png_size(data):
     assert data[:8] == b"\x89PNG\r\n\x1a\n", "not a PNG"
     width, height = struct.unpack(">II", data[16:24])
