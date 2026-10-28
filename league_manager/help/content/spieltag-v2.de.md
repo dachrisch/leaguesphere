@@ -17,7 +17,7 @@ wie die bisherige Scorecard
    **Vorbereitung**.
 2. Prüfe in der Vorbereitung die Offiziellen und ihre Lizenzen, halte
    **Münzwurf**, **Erster Ballbesitz** und **Richtung** fest und tippe auf
-   **Spiel starten**.
+   **Spiel starten**. **Jetzt starten** bestätigt den Start.
 3. Erfasse im laufenden Spiel (oben stehen Feld und Runde) jeden Spielzug über
    **Touchdown**, **1st Down**, **Turnover**, **Interception**, **Strafe**,
    **Safety**, **Overtime**, **Spielzeit** oder **Auszeit**.
@@ -39,6 +39,14 @@ schon in einer anderen Position steht, lässt sich nicht wählen.
 Welche Positionen die Vorbereitung anbietet und wie sie heißen, bereitet die
 Ligaleitung für ihre Liga vor – du wählst nur die Personen aus. Welche
 Positionen für **vollständig** zählen, legt sie ebenfalls fest.
+
+**Spiel starten bestätigen:** **Spiel starten** öffnet zuerst eine Übersicht:
+Begegnung, Anstoß, Feld, Offizielle, Münzwurf, erster Ballbesitz, Richtung,
+Passcheck und Lizenzwarnungen. **Jetzt starten** schreibt die Vorbereitung und
+sperrt das Spiel für dieses Gerät – eine Spieluhr läuft in der App nicht. Fehlt
+eine Pflichtposition oder eine der drei Angaben, nennt die Übersicht den Grund
+und der Start bleibt gesperrt. Eine abgelaufene Lizenz warnt nur:
+**Trotzdem starten** startet.
 
 ## Ohne Netz
 

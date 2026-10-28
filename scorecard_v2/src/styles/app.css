@@ -1660,6 +1660,55 @@ button.game-row:active {
   border-radius: var(--radius-lg);
 }
 
+.sheetwarn ul {
+  margin: var(--space-1) 0 0;
+  padding-left: 1.1em;
+}
+
+/* Start confirmation: one restated fact per line, label left, value right. */
+.startlist {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.startrow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: var(--space-3);
+  align-items: baseline;
+  padding: var(--space-1) 0;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
+.startrow + .startrow {
+  border-top: 1px solid var(--line-soft);
+}
+
+.startrow dt {
+  min-width: 0;
+  color: var(--muted);
+}
+
+.startrow dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* Missing or optional, in the same words the crew list uses. */
+.startmiss {
+  font-weight: 600;
+  color: var(--amber);
+}
+
+.startopt {
+  font-weight: 400;
+  color: var(--muted);
+}
+
 .sheeterror {
   padding: var(--space-2) var(--space-3);
   font-size: var(--fs-sm);
