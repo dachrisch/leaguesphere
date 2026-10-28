@@ -25,7 +25,8 @@ Each feature is one layer PR, stacked on the layer below it until it reaches `ma
 | L2 | `feat/passcheck-v2` | [#2114](https://github.com/dachrisch/leaguesphere/pull/2114) | Passcheck v2 at `/passcheck/v2/` — **left the stack** on 2026-10-27: rebased on `master`, only Passcheck code, merged independently of the scorecard layers | open |
 | L2 | `feat/scorecard-v2-team-logos` | [#2115](https://github.com/dachrisch/leaguesphere/pull/2115) | Team logos in list, preparation and score header, cached for offline (`I1.7`, logo half of `I8.1`) | in review |
 | L3 | `feat/scorecard-v2-crew-labels` | this layer | Crew positions configured per league: labels, order and which slots count as required, with the five built-ins as the default (`I1.3`, first half of `I4.1`) | in review |
-| L4+ | per-feature branches, stacked on L3 | — | the `next` rows below, in the [layer plan](./2026-10-27-scorecard-layers-plan.md)'s order | not started |
+| L4 | `feat/scorecard-v2-start-confirmation` | this layer | Two-step start: a confirmation restates what will start and refuses incomplete input (`I1.4`, confirmation half of `I3.1`, `I3.3`, `I3.4`) | in review |
+| L5+ | per-feature branches, stacked on L4 | — | the `next` rows below, in the [layer plan](./2026-10-27-scorecard-layers-plan.md)'s order | not started |
 
 Scorecard layers merge bottom-up (`L0 → L1 → L3 …`); each squash merge sends the layers above it `--onto` the new `master`. Passcheck no longer participates — it is a parallel track with no shared files, and its migration (`gamedays/0046_person_photo`) will be renumbered to `0048` after #2104 lands, because the scorecard ships `0046`/`0047`. L1 adds no migration.
 
@@ -58,7 +59,7 @@ Scorecard layers merge bottom-up (`L0 → L1 → L3 …`); each squash merge sen
 | `I1.1` | The other team must be selectable — record what the opponent does, not only "my" team | `next` | v2 already records both sides through possession (touchdown/PAT for the side in possession, penalties against the opponent, turnovers flip possession). An explicit per-event side picker is **not** built; needs a design decision before a layer |
 | `I1.2` | Dark/light theme distinction | `shipped` | L0: `ThemeToggle`, `theme.ts`, tokens in `styles/tokens.css` |
 | `I1.3` | Referee/operator labels configured per league | `in layer` | L3: `CrewPosition` per league (overrides on the five defaults, admin + `seed_crew_positions`), delivered per game and cached for offline |
-| `I1.4` | Required fields enforced instead of accepted-then-cleaned-up | `next` | Partly there in L0 (licence warning before start, captains must be confirmed); the general rule is not enforced |
+| `I1.4` | Required fields enforced instead of accepted-then-cleaned-up | `in layer` | L4: required crew slots, both-name free text, and unset toss/possession/direction are refused before the start instead of defaulted |
 | `I1.5` | Free-text names leave records unlinked; the suggestion list is never used | `in layer` | L1 |
 | `I1.6` | Person search covers only the current team, not the whole database | `in layer` | L1 |
 | `I1.7` | Team logos are not used at all yet | `in layer` | L2 (#2115): list, preparation and score header, cached for offline |
@@ -78,10 +79,10 @@ Scorecard layers merge bottom-up (`L0 → L1 → L3 …`); each squash merge sen
 
 | ID | Idea | Status | Layer / note |
 |---|---|---|---|
-| `I3.1` | Game duration feeds the live clock — confirm before pressing Start | `next` | v2 has no live clock yet (v3, `I6.1`); today only the licence warning needs a second tap |
+| `I3.1` | Game duration feeds the live clock — confirm before pressing Start | `in layer` | L4 ships the confirmation half (a sheet restates setup and needs a second tap); the clock half waits for the v3 clock (`I6.1`) |
 | `I3.2` | Second confirmation for corrections made during the game | `next` | Reference pattern: handball's yellow flag |
-| `I3.3` | The official clock stays authoritative; the device is an aid, drift is corrected by announcement | `next` | Design constraint for `I3.1`, not a feature on its own |
-| `I3.4` | Saving must not stop the clock; saving and clock are separate concerns | `next` | Same layer as `I3.1` |
+| `I3.3` | The official clock stays authoritative; the device is an aid, drift is corrected by announcement | `in layer` | L4 states in the confirmation that no clock runs in the app — the constraint is now explicit in the UI |
+| `I3.4` | Saving must not stop the clock; saving and clock are separate concerns | `in layer` | L4: the start sheet closes before the write runs, and the sheet says saving starts no clock |
 | `I3.5` | Per event type, configure whether the entry stops the clock | `next` | Depends on `I6.1` |
 
 ## §4 Match setup — templates instead of user configuration
