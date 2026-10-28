@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.0.3](https://github.com/dachrisch/leaguesphere/compare/v5.0.2...v5.0.3) (2026-10-28)
+
+
+### Bug Fixes
+
+* **officials:** batch Moodle e-mails and prefetch licenses in association list ([66dcf28](https://github.com/dachrisch/leaguesphere/commit/66dcf2818da0b4088654799766152384a3aa568b))
+* **officials:** batch Moodle e-mails and prefetch licenses in association list ([72c8529](https://github.com/dachrisch/leaguesphere/commit/72c8529300c3f235408768f390b8ea20818bd0c6))
+* **officials:** tolerate Moodle error payloads in batched user lookup ([2b14531](https://github.com/dachrisch/leaguesphere/commit/2b14531529cb308852eab56fe6c4b98ae01865ed))
+
 ## [5.0.2](https://github.com/dachrisch/leaguesphere/compare/v5.0.1...v5.0.2) (2026-10-27)
 
 
