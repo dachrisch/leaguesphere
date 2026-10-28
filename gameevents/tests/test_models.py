@@ -52,13 +52,26 @@ def test_duplicate_sequence_for_one_game_is_rejected():
 
 
 @pytest.mark.django_db
-def test_duplicate_client_id_for_one_game_is_rejected():
+def test_one_submission_can_store_several_events():
     game = GameinfoFactory()
-    GameEvent.objects.create(**event_values(game))
+    GameEvent.objects.create(**event_values(game, seq=1, client_id="submission-1"))
+    GameEvent.objects.create(**event_values(game, seq=2, client_id="submission-1"))
+
+    # The shared client_id is the submission unit T3 looks up.
+    assert GameEvent.objects.filter(game=game, client_id="submission-1").count() == 2
+
+
+@pytest.mark.django_db
+def test_a_replayed_event_of_the_same_submission_is_rejected():
+    game = GameinfoFactory()
+    GameEvent.objects.create(**event_values(game, seq=1, client_id="submission-1"))
+    GameEvent.objects.create(**event_values(game, seq=2, client_id="submission-1"))
 
     with pytest.raises(IntegrityError):
         with transaction.atomic():
-            GameEvent.objects.create(**event_values(game, seq=2))
+            GameEvent.objects.create(
+                **event_values(game, seq=2, client_id="submission-1")
+            )
 
 
 @pytest.mark.django_db
@@ -68,6 +81,20 @@ def test_next_client_id_and_next_sequence_are_accepted():
     GameEvent.objects.create(**event_values(game, seq=2, client_id="client-2"))
 
     assert GameEvent.objects.filter(game=game).count() == 2
+
+
+def test_event_uniqueness_keys_are_explicit():
+    constraints = {
+        constraint.name: tuple(constraint.fields)
+        for constraint in GameEvent._meta.constraints
+    }
+
+    assert constraints["uniq_gameevent_seq_per_game"] == ("game", "seq")
+    assert constraints["uniq_gameevent_client_id_seq_per_game"] == (
+        "game",
+        "client_id",
+        "seq",
+    )
 
 
 @pytest.mark.django_db
