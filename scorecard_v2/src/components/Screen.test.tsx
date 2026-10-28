@@ -23,4 +23,29 @@ describe("Screen", () => {
     expect(scroll?.contains(footer)).toBe(false);
     expect(shell?.lastElementChild).toBe(footer);
   });
+
+  it("only opts into the wider shell when the screen asks for it", () => {
+    const narrow = render(
+      <Screen kicker="Scorecard" title="Meine Spieltage">
+        <p>Inhalt</p>
+      </Screen>,
+    );
+    expect(
+      narrow.container.querySelector(".app-shell")?.classList.contains(
+        "app-shell-wide",
+      ),
+    ).toBe(false);
+    narrow.unmount();
+
+    const wide = render(
+      <Screen kicker="Scorecard" title="Spiel vorbereiten" wide>
+        <p>Inhalt</p>
+      </Screen>,
+    );
+    expect(
+      wide.container.querySelector(".app-shell")?.classList.contains(
+        "app-shell-wide",
+      ),
+    ).toBe(true);
+  });
 });
