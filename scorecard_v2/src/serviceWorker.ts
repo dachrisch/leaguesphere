@@ -29,6 +29,39 @@ export function shouldRegisterServiceWorker(
  * static cache), so a failure is a console warning rather than something the
  * official has to deal with on the sideline.
  */
+/**
+ * Reload the page once when an updated worker takes control.
+ *
+ * `sw.js` calls `skipWaiting()` and `clients.claim()`, so a new build takes
+ * over immediately — but the *page* keeps executing the bundle it loaded.
+ * Without this, a deploy leaves the open app on the old bundle: its requests
+ * still hit the server, which no longer matches the data it cached, and the
+ * operator sees stale games and 404s until a manual reload.
+ *
+ * A page that had no controller (the first visit) is left alone: reloading
+ * there would be a pointless flash on install. The reload happens at most once
+ * even if several updates land.
+ *
+ * Exported for tests.
+ */
+export function reloadOnUpdate(
+  container: Pick<ServiceWorkerContainer, "addEventListener">,
+  hadController: boolean,
+  reload: () => void,
+): void {
+  if (!hadController) {
+    return;
+  }
+  let reloaded = false;
+  container.addEventListener("controllerchange", () => {
+    if (reloaded) {
+      return;
+    }
+    reloaded = true;
+    reload();
+  });
+}
+
 export function registerServiceWorker(): void {
   if (!("serviceWorker" in navigator)) {
     return;
@@ -37,6 +70,12 @@ export function registerServiceWorker(): void {
   if (!shouldRegisterServiceWorker(window.location)) {
     return;
   }
+
+  reloadOnUpdate(
+    navigator.serviceWorker,
+    navigator.serviceWorker.controller !== null,
+    () => window.location.reload(),
+  );
 
   navigator.serviceWorker.register(SERVICE_WORKER_URL).catch((error: unknown) => {
     console.warn("Scorecard v2: service worker registration failed", error);
