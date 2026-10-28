@@ -42,11 +42,19 @@ only control static assets, and its scope could never leak into the old app.
    after one load, and a team without one (or a file that cannot be loaded)
    keeps the initials disc.
 3. **Vorbereitung** — crew and licences, coin toss, first possession,
-   direction, passcheck link, **Spiel starten**. A crew slot is filled by
-   searching the whole officials directory; the row says **verknüpft** (linked
-   to a person) or **Freitext** (a guest who is not in it — first and last name
-   required, offered only while nobody matches). An invalid licence warns and
-   needs a second tap; it never blocks the start.
+   direction, passcheck link, **Spiel starten**. The crew slots are *the
+   league's*: which positions exist, how they are labelled and which of them
+   count towards the completeness chip is configured per league
+   (`officials.CrewPosition`, edited in the Django admin). A league without
+   configuration keeps the built-in five (Scorecard Judge optional, Referee /
+   Down Judge / Field Judge / Side Judge required) — the officials step is
+   never empty. A crew slot is filled by searching the whole officials
+   directory; the row says **verknüpft** (linked to a person) or **Freitext**
+   (a guest who is not in it — first and last name required, offered only while
+   nobody matches). A stored position the league does not configure stays
+   visible read-only and is written back unchanged: the API upserts by the
+   exact `GameOfficial.position` string, never by the label. An invalid licence
+   warns and needs a second tap; it never blocks the start.
 4. **Feld · Runde** (the tracking screen) — score header with possession,
    touchdown with the roster's jerseys (numeric fallback when there is none),
    PAT, first down, turnover, interception, penalty with search, safety,
@@ -66,7 +74,13 @@ What the backend had to grow (all additive):
   team first, "nobody" is an empty list);
 - `passcheck` on the games-to-whistle payload;
 - `league_display` on the gameday list;
-- `GameLogSubmission` and `GameSetup.device_id` (migrations `0046`, `0047`).
+- `GameLogSubmission` and `GameSetup.device_id` (migrations `0046`, `0047`);
+- `GET /api/officials/crew-positions/game/<id>` — the league's crew slots in
+  display order (`position`, `label`, `order`, `required`). The screen only
+  knows the game id, so game → gameday → league is resolved server-side; an
+  unconfigured league answers the defaults in the same shape. Preloaded into
+  IndexedDB like the setup payload. Table: `officials.CrewPosition`
+  (migration `officials/0016`).
 
 ## Offline contract
 
@@ -158,9 +172,10 @@ all overridable.
 
 ## Verification
 
-Automated: 494 vitest cases (incl. the outbox/sync engine and a real
-status-0 → remount → flush flow), the `gamedays` + `scorecard_v2` Django suites,
-the Playwright gameday → result flow, and the CI checks in the table above.
+Automated: 855 vitest cases (incl. the outbox/sync engine and a real
+status-0 → remount → flush flow), the `gamedays` + `officials` +
+`scorecard_v2` Django suites, the Playwright gameday → result flow, and the CI
+checks in the table above.
 
 Manual, on a local `runserver` with headless Chromium (not a physical phone):
 

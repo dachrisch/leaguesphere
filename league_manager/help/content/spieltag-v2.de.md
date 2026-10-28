@@ -36,6 +36,10 @@ Verzeichnis. **Freitext** heißt: es ist nur ein Name gespeichert – er braucht
 Vor- und Nachnamen und wird nur angeboten, wenn niemand gefunden wurde. Wer
 schon in einer anderen Position steht, lässt sich nicht wählen.
 
+Welche Positionen die Vorbereitung anbietet und wie sie heißen, bereitet die
+Ligaleitung für ihre Liga vor – du wählst nur die Personen aus. Welche
+Positionen für **vollständig** zählen, legt sie ebenfalls fest.
+
 ## Ohne Netz
 
 Einmal geöffnet, funktioniert die Erfassung auch ohne Verbindung: Einträge,
