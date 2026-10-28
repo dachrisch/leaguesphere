@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import List
 
@@ -5,9 +6,18 @@ from django.conf import settings
 from django.db.models import Subquery, OuterRef, F, Q
 from django.utils import timezone
 
+from gameevents.models import GameEvent, GameState
 from gamedays.models import League, Gameday, Gameinfo, Gameresult, TeamLog
 from gamedays.service.gameday_settings import SCHEDULED
 from liveticker.api.serializers import LivetickerSerializer, TeamlogSerializer
+
+logger = logging.getLogger(__name__)
+
+# The two statuses that mean "this game is being played". Gameinfo.status also
+# drives the live/upcoming/previous selection; the projection only refines the
+# half shown for these games, it never changes which games are selected.
+LIVE_STATUSES = ("1. Halbzeit", "2. Halbzeit")
+PERIOD_STATUS = {1: "1. Halbzeit", 2: "2. Halbzeit"}
 
 
 class LivetickerService:
@@ -15,6 +25,7 @@ class LivetickerService:
         self.number_of_ticks = 5
         self._init_gamedays(gameday_ids, league)
         self.games_with_all_ticks = games_with_all_ticks
+        self.event_feed_enabled = bool(getattr(settings, "SCORECARD_EVENT_FEED", False))
 
     def _init_gamedays(self, gameday_ids, league):
         if not league:
@@ -42,12 +53,70 @@ class LivetickerService:
             filter_conditions |= self._get_upcoming_slot_filter(gameday_id)
             filter_conditions |= self._get_latest_slot_filter(gameday_id)
             next_games_list += self._get_all_live_games(filter_conditions)
+        if self.event_feed_enabled:
+            self._apply_event_projection(next_games_list)
         self._update_next_games_with_teamlog(next_games_list)
         # One reference instant per response: every tick and gameStarted
         # serializes against the same "now" for the UTC date resolution.
         return LivetickerSerializer(
             instance=next_games_list, many=True, ref_now=timezone.now()
         ).data
+
+    def _apply_event_projection(self, next_games_list):
+        """Take score/period from ``GameState`` for event-sourced live games.
+
+        Ticks are deliberately *not* rebuilt from the feed: the projected
+        ``TeamLog`` rows are the projection, and they carry the ordering
+        (``created_time``), author, text vocabulary and timestamp the widget
+        already renders. Re-deriving them from envelopes would be a second
+        render path that could disagree with the row-based one during the
+        transition.
+
+        A game whose projection is flagged ``needs_reconciliation`` keeps the
+        row-based value: the liveticker is public and must never show a 409 or
+        blank a game because an official's undo could not be represented. One
+        warning per request names the games -- not one per game, so a gameday
+        with several flagged games does not flood the log.
+        """
+
+        if not next_games_list:
+            return
+        game_ids = [game[LivetickerSerializer.ID] for game in next_games_list]
+        event_game_ids = set(
+            GameEvent.objects.filter(game_id__in=game_ids)
+            .values_list("game_id", flat=True)
+            .distinct()
+        )
+        if not event_game_ids:
+            return
+        states = {
+            state["game_id"]: state
+            for state in GameState.objects.filter(game_id__in=event_game_ids).values(
+                "game_id",
+                "score_home",
+                "score_away",
+                "period",
+                "needs_reconciliation",
+            )
+        }
+        flagged = []
+        for game in next_games_list:
+            state = states.get(game[LivetickerSerializer.ID])
+            if state is None:
+                continue
+            if state["needs_reconciliation"]:
+                flagged.append(game[LivetickerSerializer.ID])
+                continue
+            game[LivetickerSerializer.SCORE_HOME] = state["score_home"]
+            game[LivetickerSerializer.SCORE_AWAY] = state["score_away"]
+            if game["status"] in LIVE_STATUSES:
+                game["status"] = PERIOD_STATUS.get(state["period"], game["status"])
+        if flagged:
+            logger.warning(
+                "SCORECARD_EVENT_FEED: games %s need reconciliation; serving "
+                "their TeamLog rows instead of the projection",
+                ", ".join(str(game_id) for game_id in flagged),
+            )
 
     def _update_next_games_with_teamlog(self, next_games_list):
         game: dict

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db.models import Count, Max, Sum
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
@@ -5,6 +6,7 @@ from django.views.decorators.http import condition
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from gameevents.models import GameState
 from gamedays.models import Gameresult, TeamLog
 from league_manager.utils.etag import build_etag
 from liveticker.service.liveticker_service import LivetickerService
@@ -17,6 +19,13 @@ def generate_liveticker_etag(request):
     updates patch existing rows in place, so value sums are included) or a
     new tick (TeamLog event) arrives. Query parameters are part of the key
     because league/gameday/game filters change the response body.
+
+    With ``SCORECARD_EVENT_FEED`` on, the score also comes from ``GameState``,
+    so the validator has to include the projection's cursor: an event that
+    writes no ``TeamLog`` row (a plain possession change) would otherwise
+    answer a stale ``304`` and the widget would keep the old state. The extra
+    parts are added only when the flag is on, so the flag-off validator is
+    byte-identical to the pre-event-store one.
     """
     etag_data = request.GET.urlencode() or "all"
     results = Gameresult.objects.aggregate(
@@ -28,7 +37,7 @@ def generate_liveticker_etag(request):
     ticks = TeamLog.objects.aggregate(
         count=Count("pk"), latest=Max("pk"), sum_value=Sum("value")
     )
-    return build_etag(
+    parts = [
         etag_data,
         results["count"],
         results["latest"],
@@ -37,7 +46,26 @@ def generate_liveticker_etag(request):
         ticks["count"],
         ticks["latest"],
         ticks["sum_value"],
-    )
+    ]
+    if getattr(settings, "SCORECARD_EVENT_FEED", False):
+        # last_seq is the cursor of the projection: every appended event
+        # advances it. The score/period sums cover a rebuild that repairs a
+        # drifted state without adding an event.
+        projection = GameState.objects.aggregate(
+            count=Count("pk"),
+            latest_seq=Max("last_seq"),
+            sum_home=Sum("score_home"),
+            sum_away=Sum("score_away"),
+            latest_updated=Max("updated_at"),
+        )
+        parts += [
+            projection["count"],
+            projection["latest_seq"],
+            projection["sum_home"],
+            projection["sum_away"],
+            projection["latest_updated"],
+        ]
+    return build_etag(*parts)
 
 
 class LivetickerAPIView(APIView):

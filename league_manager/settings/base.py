@@ -242,6 +242,13 @@ EQUIPMENT_APPROVAL_TOKEN = os.environ.get("EQUIPMENT_APPROVAL_TOKEN")
 
 JOURNEY_INACTIVITY_MINUTES = int(os.environ.get("JOURNEY_INACTIVITY_MINUTES", 30))
 
+# --- scorecard event store (slice 1) ---------------------------------------
+# Read live scores from the GameState projection instead of the Gameresult
+# table. Off by default: with the flag off the liveticker runs exactly the
+# query it ran before the event store existed, so merging the slice changes
+# nothing user-visible until stage has proven the projection.
+SCORECARD_EVENT_FEED = os.environ.get("SCORECARD_EVENT_FEED", "false") == "true"
+
 # --- temporary database access (dbaccess) ----------------------------------
 # Feature switch for the request/approval surface. Off unless the deployment
 # says otherwise, so a stack without a provisioner sidecar cannot accept
