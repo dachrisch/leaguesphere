@@ -795,12 +795,42 @@ export default function GameSetupScreen({
       ? "keine Pflichtposition"
       : `${requiredFilled}/${requiredSlots.length} besetzt`;
 
+  // The banner and the start bar must say the same thing: a complete setup is
+  // only "ready" when the bar is not disabled by the device lock or the
+  // missing connection. Otherwise the banner names that reason instead of
+  // claiming green. Missing input still comes from the same blockers array the
+  // confirmation sheet uses.
+  const banner = readOnly
+    ? {
+        tone: "miss" as const,
+        title: "Nur lesen",
+        lines: [error ?? "Dieses Spiel läuft auf einem anderen Gerät."],
+      }
+    : offline
+      ? {
+          tone: "miss" as const,
+          title: "Start nur online",
+          lines: ["Das Spiel kann nur mit Verbindung gestartet werden."],
+        }
+      : ready
+        ? {
+            tone: "ok" as const,
+            title: "Bereit zum Starten",
+            lines: ["Alle Pflichtangaben sind gesetzt."],
+          }
+        : {
+            tone: "miss" as const,
+            title: "Angaben fehlen",
+            lines: blockers,
+          };
+
   return (
     <Screen
       kicker="Scorecard"
       onBack={onBack}
       onLogout={onLogout}
       title="Spiel vorbereiten"
+      wide
     >
       {loading ? (
         <p className="setupnote" role="status">
@@ -899,8 +929,13 @@ export default function GameSetupScreen({
                     <span className="offbody">
                       {optionalEmpty ? (
                         <>
-                          <span className="offadd">
-                            {slot.label} hinzufügen
+                          <span className="offaddline">
+                            <span className="offadd">
+                              {slot.label} hinzufügen
+                            </span>
+                            <span aria-hidden="true" className="offsep">
+                              ·
+                            </span>
                           </span>
                           <span className="offhint">
                             Optional · ohne Pflicht zur Besetzung
@@ -960,7 +995,11 @@ export default function GameSetupScreen({
                             <button
                               aria-expanded={open}
                               aria-haspopup="listbox"
-                              aria-label={`${slot.label}: Offiziellen wählen`}
+                              aria-label={
+                                optionalEmpty
+                                  ? `${slot.label} hinzufügen: Offiziellen wählen`
+                                  : `${slot.label}: Offiziellen wählen`
+                              }
                               className={`offcard${optionalEmpty ? " offcard-add" : ""}`}
                               disabled={readOnly || finished}
                               onClick={toggle}
@@ -1011,10 +1050,6 @@ export default function GameSetupScreen({
                 >
                   Passcheck-Seite
                 </a>
-              </p>
-              <p className="setupnote">
-                Die Passprüfung läuft auf der Passcheck-Seite (neuer Tab – die
-                Vorbereitung bleibt erhalten).
               </p>
             </section>
 
@@ -1095,21 +1130,22 @@ export default function GameSetupScreen({
 
           {finished ? null : (
             <>
-              {ready ? (
-                <div className="readybar readybar-ok" role="status">
-                  <b>Bereit zum Starten</b>
-                  <span>Alle Pflichtangaben sind gesetzt.</span>
-                </div>
-              ) : (
-                <div className="readybar readybar-miss" id="readiness" role="status">
-                  <b>Angaben fehlen</b>
+              <div
+                className={`readybar readybar-${banner.tone}`}
+                id="readiness"
+                role="status"
+              >
+                <b>{banner.title}</b>
+                {banner.tone === "ok" ? (
+                  <span>{banner.lines[0]}</span>
+                ) : (
                   <ul>
-                    {blockers.map((blocker) => (
-                      <li key={blocker}>{blocker}</li>
+                    {banner.lines.map((line) => (
+                      <li key={line}>{line}</li>
                     ))}
                   </ul>
-                </div>
-              )}
+                )}
+              </div>
 
               <div className="setupfoot">
                 <button

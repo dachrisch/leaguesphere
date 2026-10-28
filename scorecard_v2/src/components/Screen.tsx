@@ -14,13 +14,18 @@ interface ScreenProps {
   onLogout?: () => void;
   /** Compact status chip in the top bar (the sync badge). */
   badge?: ReactNode;
+  /** Widen the shell at tablet/desk widths (the preparation screen only). */
+  wide?: boolean;
   children: ReactNode;
 }
 
 /**
- * Phone-width app frame: the header stays put and `children` are the single
- * scrollable content area. Every screen (gameday list, game list, …) uses this
- * instead of repeating the `.app-shell` / `.app-header` / `<main>` markup.
+ * App frame: the header stays put and `children` are the single scrollable
+ * content area. Every screen (gameday list, game list, …) uses this instead of
+ * repeating the `.app-shell` / `.app-header` / `<main>` markup.
+ *
+ * The frame is phone-width by default; `wide` opts a screen (the preparation)
+ * into the wider tablet/desk measure without stretching lists or sheets.
  *
  * The LeagueSphere footer is a sibling of the scroll area, pinned to the
  * bottom of the screen: short screens do not leave it floating mid-page, and
@@ -33,10 +38,11 @@ export default function Screen({
   onBack,
   onLogout,
   badge,
+  wide = false,
   children,
 }: ScreenProps) {
   return (
-    <div className="app-shell">
+    <div className={wide ? "app-shell app-shell-wide" : "app-shell"}>
       <AppHeader
         badge={badge}
         kicker={kicker}

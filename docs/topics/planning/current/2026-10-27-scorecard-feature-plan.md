@@ -69,7 +69,7 @@ Scorecard layers merge bottom-up (`L0 → L1 → L3 …`); each squash merge sen
 | ID | Idea | Status | Layer / note |
 |---|---|---|---|
 | `I2.1` | Suggest aggressively while typing ("we found these people") | `in layer` | L1: `PersonPicker`, debounced search |
-| `I2.2` | Visible link state — unlinked yellow/ambiguous, linked green | `in layer` | L1: chip per crew row, green "verknüpft" / yellow "Freitext" |
+| `I2.2` | Visible link state — unlinked yellow/ambiguous, linked green | `in layer` | L1 + L5: a guest keeps the yellow **Freitext** tag on the crew row; a linked row states it in the picker (**verknüpft**) only — the preparation card row carries role, person, licence and chevron, no green chip |
 | `I2.3` | Fuzzy/automatic matching for the clearly matchable | `in layer` | L1: a single clear match is *offered* ("Übernehmen"), never written silently |
 | `I2.4` | Search across the entire database | `in layer` | L1: new `GET /api/officials/search/list`, DB-wide (the existing search needs both names, ≥3 characters and excludes one team, so it cannot drive a typing picker) |
 | `I2.5` | First + last name are required fields | `in layer` | L1: enforced on the free-text path |
