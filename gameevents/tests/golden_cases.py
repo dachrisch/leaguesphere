@@ -9,15 +9,14 @@ Each case has three views of the same submission:
 - ``events``: the same submission as slice-1 envelopes, one per captured
   event (the T3 endpoint translates entries to these);
 - ``expected``: the ``TeamLog`` rows ``gamedays.service.gamelog.GameLogCreator``
-  writes for ``entries`` today, restricted to the fields the plan freezes
-  (``event``, ``side``, ``player``, ``input``, ``value``, ``half``, ``cop``,
-  ``isDeleted``). ``sequence`` is intentionally not compared: today a
-  touchdown and its conversion share one sequence, and the envelope gives each
-  event its own ``seq``; reconciling that grouping is T3's job.
+  writes for ``entries`` today, including ``sequence``: one submission has one
+  sequence, touchdown and conversion share it, and excluded rows/markers use
+  sequence 0.
 
 ``test_projector_golden.py`` also replays ``entries`` through the real
-``GameLogCreator`` so this table cannot silently drift from the code it
-describes.
+``GameLogCreator`` (and the marker cases through
+``GameService._create_log_entry``) so this table cannot silently drift from the
+code it describes.
 """
 
 from collections import namedtuple
@@ -33,9 +32,11 @@ ROW_FIELDS = (
     "half",
     "cop",
     "isDeleted",
+    "sequence",
 )
 
 GoldenCase = namedtuple("GoldenCase", "name entries half side events expected")
+MarkerCase = namedtuple("MarkerCase", "name code event_name")
 
 
 def score(code, side, player, period, seq, **payload):
@@ -62,7 +63,17 @@ def event(type_, code, side, player, period, seq, **payload):
     )
 
 
-def row(event, side, player, value, half, input=None, cop=False, isDeleted=False):
+def row(
+    event,
+    side,
+    player,
+    value,
+    half,
+    sequence,
+    input=None,
+    cop=False,
+    isDeleted=False,
+):
     return {
         "event": event,
         "side": side,
@@ -72,6 +83,7 @@ def row(event, side, player, value, half, input=None, cop=False, isDeleted=False
         "half": half,
         "cop": cop,
         "isDeleted": isDeleted,
+        "sequence": sequence,
     }
 
 
@@ -82,8 +94,9 @@ GOLDEN_CASES = [
         1,
         "home",
         [score("touchdown", "home", 7, 1, 1)],
-        [row("Touchdown", "home", 7, 6, 1)],
+        [row("Touchdown", "home", 7, 6, 1, 1)],
     ),
+    # One submission = one sequence: the conversion shares the touchdown's.
     GoldenCase(
         "touchdown_pat1",
         [
@@ -97,8 +110,8 @@ GOLDEN_CASES = [
             score("pat1", "home", 7, 1, 2),
         ],
         [
-            row("Touchdown", "home", 7, 6, 1),
-            row("1-Extra-Punkt", "home", 7, 1, 1),
+            row("Touchdown", "home", 7, 6, 1, 1),
+            row("1-Extra-Punkt", "home", 7, 1, 1, 1),
         ],
     ),
     GoldenCase(
@@ -114,8 +127,8 @@ GOLDEN_CASES = [
             score("pat2", "away", 19, 2, 2),
         ],
         [
-            row("Touchdown", "away", 19, 6, 2),
-            row("2-Extra-Punkte", "away", 19, 2, 2),
+            row("Touchdown", "away", 19, 6, 2, 1),
+            row("2-Extra-Punkte", "away", 19, 2, 2, 1),
         ],
     ),
     # Quirk kept from GameLogCreator: a scoring row without a jersey stores
@@ -126,7 +139,7 @@ GOLDEN_CASES = [
         1,
         "home",
         [score("touchdown", "home", None, 1, 1)],
-        [row("Touchdown", "home", None, 0, 1)],
+        [row("Touchdown", "home", None, 0, 1, 1)],
     ),
     # Quirk kept from GameLogCreator._coerce_player: "" is "no jersey", so an
     # attempted conversion without a number scores nothing.
@@ -136,7 +149,7 @@ GOLDEN_CASES = [
         1,
         "home",
         [score("pat1", "home", None, 1, 1)],
-        [row("1-Extra-Punkt", "home", None, 0, 1)],
+        [row("1-Extra-Punkt", "home", None, 0, 1, 1)],
     ),
     GoldenCase(
         "safety_plus_one",
@@ -144,7 +157,7 @@ GOLDEN_CASES = [
         2,
         "away",
         [score("safety", "away", 22, 2, 1, points=1)],
-        [row("Safety (+1)", "away", 22, 1, 2)],
+        [row("Safety (+1)", "away", 22, 1, 2, 1)],
     ),
     GoldenCase(
         "safety_plus_two",
@@ -152,7 +165,7 @@ GOLDEN_CASES = [
         1,
         "away",
         [score("safety", "away", 12, 1, 1, points=2)],
-        [row("Safety (+2)", "away", 12, 2, 1)],
+        [row("Safety (+2)", "away", 12, 2, 1, 1)],
     ),
     GoldenCase(
         "overtime",
@@ -160,17 +173,17 @@ GOLDEN_CASES = [
         2,
         "home",
         [score("overtime", "home", 3, 2, 1)],
-        [row("Overtime", "home", 3, 1, 2)],
+        [row("Overtime", "home", 3, 1, 2, 1)],
     ),
     # A penalty travels as input (the configured penalty name), may name a
-    # jersey, and never scores.
+    # jersey, and never scores. Excluded rows always use sequence 0.
     GoldenCase(
         "penalty_with_player",
         [{"name": "Strafe", "player": 5, "input": "Holding"}],
         1,
         "home",
         [event("penalty", "Holding", "home", 5, 1, 1)],
-        [row("Strafe", "home", 5, 0, 1, input="Holding")],
+        [row("Strafe", "home", 5, 0, 1, 0, input="Holding")],
     ),
     GoldenCase(
         "penalty_without_player",
@@ -178,7 +191,7 @@ GOLDEN_CASES = [
         1,
         "away",
         [event("penalty", "illegaler Kontakt", "away", None, 1, 1)],
-        [row("Strafe", "away", None, 0, 1, input="illegaler Kontakt")],
+        [row("Strafe", "away", None, 0, 1, 0, input="illegaler Kontakt")],
     ),
     GoldenCase(
         "first_down_with_player",
@@ -186,7 +199,7 @@ GOLDEN_CASES = [
         1,
         "home",
         [event("series", "first_down", "home", 8, 1, 1)],
-        [row("First Down", "home", 8, 0, 1)],
+        [row("First Down", "home", 8, 0, 1, 0)],
     ),
     GoldenCase(
         "first_down_without_player",
@@ -194,7 +207,7 @@ GOLDEN_CASES = [
         2,
         "away",
         [event("series", "first_down", "away", None, 2, 1)],
-        [row("First Down", "away", None, 0, 2)],
+        [row("First Down", "away", None, 0, 2, 0)],
     ),
     # Turnover/Interception are the cop rows. They are recorded for the team
     # the row belongs to (the defence for an interception), never score.
@@ -204,7 +217,7 @@ GOLDEN_CASES = [
         2,
         "home",
         [event("possession", "turnover", "home", None, 2, 1)],
-        [row("Turnover", "home", None, 0, 2, cop=True)],
+        [row("Turnover", "home", None, 0, 2, 1, cop=True)],
     ),
     GoldenCase(
         "interception",
@@ -212,7 +225,7 @@ GOLDEN_CASES = [
         1,
         "away",
         [event("possession", "interception", "away", 23, 1, 1)],
-        [row("Interception", "away", 23, 0, 1, cop=True)],
+        [row("Interception", "away", 23, 0, 1, 1, cop=True)],
     ),
     GoldenCase(
         "spielzeit",
@@ -220,7 +233,7 @@ GOLDEN_CASES = [
         2,
         "home",
         [event("time", "clock", "home", None, 2, 1, input="12:10")],
-        [row("Spielzeit", "home", None, 0, 2, input="12:10")],
+        [row("Spielzeit", "home", None, 0, 2, 0, input="12:10")],
     ),
     GoldenCase(
         "auszeit",
@@ -228,8 +241,17 @@ GOLDEN_CASES = [
         1,
         "away",
         [event("timeout", "away", "away", None, 1, 1, input="00:01")],
-        [row("Auszeit", "away", None, 0, 1, input="00:01")],
+        [row("Auszeit", "away", None, 0, 1, 0, input="00:01")],
     ),
+]
+
+
+# Markers are not written through GameLogCreator; they come from
+# GameService._create_log_entry on start/halftime/finalise.
+MARKER_CASES = [
+    MarkerCase("start", "start", "Spiel gestartet"),
+    MarkerCase("half_time", "half_time", "2. Halbzeit gestartet"),
+    MarkerCase("end", "end", "Spiel beendet"),
 ]
 
 

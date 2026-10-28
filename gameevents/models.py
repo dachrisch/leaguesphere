@@ -16,9 +16,13 @@ from django.db import models
 class GameEvent(models.Model):
     """One captured event, ordered per game by ``seq``.
 
-    ``seq`` is the capture client's sequence (``max + 1``); ``(game, seq)`` and
-    ``(game, client_id)`` are unique so a retried submission cannot be applied
-    twice. ``client_at`` is the device clock and is kept for audit only --
+    ``client_id`` identifies the **submission** (the scorecard outbox id): all
+    events of one POST share it, so it deliberately is not unique per game on
+    its own. ``(game, client_id, seq)`` is unique, which lets a submission's N
+    rows coexist while a replay of any event collides. To detect whether a
+    submission was already applied, the append service looks up
+    ``GameEvent.objects.filter(game=..., client_id=...)`` -- one unit, several
+    rows. ``client_at`` is the device clock and is kept for audit only --
     ordering is always ``seq``.
     """
 
@@ -77,7 +81,8 @@ class GameEvent(models.Model):
                 fields=["game", "seq"], name="uniq_gameevent_seq_per_game"
             ),
             models.UniqueConstraint(
-                fields=["game", "client_id"], name="uniq_gameevent_client_id_per_game"
+                fields=["game", "client_id", "seq"],
+                name="uniq_gameevent_client_id_seq_per_game",
             ),
         ]
         indexes = [models.Index(fields=["game", "received_at"])]
