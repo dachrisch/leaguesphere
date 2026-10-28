@@ -13,6 +13,10 @@ allocation, the submission claim, the events, the rows, the sequence flags and
 ``GameState`` commit together. A replay of a known ``client_id`` writes
 nothing and succeeds.
 
+The canonical path inserts the rows itself, so it hands them to
+``GameService.write_projected_gamelog``: ``Gameresult`` is updated by the same
+half-score diff the legacy writer uses, never by a second scoring rule.
+
 A correction names its target by ``payload.undo_of`` (the target event's
 ``seq``); the target must already be stored, so an undo is always a later
 submission, and the row group it deletes is the target's submission sequence.
@@ -200,6 +204,28 @@ def _apply_sequence_flags(game, projection: Projection) -> None:
         ).update(isDeleted=False, updated_at=now)
 
 
+def _record_rows(game, projection: Projection, author) -> None:
+    """Write the projected rows and move ``Gameresult`` like the legacy writer.
+
+    Inserting rows is only half of a legacy write: ``Gameresult`` (the table the
+    liveticker's live list, the league table and the finalisation read) must
+    follow. Rather than re-deriving points here, the insert and the sequence
+    flags run as a ``GameService`` write, so the existing half-score diff --
+    including "a manually entered score survives" (#1988) -- is applied
+    unchanged. A canonical submission therefore leaves ``Gameresult`` in
+    exactly the state ``POST /api/gamelog`` leaves it.
+    """
+
+    service = GameService(game.pk)
+
+    def write():
+        _write_rows(game, projection, author)
+        _apply_sequence_flags(game, projection)
+        return service.get_gamelog()
+
+    service.write_projected_gamelog(write)
+
+
 def _save_state(game, state: GameStateValue) -> None:
     GameState.objects.update_or_create(
         game=game,
@@ -299,8 +325,9 @@ def append_submission(
             client_at=now,
         )
     if write_rows:
-        _write_rows(game, projection, author)
-    _apply_sequence_flags(game, projection)
+        _record_rows(game, projection, author)
+    else:
+        _apply_sequence_flags(game, projection)
     _save_state(game, projection.state)
     return AppendOutcome(
         state=projection.state, applied=True, last_seq=projection.state.last_seq

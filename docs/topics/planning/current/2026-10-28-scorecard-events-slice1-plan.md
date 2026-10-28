@@ -50,11 +50,14 @@ Envelope: `type` + `code` + `side` + `player` + `period` + `payload`.
 `POST /api/game/<id>/events` — the existing `/api/gamelog/<id>` payload is accepted unchanged and translated to the envelope server-side (`from_legacy_event`), so **no app release** is needed.
 
 - device lock (reuse `GameSetup.device_id` + `X-Scorecard-Device`), auth, CSRF — unchanged;
+- **device lock: delegated; enforced after #2104 merges** — the lock is not on this branch (it lives on `feat/scorecard-v2`), so the endpoint calls `gamedays.api.game_views._device_lock_response` when it exists and stands down when it does not. Expect the merge conflict in `gamedays/api/game_views.py`; never add a second lock here;
 - `client_id` seen → `200 {state, cursor}`, no second apply;
 - `seq` ≠ `max+1` → `409 {expected_next}`; unknown `code` → `400` **before** storing;
 - one transaction: append → project → `TeamLog` rows + `GameState`;
+- `Gameresult` follows through `GameService`'s half-score diff (the legacy writer's rule, not a copy), so a canonical submission is usable for a real game;
+- the legacy undo (`DELETE /api/gamelog/<id>`) records a `correction` in the same transaction; a play with no stored event is flagged `GameState.needs_reconciliation` instead of inventing history;
 - response: `{state, cursor}`.
-- **Acceptance:** duplicate POST is idempotent; gap yields 409 with the expected seq; unknown code stores nothing; projector error rolls the event back; lock rules unchanged; the legacy payload path produces the golden rows of T2.
+- **Acceptance:** duplicate POST is idempotent; gap yields 409 with the expected seq; unknown code stores nothing; projector error rolls the event back; lock rules unchanged; the legacy payload path produces the golden rows of T2 *and* the same `Gameresult` rows; an undo leaves `GameState` equal to a replay and to the rows, twice is a no-op, and an un-evented row is flagged for T6.
 
 ## T4 — feed endpoint
 

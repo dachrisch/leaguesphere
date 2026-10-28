@@ -22,7 +22,7 @@ from gameevents.tests.api.support import (
     post_legacy,
 )
 from gameevents.tests.golden_cases import GOLDEN_CASES, expected_signature
-from gamedays.models import TeamLog
+from gamedays.models import Gameresult, TeamLog
 
 
 def envelope(
@@ -695,3 +695,109 @@ def test_a_replay_is_answered_before_the_device_lock(client, monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["state"]["score_home"] == 6
+
+
+# --------------------------------------------------------------------------
+# result table: a canonical submission leaves Gameresult where the legacy
+# writer leaves it (the liveticker's live list, league table and finalisation
+# all read it)
+# --------------------------------------------------------------------------
+
+
+GAMERESULT_FIELDS = ("fh", "sh", "pa")
+
+
+def gameresult_signatures(game):
+    """The result rows of ``game`` keyed by side (the two games differ by pk)."""
+
+    return [
+        ("home" if result.isHome else "away",)
+        + tuple(getattr(result, field) for field in GAMERESULT_FIELDS)
+        for result in Gameresult.objects.filter(gameinfo=game).order_by("isHome")
+    ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("case", GOLDEN_CASES, ids=lambda case: case.name)
+def test_the_canonical_result_table_equals_the_legacy_result_table(client, case):
+    legacy_game, legacy_home, legacy_away = make_game(f"legacy-result-{case.name}")
+    canonical_game, canonical_home, canonical_away = make_game(
+        f"canonical-result-{case.name}"
+    )
+    login(client)
+    legacy_team = legacy_home if case.side == "home" else legacy_away
+    canonical_team = canonical_home if case.side == "home" else canonical_away
+
+    assert (
+        post_legacy(
+            client,
+            legacy_game,
+            legacy_body(legacy_game, legacy_team, case.entries, case.half, "sub-l"),
+        ).status_code
+        == 201
+    )
+    assert (
+        post_events(
+            client,
+            canonical_game,
+            legacy_body(
+                canonical_game, canonical_team, case.entries, case.half, "sub-c"
+            ),
+        ).status_code
+        == 201
+    )
+
+    assert gameresult_signatures(canonical_game) == gameresult_signatures(legacy_game)
+
+
+@pytest.mark.django_db
+def test_a_canonical_submission_updates_the_result_table(client):
+    game, _home, _away = make_game("canonical-result")
+    login(client)
+
+    assert (
+        post_events(
+            client,
+            game,
+            {
+                "events": [envelope(code="touchdown"), envelope(code="pat1")],
+                "client_id": "sub-1",
+            },
+        ).status_code
+        == 201
+    )
+
+    home_result = Gameresult.objects.get(gameinfo=game, isHome=True)
+    away_result = Gameresult.objects.get(gameinfo=game, isHome=False)
+    assert (home_result.fh, home_result.sh, home_result.pa) == (7, 0, 0)
+    assert (away_result.fh, away_result.sh, away_result.pa) == (0, 0, 7)
+
+
+@pytest.mark.django_db
+def test_a_canonical_undo_moves_the_result_table_back(client):
+    game, _home, _away = make_game("canonical-result-undo")
+    login(client)
+    post_events(
+        client,
+        game,
+        {"events": [envelope(code="touchdown")], "client_id": "sub-1"},
+    )
+    assert Gameresult.objects.get(gameinfo=game, isHome=True).fh == 6
+
+    assert (
+        post_events(
+            client,
+            game,
+            {
+                "events": [
+                    {"type": "correction", "code": "undo", "payload": {"undo_of": 1}}
+                ],
+                "client_id": "sub-2",
+            },
+        ).status_code
+        == 201
+    )
+
+    home_result = Gameresult.objects.get(gameinfo=game, isHome=True)
+    assert (home_result.fh, home_result.sh) == (0, 0)
+    assert Gameresult.objects.get(gameinfo=game, isHome=False).pa == 0
