@@ -17,8 +17,13 @@ import type {
   Official,
   TeamOfficial,
 } from "../api/types";
+import DirectionText, { type Direction } from "../components/DirectionText";
 import Screen from "../components/Screen";
 import PersonPicker from "../components/PersonPicker";
+import StartConfirmation, {
+  startBlockers,
+  type StartCrewLine,
+} from "../components/sheets/StartConfirmation";
 import TeamLogo from "../components/TeamLogo";
 import { initials } from "../components/initials";
 import { getDeviceId } from "../device";
@@ -35,7 +40,6 @@ interface GameSetupScreenProps {
 }
 
 type Side = "home" | "away";
-type Direction = "Ost" | "West";
 
 interface CrewSlot {
   /** Exact stored position; sent back verbatim when the slot is saved. */
@@ -267,40 +271,10 @@ function describeStartError(error: unknown): {
   };
 }
 
-/**
- * `Ost → West` with the arrow drawn as SVG.
- *
- * The self-hosted Inter/Barlow latin subsets (and some field devices) have no
- * U+2192 glyph, which renders as a tofu box. The arrow is therefore drawn, and
- * the character stays in the accessible text — the summary and the buttons
- * still read "Ost → West" to screen readers.
- */
-function DirectionText({ from, to }: { from: string; to: string }) {
-  return (
-    <>
-      {from}{" "}
-      <svg
-        aria-hidden="true"
-        className="dirarrow"
-        focusable="false"
-        viewBox="0 0 16 8"
-      >
-        <path
-          d="M0.5 4h14M11.5 1l3.5 3-3.5 3"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.4"
-        />
-      </svg>{" "}
-      <span className="sr-only">→</span>{" "}
-      {to}
-    </>
-  );
-}
-
 interface SegmentedProps {
   label: string;
-  value: string;
+  /** `null` while nothing was chosen: an unset field is refused, not defaulted. */
+  value: string | null;
   options: { value: string; label: ReactNode }[];
   disabled: boolean;
   onChange: (value: string) => void;
@@ -340,9 +314,12 @@ function Segmented({
  * possession, direction and the start sequence.
  *
  * The game is started by the backend when `PUT /setup` creates the setup row;
- * everything before that is local. An invalid licence warns without blocking —
- * the button needs a second tap ("Trotzdem starten") so a lapsed licence cannot
- * strand a gameday.
+ * everything before that is local. A wrong setup entry costs the whole game, so
+ * the first tap only opens a confirmation that restates it, and the start
+ * refuses missing input (an empty `required` crew slot, a free-text name
+ * without both names, an unchosen toss/possession/direction) instead of
+ * confirming it. An invalid licence warns without ever blocking — the
+ * confirmation carries that warning, so it does not add a tap of its own.
  */
 export default function GameSetupScreen({
   game,
@@ -370,12 +347,13 @@ export default function GameSetupScreen({
   const [dirty, setDirty] = useState(false);
   const [hasSetup, setHasSetup] = useState(false);
 
-  const [toss, setToss] = useState<Side>("home");
-  const [possession, setPossession] = useState<Side>("home");
-  const [direction, setDirection] = useState<Direction>("Ost");
+  const [toss, setToss] = useState<Side | null>(null);
+  const [possession, setPossession] = useState<Side | null>(null);
+  const [direction, setDirection] = useState<Direction | null>(null);
 
   const [saving, setSaving] = useState(false);
-  const [confirmPending, setConfirmPending] = useState(false);
+  // The confirmation sheet between the tap on "Spiel starten" and the write.
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [readOnly, setReadOnly] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The setup was accepted by the server during this visit. A later failure
@@ -539,7 +517,6 @@ export default function GameSetupScreen({
       ),
     );
     setDirty(true);
-    setConfirmPending(false);
   };
 
   /**
@@ -554,7 +531,6 @@ export default function GameSetupScreen({
       ),
     );
     setDirty(true);
-    setConfirmPending(false);
   };
 
   const clearSlot = (index: number): void => {
@@ -564,14 +540,12 @@ export default function GameSetupScreen({
       ),
     );
     setDirty(true);
-    setConfirmPending(false);
   };
 
   /** Change a start field after the setup was accepted → send it again. */
   const resetStartPhases = (): void => {
     setSetupAccepted(false);
     setPossessionSent(false);
-    setConfirmPending(false);
   };
 
   // Duplicate rows are never written: the backend upserts by position and its
@@ -589,8 +563,45 @@ export default function GameSetupScreen({
     }));
 
   const sideTeam = (side: Side): string | null => (side === "home" ? home : away);
-  const [directionFrom, directionTo] =
-    direction === "Ost" ? ["Ost", "West"] : ["West", "Ost"];
+
+  /**
+   * What the confirmation restates, in the sheet's own shape.
+   *
+   * `editable` mirrors the picker: a duplicate row or a position the league
+   * does not configure is shown but cannot be fixed here, so it never becomes
+   * the reason a start is refused.
+   */
+  const crewLines: StartCrewLine[] = slots.map((slot) => {
+    const name = displayName(slot);
+    return {
+      label: slot.label,
+      name,
+      freetext: slot.official === null && name !== null,
+      required: slot.required,
+      editable: slot.known && !slot.duplicate,
+    };
+  });
+
+  const tossTeam = toss === null ? null : teamLabel(sideTeam(toss));
+  const possessionTeam =
+    possession === null ? null : teamLabel(sideTeam(possession));
+
+  const openConfirmation = (): void => {
+    if (inFlight.current || loading || finished || offline || readOnly) {
+      return;
+    }
+    setConfirmOpen(true);
+  };
+
+  /**
+   * Second tap: the sheet closes first, so a rejected write behaves exactly as
+   * it did without a sheet — the failure and the read-only switch are the
+   * screen's, not a modal's.
+   */
+  const confirmStart = (): void => {
+    setConfirmOpen(false);
+    void runStart();
+  };
 
   /** Officials used by another row, so one person cannot fill two slots. */
   const takenByOthers = (index: number): Set<number> => {
@@ -624,8 +635,15 @@ export default function GameSetupScreen({
     if (!force && readOnly) {
       return;
     }
-    if (licenceIssues.length > 0 && !confirmPending) {
-      setConfirmPending(true);
+    // Belt and braces: the sheet disables its button while a reason is listed,
+    // and the retry after a released device lock re-enters here without it.
+    if (
+      startBlockers({ crew: crewLines, tossTeam, possessionTeam, direction })
+        .length > 0 ||
+      toss === null ||
+      possession === null ||
+      direction === null
+    ) {
       return;
     }
     inFlight.current = true;
@@ -696,8 +714,6 @@ export default function GameSetupScreen({
     startLabel = "Start nur online";
   } else if (saving) {
     startLabel = "Startet …";
-  } else if (confirmPending) {
-    startLabel = "Trotzdem starten";
   } else if (hasSetup) {
     startLabel = "Fortsetzen";
   } else {
@@ -840,9 +856,7 @@ export default function GameSetupScreen({
                   .join(", ")}
               </span>
               <span>
-                {confirmPending
-                  ? "Lizenz nicht gültig – erneut tippen zum Start."
-                  : "Das Spiel lässt sich trotzdem starten."}
+                Das Spiel lässt sich trotzdem starten.
               </span>
             </div>
           ) : null}
@@ -921,9 +935,28 @@ export default function GameSetupScreen({
           </section>
 
           <p className="setupnote" id="setup-summary">
-            {teamLabel(sideTeam(toss))} gewinnt den Münzwurf · Ballbesitz{" "}
-            {teamLabel(sideTeam(possession))} · Richtung{" "}
-            <DirectionText from={directionFrom} to={directionTo} />
+            {toss === null || possession === null || direction === null ? (
+              <>
+                Noch offen:{" "}
+                {[
+                  toss === null ? "Münzwurf" : null,
+                  possession === null ? "Erster Ballbesitz" : null,
+                  direction === null ? "Richtung" : null,
+                ]
+                  .filter((label) => label !== null)
+                  .join(", ")}
+                . Der Start braucht alle drei Angaben.
+              </>
+            ) : (
+              <>
+                {teamLabel(sideTeam(toss))} gewinnt den Münzwurf · Ballbesitz{" "}
+                {teamLabel(sideTeam(possession))} · Richtung{" "}
+                <DirectionText
+                  from={direction}
+                  to={direction === "Ost" ? "West" : "Ost"}
+                />
+              </>
+            )}
           </p>
 
           {error !== null ? (
@@ -945,7 +978,7 @@ export default function GameSetupScreen({
                 }
                 className="startbtn"
                 disabled={saving || readOnly || offline}
-                onClick={() => void runStart()}
+                onClick={openConfirmation}
                 type="button"
               >
                 {startLabel}
@@ -953,6 +986,23 @@ export default function GameSetupScreen({
             </div>
           )}
         </div>
+      ) : null}
+
+      {confirmOpen ? (
+        <StartConfirmation
+          away={away}
+          crew={crewLines}
+          direction={direction}
+          field={field}
+          home={home}
+          licenceIssues={licenceIssues}
+          onClose={() => setConfirmOpen(false)}
+          onStart={confirmStart}
+          passcheck={game.passcheck}
+          possessionTeam={possessionTeam}
+          time={formatGameTime(scheduled)}
+          tossTeam={tossTeam}
+        />
       ) : null}
     </Screen>
   );
