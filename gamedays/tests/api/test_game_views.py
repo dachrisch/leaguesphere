@@ -1175,9 +1175,15 @@ class TestGameLogQueryCounts(APITestCase):
         # deterministic regardless of test order.
         self.client.get(reverse(API_GAMELOG, kwargs={"id": game.pk}))
 
-        # 43: the device-lock read (one extra SELECT on GameSetup) is part of
-        # every write, undo included.
-        with self.assertNumQueries(43):
+        # 52 = 43 (the write itself, device-lock read included)
+        #    + 2 for the delete's transaction: SAVEPOINT/RELEASE, because the
+        #      undo event and the row delete must commit together;
+        #    + 7 for recording the undo: re-reading the row, the live-sibling
+        #      check, the event read, and the reconciliation flag's SELECT +
+        #      INSERT (each in a savepoint). This row is a sequence-0 penalty
+        #      no event produced, so the log admits it cannot represent the
+        #      undo instead of inventing history.
+        with self.assertNumQueries(52):
             response = self.client.delete(
                 reverse(API_GAMELOG, kwargs={"id": game.pk}),
                 {"team_log_id": row.pk},

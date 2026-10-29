@@ -14,12 +14,16 @@ from gameevents.tests.api.support import (
     legacy_body,
     login,
     make_game,
+    post_events,
     post_legacy,
+    sub_id,
 )
 from gameevents.tests.golden_cases import GOLDEN_CASES, expected_signature
 from gamedays.models import TeamLog
 
 TOUCHDOWN_PAT = next(case for case in GOLDEN_CASES if case.name == "touchdown_pat1")
+# A real outbox id: the legacy endpoint validates ``client_id`` as a UUID now.
+SUB_ID = sub_id(1)
 
 
 @pytest.mark.django_db
@@ -31,7 +35,7 @@ def test_the_shadow_records_the_events_of_the_unchanged_payload(client):
         game,
         home,
         [{"name": "Touchdown", "player": "7"}, {"name": "1-Extra-Punkt", "player": "7"}],
-        client_id="submission-1",
+        client_id=SUB_ID,
     )
     response = post_legacy(client, game, body)
 
@@ -46,7 +50,7 @@ def test_the_shadow_records_the_events_of_the_unchanged_payload(client):
         (1, "score", "touchdown", "home", 7),
         (2, "score", "pat1", "home", 7),
     ]
-    assert {e.client_id for e in events} == {"submission-1"}
+    assert {e.client_id for e in events} == {SUB_ID}
     assert all(e.source == GameEvent.Source.LEGACY for e in events)
     assert {e.legacy_sequence for e in events} == {1}
     # GameState is the event projection, so the feed and reconciliation agree.
@@ -64,7 +68,7 @@ def test_a_replay_of_the_same_submission_writes_neither_rows_nor_events(client):
     game, home, _away = make_game("shadow-replay")
     login(client)
     body = legacy_body(
-        game, home, [{"name": "Touchdown", "player": "7"}], client_id="submission-1"
+        game, home, [{"name": "Touchdown", "player": "7"}], client_id=SUB_ID
     )
 
     assert post_legacy(client, game, body).status_code == 201
@@ -73,6 +77,31 @@ def test_a_replay_of_the_same_submission_writes_neither_rows_nor_events(client):
     assert response.status_code == 200
     assert GameEvent.objects.filter(game=game).count() == 1
     assert TeamLog.objects.filter(gameinfo=game).count() == 1
+
+
+@pytest.mark.django_db
+def test_a_replay_of_a_submission_the_canonical_endpoint_took_writes_nothing(client):
+    """One outbox, two endpoints: the claim does not live in only one of them.
+
+    A retry can land on ``/api/gamelog/`` after the app switched to
+    ``/api/game/<id>/events``; the submission's rows were written by the
+    projection then, so this endpoint must answer with the log it already has
+    instead of inserting the same play a second time.
+    """
+
+    game, home, _away = make_game("shadow-cross-replay")
+    login(client)
+    body = legacy_body(
+        game, home, [{"name": "Touchdown", "player": "7"}], client_id=SUB_ID
+    )
+
+    assert post_events(client, game, body).status_code == 201
+    response = post_legacy(client, game, body)
+
+    assert response.status_code == 200
+    assert response.json()["home"]["score"] == 6
+    assert TeamLog.objects.filter(gameinfo=game).count() == 1
+    assert GameEvent.objects.filter(game=game).count() == 1
 
 
 @pytest.mark.django_db
@@ -107,7 +136,7 @@ def test_an_append_failure_rolls_the_legacy_rows_back(client, monkeypatch):
             game,
             home,
             [{"name": "Touchdown", "player": "7"}],
-            client_id="submission-1",
+            client_id=SUB_ID,
         ),
     )
 
@@ -124,7 +153,7 @@ def test_an_unknown_event_name_is_rejected_and_nothing_is_written(client):
     response = post_legacy(
         client,
         game,
-        legacy_body(game, home, [{"name": "Tor"}], client_id="submission-1"),
+        legacy_body(game, home, [{"name": "Tor"}], client_id=SUB_ID),
     )
 
     assert response.status_code == 400
