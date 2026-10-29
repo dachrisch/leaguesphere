@@ -25,6 +25,7 @@ from gameevents.tests.api.support import (
     make_game,
     post_events,
     post_legacy,
+    sub_id,
 )
 from gamedays.constants import API_GAMELOG
 from gamedays.models import TeamLog
@@ -41,7 +42,7 @@ def get_feed(client, game, after=None, **headers):
     return client.get(url, params, **headers)
 
 
-def submit(client, game, events, client_id="sub-1"):
+def submit(client, game, events, client_id=sub_id(1)):
     response = post_events(
         client,
         game,
@@ -86,7 +87,7 @@ def test_the_feed_reports_the_projected_state_and_the_events(client):
         "player": 7,
         "period": 1,
         "payload": {},
-        "client_id": "sub-1",
+        "client_id": sub_id(1),
         "undo_of": None,
         "source": "v2",
     }
@@ -109,7 +110,7 @@ def test_after_returns_only_newer_events(client):
                 "period": 1,
             }
         ],
-        client_id="sub-2",
+        client_id=sub_id(2),
     )
 
     body = get_feed(client, game, after=2).json()
@@ -171,7 +172,7 @@ def test_a_new_event_changes_the_etag_and_the_state(client):
     assert old["ETag"] == '"1"'
     assert old.json()["state"]["score_home"] == 6
 
-    submit(client, game, [TD], client_id="sub-2")
+    submit(client, game, [TD], client_id=sub_id(2))
     response = get_feed(client, game, after=1, HTTP_IF_NONE_MATCH=old["ETag"])
 
     assert response.status_code == 200

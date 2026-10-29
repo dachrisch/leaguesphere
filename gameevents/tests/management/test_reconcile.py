@@ -23,7 +23,7 @@ from gameevents.service.append import (
 )
 from gameevents.service.projector import GameEventValue
 from gameevents.service.reconcile import check_games, owned_sequences
-from gameevents.tests.api.support import login, make_game, post_events
+from gameevents.tests.api.support import login, make_game, post_events, sub_id
 from gamedays.constants import API_GAMELOG
 from gamedays.models import TeamLog
 from gamedays.tests.setup_factories.factories import UserFactory
@@ -44,7 +44,7 @@ def write_events(client, game):
     response = post_events(
         client,
         game,
-        {"events": [TD, PAT], "client_id": "sub-1"},
+        {"events": [TD, PAT], "client_id": sub_id(1)},
     )
     assert response.status_code == 201, response.content
 
@@ -171,7 +171,7 @@ def test_rebuild_restores_the_author_each_event_recorded(client):
     game, _home, _away = event_game("recheck-authors")
     login(client)
     response = post_events(
-        client, game, {"events": [TD, PAT], "client_id": "sub-1"}
+        client, game, {"events": [TD, PAT], "client_id": sub_id(1)}
     )
     assert response.status_code == 201
     actor_id = GameEvent.objects.get(game=game, seq=1).author_id
@@ -423,7 +423,7 @@ def test_a_correction_keeps_the_projection_consistent(client):
         game,
         {
             "events": [TD],
-            "client_id": "sub-1",
+            "client_id": sub_id(1),
         },
     )
     response = client.delete(

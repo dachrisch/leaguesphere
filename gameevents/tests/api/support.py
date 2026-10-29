@@ -1,3 +1,4 @@
+import uuid
 """Shared fixtures for the T3 endpoint tests.
 
 The two write paths (legacy ``/api/gamelog/<id>`` and canonical
@@ -81,3 +82,16 @@ def db_row_signatures(game, home):
         )
         for row in rows
     ]
+
+
+_SUB_NAMESPACE = uuid.UUID("6f9619ff-8b86-d011-b42d-00c04fc964ff")
+
+
+def sub_id(n: int) -> str:
+    """A deterministic submission id.
+
+    The legacy endpoint validates the outbox ids the app actually sends, so a
+    readable placeholder like sub_id(1) is a 400; this keeps the tests readable
+    while using a real UUID.
+    """
+    return str(uuid.uuid5(_SUB_NAMESPACE, f"sub-{n}"))
