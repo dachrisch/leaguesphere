@@ -50,7 +50,7 @@ Envelope: `type` + `code` + `side` + `player` + `period` + `payload`.
 `POST /api/game/<id>/events` — the existing `/api/gamelog/<id>` payload is accepted unchanged and translated to the envelope server-side (`from_legacy_event`), so **no app release** is needed.
 
 - device lock (reuse `GameSetup.device_id` + `X-Scorecard-Device`), auth, CSRF — unchanged;
-- **device lock: delegated; enforced after #2104 merges** — the lock is not on this branch (it lives on `feat/scorecard-v2`), so the endpoint calls `gamedays.api.game_views._device_lock_response` when it exists and stands down when it does not. Expect the merge conflict in `gamedays/api/game_views.py`; never add a second lock here;
+- **device lock and finished-game guard: delegated, both now enforced** — the scorecard stack merged, so the endpoint calls `gamedays.api.game_views._device_lock_response` and `_finished_game_response` and reuses their status/message; never add a second lock or a second "beendet" refusal here. Order (same as `POST /api/gamelog/`): replay → finished → lock, so an already-applied submission is never pinned by either guard. A submission the canonical endpoint applied is also a replay for `/api/gamelog/` (the claim is read from `GameLogSubmission` **and** the store), so a retry that lands on the other endpoint writes no second row group;
 - `client_id` seen → `200 {state, cursor}`, no second apply;
 - `seq` ≠ `max+1` → `409 {expected_next}`; unknown `code` → `400` **before** storing;
 - one transaction: append → project → `TeamLog` rows + `GameState`;

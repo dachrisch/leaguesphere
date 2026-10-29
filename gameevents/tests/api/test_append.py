@@ -10,12 +10,14 @@ Two contracts are pinned here:
 
 import pytest
 from rest_framework.response import Response
+from rest_framework.reverse import reverse
 
 from gameevents.models import GameEvent, GameState
 from gameevents.service.append import project_game
 from gameevents.tests.api.support import (
     db_row_signatures,
     legacy_body,
+    lock_device,
     login,
     make_game,
     post_events,
@@ -23,7 +25,8 @@ from gameevents.tests.api.support import (
     sub_id,
 )
 from gameevents.tests.golden_cases import GOLDEN_CASES, expected_signature
-from gamedays.models import Gameresult, TeamLog
+from gamedays.constants import API_GAME_DEVICE
+from gamedays.models import Gameresult, GameSetup, TeamLog
 
 
 def envelope(
@@ -82,13 +85,15 @@ def test_the_canonical_rows_equal_the_legacy_rows(client, case):
     legacy_response = post_legacy(
         client,
         legacy_game,
-        legacy_body(legacy_game, legacy_team, case.entries, case.half, "sub-legacy"),
+        legacy_body(
+            legacy_game, legacy_team, case.entries, case.half, sub_id(1)
+        ),
     )
     canonical_response = post_events(
         client,
         canonical_game,
         legacy_body(
-            canonical_game, canonical_team, case.entries, case.half, "sub-canonical"
+            canonical_game, canonical_team, case.entries, case.half, sub_id(2)
         ),
     )
 
@@ -699,6 +704,126 @@ def test_a_replay_is_answered_before_the_device_lock(client, monkeypatch):
 
 
 # --------------------------------------------------------------------------
+# the merged world: both endpoints answer to the same lock, the same
+# finished-game guard and the same submission claim
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "post", [post_legacy, post_events], ids=["gamelog", "events"]
+)
+def test_a_second_device_may_not_write_either_endpoint(client, post):
+    """The lock is one row and one header, enforced identically on both paths.
+
+    The same legacy body is posted to both endpoints, because that is the
+    payload a v2 app may send to either: the device that claimed the game
+    writes it, any other device gets the 409 and writes nothing at all.
+    """
+
+    game, home, _away = make_game(f"lock-{post.__name__}")
+    login(client)
+    lock_device(game, "device-a")
+    body = legacy_body(
+        game, home, [{"name": "Touchdown", "player": "7"}], client_id=sub_id(1)
+    )
+
+    refused = post(client, game, body, device="device-b")
+
+    assert refused.status_code == 409
+    assert refused.json()["device_id"] == "device-a"
+    assert TeamLog.objects.filter(gameinfo=game).count() == 0
+    assert GameEvent.objects.filter(game=game).count() == 0
+    assert not GameState.objects.filter(game=game).exists()
+
+    accepted = post(client, game, body, device="device-a")
+
+    assert accepted.status_code == 201
+    assert TeamLog.objects.filter(gameinfo=game).count() == 1
+    assert GameEvent.objects.filter(game=game).count() == 1
+
+
+@pytest.mark.django_db
+def test_a_replay_after_a_staff_release_answers_with_the_log(client):
+    """Release + handover, then the original device replays: ``200``.
+
+    Staff releasing the lock (a lost phone) and another device claiming the
+    game must not turn an already-applied submission into a 409 -- the op
+    would stay in the sender's outbox forever and never be finalised. The
+    claim therefore wins over the lock, not the other way round.
+    """
+
+    game, home, _away = make_game("gamelog-replay-after-release")
+    user = login(client)
+    lock_device(game, "device-a")
+    body = legacy_body(
+        game, home, [{"name": "Touchdown", "player": "7"}], client_id=sub_id(1)
+    )
+    first = post_legacy(client, game, body, device="device-a")
+    assert first.status_code == 201
+
+    user.is_staff = True
+    user.save(update_fields=["is_staff"])
+    released = client.delete(reverse(API_GAME_DEVICE, kwargs={"pk": game.pk}))
+    assert released.status_code == 204
+    GameSetup.objects.filter(gameinfo=game).update(device_id="device-b")
+
+    replay = post_legacy(client, game, body, device="device-a")
+
+    assert replay.status_code == 200
+    assert replay.json() == first.json()
+    assert TeamLog.objects.filter(gameinfo=game).count() == 1
+    assert GameEvent.objects.filter(game=game).count() == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "post", [post_legacy, post_events], ids=["gamelog", "events"]
+)
+def test_a_finished_game_refuses_a_new_submission_on_either_endpoint(client, post):
+    """A closed game is the final word on both write paths, not just the old one."""
+
+    game, home, _away = make_game(f"finished-{post.__name__}")
+    login(client)
+    game.status = "beendet"
+    game.save(update_fields=["status"])
+
+    response = post(
+        client,
+        game,
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": "7"}], client_id=sub_id(1)
+        ),
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "Dieses Spiel ist beendet."}
+    assert TeamLog.objects.filter(gameinfo=game).count() == 0
+    assert GameEvent.objects.filter(game=game).count() == 0
+
+
+@pytest.mark.django_db
+def test_a_replay_of_a_finished_game_is_still_answered(client):
+    """The op applied before the final whistle is not pinned by the guard."""
+
+    game, home, _away = make_game("finished-replay")
+    login(client)
+    body = legacy_body(
+        game, home, [{"name": "Touchdown", "player": "7"}], client_id=sub_id(1)
+    )
+    assert post_events(client, game, body).status_code == 201
+    game.status = "beendet"
+    game.save(update_fields=["status"])
+
+    replay = post_events(client, game, body)
+
+    assert replay.status_code == 200
+    assert replay.json()["state"]["score_home"] == 6
+    assert TeamLog.objects.filter(gameinfo=game).count() == 1
+    assert GameEvent.objects.filter(game=game).count() == 1
+
+
+# --------------------------------------------------------------------------
 # result table: a canonical submission leaves Gameresult where the legacy
 # writer leaves it (the liveticker's live list, league table and finalisation
 # all read it)
@@ -733,7 +858,9 @@ def test_the_canonical_result_table_equals_the_legacy_result_table(client, case)
         post_legacy(
             client,
             legacy_game,
-            legacy_body(legacy_game, legacy_team, case.entries, case.half, "sub-l"),
+            legacy_body(
+                legacy_game, legacy_team, case.entries, case.half, sub_id(1)
+            ),
         ).status_code
         == 201
     )
@@ -742,7 +869,7 @@ def test_the_canonical_result_table_equals_the_legacy_result_table(client, case)
             client,
             canonical_game,
             legacy_body(
-                canonical_game, canonical_team, case.entries, case.half, "sub-c"
+                canonical_game, canonical_team, case.entries, case.half, sub_id(2)
             ),
         ).status_code
         == 201

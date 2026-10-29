@@ -190,7 +190,9 @@ def test_a_legacy_game_derives_the_same_state_from_its_rows(client):
     post_legacy(
         client,
         game,
-        legacy_body(game, home, [{"name": "Touchdown", "player": "7"}], client_id="s"),
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": "7"}], client_id=sub_id(1)
+        ),
     )
     canonical = get_feed(client, game).json()["state"]
     strip_events(game)
@@ -239,7 +241,7 @@ def test_a_finished_game_state_matches_its_rows(client):
         client,
         game,
         [{"type": "period", "code": "half_time", "side": None, "period": 2}],
-        client_id="sub-half",
+        client_id=sub_id(2),
     )
     submit(
         client,
@@ -253,13 +255,13 @@ def test_a_finished_game_state_matches_its_rows(client):
                 "period": 2,
             }
         ],
-        client_id="sub-away",
+        client_id=sub_id(3),
     )
     submit(
         client,
         game,
         [{"type": "period", "code": "end", "side": None, "period": 2}],
-        client_id="sub-end",
+        client_id=sub_id(4),
     )
     game.gameHalftime = clock_time(12, 0)
     game.save(update_fields=["gameHalftime"])
@@ -342,7 +344,9 @@ def test_a_legacy_game_etag_changes_when_its_rows_change(client):
     post_legacy(
         client,
         game,
-        legacy_body(game, home, [{"name": "Touchdown", "player": "7"}], client_id="s"),
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": "7"}], client_id=sub_id(1)
+        ),
     )
     strip_events(game)
     before = get_feed(client, game)
@@ -374,7 +378,9 @@ def test_a_flagged_legacy_game_still_serves_its_rows(client):
     post_legacy(
         client,
         game,
-        legacy_body(game, home, [{"name": "Touchdown", "player": "7"}], client_id="s"),
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": "7"}], client_id=sub_id(1)
+        ),
     )
     strip_events(game)
     GameState.objects.create(
