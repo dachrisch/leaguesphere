@@ -6,12 +6,15 @@ the meaning of an event can be unit-tested without a database (and the same
 code can later run in a worker).
 
 The projected rows reproduce ``gamedays.service.gamelog.GameLogCreator``
-exactly -- event names, player, input, value, half, cop, isDeleted **and
-sequence** -- including its quirks, because every existing consumer
+exactly -- event names, player, input, value, half, cop, isDeleted, sequence
+**and author** -- including its quirks, because every existing consumer
 (liveticker, statistics, match report, league table) reads ``TeamLog`` and must
-not notice the switch. See ``gameevents/tests/golden_cases.py`` for the fixture
-table and ``test_projector_golden.py`` for the comparison against the real
-writers.
+not notice the switch. The author a row is written with is an input (the
+event's actor), not a constant: the legacy writer stores the request user, so a
+projection that used ``TeamLog``'s ``default=1`` would silently reassign plays
+and break on a database whose user table has no id 1. See
+``gameevents/tests/golden_cases.py`` for the fixture table and
+``test_projector_golden.py`` for the comparison against the real writers.
 
 Grouping / sequence
 -------------------
@@ -131,6 +134,14 @@ class TeamLogRow:
     markers, whose ``TeamLog.team`` is null). ``sequence`` is assigned by
     ``project_submission`` (one sequence per submission); it stays 0 for
     excluded rows and markers, matching the legacy writer.
+
+    ``author_id`` is the id of the event's **actor** (``GameEvent.author``),
+    copied so the projected ``TeamLog.author`` is the user who caused the play
+    -- like the legacy writer, which stores the request user -- instead of
+    ``TeamLog``'s ``default=1``. It is an id, not a user object, so this module
+    stays Django-free and a replay never has to fetch a user per row. ``None``
+    means the event has no actor; the writer then falls back to the game's
+    author (see ``gameevents/service/append.py``), never to the default.
     """
 
     event: str
@@ -142,6 +153,7 @@ class TeamLogRow:
     cop: bool = False
     isDeleted: bool = False
     sequence: int = 0
+    author_id: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -168,6 +180,11 @@ class GameEventValue:
     # resolution group by it. ``None`` for values that were never stored.
     client_id: Optional[str] = None
     legacy_sequence: Optional[int] = None
+    # The id of the user who caused the event (``GameEvent.author_id``); it
+    # travels to every ``TeamLogRow`` this event projects. ``None`` when the
+    # event has no actor (system-generated or stored before the column
+    # existed) -- the writer then falls back to the game's author.
+    author_id: Optional[int] = None
     undo_of: Optional["GameEventValue"] = None
     undo_rows: tuple[TeamLogRow, ...] = ()
 
@@ -234,6 +251,7 @@ def _row(
         cop=cop,
         isDeleted=isDeleted,
         sequence=0,
+        author_id=event.author_id,
     )
 
 

@@ -8,6 +8,7 @@ refused by the rebuild and skipped by the check -- never half-rewritten.
 
 import json
 from io import StringIO
+from unittest import mock
 
 import pytest
 from django.core.management import call_command
@@ -15,11 +16,17 @@ from django.core.management.base import CommandError
 from rest_framework.reverse import reverse
 
 from gameevents.models import GameEvent, GameState
-from gameevents.service.append import project_game
+from gameevents.service.append import (
+    AuthorResolver,
+    append_submission,
+    project_game,
+)
+from gameevents.service.projector import GameEventValue
 from gameevents.service.reconcile import check_games, owned_sequences
 from gameevents.tests.api.support import login, make_game, post_events
 from gamedays.constants import API_GAMELOG
 from gamedays.models import TeamLog
+from gamedays.tests.setup_factories.factories import UserFactory
 
 TD = {"type": "score", "code": "touchdown", "side": "home", "player": 7, "period": 1}
 PAT = {"type": "score", "code": "pat1", "side": "home", "player": 7, "period": 1}
@@ -160,6 +167,116 @@ def test_rebuild_restores_the_state_and_the_rows(client):
 
 
 @pytest.mark.django_db
+def test_rebuild_restores_the_author_each_event_recorded(client):
+    game, _home, _away = event_game("recheck-authors")
+    login(client)
+    response = post_events(
+        client, game, {"events": [TD, PAT], "client_id": "sub-1"}
+    )
+    assert response.status_code == 201
+    actor_id = GameEvent.objects.get(game=game, seq=1).author_id
+    # Someone (or a broken write) reassigned the ticks; the log still knows who
+    # recorded them, and the rebuild must say so.
+    TeamLog.objects.filter(gameinfo=game).update(author=UserFactory())
+
+    call_command("rebuild_game_projection", "--game", str(game.pk), stdout=StringIO())
+
+    assert set(
+        TeamLog.objects.filter(gameinfo=game).values_list("author_id", flat=True)
+    ) == {actor_id}
+    assert check_one(game).ok
+
+
+@pytest.mark.django_db
+def test_rebuild_uses_the_game_author_when_an_event_has_no_actor(client):
+    game, _home, _away = event_game("recheck-no-actor")
+    # A system write: the events record no actor and no rows are written.
+    append_submission(
+        game,
+        [
+            GameEventValue(
+                type="score", code="touchdown", side="home", player=7, seq=1
+            )
+        ],
+        client_id="system-1",
+        source=GameEvent.Source.STAFF,
+        write_rows=False,
+    )
+    actorless = set(
+        GameEvent.objects.filter(game=game).values_list("author_id", flat=True)
+    )
+    assert actorless == {None}
+
+    call_command("rebuild_game_projection", "--game", str(game.pk), stdout=StringIO())
+
+    # No actor on the log, so the game's author is the honest fallback -- and it
+    # is a real user, not TeamLog's default id.
+    assert set(
+        TeamLog.objects.filter(gameinfo=game).values_list("author_id", flat=True)
+    ) == {game.gameday.author_id}
+    assert game.gameday.author_id != 1
+
+
+@pytest.mark.django_db
+def test_rebuild_takes_the_author_override_for_actorless_rows(client):
+    game, _home, _away = event_game("recheck-author-flag")
+    append_submission(
+        game,
+        [
+            GameEventValue(
+                type="score", code="touchdown", side="home", player=7, seq=1
+            )
+        ],
+        client_id="system-1",
+        source=GameEvent.Source.STAFF,
+        write_rows=False,
+    )
+    override = UserFactory(username="rebuild-actor")
+
+    call_command(
+        "rebuild_game_projection",
+        "--game",
+        str(game.pk),
+        "--author",
+        str(override.pk),
+        stdout=StringIO(),
+    )
+
+    assert set(
+        TeamLog.objects.filter(gameinfo=game).values_list("author_id", flat=True)
+    ) == {override.pk}
+
+
+@pytest.mark.django_db
+def test_rebuild_refuses_when_no_author_can_be_found(client):
+    game, _home, _away = event_game("recheck-author-missing")
+    append_submission(
+        game,
+        [
+            GameEventValue(
+                type="score", code="touchdown", side="home", player=7, seq=1
+            )
+        ],
+        client_id="system-1",
+        source=GameEvent.Source.STAFF,
+        write_rows=False,
+    )
+
+    # No user row matches the ids the game names (the shape of a user table
+    # that lost the row a default key still points at, which is what MySQL
+    # rejects -- #2125): the rebuild must refuse, not fall back to id 1.
+    with mock.patch.object(AuthorResolver, "exists", return_value=False):
+        with pytest.raises(CommandError) as error:
+            call_command(
+                "rebuild_game_projection", "--game", str(game.pk), stdout=StringIO()
+            )
+
+    assert "no author for the event" in str(error.value)
+    # Refused before anything was written: no row falls back to a default user.
+    assert not TeamLog.objects.filter(gameinfo=game).exists()
+
+
+@pytest.mark.django_db
 def test_rebuild_clears_the_flag_and_keeps_pre_log_rows(client):
     game, _home, _away = event_game("recheck-flag-clear")
     write_events(client, game)
@@ -169,6 +286,7 @@ def test_rebuild_clears_the_flag_and_keeps_pre_log_rows(client):
         event="Strafe",
         input="Holding",
         half=1,
+        author=game.gameday.author,
     )
     GameState.objects.filter(game=game).update(
         needs_reconciliation=True, reconciliation_note="undo of sequence 4"
@@ -198,6 +316,7 @@ def test_rebuild_refuses_a_legacy_game(client):
         player=7,
         value=6,
         half=1,
+        author=game.gameday.author,
     )
     before = list(TeamLog.objects.filter(gameinfo=game).values_list("pk", flat=True))
 
@@ -228,6 +347,7 @@ def test_all_skips_legacy_games_without_failing(client):
         player=7,
         value=6,
         half=1,
+        author=legacy.gameday.author,
     )
 
     out = StringIO()
@@ -259,7 +379,12 @@ def test_check_ignores_sequence_zero_rows_the_log_did_not_write(client):
     game, _home, _away = event_game("recheck-seq0")
     write_events(client, game)
     TeamLog.objects.create(
-        gameinfo=game, sequence=0, event="Strafe", input="Holding", half=1
+        gameinfo=game,
+        sequence=0,
+        event="Strafe",
+        input="Holding",
+        half=1,
+        author=game.gameday.author,
     )
 
     assert check_one(game).ok

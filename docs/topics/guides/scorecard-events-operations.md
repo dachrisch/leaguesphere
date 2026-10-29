@@ -81,6 +81,33 @@ Ownership: the log owns `TeamLog` groups whose `sequence > 0`; sequence 0 is
 shared with rows written before the log existed and is not compared row by
 row (it does not affect score or period).
 
+## Authors: who recorded a play
+
+`TeamLog.author` is part of the projection, like the score. Each `GameEvent`
+records its **actor** in `GameEvent.author` — the `request.user` of the request
+that appended it, on both write paths (`POST /api/gamelog/<id>` and
+`POST /api/game/<id>/events`); the projector copies that user onto every row the
+event produces. It is the *actor*, not a display author: nothing renders it, it
+exists so a projected tick names the official who recorded it and so an audit
+can say who caused an event.
+
+`TeamLog.author` has a `default=1`, but that id is not a provisioned "system
+user" — a database need not have it (MySQL rejects the insert with an FK error,
+which is exactly how this bit CI once). So no write path ever leaves the column
+to its default:
+
+- the event's actor, when it has one;
+- otherwise the game's author — the author of the game's gameday, since
+  `Gameinfo` has no author of its own (a rebuild prefers the author of the row
+  it replaces, then `--author`, then the game's author);
+- otherwise the write is refused with `no author for the event`
+  (`400 {"detail": …}` from the endpoint, `CommandError` from the command) — no
+  row is written against a user that does not exist.
+
+Events recorded without an actor (`GameEvent.author` null: a system write, or an
+event stored before the column existed) keep `null` — an append-only log does
+not invent a person.
+
 ## `rebuild_game_projection`
 
 ```bash
@@ -89,8 +116,11 @@ python manage.py rebuild_game_projection --game 124
 
 Deletes `GameState` and the row groups the log owns, replays the log, and
 clears `needs_reconciliation`. Pre-log rows are left untouched, and existing
-rows keep their tick timestamp and author, so the liveticker's ordering does
-not change for the plays that were already correct. It **refuses** a legacy
+rows keep their tick timestamp, so the liveticker's ordering does not change for
+the plays that were already correct. Authors follow the log (see above): a rebuilt
+row is written for the event's actor, falling back to the author of the row it
+replaces and then to the game's author; `--author <user id>` names the user for
+actorless rows that replace nothing. It **refuses** a legacy
 game (no events): there is no log to replay. `Gameresult` is not rebuilt — it
 is maintained by the write path, not derived from the log.
 

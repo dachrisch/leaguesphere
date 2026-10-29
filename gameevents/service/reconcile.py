@@ -42,7 +42,12 @@ from typing import Iterable, Optional
 from django.db import transaction
 
 from gameevents.models import GameEvent, GameState
-from gameevents.service.append import values_from_rows
+from gameevents.service.append import (
+    AuthorResolver,
+    MissingAuthor,
+    author_id_of,
+    values_from_rows,
+)
 from gameevents.service.projector import InvalidEnvelope
 from gameevents.service.replay import Replay, replay_events
 from gamedays.models import Gameresult, Gameinfo, TeamLog
@@ -322,6 +327,18 @@ def rebuild_game(game, *, author=None) -> RebuildResult:
     Refuses a legacy game (:class:`LegacyGameError`): a game without events has
     no log, so "rebuilding" would have to invent one. Everything runs in one
     transaction -- a failure leaves the previous rows and state in place.
+
+    Authors: a rebuilt row keeps the **actor of the event it projects**
+    (``GameEvent.author``), so a rebuild repairs the log's authorship instead of
+    reshuffling it. An event without an actor -- recorded before the column
+    existed, or by a system write -- falls back to the author the replaced row
+    had (a tick's author is evidence too), then to ``--author``, and finally to
+    the game's author (the gameday's author, since ``Gameinfo`` has none of its
+    own). Deriving it here is deliberate: ``TeamLog.author``'s ``default=1`` is
+    a magic id that need not exist, so the last candidate is the game's author
+    and never the default. If none of them names an existing user the rebuild
+    refuses (``RebuildError`` -> ``CommandError``) rather than writing a row the
+    database cannot accept.
     """
 
     Gameinfo.objects.select_for_update().get(pk=game.pk)
@@ -332,6 +349,8 @@ def rebuild_game(game, *, author=None) -> RebuildResult:
     owned = owned_sequences(replay)
     _sides, team_ids = _teams_for([game.pk])
     teams = team_ids.get(game.pk, {})
+    authors = AuthorResolver(game)
+    override = author_id_of(author)
 
     existing: dict[int, list] = defaultdict(list)
     for row in TeamLog.objects.filter(
@@ -350,6 +369,15 @@ def rebuild_game(game, *, author=None) -> RebuildResult:
                     f"game {game.pk} has no {row.side} team result; the "
                     "projection cannot be re-created without it"
                 )
+            try:
+                author_id = authors.resolve(
+                    row.author_id,
+                    previous[index].author_id if index < len(previous) else None,
+                    override,
+                    authors.game_author_id(),
+                )
+            except MissingAuthor as error:
+                raise RebuildError(str(error)) from None
             values = {
                 "gameinfo": game,
                 "team_id": teams.get(row.side) if row.side else None,
@@ -361,14 +389,12 @@ def rebuild_game(game, *, author=None) -> RebuildResult:
                 "cop": row.cop,
                 "half": row.half,
                 "isDeleted": row.isDeleted,
+                "author_id": author_id,
             }
             if index < len(previous):
-                # Keep the tick's timestamp and author: a rebuild must not
-                # reshuffle the liveticker's ordering of an unchanged play.
+                # Keep the tick's timestamp: a rebuild must not reshuffle the
+                # liveticker's ordering of an unchanged play.
                 values["created_time"] = previous[index].created_time
-                values["author_id"] = previous[index].author_id
-            elif author is not None:
-                values["author"] = author
             new_rows.append(TeamLog(**values))
     TeamLog.objects.bulk_create(new_rows)
 

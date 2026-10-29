@@ -97,6 +97,22 @@ def test_event_uniqueness_keys_are_explicit():
     )
 
 
+def test_an_event_records_its_actor():
+    """``author`` is the user whose request appended the event (#2125).
+
+    Nullable on purpose: a system/background write has no actor, and the log
+    must not invent one. It is the actor, not a display author, so nothing
+    renders it; the projection is what turns it into ``TeamLog.author``.
+    """
+
+    field = GameEvent._meta.get_field("author")
+
+    assert field.null is True
+    assert field.blank is True
+    assert field.related_model._meta.label == "auth.User"
+    assert field.remote_field.related_name == "game_events"
+
+
 @pytest.mark.django_db
 def test_game_state_is_a_one_to_one_projection():
     game = GameinfoFactory()

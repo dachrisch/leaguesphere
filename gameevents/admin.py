@@ -24,7 +24,18 @@ class ReadOnlyAdmin(admin.ModelAdmin):
 
 @admin.register(GameEvent)
 class GameEventAdmin(ReadOnlyAdmin):
-    list_display = ("id", "game", "seq", "type", "code", "side", "period", "source")
+    list_display = (
+        "id",
+        "game",
+        "seq",
+        "type",
+        "code",
+        "side",
+        "period",
+        "source",
+        # The actor: who recorded the event. Read-only like everything else.
+        "author",
+    )
     list_filter = ("type", "source")
     search_fields = ("client_id", "code")
     readonly_fields = [field.name for field in GameEvent._meta.fields]

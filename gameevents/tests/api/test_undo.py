@@ -186,6 +186,8 @@ def test_an_undo_of_a_row_without_an_event_flags_reconciliation(client):
         player=7,
         value=6,
         half=1,
+        # A pre-log row still has a real author; never the default user id.
+        author=game.gameday.author,
     )
 
     response = delete_sequence(client, game, 1)
@@ -217,6 +219,7 @@ def test_an_unlogged_row_is_flagged_even_when_the_game_has_events(client):
         player=9,
         value=6,
         half=2,
+        author=game.gameday.author,
     )
 
     response = delete_sequence(client, game, 2)

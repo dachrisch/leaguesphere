@@ -92,6 +92,27 @@ def test_project_submission_assigns_the_submission_sequence():
     assert [row.sequence for row in projection.rows] == [1, 1]
 
 
+def test_a_row_carries_the_events_actor():
+    projection = apply(state(), replace(score("touchdown", player=7), author_id=42))
+
+    assert [row.author_id for row in projection.rows] == [42]
+
+
+def test_every_row_of_a_submission_carries_the_actor():
+    touchdown = replace(score("touchdown", player=7, seq=1), author_id=42)
+    conversion = replace(score("pat1", player=7, seq=2), author_id=42)
+
+    projection = project_submission(state(), [touchdown, conversion])
+
+    assert {row.author_id for row in projection.rows} == {42}
+
+
+def test_a_row_of_an_event_without_an_actor_stays_unattributed():
+    # The projector never invents an author; the writer's fallback (the game's
+    # author) is a service concern, and TeamLog's default user is never used.
+    assert apply(state(), score("touchdown", player=7)).rows[0].author_id is None
+
+
 def test_submission_sequence_is_the_smallest_event_seq():
     touchdown = score("touchdown", player=7, seq=7)
     conversion = score("pat2", player=7, seq=8)
