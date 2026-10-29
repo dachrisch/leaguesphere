@@ -50,11 +50,13 @@ This directory contains Docker Compose configurations for deploying LeagueSphere
    docker network create proxy 2>/dev/null || echo "Network already exists"
    ```
 
-4. **Pull and start staging environment:**
+4. **Pull and start staging environment (first bring-up only):**
    ```bash
    docker compose -f docker-compose.staging.yaml pull
    docker compose -f docker-compose.staging.yaml up -d
    ```
+
+   Afterwards CI + Watchtower keep the containers updated — see [Updating Staging](#updating-staging).
 
 5. **Verify deployment:**
    ```bash
@@ -78,7 +80,24 @@ This directory contains Docker Compose configurations for deploying LeagueSphere
 
 ### Updating Staging
 
-When new `:staging` images are pushed to Docker Hub (automatically via CI/CD):
+CI updates staging end to end — there is nothing to run on the host:
+
+1. `./container/deploy.sh stage` (or `gh workflow run deploy.yaml -f environment=staging -f bump_type=patch`) bumps the RC version on the current branch and pushes a `vX.Y.Z-rc.N` tag.
+2. CircleCI builds that tag and pushes `leaguesphere/backend:staging` and `leaguesphere/frontend:staging` (plus an immutable `vX.Y.Z-rc.N` tag) to Docker Hub.
+3. `watchtower-dev` on the host polls Docker Hub every **5 minutes** (scope `dev`, health-check gated) and swaps the staging containers. The app containers use the `blue-green` update strategy: the old container keeps serving until the replacement reports healthy.
+
+Watch it happen:
+
+```bash
+# Which image/version is actually running?
+docker inspect --format '{{.Config.Image}} {{.State.StartedAt}}' leaguesphere_stage.staging-app
+docker exec leaguesphere_stage.staging-app python -c 'import league_manager; print(league_manager.__version__)'
+
+# What did the watcher do?
+docker logs --tail 20 portainer.watchtower-dev
+```
+
+Pulling and recreating by hand is a **fallback** only (Watchtower wedged, or you need to pin a specific immutable tag for a rollback):
 
 ```bash
 cd ~/dev/leaguesphere/deployed/
@@ -129,7 +148,21 @@ docker compose -f docker-compose.staging.yaml down -v
 
 ## Production Environment
 
-See production deployment documentation for production-specific instructions.
+Production is deployed by the release pipeline; the host swap is automatic.
+
+1. Merge a conventional-commit PR to `master`. release-please opens a release PR; merging that tags `vX.Y.Z`.
+2. CircleCI runs the full suite, then `hold_production`. It is **auto-approved when no game is active and none is scheduled within the next 4 hours**; otherwise it waits for a manual approval in CircleCI. `deploy_production` then pushes `leaguesphere/backend:latest` / `leaguesphere/frontend:latest` (plus the version tag) to Docker Hub.
+3. `watchtower-prod` polls Docker Hub every **2 hours** (scope `prod`, health-check gated, `blue-green` for backend and frontend) and swaps `leaguesphere.app` / `leaguesphere.www`. A replacement that never turns healthy is rolled back to the previous image.
+
+Compose file: `docker-compose.yaml`. Because the host swap can take up to two hours, a green pipeline does **not** mean the release is live — verify:
+
+```bash
+docker exec leaguesphere.app python -c 'import league_manager; print(league_manager.__version__)'
+docker inspect --format '{{.State.Health.Status}} {{.State.StartedAt}}' leaguesphere.app leaguesphere.www
+docker logs --tail 20 portainer.watchtower-prod
+```
+
+Manual `docker compose pull && up -d` is a fallback (rollback, or Watchtower wedged), not part of the normal release flow.
 
 ## Security Notes
 
