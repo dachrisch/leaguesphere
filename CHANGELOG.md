@@ -1,5 +1,58 @@
 # Changelog
 
+## [5.2.0](https://github.com/dachrisch/leaguesphere/compare/v5.1.3...v5.2.0) (2026-10-29)
+
+
+### Features
+
+* **gameevents:** add the event store and a pure projector ([d01017b](https://github.com/dachrisch/leaguesphere/commit/d01017b67e8bc651169af5591c31b8c3414e2192))
+* **gameevents:** add the projection feed and reconciliation ([28e4b72](https://github.com/dachrisch/leaguesphere/commit/28e4b72ec216b9118e19dcd2b0e3dcb14972ff41))
+* **gameevents:** append events from the scorecard write path ([bffa2a1](https://github.com/dachrisch/leaguesphere/commit/bffa2a17f5298c15740c7a81ab327046ee71fe52))
+* **gameevents:** correct one row, so undo needs no DELETE ([768995b](https://github.com/dachrisch/leaguesphere/commit/768995b87a9c89cd729d989183dcfc9e926b11ff))
+* **liveticker:** read the score from the event projection behind a flag ([9041c04](https://github.com/dachrisch/leaguesphere/commit/9041c044d4acb22ccea4453e1eba1c2803e8932e))
+* **scorecard-v2:** append events, nothing else ([e79a283](https://github.com/dachrisch/leaguesphere/commit/e79a283fcf2588a336836c484af56e4cf392719e))
+* **scorecard-v2:** append events, nothing else, slice 2 ([055fd14](https://github.com/dachrisch/leaguesphere/commit/055fd1438f51b4b3de69de791ce1f67ab60fa71c))
+* **scorecard-v2:** configure crew positions per league ([9e3c2a2](https://github.com/dachrisch/leaguesphere/commit/9e3c2a2aff6e5647960017afcb5358275f094337))
+* **scorecard-v2:** confirm the match setup before the start ([80e108b](https://github.com/dachrisch/leaguesphere/commit/80e108b92f7a72479393e4f248d901700084880c))
+* **scorecard-v2:** offline-capable field app at /scorecard/v2/ ([9e0e4be](https://github.com/dachrisch/leaguesphere/commit/9e0e4bef824cd3eb66f5054b14eee26491be79ae))
+* **scorecard-v2:** rework the preparation screen layout ([8c655c5](https://github.com/dachrisch/leaguesphere/commit/8c655c59884431135bd6e2b90004360ddf03173e))
+* **scorecard-v2:** search the whole directory when filling a crew slot ([d0ca087](https://github.com/dachrisch/leaguesphere/commit/d0ca0876c4a8187d39f2b8b4a5639381b0a0b361))
+* **scorecard-v2:** show team logos in list, setup and header ([5c6f91e](https://github.com/dachrisch/leaguesphere/commit/5c6f91e0b2a954745e9df0c68ff5aeaab6738c40))
+
+
+### Bug Fixes
+
+* **gameevents:** correct the projection contract ([b7d8e60](https://github.com/dachrisch/leaguesphere/commit/b7d8e604cad814e3e6ef8e89e56b63f2731fd092))
+* **gameevents:** integrate the event path with the device lock ([707abc8](https://github.com/dachrisch/leaguesphere/commit/707abc8ca19a819e07e124b2859c25c7858e3433))
+* **gameevents:** link a rebuilt row without relying on bulk_create pks ([e067ec9](https://github.com/dachrisch/leaguesphere/commit/e067ec95051d35b7b527ed11c500d728aaaac4ad))
+* **gameevents:** record legacy undos and keep the result table in sync ([2ebd5a6](https://github.com/dachrisch/leaguesphere/commit/2ebd5a6fcad7a7896da5fd9af0d867fe8a2a7af7))
+* **gameevents:** record the event author and stop relying on the default user ([ede1aa1](https://github.com/dachrisch/leaguesphere/commit/ede1aa1f4e75bfb468baffa59bd77304cea89834))
+* **nginx:** give the manifest its media type without replacing the map ([11321a1](https://github.com/dachrisch/leaguesphere/commit/11321a1b2496fd3b017e6c9ba4fafdf150b2107c))
+* **officials:** merge crew position overrides with the defaults ([2802976](https://github.com/dachrisch/leaguesphere/commit/2802976a16e5614852ab994dfc21ffd5ef442530))
+* **scorecard-v2:** address the L2 review ([0eb248e](https://github.com/dachrisch/leaguesphere/commit/0eb248eca934b353ab072c6f1bda4fc6af10cac0))
+* **scorecard-v2:** fix the preparation layout review findings ([718d366](https://github.com/dachrisch/leaguesphere/commit/718d36636db0d35640ef232f876755d446cf8c29))
+* **scorecard-v2:** harden the crew positions load ([aaf411d](https://github.com/dachrisch/leaguesphere/commit/aaf411d293f6bb77ff642f7097b2a5b49344e961))
+* **scorecard-v2:** never block a start on an unresolvable crew name ([14e95be](https://github.com/dachrisch/leaguesphere/commit/14e95bee2d37319a83ceba2047a055787c6415c5))
+* **scorecard-v2:** pick up a new build and serve the manifest correctly ([8371b4a](https://github.com/dachrisch/leaguesphere/commit/8371b4a0b59edaa1457c45986e850a03583b0f53))
+
+
+### Documentation
+
+* **planning:** build the start confirmation before period templates ([ab1bbfc](https://github.com/dachrisch/leaguesphere/commit/ab1bbfcd4e50bb2b43f55328ddd1d1e0d2c18cc0))
+* **planning:** design the scorecard event architecture ([fc64f16](https://github.com/dachrisch/leaguesphere/commit/fc64f168a378588a74eea8090c15c61033be87db))
+* **planning:** I5.1 is designed, no longer blocked ([62f99fa](https://github.com/dachrisch/leaguesphere/commit/62f99fa06daac163587e736e8f34a34f533a62d9))
+* **planning:** passcheck left the stack for master ([03c15c2](https://github.com/dachrisch/leaguesphere/commit/03c15c292ff6b7352d33fa92bc81c6138d933bac))
+* **planning:** plan the event-store slice 1 ([ebacb76](https://github.com/dachrisch/leaguesphere/commit/ebacb764277e4eda0bbdeaa3aaf416dd514c498c))
+* **planning:** plan the scorecard feature layers ([ea49011](https://github.com/dachrisch/leaguesphere/commit/ea490119647f038e994d73898a849363df077149))
+* **planning:** record the preparation layout layer ([2a69c72](https://github.com/dachrisch/leaguesphere/commit/2a69c72b7bbeb1e1595a47b94ce642c9e0090ca2))
+* **planning:** track every scorecard idea as a layer plan ([dcc5cfe](https://github.com/dachrisch/leaguesphere/commit/dcc5cfe868cdc345f75e0d95eaf8995c60ca2543))
+* **planning:** track the crew-position layer ([5f5d662](https://github.com/dachrisch/leaguesphere/commit/5f5d662999b191c587680bf419cebe687805a6bd))
+* **planning:** track the start-confirmation layer ([b1968a6](https://github.com/dachrisch/leaguesphere/commit/b1968a615314488a1483a334ea01520e4d99728e))
+* **planning:** track the team-logo layer ([880bc6b](https://github.com/dachrisch/leaguesphere/commit/880bc6b4eea527d85466d2cae48dbd107b384e62))
+* **scorecard-events:** the flag cannot be flipped from an image ([63253d9](https://github.com/dachrisch/leaguesphere/commit/63253d9daa45d15f93003d0c270eb711b9e69215))
+* **scorecard-v2:** describe the searchable crew picker ([d21174b](https://github.com/dachrisch/leaguesphere/commit/d21174b291686fc72c0022077521ae7c09e1fd44))
+* **scorecard-v2:** the stage nginx config comes from the host, not the image ([156fff9](https://github.com/dachrisch/leaguesphere/commit/156fff94607875cbd0803721c04ebcb18b90af7e))
+
 ## [5.1.3](https://github.com/dachrisch/leaguesphere/compare/v5.1.2...v5.1.3) (2026-10-29)
 
 
