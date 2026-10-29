@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { GameLog, GameLogEvent, GameLogTeam } from "../api/types";
 import type { StoredOp } from "../offline/types";
-import { replayOps } from "./optimistic";
+import { envelopesOf, replayOps } from "./optimistic";
 
 function team(overrides: Partial<GameLogTeam> = {}): GameLogTeam {
   return {
@@ -352,5 +352,239 @@ describe("replayOps team resolution", () => {
     expect(shown.away.secondhalf.score).toBe(6);
     expect(shown.home.score).toBe(0);
     expect(shown.events).toHaveLength(2);
+  });
+});
+
+
+describe("replayOps — legacy queue shapes", () => {
+  it("translates a legacy half-time op (empty payload)", () => {
+    const { log: shown } = replayOps(log({ isFirstHalf: true }), [
+      op({ kind: "halftime", payload: {} }),
+    ]);
+
+    expect(shown.isFirstHalf).toBe(false);
+    expect(shown.events?.[0].event).toBe("2. Halbzeit gestartet");
+  });
+
+  it("translates a legacy correction op naming a target seq", () => {
+    const base = log({
+      events: [event({ id: 11, sequence: 2, seq: 2, player: 23 })],
+      home: team({ score: 6 }),
+    });
+
+    const { log: shown } = replayOps(base, [
+      op({ kind: "correction", payload: { undo_of: 2 } }),
+    ]);
+
+    expect(shown.events?.[0].isDeleted).toBe(true);
+    expect(shown.home.score).toBe(0);
+  });
+
+  it("ignores a legacy correction op without a target", () => {
+    const base = log({ home: team({ score: 6 }) });
+
+    const { log: shown } = replayOps(base, [
+      op({ kind: "correction", payload: {} }),
+    ]);
+
+    expect(shown.home.score).toBe(6);
+    expect(shown.events).toEqual([]);
+  });
+
+  it("cannot translate a legacy play whose team is not in this log", () => {
+    const { log: shown } = replayOps(log(), [
+      op({
+        payload: { team: "Fremde", half: 1, event: [{ name: "Touchdown" }] },
+      }),
+    ]);
+
+    expect(shown.events).toEqual([]);
+    expect(shown.home.score).toBe(0);
+  });
+
+  it("cannot translate a legacy possession of a team not in this log", () => {
+    const { log: shown } = replayOps(log(), [
+      op({ kind: "possession", payload: { team: "Fremde" } }),
+    ]);
+
+    expect(shown.inPossession).toBe("Ravens");
+  });
+});
+
+describe("replayOps — a queued penalty and a correction of one", () => {
+  it("shows the penalty's code as its detail", () => {
+    const { log: shown } = replayOps(log(), [
+      play([
+        {
+          type: "penalty",
+          code: "Holding Defense",
+          side: "home",
+          player: 23,
+          period: 1,
+        },
+      ]),
+    ]);
+
+    expect(shown.events?.[0]).toMatchObject({
+      event: "Strafe",
+      input: "Holding Defense",
+      player: 23,
+      sequence: 0,
+    });
+  });
+
+  it("ignores a correction without a numeric target", () => {
+    const base = log({ home: team({ score: 6 }) });
+
+    const { log: shown } = replayOps(base, [
+      play([{ type: "correction", code: "undo", payload: {} }], {
+        kind: "correction",
+      }),
+    ]);
+
+    expect(shown.home.score).toBe(6);
+  });
+
+  it("skips rows that are already deleted and rows of another group", () => {
+    const base = log({
+      events: [
+        event({ id: 11, sequence: 2, seq: 2, isDeleted: true, player: 23 }),
+        event({ id: 12, sequence: 3, seq: 3, player: 23 }),
+      ],
+      home: team({ score: 6 }),
+    });
+
+    const { log: shown } = replayOps(base, [
+      play([{ type: "correction", code: "undo", payload: { undo_of: 2 } }], {
+        kind: "correction",
+      }),
+    ]);
+
+    // The already-deleted row stays deleted and is not subtracted twice; the
+    // row of another group is untouched.
+    expect(shown.events?.find((row) => row.id === 11)?.isDeleted).toBe(true);
+    expect(shown.events?.find((row) => row.id === 12)?.isDeleted).toBe(false);
+    expect(shown.home.score).toBe(6);
+  });
+
+  it("takes no points back from a scoring row without a jersey", () => {
+    const base = log({
+      events: [event({ id: 10, sequence: 1, seq: 1, player: null })],
+      home: team({ score: 0 }),
+    });
+
+    const { log: shown } = replayOps(base, [
+      play([{ type: "correction", code: "undo", payload: { undo_of: 1 } }], {
+        kind: "correction",
+      }),
+    ]);
+
+    expect(shown.home.score).toBe(0);
+    expect(shown.events?.[0].isDeleted).toBe(true);
+  });
+
+  it("marks a team-less row deleted without touching a score", () => {
+    const base = log({
+      events: [
+        event({ id: 9, sequence: 0, seq: 9, team: null, event: "Spiel gestartet" }),
+      ],
+    });
+
+    const { log: shown } = replayOps(base, [
+      play([{ type: "correction", code: "undo", payload: { undo_of: 9 } }], {
+        kind: "correction",
+      }),
+    ]);
+
+    expect(shown.events?.[0].isDeleted).toBe(true);
+    expect(shown.home.score).toBe(0);
+    expect(shown.away.score).toBe(0);
+  });
+});
+
+
+describe("replayOps — the remaining queue shapes", () => {
+  it("translates a legacy play from the second half", () => {
+    const { log: shown } = replayOps(log(), [
+      op({
+        payload: {
+          team: "Wolves",
+          half: 2,
+          event: [{ name: "Touchdown", player: 11 }],
+        },
+      }),
+    ]);
+
+    expect(shown.away.secondhalf.score).toBe(6);
+    expect(shown.events?.[0].half).toBe(2);
+  });
+
+  it("cannot translate an op kind it does not know", () => {
+    // A row of some future/removed kind must vanish from the optimistic view
+    // instead of being guessed (the transport refuses it loudly).
+    expect(envelopesOf(op({ kind: "delete", payload: {} }), log())).toBeNull();
+  });
+
+  it("deletes a legacy scoring group by sequence", () => {
+    const base = log({
+      events: [
+        event({ id: 11, sequence: 2, seq: 2, event: "1-Extra-Punkt", player: 23 }),
+        event({ id: 10, sequence: 2, seq: 2, player: 23 }),
+      ],
+      home: team({ score: 7, firsthalf: { score: 7, entries: [] } }),
+    });
+
+    const { log: shown } = replayOps(base, [
+      op({ kind: "delete", payload: { sequence: 2 } }),
+    ]);
+
+    // Both rows of the group are gone and the group's points come back off.
+    expect(shown.events?.every((row) => row.isDeleted)).toBe(true);
+    expect(shown.home.score).toBe(0);
+  });
+
+  it("leaves a penalty without a name without a detail", () => {
+    const { log: shown } = replayOps(log(), [
+      play([{ type: "penalty", side: "home", period: 1 }]),
+    ]);
+
+    expect(shown.events?.[0]).toMatchObject({ event: "Strafe", input: null });
+  });
+
+  it("shows the clock's input", () => {
+    const { log: shown } = replayOps(log(), [
+      play([
+        {
+          type: "time",
+          code: "clock",
+          side: "home",
+          period: 2,
+          payload: { input: "12:34" },
+        },
+      ]),
+    ]);
+
+    expect(shown.events?.[0]).toMatchObject({
+      event: "Spielzeit",
+      input: "12:34",
+      half: 2,
+    });
+  });
+
+  it("takes nothing off the score for a non-scoring row's correction", () => {
+    const base = log({
+      events: [
+        event({ id: 12, sequence: 0, seq: 12, event: "Strafe", player: 23 }),
+      ],
+    });
+
+    const { log: shown } = replayOps(base, [
+      play([{ type: "correction", code: "undo", payload: { undo_of: 12 } }], {
+        kind: "correction",
+      }),
+    ]);
+
+    expect(shown.events?.[0].isDeleted).toBe(true);
+    expect(shown.home.score).toBe(0);
   });
 });

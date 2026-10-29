@@ -433,6 +433,19 @@ def test_correction_of_an_excluded_row_targets_the_row_not_sequence_zero():
     assert projection.state.score_home == 0
 
 
+def test_a_sequence_zero_correction_without_a_target_seq_is_a_bug_not_a_noop():
+    # The service must resolve the target's event before projecting; without
+    # its seq the projector cannot name the row, and deleting the shared bucket
+    # instead would be a silent disaster.
+    penalty = ev("penalty", "Holding", side="home", seq=None)
+    correction = GameEventValue(
+        type="correction", code="undo", seq=2, undo_of=penalty
+    )
+
+    with pytest.raises(ValueError, match="no seq"):
+        apply(state(), correction)
+
+
 def test_undoing_a_row_correction_restores_that_row():
     penalty = ev("penalty", "Holding", side="home", seq=1)
     undone = GameEventValue(

@@ -13,6 +13,8 @@ import pytest
 from rest_framework.reverse import reverse
 
 from gameevents.models import GameEvent, GameState
+from gameevents.service.append import _link_shadow_rows
+from gameevents.service.log_payload import event_seqs_for_rows_by_game
 from gameevents.service.reconcile import check_games, rebuild_game
 from gameevents.tests.api.support import (
     legacy_body,
@@ -40,6 +42,8 @@ def get_log(client, game):
 
 
 def undo(client, game, seq):
+    # One submission id per target: two undos of *different* seqs are two
+    # submissions, and reusing one id would be answered as a replay.
     response = post_events(
         client,
         game,
@@ -47,7 +51,7 @@ def undo(client, game, seq):
             "events": [
                 {"type": "correction", "code": "undo", "payload": {"undo_of": seq}}
             ],
-            "client_id": sub_id(99),
+            "client_id": sub_id(1000 + seq),
         },
     )
     assert response.status_code == HTTPStatus.CREATED, response.content
@@ -251,3 +255,107 @@ def test_a_legacy_post_answers_its_own_rows_with_their_seq(client):
     assert response.status_code == HTTPStatus.CREATED
     seqs = {event["event"]: event["seq"] for event in response.json()["events"]}
     assert seqs == {"Touchdown": 1, "Strafe": 2}
+
+
+@pytest.mark.django_db
+def test_a_row_level_correction_refuses_an_event_without_a_linked_row(client):
+    # An event stored before rows were linked cannot name a row. The service
+    # must refuse it as a client error instead of deleting nothing (or, worse,
+    # the shared bucket).
+    login(client)
+    game, _home, _away = make_game("rowundo")
+    post_events(
+        client, game, {"events": [penalty("Holding")], "client_id": sub_id(1)}
+    )
+    event = GameEvent.objects.get(game=game, type="penalty")
+    GameEvent.objects.filter(pk=event.pk).update(team_log=None)
+
+    response = post_events(
+        client,
+        game,
+        {
+            "events": [
+                {
+                    "type": "correction",
+                    "code": "undo",
+                    "payload": {"undo_of": event.seq},
+                }
+            ],
+            "client_id": sub_id(2),
+        },
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert "no row to change" in response.json()["detail"]
+
+
+@pytest.mark.django_db
+def test_undoing_the_undo_of_a_penalty_restores_that_row(client):
+    # A correction of a correction restores the row it removed (the restored
+    # side of the row-level flags, not just the deleted one).
+    login(client)
+    game, _home, _away = make_game("rowundo")
+
+    post_events(
+        client, game, {"events": [penalty("Holding")], "client_id": sub_id(1)}
+    )
+    row = TeamLog.objects.get(gameinfo=game, input="Holding")
+    undo_seq = GameEvent.objects.get(game=game, team_log=row).seq
+
+    undo(client, game, undo_seq)
+    row.refresh_from_db()
+    assert row.isDeleted
+
+    correction = GameEvent.objects.get(game=game, type=GameEvent.Type.CORRECTION)
+    undo(client, game, correction.seq)
+
+    row.refresh_from_db()
+    assert not row.isDeleted
+    [check] = check_games([game.pk])
+    assert check.ok, check.summary()
+
+
+@pytest.mark.django_db
+def test_a_shadow_append_logs_a_row_mismatch(client, caplog):
+    # One row per entry is the writer's contract. When it breaks, the events
+    # stay unlinked -- and operations must be able to see that.
+    login(client)
+    game, home, _away = make_game("rowundo")
+    post_legacy(
+        client,
+        game,
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(1)
+        ),
+    )
+    client_id = GameEvent.objects.get(game=game).client_id
+
+    with caplog.at_level("WARNING"):
+        _link_shadow_rows(game, client_id, [])
+
+    assert "the events stay unlinked" in caplog.text
+    # Nothing was written: the link the append made on the way in survives.
+    assert GameEvent.objects.get(game=game).team_log_id is not None
+
+
+@pytest.mark.django_db
+def test_the_log_payload_skips_a_group_whose_sequence_is_zero(client):
+    # A stored submission with legacy_sequence 0 would map to the shared bucket,
+    # which names no row: the payload must not publish a group seq for it. The
+    # writer never produces this (it sets None or a max+1 > 0), so the event is
+    # created directly -- this is the guard against stored data.
+    login(client)
+    game, home, _away = make_game("rowundo")
+    post_events(
+        client, game, {"events": [penalty("Holding")], "client_id": sub_id(1)}
+    )
+    row = TeamLog.objects.get(gameinfo=game, input="Holding")
+    event = GameEvent.objects.get(game=game, team_log=row)
+    GameEvent.objects.filter(pk=event.pk).update(team_log=None, legacy_sequence=0)
+
+    payload = get_log(client, game)
+
+    published = {event["event"]: event["seq"] for event in payload["events"]}
+    assert published == {"Strafe": None}
+    # And the empty scope (no games) answers without a query.
+    assert event_seqs_for_rows_by_game({}, []) == {}

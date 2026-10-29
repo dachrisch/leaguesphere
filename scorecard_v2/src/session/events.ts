@@ -44,8 +44,6 @@ interface LegacySpec {
   code?: string;
   /** Safety encodes its points in the payload rather than the code. */
   points?: number;
-  /** Period markers carry no team. */
-  carriesSide?: boolean;
   /** Which field of the old entry supplies the code (`code`) or `payload.input`. */
   input?: "code" | "payload";
 }
@@ -144,9 +142,7 @@ export function envelopesForWrite(
 ): EventEnvelope[] {
   const side = sideOfName(write.team, log);
   if (side === null) {
-    throw new Error(
-      `Das Team „${write.team ?? ""}“ gehört nicht zu diesem Spiel.`,
-    );
+    throw new Error(`Das Team „${write.team}“ gehört nicht zu diesem Spiel.`);
   }
   return write.event.map((entry) => envelopeFor(entry, side, write.half));
 }
@@ -169,17 +165,15 @@ function envelopeFor(
       period: half,
     };
   }
+  // Every play the sheets submit belongs to a side; the period markers are
+  // built by `halftimeEnvelope`, not from a play name.
   const envelope: EventEnvelope = {
     type: spec.type,
     code: spec.code ?? "",
-    side: spec.carriesSide === false ? null : side,
+    side,
+    player: coercePlayer(entry.player),
     period: half,
   };
-  if (spec.carriesSide !== false) {
-    envelope.player = coercePlayer(entry.player);
-  } else {
-    envelope.player = null;
-  }
   if (spec.points !== undefined) {
     envelope.payload = { points: spec.points };
   }

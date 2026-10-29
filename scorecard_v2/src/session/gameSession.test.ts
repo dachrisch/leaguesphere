@@ -436,6 +436,16 @@ describe("the not-delivered fallbacks", () => {
     expect(pending[0].payload).toEqual({ sequence: 3 });
   });
 
+  it("refuses a possession change for a team that is not in the log", async () => {
+    // The envelope names a side, not a name: an unknown team would either be
+    // guessed or silently dropped, so it is a client error before any request.
+    await expect(session.setPossession("Fremde")).rejects.toThrow(
+      "gehört nicht zu diesem Spiel",
+    );
+    await expect(outbox.pending(42)).resolves.toEqual([]);
+    expect(apiPostMock).not.toHaveBeenCalled();
+  });
+
   it("queues a possession change the network never delivered", async () => {
     apiPostMock.mockRejectedValue(new ApiError(0, null, "Keine Verbindung"));
 

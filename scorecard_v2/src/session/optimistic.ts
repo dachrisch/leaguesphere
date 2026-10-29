@@ -96,11 +96,9 @@ export function envelopesOf(
   }
 
   if (op.kind === "possession") {
-    const payload = op.payload as { code?: Side; team?: string };
-    const side =
-      payload?.code === "home" || payload?.code === "away"
-        ? payload.code
-        : sideOfName(payload?.team, log);
+    // A row from the old build stored the team *name* (the removed `PUT
+    // /possession` took it); there is no side to read from it.
+    const side = sideOfName((op.payload as { team?: string })?.team, log);
     return side === null ? null : [possessionEnvelope(side)];
   }
 

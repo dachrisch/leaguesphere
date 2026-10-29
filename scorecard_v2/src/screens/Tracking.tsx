@@ -292,15 +292,14 @@ export default function TrackingScreen({
   // `null` until the roster request settles — an empty array would be a real
   // "no roster" and must not be shown while the fetch is still running.
   const [roster, setRoster] = useState<RosterPlayer[] | null>(null);
-  // The first possession decides who starts the second half. `null` while the
-  // request runs (or after it failed): the half-time then falls back to
-  // handing the ball to the other team.
-  const [setup, setSetup] = useState<GameSetup | null>(null);
   /**
-   * The setup read itself. The half-time awaits it (it resolved long before,
-   * normally) instead of guessing from a state that may not have landed yet.
+   * The setup read itself: the first possession decides who starts the second
+   * half. The half-time awaits it (it resolved long before, normally) instead
+   * of reading a state update that may not have landed yet; a failed read
+   * resolves `null` and the half-time falls back to handing the ball to the
+   * other team.
    */
-  const setupLoad = useRef<Promise<GameSetup | null> | null>(null);
+  const setupLoad = useRef<Promise<GameSetup | null | undefined> | null>(null);
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [posting, setPosting] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
@@ -378,27 +377,13 @@ export default function TrackingScreen({
   }, [game.id]);
 
   useEffect(() => {
-    let active = true;
     // Read once, long before the half-time: the setup holds the opening
     // possession, which decides who starts the second half. A failed read
-    // leaves it `null` and the half-time falls back to switching the ball.
+    // stays `null` and the half-time falls back to switching the ball.
     setupLoad.current = cachedGet<GameSetup>(
       snapshotKey.setup(game.id),
       `/api/game/${game.id}/setup`,
-    )
-      .then((payload) => {
-        if (active) {
-          setSetup(payload ?? {});
-        }
-        return payload ?? {};
-      })
-      .catch(() => {
-        // Nothing to do: `null` already means "no setup to trust".
-        return null;
-      });
-    return () => {
-      active = false;
-    };
+    ).catch(() => null);
   }, [game.id]);
 
   /**
@@ -576,16 +561,16 @@ export default function TrackingScreen({
    * opening kickoff, exactly like v1 (`GameSetup.fhPossession`), whatever the
    * last play did — the teams change ends at half-time, so "flip the ball" is
    * only right when the half happened to end with the ball away from the
-   * kickoff side. {@link setup} is read once when the screen opens, and the
+   * kickoff side. The setup is read once when the screen opens, and the
    * half-time awaits that read; without a usable setup the ball simply goes to
    * the other team.
    */
   const secondHalfTeam = async (): Promise<string | null> => {
     // The read resolved when the screen opened; awaiting it only matters if the
     // half-time is tapped in the first moments of a slow connection, and then
-    // it is still better than handing the ball to the wrong team.
-    const loaded =
-      setupLoad.current === null ? setup : await setupLoad.current;
+    // it is still better than handing the ball to the wrong team. Awaiting a
+    // `null` ref (the effect has not run) simply resolves to "no setup".
+    const loaded = await setupLoad.current;
     return (
       secondHalfPossession(loaded, logTeamName(log.home), logTeamName(log.away)) ??
       opponentName

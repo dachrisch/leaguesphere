@@ -204,6 +204,38 @@ describe("displayOf", () => {
   it("refuses a safety without points instead of inventing a value", () => {
     expect(displayOf({ type: "score", code: "safety" }).event).toBeNull();
   });
+
+  it("names the remaining plays the sheets can submit", () => {
+    expect(displayOf({ type: "possession", code: "interception" })).toMatchObject(
+      { event: "Interception", cop: true, value: 0 },
+    );
+    expect(displayOf({ type: "time", code: "clock" })).toMatchObject({
+      event: "Spielzeit",
+      excluded: true,
+    });
+    expect(displayOf({ type: "timeout", code: "home" })).toMatchObject({
+      event: "Auszeit",
+      excluded: true,
+    });
+    expect(displayOf({ type: "series", code: "first_down" })).toMatchObject({
+      event: "First Down",
+      excluded: true,
+    });
+    expect(displayOf({ type: "period", code: "start" }).event).toBe(
+      "Spiel gestartet",
+    );
+    expect(displayOf({ type: "period", code: "end" }).event).toBe(
+      "Spiel beendet",
+    );
+  });
+
+  it("draws no row for a code it cannot render", () => {
+    // Nothing to show beats a wrong row: the server refuses unknown codes.
+    expect(displayOf({ type: "series", code: "second_down" }).event).toBeNull();
+    expect(displayOf({ type: "period", code: "quarter" }).event).toBeNull();
+    expect(displayOf({ type: "score", code: "tor" }).event).toBeNull();
+    expect(displayOf({ type: "time", code: "clock" }).event).toBe("Spielzeit");
+  });
 });
 
 describe("coercePlayer", () => {
@@ -224,5 +256,35 @@ describe("sideOfName", () => {
     expect(sideOfName("", LOG)).toBeNull();
     expect(sideOfName(undefined, LOG)).toBeNull();
     expect(sideOfName("Fremde", LOG)).toBeNull();
+  });
+});
+
+
+describe("envelopesForWrite — the edges", () => {
+  it("sends an empty code for a penalty without a name", () => {
+    // The sheet always picks one; without it the server must refuse the event
+    // (400) instead of writing a "Strafe" with no reason.
+    const [envelope] = envelopesForWrite(write("Ravens", [{ name: "Strafe" }]), LOG);
+
+    expect(envelope).toMatchObject({ type: "penalty", code: "" });
+  });
+
+  it("resolves a side even when the other team has no name", () => {
+    const nameless: GameLog = {
+      ...LOG,
+      home: team({ name: null }),
+    };
+
+    expect(sideOfName("Wolves", nameless)).toBe("away");
+    expect(sideOfName("Ravens", nameless)).toBeNull();
+  });
+});
+
+describe("displayOf — an envelope without a code", () => {
+  it("draws no row for a scored play, and still names a penalty", () => {
+    expect(displayOf({ type: "score" }).event).toBeNull();
+    // The penalty's *code* is its reason, shown as the row's detail; the row
+    // itself is "Strafe" either way (the server refuses an empty code).
+    expect(displayOf({ type: "penalty" }).event).toBe("Strafe");
   });
 });
