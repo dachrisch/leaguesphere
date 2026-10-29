@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.2.2](https://github.com/dachrisch/leaguesphere/compare/v5.2.1...v5.2.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* **deps:** update babel monorepo ([#2147](https://github.com/dachrisch/leaguesphere/issues/2147)) ([43a3d4f](https://github.com/dachrisch/leaguesphere/commit/43a3d4fd52cf1d9a89d95f44797891376c571b36))
+* **deps:** update dependency @types/node to v25.9.9 ([#2148](https://github.com/dachrisch/leaguesphere/issues/2148)) ([475cfd5](https://github.com/dachrisch/leaguesphere/commit/475cfd585daa9fbc9da289bf0d0b5b9cf0d5682d))
+* **deps:** update dependency django to v6.1.2 ([#2149](https://github.com/dachrisch/leaguesphere/issues/2149)) ([b6a9a18](https://github.com/dachrisch/leaguesphere/commit/b6a9a1838d4df7a43946e43ebd26c04492e96ab1))
+
 ## [5.2.1](https://github.com/dachrisch/leaguesphere/compare/v5.2.0...v5.2.1) (2026-10-29)
 
 
