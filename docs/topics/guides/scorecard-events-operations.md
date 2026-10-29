@@ -126,3 +126,32 @@ is maintained by the write path, not derived from the log.
 
 Run `check_game_projection --game <id>` after a rebuild to confirm; the
 command is idempotent.
+
+## Where the flag has to be set (and where it cannot)
+
+`SCORECARD_EVENT_FEED` is read from the process environment
+(`league_manager/settings/base.py`). Setting it inside a deployed image has no
+effect: the container's environment comes from the host, not the build.
+
+- **Local dev**: `.env_template` / your shell.
+- **Staging/demo**: the env file Ansible renders from
+  `deployed/ls.env.staging.template` (and the demo equivalent). That template
+  does **not** carry the variable yet, so flipping the flag on stage needs a
+  change there on `master` plus the Ansible sync — the same gate as
+  `container/nginx.staging.conf`, which staging mounts from the host jail.
+
+Consequence: a release candidate can be *validated* against the event path
+(feed endpoint, `check_game_projection`) without the flag, but the liveticker
+cannot switch to the projection from an image alone.
+
+Validation done on stage for `v5.1.1-rc.1`, for the record:
+
+```
+GET /api/game/10402/feed?after=0
+  state: {score_home: 7, score_away: 0, period: 1, last_seq: 2}
+  events: [{seq: 1, type: score, code: touchdown, player: 23},
+           {seq: 2, type: score, code: pat1, player: 7}]
+  ETag "2" -> 304 on If-None-Match
+manage.py check_game_projection --all
+  game 10402: ok (2 events, seq 2); 6369 legacy games skipped
+```
