@@ -47,7 +47,13 @@ services:
   app:
     image: leaguesphere/backend:latest
     container_name: ${COMPOSE_PROJECT_NAME}.app
+    # Production keeps 6 workers: this is the real site.
     command: gunicorn -b 0.0.0.0:8000 -w 6 --worker-class gthread --threads 2 league_manager.wsgi
+    # Ceiling, not a target: 454M resident + 334M in swap on 2026-10-29 with no
+    # limit at all, so the kernel had been evicting this container's hot pages
+    # whenever the host was under pressure. 1g is ~1.5x the measured working set —
+    # enough headroom that a leak fails here instead of degrading the host.
+    mem_limit: 1g
     labels:
       - traefik.enable=false
       # portainer team
@@ -80,6 +86,10 @@ services:
     image: mariadb:latest
     container_name: ${COMPOSE_PROJECT_NAME}.db
     restart: unless-stopped
+    # Ceiling (was unlimited; 73M resident + 233M in swap measured 2026-10-29).
+    # 512m covers the buffer pool plus connections without competing with the
+    # apps for RAM under host pressure.
+    mem_limit: 512m
     command: >
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
