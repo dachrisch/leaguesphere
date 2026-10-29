@@ -1,4 +1,4 @@
-FROM python:3.14-slim AS app-builder
+FROM python:3.15-slim AS app-builder
 
 # Install build dependencies
 RUN apt -y update && \
@@ -34,7 +34,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
         --format=plain --with-urls \
         --ignore-packages leaguesphere > /app/THIRD_PARTY_LICENSES
 
-FROM python:3.14-slim AS app
+FROM python:3.15-slim AS app
 
 LABEL org.opencontainers.image.title="LeagueSphere backend" \
       org.opencontainers.image.source="https://github.com/dachrisch/leaguesphere" \
