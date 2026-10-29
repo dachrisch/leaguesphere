@@ -22,6 +22,8 @@
 
 ### Bug Fixes
 
+* **deploy:** opt the www services in to Traefik routing ([d70b8fb](https://github.com/dachrisch/leaguesphere/commit/d70b8fbb911e0a09d249c9a5c72728a9c3a57c7a))
+* **deploy:** opt the www services in to Traefik routing ([fe961a4](https://github.com/dachrisch/leaguesphere/commit/fe961a4a247bacefd14dc38b0375873648be9e00))
 * **gameevents:** correct the projection contract ([b7d8e60](https://github.com/dachrisch/leaguesphere/commit/b7d8e604cad814e3e6ef8e89e56b63f2731fd092))
 * **gameevents:** integrate the event path with the device lock ([707abc8](https://github.com/dachrisch/leaguesphere/commit/707abc8ca19a819e07e124b2859c25c7858e3433))
 * **gameevents:** link a rebuilt row without relying on bulk_create pks ([e067ec9](https://github.com/dachrisch/leaguesphere/commit/e067ec95051d35b7b527ed11c500d728aaaac4ad))
