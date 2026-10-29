@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.1.3](https://github.com/dachrisch/leaguesphere/compare/v5.1.2...v5.1.3) (2026-10-29)
+
+
+### Documentation
+
+* https://docs.renovatebot.com/configuration-options/#forkprocessing ([08910ff](https://github.com/dachrisch/leaguesphere/commit/08910ffc0b4b539e79a53e2f1d05dc6dd783a671))
+
 ## [5.1.2](https://github.com/dachrisch/leaguesphere/compare/v5.1.1...v5.1.2) (2026-10-29)
 
 
