@@ -26,3 +26,4 @@ See [history/](./history/) for completed and archived plans.
 This directory tracks project plans and completed work. Plans use YYYY-MM-DD-name.md naming.
 
 When a plan is complete, move it from `current/` to `history/`.
+- [2026-10-28 Scorecard — Event Architecture](./current/2026-10-28-scorecard-event-architecture.md): recording separated from meaning — the app appends sport-neutral events, the server owns the store, the projection and the channels; slice 1 = event store + projection feed + liveticker
