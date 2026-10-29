@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.1.0](https://github.com/dachrisch/leaguesphere/compare/v5.0.3...v5.1.0) (2026-10-29)
+
+
+### Features
+
+* **officials:** cache Moodle e-mails for 15 minutes ([354a5c8](https://github.com/dachrisch/leaguesphere/commit/354a5c822e121c84211278150eb2ee117daf9354))
+* **officials:** cache Moodle e-mails for 15 minutes ([1a58b84](https://github.com/dachrisch/leaguesphere/commit/1a58b844f4ae8eb031d8d27560dc2937f2089a3f))
+
 ## [5.0.3](https://github.com/dachrisch/leaguesphere/compare/v5.0.2...v5.0.3) (2026-10-28)
 
 
