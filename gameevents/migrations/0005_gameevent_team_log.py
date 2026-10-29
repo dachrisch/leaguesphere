@@ -4,7 +4,7 @@ import django.db.models.deletion
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("gamedays", "0046_gamelogsubmission_device_lock"),
+        ("gamedays", "0047_alter_gamelogsubmission_created_at"),
         ("gameevents", "0004_gameevent_author"),
     ]
 

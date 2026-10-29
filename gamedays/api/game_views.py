@@ -328,6 +328,11 @@ class GameLogAPIView(APIView):
                     author=request.user,
                     rows=written,
                 )
+            # Serialize *after* the shadow append: ``GameLog`` builds its
+            # ``events`` list lazily, and the rows just written only carry
+            # their event ``seq`` once ``append_legacy`` has linked them. The
+            # answer a client gets for its own write is therefore complete --
+            # do not move this call inside the block above.
             return Response(
                 json.loads(gamelog.as_json(), object_pairs_hook=OrderedDict),
                 # A repeated submission wrote nothing, so it is a 200.
