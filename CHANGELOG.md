@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.1.2](https://github.com/dachrisch/leaguesphere/compare/v5.1.1...v5.1.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* **deploy:** cap container memory and run stage/demo on one worker ([81b4a5d](https://github.com/dachrisch/leaguesphere/commit/81b4a5d9b55c5253acca1a6055efa6faf761e911))
+* **deploy:** cap container memory and run stage/demo on one worker ([6202925](https://github.com/dachrisch/leaguesphere/commit/620292536ec3f1adf565a7b47e26266de40b0ad6))
+
 ## [5.1.1](https://github.com/dachrisch/leaguesphere/compare/v5.1.0...v5.1.1) (2026-10-29)
 
 
