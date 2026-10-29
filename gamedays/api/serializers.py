@@ -1,8 +1,7 @@
 import logging
-from datetime import UTC, datetime, time
 
 from django.db import transaction
-from rest_framework.fields import SerializerMethodField, IntegerField
+from rest_framework.fields import CharField, SerializerMethodField, IntegerField
 from rest_framework.serializers import ModelSerializer, Serializer
 
 from gamedays.models import (
@@ -17,6 +16,7 @@ from gamedays.models import (
     ResourceUrl,
     Team,
 )
+from gamedays.service.gamelog import gameday_ref_now
 from gamedays.service.placeholder_service import GamedayPlaceholderService
 from gamedays.service.utils import utc_time_as_iso
 
@@ -59,6 +59,9 @@ class GamedaySerializer(ModelSerializer):
     resource_urls = ResourceUrlSerializer(
         many=True, source="resourceurl_set", required=False
     )
+    # The mobile clients need the league name, not just the pk; the field is
+    # read-only so the existing write payload stays unchanged.
+    league_display = CharField(source="league.name", read_only=True)
 
     class Meta:
         model = Gameday
@@ -200,7 +203,28 @@ class GameinfoSerializer(ModelSerializer):
 class GameSetupSerializer(ModelSerializer):
     class Meta:
         model = GameSetup
-        fields = ["ctResult", "direction", "fhPossession"]
+        fields = ["ctResult", "direction", "fhPossession", "device_id"]
+        # v1 submits its untouched form fields as empty strings (or omits an
+        # undefined coin toss). The game still has to start — only a truly
+        # invalid value (wrong type, over max_length) may reject the request.
+        extra_kwargs = {
+            **{
+                field: {"required": False, "allow_blank": True}
+                for field in ("ctResult", "direction", "fhPossession")
+            },
+            # The per-game device lock is write-only: the endpoints that need
+            # to read it already answer with it on a 409, and keeping it out of
+            # the GET/PUT body leaves the old app's setup contract unchanged.
+            # ``allow_null``: a client that has no device id yet sends null
+            # (a plain JSON field default); that must not 400 -- it is mapped
+            # to the empty value, never to a lock release.
+            "device_id": {
+                "required": False,
+                "allow_blank": True,
+                "allow_null": True,
+                "write_only": True,
+            },
+        }
 
 
 class GameFinalizer(ModelSerializer):
@@ -223,6 +247,8 @@ class GameLogSerializer(Serializer):
     TEAMLOG_HOME = "teamlog_home"
     TEAMLOG_AWAY = "teamlog_away"
     GAMEDAY_DATE = "gameday_date"
+    IN_POSSESSION = "inPossession"
+    EVENTS = "events"
 
     ALL_FIELD_VALUES = [
         ID,
@@ -235,12 +261,18 @@ class GameLogSerializer(Serializer):
         SCORE_AWAY_OVERALL,
         SCORE_AWAY_FH,
         SCORE_AWAY_SH,
+        IN_POSSESSION,
     ]
 
     gameId = IntegerField(source=ID)
     isFirstHalf = SerializerMethodField("check_first_half")
+    inPossession = CharField(allow_null=True)
+    events = SerializerMethodField()
     home = SerializerMethodField()
     away = SerializerMethodField()
+
+    def get_events(self, obj: dict) -> list:
+        return obj.get(self.EVENTS, [])
 
     def check_first_half(self, obj: dict) -> bool:
         return obj[self.GAME_HALFTIME] is None
@@ -287,16 +319,8 @@ class GameLogSerializer(Serializer):
 
     @staticmethod
     def _gameday_ref_now(obj: dict):
-        """Anchor log times to the gameday date, not to the request time.
-
-        A snapshot also serves past gamedays; anchoring at noon UTC lets
-        ``utc_time_as_iso`` resolve the date of both 00:05 and 23:59 ticks
-        to the gameday's date.
-        """
-        gameday_date = obj.get(GameLogSerializer.GAMEDAY_DATE)
-        if gameday_date is None:
-            return None
-        return datetime.combine(gameday_date, time(12, 0), tzinfo=UTC)
+        """Anchor log times to the gameday date, not to the request time."""
+        return gameday_ref_now(obj.get(GameLogSerializer.GAMEDAY_DATE))
 
     def _create_entries_for_half(self, half_entries: list, ref_now=None):
         result = dict()

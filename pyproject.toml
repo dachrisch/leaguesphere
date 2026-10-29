@@ -62,6 +62,7 @@ include = [
     "officials*",
     "passcheck*",
     "scorecard*",
+    "scorecard_v2*",
     "teammanager*",
     "fe_template*"
 ]

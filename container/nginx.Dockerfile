@@ -39,6 +39,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # remove existing js files (will be packed below)
 RUN rm -rf liveticker/static/liveticker/js
 RUN rm -rf scorecard/static/scorecard/js
+RUN rm -rf scorecard_v2/static/scorecard_v2/js
 RUN rm -rf passcheck/static/passcheck/js
 RUN rm -rf gameday_designer/static/gameday_designer/js
 
@@ -68,6 +69,15 @@ WORKDIR ${APP_DIR}
 
 COPY scorecard ${APP_DIR}
 RUN rm -rf static/scorecard/js
+
+RUN npm ci
+RUN npm run build
+
+ARG APP_DIR="/scorecard-v2-app"
+WORKDIR ${APP_DIR}
+
+COPY scorecard_v2 ${APP_DIR}
+RUN rm -rf static/scorecard_v2/js
 
 RUN npm ci
 RUN npm run build
@@ -119,6 +129,7 @@ COPY --from=python-builder /app/THIRD_PARTY_LICENSES /THIRD_PARTY_LICENSES
 COPY --from=python-builder /app/league_manager/league_manager/static /static
 COPY --from=node-builder /liveticker-app/static /static
 COPY --from=node-builder /scorecard-app/static /static
+COPY --from=node-builder /scorecard-v2-app/static /static
 COPY --from=node-builder /passcheck-app/static /static
 COPY --from=node-builder /gameday-designer-app/static /static
 COPY --from=node-builder /journey-dashboard-app/static /static

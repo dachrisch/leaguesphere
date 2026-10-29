@@ -205,6 +205,36 @@ class SnapshotEndpointTest(APITestCase):
         # restriction, no new leak either.
         assert log == gamelog_endpoint.data
 
+    def test_snapshot_log_carries_possession_and_penalty_events(self):
+        gameday = make_gameday_with_game(author=self.user)
+        game = gameday.gameinfo_set.get()
+        home = game.gameresult_set.get(isHome=True).team
+        game.in_possession = home.name
+        game.save()
+        TeamLogFactory(
+            gameinfo=game,
+            team=home,
+            sequence=0,
+            event="Strafe",
+            input="Holding Defense",
+            player=23,
+            half=1,
+            author=self.user,
+        )
+
+        response = self.client.get(SNAPSHOT_URL, {"include": "games,logs"})
+
+        assert response.status_code == status.HTTP_200_OK
+        entry = next(g for g in response.data["gamedays"] if g["id"] == gameday.id)
+        log = entry["games"][0]["log"]
+        assert log["inPossession"] == home.name
+        assert [event["event"] for event in log["events"]] == [
+            "Strafe",
+            "Touchdown",
+        ]
+        assert log["events"][0]["team"] == home.name
+        assert log["events"][0]["input"] == "Holding Defense"
+
     def test_snapshot_without_include_has_no_games_key(self):
         make_gameday_with_game(author=self.user)
 

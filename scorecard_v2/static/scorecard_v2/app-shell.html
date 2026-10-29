@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html data-theme="auto" lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta content="light dark" name="color-scheme"/>
+  <meta content="#fafafa" media="(prefers-color-scheme: light)" name="theme-color"/>
+  <meta content="#111820" media="(prefers-color-scheme: dark)" name="theme-color"/>
+  <title>LeagueSphere - Scorecard v2</title>
+  <!-- The offline boot shell: a static copy of what
+       templates/scorecard_v2/index.html renders, with no CSRF token and no
+       server data. The worker precaches it and answers offline navigations
+       with it, so the SPA can mount and read IndexedDB. URLs are root
+       absolute because a navigation fallback resolves relative URLs against
+       /scorecard/v2/, not against the cached /static/ document. -->
+  <link href="/static/scorecard_v2/manifest.webmanifest" rel="manifest"/>
+  <link href="/static/scorecard_v2/icons/icon-192.png" rel="apple-touch-icon"/>
+  <link href="/static/league_manager/favicon.svg" rel="icon" type="image/svg+xml"/>
+  <link href="/static/league_manager/favicon.ico" rel="alternate icon" sizes="any"/>
+  <link href="/static/scorecard_v2/js/scorecard_v2.css" rel="stylesheet"/>
+</head>
+<body>
+<div id="scorecard-v2-app"></div>
+<script src="/static/scorecard_v2/js/scorecard_v2.js"></script>
+</body>
+</html>

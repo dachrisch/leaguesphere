@@ -73,7 +73,7 @@ jobs:
           NEW_VERSION: ${{ steps.version.outputs.new }}
         run: |
           sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" league_manager/__init__.py
-          for pkg in liveticker passcheck scorecard gameday_designer journey_dashboard; do
+          for pkg in liveticker passcheck scorecard scorecard_v2 gameday_designer journey_dashboard; do
             sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" "$pkg/package.json"
           done
           sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
@@ -93,7 +93,8 @@ jobs:
 
           git add league_manager/__init__.py \
             liveticker/package.json passcheck/package.json \
-            scorecard/package.json gameday_designer/package.json \
+            scorecard/package.json scorecard_v2/package.json \
+            gameday_designer/package.json \
             journey_dashboard/package.json \
             pyproject.toml uv.lock
 

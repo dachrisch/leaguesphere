@@ -49,6 +49,7 @@ from gamedays.models import (
     TeamLog,
 )
 from gamedays.serializers.game_results import GameInfoSerializer
+from gamedays.service.gamelog import gameday_ref_now, serialize_events
 from gamedays.service.model_helper import TeamLogHelper
 from league_table.api.etag import standing_state_parts
 from league_table.api.standings import build_standings
@@ -429,10 +430,11 @@ def build_game_log(game, gameday_date=None):
     # Mirror GameLogAPIView.get: each side selects by filter(team=<side id>),
     # so a team on both sides (e.g. placeholder double-assignment) appears
     # in both buckets.
+    rows = list(game.teamlog_set.all())
     for bucket, side_team_id in side_team_ids.items():
         if side_team_id is None:
             continue
-        for teamlog in game.teamlog_set.all():
+        for teamlog in rows:
             if teamlog.team_id != side_team_id:
                 continue
             if teamlog.event in TeamLogHelper.EXCLUDED_EVENTS:
@@ -451,12 +453,21 @@ def build_game_log(game, gameday_date=None):
     for entries in teamlogs.values():
         entries.sort(key=lambda entry: entry["sequence"], reverse=True)
 
+    # Already prefetched by build_snapshot_payload: no per-row team query.
+    team_names = {
+        team_id(home_result): team_name(home_result),
+        team_id(away_result): team_name(away_result),
+    }
     gamelog = {
         GameLogSerializer.ID: game.pk,
         GameLogSerializer.GAME_HALFTIME: game.gameHalftime,
         GameLogSerializer.HOME_TEAM: team_name(home_result),
         GameLogSerializer.AWAY_TEAM: team_name(away_result),
         GameLogSerializer.GAMEDAY_DATE: gameday_date,
+        GameLogSerializer.IN_POSSESSION: game.in_possession or None,
+        GameLogSerializer.EVENTS: serialize_events(
+            rows, team_names, gameday_ref_now(gameday_date)
+        ),
         "home_id": team_id(home_result),
         "away_id": team_id(away_result),
         GameLogSerializer.SCORE_HOME_OVERALL: overall(home_result),

@@ -13,6 +13,7 @@ from league_manager.constants import (
     MAINTENANCE_SCOPE_OFF,
     MAINTENANCE_SCOPE_CUSTOM,
     MAINTENANCE_SCOPE_WRITES_ONLY,
+    SERVICE_WORKER_PATHS,
     STATIC_INFO_PATHS,
     STATIC_INFO_PREFIXES,
 )
@@ -85,6 +86,8 @@ class MaintenanceModeMiddleware:
             # Static info files stay reachable during maintenance
             or path.startswith(STATIC_INFO_PREFIXES)
             or path in STATIC_INFO_PATHS.values()
+            # Worker updates must not be redirected either.
+            or path in SERVICE_WORKER_PATHS
             or path == "/health/"
             or path == "/database-error/"
         )

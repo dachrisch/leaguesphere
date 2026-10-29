@@ -90,7 +90,7 @@ if [ "$HOT_MODE" = true ]; then
     echo "🔥 Watch mode enabled for: $HOT_APPS"
     
     # Define all apps
-    apps=("gameday_designer" "passcheck" "liveticker" "scorecard" "journey_dashboard" "share")
+    apps=("gameday_designer" "passcheck" "liveticker" "scorecard" "scorecard_v2" "journey_dashboard" "share")
     
     for app in "${apps[@]}"; do
         if [ -d "$app" ]; then
@@ -98,7 +98,7 @@ if [ "$HOT_MODE" = true ]; then
             SHOULD_WATCH=false
             if [[ "$HOT_APPS" == "all" ]]; then
                 SHOULD_WATCH=true
-            elif [[ "$HOT_APPS" == *"$app"* ]]; then
+            elif [[ "$HOT_APPS" == "$app" ]]; then
                 SHOULD_WATCH=true
             fi
 
@@ -116,7 +116,7 @@ if [ "$HOT_MODE" = true ]; then
     done
 else
     echo "🏗️ Building React apps..."
-    for app in passcheck liveticker scorecard gameday_designer journey_dashboard share; do
+    for app in passcheck liveticker scorecard scorecard_v2 gameday_designer journey_dashboard share; do
         if [ -d "$app" ]; then
             echo "  Building $app..."
             npm --prefix "$app/" install --silent
