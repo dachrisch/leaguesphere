@@ -33,7 +33,7 @@ def events_by_name(payload):
 
 
 @pytest.mark.django_db
-def test_a_canonical_submission_publishes_its_group_seq(client):
+def test_a_canonical_submission_publishes_the_seq_of_each_row(client):
     login(client)
     game, home, _away = make_game("seq")
 
@@ -51,11 +51,12 @@ def test_a_canonical_submission_publishes_its_group_seq(client):
 
     payload = get_log(client, game).json()
     rows = events_by_name(payload)
-    # One submission is one row group: both rows name the group's first seq, so
-    # undoing either removes the touchdown and its conversion together.
+    # Every row names the event that wrote it; the two events are one
+    # submission, so a correction naming either removes both.
     assert rows["Touchdown"]["seq"] == 1
-    assert rows["1-Extra-Punkt"]["seq"] == 1
+    assert rows["1-Extra-Punkt"]["seq"] == 2
     assert rows["Touchdown"]["sequence"] == 1
+    assert rows["1-Extra-Punkt"]["sequence"] == 1
 
 
 @pytest.mark.django_db
@@ -89,7 +90,7 @@ def test_a_shadow_submission_publishes_the_event_seq_not_the_legacy_sequence(cli
 
 
 @pytest.mark.django_db
-def test_a_penalty_keeps_seq_null_because_sequence_zero_is_shared(client):
+def test_a_penalty_names_its_own_event_although_sequence_zero_is_shared(client):
     login(client)
     game, home, _away = make_game("seq")
 
@@ -107,8 +108,10 @@ def test_a_penalty_keeps_seq_null_because_sequence_zero_is_shared(client):
     payload = get_log(client, game).json()
     penalty = next(event for event in payload["events"] if event["event"] == "Strafe")
 
+    # Sequence 0 cannot name a row (every penalty/clock/marker shares it), so
+    # the row is addressed by the event that wrote it.
     assert penalty["sequence"] == 0
-    assert penalty["seq"] is None
+    assert penalty["seq"] == 1
     assert penalty["id"] > 0
 
 

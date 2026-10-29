@@ -114,8 +114,9 @@ captured plays live in an IndexedDB outbox and are drained FIFO.
 of possession, the half-time marker, an undo — is an event appended to
 `POST /api/game/<id>/events`, so all of them queue and replay the same way.
 `PUT /api/game/<id>/possession` and `PUT /api/game/<id>/halftime` are no longer
-called by v2, and the only non-event write left is the legacy `DELETE` for a row
-of a game the old app wrote (its rows carry no event `seq`).
+called by v2, and an undo is a `correction` event even for a penalty. The only
+non-event write left is the legacy `DELETE` for a row that **no event wrote** —
+a game the old app recorded before the event store existed.
 
 | Works offline (after the first load) | Needs network |
 |---|---|
@@ -144,10 +145,11 @@ Rules that make it safe:
    display only; every sync replaces the log with the server payload.
 6. **An undo is a correction event.** The client names the target row's event
    `seq` (`payload.undo_of`), which `GET /api/gamelog/<id>` publishes per row —
-   one extra, additive field on the log. The server removes the whole
-   submission group, so a touchdown and its conversion go together. A row with
-   `seq: null` (a game the old app wrote, or a sequence-0 penalty) keeps the
-   pre-event `DELETE` by `team_log_id`.
+   one extra, additive field on the log. A scoring play's correction removes the
+   whole submission group, so a touchdown and its conversion go together; a
+   penalty's removes exactly its own row, although every penalty shares
+   `sequence 0`. Only a row no event wrote (`seq: null`, the old app's rows)
+   still needs the pre-event `DELETE` by `team_log_id`.
 7. **No API response is cached by the worker.** `/api/**` is per user; the
    IndexedDB preload is the only offline data store.
 

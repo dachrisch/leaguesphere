@@ -1179,16 +1179,17 @@ class TestGameLogQueryCounts(APITestCase):
         # deterministic regardless of test order.
         self.client.get(reverse(API_GAMELOG, kwargs={"id": game.pk}))
 
-        # 53 = 43 (the write itself, device-lock read included)
+        # 54 = 43 (the write itself, device-lock read included)
         #    + 1 for the answered log's per-row `seq` (the event store read);
         #    + 2 for the delete's transaction: SAVEPOINT/RELEASE, because the
         #      undo event and the row delete must commit together;
-        #    + 7 for recording the undo: re-reading the row, the live-sibling
-        #      check, the event read, and the reconciliation flag's SELECT +
-        #      INSERT (each in a savepoint). This row is a sequence-0 penalty
-        #      no event produced, so the log admits it cannot represent the
-        #      undo instead of inventing history.
-        with self.assertNumQueries(53):
+        #    + 8 for recording the undo: re-reading the row, the live-sibling
+        #      check, the lookup of the event that wrote the row (a linked
+        #      row is corrected; this one has none), and the reconciliation
+        #      flag's SELECT + INSERT (each in a savepoint). This row is a
+        #      sequence-0 penalty no event produced, so the log admits it
+        #      cannot represent the undo instead of inventing history.
+        with self.assertNumQueries(54):
             response = self.client.delete(
                 reverse(API_GAMELOG, kwargs={"id": game.pk}),
                 {"team_log_id": row.pk},
