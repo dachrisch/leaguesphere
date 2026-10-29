@@ -222,6 +222,13 @@ export interface GameLogEvent {
   /** `TeamLog` pk — the identity a per-row undo sends as `team_log_id`. */
   id: number;
   sequence: number;
+  /**
+   * The event `seq` that wrote this row's group (slice 2). A correction names
+   * it (`payload.undo_of`). `null` for a game the old app wrote (no events) and
+   * for sequence 0, where many submissions share one sequence — those rows are
+   * still undone by `team_log_id`.
+   */
+  seq?: number | null;
   /** Team name, `null` for a game-level marker (start, halftime, end). */
   team: string | null;
   /** Wire event name ("Touchdown", "Strafe", "First Down", …). */
@@ -276,8 +283,10 @@ export interface Penalty {
 }
 
 /**
- * One event of a `POST /api/gamelog/<gameId>` body. The server writes exactly
- * one `TeamLog` row per entry and resolves the scoring value from the name.
+ * One play as the entry sheets produce it — the shape the screens speak, not
+ * the wire. `session/events.ts` translates it into the event envelopes
+ * `POST /api/game/<id>/events` stores (one `TeamLog` row per event, scoring
+ * value resolved from the code).
  *
  * `player` is the jersey (never a name or a pk). A scoring event counts only
  * when `player` is set: the server stores value 0 otherwise, so a touchdown
@@ -291,8 +300,8 @@ export interface GameLogEventInput {
 }
 
 /**
- * Body of `POST /api/gamelog/<gameId>`. A touchdown and its conversion are two
- * entries of one request, so they share a sequence.
+ * One submission of the entry sheets. A touchdown and its conversion are two
+ * entries of one submission, so they share one sequence.
  */
 export interface GameLogWrite {
   gameId: number;

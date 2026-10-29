@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 
 from gameevents.models import GameEvent
 from gameevents.service.append import append_legacy as shadow_append
+from gameevents.service.log_payload import event_seqs_by_sequence
 from gameevents.service.projector import InvalidEnvelope
 from gameevents.service.undo import record_legacy_undo
 from gamedays.api.serializers import (
@@ -228,6 +229,7 @@ class GameLogAPIView(APIView):
                         ),
                     },
                     gameday_ref_now(gamelog.get(GameLogSerializer.GAMEDAY_DATE)),
+                    event_seqs_by_sequence(game_id),
                 )
             }
         )

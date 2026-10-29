@@ -88,6 +88,11 @@ export interface LogRow {
   key: string;
   /** `TeamLog` pk; `null` only for rows reconstructed from scoring entries. */
   teamLogId: number | null;
+  /**
+   * The event `seq` that wrote this row's group (slice 2), or `null` for a
+   * game the old app wrote / a row reconstructed from scoring entries.
+   */
+  seq: number | null;
   sequence: number;
   team: string | null;
   event: string;
@@ -101,16 +106,30 @@ export interface LogRow {
 }
 
 /**
- * Body of `DELETE /api/gamelog/<id>` for one row.
+ * What undoing one row sends.
  *
- * Scoring plays are undone as a play (`sequence`, so a touchdown takes its
- * conversion with it). Excluded events and the game markers share sequence 0
- * across many rows, so they are undone by row id — deleting sequence 0 would
- * wipe every penalty and timeout of the game.
+ * An event-sourced row names its event `seq` (`{undo_of}`), and the server's
+ * correction removes the whole submission group — a touchdown takes its
+ * conversion with it. A row with no `seq` (a game the old app wrote) or one of
+ * the excluded events / markers keeps the pre-event `DELETE`: they share
+ * sequence 0 across many rows, so deleting sequence 0 would wipe every penalty
+ * and timeout of the game.
  */
 export function undoBody(
   row: LogRow,
-): { sequence: number } | { team_log_id: number } {
+):
+  | { undo_of: number }
+  | { sequence: number }
+  | { team_log_id: number } {
+  // An event-sourced row names its event; the server removes the whole
+  // submission group (a touchdown takes its conversion with it).
+  if (row.seq !== null) {
+    return { undo_of: row.seq };
+  }
+  // Excluded events and the game markers share sequence 0 across many rows, so
+  // they are undone by row id -- deleting sequence 0 would wipe every penalty
+  // and timeout of the game. This is also the only path for a game whose rows
+  // no event wrote (the old app), which has no `seq` at all.
   if (
     row.teamLogId !== null &&
     (EXCLUDED_EVENTS.has(row.event) || row.sequence === 0)
@@ -142,6 +161,7 @@ function eventToRow(event: GameLogEvent): LogRow {
   return {
     key: `e${event.id}`,
     teamLogId: event.id,
+    seq: event.seq ?? null,
     sequence: event.sequence,
     team: event.team,
     event: event.event,
@@ -175,6 +195,7 @@ function fallbackRows(log: GameLog): LogRow[] {
       team[halfKey].entries.forEach((entry: LogEntry, index) => {
         const base = {
           teamLogId: null,
+          seq: null,
           sequence: entry.sequence,
           team: team.name,
           half,

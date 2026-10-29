@@ -5,7 +5,7 @@ import "fake-indexeddb/auto";
 import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
-import { ApiError, apiDelete, apiGet, apiPost, apiPut } from "../api/client";
+import { ApiError, apiDelete, apiGet, apiPost } from "../api/client";
 import type { GameLog, GameLogTeam } from "../api/types";
 import { createOutbox, type Outbox } from "../offline/outbox";
 import { resetSnapshotStore } from "../offline/snapshot";
@@ -25,7 +25,6 @@ vi.mock("../api/client", async (importOriginal) => {
 
 const apiGetMock = apiGet as unknown as Mock;
 const apiPostMock = apiPost as unknown as Mock;
-const apiPutMock = apiPut as unknown as Mock;
 const apiDeleteMock = apiDelete as unknown as Mock;
 
 function team(overrides: Partial<GameLogTeam> = {}): GameLogTeam {
@@ -82,7 +81,6 @@ beforeEach(() => {
   resetSnapshotStore();
   apiGetMock.mockReset();
   apiPostMock.mockReset();
-  apiPutMock.mockReset();
   apiDeleteMock.mockReset();
   outbox = createOutbox();
 });
@@ -101,14 +99,20 @@ describe("offline writes", () => {
     session = makeSession();
   });
 
-  it("queues an event without a request and shows it optimistically", async () => {
+  it("queues an event as envelopes and shows it optimistically", async () => {
     const shown = await session.writeEvent(WRITE);
 
     expect(apiPostMock).not.toHaveBeenCalled();
     const pending = await outbox.pending(42);
     expect(pending).toHaveLength(1);
     expect(pending[0].kind).toBe("event");
-    expect(pending[0].payload).toEqual(WRITE);
+    // The queue holds events, not the sheets' play description.
+    expect(pending[0].payload).toEqual({
+      events: [
+        { type: "score", code: "touchdown", side: "home", player: 23, period: 1 },
+        { type: "score", code: "pat1", side: "home", player: 23, period: 1 },
+      ],
+    });
     expect(shown.home.score).toBe(7);
     expect(shown.events?.[0].event).toBe("1-Extra-Punkt");
     await expect(session.counts()).resolves.toEqual({ pending: 1, failed: 0 });
@@ -118,7 +122,7 @@ describe("offline writes", () => {
     const shown = await session.writeEvent(WRITE);
     const localId = shown.events?.[0].id ?? 0;
 
-    const reverted = await session.undo({ sequence: 1 }, localId);
+    const reverted = await session.undo({ undo_of: 1 }, localId);
 
     expect(apiDeleteMock).not.toHaveBeenCalled();
     await expect(outbox.pending(42)).resolves.toEqual([]);
@@ -126,7 +130,7 @@ describe("offline writes", () => {
     expect(reverted.events).toEqual([]);
   });
 
-  it("queues possession and half-time", async () => {
+  it("queues possession and half-time as events", async () => {
     await session.setPossession("Wolves");
     await session.halftime();
 
@@ -135,12 +139,28 @@ describe("offline writes", () => {
       "possession",
       "halftime",
     ]);
+    expect(pending.map((entry) => entry.payload)).toEqual([
+      { events: [{ type: "possession", code: "away", side: "away" }] },
+      { events: [{ type: "period", code: "half_time", side: null }] },
+    ]);
     expect(session.getLog().inPossession).toBe("Wolves");
     expect(session.getLog().isFirstHalf).toBe(false);
-    expect(apiPutMock).not.toHaveBeenCalled();
+    expect(apiPostMock).not.toHaveBeenCalled();
   });
 
-  it("undoes a synced row by queueing the delete", async () => {
+  it("queues a correction for a stored row", async () => {
+    await session.undo({ undo_of: 4 });
+
+    const pending = await outbox.pending(42);
+    expect(pending).toHaveLength(1);
+    expect(pending[0].kind).toBe("correction");
+    expect(pending[0].payload).toEqual({
+      events: [{ type: "correction", code: "undo", payload: { undo_of: 4 } }],
+    });
+    expect(apiDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps the legacy delete for a row no event wrote", async () => {
     await session.undo({ team_log_id: 9 });
 
     const pending = await outbox.pending(42);
@@ -158,22 +178,44 @@ describe("online writes", () => {
     session = makeSession();
   });
 
-  it("sends the client id and adopts the server log", async () => {
-    apiPostMock.mockResolvedValue(serverLog({ home: team({ score: 7 }) }));
+  it("appends the envelopes and adopts the log it reads back", async () => {
+    apiPostMock.mockResolvedValue({ state: {}, cursor: 2 });
+    apiGetMock.mockResolvedValue(serverLog({ home: team({ score: 7 }) }));
 
     const shown = await session.writeEvent(WRITE);
 
     expect(apiPostMock).toHaveBeenCalledTimes(1);
     const [path, body] = apiPostMock.mock.calls[0] as [string, Record<string, unknown>];
-    expect(path).toBe("/api/gamelog/42");
-    expect(body).toEqual(expect.objectContaining(WRITE));
-    expect(typeof body.client_id).toBe("string");
+    expect(path).toBe("/api/game/42/events");
+    expect(body).toEqual({
+      events: [
+        { type: "score", code: "touchdown", side: "home", player: 23, period: 1 },
+        { type: "score", code: "pat1", side: "home", player: 23, period: 1 },
+      ],
+      client_id: expect.any(String),
+    });
     expect((body.client_id as string).length).toBeGreaterThan(20);
+    // The append answers `{state, cursor}`; the rows (and their `seq`) only
+    // arrive with the read.
+    expect(apiGetMock).toHaveBeenCalledWith("/api/gamelog/42");
     expect(shown.home.score).toBe(7);
     await expect(outbox.pending(42)).resolves.toEqual([]);
   });
 
-  it("queues the write with the same client id when the answer was lost", async () => {
+  it("queues a write whose log read was lost, under the id the server knows", async () => {
+    apiGetMock.mockRejectedValue(new ApiError(500, null, "Der Verlauf klemmt."));
+
+    const shown = await session.writeEvent(WRITE);
+
+    const sentId = (apiPostMock.mock.calls[0][1] as { client_id: string })
+      .client_id;
+    const pending = await outbox.pending(42);
+    expect(pending).toHaveLength(1);
+    expect(pending[0].id).toBe(sentId);
+    expect(shown.home.score).toBe(7);
+  });
+
+  it("queues the write with the same client id when the append was not delivered", async () => {
     apiPostMock.mockRejectedValue(new ApiError(0, null, "Keine Verbindung"));
 
     const shown = await session.writeEvent(WRITE);
@@ -269,7 +311,7 @@ describe("undo guards", () => {
     await vi.waitFor(() => expect(runtime.sync.sendingOp(42)).toBe(op.id));
 
     // Removing the row now would hide an entry the server is about to create.
-    await expect(session.undo({ sequence: 1 }, localId)).rejects.toThrow(
+    await expect(session.undo({ undo_of: 1 }, localId)).rejects.toThrow(
       "gerade übertragen",
     );
     await expect(outbox.get(op.id)).resolves.toBeDefined();
@@ -308,7 +350,7 @@ describe("flush", () => {
     expect(session.getLog().home.score).toBe(7);
 
     setOnline(true);
-    apiPostMock.mockResolvedValue(serverLog({ home: team({ score: 7 }) }));
+    apiGetMock.mockResolvedValue(serverLog({ home: team({ score: 7 }) }));
     await runtime.sync.resume();
 
     await vi.waitFor(() => expect(session.getLog().home.score).toBe(7));
@@ -333,8 +375,7 @@ describe("flush", () => {
     await session.setPossession("Wolves");
 
     setOnline(true);
-    apiPostMock.mockResolvedValue(serverLog({ inPossession: "Ravens" }));
-    apiPutMock.mockResolvedValue(undefined);
+    apiGetMock.mockResolvedValue(serverLog({ inPossession: "Ravens" }));
     const finalLog = serverLog({
       inPossession: "Wolves",
       home: team({ score: 0 }),
@@ -356,21 +397,16 @@ describe("flush", () => {
 
     await runtime.sync.resume();
     // The last server payload wins.
-    expect(apiPostMock).toHaveBeenCalledTimes(1);
-    expect(apiPutMock).toHaveBeenCalledWith(
-      "/api/game/42/possession",
-      { team: "Wolves" },
-      expect.objectContaining({ deviceId: expect.any(String) }),
-    );
-    expect(apiPostMock.mock.calls[0][1]).toEqual(
-      expect.objectContaining({
-        gameId: 42,
-        team: "Ravens",
-        half: 1,
-        event: [{ name: "First Down" }],
-        client_id: expect.any(String),
-      }),
-    );
+    expect(apiPostMock).toHaveBeenCalledTimes(2);
+    expect(apiPostMock.mock.calls[0][0]).toBe("/api/game/42/events");
+    expect(apiPostMock.mock.calls[0][1]).toEqual({
+      events: [{ type: "series", code: "first_down", side: "home", player: null, period: 1 }],
+      client_id: expect.any(String),
+    });
+    expect(apiPostMock.mock.calls[1][1]).toEqual({
+      events: [{ type: "possession", code: "away", side: "away" }],
+      client_id: expect.any(String),
+    });
     await expect(outbox.pending(42)).resolves.toEqual([]);
     // The replay is rebuilt after the drain, so the optimistic row is gone.
     await vi.waitFor(() => expect(session.getLog().events).toEqual([]));
@@ -389,7 +425,7 @@ describe("the not-delivered fallbacks", () => {
     session = makeSession();
   });
 
-  it("queues a delete the network never delivered", async () => {
+  it("queues a legacy delete the network never delivered", async () => {
     apiDeleteMock.mockRejectedValue(new TypeError("Failed to fetch"));
 
     await session.undo({ sequence: 3 });
@@ -401,18 +437,20 @@ describe("the not-delivered fallbacks", () => {
   });
 
   it("queues a possession change the network never delivered", async () => {
-    apiPutMock.mockRejectedValue(new ApiError(0, null, "Keine Verbindung"));
+    apiPostMock.mockRejectedValue(new ApiError(0, null, "Keine Verbindung"));
 
     await session.setPossession("Wolves");
 
     const pending = await outbox.pending(42);
     expect(pending).toHaveLength(1);
     expect(pending[0].kind).toBe("possession");
-    expect(pending[0].payload).toEqual({ team: "Wolves" });
+    expect(pending[0].payload).toEqual({
+      events: [{ type: "possession", code: "away", side: "away" }],
+    });
   });
 
   it("queues a half-time the network never delivered", async () => {
-    apiPutMock.mockRejectedValue(new ApiError(0, null, "Keine Verbindung"));
+    apiPostMock.mockRejectedValue(new ApiError(0, null, "Keine Verbindung"));
 
     await session.halftime();
 
@@ -424,7 +462,7 @@ describe("the not-delivered fallbacks", () => {
   });
 
   it("keeps a rejected possession change out of the queue", async () => {
-    apiPutMock.mockRejectedValue(
+    apiPostMock.mockRejectedValue(
       new ApiError(400, { detail: "Team unbekannt." }, "Team unbekannt."),
     );
 
@@ -435,7 +473,7 @@ describe("the not-delivered fallbacks", () => {
   });
 
   it("keeps a rejected half-time out of the queue", async () => {
-    apiPutMock.mockRejectedValue(
+    apiPostMock.mockRejectedValue(
       new ApiError(409, { detail: "Keine Halbzeit." }, "Keine Halbzeit."),
     );
 
@@ -495,7 +533,7 @@ describe("the successful direct writes", () => {
     session = makeSession();
   });
 
-  it("adopts the whole log the delete answered with", async () => {
+  it("adopts the whole log the legacy delete answered with", async () => {
     apiDeleteMock.mockResolvedValue(
       serverLog({ home: team({ score: 0 }), inPossession: "Wolves" }),
     );
@@ -520,13 +558,26 @@ describe("the successful direct writes", () => {
     await expect(outbox.pending(42)).resolves.toEqual([]);
   });
 
-  it("flips the half after the server accepted the half-time", async () => {
-    apiPutMock.mockResolvedValue(undefined);
+  it("flips the half only once the log says so", async () => {
+    apiPostMock.mockResolvedValue({ state: {}, cursor: 3 });
+    apiGetMock.mockResolvedValue(serverLog({ isFirstHalf: false }));
 
     await session.halftime();
 
-    expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/halftime", {});
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [{ type: "period", code: "half_time", side: null }],
+      client_id: expect.any(String),
+    });
     expect(session.getLog().isFirstHalf).toBe(false);
+  });
+
+  it("keeps the first half when the half-time was refused", async () => {
+    apiPostMock.mockRejectedValue(
+      new ApiError(409, { detail: "Keine Halbzeit." }, "Keine Halbzeit."),
+    );
+
+    await expect(session.halftime()).rejects.toThrow("Keine Halbzeit.");
+    expect(session.getLog().isFirstHalf).toBe(true);
   });
 });
 
@@ -538,10 +589,9 @@ describe("a reloaded queue", () => {
       gameId: 42,
       kind: "event",
       payload: {
-        gameId: 42,
-        team: "Ravens",
-        half: 1,
-        event: [{ name: "First Down" }],
+        events: [
+          { type: "series", code: "first_down", side: "home", period: 1 },
+        ],
       },
       createdAt: 1,
       attempts: 0,

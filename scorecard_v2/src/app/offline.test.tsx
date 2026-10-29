@@ -171,14 +171,18 @@ describe("offline capture", () => {
       const pending = await getRuntime().outbox.pending(42);
       expect(pending).toHaveLength(1);
       expect(pending[0].kind).toBe("event");
-      expect(pending[0].payload).toEqual(
-        expect.objectContaining({
-          gameId: 42,
-          team: "Ravens",
-          half: 1,
-          event: [{ name: "First Down" }],
-        }),
-      );
+      // The queue holds the event, not the sheet's play description.
+      expect(pending[0].payload).toEqual({
+        events: [
+          {
+            type: "series",
+            code: "first_down",
+            side: "home",
+            player: null,
+            period: 1,
+          },
+        ],
+      });
       expect(pending[0].deviceId).toBeTruthy();
     });
     expect(apiPostMock).not.toHaveBeenCalled();
@@ -194,21 +198,32 @@ describe("offline capture", () => {
     // The network is back: the queue drains and the server log wins.
     const clientId = (await getRuntime().outbox.pending(42))[0].id;
     online = true;
-    apiPostMock.mockImplementation(() => Promise.resolve(SERVER_LOG));
+    apiPostMock.mockImplementation(() => Promise.resolve({ state: {}, cursor: 1 }));
+    // The append answers `{state, cursor}`; the log is read after it.
+    apiGetMock.mockImplementation((path: string) =>
+      path === "/api/gamelog/42"
+        ? Promise.resolve(SERVER_LOG)
+        : Promise.reject(new ApiError(500, null, "Server weg")),
+    );
     await getRuntime().sync.resume();
 
     await waitFor(async () => {
       await expect(getRuntime().outbox.pending(42)).resolves.toEqual([]);
     });
     expect(apiPostMock).toHaveBeenCalledWith(
-      "/api/gamelog/42",
-      expect.objectContaining({
+      "/api/game/42/events",
+      {
+        events: [
+          {
+            type: "series",
+            code: "first_down",
+            side: "home",
+            player: null,
+            period: 1,
+          },
+        ],
         client_id: clientId,
-        gameId: 42,
-        team: "Ravens",
-        half: 1,
-        event: [{ name: "First Down" }],
-      }),
+      },
       expect.objectContaining({ deviceId: expect.any(String) }),
     );
     await waitFor(() =>

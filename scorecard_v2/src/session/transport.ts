@@ -1,19 +1,38 @@
 /**
  * Translates one queued op into the HTTP call the server expects.
  *
- * The queue stores `kind` + `payload` (see offline/types.ts); this module is
- * the only place that knows the endpoints, so the outbox itself stays free of
- * API details. It also carries the server's answer, because a log write returns
- * the whole log and the screen has to adopt it ("the server payload always
- * wins"). Publishing is deliberately two-phase: {@link Transport.send} returns
- * the answer, and the engine calls {@link Transport.landed} once the op has
- * left the queue — publishing inside `send` would let the screen replay the
+ * Since slice 2 there is one write: the app **appends events**
+ * (`POST /api/game/<id>/events`). Possession, the half-time marker and undo are
+ * events like a touchdown -- the difference is only their envelope -- so they
+ * queue and replay exactly like a play, offline included. For a legacy row
+ * (a game the old app wrote, whose rows carry no event `seq`) the undo still
+ * uses `DELETE /api/gamelog/<id>`; that is the one remaining non-event write
+ * and it disappears when the old app is sunset.
+ *
+ * The append endpoint answers `{state, cursor}`, not the log, so `send` reads
+ * the log afterwards and returns it. The queue therefore keeps its contract --
+ * "the server payload always wins" -- and the screen adopts the same payload it
+ * always did. A lost read is reported as "not delivered": the op stays queued
+ * with its `client_id`, the replay is a no-op POST answered with the log, and
+ * the screen never shows the play twice.
+ *
+ * Publishing is deliberately two-phase: {@link Transport.send} returns the
+ * answer, and the engine calls {@link Transport.landed} once the op has left
+ * the queue — publishing inside `send` would let the screen replay the
  * still-queued op on top of the server's own numbers.
  */
-import { ApiError, apiDelete, apiPost, apiPut } from "../api/client";
+import { ApiError, apiDelete, apiGet, apiPost } from "../api/client";
 import type { GameLog } from "../api/types";
 import type { Transport } from "../offline/sync";
 import type { PendingOp } from "../offline/types";
+
+export function logPath(gameId: number): string {
+  return `/api/gamelog/${gameId}`;
+}
+
+export function eventsPath(gameId: number): string {
+  return `/api/game/${gameId}/events`;
+}
 
 function isGameLog(value: unknown): value is GameLog {
   if (typeof value !== "object" || value === null) {
@@ -33,16 +52,20 @@ function deviceOption(op: PendingOp): { deviceId: string | null } | undefined {
 }
 
 /**
- * A halftime replayed after its first attempt was applied answers `409`
- * "keine Halbzeit" — the half is already running, which is what the op wanted.
- * Treating it as a rejection would leave a red entry the official cannot fix.
+ * Append one queued op and read back the log it produced.
+ *
+ * `client_id` is the op id: a replay after a lost answer is applied at most
+ * once and answered with the current state, and the read after it returns the
+ * same log the first attempt would have.
  */
-function isAppliedHalftime(error: unknown): boolean {
-  if (!(error instanceof ApiError) || error.status !== 409) {
-    return false;
-  }
-  const detail = `${error.detail ?? ""}`.toLowerCase();
-  return detail.includes("keine halbzeit");
+export async function appendEvents(
+  gameId: number,
+  events: unknown[],
+  clientId: string,
+  options?: { deviceId?: string | null },
+): Promise<GameLog> {
+  await apiPost(eventsPath(gameId), { events, client_id: clientId }, options);
+  return apiGet<GameLog>(logPath(gameId), options);
 }
 
 export function createTransport(
@@ -51,37 +74,26 @@ export function createTransport(
   return {
     async send(op: PendingOp): Promise<unknown> {
       const options = deviceOption(op);
-      const path = `/api/gamelog/${op.gameId}`;
-
-      if (op.kind === "event") {
-        // `client_id` is the op id: a replay after a lost answer is applied at
-        // most once and answered with the current log.
-        const body = { ...(op.payload as object), client_id: op.id };
-        return apiPost<GameLog>(path, body, options);
-      }
 
       if (op.kind === "delete") {
-        return apiDelete<GameLog>(path, op.payload, options);
+        // Legacy rows only (no event `seq`): the pre-slice-2 per-row undo.
+        return apiDelete<GameLog>(logPath(op.gameId), op.payload, options);
       }
 
-      if (op.kind === "possession") {
-        await apiPut<void>(
-          `/api/game/${op.gameId}/possession`,
-          op.payload,
-          options,
+      const payload = op.payload as { events?: unknown[] };
+      const events = payload?.events;
+      if (!Array.isArray(events)) {
+        // A row from a build before slice 2 whose payload cannot be translated
+        // any more. Fail it visibly (retry/drop in the badge) instead of
+        // retrying forever or dropping a tap silently.
+        throw new ApiError(
+          422,
+          { detail: "Dieser Eintrag stammt aus einer älteren App-Version." },
+          "Dieser Eintrag stammt aus einer älteren App-Version.",
         );
-        return undefined;
       }
 
-      try {
-        await apiPut<void>(`/api/game/${op.gameId}/halftime`, {}, options);
-        return undefined;
-      } catch (error) {
-        if (isAppliedHalftime(error)) {
-          return undefined;
-        }
-        throw error;
-      }
+      return appendEvents(op.gameId, events, op.id, options);
     },
 
     landed(op: PendingOp, result: unknown): void {

@@ -12,7 +12,7 @@ import type { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
-import { ApiError, apiGet, apiPut, setDeviceId } from "../api/client";
+import { ApiError, apiGet, apiPost, apiPut, setDeviceId } from "../api/client";
 import type {
   CrewPosition,
   Game,
@@ -35,6 +35,7 @@ vi.mock("../api/client", async (importOriginal) => {
   return {
     ...actual,
     apiGet: vi.fn(),
+    apiPost: vi.fn(),
     apiPut: vi.fn(),
     setDeviceId: vi.fn(),
   };
@@ -45,13 +46,14 @@ vi.mock("../device", () => ({
 }));
 
 const apiGetMock = apiGet as unknown as Mock;
+const apiPostMock = apiPost as unknown as Mock;
 const apiPutMock = apiPut as unknown as Mock;
 const setDeviceIdMock = setDeviceId as unknown as Mock;
 const getDeviceIdMock = getDeviceId as unknown as Mock;
 
 const CREW_PATH = "/api/game/42/officials";
 const SETUP_PATH = "/api/game/42/setup";
-const POSSESSION_PATH = "/api/game/42/possession";
+const EVENTS_PATH = "/api/game/42/events";
 const TEAM_PATH = "/api/officials/team/7/list";
 const LOG_PATH = "/api/gamelog/42";
 const POSITIONS_PATH = "/api/officials/crew-positions/game/42";
@@ -268,6 +270,7 @@ beforeEach(() => {
   crewFailure = null;
 
   apiGetMock.mockReset();
+  apiPostMock.mockReset();
   apiPutMock.mockReset();
   setDeviceIdMock.mockReset();
   getDeviceIdMock.mockReset();
@@ -316,10 +319,16 @@ beforeEach(() => {
     if (path === CREW_PATH) {
       return [];
     }
-    if (path === POSSESSION_PATH) {
-      return undefined;
-    }
     throw new Error(`unexpected PUT ${path}`);
+  });
+
+  apiPostMock.mockImplementation(async (path: string) => {
+    requests.push(`POST ${path}`);
+    startCalls.push(`POST ${path}`);
+    if (path === EVENTS_PATH) {
+      return { state: {}, cursor: 1 };
+    }
+    throw new Error(`unexpected POST ${path}`);
   });
 });
 
@@ -724,7 +733,7 @@ describe("GameSetup — local crew edits", () => {
       `PUT ${CREW_PATH}`,
       `PUT ${SETUP_PATH}`,
       `GET ${LOG_PATH}`,
-      `PUT ${POSSESSION_PATH}`,
+      `POST ${EVENTS_PATH}`,
     ]);
   });
 
@@ -736,10 +745,11 @@ describe("GameSetup — local crew edits", () => {
     await clickStart();
 
     await waitFor(() => expect(startCalls).toContain(`GET ${LOG_PATH}`));
-    expect(apiPutMock).toHaveBeenCalledTimes(2);
+    expect(apiPutMock).toHaveBeenCalledTimes(1);
     expect(apiPutMock).toHaveBeenCalledWith(SETUP_PATH, expect.anything());
-    expect(apiPutMock).toHaveBeenCalledWith(POSSESSION_PATH, {
-      team: "Ravens",
+    expect(apiPostMock).toHaveBeenCalledWith(EVENTS_PATH, {
+      events: [{ type: "possession", code: "home", side: "home" }],
+      client_id: expect.any(String),
     });
     expect(apiPutMock).not.toHaveBeenCalledWith(
       CREW_PATH,
@@ -1228,20 +1238,21 @@ describe("GameSetup — start sequence", () => {
     expect(getDeviceIdMock).toHaveBeenCalledTimes(1);
     expect(setDeviceIdMock).toHaveBeenCalledTimes(1);
     expect(setDeviceIdMock).toHaveBeenCalledWith("device-1");
-    expect(apiPutMock).toHaveBeenCalledTimes(2);
+    expect(apiPutMock).toHaveBeenCalledTimes(1);
     expect(apiPutMock).toHaveBeenCalledWith(SETUP_PATH, {
       ctResult: "home",
       direction: "Ost",
       fhPossession: "home",
       device_id: "device-1",
     });
-    expect(apiPutMock).toHaveBeenCalledWith(POSSESSION_PATH, {
-      team: "Ravens",
+    expect(apiPostMock).toHaveBeenCalledWith(EVENTS_PATH, {
+      events: [{ type: "possession", code: "home", side: "home" }],
+      client_id: expect.any(String),
     });
     expect(startCalls).toEqual([
       `PUT ${SETUP_PATH}`,
       `GET ${LOG_PATH}`,
-      `PUT ${POSSESSION_PATH}`,
+      `POST ${EVENTS_PATH}`,
     ]);
     expect(onStarted).toHaveBeenCalledTimes(1);
   });
@@ -1262,15 +1273,16 @@ describe("GameSetup — start sequence", () => {
       fhPossession: "away",
       device_id: "device-1",
     });
-    expect(apiPutMock).toHaveBeenCalledWith(POSSESSION_PATH, {
-      team: "Wolves",
+    expect(apiPostMock).toHaveBeenCalledWith(EVENTS_PATH, {
+      events: [{ type: "possession", code: "away", side: "away" }],
+      client_id: expect.any(String),
     });
   });
 
-  it("writes the opening possession with the log's team name", async () => {
-    // The games list shows `Team.description`; `PUT /possession` only accepts
-    // `Team.name`, which the log carries. Sending the row label 400s the start
-    // after the setup was already accepted, so the log is read first.
+  it("writes the opening possession as an event after reading the log", async () => {
+    // The possession event names a *side*, but the marker the screen shows is
+    // the team *name*, which only the log carries — the list row is labelled
+    // with `Team.description`. So the log is read first, like before.
     crew = completeCrew();
     const { onStarted } = await renderSetup({
       home: "The rising bird team from the north",
@@ -1284,12 +1296,12 @@ describe("GameSetup — start sequence", () => {
     await clickStart();
 
     await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
-    expect(apiPutMock).toHaveBeenCalledWith(POSSESSION_PATH, { team: "Ravens" });
-    expect(apiPutMock).not.toHaveBeenCalledWith(POSSESSION_PATH, {
-      team: "The rising bird team from the north",
+    expect(apiPostMock).toHaveBeenCalledWith(EVENTS_PATH, {
+      events: [{ type: "possession", code: "home", side: "home" }],
+      client_id: expect.any(String),
     });
     expect(startCalls.indexOf(`GET ${LOG_PATH}`)).toBeLessThan(
-      startCalls.indexOf(`PUT ${POSSESSION_PATH}`),
+      startCalls.indexOf(`POST ${EVENTS_PATH}`),
     );
   });
 
@@ -1423,7 +1435,7 @@ describe("GameSetup — start confirmation", () => {
       `PUT ${CREW_PATH}`,
       `PUT ${SETUP_PATH}`,
       `GET ${LOG_PATH}`,
-      `PUT ${POSSESSION_PATH}`,
+      `POST ${EVENTS_PATH}`,
     ]);
     // The sheet is gone before the write starts: failures belong to the screen.
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -1730,7 +1742,7 @@ describe("GameSetup — start failures and guards", () => {
       `PUT ${SETUP_PATH}`,
       `GET ${LOG_PATH}`,
       `GET ${LOG_PATH}`,
-      `PUT ${POSSESSION_PATH}`,
+      `POST ${EVENTS_PATH}`,
     ]);
     expect(
       apiPutMock.mock.calls.filter(([path]) => path === SETUP_PATH),
@@ -1745,9 +1757,6 @@ describe("GameSetup — start failures and guards", () => {
         return new Promise((resolve) => {
           release = resolve;
         });
-      }
-      if (path === POSSESSION_PATH) {
-        return undefined;
       }
       return [];
     });
@@ -1826,7 +1835,7 @@ describe("GameSetup — warn and confirm", () => {
     expect(startCalls).toEqual([
       `PUT ${SETUP_PATH}`,
       `GET ${LOG_PATH}`,
-      `PUT ${POSSESSION_PATH}`,
+      `POST ${EVENTS_PATH}`,
     ]);
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -2179,7 +2188,7 @@ describe("GameSetup — the remaining data shapes", () => {
       expect(onStarted).toHaveBeenCalledWith({ ...nameless, inPossession: null }),
     );
     expect(
-      apiPutMock.mock.calls.filter(([path]) => path === POSSESSION_PATH),
+      apiPostMock.mock.calls.filter(([path]) => path === EVENTS_PATH),
     ).toHaveLength(0);
   });
 });

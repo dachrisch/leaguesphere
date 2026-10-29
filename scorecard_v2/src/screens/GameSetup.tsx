@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { ApiError, apiGet, apiPut, setDeviceId } from "../api/client";
+import { ApiError, apiGet, apiPost, apiPut, setDeviceId } from "../api/client";
 import type {
   CrewPosition,
   Game,
@@ -29,6 +29,7 @@ import { ChevronRight, SwapArrows, Whistle } from "../components/icons";
 import { initials } from "../components/initials";
 import { getDeviceId } from "../device";
 import { cachedGet, snapshotKey } from "../offline/snapshot";
+import { newOpId } from "../session/ids";
 import { formatGameTime } from "./GameList";
 
 interface GameSetupScreenProps {
@@ -343,7 +344,7 @@ export default function GameSetupScreen({
   const setupPath = `/api/game/${id}/setup`;
   const teamPath = `/api/officials/team/${officialsId}/list`;
   const positionsPath = `/api/officials/crew-positions/game/${id}`;
-  const possessionPath = `/api/game/${id}/possession`;
+  const eventsPath = `/api/game/${id}/events`;
   const logPath = `/api/gamelog/${id}`;
 
   const finished = game.status.trim().toLowerCase() === "beendet";
@@ -728,18 +729,21 @@ export default function GameSetupScreen({
         setDeviceId(deviceId);
       }
       // The log is read before the opening possession is written, not after:
-      // `PUT /possession` stores the team *name* (`Team.name`) and the log is
-      // the only payload that carries it. The game row in the list shows the
-      // long `Team.description`, which the endpoint rejects with a 400 — the
-      // start would otherwise stop right after the setup was accepted.
+      // the possession event names a *side*, but the screen shows the team
+      // *name* (`Team.name`), and the log is the payload that carries it.
       const log = await cachedGet<GameLog>(snapshotKey.log(id), logPath);
       let inPossession = log.inPossession ?? null;
       if (!possessionSent) {
         const team = possession === "home" ? log.home?.name : log.away?.name;
         if (team !== null && team !== undefined && team.trim() !== "") {
-          await apiPut<void>(possessionPath, { team });
+          // The opening possession is an event like every other in-game write;
+          // `PUT /setup` only stores the toss/direction and the device lock.
+          await apiPost(eventsPath, {
+            events: [{ type: "possession", code: possession, side: possession }],
+            client_id: newOpId(),
+          });
           // The log above predates the write and cannot carry the marker yet.
-          // The server accepted exactly this team; the next payload replaces
+          // The server accepted exactly this side; the next payload replaces
           // it anyway.
           inPossession = team;
         }

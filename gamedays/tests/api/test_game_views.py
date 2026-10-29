@@ -360,6 +360,7 @@ class TestGameLog(WebTest):
         assert set(penalty) == {
             "id",
             "sequence",
+            "seq",
             "team",
             "event",
             "player",
@@ -511,7 +512,10 @@ class TestGameLog(WebTest):
         gameinfo = DBSetup().create_teamlog_home_and_away()
         url = reverse(API_GAMELOG, kwargs={"id": gameinfo.pk})
 
-        with self.assertNumQueries(5):
+        # 6 = the log's own queries plus the one read of the event store that
+        # publishes each row's `seq` (gameevents.service.log_payload). Still
+        # flat: it is one query per request, never one per row.
+        with self.assertNumQueries(6):
             assert self.app.get(url).status_code == HTTPStatus.OK
 
         author = gameinfo.gameday.author
@@ -529,7 +533,7 @@ class TestGameLog(WebTest):
                     author=author,
                 )
 
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(6):
             response = self.app.get(url)
         assert len(response.json["events"]) >= 4
 
@@ -1175,7 +1179,8 @@ class TestGameLogQueryCounts(APITestCase):
         # deterministic regardless of test order.
         self.client.get(reverse(API_GAMELOG, kwargs={"id": game.pk}))
 
-        # 52 = 43 (the write itself, device-lock read included)
+        # 53 = 43 (the write itself, device-lock read included)
+        #    + 1 for the answered log's per-row `seq` (the event store read);
         #    + 2 for the delete's transaction: SAVEPOINT/RELEASE, because the
         #      undo event and the row delete must commit together;
         #    + 7 for recording the undo: re-reading the row, the live-sibling
@@ -1183,7 +1188,7 @@ class TestGameLogQueryCounts(APITestCase):
         #      INSERT (each in a savepoint). This row is a sequence-0 penalty
         #      no event produced, so the log admits it cannot represent the
         #      undo instead of inventing history.
-        with self.assertNumQueries(52):
+        with self.assertNumQueries(53):
             response = self.client.delete(
                 reverse(API_GAMELOG, kwargs={"id": game.pk}),
                 {"team_log_id": row.pk},

@@ -296,6 +296,11 @@ export default function TrackingScreen({
   // request runs (or after it failed): the half-time then falls back to
   // handing the ball to the other team.
   const [setup, setSetup] = useState<GameSetup | null>(null);
+  /**
+   * The setup read itself. The half-time awaits it (it resolved long before,
+   * normally) instead of guessing from a state that may not have landed yet.
+   */
+  const setupLoad = useRef<Promise<GameSetup | null> | null>(null);
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [posting, setPosting] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
@@ -377,7 +382,7 @@ export default function TrackingScreen({
     // Read once, long before the half-time: the setup holds the opening
     // possession, which decides who starts the second half. A failed read
     // leaves it `null` and the half-time falls back to switching the ball.
-    cachedGet<GameSetup>(
+    setupLoad.current = cachedGet<GameSetup>(
       snapshotKey.setup(game.id),
       `/api/game/${game.id}/setup`,
     )
@@ -385,9 +390,11 @@ export default function TrackingScreen({
         if (active) {
           setSetup(payload ?? {});
         }
+        return payload ?? {};
       })
       .catch(() => {
         // Nothing to do: `null` already means "no setup to trust".
+        return null;
       });
     return () => {
       active = false;
@@ -515,10 +522,10 @@ export default function TrackingScreen({
    * scored by the defense). Everything else is credited by {@link writeTeam}.
    *
    * A successful write hands the ball over for the change-of-possession events
-   * ({@link flipsPossession}); the flip is a separate `PUT` because the server
-   * does not move the ball for us. It is awaited so a second tap cannot start
-   * from a stale possession, and a failed flip keeps the log (the next reload
-   * reads the truth) while showing why.
+   * ({@link flipsPossession}); the flip is a separate possession *event*
+   * because the server does not move the ball for us. It is awaited so a second
+   * tap cannot start from a stale possession, and a failed flip keeps the log
+   * (the next reload reads the truth) while showing why.
    */
   const submit = async (
     events: GameLogEventInput[],
@@ -549,9 +556,10 @@ export default function TrackingScreen({
       event: events,
     };
     try {
-      // Online this is a `POST`; offline (or after a lost answer) the session
-      // queues the op with its `client_id` and shows it optimistically. The
-      // answer is the whole log, so it replaces what is on screen.
+      // Online this appends events; offline (or after a lost answer) the
+      // session queues the op with its `client_id` and shows it optimistically.
+      // The log read after the append is the whole log, so it replaces what is
+      // on screen.
       await session.writeEvent(body);
       setConfirmation(describeSaved(events));
       if (flipsPossession(events) && opponentName !== null) {
@@ -568,23 +576,30 @@ export default function TrackingScreen({
    * opening kickoff, exactly like v1 (`GameSetup.fhPossession`), whatever the
    * last play did — the teams change ends at half-time, so "flip the ball" is
    * only right when the half happened to end with the ball away from the
-   * kickoff side. {@link setup} is read once when the screen opens, so the
-   * half-time never waits for it; without a usable setup the ball simply goes
-   * to the other team.
+   * kickoff side. {@link setup} is read once when the screen opens, and the
+   * half-time awaits that read; without a usable setup the ball simply goes to
+   * the other team.
    */
-  const secondHalfTeam = (): string | null =>
-    secondHalfPossession(setup, logTeamName(log.home), logTeamName(log.away)) ??
-    opponentName;
+  const secondHalfTeam = async (): Promise<string | null> => {
+    // The read resolved when the screen opened; awaiting it only matters if the
+    // half-time is tapped in the first moments of a slow connection, and then
+    // it is still better than handing the ball to the wrong team.
+    const loaded =
+      setupLoad.current === null ? setup : await setupLoad.current;
+    return (
+      secondHalfPossession(loaded, logTeamName(log.home), logTeamName(log.away)) ??
+      opponentName
+    );
+  };
 
   /**
-   * Halbzeit: the server writes the marker and moves the game to the second
-   * half; the possession switch is ours, because the server keeps the first
-   * possession.
+   * Halbzeit: the server writes the marker (a `period` event) and projects the
+   * game into the second half; the possession switch is ours, because the
+   * server keeps the first possession.
    *
-   * The half is switched locally as soon as the `PUT` is accepted, so the log
-   * and the next write are in the second half even if the log reload below
-   * fails. A rejected transition (409) leaves everything as it was and shows
-   * the server's `detail`.
+   * The half is adopted from the log the append answers with, so the next write
+   * belongs to the second half. A refused append (409) leaves everything as it
+   * was and shows the server's `detail`.
    */
   const startHalftime = async (): Promise<void> => {
     if (halftimeInFlight.current || !log.isFirstHalf || readOnly) {
@@ -603,8 +618,9 @@ export default function TrackingScreen({
     setHalftimeError(null);
     setConfirmHalftime(false);
     try {
-      // Online a `PUT`; offline the op is queued and the half flips locally so
-      // the next entry already belongs to the second half.
+      // Online an event append whose answer carries the flipped half; offline
+      // the op is queued and the half flips locally so the next entry already
+      // belongs to the second half.
       await session.halftime();
     } catch (failure) {
       setHalftimeError(
@@ -617,18 +633,9 @@ export default function TrackingScreen({
       setHalftimePending(false);
       return;
     }
-    const target = secondHalfTeam();
+    const target = await secondHalfTeam();
     if (target !== null) {
       await takePossession(target);
-    }
-    try {
-      // The marker row ("2. Halbzeit gestartet") arrives with the log. A
-      // payload from an older server cannot put the screen back into the first
-      // half: the session already flipped it.
-      await session.refresh();
-    } catch {
-      // The half is already switched; the refresh only adds the marker. The
-      // next write answers with the whole log anyway.
     }
     halftimeInFlight.current = false;
     setHalftimePending(false);

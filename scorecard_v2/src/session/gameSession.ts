@@ -15,7 +15,7 @@
  * {@link replayOps}(last server payload, queued ops) — nothing is recomputed
  * from scratch, and the next server payload replaces it.
  */
-import { ApiError, apiDelete, apiGet, apiPost, apiPut } from "../api/client";
+import { ApiError, apiDelete, apiGet, apiPost } from "../api/client";
 import type { GameLog, GameLogWrite } from "../api/types";
 import { getDeviceId } from "../device";
 import { writeSnapshot, snapshotKey } from "../offline/snapshot";
@@ -24,11 +24,28 @@ import {
   type SyncCounts,
 } from "../offline/sync";
 import type { OpKind, PendingOp, StoredOp } from "../offline/types";
+import {
+  correctionEnvelope,
+  envelopesForWrite,
+  halftimeEnvelope,
+  possessionEnvelope,
+  sideOfName,
+  type EventEnvelope,
+} from "./events";
 import { newOpId } from "./ids";
 import { replayOps } from "./optimistic";
+import { eventsPath, logPath } from "./transport";
 import { getRuntime, type Runtime } from "./runtime";
 
-export type UndoPayload = { sequence: number } | { team_log_id: number };
+/**
+ * What an undo names: the event `seq` of the target row (slice 2), or — for a
+ * row of a game the old app wrote, whose rows have no event — its `TeamLog`
+ * identity, which only the legacy DELETE understands.
+ */
+export type UndoPayload =
+  | { undo_of: number }
+  | { sequence: number }
+  | { team_log_id: number };
 
 export interface GameSession {
   readonly gameId: number;
@@ -74,10 +91,6 @@ function statusOf(error: unknown): number {
 
 function offline(): boolean {
   return globalThis.navigator?.onLine === false;
-}
-
-function logPath(gameId: number): string {
-  return `/api/gamelog/${gameId}`;
 }
 
 /**
@@ -241,6 +254,55 @@ export function createGameSession({
     })
     .catch(() => undefined);
 
+  /**
+   * Append one submission (a list of envelopes) and adopt the log it produced.
+   *
+   * Online: POST, then read the log — the append endpoint answers
+   * `{state, cursor}`, so the rows it wrote (and their `seq`, which undo
+   * needs) only arrive with the read. A POST the network never delivered keeps
+   * its `client_id` in the queue; a POST that landed but whose *read* failed is
+   * queued the same way, where the replay is a no-op answered with the log.
+   */
+  async function append(
+    kind: OpKind,
+    envelopes: EventEnvelope[],
+    opId: string = newOpId(),
+  ): Promise<GameLog> {
+    if (offline()) {
+      await enqueue(kind, { events: envelopes }, opId);
+      return current;
+    }
+    try {
+      await apiPost(eventsPath(gameId), {
+        events: envelopes,
+        client_id: opId,
+      });
+    } catch (error) {
+      if (statusOf(error) === 0) {
+        await enqueue(kind, { events: envelopes }, opId, 1);
+        return current;
+      }
+      noteFailure(error);
+      throw error;
+    }
+    try {
+      const log = await apiGet<GameLog>(logPath(gameId));
+      adopt(log);
+    } catch {
+      // The append was applied; only its log answer was lost. Queue it under
+      // the id the server already knows, so the replay cannot apply it twice.
+      try {
+        await enqueue(kind, { events: envelopes }, opId, 1);
+      } catch {
+        // No queue to fall back on (private mode, full quota). The write still
+        // landed: reporting it as failed would invite the official to tap
+        // again and append the same play under a new `client_id`. The next
+        // successful read adds the row instead.
+      }
+    }
+    return current;
+  }
+
   return {
     gameId,
 
@@ -265,31 +327,10 @@ export function createGameSession({
     adopt,
 
     async writeEvent(body: GameLogWrite): Promise<GameLog> {
-      const opId = newOpId();
-      if (offline()) {
-        await enqueue("event", body);
-        return current;
-      }
-      // The client id is generated before the first attempt: a request that
-      // the server applied but whose answer was lost is replayed with the
-      // same id and therefore applied at most once.
-      try {
-        const log = await apiPost<GameLog>(logPath(gameId), {
-          ...body,
-          client_id: opId,
-        });
-        adopt(log);
-        return current;
-      } catch (error) {
-        if (statusOf(error) === 0) {
-          // Reuse the id that was already sent: the server may have applied
-          // that exact submission and only lost the answer.
-          await enqueue("event", body, opId, 1);
-          return current;
-        }
-        noteFailure(error);
-        throw error;
-      }
+      // The side is resolved here, against the log the screen shows: the
+      // envelope carries `home`/`away`, not the team name the sheets know.
+      const envelopes = envelopesForWrite(body, current);
+      return append("event", envelopes);
     },
 
     async undo(payload: UndoPayload, localEventId?: number): Promise<GameLog> {
@@ -298,8 +339,8 @@ export function createGameSession({
         if (queuedId !== undefined) {
           if (runtime.sync.sendingOp(gameId) === queuedId) {
             // The engine is sending this very op. Removing it now would hide a
-            // row the server is about to create; queueing a `DELETE` is no
-            // better, because the row's server id is not known yet.
+            // row the server is about to create; queueing a correction is no
+            // better, because the row's event `seq` is not known yet.
             throw new Error(
               "Der Eintrag wird gerade übertragen. Bitte gleich noch einmal versuchen.",
             );
@@ -314,61 +355,32 @@ export function createGameSession({
         // `team_log_id`. Nothing to undo.
         return current;
       }
-      if (offline()) {
-        await enqueue("delete", payload);
-        return current;
+      if ("undo_of" in payload) {
+        // A stored row: a correction event names the target's event `seq`, and
+        // the projector removes the whole submission group (a touchdown and
+        // its conversion together).
+        return append("correction", [correctionEnvelope(payload.undo_of)]);
       }
-      try {
-        const log = await apiDelete<GameLog>(logPath(gameId), payload);
-        // A delete is authoritative for the whole log, possession included.
-        adopt(log, "refresh");
-        return current;
-      } catch (error) {
-        if (statusOf(error) === 0) {
-          await enqueue("delete", payload);
-          return current;
-        }
-        noteFailure(error);
-        throw error;
-      }
+      // A row of a game the old app wrote: no event produced it, so only the
+      // legacy per-row/sequence DELETE can undo it.
+      return undoLegacy(payload);
     },
 
     async setPossession(team: string): Promise<void> {
-      if (offline()) {
-        await enqueue("possession", { team });
-        return;
+      const side = sideOfName(team, current);
+      if (side === null) {
+        throw new Error(
+          `Das Team „${team}“ gehört nicht zu diesem Spiel.`,
+        );
       }
-      try {
-        await apiPut<void>(`/api/game/${gameId}/possession`, { team });
-      } catch (error) {
-        if (statusOf(error) === 0) {
-          await enqueue("possession", { team });
-          return;
-        }
-        noteFailure(error);
-        throw error;
-      }
+      await append("possession", [possessionEnvelope(side)]);
     },
 
     async halftime(): Promise<void> {
-      if (offline()) {
-        await enqueue("halftime", {});
-        return;
-      }
-      try {
-        await apiPut<void>(`/api/game/${gameId}/halftime`, {});
-        // The server wrote the marker; the half flips now so the next entry
-        // is already recorded in the second half. The re-read adds the row.
-        base = { ...base, isFirstHalf: false };
-        recompute();
-      } catch (error) {
-        if (statusOf(error) === 0) {
-          await enqueue("halftime", {});
-          return;
-        }
-        noteFailure(error);
-        throw error;
-      }
+      // The half flips (and the marker row appears) with the log the append
+      // answers, not with a local guess: a half-time the server refused must
+      // not leave the screen in the second half.
+      await append("halftime", [halftimeEnvelope()]);
     },
 
     async refresh(): Promise<GameLog> {
@@ -390,4 +402,27 @@ export function createGameSession({
       listeners.clear();
     },
   };
+
+  /** The pre-slice-2 undo: only a row without an event `seq` uses it. */
+  async function undoLegacy(
+    payload: { sequence: number } | { team_log_id: number },
+  ): Promise<GameLog> {
+    if (offline()) {
+      await enqueue("delete", payload);
+      return current;
+    }
+    try {
+      const log = await apiDelete<GameLog>(logPath(gameId), payload);
+      // A delete is authoritative for the whole log, possession included.
+      adopt(log, "refresh");
+      return current;
+    } catch (error) {
+      if (statusOf(error) === 0) {
+        await enqueue("delete", payload);
+        return current;
+      }
+      noteFailure(error);
+      throw error;
+    }
+  }
 }

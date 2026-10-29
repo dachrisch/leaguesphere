@@ -21,8 +21,9 @@ function displayName(team: GameLogTeam): string {
 }
 
 /**
- * Possession is stored as the team *name* (the old app and `PUT /possession`
- * both write it), but a seeded game may hold the pk — accept both.
+ * Possession is stored as the team *name* (the projection writes it from a
+ * `possession` event; the old app writes it through `PUT /possession`), but a
+ * seeded game may hold the pk — accept both.
  */
 export function isPossessing(
   team: GameLogTeam,

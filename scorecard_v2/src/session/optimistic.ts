@@ -9,76 +9,42 @@
  * both the rows and the score, which is why nothing here is persisted: a
  * reload rebuilds the same view from the snapshot plus the durable queue.
  *
+ * Since slice 2 the queue holds **events**, not play descriptions, so this
+ * module also answers "what does this event look like on screen" (via
+ * `displayOf` in `./events`) — still only for the delta, never for the base.
+ *
  * Synthetic rows carry a negative `id`; {@link ReplayResult.opByEventId} maps
  * each one back to the queued op that produced it, so undoing a row that never
- * reached the server removes the op instead of calling `DELETE`.
+ * reached the server removes the op instead of appending a correction.
  */
 import type {
   GameLog,
   GameLogEvent,
-  GameLogEventInput,
   GameLogTeam,
 } from "../api/types";
-import type { StoredOp } from "../offline/types";
-
-/** Mirrors `SCORING_EVENT_VALUES` in gamedays/service/gamelog.py. */
-const SCORING_VALUES: Record<string, number> = {
-  Touchdown: 6,
-  Overtime: 1,
-  "1-Extra-Punkt": 1,
-  "Safety (+1)": 1,
-  "2-Extra-Punkte": 2,
-  "Safety (+2)": 2,
-};
-
-/**
- * Mirrors `GameLogCreator._coerce_player` (`gamedays/service/gamelog.py`):
- * `TeamLog.player` is an unsigned small integer, and anything that is not a
- * jersey number in `0..32767` is dropped to `None` — which scores nothing.
- * A jersey of `"51.85"` is truncated to 51 there; without the same rule here the
- * optimistic score would promise points the server never writes.
- */
-const PLAYER_MIN = 0;
-const PLAYER_MAX = 32767;
-
-export function coercePlayer(value: unknown): number | null {
-  if (value === null || value === undefined || value === "") {
-    return null;
-  }
-  const number = Math.trunc(Number(value));
-  if (!Number.isFinite(number)) {
-    return null;
-  }
-  if (number < PLAYER_MIN || number > PLAYER_MAX) {
-    return null;
-  }
-  return number;
-}
-
-/** Events the server stores with `sequence = 0`. */
-const EXCLUDED_EVENTS = new Set([
-  "Strafe",
-  "Spielzeit",
-  "Auszeit",
-  "First Down",
-]);
-
-const HALFTIME_MARKER = "2. Halbzeit gestartet";
+import type { PendingOp, StoredOp } from "../offline/types";
+import {
+  EXCLUDED_EVENTS,
+  coercePlayer,
+  displayOf,
+  envelopesForWrite,
+  halftimeEnvelope,
+  possessionEnvelope,
+  sideOfName,
+  type EventEnvelope,
+} from "./events";
 
 type Side = "home" | "away";
-
 export interface ReplayResult {
   log: GameLog;
   /** Synthetic (negative) event id → the queued op that produced it. */
   opByEventId: Map<number, string>;
 }
 
-/** One event input as the wire stores it. */
-interface EventPayload {
-  gameId?: number;
+interface LegacyWritePayload {
   team?: string;
   half?: number;
-  event?: GameLogEventInput[];
+  event?: { name: string; player?: number | string; input?: string }[];
 }
 
 interface DeletePayload {
@@ -86,32 +52,69 @@ interface DeletePayload {
   team_log_id?: number;
 }
 
-interface PossessionPayload {
-  team?: string;
-}
+/**
+ * The envelopes one queued op stands for.
+ *
+ * New rows carry them (`{events: [...]}`). A row written by a build before
+ * slice 2 still carries the play description or the old `{team}` possession
+ * payload, so it is translated here — the queue must survive an app update.
+ * `null` means "cannot be translated" (a possession op whose team is not in
+ * this log); the transport turns that into a visible rejection rather than a
+ * silent drop.
+ */
+export function envelopesOf(
+  op: Pick<PendingOp, "kind" | "payload">,
+  log: GameLog,
+): EventEnvelope[] | null {
+  const payload = op.payload as { events?: EventEnvelope[] };
+  if (Array.isArray(payload?.events)) {
+    return payload.events;
+  }
 
-function pointsOf(name: string, player: number | null | undefined): number {
-  // The server stores value 0 when a scoring event has no usable jersey, so a
-  // touchdown without one scores nothing. Mirror that, including the range
-  // check: an out-of-range jersey is dropped server-side and must not score
-  // here either.
-  if (coercePlayer(player) === null) {
-    return 0;
+  if (op.kind === "event") {
+    const legacy = op.payload as LegacyWritePayload;
+    if (!Array.isArray(legacy?.event) || typeof legacy.team !== "string") {
+      return null;
+    }
+    try {
+      return envelopesForWrite(
+        {
+          gameId: 0,
+          team: legacy.team,
+          half: legacy.half === 2 ? 2 : 1,
+          event: legacy.event.map((entry) => ({
+            name: entry.name,
+            player: entry.player as number | undefined,
+            input: entry.input,
+          })),
+        },
+        log,
+      );
+    } catch {
+      return null;
+    }
   }
-  return SCORING_VALUES[name] ?? 0;
-}
 
-function sideOf(teamName: string | undefined, log: GameLog): Side | null {
-  const token = teamName?.trim().toLowerCase();
-  if (token === undefined || token === "") {
-    return null;
+  if (op.kind === "possession") {
+    const payload = op.payload as { code?: Side; team?: string };
+    const side =
+      payload?.code === "home" || payload?.code === "away"
+        ? payload.code
+        : sideOfName(payload?.team, log);
+    return side === null ? null : [possessionEnvelope(side)];
   }
-  if (log.home.name?.trim().toLowerCase() === token) {
-    return "home";
+
+  if (op.kind === "halftime") {
+    return [halftimeEnvelope()];
   }
-  if (log.away.name?.trim().toLowerCase() === token) {
-    return "away";
+
+  if (op.kind === "correction") {
+    const undoOf = (op.payload as { undo_of?: number })?.undo_of;
+    return typeof undoOf === "number"
+      ? [{ type: "correction", code: "undo", payload: { undo_of: undoOf } }]
+      : null;
   }
+
   return null;
 }
 
@@ -147,8 +150,8 @@ function withDelta(log: GameLog, side: Side, half: number, delta: number): void 
   }
 }
 
-function eventValue(event: GameLogEvent): number {
-  return pointsOf(event.event, event.player);
+function teamName(log: GameLog, side: Side): string | null {
+  return side === "home" ? log.home.name : log.away.name;
 }
 
 /**
@@ -176,41 +179,47 @@ export function replayOps(base: GameLog, ops: StoredOp[]): ReplayResult {
     events.reduce((max, event) => Math.max(max, event.sequence), 0) + 1;
   let nextLocalId = 0;
 
-  for (const op of ops) {
-    if (op.kind === "event") {
-      const payload = op.payload as EventPayload;
-      const inputs = payload.event ?? [];
-      const half = payload.half === 2 ? 2 : 1;
-      const side = sideOf(payload.team, log);
-      const needsSequence = inputs.some(
-        (entry) => !EXCLUDED_EVENTS.has(entry.name),
-      );
-      const sequence = needsSequence ? nextSeq++ : 0;
-      for (const entry of inputs) {
-        const player = coercePlayer(entry.player);
-        const value = pointsOf(entry.name, player);
-        if (side !== null) {
-          withDelta(log, side, half, value);
-        }
-        const localId = --nextLocalId;
-        opByEventId.set(localId, op.id);
-        events.unshift({
-          id: localId,
-          sequence,
-          team: payload.team ?? null,
-          event: entry.name,
-          player,
-          input: entry.input ?? null,
-          half,
-          cop: entry.name === "Turnover" || entry.name === "Interception",
-          isDeleted: false,
-          time: new Date(op.createdAt).toISOString(),
-        });
-      }
-      continue;
-    }
+  const row = (
+    op: StoredOp,
+    name: string,
+    {
+      side = null,
+      player = null,
+      input = null,
+      half,
+      cop = false,
+      excluded = false,
+    }: {
+      side?: Side | null;
+      player?: number | null;
+      input?: string | null;
+      half: number;
+      cop?: boolean;
+      excluded?: boolean;
+    },
+  ): void => {
+    const sequence = excluded ? 0 : nextSeq++;
+    const localId = --nextLocalId;
+    opByEventId.set(localId, op.id);
+    events.unshift({
+      id: localId,
+      sequence,
+      seq: null,
+      team: side === null ? null : teamName(log, side),
+      event: name,
+      player,
+      input,
+      half,
+      cop,
+      isDeleted: false,
+      time: new Date(op.createdAt).toISOString(),
+    });
+  };
 
+  for (const op of ops) {
     if (op.kind === "delete") {
+      // The pre-slice-2 undo, still queued on a device that has not reloaded
+      // since the update (or used by an official on a legacy row).
       const payload = op.payload as DeletePayload;
       for (const event of events) {
         if (event.isDeleted) {
@@ -225,42 +234,124 @@ export function replayOps(base: GameLog, ops: StoredOp[]): ReplayResult {
           continue;
         }
         event.isDeleted = true;
-        const side = sideOf(event.team ?? undefined, log);
+        const side = sideOfName(event.team ?? undefined, log);
         if (side !== null) {
-          withDelta(log, side, event.half, -eventValue(event));
+          withDelta(log, side, event.half, -pointsOfRow(event));
         }
       }
       continue;
     }
 
-    if (op.kind === "possession") {
-      log.inPossession = (op.payload as PossessionPayload).team ?? null;
+    const envelopes = envelopesOf(op, log);
+    if (envelopes === null) {
       continue;
     }
-
-    // Halftime: the same two effects the server applies — the half flips and
-    // the marker row appears.
-    if (log.isFirstHalf) {
-      log.isFirstHalf = false;
-      const localId = --nextLocalId;
-      opByEventId.set(localId, op.id);
-      events.unshift({
-        id: localId,
-        sequence: 0,
-        team: null,
-        event: HALFTIME_MARKER,
-        player: null,
-        input: null,
-        half: 2,
-        cop: false,
-        isDeleted: false,
-        time: new Date(op.createdAt).toISOString(),
-      });
+    for (const envelope of envelopes) {
+      applyEnvelope(op, envelope);
     }
+  }
+
+  function applyEnvelope(op: StoredOp, envelope: EventEnvelope): void {
+    const display = displayOf(envelope);
+    const half = envelope.period === 2 ? 2 : 1;
+
+    if (envelope.type === "correction") {
+      // The target is a stored row group: mark its rows deleted and take
+      // their points back, exactly as the projector's correction does.
+      const undoOf = envelope.payload?.undo_of;
+      if (typeof undoOf !== "number") {
+        return;
+      }
+      for (const event of events) {
+        if (event.isDeleted || event.seq !== undoOf) {
+          continue;
+        }
+        event.isDeleted = true;
+        const side = sideOfName(event.team ?? undefined, log);
+        if (side !== null) {
+          withDelta(log, side, event.half, -pointsOfRow(event));
+        }
+      }
+      return;
+    }
+
+    if (envelope.type === "possession" && display.event === null) {
+      // `home`/`away` only moves the marker: no row, no points. An empty code
+      // clears it (the marker went stale), exactly as the projection does.
+      const side =
+        envelope.code === "home" || envelope.code === "away"
+          ? envelope.code
+          : null;
+      log.inPossession = side === null ? null : teamName(log, side);
+      return;
+    }
+
+    if (display.event === null) {
+      return;
+    }
+
+    if (envelope.type === "period" && envelope.code === "half_time") {
+      // The same two effects the server applies: the half flips and the marker
+      // row appears (once -- a second half-time is a no-op).
+      if (!log.isFirstHalf) {
+        return;
+      }
+      log.isFirstHalf = false;
+    }
+
+    const side =
+      envelope.side === "home" || envelope.side === "away"
+        ? envelope.side
+        : null;
+    const player = coercePlayer(envelope.player);
+    // A scoring event without a usable jersey scores nothing (the server
+    // stores value 0), so the optimistic score must not promise points.
+    const value = coercePlayer(player) === null ? 0 : display.value;
+    if (side !== null) {
+      withDelta(log, side, half, value);
+    }
+    row(op, display.event, {
+      side,
+      player,
+      input: inputOf(envelope),
+      half,
+      cop: display.cop,
+      excluded: display.excluded,
+    });
   }
 
   return { log, opByEventId };
 }
+
+/**
+ * The free-text detail a row shows: the penalty name (`Strafe`), the clock or
+ * the kickoff note. Mirrors `TeamLog.input` in the projector.
+ */
+function inputOf(envelope: EventEnvelope): string | null {
+  if (envelope.type === "penalty") {
+    return envelope.code ?? null;
+  }
+  const input = envelope.payload?.input;
+  return typeof input === "string" ? input : null;
+}
+
+/** The points an existing row contributes (a jersey-less score is worth 0). */
+function pointsOfRow(event: GameLogEvent): number {
+  if (coercePlayer(event.player) === null) {
+    return 0;
+  }
+  return SCORING_VALUES[event.event] ?? 0;
+}
+
+/** Mirrors `SCORING_EVENT_VALUES`; the row's own name is the whole truth. */
+const SCORING_VALUES: Record<string, number> = {
+  Touchdown: 6,
+  Overtime: 1,
+  "1-Extra-Punkt": 1,
+  "Safety (+1)": 1,
+  "2-Extra-Punkte": 2,
+  "Safety (+2)": 2,
+};
 
 function cloneTeam(team: GameLogTeam): GameLogTeam {
   return {

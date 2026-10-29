@@ -160,9 +160,11 @@ beforeEach(() => {
     }
     return Promise.resolve(undefined);
   });
-  apiPostMock.mockImplementation((path: string) => {
-    calls.push(`POST ${path}`);
-    return Promise.resolve(log({ home: team({ score: 0 }) }));
+  apiPostMock.mockImplementation((path: string, body: unknown) => {
+    // The append endpoint answers `{state, cursor}`; the log is read after it.
+    const events = (body as { events?: { type?: string }[] })?.events ?? [];
+    calls.push(`POST ${path}:${events[0]?.type ?? "?"}`);
+    return Promise.resolve({ state: {}, cursor: 1 });
   });
   apiDeleteMock.mockImplementation(() =>
     Promise.reject(new ApiError(400, null, "not in this test")),
@@ -225,7 +227,15 @@ describe("the whole flow", () => {
         name: "Speichern",
       }),
     );
-    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(
+        apiPostMock.mock.calls.filter(([, body]) =>
+          (body as { events?: { type?: string }[] }).events?.some(
+            (event) => event.type !== "possession",
+          ),
+        ),
+      ).toHaveLength(1),
+    );
 
     // 5. Finalise; "Spielstand bearbeiten" reopens tracking from the server
     // log (never from the optimistic one) and returns here.
@@ -282,17 +292,17 @@ describe("the whole flow", () => {
     await expect(readSnapshot(snapshotKey.log(42))).resolves.toBeUndefined();
     await expect(readSnapshot(snapshotKey.setup(42))).resolves.toBeUndefined();
 
-    // The write order is the flow: start, first possession, the event, then
-    // the result.
+    // The write order is the flow: start, the opening possession as an event,
+    // the play as an event, then the result. Nothing writes outside `/events`.
     expect(calls.filter((call) => !call.startsWith("GET"))).toEqual([
       "PUT /api/game/42/setup",
-      "PUT /api/game/42/possession",
-      "POST /api/gamelog/42",
+      "POST /api/game/42/events:possession",
+      "POST /api/game/42/events:series",
       "PUT /api/game/42/finalize",
     ]);
     // The log was read after the start was accepted, before the event.
     expect(calls.indexOf("GET /api/gamelog/42")).toBeLessThan(
-      calls.indexOf("POST /api/gamelog/42"),
+      calls.indexOf("POST /api/game/42/events:series"),
     );
     expect(calls.indexOf("GET /api/game/42/setup")).toBeLessThan(
       calls.indexOf("PUT /api/game/42/setup"),

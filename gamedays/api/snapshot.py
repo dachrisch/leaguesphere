@@ -37,6 +37,10 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle
 from rest_framework.views import APIView
 
+from gameevents.service.log_payload import (
+    event_seqs_by_game,
+    event_seqs_by_sequence,
+)
 from gamedays.api.serializers import GamedayListSerializer, GameLogSerializer
 from gamedays.models import (
     Gameday,
@@ -395,7 +399,7 @@ def scope_cache_key(filters, include):
     return f"snapshot:scope:v2:{digest}"
 
 
-def build_game_log(game, gameday_date=None):
+def build_game_log(game, gameday_date=None, seq_by_sequence=None):
     """Same payload shape as GET /api/gamelog/<id>, built from prefetched
     relations instead of fresh queries. Mirrors GameLogAPIView.get."""
     if gameday_date is None:
@@ -466,7 +470,14 @@ def build_game_log(game, gameday_date=None):
         GameLogSerializer.GAMEDAY_DATE: gameday_date,
         GameLogSerializer.IN_POSSESSION: game.in_possession or None,
         GameLogSerializer.EVENTS: serialize_events(
-            rows, team_names, gameday_ref_now(gameday_date)
+            rows,
+            team_names,
+            gameday_ref_now(gameday_date),
+            (
+                event_seqs_by_sequence(game.pk)
+                if seq_by_sequence is None
+                else seq_by_sequence
+            ),
         ),
         "home_id": team_id(home_result),
         "away_id": team_id(away_result),
@@ -543,6 +554,15 @@ def build_snapshot_payload(filters, include):
         )
     )
     live_by_game = build_live_by_game(gamedays) if INCLUDE_LIVE in include else {}
+    # One query for every game's event `seq`, not one per game: the snapshot is
+    # the mass read and must stay a handful of queries.
+    seqs_by_game = (
+        event_seqs_by_game(
+            game.pk for gameday in gamedays for game in gameday.gameinfo_set.all()
+        )
+        if INCLUDE_LOGS in include
+        else {}
+    )
     entries = []
     for gameday in gamedays:
         entry = dict(GamedayListSerializer(gameday).data)
@@ -551,7 +571,9 @@ def build_snapshot_payload(filters, include):
             for game in gameday.gameinfo_set.all():
                 game_data = dict(GameInfoSerializer(game).data)
                 if INCLUDE_LOGS in include:
-                    game_data["log"] = build_game_log(game, gameday.date)
+                    game_data["log"] = build_game_log(
+                        game, gameday.date, seqs_by_game.get(game.pk, {})
+                    )
                 live = live_by_game.get(game.pk)
                 if live is not None and game.status != Gameinfo.STATUS_COMPLETED:
                     # Contract with LivetickerService: LIVE_FIELDS must exist.

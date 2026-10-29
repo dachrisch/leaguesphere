@@ -205,6 +205,54 @@ class SnapshotEndpointTest(APITestCase):
         # restriction, no new leak either.
         assert log == gamelog_endpoint.data
 
+    def test_snapshot_log_publishes_the_event_seq_the_endpoint_does(self):
+        gameday = make_gameday_with_game(author=self.user, with_log=False)
+        game = gameday.gameinfo_set.get()
+        self.client.force_authenticate(self.user)
+        # A canonical submission is the only writer that produces events, and
+        # the snapshot must hand out the same handle a correction names as the
+        # per-game endpoint -- a preloaded log with a stale/absent `seq` would
+        # make undo fail offline.
+        self.client.post(
+            f"/api/game/{game.pk}/events",
+            data={
+                "events": [
+                    {"type": "score", "code": "touchdown", "side": "home", "player": 42}
+                ],
+                "client_id": "snapshot-sub",
+            },
+            format="json",
+        )
+
+        snapshot = self.client.get(SNAPSHOT_URL, {"include": "games,logs"})
+        endpoint = self.client.get(f"/api/gamelog/{game.pk}")
+
+        entry = next(g for g in snapshot.data["gamedays"] if g["id"] == gameday.id)
+        log = entry["games"][0]["log"]
+        seqs = lambda payload: [
+            (event["id"], event["sequence"], event["seq"])
+            for event in payload["events"]
+        ]
+        assert seqs(log) == seqs(endpoint.data)
+        assert seqs(log) == [(TeamLog.objects.get(gameinfo=game).pk, 1, 1)]
+
+    def test_snapshot_reads_the_event_seqs_once_for_the_whole_scope(self):
+        # The snapshot exists to replace a per-game scrape; a per-game event
+        # query would reintroduce exactly that N+1.
+        for _ in range(3):
+            make_gameday_with_game(author=self.user)
+
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get(SNAPSHOT_URL, {"include": "games,logs"})
+
+        assert response.status_code == status.HTTP_200_OK
+        event_queries = [
+            query["sql"]
+            for query in queries.captured_queries
+            if "gameevents_gameevent" in query["sql"]
+        ]
+        assert len(event_queries) == 1, event_queries
+
     def test_snapshot_log_carries_possession_and_penalty_events(self):
         gameday = make_gameday_with_game(author=self.user)
         game = gameday.gameinfo_set.get()

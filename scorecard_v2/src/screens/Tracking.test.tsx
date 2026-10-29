@@ -8,7 +8,13 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
-import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+
+import "fake-indexeddb/auto";
+
+import { IDBFactory } from "fake-indexeddb";
+
+import { createOutbox } from "../offline/outbox";
 
 import { ApiError, apiDelete, apiGet, apiPost, apiPut } from "../api/client";
 import { TeamLogosProvider } from "../app/teamLogos";
@@ -76,6 +82,8 @@ function isoAt(hour: number, minute: number): string {
 interface EventOverrides {
   id?: number;
   sequence?: number;
+  /** The event `seq` a correction names; `null`/absent is a legacy row. */
+  seq?: number | null;
   team?: string | null;
   event?: string;
   player?: number | null;
@@ -90,6 +98,7 @@ function logEvent(overrides: EventOverrides = {}): GameLogEvent {
   return {
     id: 1,
     sequence: 1,
+    seq: null,
     team: "Ravens",
     event: "Touchdown",
     player: null,
@@ -164,20 +173,103 @@ async function clickUndo(name: RegExp): Promise<void> {
   await user.click(screen.getByRole("button", { name }));
 }
 
+type SentEvents = { type?: string; code?: string }[] | undefined;
+
+/**
+ * A *ball change* is a plain `possession` event with a side — not the turnover
+ * and interception plays, which are `possession` events with a play code.
+ */
+function isPossessionChange(body: unknown): boolean {
+  const events = (body as { events?: SentEvents })?.events;
+  return (
+    events?.length === 1 &&
+    events[0].type === "possession" &&
+    (events[0].code === "home" || events[0].code === "away")
+  );
+}
+
+/** The possession changes the screen appended, in order (`away`, `home`, …). */
+function sentPossessions(): string[] {
+  return apiPostMock.mock.calls
+    .map(([, body]) => body)
+    .filter(isPossessionChange)
+    .map(
+      (body) =>
+        ((body as { events: SentEvents }).events?.[0]?.code ?? "") as string,
+    );
+}
+
+/** The play and correction appends (everything but a ball change). */
+function sentWrites(): unknown[] {
+  return apiPostMock.mock.calls
+    .map(([, body]) => body)
+    .filter((body) => !isPossessionChange(body));
+}
+
+/** Answer every append immediately, but hang or reject the ball change. */
+function answerPossession(handler: () => Promise<unknown>): void {
+  apiPostMock.mockImplementation((_path: string, body: unknown) =>
+    isPossessionChange(body)
+      ? handler()
+      : Promise.resolve({ state: {}, cursor: 1 }),
+  );
+}
+
+/**
+ * The log the next append answers with.
+ *
+ * The write is now `POST /api/game/<id>/events` (answer: `{state, cursor}`)
+ * followed by a read of the log, so a test that wants a specific log sets it
+ * here and `routeGets` serves it — the same payload the screen would adopt.
+ */
+let appendLog: GameLog | null = null;
+
+function answerAppend(log: GameLog): void {
+  appendLog = log;
+  apiPostMock.mockResolvedValue({ state: {}, cursor: 1 });
+  // The session reads the log back after the append; serve it from here so a
+  // test only has to name the log it wants, whatever its other GET stubs are.
+  const previous = apiGetMock.getMockImplementation();
+  apiGetMock.mockImplementation((path: string, options?: unknown) =>
+    path === "/api/gamelog/42"
+      ? Promise.resolve(log)
+      : previous === undefined
+        ? Promise.reject(new Error(`unexpected GET ${path}`))
+        : previous(path, options),
+  );
+}
+
 beforeEach(() => {
   // One runtime per test: a pause (device lock, expired session) is app-wide
   // by design and must not leak into the next case.
+  // The offline queue is IndexedDB-backed, and a lost log answer falls back to
+  // it: a test without a database would fail where the app would not.
+  vi.stubGlobal("indexedDB", new IDBFactory());
   resetRuntime();
   resetSnapshotStore();
+  appendLog = null;
   apiPutMock.mockReset();
   apiDeleteMock.mockReset();
   apiPostMock.mockReset();
   apiGetMock.mockReset();
   apiPutMock.mockResolvedValue(undefined);
-  apiPostMock.mockResolvedValue(makeLog());
+  apiPostMock.mockResolvedValue({ state: {}, cursor: 1 });
   // The roster request only matters for the entry sheets; a pending promise
   // keeps the unrelated tests free of state updates after they finished.
   apiGetMock.mockReturnValue(new Promise(() => undefined));
+});
+
+afterEach(async () => {
+  // A write whose log read failed is queued; let that land, then empty the
+  // queue so the next case starts from a known state (a leftover half-time
+  // would otherwise be flushed into the next test).
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  resetRuntime();
+  await createOutbox().clearAll();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 /**
@@ -259,8 +351,9 @@ describe("Tracking possession", () => {
 
     await user.click(screen.getByRole("button", { name: /^Wolves/ }));
 
-    expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/possession", {
-      team: "Wolves",
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [{ type: "possession", code: "away", side: "away" }],
+      client_id: expect.any(String),
     });
     await waitFor(() =>
       expect(
@@ -270,7 +363,7 @@ describe("Tracking possession", () => {
   });
 
   it("sends only one possession change for two rapid taps", () => {
-    apiPutMock.mockReturnValue(new Promise(() => undefined));
+    answerPossession(() => new Promise(() => undefined));
     render(
       <TrackingScreen
         game={GAME}
@@ -283,13 +376,13 @@ describe("Tracking possession", () => {
     fireEvent.click(wolves);
     fireEvent.click(wolves);
 
-    expect(apiPutMock).toHaveBeenCalledTimes(1);
+    expect(sentPossessions()).toEqual(["away"]);
     expect(wolves).toBeDisabled();
   });
 
   it("rolls the marker back when the request fails", async () => {
-    apiPutMock.mockRejectedValueOnce(
-      new ApiError(500, { detail: "Server weg" }, "Server weg"),
+    answerPossession(() =>
+      Promise.reject(new ApiError(500, { detail: "Server weg" }, "Server weg")),
     );
     render(
       <TrackingScreen
@@ -455,7 +548,35 @@ describe("Tracking event log", () => {
 });
 
 describe("Tracking undo", () => {
-  it("undoes a scoring play by sequence", async () => {
+  it("undoes an event-sourced row with a correction event", async () => {
+    answerAppend(
+      makeLog({
+        events: [
+          logEvent({ id: 5, sequence: 3, seq: 7, event: "Touchdown", isDeleted: true }),
+        ],
+      }),
+    );
+    renderTracking({
+      log: makeLog({
+        events: [logEvent({ id: 5, sequence: 3, seq: 7, event: "Touchdown" })],
+      }),
+    });
+
+    await clickUndo(/Rückgängig: Touchdown Ravens/);
+
+    // A row an event wrote names its `seq`: the server removes the whole
+    // submission group (a touchdown takes its conversion with it).
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [{ type: "correction", code: "undo", payload: { undo_of: 7 } }],
+      client_id: expect.any(String),
+    });
+    expect(apiDeleteMock).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(screen.getAllByRole("listitem")[0]).toHaveClass("deleted"),
+    );
+  });
+
+  it("undoes a legacy row by sequence", async () => {
     apiDeleteMock.mockResolvedValue(makeLog());
     render(
       <TrackingScreen
@@ -614,12 +735,13 @@ describe("Tracking undo", () => {
     expect(screen.getAllByRole("listitem")[1]).toHaveClass("deleted");
   });
 
-  it("does not adopt stale possession from a delete while a possession PUT is in flight", async () => {
+  it("does not adopt stale possession from a delete while a possession event is in flight", async () => {
     let resolvePut: (() => void) | undefined;
-    apiPutMock.mockReturnValue(
-      new Promise<void>((resolve) => {
-        resolvePut = resolve;
-      }),
+    answerPossession(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvePut = resolve;
+        }),
     );
     apiDeleteMock.mockResolvedValue(
       makeLog({
@@ -732,7 +854,7 @@ function routeGets(
       return Promise.resolve(routes.penalties ?? PENALTIES);
     }
     if (path === "/api/gamelog/42") {
-      return Promise.resolve(routes.log ?? makeLog());
+      return Promise.resolve(appendLog ?? routes.log ?? makeLog());
     }
     if (path === "/api/game/42/setup") {
       return Promise.resolve(routes.setup ?? {});
@@ -751,6 +873,30 @@ function renderTracking(
       onFinalize={vi.fn()}
     />,
   );
+}
+
+/**
+ * Render, then let the snapshot-backed reads settle.
+ *
+ * The screen reads the setup at mount (through the IndexedDB preload), and the
+ * second-half rule needs it. Clicking before that read lands would exercise the
+ * documented fallback instead, which is a different test.
+ */
+async function renderTrackingReady(
+  overrides: { game?: Game; log?: GameLog } = {},
+): Promise<void> {
+  renderTracking(overrides);
+  // The preload reads IndexedDB before it asks the network; wait for the
+  // setup request, then let the answer be applied.
+  await waitFor(() =>
+    expect(apiGetMock).toHaveBeenCalledWith("/api/game/42/setup"),
+  );
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 }
 
 async function openSheet(
@@ -792,8 +938,7 @@ describe("Tracking touchdown entry", () => {
 
   it("posts the touchdown and replaces the log with the response", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
-    apiPostMock.mockResolvedValue(
-      makeLog({
+    answerAppend(makeLog({
         inPossession: "Ravens",
         home: team({ score: 7, firsthalf: { score: 7, entries: [] } }),
         events: [
@@ -809,18 +954,13 @@ describe("Tracking touchdown entry", () => {
     await pickJersey(user, 23);
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
-    expect(apiPostMock).toHaveBeenCalledWith(
-      "/api/gamelog/42",
-      expect.objectContaining({
-        gameId: 42,
-        team: "Ravens",
-        half: 1,
-        event: [
-          { name: "Touchdown", player: 23 },
-          { name: "1-Extra-Punkt", player: 23 },
-        ],
-      }),
-    );
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [
+        { type: "score", code: "touchdown", side: "home", player: 23, period: 1 },
+        { type: "score", code: "pat1", side: "home", player: 23, period: 1 },
+      ],
+      client_id: expect.any(String),
+    });
 
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
@@ -874,7 +1014,7 @@ describe("Tracking touchdown entry", () => {
 
 describe("Tracking series and time entry", () => {
   it("records the second half's Spielzeit with the payload half", async () => {
-    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking({
       log: makeLog({ isFirstHalf: false, inPossession: "Ravens" }),
     });
@@ -886,15 +1026,19 @@ describe("Tracking series and time entry", () => {
     await user.type(screen.getByRole("textbox", { name: "Sekunden" }), "34");
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
-    expect(apiPostMock).toHaveBeenCalledWith(
-      "/api/gamelog/42",
-      expect.objectContaining({
-        gameId: 42,
-        team: "Ravens",
-        half: 2,
-        event: [{ name: "Spielzeit", input: "12:34" }],
-      }),
-    );
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [
+        {
+          type: "time",
+          code: "clock",
+          side: "home",
+          player: null,
+          period: 2,
+          payload: { input: "12:34" },
+        },
+      ],
+      client_id: expect.any(String),
+    });
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
@@ -905,7 +1049,7 @@ describe("Tracking series and time entry", () => {
 
   it("records an interception for the defender, not the passer", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
-    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
     const user = userEvent.setup();
 
@@ -921,20 +1065,23 @@ describe("Tracking series and time entry", () => {
     await user.click(screen.getByRole("button", { name: "Trikot 11, Wolf" }));
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
-    expect(apiPostMock).toHaveBeenCalledWith(
-      "/api/gamelog/42",
-      expect.objectContaining({
-        gameId: 42,
-        team: "Wolves",
-        half: 1,
-        event: [{ name: "Interception", player: 11 }],
-      }),
-    );
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [
+        {
+          type: "possession",
+          code: "interception",
+          side: "away",
+          player: 11,
+          period: 1,
+        },
+      ],
+      client_id: expect.any(String),
+    });
   });
 
   it("records a first down with an optional jersey", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
-    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
     const user = userEvent.setup();
 
@@ -944,15 +1091,12 @@ describe("Tracking series and time entry", () => {
     );
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
-    expect(apiPostMock).toHaveBeenCalledWith(
-      "/api/gamelog/42",
-      expect.objectContaining({
-        gameId: 42,
-        team: "Ravens",
-        half: 1,
-        event: [{ name: "First Down", player: 7 }],
-      }),
-    );
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [
+        { type: "series", code: "first_down", side: "home", player: 7, period: 1 },
+      ],
+      client_id: expect.any(String),
+    });
   });
 });
 
@@ -1030,7 +1174,7 @@ describe("Tracking write guard", () => {
 describe("Tracking entry lifecycle", () => {
   it("returns focus to the touchdown tile after a successful save", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
-    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
     const user = userEvent.setup();
 
@@ -1049,7 +1193,7 @@ describe("Tracking entry lifecycle", () => {
 
   it("records a second touchdown after the first, for the new possession", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
-    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
     const user = userEvent.setup();
 
@@ -1059,8 +1203,9 @@ describe("Tracking entry lifecycle", () => {
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
-    expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/possession", {
-      team: "Wolves",
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [{ type: "possession", code: "away", side: "away" }],
+      client_id: expect.any(String),
     });
 
     const tile = screen.getByRole("button", { name: /^Touchdown Wolves$/ });
@@ -1073,24 +1218,19 @@ describe("Tracking entry lifecycle", () => {
     await pickJersey(user, 11);
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
-    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(2));
-    expect(apiPostMock).toHaveBeenLastCalledWith(
-      "/api/gamelog/42",
-      expect.objectContaining({
-        gameId: 42,
-        team: "Wolves",
-        half: 1,
-        event: [
-          { name: "Touchdown", player: 11 },
-          { name: "1-Extra-Punkt", player: 11 },
-        ],
-      }),
-    );
+    await waitFor(() => expect(sentWrites()).toHaveLength(2));
+    expect(sentWrites()[1]).toEqual({
+      events: [
+        { type: "score", code: "touchdown", side: "away", player: 11, period: 1 },
+        { type: "score", code: "pat1", side: "away", player: 11, period: 1 },
+      ],
+      client_id: expect.any(String),
+    });
   });
 
   it("falls back to a typed number when the roster request fails", async () => {
     apiGetMock.mockRejectedValue(new ApiError(500, null, "Server weg"));
-    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
     const user = userEvent.setup();
 
@@ -1099,22 +1239,17 @@ describe("Tracking entry lifecycle", () => {
     await user.type(input, "51");
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
-    expect(apiPostMock).toHaveBeenCalledWith(
-      "/api/gamelog/42",
-      expect.objectContaining({
-        gameId: 42,
-        team: "Ravens",
-        half: 1,
-        event: [
-          { name: "Touchdown", player: 51 },
-          { name: "1-Extra-Punkt", player: 51 },
-        ],
-      }),
-    );
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [
+        { type: "score", code: "touchdown", side: "home", player: 51, period: 1 },
+        { type: "score", code: "pat1", side: "home", player: 51, period: 1 },
+      ],
+      client_id: expect.any(String),
+    });
   });
 
   it("disables the composer while a possession change is in flight", () => {
-    apiPutMock.mockReturnValue(new Promise(() => undefined));
+    answerPossession(() => new Promise(() => undefined));
     renderTracking();
 
     fireEvent.click(screen.getByRole("button", { name: /^Wolves/ }));
@@ -1186,7 +1321,7 @@ describe("Second-half possession rule", () => {
 describe("Tracking possession flip", () => {
   it("flips to the other team after a touchdown and repaints the tile", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
-    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
     const user = userEvent.setup();
 
@@ -1194,8 +1329,9 @@ describe("Tracking possession flip", () => {
     await pickJersey(user, 23);
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
-    expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/possession", {
-      team: "Wolves",
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [{ type: "possession", code: "away", side: "away" }],
+      client_id: expect.any(String),
     });
     await waitFor(() =>
       expect(
@@ -1205,7 +1341,7 @@ describe("Tracking possession flip", () => {
   });
 
   it("does not flip after an Auszeit", async () => {
-    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
     const user = userEvent.setup();
 
@@ -1215,14 +1351,14 @@ describe("Tracking possession flip", () => {
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
     await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(1));
-    expect(apiPutMock).not.toHaveBeenCalled();
+    expect(sentPossessions()).toEqual([]);
     expect(
       screen.getByRole("button", { name: /^Touchdown Ravens$/ }),
     ).toBeInTheDocument();
   });
 
   it("keeps the ball after a first down and after a penalty", async () => {
-    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    answerAppend(makeLog({ inPossession: "Ravens" }));
     routeGets();
     renderTracking();
     const user = userEvent.setup();
@@ -1240,12 +1376,12 @@ describe("Tracking possession flip", () => {
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
     await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(2));
-    expect(apiPutMock).not.toHaveBeenCalled();
+    expect(sentPossessions()).toEqual([]);
   });
 
   it("flips exactly once per event", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
-    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
     const user = userEvent.setup();
 
@@ -1259,10 +1395,9 @@ describe("Tracking possession flip", () => {
     // Wolves; the second turnover is recorded by Wolves and flips it back.
     await openSheet(user, /^Turnover$/);
     await user.click(screen.getByRole("button", { name: "Speichern" }));
-    await waitFor(() => expect(apiPutMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(sentPossessions()).toHaveLength(2));
 
-    expect(apiPutMock.mock.calls[0][1]).toEqual({ team: "Wolves" });
-    expect(apiPutMock.mock.calls[1][1]).toEqual({ team: "Ravens" });
+    expect(sentPossessions()).toEqual(["away", "home"]);
     expect(
       screen.getByRole("button", { name: /^Touchdown Ravens$/ }),
     ).toBeInTheDocument();
@@ -1282,7 +1417,7 @@ describe("Tracking possession flip", () => {
       }
       return Promise.resolve(ROSTER);
     });
-    apiPostMock.mockResolvedValue(
+    answerAppend(
       makeLog({
         inPossession: "Ravens",
         events: [
@@ -1290,8 +1425,14 @@ describe("Tracking possession flip", () => {
         ],
       }),
     );
-    apiPutMock.mockRejectedValueOnce(
-      new ApiError(500, { detail: "Ballbesitz nicht änderbar" }, "Ballbesitz nicht änderbar"),
+    answerPossession(() =>
+      Promise.reject(
+        new ApiError(
+          500,
+          { detail: "Ballbesitz nicht änderbar" },
+          "Ballbesitz nicht änderbar",
+        ),
+      ),
     );
     renderTracking();
     const user = userEvent.setup();
@@ -1317,15 +1458,35 @@ describe("Tracking possession flip", () => {
     // The server rejected the flip but reports the ball with Wolves anyway (a
     // second device may have changed it). The next entry must follow the
     // server, not the marker this screen remembered.
+    let reads = 0;
     apiGetMock.mockImplementation((path: string) => {
       if (path === "/api/gamelog/42") {
-        return Promise.resolve(makeLog({ inPossession: "Wolves" }));
+        reads += 1;
+        // The play's own read reports the ball where it was; the resync after
+        // the rejected flip reports what another device did.
+        return Promise.resolve(
+          makeLog({ inPossession: reads === 1 ? "Ravens" : "Wolves" }),
+        );
       }
       return Promise.resolve(ROSTER);
     });
-    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
-    apiPutMock.mockRejectedValueOnce(
-      new ApiError(500, { detail: "Ballbesitz nicht änderbar" }, "Ballbesitz nicht änderbar"),
+    answerPossession(() =>
+      Promise.reject(
+        new ApiError(
+          500,
+          { detail: "Ballbesitz nicht änderbar" },
+          "Ballbesitz nicht änderbar",
+        ),
+      ),
+    );
+    answerPossession(() =>
+      Promise.reject(
+        new ApiError(
+          500,
+          { detail: "Ballbesitz nicht änderbar" },
+          "Ballbesitz nicht änderbar",
+        ),
+      ),
     );
     renderTracking();
     const user = userEvent.setup();
@@ -1343,23 +1504,27 @@ describe("Tracking possession flip", () => {
     await openSheet(user, /^1st Down$/);
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
-    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(2));
-    expect(apiPostMock).toHaveBeenLastCalledWith(
-      "/api/gamelog/42",
-      expect.objectContaining({
-        gameId: 42,
-        team: "Wolves",
-        half: 1,
-        event: [{ name: "First Down" }],
-      }),
-    );
+    // The play, the rejected flip and the next play: three appends.
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(3));
+    expect(apiPostMock).toHaveBeenLastCalledWith("/api/game/42/events", {
+      events: [
+        {
+          type: "series",
+          code: "first_down",
+          side: "away",
+          player: null,
+          period: 1,
+        },
+      ],
+      client_id: expect.any(String),
+    });
   });
 
-  it("does not take the possession from the POST response", async () => {
-    // The write answers with the possession of *before* the play. Adopting it
-    // would fight the flip and make the next entry belong to the wrong team.
+  it("keeps the possession a play's log reports when the play does not flip it", async () => {
+    // A play's read is authoritative too: a change another device made must
+    // not be undone by this screen's remembered marker.
     apiGetMock.mockResolvedValue(ROSTER);
-    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Wolves" }));
+    answerAppend(makeLog({ inPossession: "Wolves" }));
     renderTracking();
     const user = userEvent.setup();
 
@@ -1372,7 +1537,7 @@ describe("Tracking possession flip", () => {
     expect(
       screen.getByRole("button", { name: /^Touchdown Ravens$/ }),
     ).toBeInTheDocument();
-    expect(apiPutMock).not.toHaveBeenCalled();
+    expect(sentPossessions()).toEqual([]);
 
     await openSheet(user, /^Auszeit$/);
     await user.type(screen.getByRole("textbox", { name: "Minuten" }), "1");
@@ -1380,21 +1545,25 @@ describe("Tracking possession flip", () => {
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
     await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(2));
-    expect(apiPostMock).toHaveBeenLastCalledWith(
-      "/api/gamelog/42",
-      expect.objectContaining({
-        gameId: 42,
-        team: "Ravens",
-        half: 1,
-        event: [{ name: "Auszeit", input: "1:00" }],
-      }),
-    );
+    expect(apiPostMock).toHaveBeenLastCalledWith("/api/game/42/events", {
+      events: [
+        {
+          type: "timeout",
+          code: "home",
+          side: "home",
+          player: null,
+          period: 1,
+          payload: { input: "1:00" },
+        },
+      ],
+      client_id: expect.any(String),
+    });
   });
 
   it("shows the new possession while the flip is still in flight", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
-    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
-    apiPutMock.mockReturnValue(new Promise(() => undefined));
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    answerPossession(() => new Promise(() => undefined));
     renderTracking();
     const user = userEvent.setup();
 
@@ -1414,7 +1583,7 @@ describe("Tracking possession flip", () => {
 describe("Tracking penalties", () => {
   it("records the picked penalty for the team the flag names", async () => {
     routeGets();
-    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
     const user = userEvent.setup();
 
@@ -1425,15 +1594,18 @@ describe("Tracking penalties", () => {
     );
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
-    expect(apiPostMock).toHaveBeenCalledWith(
-      "/api/gamelog/42",
-      expect.objectContaining({
-        gameId: 42,
-        team: "Wolves",
-        half: 1,
-        event: [{ name: "Strafe", input: "Holding Defense" }],
-      }),
-    );
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [
+        {
+          type: "penalty",
+          code: "Holding Defense",
+          side: "away",
+          player: null,
+          period: 1,
+        },
+      ],
+      client_id: expect.any(String),
+    });
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
@@ -1446,7 +1618,7 @@ describe("Tracking penalties", () => {
 describe("Tracking safety and overtime", () => {
   it("records a safety for the opponent and hands them the ball", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
-    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
     const user = userEvent.setup();
 
@@ -1460,23 +1632,28 @@ describe("Tracking safety and overtime", () => {
     );
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
-    expect(apiPostMock).toHaveBeenCalledWith(
-      "/api/gamelog/42",
-      expect.objectContaining({
-        gameId: 42,
-        team: "Wolves",
-        half: 1,
-        event: [{ name: "Safety (+2)", player: 11 }],
-      }),
-    );
-    expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/possession", {
-      team: "Wolves",
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [
+        {
+          type: "score",
+          code: "safety",
+          side: "away",
+          player: 11,
+          period: 1,
+          payload: { points: 2 },
+        },
+      ],
+      client_id: expect.any(String),
+    });
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [{ type: "possession", code: "away", side: "away" }],
+      client_id: expect.any(String),
     });
   });
 
   it("records an overtime with a jersey", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
-    apiPostMock.mockResolvedValue(makeLog({ inPossession: "Ravens" }));
+    answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
     const user = userEvent.setup();
 
@@ -1486,15 +1663,12 @@ describe("Tracking safety and overtime", () => {
     );
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
-    expect(apiPostMock).toHaveBeenCalledWith(
-      "/api/gamelog/42",
-      expect.objectContaining({
-        gameId: 42,
-        team: "Ravens",
-        half: 1,
-        event: [{ name: "Overtime", player: 7 }],
-      }),
-    );
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [
+        { type: "score", code: "overtime", side: "home", player: 7, period: 1 },
+      ],
+      client_id: expect.any(String),
+    });
   });
 });
 
@@ -1506,14 +1680,14 @@ describe("Tracking half-time", () => {
     await user.click(screen.getByRole("button", { name: "Halbzeit" }));
 
     expect(screen.getByText("Halbzeit starten?")).toBeInTheDocument();
-    expect(apiPutMock).not.toHaveBeenCalled();
+    expect(apiPostMock).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "Abbrechen" }));
     expect(screen.queryByText("Halbzeit starten?")).not.toBeInTheDocument();
-    expect(apiPutMock).not.toHaveBeenCalled();
+    expect(apiPostMock).not.toHaveBeenCalled();
   });
 
-  it("writes the half-time, switches the half, flips possession and reloads the log", async () => {
+  it("writes the half-time as an event, adopts the half and flips possession", async () => {
     routeGets({ log: markerLog() });
     renderTracking();
     const user = userEvent.setup();
@@ -1521,10 +1695,11 @@ describe("Tracking half-time", () => {
     await user.click(screen.getByRole("button", { name: "Halbzeit" }));
     await user.click(screen.getByRole("button", { name: "Halbzeit starten" }));
 
-    expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/halftime", {});
-    expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/possession", {
-      team: "Wolves",
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [{ type: "period", code: "half_time", side: null }],
+      client_id: expect.any(String),
     });
+    expect(sentPossessions()).toEqual(["away"]);
     await waitFor(() =>
       expect(screen.getByText("2. Halbzeit")).toBeInTheDocument(),
     );
@@ -1536,7 +1711,7 @@ describe("Tracking half-time", () => {
 
   it("records the next entry in the second half for the new possession", async () => {
     routeGets({ log: markerLog() });
-    apiPostMock.mockResolvedValue(markerLog());
+    answerAppend(markerLog());
     renderTracking();
     const user = userEvent.setup();
 
@@ -1549,19 +1724,22 @@ describe("Tracking half-time", () => {
     await openSheet(user, /^1st Down$/);
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
-    expect(apiPostMock).toHaveBeenCalledWith(
-      "/api/gamelog/42",
-      expect.objectContaining({
-        gameId: 42,
-        team: "Wolves",
-        half: 2,
-        event: [{ name: "First Down" }],
-      }),
-    );
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [
+        {
+          type: "series",
+          code: "first_down",
+          side: "away",
+          player: null,
+          period: 2,
+        },
+      ],
+      client_id: expect.any(String),
+    });
   });
 
   it("shows the server detail when the half-time transition is rejected", async () => {
-    apiPutMock.mockRejectedValueOnce(
+    apiPostMock.mockRejectedValueOnce(
       new ApiError(
         409,
         { detail: "Dieser Spielstatus erlaubt keine Halbzeit." },
@@ -1579,12 +1757,12 @@ describe("Tracking half-time", () => {
         "Dieser Spielstatus erlaubt keine Halbzeit.",
       ),
     );
-    expect(apiPutMock).toHaveBeenCalledTimes(1);
+    expect(sentPossessions()).toEqual([]);
     expect(screen.getByText("1. Halbzeit")).toBeInTheDocument();
   });
 
   it("keeps the composer closed while the half-time is being written", async () => {
-    apiPutMock.mockReturnValue(new Promise(() => undefined));
+    apiPostMock.mockReturnValue(new Promise(() => undefined));
     renderTracking();
     const user = userEvent.setup();
 
@@ -1613,9 +1791,13 @@ describe("Tracking half-time", () => {
     await waitFor(() =>
       expect(screen.getByText("2. Halbzeit")).toBeInTheDocument(),
     );
-    expect(
-      screen.getByRole("button", { name: /^Touchdown Wolves$/ }),
-    ).toBeInTheDocument();
+    // The half flips first; the possession event follows it, so the tile is
+    // repainted a moment later.
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /^Touchdown Wolves$/ }),
+      ).toBeInTheDocument(),
+    );
   });
 });
 
@@ -1628,7 +1810,7 @@ describe("Tracking half-time possession", () => {
       setup: { fhPossession: "home" },
       log: makeLog({ isFirstHalf: false, inPossession: "Wolves" }),
     });
-    renderTracking({ log: makeLog({ inPossession: "Wolves" }) });
+    await renderTrackingReady({ log: makeLog({ inPossession: "Wolves" }) });
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: "Halbzeit" }));
@@ -1638,8 +1820,13 @@ describe("Tracking half-time possession", () => {
       expect(screen.getByText("2. Halbzeit")).toBeInTheDocument(),
     );
     expect(apiGetMock).toHaveBeenCalledWith("/api/game/42/setup");
-    expect(apiPutMock).toHaveBeenCalledTimes(1);
-    expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/halftime", {});
+    expect(sentPossessions()).toEqual([]);
+    expect(sentWrites()).toEqual([
+      {
+        events: [{ type: "period", code: "half_time", side: null }],
+        client_id: expect.any(String),
+      },
+    ]);
     expect(
       screen.getByRole("button", { name: /^Touchdown Wolves$/ }),
     ).toBeInTheDocument();
@@ -1653,17 +1840,13 @@ describe("Tracking half-time possession", () => {
       setup: { fhPossession: "away" },
       log: makeLog({ isFirstHalf: false, inPossession: "Ravens" }),
     });
-    renderTracking({ log: makeLog({ inPossession: "Wolves" }) });
+    await renderTrackingReady({ log: makeLog({ inPossession: "Wolves" }) });
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: "Halbzeit" }));
     await user.click(screen.getByRole("button", { name: "Halbzeit starten" }));
 
-    await waitFor(() =>
-      expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/possession", {
-        team: "Ravens",
-      }),
-    );
+    await waitFor(() => expect(sentPossessions()).toEqual(["home"]));
     expect(
       screen.getByRole("button", { name: /^Touchdown Ravens$/ }),
     ).toBeInTheDocument();
@@ -1671,17 +1854,13 @@ describe("Tracking half-time possession", () => {
 
   it("falls back to flipping the current possession without a setup", async () => {
     routeGets({ setup: {}, log: markerLog() });
-    renderTracking();
+    await renderTrackingReady();
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: "Halbzeit" }));
     await user.click(screen.getByRole("button", { name: "Halbzeit starten" }));
 
-    await waitFor(() =>
-      expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/possession", {
-        team: "Wolves",
-      }),
-    );
+    await waitFor(() => expect(sentPossessions()).toEqual(["away"]));
   });
 
   it("falls back when the setup cannot be read", async () => {
@@ -1694,17 +1873,13 @@ describe("Tracking half-time possession", () => {
       }
       return Promise.resolve(ROSTER);
     });
-    renderTracking();
+    await renderTrackingReady();
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: "Halbzeit" }));
     await user.click(screen.getByRole("button", { name: "Halbzeit starten" }));
 
-    await waitFor(() =>
-      expect(apiPutMock).toHaveBeenCalledWith("/api/game/42/possession", {
-        team: "Wolves",
-      }),
-    );
+    await waitFor(() => expect(sentPossessions()).toEqual(["away"]));
     expect(screen.getByText("2. Halbzeit")).toBeInTheDocument();
   });
 
@@ -1720,7 +1895,7 @@ describe("Tracking half-time possession", () => {
     ).toHaveLength(1);
   });
 
-  it("writes the marker before the ball and reloads the log afterwards", async () => {
+  it("appends the marker before the ball, each with its own log read", async () => {
     const order: string[] = [];
     apiGetMock.mockImplementation((path: string) => {
       order.push(`GET ${path}`);
@@ -1732,11 +1907,12 @@ describe("Tracking half-time possession", () => {
       }
       return Promise.resolve(ROSTER);
     });
-    apiPutMock.mockImplementation((path: string) => {
-      order.push(`PUT ${path}`);
-      return Promise.resolve(undefined);
+    apiPostMock.mockImplementation((_path: string, body: unknown) => {
+      const events = (body as { events: { type: string }[] }).events;
+      order.push(`POST ${events[0].type}`);
+      return Promise.resolve({ state: {}, cursor: 1 });
     });
-    renderTracking();
+    await renderTrackingReady();
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: "Halbzeit" }));
@@ -1745,21 +1921,24 @@ describe("Tracking half-time possession", () => {
       expect(screen.getByText("2. Halbzeit")).toBeInTheDocument(),
     );
 
-    expect(order.slice(order.indexOf("PUT /api/game/42/halftime"))).toEqual([
-      "PUT /api/game/42/halftime",
-      "PUT /api/game/42/possession",
+    // The marker comes first (it flips the half), then the ball; each write
+    // reads the log it produced, so the screen never guesses.
+    expect(order.slice(order.indexOf("POST period"))).toEqual([
+      "POST period",
+      "GET /api/gamelog/42",
+      "POST possession",
       "GET /api/gamelog/42",
     ]);
   });
 
   it("does not start the half-time while a possession change is in flight", () => {
-    apiPutMock.mockReturnValue(new Promise(() => undefined));
+    answerPossession(() => new Promise(() => undefined));
     renderTracking();
 
     fireEvent.click(screen.getByRole("button", { name: /^Wolves/ }));
 
     expect(screen.getByRole("button", { name: "Halbzeit" })).toBeDisabled();
-    expect(apiPutMock).toHaveBeenCalledTimes(1);
+    expect(sentPossessions()).toEqual(["away"]);
   });
 
   it("does not start the half-time while an undo is in flight", () => {
@@ -1777,7 +1956,7 @@ describe("Tracking half-time possession", () => {
   });
 
   it("keeps undo inert while the half-time is being written", () => {
-    apiPutMock.mockReturnValue(new Promise(() => undefined));
+    apiPostMock.mockReturnValue(new Promise(() => undefined));
     renderTracking({
       log: makeLog({
         inPossession: "Ravens",

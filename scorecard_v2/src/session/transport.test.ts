@@ -1,7 +1,8 @@
-// The queue → HTTP mapping: one test per op kind, plus the two-phase publish.
+// The queue → HTTP mapping: every op is an event append, plus the legacy
+// per-row undo, and the two-phase publish.
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
-import { ApiError, apiDelete, apiPost, apiPut } from "../api/client";
+import { ApiError, apiDelete, apiGet, apiPost } from "../api/client";
 import type { GameLog } from "../api/types";
 import type { PendingOp } from "../offline/types";
 import { createTransport } from "./transport";
@@ -17,8 +18,8 @@ vi.mock("../api/client", async (importOriginal) => {
   };
 });
 
+const apiGetMock = apiGet as unknown as Mock;
 const apiPostMock = apiPost as unknown as Mock;
-const apiPutMock = apiPut as unknown as Mock;
 const apiDeleteMock = apiDelete as unknown as Mock;
 
 function op(overrides: Partial<PendingOp> = {}): PendingOp {
@@ -26,7 +27,9 @@ function op(overrides: Partial<PendingOp> = {}): PendingOp {
     id: "op-1",
     gameId: 42,
     kind: "event",
-    payload: { name: "Touchdown", half: 1 },
+    payload: {
+      events: [{ type: "score", code: "touchdown", side: "home", period: 1 }],
+    },
     createdAt: 1_000,
     attempts: 0,
     deviceId: "device-a",
@@ -41,25 +44,38 @@ const LOG = {
 } as unknown as GameLog;
 
 beforeEach(() => {
+  apiGetMock.mockReset();
   apiPostMock.mockReset();
-  apiPutMock.mockReset();
   apiDeleteMock.mockReset();
-  apiPostMock.mockResolvedValue(LOG);
-  apiPutMock.mockResolvedValue(undefined);
+  apiGetMock.mockResolvedValue(LOG);
+  apiPostMock.mockResolvedValue({ state: {}, cursor: 1 });
   apiDeleteMock.mockResolvedValue(LOG);
 });
 
 describe("send", () => {
-  it("posts an event with the op id as client_id and the captured device", async () => {
+  it("appends the queued events with the op id as client_id and the captured device", async () => {
     const transport = createTransport(() => undefined);
 
     await transport.send(op());
 
     expect(apiPostMock).toHaveBeenCalledWith(
-      "/api/gamelog/42",
-      { name: "Touchdown", half: 1, client_id: "op-1" },
+      "/api/game/42/events",
+      {
+        events: [{ type: "score", code: "touchdown", side: "home", period: 1 }],
+        client_id: "op-1",
+      },
       { deviceId: "device-a" },
     );
+  });
+
+  it("reads the log the append answered for, with the same device", async () => {
+    const transport = createTransport(() => undefined);
+
+    await expect(transport.send(op())).resolves.toBe(LOG);
+
+    expect(apiGetMock).toHaveBeenCalledWith("/api/gamelog/42", {
+      deviceId: "device-a",
+    });
   });
 
   it("sends no device option for an op that never captured one", async () => {
@@ -68,88 +84,92 @@ describe("send", () => {
     await transport.send(op({ deviceId: undefined }));
 
     expect(apiPostMock).toHaveBeenCalledWith(
-      "/api/gamelog/42",
+      "/api/game/42/events",
       expect.objectContaining({ client_id: "op-1" }),
       undefined,
     );
+    expect(apiGetMock).toHaveBeenCalledWith("/api/gamelog/42", undefined);
   });
 
-  it("forwards a delete payload untouched", async () => {
+  it("appends a possession event like any other event", async () => {
     const transport = createTransport(() => undefined);
-    const payload = { sequence: 3 };
+
+    await transport.send(
+      op({
+        kind: "possession",
+        payload: {
+          events: [{ type: "possession", code: "away", side: "away" }],
+        },
+      }),
+    );
+
+    expect(apiPostMock).toHaveBeenCalledWith(
+      "/api/game/42/events",
+      {
+        events: [{ type: "possession", code: "away", side: "away" }],
+        client_id: "op-1",
+      },
+      { deviceId: "device-a" },
+    );
+    expect(apiGetMock).toHaveBeenCalled();
+  });
+
+  it("appends the half-time as a period event", async () => {
+    const transport = createTransport(() => undefined);
+
+    await transport.send(
+      op({
+        kind: "halftime",
+        payload: { events: [{ type: "period", code: "half_time", side: null }] },
+      }),
+    );
+
+    expect(apiPostMock).toHaveBeenCalledWith(
+      "/api/game/42/events",
+      expect.objectContaining({
+        events: [{ type: "period", code: "half_time", side: null }],
+      }),
+      { deviceId: "device-a" },
+    );
+  });
+
+  it("appends an undo as a correction naming the target seq", async () => {
+    const transport = createTransport(() => undefined);
+
+    await transport.send(
+      op({
+        kind: "correction",
+        payload: {
+          events: [{ type: "correction", code: "undo", payload: { undo_of: 3 } }],
+        },
+      }),
+    );
+
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [{ type: "correction", code: "undo", payload: { undo_of: 3 } }],
+      client_id: "op-1",
+    }, { deviceId: "device-a" });
+  });
+
+  it("keeps the legacy DELETE for a row no event wrote", async () => {
+    const transport = createTransport(() => undefined);
+    const payload = { team_log_id: 9 };
 
     await transport.send(op({ kind: "delete", payload }));
 
     expect(apiDeleteMock).toHaveBeenCalledWith("/api/gamelog/42", payload, {
       deviceId: "device-a",
     });
+    expect(apiPostMock).not.toHaveBeenCalled();
   });
 
-  it("puts the opening possession and resolves without an answer", async () => {
+  it("fails an op from an older app version instead of retrying it forever", async () => {
     const transport = createTransport(() => undefined);
 
     await expect(
       transport.send(op({ kind: "possession", payload: { team: "Ravens" } })),
-    ).resolves.toBeUndefined();
-    expect(apiPutMock).toHaveBeenCalledWith(
-      "/api/game/42/possession",
-      { team: "Ravens" },
-      { deviceId: "device-a" },
-    );
-  });
-
-  it("puts the halftime marker", async () => {
-    const transport = createTransport(() => undefined);
-
-    await expect(
-      transport.send(op({ kind: "halftime", payload: {} })),
-    ).resolves.toBeUndefined();
-    expect(apiPutMock).toHaveBeenCalledWith(
-      "/api/game/42/halftime",
-      {},
-      { deviceId: "device-a" },
-    );
-  });
-
-  it("treats a replayed halftime as applied, not rejected", async () => {
-    apiPutMock.mockRejectedValueOnce(
-      new ApiError(409, { detail: "Keine Halbzeit mehr offen." }, "Keine Halbzeit mehr offen."),
-    );
-    const transport = createTransport(() => undefined);
-
-    await expect(
-      transport.send(op({ kind: "halftime", payload: {} })),
-    ).resolves.toBeUndefined();
-  });
-
-  it("keeps any other halftime failure", async () => {
-    const failure = new ApiError(409, { detail: "Anderes Problem." }, "Anderes Problem.");
-    apiPutMock.mockRejectedValueOnce(failure);
-    const transport = createTransport(() => undefined);
-
-    await expect(
-      transport.send(op({ kind: "halftime", payload: {} })),
-    ).rejects.toBe(failure);
-  });
-
-  it("keeps a halftime failure that is not an ApiError", async () => {
-    const failure = new TypeError("offline");
-    apiPutMock.mockRejectedValueOnce(failure);
-    const transport = createTransport(() => undefined);
-
-    await expect(
-      transport.send(op({ kind: "halftime", payload: {} })),
-    ).rejects.toBe(failure);
-  });
-
-  it("keeps a halftime 409 without a detail", async () => {
-    const failure = new ApiError(409, null);
-    apiPutMock.mockRejectedValueOnce(failure);
-    const transport = createTransport(() => undefined);
-
-    await expect(
-      transport.send(op({ kind: "halftime", payload: {} })),
-    ).rejects.toBe(failure);
+    ).rejects.toMatchObject({ status: 422 });
+    expect(apiPostMock).not.toHaveBeenCalled();
   });
 });
 
@@ -172,5 +192,31 @@ describe("landed", () => {
     transport.landed?.(op(), { gameId: "42", home: {}, away: {} });
 
     expect(onLog).not.toHaveBeenCalled();
+  });
+});
+
+describe("appendEvents", () => {
+  it("is the one append-then-read helper the direct writes share", async () => {
+    const { appendEvents } = await import("./transport");
+
+    await expect(
+      appendEvents(42, [{ type: "score" }], "client-1"),
+    ).resolves.toBe(LOG);
+    expect(apiPostMock).toHaveBeenCalledWith(
+      "/api/game/42/events",
+      { events: [{ type: "score" }], client_id: "client-1" },
+      undefined,
+    );
+    expect(apiGetMock).toHaveBeenCalledWith("/api/gamelog/42", undefined);
+  });
+
+  it("surfaces a rejected append without reading the log", async () => {
+    const { appendEvents } = await import("./transport");
+    apiPostMock.mockRejectedValueOnce(
+      new ApiError(400, { detail: "Unbekannt." }, "Unbekannt."),
+    );
+
+    await expect(appendEvents(42, [], "c")).rejects.toThrow("Unbekannt.");
+    expect(apiGetMock).not.toHaveBeenCalled();
   });
 });
