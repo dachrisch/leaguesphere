@@ -25,6 +25,19 @@
 \.circleci/.* run-migrations true
 \.circleci/.* run-compose true
 
+# --- dependency manifests: a bump changes the runtime we ship, not just one
+#     app. Run migrations + the compose network as well, so a green dependency
+#     PR has actually migrated a database and booted the stack. Without this a
+#     frontend-only bump skips both, and automerge would merge on evidence that
+#     was never produced.
+(.*/)?(pyproject\.toml|uv\.lock|package\.json|package-lock\.json|requirements.*\.txt) run-migrations true
+(.*/)?(pyproject\.toml|uv\.lock|package\.json|package-lock\.json|requirements.*\.txt) run-compose true
+
+# --- .github: legacy Actions workflows (dormant on PRs) still get the full
+#     gate, so a merge never claims proof it does not have ---
+\.github/.* run-migrations true
+\.github/.* run-compose true
+
 # --- shared python roots: all shards + backend image + migrations ---
 (conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock|\.coveragerc) run-python-core true
 (conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock|\.coveragerc) run-python-gamedays true
