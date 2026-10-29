@@ -75,7 +75,7 @@
     "vitest": "4.1.11"
   },
   "overrides": {
-    "postcss": "8.5.26",
+    "postcss": "8.5.32",
     "nth-check": "3.0.1",
     "serialize-javascript": "7.1.1",
     "debug": "4.4.3",
