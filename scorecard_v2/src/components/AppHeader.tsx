@@ -1,34 +1,31 @@
 import type { ReactNode } from "react";
 
-import ThemeToggle from "./ThemeToggle";
-import UserAvatar from "./UserAvatar";
+import AccountMenu from "./AccountMenu";
 import { ChevronLeft, Football } from "./icons";
 
 interface AppHeaderProps {
   kicker: string;
   title: string;
-  sub?: string;
+  /** One context line; a node when it carries inline art (team logos). */
+  sub?: ReactNode;
   /** Renders a back button when the flow can go back. */
   onBack?: () => void;
-  /** Renders the logout action (shared field devices). */
+  /** Renders the logout action inside the account menu (shared field devices). */
   onLogout?: () => void;
   /**
    * Compact status chip for the top bar (the sync badge), placed before the
-   * theme switch and the logout action. Everything that does not fit in the
-   * bar belongs on the screen, not in the header.
+   * account menu. Everything that does not fit in the bar belongs on the
+   * screen, not in the header.
    */
   badge?: ReactNode;
 }
 
 /**
- * Screen chrome: the navigation bar (back, status, avatar, theme, logout), the
+ * Screen chrome: the navigation bar (back, status, account menu), the
  * LeagueSphere brand line with the kicker, one title and an optional context
- * line. The theme switch lives here so it is reachable from every screen,
- * including the loading and error panels.
- *
- * The bar is icon-only except for the German "Abmelden": at 360px it still
- * holds a back button, the sync chip, the avatar, the theme switch and the
- * logout action without scrolling sideways.
+ * line. The theme choice and **Abmelden** live in the account menu, so the bar
+ * stays three controls wide from 320px up and the same actions are reachable
+ * from every screen, including the loading and error panels.
  */
 export default function AppHeader({
   kicker,
@@ -58,17 +55,7 @@ export default function AppHeader({
           {badge === undefined ? null : (
             <span className="appbar-badge">{badge}</span>
           )}
-          <UserAvatar />
-          <ThemeToggle />
-          {onLogout === undefined ? null : (
-            <button
-              className="appbar-btn appbar-logout"
-              onClick={onLogout}
-              type="button"
-            >
-              Abmelden
-            </button>
-          )}
+          <AccountMenu onLogout={onLogout} />
         </div>
       </div>
       <p className="app-meta">

@@ -3,6 +3,7 @@
 **Source:** `Leaguesphere v5.txt` (Tactiq transcript, 2026-10-27, Christian Dähn × Christoph Kämpfe).
 **Companion:** [LeagueSphere v5 Sync — Intake](./2026-10-27-leaguesphere-v5-sync.md) (full meeting, incl. offd/Moodle and Game Day).
 **What this is:** every scorecard-relevant idea, complaint and decision from that call, deduplicated and clustered. It is **raw material, not a plan** — no prioritisation, no roadmap (deferred by decision). Timestamps refer to the transcript.
+**Implementation plan & status:** [Scorecard — Feature Plan & Status](./2026-10-27-scorecard-feature-plan.md) tracks every item below by ID, layer and status.
 
 ---
 

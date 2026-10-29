@@ -1,8 +1,14 @@
-import { render, screen, within } from "@testing-library/react";
+import {
+  render as renderComponent,
+  screen,
+  within,
+} from "@testing-library/react";
+import type { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type { Game } from "../api/types";
+import { TeamLogosProvider } from "../app/teamLogos";
 import { gameTag } from "../components/tag";
 import GameList, { formatGameScore, formatGameTime } from "./GameList";
 
@@ -56,6 +62,13 @@ function rowFor(pair: string): Element {
     throw new Error(`no row around ${pair}`);
   }
   return row;
+}
+
+/** The rows read the team directory from the provider; none here by default. */
+function render(ui: ReactElement) {
+  return renderComponent(
+    <TeamLogosProvider logos={new Map()}>{ui}</TeamLogosProvider>,
+  );
 }
 
 describe("GameList", () => {
@@ -406,6 +419,56 @@ describe("GameList", () => {
     ).toBeInTheDocument();
     expect(within(screen.getByRole("main")).queryByRole("button")).not.toBeInTheDocument();
     expect(container.querySelector(".sumline")).toBeNull();
+  });
+});
+
+describe("GameList — team logos", () => {
+  const HOME_LOGO = "https://example.test/media/teammanager/logos/ravens.png";
+  const AWAY_LOGO = "https://example.test/media/teammanager/logos/wolves.png";
+
+  function renderWithLogos(logos: Map<string, string>, games: Game[]) {
+    return renderComponent(
+      <TeamLogosProvider logos={logos}>
+        <GameList games={games} onResume={vi.fn()} onSelect={vi.fn()} />
+      </TeamLogosProvider>,
+    );
+  }
+
+  it("puts each team's logo beside the pairing", () => {
+    renderWithLogos(
+      new Map([
+        ["ravens", HOME_LOGO],
+        ["wolves", AWAY_LOGO],
+      ]),
+      [makeGame()],
+    );
+
+    const row = rowFor("Ravens – Wolves");
+    const images = Array.from(row.querySelectorAll("img"));
+    expect(images.map((image) => image.getAttribute("src"))).toEqual([
+      HOME_LOGO,
+      AWAY_LOGO,
+    ]);
+    expect(images.every((image) => image.getAttribute("alt") === "")).toBe(true);
+  });
+
+  it("keeps the initials for a team without a logo", () => {
+    renderWithLogos(new Map([["ravens", HOME_LOGO]]), [makeGame()]);
+
+    const row = rowFor("Ravens – Wolves");
+    expect(row.querySelectorAll("img")).toHaveLength(1);
+    const initial = Array.from(row.querySelectorAll(".teamlogo")).find(
+      (element) => element.tagName !== "IMG",
+    );
+    expect(initial).toHaveTextContent("W");
+  });
+
+  it("shows the initials when no logos are known at all", () => {
+    renderWithLogos(new Map(), [makeGame()]);
+
+    const row = rowFor("Ravens – Wolves");
+    expect(row.querySelectorAll("img")).toHaveLength(0);
+    expect(row).toHaveTextContent("Ravens – Wolves");
   });
 });
 

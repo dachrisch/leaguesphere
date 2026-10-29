@@ -31,6 +31,43 @@ def _static_file(asset):
         return handle.read()
 
 
+def test_app_shell_assets_match_the_precache_list():
+    """The offline shell must point at what the worker precaches.
+
+    ``app-shell.html`` is a committed static, so its ``/static/...`` paths are
+    hand-written while the worker builds its list from ``static()`` plus the
+    build output it discovers. If the two drift — a renamed bundle, a bundle
+    outside the discovered directory — the offline boot renders a shell whose
+    script 404s, and nothing notices while online.
+
+    The build output is absent in CI (``js/`` is gitignored), so this asserts
+    the *shape*: committed assets must be in the precache list, and every build
+    asset must live in the directory the worker scans.
+    """
+    shell = _static_file(APP_SHELL).decode("utf-8")
+    # Only what the boot needs: the bundle, its stylesheet and the manifest.
+    # The favicons are cosmetic and may 404 offline without consequence.
+    referenced = set(
+        re.findall(r'(?:href|src)="(/static/[^"]+\.(?:js|css|webmanifest))"', shell)
+    )
+    assert referenced, "the app shell references no boot assets at all"
+
+    build_prefix = f"/static/{BUILD_DIR}/"
+    build_refs = {asset for asset in referenced if asset.startswith(build_prefix)}
+    committed_refs = referenced - build_refs
+    assert build_refs, f"the app shell references nothing under {build_prefix}"
+
+    committed = {
+        f"/static/{asset}"
+        for asset in views.precache_assets()
+        if not asset.startswith(BUILD_DIR)
+    }
+    assert not committed_refs - committed, (
+        "app-shell.html references committed assets the worker does not "
+        f"precache: {sorted(committed_refs - committed)}"
+    )
+
+
 def _png_size(data):
     assert data[:8] == b"\x89PNG\r\n\x1a\n", "not a PNG"
     width, height = struct.unpack(">II", data[16:24])

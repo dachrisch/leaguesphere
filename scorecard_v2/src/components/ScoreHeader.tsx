@@ -1,4 +1,5 @@
 import type { GameLogTeam } from "../api/types";
+import TeamLogo from "./TeamLogo";
 import { Football } from "./icons";
 
 interface ScoreHeaderProps {
@@ -19,15 +20,10 @@ function displayName(team: GameLogTeam): string {
   return name === undefined || name === "" ? "–" : name;
 }
 
-/** Crest placeholder: one initial, never a logo URL. */
-export function crestInitial(team: GameLogTeam): string {
-  const name = team.name?.trim();
-  return name === undefined || name === "" ? "?" : name[0].toUpperCase();
-}
-
 /**
- * Possession is stored as the team *name* (the old app and `PUT /possession`
- * both write it), but a seeded game may hold the pk — accept both.
+ * Possession is stored as the team *name* (the projection writes it from a
+ * `possession` event; the old app writes it through `PUT /possession`), but a
+ * seeded game may hold the pk — accept both.
  */
 export function isPossessing(
   team: GameLogTeam,
@@ -78,9 +74,7 @@ function Team({
       }}
       type="button"
     >
-      <span aria-hidden="true" className="crest">
-        {crestInitial(team)}
-      </span>
+      <TeamLogo className="teamlogo-crest" name={team.name} />
       <span className="teamtext">
         <span className="tname">{name}</span>
         {possessing ? (
@@ -95,8 +89,9 @@ function Team({
 }
 
 /**
- * Score board: both teams with a crest placeholder, the big score, the
- * possession marker and the half label. Tapping a team hands it the ball.
+ * Score board: both teams with their logo (or a crest placeholder), the big
+ * score, the possession marker and the half label. Tapping a team hands it the
+ * ball.
  */
 export default function ScoreHeader({
   home,

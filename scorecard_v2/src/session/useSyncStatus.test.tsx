@@ -22,7 +22,10 @@ function op(overrides: Partial<PendingOp> = {}): PendingOp {
     id: "op-1",
     gameId: 42,
     kind: "event",
-    payload: {},
+    // A real append payload: an empty one is refused before it leaves.
+    payload: {
+      events: [{ type: "score", code: "touchdown", side: "home", period: 1 }],
+    },
     createdAt: 1,
     attempts: 0,
     deviceId: "device-a",

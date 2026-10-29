@@ -127,7 +127,28 @@ function routeGet(path: string): unknown {
     case "/api/gameday/1/officials/*":
       return [{ ...PLANNED, status: gamesStatus }];
     case "/api/game/42/officials":
-      return [];
+      // A complete crew: the start refuses an empty required slot. Free text
+      // keeps the team list (which answers []) out of it.
+      return [
+        { id: 1, official: null, name: "Michael Klein", position: "Referee" },
+        { id: 2, official: null, name: "Anna Richter", position: "Down Judge" },
+        { id: 3, official: null, name: "Tom Weber", position: "Field Judge" },
+        { id: 4, official: null, name: "Sabine Lang", position: "Side Judge" },
+      ];
+    case "/api/officials/crew-positions/game/42":
+      // The league has no configuration, so the backend answers the defaults.
+      return [
+        {
+          position: "Scorecard Judge",
+          label: "Scorecard Judge",
+          order: 1,
+          required: false,
+        },
+        { position: "Referee", label: "Schiedsrichter", order: 2, required: true },
+        { position: "Down Judge", label: "Down Judge", order: 3, required: true },
+        { position: "Field Judge", label: "Field Judge", order: 4, required: true },
+        { position: "Side Judge", label: "Side Judge", order: 5, required: true },
+      ];
     case "/api/officials/team/7/list":
       return [];
     case "/api/game/42/setup":
@@ -292,7 +313,9 @@ describe("the gameday list", () => {
       id: "queued",
       gameId: 42,
       kind: "event",
-      payload: {},
+      payload: {
+        events: [{ type: "score", code: "touchdown", side: "home", period: 1 }],
+      },
       createdAt: 1,
       attempts: 0,
       deviceId: "device-a",
@@ -302,6 +325,7 @@ describe("the gameday list", () => {
     await screen.findByRole("button", { name: /Herbsttag/ });
     expect(await queuedWrites()).toEqual({ pending: 1, failed: 0 });
 
+    await user.click(screen.getByRole("button", { name: "Konto" }));
     await user.click(screen.getByRole("button", { name: "Abmelden" }));
 
     await waitFor(() =>
@@ -495,7 +519,7 @@ describe("the preparation", () => {
     await user.click(
       await screen.findByRole("button", { name: /Ravens gegen Wolves/ }),
     );
-    await screen.findByRole("heading", { name: "Vorbereitung" });
+    await screen.findByRole("heading", { name: "Spiel vorbereiten" });
     const before = calls.filter(
       (call) => call === "GET /api/gameday/1/officials/crew",
     ).length;
@@ -517,13 +541,31 @@ describe("starting a game", () => {
     await user.click(
       await screen.findByRole("button", { name: /Ravens gegen Wolves/ }),
     );
-    await screen.findByRole("heading", { name: "Vorbereitung" });
+    await screen.findByRole("heading", { name: "Spiel vorbereiten" });
     const before = calls.filter(
       (call) => call === "GET /api/gameday/1/officials/crew",
     ).length;
 
+    const picks = [
+      ["Münzwurf gewonnen von", "Ravens"],
+      ["Erster Ballbesitz", "Ravens"],
+      ["Spielrichtung", "Ost → West"],
+    ] as const;
+    for (const [group, option] of picks) {
+      await user.click(
+        within(screen.getByRole("group", { name: group })).getByRole("button", {
+          name: option,
+        }),
+      );
+    }
     await user.click(
-      await screen.findByRole("button", { name: /Spiel starten ·/ }),
+      await screen.findByRole("button", { name: /Spiel starten/ }),
+    );
+    // The first tap only opens the confirmation; the second one starts.
+    await user.click(
+      within(
+        await screen.findByRole("dialog", { name: "Spiel starten" }),
+      ).getByRole("button", { name: "Jetzt starten" }),
     );
 
     expect(

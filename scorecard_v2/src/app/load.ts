@@ -115,7 +115,9 @@ export async function markGameFinished(
  *
  * The log keeps a finished game writable if the app boots from it: the game
  * list would show `beendet` and the log would reopen as a running game. The
- * setup is dropped for the same reason.
+ * setup is dropped for the same reason, and the crew positions with it: they
+ * are keyed per game, a finished game never opens the preparation screen, and
+ * keeping them would leave one entry per finished game on the device.
  *
  * The roster and the penalty catalogue stay: they are read-only suggestions
  * and are not tied to the game's lifecycle.
@@ -124,6 +126,7 @@ export async function dropGameSnapshots(gameId: number): Promise<void> {
   await Promise.all([
     removeSnapshot(snapshotKey.log(gameId)),
     removeSnapshot(snapshotKey.setup(gameId)),
+    removeSnapshot(snapshotKey.crewPositions(gameId)),
   ]);
 }
 

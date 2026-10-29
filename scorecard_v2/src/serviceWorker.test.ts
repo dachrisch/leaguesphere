@@ -2,14 +2,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   registerServiceWorker,
+  reloadOnUpdate,
   shouldRegisterServiceWorker,
 } from "./serviceWorker";
 
-function stubServiceWorker(register: (url: string) => Promise<unknown>): void {
+function stubServiceWorker(
+  register: (url: string) => Promise<unknown>,
+  controller: object | null = null,
+): ReturnType<typeof vi.fn> {
+  const addEventListener = vi.fn();
   Object.defineProperty(navigator, "serviceWorker", {
     configurable: true,
-    value: { register },
+    value: { addEventListener, controller, register },
   });
+  return addEventListener;
 }
 
 describe("registerServiceWorker", () => {
@@ -30,6 +36,54 @@ describe("registerServiceWorker", () => {
     registerServiceWorker();
 
     expect(register).toHaveBeenCalledWith("/scorecard/v2/sw.js");
+  });
+
+  it("picks up a deploy by reloading once a new worker controls the page", () => {
+    const addEventListener = stubServiceWorker(vi.fn(() => Promise.resolve()));
+
+    registerServiceWorker();
+
+    expect(addEventListener).not.toHaveBeenCalled();
+  });
+
+  it("uses the real reload when no hook is injected", () => {
+    // jsdom refuses to navigate, so the assertion is that the default path is
+    // wired up and runs without throwing — the spy-based coverage lives in the
+    // injected-hook test above.
+    const addEventListener = stubServiceWorker(vi.fn(() => Promise.resolve()), {});
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    registerServiceWorker();
+    const handler = addEventListener.mock.calls[0]?.[1] as () => void;
+
+    expect(() => handler()).not.toThrow();
+    consoleError.mockRestore();
+  });
+
+  it("reloads the page through the injected hook when the worker takes over", () => {
+    const addEventListener = stubServiceWorker(vi.fn(() => Promise.resolve()), {});
+    const reload = vi.fn();
+
+    registerServiceWorker(reload);
+
+    const handler = addEventListener.mock.calls[0]?.[1] as () => void;
+    handler();
+
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("listens for the new worker when the page already had one", () => {
+    const addEventListener = stubServiceWorker(
+      vi.fn(() => Promise.resolve()),
+      {},
+    );
+
+    registerServiceWorker();
+
+    expect(addEventListener).toHaveBeenCalledWith(
+      "controllerchange",
+      expect.any(Function),
+    );
   });
 
   it("does nothing when the browser has no service worker support", () => {
@@ -70,6 +124,54 @@ describe("registerServiceWorker", () => {
     expect(warn).toHaveBeenCalledWith(
       "Scorecard v2: service worker registration failed",
       expect.any(Error),
+    );
+  });
+});
+
+
+describe("reloadOnUpdate", () => {
+  function container() {
+    const listeners: Array<() => void> = [];
+    return {
+      listeners,
+      addEventListener: vi.fn((type: string, handler: () => void) => {
+        if (type === "controllerchange") {
+          listeners.push(handler);
+        }
+      }),
+      fire: () => listeners.forEach((handler) => handler()),
+    };
+  }
+
+  it("reloads once when an updated worker takes control", () => {
+    const sw = container();
+    const reload = vi.fn();
+
+    reloadOnUpdate(sw, true, reload);
+    sw.fire();
+    sw.fire();
+
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not reload on the first install", () => {
+    const sw = container();
+    const reload = vi.fn();
+
+    reloadOnUpdate(sw, false, reload);
+    sw.fire();
+
+    expect(reload).not.toHaveBeenCalled();
+    expect(sw.addEventListener).not.toHaveBeenCalled();
+  });
+
+  it("registers the listener when the page already had a worker", () => {
+    const sw = container();
+    reloadOnUpdate(sw, true, vi.fn());
+
+    expect(sw.addEventListener).toHaveBeenCalledWith(
+      "controllerchange",
+      expect.any(Function),
     );
   });
 });

@@ -1,28 +1,28 @@
 import { useCurrentUser } from "../app/currentUser";
+import { User } from "./icons";
 import { initialsOf } from "./initials";
 
 /**
- * The signed-in official, as a 28px circle with their initials.
+ * The signed-in official as a 28px disc with their initials, or the account
+ * glyph when the device boots offline without a user.
  *
- * Display only — it reads the current user from the context, so the header
- * stays prop-free on all six screens. Without a user it renders nothing: a
- * shared device that boots offline shows the bar without a face, not an empty
- * circle.
+ * Decorative on purpose: it sits inside the labelled account-menu trigger, so
+ * putting "Angemeldet als …" on the disc as well would announce it twice. The
+ * `title` keeps the hover hint.
  */
 export default function UserAvatar() {
   const user = useCurrentUser();
   const username = user?.username.trim() ?? "";
   const initials = initialsOf(username);
-
-  if (initials === "") {
-    return null;
-  }
-
-  const label = `Angemeldet als ${username}`;
+  const title = username === "" ? "Konto" : `Angemeldet als ${username}`;
 
   return (
-    <span aria-label={label} className="avatar" role="img" title={label}>
-      {initials}
+    <span aria-hidden="true" className="avatar" title={title}>
+      {initials === "" ? (
+        <User className="avatar-icon" size={16} />
+      ) : (
+        initials
+      )}
     </span>
   );
 }

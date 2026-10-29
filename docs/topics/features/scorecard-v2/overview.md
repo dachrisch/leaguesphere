@@ -11,6 +11,8 @@ Status: **beta**. Both apps are bookmarks; nothing links v2 from the old app.
 
 - Plan and task list:
   [Scorecard v2 plan](../../planning/current/2026-10-26-scorecard-v2.md)
+- Follow-up backlog (every idea from the 2026-10-27 review, with status):
+  [Scorecard feature plan](../../planning/current/2026-10-27-scorecard-feature-plan.md)
 - Help topic: [Scorecard v2](/help/spieltag-v2/) (in-app, German)
 
 ## URL and routing
@@ -33,16 +35,55 @@ only control static assets, and its scope could never leak into the old app.
 1. **Meine Spieltage** — today's gamedays (`GET /api/gameday/list`).
 2. **Spiele** — the games of one gameday, per crew or the whole gameday
    (`GET /api/gameday/<id>/officials/<team>`, `team=*` for all), with status and
-   passcheck state.
-3. **Vorbereitung** — crew and licences, coin toss, first possession,
-   direction, passcheck link, **Spiel starten**. An invalid licence warns and
-   needs a second tap; it never blocks the start.
+   passcheck state. Team logos from the public team directory accompany the
+   names here, in the score header and in the preparation team card; the
+   directory
+   is cached in IndexedDB and the logo files are cached by the service worker
+   (bounded, `/media/teammanager/logos/` only), so a device keeps them offline
+   after one load, and a team without one (or a file that cannot be loaded)
+   keeps the initials disc.
+3. **Spiel vorbereiten** — a team card (both crests, the team descriptions,
+   kick-off and field), then two numbered sections. **1. Offizielle**: crew and
+   licences as card rows (initials, role, person, a licence dot chip and a
+   chevron that opens the picker), the league's required positions first and a
+   `n/m besetzt` counter. An empty optional position is a compact dashed
+   **<Position> hinzufügen** row ("Optional · ohne Pflicht zur Besetzung");
+   once somebody is assigned it becomes a normal row. **2. Spielkonfiguration**:
+   one card with **Münzwurf gewonnen von**, **Erster Ballbesitz** and
+   **Spielrichtung**, each a full-width two-option switch. A readiness banner
+   above the start action is the single source of truth: green **Bereit zum
+   Starten**, amber **Angaben fehlen** with exactly the missing facts, and
+   **Start nur online** / **Nur lesen** when the disabled start bar has that
+   reason instead. The
+   crew slots are *the league's*: which positions exist, how they are labelled
+   and which of them count towards the completeness chip is configured per
+   league (`officials.CrewPosition`, edited in the Django admin). Configured
+   rows are overrides **on top of** the built-in five (Scorecard Judge
+   optional, Referee / Down Judge / Field Judge / Side Judge required):
+   relabelling one slot keeps the others, a new position is added after them,
+   and a league without rows gets the defaults — the officials step is never
+   empty. Hiding a default position is not part of this layer (it belongs to
+   the crew template / count work); it would need another column. A crew slot
+   is filled by searching the whole officials directory; the row marks a guest
+   as **Freitext** (a person who is not in it — first and last name required,
+   offered only while nobody matches). A stored position the league does not
+   configure stays visible read-only and is written back unchanged: the API
+   upserts by the exact `GameOfficial.position` string, never by the label. An
+   invalid licence shows an inline hint and needs a second tap; it never blocks
+   the start. Toss, first possession and direction have no default, and the
+   first tap on **Spiel starten** only opens a confirmation that restates
+   teams, kick-off and field, the crew with the league's labels, toss,
+   possession, direction, licences and passcheck, refuses an empty `required`
+   slot, a free-text name without both names and an unchosen
+   toss/possession/direction with a named reason, and says that starting writes
+   the setup while no clock runs in the app.
 4. **Feld · Runde** (the tracking screen) — score header with possession,
    touchdown with the roster's jerseys (numeric fallback when there is none),
    PAT, first down, turnover, interception, penalty with search, safety,
    overtime, Spielzeit, Auszeit, half-time, and **Rückgängig** per entry. The
-   app bar carries the sync chip, the theme switch and **Abmelden** on every
-   screen; the header adds the gameday and league.
+   app bar carries the sync chip and the account menu (avatar: identity,
+   **Auto**/**Hell**/**Dunkel**, **Abmelden**) on every screen; the header adds
+   the gameday and league.
 5. **Spielende** — captains from the roster (suggestions only, free text),
    optional note, then **Ergebnis abschicken**.
 6. **Ergebnis gesendet** — final and half-time score from the server payload.
@@ -51,14 +92,31 @@ What the backend had to grow (all additive):
 
 - `GET /api/game/<id>/roster` — jersey + surname per side, `[]` for a bracket
   placeholder;
+- `GET /api/officials/search/list` — progressive, database-wide person search
+  for the crew picker (one name part is enough, a `team` param only ranks that
+  team first, "nobody" is an empty list);
 - `passcheck` on the games-to-whistle payload;
 - `league_display` on the gameday list;
-- `GameLogSubmission` and `GameSetup.device_id` (migrations `0046`, `0047`).
+- `GameLogSubmission` and `GameSetup.device_id` (migrations `0046`, `0047`);
+- `GET /api/officials/crew-positions/game/<id>` — the league's crew slots in
+  display order (`position`, `label`, `order`, `required`). The screen only
+  knows the game id, so game → gameday → league is resolved server-side; an
+  unconfigured league answers the defaults in the same shape. Preloaded into
+  IndexedDB like the setup payload. Table: `officials.CrewPosition`
+  (migration `officials/0016`).
 
 ## Offline contract
 
 Offline is part of the feature, not a follow-up. The app shell is precached;
 captured plays live in an IndexedDB outbox and are drained FIFO.
+
+**The app writes events, nothing else.** Every in-game write — a play, a change
+of possession, the half-time marker, an undo — is an event appended to
+`POST /api/game/<id>/events`, so all of them queue and replay the same way.
+`PUT /api/game/<id>/possession` and `PUT /api/game/<id>/halftime` are no longer
+called by v2, and an undo is a `correction` event even for a penalty. The only
+non-event write left is the legacy `DELETE` for a row that **no event wrote** —
+a game the old app recorded before the event store existed.
 
 | Works offline (after the first load) | Needs network |
 |---|---|
@@ -85,7 +143,14 @@ Rules that make it safe:
    writes). No result leaves the device with events still on it.
 5. **The score is never computed client-side.** Local entries are optimistic
    display only; every sync replaces the log with the server payload.
-6. **No API response is cached by the worker.** `/api/**` is per user; the
+6. **An undo is a correction event.** The client names the target row's event
+   `seq` (`payload.undo_of`), which `GET /api/gamelog/<id>` publishes per row —
+   one extra, additive field on the log. A scoring play's correction removes the
+   whole submission group, so a touchdown and its conversion go together; a
+   penalty's removes exactly its own row, although every penalty shares
+   `sequence 0`. Only a row no event wrote (`seq: null`, the old app's rows)
+   still needs the pre-event `DELETE` by `team_log_id`.
+7. **No API response is cached by the worker.** `/api/**` is per user; the
    IndexedDB preload is the only offline data store.
 
 The outbox, the sync engine and the snapshot store are pure modules under
@@ -145,9 +210,10 @@ all overridable.
 
 ## Verification
 
-Automated: 494 vitest cases (incl. the outbox/sync engine and a real
-status-0 → remount → flush flow), the `gamedays` + `scorecard_v2` Django suites,
-the Playwright gameday → result flow, and the CI checks in the table above.
+Automated: 857 vitest cases (incl. the outbox/sync engine and a real
+status-0 → remount → flush flow), the `gamedays` + `officials` +
+`scorecard_v2` Django suites, the Playwright gameday → result flow, and the CI
+checks in the table above.
 
 Manual, on a local `runserver` with headless Chromium (not a physical phone):
 

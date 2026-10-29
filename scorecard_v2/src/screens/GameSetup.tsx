@@ -8,17 +8,28 @@ import {
   type ReactNode,
 } from "react";
 
-import { ApiError, apiGet, apiPut, setDeviceId } from "../api/client";
+import { ApiError, apiGet, apiPost, apiPut, setDeviceId } from "../api/client";
 import type {
+  CrewPosition,
   Game,
   GameLog,
   GameSetup as GameSetupPayload,
   Official,
   TeamOfficial,
 } from "../api/types";
+import DirectionText, { type Direction } from "../components/DirectionText";
 import Screen from "../components/Screen";
+import PersonPicker from "../components/PersonPicker";
+import StartConfirmation, {
+  startBlockers,
+  type StartCrewLine,
+} from "../components/sheets/StartConfirmation";
+import TeamLogo from "../components/TeamLogo";
+import { ChevronRight, SwapArrows, Whistle } from "../components/icons";
+import { initials } from "../components/initials";
 import { getDeviceId } from "../device";
 import { cachedGet, snapshotKey } from "../offline/snapshot";
+import { newOpId } from "../session/ids";
 import { formatGameTime } from "./GameList";
 
 interface GameSetupScreenProps {
@@ -31,34 +42,14 @@ interface GameSetupScreenProps {
 }
 
 type Side = "home" | "away";
-type Direction = "Ost" | "West";
-
-/**
- * The crew positions the old scorecard writes (`Official.*` in
- * `scorecard/src/actions/objects.js`). `position` is the exact wire value and
- * is written back unchanged — the backend upserts by that string, so mapping
- * a stored position onto another name would update nothing and create a
- * duplicate row instead.
- *
- * `refereed` marks the four positions that make a crew complete; the
- * Scorecard Judge is optional.
- */
-const CREW_SLOTS = [
-  { position: "Scorecard Judge", label: "Scorecard Judge", refereed: false },
-  { position: "Referee", label: "Schiedsrichter", refereed: true },
-  { position: "Down Judge", label: "Down Judge", refereed: true },
-  { position: "Field Judge", label: "Field Judge", refereed: true },
-  { position: "Side Judge", label: "Side Judge", refereed: true },
-] as const;
-
-const REFEREED_POSITIONS = new Set<string>(
-  CREW_SLOTS.filter((slot) => slot.refereed).map((slot) => slot.position),
-);
 
 interface CrewSlot {
   /** Exact stored position; sent back verbatim when the slot is saved. */
   position: string;
+  /** The league's display name for the position, or the raw position. */
   label: string;
+  /** Whether an empty slot counts against the completeness counter. */
+  required: boolean;
   /** All stored rows for this position; more than one is a data problem. */
   rows: Official[];
   /** First row, editable in place. Unknown and duplicate slots stay read-only. */
@@ -75,13 +66,14 @@ interface CrewWrite {
   name: string | null;
 }
 
-type LicenceState = "valid" | "expired" | "missing" | "unknown";
+type LicenceState = "valid" | "expired" | "missing" | "unknown" | "empty";
 
 const LICENCE_TONE: Record<LicenceState, string> = {
   valid: "ok",
   expired: "warn",
   missing: "missing",
   unknown: "unknown",
+  empty: "empty",
 };
 
 interface Licence {
@@ -122,15 +114,22 @@ function rowDisplayName(
 }
 
 /**
- * One slot per known position plus one read-only slot per unknown position.
+ * One slot per configured position plus one read-only slot per unknown one.
  *
- * Positions are matched byte-for-byte: the API upserts by `position`, so a
- * "clever" alias would leave the stored row untouched and create a second one.
- * Unknown positions are kept and shown; duplicate positions are marked so the
- * screen can refuse to write them (the backend's `get_or_create` would raise
- * `MultipleObjectsReturned`).
+ * The slots come from the league's configuration merged onto the server's
+ * defaults (`GET /api/officials/crew-positions/game/<id>`), already in display
+ * order:
+ * associations name and order their crew differently, and only the league
+ * knows which slots make a crew complete. `position` stays the exact wire
+ * value — the API upserts by that string, so a "clever" alias would leave the
+ * stored row untouched and create a second one. Unknown positions are kept and
+ * shown; duplicate positions are marked so the screen can refuse to write them
+ * (the backend's `get_or_create` would raise `MultipleObjectsReturned`).
  */
-function slotsFromCrew(crew: Official[]): CrewSlot[] {
+function slotsFromCrew(
+  crew: Official[],
+  positions: CrewPosition[],
+): CrewSlot[] {
   const byPosition = new Map<string, Official[]>();
   for (const row of crew) {
     const rows = byPosition.get(row.position);
@@ -141,12 +140,13 @@ function slotsFromCrew(crew: Official[]): CrewSlot[] {
     }
   }
 
-  const slots: CrewSlot[] = CREW_SLOTS.map((slot) => {
+  const slots: CrewSlot[] = positions.map((slot) => {
     const rows = byPosition.get(slot.position) ?? [];
     byPosition.delete(slot.position);
     return {
       position: slot.position,
       label: slot.label,
+      required: slot.required,
       rows,
       official: rows[0]?.official ?? null,
       name: rows[0]?.name ?? null,
@@ -159,6 +159,9 @@ function slotsFromCrew(crew: Official[]): CrewSlot[] {
     slots.push({
       position,
       label: position.trim() === "" ? "Ohne Position" : position,
+      // A position the league does not configure is a data problem, not a
+      // slot: it is shown read-only and never counts as required.
+      required: false,
       rows,
       official: rows[0]?.official ?? null,
       name: rows[0]?.name ?? null,
@@ -174,6 +177,15 @@ function slotsFromCrew(crew: Official[]): CrewSlot[] {
 function hasSavedSetup(setup: GameSetupPayload): boolean {
   return [setup.ctResult, setup.direction, setup.fhPossession].some(
     (value) => typeof value === "string" && value.trim() !== "",
+  );
+}
+
+/** A slot counts as staffed when it links somebody or stores a free-text name. */
+function slotHasValue(slot: CrewSlot): boolean {
+  return (
+    slot.official !== null ||
+    (slot.name ?? "").trim() !== "" ||
+    slot.rows.length > 0
   );
 }
 
@@ -271,51 +283,10 @@ function describeStartError(error: unknown): {
   };
 }
 
-function initials(name: string | null): string {
-  if (name === null) {
-    return "?";
-  }
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return parts
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
-}
-
-/**
- * `Ost → West` with the arrow drawn as SVG.
- *
- * The self-hosted Inter/Barlow latin subsets (and some field devices) have no
- * U+2192 glyph, which renders as a tofu box. The arrow is therefore drawn, and
- * the character stays in the accessible text — the summary and the buttons
- * still read "Ost → West" to screen readers.
- */
-function DirectionText({ from, to }: { from: string; to: string }) {
-  return (
-    <>
-      {from}{" "}
-      <svg
-        aria-hidden="true"
-        className="dirarrow"
-        focusable="false"
-        viewBox="0 0 16 8"
-      >
-        <path
-          d="M0.5 4h14M11.5 1l3.5 3-3.5 3"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.4"
-        />
-      </svg>{" "}
-      <span className="sr-only">→</span>{" "}
-      {to}
-    </>
-  );
-}
-
 interface SegmentedProps {
   label: string;
-  value: string;
+  /** `null` while nothing was chosen: an unset field is refused, not defaulted. */
+  value: string | null;
   options: { value: string; label: ReactNode }[];
   disabled: boolean;
   onChange: (value: string) => void;
@@ -330,8 +301,8 @@ function Segmented({
   onChange,
 }: SegmentedProps) {
   return (
-    <section className="block">
-      <h2 className="blockhead">{label}</h2>
+    <section className="segfield">
+      <h3 className="segtitle">{label}</h3>
       <div aria-label={label} className="seg" role="group">
         {options.map((option) => (
           <button
@@ -355,9 +326,12 @@ function Segmented({
  * possession, direction and the start sequence.
  *
  * The game is started by the backend when `PUT /setup` creates the setup row;
- * everything before that is local. An invalid licence warns without blocking —
- * the button needs a second tap ("Trotzdem starten") so a lapsed licence cannot
- * strand a gameday.
+ * everything before that is local. A wrong setup entry costs the whole game, so
+ * the first tap only opens a confirmation that restates it, and the start
+ * refuses missing input (an empty `required` crew slot, a free-text name
+ * without both names, an unchosen toss/possession/direction) instead of
+ * confirming it. An invalid licence warns without ever blocking — the
+ * confirmation carries that warning, so it does not add a tap of its own.
  */
 export default function GameSetupScreen({
   game,
@@ -369,7 +343,8 @@ export default function GameSetupScreen({
   const crewPath = `/api/game/${id}/officials`;
   const setupPath = `/api/game/${id}/setup`;
   const teamPath = `/api/officials/team/${officialsId}/list`;
-  const possessionPath = `/api/game/${id}/possession`;
+  const positionsPath = `/api/officials/crew-positions/game/${id}`;
+  const eventsPath = `/api/game/${id}/events`;
   const logPath = `/api/gamelog/${id}`;
 
   const finished = game.status.trim().toLowerCase() === "beendet";
@@ -384,12 +359,13 @@ export default function GameSetupScreen({
   const [dirty, setDirty] = useState(false);
   const [hasSetup, setHasSetup] = useState(false);
 
-  const [toss, setToss] = useState<Side>("home");
-  const [possession, setPossession] = useState<Side>("home");
-  const [direction, setDirection] = useState<Direction>("Ost");
+  const [toss, setToss] = useState<Side | null>(null);
+  const [possession, setPossession] = useState<Side | null>(null);
+  const [direction, setDirection] = useState<Direction | null>(null);
 
   const [saving, setSaving] = useState(false);
-  const [confirmPending, setConfirmPending] = useState(false);
+  // The confirmation sheet between the tap on "Spiel starten" and the write.
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [readOnly, setReadOnly] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The setup was accepted by the server during this visit. A later failure
@@ -407,7 +383,7 @@ export default function GameSetupScreen({
    */
   const load = useCallback(async () => {
     try {
-      const [crew, team, setup] = await Promise.all([
+      const [crew, team, setup, positions] = await Promise.all([
         apiGet<Official[]>(crewPath),
         apiGet<TeamOfficial[]>(teamPath).catch(() => {
           setTeamError(true);
@@ -416,8 +392,21 @@ export default function GameSetupScreen({
         // Preloaded: a device that reloads with no network still shows what
         // was agreed on the coin toss.
         cachedGet<GameSetupPayload>(snapshotKey.setup(id), setupPath),
+        // The league's slots are configuration, not game state, so the last
+        // answer is preloaded: if *this* request alone fails (5xx, aborted),
+        // the stored slots keep labels and order right. The crew itself is a
+        // plain request, so a truly offline reload still ends in the load
+        // error below.
+        cachedGet<CrewPosition[]>(snapshotKey.crewPositions(id), positionsPath),
       ]);
-      setSlots(slotsFromCrew(crew ?? []));
+      if ((positions ?? []).length === 0) {
+        // The endpoint answers the five built-in defaults for a league without
+        // configuration, so an empty list is a broken answer, not "no slots".
+        // Without positions there is nothing to fill in, and an officials step
+        // with zero rows (and a "vollständig" chip) would be a lie.
+        throw new Error("Die Crew-Positionen des Spiels sind leer.");
+      }
+      setSlots(slotsFromCrew(crew ?? [], positions));
       setTeamOfficials(team ?? []);
       const saved = hasSavedSetup(setup ?? {});
       setHasSetup(saved);
@@ -435,7 +424,7 @@ export default function GameSetupScreen({
       );
       setLoading(false);
     }
-  }, [crewPath, setupPath, teamPath, home, away, id]);
+  }, [crewPath, setupPath, teamPath, positionsPath, home, away, id]);
 
   useEffect(() => {
     // `load` only writes state after its first `await`; the rule cannot see
@@ -474,7 +463,11 @@ export default function GameSetupScreen({
   const licenceOf = useCallback(
     (slot: CrewSlot): Licence => {
       if (slot.official === null) {
-        return { state: "missing", label: "keine Lizenz" };
+        // An empty slot has no licence to judge: "fehlt" says what it is, a
+        // missing-licence claim would be about nobody.
+        return (slot.name ?? "").trim() === ""
+          ? { state: "empty", label: "fehlt" }
+          : { state: "missing", label: "keine Lizenz" };
       }
       const person = teamByOfficial.get(slot.official);
       if (person === undefined) {
@@ -520,38 +513,94 @@ export default function GameSetupScreen({
     [slots, teamByOfficial, displayName],
   );
 
-  const refereedFilled = slots.filter(
+  /**
+   * Whether this row carries an invalid licence that the sheet will warn about.
+   * The row says so inline ("Start trotzdem möglich") instead of the screen
+   * printing a second, global paragraph.
+   */
+  const licenceWarns = useCallback(
+    (slot: CrewSlot): boolean => {
+      if (slot.official === null) {
+        return false;
+      }
+      const person = teamByOfficial.get(slot.official);
+      return person !== undefined && !person.is_valid;
+    },
+    [teamByOfficial],
+  );
+
+  /**
+   * Completeness is the league's decision (`required` per slot), not a fixed
+   * set of positions. Duplicate rows never count: they cannot be written.
+   */
+  const requiredSlots = slots.filter((slot) => slot.required);
+  const requiredFilled = requiredSlots.filter(
     (slot) =>
       !slot.duplicate &&
-      REFEREED_POSITIONS.has(slot.position) &&
       (slot.official !== null || (slot.name ?? "").trim() !== ""),
   ).length;
 
-  const chooseOfficial = (index: number, raw: string): void => {
-    const official = raw === "" ? null : Number(raw);
-    const person =
-      official === null ? undefined : teamByOfficial.get(official);
+  /**
+   * Presentation order, not wire order: the league's required positions first,
+   * an optional slot with somebody in it next, then the optional slots still
+   * waiting for a name (rendered as one compact "hinzufügen" row each). A
+   * stored position the league does not configure is a data problem and stays
+   * at the bottom, read-only. Each entry keeps its index into `slots` so the
+   * picker edits the right row and the save keeps the server's order.
+   */
+  const orderedSlots = useMemo(
+    () =>
+      [
+        ...slots.filter((slot) => slot.required),
+        ...slots.filter(
+          (slot) => !slot.required && slot.known && slotHasValue(slot),
+        ),
+        ...slots.filter(
+          (slot) => !slot.required && slot.known && !slotHasValue(slot),
+        ),
+        ...slots.filter((slot) => !slot.known),
+      ].map((slot) => ({ slot, index: slots.indexOf(slot) })),
+    [slots],
+  );
+
+  const pickPerson = (index: number, person: TeamOfficial): void => {
     setSlots((current) =>
-      current.map((slot, position) => {
-        if (position !== index) {
-          return slot;
-        }
-        return {
-          ...slot,
-          official,
-          name: person === undefined ? null : personName(person),
-        };
-      }),
+      current.map((slot, position) =>
+        position === index
+          ? { ...slot, official: person.id, name: personName(person) }
+          : slot,
+      ),
     );
     setDirty(true);
-    setConfirmPending(false);
+  };
+
+  /**
+   * A guest official who is not in the directory: stored as a name, never as a
+   * link. `PersonPicker` only offers this when nothing matched and both names
+   * are present, so a resolvable person is not replaced by free text.
+   */
+  const enterFreeText = (index: number, name: string): void => {
+    setSlots((current) =>
+      current.map((slot, position) =>
+        position === index ? { ...slot, official: null, name } : slot,
+      ),
+    );
+    setDirty(true);
+  };
+
+  const clearSlot = (index: number): void => {
+    setSlots((current) =>
+      current.map((slot, position) =>
+        position === index ? { ...slot, official: null, name: null } : slot,
+      ),
+    );
+    setDirty(true);
   };
 
   /** Change a start field after the setup was accepted → send it again. */
   const resetStartPhases = (): void => {
     setSetupAccepted(false);
     setPossessionSent(false);
-    setConfirmPending(false);
   };
 
   // Duplicate rows are never written: the backend upserts by position and its
@@ -569,8 +618,50 @@ export default function GameSetupScreen({
     }));
 
   const sideTeam = (side: Side): string | null => (side === "home" ? home : away);
-  const [directionFrom, directionTo] =
-    direction === "Ost" ? ["Ost", "West"] : ["West", "Ost"];
+
+  /**
+   * What the confirmation restates, in the sheet's own shape.
+   *
+   * `filled` is the slot's own state, not the resolved display name: the team
+   * list can fail, or a stored row can carry no name, and a linked official then
+   * has no name while the slot is clearly staffed (the picker says "Offizieller
+   * 99" and the completeness chip counts it). `editable` mirrors the picker: a
+   * duplicate row or a position the league does not configure is shown but
+   * cannot be fixed here, so it never becomes the reason a start is refused.
+   */
+  const crewLines: StartCrewLine[] = slots.map((slot) => {
+    const name = displayName(slot);
+    return {
+      label: slot.label,
+      name,
+      filled: slot.official !== null || (slot.name ?? "").trim() !== "",
+      freetext: slot.official === null && name !== null,
+      required: slot.required,
+      editable: slot.known && !slot.duplicate,
+      duplicate: slot.duplicate,
+    };
+  });
+
+  const tossTeam = toss === null ? null : teamLabel(sideTeam(toss));
+  const possessionTeam =
+    possession === null ? null : teamLabel(sideTeam(possession));
+
+  const openConfirmation = (): void => {
+    if (inFlight.current || loading || finished || offline || readOnly) {
+      return;
+    }
+    setConfirmOpen(true);
+  };
+
+  /**
+   * Second tap: the sheet closes first, so a rejected write behaves exactly as
+   * it did without a sheet — the failure and the read-only switch are the
+   * screen's, not a modal's.
+   */
+  const confirmStart = (): void => {
+    setConfirmOpen(false);
+    void runStart();
+  };
 
   /** Officials used by another row, so one person cannot fill two slots. */
   const takenByOthers = (index: number): Set<number> => {
@@ -604,8 +695,15 @@ export default function GameSetupScreen({
     if (!force && readOnly) {
       return;
     }
-    if (licenceIssues.length > 0 && !confirmPending) {
-      setConfirmPending(true);
+    // Belt and braces: the sheet disables its button while a reason is listed,
+    // and the retry after a released device lock re-enters here without it.
+    if (
+      startBlockers({ crew: crewLines, tossTeam, possessionTeam, direction })
+        .length > 0 ||
+      toss === null ||
+      possession === null ||
+      direction === null
+    ) {
       return;
     }
     inFlight.current = true;
@@ -631,18 +729,21 @@ export default function GameSetupScreen({
         setDeviceId(deviceId);
       }
       // The log is read before the opening possession is written, not after:
-      // `PUT /possession` stores the team *name* (`Team.name`) and the log is
-      // the only payload that carries it. The game row in the list shows the
-      // long `Team.description`, which the endpoint rejects with a 400 — the
-      // start would otherwise stop right after the setup was accepted.
+      // the possession event names a *side*, but the screen shows the team
+      // *name* (`Team.name`), and the log is the payload that carries it.
       const log = await cachedGet<GameLog>(snapshotKey.log(id), logPath);
       let inPossession = log.inPossession ?? null;
       if (!possessionSent) {
         const team = possession === "home" ? log.home?.name : log.away?.name;
         if (team !== null && team !== undefined && team.trim() !== "") {
-          await apiPut<void>(possessionPath, { team });
+          // The opening possession is an event like every other in-game write;
+          // `PUT /setup` only stores the toss/direction and the device lock.
+          await apiPost(eventsPath, {
+            events: [{ type: "possession", code: possession, side: possession }],
+            client_id: newOpId(),
+          });
           // The log above predates the write and cannot carry the marker yet.
-          // The server accepted exactly this team; the next payload replaces
+          // The server accepted exactly this side; the next payload replaces
           // it anyway.
           inPossession = team;
         }
@@ -676,23 +777,64 @@ export default function GameSetupScreen({
     startLabel = "Start nur online";
   } else if (saving) {
     startLabel = "Startet …";
-  } else if (confirmPending) {
-    startLabel = "Trotzdem starten";
   } else if (hasSetup) {
     startLabel = "Fortsetzen";
   } else {
     startLabel = `Spiel starten · ${formatGameTime(scheduled)}`;
   }
 
+  // One source of truth for "may this start?": the banner and the confirmation
+  // sheet both read `startBlockers`, so they cannot drift apart.
+  const blockers = startBlockers({
+    crew: crewLines,
+    tossTeam,
+    possessionTeam,
+    direction,
+  });
+  const ready = blockers.length === 0;
+  const officialsSectionId = "prep-officials";
+  const configSectionId = "prep-config";
+  const counter =
+    requiredSlots.length === 0
+      ? "keine Pflichtposition"
+      : `${requiredFilled}/${requiredSlots.length} besetzt`;
+
+  // The banner and the start bar must say the same thing: a complete setup is
+  // only "ready" when the bar is not disabled by the device lock or the
+  // missing connection. Otherwise the banner names that reason instead of
+  // claiming green. Missing input still comes from the same blockers array the
+  // confirmation sheet uses.
+  const banner = readOnly
+    ? {
+        tone: "miss" as const,
+        title: "Nur lesen",
+        lines: [error ?? "Dieses Spiel läuft auf einem anderen Gerät."],
+      }
+    : offline
+      ? {
+          tone: "miss" as const,
+          title: "Start nur online",
+          lines: ["Das Spiel kann nur mit Verbindung gestartet werden."],
+        }
+      : ready
+        ? {
+            tone: "ok" as const,
+            title: "Bereit zum Starten",
+            lines: ["Alle Pflichtangaben sind gesetzt."],
+          }
+        : {
+            tone: "miss" as const,
+            title: "Angaben fehlen",
+            lines: blockers,
+          };
+
   return (
     <Screen
       kicker="Scorecard"
       onBack={onBack}
       onLogout={onLogout}
-      sub={`${teamLabel(home)} – ${teamLabel(away)} · ${formatGameTime(
-        scheduled,
-      )} · Feld ${field}`}
-      title="Vorbereitung"
+      title="Spiel vorbereiten"
+      wide
     >
       {loading ? (
         <p className="setupnote" role="status">
@@ -711,205 +853,273 @@ export default function GameSetupScreen({
 
       {!loading && loadError === null ? (
         <div className="prep">
+          <section aria-label="Begegnung" className="matchcard">
+            <div className="matchteams">
+              <div className="matchteam">
+                <TeamLogo className="teamlogo-match" name={home} />
+                <span className="matchteam-name">{teamLabel(home)}</span>
+              </div>
+              <span aria-hidden="true" className="matchvs">
+                VS.
+              </span>
+              <div className="matchteam matchteam-away">
+                <TeamLogo className="teamlogo-match" name={away} />
+                <span className="matchteam-name">{teamLabel(away)}</span>
+              </div>
+            </div>
+            <p className="matchcontext">
+              {formatGameTime(scheduled)} · Feld {field}
+            </p>
+          </section>
+
           {finished ? (
             <p className="finishednote" role="status">
               Dieses Spiel ist beendet.
             </p>
           ) : null}
 
-          <section className="block">
-            <div className="blockhead">
-              <h2>Offizielle</h2>
-              {refereedFilled === REFEREED_POSITIONS.size ? (
-                <span className="okchip">vollständig</span>
-              ) : (
-                <span className="chip-miss">
-                  {refereedFilled}/{REFEREED_POSITIONS.size}
+          <div className="prepgrid">
+            <section aria-labelledby={officialsSectionId} className="block">
+              <div className="blockhead">
+                <h2 className="sectionhead" id={officialsSectionId}>
+                  <span aria-hidden="true" className="sectionicon">
+                    <Whistle size={16} />
+                  </span>
+                  <span aria-hidden="true" className="sectionnum">
+                    1.
+                  </span>
+                  Offizielle
+                </h2>
+                <span
+                  className={
+                    requiredFilled === requiredSlots.length
+                      ? "okchip"
+                      : "chip-miss"
+                  }
+                >
+                  {counter}
                 </span>
-              )}
-            </div>
-            {teamError ? (
-              <p className="setupnote" role="status">
-                Die Offiziellen des Teams konnten nicht geladen werden.
-              </p>
-            ) : null}
-            {slots.map((slot, index) => {
-              const licence = licenceOf(slot);
-              const name = displayName(slot);
-              const selected =
-                slot.official === null ? "" : String(slot.official);
-              const personMissing =
-                slot.official !== null && !teamByOfficial.has(slot.official);
-              const editable = slot.known && !slot.duplicate;
-              const taken = editable ? takenByOthers(index) : new Set<number>();
-              const options = teamOfficials.filter(
-                (person) => person.id === slot.official || !taken.has(person.id),
-              );
-              const duplicateNames = slot.duplicate
-                ? slot.rows
-                    .map((row) => rowDisplayName(row, teamByOfficial))
-                    .filter((value): value is string => value !== null)
-                    .join(", ")
-                : "";
-              return (
-                <Fragment key={`${slot.known ? "known" : "extra"}-${index}`}>
-                  <div className="offrow">
-                    <span aria-hidden="true" className="offava">
-                      {initials(name)}
+              </div>
+              {teamError ? (
+                <p className="setupnote" role="status">
+                  Die Offiziellen des Teams konnten nicht geladen werden.
+                </p>
+              ) : null}
+
+              {orderedSlots.map(({ slot, index }) => {
+                const licence = licenceOf(slot);
+                const name = displayName(slot);
+                const editable = slot.known && !slot.duplicate;
+                const optionalEmpty =
+                  !slot.required && slot.known && !slotHasValue(slot);
+                const taken = editable
+                  ? takenByOthers(index)
+                  : new Set<number>();
+                const duplicateNames = slot.duplicate
+                  ? slot.rows
+                      .map((row) => rowDisplayName(row, teamByOfficial))
+                      .filter((value): value is string => value !== null)
+                      .join(", ")
+                  : "";
+
+                const content = (shownName: string, freeText: boolean) => (
+                  <>
+                    <span
+                      aria-hidden="true"
+                      className={`offava${optionalEmpty ? " offava-add" : ""}`}
+                    >
+                      {optionalEmpty ? "+" : initials(name)}
                     </span>
-                    <span className="offnm">
-                      {editable ? (
-                        <select
-                          aria-label={`${slot.label}: Offiziellen wählen`}
-                          className="offsel"
-                          disabled={readOnly || finished}
-                          onChange={(event) =>
-                            chooseOfficial(index, event.target.value)
-                          }
-                          value={selected}
-                        >
-                          {personMissing ? (
-                            <option value={selected}>
-                              {name ?? `Offizieller ${selected}`}
-                            </option>
-                          ) : null}
-                          <option value="">
-                            {slot.official === null && name !== null
-                              ? name
-                              : "Offiziellen wählen"}
-                          </option>
-                          {options.map((person) => (
-                            <option key={person.id} value={person.id}>
-                              {personName(person)}
-                            </option>
-                          ))}
-                        </select>
+                    <span className="offbody">
+                      {optionalEmpty ? (
+                        <>
+                          <span className="offaddline">
+                            <span className="offadd">
+                              {slot.label} hinzufügen
+                            </span>
+                            <span aria-hidden="true" className="offsep">
+                              ·
+                            </span>
+                          </span>
+                          <span className="offhint">
+                            Optional · ohne Pflicht zur Besetzung
+                          </span>
+                        </>
                       ) : (
-                        <span className="offname">{name ?? "–"}</span>
+                        <>
+                          <span className="offrole">{slot.label}</span>
+                          <span className="offmember">
+                            {shownName}
+                            {freeText ? (
+                              <span className="pplink pplink-free">
+                                Freitext
+                              </span>
+                            ) : null}
+                          </span>
+                          {licenceWarns(slot) ? (
+                            <span className="offhint offhint-warn">
+                              Start trotzdem möglich
+                            </span>
+                          ) : null}
+                        </>
                       )}
-                      <span className="offrole">{slot.label}</span>
                     </span>
-                    <span className={`lic lic-${LICENCE_TONE[licence.state]}`}>
-                      {licence.label}
+                    <span className="offmeta">
+                      {optionalEmpty ? null : (
+                        <span
+                          className={`lic lic-${LICENCE_TONE[licence.state]}`}
+                        >
+                          {licence.label}
+                        </span>
+                      )}
+                      {editable ? (
+                        <ChevronRight className="offchev" size={16} />
+                      ) : null}
                     </span>
-                  </div>
-                  {slot.duplicate ? (
-                    <p className="setupwarn offwarn" role="alert">
-                      Mehrere Einträge für {slot.label} – bitte bereinigen
-                      {duplicateNames !== "" ? ` (${duplicateNames})` : ""}
-                    </p>
-                  ) : null}
-                </Fragment>
-              );
-            })}
-            <p className="setupnote">
-              Schiedsrichter, Down Judge, Field Judge und Side Judge zählen für
-              die Vollständigkeit; der Scorecard Judge ist optional.
-            </p>
-          </section>
+                  </>
+                );
 
-          {licenceIssues.length > 0 ? (
-            <div
-              className="setupwarn"
-              id="crew-licence-warning"
-              role="status"
-            >
-              <b>
-                {licenceIssues.length === 1
-                  ? "1 Lizenz ist nicht gültig"
-                  : `${licenceIssues.length} Lizenzen sind nicht gültig`}
-              </b>
-              <span>
-                {licenceIssues
-                  .map((issue) => `${issue.name} (${issue.role})`)
-                  .join(", ")}
-              </span>
-              <span>
-                {confirmPending
-                  ? "Lizenz nicht gültig – erneut tippen zum Start."
-                  : "Das Spiel lässt sich trotzdem starten."}
-              </span>
-            </div>
-          ) : null}
+                return (
+                  <Fragment key={`${slot.known ? "known" : "extra"}-${index}`}>
+                    <div
+                      className={`offrow${optionalEmpty ? " offrow-optional" : ""}`}
+                    >
+                      {editable ? (
+                        <PersonPicker
+                          disabled={readOnly || finished}
+                          label={slot.label}
+                          onClear={() => clearSlot(index)}
+                          onFreeText={(freeText) =>
+                            enterFreeText(index, freeText)
+                          }
+                          onPick={(person) => pickPerson(index, person)}
+                          taken={taken}
+                          teamId={officialsId}
+                          trigger={({ open, toggle, displayName, linked, empty }) => (
+                            <button
+                              aria-expanded={open}
+                              aria-haspopup="listbox"
+                              aria-label={
+                                optionalEmpty
+                                  ? `${slot.label} hinzufügen: Offiziellen wählen`
+                                  : `${slot.label}: Offiziellen wählen`
+                              }
+                              className={`offcard${optionalEmpty ? " offcard-add" : ""}`}
+                              disabled={readOnly || finished}
+                              onClick={toggle}
+                              type="button"
+                            >
+                              {content(displayName, !linked && !empty)}
+                            </button>
+                          )}
+                          value={{
+                            official: slot.official,
+                            name:
+                              name ??
+                              (slot.official === null
+                                ? null
+                                : `Offizieller ${slot.official}`),
+                          }}
+                        />
+                      ) : (
+                        <div className="offcard offcard-static">
+                          {content(name ?? "–", false)}
+                        </div>
+                      )}
+                    </div>
+                    {slot.duplicate ? (
+                      <p className="setupwarn offwarn" role="alert">
+                        Mehrere Einträge für {slot.label} – bitte bereinigen
+                        {duplicateNames !== "" ? ` (${duplicateNames})` : ""}
+                      </p>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
 
-          <Segmented
-            disabled={readOnly || finished}
-            label="Münzwurf"
-            onChange={(value) => {
-              setToss(value as Side);
-              resetStartPhases();
-            }}
-            options={[
-              { value: "home", label: teamLabel(home) },
-              { value: "away", label: teamLabel(away) },
-            ]}
-            value={toss}
-          />
+              <p className="setupnote passcheckline">
+                <span className="passchecklabel">Passcheck</span>
+                {game.passcheck === true ? (
+                  <span className="okchip">Passcheck vollständig</span>
+                ) : game.passcheck === false ? (
+                  <span className="chip-miss">kein Passcheck</span>
+                ) : (
+                  <span className="tag tag-soon">unbekannt</span>
+                )}
+                <a
+                  className="setlink passchecklink"
+                  href="/passcheck/"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  Passcheck-Seite
+                </a>
+              </p>
+            </section>
 
-          <Segmented
-            disabled={readOnly || finished}
-            label="Erster Ballbesitz"
-            onChange={(value) => {
-              setPossession(value as Side);
-              resetStartPhases();
-            }}
-            options={[
-              { value: "home", label: teamLabel(home) },
-              { value: "away", label: teamLabel(away) },
-            ]}
-            value={possession}
-          />
+            <section aria-labelledby={configSectionId} className="block">
+              <div className="blockhead">
+                <h2 className="sectionhead" id={configSectionId}>
+                  <span aria-hidden="true" className="sectionicon">
+                    <SwapArrows size={16} />
+                  </span>
+                  <span aria-hidden="true" className="sectionnum">
+                    2.
+                  </span>
+                  Spielkonfiguration
+                </h2>
+              </div>
+              <div className="configgrid">
+                <Segmented
+                  disabled={readOnly || finished}
+                  label="Münzwurf gewonnen von"
+                  onChange={(value) => {
+                    setToss(value as Side);
+                    resetStartPhases();
+                  }}
+                  options={[
+                    { value: "home", label: teamLabel(home) },
+                    { value: "away", label: teamLabel(away) },
+                  ]}
+                  value={toss}
+                />
 
-          <Segmented
-            disabled={readOnly || finished}
-            label="Richtung"
-            onChange={(value) => {
-              setDirection(value as Direction);
-              resetStartPhases();
-            }}
-            options={[
-              {
-                value: "Ost",
-                label: <DirectionText from="Ost" to="West" />,
-              },
-              {
-                value: "West",
-                label: <DirectionText from="West" to="Ost" />,
-              },
-            ]}
-            value={direction}
-          />
+                <Segmented
+                  disabled={readOnly || finished}
+                  label="Erster Ballbesitz"
+                  onChange={(value) => {
+                    setPossession(value as Side);
+                    resetStartPhases();
+                  }}
+                  options={[
+                    { value: "home", label: teamLabel(home) },
+                    { value: "away", label: teamLabel(away) },
+                  ]}
+                  value={possession}
+                />
 
-          <section className="block">
-            <div className="blockhead">
-              <h2>Passcheck</h2>
-              {game.passcheck === true ? (
-                <span className="okchip">Passcheck vollständig</span>
-              ) : game.passcheck === false ? (
-                <span className="chip-miss">kein Passcheck</span>
-              ) : (
-                <span className="tag tag-soon">unbekannt</span>
-              )}
-            </div>
-            <p className="setupnote">
-              Die Passprüfung selbst läuft auf der{" "}
-              <a
-                className="setlink"
-                href="/passcheck/"
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                Passcheck-Seite
-              </a>{" "}
-              (neuer Tab – die Vorbereitung bleibt erhalten).
-            </p>
-          </section>
-
-          <p className="setupnote" id="setup-summary">
-            {teamLabel(sideTeam(toss))} gewinnt den Münzwurf · Ballbesitz{" "}
-            {teamLabel(sideTeam(possession))} · Richtung{" "}
-            <DirectionText from={directionFrom} to={directionTo} />
-          </p>
+                <Segmented
+                  disabled={readOnly || finished}
+                  label="Spielrichtung"
+                  onChange={(value) => {
+                    setDirection(value as Direction);
+                    resetStartPhases();
+                  }}
+                  options={[
+                    {
+                      value: "Ost",
+                      label: <DirectionText from="Ost" to="West" />,
+                    },
+                    {
+                      value: "West",
+                      label: <DirectionText from="West" to="Ost" />,
+                    },
+                  ]}
+                  value={direction}
+                />
+              </div>
+            </section>
+          </div>
 
           {error !== null ? (
             <div className="seterror" role="alert">
@@ -923,21 +1133,54 @@ export default function GameSetupScreen({
           ) : null}
 
           {finished ? null : (
-            <div className="setupfoot">
-              <button
-                aria-describedby={
-                  licenceIssues.length > 0 ? "crew-licence-warning" : undefined
-                }
-                className="startbtn"
-                disabled={saving || readOnly || offline}
-                onClick={() => void runStart()}
-                type="button"
+            <>
+              <div
+                className={`readybar readybar-${banner.tone}`}
+                id="readiness"
+                role="status"
               >
-                {startLabel}
-              </button>
-            </div>
+                <b>{banner.title}</b>
+                {banner.tone === "ok" ? (
+                  <span>{banner.lines[0]}</span>
+                ) : (
+                  <ul>
+                    {banner.lines.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="setupfoot">
+                <button
+                  className="startbtn"
+                  disabled={saving || readOnly || offline}
+                  onClick={openConfirmation}
+                  type="button"
+                >
+                  {startLabel}
+                </button>
+              </div>
+            </>
           )}
         </div>
+      ) : null}
+
+      {confirmOpen ? (
+        <StartConfirmation
+          away={away}
+          crew={crewLines}
+          direction={direction}
+          field={field}
+          home={home}
+          licenceIssues={licenceIssues}
+          onClose={() => setConfirmOpen(false)}
+          onStart={confirmStart}
+          passcheck={game.passcheck}
+          possessionTeam={possessionTeam}
+          time={formatGameTime(scheduled)}
+          tossTeam={tossTeam}
+        />
       ) : null}
     </Screen>
   );

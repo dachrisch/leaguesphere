@@ -15,6 +15,8 @@ See [current/](./current/) for active planning work.
 - [2026-10-26 Scorecard v2](./current/2026-10-26-scorecard-v2.md): offline-capable field app at `/scorecard/v2/` (PWA + IndexedDB outbox, idempotent writes, device lock) while `/scorecard/` stays untouched
 - [2026-10-27 LeagueSphere v5 Sync — Intake](./current/2026-10-27-leaguesphere-v5-sync.md): projects and open threads from the call with Christoph (offd/Moodle migration, Scorecard v2/v3, event sourcing, Game Day coexistence, Passcheck API); intake only, roadmap deferred
 - [2026-10-27 Scorecard — Ideas & Findings](./current/2026-10-27-scorecard-ideas.md): every scorecard idea from that call in one place (v2 review findings, person matching, clock confirmations, sport templates, event sourcing, v3 capture, input UX, integrations)
+- [2026-10-27 Scorecard — Feature Plan & Status](./current/2026-10-27-scorecard-feature-plan.md): those ideas as one tracked row each (ID, layer, status); all of them are to be added, the delivery layers ship bottom-up
+- [2026-10-27 Scorecard — Layer Plan](./current/2026-10-27-scorecard-layers-plan.md): the concrete stack (L2 logos → L3 crew labels → L4 period templates → L5 start confirmation) with per-layer specs, acceptance and the subagent protocol
 
 ### Completed Plans
 See [history/](./history/) for completed and archived plans.
@@ -24,3 +26,4 @@ See [history/](./history/) for completed and archived plans.
 This directory tracks project plans and completed work. Plans use YYYY-MM-DD-name.md naming.
 
 When a plan is complete, move it from `current/` to `history/`.
+- [2026-10-28 Scorecard — Event Architecture](./current/2026-10-28-scorecard-event-architecture.md): recording separated from meaning — the app appends sport-neutral events, the server owns the store, the projection and the channels; slice 1 = event store + projection feed + liveticker

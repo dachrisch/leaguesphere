@@ -5,7 +5,7 @@ from collections import OrderedDict
 from http import HTTPStatus
 
 from django.db import transaction
-from django.db.models import F, Q
+from django.db.models import F, Max, Q
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import UpdateAPIView, RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -13,6 +13,11 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from gameevents.models import GameEvent
+from gameevents.service.append import append_legacy as shadow_append
+from gameevents.service.log_payload import event_seqs_for_rows
+from gameevents.service.projector import InvalidEnvelope
+from gameevents.service.undo import record_legacy_undo
 from gamedays.api.serializers import (
     GameFinalizer,
     GameSetupSerializer,
@@ -117,6 +122,25 @@ def _client_id(raw):
         raise ValidationError({"client_id": "must be a UUID"})
 
 
+def _submission_already_applied(game, client_id) -> bool:
+    """Whether this submission has already written its rows.
+
+    Both write endpoints accept the same outbox, and a retried op can land on
+    the other one (the app moves from ``/api/gamelog/`` to
+    ``/api/game/<id>/events`` between releases). The claim therefore has two
+    homes: ``GameLogSubmission`` for the writes this endpoint took, and the
+    event store's unique ``(game, client_id)`` for the ones the canonical
+    endpoint took (which the shadow also records here). Checking only the
+    former would write a canonical submission's ``TeamLog`` rows a second time
+    on a replay; checking only the latter would do the same for a legacy one.
+    """
+    if client_id is None:
+        return False
+    if GameLogSubmission.objects.filter(gameinfo=game, client_id=client_id).exists():
+        return True
+    return GameEvent.objects.filter(game=game, client_id=str(client_id)).exists()
+
+
 def _validate_gamelog_payload(data):
     """Reject malformed gamelog write payloads with a 400 instead of a 500.
 
@@ -192,10 +216,11 @@ class GameLogAPIView(APIView):
         if not gamelog.get(GameLogSerializer.IN_POSSESSION):
             # A blank stored value means "no possession", not "the empty team".
             gamelog[GameLogSerializer.IN_POSSESSION] = None
+        rows = list(TeamLog.objects.filter(gameinfo_id=game_id))
         gamelog.update(
             {
                 GameLogSerializer.EVENTS: serialize_events(
-                    TeamLog.objects.filter(gameinfo_id=game_id),
+                    rows,
                     {
                         gamelog.get("home_id"): gamelog.get(
                             GameLogSerializer.HOME_TEAM
@@ -205,6 +230,7 @@ class GameLogAPIView(APIView):
                         ),
                     },
                     gameday_ref_now(gamelog.get(GameLogSerializer.GAMEDAY_DATE)),
+                    event_seqs_for_rows(rows, game_id),
                 )
             }
         )
@@ -235,37 +261,78 @@ class GameLogAPIView(APIView):
             data = request.data
             _validate_gamelog_payload(data)
             client_id = _client_id(data.get("client_id"))
-            game_service = GameService(data.get("gameId"))
-            game = game_service.gameinfo.gameinfo
-            if client_id is not None and GameLogSubmission.objects.filter(
-                gameinfo=game, client_id=client_id
-            ).exists():
-                # Already applied (and its rows committed -- the claim shares
-                # the write's transaction). Answer with the current log and
-                # write nothing. This has to be checked BEFORE the device
-                # lock: after a staff release plus a handover the replay comes
-                # from a device that no longer holds the lock, and a 409 would
-                # pin the op in the outbox forever, blocking the finalize.
-                return Response(
-                    json.loads(
-                        game_service.get_gamelog().as_json(),
-                        object_pairs_hook=OrderedDict,
-                    ),
-                    status=HTTPStatus.OK,
+            with transaction.atomic():
+                # Rows and events are one unit. Locking the game row before the
+                # write serialises this endpoint with the canonical endpoint's
+                # sequence allocation; GameLogCreator re-locks the same row
+                # inside the write (a no-op in this transaction), so every
+                # write here holds Gameinfo before Gameresult.
+                game = Gameinfo.objects.select_for_update().get(pk=data.get("gameId"))
+                game_service = GameService(game.pk)
+                if _submission_already_applied(game, client_id):
+                    # Already applied (and its rows committed -- the claim shares
+                    # the write's transaction). Answer with the current log and
+                    # write nothing. This has to be checked BEFORE the device
+                    # lock: after a staff release plus a handover the replay comes
+                    # from a device that no longer holds the lock, and a 409 would
+                    # pin the op in the outbox forever, blocking the finalize.
+                    return Response(
+                        json.loads(
+                            game_service.get_gamelog().as_json(),
+                            object_pairs_hook=OrderedDict,
+                        ),
+                        status=HTTPStatus.OK,
+                    )
+                finished = _finished_game_response(game)
+                if finished is not None:
+                    return finished
+                conflict = _device_lock_response(request, game.pk, data)
+                if conflict is not None:
+                    return conflict
+                # The rows this request writes are the ones above this
+                # watermark: the game row is locked for the whole request, so
+                # no other writer can insert in between. They are handed to the
+                # shadow so each event can name the row it produced.
+                watermark = (
+                    TeamLog.objects.filter(gameinfo=game).aggregate(Max("pk"))[
+                        "pk__max"
+                    ]
+                    or 0
                 )
-            finished = _finished_game_response(game)
-            if finished is not None:
-                return finished
-            conflict = _device_lock_response(request, game.pk, data)
-            if conflict is not None:
-                return conflict
-            gamelog, applied = game_service.create_gamelog_once(
-                data.get("team"),
-                data.get("event"),
-                request.user,
-                data.get("half"),
-                client_id=client_id,
-            )
+                gamelog, applied = game_service.create_gamelog_once(
+                    data.get("team"),
+                    data.get("event"),
+                    request.user,
+                    data.get("half"),
+                    client_id=client_id,
+                )
+                written = list(
+                    TeamLog.objects.filter(
+                        gameinfo=game, pk__gt=watermark
+                    ).order_by("pk")
+                )
+                # The legacy writer already inserted the TeamLog rows, so the
+                # shadow records the events only (write_rows=False) and moves
+                # GameState to their projection.
+                shadow_append(
+                    game,
+                    # The legacy body may carry a pk, a name or the description
+                    # (v1 posts names); resolve it exactly like the writer did
+                    # so the shadow records the same side.
+                    team=GameService._resolve_team(data.get("team")),
+                    entries=data.get("event"),
+                    half=data.get("half"),
+                    # _client_id normalises to a UUID; the event store stores
+                    # it as text (and the outbox ids are UUID strings).
+                    client_id=str(client_id) if client_id is not None else None,
+                    author=request.user,
+                    rows=written,
+                )
+            # Serialize *after* the shadow append: ``GameLog`` builds its
+            # ``events`` list lazily, and the rows just written only carry
+            # their event ``seq`` once ``append_legacy`` has linked them. The
+            # answer a client gets for its own write is therefore complete --
+            # do not move this call inside the block above.
             return Response(
                 json.loads(gamelog.as_json(), object_pairs_hook=OrderedDict),
                 # A repeated submission wrote nothing, so it is a 200.
@@ -279,6 +346,10 @@ class GameLogAPIView(APIView):
             raise NotFound(
                 detail=f'Could not create team logs ... team {request.data.get("team")} not found'
             )
+        except InvalidEnvelope as error:
+            # An event name the store cannot represent (e.g. a client typo):
+            # the whole request is rolled back, rows included.
+            return Response({"detail": str(error)}, status=HTTPStatus.BAD_REQUEST)
 
     def delete(self, request: Request, *args, **kwargs):
         game_id = kwargs.get("id")
@@ -293,45 +364,57 @@ class GameLogAPIView(APIView):
                     "'team_log_id' (one row)."
                 }
             )
-        try:
-            game = Gameinfo.objects.get(pk=game_id)
-        except Gameinfo.DoesNotExist:
-            raise NotFound(
-                detail=f"Could not delete team logs ... gameId {game_id} not found"
-            )
-        # A finished game cannot be undone: the result already covers the log.
-        finished = _finished_game_response(game)
-        if finished is not None:
-            return finished
-        # Undo is a write like any other: a stale second tab must not delete
-        # entries of a game another device holds.
-        conflict = _device_lock_response(request, game.pk)
-        if conflict is not None:
-            return conflict
-        game_service = GameService(game_id)
-        if has_team_log_id:
-            # The v2 log undoes one row at a time: a penalty (sequence 0) must
-            # not take every timeout of the game with it.
+        # One transaction: the legacy delete and the correction event that
+        # records it are both or neither, and locking the game row serialises
+        # this with both append paths' sequence allocation.
+        with transaction.atomic():
             try:
-                team_log_id = int(team_log_id)
-            except (TypeError, ValueError):
-                raise ValidationError({"team_log_id": "must be an integer"})
-            row = TeamLog.objects.filter(gameinfo=game, pk=team_log_id).first()
-            if row is None:
+                game = Gameinfo.objects.select_for_update().get(pk=game_id)
+            except Gameinfo.DoesNotExist:
                 raise NotFound(
-                    detail=f"Could not delete team log {team_log_id} of game {game_id}"
+                    detail=f"Could not delete team logs ... gameId {game_id} not found"
                 )
-            if not self._can_delete_team_log(request.user, game, row):
-                raise PermissionDenied(
-                    detail="You do not have permission to delete this game log entry."
+            # A finished game cannot be undone: the result already covers the log.
+            finished = _finished_game_response(game)
+            if finished is not None:
+                return finished
+            # Undo is a write like any other: a stale second tab must not delete
+            # entries of a game another device holds.
+            conflict = _device_lock_response(request, game.pk)
+            if conflict is not None:
+                return conflict
+            game_service = GameService(game_id)
+            if has_team_log_id:
+                # The v2 log undoes one row at a time: a penalty (sequence 0) must
+                # not take every timeout of the game with it.
+                try:
+                    team_log_id = int(team_log_id)
+                except (TypeError, ValueError):
+                    raise ValidationError({"team_log_id": "must be an integer"})
+                row = TeamLog.objects.filter(gameinfo=game, pk=team_log_id).first()
+                if row is None:
+                    raise NotFound(
+                        detail=f"Could not delete team log {team_log_id} of game {game_id}"
+                    )
+                if not self._can_delete_team_log(request.user, game, row):
+                    raise PermissionDenied(
+                        detail="You do not have permission to delete this game log entry."
+                    )
+                gamelog = game_service.delete_gamelog_entry(row.pk)
+                record_legacy_undo(
+                    game, team_log_id=row.pk, author=request.user
                 )
-            gamelog = game_service.delete_gamelog_entry(row.pk)
-        else:
-            if not self._can_delete_log_entry(request.user, game, sequence):
-                raise PermissionDenied(
-                    detail="You do not have permission to delete this game log entry."
+            else:
+                if not self._can_delete_log_entry(request.user, game, sequence):
+                    raise PermissionDenied(
+                        detail="You do not have permission to delete this game log entry."
+                    )
+                gamelog = game_service.delete_gamelog(sequence)
+                # The rows are deleted; the log must say so too, or GameState
+                # keeps a score the rows no longer have.
+                record_legacy_undo(
+                    game, sequence=sequence, author=request.user
                 )
-            gamelog = game_service.delete_gamelog(sequence)
         return Response(
             json.loads(gamelog.as_json(), object_pairs_hook=OrderedDict),
             status=HTTPStatus.OK,

@@ -100,7 +100,28 @@ function routeGet(path: string, teamName = "crew"): unknown {
     case "/api/gameday/1/officials/crew":
       return [GAME];
     case "/api/game/42/officials":
-      return [];
+      // A complete crew: the start refuses an empty required slot. Free text
+      // keeps the team list (which answers []) out of it.
+      return [
+        { id: 1, official: null, name: "Michael Klein", position: "Referee" },
+        { id: 2, official: null, name: "Anna Richter", position: "Down Judge" },
+        { id: 3, official: null, name: "Tom Weber", position: "Field Judge" },
+        { id: 4, official: null, name: "Sabine Lang", position: "Side Judge" },
+      ];
+    case "/api/officials/crew-positions/game/42":
+      // The league has no configuration, so the backend answers the defaults.
+      return [
+        {
+          position: "Scorecard Judge",
+          label: "Scorecard Judge",
+          order: 1,
+          required: false,
+        },
+        { position: "Referee", label: "Schiedsrichter", order: 2, required: true },
+        { position: "Down Judge", label: "Down Judge", order: 3, required: true },
+        { position: "Field Judge", label: "Field Judge", order: 4, required: true },
+        { position: "Side Judge", label: "Side Judge", order: 5, required: true },
+      ];
     case "/api/officials/team/7/list":
       return [];
     case "/api/game/42/setup":
@@ -139,9 +160,11 @@ beforeEach(() => {
     }
     return Promise.resolve(undefined);
   });
-  apiPostMock.mockImplementation((path: string) => {
-    calls.push(`POST ${path}`);
-    return Promise.resolve(log({ home: team({ score: 0 }) }));
+  apiPostMock.mockImplementation((path: string, body: unknown) => {
+    // The append endpoint answers `{state, cursor}`; the log is read after it.
+    const events = (body as { events?: { type?: string }[] })?.events ?? [];
+    calls.push(`POST ${path}:${events[0]?.type ?? "?"}`);
+    return Promise.resolve({ state: {}, cursor: 1 });
   });
   apiDeleteMock.mockImplementation(() =>
     Promise.reject(new ApiError(400, null, "not in this test")),
@@ -167,12 +190,31 @@ describe("the whole flow", () => {
       screen.getByRole("button", { name: /Ravens gegen Wolves/ }),
     );
 
-    // 3. Preparation; the start button becomes the way in.
+    // 3. Preparation; the three start fields have no default, then the start
+    // button opens the confirmation and its second tap starts.
     expect(
-      await screen.findByRole("heading", { name: "Vorbereitung" }),
+      await screen.findByRole("heading", { name: "Spiel vorbereiten" }),
     ).toBeInTheDocument();
+    const picks = [
+      ["Münzwurf gewonnen von", "Ravens"],
+      ["Erster Ballbesitz", "Ravens"],
+      ["Spielrichtung", "Ost → West"],
+    ] as const;
+    for (const [group, option] of picks) {
+      await user.click(
+        within(screen.getByRole("group", { name: group })).getByRole("button", {
+          name: option,
+        }),
+      );
+    }
     await user.click(
       await screen.findByRole("button", { name: /Spiel starten/ }),
+    );
+    // The first tap only opens the confirmation; the second one starts.
+    await user.click(
+      within(
+        await screen.findByRole("dialog", { name: "Spiel starten" }),
+      ).getByRole("button", { name: "Jetzt starten" }),
     );
 
     // 4. Tracking: one first down, so a log write happens.
@@ -185,7 +227,15 @@ describe("the whole flow", () => {
         name: "Speichern",
       }),
     );
-    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(
+        apiPostMock.mock.calls.filter(([, body]) =>
+          (body as { events?: { type?: string }[] }).events?.some(
+            (event) => event.type !== "possession",
+          ),
+        ),
+      ).toHaveLength(1),
+    );
 
     // 5. Finalise; "Spielstand bearbeiten" reopens tracking from the server
     // log (never from the optimistic one) and returns here.
@@ -242,17 +292,17 @@ describe("the whole flow", () => {
     await expect(readSnapshot(snapshotKey.log(42))).resolves.toBeUndefined();
     await expect(readSnapshot(snapshotKey.setup(42))).resolves.toBeUndefined();
 
-    // The write order is the flow: start, first possession, the event, then
-    // the result.
+    // The write order is the flow: start, the opening possession as an event,
+    // the play as an event, then the result. Nothing writes outside `/events`.
     expect(calls.filter((call) => !call.startsWith("GET"))).toEqual([
       "PUT /api/game/42/setup",
-      "PUT /api/game/42/possession",
-      "POST /api/gamelog/42",
+      "POST /api/game/42/events:possession",
+      "POST /api/game/42/events:series",
       "PUT /api/game/42/finalize",
     ]);
     // The log was read after the start was accepted, before the event.
     expect(calls.indexOf("GET /api/gamelog/42")).toBeLessThan(
-      calls.indexOf("POST /api/gamelog/42"),
+      calls.indexOf("POST /api/game/42/events:series"),
     );
     expect(calls.indexOf("GET /api/game/42/setup")).toBeLessThan(
       calls.indexOf("PUT /api/game/42/setup"),

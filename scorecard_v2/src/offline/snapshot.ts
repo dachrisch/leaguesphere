@@ -32,7 +32,13 @@ export const snapshotKey = {
   log: (gameId: number): string => `log:${gameId}`,
   setup: (gameId: number): string => `setup:${gameId}`,
   roster: (gameId: number): string => `roster:${gameId}`,
+  // The league's crew slots; labels are configuration, so a device that
+  // reloads offline still shows the right role names.
+  crewPositions: (gameId: number): string => `crewpositions:${gameId}`,
   penalties: (): string => "penalties",
+  // The team directory is public and not tied to a game, so one key holds the
+  // name→logo lookup for every screen (`api/teams.ts`).
+  teams: (): string => "teams",
 };
 
 /** The games list snapshot carries the team it was fetched for. */

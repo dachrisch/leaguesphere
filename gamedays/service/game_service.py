@@ -151,6 +151,20 @@ class GameService(object):
     def delete_gamelog_entry(self, team_log_id):
         return self._write_gamelog(lambda: self._mark_entry_as_deleted(team_log_id))
 
+    def write_projected_gamelog(self, write) -> GameLog:
+        """Run a projection that inserts its own ``TeamLog`` rows.
+
+        The canonical event endpoint owns the rows it projects, so it cannot
+        call ``create_gamelog`` (that would write them twice). It still has to
+        leave ``Gameresult`` where the legacy writer would, which is exactly
+        what ``_write_gamelog`` does: snapshot the half scores, run ``write``,
+        apply only the delta. Routing both write paths through it keeps the
+        scoring rules in one place (#1988) instead of teaching ``gameevents``
+        about points.
+        """
+
+        return self._write_gamelog(write)
+
     def _mark_entries_as_deleted(self, sequence) -> GameLog:
         gamelog = self.get_gamelog()
         gamelog.mark_entries_as_deleted(sequence)
