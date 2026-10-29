@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.2.1](https://github.com/dachrisch/leaguesphere/compare/v5.2.0...v5.2.1) (2026-10-29)
+
+
+### Features
+
+* **scorecard-v2:** reach the app from the Team menu ([edf1ebf](https://github.com/dachrisch/leaguesphere/commit/edf1ebfa1cb7f00106ca541a08f5cd50dda1722d))
+* **scorecard-v2:** reach the app from the Team menu ([d4bdeb5](https://github.com/dachrisch/leaguesphere/commit/d4bdeb57bf4b292c45ba62fcf8d018ac1e1ff6a6))
+
+
+### Bug Fixes
+
+* **deps:** update dependency numpy to v2.5.4 ([#2144](https://github.com/dachrisch/leaguesphere/issues/2144)) ([524d576](https://github.com/dachrisch/leaguesphere/commit/524d5765e9b0eb0deb88820ae23c36aa5e9aaef0))
+
 ## [5.2.0](https://github.com/dachrisch/leaguesphere/compare/v5.1.3...v5.2.0) (2026-10-29)
 
 
