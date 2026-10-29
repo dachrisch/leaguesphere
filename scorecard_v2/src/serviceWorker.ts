@@ -62,7 +62,13 @@ export function reloadOnUpdate(
   });
 }
 
-export function registerServiceWorker(): void {
+/**
+ * `reload` is injectable so a test can assert the deploy hand-off without
+ * jsdom trying to navigate (which it refuses to do).
+ */
+export function registerServiceWorker(
+  reload: () => void = () => window.location.reload(),
+): void {
   if (!("serviceWorker" in navigator)) {
     return;
   }
@@ -74,7 +80,7 @@ export function registerServiceWorker(): void {
   reloadOnUpdate(
     navigator.serviceWorker,
     navigator.serviceWorker.controller !== null,
-    () => window.location.reload(),
+    reload,
   );
 
   navigator.serviceWorker.register(SERVICE_WORKER_URL).catch((error: unknown) => {

@@ -46,6 +46,32 @@ describe("registerServiceWorker", () => {
     expect(addEventListener).not.toHaveBeenCalled();
   });
 
+  it("uses the real reload when no hook is injected", () => {
+    // jsdom refuses to navigate, so the assertion is that the default path is
+    // wired up and runs without throwing — the spy-based coverage lives in the
+    // injected-hook test above.
+    const addEventListener = stubServiceWorker(vi.fn(() => Promise.resolve()), {});
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    registerServiceWorker();
+    const handler = addEventListener.mock.calls[0]?.[1] as () => void;
+
+    expect(() => handler()).not.toThrow();
+    consoleError.mockRestore();
+  });
+
+  it("reloads the page through the injected hook when the worker takes over", () => {
+    const addEventListener = stubServiceWorker(vi.fn(() => Promise.resolve()), {});
+    const reload = vi.fn();
+
+    registerServiceWorker(reload);
+
+    const handler = addEventListener.mock.calls[0]?.[1] as () => void;
+    handler();
+
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
   it("listens for the new worker when the page already had one", () => {
     const addEventListener = stubServiceWorker(
       vi.fn(() => Promise.resolve()),
