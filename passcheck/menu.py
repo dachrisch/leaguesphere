@@ -31,6 +31,14 @@ class PasscheckMenu(BaseMenu):
             [
                 MenuDivider.create(),
                 MenuItem.create(name="Scorecard / Passcheck", url=PASSCHECK_APP),
+                # The v2 app is the field capture client. It lives here rather
+                # than in its own menu.py because menus append in INSTALLED_APPS
+                # order and scorecard_v2 sits above passcheck, which would put it
+                # at the top of the menu. Served to anonymous users too; the app
+                # redirects to the login page itself.
+                MenuItem.create(
+                    name="\U0001F4F1 Scorecard v2 (Beta)", url="scorecard-v2-home"
+                ),
             ]
         )
         return default_menu

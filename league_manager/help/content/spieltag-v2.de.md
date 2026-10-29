@@ -12,7 +12,8 @@ wie die bisherige Scorecard
 
 ## Schritt für Schritt
 
-1. Öffne `/scorecard/v2/` und tippe auf einen Spieltag unter **Meine Spieltage**.
+1. Öffne **Team → 📱 Scorecard v2 (Beta)** (oder `/scorecard/v2/`) und tippe auf
+   einen Spieltag unter **Meine Spieltage**.
    Laufende Spiele setzen die Erfassung fort, geplante öffnen **Spiel
    vorbereiten**.
 2. Prüfe in **Spiel vorbereiten** die Offiziellen und ihre Lizenzen, halte
