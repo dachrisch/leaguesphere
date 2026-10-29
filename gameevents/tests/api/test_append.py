@@ -20,6 +20,7 @@ from gameevents.tests.api.support import (
     make_game,
     post_events,
     post_legacy,
+    sub_id,
 )
 from gameevents.tests.golden_cases import GOLDEN_CASES, expected_signature
 from gamedays.models import Gameresult, TeamLog
@@ -111,7 +112,7 @@ def test_the_response_carries_the_projected_state(client):
                 envelope(code="touchdown"),
                 envelope(code="pat1"),
             ],
-            "client_id": "sub-1",
+            "client_id": sub_id(1),
         },
     )
 
@@ -136,7 +137,7 @@ def test_a_replayed_submission_is_answered_with_the_current_state(client):
     game, home, _away = make_game("canonical-replay")
     login(client)
     body = legacy_body(
-        game, home, [{"name": "Touchdown", "player": "7"}], client_id="sub-1"
+        game, home, [{"name": "Touchdown", "player": "7"}], client_id=sub_id(1)
     )
 
     assert post_events(client, game, body).status_code == 201
@@ -163,7 +164,7 @@ def test_explicit_sequences_must_be_contiguous(client):
                 envelope(seq=1, code="touchdown"),
                 envelope(seq=3, code="pat1"),
             ],
-            "client_id": "sub-1",
+            "client_id": sub_id(1),
         },
     )
 
@@ -180,13 +181,13 @@ def test_a_backwards_sequence_names_the_expected_next(client):
     assert post_events(
         client,
         game,
-        {"events": [envelope(seq=1, code="touchdown")], "client_id": "sub-1"},
+        {"events": [envelope(seq=1, code="touchdown")], "client_id": sub_id(1)},
     ).status_code == 201
 
     response = post_events(
         client,
         game,
-        {"events": [envelope(seq=1, code="pat1")], "client_id": "sub-2"},
+        {"events": [envelope(seq=1, code="pat1")], "client_id": sub_id(2)},
     )
 
     assert response.status_code == 409
@@ -204,7 +205,7 @@ def test_a_mixed_missing_sequence_is_a_bad_request(client):
         game,
         {
             "events": [envelope(seq=1), envelope(code="pat1")],
-            "client_id": "sub-1",
+            "client_id": sub_id(1),
         },
     )
 
@@ -222,7 +223,7 @@ def test_sequences_are_allocated_when_omitted(client):
         game,
         {
             "events": [envelope(code="touchdown"), envelope(code="pat1")],
-            "client_id": "sub-1",
+            "client_id": sub_id(1),
         },
     )
 
@@ -245,7 +246,7 @@ def test_an_unknown_envelope_code_stores_nothing(client):
     response = post_events(
         client,
         game,
-        {"events": [envelope(code="tor")], "client_id": "sub-1"},
+        {"events": [envelope(code="tor")], "client_id": sub_id(1)},
     )
 
     assert response.status_code == 400
@@ -262,7 +263,7 @@ def test_an_unknown_envelope_type_stores_nothing(client):
     response = post_events(
         client,
         game,
-        {"events": [envelope(type_="touchdown")], "client_id": "sub-1"},
+        {"events": [envelope(type_="touchdown")], "client_id": sub_id(1)},
     )
 
     assert response.status_code == 400
@@ -277,7 +278,7 @@ def test_an_unknown_legacy_name_on_the_canonical_endpoint_stores_nothing(client)
     response = post_events(
         client,
         game,
-        legacy_body(game, home, [{"name": "Tor"}], client_id="sub-1"),
+        legacy_body(game, home, [{"name": "Tor"}], client_id=sub_id(1)),
     )
 
     assert response.status_code == 400
@@ -373,7 +374,7 @@ def test_a_possession_envelope_moves_the_projected_possession(client):
             "events": [
                 {"type": "possession", "code": "home", "period": 1}
             ],
-            "client_id": "sub-1",
+            "client_id": sub_id(1),
         },
     )
 
@@ -399,7 +400,7 @@ def test_undo_deletes_the_play_and_drops_its_score(client):
                 envelope(code="touchdown"),
                 envelope(code="pat1"),
             ],
-            "client_id": "sub-1",
+            "client_id": sub_id(1),
         },
     ).status_code == 201
 
@@ -414,7 +415,7 @@ def test_undo_deletes_the_play_and_drops_its_score(client):
                     "payload": {"undo_of": 1},
                 }
             ],
-            "client_id": "sub-2",
+            "client_id": sub_id(2),
         },
     )
 
@@ -438,7 +439,7 @@ def test_undo_of_an_undo_restores_the_play_and_its_score(client):
         game,
         {
             "events": [envelope(code="touchdown"), envelope(code="pat1")],
-            "client_id": "sub-1",
+            "client_id": sub_id(1),
         },
     )
     post_events(
@@ -448,7 +449,7 @@ def test_undo_of_an_undo_restores_the_play_and_its_score(client):
             "events": [
                 {"type": "correction", "code": "undo", "payload": {"undo_of": 1}}
             ],
-            "client_id": "sub-2",
+            "client_id": sub_id(2),
         },
     )
 
@@ -459,7 +460,7 @@ def test_undo_of_an_undo_restores_the_play_and_its_score(client):
             "events": [
                 {"type": "correction", "code": "undo", "payload": {"undo_of": 3}}
             ],
-            "client_id": "sub-3",
+            "client_id": sub_id(3),
         },
     )
 
@@ -522,7 +523,7 @@ def test_game_state_equals_a_replay_of_the_stored_log(client):
                 envelope(code="touchdown"),
                 envelope(code="pat1"),
             ],
-            "client_id": "sub-1",
+            "client_id": sub_id(1),
         },
     )
     post_events(
@@ -533,7 +534,7 @@ def test_game_state_equals_a_replay_of_the_stored_log(client):
                 envelope(type_="penalty", code="Holding", player=5),
                 envelope(type_="series", code="first_down", player=8),
             ],
-            "client_id": "sub-2",
+            "client_id": sub_id(2),
         },
     )
     post_events(
@@ -543,7 +544,7 @@ def test_game_state_equals_a_replay_of_the_stored_log(client):
             "events": [
                 {"type": "correction", "code": "undo", "payload": {"undo_of": 1}}
             ],
-            "client_id": "sub-3",
+            "client_id": sub_id(3),
         },
     )
 
@@ -580,10 +581,10 @@ def test_a_correction_of_a_shadow_play_deletes_its_real_row_group(client):
     # events carry seqs 1,2 and 3,4 -- the two numbering schemes diverge, and
     # a correction must still delete the group that really exists.
     assert post_legacy(
-        client, game, legacy_body(game, home, entries, client_id="sub-1")
+        client, game, legacy_body(game, home, entries, client_id=sub_id(1))
     ).status_code == 201
     assert post_legacy(
-        client, game, legacy_body(game, home, entries, client_id="sub-2")
+        client, game, legacy_body(game, home, entries, client_id=sub_id(2))
     ).status_code == 201
     assert GameEvent.objects.get(game=game, seq=3).legacy_sequence == 2
 
@@ -594,7 +595,7 @@ def test_a_correction_of_a_shadow_play_deletes_its_real_row_group(client):
             "events": [
                 {"type": "correction", "code": "undo", "payload": {"undo_of": 3}}
             ],
-            "client_id": "sub-3",
+            "client_id": sub_id(3),
         },
     )
 
@@ -615,7 +616,7 @@ def test_a_canonical_game_keeps_accepting_the_legacy_endpoint(client):
     assert post_events(
         client,
         game,
-        {"events": [envelope(code="touchdown")], "client_id": "sub-1"},
+        {"events": [envelope(code="touchdown")], "client_id": sub_id(1)},
     ).status_code == 201
 
     response = post_legacy(
@@ -625,7 +626,7 @@ def test_a_canonical_game_keeps_accepting_the_legacy_endpoint(client):
             game,
             home,
             [{"name": "Touchdown", "player": "9"}],
-            client_id="sub-2",
+            client_id=sub_id(2),
         ),
     )
 
@@ -640,7 +641,7 @@ def test_a_canonical_game_keeps_accepting_the_legacy_endpoint(client):
     response = post_events(
         client,
         game,
-        {"events": [envelope(code="pat1", player=9)], "client_id": "sub-3"},
+        {"events": [envelope(code="pat1", player=9)], "client_id": sub_id(3)},
     )
     assert response.status_code == 201
     assert response.json()["state"]["score_home"] == 13
@@ -666,7 +667,7 @@ def test_the_device_lock_of_the_gamelog_view_is_reused(client, monkeypatch):
     monkeypatch.setattr(game_views, "_device_lock_response", lock, raising=False)
 
     response = post_events(
-        client, game, {"events": [envelope()], "client_id": "sub-1"}
+        client, game, {"events": [envelope()], "client_id": sub_id(1)}
     )
 
     assert response.status_code == 409
@@ -682,7 +683,7 @@ def test_a_replay_is_answered_before_the_device_lock(client, monkeypatch):
 
     game, _home, _away = make_game("canonical-lock-replay")
     login(client)
-    body = {"events": [envelope()], "client_id": "sub-1"}
+    body = {"events": [envelope()], "client_id": sub_id(1)}
     assert post_events(client, game, body).status_code == 201
 
     monkeypatch.setattr(
@@ -761,7 +762,7 @@ def test_a_canonical_submission_updates_the_result_table(client):
             game,
             {
                 "events": [envelope(code="touchdown"), envelope(code="pat1")],
-                "client_id": "sub-1",
+                "client_id": sub_id(1),
             },
         ).status_code
         == 201
@@ -780,7 +781,7 @@ def test_a_canonical_undo_moves_the_result_table_back(client):
     post_events(
         client,
         game,
-        {"events": [envelope(code="touchdown")], "client_id": "sub-1"},
+        {"events": [envelope(code="touchdown")], "client_id": sub_id(1)},
     )
     assert Gameresult.objects.get(gameinfo=game, isHome=True).fh == 6
 
@@ -792,7 +793,7 @@ def test_a_canonical_undo_moves_the_result_table_back(client):
                 "events": [
                     {"type": "correction", "code": "undo", "payload": {"undo_of": 1}}
                 ],
-                "client_id": "sub-2",
+                "client_id": sub_id(2),
             },
         ).status_code
         == 201

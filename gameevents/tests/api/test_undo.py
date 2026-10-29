@@ -25,6 +25,7 @@ from gameevents.tests.api.support import (
     make_game,
     post_events,
     post_legacy,
+    sub_id,
 )
 from gamedays.constants import API_GAMELOG
 from gamedays.models import Gameresult, TeamLog
@@ -60,7 +61,7 @@ def test_a_legacy_undo_is_recorded_as_a_correction(client):
         post_legacy(
             client,
             game,
-            legacy_body(game, home, TOUCHDOWN_PAT, client_id="sub-1"),
+            legacy_body(game, home, TOUCHDOWN_PAT, client_id=sub_id(1)),
         ).status_code
         == 201
     )
@@ -103,7 +104,7 @@ def test_a_second_undo_of_the_same_play_changes_nothing(client):
     game, home, _away = make_game("undo-twice")
     login(client)
     post_legacy(
-        client, game, legacy_body(game, home, TOUCHDOWN_PAT, client_id="sub-1")
+        client, game, legacy_body(game, home, TOUCHDOWN_PAT, client_id=sub_id(1))
     )
     assert delete_sequence(client, game, 1).status_code == 200
     before = GameState.objects.get(game=game)
@@ -156,7 +157,7 @@ def test_a_legacy_undo_finds_a_play_the_canonical_path_wrote(client):
                         "payload": {},
                     }
                 ],
-                "client_id": "sub-1",
+                "client_id": sub_id(1),
             },
         ).status_code
         == 201
@@ -207,7 +208,7 @@ def test_an_unlogged_row_is_flagged_even_when_the_game_has_events(client):
     game, home, _away = make_game("undo-unlogged-mixed")
     login(client)
     post_legacy(
-        client, game, legacy_body(game, home, TOUCHDOWN_PAT, client_id="sub-1")
+        client, game, legacy_body(game, home, TOUCHDOWN_PAT, client_id=sub_id(1))
     )
     # The old writer logged this row outside the store (no event covers
     # sequence 2).
