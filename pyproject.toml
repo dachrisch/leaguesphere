@@ -13,19 +13,19 @@ requires-python = ">=3.12"
 dependencies = [
     "Django==6.1.2",
     "django-crispy-forms==2.7",
-    "crispy-bootstrap5==2026.3",
+    "crispy-bootstrap5==2026.9",
     "numpy==2.5.4",
-    "pandas==3.0.5",
+    "pandas==3.1.0",
     "django-pandas==0.6.7",
-    "djangorestframework==3.18.0",
+    "djangorestframework==3.18.3",
     "django-autocomplete-light==5.0.0",
     "django-formtools==2.7",
-    "Markdown==3.10.3",
+    "Markdown==3.11.2",
     "django-cors-headers==4.9.0",
     "Pillow==13.0.0",
     "django-rest-knox==5.1.0",
-    "python-dotenv==1.2.3",
-    "mysqlclient==2.2.8",
+    "python-dotenv==1.2.4",
+    "mysqlclient==2.3.0",
     "requests==2.34.2",
     "openpyxl==3.1.5",
     # Temporary DB access: Fernet for the one-time credential reveal.
@@ -34,8 +34,8 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-    "django-webtest==1.9.14",
-    "pytest==9.1.1",
+    "django-webtest==1.9.15",
+    "pytest==9.2.0",
     "pytest-django==4.14.0",
     "pytest-xdist==3.8.0",
     "pytest-cov==7.1.0",
@@ -44,7 +44,7 @@ test = [
     "WebTest==3.0.7",
     "pytest-playwright>=0.7.2",
     "bump2version==1.0.1",
-    "black==26.5.1",
+    "black==26.10.1",
     "types-factory_boy==0.4.1",
 ]
 prod = [
