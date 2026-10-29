@@ -1,4 +1,3 @@
-from passcheck_v2.urls import PASSCHECK_V2_APP
 from gamedays.menu import GamedaysMenuAdmin
 from league_manager.base_menu import BaseMenu, MenuItem, MenuDivider
 from passcheck.urls import (
@@ -7,6 +6,7 @@ from passcheck.urls import (
     PASSCHECK_APP,
     PASSCHECK_LIST_FOR_ALL_TEAMS,
 )
+from passcheck_v2.urls import PASSCHECK_V2_APP
 
 
 class PasscheckMenu(BaseMenu):
