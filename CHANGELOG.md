@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.2.4](https://github.com/dachrisch/leaguesphere/compare/v5.2.3...v5.2.4) (2026-10-29)
+
+
+### Bug Fixes
+
+* **deps:** update ci images ([#2163](https://github.com/dachrisch/leaguesphere/issues/2163)) ([eabdac2](https://github.com/dachrisch/leaguesphere/commit/eabdac2b95b70bac7b17acda7fdcafdbb8dc7bd0))
+* **deps:** update react monorepo ([#2166](https://github.com/dachrisch/leaguesphere/issues/2166)) ([f801ba1](https://github.com/dachrisch/leaguesphere/commit/f801ba1107d2e9905995337d51fe0253dafb400f))
+
 ## [5.2.3](https://github.com/dachrisch/leaguesphere/compare/v5.2.2...v5.2.3) (2026-10-29)
 
 
