@@ -20,6 +20,11 @@ half-score diff the legacy writer uses, never by a second scoring rule.
 A correction names its target by ``payload.undo_of`` (the target event's
 ``seq``); the target must already be stored, so an undo is always a later
 submission, and the row group it deletes is the target's submission sequence.
+A target whose row lives in the shared sequence 0 (penalties, clocks, timeouts,
+markers) is deleted *row* by *row* instead -- its sequence names no single row.
+Every event that writes a row stores it (``GameEvent.team_log``), which is both
+how the log payload publishes a row's ``seq`` and how that row is found again
+when it is corrected.
 
 Known limitation of the transition period: events start when this code
 deploys. A game mid-gameday already has ``TeamLog`` rows that no event covers,
@@ -241,19 +246,26 @@ def _attach_undo_targets(assigned, stored_rows, stored_values):
     return values, target_ids
 
 
-def _write_rows(game, projection: Projection, authors: "AuthorResolver") -> None:
-    """Insert the projected rows, each with the author it was projected for.
+def _write_rows(
+    game, projection: Projection, authors: "AuthorResolver"
+) -> dict[int, int]:
+    """Insert the projected rows; return ``{source_seq: TeamLog pk}``.
 
     ``TeamLog.author`` defaults to the magic id 1, so it is always passed
     explicitly -- from the event's actor, or from the game's author when the
     event has none. :class:`AuthorResolver` turns "no existing user at all"
     into a 400 instead of an ``IntegrityError``.
+
+    The returned map is what links each event to the row it wrote
+    (``GameEvent.team_log``): the log payload needs it to publish a row's
+    ``seq``, and a sequence-0 correction needs it to mark exactly one row.
     """
 
     sides = dict(
         Gameresult.objects.filter(gameinfo=game).values_list("isHome", "team_id")
     )
     side_names = {"home": True, "away": False}
+    created: dict[int, int] = {}
     for row in projection.rows:
         team_id = None
         if row.side is not None:
@@ -273,10 +285,49 @@ def _write_rows(game, projection: Projection, authors: "AuthorResolver") -> None
             "isDeleted": row.isDeleted,
             "author_id": authors.resolve(row.author_id, authors.game_author_id()),
         }
-        TeamLog.objects.create(**values)
+        team_log = TeamLog.objects.create(**values)
+        if row.source_seq is not None:
+            created[row.source_seq] = team_log.pk
+    return created
 
 
-def _apply_sequence_flags(game, projection: Projection) -> None:
+def _row_flag_events(game, projection: Projection) -> dict:
+    """The target events a row-level correction names, keyed by ``seq``."""
+
+    seqs = set(projection.deleted_rows) | set(projection.restored_rows)
+    if not seqs:
+        return {}
+    return {
+        event.seq: event
+        for event in GameEvent.objects.filter(game=game, seq__in=seqs)
+    }
+
+
+def _link_rows(game, created: dict[int, int]) -> None:
+    """Store the row each event wrote (``GameEvent.team_log``)."""
+
+    if not created:
+        return
+    events = {
+        event.seq: event
+        for event in GameEvent.objects.filter(game=game, seq__in=created)
+    }
+    for seq, team_log_id in created.items():
+        event = events.get(seq)
+        if event is not None:
+            event.team_log_id = team_log_id
+    if events:
+        GameEvent.objects.bulk_update(events.values(), ["team_log"])
+
+
+def _apply_sequence_flags(game, projection: Projection, events_by_seq) -> None:
+    """Mark the affected rows: whole sequence groups, or single rows.
+
+    A group is a submission's row group (sequence > 0). A *row* flag names the
+    target event's own row, which is the only way to address the shared
+    sequence 0 -- penalties, clocks, timeouts and markers all live there.
+    """
+
     now = timezone.now()
     if projection.deleted_sequences:
         TeamLog.objects.filter(
@@ -285,6 +336,27 @@ def _apply_sequence_flags(game, projection: Projection) -> None:
     if projection.restored_sequences:
         TeamLog.objects.filter(
             gameinfo=game, sequence__in=projection.restored_sequences
+        ).update(isDeleted=False, updated_at=now)
+
+    def row_ids(seqs):
+        ids = []
+        for seq in seqs:
+            event = events_by_seq.get(seq)
+            if event is None or event.team_log_id is None:
+                raise InvalidEnvelope(
+                    f"correction target seq {seq} has no row to change "
+                    "(recorded before rows were linked; rebuild the projection)"
+                )
+            ids.append(event.team_log_id)
+        return ids
+
+    if projection.deleted_rows:
+        TeamLog.objects.filter(
+            gameinfo=game, pk__in=row_ids(projection.deleted_rows)
+        ).update(isDeleted=True, updated_at=now)
+    if projection.restored_rows:
+        TeamLog.objects.filter(
+            gameinfo=game, pk__in=row_ids(projection.restored_rows)
         ).update(isDeleted=False, updated_at=now)
 
 
@@ -303,8 +375,10 @@ def _record_rows(game, projection: Projection, authors: "AuthorResolver") -> Non
     service = GameService(game.pk)
 
     def write():
-        _write_rows(game, projection, authors)
-        _apply_sequence_flags(game, projection)
+        created = _write_rows(game, projection, authors)
+        # The rows exist now: link them before anything can address them.
+        _link_rows(game, created)
+        _apply_sequence_flags(game, projection, _row_flag_events(game, projection))
         return service.get_gamelog()
 
     service.write_projected_gamelog(write)
@@ -432,7 +506,7 @@ def append_submission(
     if write_rows:
         _record_rows(game, projection, authors)
     else:
-        _apply_sequence_flags(game, projection)
+        _apply_sequence_flags(game, projection, _row_flag_events(game, projection))
     _save_state(game, projection.state)
     return AppendOutcome(
         state=projection.state, applied=True, last_seq=projection.state.last_seq
@@ -449,6 +523,7 @@ def append_legacy(
     source: str = GameEvent.Source.LEGACY,
     write_rows: bool = False,
     author=None,
+    rows=None,
 ) -> AppendOutcome:
     """Record one legacy POST's event list (the shadow path).
 
@@ -456,6 +531,14 @@ def append_legacy(
     the same transaction): the row group the writer just created is read back
     and stored as the submission's ``legacy_sequence``, so a later correction --
     from either path -- deletes exactly that group.
+
+    ``rows`` are the ``TeamLog`` rows that write created, in entry order (the
+    endpoint passes them; the game row is locked for the whole request, so they
+    are exactly this submission's rows). They let each event carry its row
+    (``team_log``), which is what makes a *sequence-0* row addressable -- a
+    penalty, a clock, a timeout or a marker shares sequence 0 with every other
+    one, so a sequence cannot name it. Without them the events are recorded
+    unlinked, and only group corrections can name them.
     """
 
     client_id = normalise_client_id(client_id) or str(uuid.uuid4())
@@ -473,7 +556,7 @@ def append_legacy(
         client_id=client_id,
         legacy_sequence=legacy_sequence,
     )
-    return append_submission(
+    outcome = append_submission(
         game,
         values,
         client_id=client_id,
@@ -481,3 +564,25 @@ def append_legacy(
         write_rows=write_rows,
         author=author,
     )
+    if rows:
+        _link_shadow_rows(game, client_id, rows)
+    return outcome
+
+
+def _link_shadow_rows(game, client_id: str, rows) -> None:
+    """Give a shadow submission's events the rows the legacy writer created.
+
+    The writer inserts one row per entry, in order; the events are stored 1:1
+    in the same order. A replay of an applied submission writes no rows, so a
+    length mismatch means "nothing new to link" and the stored links stay.
+    """
+
+    rows = list(rows)
+    events = list(
+        GameEvent.objects.filter(game=game, client_id=client_id).order_by("seq")
+    )
+    if len(events) != len(rows):
+        return
+    for event, row in zip(events, rows):
+        event.team_log_id = row.pk
+    GameEvent.objects.bulk_update(events, ["team_log"])

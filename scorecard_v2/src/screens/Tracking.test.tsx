@@ -576,6 +576,47 @@ describe("Tracking undo", () => {
     );
   });
 
+  it("undoes a penalty with a correction event, not a DELETE", async () => {
+    answerAppend(
+      makeLog({
+        events: [
+          logEvent({
+            id: 6,
+            sequence: 0,
+            seq: 4,
+            event: "Strafe",
+            input: "Holding",
+            isDeleted: true,
+          }),
+        ],
+      }),
+    );
+    renderTracking({
+      log: makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({
+            id: 6,
+            sequence: 0,
+            seq: 4,
+            event: "Strafe",
+            input: "Holding",
+          }),
+        ],
+      }),
+    });
+
+    await clickUndo(/Rückgängig: Strafe/);
+
+    // A sequence-0 row is addressable because the server links it to the
+    // event that wrote it; deleting "sequence 0" would wipe every penalty.
+    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+      events: [{ type: "correction", code: "undo", payload: { undo_of: 4 } }],
+      client_id: expect.any(String),
+    });
+    expect(apiDeleteMock).not.toHaveBeenCalled();
+  });
+
   it("undoes a legacy row by sequence", async () => {
     apiDeleteMock.mockResolvedValue(makeLog());
     render(

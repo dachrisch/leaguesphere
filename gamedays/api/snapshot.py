@@ -38,8 +38,8 @@ from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle
 from rest_framework.views import APIView
 
 from gameevents.service.log_payload import (
-    event_seqs_by_game,
-    event_seqs_by_sequence,
+    event_seqs_for_rows,
+    event_seqs_for_rows_by_game,
 )
 from gamedays.api.serializers import GamedayListSerializer, GameLogSerializer
 from gamedays.models import (
@@ -399,7 +399,7 @@ def scope_cache_key(filters, include):
     return f"snapshot:scope:v2:{digest}"
 
 
-def build_game_log(game, gameday_date=None, seq_by_sequence=None):
+def build_game_log(game, gameday_date=None, seq_by_row=None):
     """Same payload shape as GET /api/gamelog/<id>, built from prefetched
     relations instead of fresh queries. Mirrors GameLogAPIView.get."""
     if gameday_date is None:
@@ -474,9 +474,9 @@ def build_game_log(game, gameday_date=None, seq_by_sequence=None):
             team_names,
             gameday_ref_now(gameday_date),
             (
-                event_seqs_by_sequence(game.pk)
-                if seq_by_sequence is None
-                else seq_by_sequence
+                event_seqs_for_rows(rows, game.pk)
+                if seq_by_row is None
+                else seq_by_row
             ),
         ),
         "home_id": team_id(home_result),
@@ -554,12 +554,14 @@ def build_snapshot_payload(filters, include):
         )
     )
     live_by_game = build_live_by_game(gamedays) if INCLUDE_LIVE in include else {}
-    # One query for every game's event `seq`, not one per game: the snapshot is
-    # the mass read and must stay a handful of queries.
+    # Two queries for every game's event `seq`, not two per game: the snapshot
+    # is the mass read and must stay a handful of queries.
+    rows_by_game: dict[int, list] = {}
+    for gameday in gamedays:
+        for game in gameday.gameinfo_set.all():
+            rows_by_game[game.pk] = list(game.teamlog_set.all())
     seqs_by_game = (
-        event_seqs_by_game(
-            game.pk for gameday in gamedays for game in gameday.gameinfo_set.all()
-        )
+        event_seqs_for_rows_by_game(rows_by_game, rows_by_game.keys())
         if INCLUDE_LOGS in include
         else {}
     )

@@ -361,6 +361,10 @@ def rebuild_game(game, *, author=None) -> RebuildResult:
     TeamLog.objects.filter(gameinfo=game, sequence__in=owned).delete()
 
     new_rows = []
+    # ``{event seq: index into new_rows}`` -- the re-created rows are linked to
+    # their events after the insert, so a row is addressable exactly as before
+    # the rebuild (the log did not change, only the pks did).
+    relink: dict[int, int] = {}
     for seq in sorted(owned):
         previous = existing.get(seq, [])
         for index, row in enumerate(replay.rows_by_sequence[seq]):
@@ -395,8 +399,18 @@ def rebuild_game(game, *, author=None) -> RebuildResult:
                 # Keep the tick's timestamp: a rebuild must not reshuffle the
                 # liveticker's ordering of an unchanged play.
                 values["created_time"] = previous[index].created_time
+            if row.source_seq is not None:
+                relink[row.source_seq] = len(new_rows)
             new_rows.append(TeamLog(**values))
     TeamLog.objects.bulk_create(new_rows)
+
+    if relink:
+        by_seq = {event.seq: event for event in events if event.seq in relink}
+        for event_seq, index in relink.items():
+            event = by_seq.get(event_seq)
+            if event is not None:
+                event.team_log_id = new_rows[index].pk
+        GameEvent.objects.bulk_update(by_seq.values(), ["team_log"])
 
     GameState.objects.update_or_create(
         game=game,

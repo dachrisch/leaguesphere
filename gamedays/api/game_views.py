@@ -5,7 +5,7 @@ from collections import OrderedDict
 from http import HTTPStatus
 
 from django.db import transaction
-from django.db.models import F, Q
+from django.db.models import F, Max, Q
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import UpdateAPIView, RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -15,7 +15,7 @@ from rest_framework.views import APIView
 
 from gameevents.models import GameEvent
 from gameevents.service.append import append_legacy as shadow_append
-from gameevents.service.log_payload import event_seqs_by_sequence
+from gameevents.service.log_payload import event_seqs_for_rows
 from gameevents.service.projector import InvalidEnvelope
 from gameevents.service.undo import record_legacy_undo
 from gamedays.api.serializers import (
@@ -216,10 +216,11 @@ class GameLogAPIView(APIView):
         if not gamelog.get(GameLogSerializer.IN_POSSESSION):
             # A blank stored value means "no possession", not "the empty team".
             gamelog[GameLogSerializer.IN_POSSESSION] = None
+        rows = list(TeamLog.objects.filter(gameinfo_id=game_id))
         gamelog.update(
             {
                 GameLogSerializer.EVENTS: serialize_events(
-                    TeamLog.objects.filter(gameinfo_id=game_id),
+                    rows,
                     {
                         gamelog.get("home_id"): gamelog.get(
                             GameLogSerializer.HOME_TEAM
@@ -229,7 +230,7 @@ class GameLogAPIView(APIView):
                         ),
                     },
                     gameday_ref_now(gamelog.get(GameLogSerializer.GAMEDAY_DATE)),
-                    event_seqs_by_sequence(game_id),
+                    event_seqs_for_rows(rows, game_id),
                 )
             }
         )
@@ -288,12 +289,27 @@ class GameLogAPIView(APIView):
                 conflict = _device_lock_response(request, game.pk, data)
                 if conflict is not None:
                     return conflict
+                # The rows this request writes are the ones above this
+                # watermark: the game row is locked for the whole request, so
+                # no other writer can insert in between. They are handed to the
+                # shadow so each event can name the row it produced.
+                watermark = (
+                    TeamLog.objects.filter(gameinfo=game).aggregate(Max("pk"))[
+                        "pk__max"
+                    ]
+                    or 0
+                )
                 gamelog, applied = game_service.create_gamelog_once(
                     data.get("team"),
                     data.get("event"),
                     request.user,
                     data.get("half"),
                     client_id=client_id,
+                )
+                written = list(
+                    TeamLog.objects.filter(
+                        gameinfo=game, pk__gt=watermark
+                    ).order_by("pk")
                 )
                 # The legacy writer already inserted the TeamLog rows, so the
                 # shadow records the events only (write_rows=False) and moves
@@ -310,6 +326,7 @@ class GameLogAPIView(APIView):
                     # it as text (and the outbox ids are UUID strings).
                     client_id=str(client_id) if client_id is not None else None,
                     author=request.user,
+                    rows=written,
                 )
             return Response(
                 json.loads(gamelog.as_json(), object_pairs_hook=OrderedDict),

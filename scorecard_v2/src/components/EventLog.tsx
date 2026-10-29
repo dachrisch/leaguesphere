@@ -108,12 +108,14 @@ export interface LogRow {
 /**
  * What undoing one row sends.
  *
- * An event-sourced row names its event `seq` (`{undo_of}`), and the server's
- * correction removes the whole submission group — a touchdown takes its
- * conversion with it. A row with no `seq` (a game the old app wrote) or one of
- * the excluded events / markers keeps the pre-event `DELETE`: they share
- * sequence 0 across many rows, so deleting sequence 0 would wipe every penalty
- * and timeout of the game.
+ * Every row an event wrote names that event's `seq` (`{undo_of}`) — including a
+ * penalty or a clock, whose row sits in the shared sequence 0: the server
+ * deletes exactly that row. A scoring play's correction removes the whole
+ * submission group, so a touchdown takes its conversion with it.
+ *
+ * Only a row that **no event wrote** has no `seq` (a game the old app wrote
+ * before the event store existed); it keeps the pre-event `DELETE`, which is
+ * all the server can do with it.
  */
 export function undoBody(
   row: LogRow,
@@ -121,15 +123,15 @@ export function undoBody(
   | { undo_of: number }
   | { sequence: number }
   | { team_log_id: number } {
-  // An event-sourced row names its event; the server removes the whole
-  // submission group (a touchdown takes its conversion with it).
+  // An event-sourced row names its event. A scoring play's correction removes
+  // the whole submission group (a touchdown takes its conversion with it); a
+  // penalty's removes exactly that row, even though it shares sequence 0.
   if (row.seq !== null) {
     return { undo_of: row.seq };
   }
-  // Excluded events and the game markers share sequence 0 across many rows, so
-  // they are undone by row id -- deleting sequence 0 would wipe every penalty
-  // and timeout of the game. This is also the only path for a game whose rows
-  // no event wrote (the old app), which has no `seq` at all.
+  // No event wrote this row (a game the old app recorded before the store
+  // existed). Excluded events and markers share sequence 0 across many rows,
+  // so they go by row id; a scoring play goes by sequence.
   if (
     row.teamLogId !== null &&
     (EXCLUDED_EVENTS.has(row.event) || row.sequence === 0)

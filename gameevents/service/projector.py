@@ -39,8 +39,16 @@ Corrections
 A ``correction`` inserts no row. It resolves its target event to the target's
 legacy sequence and returns that sequence in ``deleted_sequences`` (or, when
 the target is itself a correction, in ``restored_sequences``); it also reverses
-the target's score effect. The target row is never removed. The service that
-loads a stored correction must resolve two things for the projector:
+the target's score effect. The target row is never removed.
+
+A target whose rows live in the *shared* sequence 0 (a penalty, a clock, a
+timeout, a marker) is named **by its event**, not by the sequence: every one of
+them shares that bucket, so a sequence delete would wipe them all. The effect
+then carries the target's ``seq`` in ``deleted_rows``/``restored_rows``, and the
+service marks the one row the target wrote (``GameEvent.team_log``).
+
+The service that loads a stored correction must resolve two things for the
+projector:
 
 - ``GameEventValue.legacy_sequence`` on the target (the sequence of the
   target's submission), and
@@ -154,6 +162,11 @@ class TeamLogRow:
     isDeleted: bool = False
     sequence: int = 0
     author_id: Optional[int] = None
+    # The event ``seq`` that produced this row. The writer stores it on the
+    # ``GameEvent`` (``team_log``), which is what lets a *sequence-0* row be
+    # named at all: penalties, clocks, timeouts and markers all share sequence
+    # 0, so a sequence cannot identify one of them.
+    source_seq: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -202,6 +215,11 @@ class Projection:
     rows: list[TeamLogRow] = field(default_factory=list)
     deleted_sequences: list[int] = field(default_factory=list)
     restored_sequences: list[int] = field(default_factory=list)
+    # Corrections that name a *row* instead of a group: the target event seqs
+    # whose row is to be marked deleted/restored. Used for the shared sequence
+    # 0, where deleting a group would wipe every penalty of the game.
+    deleted_rows: list[int] = field(default_factory=list)
+    restored_rows: list[int] = field(default_factory=list)
 
 
 def _side(value: Optional[str]) -> Optional[str]:
@@ -252,6 +270,7 @@ def _row(
         isDeleted=isDeleted,
         sequence=0,
         author_id=event.author_id,
+        source_seq=event.seq,
     )
 
 
@@ -260,12 +279,16 @@ def _projection(
     rows: Optional[list[TeamLogRow]] = None,
     deleted: Optional[list[int]] = None,
     restored: Optional[list[int]] = None,
+    deleted_rows: Optional[list[int]] = None,
+    restored_rows: Optional[list[int]] = None,
 ) -> Projection:
     return Projection(
         state=state,
         rows=list(rows or []),
         deleted_sequences=list(deleted or []),
         restored_sequences=list(restored or []),
+        deleted_rows=list(deleted_rows or []),
+        restored_rows=list(restored_rows or []),
     )
 
 
@@ -390,10 +413,18 @@ def _apply_period(state: GameStateValue, event: GameEventValue) -> Projection:
 
 @dataclass(frozen=True)
 class _CorrectionEffect:
-    """What a correction does to the projection (signed score deltas)."""
+    """What a correction does to the projection (signed score deltas).
+
+    ``deleted``/``restored`` name ``TeamLog`` sequence *groups*; ``deleted_row``
+    /``restored_row`` name the event whose single row is affected. The row form
+    is what sequence 0 needs: every penalty, clock, timeout and marker shares
+    it, so "delete sequence 0" would erase the whole bucket.
+    """
 
     deleted: tuple[int, ...] = ()
     restored: tuple[int, ...] = ()
+    deleted_row: tuple[int, ...] = ()
+    restored_row: tuple[int, ...] = ()
     score_home: int = 0
     score_away: int = 0
     possession_change: bool = False
@@ -418,6 +449,8 @@ def _correction_effect(correction: GameEventValue) -> _CorrectionEffect:
         return _CorrectionEffect(
             deleted=inner.restored,
             restored=inner.deleted,
+            deleted_row=inner.restored_row,
+            restored_row=inner.deleted_row,
             score_home=-inner.score_home,
             score_away=-inner.score_away,
             possession_change=inner.possession_change,
@@ -428,21 +461,27 @@ def _correction_effect(correction: GameEventValue) -> _CorrectionEffect:
     # it); only live rows are part of the score that must be reversed.
     live_rows = [row for row in rows if not row.isDeleted]
     deleted: tuple[int, ...] = ()
+    deleted_row: tuple[int, ...] = ()
     if rows:
         if target.legacy_sequence is not None:
-            sequence = target.legacy_sequence
+            deleted = (target.legacy_sequence,)
         elif all(row.event in _ZERO_SEQUENCE_EVENTS for row in rows):
-            # Penalties, clocks and markers always live in sequence 0; the
-            # service need not resolve a sequence for them.
-            sequence = 0
+            # The shared sequence 0: name the row's own event instead of the
+            # bucket, so a penalty undo takes that penalty and nothing else.
+            if target.seq is None:
+                raise ValueError(
+                    "correction target has no seq; the service must resolve "
+                    "the target's event"
+                )
+            deleted_row = (target.seq,)
         else:
             raise ValueError(
                 "correction target has no legacy_sequence; "
                 "the service must resolve the target's submission"
             )
-        deleted = (sequence,)
     return _CorrectionEffect(
         deleted=deleted,
+        deleted_row=deleted_row,
         score_home=-sum(row.value for row in live_rows if row.side == "home"),
         score_away=-sum(row.value for row in live_rows if row.side == "away"),
         possession_change=target.type == "possession" and target.code in _SIDES,
@@ -463,6 +502,8 @@ def _apply_correction(state: GameStateValue, event: GameEventValue) -> Projectio
         _advance(state, event, period=state.period, **changes),
         deleted=list(effect.deleted),
         restored=list(effect.restored),
+        deleted_rows=list(effect.deleted_row),
+        restored_rows=list(effect.restored_row),
     )
 
 
@@ -509,6 +550,8 @@ def project_submission(
     rows: list[TeamLogRow] = []
     deleted: list[int] = []
     restored: list[int] = []
+    deleted_rows: list[int] = []
+    restored_rows: list[int] = []
     for event in events:
         projection = apply(state_out, event)
         state_out = projection.state
@@ -521,9 +564,13 @@ def project_submission(
         )
         deleted.extend(projection.deleted_sequences)
         restored.extend(projection.restored_sequences)
+        deleted_rows.extend(projection.deleted_rows)
+        restored_rows.extend(projection.restored_rows)
     return Projection(
         state=state_out,
         rows=rows,
         deleted_sequences=sorted(set(deleted)),
         restored_sequences=sorted(set(restored)),
+        deleted_rows=sorted(set(deleted_rows)),
+        restored_rows=sorted(set(restored_rows)),
     )

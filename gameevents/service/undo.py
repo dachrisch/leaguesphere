@@ -26,11 +26,12 @@ Two situations have no event to correct:
   ``GameState`` is flagged ``needs_reconciliation`` with a note and T6
   reconciles it. The flag is sticky; only a rebuild clears it.
 
-The v2 app's per-row undo (``team_log_id``) arrives on ``feat/scorecard-v2``;
-it is accepted here already. A single row of a multi-row sequence cannot be
-expressed by the log (a correction deletes a whole submission's row group), so
-that case takes the reconciliation path rather than deleting sibling rows in
-the projection.
+A **row** of the shared sequence 0 (a penalty, a clock, a timeout) is
+expressible: the event that wrote it is linked to it (``GameEvent.team_log``),
+and a correction naming that event deletes exactly that row. A single row of a
+*multi-row group* (one half of a touchdown+conversion submission) is still not:
+the correction removes the whole submission, so marking one sibling deleted
+would be a lie -- that case keeps the reconciliation path.
 """
 
 import logging
@@ -59,14 +60,31 @@ def record_legacy_undo(game, *, sequence=None, team_log_id=None, author=None):
         # legacy delete touched nothing, so neither does the log.
         return None
 
+    row = None
     if team_log_id is not None:
         row = _team_log_row(game, team_log_id)
         if row is None:
             return None
         sequence = row.sequence
-        if sequence == 0 or _has_live_siblings(game, row):
-            # One row out of a group the log cannot name: a correction would
-            # delete the whole submission, not this row.
+        if sequence == 0:
+            # The shared bucket: a sequence names nothing, so the correction
+            # names the event that wrote this row -- a row-level delete of
+            # exactly it. One lookup, no full log read.
+            event = (
+                GameEvent.objects.filter(game=game, team_log=row)
+                .order_by("seq")
+                .first()
+            )
+            if event is None:
+                return _flag_reconciliation(
+                    game,
+                    f"row-level undo of team log {row.pk} has no stored event "
+                    "(the row predates the event link)",
+                )
+            return _record_correction(game, values_from_rows([event])[0], author)
+        if _has_live_siblings(game, row):
+            # One row out of a multi-row group: the log's correction removes
+            # the whole submission's rows, not this one.
             return _flag_reconciliation(
                 game, f"row-level undo of team log {row.pk} (sequence {sequence})"
             )
@@ -80,13 +98,12 @@ def record_legacy_undo(game, *, sequence=None, team_log_id=None, author=None):
             game,
             f"undo of sequence {sequence} has no stored event (rows predate the log)",
         )
-
     values = values_from_rows(events)
+
     replay = replay_events(values)
     if sequence == 0:
-        # Every excluded row and every marker shares sequence 0, so no single
-        # event produced "the group"; the projection has no way to mark just
-        # the rows the writer deleted.
+        # A sequence-0 delete that names no row (the old app posts a sequence):
+        # nothing identifies which of the shared rows the writer meant.
         return _flag_reconciliation(
             game, f"undo of the shared launch/penalty sequence {sequence}"
         )
@@ -101,6 +118,12 @@ def record_legacy_undo(game, *, sequence=None, team_log_id=None, author=None):
     if rows and all(row.isDeleted for row in rows):
         # Already undone: the writer repeats a no-op, and so does the log.
         return None
+
+    return _record_correction(game, target, author)
+
+
+def _record_correction(game, target, author):
+    """Append the correction event that stands for an undo of ``target``."""
 
     value = GameEventValue(
         type=GameEvent.Type.CORRECTION,
@@ -118,9 +141,9 @@ def record_legacy_undo(game, *, sequence=None, team_log_id=None, author=None):
         author=author,
     )
     logger.info(
-        "Recorded undo of game %s sequence %s as correction seq %s",
+        "Recorded undo of game %s (target seq %s) as correction seq %s",
         game.pk,
-        sequence,
+        target.seq,
         outcome.last_seq,
     )
     return GameEvent.objects.get(game=game, client_id=value.client_id)

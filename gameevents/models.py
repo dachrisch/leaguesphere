@@ -80,6 +80,26 @@ class GameEvent(models.Model):
     # submissions (penalties, clocks, timeouts, markers) have ``None`` too --
     # their rows live in sequence 0, which the projector handles itself.
     legacy_sequence = models.PositiveIntegerField(null=True, blank=True)
+    # The ``TeamLog`` row this event wrote, when it writes one (a play, a
+    # penalty, the clock, a marker). Two consumers need the link:
+    #
+    # - the log payload publishes it as the row's event ``seq``, so a row of
+    #   the *shared* sequence 0 (penalties, clocks, timeouts, markers) is
+    #   addressable at all -- a sequence number cannot name one of them;
+    # - a ``correction`` resolving a sequence-0 target marks exactly that row,
+    #   where the group rule would delete every penalty of the game.
+    #
+    # ``SET_NULL`` because a deleted row is not a reason to lose the log entry;
+    # a rebuild re-creates the rows and re-links them (same ``source_seq``).
+    # ``None`` means "this event writes no row" (a plain possession change, a
+    # correction) or "recorded before the link existed" (slice 1 events).
+    team_log = models.ForeignKey(
+        "gamedays.TeamLog",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
     type = models.CharField(max_length=32, choices=Type.choices)
     code = models.CharField(max_length=64)
     side = models.CharField(

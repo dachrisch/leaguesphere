@@ -78,6 +78,7 @@ def test_score_updates_the_side_and_advances_the_cursor():
             cop=False,
             isDeleted=False,
             sequence=0,
+            source_seq=1,
         )
     ]
 
@@ -211,6 +212,7 @@ def test_penalty_travels_as_input_and_never_scores():
             cop=False,
             isDeleted=False,
             sequence=0,
+            source_seq=3,
         )
     ]
     assert projection.state.score_home == 0
@@ -298,6 +300,7 @@ def test_half_time_writes_the_existing_marker_and_opens_the_second_half():
             cop=False,
             isDeleted=False,
             sequence=0,
+            source_seq=8,
         )
     ]
     assert projection.state.period == 2
@@ -413,7 +416,10 @@ def test_correction_does_not_subtract_rows_that_are_already_deleted():
     assert projection.deleted_sequences == [1]
 
 
-def test_correction_of_an_excluded_row_targets_sequence_zero():
+def test_correction_of_an_excluded_row_targets_the_row_not_sequence_zero():
+    # Every penalty, clock, timeout and marker shares sequence 0, so a group
+    # delete would erase the whole bucket. The correction names the row's own
+    # event instead.
     penalty = ev("penalty", "Holding", side="home", seq=1)
     correction = GameEventValue(
         type="correction", code="undo", seq=2, undo_of=penalty
@@ -422,8 +428,24 @@ def test_correction_of_an_excluded_row_targets_sequence_zero():
     projection = apply(state(), correction)
 
     assert projection.rows == []
-    assert projection.deleted_sequences == [0]
+    assert projection.deleted_sequences == []
+    assert projection.deleted_rows == [1]
     assert projection.state.score_home == 0
+
+
+def test_undoing_a_row_correction_restores_that_row():
+    penalty = ev("penalty", "Holding", side="home", seq=1)
+    undone = GameEventValue(
+        type="correction", code="undo", seq=2, undo_of=penalty
+    )
+    restore = GameEventValue(
+        type="correction", code="undo", seq=3, undo_of=undone
+    )
+
+    projection = apply(state(), restore)
+
+    assert projection.deleted_rows == []
+    assert projection.restored_rows == [1]
 
 
 def test_correction_of_a_plain_possession_change_restores_the_side():
