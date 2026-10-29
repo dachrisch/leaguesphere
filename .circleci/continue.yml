@@ -1266,10 +1266,15 @@ workflows:
             - test_frontend_image
             - check_migrations
 
+      # rc tags are image tags only. Publishing an rc as a GitHub pre-release
+      # makes release-please see a release for a version whose stable tag does
+      # not exist yet; it then walks the whole history and opens a bogus major
+      # release (the 6.0.0 incident). Stable tags keep the draft/promote/publish
+      # chain below.
       - ensure_draft_release:
           filters:
             tags:
-              only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$/
+              only: /^v?[0-9]+\.[0-9]+\.[0-9]+$/
             branches:
               ignore: /.*/
 
@@ -1313,7 +1318,7 @@ workflows:
             - ensure_draft_release
           filters:
             tags:
-              only: /^v?[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$/
+              only: /^v?[0-9]+\.[0-9]+\.[0-9]+$/
             branches:
               ignore: /.*/
 
