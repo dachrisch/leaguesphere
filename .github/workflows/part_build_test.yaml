@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       mysql:
-        image: mysql:9.7
+        image: mysql:26.10
         env:
           # The MySQL docker container requires these environment variables to be set
           # so we can create and migrate the test database.
