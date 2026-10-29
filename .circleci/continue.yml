@@ -3,7 +3,7 @@ version: 2.1
 orbs:
   node: circleci/node@7.2.1
   github-cli: circleci/github-cli@3.0.0
-  codecov: codecov/codecov@6.0.0
+  codecov: codecov/codecov@6.1.0
 
 # Scoped-CI pipeline parameters, set by the path-filtering `scope` job
 # in config.yml (setup workflow) from .circleci/scope-mapping.txt.
