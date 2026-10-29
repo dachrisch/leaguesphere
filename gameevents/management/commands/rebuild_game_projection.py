@@ -38,8 +38,8 @@ class Command(BaseCommand):
             type=int,
             metavar="USER_ID",
             help=(
-                "user id recorded on rows that have no previous row to inherit "
-                "an author from (defaults to TeamLog's default author)"
+                "user id used for rows whose event has no actor and that "
+                "replace no earlier row (defaults to the game's author)"
             ),
         )
 

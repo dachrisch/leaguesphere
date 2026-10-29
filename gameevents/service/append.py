@@ -27,12 +27,26 @@ and ``GameState`` is the replay of the events alone -- it never counts those
 pre-existing rows. Reconciling them (backfilling events from rows, or deciding
 which side wins) is T6's job; ``rebuild_game_projection``/``check`` must not
 pretend otherwise.
+
+Author
+------
+Every event records its **actor** -- ``request.user`` on both endpoints -- in
+``GameEvent.author``, and the projector copies that id onto every ``TeamLog``
+row the event produces, so a play's author is the official who recorded it,
+exactly as the legacy writer stores it. ``TeamLog.author`` has a
+``default=1``; that is a user id which does not have to exist (it is not a
+"system user"), so this module always writes the column explicitly and falls
+back to the game's author (the gameday's author) only for events that
+genuinely have no actor. If no existing user can be found at all the append
+raises :class:`MissingAuthor` (a 400), never a database error. The same rule
+is used by ``rebuild_game``; see ``AuthorResolver``.
 """
 
 import uuid
 from dataclasses import dataclass, replace
 from typing import Iterable, Optional
 
+from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone
@@ -58,6 +72,68 @@ class SequenceConflict(Exception):
     def __init__(self, expected_next: int):
         self.expected_next = expected_next
         super().__init__(f"expected seq {expected_next}")
+
+
+class MissingAuthor(InvalidEnvelope):
+    """No existing user can be recorded as a projected row's author.
+
+    A subclass of ``InvalidEnvelope`` on purpose: the endpoints already answer
+    that with ``400 {"detail": ...}`` and never with a database error, which is
+    the whole point -- ``TeamLog.author`` must not be left to its ``default=1``.
+    """
+
+
+class AuthorResolver:
+    """Decide which user a projected ``TeamLog`` row is written for.
+
+    The candidates are: the event's actor, the row a rebuild replaces, the
+    rebuild's ``--author`` and finally the game's author (its gameday's author).
+    ``TeamLog``'s ``default=1`` is never part of it: a user id that does not
+    exist is not an author, and the caller gets :class:`MissingAuthor` instead of
+    an ``IntegrityError`` on MySQL (or a silently wrong author on a database
+    that happens to have a user 1).
+    """
+
+    def __init__(self, game):
+        self.game = game
+        self._known: dict[int, bool] = {}
+
+    def exists(self, author_id: int) -> bool:
+        if author_id not in self._known:
+            self._known[author_id] = User.objects.filter(pk=author_id).exists()
+        return self._known[author_id]
+
+    def game_author_id(self) -> Optional[int]:
+        """The author of the game: its gameday's author, if that user exists.
+
+        ``Gameinfo`` has no author of its own; the gameday it belongs to does.
+        The column itself defaults to the magic id 1, so "set" is not the same
+        as "real" and only an existing user counts.
+        """
+
+        author_id = self.game.gameday.author_id
+        if author_id and self.exists(author_id):
+            return author_id
+        return None
+
+    def resolve(self, *candidates: Optional[int]) -> int:
+        for author_id in candidates:
+            if author_id and self.exists(author_id):
+                return author_id
+        raise MissingAuthor(
+            f"no author for the event (game {self.game.pk}): neither the event "
+            "nor the game names an existing user"
+        )
+
+
+def author_id_of(author) -> Optional[int]:
+    """The id to store on an event for an append caller's ``author``."""
+
+    if author is None:
+        return None
+    if isinstance(author, int):
+        return author
+    return getattr(author, "pk", None)
 
 
 @dataclass(frozen=True)
@@ -102,6 +178,7 @@ def values_from_rows(rows: Iterable[GameEvent]) -> list[GameEventValue]:
             seq=row.seq,
             client_id=row.client_id,
             legacy_sequence=row.legacy_sequence,
+            author_id=row.author_id,
         )
         if row.undo_of_id is not None:
             target_row = by_pk.get(row.undo_of_id)
@@ -164,7 +241,15 @@ def _attach_undo_targets(assigned, stored_rows, stored_values):
     return values, target_ids
 
 
-def _write_rows(game, projection: Projection, author) -> None:
+def _write_rows(game, projection: Projection, authors: "AuthorResolver") -> None:
+    """Insert the projected rows, each with the author it was projected for.
+
+    ``TeamLog.author`` defaults to the magic id 1, so it is always passed
+    explicitly -- from the event's actor, or from the game's author when the
+    event has none. :class:`AuthorResolver` turns "no existing user at all"
+    into a 400 instead of an ``IntegrityError``.
+    """
+
     sides = dict(
         Gameresult.objects.filter(gameinfo=game).values_list("isHome", "team_id")
     )
@@ -186,9 +271,8 @@ def _write_rows(game, projection: Projection, author) -> None:
             "cop": row.cop,
             "half": row.half,
             "isDeleted": row.isDeleted,
+            "author_id": authors.resolve(row.author_id, authors.game_author_id()),
         }
-        if author is not None:
-            values["author"] = author
         TeamLog.objects.create(**values)
 
 
@@ -204,7 +288,7 @@ def _apply_sequence_flags(game, projection: Projection) -> None:
         ).update(isDeleted=False, updated_at=now)
 
 
-def _record_rows(game, projection: Projection, author) -> None:
+def _record_rows(game, projection: Projection, authors: "AuthorResolver") -> None:
     """Write the projected rows and move ``Gameresult`` like the legacy writer.
 
     Inserting rows is only half of a legacy write: ``Gameresult`` (the table the
@@ -219,7 +303,7 @@ def _record_rows(game, projection: Projection, author) -> None:
     service = GameService(game.pk)
 
     def write():
-        _write_rows(game, projection, author)
+        _write_rows(game, projection, authors)
         _apply_sequence_flags(game, projection)
         return service.get_gamelog()
 
@@ -251,6 +335,14 @@ def append_submission(
 ) -> AppendOutcome:
     """Record one submission and project it; the caller's transaction is reused.
 
+    ``author`` is the event's **actor** -- ``request.user`` on both endpoints --
+    and is stored on every event of the submission (``GameEvent.author``) and,
+    through the projection, on every ``TeamLog`` row the submission writes. It
+    is therefore the one place where "who caused this play" enters the store; a
+    caller that passes ``None`` (a system/background write) records events
+    without an actor, and the row author then falls back to the game's author
+    (see ``AuthorResolver``) or raises :class:`MissingAuthor`.
+
     The game row lock serialises sequence allocation with the legacy writer
     (which locks ``Gameresult`` first and then ``Gameinfo``); the canonical
     path takes the same order by being called inside the gamelog write's
@@ -263,6 +355,16 @@ def append_submission(
         raise InvalidEnvelope("a submission needs at least one event")
     if not client_id:
         raise InvalidEnvelope("a submission needs a client_id")
+    authors = AuthorResolver(game)
+    actor_id = author_id_of(author)
+    if actor_id is not None and not authors.exists(actor_id):
+        # A caller that hands us a user the database does not have would
+        # otherwise fail on the foreign key (a 500) or, worse, be recorded
+        # against a different user. Refuse it as a client error instead.
+        raise MissingAuthor(
+            f"no author for the event (game {game.pk}): user {actor_id} does "
+            "not exist"
+        )
 
     if GameEvent.objects.filter(game=game, client_id=client_id).exists():
         replayed = project_game(game)
@@ -288,6 +390,8 @@ def append_submission(
             replace(value, seq=expected_next + offset)
             for offset, value in enumerate(values)
         ]
+    # The actor travels with the events into the rows they project.
+    assigned = [replace(value, author_id=actor_id) for value in assigned]
 
     stored_rows = list(GameEvent.objects.filter(game=game).order_by("seq"))
     stored_values = values_from_rows(stored_rows)
@@ -323,9 +427,10 @@ def append_submission(
             undo_of_id=undo_of_id,
             source=source,
             client_at=now,
+            author_id=value.author_id,
         )
     if write_rows:
-        _record_rows(game, projection, author)
+        _record_rows(game, projection, authors)
     else:
         _apply_sequence_flags(game, projection)
     _save_state(game, projection.state)

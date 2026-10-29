@@ -53,6 +53,23 @@ class GameEvent(models.Model):
     )
     seq = models.PositiveIntegerField()
     client_id = models.CharField(max_length=64)
+    # The **actor**: the authenticated user whose request recorded this event
+    # (``request.user`` on both write paths). It is not a display author and is
+    # never shown; it exists so the projected ``TeamLog`` rows can carry the
+    # same author the legacy writer would have stored, and so an audit can say
+    # who caused an event. ``null`` means system-generated -- a rebuild, a
+    # management command or an event stored before the column existed -- and
+    # the projection then uses the game's author (see
+    # ``gameevents/service/append.py``); nothing ever falls back to a magic id.
+    author = models.ForeignKey(
+        "auth.User",
+        null=True,
+        blank=True,
+        # The log outlives its users: an append-only record must not be deleted
+        # (or blocked) because the user who caused it was removed.
+        on_delete=models.SET_NULL,
+        related_name="game_events",
+    )
     # The ``TeamLog.sequence`` the legacy writer used for this submission, if
     # this event was recorded by the shadow. The projector normally derives a
     # submission's sequence from its smallest event ``seq``; the legacy writer
