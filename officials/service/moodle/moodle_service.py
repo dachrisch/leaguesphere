@@ -6,6 +6,7 @@ from time import time
 from typing import Any
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db import connections
 from django.db.models import QuerySet
 
@@ -25,6 +26,13 @@ from officials.service.moodle.moodle_api import (
     EmptyApiExams,
     ApiExam,
 )
+
+MOODLE_EMAIL_CACHE_TTL = 15 * 60
+MOODLE_EMAIL_CACHE_KEY_PREFIX = "officials:moodle-email:"
+
+
+def moodle_email_cache_key(external_id) -> str:
+    return f"{MOODLE_EMAIL_CACHE_KEY_PREFIX}{external_id}"
 
 
 def measure_execution_time(func):
@@ -290,15 +298,53 @@ class MoodleService:
         return self.moodle_api.get_user_info_by_id(external_id)
 
     def get_user_emails_by_external_ids(self, external_ids) -> dict:
-        """Resolve many Moodle e-mails at once: ``str(external_id) -> email``.
+        """Resolve e-mails by external id, reusing short-lived cached values.
 
-        Unknown ids are not part of the result (callers default to "").
+        Returns ``str(external_id) -> email`` for every id requested; ids Moodle
+        does not know map to ``""``. Results (including the empty ones) are
+        cached for ``MOODLE_EMAIL_CACHE_TTL`` so a page reload within that
+        window costs no Moodle request at all.
         """
-        user_infos = self.moodle_api.get_user_infos_by_ids(external_ids)
-        return {
-            external_id: user_info.get_email()
-            for external_id, user_info in user_infos.items()
+        unique_ids = list(
+            dict.fromkeys(
+                str(external_id)
+                for external_id in external_ids
+                if external_id not in (None, "")
+            )
+        )
+        if not unique_ids:
+            return {}
+
+        cached_emails = cache.get_many(
+            [moodle_email_cache_key(external_id) for external_id in unique_ids]
+        )
+        emails = {
+            external_id: cached_emails[moodle_email_cache_key(external_id)]
+            for external_id in unique_ids
+            if moodle_email_cache_key(external_id) in cached_emails
         }
+        missing_ids = [
+            external_id for external_id in unique_ids if external_id not in emails
+        ]
+        if missing_ids:
+            user_infos = self.moodle_api.get_user_infos_by_ids(missing_ids)
+            fetched_emails = {
+                external_id: (
+                    user_infos[external_id].get_email()
+                    if external_id in user_infos
+                    else ""
+                )
+                for external_id in missing_ids
+            }
+            cache.set_many(
+                {
+                    moodle_email_cache_key(external_id): email
+                    for external_id, email in fetched_emails.items()
+                },
+                MOODLE_EMAIL_CACHE_TTL,
+            )
+            emails.update(fetched_emails)
+        return emails
 
     def login(self, username, password) -> int:
         self.moodle_api.confirm_user_auth(username, password)
