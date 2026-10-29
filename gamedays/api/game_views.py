@@ -121,6 +121,25 @@ def _client_id(raw):
         raise ValidationError({"client_id": "must be a UUID"})
 
 
+def _submission_already_applied(game, client_id) -> bool:
+    """Whether this submission has already written its rows.
+
+    Both write endpoints accept the same outbox, and a retried op can land on
+    the other one (the app moves from ``/api/gamelog/`` to
+    ``/api/game/<id>/events`` between releases). The claim therefore has two
+    homes: ``GameLogSubmission`` for the writes this endpoint took, and the
+    event store's unique ``(game, client_id)`` for the ones the canonical
+    endpoint took (which the shadow also records here). Checking only the
+    former would write a canonical submission's ``TeamLog`` rows a second time
+    on a replay; checking only the latter would do the same for a legacy one.
+    """
+    if client_id is None:
+        return False
+    if GameLogSubmission.objects.filter(gameinfo=game, client_id=client_id).exists():
+        return True
+    return GameEvent.objects.filter(game=game, client_id=str(client_id)).exists()
+
+
 def _validate_gamelog_payload(data):
     """Reject malformed gamelog write payloads with a 400 instead of a 500.
 
@@ -247,9 +266,7 @@ class GameLogAPIView(APIView):
                 # write here holds Gameinfo before Gameresult.
                 game = Gameinfo.objects.select_for_update().get(pk=data.get("gameId"))
                 game_service = GameService(game.pk)
-                if client_id is not None and GameLogSubmission.objects.filter(
-                    gameinfo=game, client_id=client_id
-                ).exists():
+                if _submission_already_applied(game, client_id):
                     # Already applied (and its rows committed -- the claim shares
                     # the write's transaction). Answer with the current log and
                     # write nothing. This has to be checked BEFORE the device
