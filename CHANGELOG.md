@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.2.3](https://github.com/dachrisch/leaguesphere/compare/v5.2.2...v5.2.3) (2026-10-29)
+
+
+### Bug Fixes
+
+* **deps:** update js deps ([#2164](https://github.com/dachrisch/leaguesphere/issues/2164)) ([9bc32c3](https://github.com/dachrisch/leaguesphere/commit/9bc32c3e18c01b761478afaa0d6fc98046cfb895))
+* **deps:** update python deps ([#2165](https://github.com/dachrisch/leaguesphere/issues/2165)) ([e0c5546](https://github.com/dachrisch/leaguesphere/commit/e0c5546e80c160510c83ee5682a2c301a94192ab))
+
 ## [5.2.2](https://github.com/dachrisch/leaguesphere/compare/v5.2.1...v5.2.2) (2026-10-29)
 
 
