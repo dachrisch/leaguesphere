@@ -281,10 +281,15 @@ class GameLogAPIView(APIView):
                 # GameState to their projection.
                 shadow_append(
                     game,
-                    team=data.get("team"),
+                    # The legacy body may carry a pk, a name or the description
+                    # (v1 posts names); resolve it exactly like the writer did
+                    # so the shadow records the same side.
+                    team=GameService._resolve_team(data.get("team")),
                     entries=data.get("event"),
                     half=data.get("half"),
-                    client_id=client_id,
+                    # _client_id normalises to a UUID; the event store stores
+                    # it as text (and the outbox ids are UUID strings).
+                    client_id=str(client_id) if client_id is not None else None,
                     author=request.user,
                 )
             return Response(

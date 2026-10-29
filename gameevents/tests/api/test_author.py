@@ -25,6 +25,7 @@ from gameevents.tests.api.support import (
     make_game,
     post_events,
     post_legacy,
+    sub_id,
 )
 from gamedays.constants import API_GAMELOG
 from gamedays.models import TeamLog
@@ -70,7 +71,7 @@ def test_the_canonical_endpoint_records_the_request_user_as_the_author(client):
     user = login(client)
 
     response = post_events(
-        client, game, {"events": [TOUCHDOWN_ENVELOPE], "client_id": "sub-1"}
+        client, game, {"events": [TOUCHDOWN_ENVELOPE], "client_id": sub_id(1)}
     )
 
     assert response.status_code == 201
@@ -89,7 +90,7 @@ def test_the_legacy_shadow_records_the_request_user_as_the_author(client):
         client,
         game,
         legacy_body(
-            game, home, [{"name": "Touchdown", "player": "7"}], client_id="sub-1"
+            game, home, [{"name": "Touchdown", "player": "7"}], client_id=sub_id(1)
         ),
     )
 
@@ -108,7 +109,7 @@ def test_a_legacy_undo_records_its_actor(client):
         client,
         game,
         legacy_body(
-            game, home, [{"name": "Touchdown", "player": "7"}], client_id="sub-1"
+            game, home, [{"name": "Touchdown", "player": "7"}], client_id=sub_id(1)
         ),
     )
 
