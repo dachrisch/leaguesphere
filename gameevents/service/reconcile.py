@@ -361,8 +361,8 @@ def rebuild_game(game, *, author=None) -> RebuildResult:
     TeamLog.objects.filter(gameinfo=game, sequence__in=owned).delete()
 
     new_rows = []
-    # ``{event seq: index into new_rows}`` -- the re-created rows are linked to
-    # their events after the insert, so a row is addressable exactly as before
+    # ``{event seq: TeamLog pk}`` -- the re-created rows are linked to their
+    # events as they are inserted, so a row is addressable exactly as before
     # the rebuild (the log did not change, only the pks did).
     relink: dict[int, int] = {}
     for seq in sorted(owned):
@@ -399,17 +399,24 @@ def rebuild_game(game, *, author=None) -> RebuildResult:
                 # Keep the tick's timestamp: a rebuild must not reshuffle the
                 # liveticker's ordering of an unchanged play.
                 values["created_time"] = previous[index].created_time
+            # ``create``, not ``bulk_create``: Django's Oracle MySQL backend
+            # reports ``can_return_rows_from_bulk_insert = False`` (only
+            # MariaDB sets it), so ``bulk_create`` leaves ``pk`` as ``None``
+            # there -- and the relink below stores that pk on the event. A
+            # NULL link silently breaks row-level corrections and the log
+            # payload's ``seq``. A rebuild is an operator path, not hot: do
+            # not "optimise" this back into a bulk insert.
+            team_log = TeamLog.objects.create(**values)
             if row.source_seq is not None:
-                relink[row.source_seq] = len(new_rows)
-            new_rows.append(TeamLog(**values))
-    TeamLog.objects.bulk_create(new_rows)
+                relink[row.source_seq] = team_log.pk
+            new_rows.append(team_log)
 
     if relink:
         by_seq = {event.seq: event for event in events if event.seq in relink}
-        for event_seq, index in relink.items():
+        for event_seq, pk in relink.items():
             event = by_seq.get(event_seq)
             if event is not None:
-                event.team_log_id = new_rows[index].pk
+                event.team_log_id = pk
         GameEvent.objects.bulk_update(by_seq.values(), ["team_log"])
 
     GameState.objects.update_or_create(

@@ -15,9 +15,11 @@ from rest_framework.reverse import reverse
 from gameevents.models import GameEvent, GameState
 from gameevents.service.reconcile import check_games, rebuild_game
 from gameevents.tests.api.support import (
+    legacy_body,
     login,
     make_game,
     post_events,
+    post_legacy,
     sub_id,
 )
 from gamedays.constants import API_GAMELOG
@@ -187,3 +189,65 @@ def test_the_legacy_delete_records_a_correction_for_a_linked_penalty_row(client)
     assert state.needs_reconciliation is False
     [check] = check_games([game.pk])
     assert check.ok, check.summary()
+
+
+@pytest.mark.django_db
+def test_a_rebuild_does_not_depend_on_bulk_create_returning_pks(client, monkeypatch):
+    # Django's Oracle MySQL backend reports
+    # can_return_rows_from_bulk_insert = False, so ``bulk_create`` leaves every
+    # ``pk`` as None there. The rebuild must link the rows it creates without
+    # that guarantee; if it ever goes back to a bulk insert, this test fails on
+    # any backend.
+    login(client)
+    game, _home, _away = make_game("rowundo")
+    post_events(
+        client,
+        game,
+        {
+            "events": [
+                {"type": "score", "code": "touchdown", "side": "home", "player": 7},
+                {"type": "penalty", "code": "Holding", "side": "home"},
+            ],
+            "client_id": sub_id(1),
+        },
+    )
+
+    def forbidden(*args, **kwargs):  # pragma: no cover - it must not run
+        raise AssertionError(
+            "bulk_create leaves pk None on Oracle MySQL; link rows without it"
+        )
+
+    monkeypatch.setattr(TeamLog.objects, "bulk_create", forbidden)
+    rebuild_game(game)
+
+    linked = {
+        event.seq: event.team_log_id for event in GameEvent.objects.filter(game=game)
+    }
+    assert all(pk is not None for pk in linked.values()), linked
+    assert set(linked.values()) <= set(
+        TeamLog.objects.filter(gameinfo=game).values_list("pk", flat=True)
+    )
+
+
+@pytest.mark.django_db
+def test_a_legacy_post_answers_its_own_rows_with_their_seq(client):
+    # The log a legacy POST answers with is serialized *after* the shadow
+    # append, so the rows it just wrote already carry their event ``seq`` --
+    # the handle for undoing them, without a second read.
+    login(client)
+    game, home, _away = make_game("rowundo")
+
+    response = post_legacy(
+        client,
+        game,
+        legacy_body(
+            game,
+            home,
+            [{"name": "Touchdown", "player": 7}, {"name": "Strafe", "input": "Holding"}],
+            client_id=sub_id(1),
+        ),
+    )
+
+    assert response.status_code == HTTPStatus.CREATED
+    seqs = {event["event"]: event["seq"] for event in response.json()["events"]}
+    assert seqs == {"Touchdown": 1, "Strafe": 2}

@@ -47,6 +47,7 @@ raises :class:`MissingAuthor` (a 400), never a database error. The same rule
 is used by ``rebuild_game``; see ``AuthorResolver``.
 """
 
+import logging
 import uuid
 from dataclasses import dataclass, replace
 from typing import Iterable, Optional
@@ -69,6 +70,8 @@ from gameevents.service.projector import (
 from gameevents.service.replay import Replay, replay_events, resolve_correction
 from gamedays.models import Gameresult, Gameinfo, Team, TeamLog
 from gamedays.service.game_service import GameService
+
+logger = logging.getLogger(__name__)
 
 
 class SequenceConflict(Exception):
@@ -582,6 +585,18 @@ def _link_shadow_rows(game, client_id: str, rows) -> None:
         GameEvent.objects.filter(game=game, client_id=client_id).order_by("seq")
     )
     if len(events) != len(rows):
+        # One row per entry is the writer's contract; a mismatch means the
+        # rows cannot be paired, so the events stay unlinked -- a later
+        # row-level correction of them would be refused (400). Say so instead
+        # of failing silently.
+        logger.warning(
+            "shadow append of game %s (%s): %d event(s) for %d row(s); "
+            "the events stay unlinked",
+            game.pk,
+            client_id,
+            len(events),
+            len(rows),
+        )
         return
     for event, row in zip(events, rows):
         event.team_log_id = row.pk
