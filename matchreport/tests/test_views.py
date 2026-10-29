@@ -51,6 +51,7 @@ from gamedays.service.gameday_service import (
     EmptySplitScoreTable,
 )
 from gamedays.tests.setup_factories.db_setup import DBSetup
+from gamedays.tests.setup_factories.request_caches import pin_request_path_caches
 from gamedays.tests.setup_factories.factories import (
     GamedayFactory,
     GameinfoFactory,
@@ -61,11 +62,6 @@ from gamedays.tests.setup_factories.factories import (
     UserFactory,
 )
 
-from league_manager.constants import (
-    MAINTENANCE_CONFIG_CACHE_KEY,
-    MAINTENANCE_CONFIG_CACHE_TTL,
-    MAINTENANCE_SCOPE_OFF,
-)
 from league_table.tests.setup_factories.factories_leaguetable import (
     LeagueSeasonConfigFactory,
 )
@@ -108,6 +104,11 @@ class TestMatchreportGamedayDetailPermissions(WebTest):
 
 
 class TestMatchreportGamedayDetailView(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def tearDown(self):
+        cache.clear()
 
     def test_matchreport_no_passchecks(self):
         gameday = DBSetup().g62_with_tiebreak_finished()
@@ -142,9 +143,12 @@ class TestMatchreportGamedayDetailView(TestCase):
             min_officials_per_game=1,
         )
         self.client.force_login(UserFactory(is_staff=True))
-        # Warm request-path caches so the query count is not order-dependent
-        # under parallel (xdist) runs.
-        self.client.get(reverse(MATCHREPORT_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk}))
+        # Pin the process-global middleware caches (DB-guard probe + maintenance
+        # config) instead of racing their short TTLs with a warm-up request:
+        # under CI load the warm-up round-trip can outlast the TTL, adding a
+        # stray "SELECT 1" to the counted request (seen as 59 != 58 on
+        # CircleCI, pipeline 6267).
+        pin_request_path_caches()
 
         with self.assertNumQueries(58):
             resp = self.client.get(
@@ -200,27 +204,6 @@ class TestMatchreportGamedayListView(TestCase):
     def tearDown(self):
         cache.clear()
 
-    @staticmethod
-    def _pin_request_path_caches():
-        """Deterministically mark the DB-guard/maintenance middleware caches as warm.
-
-        Both DatabaseGuardMiddleware's "db_connection_status" key and
-        MAINTENANCE_CONFIG_CACHE_KEY are process-global LocMemCache entries with
-        a short TTL (10s / 30s). A throwaway "warm-up" request only *usually*
-        leaves them populated before the counted request runs; under CI load
-        (many xdist workers sharing one MySQL container) the round-trip can take
-        long enough for the TTL to lapse again, adding a stray "SELECT 1" or
-        SiteConfiguration query and flipping assertNumQueries (seen on CircleCI
-        pipeline 5495). Setting both values directly removes the timing
-        dependency instead of racing it.
-        """
-        cache.set("db_connection_status", True, 10)
-        cache.set(
-            MAINTENANCE_CONFIG_CACHE_KEY,
-            {"scope": MAINTENANCE_SCOPE_OFF, "patterns": []},
-            MAINTENANCE_CONFIG_CACHE_TTL,
-        )
-
     def test_renders_without_a_league_selected(self):
         # Regression: the CSV download link in the template must resolve to
         # the no-league URL pattern (not crash with NoReverseMatch) when the
@@ -250,7 +233,7 @@ class TestMatchreportGamedayListView(TestCase):
             min_officials_per_game=1,
         )
         self.client.force_login(UserFactory(is_staff=True))
-        self._pin_request_path_caches()
+        pin_request_path_caches()
 
         with self.assertNumQueries(11):
             resp = self.client.get(
@@ -272,7 +255,7 @@ class TestMatchreportGamedayListView(TestCase):
         gameday = GamedayFactory(date=date(2027, 5, 1), league=league, season=season)
         GameinfoFactory(gameday=gameday)
         self.client.force_login(UserFactory(is_staff=True))
-        self._pin_request_path_caches()
+        pin_request_path_caches()
 
         with self.assertNumQueries(8):
             resp = self.client.get(
@@ -318,7 +301,7 @@ class TestMatchreportGamedayListView(TestCase):
         GameinfoFactory(gameday=violating_gameday)
 
         self.client.force_login(UserFactory(is_staff=True))
-        self._pin_request_path_caches()
+        pin_request_path_caches()
 
         with self.assertNumQueries(12):
             resp = self.client.get(
@@ -350,7 +333,7 @@ class TestMatchreportGamedayListView(TestCase):
             GameinfoFactory(gameday=gameday)
 
         self.client.force_login(UserFactory(is_staff=True))
-        self._pin_request_path_caches()
+        pin_request_path_caches()
 
         with self.assertNumQueries(11):
             resp = self.client.get(
