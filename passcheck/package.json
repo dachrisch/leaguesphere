@@ -26,7 +26,7 @@
     "serialize-javascript": "^7.0.0",
     "debug": "^4.4.0",
     "xml2js": "^0.6.2",
-    "typescript": "^6.0.0",
+    "typescript": "$typescript",
     "typescript-eslint": {
       "eslint": "^10.0.0"
     },
