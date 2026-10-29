@@ -25,6 +25,10 @@ coverage:
         # which fails on small uncovered defensive branches.
         target: 90
         threshold: 1%
+        # Path-scoped CI runs no test job for a docs-only PR, so no report is
+        # uploaded and the patch status would stay "in_progress" forever
+        # (#2124). A diff with no report has no uncovered lines.
+        if_not_found: success
 
 ignore:
   # Build tool configuration files (not application code)
