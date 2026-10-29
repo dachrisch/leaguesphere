@@ -9,6 +9,11 @@ services:
       # Read-only here; the app container owns the write side.
       - media:/media:ro
     labels:
+      - traefik.enable=true
+      # Required since 2026-10-29: servy's Traefik runs with
+      # providers.docker.exposedByDefault=false, so a container is only
+      # routed when its service opts in. Without this the site answers
+      # Traefik's catchall 404 while the container looks healthy.
       # redirect service
       # https://jensknipper.de/blog/traefik-http-to-https-redirect/
       - traefik.http.routers.${SERVICE_NAME}-http.entrypoints=web
