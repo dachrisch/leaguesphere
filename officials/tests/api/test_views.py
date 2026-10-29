@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from http import HTTPStatus
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django_webtest import WebTest
@@ -11,6 +12,7 @@ from gamedays.models import Association, Team
 from gamedays.tests.setup_factories.db_setup import DBSetup
 from officials.api.urls import API_OFFICIALS_FOR_TEAM, API_OFFICIALS_SEARCH_BY_NAME
 from officials.models import Official, OfficialLicense
+from officials.service.moodle.moodle_api import ApiUserInfo, MoodleApi
 from officials.service.moodle.moodle_service import MoodleService
 from officials.tests.setup_factories.db_setup_officials import DbSetupOfficials
 from officials.tests.setup_factories.factories_officials import (
@@ -230,6 +232,12 @@ class TestOfficialsSearchName(WebTest):
 
 
 class TestOfficialAssociationListView(WebTest):
+    def setUp(self):
+        cache.clear()
+
+    def tearDown(self):
+        cache.clear()
+
     def _url(self):
         return reverse(OFFICIALS_ASSOCIATION_LIST, kwargs={"abbr": "ABBR"})
 
@@ -294,3 +302,20 @@ class TestOfficialAssociationListView(WebTest):
         assert self._rendered_rows(two_officials_response) == 2
         assert self._rendered_rows(seven_officials_response) == 7
         assert len(seven_officials) == len(two_officials)
+
+    @patch.object(MoodleApi, "get_user_infos_by_ids")
+    def test_emails_are_cached_between_requests(self, get_user_infos_by_ids):
+        self._create_officials()
+        self._login_staff()
+        get_user_infos_by_ids.return_value = {
+            "5": ApiUserInfo({"id": 5, "email": "franzi@example.com"}),
+            "7": ApiUserInfo({"id": 7, "email": "julia@example.com"}),
+        }
+
+        first = self.app.get(self._url())
+        second = self.app.get(self._url())
+
+        get_user_infos_by_ids.assert_called_once()
+        assert "franzi@example.com" in first.text
+        assert "franzi@example.com" in second.text
+        assert "julia@example.com" in second.text

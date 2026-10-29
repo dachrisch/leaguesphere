@@ -2,6 +2,7 @@ import time
 from unittest.mock import patch, MagicMock
 
 import pytest
+from django.core.cache import cache
 from django.test import TestCase
 
 from officials.models import Official, OfficialLicenseHistory
@@ -18,7 +19,11 @@ from officials.service.moodle.moodle_api import (
     ApiExams,
     ApiExamResult,
 )
-from officials.service.moodle.moodle_service import MoodleService
+from officials.service.moodle.moodle_service import (
+    MOODLE_EMAIL_CACHE_TTL,
+    MoodleService,
+    moodle_email_cache_key,
+)
 from officials.tests.setup_factories.db_setup_officials import DbSetupOfficials
 from officials.tests.setup_factories.factories_officials import (
     OfficialLicenseHistoryFactory,
@@ -70,12 +75,14 @@ class TestMoodleService(TestCase):
         participants_mock: MagicMock,
         update_user_mock: MagicMock,
     ):
-        course = ApiCourse({
-            "id": 1,
-            "categoryid": 5,
-            "enddate": time.time(),
-            "fullname": "course name 4",
-        })
+        course = ApiCourse(
+            {
+                "id": 1,
+                "categoryid": 5,
+                "enddate": time.time(),
+                "fullname": "course name 4",
+            }
+        )
         moodle_service = MoodleService()
         result = moodle_service.get_participants_from_course(course)
         participants_mock.assert_not_called()
@@ -103,12 +110,14 @@ class TestMoodleService(TestCase):
         user_id = 1
         user_id_2 = 2
         exam_id = 75
-        course = ApiCourse({
-            "id": 1,
-            "categoryid": 2,
-            "enddate": time.time(),
-            "fullname": "course name 1",
-        })
+        course = ApiCourse(
+            {
+                "id": 1,
+                "categoryid": 2,
+                "enddate": time.time(),
+                "fullname": "course name 1",
+            }
+        )
         participants_mock.return_value = ApiParticipants(
             [
                 {
@@ -203,12 +212,14 @@ class TestMoodleService(TestCase):
     ):
         user_id = 82
         team = DbSetupOfficials().create_officials_and_team()
-        course = ApiCourse({
-            "id": 1,
-            "categoryid": 4,
-            "enddate": time.time(),
-            "fullname": "course name",
-        })
+        course = ApiCourse(
+            {
+                "id": 1,
+                "categoryid": 4,
+                "enddate": time.time(),
+                "fullname": "course name",
+            }
+        )
         participants_mock.return_value = ApiParticipants(
             [
                 {
@@ -306,12 +317,14 @@ class TestMoodleService(TestCase):
         official: Official = Official.objects.last()
         official.external_id = 7
         official.save()
-        course = ApiCourse({
-            "id": 1,
-            "categoryid": 3,
-            "enddate": time.time(),
-            "fullname": "course name 2",
-        })
+        course = ApiCourse(
+            {
+                "id": 1,
+                "categoryid": 3,
+                "enddate": time.time(),
+                "fullname": "course name 2",
+            }
+        )
         participants_mock.return_value = ApiParticipants(
             [
                 {
@@ -394,12 +407,14 @@ class TestMoodleService(TestCase):
             license=OfficialLicenseFactory(id=2, name="F3"),
             result=60,
         )
-        course = ApiCourse({
-            "id": 1,
-            "categoryid": 3,
-            "enddate": time.time(),
-            "fullname": "course name 2",
-        })
+        course = ApiCourse(
+            {
+                "id": 1,
+                "categoryid": 3,
+                "enddate": time.time(),
+                "fullname": "course name 2",
+            }
+        )
         participants_mock.return_value = ApiParticipants(
             [
                 {
@@ -444,8 +459,7 @@ class TestMoodleService(TestCase):
         assert updated_official.association is None
         assert (
             OfficialLicenseHistory.objects.filter(
-                official=updated_official,
-                                                     license=LicenseStrategy.F3_LICENSE
+                official=updated_official, license=LicenseStrategy.F3_LICENSE
             ).count()
             == 1
         )
@@ -482,12 +496,14 @@ class TestMoodleService(TestCase):
         official: Official = Official.objects.last()
         official.external_id = 7
         official.save()
-        course = ApiCourse({
-            "id": 1,
-            "categoryid": 3,
-            "enddate": time.time(),
-            "fullname": "course name 3",
-        })
+        course = ApiCourse(
+            {
+                "id": 1,
+                "categoryid": 3,
+                "enddate": time.time(),
+                "fullname": "course name 3",
+            }
+        )
         participants_mock.return_value = ApiParticipants(
             [
                 {
@@ -660,76 +676,149 @@ class TestMoodleService(TestCase):
 
         participants_mock.assert_called_once_with(57)
 
-    @patch.object(MoodleApi, 'confirm_user_auth')
-    @patch.object(MoodleApi, 'get_user_info_by_username')
-    @patch.object(Official.objects, 'get')
-    def test_moodle_login_with_username(self, official_mock: MagicMock, user_info_mock: MagicMock,
-                                        auth_mock: MagicMock):
+    @patch.object(MoodleApi, "confirm_user_auth")
+    @patch.object(MoodleApi, "get_user_info_by_username")
+    @patch.object(Official.objects, "get")
+    def test_moodle_login_with_username(
+        self, official_mock: MagicMock, user_info_mock: MagicMock, auth_mock: MagicMock
+    ):
         official_mock.return_value.pk = 7
-        user_info_mock.return_value = ApiUserInfo([
-            {
-                'firstname': 'firstname',
-                'lastname': 'lastname',
-                'id': 7,
-                'customfields': [
-                    {
-                        'shortname': 'teamname',
-                        'value': 'team.description'
-                    },
-                    {
-                        'shortname': 'teamid',
-                        'value': 'team.pk'
-                    },
-                    {
-                        'shortname': 'Landesverband',
-                        'value': 'Ja.'
-                    },
-                    {
-                        'shortname': 'LandesverbandAuswahl',
-                        'value': 'Association name'
-                    },
-                ]
-            }])
+        user_info_mock.return_value = ApiUserInfo(
+            [
+                {
+                    "firstname": "firstname",
+                    "lastname": "lastname",
+                    "id": 7,
+                    "customfields": [
+                        {"shortname": "teamname", "value": "team.description"},
+                        {"shortname": "teamid", "value": "team.pk"},
+                        {"shortname": "Landesverband", "value": "Ja."},
+                        {
+                            "shortname": "LandesverbandAuswahl",
+                            "value": "Association name",
+                        },
+                    ],
+                }
+            ]
+        )
         moodle_service = MoodleService()
-        official_id = moodle_service.login('username', 'secret-password')
+        official_id = moodle_service.login("username", "secret-password")
         assert official_id == 7
-        auth_mock.assert_called_with('username', 'secret-password')
-        user_info_mock.assert_called_with('username')
+        auth_mock.assert_called_with("username", "secret-password")
+        user_info_mock.assert_called_with("username")
         pass
 
-    @patch.object(MoodleApi, 'confirm_user_auth')
-    @patch.object(MoodleApi, 'get_user_info_by_email')
-    @patch.object(MoodleApi, 'get_user_info_by_username')
-    @patch.object(Official.objects, 'get')
-    def test_moodle_login_with_email(self, official_mock: MagicMock, user_username_mock: MagicMock,
-                                     user_email_mock: MagicMock, _):
+    @patch.object(MoodleApi, "confirm_user_auth")
+    @patch.object(MoodleApi, "get_user_info_by_email")
+    @patch.object(MoodleApi, "get_user_info_by_username")
+    @patch.object(Official.objects, "get")
+    def test_moodle_login_with_email(
+        self,
+        official_mock: MagicMock,
+        user_username_mock: MagicMock,
+        user_email_mock: MagicMock,
+        _,
+    ):
         official_mock.return_value.pk = 5
-        user_username_mock.side_effect = IndexError('list index out of range')
-        user_email_mock.return_value = ApiUserInfo([
-            {
-                'firstname': 'firstname email',
-                'lastname': 'lastname email',
-                'id': 5,
-                'customfields': [
-                    {
-                        'shortname': 'teamname',
-                        'value': 'team.description email'
-                    },
-                    {
-                        'shortname': 'teamid',
-                        'value': 'team.pk email'
-                    },
-                    {
-                        'shortname': 'Landesverband',
-                        'value': 'Ja.'
-                    },
-                    {
-                        'shortname': 'LandesverbandAuswahl',
-                        'value': 'Association name email'
-                    },
-                ]
-            }])
+        user_username_mock.side_effect = IndexError("list index out of range")
+        user_email_mock.return_value = ApiUserInfo(
+            [
+                {
+                    "firstname": "firstname email",
+                    "lastname": "lastname email",
+                    "id": 5,
+                    "customfields": [
+                        {"shortname": "teamname", "value": "team.description email"},
+                        {"shortname": "teamid", "value": "team.pk email"},
+                        {"shortname": "Landesverband", "value": "Ja."},
+                        {
+                            "shortname": "LandesverbandAuswahl",
+                            "value": "Association name email",
+                        },
+                    ],
+                }
+            ]
+        )
         moodle_service = MoodleService()
-        official_id = moodle_service.login('username@email.org', 'secret-password')
+        official_id = moodle_service.login("username@email.org", "secret-password")
         assert official_id == 5
-        user_email_mock.assert_called_with('username@email.org')
+        user_email_mock.assert_called_with("username@email.org")
+
+
+class TestMoodleEmailCache(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def tearDown(self):
+        cache.clear()
+
+    @staticmethod
+    def _api_user_info(external_id, email):
+        return ApiUserInfo({"id": int(external_id), "email": email})
+
+    @patch.object(MoodleApi, "get_user_infos_by_ids")
+    def test_emails_are_cached_between_calls(self, get_user_infos_by_ids: MagicMock):
+        get_user_infos_by_ids.return_value = {"5": self._api_user_info(5, "a@x.de")}
+        moodle_service = MoodleService()
+
+        first = moodle_service.get_user_emails_by_external_ids(["5"])
+        second = moodle_service.get_user_emails_by_external_ids(["5"])
+
+        assert first == {"5": "a@x.de"}
+        assert second == {"5": "a@x.de"}
+        get_user_infos_by_ids.assert_called_once_with(["5"])
+
+    @patch.object(MoodleApi, "get_user_infos_by_ids")
+    def test_only_uncached_ids_are_requested(self, get_user_infos_by_ids: MagicMock):
+        cache.set(moodle_email_cache_key("5"), "a@x.de", MOODLE_EMAIL_CACHE_TTL)
+        get_user_infos_by_ids.return_value = {"7": self._api_user_info(7, "b@x.de")}
+        moodle_service = MoodleService()
+
+        result = moodle_service.get_user_emails_by_external_ids(["5", "7"])
+
+        assert result == {"5": "a@x.de", "7": "b@x.de"}
+        get_user_infos_by_ids.assert_called_once_with(["7"])
+
+    @patch.object(MoodleApi, "get_user_infos_by_ids")
+    def test_unknown_id_is_cached_as_empty_email(
+        self, get_user_infos_by_ids: MagicMock
+    ):
+        get_user_infos_by_ids.return_value = {}
+        moodle_service = MoodleService()
+
+        first = moodle_service.get_user_emails_by_external_ids(["9"])
+        second = moodle_service.get_user_emails_by_external_ids(["9"])
+
+        assert first == {"9": ""}
+        assert second == {"9": ""}
+        get_user_infos_by_ids.assert_called_once_with(["9"])
+
+    @patch.object(MoodleApi, "get_user_infos_by_ids")
+    def test_duplicate_ids_are_requested_once(self, get_user_infos_by_ids: MagicMock):
+        get_user_infos_by_ids.return_value = {"5": self._api_user_info(5, "a@x.de")}
+        moodle_service = MoodleService()
+
+        result = moodle_service.get_user_emails_by_external_ids(["5", "5", "5"])
+
+        assert result == {"5": "a@x.de"}
+        get_user_infos_by_ids.assert_called_once_with(["5"])
+
+    @patch.object(MoodleApi, "get_user_infos_by_ids", return_value={})
+    def test_empty_id_list_does_not_call_moodle(self, get_user_infos_by_ids: MagicMock):
+        assert MoodleService().get_user_emails_by_external_ids([]) == {}
+        get_user_infos_by_ids.assert_not_called()
+
+    @patch("officials.service.moodle.moodle_service.cache")
+    @patch.object(MoodleApi, "get_user_infos_by_ids")
+    def test_emails_are_stored_with_the_configured_ttl(
+        self, get_user_infos_by_ids: MagicMock, cache_mock: MagicMock
+    ):
+        get_user_infos_by_ids.return_value = {"5": self._api_user_info(5, "a@x.de")}
+        cache_mock.get_many.return_value = {}
+
+        MoodleService().get_user_emails_by_external_ids(["5"])
+
+        cache_mock.set_many.assert_called_once_with(
+            {moodle_email_cache_key("5"): "a@x.de"}, MOODLE_EMAIL_CACHE_TTL
+        )
+        assert MOODLE_EMAIL_CACHE_TTL == 15 * 60
