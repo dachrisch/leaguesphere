@@ -50,6 +50,7 @@ function row(overrides: Partial<LogRow> = {}): LogRow {
   return {
     key: "e1",
     teamLogId: 1,
+    seq: null,
     sequence: 1,
     team: "Ravens",
     event: "First Down",
@@ -93,6 +94,7 @@ describe("logRows", () => {
       {
         key: "e5",
         teamLogId: 5,
+        seq: null,
         sequence: 1,
         team: "Ravens",
         event: "First Down",

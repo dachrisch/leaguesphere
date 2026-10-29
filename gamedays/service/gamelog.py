@@ -5,6 +5,7 @@ from django.db import transaction
 from django.db.models import QuerySet
 from django.utils import timezone
 
+from gameevents.service.log_payload import event_seqs_by_sequence
 from gamedays.models import Gameinfo, Gameresult, TeamLog
 from gamedays.service.utils import AsJsonEncoder, utc_time_as_iso
 
@@ -121,7 +122,9 @@ def gameday_ref_now(gameday_date):
     return datetime.combine(gameday_date, time(12, 0), tzinfo=UTC)
 
 
-def serialize_events(teamlog_rows, team_names, ref_now=None) -> list[dict]:
+def serialize_events(
+    teamlog_rows, team_names, ref_now=None, seq_by_sequence=None
+) -> list[dict]:
     """Shape ``TeamLog`` rows into the additive, flat ``events`` list.
 
     ``team_names`` maps a team pk to its display name, so callers that already
@@ -129,16 +132,25 @@ def serialize_events(teamlog_rows, team_names, ref_now=None) -> list[dict]:
     per-row ``team`` query. One helper for every producer keeps the payload
     shape from drifting.
 
+    ``seq_by_sequence`` maps a ``TeamLog.sequence`` to the event ``seq`` a
+    correction names (``gameevents.service.log_payload``). It is optional so a
+    caller without the event store still gets today's payload; ``seq`` is then
+    ``None``, which is exactly what a legacy row means and what the client
+    falls back on (undo by ``team_log_id``). Sequence 0 is never in the map:
+    every excluded event and period marker shares it, so it names no group.
+
     Ordering is newest first by primary key, not by ``created_time``: that
     column is a UTC time-of-day, so a 23:59 row would sort before the 00:05
     row entered after midnight. Insertion order is chronological and keeps a
     touchdown and its conversion adjacent.
     """
+    seq_by_sequence = seq_by_sequence or {}
     rows = sorted(teamlog_rows, key=lambda row: row.pk, reverse=True)
     return [
         {
             "id": row.pk,
             "sequence": row.sequence,
+            "seq": seq_by_sequence.get(row.sequence),
             "team": team_names.get(row.team_id),
             "event": row.event,
             "player": row.player,
@@ -225,6 +237,7 @@ class GameLog(object):
             TeamLog.objects.filter(gameinfo=self.gameinfo),
             team_names,
             gameday_ref_now(self.gameinfo.gameday.date),
+            event_seqs_by_sequence(self.gameinfo.pk),
         )
 
     def get_entries_home_firsthalf(self):

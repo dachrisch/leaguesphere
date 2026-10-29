@@ -313,7 +313,9 @@ describe("the gameday list", () => {
       id: "queued",
       gameId: 42,
       kind: "event",
-      payload: {},
+      payload: {
+        events: [{ type: "score", code: "touchdown", side: "home", period: 1 }],
+      },
       createdAt: 1,
       attempts: 0,
       deviceId: "device-a",

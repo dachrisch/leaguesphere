@@ -127,6 +127,7 @@ export function hasDetails(status: SyncStatus): boolean {
 const OP_LABEL: Record<StoredOp["kind"], string> = {
   event: "Eintrag",
   delete: "Rückgängig",
+  correction: "Rückgängig",
   possession: "Ballbesitz",
   halftime: "Halbzeit",
 };

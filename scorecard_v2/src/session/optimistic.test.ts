@@ -31,6 +31,7 @@ function event(overrides: Partial<GameLogEvent> = {}): GameLogEvent {
   return {
     id: 10,
     sequence: 1,
+    seq: 1,
     team: "Ravens",
     event: "Touchdown",
     player: 7,
@@ -48,7 +49,7 @@ function op(overrides: Partial<StoredOp> = {}): StoredOp {
     id: `op-${overrides.seq ?? 1}`,
     gameId: 42,
     kind: "event",
-    payload: {},
+    payload: { events: [] },
     createdAt: 1_000,
     attempts: 0,
     deviceId: "device-a",
@@ -60,22 +61,25 @@ function op(overrides: Partial<StoredOp> = {}): StoredOp {
   };
 }
 
+/** A queued play: one submission of envelopes. */
+function play(
+  events: unknown[],
+  overrides: Partial<StoredOp> = {},
+): StoredOp {
+  return op({ payload: { events }, ...overrides });
+}
+
 describe("replayOps", () => {
   it("adds a touchdown and its conversion to the server score", () => {
-    const base = log({ home: team({ score: 7, firsthalf: { score: 7, entries: [] } }) });
+    const base = log({
+      home: team({ score: 7, firsthalf: { score: 7, entries: [] } }),
+    });
 
     const { log: shown } = replayOps(base, [
-      op({
-        payload: {
-          gameId: 42,
-          team: "Ravens",
-          half: 1,
-          event: [
-            { name: "Touchdown", player: 23 },
-            { name: "1-Extra-Punkt", player: 23 },
-          ],
-        },
-      }),
+      play([
+        { type: "score", code: "touchdown", side: "home", player: 23, period: 1 },
+        { type: "score", code: "pat1", side: "home", player: 23, period: 1 },
+      ]),
     ]);
 
     expect(shown.home.score).toBe(14);
@@ -94,7 +98,7 @@ describe("replayOps", () => {
 
   it("scores nothing for a touchdown without a jersey, like the server", () => {
     const { log: shown } = replayOps(log(), [
-      op({ payload: { team: "Ravens", half: 1, event: [{ name: "Touchdown" }] } }),
+      play([{ type: "score", code: "touchdown", side: "home", period: 1 }]),
     ]);
 
     expect(shown.home.score).toBe(0);
@@ -102,22 +106,16 @@ describe("replayOps", () => {
   });
 
   it("mirrors the server's jersey coercion before scoring", () => {
-    // `_coerce_player` truncates a decimal string and drops anything outside
+    // The server truncates a decimal string and drops anything outside
     // 0..32767 to `None` (which scores nothing). A promise the server does not
     // keep is worse than a late score.
     const { log: shown } = replayOps(log(), [
-      op({
-        payload: {
-          team: "Ravens",
-          half: 1,
-          event: [
-            { name: "Touchdown", player: 51.85 },
-            { name: "Touchdown", player: 40000 },
-            { name: "Touchdown", player: -1 },
-            { name: "Touchdown", player: "23" as unknown as number },
-          ],
-        },
-      }),
+      play([
+        { type: "score", code: "touchdown", side: "home", player: 51.85, period: 1 },
+        { type: "score", code: "touchdown", side: "home", player: 40000, period: 1 },
+        { type: "score", code: "touchdown", side: "home", player: -1, period: 1 },
+        { type: "score", code: "touchdown", side: "home", player: "23", period: 1 },
+      ]),
     ]);
 
     // 51.85 -> 51 (6 points); 40000 and -1 are dropped (0 each); "23" -> 23.
@@ -130,39 +128,44 @@ describe("replayOps", () => {
     ]);
   });
 
-  it("marks a pending delete and takes its points back", () => {
+  it("marks a pending correction's whole group deleted and takes its points back", () => {
     const base = log({
-      events: [event({ id: 10, sequence: 2, player: 23 })],
-      home: team({ score: 6 }),
+      events: [
+        event({ id: 11, sequence: 2, seq: 2, event: "1-Extra-Punkt", player: 23 }),
+        event({ id: 10, sequence: 2, seq: 2, player: 23 }),
+      ],
+      home: team({ score: 7, firsthalf: { score: 7, entries: [] } }),
     });
 
     const { log: shown } = replayOps(base, [
-      op({ kind: "delete", payload: { sequence: 2 } }),
+      play(
+        [{ type: "correction", code: "undo", payload: { undo_of: 2 } }],
+        { kind: "correction" },
+      ),
     ]);
 
-    expect(shown.events?.[0].isDeleted).toBe(true);
+    expect(shown.events?.every((entry) => entry.isDeleted === true)).toBe(true);
     expect(shown.home.score).toBe(0);
   });
 
-  it("does not delete the excluded events sharing sequence 0", () => {
-    const base = log({
-      events: [
-        event({ id: 12, sequence: 0, event: "Strafe", player: null }),
-        event({ id: 11, sequence: 0, event: "Auszeit", player: null }),
-      ],
-    });
+  it("ignores a correction whose target is not in the base log", () => {
+    const base = log({ home: team({ score: 6 }) });
 
     const { log: shown } = replayOps(base, [
-      op({ kind: "delete", payload: { sequence: 0 } }),
+      play(
+        [{ type: "correction", code: "undo", payload: { undo_of: 99 } }],
+        { kind: "correction" },
+      ),
     ]);
 
-    expect(shown.events?.every((entry) => entry.isDeleted === false)).toBe(true);
+    expect(shown.home.score).toBe(6);
+    expect(shown.events).toEqual([]);
   });
 
   it("applies the last queued possession and the half-time marker", () => {
     const { log: shown } = replayOps(log({ isFirstHalf: true }), [
-      op({ seq: 1, kind: "possession", payload: { team: "Wolves" } }),
-      op({ seq: 2, kind: "halftime", payload: {} }),
+      op({ seq: 1, kind: "possession", payload: { events: [{ type: "possession", code: "away", side: "away" }] } }),
+      op({ seq: 2, kind: "halftime", payload: { events: [{ type: "period", code: "half_time", side: null }] } }),
     ]);
 
     expect(shown.inPossession).toBe("Wolves");
@@ -172,14 +175,13 @@ describe("replayOps", () => {
 
   it("maps every synthetic row back to its op for a local undo", () => {
     const { log: shown, opByEventId } = replayOps(log(), [
-      op({
-        id: "queued-1",
-        payload: {
-          team: "Ravens",
-          half: 1,
-          event: [{ name: "Touchdown", player: 7 }, { name: "2-Extra-Punkte", player: 7 }],
-        },
-      }),
+      play(
+        [
+          { type: "score", code: "touchdown", side: "home", player: 7, period: 1 },
+          { type: "score", code: "pat2", side: "home", player: 7, period: 1 },
+        ],
+        { id: "queued-1" },
+      ),
     ]);
 
     for (const entry of shown.events ?? []) {
@@ -196,7 +198,7 @@ describe("replayOps", () => {
     };
 
     const { log: shown } = replayOps(base, [
-      op({ payload: { team: "Ravens", half: 1, event: [{ name: "First Down" }] } }),
+      play([{ type: "series", code: "first_down", side: "home", period: 1 }]),
     ]);
 
     expect(shown).toBe(base);
@@ -206,39 +208,27 @@ describe("replayOps", () => {
 describe("replayOps edge payloads", () => {
   it("drops a jersey that is not a finite number", () => {
     const { log: shown } = replayOps(log(), [
-      op({
-        payload: {
-          team: "Ravens",
-          half: 1,
-          event: [{ name: "Touchdown", player: "keine" }],
-        },
-      }),
+      play([
+        { type: "score", code: "touchdown", side: "home", player: "keine", period: 1 },
+      ]),
     ]);
 
     expect(shown.home.score).toBe(0);
     expect(shown.events?.[0].player).toBeNull();
   });
 
-  it("scores nothing for an event it does not know", () => {
+  it("scores nothing for a code it does not know", () => {
     const { log: shown } = replayOps(log(), [
-      op({
-        payload: {
-          team: "Ravens",
-          half: 1,
-          event: [{ name: "Notiz", player: 5 }],
-        },
-      }),
+      play([{ type: "score", code: "tor", side: "home", player: 5, period: 1 }]),
     ]);
 
     expect(shown.home.score).toBe(0);
-    expect(shown.events?.[0].event).toBe("Notiz");
+    expect(shown.events).toEqual([]);
   });
 
-  it("adds no score when the payload names no team", () => {
+  it("adds no score when the envelope names no side", () => {
     const { log: shown } = replayOps(log(), [
-      op({
-        payload: { half: 2, event: [{ name: "Touchdown", player: 23 }] },
-      }),
+      play([{ type: "score", code: "touchdown", player: 23, period: 2 }]),
     ]);
 
     expect(shown.home.score).toBe(0);
@@ -248,17 +238,19 @@ describe("replayOps edge payloads", () => {
     expect(shown.events?.[0].half).toBe(2);
   });
 
-  it("gives the ball to the other team and no team at all", () => {
+  it("gives the ball to either team and clears it", () => {
     const toWolves = replayOps(log(), [
-      op({ kind: "possession", payload: { team: "Wolves" } }),
+      op({ kind: "possession", payload: { events: [{ type: "possession", code: "away", side: "away" }] } }),
     ]);
     expect(toWolves.log.inPossession).toBe("Wolves");
 
-    const cleared = replayOps(log(), [op({ kind: "possession", payload: {} })]);
+    const cleared = replayOps(log(), [
+      op({ kind: "possession", payload: { events: [{ type: "possession", code: "" }] } }),
+    ]);
     expect(cleared.log.inPossession).toBeNull();
   });
 
-  it("replays a delete by team_log_id and skips rows that are already gone", () => {
+  it("replays a legacy delete by team_log_id and skips rows that are already gone", () => {
     const base = log({
       home: team({
         score: 6,
@@ -266,7 +258,7 @@ describe("replayOps edge payloads", () => {
       }),
       events: [
         event({ id: 10, isDeleted: true, player: 7 }),
-        event({ id: 11, sequence: 2, event: "Touchdown", player: 7 }),
+        event({ id: 11, sequence: 2, seq: 2, event: "Touchdown", player: 7 }),
       ],
     });
     const { log: shown } = replayOps(base, [
@@ -284,7 +276,7 @@ describe("replayOps edge payloads", () => {
   it("ignores a delete for a row of no team", () => {
     const base = log({
       events: [
-        event({ id: 5, team: null, sequence: 0, event: "Spiel gestartet" }),
+        event({ id: 5, team: null, sequence: 0, seq: null, event: "Spiel gestartet" }),
       ],
     });
     const { log: shown } = replayOps(base, [
@@ -298,7 +290,9 @@ describe("replayOps edge payloads", () => {
 
   it("does not replay a half-time into the second half twice", () => {
     const base = log({ isFirstHalf: false });
-    const { log: shown } = replayOps(base, [op({ kind: "halftime", payload: {} })]);
+    const { log: shown } = replayOps(base, [
+      op({ kind: "halftime", payload: { events: [{ type: "period", code: "half_time" }] } }),
+    ]);
 
     expect(shown.isFirstHalf).toBe(false);
     expect(shown.events).toEqual([]);
@@ -306,35 +300,52 @@ describe("replayOps edge payloads", () => {
 
   it("replays a first-half half-time with the marker row", () => {
     const { log: shown, opByEventId } = replayOps(log(), [
-      op({ kind: "halftime", payload: {} }),
+      op({ kind: "halftime", payload: { events: [{ type: "period", code: "half_time" }] } }),
     ]);
 
     expect(shown.isFirstHalf).toBe(false);
     expect(shown.events?.[0].event).toBe("2. Halbzeit gestartet");
     expect(opByEventId.size).toBe(1);
   });
+
+  it("translates a queue entry written before slice 2", () => {
+    // A tab that was open across the update still holds the old play shape; a
+    // reload must not lose those taps or show them differently.
+    const { log: shown } = replayOps(log(), [
+      op({
+        payload: {
+          gameId: 42,
+          team: "Ravens",
+          half: 1,
+          event: [{ name: "Touchdown", player: 23 }],
+        },
+      }),
+    ]);
+
+    expect(shown.home.score).toBe(6);
+    expect(shown.events?.[0].event).toBe("Touchdown");
+  });
+
+  it("translates a legacy possession entry (team name) with the log", () => {
+    const { log: shown } = replayOps(log(), [
+      op({ kind: "possession", payload: { team: "Wolves" } }),
+    ]);
+
+    expect(shown.inPossession).toBe("Wolves");
+  });
 });
 
 describe("replayOps team resolution", () => {
-  it("credits the away team and ignores a name in no lineup", () => {
+  it("credits the away team and ignores a side-free play", () => {
     const { log: shown } = replayOps(log(), [
-      op({
-        seq: 1,
-        payload: {
-          team: "Wolves",
-          half: 2,
-          event: [{ name: "Touchdown", player: 11 }],
-        },
-      }),
-      op({
-        seq: 2,
-        id: "op-unbekannt",
-        payload: {
-          team: "Fremde",
-          half: 1,
-          event: [{ name: "Touchdown", player: 12 }],
-        },
-      }),
+      play(
+        [{ type: "score", code: "touchdown", side: "away", player: 11, period: 2 }],
+        { seq: 1 },
+      ),
+      play(
+        [{ type: "score", code: "touchdown", player: 12, period: 1 }],
+        { seq: 2, id: "op-unbekannt" },
+      ),
     ]);
 
     expect(shown.away.score).toBe(6);

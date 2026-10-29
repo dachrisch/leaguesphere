@@ -8,7 +8,13 @@
  * which is why it has to exist *before* the first attempt.
  */
 
-export type OpKind = "event" | "delete" | "possession" | "halftime";
+export type OpKind =
+  | "event"
+  | "possession"
+  | "halftime"
+  | "correction"
+  /** The pre-slice-2 undo, only for rows a game's own events did not write. */
+  | "delete";
 
 export interface PendingOp {
   /** UUID; travels as `client_id` so a replay is applied at most once. */
