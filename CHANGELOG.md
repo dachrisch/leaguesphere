@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.1.1](https://github.com/dachrisch/leaguesphere/compare/v5.1.0...v5.1.1) (2026-10-29)
+
+
+### Documentation
+
+* **deployment:** host swaps are done by Watchtower, not by hand ([4ebff20](https://github.com/dachrisch/leaguesphere/commit/4ebff2009e648104ba0d3ef44eee17afc61f5243))
+* **deployment:** host swaps are done by Watchtower, not by hand ([915f21f](https://github.com/dachrisch/leaguesphere/commit/915f21feed793d4fddcf689b1d44b2fa379d480e))
+
 ## [5.1.0](https://github.com/dachrisch/leaguesphere/compare/v5.0.3...v5.1.0) (2026-10-29)
 
 
