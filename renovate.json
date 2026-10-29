@@ -4,6 +4,10 @@
     "config:recommended"
   ],
   "forkProcessing": "enabled",
+  "prHourlyLimit": 0,
+  "prConcurrentLimit": 12,
+  "rebaseWhen": "auto",
+  "platformAutomerge": true,
   "lockFileMaintenance": {
     "enabled": true,
     "automerge": true,
@@ -11,28 +15,59 @@
   },
   "packageRules": [
     {
+      "description": "Python non-major updates as one PR per run, not one per package",
+      "groupName": "python deps",
+      "matchManagers": ["pep621", "pip_requirements"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true,
+      "semanticCommitType": "fix"
+    },
+    {
+      "description": "JS dev tooling as one PR per run",
+      "groupName": "js dev deps",
+      "matchManagers": ["npm"],
       "matchDepTypes": ["devDependencies"],
-      "automerge": true,
-      "semanticCommitType": "fix"
-    },
-    {
-      "matchUpdateTypes": ["patch"],
+      "matchUpdateTypes": ["patch", "minor"],
       "matchCurrentVersion": "!/^0/",
       "automerge": true,
       "semanticCommitType": "fix"
     },
     {
-      "matchUpdateTypes": ["minor"],
+      "description": "JS runtime deps as one PR per run",
+      "groupName": "js deps",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["dependencies"],
+      "matchUpdateTypes": ["patch", "minor"],
       "matchCurrentVersion": "!/^0/",
       "automerge": true,
       "semanticCommitType": "fix"
     },
     {
-      "matchFileNames": [
-        "pyproject.toml"
-      ],
+      "description": "CI actions are exercised by every pipeline run",
+      "groupName": "ci actions",
+      "matchDatasources": ["github-actions"],
+      "matchUpdateTypes": ["patch", "minor", "digest"],
       "automerge": true,
       "semanticCommitType": "fix"
+    },
+    {
+      "description": "CI images (cimg/*) live in .circleci/, which maps to the full gate: migrations + compose network run on the PR",
+      "groupName": "ci images",
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["patch", "minor", "digest"],
+      "automerge": true,
+      "semanticCommitType": "fix"
+    },
+    {
+      "description": "Majors automerge too: a major bump to a manifest triggers migrations + compose network (see .circleci/scope-mapping.txt), so green means the suite proved it",
+      "matchUpdateTypes": ["major"],
+      "automerge": true
+    },
+    {
+      "description": "Exception: GitHub Actions are deactivated for pull requests (ci_pr.yaml is workflow_dispatch only), so nothing a PR runs can prove a change to these files",
+      "matchFileNames": [".github/workflows/**"],
+      "automerge": false
     },
     {
       "groupName": "react monorepo",
@@ -42,6 +77,8 @@
         "@types/react",
         "@types/react-dom"
       ],
+      "matchUpdateTypes": ["patch", "minor"],
+      "matchCurrentVersion": "!/^0/",
       "automerge": true,
       "semanticCommitType": "fix",
       "semanticCommitScope": "deps"
