@@ -164,6 +164,26 @@ docker logs --tail 20 portainer.watchtower-prod
 
 Manual `docker compose pull && up -d` is a fallback (rollback, or Watchtower wedged), not part of the normal release flow.
 
+## Resource limits
+
+All three environments share one 4 vCPU / 7.6 GiB host with prod, Moodle, three DB
+engines and the Prometheus/Loki/Grafana stack, so every service declares a `mem_limit`.
+These are **ceilings, not targets** — roughly 1.5× the measured working set, so a leak
+fails inside one container instead of pushing every other container's hot pages to swap
+(which is exactly what happened before 2026-10-29).
+
+| Environment | App | Database | Workers |
+|---|---|---|---|
+| production (`docker-compose.yaml`) | 1g | 512m | `-w 6` |
+| staging (`docker-compose.staging.yaml`) | 512m | 512m | `-w 1` |
+| demo (`docker-compose.demo.yaml`) | 512m | 512m | `-w 1` |
+
+Only production runs the full worker pool: each gunicorn worker costs ~134 MiB, and
+staging/demo are dev environments with ~no traffic (the demo alone was measured burning
+50 % of a host core at `-w 6`). Adding a limit requires recreating the container —
+Watchtower's blue-green strategy handles that for the app, `docker compose up -d` for the
+databases.
+
 ## Security Notes
 
 - Never commit `ls.env.staging` or `ls.env` files to version control

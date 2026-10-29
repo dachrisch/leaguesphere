@@ -4,6 +4,8 @@ services:
     image: mariadb:latest
     container_name: ${COMPOSE_PROJECT_NAME}.mysql
     restart: unless-stopped
+    # Ceiling (was unlimited). Small demo dataset, so 512m matches prod/staging.
+    mem_limit: 512m
     command: >
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
@@ -68,7 +70,13 @@ services:
   demo-app:
     image: leaguesphere/backend:demo
     container_name: ${COMPOSE_PROJECT_NAME}.demo-app
-    command: gunicorn -b 0.0.0.0:8000 -w 6 --worker-class gthread --threads 2 league_manager.wsgi
+    # 1 worker, not 6: the demo site is a static showcase with ~no traffic and was
+    # measured burning 50 % of a host core and 579 MiB (no limit) on 2026-10-29.
+    # Production keeps `-w 6`; 1 worker x 2 threads is plenty for a demo.
+    command: gunicorn -b 0.0.0.0:8000 -w 1 --worker-class gthread --threads 2 league_manager.wsgi
+    # Ceiling so a leak fails inside this container instead of pushing prod's
+    # hot pages to swap.
+    mem_limit: 512m
     healthcheck:
       test: ["CMD-SHELL", "curl -A healthcheck -H \"Accept: application/json\" http://localhost:8000/health/?format=json"]
       interval: 15s
