@@ -520,21 +520,17 @@ describe("opening a running game", () => {
     );
   });
 
-  it("guards the tab only while a game is running", async () => {
+  it("never holds the tab back while a game is running", async () => {
     const user = userEvent.setup();
     await openRunningGame(user);
     await screen.findByRole("heading", { name: "Feld 2 · Vorrunde" });
 
+    // Every write is queued in the outbox before it can be lost, so leaving
+    // the tab costs nothing — and the browser's "Leave site?" prompt on every
+    // navigation is worse than the gap it claims to cover.
     const running = new Event("beforeunload", { cancelable: true });
     globalThis.dispatchEvent(running);
-    expect(running.defaultPrevented).toBe(true);
-
-    await user.click(screen.getByRole("button", { name: "Zurück" }));
-    await screen.findByText("Ravens – Wolves");
-
-    const stopped = new Event("beforeunload", { cancelable: true });
-    globalThis.dispatchEvent(stopped);
-    expect(stopped.defaultPrevented).toBe(false);
+    expect(running.defaultPrevented).toBe(false);
   });
 });
 

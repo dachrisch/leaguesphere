@@ -244,24 +244,6 @@ function Flow() {
     state.phase === "finalize" ? (state.game?.id ?? null) : null,
   );
 
-  const running = state.phase === "tracking" || state.phase === "finalize";
-
-  useEffect(() => {
-    if (!running) {
-      return;
-    }
-    const guard = (event: BeforeUnloadEvent): void => {
-      event.preventDefault();
-      // Chrome/Firefox require a non-empty returnValue; the text itself is
-      // never shown any more.
-      event.returnValue = "";
-    };
-    globalThis.addEventListener("beforeunload", guard);
-    return () => {
-      globalThis.removeEventListener("beforeunload", guard);
-    };
-  }, [running]);
-
   const toggleAll = (): void => {
     setGames({ status: "loading" });
     setAllGames((current) => {
