@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.2.9](https://github.com/dachrisch/leaguesphere/compare/v5.2.8...v5.2.9) (2026-10-30)
+
+
+### Bug Fixes
+
+* **deps:** update dependency node to v26 ([#2177](https://github.com/dachrisch/leaguesphere/issues/2177)) ([9805ef6](https://github.com/dachrisch/leaguesphere/commit/9805ef6a3107744d5f536f94153a397fe806ccb0))
+
 ## [5.2.8](https://github.com/dachrisch/leaguesphere/compare/v5.2.7...v5.2.8) (2026-10-30)
 
 
