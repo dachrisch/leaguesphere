@@ -31,6 +31,17 @@ Oben rechts öffnet der Avatar das **Konto**-Menü: dort stehen die Darstellung
 **Auto**, **Hell** und **Dunkel** (Auto folgt der Einstellung des Geräts) und
 **Abmelden**.
 
+## Breite Bildschirme und Tastatur
+
+Auf Tablets im Querformat steht der Spielverlauf neben den Eingaben. Die
+Spieleliste zeigt bei mehreren Feldern einen Feldplan mit gemeinsamen
+Anstoßzeiten. Auf dem Desktop kommen Spielinfo und Halbzeitenstände hinzu.
+
+Dort kannst du mit **T** einen Touchdown öffnen, mit **1–8** die acht Aktionen
+auslösen, mit **B** den Ballbesitz wechseln und mit **Strg+Z** (Mac: **Cmd+Z**)
+den letzten Eintrag zurücknehmen. Die Tastenkürzel sind deaktiviert, solange ein
+Dialog oder ein Eingabefeld aktiv ist oder das Spiel nur gelesen werden darf.
+
 **Offizielle eintragen:** Tippe in **Spiel vorbereiten** auf eine Position und
 suche nach dem Nachnamen. Die Vorschläge kommen aus dem ganzen Verzeichnis, mit
 Team und Lizenz. **Freitext** heißt: es ist nur ein Name gespeichert – er
