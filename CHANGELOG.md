@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.2.10](https://github.com/dachrisch/leaguesphere/compare/v5.2.9...v5.2.10) (2026-10-30)
+
+
+### Bug Fixes
+
+* **deps:** update js deps ([#2192](https://github.com/dachrisch/leaguesphere/issues/2192)) ([32b6776](https://github.com/dachrisch/leaguesphere/commit/32b67760d802c99504ee05dfa955889e9629e26b))
+
 ## [5.2.9](https://github.com/dachrisch/leaguesphere/compare/v5.2.8...v5.2.9) (2026-10-30)
 
 
