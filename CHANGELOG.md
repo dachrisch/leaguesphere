@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.2.11](https://github.com/dachrisch/leaguesphere/compare/v5.2.10...v5.2.11) (2026-10-30)
+
+
+### Bug Fixes
+
+* **deps:** update vitest monorepo to v5 ([#2195](https://github.com/dachrisch/leaguesphere/issues/2195)) ([0971755](https://github.com/dachrisch/leaguesphere/commit/09717556086411ee89c5b6450829fb13041f9cf6))
+
 ## [5.2.10](https://github.com/dachrisch/leaguesphere/compare/v5.2.9...v5.2.10) (2026-10-30)
 
 
