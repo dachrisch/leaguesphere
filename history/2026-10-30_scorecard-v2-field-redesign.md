@@ -51,8 +51,17 @@ appends mirror the projected possession onto `Gameinfo.in_possession`.
   stack), `npm run eslint`, `npx tsc -b --noEmit`.
 - Backend: `pytest gameevents gamedays accounts officials teammanager` against
   the LXC MariaDB (`./container/spinup_test_db.sh`).
+- E2E: `SECRET_KEY=123456-TEST MYSQL_HOST=<lxc ip> pytest scorecard_v2/tests/e2e/`
+  after `npm --prefix scorecard_v2 run build` — green on every branch of the
+  stack (the flow test was adapted in #2182, #2183 and #2185).
 - Visual: a locally seeded demo (`seed_demo_data`, `seed_scorecard_demo`) on an
   iPhone 13 profile in light, dark and Sonne; two-device lock/take-over run.
+
+## Process notes
+
+- Every commit needs a `Signed-off-by` trailer (DCO check): commit with `-s`.
+- The Playwright e2e flow (`scorecard_v2/tests/e2e/`) is part of CI's `e2e`
+  job; run it locally for any UI copy or structure change.
 
 ## Known issues / follow-ups
 
