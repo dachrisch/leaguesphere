@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.4.0](https://github.com/dachrisch/leaguesphere/compare/v5.3.1...v5.4.0) (2026-10-30)
+
+
+### Features
+
+* **scorecard-v2:** one jersey picker, one tile, a dialog on tablets ([#2201](https://github.com/dachrisch/leaguesphere/issues/2201)) ([13812bf](https://github.com/dachrisch/leaguesphere/commit/13812bf9dd887cd665d774de53b83e1350b05fa8))
+
 ## [5.3.1](https://github.com/dachrisch/leaguesphere/compare/v5.3.0...v5.3.1) (2026-10-30)
 
 
