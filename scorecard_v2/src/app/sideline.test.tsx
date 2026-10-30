@@ -60,9 +60,8 @@ describe("useWakeLock", () => {
   });
 
   it("releases a lock granted after the screen already closed", async () => {
-    let grant: (sentinel: { release: ReturnType<typeof vi.fn> }) => void = () =>
-      undefined;
     const sentinel = { release: vi.fn(async () => undefined) };
+    let grant: (granted: typeof sentinel) => void = () => undefined;
     const request = vi.fn(
       () =>
         new Promise<typeof sentinel>((resolve) => {
