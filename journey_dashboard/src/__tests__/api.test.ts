@@ -17,16 +17,14 @@ describe('api/getGamedayEvents', () => {
   let originalFetch: typeof fetch;
   let mockFetch: ReturnType<typeof vi.fn>;
   let store: Record<string, string> = {};
-  let originalLocalStorage: Storage;
 
   beforeEach(() => {
-    // Mock localStorage
-    originalLocalStorage = window.localStorage;
+    // Mock localStorage (stubGlobal: window.localStorage is getter-only)
     store = {
       authToken: 'test-token-123',
     };
 
-    window.localStorage = {
+    vi.stubGlobal('localStorage', {
       getItem: vi.fn((key: string) => store[key] || null),
       setItem: vi.fn((key: string, value: string) => {
         store[key] = value;
@@ -39,7 +37,7 @@ describe('api/getGamedayEvents', () => {
       }),
       key: vi.fn((index: number) => Object.keys(store)[index] || null),
       length: Object.keys(store).length,
-    } as Storage;
+    });
 
     // Mock fetch
     originalFetch = window.fetch;
@@ -48,7 +46,7 @@ describe('api/getGamedayEvents', () => {
   });
 
   afterEach(() => {
-    window.localStorage = originalLocalStorage;
+    vi.unstubAllGlobals();
     window.fetch = originalFetch;
     vi.clearAllMocks();
   });
@@ -316,13 +314,11 @@ describe('api/getGamedayEvents', () => {
 describe('api/fetchJourneySessions', () => {
   let originalFetch: typeof fetch;
   let mockFetch: ReturnType<typeof vi.fn>;
-  let originalLocalStorage: Storage;
 
   beforeEach(() => {
-    originalLocalStorage = window.localStorage;
-    window.localStorage = {
+    vi.stubGlobal('localStorage', {
       getItem: vi.fn(() => 'test-token-123'),
-    } as unknown as Storage;
+    } as unknown as Storage);
 
     originalFetch = window.fetch;
     mockFetch = vi.fn();
@@ -330,7 +326,7 @@ describe('api/fetchJourneySessions', () => {
   });
 
   afterEach(() => {
-    window.localStorage = originalLocalStorage;
+    vi.unstubAllGlobals();
     window.fetch = originalFetch;
     vi.clearAllMocks();
   });
