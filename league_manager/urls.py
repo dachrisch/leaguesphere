@@ -57,7 +57,9 @@ class HealthCheckView(View):
         else:
             scope = config.get("scope", "off")
         maintenance_active = scope not in ("off", None)
-        return JsonResponse({"status": "healthy", "maintenance_mode": maintenance_active})
+        return JsonResponse(
+            {"status": "healthy", "maintenance_mode": maintenance_active}
+        )
 
 
 from league_manager.views import (
@@ -117,7 +119,9 @@ urlpatterns = [
     ),
     path(
         static_info_url_pattern("llms-dynamic"),
-        TemplateView.as_view(template_name="llms-dynamic.txt", content_type="text/plain"),
+        TemplateView.as_view(
+            template_name="llms-dynamic.txt", content_type="text/plain"
+        ),
         name="llms-dynamic-txt",
     ),
     path(
@@ -159,7 +163,9 @@ urlpatterns = [
     path("api/journey/", include("journey.urls")),
     path("share/", include("share.urls")),
     path("home/", include("home.urls")),
-    path("gamedays/progress/", GameProgressPageView.as_view(), name="game-progress-page"),
+    path(
+        "gamedays/progress/", GameProgressPageView.as_view(), name="game-progress-page"
+    ),
     path("gamedays/gameday/design/", include("gameday_designer.app_urls")),
     path("journeys/", include("journey.urls")),
     path("officials/", include("officials.urls")),
@@ -169,6 +175,7 @@ urlpatterns = [
     path("liveticker/", include("liveticker.urls")),
     path("leaguetable/", include("league_table.urls")),
     path("gamedays/", include("gamedays.urls")),
+    path("passcheck/v2/", include("passcheck_v2.urls")),
     path("passcheck/", include("passcheck.urls")),
     path("matchreport/", include("matchreport.urls")),
     path("dal/", include("league_manager.dal.urls")),

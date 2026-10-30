@@ -65,6 +65,9 @@ parameters:
   run-passcheck:
     type: boolean
     default: false
+  run-passcheck-v2:
+    type: boolean
+    default: false
   run-designer:
     type: boolean
     default: false

@@ -57,6 +57,10 @@ class PlayerlistGameday(models.Model):
                 condition=Q(gameday_jersey__gte=0) & Q(gameday_jersey__lte=99),
                 name="gameday_jersey_number_btw_0_and_99",
             ),
+            models.UniqueConstraint(
+                fields=["playerlist", "gameday"],
+                name="unique_playerlist_per_gameday",
+            ),
         ]
 
     objects: QuerySet = models.Manager()
@@ -97,8 +101,19 @@ class PasscheckVerification(models.Model):
     team = models.ForeignKey(Team, on_delete=models.CASCADE)
     gameday = models.ForeignKey(Gameday, on_delete=models.CASCADE)
     note = models.TextField(default=None, blank=True, null=True)
+    # v2 field-app write markers; a v1 write leaves both empty.
+    client_id = models.UUIDField(null=True, blank=True, unique=True)
+    device_id = models.CharField(max_length=64, blank=True, default="")
 
     objects: QuerySet = models.Manager()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team", "gameday"],
+                name="unique_verification_per_team_gameday",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.gameday} # {self.team.description} - {self.official_name} ({self.user})"

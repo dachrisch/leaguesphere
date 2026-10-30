@@ -32,6 +32,9 @@ function GameCard({game}: Props) {
             </Button>
           </div>
         </Card.Body>
+        <Card.Footer>
+          <a href={`/passcheck/v2/?gameday=${game.gameday_id}`}>Passcheck v2</a>
+        </Card.Footer>
       </Card>
     </div>
   );

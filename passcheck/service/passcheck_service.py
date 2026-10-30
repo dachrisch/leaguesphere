@@ -1,10 +1,12 @@
 import datetime
+import uuid
 
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Count, Q, Value, OuterRef, Exists, Subquery, IntegerField
 
 from gamedays.api.serializers import GamedayInfoSerializer
-from gamedays.models import Team, Gameinfo, Gameday
+from gamedays.models import Team, Gameinfo, Gameresult, Gameday
 from gamedays.service.model_helper import GameresultHelper
 from league_manager.utils.view_utils import UserRequestPermission
 from passcheck.api.serializers import (
@@ -26,6 +28,22 @@ from passcheck.service.eligibility_validation import EligibilityValidator
 
 class PasscheckException(Exception):
     pass
+
+
+class RosterValidationError(Exception):
+    """A submitted roster violates the season rules; ``errors`` is field-keyed."""
+
+    def __init__(self, errors: dict):
+        self.errors = errors
+        super().__init__("invalid roster")
+
+
+class DeviceConflictError(Exception):
+    """A different v2 device already owns this team's gameday check."""
+
+    def __init__(self, device_id: str = ""):
+        self.device_id = device_id
+        super().__init__("device conflict")
 
 
 class PasscheckService:
@@ -378,18 +396,159 @@ class PasscheckService:
 
 
 class PasscheckServicePlayers:
-    def create_roster_and_passcheck_verification(self, team_id, gameday_id, user, data):
-        all_relevant_team_ids = list(
-            Team.objects.get(pk=team_id)
-            .relationship_additional_teams.all()
-            .values_list("team__id", flat=True)
+    def can_write_roster(self, user, team_id, gameday_id) -> bool:
+        """Staff, or the official of a game on today's gameday involving the team."""
+        if user.is_staff:
+            return True
+        gameday = Gameday.objects.filter(pk=gameday_id).first()
+        if gameday is None:
+            return False
+        today = settings.DEBUG_DATE if settings.DEBUG else datetime.date.today()
+        if gameday.date != today:
+            return False
+        return Gameresult.objects.filter(
+            gameinfo__gameday_id=gameday_id,
+            gameinfo__officials__name=user.username,
+            team_id=team_id,
+        ).exists()
+
+    def can_read_photo(self, user, playerlist, gameday) -> bool:
+        """Staff, or the official of a game on today's gameday the player belongs to."""
+        if user.is_staff:
+            return True
+        today = settings.DEBUG_DATE if settings.DEBUG else datetime.date.today()
+        if gameday.date != today:
+            return False
+        scheduled_team_ids = Gameresult.objects.filter(
+            gameinfo__gameday_id=gameday.pk,
+            gameinfo__officials__name=user.username,
+        ).values_list("team_id", flat=True)
+        if playerlist.team_id in scheduled_team_ids:
+            return True
+        return TeamRelationship.objects.filter(
+            team_id__in=scheduled_team_ids,
+            additional_teams__id=playerlist.team_id,
+        ).exists()
+
+    def validate_roster(self, team_id, gameday, roster) -> dict:
+        """Return field-keyed errors for a submitted gameday roster.
+
+        An empty dict means the roster may be written. Season rules without an
+        ``EligibilityRule`` are not enforced (the read endpoint 404s in that
+        case; legacy gamedays/tests have no rule).
+        """
+        if not isinstance(roster, list):
+            return {"roster": "Kader muss eine Liste sein."}
+
+        team_ids = self.all_relevant_team_ids(team_id)
+        allowed = (
+            Playerlist.objects.filter(team_id__in=team_ids)
+            .filter(Q(joined_on__lte=gameday.date))
+            .filter(Q(left_on__isnull=True) | Q(left_on__gt=gameday.date))
+        )
+        allowed_ids = set(allowed.values_list("pk", flat=True))
+
+        errors = {}
+        seen_ids = set()
+        seen_jerseys = {}
+        valid_players = 0
+        for entry in roster:
+            player_id = entry.get("id") if isinstance(entry, dict) else None
+            if not isinstance(player_id, int) or isinstance(player_id, bool):
+                errors[str(player_id)] = "Nicht im Kader dieses Spieltags."
+                continue
+            if player_id not in allowed_ids:
+                errors[str(player_id)] = "Nicht im Kader dieses Spieltags."
+                continue
+            if player_id in seen_ids:
+                errors[str(player_id)] = "Spieler ist doppelt in der Aufstellung."
+                continue
+            seen_ids.add(player_id)
+
+            jersey = entry.get("jersey_number")
+            if (
+                not isinstance(jersey, int)
+                or isinstance(jersey, bool)
+                or not 0 <= jersey <= 99
+            ):
+                errors[str(player_id)] = "Trikotnummer muss zwischen 0 und 99 liegen."
+                continue
+            if jersey in seen_jerseys:
+                errors[str(player_id)] = f"Trikotnummer #{jersey} ist bereits vergeben."
+                continue
+            seen_jerseys[jersey] = player_id
+            valid_players += 1
+
+        rule = EligibilityRule.objects.filter(league_id=gameday.league_id).first()
+        if rule is not None:
+            minimum = rule.minimum_player_strength
+            maximum = rule.maximum_player_strength
+            if minimum and valid_players < minimum:
+                errors["team"] = (
+                    f"Mindestspielstärke {minimum} nicht erreicht "
+                    f"({valid_players} geprüft)."
+                )
+            if maximum is not None and maximum >= 0 and valid_players > maximum:
+                errors["team"] = f"Maximalspielstärke {maximum} überschritten."
+        return errors
+
+    @staticmethod
+    def all_relevant_team_ids(team_id) -> list:
+        """The team plus the teams it draws players from (Durchlässigkeit)."""
+        return list(
+            TeamRelationship.objects.filter(team_id=team_id).values_list(
+                "additional_teams__id", flat=True
+            )
         ) + [team_id]
+
+    @staticmethod
+    def _parse_client_id(value):
+        if value in (None, ""):
+            return None
+        try:
+            return uuid.UUID(str(value))
+        except (TypeError, ValueError, AttributeError):
+            raise RosterValidationError({"client_id": "client_id muss eine UUID sein."})
+
+    @transaction.atomic
+    def create_roster_and_passcheck_verification(self, team_id, gameday_id, user, data):
+        gameday = Gameday.objects.select_for_update().get(pk=gameday_id)
+        errors = self.validate_roster(team_id, gameday, data.get("roster") or [])
+        if errors:
+            raise RosterValidationError(errors)
+
+        client_id = self._parse_client_id(data.get("client_id"))
+        device_id = (data.get("device_id") or "").strip()[:64]
+        existing = PasscheckVerification.objects.filter(
+            team_id=team_id, gameday_id=gameday_id
+        ).first()
+        if (
+            existing is not None
+            and client_id is not None
+            and existing.client_id == client_id
+        ):
+            return existing
+        if (
+            existing is not None
+            and device_id
+            and existing.device_id
+            and existing.device_id != device_id
+        ):
+            raise DeviceConflictError(existing.device_id)
+
         PlayerlistGameday.objects.filter(
-            playerlist__team__in=all_relevant_team_ids, gameday=gameday_id
+            playerlist__team__in=self.all_relevant_team_ids(team_id),
+            gameday=gameday_id,
         ).delete()
         self._create_roster(gameday_id, data["roster"])
-        self._create_passcheck_verification(
-            gameday_id, team_id, user, data.get("official_name"), data.get("note")
+        return self._create_passcheck_verification(
+            gameday_id,
+            team_id,
+            user,
+            data.get("official_name"),
+            data.get("note"),
+            client_id=client_id,
+            device_id=device_id,
         )
 
     # noinspection PyMethodMayBeStatic
@@ -408,9 +567,16 @@ class PasscheckServicePlayers:
 
     # noinspection PyMethodMayBeStatic
     def _create_passcheck_verification(
-        self, gameday_id, team_id, user, official_name, note
+        self,
+        gameday_id,
+        team_id,
+        user,
+        official_name,
+        note,
+        client_id=None,
+        device_id="",
     ):
-        PasscheckVerification.objects.update_or_create(
+        verification, _ = PasscheckVerification.objects.update_or_create(
             team_id=team_id,
             gameday_id=gameday_id,
             defaults={
@@ -419,8 +585,11 @@ class PasscheckServicePlayers:
                 "gameday_id": gameday_id,
                 "team_id": team_id,
                 "note": note,
+                "client_id": client_id,
+                "device_id": device_id,
             },
         )
+        return verification
 
 
 class TeamData(dict):

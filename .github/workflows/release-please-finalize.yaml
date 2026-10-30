@@ -51,6 +51,7 @@ jobs:
           # Update Node.js version files
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" liveticker/package.json
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck/package.json
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" passcheck_v2/package.json
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard/package.json
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" scorecard_v2/package.json
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" gameday_designer/package.json
@@ -62,7 +63,7 @@ jobs:
         run: |
           git config user.name "release-please[bot]"
           git config user.email "release-please[bot]@users.noreply.github.com"
-          git add league_manager/__init__.py liveticker/package.json passcheck/package.json scorecard/package.json scorecard_v2/package.json gameday_designer/package.json journey_dashboard/package.json uv.lock
+          git add league_manager/__init__.py liveticker/package.json passcheck/package.json passcheck_v2/package.json scorecard/package.json scorecard_v2/package.json gameday_designer/package.json journey_dashboard/package.json uv.lock
 
           # Check if there are changes to commit
           if git diff --cached --quiet; then

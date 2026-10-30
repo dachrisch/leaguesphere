@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from gamedays.service.stage_category import StageCategory, derive_legacy_stage_category
+from gamedays.storage import pass_photo_storage
 
 
 class BumpUpdatedAtOnSaveMixin(models.Model):
@@ -452,6 +453,17 @@ class Person(models.Model):
     last_name = models.CharField(max_length=50)
     sex = models.IntegerField(choices=SEX_CHOICES, null=True, blank=True, default=None)
     year_of_birth = models.PositiveIntegerField(null=True, blank=True, default=None)
+    # Private pass photo; only served when photo_consent_at is set and the
+    # requester officiates the gameday (see passcheck.api.photo_views).
+    photo = models.ImageField(
+        "Passfoto",
+        upload_to="",
+        storage=pass_photo_storage,
+        blank=True,
+        null=True,
+    )
+    photo_updated_at = models.DateTimeField(null=True, blank=True)
+    photo_consent_at = models.DateTimeField(null=True, blank=True)
 
     objects: QuerySet["Person"] = models.Manager()
 

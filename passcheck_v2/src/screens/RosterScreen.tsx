@@ -1,0 +1,182 @@
+import { useEffect, useMemo, useState } from "react";
+
+import type {
+  RosterEntry,
+  RosterResponse,
+  RosterWriteEntry,
+} from "../api/types";
+import AppHeader from "../components/AppHeader";
+import PlayerRow from "../components/PlayerRow";
+import StatusChip from "../components/StatusChip";
+import UndoBar from "../components/UndoBar";
+import { useSessionTimer } from "../hooks/useSessionTimer";
+
+type Props = {
+  roster: RosterResponse;
+  checkedIds: Set<number>;
+  onToggle: (player: RosterEntry) => void;
+  onOpenPlayer: (player: RosterEntry) => void;
+  jerseyOverrides?: Record<number, number>;
+  onFinalize?: (entries: RosterWriteEntry[]) => void;
+  onBack?: () => void;
+  onOpenPhoto?: (player: RosterEntry) => void;
+  clock?: () => number;
+  pendingCount?: number;
+  gamedayLabel?: string;
+  onLogout?: () => void;
+};
+
+const UNDO_TIMEOUT_MS = 5000;
+
+function formatSeconds(seconds: number): string {
+  if (Number.isInteger(seconds)) {
+    return `${seconds}`;
+  }
+  return seconds.toFixed(1).replace(".", ",");
+}
+
+function RosterScreen({
+  roster,
+  checkedIds,
+  onToggle,
+  onOpenPlayer,
+  jerseyOverrides = {},
+  onFinalize,
+  onBack,
+  onOpenPhoto,
+  clock = Date.now,
+  pendingCount = 0,
+  gamedayLabel,
+  onLogout,
+}: Props) {
+  const sections = useMemo(
+    () => [
+      { name: roster.team.name, players: roster.team.roster },
+      ...roster.additionalTeams.map((team) => ({
+        name: team.name,
+        players: team.roster,
+      })),
+    ],
+    [roster]
+  );
+  const players = useMemo(
+    () => sections.flatMap((section) => section.players),
+    [sections]
+  );
+
+  const [undo, setUndo] = useState<RosterEntry | null>(null);
+  const timer = useSessionTimer(clock);
+
+  useEffect(() => {
+    if (!undo) return;
+    const timeout = window.setTimeout(() => setUndo(null), UNDO_TIMEOUT_MS);
+    return () => window.clearTimeout(timeout);
+  }, [undo]);
+
+  const averageSeconds =
+    checkedIds.size > 0 && timer.startedAt !== null
+      ? timer.elapsedMs / 1000 / checkedIds.size
+      : null;
+
+  const toggle = (player: RosterEntry) => {
+    if (player.validationError) {
+      onOpenPlayer(player);
+      return;
+    }
+    if (checkedIds.has(player.id)) {
+      setUndo(null);
+    } else {
+      timer.start();
+      setUndo(player);
+    }
+    onToggle(player);
+  };
+
+  const undoLast = () => {
+    if (!undo) return;
+    onToggle(undo);
+    setUndo(null);
+  };
+
+  const finalize = () => {
+    if (!onFinalize) return;
+    onFinalize(
+      players
+        .filter((player) => checkedIds.has(player.id))
+        .map((player) => ({
+          id: player.id,
+          jersey_number: jerseyOverrides[player.id] ?? player.jersey_number,
+        }))
+    );
+  };
+
+  return (
+    <section className="roster-screen">
+      <AppHeader
+        kicker="Passcheck v2"
+        title={roster.team.name}
+        sub={gamedayLabel}
+        onBack={onBack}
+        onLogout={onLogout}
+        badge={<StatusChip pending={pendingCount} />}
+      />
+
+      <div className="roster-body">
+        <div className="roster-meter">
+          <span className="roster-count" aria-live="polite">
+            {checkedIds.size} von {players.length} geprüft
+          </span>
+          {averageSeconds !== null && (
+            <span className="roster-average">
+              Ø {formatSeconds(averageSeconds)} s/Spieler
+            </span>
+          )}
+        </div>
+
+        <div className="roster-list">
+          {sections.map((section, index) => (
+            <div key={`${section.name}-${index}`}>
+              {index > 0 && <p className="group-head">{section.name}</p>}
+              {section.players.map((player) => (
+                <PlayerRow
+                  key={player.id}
+                  player={player}
+                  jerseyNumber={
+                    jerseyOverrides[player.id] ?? player.jersey_number
+                  }
+                  checked={checkedIds.has(player.id)}
+                  onToggle={() => toggle(player)}
+                  onOpenPlayer={() => onOpenPlayer(player)}
+                  onOpenPhoto={
+                    onOpenPhoto ? () => onOpenPhoto(player) : undefined
+                  }
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <footer className="roster-footer">
+        {undo && (
+          <UndoBar
+            playerName={`${undo.first_name} ${undo.last_name}`}
+            onUndo={undoLast}
+            onDismiss={() => setUndo(null)}
+          />
+        )}
+        {onFinalize && (
+          <button
+            type="button"
+            className="sheet-primary roster-finalize"
+            onClick={finalize}
+          >
+            Prüfung abschließen
+          </button>
+        )}
+      </footer>
+    </section>
+  );
+}
+
+export default RosterScreen;

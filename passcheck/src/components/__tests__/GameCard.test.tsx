@@ -93,4 +93,13 @@ describe('GameCard', () => {
     
     expect(screen.getByText('2024- Uhr: Feld 2')).toBeInTheDocument();
   });
+
+  it('links to the field view for this gameday', () => {
+    render(<GameCard game={mockGame} />);
+
+    expect(screen.getByRole('link', { name: 'Passcheck v2' })).toHaveAttribute(
+      'href',
+      '/passcheck/v2/?gameday=1'
+    );
+  });
 });

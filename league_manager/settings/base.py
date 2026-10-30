@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "accounts",
     "knox",
     "passcheck",
+    "passcheck_v2",
     "gameday_designer",
     "matchreport",
     "journey",
@@ -182,6 +183,14 @@ STATICFILES_DIRS = [
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 MEDIA_URL = "/media/"
+
+# Consent-gated pass photos. Deliberately outside MEDIA_ROOT: nginx serves
+# /media/ unauthenticated (with a 7-day cache), so a photo stored there would
+# bypass both consent and the officials-only check. Served only by
+# passcheck.api.photo_views.
+PASS_PHOTO_ROOT = os.environ.get(
+    "PASS_PHOTO_ROOT", os.path.join(BASE_DIR, "private", "pass_photos")
+)
 
 # Crispy
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
