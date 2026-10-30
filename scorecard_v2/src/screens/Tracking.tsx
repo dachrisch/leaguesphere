@@ -14,17 +14,21 @@ import type {
   GameLogEventInput,
   GameLogWrite,
   GameSetup,
+  Official,
   Penalty,
   RosterPlayer,
+  TeamOfficial,
 } from "../api/types";
 import { confirmTap, useWakeLock } from "../app/sideline";
 import AppHeader from "../components/AppHeader";
 import EventLog, {
+  isMarker,
   logRows,
   undoBody,
   type LogRow,
 } from "../components/EventLog";
 import ScoreHeader, { isPossessing } from "../components/ScoreHeader";
+import GameInfo from "../components/GameInfo";
 import SnapshotHint from "../components/SnapshotHint";
 import SyncBadge, { pauseReason, SyncDetails } from "../components/SyncBadge";
 import {
@@ -58,6 +62,7 @@ import { getDeviceId } from "../device";
 import { lockFrom, takeOver, type LockAnswer } from "../session/lock";
 import { getRuntime } from "../session/runtime";
 import { useSyncStatus, type SyncStatus } from "../session/useSyncStatus";
+import { useTrackingShortcuts } from "./useTrackingShortcuts";
 
 interface TrackingScreenProps {
   game: Game;
@@ -462,6 +467,10 @@ export default function TrackingScreen({
    * other team.
    */
   const setupLoad = useRef<Promise<GameSetup | null | undefined> | null>(null);
+  const [setup, setSetup] = useState<GameSetup | null>(null);
+  const [officials, setOfficials] = useState<Official[] | null>(null);
+  const [officialsUnavailable, setOfficialsUnavailable] = useState(false);
+  const [people, setPeople] = useState<TeamOfficial[]>([]);
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [posting, setPosting] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
@@ -588,6 +597,7 @@ export default function TrackingScreen({
   }, [game.id]);
 
   useEffect(() => {
+    let active = true;
     // Read once, long before the half-time: the setup holds the opening
     // possession, which decides who starts the second half. A failed read
     // stays `null` and the half-time falls back to switching the ball.
@@ -601,8 +611,11 @@ export default function TrackingScreen({
     ).catch(() => null);
     setupLoad.current = loaded.then((answer) => answer?.value ?? null);
     void loaded.then((answer) => {
+      if (active) {
+        setSetup(answer?.value ?? null);
+      }
       const lock = answer?.updatedAt === null ? lockFrom(answer.value) : null;
-      if (lock === null) {
+      if (lock === null || !active) {
         return;
       }
       setCanRelease(lock.canRelease);
@@ -610,7 +623,35 @@ export default function TrackingScreen({
         getRuntime().sync.pause("device", game.id);
       }
     });
+    return () => {
+      active = false;
+    };
   }, [game.id]);
+
+  useEffect(() => {
+    let active = true;
+    // The desktop context panel reads the same crew endpoints as preparation.
+    // A failed read only leaves its optional list empty; tracking stays usable.
+    void Promise.all([
+      cachedGet<Official[]>(
+        `officials:${game.id}`,
+        `/api/game/${game.id}/officials`,
+      ).catch(() => null),
+      cachedGet<TeamOfficial[]>(
+        `official-directory:${game.officialsId}`,
+        `/api/officials/team/${game.officialsId}/list`,
+      ).catch(() => []),
+    ]).then(([crew, directory]) => {
+      if (active) {
+        setOfficials(crew);
+        setOfficialsUnavailable(crew === null);
+        setPeople(directory);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [game.id, game.officialsId]);
 
   /**
    * Ask the server which team holds the ball and take that answer.
@@ -1015,6 +1056,53 @@ export default function TrackingScreen({
     undoKey !== null ||
     readOnly;
 
+  useTrackingShortcuts({
+    readOnly: readOnly || finished,
+    sheetOpen: sheet !== null || pendingPat !== null || confirmHalftime,
+    onTouchdown: () => {
+      if (!composerDisabled && pendingPat === null) {
+        openSheet({ kind: "touchdown" });
+      }
+    },
+    onAction: (index) => {
+      if (composerDisabled) {
+        return;
+      }
+      const tile = SERIES_TILES[index];
+      if (tile !== undefined) {
+        if (tile.oneTap) {
+          void recordOneTap(tile.mode);
+        } else {
+          openSheet({ kind: "series", mode: tile.mode });
+        }
+        return;
+      }
+      if (index === 5) {
+        openSheet({ kind: "penalty" });
+      } else if (index === 6) {
+        openSheet({ kind: "more", mode: "safety" });
+      } else if (index === 7) {
+        openSheet({ kind: "more", mode: "overtime" });
+      }
+    },
+    onSwitchPossession: () => {
+      if (
+        opponentName !== null &&
+        !posting &&
+        !possessionPending &&
+        !halftimePending
+      ) {
+        void takePossession(opponentName);
+      }
+    },
+    onUndo: () => {
+      const newest = rows.find((row) => !row.isDeleted && !isMarker(row));
+      if (newest !== undefined) {
+        void undo(newest);
+      }
+    },
+  });
+
   return (
     <div className="app-shell tracking">
       <AppHeader
@@ -1038,6 +1126,16 @@ export default function TrackingScreen({
         }}
         status={status}
       />
+      <main aria-label="Spiel erfassen" className="tracking-layout">
+        <GameInfo
+          game={game}
+          log={log}
+          officials={officials}
+          officialsUnavailable={officialsUnavailable}
+          people={people}
+          setup={setup}
+        />
+        <div className="tracking-controls">
       <ScoreHeader
         away={log.away}
         disabled={possessionPending || halftimePending || readOnly}
@@ -1074,6 +1172,7 @@ export default function TrackingScreen({
               type="button"
             >
               {name ?? "–"}
+              <kbd aria-hidden="true" className="shortcut-hint" data-key="B" />
             </button>
           );
         })}
@@ -1090,9 +1189,10 @@ export default function TrackingScreen({
       ) : possessionName === null ? (
         <p className="trackhint">Ballbesitz wählen, um Einträge zu erfassen.</p>
       ) : null}
+        </div>
       {/* The log owns the free height; the saved toast floats over its foot
           instead of pushing it out of view. */}
-      <div className="logwrap">
+      <div className="logwrap tracking-log">
         <EventLog
           disabled={halftimePending || readOnly}
           error={undoError}
@@ -1188,9 +1288,11 @@ export default function TrackingScreen({
           >
             <Football className="tdbtn-icon" size={26} />
             <span className="tdbtn-label">{touchdownLabel}</span>
+            <kbd aria-hidden="true" className="shortcut-hint" data-key="T" />
           </button>
         )}
-        {SERIES_TILES.map(({ mode, label, Icon, oneTap }) => (
+        <div className="action-grid">
+        {SERIES_TILES.map(({ mode, label, Icon, oneTap }, index) => (
           <button
             className="action"
             disabled={composerDisabled}
@@ -1204,6 +1306,11 @@ export default function TrackingScreen({
           >
             <Icon className="action-icon" size={20} />
             <span>{label}</span>
+            <kbd
+              aria-hidden="true"
+              className="shortcut-hint"
+              data-key={index + 1}
+            />
           </button>
         ))}
         <button
@@ -1214,6 +1321,7 @@ export default function TrackingScreen({
         >
           <Flag className="action-icon" size={20} />
           <span>Strafe</span>
+          <kbd aria-hidden="true" className="shortcut-hint" data-key="6" />
         </button>
         <button
           className="action"
@@ -1223,6 +1331,7 @@ export default function TrackingScreen({
         >
           <Shield className="action-icon" size={20} />
           <span>Safety</span>
+          <kbd aria-hidden="true" className="shortcut-hint" data-key="7" />
         </button>
         <button
           className="action"
@@ -1232,7 +1341,19 @@ export default function TrackingScreen({
         >
           <PlusCircle className="action-icon" size={20} />
           <span>Overtime</span>
+          <kbd aria-hidden="true" className="shortcut-hint" data-key="8" />
         </button>
+        </div>
+      </section>
+        <div
+          aria-label="Spielabschluss"
+          className={
+            possessionSide === null
+              ? "tracking-end"
+              : `tracking-end ${possessionSide}`
+          }
+          role="group"
+        >
         {log.isFirstHalf && !finished ? (
         <section aria-label="Halbzeit" className="halfblock">
           {confirmHalftime ? (
@@ -1276,7 +1397,6 @@ export default function TrackingScreen({
           )}
         </section>
       ) : null}
-      </section>
       <footer className="trackfoot">
         <button
           className="startbtn"
@@ -1294,6 +1414,8 @@ export default function TrackingScreen({
           </p>
         ) : null}
       </footer>
+        </div>
+      </main>
 
       {sheet !== null &&
       possessionSide !== null &&

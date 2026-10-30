@@ -116,10 +116,12 @@
   --focus-offset: 2px;
   --transition-fast: 120ms ease;
 
-  /* Layout shell. Every screen gets the phone measure on a phone and more
-     room on a tablet; `--shell-width-prep` stays the one wider layout. */
+  /* Layout shell. Phone measures stay local to each screen; tracking and the
+     game timetable opt into their own wide measures at 900px and 1280px. */
   --shell-width: 560px;
   --shell-width-prep: var(--shell-width);
+  --shell-width-track: var(--shell-width);
+  --shell-width-wide: var(--shell-width);
   --page-gutter: var(--space-5);
   --header-pad-top: max(var(--space-3), env(safe-area-inset-top));
   --bottom-safe: max(var(--space-5), env(safe-area-inset-bottom));
@@ -293,6 +295,14 @@
   :root {
     --shell-width: 760px;
     --shell-width-prep: 1040px;
+    --shell-width-track: 1100px;
+    --shell-width-wide: 1376px;
     --page-gutter: var(--space-6);
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --shell-width-track: var(--shell-width-wide);
   }
 }

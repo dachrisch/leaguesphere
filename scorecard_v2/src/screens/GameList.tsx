@@ -1,8 +1,17 @@
+import { useEffect, useState } from "react";
+
 import type { Game } from "../api/types";
 import Screen from "../components/Screen";
 import SnapshotHint from "../components/SnapshotHint";
 import TeamLogo from "../components/TeamLogo";
 import { gameTag, type GameTag } from "../components/tag";
+import {
+  daySummary,
+  formatGameTime,
+  groupGamesByFieldAndTime,
+} from "./gameTimetable";
+
+export { formatGameTime } from "./gameTimetable";
 
 interface GameListProps {
   games: Game[];
@@ -26,28 +35,6 @@ interface GameListProps {
   /** Header chrome owned by the flow. */
   onBack?: () => void;
   onLogout?: () => void;
-}
-
-const CLOCK = /^(\d{1,2}):(\d{2})(?::\d{2})?$/;
-
-/**
- * Render the API's `scheduled` value as `HH:MM`.
- *
- * pandas serialises the raw `TimeField`, so the payload is `"13:30:00"`; the
- * seconds are dropped. An empty or malformed value becomes `–` instead of
- * throwing or blowing up the row layout.
- */
-export function formatGameTime(scheduled: string | null | undefined): string {
-  const match = CLOCK.exec(scheduled ?? "");
-  if (match === null) {
-    return "–";
-  }
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  if (hours > 23 || minutes > 59) {
-    return "–";
-  }
-  return `${String(hours).padStart(2, "0")}:${match[2]}`;
 }
 
 function isScore(value: number | null | undefined): value is number {
@@ -87,15 +74,19 @@ function NextGame({
   game,
   onSelect,
   onResume,
+  wide = false,
 }: {
   game: Game;
   onSelect: (game: Game) => void;
   onResume: (game: Game) => void;
+  wide?: boolean;
 }) {
   const resume = gameTag(game.status).action === "resume";
   return (
     <section aria-label="Als Nächstes" className="nextgame">
-      <p className="nextgame-k">{resume ? "Läuft" : "Als Nächstes"}</p>
+      <p className="nextgame-k">
+        {resume ? (wide ? "Läuft · Dein Spiel" : "Läuft") : "Als Nächstes"}
+      </p>
       <p className="nextgame-when">
         {formatGameTime(game.scheduled)} · Feld {game.field}
         {game.passcheck === false ? " · kein Passcheck" : ""}
@@ -103,10 +94,20 @@ function NextGame({
       <p className="nextgame-team">
         <TeamLogo name={game.home} />
         <span>{teamLabel(game.home)}</span>
+        {wide ? (
+          <span className="nextgame-score">
+            {isScore(game.points_home) ? game.points_home : "–"}
+          </span>
+        ) : null}
       </p>
       <p className="nextgame-team">
         <TeamLogo name={game.away} />
         <span>{teamLabel(game.away)}</span>
+        {wide ? (
+          <span className="nextgame-score">
+            {isScore(game.points_away) ? game.points_away : "–"}
+          </span>
+        ) : null}
       </p>
       <button
         className="nextgame-go"
@@ -179,6 +180,137 @@ function RowBody({ game, tag }: { game: Game; tag: GameTag }) {
   );
 }
 
+function TimetableCard({
+  game,
+  onSelect,
+  onResume,
+}: {
+  game: Game;
+  onSelect: (game: Game) => void;
+  onResume: (game: Game) => void;
+}) {
+  const tag = gameTag(game.status);
+  const officials = game.officials.trim();
+  const className =
+    tag.action === "resume" ? "timetable-card running" : "timetable-card";
+  const body = (
+    <>
+      <span className="timetable-card-top">
+        <span className={`tag tag-${tag.variant}`}>{tag.label}</span>
+        {game.passcheck === true ? (
+          <span className="chip-ok">Passcheck</span>
+        ) : game.passcheck === false ? (
+          <span className="chip-miss">kein Passcheck</span>
+        ) : null}
+      </span>
+      <span className="timetable-teams">
+        {(
+          [
+            [game.home, game.points_home],
+            [game.away, game.points_away],
+          ] as const
+        ).map(([name, points], index) => (
+          <span className="timetable-team" key={index === 0 ? "home" : "away"}>
+            <TeamLogo name={name} />
+            <span className="timetable-name">{teamLabel(name)}</span>
+            <span className="timetable-score">
+              {isScore(points) ? points : "–"}
+            </span>
+          </span>
+        ))}
+      </span>
+      <span className="timetable-officials">
+        {officials === "" ? "Keine Scorecard" : officials}
+      </span>
+    </>
+  );
+
+  if (tag.action === "none") {
+    return <div className={className}>{body}</div>;
+  }
+  return (
+    <button
+      aria-label={rowName(game, tag)}
+      className={className}
+      onClick={() => (tag.action === "resume" ? onResume(game) : onSelect(game))}
+      type="button"
+    >
+      {body}
+    </button>
+  );
+}
+
+function Timetable({
+  games,
+  onSelect,
+  onResume,
+}: {
+  games: Game[];
+  onSelect: (game: Game) => void;
+  onResume: (game: Game) => void;
+}) {
+  const { fields, rows } = groupGamesByFieldAndTime(games);
+  return (
+    <section
+      aria-label="Feldplan"
+      className="timetable"
+      style={{
+        gridTemplateColumns: `88px repeat(${fields.length}, minmax(220px, 1fr))`,
+      }}
+      tabIndex={0}
+    >
+      <div className="timetable-head">
+        <span className="timetable-corner">Anstoß</span>
+        {fields.map((field) => (
+          <h2 key={field}>Feld {field}</h2>
+        ))}
+      </div>
+      {rows.map((row) => (
+        <div className="timetable-row" key={row.time}>
+          <time className="timetable-time" dateTime={row.time === "–" ? undefined : row.time}>
+            {row.time}
+          </time>
+          {row.cells.map((cell, index) =>
+            cell.length === 0 ? (
+              <div aria-hidden="true" className="timetable-empty" key={fields[index]} />
+            ) : (
+              <div className="timetable-cell" key={fields[index]}>
+                {cell.map((game) => (
+                  <TimetableCard
+                    game={game}
+                    key={game.id}
+                    onResume={onResume}
+                    onSelect={onSelect}
+                  />
+                ))}
+              </div>
+            ),
+          )}
+        </div>
+      ))}
+    </section>
+  );
+}
+
+/** CSS owns the appearance; this query only chooses which markup is present. */
+function useWideLayout(): boolean {
+  const [wide, setWide] = useState(
+    () =>
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(min-width: 900px)").matches,
+  );
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") {
+      return;
+    }
+    const query = window.matchMedia("(min-width: 900px)");
+    const onChange = () => setWide(query.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+  return wide;
+}
+
 export default function GameList({
   games,
   onSelect,
@@ -203,9 +335,13 @@ export default function GameList({
     }
     return mine === !allGames ? ` (${games.length})` : "";
   };
+  const wide = useWideLayout();
+  const summary = daySummary(games);
+  const multipleFields = new Set(games.map((game) => game.field)).size > 1;
 
   return (
     <Screen
+      className="app-shell-games"
       onBack={onBack}
       onLogout={onLogout}
       sub={subtitle}
@@ -250,8 +386,18 @@ export default function GameList({
       ) : (
         <>
           {next === null ? null : (
-            <NextGame game={next} onResume={onResume} onSelect={onSelect} />
+            <NextGame game={next} onResume={onResume} onSelect={onSelect} wide={wide} />
           )}
+          {wide ? (
+            <section aria-label="Tagesübersicht" className="sumline day-summary">
+              <div><b>{summary.running}</b>läuft</div>
+              <div><b>{summary.open}</b>offen</div>
+              <div><b>{summary.finished}</b>beendet</div>
+            </section>
+          ) : null}
+          {wide && multipleFields ? (
+            <Timetable games={games} onResume={onResume} onSelect={onSelect} />
+          ) : (
           <ul className="game-list">
             {games.map((game) => {
               const tag = gameTag(game.status);
@@ -282,6 +428,7 @@ export default function GameList({
               );
             })}
           </ul>
+          )}
           <p className="vnote">
             Laufende Spiele öffnen die Erfassung, geplante die Vorbereitung.
             Beendete zeigen nur das Ergebnis.

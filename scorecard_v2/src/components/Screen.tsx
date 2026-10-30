@@ -14,6 +14,8 @@ interface ScreenProps {
   badge?: ReactNode;
   /** Widen the shell at tablet/desk widths (the preparation screen only). */
   wide?: boolean;
+  /** Screen-specific shell variant; its rules stay inert below 900px. */
+  className?: string;
   children: ReactNode;
 }
 
@@ -36,10 +38,12 @@ export default function Screen({
   onLogout,
   badge,
   wide = false,
+  className,
   children,
 }: ScreenProps) {
+  const shell = wide ? "app-shell app-shell-wide" : "app-shell";
   return (
-    <div className={wide ? "app-shell app-shell-wide" : "app-shell"}>
+    <div className={className === undefined ? shell : `${shell} ${className}`}>
       <AppHeader
         badge={badge}
         onBack={onBack}

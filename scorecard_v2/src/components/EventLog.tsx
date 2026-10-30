@@ -468,6 +468,12 @@ export default function EventLog({
           })}
         </ol>
       )}
+      <footer className="logfoot">
+        <span className="logfoot-newest">Neueste oben</span>
+        <span className="logfoot-undo">
+          Letzten Eintrag rückgängig <kbd>Strg Z</kbd>
+        </span>
+      </footer>
     </section>
   );
 }
