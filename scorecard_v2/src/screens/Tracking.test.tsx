@@ -33,11 +33,13 @@ import TrackingScreen, {
   describeSaved,
   flipsPossession,
   secondHalfPossession,
+  SyncStrip,
   trackingSubtitle,
   trackingTitle,
   writeTeam,
 } from "./Tracking";
 import { getRuntime, resetRuntime } from "../session/runtime";
+import type { SyncStatus } from "../session/useSyncStatus";
 import { resetSnapshotStore } from "../offline/snapshot";
 
 vi.mock("../api/client", async (importOriginal) => {
@@ -1039,7 +1041,7 @@ describe("Tracking touchdown entry", () => {
     ).toContain("Dieses Spiel läuft auf einem anderen Gerät.");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(
-      screen.getByText(/Dieses Gerät ist nur lesend/),
+      await screen.findByText(/Nur lesen – das Spiel läuft auf einem anderen Gerät/),
     ).toBeInTheDocument();
   });
 
@@ -2419,12 +2421,46 @@ describe("Tracking sync state", () => {
 
     expect(
       await screen.findByText(
-        "Schreiben gesperrt – ein anderes Gerät hält dieses Spiel.",
+        "Nur lesen – das Spiel läuft auf einem anderen Gerät.",
       ),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Erneut prüfen" }));
 
     expect(resume).toHaveBeenCalledWith(42);
+  });
+
+  it("says it once: one message for a device lock, not one per place", async () => {
+    const runtime = getRuntime();
+    stubStatus(runtime, { pending: 0, failed: 0, paused: "device" });
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({ inPossession: "Ravens" })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    await screen.findByText("Nur lesen – das Spiel läuft auf einem anderen Gerät.");
+    const main = document.querySelector(".tracking") as HTMLElement;
+    const mentions = (main.textContent ?? "").match(/anderen Gerät|anderes Gerät/g) ?? [];
+    // The strip says it; the app-bar chip only carries the short state.
+    expect(mentions).toHaveLength(1);
+  });
+
+  it("shows an offline strip with the waiting entries", async () => {
+    const runtime = getRuntime();
+    stubStatus(runtime, { pending: 2, failed: 0, paused: "offline" });
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({ inPossession: "Ravens" })}
+        onFinalize={vi.fn()}
+      />,
+    );
+
+    const strip = await screen.findByRole("status", { name: "Übertragung" });
+    expect(strip).toHaveTextContent("Offline");
+    expect(strip).toHaveTextContent("2 Einträge noch nicht übertragen");
   });
 
   it("explains an expired session", async () => {
@@ -2492,10 +2528,11 @@ describe("Tracking header and action icons", () => {
       />,
     );
 
+    // The strip under the bar says why (once); the bar keeps the short chip.
     expect(
-      await screen.findByText(/Die Anmeldung ist abgelaufen/),
+      await screen.findByText("Schreiben gesperrt – bitte neu anmelden."),
     ).toBeInTheDocument();
-    expect(document.querySelector(".app-shell > .syncdetails")).not.toBeNull();
+    expect(document.querySelector(".app-shell > .syncstrip")).not.toBeNull();
     expect(
       within(screen.getByRole("banner")).getByText("Pausiert · Anmeldung"),
     ).toBeInTheDocument();
@@ -2588,5 +2625,60 @@ describe("Tracking header and action icons", () => {
         .getByRole("button", { name: "Rückgängig: Touchdown Ravens" })
         .querySelector("svg"),
     ).not.toBeNull();
+  });
+});
+
+describe("SyncStrip", () => {
+  function status(overrides: Partial<SyncStatus> = {}): SyncStatus {
+    return {
+      pending: 0,
+      failed: 0,
+      failedOps: [],
+      pendingOps: [],
+      syncing: false,
+      paused: null,
+      online: true,
+      resume: vi.fn(async () => undefined),
+      retry: vi.fn(async () => undefined),
+      drop: vi.fn(async () => undefined),
+      refresh: vi.fn(),
+      ...overrides,
+    };
+  }
+
+  it("stays out of the way while everything is sent", () => {
+    const { container } = render(
+      <SyncStrip drained={false} onResume={vi.fn()} status={status()} />,
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("confirms a drained queue for a moment", () => {
+    render(<SyncStrip drained onResume={vi.fn()} status={status()} />);
+    expect(screen.getByRole("status", { name: "Übertragung" })).toHaveTextContent(
+      "✓ Alles gesendet",
+    );
+  });
+
+  it("names the provisional score while entries are on their way", () => {
+    render(
+      <SyncStrip drained={false} onResume={vi.fn()} status={status({ pending: 1 })} />,
+    );
+    expect(screen.getByRole("status", { name: "Übertragung" })).toHaveTextContent(
+      "Spielstand vorläufig · 1 Eintrag noch nicht übertragen",
+    );
+  });
+
+  it("says offline even with nothing waiting", () => {
+    render(
+      <SyncStrip
+        drained={false}
+        onResume={vi.fn()}
+        status={status({ online: false })}
+      />,
+    );
+    expect(screen.getByRole("status", { name: "Übertragung" })).toHaveTextContent(
+      "Offline · Einträge werden hier gespeichert",
+    );
   });
 });

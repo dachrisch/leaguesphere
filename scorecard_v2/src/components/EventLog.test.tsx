@@ -400,6 +400,23 @@ describe("formatLogTime", () => {
 });
 
 describe("EventLog", () => {
+  it("marks an entry that has not reached the server yet as waiting", () => {
+    render(
+      <EventLog
+        onUndo={vi.fn()}
+        rows={[
+          row({ key: "local", teamLogId: -1, event: "First Down" }),
+          row({ key: "sent", teamLogId: 9, event: "Turnover" }),
+        ]}
+      />,
+    );
+
+    const [local, sent] = screen.getAllByRole("listitem");
+    expect(local).toHaveTextContent("wartet");
+    expect(sent).not.toHaveTextContent("wartet");
+  });
+
+
   it("says so when the log is empty and shows an undo error", () => {
     render(
       <EventLog

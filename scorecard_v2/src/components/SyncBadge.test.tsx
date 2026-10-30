@@ -64,7 +64,7 @@ describe("syncLabel", () => {
       "Offline",
     );
     expect(syncLabel({ paused: "device", pending: 1, failed: 0, online: true })).toBe(
-      "Pausiert · anderes Gerät",
+      "Nur lesen",
     );
     expect(syncLabel({ paused: "auth", pending: 1, failed: 0, online: true })).toBe(
       "Pausiert · Anmeldung",
@@ -126,7 +126,7 @@ describe("SyncBadge", () => {
 
     expect(screen.getByText(/anderen Gerät/)).toBeInTheDocument();
     await userEvent.click(
-      screen.getByRole("button", { name: /Pausiert · anderes Gerät/ }),
+      screen.getByRole("button", { name: /Nur lesen/ }),
     );
 
     expect(current.resume).toHaveBeenCalledTimes(1);
@@ -378,7 +378,7 @@ describe("badgeState", () => {
       actionable: true,
     });
     expect(badgeState(makeStatus({ paused: "device", pending: 1 }))).toMatchObject({
-      label: "Pausiert · anderes Gerät",
+      label: "Nur lesen",
       tone: "off",
       actionable: true,
     });

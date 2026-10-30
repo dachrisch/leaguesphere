@@ -3858,3 +3858,86 @@ button.syncbadge {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* ---------------------------------------------------------- sync strip -- */
+
+/* The one line under the bar about transmission. */
+.syncstrip {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--page-gutter);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.syncstrip-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.syncstrip-sub {
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.syncstrip-off,
+.syncstrip-stop {
+  color: var(--on-action);
+  background: var(--action);
+}
+
+.syncstrip-wait {
+  color: var(--warning);
+  background: var(--amber-wash);
+}
+
+.syncstrip-ok {
+  color: var(--away-text);
+  background: var(--away-wash);
+}
+
+.syncstrip-btn {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  font-weight: 700;
+  color: var(--on-action);
+  background: color-mix(in srgb, var(--on-action) 14%, transparent);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+}
+
+.tracking > .syncstrip {
+  flex: 0 0 auto;
+}
+
+/* A queued entry, not yet confirmed by the server. */
+.rowpending {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 1px var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--warning);
+  background: var(--amber-wash);
+  border-radius: var(--radius-pill);
+}
+
+/* On tracking the strip under the bar says what the chip would: the chip is
+   the coloured dot alone, so the title keeps its width. */
+.tracking .appbar .syncbadge-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip: rect(0 0 0 0);
+}
