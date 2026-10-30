@@ -387,6 +387,31 @@ def _record_rows(game, projection: Projection, authors: "AuthorResolver") -> Non
     service.write_projected_gamelog(write)
 
 
+def _sync_possession(game, side: Optional[str]) -> None:
+    """Mirror a projected possession change onto ``Gameinfo.in_possession``.
+
+    ``GET /api/gamelog/<id>`` -- what a reopened scorecard, a second device and
+    the liveticker read -- answers ``inPossession`` from ``Gameinfo``, which
+    only the legacy ``PUT /possession`` used to set. The event store keeps the
+    side (``home``/``away``); ``Gameinfo`` keeps the team *name*, the convention
+    of that legacy write path. Called only when the submission changed the
+    projected possession, so an append that never touches it cannot wipe a
+    value a v1 device wrote.
+    """
+
+    name = None
+    if side in ("home", "away"):
+        name = (
+            Gameresult.objects.filter(gameinfo=game, isHome=side == "home")
+            .values_list("team__name", flat=True)
+            .first()
+        )
+    if game.in_possession == name:
+        return
+    game.in_possession = name
+    game.save(update_fields=["in_possession", "updated_at"])
+
+
 def _save_state(game, state: GameStateValue) -> None:
     GameState.objects.update_or_create(
         game=game,
@@ -510,6 +535,8 @@ def append_submission(
         _record_rows(game, projection, authors)
     else:
         _apply_sequence_flags(game, projection, _row_flag_events(game, projection))
+    if projection.state.in_possession != replayed.state.in_possession:
+        _sync_possession(game, projection.state.in_possession)
     _save_state(game, projection.state)
     return AppendOutcome(
         state=projection.state, applied=True, last_seq=projection.state.last_seq
