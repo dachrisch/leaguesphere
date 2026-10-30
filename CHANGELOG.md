@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.2.5](https://github.com/dachrisch/leaguesphere/compare/v5.2.4...v5.2.5) (2026-10-29)
+
+
+### Bug Fixes
+
+* **deps:** make npm overrides follow the direct dependency ([#2171](https://github.com/dachrisch/leaguesphere/issues/2171)) ([4aaade8](https://github.com/dachrisch/leaguesphere/commit/4aaade8f6858e96932f1b514c868897be41cc16d))
+
 ## [5.2.4](https://github.com/dachrisch/leaguesphere/compare/v5.2.3...v5.2.4) (2026-10-29)
 
 
