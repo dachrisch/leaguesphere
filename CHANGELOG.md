@@ -1,5 +1,24 @@
 # Changelog
 
+## [5.3.0](https://github.com/dachrisch/leaguesphere/compare/v5.2.11...v5.3.0) (2026-10-30)
+
+
+### Features
+
+* **scorecard-v2:** "Sonne" outdoor theme with maximum contrast ([#2190](https://github.com/dachrisch/leaguesphere/issues/2190)) ([b3e7ee6](https://github.com/dachrisch/leaguesphere/commit/b3e7ee638034c51d1f5507989f588476ababdeeb))
+* **scorecard-v2:** compact field chrome, wake lock and save vibration ([#2182](https://github.com/dachrisch/leaguesphere/issues/2182)) ([7cab610](https://github.com/dachrisch/leaguesphere/commit/7cab6108f11209e41d3ba6b296d14c53e171a091))
+* **scorecard-v2:** fold a complete crew, draw the direction, warnings first ([#2187](https://github.com/dachrisch/leaguesphere/issues/2187)) ([bfa2cb1](https://github.com/dachrisch/leaguesphere/commit/bfa2cb188dc6383b046fefcd31409bd5276e4d97))
+* **scorecard-v2:** game list scope control, fallback and next-game card ([#2186](https://github.com/dachrisch/leaguesphere/issues/2186)) ([e694dbd](https://github.com/dachrisch/leaguesphere/commit/e694dbd004bf52a423c2ec793e461213d17b8c20))
+* **scorecard-v2:** one sync strip, waiting tags, a single lock message ([#2188](https://github.com/dachrisch/leaguesphere/issues/2188)) ([1688578](https://github.com/dachrisch/leaguesphere/commit/16885785afe6bb427317a63210acb1eb6b23ea32))
+* **scorecard-v2:** read the device lock on open, staff take-over ([#2189](https://github.com/dachrisch/leaguesphere/issues/2189)) ([635d3b2](https://github.com/dachrisch/leaguesphere/commit/635d3b2ae2bc0bf99c5bf4b0dfd6812ba7d6d7ea))
+* **scorecard-v2:** touchdown first, extra point after the try ([#2185](https://github.com/dachrisch/leaguesphere/issues/2185)) ([461126f](https://github.com/dachrisch/leaguesphere/commit/461126f0d2d19dc399a7e016edb16e1a748f974a))
+* **scorecard-v2:** tracking cockpit with one-tap entries and possession switch ([#2183](https://github.com/dachrisch/leaguesphere/issues/2183)) ([7e67eef](https://github.com/dachrisch/leaguesphere/commit/7e67eef419baef7a874b592f0b2fe85fb2056d2b))
+
+
+### Bug Fixes
+
+* **gameevents:** mirror the projected possession onto Gameinfo ([#2184](https://github.com/dachrisch/leaguesphere/issues/2184)) ([3ae8ac8](https://github.com/dachrisch/leaguesphere/commit/3ae8ac86c0bfdb9fe30f6a3d108e3c5adcd6dfa3))
+
 ## [5.2.11](https://github.com/dachrisch/leaguesphere/compare/v5.2.10...v5.2.11) (2026-10-30)
 
 
