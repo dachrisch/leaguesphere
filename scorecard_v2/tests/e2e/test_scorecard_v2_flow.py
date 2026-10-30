@@ -239,7 +239,7 @@ def test_scorecard_v2_flow_from_gameday_to_result(live_server, page: Page):
     ).to_be_visible()
 
     # ---- Finalise: both captains, then the result. ------------------------
-    page.get_by_role("button", name="Spielende und Bestätigung").click()
+    page.get_by_role("button", name="Spiel beenden").click()
     expect(page.get_by_role("heading", name="Spielende")).to_be_visible(timeout=20000)
     page.fill("#captain-home", "Nord")
     page.fill("#captain-away", "Sued")

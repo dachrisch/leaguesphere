@@ -95,7 +95,6 @@ export default function GamedayList({
 
   return (
     <Screen
-      kicker="Scorecard"
       onBack={onBack}
       onLogout={onLogout}
       sub={sub}

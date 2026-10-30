@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import { useCurrentUser } from "../app/currentUser";
+import AppFooter from "./AppFooter";
 import ThemeToggle from "./ThemeToggle";
 import UserAvatar from "./UserAvatar";
 
@@ -18,6 +19,9 @@ interface AccountMenuProps {
 /**
  * The top bar's only account control: the avatar opens a small menu with the
  * identity, the theme choice and **Abmelden**.
+ *
+ * The LeagueSphere small print (version, Impressum, Datenschutz) closes the
+ * menu, since no screen carries a footer any more.
  *
  * The bar is left with back · sync badge · avatar, so the controls that used to
  * crowd it (theme icon, the word "Abmelden") now have room to be readable at
@@ -131,6 +135,7 @@ export default function AccountMenu({ onLogout }: AccountMenuProps) {
               Abmelden
             </button>
           )}
+          <AppFooter />
         </div>
       ) : null}
     </div>

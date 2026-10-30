@@ -285,7 +285,7 @@ describe("offline capture", () => {
     );
 
     await user.click(
-      screen.getByRole("button", { name: "Spielende und Bestätigung" }),
+      screen.getByRole("button", { name: "Spiel beenden" }),
     );
     expect(
       await screen.findByRole("heading", { name: "Spielende" }),

@@ -1,10 +1,8 @@
 import type { ReactNode } from "react";
 
-import AppFooter from "./AppFooter";
 import AppHeader from "./AppHeader";
 
 interface ScreenProps {
-  kicker: string;
   title: string;
   /** One context line; a node when it carries inline art (team logos). */
   sub?: ReactNode;
@@ -27,12 +25,10 @@ interface ScreenProps {
  * The frame is phone-width by default; `wide` opts a screen (the preparation)
  * into the wider tablet/desk measure without stretching lists or sheets.
  *
- * The LeagueSphere footer is a sibling of the scroll area, pinned to the
- * bottom of the screen: short screens do not leave it floating mid-page, and
- * long screens scroll behind/above it instead of pushing it out of view.
+ * There is no footer: the scroll area takes every pixel below the bar, and the
+ * LeagueSphere small print lives in the account menu.
  */
 export default function Screen({
-  kicker,
   title,
   sub,
   onBack,
@@ -45,14 +41,12 @@ export default function Screen({
     <div className={wide ? "app-shell app-shell-wide" : "app-shell"}>
       <AppHeader
         badge={badge}
-        kicker={kicker}
         onBack={onBack}
         onLogout={onLogout}
         sub={sub}
         title={title}
       />
       <main className="vscroll">{children}</main>
-      <AppFooter />
     </div>
   );
 }

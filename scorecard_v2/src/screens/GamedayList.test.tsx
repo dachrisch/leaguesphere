@@ -46,7 +46,7 @@ describe("GamedayList", () => {
   it("shows the screen header with today's date", () => {
     renderList([makeGameday()]);
 
-    expect(screen.getByText("Scorecard")).toBeInTheDocument();
+    expect(screen.queryByText("Scorecard")).toBeNull();
     expect(
       screen.getByRole("heading", { level: 1, name: "Meine Spieltage" }),
     ).toBeInTheDocument();

@@ -587,7 +587,7 @@ describe("the finalise screen", () => {
     await openRunningGame(user);
     await screen.findByRole("heading", { name: "Feld 2 · Vorrunde" });
     await user.click(
-      screen.getByRole("button", { name: "Spielende und Bestätigung" }),
+      screen.getByRole("button", { name: "Spiel beenden" }),
     );
     await screen.findByRole("heading", { name: "Spielende" });
   }

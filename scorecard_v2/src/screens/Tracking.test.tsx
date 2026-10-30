@@ -854,7 +854,7 @@ describe("Tracking finalize", () => {
     const user = userEvent.setup();
 
     await user.click(
-      screen.getByRole("button", { name: "Spielende und Bestätigung" }),
+      screen.getByRole("button", { name: "Spiel beenden" }),
     );
 
     expect(onFinalize).toHaveBeenCalledTimes(1);
@@ -1138,6 +1138,53 @@ describe("Tracking series and time entry", () => {
       ],
       client_id: expect.any(String),
     });
+  });
+});
+
+describe("Tracking on the sideline", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("has no footer: the log and the action bar own the screen", () => {
+    renderTracking();
+
+    expect(document.querySelector(".app-footer")).toBeNull();
+  });
+
+  it("keeps the screen on while the game is tracked", async () => {
+    const request = vi.fn(async () => ({ release: vi.fn(async () => undefined) }));
+    vi.stubGlobal("navigator", { ...navigator, wakeLock: { request } });
+
+    renderTracking();
+    await act(async () => undefined);
+
+    expect(request).toHaveBeenCalledWith("screen");
+  });
+
+  it("does not hold the screen for a finished game", async () => {
+    const request = vi.fn(async () => ({ release: vi.fn(async () => undefined) }));
+    vi.stubGlobal("navigator", { ...navigator, wakeLock: { request } });
+
+    renderTracking({ game: { ...GAME, status: "beendet" } });
+    await act(async () => undefined);
+
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("vibrates once a saved entry lands", async () => {
+    const vibrate = vi.fn(() => true);
+    vi.stubGlobal("navigator", { ...navigator, vibrate });
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^1st Down$/);
+    expect(vibrate).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    await waitFor(() => expect(vibrate).toHaveBeenCalledWith(15));
   });
 });
 
@@ -2249,10 +2296,8 @@ describe("Tracking header and action icons", () => {
       name: /^Touchdown Ravens$/,
     });
     expect(touchdown.querySelector("svg")).not.toBeNull();
-    expect(within(touchdown).getByText("3 Tipps")).toHaveAttribute(
-      "aria-hidden",
-      "true",
-    );
+    // No tap-count hint: "3 Tipps" read as "3 hints" in German.
+    expect(touchdown).toHaveTextContent(/^Touchdown Ravens$/);
 
     for (const name of [
       "1st Down",
@@ -2273,7 +2318,7 @@ describe("Tracking header and action icons", () => {
     ).not.toBeNull();
     expect(
       screen
-        .getByRole("button", { name: "Spielende und Bestätigung" })
+        .getByRole("button", { name: "Spiel beenden" })
         .querySelector("svg"),
     ).not.toBeNull();
   });
