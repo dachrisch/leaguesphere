@@ -26,8 +26,10 @@ import type {
   GameLogTeam,
   GameSetup,
   LogEntry,
+  Official,
   Penalty,
   RosterPlayer,
+  TeamOfficial,
 } from "../api/types";
 import TrackingScreen, {
   describeSaved,
@@ -892,11 +894,19 @@ function routeGets(
     penalties?: Penalty[];
     log?: GameLog;
     setup?: GameSetup;
+    officials?: Official[];
+    people?: TeamOfficial[];
   } = {},
 ): void {
   apiGetMock.mockImplementation((path: string) => {
     if (path === "/api/game/42/roster") {
       return Promise.resolve(routes.roster ?? ROSTER);
+    }
+    if (path === "/api/game/42/officials") {
+      return Promise.resolve(routes.officials ?? []);
+    }
+    if (path === "/api/officials/team/7/list") {
+      return Promise.resolve(routes.people ?? []);
     }
     if (path === "/api/config/scorecard/penalties") {
       return Promise.resolve(routes.penalties ?? PENALTIES);
@@ -1260,6 +1270,162 @@ describe("Tracking cockpit", () => {
       await user.click(screen.getByRole("button", { name: "Schließen" }));
     }
     expect(apiPostMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("Tracking wide layout", () => {
+  it("renders the grid landmarks, growing action grid and shared end row", () => {
+    renderTracking();
+
+    const layout = screen.getByRole("main", { name: "Spiel erfassen" });
+    expect(layout).toHaveClass("tracking-layout");
+    expect(
+      within(layout).getByRole("complementary", { name: "Spielinfo" }),
+    ).toHaveClass("tracking-info");
+    expect(layout.querySelector(".tracking-controls")).not.toBeNull();
+    expect(
+      screen.getByRole("region", { name: "Spielverlauf" }).closest(".tracking-log"),
+    ).not.toBeNull();
+
+    const actions = screen.getByRole("region", { name: "Einträge" });
+    expect(actions.querySelectorAll(".action-grid > .action")).toHaveLength(8);
+    const end = screen.getByRole("group", { name: "Spielabschluss" });
+    expect(end).toHaveClass("tracking-end");
+    expect(within(end).getByRole("button", { name: "Halbzeit" })).toBeInTheDocument();
+    expect(
+      within(end).getByRole("button", { name: "Spiel beenden" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Neueste oben")).toHaveClass("logfoot-newest");
+  });
+
+  it("shows the existing setup, officials and per-half scores in Spielinfo", async () => {
+    routeGets({
+      setup: { ctResult: "home", direction: "West" },
+      officials: [
+        { id: 1, official: 9, name: null, position: "Referee" },
+        { id: 2, official: null, name: "Gast Judge", position: "Judge" },
+      ],
+      people: [
+        {
+          id: 9,
+          first_name: "Mia",
+          last_name: "Klein",
+          team: "Crew Rhein",
+          license: "A",
+          valid_until: "2027-01-01",
+          is_valid: true,
+        },
+      ],
+    });
+    renderTracking({
+      log: makeLog({
+        home: team({
+          score: 13,
+          firsthalf: { score: 6, entries: [] },
+          secondhalf: { score: 7, entries: [] },
+        }),
+        away: team({
+          id: 2,
+          name: "Wolves",
+          score: 14,
+          firsthalf: { score: 7, entries: [] },
+          secondhalf: { score: 7, entries: [] },
+        }),
+      }),
+    });
+
+    const info = screen.getByRole("complementary", { name: "Spielinfo" });
+    await waitFor(() => expect(info).toHaveTextContent("Mia Klein"));
+    expect(info).toHaveTextContent("13:30 · Feld 2");
+    expect(info).toHaveTextContent("Münzwurf");
+    expect(info).toHaveTextContent("Ravens");
+    expect(info).toHaveTextContent("Spielrichtung");
+    expect(info).toHaveTextContent("West");
+    expect(info).toHaveTextContent("Passcheck");
+    expect(info).toHaveTextContent("Geprüft");
+    expect(info).toHaveTextContent("Referee");
+    expect(info).toHaveTextContent("Judge");
+    expect(info).toHaveTextContent("Gast Judge");
+
+    const halves = within(info).getByRole("table", { name: "Halbzeiten" });
+    expect(within(halves).getAllByRole("row")).toHaveLength(3);
+    expect(halves).toHaveTextContent("6");
+    expect(halves).toHaveTextContent("13");
+    expect(halves).toHaveTextContent("14");
+  });
+
+  it("shows the desktop key hints without changing accessible button names", () => {
+    renderTracking();
+
+    expect(
+      screen.getByRole("button", { name: "Touchdown Ravens" }).querySelector("kbd"),
+    ).toHaveAttribute("data-key", "T");
+    expect(
+      Array.from(
+        document.querySelectorAll(".action-grid > .action > kbd"),
+        (hint) => hint.getAttribute("data-key"),
+      ),
+    ).toEqual(["1", "2", "3", "4", "5", "6", "7", "8"]);
+    for (const name of ["Ravens", "Wolves"]) {
+      expect(screen.getByRole("button", { name }).querySelector("kbd")).toHaveAttribute(
+        "data-key",
+        "B",
+      );
+    }
+    expect(screen.getByText("Strg Z").tagName).toBe("KBD");
+  });
+
+  it("uses the desktop keys for sheets and possession", async () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: query === "(min-width: 1280px)",
+        media: query,
+      })),
+    );
+    renderTracking();
+
+    fireEvent.keyDown(window, { key: "t" });
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "1" });
+    expect(apiPostMock).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Schließen" }));
+
+    fireEvent.keyDown(window, { key: "b" });
+    await waitFor(() => expect(sentPossessions()).toEqual(["away"]));
+  });
+
+  it("undoes the newest undoable row with Ctrl+Z and skips markers", async () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: query === "(min-width: 1280px)",
+        media: query,
+      })),
+    );
+    renderTracking({
+      log: makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({
+            id: 10,
+            sequence: 0,
+            event: "Spiel gestartet",
+            team: null,
+          }),
+          logEvent({ id: 7, sequence: 4, seq: 12, event: "Touchdown" }),
+        ],
+      }),
+    });
+
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [{ type: "correction", code: "undo", payload: { undo_of: 12 } }],
+        client_id: expect.any(String),
+      }),
+    );
   });
 });
 

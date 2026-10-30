@@ -5,12 +5,13 @@ import {
 } from "@testing-library/react";
 import type { ReactElement } from "react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Game } from "../api/types";
 import { TeamLogosProvider } from "../app/teamLogos";
 import { gameTag } from "../components/tag";
 import GameList, { formatGameScore, formatGameTime } from "./GameList";
+import { daySummary, groupGamesByFieldAndTime } from "./gameTimetable";
 
 /**
  * `Gameinfo.status` is free text on the wire, so the fixture builder accepts
@@ -70,6 +71,22 @@ function render(ui: ReactElement) {
     <TeamLogosProvider logos={new Map()}>{ui}</TeamLogosProvider>,
   );
 }
+
+function desktop(): void {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn((query: string) => ({
+      matches: query === "(min-width: 900px)",
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  );
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("GameList", () => {
   it("shows the gameday name and context in the screen header", () => {
@@ -615,5 +632,109 @@ describe("GameList — next game", () => {
   it("shows no shortcut for a single game or a finished gameday", () => {
     renderList([makeGame()]);
     expect(screen.queryByRole("region", { name: "Als Nächstes" })).toBeNull();
+  });
+});
+
+describe("gameTimetable", () => {
+  it("counts running, open and finished games for the day summary", () => {
+    expect(
+      daySummary([
+        makeGame({ id: 1, status: "1. Halbzeit" }),
+        makeGame({ id: 2, status: "Gestartet" }),
+        makeGame({ id: 3, status: "Geplant" }),
+        makeGame({ id: 4, status: "Abgesagt" }),
+        makeGame({ id: 5, status: " BEENDET " }),
+      ]),
+    ).toEqual({ running: 2, open: 2, finished: 1 });
+  });
+
+  it("groups games into sorted field columns and kickoff rows with empty cells", () => {
+    const games = [
+      makeGame({ id: 1, field: 2, scheduled: "13:30:00" }),
+      makeGame({ id: 2, field: 1, scheduled: "09:00:00" }),
+      makeGame({ id: 3, field: 1, scheduled: "13:30" }),
+      makeGame({ id: 4, field: 2, scheduled: "09:00:00" }),
+    ];
+
+    const timetable = groupGamesByFieldAndTime(games);
+
+    expect(timetable.fields).toEqual([1, 2]);
+    expect(timetable.rows.map((row) => row.time)).toEqual(["09:00", "13:30"]);
+    expect(timetable.rows[0]?.cells.map((game) => game?.id ?? null)).toEqual([2, 4]);
+    expect(timetable.rows[1]?.cells.map((game) => game?.id ?? null)).toEqual([3, 1]);
+
+    const withGap = groupGamesByFieldAndTime(games.slice(0, 3));
+    expect(withGap.rows[0]?.cells).toEqual([games[1], null]);
+  });
+});
+
+describe("GameList — wide timetable", () => {
+  it("renders the sidebar summary and field-by-time landmarks", () => {
+    desktop();
+    renderList([
+      makeGame({ id: 1, field: 1, scheduled: "13:30:00" }),
+      makeGame({
+        id: 2,
+        field: 2,
+        scheduled: "13:30:00",
+        status: "1. Halbzeit",
+        points_home: 20,
+        points_away: 7,
+      }),
+      makeGame({
+        id: 3,
+        field: 1,
+        scheduled: "15:00:00",
+        status: "beendet",
+        points_home: 7,
+        points_away: 21,
+      }),
+    ]);
+
+    expect(document.querySelector(".app-shell-games")).not.toBeNull();
+    const summary = screen.getByRole("region", { name: "Tagesübersicht" });
+    expect(summary).toHaveClass("day-summary");
+    expect(summary).toHaveTextContent("1läuft");
+    expect(summary).toHaveTextContent("1offen");
+    expect(summary).toHaveTextContent("1beendet");
+
+    const timetable = screen.getByRole("region", { name: "Feldplan" });
+    expect(
+      within(timetable).getByRole("heading", { name: "Feld 1" }),
+    ).toBeInTheDocument();
+    expect(
+      within(timetable).getByRole("heading", { name: "Feld 2" }),
+    ).toBeInTheDocument();
+    expect(timetable.querySelectorAll(".timetable-row")).toHaveLength(2);
+    expect(timetable.querySelectorAll(".timetable-card")).toHaveLength(3);
+    expect(timetable.querySelectorAll(".timetable-empty")).toHaveLength(1);
+    expect(timetable.querySelector(".timetable-card.running")).not.toBeNull();
+    expect(document.querySelector(".game-list")).toBeNull();
+
+    const next = screen.getByRole("region", { name: "Als Nächstes" });
+    expect(next).toHaveTextContent("Läuft · Dein Spiel");
+    expect(next.querySelectorAll(".nextgame-score")).toHaveLength(2);
+  });
+
+  it("keeps timetable click behaviour and the single-field list fallback", async () => {
+    desktop();
+    const planned = makeGame({ id: 1, field: 1 });
+    const running = makeGame({ id: 2, field: 2, status: "2. Halbzeit" });
+    const { onSelect, onResume, rerender } = renderList([planned, running]);
+    const timetable = screen.getByRole("region", { name: "Feldplan" });
+
+    await userEvent.click(
+      within(timetable).getByRole("button", { name: /Ravens gegen Wolves.*offen/ }),
+    );
+    expect(onSelect).toHaveBeenCalledWith(planned);
+    expect(onResume).not.toHaveBeenCalled();
+
+    rerender(
+      <TeamLogosProvider logos={new Map()}>
+        <GameList games={[planned]} onResume={onResume} onSelect={onSelect} />
+      </TeamLogosProvider>,
+    );
+    expect(screen.queryByRole("region", { name: "Feldplan" })).toBeNull();
+    expect(document.querySelector(".game-list")).not.toBeNull();
   });
 });

@@ -1237,15 +1237,50 @@ button.game-row:active {
   min-height: 0;
 }
 
+/* Wide-screen groups are transparent on phones and narrow tablets: their
+   children keep the original single-column flex layout and order. */
+.tracking-layout,
+.tracking-controls,
+.action-grid,
+.tracking-end {
+  display: contents;
+}
+
+.tracking-info,
+.logfoot,
+.shortcut-hint {
+  display: none;
+}
+
 .tracking > .app-header,
-.tracking > .board,
-.tracking > .possswitch,
-.tracking > .actions,
-.tracking > .finishednote,
-.tracking > .trackfoot {
+.tracking .board,
+.tracking .possswitch,
+.tracking .actions,
+.tracking .finishednote,
+.tracking .trackfoot {
   flex: 0 0 auto;
 }
 
+/* Halbzeit used to close the action grid. It now shares a transparent group
+   with the end button so desktop can put them side by side; these margins keep
+   the narrow layout's original 8px gap and 12px dock padding. */
+.tracking-end .halfblock {
+  margin-top: calc(var(--space-2) - var(--space-3));
+  padding: 0 var(--page-gutter) var(--space-3);
+  background: var(--surface-2);
+}
+
+.tracking-end.home .halfblock {
+  background: color-mix(in srgb, var(--home) 9%, var(--bg));
+}
+
+.tracking-end.away .halfblock {
+  background: color-mix(in srgb, var(--away) 9%, var(--bg));
+}
+
+.tracking-end .halfbtn {
+  min-height: 40px;
+}
 
 .board {
   flex: 0 0 auto;
@@ -1927,22 +1962,22 @@ button.game-row:active {
 
 /* The action zone sits at the bottom, in the thumb's reach, tinted in the
    colour of the side with the ball. */
-.tracking > .actions {
+.tracking .actions {
   margin-top: var(--space-2);
   padding-bottom: var(--space-3);
   background: var(--surface-2);
   border-top: 1px solid var(--line);
 }
 
-.tracking > .actions.home {
+.tracking .actions.home {
   background: color-mix(in srgb, var(--home) 9%, var(--bg));
 }
 
-.tracking > .actions.away {
+.tracking .actions.away {
   background: color-mix(in srgb, var(--away) 9%, var(--bg));
 }
 
-.tracking > .actions {
+.tracking .actions {
   gap: var(--space-2);
 }
 
@@ -3925,4 +3960,584 @@ button.syncbadge {
 .syncstrip-btn-strong {
   color: var(--action);
   background: var(--on-action);
+}
+
+/* ------------------------------------------------------ wide tracking --- */
+
+/* The narrow DOM is flattened above. At landscape-tablet width the same nodes
+   become a two-column grid: log on the left, controls on the right. Four auto
+   rows cover score, possession and the two optional hints; row five grows. */
+@media (min-width: 900px) {
+  .app-shell.tracking {
+    max-width: var(--shell-width-track);
+  }
+
+  .tracking-layout {
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: minmax(340px, 400px) minmax(0, 1fr);
+    grid-template-rows: repeat(4, auto) minmax(0, 1fr) auto;
+    gap: var(--space-4) var(--space-5);
+    min-height: 0;
+    padding: var(--space-5) var(--space-6);
+    overflow: hidden;
+  }
+
+  .tracking .board,
+  .tracking .possswitch,
+  .tracking-controls > .trackerror,
+  .tracking-controls > .finishednote,
+  .tracking-controls > .trackhint,
+  .tracking .actions,
+  .tracking .tracking-end {
+    grid-column: 2;
+    margin: 0;
+  }
+
+  .tracking .board {
+    padding: var(--space-3);
+  }
+
+  .tracking .score {
+    font-size: 52px;
+  }
+
+  .tracking .half {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+  }
+
+  .tracking .possswitch,
+  .tracking .possbtn {
+    min-height: 60px;
+  }
+
+  .tracking .tracking-log {
+    grid-column: 1;
+    grid-row: 1 / 7;
+    min-height: 0;
+    margin: 0;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow-card);
+  }
+
+  .tracking-log .logblock {
+    margin: 0;
+  }
+
+  .tracking-log .loghead {
+    padding: var(--space-5) var(--space-5) var(--space-3);
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .tracking-log .logrows {
+    padding: 0 var(--space-4) var(--space-4);
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .tracking-log .logempty {
+    margin: var(--space-5);
+  }
+
+  .tracking-log .logerror {
+    margin-inline: var(--space-4);
+  }
+
+  .tracking-log .logfoot {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--fs-xs);
+    color: var(--muted);
+    border-top: 1px solid var(--line-soft);
+  }
+
+  .logfoot-undo {
+    display: none;
+  }
+
+  .tracking-log > .trackok,
+  .tracking-log > .trackerror {
+    right: var(--space-4);
+    bottom: var(--space-8);
+    left: var(--space-4);
+  }
+
+  .tracking .actions {
+    display: flex;
+    grid-row: 5;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-height: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+  }
+
+  .tracking .actions.home,
+  .tracking .actions.away {
+    background: transparent;
+  }
+
+  .tracking .tdbtn {
+    flex: 0 0 76px;
+    min-height: 76px;
+    font-size: 28px;
+  }
+
+  .tracking .action-grid {
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-rows: 1fr;
+    gap: var(--space-3);
+    min-height: 0;
+  }
+
+  .tracking .action {
+    min-height: var(--touch);
+    font-size: var(--fs-base);
+  }
+
+  .tracking .action-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .tracking .tracking-end {
+    display: grid;
+    grid-row: 6;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  .tracking-end .halfblock {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+  }
+
+  .tracking-end .halfbtn,
+  .tracking-end .startbtn {
+    min-height: 56px;
+  }
+
+  .tracking-end .trackfoot {
+    padding: 0;
+    background: transparent;
+    border: 0;
+  }
+
+  .tracking-end > .trackfoot:only-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Desktop adds the context column and moves the log to the right edge. */
+@media (min-width: 1280px) {
+  .tracking-layout {
+    grid-template-columns: 300px minmax(0, 1fr) 380px;
+    gap: var(--space-6);
+    padding: var(--space-6) 32px;
+  }
+
+  .tracking-info {
+    display: flex;
+    grid-column: 1;
+    grid-row: 1 / 7;
+    flex-direction: column;
+    gap: var(--space-5);
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .infocard {
+    flex: 0 0 auto;
+    padding: var(--space-5);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow-card);
+  }
+
+  .infocard > h2 {
+    margin-bottom: var(--space-3);
+    font-family: var(--font-body);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .infolist {
+    margin: 0;
+  }
+
+  .infolist > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    font-size: var(--fs-sm);
+  }
+
+  .infolist > div + div {
+    border-top: 1px solid var(--line-soft);
+  }
+
+  .infolist dt {
+    color: var(--muted);
+  }
+
+  .infolist dd {
+    margin: 0;
+    font-weight: 600;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  .infoempty {
+    font-size: var(--fs-sm);
+    color: var(--muted);
+  }
+
+  .infohalves {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--fs-sm);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .infohalves th,
+  .infohalves td {
+    padding: var(--space-1) 0;
+    text-align: right;
+  }
+
+  .infohalves th:first-child {
+    text-align: left;
+  }
+
+  .infohalves thead th {
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .tracking .tracking-log {
+    grid-column: 3;
+  }
+
+  .tracking .board {
+    padding: 18px 24px;
+  }
+
+  .tracking .teamlogo-crest {
+    width: 56px;
+    height: 62px;
+  }
+
+  .tracking .score {
+    font-size: 72px;
+  }
+
+  .tracking .tdbtn {
+    flex-basis: 80px;
+    min-height: 80px;
+  }
+
+  .tracking .action-grid {
+    gap: 10px;
+  }
+}
+
+@media (min-width: 1280px) and (pointer: fine) {
+  .tracking .action,
+  .tracking .tdbtn,
+  .tracking .possbtn {
+    position: relative;
+  }
+
+  .tracking .shortcut-hint {
+    position: absolute;
+    top: var(--space-1);
+    right: var(--space-1);
+    display: block;
+    padding: 1px var(--space-1);
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--fg);
+    background: var(--surface-2);
+    border: 1px solid var(--line-strong);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+  }
+
+  .tracking .shortcut-hint::before {
+    content: attr(data-key);
+  }
+
+  .tracking .tdbtn .shortcut-hint,
+  .tracking .possbtn[aria-pressed="true"] .shortcut-hint {
+    color: inherit;
+    background: color-mix(in srgb, currentColor 12%, transparent);
+    border-color: color-mix(in srgb, currentColor 42%, transparent);
+  }
+
+  .tracking-log .logfoot-undo {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .logfoot kbd {
+    padding: 1px var(--space-1);
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--fg);
+    background: var(--surface-2);
+    border: 1px solid var(--line-strong);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+  }
+}
+
+/* ------------------------------------------------------- wide game list -- */
+
+@media (min-width: 900px) {
+  .app-shell-games {
+    max-width: var(--shell-width-wide);
+  }
+
+  .app-shell-games .vscroll {
+    display: grid;
+    grid-template-columns: 380px minmax(0, 1fr);
+    grid-template-rows: repeat(5, auto) minmax(0, 1fr);
+    gap: var(--space-6);
+    align-items: start;
+    padding: 24px 32px;
+  }
+
+  .app-shell-games .vscroll > .snaphint {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    margin: 0;
+  }
+
+  .app-shell-games .nextgame {
+    grid-column: 1;
+    grid-row: 2;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-5);
+    border-radius: 12px;
+  }
+
+  .app-shell-games .nextgame-team {
+    font-size: 24px;
+  }
+
+  .nextgame-score {
+    margin-left: auto;
+    font-size: 30px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .app-shell-games .nextgame-go {
+    min-height: 48px;
+  }
+
+  .app-shell-games .day-summary {
+    grid-column: 1;
+    grid-row: 3;
+    gap: 0;
+    margin: 0;
+    padding: var(--space-5);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+
+  .day-summary > div {
+    padding: 0 var(--space-3);
+    text-align: center;
+    background: transparent;
+    border: 0;
+  }
+
+  .day-summary > div + div {
+    border-left: 1px solid var(--line-soft);
+  }
+
+  .day-summary b {
+    font-size: 30px;
+  }
+
+  .app-shell-games .scopeseg {
+    grid-column: 1;
+    grid-row: 4;
+    margin: 0;
+  }
+
+  .app-shell-games .scopenote {
+    grid-column: 1;
+    grid-row: 5;
+    margin: 0;
+  }
+
+  .app-shell-games .vnote {
+    grid-column: 1;
+    grid-row: 6;
+    margin: 0;
+    font-size: var(--fs-xs);
+  }
+
+  .app-shell-games .game-list,
+  .app-shell-games .timetable {
+    grid-column: 2;
+    grid-row: 2 / 7;
+    margin: 0;
+  }
+
+  .app-shell-games .empty-state {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .timetable {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+
+  .timetable-head,
+  .timetable-row {
+    display: grid;
+    grid-template-columns: inherit;
+    gap: var(--space-5);
+    align-items: start;
+  }
+
+  .timetable-head h2 {
+    margin: 0;
+    font-size: 18px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .timetable-corner {
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .timetable-time {
+    padding-top: var(--space-4);
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .timetable-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+    min-height: 150px;
+    padding: var(--space-5);
+    text-align: left;
+    color: var(--fg);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow-card);
+  }
+
+  button.timetable-card {
+    cursor: pointer;
+    transition:
+      border-color var(--transition-fast),
+      transform var(--transition-fast);
+  }
+
+  button.timetable-card:hover {
+    border-color: var(--line-strong);
+  }
+
+  button.timetable-card:active {
+    transform: scale(0.995);
+  }
+
+  .timetable-card.running {
+    border: 2px solid var(--action);
+  }
+
+  .timetable-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    min-height: 20px;
+  }
+
+  .timetable-teams {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .timetable-team {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    gap: var(--space-3);
+    align-items: center;
+    min-width: 0;
+  }
+
+  .timetable-team .teamlogo {
+    --teamlogo-size: 34px;
+  }
+
+  .timetable-name {
+    min-width: 0;
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+  }
+
+  .timetable-score {
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .timetable-officials {
+    margin-top: auto;
+    overflow-wrap: anywhere;
+    font-size: var(--fs-xs);
+    color: var(--muted);
+  }
+
+  .timetable-empty {
+    min-height: 150px;
+  }
 }
