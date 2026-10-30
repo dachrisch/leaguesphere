@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.5.0](https://github.com/dachrisch/leaguesphere/compare/v5.4.2...v5.5.0) (2026-10-30)
+
+
+### Features
+
+* **scorecard-v2:** wide-screen tracking and game timetable ([#2211](https://github.com/dachrisch/leaguesphere/issues/2211)) ([15b5ada](https://github.com/dachrisch/leaguesphere/commit/15b5ada843d67e04d67037bb5a3c8dde6bb57f1c))
+
+
+### Bug Fixes
+
+* **scorecard-v2:** close the gap above Touchdown on wide screens ([#2213](https://github.com/dachrisch/leaguesphere/issues/2213)) ([105d4bc](https://github.com/dachrisch/leaguesphere/commit/105d4bc20f7951d44f95c3aeb1d9103be09c07f9))
+
 ## [5.4.2](https://github.com/dachrisch/leaguesphere/compare/v5.4.1...v5.4.2) (2026-10-30)
 
 
