@@ -166,19 +166,13 @@ describe("GameList", () => {
     );
   });
 
-  it("summarises the game states above the list", () => {
+  it("drops the counter tiles: the scope control carries the count", () => {
     const { container } = renderList([
       makeGame({ id: 1, status: "beendet" }),
-      makeGame({ id: 2, status: "beendet" }),
-      makeGame({ id: 3, status: "1. Halbzeit" }),
-      makeGame({ id: 4, status: "Geplant" }),
+      makeGame({ id: 2, status: "Geplant" }),
     ]);
 
-    const cells = Array.from(
-      container.querySelectorAll(".sumline > div"),
-      (cell) => cell.textContent,
-    );
-    expect(cells).toEqual(["2 beendet", "1 läuft", "1 offen"]);
+    expect(container.querySelector(".sumline")).toBeNull();
   });
 
   it("marks a passed passcheck with the ok chip", () => {
@@ -387,7 +381,8 @@ describe("GameList", () => {
     });
     const { onSelect, onResume } = renderList([finished, planned, running]);
 
-    expect(within(screen.getByRole("main")).getAllByRole("button")).toHaveLength(2);
+    // Two rows plus the "Als Nächstes" shortcut to the running game.
+    expect(within(screen.getByRole("main")).getAllByRole("button")).toHaveLength(3);
 
     await userEvent.click(
       screen.getByRole("button", { name: /Hawks gegen Ravens/ }),
@@ -523,5 +518,102 @@ describe("formatGameScore", () => {
     expect(formatGameScore(null, 21)).toBe("–");
     expect(formatGameScore(7, null)).toBe("–");
     expect(formatGameScore(null, null)).toBe("–");
+  });
+});
+
+describe("GameList — scope", () => {
+  function renderScope(props: {
+    allGames?: boolean;
+    fallback?: boolean;
+    games?: Game[];
+  }) {
+    const onToggleAll = vi.fn();
+    render(
+      <GameList
+        allGames={props.allGames ?? false}
+        fallback={props.fallback ?? false}
+        games={props.games ?? [makeGame()]}
+        onResume={vi.fn()}
+        onSelect={vi.fn()}
+        onToggleAll={onToggleAll}
+      />,
+    );
+    return { onToggleAll };
+  }
+
+  it("is a two-way control that names both scopes", async () => {
+    const { onToggleAll } = renderScope({ allGames: false });
+
+    const scope = screen.getByRole("group", { name: "Spiele anzeigen" });
+    const mine = within(scope).getByRole("button", { name: /^Meine/ });
+    const all = within(scope).getByRole("button", { name: /^Alle/ });
+    expect(mine).toHaveAttribute("aria-pressed", "true");
+    expect(all).toHaveAttribute("aria-pressed", "false");
+
+    await userEvent.click(mine);
+    expect(onToggleAll).not.toHaveBeenCalled();
+    await userEvent.click(all);
+    expect(onToggleAll).toHaveBeenCalledTimes(1);
+  });
+
+  it("counts the games of the shown scope", () => {
+    renderScope({
+      allGames: true,
+      games: [makeGame({ id: 1 }), makeGame({ id: 2 }), makeGame({ id: 3 })],
+    });
+
+    expect(screen.getByRole("button", { name: /^Alle/ })).toHaveTextContent(
+      "Alle (3)",
+    );
+  });
+
+  it("says why it shows the whole gameday when nothing is assigned", () => {
+    renderScope({ allGames: true, fallback: true });
+
+    const mine = screen.getByRole("button", { name: /^Meine/ });
+    expect(mine).toHaveTextContent("Meine (0)");
+    expect(mine).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Alle/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(
+      screen.getByText("Dir ist kein Spiel zugeteilt – du siehst den ganzen Spieltag."),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("GameList — next game", () => {
+  it("puts the running game first as the shortcut", async () => {
+    const planned = makeGame({ id: 1, home: "Hawks", away: "Ravens" });
+    const running = makeGame({
+      id: 2,
+      status: "1. Halbzeit",
+      home: "Eagles",
+      away: "Coyotes",
+    });
+    const { onResume } = renderList([planned, running]);
+
+    const next = screen.getByRole("region", { name: "Als Nächstes" });
+    expect(next).toHaveTextContent("Eagles");
+    expect(next).toHaveTextContent("Coyotes");
+    await userEvent.click(within(next).getByRole("button", { name: "Weiter erfassen" }));
+    expect(onResume).toHaveBeenCalledWith(running);
+  });
+
+  it("otherwise offers the first open game to prepare", async () => {
+    const first = makeGame({ id: 1, home: "Hawks", away: "Ravens", scheduled: "10:00:00" });
+    const second = makeGame({ id: 2, home: "Eagles", away: "Coyotes", scheduled: "11:10:00" });
+    const { onSelect } = renderList([first, second]);
+
+    const next = screen.getByRole("region", { name: "Als Nächstes" });
+    expect(next).toHaveTextContent("10:00");
+    await userEvent.click(within(next).getByRole("button", { name: "Spiel vorbereiten" }));
+    expect(onSelect).toHaveBeenCalledWith(first);
+  });
+
+  it("shows no shortcut for a single game or a finished gameday", () => {
+    renderList([makeGame()]);
+    expect(screen.queryByRole("region", { name: "Als Nächstes" })).toBeNull();
   });
 });

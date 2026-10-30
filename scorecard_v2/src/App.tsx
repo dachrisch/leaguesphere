@@ -146,6 +146,8 @@ function Flow() {
   });
   const [allGames, setAllGames] = useState(initialAllGames);
   const [games, setGames] = useState<Loadable<Game[]>>({ status: "loading" });
+  /** The crew's own list was empty and the whole gameday is shown instead. */
+  const [gamesFallback, setGamesFallback] = useState(false);
   /** Age of the shown games list when it came from the snapshot (offline). */
   const [gamesStaleSince, setGamesStaleSince] = useState<number | null>(null);
   /** Age of the shown log when it came from the snapshot (offline). */
@@ -198,10 +200,25 @@ function Flow() {
       return;
     }
     let active = true;
-    void loadGamesMeta(gamedayId, team).then(
-      ({ value: list, updatedAt }) => {
+    const load = async (): Promise<{
+      list: Game[];
+      updatedAt: number | null;
+      fallback: boolean;
+    }> => {
+      const mine = await loadGamesMeta(gamedayId, team);
+      if (team === "*" || mine.value.length > 0) {
+        return { list: mine.value, updatedAt: mine.updatedAt, fallback: false };
+      }
+      // Nothing assigned to this official: show the whole gameday instead of
+      // a dead end (the old app's empty state read "no schedule yet").
+      const all = await loadGamesMeta(gamedayId, "*");
+      return { list: all.value, updatedAt: all.updatedAt, fallback: true };
+    };
+    void load().then(
+      ({ list, updatedAt, fallback }) => {
         if (active) {
           setGamesStaleSince(updatedAt);
+          setGamesFallback(fallback);
           setGames({ status: "ready", data: list });
         }
       },
@@ -444,7 +461,8 @@ function Flow() {
       .join(" · ");
     return (
       <GameList
-        allGames={allGames}
+        allGames={allGames || gamesFallback}
+        fallback={gamesFallback}
         games={games.data}
         onBack={handleBack}
         onLogout={doLogout}
