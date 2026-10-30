@@ -81,12 +81,17 @@ only control static assets, and its scope could never leak into the old app.
    touchdown with the roster's jerseys (numeric fallback when there is none),
    PAT, first down, turnover, interception, penalty with search, safety,
    overtime, Spielzeit, Auszeit, half-time, and **Rückgängig** per entry. The
-   app bar carries the sync chip and the account menu (avatar: identity,
-   **Auto**/**Hell**/**Dunkel**, **Abmelden**) on every screen; the header adds
-   the gameday and league.
+   screen keeps the display on while the game is open (Wake Lock, where the
+   browser offers it) and confirms each saved entry with a short vibration.
 5. **Spielende** — captains from the roster (suggestions only, free text),
    optional note, then **Ergebnis abschicken**.
 6. **Ergebnis gesendet** — final and half-time score from the server payload.
+
+Every screen has one steel app bar and nothing else as chrome: back, the title
+with its context line (on tracking: gameday and league), the sync chip and the
+account menu (avatar: identity, **Auto**/**Hell**/**Dunkel**, **Abmelden**, and
+the LeagueSphere version with Impressum and Datenschutz). There is no screen
+footer, so the content area runs to the bottom edge.
 
 What the backend had to grow (all additive):
 
