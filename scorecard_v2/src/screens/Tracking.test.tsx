@@ -1587,11 +1587,17 @@ describe("Tracking possession flip", () => {
   it("flips exactly once per event", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     answerAppend(makeLog({ inPossession: "Ravens" }));
-    renderTracking();
+    // Let the mount's queue read settle first: a tap in the very first
+    // milliseconds races it (the read republishes the log as authoritative).
+    await renderTrackingReady();
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: "Turnover" }));
     await waitFor(() => expect(sentPossessions()).toHaveLength(1));
+    // The first write (and its flip) must settle before the next tap counts.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Turnover" })).toBeEnabled(),
+    );
 
     // The turnover credits the possessing team and hands Ravens' ball to
     // Wolves; the second turnover is recorded by Wolves and flips it back.
@@ -1726,12 +1732,18 @@ describe("Tracking possession flip", () => {
     // not be undone by this screen's remembered marker.
     apiGetMock.mockResolvedValue(ROSTER);
     answerAppend(makeLog({ inPossession: "Wolves" }));
-    renderTracking();
+    // Let the mount's queue read settle first: a tap in the very first
+    // milliseconds races it (the read republishes the log as authoritative).
+    await renderTrackingReady();
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: "1st Down" }));
-    await screen.findByRole("status", { name: "Gespeichert" });
-
+    // One tap: no sheet closes to say the write is done, so wait for the
+    // composer to come back (the write and its log read have settled).
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Auszeit" })).toBeEnabled(),
+    );
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
