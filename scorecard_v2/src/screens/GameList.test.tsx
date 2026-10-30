@@ -660,11 +660,22 @@ describe("gameTimetable", () => {
 
     expect(timetable.fields).toEqual([1, 2]);
     expect(timetable.rows.map((row) => row.time)).toEqual(["09:00", "13:30"]);
-    expect(timetable.rows[0]?.cells.map((game) => game?.id ?? null)).toEqual([2, 4]);
-    expect(timetable.rows[1]?.cells.map((game) => game?.id ?? null)).toEqual([3, 1]);
+    expect(timetable.rows[0]?.cells.map((cell) => cell[0]?.id ?? null)).toEqual([2, 4]);
+    expect(timetable.rows[1]?.cells.map((cell) => cell[0]?.id ?? null)).toEqual([3, 1]);
 
     const withGap = groupGamesByFieldAndTime(games.slice(0, 3));
-    expect(withGap.rows[0]?.cells).toEqual([games[1], null]);
+    expect(withGap.rows[0]?.cells).toEqual([[games[1]], []]);
+  });
+
+  it("keeps every game when two rows share a field and kickoff time", () => {
+    const games = [
+      makeGame({ id: 1, field: 1, scheduled: "13:30:00", home: "Hawks" }),
+      makeGame({ id: 2, field: 1, scheduled: "13:30:00", home: "Eagles" }),
+    ];
+
+    const timetable = groupGamesByFieldAndTime(games);
+
+    expect(timetable.rows[0]?.cells[0]?.map((game) => game.id)).toEqual([1, 2]);
   });
 });
 

@@ -468,7 +468,8 @@ export default function TrackingScreen({
    */
   const setupLoad = useRef<Promise<GameSetup | null | undefined> | null>(null);
   const [setup, setSetup] = useState<GameSetup | null>(null);
-  const [officials, setOfficials] = useState<Official[]>([]);
+  const [officials, setOfficials] = useState<Official[] | null>(null);
+  const [officialsUnavailable, setOfficialsUnavailable] = useState(false);
   const [people, setPeople] = useState<TeamOfficial[]>([]);
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [posting, setPosting] = useState(false);
@@ -635,7 +636,7 @@ export default function TrackingScreen({
       cachedGet<Official[]>(
         `officials:${game.id}`,
         `/api/game/${game.id}/officials`,
-      ).catch(() => []),
+      ).catch(() => null),
       cachedGet<TeamOfficial[]>(
         `official-directory:${game.officialsId}`,
         `/api/officials/team/${game.officialsId}/list`,
@@ -643,6 +644,7 @@ export default function TrackingScreen({
     ]).then(([crew, directory]) => {
       if (active) {
         setOfficials(crew);
+        setOfficialsUnavailable(crew === null);
         setPeople(directory);
       }
     });
@@ -1129,6 +1131,7 @@ export default function TrackingScreen({
           game={game}
           log={log}
           officials={officials}
+          officialsUnavailable={officialsUnavailable}
           people={people}
           setup={setup}
         />

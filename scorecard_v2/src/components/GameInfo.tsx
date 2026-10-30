@@ -10,7 +10,8 @@ interface GameInfoProps {
   game: Game;
   log: GameLog;
   setup: GameSetup | null;
-  officials: Official[];
+  officials: Official[] | null;
+  officialsUnavailable: boolean;
   people: TeamOfficial[];
 }
 
@@ -77,6 +78,7 @@ export default function GameInfo({
   log,
   setup,
   officials,
+  officialsUnavailable,
   people,
 }: GameInfoProps) {
   const peopleById = new Map(people.map((person) => [person.id, person]));
@@ -115,7 +117,13 @@ export default function GameInfo({
 
       <section className="infocard">
         <h2>Offizielle</h2>
-        {officials.length === 0 ? (
+        {officials === null ? (
+          <p className="infoempty">
+            {officialsUnavailable
+              ? "Offizielle konnten nicht geladen werden"
+              : "Offizielle werden geladen …"}
+          </p>
+        ) : officials.length === 0 ? (
           <p className="infoempty">Keine Offiziellen eingetragen</p>
         ) : (
           <dl className="infolist">

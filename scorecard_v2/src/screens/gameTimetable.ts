@@ -41,7 +41,7 @@ export function daySummary(games: Game[]): DaySummary {
 
 export interface TimetableRow {
   time: string;
-  cells: (Game | null)[];
+  cells: Game[][];
 }
 
 export interface GameTimetable {
@@ -70,12 +70,11 @@ export function groupGamesByFieldAndTime(games: Game[]): GameTimetable {
     fields,
     rows: times.map((time) => ({
       time,
-      cells: fields.map(
-        (field) =>
-          games.find(
-            (game) =>
-              game.field === field && formatGameTime(game.scheduled) === time,
-          ) ?? null,
+      cells: fields.map((field) =>
+        games.filter(
+          (game) =>
+            game.field === field && formatGameTime(game.scheduled) === time,
+        ),
       ),
     })),
   };

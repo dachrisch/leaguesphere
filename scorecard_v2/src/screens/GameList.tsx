@@ -255,8 +255,9 @@ function Timetable({
       aria-label="Feldplan"
       className="timetable"
       style={{
-        gridTemplateColumns: `88px repeat(${fields.length}, minmax(0, 1fr))`,
+        gridTemplateColumns: `88px repeat(${fields.length}, minmax(220px, 1fr))`,
       }}
+      tabIndex={0}
     >
       <div className="timetable-head">
         <span className="timetable-corner">Anstoß</span>
@@ -269,16 +270,20 @@ function Timetable({
           <time className="timetable-time" dateTime={row.time === "–" ? undefined : row.time}>
             {row.time}
           </time>
-          {row.cells.map((game, index) =>
-            game === null ? (
+          {row.cells.map((cell, index) =>
+            cell.length === 0 ? (
               <div aria-hidden="true" className="timetable-empty" key={fields[index]} />
             ) : (
-              <TimetableCard
-                game={game}
-                key={game.id}
-                onResume={onResume}
-                onSelect={onSelect}
-              />
+              <div className="timetable-cell" key={fields[index]}>
+                {cell.map((game) => (
+                  <TimetableCard
+                    game={game}
+                    key={game.id}
+                    onResume={onResume}
+                    onSelect={onSelect}
+                  />
+                ))}
+              </div>
             ),
           )}
         </div>

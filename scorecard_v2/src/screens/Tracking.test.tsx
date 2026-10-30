@@ -1354,6 +1354,33 @@ describe("Tracking wide layout", () => {
     expect(halves).toHaveTextContent("14");
   });
 
+  it("does not call the crew empty while it is still loading", () => {
+    renderTracking();
+
+    const info = screen.getByRole("complementary", { name: "Spielinfo" });
+    expect(info).toHaveTextContent("Offizielle werden geladen");
+    expect(info).not.toHaveTextContent("Keine Offiziellen eingetragen");
+  });
+
+  it("says when the crew is unavailable instead of calling it empty", async () => {
+    apiGetMock.mockImplementation((path: string) => {
+      if (path === "/api/game/42/officials") {
+        return Promise.reject(new Error("offline"));
+      }
+      if (path === "/api/officials/team/7/list") {
+        return Promise.resolve([]);
+      }
+      return new Promise(() => undefined);
+    });
+    renderTracking();
+
+    const info = screen.getByRole("complementary", { name: "Spielinfo" });
+    await waitFor(() =>
+      expect(info).toHaveTextContent("Offizielle konnten nicht geladen werden"),
+    );
+    expect(info).not.toHaveTextContent("Keine Offiziellen eingetragen");
+  });
+
   it("shows the desktop key hints without changing accessible button names", () => {
     renderTracking();
 
