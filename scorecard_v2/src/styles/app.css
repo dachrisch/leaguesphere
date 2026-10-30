@@ -1903,8 +1903,10 @@ button.game-row:active {
   cursor: pointer;
 }
 
+/* The visible "Ball" stays out of the accessible name (empty alt text), so
+   the button is named by its team in both states; aria-pressed says which. */
 .possbtn[aria-pressed="true"]::before {
-  content: "Ball";
+  content: "Ball" / "";
   font-family: var(--font-body);
   font-size: 10px;
   font-weight: 700;

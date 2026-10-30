@@ -209,11 +209,10 @@ def test_scorecard_v2_flow_from_gameday_to_result(live_server, page: Page):
         timeout=30000
     )
     expect(page.get_by_role("dialog")).to_have_count(0)
-    # The score header reads the team *names*, and the possession marker proves
+    # The possession switch reads the team *names*, and its pressed side proves
     # the opening possession was accepted (the list label would have 400'd).
-    board = page.get_by_role("region", name="Spielstand")
-    possessing = board.get_by_role(
-        "button", name=f"{HOME_NAME}, 0 Punkte, am Ball", exact=True
+    possessing = page.get_by_role("group", name="Ballbesitz").get_by_role(
+        "button", name=HOME_NAME, exact=True
     )
     expect(possessing).to_be_visible()
     expect(possessing).to_have_attribute("aria-pressed", "true")
