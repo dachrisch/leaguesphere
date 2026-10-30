@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.4.2](https://github.com/dachrisch/leaguesphere/compare/v5.4.1...v5.4.2) (2026-10-30)
+
+
+### Bug Fixes
+
+* **deployed:** give the prod app a cap that fits its warm workers ([4d9caa3](https://github.com/dachrisch/leaguesphere/commit/4d9caa32938b516822d4af84e408fe3499f16afe))
+* **deployed:** give the prod app a cap that fits its warm workers ([38cbccd](https://github.com/dachrisch/leaguesphere/commit/38cbccda3055f275e4b21c67c5d4b1e0dd863fac))
+* **deps:** update dependency webpack-cli to v7.3.1 ([#2209](https://github.com/dachrisch/leaguesphere/issues/2209)) ([7b8ce0f](https://github.com/dachrisch/leaguesphere/commit/7b8ce0f77ffa533f344536bb35cc48f43bc44cea))
+
 ## [5.4.1](https://github.com/dachrisch/leaguesphere/compare/v5.4.0...v5.4.1) (2026-10-30)
 
 
