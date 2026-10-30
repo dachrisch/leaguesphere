@@ -15,7 +15,7 @@
  * - **Best effort.** A snapshot write failure (private mode, quota, a browser
  *   without IndexedDB) must never fail the read that produced it.
  */
-import { apiGet } from "../api/client";
+import { apiGet, type RequestOptions } from "../api/client";
 import {
   SNAPSHOTS_STORE,
   openOutboxDatabase,
@@ -171,6 +171,7 @@ export interface Fetched<T> {
 export async function cachedGetMeta<T>(
   key: string,
   path: string,
+  opts?: RequestOptions,
 ): Promise<Fetched<T>> {
   if (globalThis.navigator?.onLine === false) {
     const saved = await readSnapshot<T>(key);
@@ -179,7 +180,8 @@ export async function cachedGetMeta<T>(
     }
   }
   try {
-    const fresh = await apiGet<T>(path);
+    const fresh =
+      opts === undefined ? await apiGet<T>(path) : await apiGet<T>(path, opts);
     await writeSnapshot(key, fresh);
     return { value: fresh, updatedAt: null };
   } catch (error) {

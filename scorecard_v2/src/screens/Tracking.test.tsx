@@ -937,7 +937,9 @@ async function renderTrackingReady(
   // The preload reads IndexedDB before it asks the network; wait for the
   // setup request, then let the answer be applied.
   await waitFor(() =>
-    expect(apiGetMock).toHaveBeenCalledWith("/api/game/42/setup"),
+    expect(apiGetMock).toHaveBeenCalledWith("/api/game/42/setup", {
+      deviceId: expect.any(String),
+    }),
   );
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -2155,7 +2157,9 @@ describe("Tracking half-time possession", () => {
     await waitFor(() =>
       expect(screen.getByText("2. Halbzeit")).toBeInTheDocument(),
     );
-    expect(apiGetMock).toHaveBeenCalledWith("/api/game/42/setup");
+    expect(apiGetMock).toHaveBeenCalledWith("/api/game/42/setup", {
+      deviceId: expect.any(String),
+    });
     expect(sentPossessions()).toEqual([]);
     expect(sentWrites()).toEqual([
       {
@@ -2223,7 +2227,9 @@ describe("Tracking half-time possession", () => {
     routeGets();
     renderTracking();
 
-    expect(apiGetMock).toHaveBeenCalledWith("/api/game/42/setup");
+    expect(apiGetMock).toHaveBeenCalledWith("/api/game/42/setup", {
+      deviceId: expect.any(String),
+    });
     expect(
       apiGetMock.mock.calls.filter(
         ([path]) => path === "/api/game/42/setup",
@@ -2625,6 +2631,55 @@ describe("Tracking header and action icons", () => {
         .getByRole("button", { name: "Rückgängig: Touchdown Ravens" })
         .querySelector("svg"),
     ).not.toBeNull();
+  });
+});
+
+describe("Tracking device lock on open", () => {
+  function routeSetup(answer: object): void {
+    apiGetMock.mockImplementation((path: string) =>
+      path === "/api/game/42/setup"
+        ? Promise.resolve(answer)
+        : new Promise(() => undefined),
+    );
+  }
+
+  it("goes read-only as soon as the setup read says another device holds it", async () => {
+    routeSetup({ locked_elsewhere: true, can_release_lock: false });
+    renderTracking();
+
+    expect(
+      await screen.findByText("Nur lesen – das Spiel läuft auf einem anderen Gerät."),
+    ).toBeInTheDocument();
+    expect(apiPostMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "1st Down" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Spiel übernehmen" })).toBeNull();
+    expect(
+      screen.getByText("Die Turnierleitung kann die Gerätesperre aufheben."),
+    ).toBeInTheDocument();
+  });
+
+  it("lets staff take the game over after a confirmation", async () => {
+    routeSetup({ locked_elsewhere: true, can_release_lock: true });
+    apiDeleteMock.mockResolvedValue(undefined);
+    apiPutMock.mockResolvedValue({});
+    const resume = vi.spyOn(getRuntime().sync, "resume").mockResolvedValue();
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Spiel übernehmen" }));
+    expect(apiDeleteMock).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(/Das andere Gerät kann danach nicht mehr schreiben/),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Übernehmen" }));
+
+    await waitFor(() => expect(resume).toHaveBeenCalledWith(42));
+    expect(apiDeleteMock).toHaveBeenCalledWith("/api/game/42/device");
+    expect(apiPutMock).toHaveBeenCalledWith(
+      "/api/game/42/setup",
+      { device_id: expect.any(String) },
+      { deviceId: expect.any(String) },
+    );
   });
 });
 

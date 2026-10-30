@@ -49,11 +49,13 @@ import SeriesSheet, {
 } from "../components/sheets/SeriesSheet";
 import { errorMessage, IgnoredWrite } from "../components/sheets/errors";
 import TouchdownSheet from "../components/sheets/TouchdownSheet";
-import { cachedGet, snapshotKey } from "../offline/snapshot";
+import { cachedGet, cachedGetMeta, snapshotKey } from "../offline/snapshot";
 import {
   createGameSession,
   type GameSession,
 } from "../session/gameSession";
+import { getDeviceId } from "../device";
+import { lockFrom, takeOver, type LockAnswer } from "../session/lock";
 import { getRuntime } from "../session/runtime";
 import { useSyncStatus, type SyncStatus } from "../session/useSyncStatus";
 
@@ -298,11 +300,19 @@ export function SyncStrip({
   status,
   drained,
   onResume,
+  canRelease = false,
+  onTakeOver,
 }: {
   status: SyncStatus;
   drained: boolean;
   onResume: () => void;
+  /** Staff: offer "Spiel übernehmen" for a game another device holds. */
+  canRelease?: boolean;
+  onTakeOver?: () => Promise<void>;
 }) {
+  const [confirming, setConfirming] = useState(false);
+  const [takingOver, setTakingOver] = useState(false);
+  const [takeOverError, setTakeOverError] = useState<string | null>(null);
   const waiting =
     status.pending === 1
       ? "1 Eintrag noch nicht übertragen"
@@ -314,15 +324,75 @@ export function SyncStrip({
           {status.paused === "device"
             ? "Nur lesen – das Spiel läuft auf einem anderen Gerät."
             : "Schreiben gesperrt – bitte neu anmelden."}
-          {status.paused === "device" ? (
+          {status.paused === "device" && confirming ? (
+            <span className="syncstrip-sub">
+              Das andere Gerät kann danach nicht mehr schreiben. Nur
+              übernehmen, wenn es ausgefallen ist.
+            </span>
+          ) : status.paused === "device" && !canRelease ? (
             <span className="syncstrip-sub">
               Die Turnierleitung kann die Gerätesperre aufheben.
             </span>
           ) : null}
+          {takeOverError === null ? null : (
+            <span className="syncstrip-sub" role="alert">
+              {takeOverError}
+            </span>
+          )}
         </p>
-        <button className="syncstrip-btn" onClick={onResume} type="button">
-          Erneut prüfen
-        </button>
+        {status.paused === "device" && canRelease && onTakeOver !== undefined ? (
+          confirming ? (
+            <span className="syncstrip-actions">
+              <button
+                className="syncstrip-btn"
+                disabled={takingOver}
+                onClick={() => setConfirming(false)}
+                type="button"
+              >
+                Abbrechen
+              </button>
+              <button
+                className="syncstrip-btn syncstrip-btn-strong"
+                disabled={takingOver}
+                onClick={() => {
+                  setTakingOver(true);
+                  setTakeOverError(null);
+                  onTakeOver()
+                    .then(() => setConfirming(false))
+                    .catch((failure: unknown) =>
+                      setTakeOverError(
+                        errorMessage(
+                          failure,
+                          "Übernehmen hat nicht geklappt. Bitte erneut versuchen.",
+                        ),
+                      ),
+                    )
+                    .finally(() => setTakingOver(false));
+                }}
+                type="button"
+              >
+                {takingOver ? "Übernehmen …" : "Übernehmen"}
+              </button>
+            </span>
+          ) : (
+            <span className="syncstrip-actions">
+              <button className="syncstrip-btn" onClick={onResume} type="button">
+                Erneut prüfen
+              </button>
+              <button
+                className="syncstrip-btn"
+                onClick={() => setConfirming(true)}
+                type="button"
+              >
+                Spiel übernehmen
+              </button>
+            </span>
+          )
+        ) : (
+          <button className="syncstrip-btn" onClick={onResume} type="button">
+            Erneut prüfen
+          </button>
+        )}
       </div>
     );
   }
@@ -453,6 +523,10 @@ export default function TrackingScreen({
   // or the session expired). Read-only with the reason, not a silent failure.
   const readOnly = status.paused === "device" || status.paused === "auth";
   const stopReason = pauseReason(status.paused);
+  /** Staff may lift another device's lock ("Spiel übernehmen"). */
+  const [canRelease, setCanRelease] = useState(false);
+
+
   /**
    * "Alles gesendet" for a moment after the queue drained: the pending count
    * is compared while rendering (React's "adjust state on a changed input"
@@ -517,10 +591,25 @@ export default function TrackingScreen({
     // Read once, long before the half-time: the setup holds the opening
     // possession, which decides who starts the second half. A failed read
     // stays `null` and the half-time falls back to switching the ball.
-    setupLoad.current = cachedGet<GameSetup>(
+    // The same read names this device, so a fresh answer also says whether
+    // another device holds the game: read-only on open, not on the first
+    // write. A stored (offline) answer never decides the lock.
+    const loaded = cachedGetMeta<GameSetup & LockAnswer>(
       snapshotKey.setup(game.id),
       `/api/game/${game.id}/setup`,
+      { deviceId: getDeviceId() },
     ).catch(() => null);
+    setupLoad.current = loaded.then((answer) => answer?.value ?? null);
+    void loaded.then((answer) => {
+      const lock = answer?.updatedAt === null ? lockFrom(answer.value) : null;
+      if (lock === null) {
+        return;
+      }
+      setCanRelease(lock.canRelease);
+      if (lock.lockedElsewhere) {
+        getRuntime().sync.pause("device", game.id);
+      }
+    });
   }, [game.id]);
 
   /**
@@ -940,8 +1029,13 @@ export default function TrackingScreen({
       <SyncDetails gameId={game.id} status={status} withReason={false} />
       <SnapshotHint updatedAt={staleSince} />
       <SyncStrip
+        canRelease={canRelease}
         drained={drained}
         onResume={() => void status.resume()}
+        onTakeOver={async () => {
+          await takeOver(game.id);
+          await status.resume();
+        }}
         status={status}
       />
       <ScoreHeader

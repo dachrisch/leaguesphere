@@ -521,7 +521,20 @@ class GameSetupCreateOrUpdateView(RetrieveUpdateAPIView):
         if game_setup is None:
             return Response(data={}, status=HTTPStatus.OK)
         serializer = GameSetupSerializer(game_setup)
-        return Response(serializer.data, status=HTTPStatus.OK)
+        data = dict(serializer.data)
+        device = _requested_device(request, {})
+        if device:
+            # A v2 device learns on open that another device holds the game,
+            # not on its first write. The stored id stays write-only, and the
+            # v1 client (no device header) keeps its body unchanged.
+            data["locked_elsewhere"] = (
+                _device_conflict(game_setup.device_id, device) is not None
+            )
+            # Whether this user may lift the lock (``DELETE .../device``):
+            # the screen only offers "Spiel übernehmen" then; the endpoint
+            # keeps enforcing it.
+            data["can_release_lock"] = bool(request.user.is_staff)
+        return Response(data, status=HTTPStatus.OK)
 
     def update(self, request, *args, **kwargs):
         pk = kwargs.get("pk")

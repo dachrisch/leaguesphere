@@ -122,6 +122,16 @@ vorläufig · …** while sending, and **✓ Alles gesendet** for a moment after
 queue drained. The bar's chip is the coloured dot alone there. A log row that
 is still queued on the device carries a **wartet** tag.
 
+The device lock is read **when a game opens**: the tracking screen's setup
+read names this device (`X-Scorecard-Device`), and for such a request
+`GET /api/game/<id>/setup` adds `locked_elsewhere` (another device holds the
+game) and `can_release_lock` (the user is staff). A fresh answer with
+`locked_elsewhere` pauses the game's queue as `device` right away; a stored
+(offline) answer never decides it. Staff get **Spiel übernehmen** in the strip:
+after a confirmation it releases the lock (`DELETE /api/game/<id>/device`),
+claims the game for this device (`PUT …/setup` with `device_id`) and resumes the
+queue. Without the device header the setup body is unchanged (old app).
+
 What the backend had to grow (all additive):
 
 - `GET /api/game/<id>/roster` — jersey + surname per side, `[]` for a bracket
