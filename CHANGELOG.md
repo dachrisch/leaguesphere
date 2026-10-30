@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.2.8](https://github.com/dachrisch/leaguesphere/compare/v5.2.7...v5.2.8) (2026-10-30)
+
+
+### Bug Fixes
+
+* **deps:** update dependency fake-indexeddb to v6.2.7 ([#2180](https://github.com/dachrisch/leaguesphere/issues/2180)) ([7d5e1f3](https://github.com/dachrisch/leaguesphere/commit/7d5e1f331487e9a0f4612160435ef0d13d1c6f0a))
+
 ## [5.2.7](https://github.com/dachrisch/leaguesphere/compare/v5.2.6...v5.2.7) (2026-10-30)
 
 
