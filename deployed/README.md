@@ -174,15 +174,18 @@ fails inside one container instead of pushing every other container's hot pages 
 
 | Environment | App | Database | Workers |
 |---|---|---|---|
-| production (`docker-compose.yaml`) | 1g | 512m | `-w 6` |
+| production (`docker-compose.yaml`) | 1.5g (+0.5g swap) | 512m | `-w 4 --max-requests 500` |
 | staging (`docker-compose.staging.yaml`) | 512m | 512m | `-w 1` |
 | demo (`docker-compose.demo.yaml`) | 512m | 512m | `-w 1` |
 
-Only production runs the full worker pool: each gunicorn worker costs ~134 MiB, and
-staging/demo are dev environments with ~no traffic (the demo alone was measured burning
-50 % of a host core at `-w 6`). Adding a limit requires recreating the container —
-Watchtower's blue-green strategy handles that for the app, `docker compose up -d` for the
-databases.
+Only production runs a real worker pool: staging/demo are dev environments with ~no
+traffic (the demo alone was measured burning 50 % of a host core at `-w 6`). A gunicorn
+worker costs **~130 MiB cold but ~300 MiB warm** — the 2026-10-29 figure of 134 MiB was
+measured on freshly restarted workers, and 26 h later the 6-worker container held 854 MiB
+resident + 963 MiB in swap against a 1g cap. Production therefore runs 4 workers
+(8 concurrent requests, well above the ~5 req/s peak) and recycles each one after ~500
+requests. Adding a limit requires recreating the container — Watchtower's blue-green
+strategy handles that for the app, `docker compose up -d` for the databases.
 
 ## Security Notes
 

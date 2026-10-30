@@ -4,6 +4,13 @@ services:
     image: leaguesphere/frontend:latest
     env_file: .env
     container_name: ${COMPOSE_PROJECT_NAME}.www
+    # The frontend image ships a 10s healthcheck; override only the interval
+    # (Docker keeps the image's test and merges per field). Every check is a
+    # `docker exec` on a host that runs ~2.8/s of them, which contributes to
+    # its queue-bound load; `retries` already gives a multi-minute detection
+    # window. See servyy-container history/2026-10-30_load-alert-tuning.md.
+    healthcheck:
+      interval: 30s
     volumes:
       # User uploads: served directly by nginx at /media/ (see nginx.conf).
       # Read-only here; the app container owns the write side.
@@ -52,13 +59,27 @@ services:
   app:
     image: leaguesphere/backend:latest
     container_name: ${COMPOSE_PROJECT_NAME}.app
-    # Production keeps 6 workers: this is the real site.
-    command: gunicorn -b 0.0.0.0:8000 -w 6 --worker-class gthread --threads 2 league_manager.wsgi
-    # Ceiling, not a target: 454M resident + 334M in swap on 2026-10-29 with no
-    # limit at all, so the kernel had been evicting this container's hot pages
-    # whenever the host was under pressure. 1g is ~1.5x the measured working set —
-    # enough headroom that a leak fails here instead of degrading the host.
-    mem_limit: 1g
+    # Production keeps a real worker pool (this is the real site) but 4, not 6:
+    # a worker is ~310 MiB once warm (see the ceiling comment below), so 6 of
+    # them need ~1.9 GiB and did not fit the 1g cap. 4 x 2 threads = 8
+    # concurrent requests, against a measured peak of ~5 req/s (the daily
+    # snapshot-bot burst) and a total container CPU draw of ~0.15 cores.
+    #
+    # --max-requests recycles a worker after ~500 requests: workers grow from
+    # ~130 MiB cold to ~300 MiB over a day (844 MiB -> 1.8 GiB container total
+    # in 26 h), so without recycling the container ends up pinned against its
+    # cap, permanently reclaiming (cgroup memory.events max = 5559 on
+    # 2026-10-30) and pushing ~940 MiB of live heap into swap.
+    command: gunicorn -b 0.0.0.0:8000 -w 4 --worker-class gthread --threads 2 --max-requests 500 --max-requests-jitter 100 league_manager.wsgi
+    # Ceiling, not a target. The 2026-10-29 measurement (454M resident + 334M
+    # swapped, ~130 MiB/worker) was taken on freshly restarted workers; once
+    # warm the 6-worker container sat at 854M RAM + 963M swap against a 1g
+    # cap and spent the day in direct reclaim. 1.5g holds 4 warm workers
+    # (~1.25 GiB) with headroom, and memswap_limit bounds the total at 2g so
+    # the daemon's "2x memory" default cannot silently reserve 3g of this
+    # 7.6 GiB host.
+    mem_limit: 1500m
+    memswap_limit: 2g
     labels:
       - traefik.enable=false
       # portainer team
