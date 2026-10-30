@@ -59,6 +59,40 @@ describe("useWakeLock", () => {
     expect(request).toHaveBeenCalledTimes(2);
   });
 
+  it("releases a lock granted after the screen already closed", async () => {
+    let grant: (sentinel: { release: ReturnType<typeof vi.fn> }) => void = () =>
+      undefined;
+    const sentinel = { release: vi.fn(async () => undefined) };
+    const request = vi.fn(
+      () =>
+        new Promise<typeof sentinel>((resolve) => {
+          grant = resolve;
+        }),
+    );
+    vi.stubGlobal("navigator", { ...navigator, wakeLock: { request } });
+
+    const view = render(<Holder active />);
+    view.unmount();
+    await act(async () => {
+      grant(sentinel);
+    });
+
+    expect(sentinel.release).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not ask again while the page is hidden", async () => {
+    const { request } = stubWakeLock();
+    render(<Holder active />);
+    await act(async () => undefined);
+
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
   it("tolerates a browser without the API or a refused request", async () => {
     vi.stubGlobal("navigator", {
       ...navigator,
@@ -81,6 +115,17 @@ describe("confirmTap", () => {
     confirmTap();
 
     expect(vibrate).toHaveBeenCalledWith(15);
+  });
+
+  it("ignores a WebView that throws instead of vibrating", () => {
+    vi.stubGlobal("navigator", {
+      ...navigator,
+      vibrate: () => {
+        throw new Error("not allowed");
+      },
+    });
+
+    expect(() => confirmTap()).not.toThrow();
   });
 
   it("does nothing on a device without vibration", () => {
