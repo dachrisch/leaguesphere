@@ -3977,7 +3977,10 @@ button.syncbadge {
     flex: 1 1 auto;
     grid-template-columns: minmax(340px, 400px) minmax(0, 1fr);
     grid-template-rows: repeat(4, auto) minmax(0, 1fr) auto;
-    gap: var(--space-4) var(--space-5);
+    /* Rows 3–4 hold the optional notes and are usually empty; a row gap
+       would still open around them, so the controls space themselves. */
+    --track-row-gap: var(--space-4);
+    gap: 0 var(--space-5);
     min-height: 0;
     padding: var(--space-5) var(--space-6);
     overflow: hidden;
@@ -3991,10 +3994,11 @@ button.syncbadge {
   .tracking .actions,
   .tracking .tracking-end {
     grid-column: 2;
-    margin: 0;
+    margin: var(--track-row-gap) 0 0;
   }
 
   .tracking .board {
+    margin-top: 0;
     padding: var(--space-3);
   }
 
@@ -4144,7 +4148,8 @@ button.syncbadge {
 @media (min-width: 1280px) {
   .tracking-layout {
     grid-template-columns: 300px minmax(0, 1fr) 380px;
-    gap: var(--space-6);
+    --track-row-gap: var(--space-6);
+    column-gap: var(--space-6);
     padding: var(--space-6) 32px;
   }
 
@@ -4264,7 +4269,8 @@ button.syncbadge {
    page scroll: the growing grid yields first, then these dimensions compact. */
 @media (min-width: 900px) and (max-height: 700px) {
   .tracking-layout {
-    gap: var(--space-3) var(--space-5);
+    --track-row-gap: var(--space-3);
+    column-gap: var(--space-5);
     padding: var(--space-3) var(--space-5);
   }
 
