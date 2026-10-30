@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -68,59 +68,54 @@ describe("TouchdownSheet", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("keeps save and the conversion disabled until a jersey is picked", async () => {
+  it("keeps save disabled until a jersey is picked", async () => {
     renderSheet();
 
     expect(saveButton()).toHaveTextContent("Spieler wählen");
     expect(saveButton()).toBeDisabled();
-    expect(screen.getByRole("button", { name: "+1" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "+0" })).toBeDisabled();
 
     await pick(23);
 
     expect(saveButton()).toHaveTextContent("Speichern");
     expect(saveButton()).toBeEnabled();
-    expect(screen.getByRole("button", { name: "+1" })).toBeEnabled();
   });
 
-  it("sends the touchdown with a one-point conversion by default", async () => {
+  it("asks nothing about the extra point: the try has not been played yet", () => {
+    renderSheet();
+
+    expect(screen.queryByRole("group", { name: "Extrapunkt" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "+1" })).toBeNull();
+  });
+
+  it("sends the touchdown row alone", async () => {
     const { onClose, onSubmit } = renderSheet();
 
     await pick(23);
     await userEvent.setup().click(saveButton());
 
-    expect(onSubmit).toHaveBeenCalledWith([
-      { name: "Touchdown", player: 23 },
-      { name: "1-Extra-Punkt", player: 23 },
-    ]);
+    expect(onSubmit).toHaveBeenCalledWith([{ name: "Touchdown", player: 23 }]);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("sends two points with the touchdown's jersey", async () => {
-    const { onSubmit } = renderSheet();
+  it("offers this game's scorers as one-tap chips", async () => {
+    const onSubmit = vi.fn<Submit>(async () => undefined);
+    render(
+      <TouchdownSheet
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+        recent={[23]}
+        roster={ROSTER}
+        side="home"
+        teamName="Ravens"
+      />,
+    );
     const user = userEvent.setup();
 
-    await pick(23);
-    await user.click(screen.getByRole("button", { name: "+2" }));
+    const chips = screen.getByRole("group", { name: "Zuletzt" });
+    await user.click(within(chips).getByRole("button", { name: "#23 Schulz" }));
     await user.click(saveButton());
 
-    expect(onSubmit).toHaveBeenCalledWith([
-      { name: "Touchdown", player: 23 },
-      { name: "2-Extra-Punkte", player: 23 },
-    ]);
-  });
-
-  it("sends only the touchdown row for no conversion", async () => {
-    const { onSubmit } = renderSheet();
-    const user = userEvent.setup();
-
-    await pick(7);
-    await user.click(screen.getByRole("button", { name: "+0" }));
-    await user.click(saveButton());
-
-    expect(onSubmit).toHaveBeenCalledWith([
-      { name: "Touchdown", player: 7 },
-    ]);
+    expect(onSubmit).toHaveBeenCalledWith([{ name: "Touchdown", player: 23 }]);
   });
 
   it("takes a typed number when the roster is empty", async () => {
@@ -133,7 +128,6 @@ describe("TouchdownSheet", () => {
 
     expect(onSubmit).toHaveBeenCalledWith([
       { name: "Touchdown", player: 51 },
-      { name: "1-Extra-Punkt", player: 51 },
     ]);
   });
 
@@ -167,7 +161,6 @@ describe("TouchdownSheet", () => {
 
     expect(saveButton()).toBeDisabled();
     expect(saveButton()).toHaveTextContent("Speichern …");
-    expect(screen.getByRole("button", { name: "+1" })).toBeDisabled();
     expect(
       screen.getByRole("button", { name: "Trikotnummer 7, Meier" }),
     ).toBeDisabled();
@@ -294,5 +287,87 @@ describe("TouchdownSheet", () => {
     expect(screen.getByText("Kader")).toBeInTheDocument();
     expect(screen.queryByText("Bestätigter Kader")).not.toBeInTheDocument();
     expect(screen.queryByText("Nur bestätigte Nummern.")).not.toBeInTheDocument();
+  });
+});
+
+/** A tackle-sized roster: 30 home players, #1–#30. */
+const BIG: RosterPlayer[] = Array.from({ length: 30 }, (_, index) => ({
+  side: "home" as const,
+  jersey: index + 1,
+  name: `Spieler${index + 1}`,
+}));
+
+describe("TouchdownSheet with a large roster", () => {
+  async function key(digit: string): Promise<void> {
+    await userEvent
+      .setup()
+      .click(
+        within(screen.getByRole("group", { name: "Ziffern" })).getByRole("button", {
+          name: digit,
+        }),
+      );
+  }
+
+  it("swaps the tile grid for a keypad above 24 players", () => {
+    renderSheet({ roster: BIG });
+
+    expect(screen.getByRole("group", { name: "Ziffern" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Trikotnummer 7,/ })).toBeNull();
+  });
+
+  it("keeps the grid for a flag-sized roster", () => {
+    renderSheet();
+
+    expect(screen.queryByRole("group", { name: "Ziffern" })).toBeNull();
+  });
+
+  it("confirms the typed number with the roster name and saves it", async () => {
+    const { onSubmit } = renderSheet({ roster: BIG });
+
+    await key("2");
+    await key("3");
+
+    expect(screen.getByRole("status", { name: "Trikotnummer" })).toHaveTextContent(
+      "23Spieler23",
+    );
+    await userEvent.setup().click(saveButton());
+    expect(onSubmit).toHaveBeenCalledWith([{ name: "Touchdown", player: 23 }]);
+  });
+
+  it("deletes the last digit", async () => {
+    renderSheet({ roster: BIG });
+
+    await key("2");
+    await key("3");
+    await key("Löschen");
+
+    expect(screen.getByRole("status", { name: "Trikotnummer" })).toHaveTextContent(
+      "2Spieler2",
+    );
+  });
+
+  it("accepts a number outside the roster without a passcheck, marked", async () => {
+    const { onSubmit } = renderSheet({ roster: BIG });
+
+    await key("8");
+    await key("8");
+
+    expect(screen.getByRole("status", { name: "Trikotnummer" })).toHaveTextContent(
+      "nicht im Kader",
+    );
+    await userEvent.setup().click(saveButton());
+    expect(onSubmit).toHaveBeenCalledWith([{ name: "Touchdown", player: 88 }]);
+  });
+
+  it("refuses a number outside a checked roster", async () => {
+    renderSheet({ roster: BIG, passcheck: true });
+
+    await key("8");
+    await key("8");
+
+    expect(screen.getByRole("status", { name: "Trikotnummer" })).toHaveTextContent(
+      "nicht im bestätigten Kader",
+    );
+    expect(saveButton()).toBeDisabled();
   });
 });

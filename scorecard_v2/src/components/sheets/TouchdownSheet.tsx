@@ -1,49 +1,18 @@
 import { useRef, useState } from "react";
 
 import type { GameLogEventInput, RosterPlayer } from "../../api/types";
-import JerseyPicker from "../JerseyPicker";
+import JerseyPicker, { jerseyAllowed, jerseyOptions } from "../JerseyPicker";
 import { errorMessage } from "./errors";
 import Sheet from "./Sheet";
 
-/** Conversion choice: 1, 2 or none (`+0`). */
-export type Conversion = 0 | 1 | 2;
-
 /**
- * Events of one touchdown submission.
- *
- * The server applies a scoring value only when `player` is set, so the
- * conversion repeats the touchdown's jersey — a `+1` row without a number
- * would silently score 0. `+0` sends the touchdown row alone: there is no
- * "missed conversion" event in the log.
+ * Events of one touchdown submission: the touchdown row alone. The extra
+ * point is a separate entry once the try has been played (the tracking
+ * screen asks for it), so the sheet never records a point that may not
+ * happen.
  */
-export function touchdownEvents(
-  jersey: number,
-  conversion: Conversion,
-): GameLogEventInput[] {
-  const events: GameLogEventInput[] = [{ name: "Touchdown", player: jersey }];
-  if (conversion === 1) {
-    events.push({ name: "1-Extra-Punkt", player: jersey });
-  } else if (conversion === 2) {
-    events.push({ name: "2-Extra-Punkte", player: jersey });
-  }
-  return events;
-}
-
-/** The sentence above the save button: what the two-row payload will be. */
-export function touchdownSummary(
-  jersey: number | null,
-  conversion: Conversion,
-): string {
-  if (jersey === null) {
-    return "Spieler wählen, dann speichern.";
-  }
-  const suffix =
-    conversion === 1
-      ? "1 Extrapunkt"
-      : conversion === 2
-        ? "2 Extrapunkte"
-        : "ohne Extrapunkt";
-  return `Touchdown #${jersey} · ${suffix}`;
+export function touchdownEvents(jersey: number): GameLogEventInput[] {
+  return [{ name: "Touchdown", player: jersey }];
 }
 
 interface TouchdownSheetProps {
@@ -59,6 +28,8 @@ interface TouchdownSheetProps {
   roster: RosterPlayer[] | null;
   /** Only a fully checked game may call its roster "bestätigt". */
   passcheck?: boolean;
+  /** Jerseys that already scored or moved the chains this game, newest first. */
+  recent?: number[];
   /**
    * Writes the events and resolves once the server answered with the new log.
    * Rejects on failure — the sheet then stays open and shows the message.
@@ -69,22 +40,19 @@ interface TouchdownSheetProps {
 }
 
 /**
- * Touchdown entry: jersey from the possession team's roster, then the
- * conversion.
- *
- * The conversion defaults to one point (`1-Extra-Punkt`) like the old
- * scorecard; `+0` is explicit because the log has no "conversion missed" row.
+ * Touchdown entry: the scorer's jersey from the possession team's roster.
+ * The extra point is not asked here; it is entered after the try.
  */
 export default function TouchdownSheet({
   teamName,
   side,
   roster,
   passcheck = false,
+  recent = [],
   onSubmit,
   onClose,
 }: TouchdownSheetProps) {
   const [jersey, setJersey] = useState<number | null>(null);
-  const [conversion, setConversion] = useState<Conversion>(1);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Ref, not state: a synchronous double tap both see `posting === false`
@@ -94,7 +62,12 @@ export default function TouchdownSheet({
   const players =
     roster === null ? [] : roster.filter((player) => player.side === side);
   const loading = roster === null;
-  const ready = jersey !== null && !posting && !loading;
+  const ready =
+    jerseyAllowed(players, jersey, passcheck) && !posting && !loading;
+  const names = new Map(
+    jerseyOptions(players).map((option) => [option.jersey, option.name]),
+  );
+  const chips = recent.filter((number) => !passcheck || names.has(number)).slice(0, 4);
 
   const save = async (): Promise<void> => {
     if (saving.current || !ready || jersey === null) {
@@ -104,7 +77,7 @@ export default function TouchdownSheet({
     setPosting(true);
     setError(null);
     try {
-      await onSubmit(touchdownEvents(jersey, conversion));
+      await onSubmit(touchdownEvents(jersey));
       onClose();
     } catch (failure) {
       saving.current = false;
@@ -140,6 +113,27 @@ export default function TouchdownSheet({
         {passcheck ? " · bestätigter Kader" : ""}
       </p>
 
+      {chips.length === 0 || loading ? null : (
+        <div aria-label="Zuletzt" className="recentchips" role="group">
+          {chips.map((number) => {
+            const name = names.get(number)?.trim() || null;
+            return (
+              <button
+                aria-label={name === null ? `#${number}` : `#${number} ${name}`}
+                aria-pressed={jersey === number}
+                className={jersey === number ? "recentchip sel" : "recentchip"}
+                disabled={posting}
+                key={number}
+                onClick={() => setJersey(number)}
+                type="button"
+              >
+                #{number}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <h3 className="sheetsection">
         {passcheck ? "Bestätigter Kader" : "Kader"}
       </h3>
@@ -152,6 +146,7 @@ export default function TouchdownSheet({
           disabled={posting}
           onChange={setJersey}
           players={players}
+          strict={passcheck}
           value={jersey}
         />
       )}
@@ -159,26 +154,6 @@ export default function TouchdownSheet({
         <p className="sheetnote">Nur bestätigte Nummern.</p>
       ) : null}
 
-      <h3 className="sheetsection">Extrapunkt</h3>
-      <div aria-label="Extrapunkt" className="patrow" role="group">
-        {([1, 2, 0] as const).map((value) => (
-          <button
-            aria-pressed={conversion === value}
-            className={conversion === value ? "pat sel" : "pat"}
-            disabled={jersey === null || posting}
-            key={value}
-            onClick={() => setConversion(value)}
-            title={
-              value === 0 ? "Ohne Extrapunkt" : `${value} Extrapunkt${value === 2 ? "e" : ""}`
-            }
-            type="button"
-          >
-            +{value}
-          </button>
-        ))}
-      </div>
-
-      <p className="sheetnote">{touchdownSummary(jersey, conversion)}</p>
     </Sheet>
   );
 }

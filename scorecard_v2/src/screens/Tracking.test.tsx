@@ -1003,7 +1003,6 @@ describe("Tracking touchdown entry", () => {
     expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
       events: [
         { type: "score", code: "touchdown", side: "home", player: 23, period: 1 },
-        { type: "score", code: "pat1", side: "home", player: 23, period: 1 },
       ],
       client_id: expect.any(String),
     });
@@ -1013,9 +1012,10 @@ describe("Tracking touchdown entry", () => {
     );
     const board = screen.getByLabelText("Spielstand");
     expect(within(board).getByText("7")).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Touchdown gespeichert · #23",
-    );
+    // The saved toast gives way to the open extra point.
+    expect(
+      screen.getByRole("group", { name: "Extrapunkt Ravens" }),
+    ).toHaveTextContent("#23");
   });
 
   it("keeps the sheet open with the server detail when the write fails", async () => {
@@ -1259,6 +1259,93 @@ describe("Tracking cockpit", () => {
   });
 });
 
+describe("Tracking extra point after the try", () => {
+  async function scoreTouchdown(user: ReturnType<typeof userEvent.setup>) {
+    await openSheet(user, /^Touchdown Ravens$/);
+    await pickJersey(user, 23);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    return screen.findByRole("group", { name: "Extrapunkt Ravens" });
+  }
+
+  it("asks for the extra point once the touchdown is saved, nothing pre-selected", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    const pat = await scoreTouchdown(user);
+
+    for (const name of ["+1", "+2", "nicht verwandelt"]) {
+      expect(within(pat).getByRole("button", { name })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+    }
+  });
+
+  it("credits the extra point to the scoring team with the scorer's jersey, without a flip", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    const pat = await scoreTouchdown(user);
+    // The touchdown handed the ball to Wolves.
+    await waitFor(() => expect(sentPossessions()).toEqual(["away"]));
+    await user.click(within(pat).getByRole("button", { name: "+1" }));
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [{ type: "score", code: "pat1", side: "home", player: 23, period: 1 }],
+        client_id: expect.any(String),
+      }),
+    );
+    expect(sentPossessions()).toEqual(["away"]);
+    await waitFor(() =>
+      expect(screen.queryByRole("group", { name: "Extrapunkt Ravens" })).toBeNull(),
+    );
+  });
+
+  it("writes nothing for a missed try", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    const pat = await scoreTouchdown(user);
+    await waitFor(() => expect(sentPossessions()).toEqual(["away"]));
+    const writes = apiPostMock.mock.calls.length;
+    await user.click(within(pat).getByRole("button", { name: "nicht verwandelt" }));
+
+    expect(screen.queryByRole("group", { name: "Extrapunkt Ravens" })).toBeNull();
+    expect(apiPostMock.mock.calls.length).toBe(writes);
+  });
+
+  it("holds the end of the game while an extra point is open", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    const onFinalize = vi.fn();
+    render(
+      <TrackingScreen
+        game={GAME}
+        initialLog={makeLog({ inPossession: "Ravens" })}
+        onFinalize={onFinalize}
+      />,
+    );
+    const user = userEvent.setup();
+
+    const pat = await scoreTouchdown(user);
+    await user.click(screen.getByRole("button", { name: "Spiel beenden" }));
+
+    expect(onFinalize).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Extrapunkt");
+
+    await user.click(within(pat).getByRole("button", { name: "nicht verwandelt" }));
+    await user.click(screen.getByRole("button", { name: "Spiel beenden" }));
+    expect(onFinalize).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("Tracking on the sideline", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -1377,7 +1464,7 @@ describe("Tracking write guard", () => {
 });
 
 describe("Tracking entry lifecycle", () => {
-  it("returns focus to the touchdown tile after a successful save", async () => {
+  it("moves focus to the extra point once the touchdown is saved", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
@@ -1387,12 +1474,11 @@ describe("Tracking entry lifecycle", () => {
     await pickJersey(user, 23);
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
-    // The touchdown hands the ball to Wolves, so the tile the official
-    // returns to is Wolves' — same element, new label.
+    // The touchdown tile gives way to the open try; the official lands on
+    // its first answer instead of on a button that no longer exists.
+    const pat = await screen.findByRole("group", { name: "Extrapunkt Ravens" });
     await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: /^Touchdown Wolves$/ }),
-      ).toHaveFocus(),
+      expect(within(pat).getByRole("button", { name: "+1" })).toHaveFocus(),
     );
   });
 
@@ -1405,6 +1491,13 @@ describe("Tracking entry lifecycle", () => {
     await openSheet(user, /^Touchdown Ravens$/);
     await pickJersey(user, 23);
     await user.click(screen.getByRole("button", { name: "Speichern" }));
+    // The try is played: no conversion, so the touchdown tile comes back.
+    await user.click(
+      within(await screen.findByRole("group", { name: /^Extrapunkt/ })).getByRole(
+        "button",
+        { name: "nicht verwandelt" },
+      ),
+    );
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
@@ -1427,7 +1520,6 @@ describe("Tracking entry lifecycle", () => {
     expect(sentWrites()[1]).toEqual({
       events: [
         { type: "score", code: "touchdown", side: "away", player: 11, period: 1 },
-        { type: "score", code: "pat1", side: "away", player: 11, period: 1 },
       ],
       client_id: expect.any(String),
     });
@@ -1447,7 +1539,6 @@ describe("Tracking entry lifecycle", () => {
     expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
       events: [
         { type: "score", code: "touchdown", side: "home", player: 51, period: 1 },
-        { type: "score", code: "pat1", side: "home", player: 51, period: 1 },
       ],
       client_id: expect.any(String),
     });
@@ -1475,7 +1566,16 @@ describe("Possession flip rule", () => {
     "Safety (+2)",
     "Overtime",
   ];
-  const KEEPS = ["Strafe", "Spielzeit", "Auszeit", "First Down"];
+  // An extra point is written after the touchdown that already handed the
+  // ball over; on its own it must not flip it back.
+  const KEEPS = [
+    "Strafe",
+    "Spielzeit",
+    "Auszeit",
+    "First Down",
+    "1-Extra-Punkt",
+    "2-Extra-Punkte",
+  ];
 
   it.each(FLIPS)("hands the ball over after %s", (name) => {
     expect(flipsPossession([{ name }])).toBe(true);
@@ -1533,6 +1633,13 @@ describe("Tracking possession flip", () => {
     await openSheet(user, /^Touchdown Ravens$/);
     await pickJersey(user, 23);
     await user.click(screen.getByRole("button", { name: "Speichern" }));
+    // The try is played: no conversion, so the touchdown tile comes back.
+    await user.click(
+      within(await screen.findByRole("group", { name: /^Extrapunkt/ })).getByRole(
+        "button",
+        { name: "nicht verwandelt" },
+      ),
+    );
 
     expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
       events: [{ type: "possession", code: "away", side: "away" }],
@@ -1647,6 +1754,13 @@ describe("Tracking possession flip", () => {
     await openSheet(user, /^Touchdown Ravens$/);
     await pickJersey(user, 23);
     await user.click(screen.getByRole("button", { name: "Speichern" }));
+    // The try is played: no conversion, so the touchdown tile comes back.
+    await user.click(
+      within(await screen.findByRole("group", { name: /^Extrapunkt/ })).getByRole(
+        "button",
+        { name: "nicht verwandelt" },
+      ),
+    );
 
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent(
@@ -1701,6 +1815,13 @@ describe("Tracking possession flip", () => {
     await openSheet(user, /^Touchdown Ravens$/);
     await pickJersey(user, 23);
     await user.click(screen.getByRole("button", { name: "Speichern" }));
+    // The try is played: no conversion, so the touchdown tile comes back.
+    await user.click(
+      within(await screen.findByRole("group", { name: /^Extrapunkt/ })).getByRole(
+        "button",
+        { name: "nicht verwandelt" },
+      ),
+    );
 
     await waitFor(() =>
       expect(

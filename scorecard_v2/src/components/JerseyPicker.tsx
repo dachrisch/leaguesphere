@@ -34,6 +34,25 @@ export function jerseyDigits(value: string): string {
   return value.replace(/\D/g, "").slice(0, 2);
 }
 
+/**
+ * Above this many players the tile grid stops fitting a phone screen (a
+ * tackle roster runs to 45+), and typing the two digits the referee saw is
+ * faster than scrolling for the tile.
+ */
+export const KEYPAD_ABOVE = 24;
+
+/** Whether `jersey` may be saved: a checked roster only takes its own numbers. */
+export function jerseyAllowed(
+  players: RosterPlayer[],
+  jersey: number | null,
+  strict: boolean,
+): boolean {
+  if (jersey === null) {
+    return false;
+  }
+  return !strict || players.length === 0 || players.some((player) => player.jersey === jersey);
+}
+
 interface JerseyPickerProps {
   /** Roster of one side, already filtered by the caller. */
   players: RosterPlayer[];
@@ -42,11 +61,79 @@ interface JerseyPickerProps {
   disabled?: boolean;
   /** Group label for the grid and name of the fallback input. */
   label?: string;
+  /**
+   * The roster is a passed passcheck: the keypad refuses a number outside it
+   * (the grid only offers roster numbers anyway).
+   */
+  strict?: boolean;
+}
+
+const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "Löschen"];
+
+/** Two-digit entry for a large roster; the roster name confirms the number. */
+function JerseyKeypad({
+  options,
+  value,
+  onChange,
+  disabled,
+  label,
+  strict,
+}: {
+  options: JerseyOption[];
+  value: number | null;
+  onChange: (jersey: number | null) => void;
+  disabled: boolean;
+  label: string;
+  strict: boolean;
+}) {
+  const digits = value === null ? "" : String(value);
+  const match = options.find((option) => option.jersey === value) ?? null;
+  const press = (key: string): void => {
+    const next = key === "Löschen" ? digits.slice(0, -1) : jerseyDigits(digits + key);
+    onChange(next === "" ? null : Number(next));
+  };
+  let note: string | null = null;
+  let tone = "";
+  if (value !== null && match === null) {
+    note = strict ? "nicht im bestätigten Kader" : "nicht im Kader";
+    tone = strict ? " bad" : " warn";
+  }
+
+  return (
+    <div className="keypadwrap">
+      <p aria-label={label} className={`keypaddisp${tone}`} role="status">
+        <span className="keypadnum">{digits === "" ? "–" : digits}</span>
+        {match?.name?.trim() ? (
+          <span className="keypadname">{match.name.trim()}</span>
+        ) : null}
+        {note === null ? null : <span className="keypadnote">{note}</span>}
+      </p>
+      <div aria-label="Ziffern" className="keypad" role="group">
+        {KEYS.map((key, index) =>
+          key === "" ? (
+            <span aria-hidden="true" key={`gap${index}`} />
+          ) : (
+            <button
+              aria-label={key}
+              className="keypadkey"
+              disabled={disabled || (key === "Löschen" ? digits === "" : digits.length >= 2)}
+              key={key}
+              onClick={() => press(key)}
+              type="button"
+            >
+              {key === "Löschen" ? "⌫" : key}
+            </button>
+          ),
+        )}
+      </div>
+    </div>
+  );
 }
 
 /**
  * Jersey choice for the touchdown sheet: a grid of the possession team's
- * roster, or a plain number field when there is no roster to show.
+ * roster (a keypad above {@link KEYPAD_ABOVE} players), or a plain number
+ * field when there is no roster to show.
  *
  * The roster endpoint is the only source for the grid — the app never invents
  * numbers. A game whose passcheck never ran (or whose roster request failed)
@@ -59,9 +146,23 @@ export default function JerseyPicker({
   onChange,
   disabled = false,
   label = "Trikotnummer",
+  strict = false,
 }: JerseyPickerProps) {
   const inputId = useId();
   const options = jerseyOptions(players);
+
+  if (options.length > KEYPAD_ABOVE) {
+    return (
+      <JerseyKeypad
+        disabled={disabled}
+        label={label}
+        onChange={onChange}
+        options={options}
+        strict={strict}
+        value={value}
+      />
+    );
+  }
 
   if (options.length === 0) {
     return (

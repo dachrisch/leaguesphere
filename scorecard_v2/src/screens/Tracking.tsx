@@ -171,10 +171,18 @@ const KEEP_POSSESSION = new Set([
   "Spielzeit",
   "Auszeit",
   "First Down",
+  // Written after the try, once the touchdown already handed the ball over.
+  "1-Extra-Punkt",
+  "2-Extra-Punkte",
 ]);
 
 /** Whether a successful write hands the ball to the other team. */
 export function flipsPossession(events: GameLogEventInput[]): boolean {
+  // A touchdown hands the ball over even when an older client sent its
+  // conversion in the same submission.
+  if (events.some((event) => event.name === "Touchdown")) {
+    return true;
+  }
   return !events.some((event) => KEEP_POSSESSION.has(event.name));
 }
 
@@ -325,6 +333,19 @@ export default function TrackingScreen({
   /** The one-tap entry the toast can still undo or complete, if any. */
   const [quick, setQuick] = useState<SeriesMode | null>(null);
   const [quickError, setQuickError] = useState<string | null>(null);
+  /**
+   * The touchdown whose extra point is still open: asked once the try has
+   * been played, credited to the scoring team with the scorer's jersey.
+   */
+  const [pendingPat, setPendingPat] = useState<{
+    team: string;
+    jersey: number;
+  } | null>(null);
+  const [patBusy, setPatBusy] = useState(false);
+  /** The try's first answer: focus lands here when the touchdown tile gives way. */
+  const patFirst = useRef<HTMLButtonElement>(null);
+  const [patError, setPatError] = useState<string | null>(null);
+  const [finishBlocked, setFinishBlocked] = useState(false);
   /** The one-tap row a jersey sheet replaces once it saves. */
   const [replacing, setReplacing] = useState<LogRow | null>(null);
   const [confirmHalftime, setConfirmHalftime] = useState(false);
@@ -708,6 +729,82 @@ export default function TrackingScreen({
     setReplacing(null);
   };
 
+  /** The touchdown sheet's write; on success the extra point is asked next. */
+  const submitTouchdown = async (events: GameLogEventInput[]): Promise<void> => {
+    const team = possessionName;
+    await submit(events);
+    const jersey = events[0]?.player;
+    if (team !== null && typeof jersey === "number") {
+      setPendingPat({ team, jersey });
+      setPatError(null);
+      setFinishBlocked(false);
+    }
+  };
+
+  /** The try's result: +1/+2 writes the conversion, 0 closes the prompt. */
+  const answerPat = async (points: 0 | 1 | 2): Promise<void> => {
+    if (pendingPat === null || patBusy) {
+      return;
+    }
+    if (points === 0) {
+      setPendingPat(null);
+      setFinishBlocked(false);
+      return;
+    }
+    setPatBusy(true);
+    setPatError(null);
+    try {
+      await submit(
+        [
+          {
+            name: points === 1 ? "1-Extra-Punkt" : "2-Extra-Punkte",
+            player: pendingPat.jersey,
+          },
+        ],
+        pendingPat.team,
+      );
+      setPendingPat(null);
+      setFinishBlocked(false);
+    } catch (failure) {
+      setPatError(
+        errorMessage(
+          failure,
+          "Der Extrapunkt konnte nicht gespeichert werden. Bitte erneut versuchen.",
+        ),
+      );
+    } finally {
+      setPatBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (pendingPat !== null) {
+      patFirst.current?.focus();
+    }
+  }, [pendingPat]);
+
+  /** "Spiel beenden" waits for an open extra point instead of dropping it. */
+  const finish = (): void => {
+    if (pendingPat !== null) {
+      setFinishBlocked(true);
+      return;
+    }
+    onFinalize(log);
+  };
+
+  /** Recent jerseys of the side with the ball, newest first, for the chips. */
+  const recentJerseys: number[] = [];
+  for (const row of rows) {
+    if (
+      !row.isDeleted &&
+      row.player !== null &&
+      row.team === possessionName &&
+      !recentJerseys.includes(row.player)
+    ) {
+      recentJerseys.push(row.player);
+    }
+  }
+
   /** A sheet that completes a one-tap entry writes the new row, then undoes the old. */
   const submitSeries = async (events: GameLogEventInput[]): Promise<void> => {
     const previous = replacing;
@@ -839,7 +936,7 @@ export default function TrackingScreen({
           rows={rows}
           undoKey={undoKey}
         />
-        {confirmation === null ? null : (
+        {confirmation === null || pendingPat !== null ? null : (
           <div aria-label="Gespeichert" className="trackok" role="status">
             <span className="trackok-text">{confirmation}</span>
             {quick === null ? null : (
@@ -875,17 +972,58 @@ export default function TrackingScreen({
         aria-label="Einträge"
         className={possessionSide === null ? "actions" : `actions ${possessionSide}`}
       >
-        <button
-          className={
-            possessionSide === null ? "tdbtn" : `tdbtn ${possessionSide}`
-          }
-          disabled={composerDisabled}
-          onClick={() => openSheet({ kind: "touchdown" })}
-          type="button"
-        >
-          <Football className="tdbtn-icon" size={26} />
-          <span className="tdbtn-label">{touchdownLabel}</span>
-        </button>
+        {/* The try comes before any other score: while its result is open,
+            the extra point takes the touchdown button's place. */}
+        {pendingPat !== null ? (
+            <div
+              aria-label={`Extrapunkt ${pendingPat.team}`}
+              className="patbar"
+              role="group"
+            >
+              <p className="patbar-q">
+                Extrapunkt {pendingPat.team} · #{pendingPat.jersey} – Ergebnis des
+                Versuchs?
+              </p>
+              <div className="patbar-opts">
+                {(
+                  [
+                    [1, "+1"],
+                    [2, "+2"],
+                    [0, "nicht verwandelt"],
+                  ] as const
+                ).map(([points, label]) => (
+                  <button
+                    aria-pressed={false}
+                    className="patbar-btn"
+                    disabled={patBusy || readOnly}
+                    key={label}
+                    onClick={() => void answerPat(points)}
+                    ref={points === 1 ? patFirst : undefined}
+                    type="button"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {patError === null ? null : (
+                <p className="patbar-err" role="alert">
+                  {patError}
+                </p>
+              )}
+            </div>
+        ) : (
+          <button
+            className={
+              possessionSide === null ? "tdbtn" : `tdbtn ${possessionSide}`
+            }
+            disabled={composerDisabled}
+            onClick={() => openSheet({ kind: "touchdown" })}
+            type="button"
+          >
+            <Football className="tdbtn-icon" size={26} />
+            <span className="tdbtn-label">{touchdownLabel}</span>
+          </button>
+        )}
         {SERIES_TILES.map(({ mode, label, Icon, oneTap }) => (
           <button
             className="action"
@@ -977,12 +1115,18 @@ export default function TrackingScreen({
         <button
           className="startbtn"
           disabled={readOnly}
-          onClick={() => onFinalize(log)}
+          onClick={finish}
           type="button"
         >
           <Check size={20} />
           Spiel beenden
         </button>
+        {finishBlocked ? (
+          <p className="trackerror" role="alert">
+            Extrapunkt nach dem Touchdown noch offen – bitte oben eintragen
+            oder „nicht verwandelt“ wählen.
+          </p>
+        ) : null}
         {readOnly ? (
           <p className="setupnote">
             Nur lesend – Einträge sind auf diesem Gerät gesperrt.
@@ -999,8 +1143,9 @@ export default function TrackingScreen({
         sheet.kind === "touchdown" ? (
           <TouchdownSheet
             onClose={() => setSheet(null)}
-            onSubmit={submit}
+            onSubmit={submitTouchdown}
             passcheck={game.passcheck === true}
+            recent={recentJerseys}
             roster={roster}
             side={possessionSide}
             teamName={possessionName}
