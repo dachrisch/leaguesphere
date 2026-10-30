@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import type { GameLogEventInput, Penalty, RosterPlayer } from "../../api/types";
 import { cachedGet, snapshotKey } from "../../offline/snapshot";
-import { jerseyOptions } from "../JerseyPicker";
+import JerseyPicker, { jerseyOptions } from "../JerseyPicker";
 import { errorMessage } from "./errors";
 import Sheet from "./Sheet";
 
@@ -323,43 +323,15 @@ export default function PenaltySheet({
           Kein Kader geladen – die Strafe wird für das ganze Team gespeichert.
         </p>
       ) : (
-        <div
-          aria-label="Trikotnummer (optional)"
-          className="jerseychips"
-          role="group"
-        >
-          <button
-            aria-pressed={jersey === null}
-            className={jersey === null ? "jerseychip sel" : "jerseychip"}
-            disabled={posting}
-            onClick={() => setJersey(null)}
-            type="button"
-          >
-            Ganzes Team
-          </button>
-          {options.map((option) => {
-            const name = option.name?.trim() || null;
-            return (
-              <button
-                aria-label={
-                  name === null
-                    ? `Trikot ${option.jersey}`
-                    : `Trikot ${option.jersey}, ${name}`
-                }
-                aria-pressed={jersey === option.jersey}
-                className={
-                  jersey === option.jersey ? "jerseychip sel" : "jerseychip"
-                }
-                disabled={posting}
-                key={option.jersey}
-                onClick={() => setJersey(option.jersey)}
-                type="button"
-              >
-                #{option.jersey}
-              </button>
-            );
-          })}
-        </div>
+        <JerseyPicker
+          disabled={posting}
+          groupLabel="Trikotnummer (optional)"
+          label="Trikot"
+          onChange={setJersey}
+          optionalLabel="Ganzes Team"
+          players={players}
+          value={jersey}
+        />
       )}
 
       <p className="sheetnote">

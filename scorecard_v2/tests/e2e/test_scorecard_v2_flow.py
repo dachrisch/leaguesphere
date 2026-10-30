@@ -218,9 +218,24 @@ def test_scorecard_v2_flow_from_gameday_to_result(live_server, page: Page):
     expect(possessing).to_have_attribute("aria-pressed", "true")
 
     # ---- Touchdown without a roster: the numeric fallback. ----------------
+    page.set_viewport_size({"width": 1024, "height": 768})
     page.locator("button.tdbtn").click()
     touchdown_sheet = page.get_by_role("dialog", name="Wer hat gepunktet?")
     expect(touchdown_sheet).to_be_visible()
+    # On a tablet the same sheet is a centred dialog, not a phone bottom sheet:
+    # 680px wide, centred in the 1024px viewport.
+    tablet = touchdown_sheet.bounding_box()
+    assert tablet is not None
+    assert 640 <= tablet["width"] <= 700, tablet
+    assert abs(tablet["x"] + tablet["width"] / 2 - 512) <= 2, tablet
+    # A phone keeps the anchored sheet, flush with the bottom edge.
+    page.set_viewport_size({"width": 390, "height": 844})
+    phone = touchdown_sheet.bounding_box()
+    assert phone is not None
+    assert abs(phone["x"]) <= 1, phone
+    assert abs(phone["width"] - 390) <= 1, phone
+    assert abs(phone["y"] + phone["height"] - 844) <= 2, phone
+    page.set_viewport_size({"width": 1024, "height": 768})
     # No passcheck ran for this gameday, so there is no jersey grid — the sheet
     # must offer the number field instead of blocking the game.
     number = touchdown_sheet.locator("input.sheetinput-num")

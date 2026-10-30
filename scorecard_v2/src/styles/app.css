@@ -109,8 +109,8 @@ button,
   overflow: clip;
 }
 
-/* Only the preparation screen opts into the wider measure at tablet/desk
-   widths; lists, the board and the sheets keep `--shell-width`. */
+/* Only the preparation screen opts into the widest measure at tablet/desk
+   widths; every other screen, and every sheet, follows `--shell-width`. */
 .app-shell-wide {
   max-width: var(--shell-width-prep);
 }
@@ -1694,7 +1694,8 @@ button.game-row:active {
 .actions {
   display: grid;
   flex: 0 0 auto;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* Eight tiles close two rows of four; the touchdown above spans them all. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-3);
   padding: var(--space-3) var(--page-gutter) 0;
 }
@@ -1765,11 +1766,6 @@ button.game-row:active {
   transition:
     border-color var(--transition-fast),
     background var(--transition-fast);
-}
-
-/* Eight tiles in three columns: the last one spans two and closes the row. */
-.actions > .action:last-child {
-  grid-column: span 2;
 }
 
 .action:hover:not(:disabled) {
@@ -1947,7 +1943,6 @@ button.game-row:active {
 }
 
 .tracking > .actions {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-2);
 }
 
@@ -2006,25 +2001,8 @@ button.game-row:active {
   gap: var(--space-2);
 }
 
-.patbar-btn {
+.patbar-opts .choice {
   min-height: var(--touch);
-  font-family: var(--font-display);
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--on-action);
-  background: color-mix(in srgb, var(--on-action) 14%, transparent);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-}
-
-.patbar-btn:last-child {
-  font-family: var(--font-body);
-  font-size: var(--fs-base);
-}
-
-.patbar-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .patbar-err {
@@ -2209,14 +2187,32 @@ button.game-row:active {
   border-radius: var(--radius-lg);
 }
 
-/* Big touch targets: number above, surname below. */
-.jerseygrid {
+/* ---------------------------------------------------- selectable tiles -- */
+
+/* One shape for every "pick one of these" control — a jersey, a safety's
+   points, the answer to the open extra point. A number (or label) on top, a
+   small second line under it; selected is the same near-black fill
+   everywhere, never a colour, so "chosen" cannot be mistaken for a warning. */
+.choicegrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
   gap: var(--space-2);
 }
 
-.jersey {
+/* The "Zuletzt" shortcuts: the same tile, one wrapping row of them. */
+.choicerow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.choicerow .choice {
+  flex: 0 0 auto;
+  min-width: 72px;
+  min-height: 52px;
+}
+
+.choice {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2235,11 +2231,11 @@ button.game-row:active {
     color var(--transition-fast);
 }
 
-.jersey:hover {
+.choice:hover:not(:disabled) {
   border-color: var(--line-strong);
 }
 
-.jerseynum {
+.choice-num {
   font-family: var(--font-display);
   font-size: var(--fs-xl);
   font-weight: 800;
@@ -2247,7 +2243,7 @@ button.game-row:active {
   line-height: 1;
 }
 
-.jerseyname {
+.choice-name {
   max-width: 100%;
   overflow: hidden;
   font-size: var(--fs-xs);
@@ -2257,54 +2253,41 @@ button.game-row:active {
   white-space: nowrap;
 }
 
-.jersey.sel {
+/* A tile that names a choice instead of numbering it ("Ohne Nummer"). */
+.choice-label {
+  padding: 0 var(--space-1);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.choice.sel {
   color: var(--on-strong);
   background: var(--fg);
   border-color: var(--fg);
 }
 
-.jersey.sel .jerseyname {
+.choice.sel .choice-name {
   color: var(--on-strong);
   opacity: 0.75;
 }
 
-.jersey:disabled {
+.choice:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-.jerseychips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+/* On the dark answer bar the same tile inverts instead of darkening. */
+.choice-dark {
+  color: var(--on-action);
+  background: color-mix(in srgb, var(--on-action) 14%, transparent);
+  border-color: color-mix(in srgb, var(--on-action) 26%, transparent);
 }
 
-.jerseychip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 56px;
-  min-height: var(--touch);
-  padding: 0 var(--space-3);
-  font-family: var(--font-display);
-  font-size: var(--fs-md);
-  font-weight: 700;
-  color: var(--fg);
-  background: var(--panel2);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
-  cursor: pointer;
-}
-
-.jerseychip.sel {
-  color: var(--on-strong);
-  background: var(--fg);
-  border-color: var(--fg);
-}
-
-.jerseychip:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.choice-dark:hover:not(:disabled) {
+  border-color: var(--on-action);
 }
 
 .sheetfield {
@@ -2378,29 +2361,6 @@ button.game-row:active {
 /* Safety only offers two values; a third empty column would read as a bug. */
 .patrow.two {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.pat {
-  min-height: 52px;
-  font-family: var(--font-display);
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--fg);
-  background: var(--panel2);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  cursor: pointer;
-}
-
-.pat.sel {
-  color: var(--on-warning);
-  background: var(--amber);
-  border-color: var(--amber);
-}
-
-.pat:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 /* ----------------------------------------------------------- penalties --- */
@@ -3644,6 +3604,38 @@ button.syncbadge {
   }
 }
 
+/* Tablet in landscape: the jersey tiles grow instead of multiplying — the
+   same six columns that fit a 680px dialog read as large targets here. */
+@media (min-width: 900px) {
+  .choicegrid {
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  }
+}
+
+/* Tablet: the entry sheet stops being a phone bottom sheet and becomes a
+   centred dialog — same component, same content, all four corners. The phone
+   keeps the anchored sheet below 900px. */
+@media (min-width: 900px) {
+  .sheetoverlay {
+    align-items: center;
+    padding: var(--space-5);
+  }
+
+  .sheet {
+    width: min(680px, 100%);
+    max-width: 680px;
+    max-height: min(86dvh, 860px);
+    padding: var(--space-4) var(--space-6) 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-dialog);
+  }
+
+  .sheetfoot {
+    padding-bottom: var(--space-4);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -3661,32 +3653,6 @@ button.syncbadge {
 }
 
 /* ------------------------------------------------------ jersey keypad -- */
-
-.recentchips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
-}
-
-.recentchip {
-  min-height: 40px;
-  padding: 0 var(--space-4);
-  font-family: var(--font-display);
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  color: var(--fg);
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
-  cursor: pointer;
-}
-
-.recentchip.sel {
-  color: var(--on-action);
-  background: var(--action);
-  border-color: var(--action);
-}
 
 .keypadwrap {
   display: grid;

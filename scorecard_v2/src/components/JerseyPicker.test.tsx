@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -103,6 +103,100 @@ describe("JerseyPicker", () => {
     for (const button of screen.getAllByRole("button")) {
       expect(button).toBeDisabled();
     }
+  });
+
+  it("leads with the optional no-number tile and clears the choice with it", async () => {
+    const onChange = vi.fn();
+    render(
+      <JerseyPicker
+        onChange={onChange}
+        optionalLabel="Ohne Nummer"
+        players={ROSTER}
+        value={7}
+      />,
+    );
+
+    const none = screen.getByRole("button", { name: "Ohne Nummer" });
+    expect(screen.getAllByRole("button")[0]).toBe(none);
+    expect(none).toHaveAttribute("aria-pressed", "false");
+
+    await userEvent.setup().click(none);
+
+    expect(onChange).toHaveBeenCalledWith(null);
+  });
+
+  it("marks the optional tile pressed while no number is picked", () => {
+    render(
+      <JerseyPicker
+        onChange={vi.fn()}
+        optionalLabel="Ganzes Team"
+        players={ROSTER}
+        value={null}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Ganzes Team" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("names the group separately from the button prefix", () => {
+    render(
+      <JerseyPicker
+        groupLabel="Trikotnummer (optional)"
+        label="Trikot"
+        onChange={vi.fn()}
+        players={ROSTER}
+        value={null}
+      />,
+    );
+
+    expect(
+      screen.getByRole("group", { name: "Trikotnummer (optional)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Trikot 23, Schulz" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the compact variant as one wrapping row of the same tiles", () => {
+    render(
+      <JerseyPicker
+        compact
+        onChange={vi.fn()}
+        players={ROSTER}
+        value={23}
+      />,
+    );
+
+    const row = screen.getByRole("group", { name: "Trikotnummer" });
+    expect(row).toHaveClass("choicerow");
+    expect(
+      within(row).getByRole("button", { name: "Trikotnummer 23, Schulz" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("offers the optional choice in keypad mode too", async () => {
+    const big: RosterPlayer[] = Array.from({ length: 30 }, (_, index) => ({
+      side: "home" as const,
+      jersey: index + 1,
+      name: `Spieler${index + 1}`,
+    }));
+    const onChange = vi.fn();
+    render(
+      <JerseyPicker
+        onChange={onChange}
+        optionalLabel="Ohne Nummer"
+        players={big}
+        value={12}
+      />,
+    );
+
+    const none = screen.getByRole("button", { name: "Ohne Nummer" });
+    expect(none).toHaveAttribute("aria-pressed", "false");
+    await userEvent.setup().click(none);
+
+    expect(onChange).toHaveBeenCalledWith(null);
   });
 });
 

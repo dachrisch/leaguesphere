@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from "react";
 
 import type { GameLogEventInput, RosterPlayer } from "../../api/types";
-import { jerseyOptions } from "../JerseyPicker";
+import JerseyPicker, { jerseyOptions } from "../JerseyPicker";
 import { errorMessage } from "./errors";
 import Sheet from "./Sheet";
 
@@ -297,54 +297,24 @@ export default function SeriesSheet({
             <p className="sheetnote" role="status">
               Kader lädt …
             </p>
-          ) : players.length === 0 ? (
+          ) : options.length === 0 ? (
             <p className="sheetnote">
               Kein Kader geladen – der Eintrag wird ohne Nummer gespeichert.
             </p>
           ) : (
-            <div
-              aria-label={
+            <JerseyPicker
+              disabled={posting}
+              groupLabel={
                 intercepts
                   ? "Trikotnummer Verteidiger (optional)"
                   : "Trikotnummer (optional)"
               }
-              className="jerseychips"
-              role="group"
-            >
-              <button
-                aria-pressed={jersey === null}
-                className={jersey === null ? "jerseychip sel" : "jerseychip"}
-                disabled={posting}
-                onClick={() => setJersey(null)}
-                type="button"
-              >
-                Ohne Nummer
-              </button>
-              {options.map((option) => {
-                const name = option.name?.trim() || null;
-                return (
-                  <button
-                    aria-label={
-                      name === null
-                        ? `Trikot ${option.jersey}`
-                        : `Trikot ${option.jersey}, ${name}`
-                    }
-                    aria-pressed={jersey === option.jersey}
-                    className={
-                      jersey === option.jersey
-                        ? "jerseychip sel"
-                        : "jerseychip"
-                    }
-                    disabled={posting}
-                    key={option.jersey}
-                    onClick={() => setJersey(option.jersey)}
-                    type="button"
-                  >
-                    #{option.jersey}
-                  </button>
-                );
-              })}
-            </div>
+              label="Trikot"
+              onChange={setJersey}
+              optionalLabel="Ohne Nummer"
+              players={players}
+              value={jersey}
+            />
           )}
         </>
       ) : null}

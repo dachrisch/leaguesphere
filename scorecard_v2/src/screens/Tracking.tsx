@@ -1158,14 +1158,16 @@ export default function TrackingScreen({
                 ).map(([points, label]) => (
                   <button
                     aria-pressed={false}
-                    className="patbar-btn"
+                    className="choice choice-dark"
                     disabled={patBusy || readOnly}
                     key={label}
                     onClick={() => void answerPat(points)}
                     ref={points === 1 ? patFirst : undefined}
                     type="button"
                   >
-                    {label}
+                    <span className={points === 0 ? "choice-label" : "choice-num"}>
+                      {label}
+                    </span>
                   </button>
                 ))}
               </div>
