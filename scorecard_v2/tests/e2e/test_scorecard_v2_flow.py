@@ -228,10 +228,16 @@ def test_scorecard_v2_flow_from_gameday_to_result(live_server, page: Page):
     number.fill(str(JERSEY))
     touchdown_sheet.get_by_role("button", name="Speichern").click()
 
-    expect(page.get_by_text("Touchdown gespeichert")).to_be_visible(timeout=20000)
+    # The touchdown is saved alone; the extra point is asked after the try,
+    # in the touchdown button's place, with nothing pre-selected.
+    extra_point = page.get_by_role("group", name=f"Extrapunkt {HOME_NAME}")
+    expect(extra_point).to_be_visible(timeout=20000)
     expect(page.get_by_role("dialog")).to_have_count(0)
     expect(page.get_by_text(f"Touchdown {HOME_NAME}", exact=True)).to_be_visible()
-    expect(page.get_by_text(f"1 Extrapunkt {HOME_NAME}", exact=True)).to_be_visible()
+    extra_point.get_by_role("button", name="+1").click()
+    expect(page.get_by_text(f"1 Extrapunkt {HOME_NAME}", exact=True)).to_be_visible(
+        timeout=20000
+    )
     expect(page.get_by_text(f"#{JERSEY}", exact=True).first).to_be_visible()
     expect(
         page.get_by_role("region", name="Spielstand").get_by_text("7", exact=True)
