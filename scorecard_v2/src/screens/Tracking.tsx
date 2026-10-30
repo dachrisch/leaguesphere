@@ -44,6 +44,7 @@ import {
 import MoreSheet, { type MoreMode } from "../components/sheets/MoreSheet";
 import PenaltySheet from "../components/sheets/PenaltySheet";
 import SeriesSheet, {
+  seriesEvent,
   type SeriesMode,
 } from "../components/sheets/SeriesSheet";
 import { errorMessage, IgnoredWrite } from "../components/sheets/errors";
@@ -91,18 +92,36 @@ type SheetState =
   | { kind: "penalty" }
   | { kind: "more"; mode: MoreMode };
 
-/** The series/time tiles of the composer grid. */
+/**
+ * The series/time tiles of the composer grid. `oneTap` entries need no input
+ * and save on the tap; the toast offers undo (and, where the entry may name a
+ * player, adding the jersey afterwards). The others open their sheet: an
+ * interception is credited to the defender, which only a sheet opened
+ * *before* the possession flip can get right, and the clocks need a time.
+ */
 const SERIES_TILES: {
   mode: SeriesMode;
   label: string;
   Icon: ComponentType<IconProps>;
+  oneTap: boolean;
 }[] = [
-  { mode: "first", label: "1st Down", Icon: ArrowRight },
-  { mode: "turnover", label: "Turnover", Icon: SwapArrows },
-  { mode: "interception", label: "Interception", Icon: Interception },
-  { mode: "time", label: "Spielzeit", Icon: Stopwatch },
-  { mode: "timeout", label: "Auszeit", Icon: Clock },
+  { mode: "first", label: "1st Down", Icon: ArrowRight, oneTap: true },
+  { mode: "turnover", label: "Turnover", Icon: SwapArrows, oneTap: true },
+  {
+    mode: "interception",
+    label: "Interception",
+    Icon: Interception,
+    oneTap: false,
+  },
+  { mode: "time", label: "Spielzeit", Icon: Stopwatch, oneTap: false },
+  { mode: "timeout", label: "Auszeit", Icon: Clock, oneTap: false },
 ];
+
+/** The log's event name for each one-tap entry, to find the row it wrote. */
+const ONE_TAP_EVENT: Partial<Record<SeriesMode, string>> = {
+  first: "First Down",
+  turnover: "Turnover",
+};
 
 /**
  * Header title: the field and the round, the two facts an official needs to be
@@ -303,6 +322,11 @@ export default function TrackingScreen({
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const [posting, setPosting] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
+  /** The one-tap entry the toast can still undo or complete, if any. */
+  const [quick, setQuick] = useState<SeriesMode | null>(null);
+  const [quickError, setQuickError] = useState<string | null>(null);
+  /** The one-tap row a jersey sheet replaces once it saves. */
+  const [replacing, setReplacing] = useState<LogRow | null>(null);
   const [confirmHalftime, setConfirmHalftime] = useState(false);
   const [halftimePending, setHalftimePending] = useState(false);
   const [halftimeError, setHalftimeError] = useState<string | null>(null);
@@ -537,6 +561,8 @@ export default function TrackingScreen({
     postInFlight.current = true;
     setPosting(true);
     setConfirmation(null);
+    setQuick(null);
+    setQuickError(null);
     const body: GameLogWrite = {
       gameId: game.id,
       team,
@@ -632,7 +658,64 @@ export default function TrackingScreen({
 
   const openSheet = (next: SheetState): void => {
     setConfirmation(null);
+    setQuick(null);
+    setQuickError(null);
     setSheet(next);
+  };
+
+  /** The newest live row a one-tap entry wrote (rows are newest first). */
+  const quickRow = (mode: SeriesMode): LogRow | null =>
+    rows.find(
+      (row) => !row.isDeleted && row.event === ONE_TAP_EVENT[mode],
+    ) ?? null;
+
+  /**
+   * Save an entry that needs no input on the tap itself. A wrong tap is one
+   * "Rückgängig" away in the toast, which is cheaper than a sheet on every
+   * correct one.
+   */
+  const recordOneTap = async (mode: SeriesMode): Promise<void> => {
+    try {
+      await submit([seriesEvent(mode, null)]);
+      setQuick(mode);
+    } catch (failure) {
+      setQuickError(
+        errorMessage(
+          failure,
+          "Der Eintrag konnte nicht gespeichert werden. Bitte erneut versuchen.",
+        ),
+      );
+    }
+  };
+
+  const undoQuick = (mode: SeriesMode): void => {
+    const row = quickRow(mode);
+    setQuick(null);
+    setConfirmation(null);
+    if (row !== null) {
+      void undo(row);
+    }
+  };
+
+  /** Open the entry's sheet; saving it replaces the one-tap row. */
+  const completeQuick = (mode: SeriesMode): void => {
+    setReplacing(quickRow(mode));
+    openSheet({ kind: "series", mode });
+  };
+
+  const closeSheet = (): void => {
+    setSheet(null);
+    setReplacing(null);
+  };
+
+  /** A sheet that completes a one-tap entry writes the new row, then undoes the old. */
+  const submitSeries = async (events: GameLogEventInput[]): Promise<void> => {
+    const previous = replacing;
+    await submit(events);
+    if (previous !== null) {
+      setReplacing(null);
+      await undo(previous);
+    }
   };
 
   const composerDisabled =
@@ -699,20 +782,99 @@ export default function TrackingScreen({
         disabled={possessionPending || halftimePending || readOnly}
         home={log.home}
         isFirstHalf={log.isFirstHalf}
-        onPossession={(teamName) => void takePossession(teamName)}
         possession={possession}
       />
+      <div aria-label="Ballbesitz" className="possswitch" role="group">
+        {(
+          [
+            ["home", log.home],
+            ["away", log.away],
+          ] as const
+        ).map(([side, team]) => {
+          const name = logTeamName(team);
+          const pressed = isPossessing(team, possession);
+          return (
+            <button
+              aria-pressed={pressed}
+              className={`possbtn ${side}`}
+              disabled={
+                name === null ||
+                possessionPending ||
+                halftimePending ||
+                finished ||
+                readOnly
+              }
+              key={side}
+              onClick={() => {
+                if (name !== null) {
+                  void takePossession(name);
+                }
+              }}
+              type="button"
+            >
+              {name ?? "–"}
+            </button>
+          );
+        })}
+      </div>
       {possessionError === null ? null : (
         <p className="trackerror" role="alert">
           {possessionError}
         </p>
       )}
-      {confirmation === null ? null : (
-        <p className="trackok" role="status">
-          {confirmation}
+      {finished ? (
+        <p className="finishednote" role="status">
+          Dieses Spiel ist beendet.
         </p>
-      )}
-      <section aria-label="Einträge" className="actions">
+      ) : possessionName === null ? (
+        <p className="trackhint">Ballbesitz wählen, um Einträge zu erfassen.</p>
+      ) : null}
+      {/* The log owns the free height; the saved toast floats over its foot
+          instead of pushing it out of view. */}
+      <div className="logwrap">
+        <EventLog
+          disabled={halftimePending || readOnly}
+          error={undoError}
+          onUndo={(row) => void undo(row)}
+          rows={rows}
+          undoKey={undoKey}
+        />
+        {confirmation === null ? null : (
+          <div aria-label="Gespeichert" className="trackok" role="status">
+            <span className="trackok-text">{confirmation}</span>
+            {quick === null ? null : (
+              <span className="trackok-actions">
+                {quick === "first" ? (
+                  <button
+                    className="trackok-btn"
+                    onClick={() => completeQuick(quick)}
+                    type="button"
+                  >
+                    Nr. ergänzen
+                  </button>
+                ) : null}
+                <button
+                  className="trackok-btn"
+                  disabled={undoKey !== null}
+                  onClick={() => undoQuick(quick)}
+                  type="button"
+                >
+                  Rückgängig
+                </button>
+              </span>
+            )}
+          </div>
+        )}
+        {quickError === null ? null : (
+          <p className="trackerror" role="alert">
+            {quickError}
+          </p>
+        )}
+      </div>
+      <section
+        aria-label="Einträge"
+        className={possessionSide === null ? "actions" : `actions ${possessionSide}`}
+      >
         <button
           className={
             possessionSide === null ? "tdbtn" : `tdbtn ${possessionSide}`
@@ -724,12 +886,16 @@ export default function TrackingScreen({
           <Football className="tdbtn-icon" size={26} />
           <span className="tdbtn-label">{touchdownLabel}</span>
         </button>
-        {SERIES_TILES.map(({ mode, label, Icon }) => (
+        {SERIES_TILES.map(({ mode, label, Icon, oneTap }) => (
           <button
             className="action"
             disabled={composerDisabled}
             key={mode}
-            onClick={() => openSheet({ kind: "series", mode })}
+            onClick={() =>
+              oneTap
+                ? void recordOneTap(mode)
+                : openSheet({ kind: "series", mode })
+            }
             type="button"
           >
             <Icon className="action-icon" size={20} />
@@ -763,8 +929,7 @@ export default function TrackingScreen({
           <PlusCircle className="action-icon" size={20} />
           <span>Overtime</span>
         </button>
-      </section>
-      {log.isFirstHalf && !finished ? (
+        {log.isFirstHalf && !finished ? (
         <section aria-label="Halbzeit" className="halfblock">
           {confirmHalftime ? (
             <>
@@ -807,20 +972,7 @@ export default function TrackingScreen({
           )}
         </section>
       ) : null}
-      {finished ? (
-        <p className="finishednote" role="status">
-          Dieses Spiel ist beendet.
-        </p>
-      ) : possessionName === null ? (
-        <p className="trackhint">Ballbesitz wählen, um Einträge zu erfassen.</p>
-      ) : null}
-      <EventLog
-        disabled={halftimePending || readOnly}
-        error={undoError}
-        onUndo={(row) => void undo(row)}
-        rows={rows}
-        undoKey={undoKey}
-      />
+      </section>
       <footer className="trackfoot">
         <button
           className="startbtn"
@@ -857,8 +1009,8 @@ export default function TrackingScreen({
           <SeriesSheet
             key={sheet.mode}
             mode={sheet.mode}
-            onClose={() => setSheet(null)}
-            onSubmit={submit}
+            onClose={closeSheet}
+            onSubmit={submitSeries}
             opponentName={opponentName ?? "–"}
             roster={roster}
             side={possessionSide}

@@ -161,11 +161,6 @@ describe("offline capture", () => {
 
     // The log is the snapshot; the event is queued without a request.
     await user.click(screen.getByRole("button", { name: "1st Down" }));
-    await user.click(
-      within(await screen.findByRole("dialog")).getByRole("button", {
-        name: "Speichern",
-      }),
-    );
 
     await waitFor(async () => {
       const pending = await getRuntime().outbox.pending(42);
@@ -275,11 +270,6 @@ describe("offline capture", () => {
     await openGame(user);
 
     await user.click(screen.getByRole("button", { name: "1st Down" }));
-    await user.click(
-      within(await screen.findByRole("dialog")).getByRole("button", {
-        name: "Speichern",
-      }),
-    );
     await waitFor(async () =>
       expect(await getRuntime().outbox.pending(42)).toHaveLength(1),
     );
@@ -324,11 +314,6 @@ describe("offline capture", () => {
     await openGame(user);
 
     await user.click(screen.getByRole("button", { name: "1st Down" }));
-    await user.click(
-      within(await screen.findByRole("dialog")).getByRole("button", {
-        name: "Speichern",
-      }),
-    );
     await waitFor(() =>
       expect(screen.getByText("1st Down Ravens")).toBeInTheDocument(),
     );

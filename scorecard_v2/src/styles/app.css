@@ -1243,6 +1243,7 @@ button.game-row:active {
 
 .tracking > .app-header,
 .tracking > .board,
+.tracking > .possswitch,
 .tracking > .actions,
 .tracking > .finishednote,
 .tracking > .trackfoot {
@@ -1798,13 +1799,189 @@ button.game-row:active {
   color: var(--muted);
 }
 
+/* The saved-entry toast, between the log and the actions: what was written,
+   and for a one-tap entry the way back (and, for a first down, the jersey). */
+.logwrap {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.logwrap > .trackok,
+.logwrap > .trackerror {
+  position: absolute;
+  right: var(--page-gutter);
+  bottom: var(--space-2);
+  left: var(--page-gutter);
+  z-index: 2;
+  margin: 0;
+  box-shadow: var(--shadow-card);
+}
+
 .trackok {
+  display: flex;
   flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
   margin: var(--space-2) var(--page-gutter) 0;
-  font-size: var(--fs-sm);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--fs-base);
   font-weight: 600;
-  line-height: 1.45;
-  color: var(--away-text);
+  line-height: 1.35;
+  color: var(--on-action);
+  background: var(--action);
+  border-radius: var(--radius-lg);
+}
+
+.trackok-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.logwrap > .trackok {
+  flex-wrap: nowrap;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+}
+
+.trackok-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: var(--space-2);
+}
+
+.trackok-btn {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  font-weight: 700;
+  color: var(--on-action);
+  background: color-mix(in srgb, var(--on-action) 14%, transparent);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+}
+
+.trackok-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Possession: one two-way switch under the board, the team with the ball
+   filled in its colour. */
+.possswitch {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: 1fr 1fr;
+  margin: var(--space-2) var(--page-gutter) 0;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.possbtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch);
+  padding: var(--space-1) var(--space-2);
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  line-height: 1.05;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.possbtn[aria-pressed="true"]::before {
+  content: "Ball";
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.possbtn.home[aria-pressed="true"] {
+  color: var(--on-accent);
+  background: var(--home);
+}
+
+.possbtn.away[aria-pressed="true"] {
+  color: var(--on-accent);
+  background: var(--away);
+}
+
+.possbtn:disabled {
+  cursor: not-allowed;
+}
+
+.possbtn:disabled:not([aria-pressed="true"]) {
+  opacity: 0.55;
+}
+
+/* The action zone sits at the bottom, in the thumb's reach, tinted in the
+   colour of the side with the ball. */
+.tracking > .actions {
+  margin-top: var(--space-2);
+  padding-bottom: var(--space-3);
+  background: var(--surface-2);
+  border-top: 1px solid var(--line);
+}
+
+.tracking > .actions.home {
+  background: color-mix(in srgb, var(--home) 9%, var(--bg));
+}
+
+.tracking > .actions.away {
+  background: color-mix(in srgb, var(--away) 9%, var(--bg));
+}
+
+.tracking > .actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.tracking .action {
+  min-height: 50px;
+  padding: var(--space-1) 2px;
+  font-size: var(--fs-sm);
+}
+
+.tracking .action-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.actions .halfbtn {
+  min-height: 40px;
+}
+
+.actions .halfblock {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0;
+}
+
+/* The board is a read-out in the cockpit: smaller numerals leave the height
+   to the log. */
+.tracking .board {
+  padding: var(--space-2) var(--space-3);
+}
+
+.tracking .score {
+  font-size: 44px;
 }
 
 /* --------------------------------------------------------------- sheets -- */
