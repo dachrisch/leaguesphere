@@ -35,7 +35,11 @@ only control static assets, and its scope could never leak into the old app.
 1. **Meine Spieltage** — today's gamedays (`GET /api/gameday/list`).
 2. **Spiele** — the games of one gameday, per crew or the whole gameday
    (`GET /api/gameday/<id>/officials/<team>`, `team=*` for all), with status and
-   passcheck state. Team logos from the public team directory accompany the
+   passcheck state. A segmented **Meine | Alle** control switches the scope
+   (count on the shown one); an official with no assignment is moved to
+   **Alle** automatically with the reason, instead of an empty list. With two
+   or more open games an **Als Nächstes** card leads: the running game, else
+   the earliest open one, with both teams on their own lines and one action. Team logos from the public team directory accompany the
    names here, in the score header and in the preparation team card; the
    directory
    is cached in IndexedDB and the logo files are cached by the service worker

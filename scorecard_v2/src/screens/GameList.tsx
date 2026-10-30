@@ -16,6 +16,11 @@ interface GameListProps {
   allGames?: boolean;
   /** Switches between "my games" and the whole gameday (`?team=*`). */
   onToggleAll?: () => void;
+  /**
+   * The official's own list was empty, so the flow shows the whole gameday
+   * instead of a dead end; the screen says why.
+   */
+  fallback?: boolean;
   /** Age of a stored games list; `null` when it came from the server. */
   staleSince?: number | null;
   /** Header chrome owned by the flow. */
@@ -66,22 +71,52 @@ function teamLabel(name: string | null): string {
 }
 
 /**
- * Counts per summary bucket. Keyed by the row action rather than the tag
- * variant, so a future variant cannot silently land in "offen".
+ * The game the official most likely opens next: a running one first (it is
+ * being tracked), otherwise the earliest open one. The list arrives in
+ * schedule order.
  */
-function summarise(games: Game[]) {
-  const counts = { done: 0, live: 0, open: 0 };
-  for (const game of games) {
-    const tag = gameTag(game.status);
-    if (tag.action === "none") {
-      counts.done += 1;
-    } else if (tag.action === "resume") {
-      counts.live += 1;
-    } else {
-      counts.open += 1;
-    }
+export function nextGame(games: Game[]): Game | null {
+  const running = games.find((game) => gameTag(game.status).action === "resume");
+  if (running !== undefined) {
+    return running;
   }
-  return counts;
+  return games.find((game) => gameTag(game.status).action === "select") ?? null;
+}
+
+function NextGame({
+  game,
+  onSelect,
+  onResume,
+}: {
+  game: Game;
+  onSelect: (game: Game) => void;
+  onResume: (game: Game) => void;
+}) {
+  const resume = gameTag(game.status).action === "resume";
+  return (
+    <section aria-label="Als Nächstes" className="nextgame">
+      <p className="nextgame-k">{resume ? "Läuft" : "Als Nächstes"}</p>
+      <p className="nextgame-when">
+        {formatGameTime(game.scheduled)} · Feld {game.field}
+        {game.passcheck === false ? " · kein Passcheck" : ""}
+      </p>
+      <p className="nextgame-team">
+        <TeamLogo name={game.home} />
+        <span>{teamLabel(game.home)}</span>
+      </p>
+      <p className="nextgame-team">
+        <TeamLogo name={game.away} />
+        <span>{teamLabel(game.away)}</span>
+      </p>
+      <button
+        className="nextgame-go"
+        onClick={() => (resume ? onResume(game) : onSelect(game))}
+        type="button"
+      >
+        {resume ? "Weiter erfassen" : "Spiel vorbereiten"}
+      </button>
+    </section>
+  );
 }
 
 function rowName(game: Game, tag: GameTag): string {
@@ -152,11 +187,22 @@ export default function GameList({
   subtitle,
   allGames = false,
   onToggleAll,
+  fallback = false,
   staleSince = null,
   onBack,
   onLogout,
 }: GameListProps) {
-  const counts = summarise(games);
+  const actionable = games.filter(
+    (game) => gameTag(game.status).action !== "none",
+  );
+  // One game needs no shortcut to itself.
+  const next = actionable.length > 1 ? nextGame(games) : null;
+  const count = (mine: boolean): string => {
+    if (mine && fallback) {
+      return " (0)";
+    }
+    return mine === !allGames ? ` (${games.length})` : "";
+  };
 
   return (
     <Screen
@@ -167,19 +213,31 @@ export default function GameList({
     >
       <SnapshotHint updatedAt={staleSince} />
       {onToggleAll === undefined ? null : (
-        <div className="scopebar">
-          <button
-            aria-pressed={allGames}
-            className={allGames ? "scopebtn sel" : "scopebtn"}
-            onClick={onToggleAll}
-            type="button"
-          >
-            {allGames ? "Alle Spiele" : "Meine Spiele"}
-          </button>
-          <span className="scopehint">
-            {allGames ? "Ganzer Spieltag" : "Nur deine Einteilung"}
-          </span>
-        </div>
+        <>
+          <div aria-label="Spiele anzeigen" className="scopeseg" role="group">
+            {([true, false] as const).map((mine) => {
+              const pressed = mine ? !allGames : allGames;
+              return (
+                <button
+                  aria-pressed={pressed}
+                  className={pressed ? "scopeopt sel" : "scopeopt"}
+                  disabled={mine && fallback}
+                  key={mine ? "mine" : "all"}
+                  onClick={pressed ? undefined : onToggleAll}
+                  type="button"
+                >
+                  {mine ? "Meine" : "Alle"}
+                  {count(mine)}
+                </button>
+              );
+            })}
+          </div>
+          {fallback ? (
+            <p className="scopenote">
+              Dir ist kein Spiel zugeteilt – du siehst den ganzen Spieltag.
+            </p>
+          ) : null}
+        </>
       )}
       {games.length === 0 ? (
         <div className="empty-state" role="status">
@@ -191,17 +249,9 @@ export default function GameList({
         </div>
       ) : (
         <>
-          <div className="sumline">
-            <div>
-              <b>{counts.done}</b> beendet
-            </div>
-            <div>
-              <b>{counts.live}</b> läuft
-            </div>
-            <div>
-              <b>{counts.open}</b> offen
-            </div>
-          </div>
+          {next === null ? null : (
+            <NextGame game={next} onResume={onResume} onSelect={onSelect} />
+          )}
           <ul className="game-list">
             {games.map((game) => {
               const tag = gameTag(game.status);

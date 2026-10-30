@@ -107,6 +107,8 @@ let failures = new Map<string, { error: unknown; times: number }>();
 let gates = new Map<string, Promise<void>>();
 let username = "crew";
 let gamesStatus: Game["status"] = "Geplant";
+/** The crew's own assignment; empty means "nothing assigned to me". */
+let crewHasGames = true;
 let calls: string[] = [];
 
 function fail(path: string, error: unknown, times = Infinity): void {
@@ -124,6 +126,7 @@ function routeGet(path: string): unknown {
     case "/accounts/auth/user/":
       return { id: 1, username };
     case "/api/gameday/1/officials/crew":
+      return crewHasGames ? [{ ...PLANNED, status: gamesStatus }] : [];
     case "/api/gameday/1/officials/*":
       return [{ ...PLANNED, status: gamesStatus }];
     case "/api/game/42/officials":
@@ -172,6 +175,7 @@ beforeEach(() => {
   gates = new Map();
   username = "crew";
   gamesStatus = "Geplant";
+  crewHasGames = true;
   calls = [];
   apiGetMock.mockReset();
   apiPostMock.mockReset();
@@ -348,17 +352,17 @@ describe("the games list", () => {
     await openGameday(user);
 
     expect(
-      await screen.findByRole("button", { name: "Alle Spiele" }),
+      await screen.findByRole("button", { name: /^Alle/, pressed: true }),
     ).toBeInTheDocument();
     expect(calls).toContain("GET /api/gameday/1/officials/*");
     expect(calls).not.toContain("GET /api/gameday/1/officials/crew");
 
     // Toggling back narrows the list to the official's crew and drops the
     // parameter from the URL.
-    await user.click(screen.getByRole("button", { name: "Alle Spiele" }));
+    await user.click(screen.getByRole("button", { name: /^Meine/ }));
 
     expect(
-      await screen.findByRole("button", { name: "Meine Spiele" }),
+      await screen.findByRole("button", { name: /^Meine/, pressed: true }),
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(calls).toContain("GET /api/gameday/1/officials/crew"),
@@ -366,12 +370,35 @@ describe("the games list", () => {
     expect(globalThis.location.search).toBe("");
 
     // And back to the whole gameday, which writes the parameter again.
-    await user.click(screen.getByRole("button", { name: "Meine Spiele" }));
+    await user.click(screen.getByRole("button", { name: /^Alle/ }));
 
     await waitFor(() => expect(globalThis.location.search).toBe("?team=*"));
     expect(
-      await screen.findByRole("button", { name: "Alle Spiele" }),
+      await screen.findByRole("button", { name: /^Alle/, pressed: true }),
     ).toBeInTheDocument();
+  });
+
+  it("falls back to the whole gameday when nothing is assigned", async () => {
+    crewHasGames = false;
+    const user = userEvent.setup();
+    render(<App />);
+
+    await openGameday(user);
+
+    // No dead end: the crew list is empty, so the whole gameday is shown
+    // with the reason, and the URL keeps the official's own scope.
+    expect(
+      await screen.findByText(
+        "Dir ist kein Spiel zugeteilt – du siehst den ganzen Spieltag.",
+      ),
+    ).toBeInTheDocument();
+    expect(calls).toContain("GET /api/gameday/1/officials/crew");
+    expect(calls).toContain("GET /api/gameday/1/officials/*");
+    expect(
+      screen.getByRole("button", { name: /^Alle/, pressed: true }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Ravens gegen Wolves/ })).toBeInTheDocument();
+    expect(globalThis.location.search).toBe("");
   });
 
   it("asks for the whole gameday when the user has no name", async () => {
