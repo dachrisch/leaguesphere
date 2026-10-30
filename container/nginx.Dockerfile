@@ -54,7 +54,7 @@ RUN SECRET_KEY=build-only-dummy-secret-key-not-for-production \
     MYSQL_PWD=build_dummy \
     .venv/bin/python manage.py collectstatic --no-input --clear
 
-FROM node:24-slim AS node-builder
+FROM node:26-slim AS node-builder
 ARG APP_DIR="/liveticker-app"
 WORKDIR ${APP_DIR}
 
