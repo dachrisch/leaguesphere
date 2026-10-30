@@ -366,6 +366,8 @@ export default function GameSetupScreen({
   const [saving, setSaving] = useState(false);
   // The confirmation sheet between the tap on "Spiel starten" and the write.
   const [confirmOpen, setConfirmOpen] = useState(false);
+  /** The official asked to see a complete crew's rows. */
+  const [crewOpen, setCrewOpen] = useState(false);
   const [readOnly, setReadOnly] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The setup was accepted by the server during this visit. A later failure
@@ -792,6 +794,21 @@ export default function GameSetupScreen({
     direction,
   });
   const ready = blockers.length === 0;
+  /**
+   * A crew with every required slot staffed, every licence valid and nothing
+   * to clean up needs no attention: it folds into one row. Anything off keeps
+   * the rows open, so the problem is never hidden behind "ändern".
+   */
+  const crewComplete =
+    requiredSlots.length > 0 &&
+    requiredFilled === requiredSlots.length &&
+    licenceIssues.length === 0 &&
+    !slots.some((slot) => slot.duplicate || !slot.known) &&
+    !crewLines.some((line) => line.freetext);
+  const crewFolded = crewComplete && !crewOpen;
+  const crewNames = requiredSlots
+    .map((slot) => displayName(slot))
+    .filter((value): value is string => value !== null && value.trim() !== "");
   const officialsSectionId = "prep-officials";
   const configSectionId = "prep-config";
   const counter =
@@ -905,136 +922,160 @@ export default function GameSetupScreen({
                 </p>
               ) : null}
 
-              {orderedSlots.map(({ slot, index }) => {
-                const licence = licenceOf(slot);
-                const name = displayName(slot);
-                const editable = slot.known && !slot.duplicate;
-                const optionalEmpty =
-                  !slot.required && slot.known && !slotHasValue(slot);
-                const taken = editable
-                  ? takenByOthers(index)
-                  : new Set<number>();
-                const duplicateNames = slot.duplicate
-                  ? slot.rows
-                      .map((row) => rowDisplayName(row, teamByOfficial))
-                      .filter((value): value is string => value !== null)
-                      .join(", ")
-                  : "";
-
-                const content = (shownName: string, freeText: boolean) => (
-                  <>
-                    <span
-                      aria-hidden="true"
-                      className={`offava${optionalEmpty ? " offava-add" : ""}`}
-                    >
-                      {optionalEmpty ? "+" : initials(name)}
+              {crewFolded ? (
+                <button
+                  aria-expanded={false}
+                  className="crewsummary"
+                  onClick={() => setCrewOpen(true)}
+                  type="button"
+                >
+                  <span aria-hidden="true" className="crewsummary-ok">
+                    ✓
+                  </span>
+                  <span className="crewsummary-body">
+                    <span className="crewsummary-title">
+                      Crew vollständig · Lizenzen gültig
                     </span>
-                    <span className="offbody">
-                      {optionalEmpty ? (
-                        <>
-                          <span className="offaddline">
-                            <span className="offadd">
-                              {slot.label} hinzufügen
+                    <span className="crewsummary-names">
+                      {crewNames.join(", ")}
+                    </span>
+                  </span>
+                  <span className="crewsummary-edit">ändern</span>
+                </button>
+              ) : (
+                <>
+                {orderedSlots.map(({ slot, index }) => {
+                  const licence = licenceOf(slot);
+                  const name = displayName(slot);
+                  const editable = slot.known && !slot.duplicate;
+                  const optionalEmpty =
+                    !slot.required && slot.known && !slotHasValue(slot);
+                  const taken = editable
+                    ? takenByOthers(index)
+                    : new Set<number>();
+                  const duplicateNames = slot.duplicate
+                    ? slot.rows
+                        .map((row) => rowDisplayName(row, teamByOfficial))
+                        .filter((value): value is string => value !== null)
+                        .join(", ")
+                    : "";
+
+                  const content = (shownName: string, freeText: boolean) => (
+                    <>
+                      <span
+                        aria-hidden="true"
+                        className={`offava${optionalEmpty ? " offava-add" : ""}`}
+                      >
+                        {optionalEmpty ? "+" : initials(name)}
+                      </span>
+                      <span className="offbody">
+                        {optionalEmpty ? (
+                          <>
+                            <span className="offaddline">
+                              <span className="offadd">
+                                {slot.label} hinzufügen
+                              </span>
+                              <span aria-hidden="true" className="offsep">
+                                ·
+                              </span>
                             </span>
-                            <span aria-hidden="true" className="offsep">
-                              ·
+                            <span className="offhint">
+                              Optional · ohne Pflicht zur Besetzung
                             </span>
-                          </span>
-                          <span className="offhint">
-                            Optional · ohne Pflicht zur Besetzung
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="offrole">{slot.label}</span>
-                          <span className="offmember">
-                            {shownName}
-                            {freeText ? (
-                              <span className="pplink pplink-free">
-                                Freitext
+                          </>
+                        ) : (
+                          <>
+                            <span className="offrole">{slot.label}</span>
+                            <span className="offmember">
+                              {shownName}
+                              {freeText ? (
+                                <span className="pplink pplink-free">
+                                  Freitext
+                                </span>
+                              ) : null}
+                            </span>
+                            {licenceWarns(slot) ? (
+                              <span className="offhint offhint-warn">
+                                Start trotzdem möglich
                               </span>
                             ) : null}
+                          </>
+                        )}
+                      </span>
+                      <span className="offmeta">
+                        {optionalEmpty ? null : (
+                          <span
+                            className={`lic lic-${LICENCE_TONE[licence.state]}`}
+                          >
+                            {licence.label}
                           </span>
-                          {licenceWarns(slot) ? (
-                            <span className="offhint offhint-warn">
-                              Start trotzdem möglich
-                            </span>
-                          ) : null}
-                        </>
-                      )}
-                    </span>
-                    <span className="offmeta">
-                      {optionalEmpty ? null : (
-                        <span
-                          className={`lic lic-${LICENCE_TONE[licence.state]}`}
-                        >
-                          {licence.label}
-                        </span>
-                      )}
-                      {editable ? (
-                        <ChevronRight className="offchev" size={16} />
-                      ) : null}
-                    </span>
-                  </>
-                );
+                        )}
+                        {editable ? (
+                          <ChevronRight className="offchev" size={16} />
+                        ) : null}
+                      </span>
+                    </>
+                  );
 
-                return (
-                  <Fragment key={`${slot.known ? "known" : "extra"}-${index}`}>
-                    <div
-                      className={`offrow${optionalEmpty ? " offrow-optional" : ""}`}
-                    >
-                      {editable ? (
-                        <PersonPicker
-                          disabled={readOnly || finished}
-                          label={slot.label}
-                          onClear={() => clearSlot(index)}
-                          onFreeText={(freeText) =>
-                            enterFreeText(index, freeText)
-                          }
-                          onPick={(person) => pickPerson(index, person)}
-                          taken={taken}
-                          teamId={officialsId}
-                          trigger={({ open, toggle, displayName, linked, empty }) => (
-                            <button
-                              aria-expanded={open}
-                              aria-haspopup="listbox"
-                              aria-label={
-                                optionalEmpty
-                                  ? `${slot.label} hinzufügen: Offiziellen wählen`
-                                  : `${slot.label}: Offiziellen wählen`
-                              }
-                              className={`offcard${optionalEmpty ? " offcard-add" : ""}`}
-                              disabled={readOnly || finished}
-                              onClick={toggle}
-                              type="button"
-                            >
-                              {content(displayName, !linked && !empty)}
-                            </button>
-                          )}
-                          value={{
-                            official: slot.official,
-                            name:
-                              name ??
-                              (slot.official === null
-                                ? null
-                                : `Offizieller ${slot.official}`),
-                          }}
-                        />
-                      ) : (
-                        <div className="offcard offcard-static">
-                          {content(name ?? "–", false)}
-                        </div>
-                      )}
-                    </div>
-                    {slot.duplicate ? (
-                      <p className="setupwarn offwarn" role="alert">
-                        Mehrere Einträge für {slot.label} – bitte bereinigen
-                        {duplicateNames !== "" ? ` (${duplicateNames})` : ""}
-                      </p>
-                    ) : null}
-                  </Fragment>
-                );
-              })}
+                  return (
+                    <Fragment key={`${slot.known ? "known" : "extra"}-${index}`}>
+                      <div
+                        className={`offrow${optionalEmpty ? " offrow-optional" : ""}`}
+                      >
+                        {editable ? (
+                          <PersonPicker
+                            disabled={readOnly || finished}
+                            label={slot.label}
+                            onClear={() => clearSlot(index)}
+                            onFreeText={(freeText) =>
+                              enterFreeText(index, freeText)
+                            }
+                            onPick={(person) => pickPerson(index, person)}
+                            taken={taken}
+                            teamId={officialsId}
+                            trigger={({ open, toggle, displayName, linked, empty }) => (
+                              <button
+                                aria-expanded={open}
+                                aria-haspopup="listbox"
+                                aria-label={
+                                  optionalEmpty
+                                    ? `${slot.label} hinzufügen: Offiziellen wählen`
+                                    : `${slot.label}: Offiziellen wählen`
+                                }
+                                className={`offcard${optionalEmpty ? " offcard-add" : ""}`}
+                                disabled={readOnly || finished}
+                                onClick={toggle}
+                                type="button"
+                              >
+                                {content(displayName, !linked && !empty)}
+                              </button>
+                            )}
+                            value={{
+                              official: slot.official,
+                              name:
+                                name ??
+                                (slot.official === null
+                                  ? null
+                                  : `Offizieller ${slot.official}`),
+                            }}
+                          />
+                        ) : (
+                          <div className="offcard offcard-static">
+                            {content(name ?? "–", false)}
+                          </div>
+                        )}
+                      </div>
+                      {slot.duplicate ? (
+                        <p className="setupwarn offwarn" role="alert">
+                          Mehrere Einträge für {slot.label} – bitte bereinigen
+                          {duplicateNames !== "" ? ` (${duplicateNames})` : ""}
+                        </p>
+                      ) : null}
+                    </Fragment>
+                  );
+                })}
+                </>
+              )}
 
               <p className="setupnote passcheckline">
                 <span className="passchecklabel">Passcheck</span>
@@ -1097,25 +1138,46 @@ export default function GameSetupScreen({
                   value={possession}
                 />
 
-                <Segmented
-                  disabled={readOnly || finished}
-                  label="Spielrichtung"
-                  onChange={(value) => {
-                    setDirection(value as Direction);
-                    resetStartPhases();
-                  }}
-                  options={[
-                    {
-                      value: "Ost",
-                      label: <DirectionText from="Ost" to="West" />,
-                    },
-                    {
-                      value: "West",
-                      label: <DirectionText from="West" to="Ost" />,
-                    },
-                  ]}
-                  value={direction}
-                />
+                <section className="segfield">
+                  <h3 className="segtitle">Spielrichtung</h3>
+                  {/* The two directions drawn on the field, between the end
+                      zones they name: "Ost → West" reads as a direction on
+                      the pitch, not as a compass quiz. */}
+                  <div aria-label="Spielrichtung" className="fielddir" role="group">
+                    <span aria-hidden="true" className="fielddir-end">
+                      West
+                    </span>
+                    <div className="fielddir-opts">
+                      {(
+                        [
+                          ["Ost", "Ost", "West"],
+                          ["West", "West", "Ost"],
+                        ] as const
+                      ).map(([value, from, to]) => (
+                        <button
+                          aria-pressed={direction === value}
+                          className={
+                            direction === value
+                              ? `fielddir-opt fielddir-${value} sel`
+                              : `fielddir-opt fielddir-${value}`
+                          }
+                          disabled={readOnly || finished}
+                          key={value}
+                          onClick={() => {
+                            setDirection(value);
+                            resetStartPhases();
+                          }}
+                          type="button"
+                        >
+                          <DirectionText from={from} to={to} />
+                        </button>
+                      ))}
+                    </div>
+                    <span aria-hidden="true" className="fielddir-end">
+                      Ost
+                    </span>
+                  </div>
+                </section>
               </div>
             </section>
           </div>

@@ -204,6 +204,34 @@ export default function StartConfirmation({
         </div>
       ) : null}
 
+      {passcheck !== true || licenceIssues.length > 0 ? (
+        // What may need a decision comes first; the restatement follows.
+        <div aria-label="Bitte beachten" className="sheetwarn" role="status">
+          <b>Bitte beachten</b>
+          <ul>
+            {passcheck === false ? <li>Passcheck fehlt</li> : null}
+            {passcheck !== true && passcheck !== false ? (
+              <li>Passcheck unbekannt</li>
+            ) : null}
+            {licenceIssues.length > 0 ? (
+              <li>
+                <b>
+                  {licenceIssues.length === 1
+                    ? "1 Lizenz ist nicht gültig"
+                    : `${licenceIssues.length} Lizenzen sind nicht gültig`}
+                </b>{" "}
+                <span>
+                  {licenceIssues
+                    .map((issue) => `${issue.name} (${issue.role})`)
+                    .join(", ")}
+                </span>
+              </li>
+            ) : null}
+          </ul>
+          <span>Das Spiel lässt sich trotzdem starten.</span>
+        </div>
+      ) : null}
+
       <h3 className="sheetsection">Spiel</h3>
       <dl className="startlist">
         <Line label="Begegnung">
@@ -272,21 +300,6 @@ export default function StartConfirmation({
         </Line>
       </dl>
 
-      {licenceIssues.length > 0 ? (
-        <div className="sheetwarn" role="status">
-          <b>
-            {licenceIssues.length === 1
-              ? "1 Lizenz ist nicht gültig"
-              : `${licenceIssues.length} Lizenzen sind nicht gültig`}
-          </b>{" "}
-          <span>
-            {licenceIssues
-              .map((issue) => `${issue.name} (${issue.role})`)
-              .join(", ")}
-          </span>{" "}
-          <span>Das Spiel lässt sich trotzdem starten.</span>
-        </div>
-      ) : null}
     </Sheet>
   );
 }

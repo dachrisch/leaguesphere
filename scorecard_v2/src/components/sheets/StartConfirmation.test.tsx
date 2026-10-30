@@ -371,4 +371,22 @@ describe("StartConfirmation — refusing and confirming", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onStart).not.toHaveBeenCalled();
   });
+
+  it("puts what needs attention above the summary", () => {
+    render(<StartConfirmation {...baseProps()} passcheck={false} />);
+
+    const sheet = dialog();
+    const attention = within(sheet).getByRole("status", { name: "Bitte beachten" });
+    expect(attention).toHaveTextContent("Passcheck fehlt");
+    const summary = within(sheet).getByText("Begegnung");
+    expect(attention.compareDocumentPosition(summary)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it("has nothing to point out when the passcheck passed and every licence is valid", () => {
+    render(<StartConfirmation {...baseProps()} passcheck />);
+
+    expect(within(dialog()).queryByRole("status", { name: "Bitte beachten" })).toBeNull();
+  });
 });

@@ -54,7 +54,13 @@ only control static assets, and its scope could never leak into the old app.
    **<Position> hinzufügen** row ("Optional · ohne Pflicht zur Besetzung");
    once somebody is assigned it becomes a normal row. **2. Spielkonfiguration**:
    one card with **Münzwurf gewonnen von**, **Erster Ballbesitz** and
-   **Spielrichtung**, each a full-width two-option switch. A readiness banner
+   **Spielrichtung**; the first two are full-width two-option switches, the
+   direction is drawn on a field between the **West** and **Ost** end zones.
+   A crew with every required slot staffed, every licence valid and nothing to
+   clean up folds into one **Crew vollständig** row (**ändern** opens it); any
+   problem keeps the rows open. The start confirmation leads with **Bitte
+   beachten** (missing passcheck, invalid licences) before restating the
+   setup. A readiness banner
    above the start action is the single source of truth: green **Bereit zum
    Starten**, amber **Angaben fehlen** with exactly the missing facts, and
    **Start nur online** / **Nur lesen** when the disabled start bar has that
