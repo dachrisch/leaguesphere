@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.4.1](https://github.com/dachrisch/leaguesphere/compare/v5.4.0...v5.4.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **deps:** update dependency webpack-cli to v7.3.0 ([#2203](https://github.com/dachrisch/leaguesphere/issues/2203)) ([e196990](https://github.com/dachrisch/leaguesphere/commit/e196990b54d52bb039f2145a96afc5bef63d2f4a))
+* **scorecard-v2:** drop the leave-site prompt ([#2204](https://github.com/dachrisch/leaguesphere/issues/2204)) ([949cf65](https://github.com/dachrisch/leaguesphere/commit/949cf65a7327635845897b6bb06f2f39389e96be))
+
+
+### Documentation
+
+* put the DCO sign-off in the agent path ([#2205](https://github.com/dachrisch/leaguesphere/issues/2205)) ([b6e3f3d](https://github.com/dachrisch/leaguesphere/commit/b6e3f3d4c2ad65ed6c14c6eb5350d88293bf913d))
+
 ## [5.4.0](https://github.com/dachrisch/leaguesphere/compare/v5.3.1...v5.4.0) (2026-10-30)
 
 
