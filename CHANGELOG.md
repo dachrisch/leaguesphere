@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.3.1](https://github.com/dachrisch/leaguesphere/compare/v5.3.0...v5.3.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **deps:** update dependency eslint to v10.14.0 ([#2199](https://github.com/dachrisch/leaguesphere/issues/2199)) ([f15b069](https://github.com/dachrisch/leaguesphere/commit/f15b069f06054c64e14b6c7b51a7e9c4e7774f5b))
+
 ## [5.3.0](https://github.com/dachrisch/leaguesphere/compare/v5.2.11...v5.3.0) (2026-10-30)
 
 
