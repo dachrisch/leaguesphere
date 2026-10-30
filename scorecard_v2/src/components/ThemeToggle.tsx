@@ -1,13 +1,14 @@
 import { useState } from "react";
 
 import { getTheme, setTheme, THEME_ORDER, type Theme } from "../theme";
-import { Auto, Moon, Sun } from "./icons";
+import { Auto, BrightSun, Moon, Sun } from "./icons";
 
 /** The visible label of each choice. */
 const LABEL: Record<Theme, string> = {
   auto: "Auto",
   light: "Hell",
   dark: "Dunkel",
+  sun: "Sonne",
 };
 
 /** The tooltip: "Design: automatisch". */
@@ -15,12 +16,14 @@ const TITLE: Record<Theme, string> = {
   auto: "Design: automatisch",
   light: "Design: hell",
   dark: "Design: dunkel",
+  sun: "Design: Sonne – hoher Kontrast für draußen",
 };
 
-const ICON = { auto: Auto, light: Sun, dark: Moon } as const;
+const ICON = { auto: Auto, light: Sun, dark: Moon, sun: BrightSun } as const;
 
 /**
- * The theme choice inside the account menu: Auto / Hell / Dunkel.
+ * The theme choice inside the account menu: Auto / Hell / Dunkel / Sonne
+ * (the outdoor palette for direct sunlight).
  *
  * Three visible options instead of the old cycling icon, because the menu has
  * room for the words and an explicit choice is quicker than cycling. The icon

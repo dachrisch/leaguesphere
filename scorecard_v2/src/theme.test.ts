@@ -150,10 +150,20 @@ describe("resolving and applying", () => {
     expect(root().dataset.themeChoice).toBe("light");
   });
 
-  it("cycles auto → light → dark → auto", () => {
+  it("cycles auto → light → dark → sun → auto", () => {
     expect(nextTheme("auto")).toBe("light");
     expect(nextTheme("light")).toBe("dark");
-    expect(nextTheme("dark")).toBe("auto");
+    expect(nextTheme("dark")).toBe("sun");
+    expect(nextTheme("sun")).toBe("auto");
+  });
+
+  it("applies the outdoor theme as its own light-scheme palette", () => {
+    vi.stubGlobal("matchMedia", undefined);
+
+    expect(setTheme("sun")).toBe("sun");
+    expect(root().dataset.theme).toBe("sun");
+    expect(root().style.colorScheme).toBe("light");
+    expect(getTheme()).toBe("sun");
   });
 });
 

@@ -20,14 +20,14 @@ function choice(name: string): HTMLButtonElement {
 }
 
 describe("ThemeToggle", () => {
-  it("is a labelled group with the three choices", () => {
+  it("is a labelled group with the four choices", () => {
     render(<ThemeToggle />);
 
     const group = screen.getByRole("group", { name: "Design" });
     expect(group).toBeInTheDocument();
     expect(
       screen.getAllByRole("button").map((button) => button.textContent),
-    ).toEqual(["Auto", "Hell", "Dunkel"]);
+    ).toEqual(["Auto", "Hell", "Dunkel", "Sonne"]);
   });
 
   it("marks the stored choice with aria-pressed", () => {

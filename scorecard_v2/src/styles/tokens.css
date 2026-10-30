@@ -3,6 +3,7 @@
  *
  * Three layers, one meaning each:
  *   :root                  – light (LeagueSphere: #fafafa body, white cards)
+ *   [data-theme="sun"]     – the outdoor choice: light, maximum contrast
  *   [data-theme="dark"]    – an explicit dark choice, resolved by theme.ts
  *   @media … dark + auto   – the pre-JS / no-JS default before theme.ts runs
  *
@@ -120,6 +121,43 @@
   --page-gutter: var(--space-5);
   --header-pad-top: max(var(--space-3), env(safe-area-inset-top));
   --bottom-safe: max(var(--space-5), env(safe-area-inset-bottom));
+}
+
+/* Outdoor ("Sonne"): a light scheme pushed to maximum contrast for a phone in
+   direct sunlight. Pure white surfaces, near-black text, hairlines that stay
+   visible, a darker bar and saturated team colours. Same token names, so
+   every component follows without its own rules. */
+[data-theme="sun"] {
+  color-scheme: light;
+
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #eef0f2;
+  --panel: var(--surface);
+  --panel2: var(--surface-2);
+
+  --fg: #000000;
+  --heading: #000000;
+  --muted: #2b333a;
+
+  --primary: #102a3d;
+  --primary-contrast: #ffffff;
+  --link: #003f73;
+
+  --home: #a8170b;
+  --away: #00632f;
+  --warning: #6e3d00;
+  --home-text: #8c1308;
+  --away-text: #004d24;
+  --soon-text: #2b333a;
+
+  --line: #5c656d;
+  --line-soft: #8a939b;
+  --line-strong: #2b333a;
+  --fill-soft: #eef0f2;
+
+  --action: #000000;
+  --on-action: #ffffff;
 }
 
 [data-theme="dark"] {
