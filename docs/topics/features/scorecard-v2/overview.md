@@ -114,6 +114,14 @@ account menu (avatar: identity, **Auto**/**Hell**/**Dunkel**, **Abmelden**, and
 the LeagueSphere version with Impressum and Datenschutz). There is no screen
 footer, so the content area runs to the bottom edge.
 
+On the tracking screen one **strip under the bar** carries the transmission
+state, and nothing else repeats it: **Nur lesen – das Spiel läuft auf einem
+anderen Gerät** (with **Erneut prüfen**), **Schreiben gesperrt – bitte neu
+anmelden**, **Offline · n Einträge noch nicht übertragen**, **Spielstand
+vorläufig · …** while sending, and **✓ Alles gesendet** for a moment after the
+queue drained. The bar's chip is the coloured dot alone there. A log row that
+is still queued on the device carries a **wartet** tag.
+
 What the backend had to grow (all additive):
 
 - `GET /api/game/<id>/roster` — jersey + surname per side, `[]` for a bracket

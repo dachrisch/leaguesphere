@@ -55,7 +55,7 @@ import {
   type GameSession,
 } from "../session/gameSession";
 import { getRuntime } from "../session/runtime";
-import { useSyncStatus } from "../session/useSyncStatus";
+import { useSyncStatus, type SyncStatus } from "../session/useSyncStatus";
 
 interface TrackingScreenProps {
   game: Game;
@@ -288,6 +288,71 @@ export function describeSaved(events: GameLogEventInput[]): string {
  * the touchdown sheet falls back to a numeric jersey field instead of
  * blocking the game.
  */
+/**
+ * The one place the screen talks about transmission: read-only (another
+ * device, an expired session), offline with what is waiting, sending, or
+ * "Alles gesendet" for a moment after the queue drained. The app-bar chip
+ * only carries the short state, so nothing is said twice.
+ */
+export function SyncStrip({
+  status,
+  drained,
+  onResume,
+}: {
+  status: SyncStatus;
+  drained: boolean;
+  onResume: () => void;
+}) {
+  const waiting =
+    status.pending === 1
+      ? "1 Eintrag noch nicht übertragen"
+      : `${status.pending} Einträge noch nicht übertragen`;
+  if (status.paused === "device" || status.paused === "auth") {
+    return (
+      <div aria-label="Übertragung" className="syncstrip syncstrip-stop" role="status">
+        <p className="syncstrip-text">
+          {status.paused === "device"
+            ? "Nur lesen – das Spiel läuft auf einem anderen Gerät."
+            : "Schreiben gesperrt – bitte neu anmelden."}
+          {status.paused === "device" ? (
+            <span className="syncstrip-sub">
+              Die Turnierleitung kann die Gerätesperre aufheben.
+            </span>
+          ) : null}
+        </p>
+        <button className="syncstrip-btn" onClick={onResume} type="button">
+          Erneut prüfen
+        </button>
+      </div>
+    );
+  }
+  if (status.paused === "offline" || !status.online) {
+    return (
+      <div aria-label="Übertragung" className="syncstrip syncstrip-off" role="status">
+        <p className="syncstrip-text">
+          Offline ·{" "}
+          {status.pending > 0 ? waiting : "Einträge werden hier gespeichert"}
+        </p>
+      </div>
+    );
+  }
+  if (status.pending > 0) {
+    return (
+      <div aria-label="Übertragung" className="syncstrip syncstrip-wait" role="status">
+        <p className="syncstrip-text">Spielstand vorläufig · {waiting}</p>
+      </div>
+    );
+  }
+  if (drained) {
+    return (
+      <div aria-label="Übertragung" className="syncstrip syncstrip-ok" role="status">
+        <p className="syncstrip-text">✓ Alles gesendet</p>
+      </div>
+    );
+  }
+  return null;
+}
+
 export default function TrackingScreen({
   game,
   initialLog,
@@ -388,6 +453,30 @@ export default function TrackingScreen({
   // or the session expired). Read-only with the reason, not a silent failure.
   const readOnly = status.paused === "device" || status.paused === "auth";
   const stopReason = pauseReason(status.paused);
+  /**
+   * "Alles gesendet" for a moment after the queue drained: the pending count
+   * is compared while rendering (React's "adjust state on a changed input"
+   * pattern), and only the timeout that hides it again runs in an effect.
+   */
+  const [prevPending, setPrevPending] = useState(status.pending);
+  const [drainTick, setDrainTick] = useState(0);
+  const [drained, setDrained] = useState(false);
+  if (status.pending !== prevPending) {
+    setPrevPending(status.pending);
+    if (status.pending === 0 && prevPending > 0 && status.paused === null) {
+      setDrained(true);
+      setDrainTick((tick) => tick + 1);
+    } else if (status.pending > 0) {
+      setDrained(false);
+    }
+  }
+  useEffect(() => {
+    if (drainTick === 0) {
+      return;
+    }
+    const timer = setTimeout(() => setDrained(false), 2500);
+    return () => clearTimeout(timer);
+  }, [drainTick]);
   // A tracked game keeps the screen on: the referee looks away for a whole
   // series, and an unlock with gloves or wet hands costs the next entry.
   useWakeLock(!finished);
@@ -848,32 +937,13 @@ export default function TrackingScreen({
         sub={trackingSubtitle(gamedayName, leagueLabel)}
         title={trackingTitle(game)}
       />
-      <SyncDetails gameId={game.id} status={status} />
+      <SyncDetails gameId={game.id} status={status} withReason={false} />
       <SnapshotHint updatedAt={staleSince} />
-      {stopReason === null ? null : (
-        <div className="syncstop" role="alert">
-          <p>
-            {status.paused === "device"
-              ? "Schreiben gesperrt – ein anderes Gerät hält dieses Spiel."
-              : "Schreiben gesperrt – bitte neu anmelden."}
-          </p>
-          <button
-            className="setlink"
-            onClick={() => void status.resume()}
-            type="button"
-          >
-            Erneut prüfen
-          </button>
-        </div>
-      )}
-      {status.pending > 0 ? (
-        <p className="vorlaeufig">
-          Spielstand vorläufig ·{" "}
-          {status.pending === 1
-            ? "1 Eintrag noch nicht übertragen"
-            : `${status.pending} Einträge noch nicht übertragen`}
-        </p>
-      ) : null}
+      <SyncStrip
+        drained={drained}
+        onResume={() => void status.resume()}
+        status={status}
+      />
       <ScoreHeader
         away={log.away}
         disabled={possessionPending || halftimePending || readOnly}
@@ -914,7 +984,7 @@ export default function TrackingScreen({
           );
         })}
       </div>
-      {possessionError === null ? null : (
+      {possessionError === null || readOnly ? null : (
         <p className="trackerror" role="alert">
           {possessionError}
         </p>
@@ -962,7 +1032,7 @@ export default function TrackingScreen({
             )}
           </div>
         )}
-        {quickError === null ? null : (
+        {quickError === null || readOnly ? null : (
           <p className="trackerror" role="alert">
             {quickError}
           </p>
@@ -1125,11 +1195,6 @@ export default function TrackingScreen({
           <p className="trackerror" role="alert">
             Extrapunkt nach dem Touchdown noch offen – bitte oben eintragen
             oder „nicht verwandelt“ wählen.
-          </p>
-        ) : null}
-        {readOnly ? (
-          <p className="setupnote">
-            Nur lesend – Einträge sind auf diesem Gerät gesperrt.
           </p>
         ) : null}
       </footer>

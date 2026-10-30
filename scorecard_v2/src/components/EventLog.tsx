@@ -441,6 +441,10 @@ export default function EventLog({
                   {row.isDeleted ? (
                     <span className="sr-only">gelöscht</span>
                   ) : null}
+                  {row.teamLogId !== null && row.teamLogId < 0 ? (
+                    // Queued on this device, not yet confirmed by the server.
+                    <span className="rowpending">wartet</span>
+                  ) : null}
                 </span>
                 <span className="rowright">
                   <time className="rowtime" dateTime={row.time ?? undefined}>

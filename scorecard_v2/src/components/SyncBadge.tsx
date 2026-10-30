@@ -55,7 +55,8 @@ export function syncLabel({
   online,
 }: LabelState): string {
   if (paused === "device") {
-    return "Pausiert · anderes Gerät";
+    // Short state for the chip; the screen's strip says why.
+    return "Nur lesen";
   }
   if (paused === "auth") {
     return "Pausiert · Anmeldung";
@@ -176,8 +177,15 @@ function Chip({ status, inline }: { status: SyncStatus; inline: boolean }) {
 }
 
 /** Pause explanation and the per-op actions a tap on the chip cannot offer. */
-function Details({ status }: { status: SyncStatus }) {
-  const { reason, droppable } = badgeState(status);
+function Details({
+  status,
+  withReason = true,
+}: {
+  status: SyncStatus;
+  withReason?: boolean;
+}) {
+  const { droppable } = badgeState(status);
+  const reason = withReason ? badgeState(status).reason : null;
 
   return (
     <>
@@ -296,14 +304,22 @@ export default function SyncBadge({
 }
 
 /** The details, from a status the caller owns; nothing while it is clean. */
-function DetailsView({ status }: { status: SyncStatus }) {
-  if (!hasDetails(status)) {
+function DetailsView({
+  status,
+  withReason = true,
+}: {
+  status: SyncStatus;
+  withReason?: boolean;
+}) {
+  const { droppable } = badgeState(status);
+  const hasReason = withReason && badgeState(status).reason !== null;
+  if (!hasReason && droppable.length === 0 && status.failed === 0) {
     return null;
   }
 
   return (
     <section aria-label="Übertragungsdetails" className="syncbar syncdetails">
-      <Details status={status} />
+      <Details status={status} withReason={withReason} />
     </section>
   );
 }
@@ -321,13 +337,19 @@ function LiveDetails({ gameId }: { gameId: number | null }) {
 export function SyncDetails({
   gameId = null,
   status,
+  withReason = true,
 }: {
   gameId?: number | null;
   status?: SyncStatus;
+  /**
+   * `false` where the screen states the pause itself (the tracking strip),
+   * so the reason is not said twice; the per-op actions stay.
+   */
+  withReason?: boolean;
 }) {
   return status === undefined ? (
     <LiveDetails gameId={gameId} />
   ) : (
-    <DetailsView status={status} />
+    <DetailsView status={status} withReason={withReason} />
   );
 }
