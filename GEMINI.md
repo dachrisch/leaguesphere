@@ -2,7 +2,7 @@
 
 This file provides comprehensive instructional context specifically for the **Gemini CLI** (google-gemini-cli) and its specialized tools.
 
-> **CRITICAL:** For project-wide standards, build/test commands, and deployment safety policies, you MUST refer to the **[LeagueSphere Contributor Guide](docs/guides/contributor-guide.md)**.
+> **CRITICAL:** For project-wide standards, build/test commands, and deployment safety policies, you MUST refer to the **[LeagueSphere Contributor Guide](docs/topics/guides/contributor-guide.md)**.
 
 ## 🤖 Gemini-Specific Workflow
 
@@ -32,9 +32,9 @@ See [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md) for the complete guide.
 ## 🛠 Central Authority
 
 Refer to these specialized guides for detailed protocols:
-- **[Architecture Overview](docs/arch/architecture-overview.md)**: System design and tech stack.
-- **[Coding Standards](docs/guides/coding-standards.md)**: Python (Django) and TypeScript (React) conventions.
-- **[Infrastructure Policy](docs/guides/infrastructure-policy.md)**: Deployment safety and Ansible rules.
+- **[Architecture Overview](docs/topics/architecture/architecture-overview.md)**: System design and tech stack.
+- **[Coding Standards](docs/topics/guides/coding-standards.md)**: Python (Django) and TypeScript (React) conventions.
+- **[Infrastructure Policy](docs/topics/deployment/infrastructure-policy.md)**: Deployment safety and Ansible rules.
 - **[Scoped CI](docs/topics/deployment/scoped-ci.md)**: Path-scoped CircleCI pipeline. CI changes require updating `.circleci/scope-mapping.txt`/`scope-exclude.txt` (runs `scripts/check_scope_coverage.py` safety net); dependency/build changes may widen the tests a push runs.
-- **[Setup Guide](docs/guides/setup-guide.md)**: Local environment configuration.
-- **[Git Operations](docs/guides/contributor-guide.md#2-git--branching-protocol)**: PR and branching rules.
+- **[Setup Guide](docs/topics/guides/setup-guide.md)**: Local environment configuration.
+- **[Git Operations](docs/topics/guides/contributor-guide.md#2-git--branching-protocol)**: PR and branching rules, including the required `Signed-off-by` trailer (`git commit -s`) that the DCO check enforces.

@@ -80,7 +80,7 @@ The demo database automatically resets every day at **midnight UTC**. This means
 ## Questions or Feedback?
 
 - Check out the [LeagueSphere documentation](/)
-- Read the [contributor guide](/docs/guides/contributor-guide.md)
+- Read the [contributor guide](contributor-guide.md)
 - Report issues via the standard channels
 
 ---

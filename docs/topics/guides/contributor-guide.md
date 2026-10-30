@@ -4,10 +4,10 @@ Welcome! This guide is the **central source of truth** for all contributors, dev
 
 ## 📁 Essential Documentation
 
-- **[System Architecture](@docs/arch/architecture-overview.md)**: High-level overview of the backend and frontend stack.
-- **[Coding Standards](@docs/guides/coding-standards.md)**: Rules for Python, TypeScript, and CSS.
-- **[Infrastructure Policy](@docs/guides/infrastructure-policy.md)**: Mandatory deployment and server management protocols.
-- **[Setup Guide](@docs/guides/setup-guide.md)**: Instructions for local development environment configuration.
+- **[System Architecture](../architecture/architecture-overview.md)**: High-level overview of the backend and frontend stack.
+- **[Coding Standards](coding-standards.md)**: Rules for Python, TypeScript, and CSS.
+- **[Infrastructure Policy](../deployment/infrastructure-policy.md)**: Mandatory deployment and server management protocols.
+- **[Setup Guide](setup-guide.md)**: Instructions for local development environment configuration.
 
 ## 📂 Project Structure Overview
 
@@ -19,7 +19,7 @@ Welcome! This guide is the **central source of truth** for all contributors, dev
 - `scorecard/`: On-field results entry (React).
 - `container/`: Infrastructure, Dockerfiles, and deployment scripts.
 
-Refer to the **[Project README](@README.md)** for a full directory list.
+Refer to the **[Project README](../../../README.md)** for a full directory list.
 
 ## 🏗 Build, Lint & Test Commands
 
@@ -64,6 +64,7 @@ We strictly follow the **RED -> GREEN -> REFACTOR** cycle. All code changes MUST
 ### 2. Git & Branching Protocol
 - **No Direct Commits to Master**: Always use a feature branch.
 - **Conventional Commits**: Format messages as `feat:`, `fix:`, `refactor:`, etc.
+- **Signed Commits (DCO)**: Every commit needs a `Signed-off-by` trailer, so commit with `git commit -s`. The DCO workflow (`.github/workflows/dco.yaml`) rejects a PR without it. On an existing branch: `git rebase --signoff master` and `git push --force-with-lease`. The full rule is in [CONTRIBUTING.md](../../../CONTRIBUTING.md).
 - **Pull Requests (PR)**:
   - Create PRs in **origin** (`dachrisch/leaguesphere`).
   - Use `gh pr create --repo dachrisch/leaguesphere --base master --title "..." --body "..."` for non-interactive creation.

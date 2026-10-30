@@ -61,7 +61,7 @@ k6 run load-test-k6.js
 # https://monitor.lehel.xyz/ → k6 Load Testing dashboard
 ```
 
-See **[Infrastructure Performance Policy](docs/guides/infrastructure-performance-policy.md)** for performance standards and automated checking. See **[Infrastructure Policy](docs/guides/infrastructure-policy.md)** and **[Contributor Guide § Version Management](docs/guides/contributor-guide.md#-version-management-automated-via-release-please)** for deployment and release workflows. CI is path-scoped (runs only affected tests) — see **[Scoped CI](docs/topics/deployment/scoped-ci.md)**.
+See **[Infrastructure Performance Policy](docs/topics/deployment/performance-policy.md)** for performance standards and automated checking. See **[Infrastructure Policy](docs/topics/deployment/infrastructure-policy.md)** and **[Contributor Guide § Version Management](docs/topics/guides/contributor-guide.md#-version-management-automated-via-release-please)** for deployment and release workflows. CI is path-scoped (runs only affected tests) — see **[Scoped CI](docs/topics/deployment/scoped-ci.md)**.
 
 ### First-Time Frontend Setup (Any React App)
 ```bash
@@ -148,7 +148,7 @@ getting lost or missing cross-module dependencies.
 
 ## ⚡ Query Optimization & Caching Patterns
 
-**See [Performance Guide](docs/guides/performance-guide.md) for comprehensive standards and automated checking.**
+**See [Performance Guide](docs/topics/deployment/performance-guide.md) for comprehensive standards and automated checking.**
 
 ### HTTP-Level ETag Caching
 The `gamedays/api/views.py` implements ETag-based caching to reduce redundant data transfers:
@@ -248,9 +248,14 @@ All features and bugfixes MUST follow the RED → GREEN → REFACTOR cycle:
 ### 2. Git & Branching Protocol
 - Create a feature branch; never commit directly to `master`
 - Use conventional commits: `feat:`, `fix:`, `refactor:`, etc.
+- **Sign every commit** with `git commit -s`: the DCO workflow
+  (`.github/workflows/dco.yaml`) rejects a PR whose commits carry no
+  `Signed-off-by` trailer. Forgot it? `git rebase --signoff master`, then
+  `git push --force-with-lease` — no re-review needed. The rule is
+  [CONTRIBUTING.md](CONTRIBUTING.md)'s.
 - Create PR via: `gh pr create --repo dachrisch/leaguesphere --base master --title "..." --body "..."`
 - Require ≥90% patch coverage
-- See **[Contributor Guide § Git & Branching](docs/guides/contributor-guide.md#-core-development-workflow)** for release and versioning details
+- See **[Contributor Guide § Git & Branching](docs/topics/guides/contributor-guide.md#-core-development-workflow)** for release and versioning details
 
 ### 3. Staging Validation
 All changes MUST be tested on [stage.leaguesphere.app](https://stage.leaguesphere.app) before merging to master.
@@ -273,7 +278,7 @@ All changes MUST be tested on [stage.leaguesphere.app](https://stage.leaguespher
 3. Only after successful test deployment, deploy to production
 4. Verify results and document changes
 
-Refer to **[Infrastructure Policy](docs/guides/infrastructure-policy.md)** for complete deployment protocols.
+Refer to **[Infrastructure Policy](docs/topics/deployment/infrastructure-policy.md)** for complete deployment protocols.
 
 ---
 
@@ -308,11 +313,11 @@ See `gamedays/tests/setup_factories/db_setup.py::DBSetup.create_playoff_placehol
 ## 📚 Central Authority
 
 For detailed protocols and standards, refer to:
-- **[Contributor Guide](docs/guides/contributor-guide.md)**: Build, test, code style, and safety guidelines (primary reference)
-- **[Architecture Overview](docs/arch/architecture-overview.md)**: System design and tech stack decisions
-- **[Coding Standards](docs/guides/coding-standards.md)**: Python, TypeScript, and CSS conventions
-- **[Infrastructure Policy](docs/guides/infrastructure-policy.md)**: Deployment safety and Ansible rules
-- **[Setup Guide](docs/guides/setup-guide.md)**: Local environment configuration
+- **[Contributor Guide](docs/topics/guides/contributor-guide.md)**: Build, test, code style, and safety guidelines (primary reference)
+- **[Architecture Overview](docs/topics/architecture/architecture-overview.md)**: System design and tech stack decisions
+- **[Coding Standards](docs/topics/guides/coding-standards.md)**: Python, TypeScript, and CSS conventions
+- **[Infrastructure Policy](docs/topics/deployment/infrastructure-policy.md)**: Deployment safety and Ansible rules
+- **[Setup Guide](docs/topics/guides/setup-guide.md)**: Local environment configuration
 - **[AGENTS.md](AGENTS.md)**: Universal guidelines for all autonomous agents
 - **[GEMINI.md](GEMINI.md)**: Gemini CLI-specific instructions
 
@@ -321,15 +326,14 @@ For detailed protocols and standards, refer to:
 
 **Recent Implementation Work:**
 - **[Load Testing Infrastructure](history/2026-05-31_load-testing-infrastructure.md)** — k6 load tests, Prometheus metrics pipeline, Grafana dashboard setup
-- **[Production Test Guide](../PROD_TEST_GUIDE.md)** — Prometheus/Pushgateway verification procedures
 
 **Documentation Structure (`docs/` directory):**
-- `docs/arch/`: Architectural Decision Records and system design
+- `docs/topics/architecture/`: Architectural Decision Records and system design
 - `docs/features/`: Feature documentation (current and historical)
 - `docs/guides/`: Setup, contributor, and coding standards
 - `docs/plans/`: Historical and current implementation plans
 - `docs/reports/`: Performance analysis, verification reports, and summaries
-- `docs/testing/`: Test scenarios and testing strategies
+- `docs/topics/testing/`: Test scenarios and testing strategies
 
 ---
 
