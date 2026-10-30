@@ -112,7 +112,10 @@ Every screen has one steel app bar and nothing else as chrome: back, the title
 with its context line (on tracking: gameday and league), the sync chip and the
 account menu (avatar: identity, **Auto**/**Hell**/**Dunkel**, **Abmelden**, and
 the LeagueSphere version with Impressum and Datenschutz). There is no screen
-footer, so the content area runs to the bottom edge.
+footer, so the content area runs to the bottom edge. The theme choice is
+**Auto / Hell / Dunkel / Sonne**; **Sonne** is a light palette pushed to
+maximum contrast (white surfaces, near-black text, visible hairlines, darker
+bar and team colours) for a phone in direct sunlight.
 
 On the tracking screen one **strip under the bar** carries the transmission
 state, and nothing else repeats it: **Nur lesen – das Spiel läuft auf einem

@@ -170,6 +170,16 @@ export function Sun(props: IconProps) {
   );
 }
 
+/** Theme: outdoor (sun, high contrast): a filled sun with long rays. */
+export function BrightSun(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="4.5" fill="currentColor" />
+      <path d="M12 1.5v3M12 19.5v3M3.6 3.6l2.1 2.1M18.3 18.3l2.1 2.1M1.5 12h3M19.5 12h3M3.6 20.4l2.1-2.1M18.3 5.7l2.1-2.1" />
+    </Svg>
+  );
+}
+
 /** Theme: dark. */
 export function Moon(props: IconProps) {
   return (
