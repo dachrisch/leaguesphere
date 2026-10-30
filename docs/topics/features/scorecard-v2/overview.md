@@ -84,8 +84,13 @@ only control static assets, and its scope could never leak into the old app.
    **Rückgängig** and, for a first down, **Nr. ergänzen** (the jersey sheet
    then writes the numbered row and undoes the one-tap row). Interception,
    Spielzeit, Auszeit, penalty, safety and overtime keep their sheets.
-   Touchdown with the roster's jerseys (numeric fallback when there is none),
-   PAT, first down, turnover, interception, penalty with search, safety,
+   Touchdown with the roster's jerseys (a tile grid up to 24 players, a
+   two-digit keypad above that with the roster name as confirmation; numeric
+   field when there is no roster; this game's scorers as chips). The touchdown
+   is saved alone; the extra point is asked **after the try** in place of the
+   touchdown button (+1 / +2 / nicht verwandelt, nothing pre-selected),
+   credited to the scoring team with the scorer's jersey, and **Spiel
+   beenden** waits while it is open. First down, turnover, interception, penalty with search, safety,
    overtime, Spielzeit, Auszeit, half-time, and **Rückgängig** per entry. The
    screen keeps the display on while the game is open (Wake Lock, where the
    browser offers it) and confirms each saved entry with a short vibration.
