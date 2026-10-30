@@ -19,26 +19,24 @@ into two files driven by the `circleci/path-filtering` orb:
    boolean pipeline parameters (`run-python-core`, `run-scorecard`, …).
 3. The pipeline continues with `continue.yml`, where each test job is
    gated by an expression filter on its parameter. Only relevant jobs run.
-4. The image builds `require` their directly-relevant test shards so
-   tests always gate builds — plus the always-run `scope_anchor` noop:
-   a job whose entire `requires` list is filtered out is itself skipped
-   even when its own filter is true, so without the anchor a
-   backend-only change would skip `build_frontend` (all `*_js`
-   jobs filtered) and `test_compose_network` (which unconditionally
-   loads both images) would hard-fail on `docker load` (pipelines 5503,
-   5525). The anchor guarantees at least one requirement always
-   remains. `build_backend` and `build_frontend` also share
-   `test_compose_network`'s exact filter (not just their own narrower
-   one), so both images always exist whenever the compose test runs.
-   `e2e` runs standalone in parallel with the shards and the builds (it
-   needs neither image); it gates `test_backend_image` and
-   `test_frontend_image` instead. Deploys `require`
-   `test_compose_network`, which transitively requires both builds,
-   both image tests, and `check_migrations`, covering the full scoped
-   test matrix without a separately duplicated list, so tag and branch
-   pipelines share one gating chain. On tag pipelines all shards run
-   (full run via version files), making the anchor redundant but
-   harmless there.
+4. **Path-scoped jobs** are only the test shards and the JS suites: each
+   has an expression filter and runs only when its parameter is true.
+   **The image chain is always scheduled** — `build_backend`,
+   `build_frontend` and the required `test_compose_network` decide
+   *inside* the job (`needed`, from the single `run-images` parameter)
+   whether to build or boot, and otherwise print a line and pass. That is
+   the only way a required context can report on a diff that needs no
+   image: a filtered-out job publishes no status at all.
+   `test_backend_image` / `test_frontend_image` stay scoped; `e2e` is
+   always-run and gates them.
+5. **Tests gate deploys, not builds.** `full_gate` fans in every scoped
+   job (shards, JS suites, `e2e`, both image tests, the builds, the
+   compose boot) and the deploy jobs require it, so a release only ships
+   when the complete matrix of a full run is green. On a branch
+   `full_gate` is skipped whenever any job it fans in was skipped —
+   nothing deploys there. On tag pipelines the scope resolves to a full
+   run (version files match the shared and per-app rules), so every job
+   `full_gate` waits for actually runs.
 
 ### Guarantees
 
@@ -46,8 +44,21 @@ into two files driven by the `circleci/path-filtering` orb:
   diff (the orb falls back to HEAD~1); release tags touch version files
   across every app → full run. A stale/large diff also resolves to a
   full run, and `check_release_sequence` refuses stale deploys.
-- **Docs-only pushes** run just the always-on jobs
-  (`scope_coverage`, `check_version_sequence`) — adds ~seconds, not minutes.
+- **Docs-only pushes** run only the always-on jobs — `scope_coverage`,
+  `check_version_sequence`, `check_migrations`, `e2e`, plus the always
+  scheduled image jobs in their no-op form (`build_backend`,
+  `build_frontend`, `test_compose_network`). They report in seconds; no
+  image is built and nothing is booted.
+- **Required checks always report.** The ruleset requires three contexts —
+  `e2e`, `check_migrations`, `test_compose_network`:
+  - `e2e` and `check_migrations` are unconditional jobs.
+    `check_migrations` runs the checkout itself against an ephemeral
+    MariaDB (`cimg/mysql` sidecar) instead of the backend image, so making
+    it always-on drags no image build behind it.
+  - `test_compose_network` needs both images, so it is scheduled always
+    but boots only when `run-images` is true. When it is false the job
+    prints "nothing to boot" and passes; on a tag pipeline it **fails**
+    instead, so a release can never be green on a no-op.
 - **CI config changes itself** trigger everything (`\.circleci/.*` → all
   parameters true).
 - No path can be silently uncovered: `scripts/check_scope_coverage.py`

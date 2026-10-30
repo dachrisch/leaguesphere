@@ -20,65 +20,57 @@
 \.circleci/.* run-designer true
 \.circleci/.* run-journey true
 \.circleci/.* run-share true
-\.circleci/.* run-build-backend true
-\.circleci/.* run-build-frontend true
-\.circleci/.* run-migrations true
-\.circleci/.* run-compose true
+\.circleci/.* run-images true
 
 # --- dependency manifests: a bump changes the runtime we ship, not just one
-#     app. Run migrations + the compose network as well, so a green dependency
-#     PR has actually migrated a database and booted the stack. Without this a
-#     frontend-only bump skips both, and automerge would merge on evidence that
-#     was never produced.
-(.*/)?(pyproject\.toml|uv\.lock|package\.json|package-lock\.json|requirements.*\.txt) run-migrations true
-(.*/)?(pyproject\.toml|uv\.lock|package\.json|package-lock\.json|requirements.*\.txt) run-compose true
+#     app. Build both images and boot the compose network as well, so a green
+#     dependency PR has actually started the stack it ships. The migration
+#     gate is always-on (`check_migrations`), so it is not listed here.
+(.*/)?(pyproject\.toml|uv\.lock|package\.json|package-lock\.json|requirements.*\.txt) run-images true
 
 # --- .github: legacy Actions workflows (dormant on PRs) still get the full
 #     gate, so a merge never claims proof it does not have ---
-\.github/.* run-migrations true
-\.github/.* run-compose true
+\.github/.* run-images true
 
-# --- shared python roots: all shards + backend image + migrations ---
+# --- shared python roots: all shards + backend image ---
 (conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock|\.coveragerc) run-python-core true
 (conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock|\.coveragerc) run-python-gamedays true
 (conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock|\.coveragerc) run-python-officials true
 (conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock|\.coveragerc) run-python-live true
 (conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock|\.coveragerc) run-python-designer true
 (conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock|\.coveragerc) run-python-cross true
-(conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock) run-build-backend true
-(conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock) run-migrations true
+(conftest\.py|pytest\.ini|test_settings\.py|manage\.py|pyproject\.toml|uv\.lock) run-images true
 
 # --- league_manager (project config/urls/middleware): core + image ---
 league_manager/.* run-python-core true
-league_manager/.* run-build-backend true
-league_manager/.* run-migrations true
+league_manager/.* run-images true
 
 # --- home (personal home page): presentation only, core shard + image ---
 home/.* run-python-core true
 dbaccess/.* run-python-core true
-dbaccess/.* run-build-backend true
-home/.* run-build-backend true
+dbaccess/.* run-images true
+home/.* run-images true
 
 # --- gamedays + league_table (coupled fixtures/models: one shard) ---
 (gamedays|league_table)/.* run-python-gamedays true
-(gamedays|league_table)/.* run-build-backend true
-((gamedays|league_table)/migrations/.*) run-migrations true
+(gamedays|league_table)/.* run-images true
+((gamedays|league_table)/migrations/.*) run-images true
 
 # --- gameevents (event store + projector): projects into gamedays.TeamLog,
 #     so it runs with the gamedays shard ---
 gameevents/.* run-python-gamedays true
-gameevents/.* run-build-backend true
-gameevents/migrations/.* run-migrations true
+gameevents/.* run-images true
+gameevents/migrations/.* run-images true
 
 # --- officials + accounts + teammanager (identity shard) ---
 (officials|accounts|teammanager)/.* run-python-officials true
-(officials|accounts|teammanager)/.* run-build-backend true
-((officials|accounts|teammanager)/migrations/.*) run-migrations true
+(officials|accounts|teammanager)/.* run-images true
+((officials|accounts|teammanager)/migrations/.*) run-images true
 
 # --- liveticker + scorecard backends (live shard) ---
 (liveticker/.*\.py|liveticker/(api|service|tests)/.*|scorecard/.*\.py|scorecard_v2/.*\.py) run-python-live true
-(liveticker/.*\.py|liveticker/(api|service|tests)/.*|scorecard/.*\.py|scorecard_v2/.*\.py) run-build-backend true
-((liveticker|scorecard)/migrations/.*) run-migrations true
+(liveticker/.*\.py|liveticker/(api|service|tests)/.*|scorecard/.*\.py|scorecard_v2/.*\.py) run-images true
+((liveticker|scorecard)/migrations/.*) run-images true
 # Both scorecards (and the ticker) are built on the gamedays APIs: their tests
 # assert the wire contract, so an API change must run them even when the
 # gamedays shard covers the app.
@@ -86,55 +78,53 @@ gamedays/api/.* run-python-live true
 
 # --- passcheck + designer backends + journey + matchreport (designer shard) ---
 (passcheck/.*\.py|passcheck/(api|service|tests)/.*) run-python-designer true
-(passcheck/.*\.py|passcheck/(api|service|tests)/.*) run-build-backend true
+(passcheck/.*\.py|passcheck/(api|service|tests)/.*) run-images true
 (gameday_designer/.*\.py|gameday_designer/tests/.*) run-python-designer true
-(gameday_designer/.*\.py|gameday_designer/tests/.*) run-build-backend true
+(gameday_designer/.*\.py|gameday_designer/tests/.*) run-images true
 (journey|matchreport)/.* run-python-designer true
-(journey|matchreport)/.* run-build-backend true
-((passcheck|gameday_designer|journey|matchreport)/migrations/.*) run-migrations true
+(journey|matchreport)/.* run-images true
+((passcheck|gameday_designer|journey|matchreport)/migrations/.*) run-images true
 passcheck/templates/.* run-python-designer true
 ((liveticker|scorecard|scorecard_v2)/templates/.*) run-python-live true
 gameday_designer/templates/.* run-python-designer true
 
 # --- cross-cutting tests + CI scripts ---
 (tests|scripts)/.* run-python-cross true
-(tests|scripts)/.* run-build-backend true
+(tests|scripts)/.* run-images true
 
 # --- frontends (src + configs trigger job + image build) ---
 scorecard/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc|\.prettierignore) run-scorecard true
-scorecard/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc|\.prettierignore) run-build-frontend true
+scorecard/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc|\.prettierignore) run-images true
 scorecard_v2/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html) run-scorecard-v2 true
-scorecard_v2/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html) run-build-frontend true
+scorecard_v2/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html) run-images true
 liveticker/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc) run-liveticker true
-liveticker/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc) run-build-frontend true
+liveticker/(src/.*|__tests__/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|index\.html|public/.*|\.npmrc|\.prettierrc) run-images true
 passcheck/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|jest\.config\.js|index\.html|public/.*|\.npmrc|exclude-files\.txt) run-passcheck true
-passcheck/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|jest\.config\.js|index\.html|public/.*|\.npmrc|exclude-files\.txt) run-build-frontend true
+passcheck/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|jest\.config\.js|index\.html|public/.*|\.npmrc|exclude-files\.txt) run-images true
 gameday_designer/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*|\.npmrc) run-designer true
-gameday_designer/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*|\.npmrc) run-build-frontend true
+gameday_designer/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*|\.npmrc) run-images true
 journey_dashboard/.* run-journey true
-journey_dashboard/.* run-build-frontend true
+journey_dashboard/.* run-images true
 journey/(static|templates)/.* run-journey true
-journey/(static|templates)/.* run-build-frontend true
+journey/(static|templates)/.* run-images true
 # --- share (embeddable widget): small backend shard + own frontend ---
 share/.*\.py run-python-core true
-share/.*\.py run-build-backend true
+share/.*\.py run-images true
 share/templates/.* run-python-core true
-share/templates/.* run-build-backend true
+share/templates/.* run-images true
 share/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*) run-share true
-share/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*) run-build-frontend true
+share/(src/.*|package\.json|package-lock\.json|vite\..*|vitest\..*|eslint\..*|tsconfig.*|index\.html|public/.*) run-images true
 # e2e sources stay covered by their shards (e2e job itself is always-run).
 scorecard/tests/e2e/.* run-python-live true
 scorecard_v2/tests/e2e/.* run-python-live true
 gameday_designer/tests/e2e/.* run-python-designer true
 
 # --- committed static assets (collectstatic / nginx image input) ---
-(gamedays|league_manager|liveticker|officials|passcheck|scorecard|scorecard_v2|teammanager|gameday_designer|share)/static/.* run-build-frontend true
+(gamedays|league_manager|liveticker|officials|passcheck|scorecard|scorecard_v2|teammanager|gameday_designer|share)/static/.* run-images true
 
 # --- container images ---
-(container/app\.Dockerfile|container/entrypoint.*\.sh) run-build-backend true
-(container/nginx\.Dockerfile|container/nginx.*\.conf|container/healthcheck\.sh) run-build-frontend true
+(container/app\.Dockerfile|container/entrypoint.*\.sh) run-images true
+(container/nginx\.Dockerfile|container/nginx.*\.conf|container/healthcheck\.sh) run-images true
 
 # --- compose network (needs fresh images to test against) ---
-(deployed/docker-compose.*\.ya?ml|deployed/test-compose-network\.sh|deployed/ls\.env.*) run-compose true
-(deployed/docker-compose.*\.ya?ml|deployed/test-compose-network\.sh|deployed/ls\.env.*) run-build-backend true
-(deployed/docker-compose.*\.ya?ml|deployed/test-compose-network\.sh|deployed/ls\.env.*) run-build-frontend true
+(deployed/docker-compose.*\.ya?ml|deployed/test-compose-network\.sh|deployed/ls\.env.*) run-images true

@@ -50,16 +50,7 @@ parameters:
   run-share:
     type: boolean
     default: false
-  run-build-backend:
-    type: boolean
-    default: false
-  run-build-frontend:
-    type: boolean
-    default: false
-  run-migrations:
-    type: boolean
-    default: false
-  run-compose:
+  run-images:
     type: boolean
     default: false
 
@@ -537,32 +528,62 @@ jobs:
           path: test-reports
 
   build_backend:
+    # Always scheduled so the required checks that depend on it always have a
+    # predecessor; the build itself only runs when the scope asks for an image.
+    parameters:
+      needed:
+        type: boolean
+        default: true
     docker:
       - image: cimg/base:stable
     working_directory: ~/repo
     steps:
-      - checkout
-      - ensure_lockfile
-      - setup_remote_docker:
-          version: 20.10.24
-          docker_layer_caching: true
-      - build_docker_image:
-          dockerfile: container/app.Dockerfile
-          image_name: backend
+      - when:
+          condition: << parameters.needed >>
+          steps:
+            - checkout
+            - ensure_lockfile
+            - setup_remote_docker:
+                version: 20.10.24
+                docker_layer_caching: true
+            - build_docker_image:
+                dockerfile: container/app.Dockerfile
+                image_name: backend
+      - unless:
+          condition: << parameters.needed >>
+          steps:
+            - run:
+                name: No backend image build in scope for this diff
+                command: echo "Nothing to build — the diff needs no image."
 
   build_frontend:
+    # Always scheduled so the required checks that depend on it always have a
+    # predecessor; the build itself only runs when the scope asks for an image.
+    parameters:
+      needed:
+        type: boolean
+        default: true
     docker:
       - image: cimg/base:stable
     working_directory: ~/repo
     steps:
-      - checkout
-      - ensure_lockfile
-      - setup_remote_docker:
-          version: 20.10.24
-          docker_layer_caching: true
-      - build_docker_image:
-          dockerfile: container/nginx.Dockerfile
-          image_name: frontend
+      - when:
+          condition: << parameters.needed >>
+          steps:
+            - checkout
+            - ensure_lockfile
+            - setup_remote_docker:
+                version: 20.10.24
+                docker_layer_caching: true
+            - build_docker_image:
+                dockerfile: container/nginx.Dockerfile
+                image_name: frontend
+      - unless:
+          condition: << parameters.needed >>
+          steps:
+            - run:
+                name: No frontend image build in scope for this diff
+                command: echo "Nothing to build — the diff needs no image."
 
   test_backend_image:
     docker:
@@ -657,146 +678,172 @@ jobs:
               http://test_container/static/scorecard_v2/js/scorecard_v2.js > /dev/null
             echo "scorecard_v2 bundle is served by the frontend image"
 
+  # Required status check, so it is never path-scoped: a docs-only PR must
+  # still report it, otherwise the required check sits in "Expected" and the
+  # PR cannot merge. It therefore runs the repo itself on an ephemeral
+  # MariaDB instead of the built backend image — the image side is covered by
+  # test_backend_image, which stays scoped.
   check_migrations:
     docker:
-      - image: cimg/base:stable
+      - image: cimg/python:3.15.2
+      - image: cimg/mysql:26.10
+        command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
+        environment:
+          # A dummy root password, not an empty one: the production settings
+          # guard refuses to load without MYSQL_PWD, and this job deliberately
+          # runs with the production settings (not test_settings).
+          MYSQL_ROOT_PASSWORD: ci-check-pw
+          MYSQL_DATABASE: test_test_db
+    working_directory: ~/repo
     steps:
-      - setup_remote_docker:
-          version: 20.10.24
-      - attach_workspace:
-          at: /tmp
+      - checkout
+      - setup_uv
       - run:
           name: Check Django migrations against an ephemeral internal DB
+          environment:
+            SECRET_KEY: 123456-TEST
+            MYSQL_HOST: 127.0.0.1
+            MYSQL_DB_NAME: test_test_db
+            MYSQL_USER: root
+            MYSQL_PWD: ci-check-pw
           command: |
-            docker load -i /tmp/docker-images/backend.tar
-            # Ephemeral MariaDB on an internal, CI-only docker network. It is never
-            # published to a host port, so nothing is exposed. The check validates
-            # OUR migrations against OUR schema — decoupled from any real/prod DB.
-            docker network create ls-ci-net || true
-            docker run -d --name ls-ci-db --network ls-ci-net \
-              -e MYSQL_ROOT_PASSWORD=ci-check-pw \
-              -e MYSQL_DATABASE=ci_check_db \
-              mariadb:latest \
-              --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-            # Wait for the DB to accept connections.
+            # The MySQL service container starts beside the steps, not before
+            # them: wait for its port before Django opens a connection.
             for i in $(seq 1 30); do
-              docker exec ls-ci-db mariadb-admin ping -uroot -pci-check-pw --silent 2>/dev/null && break
-              echo "waiting for ci db ($i)..."; sleep 2
+              if (echo > /dev/tcp/127.0.0.1/3306) >/dev/null 2>&1; then break; fi
+              echo "waiting for mysql ($i)..."; sleep 2
             done
-            # Run the real backend image against the fresh DB: verifies there are no
-            # missing migrations AND that the full set applies cleanly end-to-end.
-            # SECRET_KEY/MYSQL_PWD are build-only CI dummies (the prod settings
-            # guard requires them set, and fork PRs get no CircleCI contexts).
-            docker run --rm --network ls-ci-net \
-              -e MYSQL_HOST=ls-ci-db \
-              -e MYSQL_DB_NAME=ci_check_db \
-              -e MYSQL_USER=root \
-              -e MYSQL_PWD=ci-check-pw \
-              -e SECRET_KEY=ci-check-dummy-secret-not-for-production \
-              backend:latest \
-              bash -c "set -e && python manage.py check && python manage.py makemigrations --check --dry-run && python manage.py migrate --no-input"
-            docker rm -f ls-ci-db || true
+            # No missing migrations, and the full set applies cleanly end-to-end
+            # on an empty database. The test shards run with --nomigrations, so
+            # this job is the one place migrations are exercised.
+            uv run python manage.py check
+            uv run python manage.py makemigrations --check --dry-run
+            uv run python manage.py migrate --no-input
 
   test_compose_network:
+    # Required status check, so it is scheduled on every push; it boots the
+    # stack only when the scope built images (`needed`), and otherwise reports
+    # green without building what nothing needs.
+    parameters:
+      needed:
+        type: boolean
+        default: true
     docker:
       - image: cimg/base:stable
     working_directory: ~/repo
     steps:
-      - checkout
-      - setup_remote_docker:
-          version: 20.10.24
-      - attach_workspace:
-          at: /tmp
-      - run:
-          name: Test Docker Compose Network
-          command: |
-            export DOCKER_BUILDKIT=1
-            export COMPOSE_DOCKER_CLI_BUILD=1
-            docker load -i /tmp/docker-images/backend.tar
-            docker load -i /tmp/docker-images/frontend.tar
-            cd deployed
-            cat > .env \<<EOF
-            SERVICE_NAME=leaguesphere
-            COMPOSE_PROJECT_NAME=leaguesphere
-            SERVICE_HOST=localhost
-            LOCAL_HOSTNAME=localhost
-            RUN_MIGRATIONS=false
-            EOF
-            cat > ls.env.ci \<<EOF
-            SECRET_KEY=ci-test-secret-key-not-for-production
-            MYSQL_HOST=db
-            # base.py (and the app) read these names...
-            MYSQL_DB_NAME=ci_test_db
-            MYSQL_USER=ci_test_user
-            MYSQL_PWD=ci_test_password
-            MYSQL_ROOT_PASSWORD=ci_test_root_pw
-            # ...while the mariadb image's own entrypoint creates the DB/user
-            # from the standard MYSQL_DATABASE/MYSQL_PASSWORD names.
-            MYSQL_DATABASE=ci_test_db
-            MYSQL_PASSWORD=ci_test_password
-            DEBUG=False
-            EOF
-            cat > dba.env \<<EOF
-            DBACCESS_HOST=db
-            DBACCESS_PORT=3306
-            DBACCESS_USER=ci_provisioner
-            DBACCESS_PASSWORD=ci_test_password
-            DBACCESS_DB=ci_test_db
-            DBACCESS_HOST_PATTERN=172.25.%
-            EOF
-            sed -e 's/env_file: ls.env/env_file: ls.env.ci/g' \
-                -e 's|image: leaguesphere/backend:latest|image: backend:latest|g' \
-                -e 's|image: leaguesphere/frontend:latest|image: frontend:latest|g' \
-                docker-compose.yaml > docker-compose.ci.yaml
-            docker network create proxy || true
-            # CircleCI injects project-level MYSQL_* (the test-shard DB creds)
-            # into this job's shell, and this Compose lets the shell env override
-            # env_file — so the app and db would end up disagreeing on the
-            # user/password. Drop them so ls.env.ci wins for this throwaway stack.
-            unset MYSQL_HOST MYSQL_DB_NAME MYSQL_USER MYSQL_PWD MYSQL_ROOT_PASSWORD MYSQL_DATABASE MYSQL_PASSWORD
-            docker-compose -f docker-compose.ci.yaml up -d
-            docker-compose -f docker-compose.ci.yaml ps
+      - when:
+          condition: << parameters.needed >>
+          steps:
+            - checkout
+            - setup_remote_docker:
+                version: 20.10.24
+            - attach_workspace:
+                at: /tmp
+            - run:
+                name: Test Docker Compose Network
+                command: |
+                  export DOCKER_BUILDKIT=1
+                  export COMPOSE_DOCKER_CLI_BUILD=1
+                  docker load -i /tmp/docker-images/backend.tar
+                  docker load -i /tmp/docker-images/frontend.tar
+                  cd deployed
+                  cat > .env \<<EOF
+                  SERVICE_NAME=leaguesphere
+                  COMPOSE_PROJECT_NAME=leaguesphere
+                  SERVICE_HOST=localhost
+                  LOCAL_HOSTNAME=localhost
+                  RUN_MIGRATIONS=false
+                  EOF
+                  cat > ls.env.ci \<<EOF
+                  SECRET_KEY=ci-test-secret-key-not-for-production
+                  MYSQL_HOST=db
+                  # base.py (and the app) read these names...
+                  MYSQL_DB_NAME=ci_test_db
+                  MYSQL_USER=ci_test_user
+                  MYSQL_PWD=ci_test_password
+                  MYSQL_ROOT_PASSWORD=ci_test_root_pw
+                  # ...while the mariadb image's own entrypoint creates the DB/user
+                  # from the standard MYSQL_DATABASE/MYSQL_PASSWORD names.
+                  MYSQL_DATABASE=ci_test_db
+                  MYSQL_PASSWORD=ci_test_password
+                  DEBUG=False
+                  EOF
+                  cat > dba.env \<<EOF
+                  DBACCESS_HOST=db
+                  DBACCESS_PORT=3306
+                  DBACCESS_USER=ci_provisioner
+                  DBACCESS_PASSWORD=ci_test_password
+                  DBACCESS_DB=ci_test_db
+                  DBACCESS_HOST_PATTERN=172.25.%
+                  EOF
+                  sed -e 's/env_file: ls.env/env_file: ls.env.ci/g' \
+                      -e 's|image: leaguesphere/backend:latest|image: backend:latest|g' \
+                      -e 's|image: leaguesphere/frontend:latest|image: frontend:latest|g' \
+                      docker-compose.yaml > docker-compose.ci.yaml
+                  docker network create proxy || true
+                  # CircleCI injects project-level MYSQL_* (the test-shard DB creds)
+                  # into this job's shell, and this Compose lets the shell env override
+                  # env_file — so the app and db would end up disagreeing on the
+                  # user/password. Drop them so ls.env.ci wins for this throwaway stack.
+                  unset MYSQL_HOST MYSQL_DB_NAME MYSQL_USER MYSQL_PWD MYSQL_ROOT_PASSWORD MYSQL_DATABASE MYSQL_PASSWORD
+                  docker-compose -f docker-compose.ci.yaml up -d
+                  docker-compose -f docker-compose.ci.yaml ps
 
-            APP_CONTAINER=$(docker-compose -f docker-compose.ci.yaml ps -q app)
-            # The CI compose DB ships no schema, but the frontend healthcheck
-            # performs a real login POST, which needs auth_user. Migrate before
-            # asserting health; retry until the db service accepts connections.
-            migrated=false
-            for i in $(seq 1 30); do
-              docker exec "$APP_CONTAINER" python manage.py migrate --no-input && migrated=true && break
-              echo "waiting for db/app ($i)..."; sleep 3
-            done
-            if [ "$migrated" != "true" ]; then
-              echo "Migrations never succeeded; db + app logs follow"
-              docker logs "$(docker-compose -f docker-compose.ci.yaml ps -q db)" || true
-              docker logs "$APP_CONTAINER" || true
-              docker-compose -f docker-compose.ci.yaml down -v
-              exit 1
-            fi
+                  APP_CONTAINER=$(docker-compose -f docker-compose.ci.yaml ps -q app)
+                  # The CI compose DB ships no schema, but the frontend healthcheck
+                  # performs a real login POST, which needs auth_user. Migrate before
+                  # asserting health; retry until the db service accepts connections.
+                  migrated=false
+                  for i in $(seq 1 30); do
+                    docker exec "$APP_CONTAINER" python manage.py migrate --no-input && migrated=true && break
+                    echo "waiting for db/app ($i)..."; sleep 3
+                  done
+                  if [ "$migrated" != "true" ]; then
+                    echo "Migrations never succeeded; db + app logs follow"
+                    docker logs "$(docker-compose -f docker-compose.ci.yaml ps -q db)" || true
+                    docker logs "$APP_CONTAINER" || true
+                    docker-compose -f docker-compose.ci.yaml down -v
+                    exit 1
+                  fi
 
-            # End-to-end guard the mockserver-based test_frontend_image cannot
-            # give: real prod settings (SECURE_SSL_REDIRECT) + real nginx + real
-            # healthcheck. This is what the 4.32.0 deploy broke.
-            WWW_CONTAINER=$(docker-compose -f docker-compose.ci.yaml ps -q www)
-            status=""
-            if [ -n "$WWW_CONTAINER" ]; then
-              for i in $(seq 1 24); do
-                status=$(docker inspect --format='{{.State.Health.Status}}' "$WWW_CONTAINER")
-                echo "www health: $status"
-                [ "$status" = "healthy" ] && break
-                sleep 5
-              done
-            fi
-            if [ "$status" != "healthy" ]; then
-              echo "Frontend container did not become healthy"
-              docker exec "$WWW_CONTAINER" sh -c 'curl -s -o /dev/null -w "probe-no-header=%{http_code}\n" http://localhost/login/; curl -s -o /dev/null -w "probe-with-header=%{http_code}\n" -H "X-Forwarded-Proto: https" http://localhost/login/' || true
-              docker logs "$WWW_CONTAINER" || true
-              docker-compose -f docker-compose.ci.yaml down -v
-              exit 1
-            fi
+                  # End-to-end guard the mockserver-based test_frontend_image cannot
+                  # give: real prod settings (SECURE_SSL_REDIRECT) + real nginx + real
+                  # healthcheck. This is what the 4.32.0 deploy broke.
+                  WWW_CONTAINER=$(docker-compose -f docker-compose.ci.yaml ps -q www)
+                  status=""
+                  if [ -n "$WWW_CONTAINER" ]; then
+                    for i in $(seq 1 24); do
+                      status=$(docker inspect --format='{{.State.Health.Status}}' "$WWW_CONTAINER")
+                      echo "www health: $status"
+                      [ "$status" = "healthy" ] && break
+                      sleep 5
+                    done
+                  fi
+                  if [ "$status" != "healthy" ]; then
+                    echo "Frontend container did not become healthy"
+                    docker exec "$WWW_CONTAINER" sh -c 'curl -s -o /dev/null -w "probe-no-header=%{http_code}\n" http://localhost/login/; curl -s -o /dev/null -w "probe-with-header=%{http_code}\n" -H "X-Forwarded-Proto: https" http://localhost/login/' || true
+                    docker logs "$WWW_CONTAINER" || true
+                    docker-compose -f docker-compose.ci.yaml down -v
+                    exit 1
+                  fi
 
-            docker exec "$APP_CONTAINER" sh -c 'curl -f --max-time 10 https://www.google.com'
-            docker-compose -f docker-compose.ci.yaml down -v
+                  docker exec "$APP_CONTAINER" sh -c 'curl -f --max-time 10 https://www.google.com'
+                  docker-compose -f docker-compose.ci.yaml down -v
+      - unless:
+          condition: << parameters.needed >>
+          steps:
+            - run:
+                name: Compose boot not needed for this diff
+                command: |
+                  # A tag pipeline must resolve to a full run; if it ever
+                  # resolves to empty, fail instead of reporting a release
+                  # green on a stub.
+                  if [ -n "${CIRCLE_TAG:-}" ]; then
+                    echo "Tag ${CIRCLE_TAG} resolved to an empty scope: the real compose check must run for a release." >&2
+                    exit 1
+                  fi
+                  echo "No image in scope for this diff — nothing to boot, reporting green."
 
   check_release_sequence:
     docker:
@@ -833,15 +880,14 @@ jobs:
 
             echo "${TAG} is current. Proceeding."
 
-  scope_anchor:
+  # Fan-in for deploys: every scoped job of a full run.
+  full_gate:
     docker:
       - image: cimg/base:stable
     steps:
       - run:
-          name: Scope anchor (keeps scoped requires lists non-empty)
-          command: |
-            echo "scope anchor — always runs so image builds are never skipped when all test shards are filtered out"
-            echo "(see the build_test_deploy comment on requires + path-filtered jobs)"
+          name: Full-run gate
+          command: echo "Every scoped job of this full run finished."
 
   scope_coverage:
     docker:
@@ -1136,55 +1182,30 @@ workflows:
       not:
         equal: [ << pipeline.git.branch >>, "master" ]
     jobs:
-      # Scoped test jobs: no `requires` (they fan out in parallel) and
-      # an expression filter each, driven by the pipeline parameters the
-      # scope job sets in config.yml. The image builds `require` their
-      # directly-relevant unit/lint shards so tests always gate builds —
-      # plus the always-run `scope_anchor` noop: a job whose `requires`
-      # list is entirely filtered out is itself skipped (even when its
-      # own filter is true), so without the anchor a backend-only change
-      # would skip build_frontend (every *_js job filtered) and
-      # test_compose_network would then hard-fail on `docker load` of the
-      # missing frontend.tar (observed on pipelines 5503 and 5525). The
-      # anchor guarantees at least one requirement always remains, so a
-      # build waits for whichever tests run and never skips. Only the
-      # test shards below are path-filtered; everything downstream
-      # keeps its `requires`. e2e is always-run (no filter): it is a
-      # required check and touches every app by convention, so scoping
-      # it would only trade minutes for flaky required-check gating.
-      # e2e needs neither image and runs fully in
-      # parallel with the shards and the builds; it instead gates the
-      # post-build image smoke tests
-      # (test_backend_image/test_frontend_image), so a slow browser suite
-      # never delays kicking off a docker build. Deploys `require`
-      # test_compose_network rather than re-listing every shard:
-      # test_compose_network already transitively requires both builds,
-      # both image tests, and check_migrations, so it covers the full
-      # scoped test matrix (e2e included) by construction — the same
-      # chain branch pipelines already use, no separate duplicated list
-      # to drift out of sync. (Job-level `when` is not valid in 2.1;
-      # expression filters are the documented job-level equivalent.) Tag
-      # pipelines resolve a full run because release version files match
-      # shared + every app's mapping rules (on tags all shards run, so
-      # the anchor is redundant there but harmless — it simply has no
-      # filters and stays branch-only like scope_coverage).
+      # Scoped test jobs: no `requires` (they fan out in parallel) and an
+      # expression filter each, driven by the pipeline parameters the scope
+      # job sets in config.yml. Only these jobs are path-scoped.
       #
-      # build_backend and build_frontend intentionally share
-      # test_compose_network's exact filter (rather than each having its
-      # own narrower one) even though that means a backend-only or
-      # frontend-only change now builds both images: test_compose_network
-      # unconditionally loads both backend.tar and frontend.tar to spin up
-      # the full compose stack, and a `requires` entry silently drops out
-      # when its own filter is false (see above) — so with narrower,
-      # independent filters a partial-scope pipeline could schedule
-      # test_compose_network with only one image ever built, hard-failing
-      # on `docker load` (observed on pipeline 5503:
-      # https://app.circleci.com/pipelines/github/dachrisch/leaguesphere/5503).
-      # The "extra" build this forces is cheap in practice: both jobs use
-      # docker_layer_caching, and build_docker_image already does
-      # `--cache-from=leaguesphere/<image>:latest` against the last
-      # pushed image, so the side that didn't actually change resolves as
-      # a cache hit rather than a full rebuild.
+      # The image chain is NOT filtered. build_backend, build_frontend and
+      # the required test_compose_network are always scheduled and decide
+      # inside (`needed`, from the single `run-images` parameter) whether to
+      # build or boot; the two image smoke tests stay scoped. That is what keeps
+      # the required `test_compose_network` context reporting on every push
+      # without building an image for a docs-only diff — and it is why they
+      # can be `requires` targets at all: a filtered-out job publishes no
+      # context, which stranded PRs in "Expected" (see
+      # docs/topics/deployment/scoped-ci.md).
+      #
+      # e2e is always-run: it is a required check and touches every app by
+      # convention. It gates the post-build image smoke tests, so a slow
+      # browser suite never delays kicking off a docker build.
+      #
+      # Tests gate *deploys*, not builds: `full_gate` fans in every scoped
+      # job and the deploy jobs require it, so a release only ships when the
+      # complete matrix of a full run is green. On a branch `full_gate` is
+      # skipped whenever any of those jobs was skipped (nothing deploys
+      # there). Tag pipelines resolve to a full run because release version
+      # files match the shared and per-app mapping rules.
       - python-core:
           filters: "(pipeline.parameters.run-python-core == true)"
       - python-gamedays:
@@ -1220,50 +1241,45 @@ workflows:
       - share_js:
           filters: "(pipeline.parameters.run-share == true)"
 
+      # The image chain is always scheduled (required checks depend on it) and
+      # builds only when the scope asks for an image: no image is built for a
+      # diff that needs none. Tests no longer gate the builds — they gate the
+      # deploy through `full_gate` below.
       - build_backend:
-          filters: "(pipeline.parameters.run-compose == true or pipeline.parameters.run-build-backend == true or pipeline.parameters.run-build-frontend == true or pipeline.parameters.run-migrations == true)"
-          requires:
-            - scope_anchor
-            - python-core
-            - python-gamedays
-            - python-officials
-            - python-live
-            - python-designer
-            - python-cross
+          needed: << pipeline.parameters.run-images >>
+          filters:
+            tags:
+              only: /.*/
       - build_frontend:
-          filters: "(pipeline.parameters.run-compose == true or pipeline.parameters.run-build-backend == true or pipeline.parameters.run-build-frontend == true or pipeline.parameters.run-migrations == true)"
-          requires:
-            - scope_anchor
-            - scorecard_js
-            - scorecard_v2_js
-            - liveticker_js
-            - passcheck_js
-            - gameday_designer_js
-            - journey_dashboard_js
-            - share_js
+          needed: << pipeline.parameters.run-images >>
+          filters:
+            tags:
+              only: /.*/
 
       - test_backend_image:
-          filters: "(pipeline.parameters.run-build-backend == true or pipeline.parameters.run-migrations == true or pipeline.parameters.run-compose == true)"
+          filters: "(pipeline.parameters.run-images == true)"
           requires:
             - build_backend
             - e2e
       - test_frontend_image:
-          filters: "(pipeline.parameters.run-build-frontend == true or pipeline.parameters.run-compose == true)"
+          filters: "(pipeline.parameters.run-images == true)"
           requires:
             - build_frontend
             - e2e
       - check_migrations:
-          context: staging
-          filters: "(pipeline.parameters.run-migrations == true or pipeline.parameters.run-build-backend == true or pipeline.parameters.run-compose == true)"
-          requires:
-            - build_backend
+          # Required status check: never path-scoped, so it reports on every
+          # branch and tag pipeline (see the job's own comment).
+          filters:
+            tags:
+              only: /.*/
       - test_compose_network:
-          filters: "(pipeline.parameters.run-compose == true or pipeline.parameters.run-build-backend == true or pipeline.parameters.run-build-frontend == true or pipeline.parameters.run-migrations == true)"
+          needed: << pipeline.parameters.run-images >>
+          filters:
+            tags:
+              only: /.*/
           requires:
             - build_backend
             - build_frontend
-            - test_backend_image
-            - test_frontend_image
             - check_migrations
 
       # rc tags are image tags only. Publishing an rc as a GitHub pre-release
@@ -1293,18 +1309,40 @@ workflows:
       # Scope safety net (never path-scoped itself).
       - scope_coverage
 
-      # Always-run anchor keeping scoped build requires non-empty.
-      - scope_anchor
+      # Every scoped job of a full run, as one fan-in the deploys can require
+      # without re-listing the matrix themselves.
+      - full_gate:
+          filters:
+            tags:
+              only: /.*/
+          requires:
+            - python-core
+            - python-gamedays
+            - python-officials
+            - python-live
+            - python-designer
+            - python-cross
+            - scorecard_js
+            - scorecard_v2_js
+            - liveticker_js
+            - passcheck_js
+            - gameday_designer_js
+            - journey_dashboard_js
+            - share_js
+            - e2e
+            - check_migrations
+            - build_backend
+            - build_frontend
+            - test_backend_image
+            - test_frontend_image
+            - test_compose_network
 
-      # Deploy jobs run on tag pipelines only, where the scope resolves
-      # to a full run. They require test_compose_network (see the fan-out
-      # comment above for why that alone covers the full test matrix)
-      # instead of re-listing every shard, so tag and branch pipelines
-      # share one gating chain.
+      # Deploy jobs run on tag pipelines only, where the scope resolves to a
+      # full run, so `full_gate` has every job it fans in.
       - deploy_staging:
           context: staging
           requires:
-            - test_compose_network
+            - full_gate
             - check_release_sequence
           filters:
             tags:
@@ -1325,7 +1363,7 @@ workflows:
       - deploy_demo:
           context: demo
           requires:
-            - test_compose_network
+            - full_gate
           filters:
             tags:
               only: /.*\+demo\.[0-9]+$/
@@ -1335,7 +1373,7 @@ workflows:
       - hold_production:
           type: approval
           requires:
-            - test_compose_network
+            - full_gate
             - check_release_sequence
           filters:
             tags:
@@ -1348,7 +1386,7 @@ workflows:
       - auto_approve_hold_production:
           context: production
           requires:
-            - test_compose_network
+            - full_gate
           filters:
             tags:
               only: /^v?[0-9]+\.[0-9]+\.[0-9]+$/
