@@ -74,16 +74,7 @@ parameters:
   run-share:
     type: boolean
     default: false
-  run-build-backend:
-    type: boolean
-    default: false
-  run-build-frontend:
-    type: boolean
-    default: false
-  run-migrations:
-    type: boolean
-    default: false
-  run-compose:
+  run-images:
     type: boolean
     default: false
 
