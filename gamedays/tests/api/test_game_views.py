@@ -5,6 +5,7 @@ from datetime import timedelta, time
 from http import HTTPStatus
 from uuid import uuid4
 
+from django.contrib.auth.models import User
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django_webtest import WebTest
@@ -279,6 +280,77 @@ class TestGameSetup(WebTest):
         }
         get_response = self.app.get(reverse(API_GAME_SETUP, kwargs={"pk": game.pk}))
         assert "device_id" not in get_response.json
+
+
+class TestGameSetupLockRead(WebTest):
+    """The setup read tells a v2 device that another device holds the game.
+
+    Without it a second phone only learns about the lock on its first write
+    (a 409) and shows a game it cannot record. The flag is only added for a
+    request that names its device (``X-Scorecard-Device``), so the v1 client
+    keeps its body, and the stored id itself is never exposed.
+    """
+
+    def _locked_game(self):
+        DBSetup().g62_status_empty()
+        game = Gameinfo.objects.last()
+        response = self.app.put_json(
+            reverse(API_GAME_SETUP, kwargs={"pk": game.pk}),
+            {
+                "ctResult": "won",
+                "direction": "arrow_forward",
+                "fhPossession": "HOME",
+                "device_id": "device-a",
+            },
+            headers=DBSetup().get_token_header(),
+        )
+        assert response.status_code == HTTPStatus.OK
+        return game
+
+    def _read(self, game, device=None):
+        headers = {} if device is None else {"X-Scorecard-Device": device}
+        return self.app.get(
+            reverse(API_GAME_SETUP, kwargs={"pk": game.pk}), headers=headers
+        )
+
+    def test_another_device_learns_about_the_lock_on_read(self):
+        game = self._locked_game()
+
+        body = self._read(game, "device-b").json
+
+        assert body["locked_elsewhere"] is True
+        assert "device_id" not in body
+
+    def test_the_holding_device_reads_itself_as_unlocked(self):
+        game = self._locked_game()
+
+        assert self._read(game, "device-a").json["locked_elsewhere"] is False
+
+    def test_a_released_lock_reads_as_unlocked(self):
+        game = self._locked_game()
+        GameSetup.objects.filter(gameinfo=game).update(device_id="")
+
+        assert self._read(game, "device-b").json["locked_elsewhere"] is False
+
+    def test_the_v1_client_keeps_its_body(self):
+        game = self._locked_game()
+
+        body = self._read(game).json
+        assert "locked_elsewhere" not in body
+        assert "can_release_lock" not in body
+
+    def test_only_staff_may_release_the_lock(self):
+        game = self._locked_game()
+
+        assert self._read(game, "device-b").json["can_release_lock"] is False
+
+        staff = User.objects.create_user(username="turnierleitung", is_staff=True)
+        response = self.app.get(
+            reverse(API_GAME_SETUP, kwargs={"pk": game.pk}),
+            headers={"X-Scorecard-Device": "device-b"},
+            user=staff.username,
+        )
+        assert response.json["can_release_lock"] is True
 
 
 class TestGameLog(WebTest):
