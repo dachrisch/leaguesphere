@@ -301,15 +301,18 @@ describe("Tracking score header", () => {
     const board = screen.getByLabelText("Spielstand");
     expect(within(board).getByText("20")).toBeInTheDocument();
     expect(within(board).getByText("7")).toBeInTheDocument();
-    expect(within(board).getByText("Ball")).toBeInTheDocument();
     expect(within(board).getByText("2. Halbzeit")).toBeInTheDocument();
 
-    expect(
-      screen.getByRole("button", { name: /^Ravens, 20 Punkte, am Ball/ }),
-    ).toHaveAttribute("aria-pressed", "true");
-    expect(
-      screen.getByRole("button", { name: /^Wolves, 7 Punkte, nicht am Ball/ }),
-    ).toHaveAttribute("aria-pressed", "false");
+    // Possession lives in the cockpit's switch; the board only shows it.
+    const ball = screen.getByRole("group", { name: "Ballbesitz" });
+    expect(within(ball).getByRole("button", { name: "Ravens" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(within(ball).getByRole("button", { name: "Wolves" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   });
 
   it("derives the half from the payload instead of defaulting to the first", () => {
@@ -768,10 +771,12 @@ describe("Tracking undo", () => {
 
     const board = screen.getByLabelText("Spielstand");
     await waitFor(() => expect(within(board).getByText("14")).toBeInTheDocument());
-    expect(within(board).getByText("Ball")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /^Wolves, 7 Punkte, am Ball/ }),
-    ).toBeInTheDocument();
+      within(screen.getByRole("group", { name: "Ballbesitz" })).getByRole(
+        "button",
+        { name: "Wolves" },
+      ),
+    ).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText("1st Down Wolves")).toBeInTheDocument();
     expect(screen.getAllByRole("listitem")[1]).toHaveClass("deleted");
   });
@@ -1120,24 +1125,137 @@ describe("Tracking series and time entry", () => {
     });
   });
 
-  it("records a first down with an optional jersey", async () => {
+  it("records a first down with one tap, no sheet", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
     const user = userEvent.setup();
 
-    await openSheet(user, /^1st Down$/);
+    await user.click(screen.getByRole("button", { name: "1st Down" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [
+          { type: "series", code: "first_down", side: "home", player: null, period: 1 },
+        ],
+        client_id: expect.any(String),
+      }),
+    );
+  });
+
+  it("adds the jersey to a one-tap first down from the toast", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(
+      makeLog({
+        inPossession: "Ravens",
+        events: [logEvent({ id: 9, sequence: 4, seq: 11, event: "First Down" })],
+      }),
+    );
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "1st Down" }));
+    const toast = await screen.findByRole("status", { name: "Gespeichert" });
+    await user.click(within(toast).getByRole("button", { name: "Nr. ergänzen" }));
     await user.click(
       await screen.findByRole("button", { name: "Trikot 7, Meier" }),
     );
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [{ type: "correction", code: "undo", payload: { undo_of: 11 } }],
+        client_id: expect.any(String),
+      }),
+    );
     expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
       events: [
         { type: "series", code: "first_down", side: "home", player: 7, period: 1 },
       ],
       client_id: expect.any(String),
     });
+  });
+});
+
+describe("Tracking cockpit", () => {
+  it("offers possession as a two-way switch under the score", async () => {
+    answerAppend(makeLog({ inPossession: "Wolves" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    const group = screen.getByRole("group", { name: "Ballbesitz" });
+    const ravens = within(group).getByRole("button", { name: /Ravens/ });
+    const wolves = within(group).getByRole("button", { name: /Wolves/ });
+    expect(ravens).toHaveAttribute("aria-pressed", "true");
+    expect(wolves).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(wolves);
+
+    await waitFor(() => expect(sentPossessions()).toEqual(["away"]));
+    expect(wolves).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("puts the log above the actions and the actions above the end button", () => {
+    renderTracking();
+
+    const log = screen.getByRole("region", { name: "Spielverlauf" });
+    const actions = screen.getByRole("region", { name: "Einträge" });
+    const end = screen.getByRole("button", { name: "Spiel beenden" });
+    expect(log.compareDocumentPosition(actions)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(actions.compareDocumentPosition(end)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it("tints the action zone in the colour of the side with the ball", () => {
+    renderTracking({ log: makeLog({ inPossession: "Wolves" }) });
+
+    expect(screen.getByRole("region", { name: "Einträge" })).toHaveClass("away");
+  });
+
+  it("records a turnover with one tap and undoes it from the toast", async () => {
+    answerAppend(
+      makeLog({
+        inPossession: "Wolves",
+        events: [
+          logEvent({ id: 7, sequence: 6, seq: 12, event: "Turnover", cop: true }),
+        ],
+      }),
+    );
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Turnover" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const toast = await screen.findByRole("status", { name: "Gespeichert" });
+    expect(toast).toHaveTextContent("Turnover");
+    // Turnover never names a player: no jersey offer.
+    expect(within(toast).queryByRole("button", { name: "Nr. ergänzen" })).toBeNull();
+
+    await user.click(within(toast).getByRole("button", { name: "Rückgängig" }));
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [{ type: "correction", code: "undo", payload: { undo_of: 12 } }],
+        client_id: expect.any(String),
+      }),
+    );
+  });
+
+  it("keeps a sheet for the entries that need input", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    renderTracking();
+    const user = userEvent.setup();
+
+    for (const name of ["Interception", "Spielzeit", "Auszeit"]) {
+      await user.click(screen.getByRole("button", { name }));
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Schließen" }));
+    }
+    expect(apiPostMock).not.toHaveBeenCalled();
   });
 });
 
@@ -1180,9 +1298,8 @@ describe("Tracking on the sideline", () => {
     renderTracking();
     const user = userEvent.setup();
 
-    await openSheet(user, /^1st Down$/);
     expect(vibrate).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await user.click(screen.getByRole("button", { name: "1st Down" }));
 
     await waitFor(() => expect(vibrate).toHaveBeenCalledWith(15));
   });
@@ -1451,8 +1568,8 @@ describe("Tracking possession flip", () => {
     renderTracking();
     const user = userEvent.setup();
 
-    await openSheet(user, /^1st Down$/);
-    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await user.click(screen.getByRole("button", { name: "1st Down" }));
+    await screen.findByRole("status", { name: "Gespeichert" });
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
@@ -1470,19 +1587,21 @@ describe("Tracking possession flip", () => {
   it("flips exactly once per event", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     answerAppend(makeLog({ inPossession: "Ravens" }));
-    renderTracking();
+    // Let the mount's queue read settle first: a tap in the very first
+    // milliseconds races it (the read republishes the log as authoritative).
+    await renderTrackingReady();
     const user = userEvent.setup();
 
-    await openSheet(user, /^Turnover$/);
-    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await user.click(screen.getByRole("button", { name: "Turnover" }));
+    await waitFor(() => expect(sentPossessions()).toHaveLength(1));
+    // The first write (and its flip) must settle before the next tap counts.
     await waitFor(() =>
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      expect(screen.getByRole("button", { name: "Turnover" })).toBeEnabled(),
     );
 
     // The turnover credits the possessing team and hands Ravens' ball to
     // Wolves; the second turnover is recorded by Wolves and flips it back.
-    await openSheet(user, /^Turnover$/);
-    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await user.click(screen.getByRole("button", { name: "Turnover" }));
     await waitFor(() => expect(sentPossessions()).toHaveLength(2));
 
     expect(sentPossessions()).toEqual(["away", "home"]);
@@ -1589,8 +1708,8 @@ describe("Tracking possession flip", () => {
       ).toBeInTheDocument(),
     );
 
-    await openSheet(user, /^1st Down$/);
-    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await user.click(screen.getByRole("button", { name: "1st Down" }));
+    await screen.findByRole("status", { name: "Gespeichert" });
 
     // The play, the rejected flip and the next play: three appends.
     await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(3));
@@ -1613,12 +1732,18 @@ describe("Tracking possession flip", () => {
     // not be undone by this screen's remembered marker.
     apiGetMock.mockResolvedValue(ROSTER);
     answerAppend(makeLog({ inPossession: "Wolves" }));
-    renderTracking();
+    // Let the mount's queue read settle first: a tap in the very first
+    // milliseconds races it (the read republishes the log as authoritative).
+    await renderTrackingReady();
     const user = userEvent.setup();
 
-    await openSheet(user, /^1st Down$/);
-    await user.click(screen.getByRole("button", { name: "Speichern" }));
-
+    await user.click(screen.getByRole("button", { name: "1st Down" }));
+    // One tap: no sheet closes to say the write is done, so wait for the
+    // composer to come back (the write and its log read have settled).
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Auszeit" })).toBeEnabled(),
+    );
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
@@ -1809,8 +1934,8 @@ describe("Tracking half-time", () => {
       expect(screen.getByText("2. Halbzeit")).toBeInTheDocument(),
     );
 
-    await openSheet(user, /^1st Down$/);
-    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await user.click(screen.getByRole("button", { name: "1st Down" }));
+    await screen.findByRole("status", { name: "Gespeichert" });
 
     expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
       events: [
@@ -2341,11 +2466,6 @@ describe("Tracking header and action icons", () => {
       screen
         .getByRole("button", { name: "Rückgängig: Touchdown Ravens" })
         .querySelector("svg"),
-    ).not.toBeNull();
-    expect(
-      screen
-        .getByRole("region", { name: "Spielstand" })
-        .querySelector(".poss svg"),
     ).not.toBeNull();
   });
 });

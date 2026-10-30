@@ -10,7 +10,12 @@ interface ScoreHeaderProps {
   isFirstHalf: boolean;
   /** True while a possession change is in flight. */
   disabled: boolean;
-  onPossession: (teamName: string) => void;
+  /**
+   * Tapping a team hands it the ball. Omitted where the screen has its own
+   * possession control (the tracking cockpit's switch): the board then only
+   * shows the teams and the score.
+   */
+  onPossession?: (teamName: string) => void;
 }
 
 type Side = "home" | "away";
@@ -45,7 +50,7 @@ interface TeamProps {
   team: GameLogTeam;
   possessing: boolean;
   disabled: boolean;
-  onPossession: (teamName: string) => void;
+  onPossession?: (teamName: string) => void;
 }
 
 function Team({
@@ -60,6 +65,17 @@ function Team({
   const label = `${name}, ${team.score} ${points}, ${
     possessing ? "am Ball" : "nicht am Ball"
   }`;
+
+  if (onPossession === undefined) {
+    return (
+      <div className={`team ${side}`}>
+        <TeamLogo className="teamlogo-crest" name={team.name} />
+        <span className="teamtext">
+          <span className="tname">{name}</span>
+        </span>
+      </div>
+    );
+  }
 
   return (
     <button

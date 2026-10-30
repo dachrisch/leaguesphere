@@ -77,8 +77,14 @@ only control static assets, and its scope could never leak into the old app.
    slot, a free-text name without both names and an unchosen
    toss/possession/direction with a named reason, and says that starting writes
    the setup while no clock runs in the app.
-4. **Feld · Runde** (the tracking screen) — score header with possession,
-   touchdown with the roster's jerseys (numeric fallback when there is none),
+4. **Feld · Runde** (the tracking screen) — score board, a two-way
+   **Ballbesitz** switch under it, the log in the middle and the actions at the
+   bottom (thumb zone, tinted in the colour of the side with the ball).
+   **1st Down** and **Turnover** save on the tap; a toast under the log offers
+   **Rückgängig** and, for a first down, **Nr. ergänzen** (the jersey sheet
+   then writes the numbered row and undoes the one-tap row). Interception,
+   Spielzeit, Auszeit, penalty, safety and overtime keep their sheets.
+   Touchdown with the roster's jerseys (numeric fallback when there is none),
    PAT, first down, turnover, interception, penalty with search, safety,
    overtime, Spielzeit, Auszeit, half-time, and **Rückgängig** per entry. The
    screen keeps the display on while the game is open (Wake Lock, where the

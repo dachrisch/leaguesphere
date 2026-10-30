@@ -222,11 +222,6 @@ describe("the whole flow", () => {
       await screen.findByRole("heading", { name: "Feld 2 · Vorrunde" }),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "1st Down" }));
-    await user.click(
-      within(await screen.findByRole("dialog")).getByRole("button", {
-        name: "Speichern",
-      }),
-    );
     await waitFor(() =>
       expect(
         apiPostMock.mock.calls.filter(([, body]) =>
