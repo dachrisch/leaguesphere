@@ -112,7 +112,9 @@ describe("TouchdownSheet", () => {
     const user = userEvent.setup();
 
     const chips = screen.getByRole("group", { name: "Zuletzt" });
-    await user.click(within(chips).getByRole("button", { name: "#23 Schulz" }));
+    await user.click(
+      within(chips).getByRole("button", { name: "Trikotnummer 23, Schulz" }),
+    );
     await user.click(saveButton());
 
     expect(onSubmit).toHaveBeenCalledWith([{ name: "Touchdown", player: 23 }]);

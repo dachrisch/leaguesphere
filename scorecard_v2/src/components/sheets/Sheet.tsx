@@ -43,6 +43,10 @@ export interface SheetProps {
 /**
  * Bottom sheet: a modal dialog anchored to the bottom of the phone.
  *
+ * On a tablet in landscape (≥900px) the same component is a centred dialog
+ * card instead — one CSS media query in app.css, no separate component and no
+ * different content.
+ *
  * Portalled to `document.body` so the app shell's `overflow: clip` cannot cut
  * it and no ancestor stacking context can hide it. Focus moves into the sheet
  * on open (the dialog itself, which announces its title) and returns to the

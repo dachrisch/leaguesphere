@@ -96,7 +96,11 @@ only control static assets, and its scope could never leak into the old app.
    Spielzeit, Auszeit, penalty, safety and overtime keep their sheets.
    Touchdown with the roster's jerseys (a tile grid up to 24 players, a
    two-digit keypad above that with the roster name as confirmation; numeric
-   field when there is no roster; this game's scorers as chips). The touchdown
+   field when there is no roster; this game's scorers as a shortcut row above
+   the grid). Every sheet that may name a player picks the jersey in the same
+   tile grid — touchdown, safety/overtime, first down, interception and
+   penalty — and one whose entry may name nobody leads the grid with an
+   **Ohne Nummer** / **Ganzes Team** tile. The touchdown
    is saved alone; the extra point is asked **after the try** in place of the
    touchdown button (+1 / +2 / nicht verwandelt, nothing pre-selected),
    credited to the scoring team with the scorer's jersey, and **Spiel
@@ -116,6 +120,13 @@ footer, so the content area runs to the bottom edge. The theme choice is
 **Auto / Hell / Dunkel / Sonne**; **Sonne** is a light palette pushed to
 maximum contrast (white surfaces, near-black text, visible hairlines, darker
 bar and team colours) for a phone in direct sunlight.
+
+The layout is phone-first and only widens above it: one column with the actions
+in the thumb zone, and the entry sheets anchored to the bottom of the phone.
+From **600px** the shell takes 640px, from **900px** 760px (the preparation
+screen keeps its own 1040px two-column layout), and above 900px an entry sheet
+becomes a centred 680px dialog with all four corners and a larger jersey grid
+instead of the bottom sheet. The phone measure is untouched below 600px.
 
 On the tracking screen one **strip under the bar** carries the transmission
 state, and nothing else repeats it: **Nur lesen – das Spiel läuft auf einem

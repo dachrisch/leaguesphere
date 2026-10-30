@@ -107,6 +107,8 @@
   /* Elevation */
   --shadow-card: 0 1px 2px rgba(16, 24, 32, 0.06),
     0 2px 8px rgba(16, 24, 32, 0.05);
+  /* A sheet that floats as a centred card on a tablet, anchored by nothing. */
+  --shadow-dialog: 0 24px 60px rgba(16, 24, 32, 0.28);
 
   /* Interaction */
   --touch: 44px;
@@ -114,8 +116,8 @@
   --focus-offset: 2px;
   --transition-fast: 120ms ease;
 
-  /* Layout shell. `--shell-width-prep` widens only the preparation screen;
-     every other screen (and every sheet) keeps the comfortable phone measure. */
+  /* Layout shell. Every screen gets the phone measure on a phone and more
+     room on a tablet; `--shell-width-prep` stays the one wider layout. */
   --shell-width: 560px;
   --shell-width-prep: var(--shell-width);
   --page-gutter: var(--space-5);
@@ -206,6 +208,7 @@
   --fill-soft: #222d37;
   --overlay: rgba(3, 6, 9, 0.72);
   --shadow-sheet: 0 -18px 40px rgba(0, 0, 0, 0.5);
+  --shadow-dialog: 0 24px 60px rgba(0, 0, 0, 0.6);
 
   --home-wash: color-mix(in srgb, var(--home) 18%, transparent);
   --away-wash: color-mix(in srgb, var(--away) 16%, transparent);
@@ -263,6 +266,7 @@
     --fill-soft: #222d37;
     --overlay: rgba(3, 6, 9, 0.72);
     --shadow-sheet: 0 -18px 40px rgba(0, 0, 0, 0.5);
+    --shadow-dialog: 0 24px 60px rgba(0, 0, 0, 0.6);
 
     --home-wash: color-mix(in srgb, var(--home) 18%, transparent);
     --away-wash: color-mix(in srgb, var(--away) 16%, transparent);
@@ -275,18 +279,19 @@
   }
 }
 
-/* Wider than a phone: the preparation screen gets more room for the same
-   single column, and at 900px it puts the officials beside the configuration.
-   `--shell-width` itself stays at 560px so lists, the board and the bottom
-   sheets do not stretch. */
+/* Wider than a phone: the whole app takes more room, and on a tablet in
+   landscape the preparation screen puts the officials beside the
+   configuration. The phone measure is untouched below 600px. */
 @media (min-width: 600px) {
   :root {
+    --shell-width: 640px;
     --shell-width-prep: 760px;
   }
 }
 
 @media (min-width: 900px) {
   :root {
+    --shell-width: 760px;
     --shell-width-prep: 1040px;
     --page-gutter: var(--space-6);
   }

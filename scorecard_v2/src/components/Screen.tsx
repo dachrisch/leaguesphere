@@ -23,7 +23,8 @@ interface ScreenProps {
  * repeating the `.app-shell` / `.app-header` / `<main>` markup.
  *
  * The frame is phone-width by default; `wide` opts a screen (the preparation)
- * into the wider tablet/desk measure without stretching lists or sheets.
+ * into the widest tablet/desk measure. Every screen follows `--shell-width`,
+ * which already grows on a tablet (see tokens.css).
  *
  * There is no footer: the scroll area takes every pixel below the bar, and the
  * LeagueSphere small print lives in the account menu.

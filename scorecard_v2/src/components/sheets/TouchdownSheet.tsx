@@ -114,24 +114,18 @@ export default function TouchdownSheet({
       </p>
 
       {chips.length === 0 || loading ? null : (
-        <div aria-label="Zuletzt" className="recentchips" role="group">
-          {chips.map((number) => {
-            const name = names.get(number)?.trim() || null;
-            return (
-              <button
-                aria-label={name === null ? `#${number}` : `#${number} ${name}`}
-                aria-pressed={jersey === number}
-                className={jersey === number ? "recentchip sel" : "recentchip"}
-                disabled={posting}
-                key={number}
-                onClick={() => setJersey(number)}
-                type="button"
-              >
-                #{number}
-              </button>
-            );
-          })}
-        </div>
+        <JerseyPicker
+          compact
+          disabled={posting}
+          groupLabel="Zuletzt"
+          onChange={setJersey}
+          players={chips.map((number) => ({
+            side,
+            jersey: number,
+            name: names.get(number) ?? null,
+          }))}
+          value={jersey}
+        />
       )}
 
       <h3 className="sheetsection">

@@ -199,13 +199,13 @@ export default function MoreSheet({
             {([1, 2] as const).map((value) => (
               <button
                 aria-pressed={points === value}
-                className={points === value ? "pat sel" : "pat"}
+                className={points === value ? "choice sel" : "choice"}
                 disabled={posting}
                 key={value}
                 onClick={() => setPoints(value)}
                 type="button"
               >
-                +{value}
+                <span className="choice-num">+{value}</span>
               </button>
             ))}
           </div>
