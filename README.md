@@ -11,21 +11,21 @@
 The project uses a structured documentation approach in the `docs/` directory for clarity and accessibility.
 
 **Primary Resource:**
-- **[Contributor Guide](docs/guides/contributor-guide.md)**: Build, Test, Code Style, and Safety Guidelines.
+- **[Contributor Guide](docs/topics/guides/contributor-guide.md)**: Build, Test, Code Style, and Safety Guidelines.
 
 **Specialized Guides:**
-- **Setup Guide**: `docs/guides/setup-guide.md` (Local environment configuration).
+- **Setup Guide**: `docs/topics/guides/setup-guide.md` (Local environment configuration).
 - **Gemini CLI Guide**: `GEMINI.md`.
 - **Claude Code Guide**: `CLAUDE.md`.
 - **General Agent Guide**: `AGENTS.md`.
 
 **Directory Structure:**
-- `docs/arch/`: Architectural Decision Records (ADR) and system design.
+- `docs/topics/architecture/`: Architectural Decision Records (ADR) and system design.
 - `docs/features/`: Feature-specific documentation (Current and History).
 - `docs/guides/`: Setup, onboarding, and contributor guides.
 - `docs/plans/`: Historical and current implementation plans.
 - `docs/reports/`: Verification reports, summaries, and performance analysis.
-- `docs/testing/`: Test scenarios and testing strategies.
+- `docs/topics/testing/`: Test scenarios and testing strategies.
 
 ## Installation
 
@@ -61,7 +61,7 @@ rules and the required DCO sign-off are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Development & Deployment
 
-For comprehensive development guidelines, see **[Contributor Guide](docs/guides/contributor-guide.md)** — the authoritative source for all developers.
+For comprehensive development guidelines, see **[Contributor Guide](docs/topics/guides/contributor-guide.md)** — the authoritative source for all developers.
 
 **Quick reference:**
 ```bash
@@ -84,7 +84,7 @@ python manage.py collectstatic
 ```
 
 See the **[docs/guides/](docs/guides/)** directory for:
-- **[Contributor Guide](docs/guides/contributor-guide.md)** — Build, test, release workflow
-- **[Coding Standards](docs/guides/coding-standards.md)** — Code rules and linting standards
-- **[Infrastructure Policy](docs/guides/infrastructure-policy.md)** — Deployment safety protocols
-- **[Setup Guide](docs/guides/setup-guide.md)** — Local environment configuration
+- **[Contributor Guide](docs/topics/guides/contributor-guide.md)** — Build, test, release workflow
+- **[Coding Standards](docs/topics/guides/coding-standards.md)** — Code rules and linting standards
+- **[Infrastructure Policy](docs/topics/deployment/infrastructure-policy.md)** — Deployment safety protocols
+- **[Setup Guide](docs/topics/guides/setup-guide.md)** — Local environment configuration

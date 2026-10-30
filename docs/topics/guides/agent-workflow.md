@@ -2,7 +2,7 @@
 
 This file provides high-signal technical instructions for **all autonomous agents** (Claude, Gemini, etc.) operating in this repository.
 
-> **CRITICAL:** For project-wide standards, build/test commands, and deployment safety policies, you MUST refer to the **[LeagueSphere Contributor Guide](docs/guides/contributor-guide.md)**.
+> **CRITICAL:** For project-wide standards, build/test commands, and deployment safety policies, you MUST refer to the **[LeagueSphere Contributor Guide](contributor-guide.md)**.
 
 ## 🤖 Universal Agent Guidelines
 
@@ -10,26 +10,27 @@ This file provides high-signal technical instructions for **all autonomous agent
 - **Research First**: Map the codebase and validate assumptions using search/read tools before proposing changes.
 - **TDD Requirement**: Features or bugfixes MUST be implemented using test-driven development. Reproduce bugs with a test before fixing.
 - **Verification Mandatory**: Run the test suite (the scoped CI shard matching your change, or the full suite for shared/core changes) and linting before reporting completion.
+- **Sign-off Mandatory**: Every commit carries a `Signed-off-by` trailer — commit with `git commit -s`. The DCO check (`.github/workflows/dco.yaml`) rejects an unsigned PR; fix it with `git rebase --signoff master` and `git push --force-with-lease`. See [CONTRIBUTING.md](../../../CONTRIBUTING.md).
 
 ## 📖 Documentation Standards
 
 All documentation lives in `/docs/topics/` organized by topic. Before creating or modifying documentation:
 
-1. **Check the [Documentation Guidelines](docs/DOCUMENTATION.md)** — Detailed rules for where each type of doc belongs
+1. **Check the [Documentation Guidelines](../../DOCUMENTATION.md)** — Detailed rules for where each type of doc belongs
 2. **Follow the directory structure** — Architecture, Guides, Features, Deployment, Testing, Troubleshooting, Planning
 3. **Link from the index** — Update the parent topic README.md when adding a new doc
 4. **Remove old versions** — Don't leave outdated docs scattered around
 
-See [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md) for the complete guide.
+See [docs/DOCUMENTATION.md](../../DOCUMENTATION.md) for the complete guide.
 
 ## 🛠 Central Authority
 
 Refer to the specialized guides for detailed protocols:
-- **[Architecture Overview](docs/arch/architecture-overview.md)**: System design and tech stack.
-- **[Coding Standards](docs/guides/coding-standards.md)**: Python (Django) and TypeScript (React) conventions.
-- **[Infrastructure Policy](docs/guides/infrastructure-policy.md)**: Deployment safety and Ansible rules.
-- **[Scoped CI](docs/topics/deployment/scoped-ci.md)**: Path-scoped CircleCI pipeline. CI changes require updating `.circleci/scope-mapping.txt`/`scope-exclude.txt` (runs `scripts/check_scope_coverage.py` safety net); dependency/build changes may widen the tests a push runs.
-- **[Setup Guide](docs/guides/setup-guide.md)**: Local environment configuration.
+- **[Architecture Overview](../architecture/architecture-overview.md)**: System design and tech stack.
+- **[Coding Standards](coding-standards.md)**: Python (Django) and TypeScript (React) conventions.
+- **[Infrastructure Policy](../deployment/infrastructure-policy.md)**: Deployment safety and Ansible rules.
+- **[Scoped CI](../deployment/scoped-ci.md)**: Path-scoped CircleCI pipeline. CI changes require updating `.circleci/scope-mapping.txt`/`scope-exclude.txt` (runs `scripts/check_scope_coverage.py` safety net); dependency/build changes may widen the tests a push runs.
+- **[Setup Guide](setup-guide.md)**: Local environment configuration.
 
 ## 🤖 Platform-Specific Instructions
 Refer to these files for instructions specific to your agent platform:
