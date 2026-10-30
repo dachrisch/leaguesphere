@@ -3753,3 +3753,108 @@ button.syncbadge {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ------------------------------------------------- preparation summary -- */
+
+/* A complete crew as one row: the check, the names, "ändern". */
+.crewsummary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+}
+
+.crewsummary-ok {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  font-weight: 700;
+  color: var(--on-accent);
+  background: var(--away);
+  border-radius: 50%;
+}
+
+.crewsummary-body {
+  display: grid;
+  min-width: 0;
+}
+
+.crewsummary-title {
+  font-weight: 700;
+}
+
+.crewsummary-names {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.crewsummary-edit {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--link);
+}
+
+/* Direction on a field: the two end zones left and right, the options as
+   lanes between them. */
+.fielddir {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  overflow: hidden;
+  background: repeating-linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--away) 78%, #000) 0 28px,
+    color-mix(in srgb, var(--away) 70%, #000) 28px 56px
+  );
+  border-radius: var(--radius-lg);
+}
+
+.fielddir-end {
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.fielddir-opts {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+
+.fielddir-opt {
+  min-height: var(--touch);
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px dashed rgba(255, 255, 255, 0.55);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+}
+
+.fielddir-opt.sel {
+  color: var(--away-text);
+  background: #fff;
+  border-style: solid;
+  border-color: #fff;
+}
+
+.fielddir-opt:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

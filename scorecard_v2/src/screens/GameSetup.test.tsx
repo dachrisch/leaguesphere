@@ -332,7 +332,10 @@ beforeEach(() => {
   });
 });
 
-async function renderSetup(overrides: Partial<Game> = {}) {
+async function renderSetup(
+  overrides: Partial<Game> = {},
+  { folded = false }: { folded?: boolean } = {},
+) {
   const onStarted = vi.fn();
   const view = render(
     <GameSetupScreen
@@ -341,6 +344,12 @@ async function renderSetup(overrides: Partial<Game> = {}) {
     />,
   );
   await screen.findByRole("group", { name: "Münzwurf gewonnen von" });
+  // A complete crew folds into one row; the crew tests work on the rows, so
+  // they open it the way an official would. The fold has its own tests.
+  const summary = screen.queryByRole("button", { name: /^Crew vollständig/ });
+  if (summary !== null && !folded) {
+    await userEvent.click(summary);
+  }
   return { onStarted, ...view };
 }
 
@@ -2226,5 +2235,54 @@ describe("GameSetup — odd saved values and bodies", () => {
       "Dieser Spielstatus erlaubt keinen Spielstart.",
     );
     expect(startButton()).toBeEnabled();
+  });
+});
+
+describe("GameSetup crew summary", () => {
+  it("folds a complete crew with valid licences into one row", async () => {
+    crew = completeCrew();
+    await renderSetup({}, { folded: true });
+
+    const summary = screen.getByRole("button", { name: /^Crew vollständig/ });
+    expect(summary).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByText("4/4 besetzt")).toBeInTheDocument();
+    expect(summary).toHaveTextContent("Michael Klein");
+    expect(
+      screen.queryByRole("button", { name: "Schiedsrichter: Offiziellen wählen" }),
+    ).toBeNull();
+
+    await userEvent.click(summary);
+
+    expect(crewButton("Schiedsrichter")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Crew vollständig/ })).toBeNull();
+  });
+
+  it("keeps the rows open while a required slot is empty", async () => {
+    await renderSetup();
+
+    expect(screen.queryByRole("button", { name: /^Crew vollständig/ })).toBeNull();
+    expect(crewButton("Schiedsrichter")).toBeInTheDocument();
+  });
+
+  it("keeps the rows open when a licence is not valid", async () => {
+    crew = completeCrew();
+    teamList[0] = teamPerson({ is_valid: false, valid_until: "2025-03-04" });
+    await renderSetup({}, { folded: true });
+
+    expect(screen.queryByRole("button", { name: /^Crew vollständig/ })).toBeNull();
+    expect(crewButton("Schiedsrichter")).toBeInTheDocument();
+  });
+});
+
+describe("GameSetup direction on the field", () => {
+  it("draws both directions on a field between the two end zones", async () => {
+    await renderSetup();
+
+    const group = screen.getByRole("group", { name: "Spielrichtung" });
+    expect(group).toHaveClass("fielddir");
+    expect(within(group).getByText("West", { selector: ".fielddir-end" })).toBeInTheDocument();
+    expect(within(group).getByText("Ost", { selector: ".fielddir-end" })).toBeInTheDocument();
+    expect(within(group).getByRole("button", { name: "Ost → West" })).toBeInTheDocument();
+    expect(within(group).getByRole("button", { name: "West → Ost" })).toBeInTheDocument();
   });
 });
