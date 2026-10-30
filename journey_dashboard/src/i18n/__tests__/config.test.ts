@@ -16,17 +16,15 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
 describe('i18n/config', () => {
   let originalHtmlLang: string;
-  let originalLocalStorage: Storage;
 
   beforeEach(() => {
     // Save original HTML lang attribute
     originalHtmlLang = document.documentElement.getAttribute('lang') || '';
 
-    // Mock localStorage
+    // Mock localStorage (stubGlobal: window.localStorage is getter-only)
     const store: Record<string, string> = {};
-    originalLocalStorage = window.localStorage;
 
-    window.localStorage = {
+    vi.stubGlobal('localStorage', {
       getItem: vi.fn((key: string) => store[key] || null),
       setItem: vi.fn((key: string, value: string) => {
         store[key] = value;
@@ -39,7 +37,7 @@ describe('i18n/config', () => {
       }),
       key: vi.fn((index: number) => Object.keys(store)[index] || null),
       length: Object.keys(store).length,
-    } as Storage;
+    });
   });
 
   afterEach(() => {
@@ -47,7 +45,7 @@ describe('i18n/config', () => {
     document.documentElement.setAttribute('lang', originalHtmlLang);
 
     // Restore original localStorage
-    window.localStorage = originalLocalStorage;
+    vi.unstubAllGlobals();
 
     // Clear module cache to ensure fresh import for each test
     vi.resetModules();
