@@ -224,7 +224,6 @@ export default function FinalizeScreen({
   return (
     <Screen
       badge={<SyncBadge gameId={game.id} status={status} variant="inline" />}
-      kicker="Scorecard"
       onBack={onBack}
       onLogout={onLogout}
       sub={`${teamLabel(log.home, game.home)} – ${teamLabel(

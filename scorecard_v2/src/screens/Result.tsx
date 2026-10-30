@@ -33,7 +33,6 @@ export default function ResultScreen({
 }: ResultScreenProps) {
   return (
     <Screen
-      kicker="Scorecard"
       onLogout={onLogout}
       sub={`${teamName(log.home, game.home)} – ${teamName(
         log.away,

@@ -115,74 +115,41 @@ button,
   max-width: var(--shell-width-prep);
 }
 
+/* The whole header is the steel bar: back, title + context, status, account.
+   No brand line or title band below it — the screen keeps the height. */
 .app-header {
   flex: 0 0 auto;
-  padding: 0 var(--page-gutter) var(--space-3);
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--primary);
 }
 
-/* Brand line above the title: the LeagueSphere wordmark, a separator, the
-   screen's own kicker. Both halves stay on the page surface, so the steel band
-   above stays a navigation bar instead of a wallpaper. */
-.app-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+.appbar-title {
+  flex: 1 1 auto;
   min-width: 0;
-  margin-top: var(--space-1);
-}
-
-.wordmark {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: var(--space-1);
-  color: var(--primary);
-}
-
-.wordmark-icon {
-  flex: 0 0 auto;
-}
-
-.wordmark-text {
-  font-family: var(--font-display);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.wordmark-sep {
-  flex: 0 0 auto;
-  font-size: var(--fs-xs);
-  line-height: 1;
-  color: var(--muted);
-}
-
-.kicker {
-  font-family: var(--font-display);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  line-height: 1;
-  text-transform: uppercase;
-  color: var(--primary);
 }
 
 .app-title {
-  margin-top: var(--space-1);
-  font-size: var(--fs-2xl);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--heading);
+  overflow: hidden;
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--bar-fg);
 }
 
 .app-sub {
-  margin-top: var(--space-1);
-  font-size: var(--fs-md);
-  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--bar-fg);
+  opacity: 0.85;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1248,8 +1215,8 @@ button.game-row:active {
   font-size: var(--fs-xl);
   font-weight: 700;
   letter-spacing: 0.01em;
-  color: var(--primary-contrast);
-  background: var(--primary);
+  color: var(--on-action);
+  background: var(--action);
   border-radius: var(--radius-lg);
   cursor: pointer;
   transition: opacity var(--transition-fast);
@@ -1274,7 +1241,6 @@ button.game-row:active {
   min-height: 0;
 }
 
-.tracking > .app-footer,
 .tracking > .app-header,
 .tracking > .board,
 .tracking > .actions,
@@ -1283,15 +1249,6 @@ button.game-row:active {
   flex: 0 0 auto;
 }
 
-/* Above the action bar: the log keeps the rest of the screen and stays the one
-   scrolling region, so the footer cannot push "Spielende" out of view. The
-   hairline marks the end of the log instead of letting the brand line read as
-   part of the button bar. */
-.tracking > .app-footer {
-  margin-top: var(--space-2);
-  padding: var(--space-2) 0;
-  border-top: 1px solid var(--line-soft);
-}
 
 .board {
   flex: 0 0 auto;
@@ -1789,15 +1746,6 @@ button.game-row:active {
 .tdbtn-label {
   min-width: 0;
   overflow-wrap: anywhere;
-}
-
-.tdbtn-hint {
-  font-family: var(--font-body);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  opacity: 0.85;
-  white-space: nowrap;
 }
 
 .action {
@@ -2706,17 +2654,14 @@ button.game-row:active {
 
 /* --------------------------------------------------------- flow chrome -- */
 
-/* The navigation bar is LeagueSphere's steel navbar: full-bleed inside the
-   shell, up into the notch, with the page surface below it for kicker/title. */
+/* The navigation bar is LeagueSphere's steel navbar, up into the notch. */
 .appbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2);
   min-width: 0;
-  min-height: var(--touch);
-  margin: 0 calc(-1 * var(--page-gutter)) var(--space-3);
-  padding: var(--header-pad-top) var(--page-gutter) 0;
+  min-height: 52px;
+  padding: var(--header-pad-top) var(--page-gutter) var(--space-2);
   color: var(--bar-fg);
   background: var(--primary);
 }
@@ -2838,6 +2783,12 @@ button.game-row:active {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
+}
+
+/* The LeagueSphere small print closes the menu instead of a screen footer. */
+.accountmenu .app-footer {
+  margin-top: var(--space-4);
+  padding: var(--space-3) 0 0;
 }
 
 .accountmenu:focus-visible {

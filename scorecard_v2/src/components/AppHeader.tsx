@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 
 import AccountMenu from "./AccountMenu";
-import { ChevronLeft, Football } from "./icons";
+import { ChevronLeft } from "./icons";
 
 interface AppHeaderProps {
-  kicker: string;
   title: string;
   /** One context line; a node when it carries inline art (team logos). */
   sub?: ReactNode;
@@ -21,14 +20,14 @@ interface AppHeaderProps {
 }
 
 /**
- * Screen chrome: the navigation bar (back, status, account menu), the
- * LeagueSphere brand line with the kicker, one title and an optional context
- * line. The theme choice and **Abmelden** live in the account menu, so the bar
- * stays three controls wide from 320px up and the same actions are reachable
- * from every screen, including the loading and error panels.
+ * Screen chrome: one steel bar with back, the title and its context line, the
+ * status chip and the account menu. There is no brand line and no title band
+ * below it: on the sideline every pixel of height belongs to the screen's own
+ * content. The theme choice, **Abmelden** and the legal links live in the
+ * account menu, so the same actions are reachable from every screen, including
+ * the loading and error panels.
  */
 export default function AppHeader({
-  kicker,
   title,
   sub,
   onBack,
@@ -51,6 +50,10 @@ export default function AppHeader({
             </button>
           )}
         </div>
+        <div className="appbar-title">
+          <h1 className="app-title">{title}</h1>
+          {sub === undefined ? null : <p className="app-sub">{sub}</p>}
+        </div>
         <div className="appbar-right">
           {badge === undefined ? null : (
             <span className="appbar-badge">{badge}</span>
@@ -58,18 +61,6 @@ export default function AppHeader({
           <AccountMenu onLogout={onLogout} />
         </div>
       </div>
-      <p className="app-meta">
-        <span className="wordmark">
-          <Football className="wordmark-icon" size={16} />
-          <span className="wordmark-text">LeagueSphere</span>
-        </span>
-        <span aria-hidden="true" className="wordmark-sep">
-          ·
-        </span>
-        <span className="kicker">{kicker}</span>
-      </p>
-      <h1 className="app-title">{title}</h1>
-      {sub === undefined ? null : <p className="app-sub">{sub}</p>}
     </header>
   );
 }

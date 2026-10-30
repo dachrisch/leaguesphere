@@ -240,7 +240,7 @@ describe("the whole flow", () => {
     // 5. Finalise; "Spielstand bearbeiten" reopens tracking from the server
     // log (never from the optimistic one) and returns here.
     await user.click(
-      screen.getByRole("button", { name: "Spielende und Bestätigung" }),
+      screen.getByRole("button", { name: "Spiel beenden" }),
     );
     expect(
       await screen.findByRole("heading", { name: "Spielende" }),
@@ -261,7 +261,7 @@ describe("the whole flow", () => {
       ).toBeGreaterThan(beforeReread),
     );
     await user.click(
-      screen.getByRole("button", { name: "Spielende und Bestätigung" }),
+      screen.getByRole("button", { name: "Spiel beenden" }),
     );
     await screen.findByRole("heading", { name: "Spielende" });
 

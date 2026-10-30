@@ -17,7 +17,7 @@ import type {
   Penalty,
   RosterPlayer,
 } from "../api/types";
-import AppFooter from "../components/AppFooter";
+import { confirmTap, useWakeLock } from "../app/sideline";
 import AppHeader from "../components/AppHeader";
 import EventLog, {
   logRows,
@@ -343,6 +343,9 @@ export default function TrackingScreen({
   // or the session expired). Read-only with the reason, not a silent failure.
   const readOnly = status.paused === "device" || status.paused === "auth";
   const stopReason = pauseReason(status.paused);
+  // A tracked game keeps the screen on: the referee looks away for a whole
+  // series, and an unlock with gloves or wet hands costs the next entry.
+  useWakeLock(!finished);
 
   useEffect(() => {
     // Warm the penalty catalogue while the network is still there: the sheet
@@ -546,6 +549,7 @@ export default function TrackingScreen({
       // The log read after the append is the whole log, so it replaces what is
       // on screen.
       await session.writeEvent(body);
+      confirmTap();
       setConfirmation(describeSaved(events));
       if (flipsPossession(events) && opponentName !== null) {
         await takePossession(opponentName);
@@ -659,7 +663,6 @@ export default function TrackingScreen({
         badge={
           <SyncBadge gameId={game.id} status={status} variant="inline" />
         }
-        kicker="Scorecard"
         onBack={onBack}
         onLogout={onLogout}
         sub={trackingSubtitle(gamedayName, leagueLabel)}
@@ -720,9 +723,6 @@ export default function TrackingScreen({
         >
           <Football className="tdbtn-icon" size={26} />
           <span className="tdbtn-label">{touchdownLabel}</span>
-          <span aria-hidden="true" className="tdbtn-hint">
-            3 Tipps
-          </span>
         </button>
         {SERIES_TILES.map(({ mode, label, Icon }) => (
           <button
@@ -821,7 +821,6 @@ export default function TrackingScreen({
         rows={rows}
         undoKey={undoKey}
       />
-      <AppFooter />
       <footer className="trackfoot">
         <button
           className="startbtn"
@@ -830,7 +829,7 @@ export default function TrackingScreen({
           type="button"
         >
           <Check size={20} />
-          Spielende und Bestätigung
+          Spiel beenden
         </button>
         {readOnly ? (
           <p className="setupnote">

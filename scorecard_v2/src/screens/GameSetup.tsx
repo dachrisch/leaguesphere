@@ -830,7 +830,6 @@ export default function GameSetupScreen({
 
   return (
     <Screen
-      kicker="Scorecard"
       onBack={onBack}
       onLogout={onLogout}
       title="Spiel vorbereiten"

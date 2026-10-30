@@ -68,7 +68,6 @@ function FlowPanel({
 }: FlowPanelProps) {
   return (
     <Screen
-      kicker="Scorecard"
       onBack={onBack}
       onLogout={onLogout}
       sub={sub}

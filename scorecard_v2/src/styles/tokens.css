@@ -30,6 +30,11 @@
      use the darkened #2f6f9f; the original stays available as --link-soft. */
   --primary: #5f788a;
   --primary-contrast: #ffffff;
+  /* The one primary action per screen (Spiel starten, Speichern, Spiel
+     beenden). Near-black on light, near-white on dark: the steel `--primary`
+     read as disabled on a sunlit phone even when the action was ready. */
+  --action: #1f2a33;
+  --on-action: #ffffff;
   --link: #2f6f9f;
   --link-soft: #428bca;
 
@@ -133,6 +138,8 @@
 
   --primary: #8aa2b3;
   --primary-contrast: #111820;
+  --action: #e9ecef;
+  --on-action: #111820;
   --link: #8ec1ea;
   --link-soft: #6fa8d6;
 
@@ -189,6 +196,8 @@
 
     --primary: #8aa2b3;
     --primary-contrast: #111820;
+    --action: #e9ecef;
+    --on-action: #111820;
     --link: #8ec1ea;
     --link-soft: #6fa8d6;
 

@@ -78,7 +78,7 @@ describe("GameList", () => {
       subtitle: "Sa, 31. Mai · Sportpark am Rhein",
     });
 
-    expect(screen.getByText("Scorecard")).toBeInTheDocument();
+    expect(screen.queryByText("Scorecard")).toBeNull();
     expect(
       screen.getByRole("heading", { level: 1, name: "Spieltag 4 · RL NRW" }),
     ).toBeInTheDocument();

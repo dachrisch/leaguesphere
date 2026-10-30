@@ -160,7 +160,6 @@ export default function GameList({
 
   return (
     <Screen
-      kicker="Scorecard"
       onBack={onBack}
       onLogout={onLogout}
       sub={subtitle}

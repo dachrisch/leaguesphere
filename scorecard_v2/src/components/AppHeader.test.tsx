@@ -13,12 +13,11 @@ beforeEach(() => {
 });
 
 describe("AppHeader", () => {
-  it("renders the kicker, the title and the context line", () => {
+  it("renders the title and the context line", () => {
     render(
-      <AppHeader kicker="Scorecard" sub="Herbsttag · Landesliga" title="Feld 2" />,
+      <AppHeader sub="Herbsttag · Landesliga" title="Feld 2" />,
     );
 
-    expect(screen.getByText("Scorecard")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Feld 2", level: 1 }),
     ).toBeInTheDocument();
@@ -29,7 +28,7 @@ describe("AppHeader", () => {
     const { container } = render(
       <AppHeader
         badge={<span>3 warten</span>}
-        kicker="Scorecard"
+       
         onBack={vi.fn()}
         onLogout={vi.fn()}
         title="Feld 2"
@@ -52,7 +51,7 @@ describe("AppHeader", () => {
   it("makes back icon-only but keeps its name and tooltip", async () => {
     const onBack = vi.fn();
     const user = userEvent.setup();
-    render(<AppHeader kicker="Scorecard" onBack={onBack} title="Feld 2" />);
+    render(<AppHeader onBack={onBack} title="Feld 2" />);
 
     const back = screen.getByRole("button", { name: "Zurück" });
     expect(back.textContent).toBe("");
@@ -68,7 +67,7 @@ describe("AppHeader", () => {
     render(
       <CurrentUserProvider user={{ id: 1, username: "scorecard-test" }}>
         <AppHeader
-          kicker="Scorecard"
+         
           onLogout={onLogout}
           title="Feld 2"
         />
@@ -98,71 +97,51 @@ describe("AppHeader", () => {
 
   it("keeps the account trigger even without a signed-in user", () => {
     const { container } = render(
-      <AppHeader kicker="Scorecard" title="Feld 2" />,
+      <AppHeader title="Feld 2" />,
     );
 
     expect(screen.getByRole("button", { name: "Konto" })).toBeInTheDocument();
     expect(container.querySelector(".avatar svg")).not.toBeNull();
   });
 
-  it("puts the LeagueSphere wordmark before the screen kicker", () => {
-    const { container } = render(
-      <AppHeader kicker="Scorecard" title="Feld 2" />,
-    );
+  it("is a single bar: no brand line above the title", () => {
+    const { container } = render(<AppHeader title="Feld 2" />);
 
-    const meta = container.querySelector(".app-meta");
-    expect(meta).not.toBeNull();
-    expect(
-      within(meta as HTMLElement).getByText("LeagueSphere"),
-    ).toBeInTheDocument();
-    expect(
-      within(meta as HTMLElement).getByText("Scorecard"),
-    ).toBeInTheDocument();
-    expect(meta?.querySelector(".wordmark-icon")).not.toBeNull();
-
-    // Wordmark · kicker, in that order.
-    const order = [...(meta as HTMLElement).children].map(
-      (child) => child.className,
-    );
-    expect(order).toEqual(["wordmark", "wordmark-sep", "kicker"]);
+    expect(container.querySelector(".app-meta")).toBeNull();
+    expect(screen.queryByText("LeagueSphere")).toBeNull();
   });
 
-  it("keeps the bar on the steel band and the title on the page surface", () => {
+  it("puts the title and context line inside the bar, between back and account", () => {
     const { container } = render(
-      <AppHeader kicker="Scorecard" title="Feld 2" />,
+      <AppHeader onBack={vi.fn()} sub="Herbsttag" title="Feld 2" />,
     );
 
-    const header = container.querySelector(".app-header");
     const bar = container.querySelector(".appbar") as HTMLElement;
-    const heading = within(header as HTMLElement).getByRole("heading", {
-      level: 1,
-    });
-
-    // The bar is the band; kicker and title are siblings below it, on the page.
-    expect(header).toContainElement(bar);
-    expect(bar).not.toContainElement(heading);
-    expect(bar).not.toContainElement(
-      container.querySelector(".kicker") as HTMLElement,
-    );
+    const heading = screen.getByRole("heading", { name: "Feld 2", level: 1 });
+    expect(bar).toContainElement(heading);
+    expect(bar).toContainElement(screen.getByText("Herbsttag"));
+    const order = [...bar.children].map((child) => child.className);
+    expect(order).toEqual(["appbar-left", "appbar-title", "appbar-right"]);
   });
 
-  it("pins the footer below the scroll content", () => {
+  it("leaves the screen without a footer; the legal links live in the account menu", async () => {
+    const user = userEvent.setup();
     const { container } = render(
-      <Screen kicker="Scorecard" title="Feld 2">
+      <Screen title="Feld 2">
         <p>Inhalt</p>
       </Screen>,
     );
 
-    const main = container.querySelector("main.vscroll") as HTMLElement;
-    const footer = container.querySelector(".app-footer");
-    expect([...main.children].map((child) => child.tagName)).toEqual(["P"]);
-    expect(main.nextElementSibling).toBe(footer);
-    expect(footer?.parentElement?.classList.contains("app-shell")).toBe(true);
+    expect(container.querySelector(".app-footer")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Konto" }));
+    const menu = screen.getByRole("dialog", { name: "Konto" });
+    expect(within(menu).getByRole("link", { name: "Impressum" })).toBeInTheDocument();
+    expect(within(menu).getByRole("link", { name: "Datenschutz" })).toBeInTheDocument();
   });
 
   it("omits the badge slot when the screen has nothing to report", () => {
     const { container } = render(
-      <AppHeader kicker="Scorecard" title="Feld 2" />,
+      <AppHeader title="Feld 2" />,
     );
 
     expect(container.querySelector(".appbar-badge")).toBeNull();
@@ -174,7 +153,7 @@ describe("AppHeader", () => {
     render(
       <Screen
         badge={<span>Offline · 2</span>}
-        kicker="Scorecard"
+       
         onLogout={vi.fn()}
         title="Feld 2"
       >
