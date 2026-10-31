@@ -13,6 +13,13 @@ React/TypeScript field-entry app. Run `npm ci`, then `npm run test:run`,
   right. Fine-pointer desktops also show keyboard hints: **T**, **1–8**, **B**
   and **Ctrl/Cmd+Z**. `useTrackingShortcuts` guards dialogs, form fields and
   read-only games.
+- The action tiles keep their own height (`--action-tile`, 104px / 116px) and
+  only shrink on short windows; the free height of a tall screen stays below
+  the controls instead of stretching them.
+- Large desktops scale the whole app: `body` is zoomed by `--ui-scale`
+  (1.25 / 1.5 / 1.75 / 2), stepped so the 1376×860 wide layout always fits.
+  Zoom scales viewport units too, so every `vh`/`vw`/`dvh` in `app.css` must be
+  divided by `var(--ui-scale)`. Breakpoints and `matchMedia` are unaffected.
 - The shell tokens live in `src/styles/tokens.css`; all visual rules use the
   existing light, sun and dark theme tokens. Responsive rules are at the end of
   `src/styles/app.css`.

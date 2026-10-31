@@ -456,10 +456,10 @@ export default function EventLog({
                       className="undo"
                       disabled={disabled || undoKey !== null}
                       onClick={() => onUndo(row)}
+                      title={`Rückgängig: ${described.primary}`}
                       type="button"
                     >
-                      <Undo size={14} />
-                      Rückgängig
+                      <Undo size={18} />
                     </button>
                   ) : null}
                 </span>
