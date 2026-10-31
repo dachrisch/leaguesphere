@@ -51,6 +51,33 @@ afterEach(() => {
 });
 
 describe("useTrackingShortcuts", () => {
+  it("keeps one listener and calls the handlers of the latest render", () => {
+    // A key pressed right after a render must reach that render's handlers:
+    // re-subscribing in an effect left the previous listener live until the
+    // effect ran, so an armed tile's second key press still saw it unarmed.
+    const addListener = vi.spyOn(window, "addEventListener");
+    const first = vi.fn();
+    const latest = vi.fn();
+    const { rerender } = renderHook(
+      ({ onAction }) =>
+        useTrackingShortcuts({
+          ...handlers(),
+          onAction,
+          readOnly: false,
+          sheetOpen: false,
+        }),
+      { initialProps: { onAction: first } },
+    );
+
+    rerender({ onAction: latest });
+    fireEvent.keyDown(window, { key: "1" });
+
+    const keydowns = addListener.mock.calls.filter(([type]) => type === "keydown");
+    expect(keydowns).toHaveLength(1);
+    expect(first).not.toHaveBeenCalled();
+    expect(latest).toHaveBeenCalledWith(0);
+  });
+
   it("maps T and B to touchdown and possession", () => {
     const { callbacks } = renderShortcuts();
 
