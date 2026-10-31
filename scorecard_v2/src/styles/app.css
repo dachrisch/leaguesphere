@@ -2535,22 +2535,47 @@ button.game-row:active {
   cursor: not-allowed;
 }
 
-.halfask {
-  margin-bottom: var(--space-2);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--amber);
+/* ------------------------------------------------------------ two-step --- */
+
+/* A button armed by its first tap (useArmed): same box, its second action as
+   the label, and a bar draining over the window. `--arm-ms` matches ARM_MS
+   in src/screens/useArmed.ts. */
+.is-armed {
+  position: relative;
+  overflow: hidden;
 }
 
-.halfactions {
-  display: flex;
-  gap: var(--space-2);
+.is-armed::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: currentColor;
+  transform-origin: left;
+  animation: arm-drain var(--arm-ms, 10s) linear forwards;
 }
 
-.halfactions .action,
-.halfactions .halfbtn {
-  flex: 1 1 0;
-  width: auto;
+.action.is-armed,
+.halfbtn.is-armed {
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, var(--surface));
+  border-color: var(--warning);
+}
+
+.halfbtn.is-armed svg {
+  color: currentColor;
+}
+
+@keyframes arm-drain {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
 }
 
 .halfblock .trackerror {
@@ -3681,6 +3706,11 @@ button.syncbadge {
     scroll-behavior: auto !important;
   }
 
+  /* The armed bar stays full instead of vanishing at once. */
+  .is-armed::after {
+    animation-name: none !important;
+  }
+
   .day-card:active,
   button.game-row:active {
     transform: none;
@@ -4125,9 +4155,6 @@ button.syncbadge {
     display: grid;
     grid-row: 6;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    /* "Halbzeit starten?" sits above its two buttons; aligning the row to
-       the bottom keeps them level with Spiel beenden. */
-    align-items: end;
     gap: var(--space-4);
   }
 
@@ -4141,32 +4168,15 @@ button.syncbadge {
     background: transparent;
   }
 
-  /* All buttons of the end row share one height, the confirmation's
-     Abbrechen (an action tile) included. */
+  /* Both end buttons share one height, armed or not. */
   .tracking .tracking-end {
     --end-button: 56px;
   }
 
   .tracking-end .halfbtn,
-  .tracking-end .startbtn,
-  .tracking-end .halfactions .action {
+  .tracking-end .startbtn {
     min-height: 0;
     height: var(--end-button);
-  }
-
-  /* While "Halbzeit starten?" asks, Spiel beenden keeps just the width of
-     its label and the two answers share the rest, so no label wraps. */
-  .tracking .tracking-end:has(.halfactions) {
-    grid-template-columns: minmax(0, 1fr) max-content;
-  }
-
-  .tracking-end:has(.halfactions) .startbtn {
-    padding-inline: var(--space-6);
-  }
-
-  .tracking-end .halfactions .action,
-  .tracking-end .halfactions .halfbtn,
-  .tracking-end .startbtn {
     white-space: nowrap;
   }
 

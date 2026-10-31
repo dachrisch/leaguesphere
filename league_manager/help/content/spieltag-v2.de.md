@@ -21,10 +21,13 @@ wie die bisherige Scorecard
    und tippe auf **Spiel starten**. **Jetzt starten** bestätigt den Start.
 3. Erfasse im laufenden Spiel (oben stehen Feld und Runde) jeden Spielzug über
    **Touchdown**, **1st Down**, **Turnover**, **Interception**, **Strafe**,
-   **Safety**, **Overtime**, **Spielzeit** oder **Auszeit**.
+   **Safety**, **Overtime**, **Spielzeit** oder **Auszeit**. **1st Down** wird
+   sofort gespeichert; tippst du die Kachel innerhalb von 10 Sekunden noch
+   einmal (**Nr. ergänzen**), trägst du die Trikotnummer nach.
 4. Das Pfeil-Symbol neben einem Eintrag im Spielverlauf (**Rückgängig**) nimmt
-   ihn zurück, **Halbzeit** wechselt in die zweite Halbzeit. Am großen
-   Bildschirm geht das auch mit **Strg Z**.
+   ihn zurück; am großen Bildschirm geht das auch mit **Strg Z**. **Halbzeit**
+   fragt beim ersten Tippen nach (**Halbzeit starten**) und wechselt erst beim
+   zweiten Tippen innerhalb von 10 Sekunden in die zweite Halbzeit.
 5. **Spielende und Bestätigung** öffnet den Abschluss: beide Captains
    bestätigen, dann **Ergebnis abschicken**.
 

@@ -41,6 +41,7 @@ import TrackingScreen, {
   writeTeam,
 } from "./Tracking";
 import { getRuntime, resetRuntime } from "../session/runtime";
+import { ARM_MS } from "./useArmed";
 import type { SyncStatus } from "../session/useSyncStatus";
 import { resetSnapshotStore } from "../offline/snapshot";
 
@@ -208,6 +209,14 @@ function sentWrites(): unknown[] {
   return apiPostMock.mock.calls
     .map(([, body]) => body)
     .filter((body) => !isPossessionChange(body));
+}
+
+/** How many first downs were sent, with or without a jersey. */
+function firstDownPosts(): number {
+  return sentWrites().filter(
+    (body) =>
+      (body as { events?: SentEvents }).events?.[0]?.code === "first_down",
+  ).length;
 }
 
 /** Answer every append immediately, but hang or reject the ball change. */
@@ -1158,7 +1167,7 @@ describe("Tracking series and time entry", () => {
     );
   });
 
-  it("adds the jersey to a one-tap first down from the toast", async () => {
+  it("adds the jersey to a one-tap first down with a second tap on the tile", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     answerAppend(
       makeLog({
@@ -1170,8 +1179,10 @@ describe("Tracking series and time entry", () => {
     const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: "1st Down" }));
+    // The tile itself offers the jersey; the toast only confirms and undoes.
     const toast = await screen.findByRole("status", { name: "Gespeichert" });
-    await user.click(within(toast).getByRole("button", { name: "Nr. ergänzen" }));
+    expect(within(toast).queryByRole("button", { name: "Nr. ergänzen" })).toBeNull();
+    await user.click(await screen.findByRole("button", { name: "Nr. ergänzen" }));
     await user.click(
       await screen.findByRole("button", { name: "Trikot 7, Meier" }),
     );
@@ -1189,6 +1200,61 @@ describe("Tracking series and time entry", () => {
       ],
       client_id: expect.any(String),
     });
+  });
+});
+
+describe("Tracking two-step tiles", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("turns the 1st Down tile back after the window, so a tap records again", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(
+      makeLog({
+        inPossession: "Ravens",
+        events: [logEvent({ id: 9, sequence: 4, seq: 11, event: "First Down" })],
+      }),
+    );
+    renderTracking();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+    await user.click(screen.getByRole("button", { name: "1st Down" }));
+    expect(await screen.findByRole("button", { name: "Nr. ergänzen" })).toHaveClass(
+      "is-armed",
+    );
+
+    act(() => vi.advanceTimersByTime(ARM_MS));
+    await user.click(screen.getByRole("button", { name: "1st Down" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await waitFor(() => expect(firstDownPosts()).toBe(2));
+  });
+
+  it("adds the jersey when the 1 key is pressed twice", async () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: query === "(min-width: 1280px)",
+        media: query,
+      })),
+    );
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(
+      makeLog({
+        inPossession: "Ravens",
+        events: [logEvent({ id: 9, sequence: 4, seq: 11, event: "First Down" })],
+      }),
+    );
+    renderTracking();
+
+    fireEvent.keyDown(window, { key: "1" });
+    await screen.findByRole("button", { name: "Nr. ergänzen" });
+    fireEvent.keyDown(window, { key: "1" });
+
+    expect(await screen.findByRole("dialog", { name: "First Down" })).toBeInTheDocument();
+    expect(firstDownPosts()).toBe(1);
   });
 });
 
@@ -2204,18 +2270,28 @@ describe("Tracking safety and overtime", () => {
 });
 
 describe("Tracking half-time", () => {
-  it("asks before it starts the half", async () => {
-    renderTracking();
-    const user = userEvent.setup();
+  it("arms the button on the first tap and lets it go after the window", () => {
+    vi.useFakeTimers();
+    try {
+      renderTracking();
 
-    await user.click(screen.getByRole("button", { name: "Halbzeit" }));
+      fireEvent.click(screen.getByRole("button", { name: "Halbzeit" }));
 
-    expect(screen.getByText("Halbzeit starten?")).toBeInTheDocument();
-    expect(apiPostMock).not.toHaveBeenCalled();
+      // Same button, now asking: no second button, nothing written yet.
+      const armed = screen.getByRole("button", { name: "Halbzeit starten" });
+      expect(armed).toHaveClass("is-armed");
+      expect(screen.getByText("Zum Bestätigen erneut tippen")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Abbrechen" })).toBeNull();
+      expect(apiPostMock).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: "Abbrechen" }));
-    expect(screen.queryByText("Halbzeit starten?")).not.toBeInTheDocument();
-    expect(apiPostMock).not.toHaveBeenCalled();
+      act(() => vi.advanceTimersByTime(ARM_MS));
+      expect(screen.getByRole("button", { name: "Halbzeit" })).not.toHaveClass(
+        "is-armed",
+      );
+      expect(apiPostMock).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("writes the half-time as an event, adopts the half and flips possession", async () => {
@@ -2864,6 +2940,9 @@ describe("Tracking device lock on open", () => {
     expect(
       screen.getByText(/Das andere Gerät kann danach nicht mehr schreiben/),
     ).toBeInTheDocument();
+    // The same button asks a second time; there is no separate cancel.
+    expect(screen.queryByRole("button", { name: "Abbrechen" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Übernehmen" })).toHaveClass("is-armed");
     await user.click(screen.getByRole("button", { name: "Übernehmen" }));
 
     await waitFor(() => expect(resume).toHaveBeenCalledWith(42));
