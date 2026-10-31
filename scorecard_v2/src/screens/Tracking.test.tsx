@@ -1116,24 +1116,73 @@ describe("Tracking series and time entry", () => {
     );
   });
 
-  it("records an interception for the defender, not the passer", async () => {
+  it("records an interception with one tap, for the defender, and hands them the ball", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
     const user = userEvent.setup();
 
-    const dialog = await openSheet(user, /^Interception$/);
-    expect(dialog).toHaveAccessibleName("Interception");
-    expect(
-      await screen.findByRole("button", { name: "Trikot 11, Wolf" }),
-    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Interception" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [
+          {
+            type: "possession",
+            code: "interception",
+            side: "away",
+            player: null,
+            period: 1,
+          },
+        ],
+        client_id: expect.any(String),
+      }),
+    );
+    await waitFor(() => expect(sentPossessions()).toEqual(["away"]));
+  });
+
+  it("adds the defender's jersey with a second tap, without handing the ball back", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(
+      makeLog({
+        inPossession: "Wolves",
+        events: [
+          logEvent({
+            id: 9,
+            sequence: 5,
+            seq: 13,
+            team: "Wolves",
+            event: "Interception",
+            cop: true,
+          }),
+        ],
+      }),
+    );
+    renderTracking({ log: makeLog({ inPossession: "Ravens" }) });
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Interception" }));
+    await waitFor(() => expect(sentPossessions()).toEqual(["away"]));
+    await user.click(await screen.findByRole("button", { name: "Nr. ergänzen" }));
+
+    // The same dialog as before, for the defender who now has the ball.
+    const dialog = await screen.findByRole("dialog", { name: "Interception" });
+    expect(dialog).toHaveTextContent("Interception durch Wolves");
     expect(
       screen.queryByRole("button", { name: "Trikot 23, Schulz" }),
     ).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Trikot 11, Wolf" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Trikot 11, Wolf" }),
+    );
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [{ type: "correction", code: "undo", payload: { undo_of: 13 } }],
+        client_id: expect.any(String),
+      }),
+    );
     expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
       events: [
         {
@@ -1146,6 +1195,7 @@ describe("Tracking series and time entry", () => {
       ],
       client_id: expect.any(String),
     });
+    expect(sentPossessions()).toEqual(["away"]);
   });
 
   it("records a first down with one tap, no sheet", async () => {
@@ -1330,7 +1380,7 @@ describe("Tracking cockpit", () => {
     renderTracking();
     const user = userEvent.setup();
 
-    for (const name of ["Interception", "Spielzeit", "Auszeit"]) {
+    for (const name of ["Spielzeit", "Auszeit"]) {
       await user.click(screen.getByRole("button", { name }));
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
       await user.click(screen.getByRole("button", { name: "Schließen" }));
@@ -1582,6 +1632,24 @@ describe("Tracking extra point after the try", () => {
 
     expect(screen.queryByRole("group", { name: "Extrapunkt Ravens" })).toBeNull();
     expect(apiPostMock.mock.calls.length).toBe(writes);
+  });
+
+  it("locks the entries until the extra point is answered", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    const pat = await scoreTouchdown(user);
+
+    // Nothing happens between the touchdown and the try.
+    expect(screen.getByRole("button", { name: "1st Down" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Strafe" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Halbzeit" })).toBeDisabled();
+
+    await user.click(within(pat).getByRole("button", { name: "nicht verwandelt" }));
+    expect(screen.getByRole("button", { name: "1st Down" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Halbzeit" })).toBeEnabled();
   });
 
   it("holds the end of the game while an extra point is open", async () => {

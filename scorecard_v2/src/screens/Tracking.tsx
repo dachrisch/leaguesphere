@@ -120,7 +120,7 @@ const SERIES_TILES: {
     mode: "interception",
     label: "Interception",
     Icon: Interception,
-    oneTap: false,
+    oneTap: true,
   },
   { mode: "time", label: "Spielzeit", Icon: Stopwatch, oneTap: false },
   { mode: "timeout", label: "Auszeit", Icon: Clock, oneTap: false },
@@ -130,7 +130,18 @@ const SERIES_TILES: {
 const ONE_TAP_EVENT: Partial<Record<SeriesMode, string>> = {
   first: "First Down",
   turnover: "Turnover",
+  interception: "Interception",
 };
+
+/**
+ * One-tap entries whose jersey is optional: they save on the first tap and
+ * their tile offers "Nr. ergänzen" for the second. A Turnover names nobody.
+ */
+type JerseyLater = "first" | "interception";
+
+function addsJerseyLater(mode: SeriesMode): mode is JerseyLater {
+  return mode === "first" || mode === "interception";
+}
 
 /**
  * Header title: the field and the round, the two facts an official needs to be
@@ -488,8 +499,8 @@ export default function TrackingScreen({
   const [finishBlocked, setFinishBlocked] = useState(false);
   /** The one-tap row a jersey sheet replaces once it saves. */
   const [replacing, setReplacing] = useState<LogRow | null>(null);
-  /** Two-step buttons: 1st Down offers the jersey, Halbzeit asks once more. */
-  const { armed, arm, disarm } = useArmed<"first" | "halftime">();
+  /** Two-step buttons: a one-tap entry offers its jersey, Halbzeit asks once more. */
+  const { armed, arm, disarm } = useArmed<JerseyLater | "halftime">();
   const [halftimePending, setHalftimePending] = useState(false);
   const [halftimeError, setHalftimeError] = useState<string | null>(null);
   // Refs, not state: two taps in the same tick both see the old state and
@@ -781,6 +792,8 @@ export default function TrackingScreen({
   const submit = async (
     events: GameLogEventInput[],
     teamOverride?: string,
+    /** The ball already moved with the row this write replaces. */
+    keepBall = false,
   ): Promise<void> => {
     if (postInFlight.current) {
       throw new IgnoredWrite("Der Eintrag wird gerade gespeichert.");
@@ -817,7 +830,7 @@ export default function TrackingScreen({
       await session.writeEvent(body);
       confirmTap();
       setConfirmation(describeSaved(events));
-      if (flipsPossession(events) && opponentName !== null) {
+      if (!keepBall && flipsPossession(events) && opponentName !== null) {
         await takePossession(opponentName);
       }
     } finally {
@@ -913,15 +926,16 @@ export default function TrackingScreen({
   /**
    * Save an entry that needs no input on the tap itself. A wrong tap is one
    * "Rückgängig" away in the toast, which is cheaper than a sheet on every
-   * correct one. A first down then arms its tile: tapping it again within the
-   * window adds the jersey, right where the official's finger already is.
+   * correct one. An entry with an optional jersey then arms its tile: tapping
+   * it again within the window adds the jersey, right where the official's
+   * finger already is.
    */
   const recordOneTap = async (mode: SeriesMode): Promise<void> => {
     try {
       await submit([seriesEvent(mode, null)]);
       setQuick(mode);
-      if (mode === "first") {
-        arm("first");
+      if (addsJerseyLater(mode)) {
+        arm(mode);
       }
     } catch (failure) {
       setQuickError(
@@ -948,9 +962,9 @@ export default function TrackingScreen({
     openSheet({ kind: "series", mode });
   };
 
-  /** A series tile, tapped or keyed: an armed 1st Down adds the jersey. */
+  /** A series tile, tapped or keyed: an armed tile adds the jersey. */
   const tapSeriesTile = (mode: SeriesMode, oneTap: boolean): void => {
-    if (mode === "first" && armed === "first") {
+    if (addsJerseyLater(mode) && armed === mode) {
       completeQuick(mode);
     } else if (oneTap) {
       void recordOneTap(mode);
@@ -1043,14 +1057,19 @@ export default function TrackingScreen({
   /** A sheet that completes a one-tap entry writes the new row, then undoes the old. */
   const submitSeries = async (events: GameLogEventInput[]): Promise<void> => {
     const previous = replacing;
-    await submit(events);
+    // A replacement belongs to the replaced row's team, and the ball already
+    // moved with that row (an interception): it must not move twice.
+    await submit(events, previous?.team ?? undefined, previous !== null);
     if (previous !== null) {
       setReplacing(null);
       await undo(previous);
     }
   };
 
+  // Nothing happens between the touchdown and the try: the entries wait for
+  // the extra point.
   const composerDisabled =
+    pendingPat !== null ||
     posting ||
     possessionPending ||
     halftimePending ||
@@ -1066,6 +1085,7 @@ export default function TrackingScreen({
    * either skip the flip or answer with a stale half, so the block waits.
    */
   const halftimeDisabled =
+    pendingPat !== null ||
     halftimePending ||
     posting ||
     possessionPending ||
@@ -1296,7 +1316,7 @@ export default function TrackingScreen({
         )}
         <div className="action-grid">
         {SERIES_TILES.map(({ mode, label, Icon, oneTap }, index) => {
-          const offersJersey = mode === "first" && armed === "first";
+          const offersJersey = armed === mode;
           const TileIcon = offersJersey ? User : Icon;
           return (
           <button
@@ -1402,7 +1422,7 @@ export default function TrackingScreen({
         <p aria-live="polite" className="sr-only">
           {armed === "halftime"
             ? "Zum Bestätigen erneut tippen"
-            : armed === "first"
+            : armed !== null
               ? "Erneut tippen, um die Trikotnummer zu ergänzen"
               : ""}
         </p>
@@ -1425,16 +1445,34 @@ export default function TrackingScreen({
             teamName={possessionName}
           />
         ) : sheet.kind === "series" ? (
-          <SeriesSheet
-            key={sheet.mode}
-            mode={sheet.mode}
-            onClose={closeSheet}
-            onSubmit={submitSeries}
-            opponentName={opponentName ?? "–"}
-            roster={roster}
-            side={possessionSide}
-            teamName={possessionName}
-          />
+          // Completing a one-tap interception: the defender already has the
+          // ball, so the sheet sees the possession from before the tap.
+          replacing !== null &&
+          sheet.mode === "interception" &&
+          opponentName !== null &&
+          opponentSide !== null ? (
+            <SeriesSheet
+              key={sheet.mode}
+              mode={sheet.mode}
+              onClose={closeSheet}
+              onSubmit={submitSeries}
+              opponentName={possessionName}
+              roster={roster}
+              side={opponentSide}
+              teamName={opponentName}
+            />
+          ) : (
+            <SeriesSheet
+              key={sheet.mode}
+              mode={sheet.mode}
+              onClose={closeSheet}
+              onSubmit={submitSeries}
+              opponentName={opponentName ?? "–"}
+              roster={roster}
+              side={possessionSide}
+              teamName={possessionName}
+            />
+          )
         ) : sheet.kind === "penalty" ? (
           <PenaltySheet
             onClose={() => setSheet(null)}

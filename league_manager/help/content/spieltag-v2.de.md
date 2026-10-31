@@ -21,9 +21,11 @@ wie die bisherige Scorecard
    und tippe auf **Spiel starten**. **Jetzt starten** bestätigt den Start.
 3. Erfasse im laufenden Spiel (oben stehen Feld und Runde) jeden Spielzug über
    **Touchdown**, **1st Down**, **Turnover**, **Interception**, **Strafe**,
-   **Safety**, **Overtime**, **Spielzeit** oder **Auszeit**. **1st Down** wird
-   sofort gespeichert; tippst du die Kachel innerhalb von 10 Sekunden noch
-   einmal (**Nr. ergänzen**), trägst du die Trikotnummer nach.
+   **Safety**, **Overtime**, **Spielzeit** oder **Auszeit**. **1st Down**,
+   **Turnover** und **Interception** werden sofort gespeichert; bei 1st Down
+   und Interception trägst du die Trikotnummer nach, wenn du die Kachel
+   innerhalb von 10 Sekunden noch einmal tippst (**Nr. ergänzen**). Nach einem
+   Touchdown sind die Kacheln gesperrt, bis der Extrapunkt eingetragen ist.
 4. Das Pfeil-Symbol neben einem Eintrag im Spielverlauf (**Rückgängig**) nimmt
    ihn zurück; am großen Bildschirm geht das auch mit **Strg Z**. **Halbzeit**
    fragt beim ersten Tippen nach (**Halbzeit starten**) und wechselt erst beim
