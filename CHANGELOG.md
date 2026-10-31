@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.6.1](https://github.com/dachrisch/leaguesphere/compare/v5.6.0...v5.6.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* **demo:** check the seeded players in for their gamedays ([#2216](https://github.com/dachrisch/leaguesphere/issues/2216)) ([08e9bb1](https://github.com/dachrisch/leaguesphere/commit/08e9bb1e281489f4c9a25b1f702544f3e7312e31))
+* **scorecard-v2:** line up the halftime confirmation on wide screens ([#2217](https://github.com/dachrisch/leaguesphere/issues/2217)) ([baa94a8](https://github.com/dachrisch/leaguesphere/commit/baa94a85076e2dc105e1ff5c5dd959b783d578de))
+
 ## [5.6.0](https://github.com/dachrisch/leaguesphere/compare/v5.5.0...v5.6.0) (2026-10-31)
 
 
