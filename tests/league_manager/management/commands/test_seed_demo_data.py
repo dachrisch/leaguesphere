@@ -2,9 +2,13 @@ import pytest
 from django.core.management import call_command
 from django.db.models import Count
 
-from gamedays.models import GameOfficial, Gameinfo, Team
+from gamedays.models import GameOfficial, Gameday, Gameinfo, Team
+from league_manager.management.commands.seed_demo_data import (
+    Command as SeedDemoData,
+)
 from officials.models import Official
 from officials.service.officials_repository_service import OfficialsRepositoryService
+from passcheck.models import PlayerlistGameday
 
 OFFICIALS_TEAM_NAME = "Demo Officials"
 COUNTED_POSITIONS = {"Referee", "Down Judge", "Field Judge", "Side Judge"}
@@ -52,3 +56,34 @@ class TestSeedDemoDataOfficials:
         )
 
         assert statistics["without_external"]
+
+
+@pytest.mark.django_db
+class TestSeedDemoDataRosters:
+    """The scorecard's jersey picker reads the roster of the gameday (the
+    passcheck snapshot), so every seeded game needs players on both sides —
+    otherwise the demo only ever shows "Kein Kader geladen"."""
+
+    def test_every_seeded_game_has_a_roster_for_both_teams(
+        self, client, django_user_model
+    ):
+        call_command("seed_demo_data")
+        client.force_login(django_user_model.objects.create_user("roster-check"))
+
+        games = Gameinfo.objects.all()
+        assert games
+        for game in games:
+            response = client.get(f"/api/game/{game.pk}/roster")
+            assert response.status_code == 200
+            sides = {row["side"] for row in response.json()}
+            assert sides == {"home", "away"}, (game.pk, sides)
+
+    def test_checking_in_again_adds_no_second_roster_entry(self):
+        call_command("seed_demo_data")
+        first = PlayerlistGameday.objects.count()
+
+        added = SeedDemoData().create_gameday_rosters(list(Gameday.objects.all()))
+
+        assert first > 0
+        assert added == 0
+        assert PlayerlistGameday.objects.count() == first
