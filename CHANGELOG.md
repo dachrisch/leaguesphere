@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.6.0](https://github.com/dachrisch/leaguesphere/compare/v5.5.0...v5.6.0) (2026-10-31)
+
+
+### Features
+
+* **scorecard-v2:** scale the app on large desktops, keep tiles compact ([#2214](https://github.com/dachrisch/leaguesphere/issues/2214)) ([b960def](https://github.com/dachrisch/leaguesphere/commit/b960def5d3483a635a85a03540671b8edb60140a))
+
 ## [5.5.0](https://github.com/dachrisch/leaguesphere/compare/v5.4.2...v5.5.0) (2026-10-30)
 
 
