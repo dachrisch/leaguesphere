@@ -91,8 +91,10 @@ only control static assets, and its scope could never leak into the old app.
    **Ballbesitz** switch under it, the log in the middle and the actions at the
    bottom (thumb zone, tinted in the colour of the side with the ball).
    **1st Down** and **Turnover** save on the tap; a toast under the log offers
-   **Rückgängig** and, for a first down, **Nr. ergänzen** (the jersey sheet
-   then writes the numbered row and undoes the one-tap row). Interception,
+   **Rückgängig**. The 1st Down tile then turns into **Nr. ergänzen** for 10s:
+   a second tap opens the jersey sheet, which writes the numbered row and
+   undoes the one-tap row. **Halbzeit** works the same way (first tap arms
+   **Halbzeit starten**, the second starts it). Interception,
    Spielzeit, Auszeit, penalty, safety and overtime keep their sheets.
    Touchdown with the roster's jerseys (a tile grid up to 24 players, a
    two-digit keypad above that with the roster name as confirmation; numeric

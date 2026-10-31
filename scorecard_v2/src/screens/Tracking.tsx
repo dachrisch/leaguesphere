@@ -43,6 +43,7 @@ import {
   Shield,
   Stopwatch,
   SwapArrows,
+  User,
   type IconProps,
 } from "../components/icons";
 import MoreSheet, { type MoreMode } from "../components/sheets/MoreSheet";
@@ -62,6 +63,7 @@ import { getDeviceId } from "../device";
 import { lockFrom, takeOver, type LockAnswer } from "../session/lock";
 import { getRuntime } from "../session/runtime";
 import { useSyncStatus, type SyncStatus } from "../session/useSyncStatus";
+import { useArmed } from "./useArmed";
 import { useTrackingShortcuts } from "./useTrackingShortcuts";
 
 interface TrackingScreenProps {
@@ -315,7 +317,9 @@ export function SyncStrip({
   canRelease?: boolean;
   onTakeOver?: () => Promise<void>;
 }) {
-  const [confirming, setConfirming] = useState(false);
+  // Taking a game over locks the other device out: the button asks once more.
+  const { armed, arm, disarm } = useArmed<"takeover">();
+  const confirming = armed === "takeover";
   const [takingOver, setTakingOver] = useState(false);
   const [takeOverError, setTakeOverError] = useState<string | null>(null);
   const waiting =
@@ -346,53 +350,45 @@ export function SyncStrip({
           )}
         </p>
         {status.paused === "device" && canRelease && onTakeOver !== undefined ? (
-          confirming ? (
-            <span className="syncstrip-actions">
-              <button
-                className="syncstrip-btn"
-                disabled={takingOver}
-                onClick={() => setConfirming(false)}
-                type="button"
-              >
-                Abbrechen
-              </button>
-              <button
-                className="syncstrip-btn syncstrip-btn-strong"
-                disabled={takingOver}
-                onClick={() => {
-                  setTakingOver(true);
-                  setTakeOverError(null);
-                  onTakeOver()
-                    .then(() => setConfirming(false))
-                    .catch((failure: unknown) =>
-                      setTakeOverError(
-                        errorMessage(
-                          failure,
-                          "Übernehmen hat nicht geklappt. Bitte erneut versuchen.",
-                        ),
+          <span className="syncstrip-actions">
+            <button className="syncstrip-btn" onClick={onResume} type="button">
+              Erneut prüfen
+            </button>
+            <button
+              className={
+                confirming
+                  ? "syncstrip-btn syncstrip-btn-strong is-armed"
+                  : "syncstrip-btn"
+              }
+              disabled={takingOver}
+              onClick={() => {
+                if (!confirming) {
+                  arm("takeover");
+                  return;
+                }
+                disarm();
+                setTakingOver(true);
+                setTakeOverError(null);
+                onTakeOver()
+                  .catch((failure: unknown) =>
+                    setTakeOverError(
+                      errorMessage(
+                        failure,
+                        "Übernehmen hat nicht geklappt. Bitte erneut versuchen.",
                       ),
-                    )
-                    .finally(() => setTakingOver(false));
-                }}
-                type="button"
-              >
-                {takingOver ? "Übernehmen …" : "Übernehmen"}
-              </button>
-            </span>
-          ) : (
-            <span className="syncstrip-actions">
-              <button className="syncstrip-btn" onClick={onResume} type="button">
-                Erneut prüfen
-              </button>
-              <button
-                className="syncstrip-btn"
-                onClick={() => setConfirming(true)}
-                type="button"
-              >
-                Spiel übernehmen
-              </button>
-            </span>
-          )
+                    ),
+                  )
+                  .finally(() => setTakingOver(false));
+              }}
+              type="button"
+            >
+              {takingOver
+                ? "Übernehmen …"
+                : confirming
+                  ? "Übernehmen"
+                  : "Spiel übernehmen"}
+            </button>
+          </span>
         ) : (
           <button className="syncstrip-btn" onClick={onResume} type="button">
             Erneut prüfen
@@ -492,7 +488,8 @@ export default function TrackingScreen({
   const [finishBlocked, setFinishBlocked] = useState(false);
   /** The one-tap row a jersey sheet replaces once it saves. */
   const [replacing, setReplacing] = useState<LogRow | null>(null);
-  const [confirmHalftime, setConfirmHalftime] = useState(false);
+  /** Two-step buttons: 1st Down offers the jersey, Halbzeit asks once more. */
+  const { armed, arm, disarm } = useArmed<"first" | "halftime">();
   const [halftimePending, setHalftimePending] = useState(false);
   const [halftimeError, setHalftimeError] = useState<string | null>(null);
   // Refs, not state: two taps in the same tick both see the old state and
@@ -677,6 +674,7 @@ export default function TrackingScreen({
     }
     const previous = possession;
     possessionInFlight.current = true;
+    disarm();
     setPossession(teamName);
     setPossessionPending(true);
     setPossessionError(null);
@@ -706,6 +704,7 @@ export default function TrackingScreen({
       return;
     }
     undoInFlight.current = true;
+    disarm();
     setUndoKey(row.key);
     setUndoError(null);
     try {
@@ -800,6 +799,7 @@ export default function TrackingScreen({
     const team = teamOverride ?? writeTeam(events, possessionName, opponentName);
     postInFlight.current = true;
     setPosting(true);
+    disarm();
     setConfirmation(null);
     setQuick(null);
     setQuickError(null);
@@ -871,7 +871,7 @@ export default function TrackingScreen({
     halftimeInFlight.current = true;
     setHalftimePending(true);
     setHalftimeError(null);
-    setConfirmHalftime(false);
+    disarm();
     try {
       // Online an event append whose answer carries the flipped half; offline
       // the op is queued and the half flips locally so the next entry already
@@ -897,6 +897,7 @@ export default function TrackingScreen({
   };
 
   const openSheet = (next: SheetState): void => {
+    disarm();
     setConfirmation(null);
     setQuick(null);
     setQuickError(null);
@@ -912,12 +913,16 @@ export default function TrackingScreen({
   /**
    * Save an entry that needs no input on the tap itself. A wrong tap is one
    * "Rückgängig" away in the toast, which is cheaper than a sheet on every
-   * correct one.
+   * correct one. A first down then arms its tile: tapping it again within the
+   * window adds the jersey, right where the official's finger already is.
    */
   const recordOneTap = async (mode: SeriesMode): Promise<void> => {
     try {
       await submit([seriesEvent(mode, null)]);
       setQuick(mode);
+      if (mode === "first") {
+        arm("first");
+      }
     } catch (failure) {
       setQuickError(
         errorMessage(
@@ -941,6 +946,17 @@ export default function TrackingScreen({
   const completeQuick = (mode: SeriesMode): void => {
     setReplacing(quickRow(mode));
     openSheet({ kind: "series", mode });
+  };
+
+  /** A series tile, tapped or keyed: an armed 1st Down adds the jersey. */
+  const tapSeriesTile = (mode: SeriesMode, oneTap: boolean): void => {
+    if (mode === "first" && armed === "first") {
+      completeQuick(mode);
+    } else if (oneTap) {
+      void recordOneTap(mode);
+    } else {
+      openSheet({ kind: "series", mode });
+    }
   };
 
   const closeSheet = (): void => {
@@ -1058,7 +1074,7 @@ export default function TrackingScreen({
 
   useTrackingShortcuts({
     readOnly: readOnly || finished,
-    sheetOpen: sheet !== null || pendingPat !== null || confirmHalftime,
+    sheetOpen: sheet !== null || pendingPat !== null,
     onTouchdown: () => {
       if (!composerDisabled && pendingPat === null) {
         openSheet({ kind: "touchdown" });
@@ -1070,11 +1086,7 @@ export default function TrackingScreen({
       }
       const tile = SERIES_TILES[index];
       if (tile !== undefined) {
-        if (tile.oneTap) {
-          void recordOneTap(tile.mode);
-        } else {
-          openSheet({ kind: "series", mode: tile.mode });
-        }
+        tapSeriesTile(tile.mode, tile.oneTap);
         return;
       }
       if (index === 5) {
@@ -1205,15 +1217,6 @@ export default function TrackingScreen({
             <span className="trackok-text">{confirmation}</span>
             {quick === null ? null : (
               <span className="trackok-actions">
-                {quick === "first" ? (
-                  <button
-                    className="trackok-btn"
-                    onClick={() => completeQuick(quick)}
-                    type="button"
-                  >
-                    Nr. ergänzen
-                  </button>
-                ) : null}
                 <button
                   className="trackok-btn"
                   disabled={undoKey !== null}
@@ -1292,27 +1295,27 @@ export default function TrackingScreen({
           </button>
         )}
         <div className="action-grid">
-        {SERIES_TILES.map(({ mode, label, Icon, oneTap }, index) => (
+        {SERIES_TILES.map(({ mode, label, Icon, oneTap }, index) => {
+          const offersJersey = mode === "first" && armed === "first";
+          const TileIcon = offersJersey ? User : Icon;
+          return (
           <button
-            className="action"
+            className={offersJersey ? "action is-armed" : "action"}
             disabled={composerDisabled}
             key={mode}
-            onClick={() =>
-              oneTap
-                ? void recordOneTap(mode)
-                : openSheet({ kind: "series", mode })
-            }
+            onClick={() => tapSeriesTile(mode, oneTap)}
             type="button"
           >
-            <Icon className="action-icon" size={20} />
-            <span>{label}</span>
+            <TileIcon className="action-icon" size={20} />
+            <span>{offersJersey ? "Nr. ergänzen" : label}</span>
             <kbd
               aria-hidden="true"
               className="shortcut-hint"
               data-key={index + 1}
             />
           </button>
-        ))}
+          );
+        })}
         <button
           className="action"
           disabled={composerDisabled}
@@ -1356,40 +1359,21 @@ export default function TrackingScreen({
         >
         {log.isFirstHalf && !finished ? (
         <section aria-label="Halbzeit" className="halfblock">
-          {confirmHalftime ? (
-            <>
-              <p className="halfask">Halbzeit starten?</p>
-              <div className="halfactions">
-                <button
-                  className="action"
-                  disabled={halftimePending}
-                  onClick={() => setConfirmHalftime(false)}
-                  type="button"
-                >
-                  Abbrechen
-                </button>
-                <button
-                  className="halfbtn"
-                  disabled={halftimeDisabled}
-                  onClick={() => void startHalftime()}
-                  type="button"
-                >
-                  <Pause size={18} />
-                  {halftimePending ? "Halbzeit …" : "Halbzeit starten"}
-                </button>
-              </div>
-            </>
-          ) : (
-            <button
-              className="halfbtn"
-              disabled={halftimeDisabled}
-              onClick={() => setConfirmHalftime(true)}
-              type="button"
-            >
-              <Pause size={18} />
-              Halbzeit
-            </button>
-          )}
+          <button
+            className={armed === "halftime" ? "halfbtn is-armed" : "halfbtn"}
+            disabled={halftimeDisabled}
+            onClick={() =>
+              armed === "halftime" ? void startHalftime() : arm("halftime")
+            }
+            type="button"
+          >
+            <Pause size={18} />
+            {halftimePending
+              ? "Halbzeit …"
+              : armed === "halftime"
+                ? "Halbzeit starten"
+                : "Halbzeit"}
+          </button>
           {halftimeError === null ? null : (
             <p className="trackerror" role="alert">
               {halftimeError}
@@ -1415,6 +1399,13 @@ export default function TrackingScreen({
         ) : null}
       </footer>
         </div>
+        <p aria-live="polite" className="sr-only">
+          {armed === "halftime"
+            ? "Zum Bestätigen erneut tippen"
+            : armed === "first"
+              ? "Erneut tippen, um die Trikotnummer zu ergänzen"
+              : ""}
+        </p>
       </main>
 
       {sheet !== null &&

@@ -390,14 +390,39 @@ TEXT_LINE_COUNT = """el => {
 }"""
 
 
-@pytest.mark.django_db(transaction=True)
-def test_scorecard_v2_halftime_confirmation_lines_up_on_wide_screens(
-    live_server, page: Page
-):
-    """Asking "Halbzeit starten?" keeps the end row one row of equal buttons.
+TWO_STEP_SIZES = [
+    (390, 844),
+    (900, 700),
+    (1024, 768),
+    (1280, 680),
+    (1440, 900),
+    (2560, 1440),
+]
 
-    The confirmation's buttons match Spiel beenden in height and share its
-    bottom edge, and the block takes no possession tint on the page background.
+
+def _boxes(page: Page, button, sizes) -> dict:
+    boxes = {}
+    for width, height in sizes:
+        page.set_viewport_size({"width": width, "height": height})
+        box = button.bounding_box()
+        assert box is not None, (width, height)
+        boxes[(width, height)] = box
+    return boxes
+
+
+def _assert_same_boxes(before: dict, after: dict) -> None:
+    for size, box in after.items():
+        for key in ("x", "y", "width", "height"):
+            assert abs(box[key] - before[size][key]) <= 1, (size, key, before, box)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_scorecard_v2_two_step_buttons_keep_their_box(live_server, page: Page):
+    """The first tap arms a button in place; the second runs its second action.
+
+    Halbzeit asks once more and 1st Down offers the jersey, each in the same
+    box as before at every layout step, with the label on one line. A second
+    tap on the armed 1st Down opens the jersey dialog for the saved entry.
     """
     game = _seed_game_today()
 
@@ -408,34 +433,33 @@ def test_scorecard_v2_halftime_confirmation_lines_up_on_wide_screens(
     _tap_start(page).get_by_role("button", name="Jetzt starten").click()
     expect(page.locator("button.tdbtn")).to_be_visible(timeout=30000)
 
-    page.get_by_role("button", name="Halbzeit", exact=True).click()
-    cancel = page.get_by_role("button", name="Abbrechen")
-    confirm = page.get_by_role("button", name="Halbzeit starten")
-    expect(cancel).to_be_visible()
-
-    # Tablet, short windows, laptop and a desktop with room to spare.
-    for width, height in [
-        (1024, 768),
-        (900, 700),
-        (1280, 680),
-        (1280, 800),
-        (1440, 900),
-    ]:
+    # ---- Halbzeit: armed, it reads "Halbzeit starten" in the same box. ----
+    halftime = page.locator("button.halfbtn")
+    unarmed = _boxes(page, halftime, TWO_STEP_SIZES)
+    page.set_viewport_size({"width": 1440, "height": 900})
+    halftime.click()
+    expect(halftime).to_have_text("Halbzeit starten")
+    expect(halftime).to_have_class(re.compile(r"\bis-armed\b"))
+    armed = _boxes(page, halftime, TWO_STEP_SIZES)
+    _assert_same_boxes(unarmed, armed)
+    for width, height in TWO_STEP_SIZES:
         page.set_viewport_size({"width": width, "height": height})
-        finish = page.get_by_role("button", name="Spiel beenden")
-        end = finish.bounding_box()
-        assert end is not None
-        for button in (cancel, confirm, finish):
-            box = button.bounding_box()
-            assert box is not None
-            assert abs(box["height"] - end["height"]) <= 1, (width, box, end)
-            assert abs(box["y"] - end["y"]) <= 1, (width, box, end)
-            # The label stays on one line: its text is a single line box.
-            lines = button.evaluate(TEXT_LINE_COUNT)
-            assert lines == 1, (width, button.text_content(), lines)
+        assert halftime.evaluate(TEXT_LINE_COUNT) == 1, (width, height)
+    # The window passes without a second tap: nothing was started.
+    expect(halftime).to_have_text("Halbzeit", timeout=12000)
+    expect(page.get_by_text("1. Halbzeit")).to_be_visible()
 
-        background = page.evaluate(
-            "() => getComputedStyle(document.querySelector('.tracking-end .halfblock'))"
-            ".backgroundColor"
-        )
-        assert background == "rgba(0, 0, 0, 0)", (width, background)
+    # ---- 1st Down: saved on the first tap, the jersey on the second. ------
+    page.set_viewport_size({"width": 1440, "height": 900})
+    first = page.locator(".tracking .action").first
+    unarmed = _boxes(page, first, TWO_STEP_SIZES)
+    page.set_viewport_size({"width": 1440, "height": 900})
+    first.click()
+    expect(first).to_contain_text("Nr. ergänzen", timeout=20000)
+    armed = _boxes(page, first, TWO_STEP_SIZES)
+    _assert_same_boxes(unarmed, armed)
+    for width, height in TWO_STEP_SIZES:
+        page.set_viewport_size({"width": width, "height": height})
+        assert first.evaluate(TEXT_LINE_COUNT) == 1, (width, height)
+    first.click()
+    expect(page.get_by_role("dialog", name="First Down")).to_be_visible()

@@ -20,6 +20,11 @@ React/TypeScript field-entry app. Run `npm ci`, then `npm run test:run`,
   (1.25 / 1.5 / 1.75 / 2), stepped so the 1376×860 wide layout always fits.
   Zoom scales viewport units too, so every `vh`/`vw`/`dvh` in `app.css` must be
   divided by `var(--ui-scale)`. Breakpoints and `matchMedia` are unaffected.
+- Two-step buttons (`useArmed`, `ARM_MS` = 10s): the first tap arms a button in
+  place (`.is-armed`: same box, the second action as its label, a draining
+  bar), a second tap within the window runs it. 1st Down (also key **1**) adds
+  the jersey to the entry it just saved, Halbzeit confirms, staff "Spiel
+  übernehmen" confirms. Undo is not a second tap: it stays in the log.
 - The shell tokens live in `src/styles/tokens.css`; all visual rules use the
   existing light, sun and dark theme tokens. Responsive rules are at the end of
   `src/styles/app.css`.
