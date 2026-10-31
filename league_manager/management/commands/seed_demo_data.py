@@ -23,6 +23,10 @@ OFFICIALS_TEAM_NAME = "Demo Officials"
 OFFICIAL_POSITIONS = ["Referee", "Down Judge", "Field Judge", "Side Judge"]
 
 
+# Every demo player joined before any seeded gameday, whenever it was dated.
+DEMO_JOINED_ON = date(2000, 1, 1)
+
+
 class Command(BaseCommand):
     help = "Seed demo database with synthetic data for demo.leaguesphere.app"
 
@@ -185,7 +189,14 @@ class Command(BaseCommand):
                     season_league_team.teams.set(league_teams)
 
     def create_team_players(self, teams):
-        """Create players for each team."""
+        """Give every team the same ten players on every run.
+
+        The demo database outlives deploys and each fresh container seeds it
+        again, so the roster is fixed: player ``k`` of all teams gets the
+        ``k``-th name pair (unique for up to 400 players) and jerseys 1–10.
+        Anything else on a demo team's list — left over from an older seed
+        that picked names at random — is removed with its gameday check-ins.
+        """
         player_count = 0
         first_names = [
             "Michael",
@@ -232,40 +243,48 @@ class Command(BaseCommand):
             "Taylor",
         ]
 
-        for team in teams:
-            # Create 10 players per team
-            num_players = 10
-            for i in range(num_players):
-                first_name = random.choice(first_names)
-                last_name = random.choice(last_names)
-                sex = random.choice([Person.MALE, Person.FEMALE])
-                year_of_birth = random.randint(1990, 2010)
+        roster_size = 10
+        kept = []
+        for team_index, team in enumerate(teams):
+            for jersey in range(1, roster_size + 1):
+                k = team_index * roster_size + jersey - 1
+                first_name = first_names[k % len(first_names)]
+                last_name = last_names[(k // len(first_names) + k) % len(last_names)]
 
-                person, _ = Person.objects.get_or_create(
-                    first_name=first_name,
-                    last_name=last_name,
-                    defaults={
-                        "sex": sex,
-                        "year_of_birth": year_of_birth,
-                    },
-                )
+                person = Person.objects.filter(
+                    first_name=first_name, last_name=last_name
+                ).first()
+                if person is None:
+                    person = Person.objects.create(
+                        first_name=first_name,
+                        last_name=last_name,
+                        sex=Person.FEMALE if k % 2 else Person.MALE,
+                        year_of_birth=1990 + k % 20,
+                    )
 
-                player, created = Player.objects.get_or_create(
-                    person=person, defaults={"pass_number": f"{team.id}{i:02d}"}
-                )
+                player = Player.objects.filter(person=person).first()
+                if player is None:
+                    player = Player.objects.create(
+                        person=person, pass_number=f"{team.id}{jersey:02d}"
+                    )
 
-                playerlist, created = Playerlist.objects.get_or_create(
+                # A fixed early join date: the gamedays keep the date their
+                # first seed gave them, and the roster only counts players
+                # who had joined by then.
+                playerlist, created = Playerlist.objects.update_or_create(
                     team=team,
                     player=player,
                     defaults={
-                        "jersey_number": (i % 100),
-                        "joined_on": date.today(),
+                        "jersey_number": jersey,
+                        "joined_on": DEMO_JOINED_ON,
+                        "left_on": None,
                     },
                 )
-
+                kept.append(playerlist.pk)
                 if created:
                     player_count += 1
 
+        Playerlist.objects.filter(team__in=teams).exclude(pk__in=kept).delete()
         return player_count
 
     def create_demo_users(self):
@@ -422,7 +441,9 @@ class Command(BaseCommand):
             for playerlist in Playerlist.objects.filter(
                 team_id__in=team_ids, left_on__isnull=True
             ):
-                _, created = PlayerlistGameday.objects.get_or_create(
+                # update_or_create: a kept player may carry the jersey an
+                # older seed gave it, and the roster reads this snapshot.
+                _, created = PlayerlistGameday.objects.update_or_create(
                     playerlist=playerlist,
                     gameday=gameday,
                     defaults={"gameday_jersey": playerlist.jersey_number},
