@@ -90,12 +90,16 @@ only control static assets, and its scope could never leak into the old app.
 4. **Feld · Runde** (the tracking screen) — score board, a two-way
    **Ballbesitz** switch under it, the log in the middle and the actions at the
    bottom (thumb zone, tinted in the colour of the side with the ball).
-   **1st Down** and **Turnover** save on the tap; a toast under the log offers
-   **Rückgängig**. The 1st Down tile then turns into **Nr. ergänzen** for 10s:
-   a second tap opens the jersey sheet, which writes the numbered row and
-   undoes the one-tap row. **Halbzeit** works the same way (first tap arms
-   **Halbzeit starten**, the second starts it). Interception,
-   Spielzeit, Auszeit, penalty, safety and overtime keep their sheets.
+   The first tap follows what an entry needs: **Turnover**, **1st Down** and
+   **Interception** need nothing more and save on the tap (a toast under the
+   log offers **Rückgängig**); the two with an optional jersey then turn their
+   tile into **Nr. ergänzen** for 10s, and a second tap opens the jersey sheet,
+   which writes the numbered row for the same team (an interception's ball
+   does not move twice) and undoes the one-tap row. Entries with required
+   input — touchdown, Spielzeit, Auszeit, penalty, safety, overtime — open
+   their sheet on the first tap. **Halbzeit** confirms the same way (first tap
+   arms **Halbzeit starten**, the second starts it). While an extra point is
+   open, the tiles and Halbzeit are locked.
    Touchdown with the roster's jerseys (a tile grid up to 24 players, a
    two-digit keypad above that with the roster name as confirmation; numeric
    field when there is no roster; this game's scorers as a shortcut row above

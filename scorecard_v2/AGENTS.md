@@ -22,9 +22,14 @@ React/TypeScript field-entry app. Run `npm ci`, then `npm run test:run`,
   divided by `var(--ui-scale)`. Breakpoints and `matchMedia` are unaffected.
 - Two-step buttons (`useArmed`, `ARM_MS` = 10s): the first tap arms a button in
   place (`.is-armed`: same box, the second action as its label, a draining
-  bar), a second tap within the window runs it. 1st Down (also key **1**) adds
-  the jersey to the entry it just saved, Halbzeit confirms, staff "Spiel
-  übernehmen" confirms. Undo is not a second tap: it stays in the log.
+  bar), a second tap within the window runs it. The first tap follows what an
+  entry needs: nothing more → save (Turnover); only an optional jersey → save,
+  then "Nr. ergänzen" (1st Down, Interception; keys **1**/**3** twice); a
+  required input → its sheet (touchdown, Spielzeit, Auszeit, Strafe, Safety,
+  Overtime); a confirmation → arm (Halbzeit, staff "Spiel übernehmen"). A
+  replacement keeps the replaced row's team and never moves the ball again.
+  Undo is not a second tap: it stays in the log. While an extra point is open
+  the tiles and Halbzeit are locked.
 - The shell tokens live in `src/styles/tokens.css`; all visual rules use the
   existing light, sun and dark theme tokens. Responsive rules are at the end of
   `src/styles/app.css`.
