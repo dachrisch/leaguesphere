@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.8.0](https://github.com/dachrisch/leaguesphere/compare/v5.7.1...v5.8.0) (2026-10-31)
+
+
+### Features
+
+* **scorecard-v2:** one rule for the first tap; interception is two-step ([#2225](https://github.com/dachrisch/leaguesphere/issues/2225)) ([24de3b2](https://github.com/dachrisch/leaguesphere/commit/24de3b25cc553645b4f016087a3580f5450b065e))
+
 ## [5.7.1](https://github.com/dachrisch/leaguesphere/compare/v5.7.0...v5.7.1) (2026-10-31)
 
 
