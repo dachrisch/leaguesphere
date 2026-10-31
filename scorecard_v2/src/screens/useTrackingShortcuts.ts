@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 interface TrackingShortcutHandlers {
   onTouchdown: () => void;
@@ -16,7 +16,15 @@ function editing(element: Element | null): boolean {
   );
 }
 
-/** Desktop keys for the tracking cockpit; buttons remain the accessible path. */
+/**
+ * Desktop keys for the tracking cockpit; buttons remain the accessible path.
+ *
+ * The listener stays subscribed and reads the handlers of the latest render
+ * from a ref, updated during the commit. Re-subscribing with each render's
+ * handlers left the previous listener live until the effect ran, so a key
+ * pressed right after a render (an armed tile's second press) could reach
+ * handlers that had not seen it yet.
+ */
 export function useTrackingShortcuts({
   onTouchdown,
   onAction,
@@ -25,6 +33,11 @@ export function useTrackingShortcuts({
   readOnly,
   sheetOpen,
 }: TrackingShortcutHandlers): void {
+  const handlers = useRef({ onTouchdown, onAction, onSwitchPossession, onUndo });
+  useLayoutEffect(() => {
+    handlers.current = { onTouchdown, onAction, onSwitchPossession, onUndo };
+  });
+
   useEffect(() => {
     if (readOnly || sheetOpen) {
       return;
@@ -44,6 +57,8 @@ export function useTrackingShortcuts({
         return;
       }
 
+      const { onTouchdown, onAction, onSwitchPossession, onUndo } =
+        handlers.current;
       const key = event.key.toLowerCase();
       let handled = true;
       if ((event.ctrlKey || event.metaKey) && key === "z" && !event.shiftKey) {
@@ -67,12 +82,5 @@ export function useTrackingShortcuts({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [
-    onAction,
-    onSwitchPossession,
-    onTouchdown,
-    onUndo,
-    readOnly,
-    sheetOpen,
-  ]);
+  }, [readOnly, sheetOpen]);
 }
