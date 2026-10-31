@@ -4141,9 +4141,33 @@ button.syncbadge {
     background: transparent;
   }
 
+  /* All buttons of the end row share one height, the confirmation's
+     Abbrechen (an action tile) included. */
+  .tracking .tracking-end {
+    --end-button: 56px;
+  }
+
   .tracking-end .halfbtn,
+  .tracking-end .startbtn,
+  .tracking-end .halfactions .action {
+    min-height: 0;
+    height: var(--end-button);
+  }
+
+  /* While "Halbzeit starten?" asks, Spiel beenden keeps just the width of
+     its label and the two answers share the rest, so no label wraps. */
+  .tracking .tracking-end:has(.halfactions) {
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+
+  .tracking-end:has(.halfactions) .startbtn {
+    padding-inline: var(--space-6);
+  }
+
+  .tracking-end .halfactions .action,
+  .tracking-end .halfactions .halfbtn,
   .tracking-end .startbtn {
-    min-height: 56px;
+    white-space: nowrap;
   }
 
   .tracking-end .trackfoot {
@@ -4318,9 +4342,8 @@ button.syncbadge {
     font-size: 24px;
   }
 
-  .tracking-end .halfbtn,
-  .tracking-end .startbtn {
-    min-height: var(--touch);
+  .tracking .tracking-end {
+    --end-button: 48px;
   }
 
   .tracking-log .loghead {

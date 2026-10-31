@@ -374,6 +374,22 @@ def test_scorecard_v2_tracking_scales_on_large_desktops(live_server, page: Page)
         assert scroll <= height + 1, (width, scroll)
 
 
+# How many line boxes an element's text occupies: the tops of its text nodes'
+# rects (element boxes such as an icon would count as lines of their own).
+TEXT_LINE_COUNT = """el => {
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  const tops = new Set();
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    for (const rect of range.getClientRects()) {
+      if (rect.width > 0) tops.add(Math.round(rect.top));
+    }
+  }
+  return tops.size;
+}"""
+
+
 @pytest.mark.django_db(transaction=True)
 def test_scorecard_v2_halftime_confirmation_lines_up_on_wide_screens(
     live_server, page: Page
@@ -394,18 +410,32 @@ def test_scorecard_v2_halftime_confirmation_lines_up_on_wide_screens(
 
     page.get_by_role("button", name="Halbzeit", exact=True).click()
     cancel = page.get_by_role("button", name="Abbrechen")
+    confirm = page.get_by_role("button", name="Halbzeit starten")
     expect(cancel).to_be_visible()
 
-    end = page.get_by_role("button", name="Spiel beenden").bounding_box()
-    assert end is not None
-    for button in (cancel, page.get_by_role("button", name="Halbzeit starten")):
-        box = button.bounding_box()
-        assert box is not None
-        assert abs(box["height"] - end["height"]) <= 1, (box, end)
-        assert abs(box["y"] + box["height"] - end["y"] - end["height"]) <= 1
+    # Tablet, short windows, laptop and a desktop with room to spare.
+    for width, height in [
+        (1024, 768),
+        (900, 700),
+        (1280, 680),
+        (1280, 800),
+        (1440, 900),
+    ]:
+        page.set_viewport_size({"width": width, "height": height})
+        finish = page.get_by_role("button", name="Spiel beenden")
+        end = finish.bounding_box()
+        assert end is not None
+        for button in (cancel, confirm, finish):
+            box = button.bounding_box()
+            assert box is not None
+            assert abs(box["height"] - end["height"]) <= 1, (width, box, end)
+            assert abs(box["y"] - end["y"]) <= 1, (width, box, end)
+            # The label stays on one line: its text is a single line box.
+            lines = button.evaluate(TEXT_LINE_COUNT)
+            assert lines == 1, (width, button.text_content(), lines)
 
-    background = page.evaluate(
-        "() => getComputedStyle(document.querySelector('.tracking-end .halfblock'))"
-        ".backgroundColor"
-    )
-    assert background == "rgba(0, 0, 0, 0)", background
+        background = page.evaluate(
+            "() => getComputedStyle(document.querySelector('.tracking-end .halfblock'))"
+            ".backgroundColor"
+        )
+        assert background == "rgba(0, 0, 0, 0)", (width, background)
