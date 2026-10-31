@@ -372,3 +372,40 @@ def test_scorecard_v2_tracking_scales_on_large_desktops(live_server, page: Page)
         assert abs(shell["y"] + shell["height"] - height) <= 2, (width, shell)
         scroll = page.evaluate("() => document.scrollingElement.scrollHeight")
         assert scroll <= height + 1, (width, scroll)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_scorecard_v2_halftime_confirmation_lines_up_on_wide_screens(
+    live_server, page: Page
+):
+    """Asking "Halbzeit starten?" keeps the end row one row of equal buttons.
+
+    The confirmation's buttons match Spiel beenden in height and share its
+    bottom edge, and the block takes no possession tint on the page background.
+    """
+    game = _seed_game_today()
+
+    page.set_viewport_size({"width": 1440, "height": 900})
+    _login(page, live_server.url)
+    _open_game(page, live_server.url, game.gameday.name)
+    _choose_start_fields(page)
+    _tap_start(page).get_by_role("button", name="Jetzt starten").click()
+    expect(page.locator("button.tdbtn")).to_be_visible(timeout=30000)
+
+    page.get_by_role("button", name="Halbzeit", exact=True).click()
+    cancel = page.get_by_role("button", name="Abbrechen")
+    expect(cancel).to_be_visible()
+
+    end = page.get_by_role("button", name="Spiel beenden").bounding_box()
+    assert end is not None
+    for button in (cancel, page.get_by_role("button", name="Halbzeit starten")):
+        box = button.bounding_box()
+        assert box is not None
+        assert abs(box["height"] - end["height"]) <= 1, (box, end)
+        assert abs(box["y"] + box["height"] - end["y"] - end["height"]) <= 1
+
+    background = page.evaluate(
+        "() => getComputedStyle(document.querySelector('.tracking-end .halfblock'))"
+        ".backgroundColor"
+    )
+    assert background == "rgba(0, 0, 0, 0)", background
