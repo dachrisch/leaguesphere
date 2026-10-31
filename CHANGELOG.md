@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.8.1](https://github.com/dachrisch/leaguesphere/compare/v5.8.0...v5.8.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* **demo:** seed a scorecard gameday for today on every reset ([f701368](https://github.com/dachrisch/leaguesphere/commit/f70136857b3ffe0d9af6eeab0f7123743dd223c1))
+* **demo:** seed a scorecard gameday for today on every reset ([a27aadb](https://github.com/dachrisch/leaguesphere/commit/a27aadb10ea529e37d4b149ca1e4ac7c4567b1d8))
+
 ## [5.8.0](https://github.com/dachrisch/leaguesphere/compare/v5.7.1...v5.8.0) (2026-10-31)
 
 
