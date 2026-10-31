@@ -4125,18 +4125,49 @@ button.syncbadge {
     display: grid;
     grid-row: 6;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* "Halbzeit starten?" sits above its two buttons; aligning the row to
+       the bottom keeps them level with Spiel beenden. */
+    align-items: end;
     gap: var(--space-4);
   }
 
-  .tracking-end .halfblock {
+  /* The possession wash belongs to the phone dock; here the block sits on the
+     page background (the side variants would otherwise win on specificity). */
+  .tracking-end .halfblock,
+  .tracking-end.home .halfblock,
+  .tracking-end.away .halfblock {
     margin: 0;
     padding: 0;
     background: transparent;
   }
 
+  /* All buttons of the end row share one height, the confirmation's
+     Abbrechen (an action tile) included. */
+  .tracking .tracking-end {
+    --end-button: 56px;
+  }
+
   .tracking-end .halfbtn,
+  .tracking-end .startbtn,
+  .tracking-end .halfactions .action {
+    min-height: 0;
+    height: var(--end-button);
+  }
+
+  /* While "Halbzeit starten?" asks, Spiel beenden keeps just the width of
+     its label and the two answers share the rest, so no label wraps. */
+  .tracking .tracking-end:has(.halfactions) {
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+
+  .tracking-end:has(.halfactions) .startbtn {
+    padding-inline: var(--space-6);
+  }
+
+  .tracking-end .halfactions .action,
+  .tracking-end .halfactions .halfbtn,
   .tracking-end .startbtn {
-    min-height: 56px;
+    white-space: nowrap;
   }
 
   .tracking-end .trackfoot {
@@ -4311,9 +4342,8 @@ button.syncbadge {
     font-size: 24px;
   }
 
-  .tracking-end .halfbtn,
-  .tracking-end .startbtn {
-    min-height: var(--touch);
+  .tracking .tracking-end {
+    --end-button: 48px;
   }
 
   .tracking-log .loghead {
