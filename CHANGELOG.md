@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.7.1](https://github.com/dachrisch/leaguesphere/compare/v5.7.0...v5.7.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* **scorecard-v2:** keyboard shortcuts always call the latest handlers ([#2222](https://github.com/dachrisch/leaguesphere/issues/2222)) ([f3183d9](https://github.com/dachrisch/leaguesphere/commit/f3183d96a70115cdad5cf7d9077987314da46649))
+
 ## [5.7.0](https://github.com/dachrisch/leaguesphere/compare/v5.6.1...v5.7.0) (2026-10-31)
 
 
