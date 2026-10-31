@@ -14,7 +14,7 @@ from gamedays.models import (
     Person,
 )
 from officials.models import Official, OfficialLicense, OfficialLicenseHistory
-from passcheck.models import Player, Playerlist
+from passcheck.models import Player, Playerlist, PlayerlistGameday
 from league_table.models import LeagueGroup
 import random
 from datetime import datetime, timedelta, date
@@ -61,10 +61,15 @@ class Command(BaseCommand):
         gamedays_count = self.create_gamedays(seasons, leagues, teams)
         self.stdout.write(f"✓ Created {gamedays_count} gamedays with sample games")
 
+        # Check the players in for every seeded gameday (the passcheck
+        # snapshot), so the scorecard's jersey picker has a roster to offer.
+        gamedays = list(Gameday.objects.filter(season=seasons[-1])) if seasons else []
+        rostered = self.create_gameday_rosters(gamedays)
+        self.stdout.write(f"✓ Checked in {rostered} players for their gamedays")
+
         # Create an officials crew and assign them to the seeded games, so the
         # officials statistics pages and the scorecard official dropdowns are
         # populated for demo/help-video capture.
-        gamedays = list(Gameday.objects.filter(season=seasons[-1])) if seasons else []
         officials_count = self.create_officials(associations, gamedays)
         self.stdout.write(
             f"✓ Created {officials_count} officials and assigned them to games"
@@ -406,6 +411,25 @@ class Command(BaseCommand):
                         self.create_game_result(gameinfo, home_team, away_team)
 
                     game_counter += 1
+
+    def create_gameday_rosters(self, gamedays):
+        """Check every team playing on a gameday in with its whole player list."""
+        checked_in = 0
+        for gameday in gamedays:
+            team_ids = Gameresult.objects.filter(
+                gameinfo__gameday=gameday, team__isnull=False
+            ).values("team_id")
+            for playerlist in Playerlist.objects.filter(
+                team_id__in=team_ids, left_on__isnull=True
+            ):
+                _, created = PlayerlistGameday.objects.get_or_create(
+                    playerlist=playerlist,
+                    gameday=gameday,
+                    defaults={"gameday_jersey": playerlist.jersey_number},
+                )
+                if created:
+                    checked_in += 1
+        return checked_in
 
     def create_game_result(self, gameinfo, home_team, away_team):
         """Create game results for home and away teams."""
