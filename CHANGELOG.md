@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.7.0](https://github.com/dachrisch/leaguesphere/compare/v5.6.1...v5.7.0) (2026-10-31)
+
+
+### Features
+
+* **scorecard-v2:** two-step buttons instead of extra confirmation buttons ([#2219](https://github.com/dachrisch/leaguesphere/issues/2219)) ([36ee75e](https://github.com/dachrisch/leaguesphere/commit/36ee75e1c1dd9369ab25b7b84d8a765d46fb36c2))
+
+
+### Bug Fixes
+
+* **demo:** seed a fixed ten-player roster per team ([#2221](https://github.com/dachrisch/leaguesphere/issues/2221)) ([4f7b6aa](https://github.com/dachrisch/leaguesphere/commit/4f7b6aa0d3a30bc0ff6a1205a451871d0ca67d55))
+
 ## [5.6.1](https://github.com/dachrisch/leaguesphere/compare/v5.6.0...v5.6.1) (2026-10-31)
 
 
