@@ -34,7 +34,15 @@ On first startup, the demo-app container will:
 1. Run Django migrations
 2. Execute `manage.py seed_demo_data`
 3. Create a database snapshot at `/app/snapshots/demo_snapshot.sql`
-4. Start the Django application
+4. Execute `manage.py seed_scorecard_demo` (after the snapshot)
+5. Start the Django application
+
+Every reset — the first run and each nightly restore — ends with
+`seed_scorecard_demo`: it adds the "Scorecard v2 Testtag" dated **today**
+(4 games, rosters, crew, user `scorecard-test`), because the scorecard only
+lists today's gamedays and the seeded league gamedays keep the dates of the
+first seed. It runs after the snapshot, so a restore never brings back an
+older day's test gameday.
 
 This typically takes 2-3 minutes. Monitor with: `docker-compose -f docker-compose.demo.yml logs -f demo-app`
 

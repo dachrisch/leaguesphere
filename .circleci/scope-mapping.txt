@@ -124,6 +124,8 @@ gameday_designer/tests/e2e/.* run-python-designer true
 
 # --- container images ---
 (container/app\.Dockerfile|container/entrypoint.*\.sh) run-images true
+# tests/unit/test_entrypoint_demo.py runs the demo entrypoint script itself.
+container/entrypoint\.demo\.sh run-python-cross true
 (container/nginx\.Dockerfile|container/nginx.*\.conf|container/healthcheck\.sh) run-images true
 
 # --- compose network (needs fresh images to test against) ---
