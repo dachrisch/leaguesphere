@@ -306,3 +306,36 @@
     --shell-width-track: var(--shell-width-wide);
   }
 }
+
+/* A large desktop shows the whole app bigger instead of a small app in a sea
+   of white: `body` is zoomed by `--ui-scale`, stepped so the 1376×860 wide
+   layout always fits (width ÷ 1376 and height ÷ 860 both reach the step).
+   Zoom scales viewport units as well, so every vh/vw in app.css is divided by
+   the scale. Phones and tablets never reach a step. */
+:root {
+  --ui-scale: 1;
+}
+
+@media (min-width: 1720px) and (min-height: 1075px) {
+  :root {
+    --ui-scale: 1.25;
+  }
+}
+
+@media (min-width: 2064px) and (min-height: 1290px) {
+  :root {
+    --ui-scale: 1.5;
+  }
+}
+
+@media (min-width: 2408px) and (min-height: 1505px) {
+  :root {
+    --ui-scale: 1.75;
+  }
+}
+
+@media (min-width: 2752px) and (min-height: 1720px) {
+  :root {
+    --ui-scale: 2;
+  }
+}

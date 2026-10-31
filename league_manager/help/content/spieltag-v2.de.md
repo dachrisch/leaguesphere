@@ -22,8 +22,9 @@ wie die bisherige Scorecard
 3. Erfasse im laufenden Spiel (oben stehen Feld und Runde) jeden Spielzug über
    **Touchdown**, **1st Down**, **Turnover**, **Interception**, **Strafe**,
    **Safety**, **Overtime**, **Spielzeit** oder **Auszeit**.
-4. **Rückgängig** nimmt einen Eintrag zurück, **Halbzeit** wechselt in die
-   zweite Halbzeit.
+4. Das Pfeil-Symbol neben einem Eintrag im Spielverlauf (**Rückgängig**) nimmt
+   ihn zurück, **Halbzeit** wechselt in die zweite Halbzeit. Am großen
+   Bildschirm geht das auch mit **Strg Z**.
 5. **Spielende und Bestätigung** öffnet den Abschluss: beide Captains
    bestätigen, dann **Ergebnis abschicken**.
 

@@ -324,3 +324,51 @@ def test_scorecard_v2_start_is_refused_without_a_crew(live_server, page: Page):
     assert not GameSetup.objects.filter(gameinfo=game).exists()
     game.refresh_from_db()
     assert game.status.strip().lower() != "beendet"
+
+
+def _box(page: Page, selector: str) -> dict:
+    box = page.locator(selector).first.bounding_box()
+    assert box is not None, selector
+    return box
+
+
+@pytest.mark.django_db(transaction=True)
+def test_scorecard_v2_tracking_scales_on_large_desktops(live_server, page: Page):
+    """A large desktop gets the whole app scaled up, not stretched tiles.
+
+    The wide layout is designed for 1376×860; a screen with room for a larger
+    copy scales every screen as a whole, and the action tiles keep their size
+    instead of sharing out the free height. Nothing scrolls at any step.
+    """
+    game = _seed_game_today()
+
+    page.set_viewport_size({"width": 1440, "height": 1200})
+    _login(page, live_server.url)
+    _open_game(page, live_server.url, game.gameday.name)
+    _choose_start_fields(page)
+    _tap_start(page).get_by_role("button", name="Jetzt starten").click()
+    expect(page.locator("button.tdbtn")).to_be_visible(timeout=30000)
+
+    for width, height, scale in [
+        (1440, 1200, 1),
+        (1920, 1200, 1.25),
+        (2560, 1440, 1.5),
+        (3840, 2160, 2),
+    ]:
+        page.set_viewport_size({"width": width, "height": height})
+        zoom = page.evaluate("() => getComputedStyle(document.body).zoom")
+        assert float(zoom) == scale, (width, height, zoom)
+
+        tile = _box(page, ".tracking .action")
+        grid = _box(page, ".tracking .action-grid")
+        end = _box(page, ".tracking .tracking-end")
+        # A tile is at most 116 design px tall, however much height is free.
+        assert tile["height"] <= 116 * scale + 1, (width, tile)
+        # Halbzeit / Spiel beenden follow the grid instead of the screen edge.
+        gap = end["y"] - (grid["y"] + grid["height"])
+        assert 0 <= gap <= 32 * scale, (width, gap)
+        # The shell fills the viewport exactly: no page scroll, no blank band.
+        shell = _box(page, ".app-shell")
+        assert abs(shell["y"] + shell["height"] - height) <= 2, (width, shell)
+        scroll = page.evaluate("() => document.scrollingElement.scrollHeight")
+        assert scroll <= height + 1, (width, scroll)

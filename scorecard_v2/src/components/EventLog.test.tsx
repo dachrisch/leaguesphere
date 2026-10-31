@@ -452,6 +452,16 @@ describe("EventLog", () => {
     expect(onUndo).toHaveBeenCalledWith(only);
   });
 
+  it("shows the undo as an icon with a tooltip, not a label", () => {
+    render(<EventLog onUndo={vi.fn()} rows={[row({ event: "Touchdown" })]} />);
+
+    const undo = screen.getByRole("button", {
+      name: "Rückgängig: Touchdown Ravens",
+    });
+    expect(undo).toHaveTextContent(/^$/);
+    expect(undo).toHaveAttribute("title", "Rückgängig: Touchdown Ravens");
+  });
+
   it("strikes a deleted row and offers no undo for it", () => {
     render(
       <EventLog
