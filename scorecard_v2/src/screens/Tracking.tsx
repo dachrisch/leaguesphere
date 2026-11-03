@@ -557,6 +557,22 @@ export default function TrackingScreen({
   const log = useSyncExternalStore(subscribeLog, session.getLog, session.getLog);
 
   const rows = useMemo(() => logRows(log), [log]);
+  /**
+   * Every Auszeit still on the board, newest first as the log lists it. The
+   * sheet shows both sides so the officials can answer "who took which
+   * timeout, and when".
+   */
+  const timeouts = useMemo(
+    () =>
+      rows
+        .filter((row) => row.event === "Auszeit" && !row.isDeleted)
+        .map((row) => ({
+          team: row.team ?? "–",
+          half: row.half,
+          time: row.input ?? "–",
+        })),
+    [rows],
+  );
   const finished = game.status.trim().toLowerCase() === "beendet";
   const status = useSyncStatus(game.id);
   // The server said this device may not write (another device holds the game,
@@ -795,6 +811,11 @@ export default function TrackingScreen({
         : null) ?? possession;
   const opponentName =
     opponentSide === "home" ? logTeamName(log.home) : logTeamName(log.away);
+  /** Timeouts of the side with the ball, for the Auszeit tile's count. */
+  const timeoutCount =
+    possessionName === null
+      ? 0
+      : timeouts.filter((entry) => entry.team === possessionName).length;
 
   /**
    * Write one play. The sheet that called it stays open until this resolves,
@@ -1353,6 +1374,13 @@ export default function TrackingScreen({
           >
             <TileIcon className="action-icon" size={20} />
             <span>{offersJersey ? "Nr. ergänzen" : label}</span>
+            {mode === "timeout" && timeoutCount > 0 ? (
+              // Decorative: the tile keeps its name, the sheet states the
+              // count and the history in words.
+              <span aria-hidden="true" className="actioncount">
+                {timeoutCount}
+              </span>
+            ) : null}
             <kbd
               aria-hidden="true"
               className="shortcut-hint"
@@ -1494,6 +1522,7 @@ export default function TrackingScreen({
               roster={roster}
               side={opponentSide}
               teamName={opponentName}
+              timeouts={timeouts}
             />
           ) : (
             <SeriesSheet
@@ -1505,6 +1534,7 @@ export default function TrackingScreen({
               roster={roster}
               side={possessionSide}
               teamName={possessionName}
+              timeouts={timeouts}
             />
           )
         ) : sheet.kind === "penalty" ? (

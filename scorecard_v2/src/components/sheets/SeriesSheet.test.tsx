@@ -9,6 +9,7 @@ import SeriesSheet, {
   maxMinutes,
   timeError,
   type SeriesMode,
+  type TimeoutRecord,
 } from "./SeriesSheet";
 
 const ROSTER: RosterPlayer[] = [
@@ -23,6 +24,7 @@ function renderSheet(
   mode: SeriesMode,
   onSubmit?: Submit,
   roster: RosterPlayer[] | null = ROSTER,
+  timeouts: TimeoutRecord[] = [],
 ) {
   const submit = onSubmit ?? vi.fn<Submit>(async () => undefined);
   const onClose = vi.fn();
@@ -35,6 +37,7 @@ function renderSheet(
       roster={roster}
       side="home"
       teamName="Ravens"
+      timeouts={timeouts}
     />,
   );
   return { onClose, onSubmit: submit };
@@ -136,7 +139,7 @@ describe("SeriesSheet", () => {
     expect(screen.getByText(/Restliche Spielzeit/)).toBeInTheDocument();
   });
 
-  it("records an Auszeit as m:ss", async () => {
+  it("records an Auszeit with the game time it was taken", async () => {
     const { onSubmit } = renderSheet("timeout");
     const user = userEvent.setup();
 
@@ -144,7 +147,32 @@ describe("SeriesSheet", () => {
     await user.type(screen.getByRole("textbox", { name: "Sekunden" }), "5");
     await user.click(saveButton());
 
-    expect(onSubmit).toHaveBeenCalledWith([{ name: "Auszeit", input: "3:05" }]);
+    expect(onSubmit).toHaveBeenCalledWith([{ name: "Auszeit", input: "03:05" }]);
+    expect(
+      screen.getByText(/Restliche Spielzeit, als die Auszeit genommen wurde/),
+    ).toBeInTheDocument();
+  });
+
+  it("lists the timeouts both teams already took", () => {
+    renderSheet("timeout", undefined, ROSTER, [
+      { team: "Ravens", half: 1, time: "08:12" },
+      { team: "Ravens", half: 2, time: "03:40" },
+      { team: "Wolves", half: 1, time: "12:05" },
+    ]);
+
+    const history = screen.getByRole("region", { name: "Bisherige Auszeiten" });
+    expect(history).toHaveTextContent(
+      "Ravens 1. HZ 08:12 · 2. HZ 03:40 (2 Auszeiten)",
+    );
+    expect(history).toHaveTextContent("Wolves 1. HZ 12:05 (1 Auszeit)");
+  });
+
+  it("says so when neither team has taken a timeout", () => {
+    renderSheet("timeout");
+
+    const history = screen.getByRole("region", { name: "Bisherige Auszeiten" });
+    expect(history).toHaveTextContent("Ravens – noch keine");
+    expect(history).toHaveTextContent("Wolves – noch keine");
   });
 
   it("rejects seconds above 59", async () => {
@@ -219,16 +247,15 @@ describe("SeriesSheet validation helpers", () => {
     expect(isTimeMode("first")).toBe(false);
   });
 
-  it("allows a longer Auszeit than Spielzeit and words the error", () => {
-    expect(maxMinutes("time")).toBe(59);
-    expect(maxMinutes("timeout")).toBe(99);
-    expect(timeError("timeout", "100", "00")).toBe(
-      "Die Auszeit muss zwischen 0:00 und 99:59 liegen.",
+  it("keeps both clocks within the remaining game time", () => {
+    expect(maxMinutes()).toBe(59);
+    expect(timeError("timeout", "60", "00")).toBe(
+      "Die Auszeit muss zwischen 00:00 und 59:59 liegen.",
     );
     expect(timeError("time", "60", "00")).toBe(
       "Die Spielzeit muss zwischen 00:00 und 59:59 liegen.",
     );
-    expect(timeError("timeout", "99", "59")).toBeNull();
+    expect(timeError("timeout", "59", "59")).toBeNull();
   });
 });
 

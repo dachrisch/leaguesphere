@@ -33,9 +33,9 @@ export function isTimeMode(mode: SeriesMode): boolean {
   return mode === "time" || mode === "timeout";
 }
 
-/** Largest first value the input allows: Spielzeit is mm:ss, Auszeit m:ss. */
-export function maxMinutes(mode: SeriesMode): number {
-  return mode === "time" ? 59 : 99;
+/** Largest minutes value the input allows; both clocks are mm:ss. */
+export function maxMinutes(): number {
+  return 59;
 }
 
 /** Digits only, at most two of them. */
@@ -64,10 +64,10 @@ export function timeError(
   if (seconds === "") {
     return "Bitte Sekunden angeben.";
   }
-  if (Number(minutes) > maxMinutes(mode)) {
+  if (Number(minutes) > maxMinutes()) {
     return mode === "time"
       ? "Die Spielzeit muss zwischen 00:00 und 59:59 liegen."
-      : "Die Auszeit muss zwischen 0:00 und 99:59 liegen.";
+      : "Die Auszeit muss zwischen 00:00 und 59:59 liegen.";
   }
   if (Number(seconds) > 59) {
     return "Sekunden müssen zwischen 0 und 59 liegen.";
@@ -76,18 +76,15 @@ export function timeError(
 }
 
 /**
- * The `input` text of a time row: `mm:ss` for the remaining Spielzeit (the
- * log renders it next to the event name), `m:ss` for an Auszeit duration.
+ * The `input` text of a time row: the remaining game time as `mm:ss`.
+ *
+ * Both Spielzeit and Auszeit store *when* in the game they happened, so the
+ * log, the timeout history and the old app's rows all read the same way. A
+ * duration would answer "how long", not "when" — the question the officials
+ * have to settle with the teams.
  */
-export function clockInput(
-  mode: SeriesMode,
-  minutes: string,
-  seconds: string,
-): string {
-  const secs = seconds.padStart(2, "0");
-  return mode === "time"
-    ? `${minutes.padStart(2, "0")}:${secs}`
-    : `${Number(minutes)}:${secs}`;
+export function clockInput(minutes: string, seconds: string): string {
+  return `${minutes.padStart(2, "0")}:${seconds.padStart(2, "0")}`;
 }
 
 /** Payload of a non-time series entry; `Turnover` never names a player. */
@@ -107,7 +104,7 @@ export function timeEvent(
   minutes: string,
   seconds: string,
 ): GameLogEventInput {
-  return { name: MODES[mode].event, input: clockInput(mode, minutes, seconds) };
+  return { name: MODES[mode].event, input: clockInput(minutes, seconds) };
 }
 
 interface SeriesSheetProps {
@@ -129,6 +126,16 @@ interface SeriesSheetProps {
    */
   onSubmit: (events: GameLogEventInput[]) => Promise<void>;
   onClose: () => void;
+  /** Timeouts already recorded, for the history under the Auszeit fields. */
+  timeouts?: TimeoutRecord[];
+}
+
+/** One recorded Auszeit as the history lists it. */
+export interface TimeoutRecord {
+  team: string;
+  half: number;
+  /** The remaining game time the entry stored (`mm:ss`). */
+  time: string;
 }
 
 /**
@@ -147,6 +154,7 @@ export default function SeriesSheet({
   roster,
   onSubmit,
   onClose,
+  timeouts = [],
 }: SeriesSheetProps) {
   const info = MODES[mode];
   const time = isTimeMode(mode);
@@ -276,7 +284,7 @@ export default function SeriesSheet({
         <p className="sheetnote">
           {mode === "time"
             ? "Restliche Spielzeit im laufenden Spiel – mm:ss."
-            : "Dauer der Auszeit – m:ss."}
+            : "Restliche Spielzeit, als die Auszeit genommen wurde – mm:ss."}
         </p>
       ) : null}
 
@@ -331,6 +339,50 @@ export default function SeriesSheet({
           Spielverlauf zu {opponentName}.
         </p>
       ) : null}
+
+      {mode === "timeout" ? (
+        <TimeoutHistory teams={[teamName, opponentName]} timeouts={timeouts} />
+      ) : null}
     </Sheet>
+  );
+}
+
+/**
+ * How many timeouts each side has taken, and when — the facts the officials
+ * have to settle with the teams ("you already took one in the first half").
+ *
+ * Read from the log rows, never counted server-side: a deleted row disappears
+ * from the history the moment it is undone.
+ */
+export function TimeoutHistory({
+  teams,
+  timeouts,
+}: {
+  teams: string[];
+  timeouts: TimeoutRecord[];
+}) {
+  return (
+    <section aria-label="Bisherige Auszeiten" className="timeouthistory">
+      <h3 className="sheetsection">Bisherige Auszeiten</h3>
+      {teams.map((team) => {
+        const taken = timeouts.filter((entry) => entry.team === team);
+        return (
+          <p className="timeoutteam" key={team}>
+            <span className="timeoutname">{team}</span>{" "}
+            {taken.length === 0
+              ? "– noch keine"
+              : taken
+                  .map(
+                    (entry) =>
+                      `${entry.half === 2 ? "2." : "1."} HZ ${entry.time}`,
+                  )
+                  .join(" · ") +
+                ` (${taken.length} ${
+                  taken.length === 1 ? "Auszeit" : "Auszeiten"
+                })`}
+          </p>
+        );
+      })}
+    </section>
   );
 }

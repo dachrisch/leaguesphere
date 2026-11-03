@@ -1984,6 +1984,35 @@ describe("Tracking possession flip", () => {
     );
   });
 
+  it("shows how many timeouts a side already took, and when", async () => {
+    renderTracking({
+      log: makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({
+            id: 1,
+            event: "Auszeit",
+            team: "Ravens",
+            half: 1,
+            input: "08:12",
+          }),
+        ],
+      }),
+    });
+    const user = userEvent.setup();
+
+    expect(
+      document.querySelector(".actioncount")?.textContent,
+    ).toBe("1");
+
+    await openSheet(user, /^Auszeit$/);
+    const history = screen.getByRole("region", {
+      name: "Bisherige Auszeiten",
+    });
+    expect(history).toHaveTextContent("Ravens 1. HZ 08:12 (1 Auszeit)");
+    expect(history).toHaveTextContent("Wolves – noch keine");
+  });
+
   it("does not flip after an Auszeit", async () => {
     answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
@@ -2219,7 +2248,7 @@ describe("Tracking possession flip", () => {
           side: "home",
           player: null,
           period: 1,
-          payload: { input: "1:00" },
+          payload: { input: "01:00" },
         },
       ],
       client_id: expect.any(String),
