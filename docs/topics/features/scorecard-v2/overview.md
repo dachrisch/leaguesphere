@@ -20,12 +20,18 @@ Status: **beta**. Both apps are bookmarks; nothing links v2 from the old app.
 | URL | Serves |
 |---|---|
 | `/scorecard/v2/` | this app |
+| `/scorecard/v2/?game=<id>` | the same app, opened directly on one game (also a finished one, read-only) |
 | `/scorecard/v2/sw.js` | its service worker (scope `/scorecard/v2/`, anonymous, `Cache-Control: no-cache`) |
 | `/scorecard/` | the existing scorecard, unchanged |
 
 `league_manager/urls.py` includes `scorecard/v2/` **before** `scorecard/`. The
 worker lives under the app scope on purpose: served from `/static/` it could
 only control static assets, and its scope could never leak into the old app.
+
+`?game=<id>` is the deep link the organisation keeps for a game: the app reads
+`GET /api/game/<id>/summary` (the game row exactly as the list builds it, plus
+its gameday) and then opens preparation or tracking straight away; a finished
+game opens read-only with its log and no end-of-game action.
 
 ## The flow
 
@@ -113,12 +119,22 @@ only control static assets, and its scope could never leak into the old app.
    touchdown button (+1 / +2 / nicht verwandelt, nothing pre-selected),
    credited to the scoring team with the scorer's jersey, and **Spiel
    beenden** waits while it is open. First down, turnover, interception, penalty with search, safety,
-   overtime, Spielzeit, Auszeit, half-time, and **Rückgängig** per entry. The
+   overtime, Spielzeit, Auszeit, half-time, and **Rückgängig** per entry, plus
+   **Ändern** to correct the jersey or the game time of a row in place (the
+   corrected event is written, then the old row is undone; the row keeps its
+   team and half and never flips possession). **Nur Punkte** filters the log
+   down to the plays that scored. The Auszeit sheet lists both teams' timeouts
+   with half and game time — the entry stores the *remaining game time*, like
+   the old app, not a duration — and its tile carries the count of the side
+   with the ball. Starting the second half runs a five-minute **Pause**
+   countdown under the controls (**Pause beenden** ends it early); it is a
+   helper stored per device, not a game clock. The
    screen keeps the display on while the game is open (Wake Lock, where the
    browser offers it) and confirms each saved entry with a short vibration.
 5. **Spielende** — captains from the roster (suggestions only, free text),
    optional note, then **Ergebnis abschicken**.
-6. **Ergebnis gesendet** — final and half-time score from the server payload.
+6. **Ergebnis gesendet** — final and half-time score from the server payload,
+   plus the complete log read-only: everything the game recorded in one place.
 
 Every screen has one steel app bar and nothing else as chrome: back, the title
 with its context line (on tracking: gameday and league), the sync chip and the
@@ -164,6 +180,8 @@ What the backend had to grow (all additive):
 - `passcheck` on the games-to-whistle payload;
 - `league_display` on the gameday list;
 - `GameLogSubmission` and `GameSetup.device_id` (migrations `0046`, `0047`);
+- `GET /api/game/<id>/summary` — one game with its gameday for the deep link
+  (`?game=<id>`), built through the same service as the whistle list;
 - `GET /api/officials/crew-positions/game/<id>` — the league's crew slots in
   display order (`position`, `label`, `order`, `required`). The screen only
   knows the game id, so game → gameday → league is resolved server-side; an

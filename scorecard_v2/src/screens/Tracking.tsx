@@ -1521,15 +1521,17 @@ export default function TrackingScreen({
         />
       ) : null}
       <footer className="trackfoot">
-        <button
-          className="startbtn"
-          disabled={readOnly}
-          onClick={finish}
-          type="button"
-        >
-          <Check size={20} />
-          Spiel beenden
-        </button>
+        {finished ? null : (
+          <button
+            className="startbtn"
+            disabled={readOnly}
+            onClick={finish}
+            type="button"
+          >
+            <Check size={20} />
+            Spiel beenden
+          </button>
+        )}
         {finishBlocked ? (
           <p className="trackerror" role="alert">
             Extrapunkt nach dem Touchdown noch offen – bitte oben eintragen

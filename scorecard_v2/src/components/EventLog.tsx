@@ -427,7 +427,8 @@ export function formatLogTime(iso: string | null): string {
 
 interface EventLogProps {
   rows: LogRow[];
-  onUndo: (row: LogRow) => void;
+  /** Omitted where the log is read-only (the result screen). */
+  onUndo?: (row: LogRow) => void;
   /** Correct a row in place; omitted where the log is read-only. */
   onEdit?: (row: LogRow) => void;
   /** Key of the row whose undo is in flight; its button is disabled. */
@@ -486,7 +487,8 @@ export default function EventLog({
           {shown.map((row) => {
             const described = describeRow(row);
             const KindIcon = KIND_ICON[described.kind];
-            const undoable = !row.isDeleted && !isMarker(row);
+            const undoable =
+              onUndo !== undefined && !row.isDeleted && !isMarker(row);
             return (
               <li
                 className={row.isDeleted ? "row deleted" : "row"}
@@ -532,7 +534,7 @@ export default function EventLog({
                       aria-label={`Rückgängig: ${described.primary}`}
                       className="undo"
                       disabled={disabled || undoKey !== null}
-                      onClick={() => onUndo(row)}
+                      onClick={() => onUndo?.(row)}
                       title={`Rückgängig: ${described.primary}`}
                       type="button"
                     >
@@ -547,9 +549,11 @@ export default function EventLog({
       )}
       <footer className="logfoot">
         <span className="logfoot-newest">Neueste oben</span>
-        <span className="logfoot-undo">
-          Letzten Eintrag rückgängig <kbd>Strg Z</kbd>
-        </span>
+        {onUndo === undefined ? null : (
+          <span className="logfoot-undo">
+            Letzten Eintrag rückgängig <kbd>Strg Z</kbd>
+          </span>
+        )}
       </footer>
     </section>
   );

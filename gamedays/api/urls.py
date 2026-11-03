@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from gamedays.api.game_views import (
     GameLogAPIView,
+    GameSummaryAPIView,
     GameHalftimeAPIView,
     GameFinalizeUpdateView,
     GameSetupCreateOrUpdateView,
@@ -129,6 +130,11 @@ urlpatterns = [
         "game/<int:pk>/device",
         GameDeviceLockAPIView.as_view(),
         name=API_GAME_DEVICE,
+    ),
+    path(
+        "game/<int:pk>/summary",
+        GameSummaryAPIView.as_view(),
+        name="api-game-summary",
     ),
     path(
         "game/<int:pk>/roster",

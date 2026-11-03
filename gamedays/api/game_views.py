@@ -19,6 +19,7 @@ from gameevents.service.log_payload import event_seqs_for_rows
 from gameevents.service.projector import InvalidEnvelope
 from gameevents.service.undo import record_legacy_undo
 from gamedays.api.serializers import (
+    GamedaySerializer,
     GameFinalizer,
     GameSetupSerializer,
     GameLogSerializer,
@@ -666,6 +667,44 @@ class GamesToWhistleAPIView(APIView):
             home = team_by_result.get(str(game.get("id_home", "")))
             away = team_by_result.get(str(game.get("id_away", "")))
             game["passcheck"] = home in verified and away in verified
+
+
+class GameSummaryAPIView(APIView):
+    """One game with its gameday, for the scorecard's deep link.
+
+    The field app is a single page and normally reaches a game through its
+    gameday, so a link that names the game directly needs the two things a
+    single game id cannot answer: the row the games list would show (field,
+    stage, teams, status, passcheck) and the gameday it belongs to. Building
+    the row through ``GamedayService`` keeps it identical to the list payload —
+    a link must not show a different game than the list does.
+
+    Authenticated on purpose: the link opens the scorecard, which is
+    login-gated, and the row carries the crew.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            game = Gameinfo.objects.select_related("gameday__league").get(pk=pk)
+        except Gameinfo.DoesNotExist:
+            raise NotFound(detail=f"No game found for gameId {pk}")
+
+        games = GamedayService.create(game.gameday_id).get_games_to_whistle("*")
+        rows = json.loads(
+            games.to_json(orient="records"), object_pairs_hook=OrderedDict
+        )
+        row = next((entry for entry in rows if str(entry.get("id")) == str(pk)), None)
+        if row is None:
+            raise NotFound(detail=f"No game found for gameId {pk}")
+        GamesToWhistleAPIView._annotate_passcheck([row], game.gameday_id)
+        return Response(
+            {
+                "game": row,
+                "gameday": GamedaySerializer(game.gameday).data,
+            }
+        )
 
 
 class GameRosterAPIView(APIView):

@@ -1835,6 +1835,9 @@ describe("Tracking composer state", () => {
     expect(screen.getByRole("button", { name: "Safety" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Overtime" })).toBeDisabled();
     expect(screen.getByText("Dieses Spiel ist beendet.")).toBeInTheDocument();
+    // A finished game cannot be ended again: the footer action is gone (the
+    // screen is also what the deep link opens for the organisation).
+    expect(screen.queryByRole("button", { name: "Spiel beenden" })).toBeNull();
   });
 
   it("asks for possession before an entry can be recorded", () => {

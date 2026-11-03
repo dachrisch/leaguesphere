@@ -19,6 +19,10 @@ wie die bisherige Scorecard
 2. Prüfe in **Spiel vorbereiten** die Offiziellen und ihre Lizenzen, halte
    **Münzwurf gewonnen von**, **Erster Ballbesitz** und **Spielrichtung** fest
    und tippe auf **Spiel starten**. **Jetzt starten** bestätigt den Start.
+   Die **Spielrichtung** liegt zwischen den Endzonen **Nord** und **Süd** (die
+   Seitenlinie verläuft Ost–West); der Pfeil zeigt auf die Endzone, die
+   angegriffen wird. Die Seite wählt immer das Gastteam – das zweit genannte
+   Team.
 3. Erfasse im laufenden Spiel (oben stehen Feld und Runde) jeden Spielzug über
    **Touchdown**, **1st Down**, **Turnover**, **Interception**, **Strafe**,
    **Safety**, **Overtime**, **Spielzeit** oder **Auszeit**. **1st Down**,
@@ -27,11 +31,18 @@ wie die bisherige Scorecard
    innerhalb von 10 Sekunden noch einmal tippst (**Nr. ergänzen**). Nach einem
    Touchdown sind die Kacheln gesperrt, bis der Extrapunkt eingetragen ist.
 4. Das Pfeil-Symbol neben einem Eintrag im Spielverlauf (**Rückgängig**) nimmt
-   ihn zurück; am großen Bildschirm geht das auch mit **Strg Z**. **Halbzeit**
+   ihn zurück, **Ändern** korrigiert ihn an Ort und Stelle (Trikotnummer, bei
+   **Spielzeit** und **Auszeit** die Spielzeit); am großen Bildschirm geht das
+   Zurücknehmen auch mit **Strg Z**. **Nur Punkte** blendet alles aus, was keine
+   Punkte gebracht hat, damit ein falscher Spielstand schnell zu finden ist.
+   **Halbzeit**
    fragt beim ersten Tippen nach (**Halbzeit starten**) und wechselt erst beim
-   zweiten Tippen innerhalb von 10 Sekunden in die zweite Halbzeit.
+   zweiten Tippen innerhalb von 10 Sekunden in die zweite Halbzeit; danach
+   läuft oben die **Pause** mit Countdown (fünf Minuten), **Pause beenden**
+   schließt sie früher ab.
 5. **Spielende und Bestätigung** öffnet den Abschluss: beide Captains
-   bestätigen, dann **Ergebnis abschicken**.
+   bestätigen, dann **Ergebnis abschicken**. Danach zeigt **Ergebnis gesendet**
+   den Endstand mit beiden Halbzeiten und den vollständigen Spielverlauf.
 
 Oben rechts öffnet der Avatar das **Konto**-Menü: dort stehen die Darstellung
 **Auto**, **Hell** und **Dunkel** (Auto folgt der Einstellung des Geräts) und
@@ -105,3 +116,12 @@ dieselben Ergebnisse.
 **Warum lässt sich das Ergebnis nicht abschicken?**
 Solange Einträge warten oder abgelehnt wurden, ist der Knopf gesperrt. Übertrage
 oder verwerfe sie zuerst über die Anzeige oben.
+
+**Wie viele Auszeiten hat ein Team schon genommen?**
+Öffne **Auszeit**: Unter den Feldern stehen beide Teams mit Halbzeit und
+Spielzeit jeder Auszeit; die Kachel zeigt die Anzahl der Seite mit dem Ball.
+
+**Wie komme ich später an ein Spiel?**
+Der Link `/scorecard/v2/?game=<Spiel-ID>` öffnet genau dieses Spiel – auch ein
+beendetes, dann nur lesend. Die ID ist die Spielnummer aus der Spieleliste
+bzw. der Gameinfo-Eintrag.

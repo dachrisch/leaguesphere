@@ -99,6 +99,8 @@ function routeGet(path: string, teamName = "crew"): unknown {
       return { id: 1, username: teamName };
     case "/api/gameday/1/officials/crew":
       return [GAME];
+    case "/api/game/42/summary":
+      return { game: GAME, gameday: GAMEDAY };
     case "/api/game/42/officials":
       // A complete crew: the start refuses an empty required slot. Free text
       // keeps the team list (which answers []) out of it.
@@ -136,6 +138,9 @@ function routeGet(path: string, teamName = "crew"): unknown {
 }
 
 beforeEach(() => {
+  // The deep link reads the URL on mount; a leftover parameter would decide
+  // the next test's first screen.
+  globalThis.history.replaceState(null, "", "/");
   vi.stubGlobal("indexedDB", new IDBFactory());
   resetRuntime();
   resetSnapshotStore();
@@ -317,5 +322,58 @@ describe("the whole flow", () => {
         ).length,
       ).toBeGreaterThan(before),
     );
+  });
+});
+
+describe("the deep link", () => {
+  it("opens a planned game's preparation straight from ?game=<id>", async () => {
+    globalThis.history.replaceState(null, "", "/?game=42");
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Spiel vorbereiten" }),
+    ).toBeInTheDocument();
+    expect(calls).toContain("GET /api/game/42/summary");
+    // The link answers both the game and its gameday: no list round-trip.
+    expect(calls).not.toContain("GET /api/gameday/1/officials/crew");
+  });
+
+  it("opens a running game's tracking screen from the link", async () => {
+    const running = { ...GAME, status: "1. Halbzeit" };
+    apiGetMock.mockImplementation((path: string) => {
+      calls.push(`GET ${path}`);
+      if (path === "/api/game/42/summary") {
+        return Promise.resolve({ game: running, gameday: GAMEDAY });
+      }
+      return Promise.resolve(routeGet(path));
+    });
+    globalThis.history.replaceState(null, "", "/?game=42");
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Feld 2 · Vorrunde" }),
+    ).toBeInTheDocument();
+    expect(calls).toContain("GET /api/gamelog/42");
+    // The link carried the gameday, so the header has its context line and
+    // "back" can load that gameday's games.
+    expect(screen.getByText(/Herbsttag · Landesliga/)).toBeInTheDocument();
+  });
+
+  it("keeps a broken link on its own screen with a retry", async () => {
+    apiGetMock.mockImplementation((path: string) =>
+      path === "/api/game/42/summary"
+        ? Promise.reject(new Error("Spiel nicht erreichbar"))
+        : Promise.resolve(routeGet(path)),
+    );
+    globalThis.history.replaceState(null, "", "/?game=42");
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Spiel wird geöffnet" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole("alert", {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Erneut laden" }),
+    ).toBeInTheDocument();
   });
 });

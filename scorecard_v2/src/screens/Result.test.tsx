@@ -27,6 +27,34 @@ const LOG: GameLog = {
   gameId: 42,
   isFirstHalf: false,
   inPossession: null,
+  events: [
+    {
+      id: 1,
+      seq: 1,
+      sequence: 1,
+      team: "Ravens",
+      event: "Touchdown",
+      player: 23,
+      input: null,
+      half: 1,
+      cop: false,
+      isDeleted: false,
+      time: "2026-10-26T12:00:00Z",
+    },
+    {
+      id: 2,
+      seq: 2,
+      sequence: 2,
+      team: "Wolves",
+      event: "1-Extra-Punkt",
+      player: 9,
+      input: null,
+      half: 2,
+      cop: false,
+      isDeleted: false,
+      time: "2026-10-26T12:30:00Z",
+    },
+  ],
   home: {
     id: 1,
     name: "Ravens",
@@ -77,6 +105,18 @@ describe("Result", () => {
     expect(
       within(halves).getByRole("row", { name: "Wolves 7 7" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows everything the game recorded, read-only", () => {
+    renderResult();
+
+    const log = screen.getByRole("region", { name: "Spielverlauf" });
+    expect(within(log).getByText("Touchdown Ravens")).toBeInTheDocument();
+    expect(within(log).getByText("1 Extrapunkt Wolves")).toBeInTheDocument();
+    // Read-only: no undo, no edit, no keyboard hint.
+    expect(within(log).queryByRole("button", { name: /Rückgängig/ })).toBeNull();
+    expect(within(log).queryByRole("button", { name: /Ändern/ })).toBeNull();
+    expect(within(log).queryByText(/Letzten Eintrag rückgängig/)).toBeNull();
   });
 
   it("starts the next game", async () => {

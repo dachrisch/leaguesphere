@@ -1,4 +1,5 @@
 import type { Game, GameLog, GameLogTeam } from "../api/types";
+import EventLog, { logRows } from "../components/EventLog";
 import FinalScore from "../components/FinalScore";
 import Screen from "../components/Screen";
 
@@ -66,6 +67,10 @@ export default function ResultScreen({
         <p className="resulthint" role="status">
           Tabelle und Liveticker sind aktuell.
         </p>
+
+        {/* Everything the game recorded, in one place: the officials check the
+            result against the log before they leave the field. */}
+        <EventLog rows={logRows(log)} />
 
         <button className="startbtn" onClick={onDone} type="button">
           Neues Spiel
