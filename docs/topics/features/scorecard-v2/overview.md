@@ -98,7 +98,9 @@ only control static assets, and its scope could never leak into the old app.
    does not move twice) and undoes the one-tap row. Entries with required
    input — touchdown, Spielzeit, Auszeit, penalty, safety, overtime — open
    their sheet on the first tap. **Halbzeit** confirms the same way (first tap
-   arms **Halbzeit starten**, the second starts it). While an extra point is
+   arms **Halbzeit starten**, the second starts it); the marker it writes also
+   sets `Gameinfo.status` and `gameHalftime`, so the half flips for every
+   reader and the second half's plays are filed under half 2. While an extra point is
    open, the tiles and Halbzeit are locked.
    Touchdown with the roster's jerseys (a tile grid up to 24 players, a
    two-digit keypad above that with the roster name as confirmation; numeric

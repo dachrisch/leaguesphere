@@ -70,6 +70,7 @@ from gameevents.service.projector import (
 from gameevents.service.replay import Replay, replay_events, resolve_correction
 from gamedays.models import Gameresult, Gameinfo, Team, TeamLog
 from gamedays.service.game_service import GameService
+from gamedays.service.wrapper.gameinfo_wrapper import STATUS_HALFTIME
 
 logger = logging.getLogger(__name__)
 
@@ -412,6 +413,28 @@ def _sync_possession(game, side: Optional[str]) -> None:
     game.save(update_fields=["in_possession", "updated_at"])
 
 
+def _sync_halftime(game, state: GameStateValue) -> None:
+    """Mirror the projected halftime onto ``Gameinfo``.
+
+    ``GET /api/gamelog/<id>`` answers ``isFirstHalf`` from
+    ``Gameinfo.gameHalftime`` -- and with it the scorecard's half marker, the
+    game list's status and the liveticker. Only the legacy ``PUT /halftime``
+    used to write it; the v2 app starts the half with a ``period/half_time``
+    event, so the canonical append has to write it too. Without this a game
+    written by events never leaves the first half: the screen keeps offering
+    "Halbzeit" and files every play of the second half under half 1.
+
+    The first half-time wins: a later event (a second-half play, a replayed
+    marker) must not move the timestamp again.
+    """
+
+    if state.period < 2 or game.gameHalftime is not None:
+        return
+    game.gameHalftime = timezone.now()
+    game.status = STATUS_HALFTIME
+    game.save(update_fields=["gameHalftime", "status"])
+
+
 def _save_state(game, state: GameStateValue) -> None:
     GameState.objects.update_or_create(
         game=game,
@@ -537,6 +560,7 @@ def append_submission(
         _apply_sequence_flags(game, projection, _row_flag_events(game, projection))
     if projection.state.in_possession != replayed.state.in_possession:
         _sync_possession(game, projection.state.in_possession)
+    _sync_halftime(game, projection.state)
     _save_state(game, projection.state)
     return AppendOutcome(
         state=projection.state, applied=True, last_seq=projection.state.last_seq
