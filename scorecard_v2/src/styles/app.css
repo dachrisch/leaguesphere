@@ -1557,6 +1557,31 @@ button.game-row:active {
   text-transform: inherit;
 }
 
+/* "Nur Punkte": filter the log to the plays that scored, so a wrong score can
+   be traced quickly. */
+.logfilter {
+  margin-left: auto;
+  min-height: 26px;
+  padding: 0 10px;
+  font: inherit;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
+.logfilter.sel {
+  color: var(--on-accent);
+  background: var(--primary);
+  border-color: transparent;
+}
+
+.loghead .logfilter + span {
+  margin-left: var(--space-2);
+}
+
 .logerror {
   flex: 0 0 auto;
   margin: 0 var(--page-gutter) var(--space-2);
@@ -1718,6 +1743,12 @@ button.game-row:active {
   width: 18px;
   height: 18px;
   flex: 0 0 auto;
+}
+
+/* The edit pencil sits next to undo in the same box, in the text colour so the
+   two actions are told apart at a glance. */
+.undo.edit {
+  color: var(--fg);
 }
 
 .undo:hover {

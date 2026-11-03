@@ -426,6 +426,107 @@ describe("Tracking possession", () => {
   });
 });
 
+describe("Tracking edit", () => {
+  it("writes the corrected event, then undoes the row it replaces", async () => {
+    const original = makeLog({
+      inPossession: "Ravens",
+      events: [
+        logEvent({
+          id: 9,
+          seq: 5,
+          event: "Touchdown",
+          team: "Ravens",
+          player: 23,
+          half: 1,
+        }),
+      ],
+    });
+    routeGets({ log: original });
+    answerAppend(original);
+    renderTracking({ log: original });
+    const user = userEvent.setup();
+
+    await user.click(
+      screen.getByRole("button", { name: "Ändern: Touchdown Ravens" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Touchdown ändern" });
+    expect(dialog).toHaveTextContent("Ravens · 1. Halbzeit");
+    await user.click(
+      await within(dialog).findByRole("button", { name: "Trikot 7, Meier" }),
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Änderung speichern" }),
+    );
+
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(2));
+    expect(apiPostMock).toHaveBeenNthCalledWith(1, "/api/game/42/events", {
+      events: [
+        {
+          type: "score",
+          code: "touchdown",
+          side: "home",
+          player: 7,
+          period: 1,
+        },
+      ],
+      client_id: expect.any(String),
+    });
+    expect(apiPostMock).toHaveBeenNthCalledWith(2, "/api/game/42/events", {
+      events: [{ type: "correction", code: "undo", payload: { undo_of: 5 } }],
+      client_id: expect.any(String),
+    });
+    // The correction does not move the ball, unlike a fresh touchdown.
+    expect(sentPossessions()).toEqual([]);
+  });
+
+  it("keeps the row's half, so a first-half entry stays in the first half", async () => {
+    const original = makeLog({
+      isFirstHalf: false,
+      inPossession: "Ravens",
+      events: [
+        logEvent({
+          id: 9,
+          seq: 5,
+          event: "Auszeit",
+          team: "Ravens",
+          input: "08:12",
+          half: 1,
+        }),
+      ],
+    });
+    routeGets({ log: original });
+    answerAppend(original);
+    renderTracking({ log: original });
+    const user = userEvent.setup();
+
+    await user.click(
+      screen.getByRole("button", { name: "Ändern: Auszeit Ravens" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Auszeit ändern" });
+    const minutes = within(dialog).getByRole("textbox", { name: "Minuten" });
+    await user.clear(minutes);
+    await user.type(minutes, "4");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Änderung speichern" }),
+    );
+
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(2));
+    expect(apiPostMock).toHaveBeenNthCalledWith(1, "/api/game/42/events", {
+      events: [
+        {
+          type: "timeout",
+          code: "home",
+          side: "home",
+          player: null,
+          period: 1,
+          payload: { input: "04:12" },
+        },
+      ],
+      client_id: expect.any(String),
+    });
+  });
+});
+
 describe("Tracking event log", () => {
   it("renders every event kind with its detail", () => {
     render(

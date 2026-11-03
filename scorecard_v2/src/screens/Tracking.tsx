@@ -59,6 +59,7 @@ import SeriesSheet, {
   seriesEvent,
   type SeriesMode,
 } from "../components/sheets/SeriesSheet";
+import EditSheet from "../components/sheets/EditSheet";
 import { errorMessage, IgnoredWrite } from "../components/sheets/errors";
 import TouchdownSheet from "../components/sheets/TouchdownSheet";
 import { cachedGet, cachedGetMeta, snapshotKey } from "../offline/snapshot";
@@ -506,6 +507,8 @@ export default function TrackingScreen({
   const [finishBlocked, setFinishBlocked] = useState(false);
   /** The one-tap row a jersey sheet replaces once it saves. */
   const [replacing, setReplacing] = useState<LogRow | null>(null);
+  /** The log row being corrected in place ("Ändern" next to undo). */
+  const [editing, setEditing] = useState<LogRow | null>(null);
   /** Two-step buttons: a one-tap entry offers its jersey, Halbzeit asks once more. */
   const { armed, arm, disarm } = useArmed<JerseyLater | "halftime">();
   const [halftimePending, setHalftimePending] = useState(false);
@@ -775,6 +778,59 @@ export default function TrackingScreen({
     } finally {
       undoInFlight.current = false;
       setUndoKey(null);
+    }
+  };
+
+  /** Open the correction for one log row; nothing to change on a marker. */
+  const openEdit = (row: LogRow): void => {
+    if (readOnly || finished || row.team === null) {
+      return;
+    }
+    disarm();
+    setEditing(row);
+  };
+
+  /**
+   * Correct a log row: write the same event with the fixed detail, then undo
+   * the row that carried the mistake. The write keeps the row's team *and*
+   * half, so correcting a first-half entry during the second half does not
+   * move the points — and it never flips possession, unlike a fresh play.
+   *
+   * The correction names the row's event `seq`, which removes the whole
+   * submission group: for a v2 game that group is the single play. A row the
+   * old app wrote has no event and is not offered for editing at all.
+   */
+  const submitEdit = async (event: GameLogEventInput): Promise<void> => {
+    const row = editing;
+    if (row === null || row.team === null) {
+      return;
+    }
+    if (postInFlight.current) {
+      throw new IgnoredWrite("Der Eintrag wird gerade gespeichert.");
+    }
+    if (finished) {
+      throw new IgnoredWrite("Dieses Spiel ist beendet.");
+    }
+    if (readOnly) {
+      throw new IgnoredWrite(
+        stopReason ?? "Dieses Gerät darf keine Einträge schreiben.",
+      );
+    }
+    postInFlight.current = true;
+    setPosting(true);
+    disarm();
+    try {
+      await session.writeEvent({
+        gameId: game.id,
+        team: row.team,
+        half: row.half === 2 ? 2 : 1,
+        event: [event],
+      });
+      await undo(row);
+    } finally {
+      postInFlight.current = false;
+      setPosting(false);
+      setEditing(null);
     }
   };
 
@@ -1140,7 +1196,7 @@ export default function TrackingScreen({
 
   useTrackingShortcuts({
     readOnly: readOnly || finished,
-    sheetOpen: sheet !== null || pendingPat !== null,
+    sheetOpen: sheet !== null || pendingPat !== null || editing !== null,
     onTouchdown: () => {
       if (!composerDisabled && pendingPat === null) {
         openSheet({ kind: "touchdown" });
@@ -1272,8 +1328,9 @@ export default function TrackingScreen({
           instead of pushing it out of view. */}
       <div className="logwrap tracking-log">
         <EventLog
-          disabled={halftimePending || readOnly}
+          disabled={halftimePending || readOnly || finished}
           error={undoError}
+          onEdit={readOnly || finished ? undefined : openEdit}
           onUndo={(row) => void undo(row)}
           rows={rows}
           undoKey={undoKey}
@@ -1489,6 +1546,26 @@ export default function TrackingScreen({
               : ""}
         </p>
       </main>
+
+      {editing !== null ? (
+        <EditSheet
+          // A second edit of another row starts from that row, not the last one.
+          key={editing.key}
+          event={editing.event}
+          half={editing.half}
+          input={editing.input}
+          jersey={editing.player}
+          onSubmit={submitEdit}
+          onClose={() => setEditing(null)}
+          roster={roster}
+          side={
+            editing.team !== null && editing.team === log.away.name
+              ? "away"
+              : "home"
+          }
+          teamName={editing.team ?? "–"}
+        />
+      ) : null}
 
       {sheet !== null &&
       possessionSide !== null &&

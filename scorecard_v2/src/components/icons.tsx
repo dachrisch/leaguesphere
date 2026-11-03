@@ -199,6 +199,16 @@ export function Undo(props: IconProps) {
   );
 }
 
+/** Edit: a pencil. */
+export function Pencil(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17z" />
+      <path d="M14.5 6.5l3 3" />
+    </Svg>
+  );
+}
+
 /** Confirmation tick. */
 export function Check(props: IconProps) {
   return (
