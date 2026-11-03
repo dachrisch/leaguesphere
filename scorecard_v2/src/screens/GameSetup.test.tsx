@@ -376,12 +376,12 @@ async function choose(group: string, option: string): Promise<void> {
 
 /**
  * Toss, first possession and direction have no default any more: an unset
- * field is refused before the start instead of being written as "home/Ost".
+ * field is refused before the start instead of being written as "home/Nord".
  */
 async function chooseDefaults(): Promise<void> {
   await choose("Münzwurf gewonnen von", "Ravens");
   await choose("Erster Ballbesitz", "Ravens");
-  await choose("Spielrichtung", "Ost → West");
+  await choose("Spielrichtung", "Nord");
 }
 
 /** First tap on the screen button: opens the confirmation, writes nothing. */
@@ -1250,7 +1250,7 @@ describe("GameSetup — start sequence", () => {
     expect(apiPutMock).toHaveBeenCalledTimes(1);
     expect(apiPutMock).toHaveBeenCalledWith(SETUP_PATH, {
       ctResult: "home",
-      direction: "Ost",
+      direction: "Nord",
       fhPossession: "home",
       device_id: "device-1",
     });
@@ -1272,13 +1272,13 @@ describe("GameSetup — start sequence", () => {
 
     await choose("Münzwurf gewonnen von", "Wolves");
     await choose("Erster Ballbesitz", "Wolves");
-    await choose("Spielrichtung", "West → Ost");
+    await choose("Spielrichtung", "Süd");
     await clickStart();
 
     await waitFor(() => expect(startCalls).toContain(`GET ${LOG_PATH}`));
     expect(apiPutMock).toHaveBeenCalledWith(SETUP_PATH, {
       ctResult: "away",
-      direction: "West",
+      direction: "Süd",
       fhPossession: "away",
       device_id: "device-1",
     });
@@ -1300,7 +1300,7 @@ describe("GameSetup — start sequence", () => {
     // The segments are labelled with the row's long team descriptions.
     await choose("Münzwurf gewonnen von", "The rising bird team from the north");
     await choose("Erster Ballbesitz", "The rising bird team from the north");
-    await choose("Spielrichtung", "Ost → West");
+    await choose("Spielrichtung", "Nord");
 
     await clickStart();
 
@@ -1315,7 +1315,7 @@ describe("GameSetup — start sequence", () => {
   });
 
   it("shows an existing setup as Fortsetzen and restores its values", async () => {
-    setup = { ctResult: "away", direction: "West", fhPossession: "away" };
+    setup = { ctResult: "away", direction: "Süd", fhPossession: "away" };
     await renderSetup();
 
     expect(startButton()).toHaveTextContent("Fortsetzen");
@@ -1332,7 +1332,7 @@ describe("GameSetup — start sequence", () => {
     expect(
       within(screen.getByRole("group", { name: "Spielrichtung" })).getByRole(
         "button",
-        { name: "West → Ost" },
+        { name: "Süd" },
       ),
     ).toHaveAttribute("aria-pressed", "true");
   });
@@ -1375,7 +1375,7 @@ describe("GameSetup — start sequence", () => {
     expect(
       within(screen.getByRole("group", { name: "Spielrichtung" })).getByRole(
         "button",
-        { name: "West → Ost" },
+        { name: "Süd" },
       ),
     ).toHaveAttribute("aria-pressed", "true");
   });
@@ -1423,7 +1423,7 @@ describe("GameSetup — start confirmation", () => {
     expect(sheet.getByText("Scorecard Judge")).toBeInTheDocument();
     expect(startSheet()).toHaveTextContent("Passcheckvollständig");
     expect(startSheet()).toHaveTextContent("Wolves");
-    expect(startSheet()).toHaveTextContent("Ost");
+    expect(startSheet()).toHaveTextContent("Nord");
     // The first tap only opens the sheet: no write, and not even a re-read of
     // crew, positions, setup or log.
     expect(apiPutMock).not.toHaveBeenCalled();
@@ -1794,7 +1794,7 @@ describe("GameSetup — start failures and guards", () => {
     expect(
       within(screen.getByRole("group", { name: "Spielrichtung" })).getByRole(
         "button",
-        { name: "Ost → West" },
+        { name: "Nord" },
       ),
     ).toBeDisabled();
     expect(onStarted).not.toHaveBeenCalled();
@@ -2140,7 +2140,7 @@ describe("GameSetup — the remaining data shapes", () => {
   });
 
   it("reads a saved setup that already uses the v2 side tokens", async () => {
-    setup = { ctResult: "home", fhPossession: "Wolves", direction: "Ost" };
+    setup = { ctResult: "home", fhPossession: "Wolves", direction: "Nord" };
     await renderSetup();
 
     expect(startButton()).toHaveTextContent("Fortsetzen");
@@ -2280,9 +2280,13 @@ describe("GameSetup direction on the field", () => {
 
     const group = screen.getByRole("group", { name: "Spielrichtung" });
     expect(group).toHaveClass("fielddir");
-    expect(within(group).getByText("West", { selector: ".fielddir-end" })).toBeInTheDocument();
-    expect(within(group).getByText("Ost", { selector: ".fielddir-end" })).toBeInTheDocument();
-    expect(within(group).getByRole("button", { name: "Ost → West" })).toBeInTheDocument();
-    expect(within(group).getByRole("button", { name: "West → Ost" })).toBeInTheDocument();
+    expect(
+      within(group).getByText("Nord", { selector: ".fielddir-end" }),
+    ).toBeInTheDocument();
+    expect(
+      within(group).getByText("Süd", { selector: ".fielddir-end" }),
+    ).toBeInTheDocument();
+    expect(within(group).getByRole("button", { name: "Nord" })).toBeInTheDocument();
+    expect(within(group).getByRole("button", { name: "Süd" })).toBeInTheDocument();
   });
 });

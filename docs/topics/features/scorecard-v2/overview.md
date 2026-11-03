@@ -55,7 +55,9 @@ only control static assets, and its scope could never leak into the old app.
    once somebody is assigned it becomes a normal row. **2. Spielkonfiguration**:
    one card with **Münzwurf gewonnen von**, **Erster Ballbesitz** and
    **Spielrichtung**; the first two are full-width two-option switches, the
-   direction is drawn on a field between the **West** and **Ost** end zones.
+   direction is drawn on a field between the **Nord** and **Süd** end zones
+   (the pitch is played along its long axis) and the card states that the guest
+   team — the side named second — chooses the side.
    A crew with every required slot staffed, every licence valid and nothing to
    clean up folds into one **Crew vollständig** row (**ändern** opens it); any
    problem keeps the rows open. The start confirmation leads with **Bitte

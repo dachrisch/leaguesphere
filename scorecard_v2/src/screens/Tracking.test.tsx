@@ -1416,7 +1416,7 @@ describe("Tracking wide layout", () => {
 
   it("shows the existing setup, officials and per-half scores in Spielinfo", async () => {
     routeGets({
-      setup: { ctResult: "home", direction: "West" },
+      setup: { ctResult: "home", direction: "Süd" },
       officials: [
         { id: 1, official: 9, name: null, position: "Referee" },
         { id: 2, official: null, name: "Gast Judge", position: "Judge" },
@@ -1456,7 +1456,7 @@ describe("Tracking wide layout", () => {
     expect(info).toHaveTextContent("Münzwurf");
     expect(info).toHaveTextContent("Ravens");
     expect(info).toHaveTextContent("Spielrichtung");
-    expect(info).toHaveTextContent("West");
+    expect(info).toHaveTextContent("Süd");
     expect(info).toHaveTextContent("Passcheck");
     expect(info).toHaveTextContent("Geprüft");
     expect(info).toHaveTextContent("Referee");

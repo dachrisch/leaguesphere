@@ -198,7 +198,7 @@ describe("the whole flow", () => {
     const picks = [
       ["Münzwurf gewonnen von", "Ravens"],
       ["Erster Ballbesitz", "Ravens"],
-      ["Spielrichtung", "Ost → West"],
+      ["Spielrichtung", "Nord"],
     ] as const;
     for (const [group, option] of picks) {
       await user.click(

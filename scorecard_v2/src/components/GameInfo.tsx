@@ -5,6 +5,7 @@ import type {
   Official,
   TeamOfficial,
 } from "../api/types";
+import { directionFromWire } from "./DirectionText";
 
 interface GameInfoProps {
   game: Game;
@@ -48,15 +49,7 @@ function tossWinner(
 }
 
 function direction(setup: GameSetup | null): string {
-  const value = setup?.direction?.trim().toLowerCase() ?? "";
-  if (value === "") {
-    return "–";
-  }
-  return value === "west" ||
-    value === "directionright" ||
-    value === "arrow_forward"
-    ? "West"
-    : "Ost";
+  return directionFromWire(setup?.direction) ?? "–";
 }
 
 function officialName(

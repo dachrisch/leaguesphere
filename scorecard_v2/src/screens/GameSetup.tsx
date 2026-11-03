@@ -17,7 +17,10 @@ import type {
   Official,
   TeamOfficial,
 } from "../api/types";
-import DirectionText, { type Direction } from "../components/DirectionText";
+import DirectionText, {
+  directionFromWire,
+  type Direction,
+} from "../components/DirectionText";
 import Screen from "../components/Screen";
 import PersonPicker from "../components/PersonPicker";
 import StartConfirmation, {
@@ -233,19 +236,6 @@ function normaliseToss(
   return normaliseSide(value, home, away);
 }
 
-/** v2's `Ost`/`West`; the legacy arrow keys map to their best guess. */
-function normaliseDirection(value: string | undefined): Direction {
-  const token = (value ?? "").trim().toLowerCase();
-  if (
-    token === "west" ||
-    token === "directionright" ||
-    token === "arrow_forward"
-  ) {
-    return "West";
-  }
-  return "Ost";
-}
-
 /** The server sends `device_id` alongside the detail when it holds the lock. */
 function carriesDeviceId(body: unknown): boolean {
   if (typeof body !== "object" || body === null) {
@@ -415,7 +405,7 @@ export default function GameSetupScreen({
       if (saved) {
         setToss(normaliseToss(setup.ctResult, home, away));
         setPossession(normaliseSide(setup.fhPossession, home, away));
-        setDirection(normaliseDirection(setup.direction));
+        setDirection(directionFromWire(setup.direction));
       }
       setLoading(false);
     } catch (loadFailure) {
@@ -871,7 +861,7 @@ export default function GameSetupScreen({
         <div className="prep">
           <section aria-label="Begegnung" className="matchcard">
             <div className="matchteams">
-              <div className="matchteam">
+              <div className="matchteam matchteam-home">
                 <TeamLogo className="teamlogo-match" name={home} />
                 <span className="matchteam-name">{teamLabel(home)}</span>
               </div>
@@ -1140,26 +1130,27 @@ export default function GameSetupScreen({
 
                 <section className="segfield">
                   <h3 className="segtitle">Spielrichtung</h3>
-                  {/* The two directions drawn on the field, between the end
-                      zones they name: "Ost → West" reads as a direction on
-                      the pitch, not as a compass quiz. */}
+                  {/* The field is played along its long axis: north–south.
+                      East–west runs *across* the pitch between the sidelines,
+                      so the end zones are Nord and Süd. The arrow points at
+                      the end zone the chosen direction attacks. */}
                   <div aria-label="Spielrichtung" className="fielddir" role="group">
                     <span aria-hidden="true" className="fielddir-end">
-                      West
+                      Nord
                     </span>
                     <div className="fielddir-opts">
                       {(
                         [
-                          ["Ost", "Ost", "West"],
-                          ["West", "West", "Ost"],
+                          ["Nord", "Nord"],
+                          ["Süd", "Süd"],
                         ] as const
-                      ).map(([value, from, to]) => (
+                      ).map(([value, target]) => (
                         <button
                           aria-pressed={direction === value}
                           className={
                             direction === value
-                              ? `fielddir-opt fielddir-${value} sel`
-                              : `fielddir-opt fielddir-${value}`
+                              ? `fielddir-opt fielddir-${target} sel`
+                              : `fielddir-opt fielddir-${target}`
                           }
                           disabled={readOnly || finished}
                           key={value}
@@ -1169,14 +1160,18 @@ export default function GameSetupScreen({
                           }}
                           type="button"
                         >
-                          <DirectionText from={from} to={to} />
+                          <DirectionText target={target} />
                         </button>
                       ))}
                     </div>
                     <span aria-hidden="true" className="fielddir-end">
-                      Ost
+                      Süd
                     </span>
                   </div>
+                  <p className="setupnote">
+                    Die Wahl der Seite hat immer das Gastteam – das zweit
+                    genannte Team.
+                  </p>
                 </section>
               </div>
             </section>

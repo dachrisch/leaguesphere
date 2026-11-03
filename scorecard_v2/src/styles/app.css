@@ -1332,6 +1332,22 @@ button.game-row:active {
   text-align: right;
 }
 
+/* Home red, guest green -- the pairing colours the old scorecard's points page
+   already used. Names only: the score and the chrome keep their own tokens. */
+.team.home .tname,
+.matchteam-home .matchteam-name,
+.nextgame-home .nextgame-name,
+.finalhome {
+  color: var(--home-text);
+}
+
+.team.away .tname,
+.matchteam-away .matchteam-name,
+.nextgame-away .nextgame-name,
+.finalaway {
+  color: var(--away-text);
+}
+
 .teamtext {
   display: flex;
   flex-direction: column;

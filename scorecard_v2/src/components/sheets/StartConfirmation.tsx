@@ -160,8 +160,6 @@ export default function StartConfirmation({
   const duplicates = crew
     .filter((line) => line.duplicate)
     .map((line) => `Offizielle: ${line.label} ist doppelt belegt.`);
-  const [directionFrom, directionTo] =
-    direction === "West" ? ["West", "Ost"] : ["Ost", "West"];
 
   let action: string;
   if (blocked) {
@@ -284,7 +282,7 @@ export default function StartConfirmation({
           {direction === null ? (
             <span className="startmiss">nicht gewählt</span>
           ) : (
-            <DirectionText from={directionFrom} to={directionTo} />
+            <DirectionText target={direction} />
           )}
         </Line>
       </dl>
