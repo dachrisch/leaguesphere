@@ -33,7 +33,7 @@ function facts(overrides: Partial<StartFacts> = {}): StartFacts {
     crew: [crewLine()],
     tossTeam: "Ravens",
     possessionTeam: "Ravens",
-    direction: "Ost",
+    direction: "Nord",
     ...overrides,
   };
 }
@@ -260,7 +260,7 @@ describe("StartConfirmation — what it restates", () => {
         {...baseProps()}
         tossTeam="Wolves"
         possessionTeam="Ravens"
-        direction="West"
+        direction="Süd"
       />,
     );
 
@@ -269,9 +269,8 @@ describe("StartConfirmation — what it restates", () => {
     const directionRow = Array.from(
       dialog().querySelectorAll(".startrow"),
     ).find((row) => row.textContent?.startsWith("Spielrichtung"));
-    expect(directionRow).toHaveTextContent("West");
-    expect(directionRow).toHaveTextContent("Ost");
-    // The arrow is drawn: the character is an sr-only text alternative.
+    // The arrow points at the end zone being attacked: Süd is on the right.
+    expect(directionRow).toHaveTextContent("Süd");
     expect(directionRow?.querySelector(".dirarrow")).not.toBeNull();
   });
 

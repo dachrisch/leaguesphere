@@ -168,11 +168,11 @@ def _choose_start_fields(page: Page) -> None:
     page.get_by_role("group", name="Erster Ballbesitz").get_by_role(
         "button", name=HOME_DESCRIPTION, exact=True
     ).click()
-    # The arrow is a drawn SVG with an sr-only "→", so the accessible name is
-    # "Ost → West"; the pattern tolerates whitespace normalisation and a missing
-    # arrow glyph while still pinning the direction.
+    # The arrow pointing at the attacked end zone is a drawn SVG, so the
+    # button's accessible name is just the end zone it names. The game is
+    # played along the north–south axis; Nord is the left end of the field.
     page.get_by_role("group", name="Spielrichtung").get_by_role(
-        "button", name=re.compile(r"^Ost\s*→?\s*West$")
+        "button", name="Nord", exact=True
     ).click()
 
 

@@ -77,6 +77,21 @@ export function loadGames(gamedayId: number, team: string): Promise<Game[]> {
   return loadGamesMeta(gamedayId, team).then((fetched) => fetched.value);
 }
 
+/** The game plus its gameday, as the deep link (`?game=<id>`) needs them. */
+export interface GameSummary {
+  game: Game;
+  gameday: Gameday;
+}
+
+export async function loadGameSummary(
+  gameId: number,
+): Promise<Fetched<GameSummary>> {
+  return cachedGetMeta<GameSummary>(
+    snapshotKey.summary(gameId),
+    `/api/game/${gameId}/summary`,
+  );
+}
+
 export function loadLog(gameId: number): Promise<GameLog> {
   return cachedGet<GameLog>(snapshotKey.log(gameId), `/api/gamelog/${gameId}`);
 }

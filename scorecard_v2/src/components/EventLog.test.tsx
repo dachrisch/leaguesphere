@@ -535,3 +535,76 @@ describe("EventLog", () => {
     expect(within(item).queryByText(/·/)).not.toBeInTheDocument();
   });
 });
+
+describe("EventLog — Nur Punkte", () => {
+  it("filters the log down to the scoring plays", async () => {
+    const user = userEvent.setup();
+    render(
+      <EventLog
+        onUndo={vi.fn()}
+        rows={[
+          row({ key: "a", event: "Touchdown", player: 23, seq: 1 }),
+          row({ key: "b", event: "Strafe", input: "Holding", seq: 2 }),
+          row({ key: "c", event: "1-Extra-Punkt", player: 23, seq: 3 }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("3 Einträge")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Nur Punkte" }));
+
+    expect(screen.getByText("2 Einträge")).toBeInTheDocument();
+    expect(screen.getByText("Touchdown Ravens")).toBeInTheDocument();
+    expect(screen.getByText("1 Extrapunkt Ravens")).toBeInTheDocument();
+    expect(screen.queryByText("Strafe gegen Ravens")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Nur Punkte" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("says so when nothing scored yet", async () => {
+    const user = userEvent.setup();
+    render(<EventLog onUndo={vi.fn()} rows={[row({ event: "First Down" })]} />);
+
+    await user.click(screen.getByRole("button", { name: "Nur Punkte" }));
+
+    expect(screen.getByText("Noch keine Punkte")).toBeInTheDocument();
+  });
+
+  it("offers the edit next to undo, but not on a marker or a legacy row", () => {
+    const onEdit = vi.fn();
+    render(
+      <EventLog
+        onEdit={onEdit}
+        onUndo={vi.fn()}
+        rows={[
+          row({ key: "a", event: "Touchdown", player: 23, seq: 4 }),
+          row({ key: "b", event: "Spiel beendet", seq: 5 }),
+          row({ key: "c", event: "First Down", teamLogId: 9, seq: null }),
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Ändern: Touchdown Ravens" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Ändern: Spiel beendet" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Ändern: 1st Down Ravens" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the edit where the log is read-only", () => {
+    render(
+      <EventLog
+        onUndo={vi.fn()}
+        rows={[row({ event: "Touchdown", player: 23, seq: 4 })]}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: /Ändern/ })).toBeNull();
+  });
+});

@@ -99,6 +99,8 @@ function routeGet(path: string, teamName = "crew"): unknown {
       return { id: 1, username: teamName };
     case "/api/gameday/1/officials/crew":
       return [GAME];
+    case "/api/game/42/summary":
+      return { game: GAME, gameday: GAMEDAY };
     case "/api/game/42/officials":
       // A complete crew: the start refuses an empty required slot. Free text
       // keeps the team list (which answers []) out of it.
@@ -136,6 +138,9 @@ function routeGet(path: string, teamName = "crew"): unknown {
 }
 
 beforeEach(() => {
+  // The deep link reads the URL on mount; a leftover parameter would decide
+  // the next test's first screen.
+  globalThis.history.replaceState(null, "", "/");
   vi.stubGlobal("indexedDB", new IDBFactory());
   resetRuntime();
   resetSnapshotStore();
@@ -198,7 +203,7 @@ describe("the whole flow", () => {
     const picks = [
       ["Münzwurf gewonnen von", "Ravens"],
       ["Erster Ballbesitz", "Ravens"],
-      ["Spielrichtung", "Ost → West"],
+      ["Spielrichtung", "Nord"],
     ] as const;
     for (const [group, option] of picks) {
       await user.click(
@@ -317,5 +322,94 @@ describe("the whole flow", () => {
         ).length,
       ).toBeGreaterThan(before),
     );
+  });
+});
+
+describe("the deep link", () => {
+  it("opens a planned game's preparation straight from ?game=<id>", async () => {
+    globalThis.history.replaceState(null, "", "/?game=42");
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Spiel vorbereiten" }),
+    ).toBeInTheDocument();
+    expect(calls).toContain("GET /api/game/42/summary");
+    // The link answers both the game and its gameday: no list round-trip.
+    expect(calls).not.toContain("GET /api/gameday/1/officials/crew");
+  });
+
+  it("opens a running game's tracking screen from the link", async () => {
+    const running = { ...GAME, status: "1. Halbzeit" };
+    apiGetMock.mockImplementation((path: string) => {
+      calls.push(`GET ${path}`);
+      if (path === "/api/game/42/summary") {
+        return Promise.resolve({ game: running, gameday: GAMEDAY });
+      }
+      return Promise.resolve(routeGet(path));
+    });
+    globalThis.history.replaceState(null, "", "/?game=42");
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Feld 2 · Vorrunde" }),
+    ).toBeInTheDocument();
+    expect(calls).toContain("GET /api/gamelog/42");
+    // The link carried the gameday, so the header has its context line and
+    // "back" can load that gameday's games.
+    expect(screen.getByText(/Herbsttag · Landesliga/)).toBeInTheDocument();
+  });
+
+  it("ignores a game parameter that is not an id", async () => {
+    globalThis.history.replaceState(null, "", "/?game=abc");
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Meine Spieltage" }),
+    ).toBeInTheDocument();
+    expect(calls.some((call) => call.includes("/summary"))).toBe(false);
+  });
+
+  it("retries the link after a failed read", async () => {
+    let attempts = 0;
+    apiGetMock.mockImplementation((path: string) => {
+      calls.push(`GET ${path}`);
+      if (path === "/api/game/42/summary") {
+        attempts += 1;
+        if (attempts === 1) {
+          return Promise.reject(new Error("Netz weg"));
+        }
+        return Promise.resolve({ game: GAME, gameday: GAMEDAY });
+      }
+      return Promise.resolve(routeGet(path));
+    });
+    const user = userEvent.setup();
+    globalThis.history.replaceState(null, "", "/?game=42");
+    render(<App />);
+
+    await screen.findByRole("alert", {}, { timeout: 4000 });
+    await user.click(screen.getByRole("button", { name: "Erneut laden" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Spiel vorbereiten" }),
+    ).toBeInTheDocument();
+    expect(attempts).toBe(2);
+  });
+
+  it("keeps a broken link on its own screen with a retry", async () => {
+    apiGetMock.mockImplementation((path: string) =>
+      path === "/api/game/42/summary"
+        ? Promise.reject(new Error("Spiel nicht erreichbar"))
+        : Promise.resolve(routeGet(path)),
+    );
+    globalThis.history.replaceState(null, "", "/?game=42");
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Spiel wird geöffnet" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole("alert", {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Erneut laden" }),
+    ).toBeInTheDocument();
   });
 });

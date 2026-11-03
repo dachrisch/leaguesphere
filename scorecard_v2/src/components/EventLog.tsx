@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 
 import type { GameLog, GameLogEvent, LogEntry } from "../api/types";
 import {
@@ -7,6 +7,7 @@ import {
   Flag,
   Football,
   Interception,
+  Pencil,
   PlusCircle,
   Shield,
   Stopwatch,
@@ -144,6 +145,55 @@ export function undoBody(
 /** Markers are shown but not undoable; see {@link MARKER_EVENTS}. */
 export function isMarker(row: LogRow): boolean {
   return MARKER_EVENTS.has(row.event);
+}
+
+/**
+ * The events whose entry can be corrected after the fact: a jersey (all of
+ * them but the clocks), or the game time of a clock. A turnover and the
+ * markers change nothing the official could mistype.
+ */
+const EDITABLE_EVENTS = new Set([
+  "Touchdown",
+  "1-Extra-Punkt",
+  "2-Extra-Punkte",
+  "Safety (+1)",
+  "Safety (+2)",
+  "Safety",
+  "Overtime",
+  "First Down",
+  "Interception",
+  "Strafe",
+  "Spielzeit",
+  "Auszeit",
+]);
+
+/**
+ * A row an event wrote and the officials may correct. A row the old app wrote
+ * (no `seq`) is excluded as well: the correction has no event to name.
+ */
+export function isEditable(row: LogRow): boolean {
+  return (
+    !row.isDeleted &&
+    !isMarker(row) &&
+    row.seq !== null &&
+    EDITABLE_EVENTS.has(row.event)
+  );
+}
+
+/** The scoring rows, for the "Nur Punkte" view. */
+const SCORING_EVENTS = new Set([
+  "Touchdown",
+  "1-Extra-Punkt",
+  "2-Extra-Punkte",
+  "Safety (+1)",
+  "Safety (+2)",
+  "Safety",
+  "Overtime",
+]);
+
+/** True for the events that put points on the board. */
+export function isScoring(row: LogRow): boolean {
+  return SCORING_EVENTS.has(row.event);
 }
 
 function jersey(value: unknown): number | null {
@@ -377,7 +427,10 @@ export function formatLogTime(iso: string | null): string {
 
 interface EventLogProps {
   rows: LogRow[];
-  onUndo: (row: LogRow) => void;
+  /** Omitted where the log is read-only (the result screen). */
+  onUndo?: (row: LogRow) => void;
+  /** Correct a row in place; omitted where the log is read-only. */
+  onEdit?: (row: LogRow) => void;
   /** Key of the row whose undo is in flight; its button is disabled. */
   undoKey?: string | null;
   /**
@@ -399,29 +452,43 @@ interface EventLogProps {
 export default function EventLog({
   rows,
   onUndo,
+  onEdit,
   undoKey = null,
   disabled = false,
   error = null,
 }: EventLogProps) {
+  const [onlyPoints, setOnlyPoints] = useState(false);
+  const shown = onlyPoints ? rows.filter(isScoring) : rows;
   return (
     <section aria-label="Spielverlauf" className="logblock">
       <div className="loghead">
         <h2>Spielverlauf</h2>
-        <span>{rows.length} Einträge</span>
+        <button
+          aria-pressed={onlyPoints}
+          className={onlyPoints ? "logfilter sel" : "logfilter"}
+          onClick={() => setOnlyPoints((current) => !current)}
+          type="button"
+        >
+          Nur Punkte
+        </button>
+        <span>{shown.length} Einträge</span>
       </div>
       {error === null ? null : (
         <p className="logerror" role="alert">
           {error}
         </p>
       )}
-      {rows.length === 0 ? (
-        <p className="logempty">Noch keine Einträge</p>
+      {shown.length === 0 ? (
+        <p className="logempty">
+          {rows.length === 0 ? "Noch keine Einträge" : "Noch keine Punkte"}
+        </p>
       ) : (
         <ol className="logrows">
-          {rows.map((row) => {
+          {shown.map((row) => {
             const described = describeRow(row);
             const KindIcon = KIND_ICON[described.kind];
-            const undoable = !row.isDeleted && !isMarker(row);
+            const undoable =
+              onUndo !== undefined && !row.isDeleted && !isMarker(row);
             return (
               <li
                 className={row.isDeleted ? "row deleted" : "row"}
@@ -450,12 +517,24 @@ export default function EventLog({
                   <time className="rowtime" dateTime={row.time ?? undefined}>
                     {formatLogTime(row.time)}
                   </time>
+                  {onEdit !== undefined && isEditable(row) ? (
+                    <button
+                      aria-label={`Ändern: ${described.primary}`}
+                      className="undo edit"
+                      disabled={disabled || undoKey !== null}
+                      onClick={() => onEdit(row)}
+                      title={`Ändern: ${described.primary}`}
+                      type="button"
+                    >
+                      <Pencil size={18} />
+                    </button>
+                  ) : null}
                   {undoable ? (
                     <button
                       aria-label={`Rückgängig: ${described.primary}`}
                       className="undo"
                       disabled={disabled || undoKey !== null}
-                      onClick={() => onUndo(row)}
+                      onClick={() => onUndo?.(row)}
                       title={`Rückgängig: ${described.primary}`}
                       type="button"
                     >
@@ -470,9 +549,11 @@ export default function EventLog({
       )}
       <footer className="logfoot">
         <span className="logfoot-newest">Neueste oben</span>
-        <span className="logfoot-undo">
-          Letzten Eintrag rückgängig <kbd>Strg Z</kbd>
-        </span>
+        {onUndo === undefined ? null : (
+          <span className="logfoot-undo">
+            Letzten Eintrag rückgängig <kbd>Strg Z</kbd>
+          </span>
+        )}
       </footer>
     </section>
   );

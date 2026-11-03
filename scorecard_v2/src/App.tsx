@@ -15,6 +15,7 @@ import { CurrentUserProvider, useCurrentUser } from "./app/currentUser";
 import { TeamLogosProvider } from "./app/teamLogos";
 import {
   dropGameSnapshots,
+  loadGameSummary,
   loadGamedays,
   loadGames,
   loadGamesMeta,
@@ -99,6 +100,29 @@ function initialAllGames(): boolean {
   }
 }
 
+/**
+ * `?game=<id>` opens one game directly — the link the organisation keeps for
+ * a finished game, and the one an official can be sent for a running one.
+ */
+function initialGameId(): number | null {
+  try {
+    const raw = new URLSearchParams(globalThis.location.search).get("game");
+    if (raw === null || !/^\d+$/.test(raw.trim())) {
+      return null;
+    }
+    const id = Number(raw);
+    return Number.isSafeInteger(id) && id > 0 ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A game the deep link can record in; a planned one still needs its setup. */
+function isPrepared(status: string): boolean {
+  const token = status.trim().toLowerCase();
+  return token !== "" && token !== "geplant";
+}
+
 export default function App() {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [logos, setLogos] = useState<TeamLogos>(() => new Map());
@@ -159,6 +183,17 @@ function Flow() {
   const [logRequest, setLogRequest] = useState<
     { status: "loading" } | { status: "error"; message: string } | null
   >(null);
+  const [gameLink] = useState<number | null>(initialGameId);
+  /**
+   * The deep link's own read: the game with its gameday, then its log. A
+   * failure keeps the link on screen with a retry instead of dropping the
+   * official on the gameday list they did not ask for.
+   */
+  const [linkRequest, setLinkRequest] = useState<{
+    status: "loading" | "error";
+    message?: string;
+  } | null>(gameLink === null ? null : { status: "loading" });
+  const openedLink = useRef(false);
   const resumeTarget = useRef<Game | null>(null);
 
   const booted = useRef(false);
@@ -191,6 +226,43 @@ function Flow() {
     getRuntime().start();
     void loadGamedayList();
   }, [loadGamedayList]);
+
+  /** Open the `?game=<id>` link; the gameday list loads independently. */
+  const openGameLink = useCallback(
+    async (gameId: number): Promise<void> => {
+      setLinkRequest({ status: "loading" });
+      try {
+        const summary = await loadGameSummary(gameId);
+        const game = summary.value.game;
+        if (!isPrepared(game.status)) {
+          setLinkRequest(null);
+          dispatch({ type: "openSetup", gameday: summary.value.gameday, game });
+          return;
+        }
+        const { value: log, updatedAt } = await loadLogMeta(game.id);
+        setLogStaleSince(updatedAt);
+        setLinkRequest(null);
+        dispatch({ type: "open", gameday: summary.value.gameday, game, log });
+      } catch (error) {
+        setLinkRequest({
+          status: "error",
+          message: messageOf(
+            error,
+            "Das Spiel konnte nicht geöffnet werden. Bitte erneut versuchen.",
+          ),
+        });
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (gameLink === null || openedLink.current) {
+      return;
+    }
+    openedLink.current = true;
+    void openGameLink(gameLink);
+  }, [gameLink, openGameLink]);
 
   const gamedayId = state.gameday?.id ?? null;
   const team = allGames ? "*" : user?.username?.trim() || "*";
@@ -351,6 +423,22 @@ function Flow() {
   };
 
   if (state.phase === "gamedays") {
+    if (linkRequest !== null) {
+      return (
+        <FlowPanel
+          error={linkRequest.status === "error" ? linkRequest.message : undefined}
+          loading={linkRequest.status === "loading"}
+          onLogout={doLogout}
+          onRetry={() => {
+            openedLink.current = true;
+            if (gameLink !== null) {
+              void openGameLink(gameLink);
+            }
+          }}
+          title="Spiel wird geöffnet"
+        />
+      );
+    }
     if (gamedays.status === "loading") {
       return (
         <FlowPanel

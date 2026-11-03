@@ -91,18 +91,18 @@ function NextGame({
         {formatGameTime(game.scheduled)} · Feld {game.field}
         {game.passcheck === false ? " · kein Passcheck" : ""}
       </p>
-      <p className="nextgame-team">
+      <p className="nextgame-team nextgame-home">
         <TeamLogo name={game.home} />
-        <span>{teamLabel(game.home)}</span>
+        <span className="nextgame-name">{teamLabel(game.home)}</span>
         {wide ? (
           <span className="nextgame-score">
             {isScore(game.points_home) ? game.points_home : "–"}
           </span>
         ) : null}
       </p>
-      <p className="nextgame-team">
+      <p className="nextgame-team nextgame-away">
         <TeamLogo name={game.away} />
-        <span>{teamLabel(game.away)}</span>
+        <span className="nextgame-name">{teamLabel(game.away)}</span>
         {wide ? (
           <span className="nextgame-score">
             {isScore(game.points_away) ? game.points_away : "–"}

@@ -30,6 +30,9 @@ export const snapshotKey = {
   user: (): string => "user",
   games: (gamedayId: number): string => `games:${gamedayId}`,
   log: (gameId: number): string => `log:${gameId}`,
+  // The deep link's game + gameday row (`?game=<id>`), so a reload of the link
+  // works offline too.
+  summary: (gameId: number): string => `summary:${gameId}`,
   setup: (gameId: number): string => `setup:${gameId}`,
   roster: (gameId: number): string => `roster:${gameId}`,
   // The league's crew slots; labels are configuration, so a device that

@@ -258,6 +258,7 @@ beforeEach(() => {
   // The offline queue is IndexedDB-backed, and a lost log answer falls back to
   // it: a test without a database would fail where the app would not.
   vi.stubGlobal("indexedDB", new IDBFactory());
+  globalThis.localStorage.clear();
   resetRuntime();
   resetSnapshotStore();
   appendLog = null;
@@ -422,6 +423,107 @@ describe("Tracking possession", () => {
       "aria-pressed",
       "true",
     );
+  });
+});
+
+describe("Tracking edit", () => {
+  it("writes the corrected event, then undoes the row it replaces", async () => {
+    const original = makeLog({
+      inPossession: "Ravens",
+      events: [
+        logEvent({
+          id: 9,
+          seq: 5,
+          event: "Touchdown",
+          team: "Ravens",
+          player: 23,
+          half: 1,
+        }),
+      ],
+    });
+    routeGets({ log: original });
+    answerAppend(original);
+    renderTracking({ log: original });
+    const user = userEvent.setup();
+
+    await user.click(
+      screen.getByRole("button", { name: "Ändern: Touchdown Ravens" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Touchdown ändern" });
+    expect(dialog).toHaveTextContent("Ravens · 1. Halbzeit");
+    await user.click(
+      await within(dialog).findByRole("button", { name: "Trikot 7, Meier" }),
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Änderung speichern" }),
+    );
+
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(2));
+    expect(apiPostMock).toHaveBeenNthCalledWith(1, "/api/game/42/events", {
+      events: [
+        {
+          type: "score",
+          code: "touchdown",
+          side: "home",
+          player: 7,
+          period: 1,
+        },
+      ],
+      client_id: expect.any(String),
+    });
+    expect(apiPostMock).toHaveBeenNthCalledWith(2, "/api/game/42/events", {
+      events: [{ type: "correction", code: "undo", payload: { undo_of: 5 } }],
+      client_id: expect.any(String),
+    });
+    // The correction does not move the ball, unlike a fresh touchdown.
+    expect(sentPossessions()).toEqual([]);
+  });
+
+  it("keeps the row's half, so a first-half entry stays in the first half", async () => {
+    const original = makeLog({
+      isFirstHalf: false,
+      inPossession: "Ravens",
+      events: [
+        logEvent({
+          id: 9,
+          seq: 5,
+          event: "Auszeit",
+          team: "Ravens",
+          input: "08:12",
+          half: 1,
+        }),
+      ],
+    });
+    routeGets({ log: original });
+    answerAppend(original);
+    renderTracking({ log: original });
+    const user = userEvent.setup();
+
+    await user.click(
+      screen.getByRole("button", { name: "Ändern: Auszeit Ravens" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Auszeit ändern" });
+    const minutes = within(dialog).getByRole("textbox", { name: "Minuten" });
+    await user.clear(minutes);
+    await user.type(minutes, "4");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Änderung speichern" }),
+    );
+
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(2));
+    expect(apiPostMock).toHaveBeenNthCalledWith(1, "/api/game/42/events", {
+      events: [
+        {
+          type: "timeout",
+          code: "home",
+          side: "home",
+          player: null,
+          period: 1,
+          payload: { input: "04:12" },
+        },
+      ],
+      client_id: expect.any(String),
+    });
   });
 });
 
@@ -1416,7 +1518,7 @@ describe("Tracking wide layout", () => {
 
   it("shows the existing setup, officials and per-half scores in Spielinfo", async () => {
     routeGets({
-      setup: { ctResult: "home", direction: "West" },
+      setup: { ctResult: "home", direction: "Süd" },
       officials: [
         { id: 1, official: 9, name: null, position: "Referee" },
         { id: 2, official: null, name: "Gast Judge", position: "Judge" },
@@ -1456,7 +1558,7 @@ describe("Tracking wide layout", () => {
     expect(info).toHaveTextContent("Münzwurf");
     expect(info).toHaveTextContent("Ravens");
     expect(info).toHaveTextContent("Spielrichtung");
-    expect(info).toHaveTextContent("West");
+    expect(info).toHaveTextContent("Süd");
     expect(info).toHaveTextContent("Passcheck");
     expect(info).toHaveTextContent("Geprüft");
     expect(info).toHaveTextContent("Referee");
@@ -1733,6 +1835,9 @@ describe("Tracking composer state", () => {
     expect(screen.getByRole("button", { name: "Safety" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Overtime" })).toBeDisabled();
     expect(screen.getByText("Dieses Spiel ist beendet.")).toBeInTheDocument();
+    // A finished game cannot be ended again: the footer action is gone (the
+    // screen is also what the deep link opens for the organisation).
+    expect(screen.queryByRole("button", { name: "Spiel beenden" })).toBeNull();
   });
 
   it("asks for possession before an entry can be recorded", () => {
@@ -1983,6 +2088,35 @@ describe("Tracking possession flip", () => {
     );
   });
 
+  it("shows how many timeouts a side already took, and when", async () => {
+    renderTracking({
+      log: makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({
+            id: 1,
+            event: "Auszeit",
+            team: "Ravens",
+            half: 1,
+            input: "08:12",
+          }),
+        ],
+      }),
+    });
+    const user = userEvent.setup();
+
+    expect(
+      document.querySelector(".actioncount")?.textContent,
+    ).toBe("1");
+
+    await openSheet(user, /^Auszeit$/);
+    const history = screen.getByRole("region", {
+      name: "Bisherige Auszeiten",
+    });
+    expect(history).toHaveTextContent("Ravens 1. HZ 08:12 (1 Auszeit)");
+    expect(history).toHaveTextContent("Wolves – noch keine");
+  });
+
   it("does not flip after an Auszeit", async () => {
     answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
@@ -2218,7 +2352,7 @@ describe("Tracking possession flip", () => {
           side: "home",
           player: null,
           period: 1,
-          payload: { input: "1:00" },
+          payload: { input: "01:00" },
         },
       ],
       client_id: expect.any(String),
@@ -2382,6 +2516,33 @@ describe("Tracking half-time", () => {
     expect(screen.getByText("2. Halbzeit gestartet")).toBeInTheDocument();
     // The second half has no half-time button any more.
     expect(screen.queryByRole("button", { name: "Halbzeit" })).toBeNull();
+    // The break countdown starts with the half.
+    expect(await screen.findByRole("timer")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Pause beenden" }));
+    expect(screen.queryByRole("timer")).toBeNull();
+  });
+
+  it("keeps counting a break that this device already started", () => {
+    globalThis.localStorage.setItem(
+      "scorecard:v2:break:42",
+      String(Date.now() - 60_000),
+    );
+
+    renderTracking({ log: markerLog() });
+
+    expect(screen.getByRole("timer")).toHaveTextContent(/^04:\d\d$/);
+  });
+
+  it("drops a break that is already over instead of showing 00:00", () => {
+    globalThis.localStorage.setItem(
+      "scorecard:v2:break:42",
+      String(Date.now() - 10 * 60_000),
+    );
+
+    renderTracking({ log: markerLog() });
+
+    expect(screen.queryByRole("timer")).toBeNull();
+    expect(globalThis.localStorage.getItem("scorecard:v2:break:42")).toBeNull();
   });
 
   it("records the next entry in the second half for the new possession", async () => {

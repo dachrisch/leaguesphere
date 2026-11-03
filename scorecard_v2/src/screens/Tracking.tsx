@@ -19,8 +19,15 @@ import type {
   RosterPlayer,
   TeamOfficial,
 } from "../api/types";
+import {
+  forgetBreak,
+  readBreakStart,
+  rememberBreakStart,
+  secondsLeft,
+} from "../app/break";
 import { confirmTap, useWakeLock } from "../app/sideline";
 import AppHeader from "../components/AppHeader";
+import BreakCountdown from "../components/BreakCountdown";
 import EventLog, {
   isMarker,
   logRows,
@@ -52,6 +59,7 @@ import SeriesSheet, {
   seriesEvent,
   type SeriesMode,
 } from "../components/sheets/SeriesSheet";
+import EditSheet from "../components/sheets/EditSheet";
 import { errorMessage, IgnoredWrite } from "../components/sheets/errors";
 import TouchdownSheet from "../components/sheets/TouchdownSheet";
 import { cachedGet, cachedGetMeta, snapshotKey } from "../offline/snapshot";
@@ -499,10 +507,28 @@ export default function TrackingScreen({
   const [finishBlocked, setFinishBlocked] = useState(false);
   /** The one-tap row a jersey sheet replaces once it saves. */
   const [replacing, setReplacing] = useState<LogRow | null>(null);
+  /** The log row being corrected in place ("Ändern" next to undo). */
+  const [editing, setEditing] = useState<LogRow | null>(null);
   /** Two-step buttons: a one-tap entry offers its jersey, Halbzeit asks once more. */
   const { armed, arm, disarm } = useArmed<JerseyLater | "halftime">();
   const [halftimePending, setHalftimePending] = useState(false);
   const [halftimeError, setHalftimeError] = useState<string | null>(null);
+  /**
+   * The half-time break runs on this device only: it starts with the marker
+   * and is remembered per game, so a reload mid-break keeps counting instead
+   * of starting over. A break that already elapsed is dropped on load.
+   */
+  const [breakStartedAt, setBreakStartedAt] = useState<number | null>(() => {
+    const stored = readBreakStart(game.id);
+    if (stored === null) {
+      return null;
+    }
+    if (secondsLeft(stored) === 0) {
+      forgetBreak(game.id);
+      return null;
+    }
+    return stored;
+  });
   // Refs, not state: two taps in the same tick both see the old state and
   // would otherwise fire two writes.
   const possessionInFlight = useRef(false);
@@ -534,6 +560,22 @@ export default function TrackingScreen({
   const log = useSyncExternalStore(subscribeLog, session.getLog, session.getLog);
 
   const rows = useMemo(() => logRows(log), [log]);
+  /**
+   * Every Auszeit still on the board, newest first as the log lists it. The
+   * sheet shows both sides so the officials can answer "who took which
+   * timeout, and when".
+   */
+  const timeouts = useMemo(
+    () =>
+      rows
+        .filter((row) => row.event === "Auszeit" && !row.isDeleted)
+        .map((row) => ({
+          team: row.team ?? "–",
+          half: row.half,
+          time: row.input ?? "–",
+        })),
+    [rows],
+  );
   const finished = game.status.trim().toLowerCase() === "beendet";
   const status = useSyncStatus(game.id);
   // The server said this device may not write (another device holds the game,
@@ -739,6 +781,59 @@ export default function TrackingScreen({
     }
   };
 
+  /** Open the correction for one log row; nothing to change on a marker. */
+  const openEdit = (row: LogRow): void => {
+    if (readOnly || finished || row.team === null) {
+      return;
+    }
+    disarm();
+    setEditing(row);
+  };
+
+  /**
+   * Correct a log row: write the same event with the fixed detail, then undo
+   * the row that carried the mistake. The write keeps the row's team *and*
+   * half, so correcting a first-half entry during the second half does not
+   * move the points — and it never flips possession, unlike a fresh play.
+   *
+   * The correction names the row's event `seq`, which removes the whole
+   * submission group: for a v2 game that group is the single play. A row the
+   * old app wrote has no event and is not offered for editing at all.
+   */
+  const submitEdit = async (event: GameLogEventInput): Promise<void> => {
+    const row = editing;
+    if (row === null || row.team === null) {
+      return;
+    }
+    if (postInFlight.current) {
+      throw new IgnoredWrite("Der Eintrag wird gerade gespeichert.");
+    }
+    if (finished) {
+      throw new IgnoredWrite("Dieses Spiel ist beendet.");
+    }
+    if (readOnly) {
+      throw new IgnoredWrite(
+        stopReason ?? "Dieses Gerät darf keine Einträge schreiben.",
+      );
+    }
+    postInFlight.current = true;
+    setPosting(true);
+    disarm();
+    try {
+      await session.writeEvent({
+        gameId: game.id,
+        team: row.team,
+        half: row.half === 2 ? 2 : 1,
+        event: [event],
+      });
+      await undo(row);
+    } finally {
+      postInFlight.current = false;
+      setPosting(false);
+      setEditing(null);
+    }
+  };
+
   const logTeamName = (team: typeof log.home): string | null => {
     const name = team.name?.trim();
     return name === undefined || name === "" ? null : name;
@@ -772,6 +867,11 @@ export default function TrackingScreen({
         : null) ?? possession;
   const opponentName =
     opponentSide === "home" ? logTeamName(log.home) : logTeamName(log.away);
+  /** Timeouts of the side with the ball, for the Auszeit tile's count. */
+  const timeoutCount =
+    possessionName === null
+      ? 0
+      : timeouts.filter((entry) => entry.team === possessionName).length;
 
   /**
    * Write one play. The sheet that called it stays open until this resolves,
@@ -901,6 +1001,7 @@ export default function TrackingScreen({
       setHalftimePending(false);
       return;
     }
+    setBreakStartedAt(rememberBreakStart(game.id));
     const target = await secondHalfTeam();
     if (target !== null) {
       await takePossession(target);
@@ -1038,6 +1139,7 @@ export default function TrackingScreen({
       setFinishBlocked(true);
       return;
     }
+    forgetBreak(game.id);
     onFinalize(log);
   };
 
@@ -1094,7 +1196,7 @@ export default function TrackingScreen({
 
   useTrackingShortcuts({
     readOnly: readOnly || finished,
-    sheetOpen: sheet !== null || pendingPat !== null,
+    sheetOpen: sheet !== null || pendingPat !== null || editing !== null,
     onTouchdown: () => {
       if (!composerDisabled && pendingPat === null) {
         openSheet({ kind: "touchdown" });
@@ -1226,8 +1328,9 @@ export default function TrackingScreen({
           instead of pushing it out of view. */}
       <div className="logwrap tracking-log">
         <EventLog
-          disabled={halftimePending || readOnly}
+          disabled={halftimePending || readOnly || finished}
           error={undoError}
+          onEdit={readOnly || finished ? undefined : openEdit}
           onUndo={(row) => void undo(row)}
           rows={rows}
           undoKey={undoKey}
@@ -1328,6 +1431,13 @@ export default function TrackingScreen({
           >
             <TileIcon className="action-icon" size={20} />
             <span>{offersJersey ? "Nr. ergänzen" : label}</span>
+            {mode === "timeout" && timeoutCount > 0 ? (
+              // Decorative: the tile keeps its name, the sheet states the
+              // count and the history in words.
+              <span aria-hidden="true" className="actioncount">
+                {timeoutCount}
+              </span>
+            ) : null}
             <kbd
               aria-hidden="true"
               className="shortcut-hint"
@@ -1401,16 +1511,27 @@ export default function TrackingScreen({
           )}
         </section>
       ) : null}
+      {!log.isFirstHalf && breakStartedAt !== null && !finished ? (
+        <BreakCountdown
+          onDone={() => {
+            forgetBreak(game.id);
+            setBreakStartedAt(null);
+          }}
+          startedAt={breakStartedAt}
+        />
+      ) : null}
       <footer className="trackfoot">
-        <button
-          className="startbtn"
-          disabled={readOnly}
-          onClick={finish}
-          type="button"
-        >
-          <Check size={20} />
-          Spiel beenden
-        </button>
+        {finished ? null : (
+          <button
+            className="startbtn"
+            disabled={readOnly}
+            onClick={finish}
+            type="button"
+          >
+            <Check size={20} />
+            Spiel beenden
+          </button>
+        )}
         {finishBlocked ? (
           <p className="trackerror" role="alert">
             Extrapunkt nach dem Touchdown noch offen – bitte oben eintragen
@@ -1427,6 +1548,26 @@ export default function TrackingScreen({
               : ""}
         </p>
       </main>
+
+      {editing !== null ? (
+        <EditSheet
+          // A second edit of another row starts from that row, not the last one.
+          key={editing.key}
+          event={editing.event}
+          half={editing.half}
+          input={editing.input}
+          jersey={editing.player}
+          onSubmit={submitEdit}
+          onClose={() => setEditing(null)}
+          roster={roster}
+          side={
+            editing.team !== null && editing.team === log.away.name
+              ? "away"
+              : "home"
+          }
+          teamName={editing.team ?? "–"}
+        />
+      ) : null}
 
       {sheet !== null &&
       possessionSide !== null &&
@@ -1460,6 +1601,7 @@ export default function TrackingScreen({
               roster={roster}
               side={opponentSide}
               teamName={opponentName}
+              timeouts={timeouts}
             />
           ) : (
             <SeriesSheet
@@ -1471,6 +1613,7 @@ export default function TrackingScreen({
               roster={roster}
               side={possessionSide}
               teamName={possessionName}
+              timeouts={timeouts}
             />
           )
         ) : sheet.kind === "penalty" ? (

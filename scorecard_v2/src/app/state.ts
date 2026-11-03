@@ -32,6 +32,8 @@ export type FlowAction =
   | { type: "gamedays" }
   | { type: "games"; gameday: Gameday }
   | { type: "setup"; game: Game }
+  | { type: "open"; gameday: Gameday; game: Game; log: GameLog }
+  | { type: "openSetup"; gameday: Gameday; game: Game }
   | { type: "tracking"; game: Game; log: GameLog }
   | { type: "finalize"; log: GameLog }
   | { type: "result"; log: GameLog }
@@ -45,6 +47,22 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
       return { phase: "games", gameday: action.gameday, game: null, log: null };
     case "setup":
       return { ...state, phase: "setup", game: action.game, log: null };
+    case "open":
+      // A deep link opens the game without its gameday list: the summary
+      // answered both, so the flow has everything "back" needs.
+      return {
+        phase: "tracking",
+        gameday: action.gameday,
+        game: action.game,
+        log: action.log,
+      };
+    case "openSetup":
+      return {
+        phase: "setup",
+        gameday: action.gameday,
+        game: action.game,
+        log: null,
+      };
     case "tracking":
       return {
         ...state,
