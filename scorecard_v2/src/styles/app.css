@@ -2551,6 +2551,59 @@ button.game-row:active {
   cursor: not-allowed;
 }
 
+/* The half-time break: a helper under the controls, not a game clock. */
+.breakpanel {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: var(--space-2) var(--page-gutter) 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+}
+
+.breaktext {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  min-width: 0;
+}
+
+.breaklabel {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.breaktime {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.breaktime.over {
+  color: var(--away-text);
+}
+
+.breakskip {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
 /* ------------------------------------------------------------ two-step --- */
 
 /* A button armed by its first tap (useArmed): same box, its second action as

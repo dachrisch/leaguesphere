@@ -19,8 +19,15 @@ import type {
   RosterPlayer,
   TeamOfficial,
 } from "../api/types";
+import {
+  forgetBreak,
+  readBreakStart,
+  rememberBreakStart,
+  secondsLeft,
+} from "../app/break";
 import { confirmTap, useWakeLock } from "../app/sideline";
 import AppHeader from "../components/AppHeader";
+import BreakCountdown from "../components/BreakCountdown";
 import EventLog, {
   isMarker,
   logRows,
@@ -503,6 +510,22 @@ export default function TrackingScreen({
   const { armed, arm, disarm } = useArmed<JerseyLater | "halftime">();
   const [halftimePending, setHalftimePending] = useState(false);
   const [halftimeError, setHalftimeError] = useState<string | null>(null);
+  /**
+   * The half-time break runs on this device only: it starts with the marker
+   * and is remembered per game, so a reload mid-break keeps counting instead
+   * of starting over. A break that already elapsed is dropped on load.
+   */
+  const [breakStartedAt, setBreakStartedAt] = useState<number | null>(() => {
+    const stored = readBreakStart(game.id);
+    if (stored === null) {
+      return null;
+    }
+    if (secondsLeft(stored) === 0) {
+      forgetBreak(game.id);
+      return null;
+    }
+    return stored;
+  });
   // Refs, not state: two taps in the same tick both see the old state and
   // would otherwise fire two writes.
   const possessionInFlight = useRef(false);
@@ -901,6 +924,7 @@ export default function TrackingScreen({
       setHalftimePending(false);
       return;
     }
+    setBreakStartedAt(rememberBreakStart(game.id));
     const target = await secondHalfTeam();
     if (target !== null) {
       await takePossession(target);
@@ -1038,6 +1062,7 @@ export default function TrackingScreen({
       setFinishBlocked(true);
       return;
     }
+    forgetBreak(game.id);
     onFinalize(log);
   };
 
@@ -1400,6 +1425,15 @@ export default function TrackingScreen({
             </p>
           )}
         </section>
+      ) : null}
+      {!log.isFirstHalf && breakStartedAt !== null && !finished ? (
+        <BreakCountdown
+          onDone={() => {
+            forgetBreak(game.id);
+            setBreakStartedAt(null);
+          }}
+          startedAt={breakStartedAt}
+        />
       ) : null}
       <footer className="trackfoot">
         <button

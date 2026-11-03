@@ -258,6 +258,7 @@ beforeEach(() => {
   // The offline queue is IndexedDB-backed, and a lost log answer falls back to
   // it: a test without a database would fail where the app would not.
   vi.stubGlobal("indexedDB", new IDBFactory());
+  globalThis.localStorage.clear();
   resetRuntime();
   resetSnapshotStore();
   appendLog = null;
@@ -2382,6 +2383,33 @@ describe("Tracking half-time", () => {
     expect(screen.getByText("2. Halbzeit gestartet")).toBeInTheDocument();
     // The second half has no half-time button any more.
     expect(screen.queryByRole("button", { name: "Halbzeit" })).toBeNull();
+    // The break countdown starts with the half.
+    expect(await screen.findByRole("timer")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Pause beenden" }));
+    expect(screen.queryByRole("timer")).toBeNull();
+  });
+
+  it("keeps counting a break that this device already started", () => {
+    globalThis.localStorage.setItem(
+      "scorecard:v2:break:42",
+      String(Date.now() - 60_000),
+    );
+
+    renderTracking({ log: markerLog() });
+
+    expect(screen.getByRole("timer")).toHaveTextContent(/^04:\d\d$/);
+  });
+
+  it("drops a break that is already over instead of showing 00:00", () => {
+    globalThis.localStorage.setItem(
+      "scorecard:v2:break:42",
+      String(Date.now() - 10 * 60_000),
+    );
+
+    renderTracking({ log: markerLog() });
+
+    expect(screen.queryByRole("timer")).toBeNull();
+    expect(globalThis.localStorage.getItem("scorecard:v2:break:42")).toBeNull();
   });
 
   it("records the next entry in the second half for the new possession", async () => {
