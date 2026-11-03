@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -149,5 +149,74 @@ describe("EditSheet", () => {
       player: 7,
       input: "Holding Defense",
     });
+  });
+});
+
+describe("EditSheet edge cases", () => {
+  it("cannot change a number while no roster is loaded", () => {
+    renderSheet({ event: "Touchdown", roster: null });
+
+    expect(
+      screen.getByText("Kein Kader geladen – die Nummer kann nicht geändert werden."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Trikot/ }),
+    ).toBeNull();
+  });
+
+  it("lets an entry that may name nobody stay without a number", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({
+      event: "First Down",
+      jersey: null,
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Ohne Nummer" }),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Änderung speichern" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith({ name: "First Down" });
+  });
+
+  it("keeps the sheet open with the reason when the correction fails", async () => {
+    const onSubmit = vi.fn(async () => {
+      throw new Error("kaputt");
+    });
+    render(
+      <EditSheet
+        event="Touchdown"
+        half={1}
+        input={null}
+        jersey={23}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+        roster={ROSTER}
+        side="home"
+        teamName="Ravens"
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Änderung speichern" }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Die Änderung konnte nicht gespeichert werden",
+    );
+  });
+
+  it("refuses a clock correction with an empty field", () => {
+    renderSheet({ event: "Spielzeit", input: "08:12" });
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Sekunden" }), {
+      target: { value: "" },
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Änderung speichern" }),
+    ).toBeDisabled();
   });
 });

@@ -359,6 +359,42 @@ describe("the deep link", () => {
     expect(screen.getByText(/Herbsttag · Landesliga/)).toBeInTheDocument();
   });
 
+  it("ignores a game parameter that is not an id", async () => {
+    globalThis.history.replaceState(null, "", "/?game=abc");
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Meine Spieltage" }),
+    ).toBeInTheDocument();
+    expect(calls.some((call) => call.includes("/summary"))).toBe(false);
+  });
+
+  it("retries the link after a failed read", async () => {
+    let attempts = 0;
+    apiGetMock.mockImplementation((path: string) => {
+      calls.push(`GET ${path}`);
+      if (path === "/api/game/42/summary") {
+        attempts += 1;
+        if (attempts === 1) {
+          return Promise.reject(new Error("Netz weg"));
+        }
+        return Promise.resolve({ game: GAME, gameday: GAMEDAY });
+      }
+      return Promise.resolve(routeGet(path));
+    });
+    const user = userEvent.setup();
+    globalThis.history.replaceState(null, "", "/?game=42");
+    render(<App />);
+
+    await screen.findByRole("alert", {}, { timeout: 4000 });
+    await user.click(screen.getByRole("button", { name: "Erneut laden" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Spiel vorbereiten" }),
+    ).toBeInTheDocument();
+    expect(attempts).toBe(2);
+  });
+
   it("keeps a broken link on its own screen with a retry", async () => {
     apiGetMock.mockImplementation((path: string) =>
       path === "/api/game/42/summary"

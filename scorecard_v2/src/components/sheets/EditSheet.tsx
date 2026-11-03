@@ -242,7 +242,7 @@ export default function EditSheet({
             Restliche Spielzeit, als der Eintrag gemacht wurde – mm:ss.
           </p>
         </>
-      ) : roster !== null && options.length === 0 ? (
+      ) : roster === null || options.length === 0 ? (
         <p className="sheetnote">
           Kein Kader geladen – die Nummer kann nicht geändert werden.
         </p>

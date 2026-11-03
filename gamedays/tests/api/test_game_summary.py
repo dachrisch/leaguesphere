@@ -7,7 +7,9 @@ the list, so a link cannot show a different game than the list does.
 """
 
 from http import HTTPStatus
+from unittest.mock import patch
 
+import pandas as pd
 from django_webtest import WebTest
 from rest_framework.reverse import reverse
 
@@ -52,6 +54,18 @@ class TestGameSummary(WebTest):
             )
 
         assert self._summary().json["game"]["passcheck"] is True
+
+    def test_a_game_the_list_does_not_contain_is_a_404(self):
+        """The row comes from the gameday's list; a mismatch must not answer
+        with somebody else's game."""
+
+        with patch("gamedays.api.game_views.GamedayService.create") as create:
+            create.return_value.get_games_to_whistle.return_value = pd.DataFrame(
+                [{"id": -1}]
+            )
+            response = self._summary()
+
+        assert response.status_code == HTTPStatus.NOT_FOUND
 
     def test_unknown_game_is_a_404(self):
         response = self._summary(game_id=999_999)
