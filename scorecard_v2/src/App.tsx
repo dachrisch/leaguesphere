@@ -100,20 +100,72 @@ function initialAllGames(): boolean {
   }
 }
 
+/** The app's mount path; everything below it is the same single page. */
+const APP_BASE = "/scorecard/v2/";
+
+function numberOrNull(raw: string | null | undefined): number | null {
+  if (raw === null || raw === undefined || !/^\d+$/.test(raw.trim())) {
+    return null;
+  }
+  const id = Number(raw);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
 /**
- * `?game=<id>` opens one game directly — the link the organisation keeps for
- * a finished game, and the one an official can be sent for a running one.
+ * A game's own address, `/scorecard/v2/spiel/<id>/`, or the older
+ * `?game=<id>` — both open the game directly. The path form is what the
+ * organisation keeps: it survives a reload and reads like the resource it is.
  */
 function initialGameId(): number | null {
   try {
-    const raw = new URLSearchParams(globalThis.location.search).get("game");
-    if (raw === null || !/^\d+$/.test(raw.trim())) {
-      return null;
+    const match = globalThis.location.pathname.match(
+      /\/scorecard\/v2\/spiel\/(\d+)\/?$/,
+    );
+    if (match !== null) {
+      return numberOrNull(match[1]);
     }
-    const id = Number(raw);
-    return Number.isSafeInteger(id) && id > 0 ? id : null;
+    return numberOrNull(
+      new URLSearchParams(globalThis.location.search).get("game"),
+    );
   } catch {
     return null;
+  }
+}
+
+/** The app's mount path when the page is served from it, `null` in tests. */
+function appBase(): string | null {
+  try {
+    return globalThis.location.pathname.startsWith(APP_BASE)
+      ? APP_BASE
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function rewriteUrl(pathname: string): void {
+  try {
+    const url = new URL(globalThis.location.href);
+    url.pathname = pathname;
+    url.searchParams.delete("game");
+    globalThis.history.replaceState(null, "", url.toString());
+  } catch {
+    // A browser that refuses history still navigates.
+  }
+}
+
+/** `showGameUrl` / `showListUrl`: keep the address in step with the screen. */
+function showGameUrl(gameId: number): void {
+  const base = appBase();
+  if (base !== null) {
+    rewriteUrl(`${base}spiel/${gameId}/`);
+  }
+}
+
+function showListUrl(): void {
+  const base = appBase();
+  if (base !== null) {
+    rewriteUrl(base);
   }
 }
 
@@ -263,6 +315,28 @@ function Flow() {
     openedLink.current = true;
     void openGameLink(gameLink);
   }, [gameLink, openGameLink]);
+
+  /**
+   * The address follows the screen: a game's own path while one is open, the
+   * app root on the lists. The deep link's loading phase keeps its path — the
+   * game id it was opened with must not be dropped before the game is there.
+   */
+  useEffect(() => {
+    if (state.phase === "gamedays" && linkRequest !== null) {
+      return;
+    }
+    const gameOpen =
+      state.game !== null &&
+      (state.phase === "setup" ||
+        state.phase === "tracking" ||
+        state.phase === "finalize" ||
+        state.phase === "result");
+    if (gameOpen) {
+      showGameUrl(state.game!.id);
+    } else {
+      showListUrl();
+    }
+  }, [state.phase, state.game, linkRequest]);
 
   const gamedayId = state.gameday?.id ?? null;
   const team = allGames ? "*" : user?.username?.trim() || "*";

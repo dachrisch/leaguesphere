@@ -20,7 +20,7 @@ Status: **beta**. Both apps are bookmarks; nothing links v2 from the old app.
 | URL | Serves |
 |---|---|
 | `/scorecard/v2/` | this app |
-| `/scorecard/v2/?game=<id>` | the same app, opened directly on one game (also a finished one, read-only) |
+| `/scorecard/v2/spiel/<id>/` | the same app, opened directly on one game (also a finished one, read-only); `?game=<id>` still works as an alias |
 | `/scorecard/v2/sw.js` | its service worker (scope `/scorecard/v2/`, anonymous, `Cache-Control: no-cache`) |
 | `/scorecard/` | the existing scorecard, unchanged |
 
@@ -28,10 +28,13 @@ Status: **beta**. Both apps are bookmarks; nothing links v2 from the old app.
 worker lives under the app scope on purpose: served from `/static/` it could
 only control static assets, and its scope could never leak into the old app.
 
-`?game=<id>` is the deep link the organisation keeps for a game: the app reads
+`/scorecard/v2/spiel/<id>/` is the deep link the organisation keeps for a game
+(the older `?game=<id>` still works). The app reads
 `GET /api/game/<id>/summary` (the game row exactly as the list builds it, plus
 its gameday) and then opens preparation or tracking straight away; a finished
-game opens read-only with its log and no end-of-game action.
+game opens read-only with its log and no end-of-game action. The address
+follows the screen: a game's own path while one is open, the app root on the
+lists — `history.replaceState`, no reload.
 
 ## The flow
 
