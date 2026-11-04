@@ -28,6 +28,22 @@ class TestScorecardV2View(WebTest):
         assert "/static/scorecard_v2/js/scorecard_v2.css" in response.text
         assert "csrftoken" in response.client.cookies
 
+    def test_a_game_path_serves_the_same_shell(self):
+        user = User.objects.create_user("official", password="x")
+        self.app.set_user(user)
+
+        response = self.app.get("/scorecard/v2/spiel/42/")
+
+        assert 'id="scorecard-v2-app"' in response.text
+        assert reverse("scorecard-v2-game", kwargs={"pk": 42}) == (
+            "/scorecard/v2/spiel/42/"
+        )
+
+    def test_a_game_path_redirects_an_anonymous_visitor(self):
+        response = self.app.get("/scorecard/v2/spiel/42/", status=302)
+
+        assert response.location.startswith(f"{reverse('login')}?next=")
+
     def test_old_scorecard_route_is_untouched(self):
         assert reverse("scorecard-home") == "/scorecard/"
         assert reverse("scorecard-v2-home") == "/scorecard/v2/"

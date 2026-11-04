@@ -359,6 +359,47 @@ describe("the deep link", () => {
     expect(screen.getByText(/Herbsttag · Landesliga/)).toBeInTheDocument();
   });
 
+  it("opens a game from its own path and keeps it in the address", async () => {
+    const running = { ...GAME, status: "1. Halbzeit" };
+    apiGetMock.mockImplementation((path: string) => {
+      calls.push(`GET ${path}`);
+      if (path === "/api/game/42/summary") {
+        return Promise.resolve({ game: running, gameday: GAMEDAY });
+      }
+      return Promise.resolve(routeGet(path));
+    });
+    globalThis.history.replaceState(null, "", "/scorecard/v2/spiel/42/");
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Feld 2 · Vorrunde" }),
+    ).toBeInTheDocument();
+    expect(globalThis.location.pathname).toBe("/scorecard/v2/spiel/42/");
+    expect(calls).toContain("GET /api/gamelog/42");
+  });
+
+  it("keeps the address in step with the screen", async () => {
+    const user = userEvent.setup();
+    globalThis.history.replaceState(null, "", "/scorecard/v2/");
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: /Herbsttag/ }));
+    await user.click(
+      await screen.findByRole("button", { name: /Ravens gegen Wolves/ }),
+    );
+    expect(
+      await screen.findByRole("heading", { name: "Spiel vorbereiten" }),
+    ).toBeInTheDocument();
+    expect(globalThis.location.pathname).toBe("/scorecard/v2/spiel/42/");
+
+    await user.click(screen.getByRole("button", { name: "Zurück" }));
+
+    expect(
+      await screen.findByRole("button", { name: /Ravens gegen Wolves/ }),
+    ).toBeInTheDocument();
+    expect(globalThis.location.pathname).toBe("/scorecard/v2/");
+  });
+
   it("ignores a game parameter that is not an id", async () => {
     globalThis.history.replaceState(null, "", "/?game=abc");
     render(<App />);
