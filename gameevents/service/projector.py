@@ -118,6 +118,7 @@ EXCLUDED_EVENTS = ("Strafe", "Spielzeit", "Auszeit", "First Down")
 _MARKER_EVENTS = {
     "start": "Spiel gestartet",
     "half_time": "2. Halbzeit gestartet",
+    "overtime": "Overtime startet",
     "end": "Spiel beendet",
 }
 _ZERO_SEQUENCE_EVENTS = frozenset(EXCLUDED_EVENTS) | frozenset(_MARKER_EVENTS.values())
@@ -486,6 +487,10 @@ def _apply_period(state: GameStateValue, event: GameEventValue) -> Projection:
         name, period = _MARKER_EVENTS["start"], 1
     elif event.code == "half_time":
         name, period = _MARKER_EVENTS["half_time"], 2
+    elif event.code == "overtime":
+        # Overtime is a marker, not a third half: the scores keep belonging to
+        # the half they were scored in, and the marker row is the record.
+        name, period = _MARKER_EVENTS["overtime"], state.period
     elif event.code == "end":
         name, period = _MARKER_EVENTS["end"], event.period
     else:

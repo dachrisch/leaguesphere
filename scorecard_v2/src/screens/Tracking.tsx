@@ -191,6 +191,12 @@ const CONFIRMATION: Record<string, string> = {
   "Safety (+1)": "Safety gespeichert",
   "Safety (+2)": "Safety gespeichert",
   Overtime: "Overtime gespeichert",
+  Pass: "Pass gespeichert",
+  "Pass unvollständig": "Pass gespeichert",
+  Run: "Run gespeichert",
+  Sack: "Sack gespeichert",
+  Challenge: "Challenge gespeichert",
+  "Overtime starten": "Overtime gestartet",
 };
 
 /**
@@ -213,6 +219,7 @@ const KEEP_POSSESSION = new Set([
   "Run",
   "Sack",
   "Challenge",
+  "Overtime starten",
   // Written after the try, once the touchdown already handed the ball over.
   "1-Extra-Punkt",
   "2-Extra-Punkte",
@@ -515,12 +522,15 @@ export default function TrackingScreen({
     jersey: number;
   } | null>(null);
   /**
-   * The try's chosen result while its player is picked, and the jersey that
-   * will be credited. The touchdown's scorer is the default — he often is the
-   * converter — but the person is selectable, because a backup may have run
-   * it in.
+   * The try being answered: its team, its points and the default jersey (the
+   * touchdown's scorer — he often is the converter). A direct **+1 XP** in
+   * overtime opens the same step with no default.
    */
-  const [patPoints, setPatPoints] = useState<1 | 2 | null>(null);
+  const [patTry, setPatTry] = useState<{
+    team: string;
+    points: 1 | 2;
+    defaultJersey: number | null;
+  } | null>(null);
   const [patJersey, setPatJersey] = useState<number | null>(null);
   const [patBusy, setPatBusy] = useState(false);
   /** The try's first answer: focus lands here when the touchdown tile gives way. */
@@ -532,7 +542,8 @@ export default function TrackingScreen({
   /** The log row being corrected in place ("Ändern" next to undo). */
   const [editing, setEditing] = useState<LogRow | null>(null);
   /** Two-step buttons: a one-tap entry offers its jersey, Halbzeit asks once more. */
-  const { armed, arm, disarm } = useArmed<JerseyLater | "halftime">();
+  const { armed, arm, disarm } =
+    useArmed<JerseyLater | "halftime" | "overtime">();
   const [halftimePending, setHalftimePending] = useState(false);
   const [halftimeError, setHalftimeError] = useState<string | null>(null);
   /**
@@ -889,6 +900,28 @@ export default function TrackingScreen({
         : null) ?? possession;
   const opponentName =
     opponentSide === "home" ? logTeamName(log.home) : logTeamName(log.away);
+  /** A marker in the log, so the tile flips to +1 XP after every reload. */
+  const overtime = rows.some(
+    (row) => !row.isDeleted && row.event === "Overtime startet",
+  );
+
+  /**
+   * Start overtime: a marker event, no score and no new half. The tile then
+   * offers **+1 XP** next to the touchdown, as the rules ask.
+   */
+  const startOvertime = async (): Promise<void> => {
+    try {
+      await submit([{ name: "Overtime starten" }]);
+    } catch (failure) {
+      setQuickError(
+        errorMessage(
+          failure,
+          "Die Overtime konnte nicht gestartet werden. Bitte erneut versuchen.",
+        ),
+      );
+    }
+  };
+
   /** The side that scored the try: its roster feeds the jersey step. */
   const patSide: Side =
     pendingPat !== null && pendingPat.team === log.away.name ? "away" : "home";
@@ -1121,7 +1154,7 @@ export default function TrackingScreen({
     const jersey = events[0]?.player;
     if (team !== null && typeof jersey === "number") {
       setPendingPat({ team, jersey });
-      setPatPoints(null);
+      setPatTry(null);
       setPatJersey(null);
       setPatError(null);
       setFinishBlocked(false);
@@ -1131,14 +1164,14 @@ export default function TrackingScreen({
   /** Forget the open try (a miss, a saved conversion, a new touchdown). */
   const closePat = (): void => {
     setPendingPat(null);
-    setPatPoints(null);
+    setPatTry(null);
     setPatJersey(null);
     setFinishBlocked(false);
   };
 
   /** Write the conversion for the chosen jersey. */
-  const writePat = async (points: 1 | 2, jersey: number): Promise<void> => {
-    if (pendingPat === null || patBusy) {
+  const writePat = async (jersey: number): Promise<void> => {
+    if (patTry === null || patBusy) {
       return;
     }
     setPatBusy(true);
@@ -1147,11 +1180,11 @@ export default function TrackingScreen({
       await submit(
         [
           {
-            name: points === 1 ? "1-Extra-Punkt" : "2-Extra-Punkte",
+            name: patTry.points === 1 ? "1-Extra-Punkt" : "2-Extra-Punkte",
             player: jersey,
           },
         ],
-        pendingPat.team,
+        patTry.team,
       );
       closePat();
     } catch (failure) {
@@ -1178,16 +1211,30 @@ export default function TrackingScreen({
       closePat();
       return;
     }
-    setPatPoints(points);
+    setPatTry({
+      team: pendingPat.team,
+      points,
+      defaultJersey: pendingPat.jersey,
+    });
     setPatJersey(pendingPat.jersey);
     setPatError(null);
   };
 
+  /** Overtime's **+1 XP**: the same jersey step, without a touchdown behind it. */
+  const openSinglePat = (): void => {
+    if (possessionName === null) {
+      return;
+    }
+    setPatTry({ team: possessionName, points: 1, defaultJersey: null });
+    setPatJersey(null);
+    setPatError(null);
+  };
+
   useEffect(() => {
-    if (pendingPat !== null && patPoints === null) {
+    if (pendingPat !== null && patTry === null) {
       patFirst.current?.focus();
     }
-  }, [pendingPat, patPoints]);
+  }, [pendingPat, patTry]);
 
   /** "Spiel beenden" waits for an open extra point instead of dropping it. */
   const finish = (): void => {
@@ -1277,7 +1324,13 @@ export default function TrackingScreen({
       } else if (index === 6) {
         openSheet({ kind: "more", mode: "safety" });
       } else if (index === 7) {
-        openSheet({ kind: "more", mode: "overtime" });
+        if (overtime) {
+          openSinglePat();
+        } else if (armed === "overtime") {
+          void startOvertime();
+        } else {
+          arm("overtime");
+        }
       }
     },
     onSwitchPossession: () => {
@@ -1437,11 +1490,9 @@ export default function TrackingScreen({
               </p>
               <div className="patbar-opts">
                 {(
-                  [
-                    [1, "+1"],
-                    [2, "+2"],
-                    [0, "nicht verwandelt"],
-                  ] as const
+                  overtime
+                    ? ([[1, "+1"], [0, "nicht verwandelt"]] as const)
+                    : ([[1, "+1"], [2, "+2"], [0, "nicht verwandelt"]] as const)
                 ).map(([points, label]) => (
                   <button
                     aria-pressed={false}
@@ -1548,13 +1599,29 @@ export default function TrackingScreen({
           <kbd aria-hidden="true" className="shortcut-hint" data-key="7" />
         </button>
         <button
-          className="action"
+          className={
+            armed === "overtime" ? "action is-armed" : "action"
+          }
           disabled={composerDisabled}
-          onClick={() => openSheet({ kind: "more", mode: "overtime" })}
+          onClick={() => {
+            if (overtime) {
+              openSinglePat();
+            } else if (armed === "overtime") {
+              void startOvertime();
+            } else {
+              arm("overtime");
+            }
+          }}
           type="button"
         >
           <PlusCircle className="action-icon" size={20} />
-          <span>Overtime</span>
+          <span>
+            {overtime
+              ? "+1 XP"
+              : armed === "overtime"
+                ? "Overtime starten"
+                : "Overtime"}
+          </span>
           <kbd aria-hidden="true" className="shortcut-hint" data-key="8" />
         </button>
         </div>
@@ -1630,7 +1697,7 @@ export default function TrackingScreen({
         </p>
       </main>
 
-      {patPoints !== null && pendingPat !== null ? (
+      {patTry !== null ? (
         <Sheet
           busy={patBusy}
           error={patError}
@@ -1640,7 +1707,7 @@ export default function TrackingScreen({
               disabled={patBusy || patJersey === null || readOnly}
               onClick={() => {
                 if (patJersey !== null) {
-                  void writePat(patPoints, patJersey);
+                  void writePat(patJersey);
                 }
               }}
               type="button"
@@ -1649,14 +1716,15 @@ export default function TrackingScreen({
             </button>
           }
           onClose={() => {
-            setPatPoints(null);
+            setPatTry(null);
             setPatError(null);
           }}
-          title={`Extrapunkt ${pendingPat.team}`}
+          title={`Extrapunkt ${patTry.team}`}
         >
           <p className="sheetnote">
-            Wer hat den Extrapunkt verwandelt? Der Touchdown-Schütze ist
-            vorausgewählt (#{pendingPat.jersey}).
+            {patTry.defaultJersey === null
+              ? "Wer hat den Extrapunkt verwandelt?"
+              : `Wer hat den Extrapunkt verwandelt? Der Touchdown-Schütze ist vorausgewählt (#${patTry.defaultJersey}).`}
           </p>
           <JerseyPicker
             disabled={patBusy || readOnly}

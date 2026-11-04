@@ -122,6 +122,9 @@ game opens read-only with its log and no end-of-game action.
    incomplete pass first asks **Deflection**, then the defender.
    A **Challenge** next to the play records a coach's challenge — one tap is
    enough, a short reason is optional — as its own `challenge` event.
+   **Overtime** is a two-step marker (`period/overtime`, no score, no third
+   half); the tile then turns into **+1 XP**, which opens the same jersey step
+   for the converter, and the try after a touchdown offers only **+1**.
    Touchdown with the roster's jerseys (a tile grid up to 24 players, a
    two-digit keypad above that with the roster name as confirmation; numeric
    field when there is no roster; this game's scorers as a shortcut row above

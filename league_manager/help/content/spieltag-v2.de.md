@@ -32,7 +32,9 @@ wie die bisherige Scorecard
    oder mit einer kurzen Begründung. Dazu **Touchdown**, **1st Down**, **Turnover**,
    **Interception**, **Strafe**, **Safety**, **Overtime**, **Spielzeit** und
    **Auszeit**; bei **Touchdown** und **1st Down** kannst du den Raumgewinn
-   mit eintragen. **1st Down**,
+   mit eintragen. **Overtime** startet die Verlängerung (zweiter Tipp
+   bestätigt); danach wird aus der Kachel **+1 XP**, und beim Versuch nach
+   einem Touchdown gibt es nur noch **+1** statt **+2**. **1st Down**,
    **Turnover** und **Interception** werden sofort gespeichert; bei 1st Down
    und Interception trägst du die Trikotnummer nach, wenn du die Kachel
    innerhalb von 10 Sekunden noch einmal tippst (**Nr. ergänzen**). Nach einem

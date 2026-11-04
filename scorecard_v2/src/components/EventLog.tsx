@@ -44,6 +44,7 @@ const SCORING_KEYS: Record<string, string> = {
 const MARKER_EVENTS = new Set([
   "Spiel gestartet",
   "2. Halbzeit gestartet",
+  "Overtime startet",
   "Spiel beendet",
 ]);
 
