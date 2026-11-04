@@ -647,3 +647,24 @@ def test_overtime_start_is_a_marker_without_a_new_period():
     assert projection.rows[0].sequence == 0
     assert projection.state.period == 2
     assert projection.state.score_home == 14
+
+
+def test_a_field_position_is_a_row_with_its_text():
+    projection = apply(
+        state(period=2),
+        ev("fieldpos", "", side="home", seq=5, input="eigene 35", ballOn=35),
+    )
+
+    row = projection.rows[0]
+    assert row.event == "Feldposition"
+    assert row.input == "eigene 35"
+    assert row.value == 0
+    assert projection.state.score_home == 0
+    assert projection.state.in_possession is None
+
+
+def test_a_field_position_without_text_is_still_a_row():
+    projection = apply(state(), ev("fieldpos", "", side="away", ballOn=60))
+
+    assert projection.rows[0].event == "Feldposition"
+    assert projection.rows[0].input is None

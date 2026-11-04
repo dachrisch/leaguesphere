@@ -17,6 +17,7 @@ _EVENTS_WITH_INPUT = frozenset(
         "Touchdown",
         "First Down",
         "Challenge",
+        "Feldposition",
     }
 )
 

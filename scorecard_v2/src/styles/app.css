@@ -2078,15 +2078,42 @@ button.game-row:active {
   opacity: 0.55;
 }
 
-/* Down & distance, derived from the plays: the fact the officials call out. */
-.driveline {
+/* Down & distance, derived from the plays: the fact the officials call out,
+   with the spot setter beside it. */
+.drivebar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   margin: var(--space-1) var(--page-gutter) 0;
+}
+
+.driveline {
+  margin: 0;
   font-family: var(--font-display);
   font-size: var(--fs-lg);
   font-weight: 700;
   letter-spacing: 0.02em;
   text-align: center;
   color: var(--fg);
+}
+
+.driveset {
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
+.driveset:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* The action zone sits at the bottom, in the thumb's reach, tinted in the

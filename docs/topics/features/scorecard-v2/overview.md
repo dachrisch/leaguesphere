@@ -125,12 +125,15 @@ game opens read-only with its log and no end-of-game action.
    **Overtime** is a two-step marker (`period/overtime`, no score, no third
    half); the tile then turns into **+1 XP**, which opens the same jersey step
    for the converter, and the try after a touchdown offers only **+1**.
-   Under the possession switch the screen shows the **down & distance**
-   (**3rd & 4**), derived from the plays in the log: a play that reaches the
-   line to gain starts **1st & 10**, a fourth down short of it is a turnover
-   on downs (the app then sends the possession change itself). There is no
-   absolute field position yet — no kickoff/punt model — so every series
-   starts at 1st & 10. The state is recomputed from the rows, so an undo
+   Under the possession switch the screen shows the **down & distance** and the
+   spot (**3rd & 4 · eigene 43**), derived from the plays in the log: a play
+   that reaches the line to gain starts a new series, a fourth down short of it
+   is a turnover on downs (the app then sends the possession change itself), and
+   inside the opponent's ten the series is **1st & Goal**. The spot is stored by
+   a **Feldposition** row (own goal line = 0, opponent's = 100; the sheet asks
+   own/opponent + yard line), so a kickoff or a turnover can be set and a reload
+   keeps it; a play simply adds its yards. There is no kickoff/punt automation —
+   the officials set the spot. The state is recomputed from the rows, so an undo
    rewinds it; the play's row text carries the resulting down for the ticker.
    Touchdown with the roster's jerseys (a tile grid up to 24 players, a
    two-digit keypad above that with the roster name as confirmation; numeric

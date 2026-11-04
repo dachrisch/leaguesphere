@@ -403,6 +403,21 @@ def _apply_score(state: GameStateValue, event: GameEventValue) -> Projection:
     return _projection(_advance(state, event, **changes), [row])
 
 
+def _apply_fieldpos(state: GameStateValue, event: GameEventValue) -> Projection:
+    """The spot the ball is on: a row the app derives the drive from.
+
+    Free text (``input``) says it as the officials call it, the payload carries
+    the machine value (0 = own goal line, 100 = the opponent's).
+    """
+    row = _row(
+        event,
+        "Feldposition",
+        side=_require_side(event),
+        input=_play_detail(event),
+    )
+    return _projection(_advance(state, event), [row])
+
+
 def _apply_challenge(state: GameStateValue, event: GameEventValue) -> Projection:
     """A coach's challenge: what was challenged is free text, nothing scores.
 
@@ -601,6 +616,7 @@ def _apply_correction(state: GameStateValue, event: GameEventValue) -> Projectio
 _HANDLERS = {
     "score": _apply_score,
     "play": _apply_play,
+    "fieldpos": _apply_fieldpos,
     "challenge": _apply_challenge,
     "penalty": _apply_penalty,
     "series": _apply_series,
