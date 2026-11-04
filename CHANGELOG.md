@@ -1,5 +1,26 @@
 # Changelog
 
+## [5.10.0](https://github.com/dachrisch/leaguesphere/compare/v5.9.1...v5.10.0) (2026-11-04)
+
+
+### Features
+
+* **scorecard-v2:** a game's own path instead of a query parameter ([89eebed](https://github.com/dachrisch/leaguesphere/commit/89eebed1a4446962753dc811e46afcfd3cf41f14))
+* **scorecard-v2:** a game's own path instead of a query parameter ([b4969ea](https://github.com/dachrisch/leaguesphere/commit/b4969ea9b7d92ba85f9fe4eca8d6fd6f7a4698f6))
+* **scorecard-v2:** defence on a play, and a challenge ([9a38bd4](https://github.com/dachrisch/leaguesphere/commit/9a38bd4548b66cf7453c829c81a63795fc16ec73))
+* **scorecard-v2:** derive down & distance from the plays ([9f936b8](https://github.com/dachrisch/leaguesphere/commit/9f936b81f5601120d0f38f064776e7906c2b4c7e))
+* **scorecard-v2:** field position and goal-to-go ([a035630](https://github.com/dachrisch/leaguesphere/commit/a0356303cdd6e7660d6bd9e202598efd363cee06))
+* **scorecard-v2:** field position and goal-to-go ([03dcfdd](https://github.com/dachrisch/leaguesphere/commit/03dcfddeaee01bc690322c45a597eee64efe2794))
+* **scorecard-v2:** overtime start, then touchdown or +1 XP ([fe44eec](https://github.com/dachrisch/leaguesphere/commit/fe44eecffc9a534b79b09afcbf4557707248dc9d))
+* **scorecard-v2:** record the play-by-play — pass, run and sack ([aee6f3d](https://github.com/dachrisch/leaguesphere/commit/aee6f3d77429afe7844bc2c5a8934f8329a14c53))
+
+
+### Bug Fixes
+
+* **deps:** update dependency django-rest-knox to v5.1.1 ([#2270](https://github.com/dachrisch/leaguesphere/issues/2270)) ([62bbe4e](https://github.com/dachrisch/leaguesphere/commit/62bbe4eb9d4d48a69efd0e6c64ec32ac6582e07b))
+* **scorecard-v2:** the game summary answers finished games ([f48b44d](https://github.com/dachrisch/leaguesphere/commit/f48b44d0a3a1bc0496efe81cf4d5100219813061))
+* **scorecard-v2:** the game summary answers finished games ([b73793e](https://github.com/dachrisch/leaguesphere/commit/b73793e881d61359c5f0afb3df2d016fab724d5d))
+
 ## [5.9.1](https://github.com/dachrisch/leaguesphere/compare/v5.9.0...v5.9.1) (2026-11-04)
 
 
