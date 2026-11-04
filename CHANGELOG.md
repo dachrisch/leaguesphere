@@ -1,5 +1,27 @@
 # Changelog
 
+## [5.9.0](https://github.com/dachrisch/leaguesphere/compare/v5.8.12...v5.9.0) (2026-11-04)
+
+
+### Features
+
+* **scorecard-v2:** colour the teams and name the end zones Nord/Süd ([83a1529](https://github.com/dachrisch/leaguesphere/commit/83a15298005c62da4fd99c66cd9e70b8eee5dd10))
+* **scorecard-v2:** correct a log entry, and filter the log to points ([c878bca](https://github.com/dachrisch/leaguesphere/commit/c878bca55fc5cfea0d3ee62fd07d421b56fa6140))
+* **scorecard-v2:** count down the half-time break ([35736d2](https://github.com/dachrisch/leaguesphere/commit/35736d25698aaa794af11098f3ec4afe8aff082f))
+* **scorecard-v2:** field feedback — URL by id, Nord/Süd, break countdown, timeouts, edit, Nur Punkte, full end view ([ae69b85](https://github.com/dachrisch/leaguesphere/commit/ae69b851591b82f2d550ac69d7396cc0ceb2aa70))
+* **scorecard-v2:** open a game by id, and show everything at the end ([a84727f](https://github.com/dachrisch/leaguesphere/commit/a84727f91d717778e493f578d527830d0db7035a))
+* **scorecard-v2:** pick the player who converted the extra point ([1ab7f22](https://github.com/dachrisch/leaguesphere/commit/1ab7f22fc6a67654a07c8e9eca3a9e077dc11754))
+* **scorecard-v2:** pick the player who converted the extra point ([0491f26](https://github.com/dachrisch/leaguesphere/commit/0491f262231850a884f1490097dfe8649714af1f))
+* **scorecard-v2:** show the timeouts each team took, and when ([0ab428c](https://github.com/dachrisch/leaguesphere/commit/0ab428c2f354f4f12390d40faadfcaac4c4ed613))
+
+
+### Bug Fixes
+
+* **deps:** update dependency django to v6.1.3 ([#2257](https://github.com/dachrisch/leaguesphere/issues/2257)) ([b41c4df](https://github.com/dachrisch/leaguesphere/commit/b41c4df84b14a392ad4a097ae264e8bcb0fee521))
+* **deps:** update js deps ([#2258](https://github.com/dachrisch/leaguesphere/issues/2258)) ([4a16db0](https://github.com/dachrisch/leaguesphere/commit/4a16db0c090e6b596df6eef7a2322137404ab223))
+* **scorecard-v2:** set the halftime on Gameinfo when events start it ([4d9e6f4](https://github.com/dachrisch/leaguesphere/commit/4d9e6f45cc1696b362af3878d7df708617d2edd0))
+* **scorecard-v2:** set the halftime on Gameinfo when events start it ([0c3789c](https://github.com/dachrisch/leaguesphere/commit/0c3789ccea83a6a91aaa116e00b541d8b57754b5))
+
 ## [5.8.12](https://github.com/dachrisch/leaguesphere/compare/v5.8.11...v5.8.12) (2026-11-02)
 
 
