@@ -476,6 +476,17 @@ describe("EventLog", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows the overtime marker but never offers its undo", () => {
+    render(
+      <EventLog onUndo={vi.fn()} rows={[row({ event: "Overtime startet" })]} />,
+    );
+
+    expect(screen.getByText("Overtime startet")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Rückgängig/ }),
+    ).toBeNull();
+  });
+
   it("shows a marker but never offers its undo", () => {
     render(<EventLog onUndo={vi.fn()} rows={[row({ event: "Spiel beendet" })]} />);
 
