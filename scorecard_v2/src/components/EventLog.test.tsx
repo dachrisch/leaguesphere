@@ -60,6 +60,7 @@ function row(overrides: Partial<LogRow> = {}): LogRow {
     cop: false,
     isDeleted: false,
     time: "2026-10-26T12:00:00Z",
+    payload: null,
     ...overrides,
   };
 }
@@ -104,6 +105,7 @@ describe("logRows", () => {
         cop: false,
         isDeleted: false,
         time: "2026-10-26T12:00:00Z",
+        payload: null,
       },
     ]);
   });
@@ -476,6 +478,17 @@ describe("EventLog", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows the overtime marker but never offers its undo", () => {
+    render(
+      <EventLog onUndo={vi.fn()} rows={[row({ event: "Overtime startet" })]} />,
+    );
+
+    expect(screen.getByText("Overtime startet")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Rückgängig/ }),
+    ).toBeNull();
+  });
+
   it("shows a marker but never offers its undo", () => {
     render(<EventLog onUndo={vi.fn()} rows={[row({ event: "Spiel beendet" })]} />);
 
@@ -521,6 +534,39 @@ describe("EventLog", () => {
     const time = document.querySelector("time");
     expect(time).not.toHaveAttribute("dateTime");
     expect(time).toHaveTextContent("");
+  });
+
+  it("shows a play with its jersey and detail", () => {
+    render(
+      <EventLog
+        onUndo={vi.fn()}
+        rows={[
+          row({
+            event: "Pass",
+            player: 7,
+            input: "8 Yards · QB #12",
+          }),
+          row({ key: "b", event: "Sack", player: 12, input: "5 Yards Verlust" }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Pass Ravens")).toBeInTheDocument();
+    expect(screen.getByText("#7 · 8 Yards · QB #12")).toBeInTheDocument();
+    expect(screen.getByText("Sack Ravens")).toBeInTheDocument();
+    expect(screen.getByText("#12 · 5 Yards Verlust")).toBeInTheDocument();
+  });
+
+  it("shows a challenge with its reason", () => {
+    render(
+      <EventLog
+        onUndo={vi.fn()}
+        rows={[row({ event: "Challenge", input: "Catch nicht im Feld" })]}
+      />,
+    );
+
+    expect(screen.getByText("Challenge")).toBeInTheDocument();
+    expect(screen.getByText("Catch nicht im Feld")).toBeInTheDocument();
   });
 
   it("hides the detail line of a row without one", () => {

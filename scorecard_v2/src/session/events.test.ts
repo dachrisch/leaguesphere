@@ -31,7 +31,12 @@ const LOG: GameLog = {
 
 function write(
   teamName: string,
-  events: { name: string; player?: number; input?: string }[],
+  events: {
+    name: string;
+    player?: number;
+    input?: string;
+    payload?: Record<string, unknown>;
+  }[],
   half: 1 | 2 = 1,
 ) {
   return { gameId: 42, team: teamName, half, event: events };
@@ -106,6 +111,61 @@ describe("envelopesForWrite", () => {
         payload: { input: "3:05" },
       },
     ]);
+  });
+
+  it("translates a play with its structured payload", () => {
+    const [pass, incomplete, run, sack] = envelopesForWrite(
+      write("Ravens", [
+        {
+          name: "Pass",
+          player: 7,
+          input: "8 Yards · QB #12",
+          payload: { yards: 8, complete: true, qb: 12 },
+        },
+        {
+          name: "Pass unvollständig",
+          player: 7,
+          input: "QB #12",
+          payload: { yards: 0, complete: false, qb: 12 },
+        },
+        { name: "Run", player: 23, input: "14 Yards", payload: { yards: 14 } },
+        {
+          name: "Sack",
+          player: 12,
+          input: "5 Yards Verlust",
+          payload: { yards: -5 },
+        },
+      ]),
+      LOG,
+    );
+
+    expect(pass).toEqual({
+      type: "play",
+      code: "pass",
+      side: "home",
+      player: 7,
+      period: 1,
+      payload: { input: "8 Yards · QB #12", yards: 8, complete: true, qb: 12 },
+    });
+    expect(incomplete).toMatchObject({ type: "play", code: "pass" });
+    expect(run).toMatchObject({ type: "play", code: "run", player: 23 });
+    expect(sack).toMatchObject({ type: "play", code: "sack" });
+  });
+
+  it("translates a challenge with its optional text", () => {
+    const [challenge] = envelopesForWrite(
+      write("Ravens", [{ name: "Challenge", input: "Zuschauer zu viele" }]),
+      LOG,
+    );
+
+    expect(challenge).toEqual({
+      type: "challenge",
+      code: "",
+      side: "home",
+      player: null,
+      period: 1,
+      payload: { input: "Zuschauer zu viele" },
+    });
   });
 
   it("resolves the side from the team name the sheets know", () => {
@@ -227,6 +287,29 @@ describe("displayOf", () => {
     expect(displayOf({ type: "period", code: "end" }).event).toBe(
       "Spiel beendet",
     );
+    expect(displayOf({ type: "period", code: "overtime" })).toMatchObject({
+      event: "Overtime startet",
+      marker: true,
+      excluded: true,
+    });
+  });
+
+  it("names the scrimmage plays, with the incomplete pass as its own row", () => {
+    expect(displayOf({ type: "play", code: "pass" })).toMatchObject({
+      event: "Pass",
+      value: 0,
+    });
+    expect(
+      displayOf({ type: "play", code: "pass", payload: { complete: false } }),
+    ).toMatchObject({ event: "Pass unvollständig" });
+    expect(displayOf({ type: "play", code: "run" }).event).toBe("Run");
+    expect(displayOf({ type: "play", code: "sack" }).event).toBe("Sack");
+    expect(displayOf({ type: "challenge" })).toMatchObject({
+      event: "Challenge",
+      value: 0,
+    });
+    // Nothing to show beats a wrong row.
+    expect(displayOf({ type: "play", code: "kick" }).event).toBeNull();
   });
 
   it("draws no row for a code it cannot render", () => {

@@ -202,3 +202,38 @@ class TestLivetickerSerializer:
             instance=liveticker_entries, many=True, ref_now=ref_now
         )
         assert serializer.data[0]["time"] == "2026-10-24T23:50:00+00:00"
+
+
+class TestTeamlogSerializerPlayByPlay:
+    """The play rows carry their detail into the ticker text."""
+
+    @staticmethod
+    def text_for(event, player, input_value):
+        entry = TestTeamlogSerializer.create_some_teamlog(
+            event=event, player=player, input=input_value
+        )
+        serializer = TeamlogSerializer(instance=[entry], home_team=None, many=True)
+        return serializer.data[0]["text"]
+
+    def test_a_pass_shows_the_receiver_and_the_play_detail(self):
+        assert (
+            self.text_for("Pass", 7, "8 Yards · QB #12")
+            == "Pass: #7 - 8 Yards · QB #12"
+        )
+
+    def test_an_incomplete_pass_keeps_its_name(self):
+        assert (
+            self.text_for("Pass unvollständig", None, "QB #12")
+            == "Pass unvollständig - QB #12"
+        )
+
+    def test_a_run_and_a_sack_show_their_yards(self):
+        assert self.text_for("Run", 23, "14 Yards") == "Run: #23 - 14 Yards"
+        assert self.text_for("Sack", 12, "5 Yards Verlust") == (
+            "Sack: #12 - 5 Yards Verlust"
+        )
+
+    def test_a_touchdown_with_yards_keeps_the_scorer(self):
+        assert self.text_for("Touchdown", 7, "8 Yards") == (
+            "Touchdown: #7 - 8 Yards"
+        )

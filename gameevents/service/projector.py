@@ -118,6 +118,7 @@ EXCLUDED_EVENTS = ("Strafe", "Spielzeit", "Auszeit", "First Down")
 _MARKER_EVENTS = {
     "start": "Spiel gestartet",
     "half_time": "2. Halbzeit gestartet",
+    "overtime": "Overtime startet",
     "end": "Spiel beendet",
 }
 _ZERO_SEQUENCE_EVENTS = frozenset(EXCLUDED_EVENTS) | frozenset(_MARKER_EVENTS.values())
@@ -304,6 +305,62 @@ def _duration(payload: dict, *, pad_minutes: bool) -> Optional[str]:
     return f"{minutes}:{seconds:02d}"
 
 
+def _yards_text(payload: dict) -> Optional[str]:
+    """The visible detail of a play: yards (a loss is said in words) and the
+    quarterback when the payload names one."""
+    parts: list[str] = []
+    yards = payload.get("yards")
+    # bool is an int in Python; a true/false must not become "1 Yards".
+    if isinstance(yards, int) and not isinstance(yards, bool):
+        parts.append(f"{abs(yards)} Yards Verlust" if yards < 0 else f"{yards} Yards")
+    qb = payload.get("qb")
+    if isinstance(qb, int) and not isinstance(qb, bool):
+        parts.append(f"QB #{qb}")
+    return " · ".join(parts) if parts else None
+
+
+def _play_detail(event: GameEventValue) -> Optional[str]:
+    """A play row's ``input``: the client's own text, or built from the payload.
+
+    The client sends the text it shows, so its optimistic row and the server's
+    projection cannot disagree; the payload stays the structured record for the
+    statistics that come later.
+    """
+    payload = event.payload or {}
+    visible = payload.get("input")
+    if isinstance(visible, str) and visible.strip() != "":
+        return visible
+    return _yards_text(payload)
+
+
+def _apply_play(state: GameStateValue, event: GameEventValue) -> Projection:
+    """One scrimmage play: pass, run or sack.
+
+    A play changes no score and no possession -- it is the play-by-play record
+    the ticker and the later statistics read. ``payload`` carries the detail
+    (``yards``, ``qb``, ``complete``; the defence follows), ``player`` the
+    jersey the play belongs to.
+    """
+    payload = event.payload or {}
+    if event.code == "pass":
+        name = "Pass unvollständig" if payload.get("complete") is False else "Pass"
+    elif event.code == "run":
+        name = "Run"
+    elif event.code == "sack":
+        name = "Sack"
+    else:
+        raise UnsupportedEventCode(f"unknown play code {event.code!r}")
+
+    row = _row(
+        event,
+        name,
+        side=_require_side(event),
+        player=event.player,
+        input=_play_detail(event),
+    )
+    return _projection(_advance(state, event), [row])
+
+
 def _apply_score(state: GameStateValue, event: GameEventValue) -> Projection:
     if event.code == "safety":
         points = event.payload.get("points")
@@ -329,7 +386,14 @@ def _apply_score(state: GameStateValue, event: GameEventValue) -> Projection:
     # Quirk kept from GameLogCreator: a scoring row without a jersey is stored
     # with value 0, so it must not move the score either.
     row_value = value if event.player is not None else 0
-    row = _row(event, name, side=side, player=event.player, value=row_value)
+    row = _row(
+        event,
+        name,
+        side=side,
+        player=event.player,
+        value=row_value,
+        input=_play_detail(event) if name == "Touchdown" else None,
+    )
 
     changes: dict[str, Any] = {}
     if side == "home":
@@ -337,6 +401,38 @@ def _apply_score(state: GameStateValue, event: GameEventValue) -> Projection:
     else:
         changes["score_away"] = state.score_away + row_value
     return _projection(_advance(state, event, **changes), [row])
+
+
+def _apply_fieldpos(state: GameStateValue, event: GameEventValue) -> Projection:
+    """The spot the ball is on: a row the app derives the drive from.
+
+    Free text (``input``) says it as the officials call it, the payload carries
+    the machine value (0 = own goal line, 100 = the opponent's).
+    """
+    row = _row(
+        event,
+        "Feldposition",
+        side=_require_side(event),
+        input=_play_detail(event),
+    )
+    return _projection(_advance(state, event), [row])
+
+
+def _apply_challenge(state: GameStateValue, event: GameEventValue) -> Projection:
+    """A coach's challenge: what was challenged is free text, nothing scores.
+
+    The official may just tap it, so the text is optional; the row is the
+    record the ticker and the report read.
+    """
+    payload = event.payload or {}
+    text = payload.get("text") or payload.get("input")
+    row = _row(
+        event,
+        "Challenge",
+        side=_require_side(event),
+        input=text.strip() if isinstance(text, str) and text.strip() else None,
+    )
+    return _projection(_advance(state, event), [row])
 
 
 def _apply_penalty(state: GameStateValue, event: GameEventValue) -> Projection:
@@ -355,7 +451,13 @@ def _apply_penalty(state: GameStateValue, event: GameEventValue) -> Projection:
 def _apply_series(state: GameStateValue, event: GameEventValue) -> Projection:
     if event.code != "first_down":
         raise UnsupportedEventCode(f"unknown series code {event.code!r}")
-    row = _row(event, "First Down", side=_require_side(event), player=event.player)
+    row = _row(
+        event,
+        "First Down",
+        side=_require_side(event),
+        player=event.player,
+        input=_play_detail(event),
+    )
     return _projection(_advance(state, event), [row])
 
 
@@ -400,6 +502,10 @@ def _apply_period(state: GameStateValue, event: GameEventValue) -> Projection:
         name, period = _MARKER_EVENTS["start"], 1
     elif event.code == "half_time":
         name, period = _MARKER_EVENTS["half_time"], 2
+    elif event.code == "overtime":
+        # Overtime is a marker, not a third half: the scores keep belonging to
+        # the half they were scored in, and the marker row is the record.
+        name, period = _MARKER_EVENTS["overtime"], state.period
     elif event.code == "end":
         name, period = _MARKER_EVENTS["end"], event.period
     else:
@@ -509,6 +615,9 @@ def _apply_correction(state: GameStateValue, event: GameEventValue) -> Projectio
 
 _HANDLERS = {
     "score": _apply_score,
+    "play": _apply_play,
+    "fieldpos": _apply_fieldpos,
+    "challenge": _apply_challenge,
     "penalty": _apply_penalty,
     "series": _apply_series,
     "possession": _apply_possession,

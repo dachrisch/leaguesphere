@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 
 interface TrackingShortcutHandlers {
   onTouchdown: () => void;
+  /** Open the play-by-play entry (Pass/Run/Sack). */
+  onPlay: () => void;
   onAction: (index: number) => void;
   onSwitchPossession: () => void;
   onUndo: () => void;
@@ -27,15 +29,28 @@ function editing(element: Element | null): boolean {
  */
 export function useTrackingShortcuts({
   onTouchdown,
+  onPlay,
   onAction,
   onSwitchPossession,
   onUndo,
   readOnly,
   sheetOpen,
 }: TrackingShortcutHandlers): void {
-  const handlers = useRef({ onTouchdown, onAction, onSwitchPossession, onUndo });
+  const handlers = useRef({
+    onTouchdown,
+    onPlay,
+    onAction,
+    onSwitchPossession,
+    onUndo,
+  });
   useLayoutEffect(() => {
-    handlers.current = { onTouchdown, onAction, onSwitchPossession, onUndo };
+    handlers.current = {
+      onTouchdown,
+      onPlay,
+      onAction,
+      onSwitchPossession,
+      onUndo,
+    };
   });
 
   useEffect(() => {
@@ -57,7 +72,7 @@ export function useTrackingShortcuts({
         return;
       }
 
-      const { onTouchdown, onAction, onSwitchPossession, onUndo } =
+      const { onTouchdown, onPlay, onAction, onSwitchPossession, onUndo } =
         handlers.current;
       const key = event.key.toLowerCase();
       let handled = true;
@@ -67,6 +82,8 @@ export function useTrackingShortcuts({
         return;
       } else if (key === "t") {
         onTouchdown();
+      } else if (key === "p") {
+        onPlay();
       } else if (key === "b") {
         onSwitchPossession();
       } else if (/^[1-8]$/.test(key)) {

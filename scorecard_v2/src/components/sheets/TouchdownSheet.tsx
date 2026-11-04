@@ -4,6 +4,7 @@ import type { GameLogEventInput, RosterPlayer } from "../../api/types";
 import JerseyPicker, { jerseyAllowed, jerseyOptions } from "../JerseyPicker";
 import { errorMessage } from "./errors";
 import Sheet from "./Sheet";
+import { yardsText, yardsValue } from "./yards";
 
 /**
  * Events of one touchdown submission: the touchdown row alone. The extra
@@ -11,8 +12,17 @@ import Sheet from "./Sheet";
  * screen asks for it), so the sheet never records a point that may not
  * happen.
  */
-export function touchdownEvents(jersey: number): GameLogEventInput[] {
-  return [{ name: "Touchdown", player: jersey }];
+export function touchdownEvents(
+  jersey: number,
+  yards: number | null = null,
+): GameLogEventInput[] {
+  const event: GameLogEventInput = { name: "Touchdown", player: jersey };
+  if (yards !== null) {
+    // The distance is the play's detail; the score is the jersey's.
+    event.payload = { yards };
+    event.input = yardsText(yards);
+  }
+  return [event];
 }
 
 interface TouchdownSheetProps {
@@ -53,6 +63,7 @@ export default function TouchdownSheet({
   onClose,
 }: TouchdownSheetProps) {
   const [jersey, setJersey] = useState<number | null>(null);
+  const [yards, setYards] = useState("");
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Ref, not state: a synchronous double tap both see `posting === false`
@@ -77,7 +88,7 @@ export default function TouchdownSheet({
     setPosting(true);
     setError(null);
     try {
-      await onSubmit(touchdownEvents(jersey));
+      await onSubmit(touchdownEvents(jersey, yardsValue(yards)));
       onClose();
     } catch (failure) {
       saving.current = false;
@@ -127,6 +138,23 @@ export default function TouchdownSheet({
           value={jersey}
         />
       )}
+
+      <div className="sheetfield">
+        <label className="sheetlabel" htmlFor="touchdown-yards">
+          Raumgewinn (Yards, optional)
+        </label>
+        <input
+          autoComplete="off"
+          className="sheetinput sheetinput-num"
+          disabled={posting}
+          id="touchdown-yards"
+          inputMode="numeric"
+          onChange={(event) => setYards(event.target.value)}
+          pattern="[0-9]*"
+          type="text"
+          value={yards}
+        />
+      </div>
 
       <h3 className="sheetsection">
         {passcheck ? "Bestätigter Kader" : "Kader"}

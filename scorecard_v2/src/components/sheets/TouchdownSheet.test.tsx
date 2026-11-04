@@ -51,6 +51,27 @@ function saveButton(): HTMLElement {
 }
 
 describe("TouchdownSheet", () => {
+  it("carries the yards of the scoring play", async () => {
+    const { onSubmit } = renderSheet();
+    const user = userEvent.setup();
+
+    await pick(7);
+    await user.type(
+      screen.getByRole("textbox", { name: /Raumgewinn/ }),
+      "8",
+    );
+    await user.click(saveButton());
+
+    expect(onSubmit).toHaveBeenCalledWith([
+      {
+        name: "Touchdown",
+        player: 7,
+        input: "8 Yards",
+        payload: { yards: 8 },
+      },
+    ]);
+  });
+
   it("asks who scored and offers only the possession team's roster", () => {
     renderSheet();
 

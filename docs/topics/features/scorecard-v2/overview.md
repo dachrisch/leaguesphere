@@ -110,6 +110,31 @@ game opens read-only with its log and no end-of-game action.
    sets `Gameinfo.status` and `gameHalftime`, so the half flips for every
    reader and the second half's plays are filed under half 2. While an extra point is
    open, the tiles and Halbzeit are locked.
+   A wide **Spielzug (Pass/Run/Sack)** button under the touchdown records the
+   play-by-play: the player, the yards gained or lost, and for a pass
+   **Complete/Incomplete** plus the **quarterback** (remembered per side on the
+   device, so the usual thrower is pre-selected; the switch is one tap). The
+   touchdown and 1st Down sheets carry an optional yards field. Everything
+   structured — `yards` (signed, a sack is a loss), `qb`, `complete` — travels
+   in the event `payload` for the statistics that come later, while `input`
+   carries the text the log and the ticker show. A completed pass or a run may
+   name the defender who made the tackle (the other team's roster); an
+   incomplete pass first asks **Deflection**, then the defender.
+   A **Challenge** next to the play records a coach's challenge — one tap is
+   enough, a short reason is optional — as its own `challenge` event.
+   **Overtime** is a two-step marker (`period/overtime`, no score, no third
+   half); the tile then turns into **+1 XP**, which opens the same jersey step
+   for the converter, and the try after a touchdown offers only **+1**.
+   Under the possession switch the screen shows the **down & distance** and the
+   spot (**3rd & 4 · eigene 43**), derived from the plays in the log: a play
+   that reaches the line to gain starts a new series, a fourth down short of it
+   is a turnover on downs (the app then sends the possession change itself), and
+   inside the opponent's ten the series is **1st & Goal**. The spot is stored by
+   a **Feldposition** row (own goal line = 0, opponent's = 100; the sheet asks
+   own/opponent + yard line), so a kickoff or a turnover can be set and a reload
+   keeps it; a play simply adds its yards. There is no kickoff/punt automation —
+   the officials set the spot. The state is recomputed from the rows, so an undo
+   rewinds it; the play's row text carries the resulting down for the ticker.
    Touchdown with the roster's jerseys (a tile grid up to 24 players, a
    two-digit keypad above that with the roster name as confirmation; numeric
    field when there is no roster; this game's scorers as a shortcut row above
@@ -183,6 +208,9 @@ What the backend had to grow (all additive):
 - `passcheck` on the games-to-whistle payload;
 - `league_display` on the gameday list;
 - `GameLogSubmission` and `GameSetup.device_id` (migrations `0046`, `0047`);
+- the gamelog payload's `events[]` rows carry the event `payload`
+  (`yards`, `qb`, `complete`, `defense`) — additive, `null` for rows no event
+  wrote; the app derives the down & distance from it;
 - `GET /api/game/<id>/summary` — one game with its gameday for the deep link
   (`?game=<id>`), built through the same service as the whistle list;
 - `GET /api/officials/crew-positions/game/<id>` — the league's crew slots in

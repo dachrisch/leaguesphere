@@ -24,8 +24,23 @@ wie die bisherige Scorecard
    angegriffen wird. Die Seite wählt immer das Gastteam – das zweit genannte
    Team.
 3. Erfasse im laufenden Spiel (oben stehen Feld und Runde) jeden Spielzug über
-   **Touchdown**, **1st Down**, **Turnover**, **Interception**, **Strafe**,
-   **Safety**, **Overtime**, **Spielzeit** oder **Auszeit**. **1st Down**,
+   **Spielzug (Pass/Run/Sack)** – mit Spieler, Raumgewinn bzw. Raumverlust und
+   beim Pass mit **Complete/Incomplete** und dem **Quarterback** (der letzte
+   steht schon da). Auf Pass und Run kannst du zusätzlich den Verteidiger
+   eintragen, der getackelt hat; bei einem unvollständigen Pass zuerst
+   **Deflection** wählen. Unter dem Ballbesitz steht der **Down & Distanz**
+   (z. B. **3rd & 4**) mit der Feldposition (z. B. **eigene 35**): Er zählt
+   sich aus den Spielzügen selbst weiter, ein erreichtes Ziel ergibt
+   **1st & 10**, ein nicht verwandelter vierter Versuch gibt den Ball ab, und
+   innerhalb der gegnerischen 10 steht **1st & Goal**. Die Feldposition setzt
+   du über **Feldposition** (eigene/gegnerische Yardlinie); sie hält über
+   Reloads, weil sie als Eintrag im Spielverlauf steht. **Challenge** hält einen Einspruch fest – ohne Text
+   oder mit einer kurzen Begründung. Dazu **Touchdown**, **1st Down**, **Turnover**,
+   **Interception**, **Strafe**, **Safety**, **Overtime**, **Spielzeit** und
+   **Auszeit**; bei **Touchdown** und **1st Down** kannst du den Raumgewinn
+   mit eintragen. **Overtime** startet die Verlängerung (zweiter Tipp
+   bestätigt); danach wird aus der Kachel **+1 XP**, und beim Versuch nach
+   einem Touchdown gibt es nur noch **+1** statt **+2**. **1st Down**,
    **Turnover** und **Interception** werden sofort gespeichert; bei 1st Down
    und Interception trägst du die Trikotnummer nach, wenn du die Kachel
    innerhalb von 10 Sekunden noch einmal tippst (**Nr. ergänzen**). Nach einem
@@ -57,9 +72,10 @@ Auf Tablets im Querformat steht der Spielverlauf neben den Eingaben. Die
 Spieleliste zeigt bei mehreren Feldern einen Feldplan mit gemeinsamen
 Anstoßzeiten. Auf dem Desktop kommen Spielinfo und Halbzeitenstände hinzu.
 
-Dort kannst du mit **T** einen Touchdown öffnen, mit **1–8** die acht Aktionen
-auslösen, mit **B** den Ballbesitz wechseln und mit **Strg+Z** (Mac: **Cmd+Z**)
-den letzten Eintrag zurücknehmen. Die Tastenkürzel sind deaktiviert, solange ein
+Dort kannst du mit **T** einen Touchdown öffnen, mit **P** einen Spielzug
+(Pass/Run/Sack), mit **1–8** die acht Aktionen auslösen, mit **B** den
+Ballbesitz wechseln und mit **Strg+Z** (Mac: **Cmd+Z**) den letzten Eintrag
+zurücknehmen. Die Tastenkürzel sind deaktiviert, solange ein
 Dialog oder ein Eingabefeld aktiv ist oder das Spiel nur gelesen werden darf.
 
 **Offizielle eintragen:** Tippe in **Spiel vorbereiten** auf eine Position und

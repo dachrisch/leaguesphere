@@ -97,6 +97,7 @@ interface EventOverrides {
   cop?: boolean;
   isDeleted?: boolean;
   time?: string;
+  payload?: Record<string, unknown> | null;
 }
 
 function logEvent(overrides: EventOverrides = {}): GameLogEvent {
@@ -1089,6 +1090,282 @@ async function pickJersey(
   );
 }
 
+describe("Tracking play-by-play", () => {
+  it("records a pass with yards and the remembered quarterback", async () => {
+    globalThis.localStorage.setItem("scorecard:v2:qb:42:home", "12");
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Spielzug/);
+    const sheet = screen.getByRole("dialog", { name: "Spielzug · Ravens" });
+    await user.click(
+      await within(sheet).findByRole("button", { name: "Trikot 7, Meier" }),
+    );
+    const yards = within(sheet).getByRole("textbox", { name: /Raumgewinn/ });
+    await user.clear(yards);
+    await user.type(yards, "8");
+    await user.click(
+      within(sheet).getByRole("button", { name: "Spielzug speichern" }),
+    );
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [
+          {
+            type: "play",
+            code: "pass",
+            side: "home",
+            player: 7,
+            period: 1,
+            payload: {
+              input: "8 Yards · QB #12 · 2nd & 2",
+              yards: 8,
+              complete: true,
+              qb: 12,
+            },
+          },
+        ],
+        client_id: expect.any(String),
+      }),
+    );
+    // A play is the snap, not a change of possession.
+    expect(sentPossessions()).toEqual([]);
+    expect(
+      await screen.findByText(/Pass gespeichert · 8 Yards · QB #12 · 2nd & 2/),
+    ).toBeInTheDocument();
+    // The thrower is remembered for the next pass of this side.
+    expect(globalThis.localStorage.getItem("scorecard:v2:qb:42:home")).toBe(
+      "12",
+    );
+  });
+
+  it("shows the down & distance the log derives", () => {
+    renderTracking({
+      log: makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({ id: 2, event: "Run", payload: { yards: 3 } }),
+          logEvent({ id: 1, event: "Run", payload: { yards: 4 } }),
+        ],
+      }),
+    });
+
+    // Newest first: 4 yards, then 3.
+    expect(screen.getByText("3rd & 3")).toBeInTheDocument();
+  });
+
+  it("sets the field position and shows the spot", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(
+      makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({
+            id: 5,
+            event: "Feldposition",
+            input: "eigene 35",
+            payload: { ballOn: 35 },
+          }),
+        ],
+      }),
+    );
+    renderTracking();
+    const user = userEvent.setup();
+
+    expect(screen.getByText("1st & 10")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Feldposition" }));
+    const sheet = screen.getByRole("dialog", {
+      name: "Feldposition · Ravens",
+    });
+    await user.click(
+      within(sheet).getByRole("button", { name: "Feldposition speichern" }),
+    );
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [
+          {
+            type: "fieldpos",
+            code: "",
+            side: "home",
+            player: null,
+            period: 1,
+            payload: { ballOn: 35, input: "eigene 35" },
+          },
+        ],
+        client_id: expect.any(String),
+      }),
+    );
+    expect(await screen.findByText(/1st & 10 · eigene 35/)).toBeInTheDocument();
+  });
+
+  it("shows goal-to-go inside the ten", () => {
+    renderTracking({
+      log: makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({
+            id: 2,
+            event: "Feldposition",
+            input: "gegn. 8",
+            payload: { ballOn: 92 },
+          }),
+          logEvent({ id: 1, event: "Run", payload: { yards: 3 } }),
+        ],
+      }),
+    });
+
+    // The spot row is the newest: the drive starts there, goal to go.
+    expect(screen.getByText(/1st & Goal/)).toBeInTheDocument();
+    // The spot is in the drive line and in the log row's detail.
+    expect(screen.getAllByText(/gegn\. 8/).length).toBeGreaterThan(0);
+  });
+
+  it("moves the spot with the yards of a play", () => {
+    renderTracking({
+      log: makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({ id: 1, event: "Run", payload: { yards: 30 } }),
+          logEvent({
+            id: 2,
+            event: "Feldposition",
+            input: "eigene 35",
+            payload: { ballOn: 35 },
+          }),
+        ],
+      }),
+    });
+
+    // Newest first: the 30-yard run came after the spot was set.
+    expect(screen.getByText(/1st & 10 · gegn. 35/)).toBeInTheDocument();
+  });
+
+  it("hands the ball over after a failed fourth down", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    const log = makeLog({
+      inPossession: "Ravens",
+      events: [
+        logEvent({ id: 3, event: "Run", payload: { yards: 1 } }),
+        logEvent({ id: 2, event: "Run", payload: { yards: 2 } }),
+        logEvent({ id: 1, event: "Run", payload: { yards: 3 } }),
+      ],
+    });
+    answerAppend(log);
+    renderTracking({ log });
+    const user = userEvent.setup();
+
+    // 4th & 4 after three runs; one more yard is short of the line.
+    expect(screen.getByText("4th & 4")).toBeInTheDocument();
+    await openSheet(user, /^Spielzug/);
+    const sheet = screen.getByRole("dialog", { name: "Spielzug · Ravens" });
+    await user.click(
+      await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
+    );
+    await user.click(within(sheet).getByRole("button", { name: "Run" }));
+    const yards = within(sheet).getByRole("textbox", { name: /Raumgewinn/ });
+    await user.clear(yards);
+    await user.type(yards, "1");
+    await user.click(
+      within(sheet).getByRole("button", { name: "Spielzug speichern" }),
+    );
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [
+          {
+            type: "play",
+            code: "run",
+            side: "home",
+            player: 23,
+            period: 1,
+            payload: { input: "1 Yards · 1st & 10", yards: 1 },
+          },
+        ],
+        client_id: expect.any(String),
+      }),
+    );
+    await waitFor(() => expect(sentPossessions()).toEqual(["away"]));
+  });
+
+  it("records a run without a quarterback", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Spielzug/);
+    const sheet = screen.getByRole("dialog", { name: "Spielzug · Ravens" });
+    await user.click(within(sheet).getByRole("button", { name: "Run" }));
+    await user.click(
+      await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
+    );
+    const yards = within(sheet).getByRole("textbox", { name: /Raumgewinn/ });
+    await user.clear(yards);
+    await user.type(yards, "14");
+    await user.click(
+      within(sheet).getByRole("button", { name: "Spielzug speichern" }),
+    );
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [
+          {
+            type: "play",
+            code: "run",
+            side: "home",
+            player: 23,
+            period: 1,
+            payload: { input: "14 Yards · 1st & 10", yards: 14 },
+          },
+        ],
+        client_id: expect.any(String),
+      }),
+    );
+  });
+});
+
+describe("Tracking challenge", () => {
+  it("records a challenge with its optional reason and keeps the ball", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Challenge" }));
+    const sheet = screen.getByRole("dialog", { name: "Challenge · Ravens" });
+    await user.type(
+      within(sheet).getByRole("textbox", { name: /Was wird gechallenget/ }),
+      "Catch nicht im Feld",
+    );
+    await user.click(
+      within(sheet).getByRole("button", { name: "Challenge speichern" }),
+    );
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [
+          {
+            type: "challenge",
+            code: "",
+            side: "home",
+            player: null,
+            period: 1,
+            payload: { input: "Catch nicht im Feld" },
+          },
+        ],
+        client_id: expect.any(String),
+      }),
+    );
+    expect(sentPossessions()).toEqual([]);
+    expect(
+      await screen.findByText(/Challenge gespeichert/),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("Tracking touchdown entry", () => {
   it("loads the roster and offers only the possessing side's jerseys", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
@@ -1640,6 +1917,60 @@ describe("Tracking wide layout", () => {
     await waitFor(() => expect(sentPossessions()).toEqual(["away"]));
   });
 
+  it("starts overtime with the 8 key", async () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: query === "(min-width: 1280px)",
+        media: query,
+      })),
+    );
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+
+    fireEvent.keyDown(window, { key: "8" });
+    // The first press arms the tile in place; the second starts.
+    expect(
+      screen.getByRole("button", { name: "Overtime starten" }),
+    ).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "8" });
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [
+          { type: "period", code: "overtime", side: "home", player: null, period: 1 },
+        ],
+        client_id: expect.any(String),
+      }),
+    );
+  });
+
+  it("opens the +1 XP step with the 8 key in overtime", async () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: query === "(min-width: 1280px)",
+        media: query,
+      })),
+    );
+    apiGetMock.mockResolvedValue(ROSTER);
+    const otLog = makeLog({
+      inPossession: "Ravens",
+      events: [
+        logEvent({ id: 9, event: "Overtime startet", team: null, half: 0 }),
+      ],
+    });
+    answerAppend(otLog);
+    renderTracking({ log: otLog });
+
+    fireEvent.keyDown(window, { key: "8" });
+
+    expect(
+      await screen.findByRole("dialog", { name: "Extrapunkt Ravens" }),
+    ).toBeInTheDocument();
+  });
+
   it("undoes the newest undoable row with Ctrl+Z and skips markers", async () => {
     vi.stubGlobal(
       "matchMedia",
@@ -2066,6 +2397,10 @@ describe("Possession flip rule", () => {
     "First Down",
     "1-Extra-Punkt",
     "2-Extra-Punkte",
+    "Pass",
+    "Pass unvollständig",
+    "Run",
+    "Sack",
   ];
 
   it.each(FLIPS)("hands the ball over after %s", (name) => {
@@ -2505,24 +2840,115 @@ describe("Tracking safety and overtime", () => {
     });
   });
 
-  it("records an overtime with a jersey", async () => {
+  it("starts overtime on the second tap, without a score", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
     const user = userEvent.setup();
 
-    await openSheet(user, /^Overtime$/);
-    await user.click(
-      await screen.findByRole("button", { name: "Trikotnummer 7, Meier" }),
-    );
-    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await user.click(screen.getByRole("button", { name: "Overtime" }));
+    await user.click(screen.getByRole("button", { name: "Overtime starten" }));
 
-    expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
-      events: [
-        { type: "score", code: "overtime", side: "home", player: 7, period: 1 },
-      ],
-      client_id: expect.any(String),
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [
+          { type: "period", code: "overtime", side: "home", player: null, period: 1 },
+        ],
+        client_id: expect.any(String),
+      }),
+    );
+    expect(sentPossessions()).toEqual([]);
+    expect(await screen.findByText("Overtime gestartet")).toBeInTheDocument();
+  });
+
+  it("shows why the overtime start was refused", async () => {
+    apiPostMock.mockRejectedValueOnce(
+      new ApiError(409, { detail: "Dieses Spiel ist beendet." }, "Dieses Spiel ist beendet."),
+    );
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Overtime" }));
+    await user.click(screen.getByRole("button", { name: "Overtime starten" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Dieses Spiel ist beendet.",
+    );
+  });
+
+  it("offers +1 XP in overtime and records it with a jersey", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(
+      makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({
+            id: 9,
+            event: "Overtime startet",
+            team: null,
+            half: 0,
+          }),
+        ],
+      }),
+    );
+    renderTracking({
+      log: makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({
+            id: 9,
+            event: "Overtime startet",
+            team: null,
+            half: 0,
+          }),
+        ],
+      }),
     });
+    const user = userEvent.setup();
+
+    // The tile is the conversion now, not the start.
+    expect(
+      screen.queryByRole("button", { name: "Overtime" }),
+    ).toBeNull();
+    await user.click(screen.getByRole("button", { name: "+1 XP" }));
+    const sheet = screen.getByRole("dialog", { name: "Extrapunkt Ravens" });
+    await user.click(
+      await within(sheet).findByRole("button", { name: "Trikot 7, Meier" }),
+    );
+    await user.click(within(sheet).getByRole("button", { name: "Speichern" }));
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [
+          { type: "score", code: "pat1", side: "home", player: 7, period: 1 },
+        ],
+        client_id: expect.any(String),
+      }),
+    );
+    expect(sentPossessions()).toEqual([]);
+  });
+
+  it("offers only the one-point try in overtime", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    const otLog = makeLog({
+      inPossession: "Ravens",
+      events: [
+        logEvent({ id: 9, event: "Overtime startet", team: null, half: 0 }),
+      ],
+    });
+    answerAppend(otLog);
+    renderTracking({ log: otLog });
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Touchdown Ravens$/);
+    await pickJersey(user, 23);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    const pat = await screen.findByRole("group", { name: "Extrapunkt Ravens" });
+
+    expect(within(pat).getByRole("button", { name: "+1" })).toBeInTheDocument();
+    expect(
+      within(pat).queryByRole("button", { name: "+2" }),
+    ).toBeNull();
   });
 });
 
