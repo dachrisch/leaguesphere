@@ -152,6 +152,22 @@ describe("envelopesForWrite", () => {
     expect(sack).toMatchObject({ type: "play", code: "sack" });
   });
 
+  it("translates a challenge with its optional text", () => {
+    const [challenge] = envelopesForWrite(
+      write("Ravens", [{ name: "Challenge", input: "Zuschauer zu viele" }]),
+      LOG,
+    );
+
+    expect(challenge).toEqual({
+      type: "challenge",
+      code: "",
+      side: "home",
+      player: null,
+      period: 1,
+      payload: { input: "Zuschauer zu viele" },
+    });
+  });
+
   it("resolves the side from the team name the sheets know", () => {
     const [envelope] = envelopesForWrite(
       write("Wolves", [{ name: "Touchdown", player: 9 }]),
@@ -283,6 +299,10 @@ describe("displayOf", () => {
     ).toMatchObject({ event: "Pass unvollständig" });
     expect(displayOf({ type: "play", code: "run" }).event).toBe("Run");
     expect(displayOf({ type: "play", code: "sack" }).event).toBe("Sack");
+    expect(displayOf({ type: "challenge" })).toMatchObject({
+      event: "Challenge",
+      value: 0,
+    });
     // Nothing to show beats a wrong row.
     expect(displayOf({ type: "play", code: "kick" }).event).toBeNull();
   });

@@ -1177,6 +1177,45 @@ describe("Tracking play-by-play", () => {
   });
 });
 
+describe("Tracking challenge", () => {
+  it("records a challenge with its optional reason and keeps the ball", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Challenge" }));
+    const sheet = screen.getByRole("dialog", { name: "Challenge · Ravens" });
+    await user.type(
+      within(sheet).getByRole("textbox", { name: /Was wird gechallenget/ }),
+      "Catch nicht im Feld",
+    );
+    await user.click(
+      within(sheet).getByRole("button", { name: "Challenge speichern" }),
+    );
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [
+          {
+            type: "challenge",
+            code: "",
+            side: "home",
+            player: null,
+            period: 1,
+            payload: { input: "Catch nicht im Feld" },
+          },
+        ],
+        client_id: expect.any(String),
+      }),
+    );
+    expect(sentPossessions()).toEqual([]);
+    expect(
+      await screen.findByText(/Challenge gespeichert/),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("Tracking touchdown entry", () => {
   it("loads the roster and offers only the possessing side's jerseys", async () => {
     apiGetMock.mockResolvedValue(ROSTER);

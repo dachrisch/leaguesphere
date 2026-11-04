@@ -62,6 +62,7 @@ import SeriesSheet, {
   type SeriesMode,
 } from "../components/sheets/SeriesSheet";
 import JerseyPicker from "../components/JerseyPicker";
+import ChallengeSheet from "../components/sheets/ChallengeSheet";
 import PlaySheet from "../components/sheets/PlaySheet";
 import EditSheet from "../components/sheets/EditSheet";
 import Sheet from "../components/sheets/Sheet";
@@ -111,6 +112,7 @@ type Side = RosterPlayer["side"];
 type SheetState =
   | { kind: "touchdown" }
   | { kind: "play" }
+  | { kind: "challenge" }
   | { kind: "series"; mode: SeriesMode }
   | { kind: "penalty" }
   | { kind: "more"; mode: MoreMode };
@@ -210,6 +212,7 @@ const KEEP_POSSESSION = new Set([
   "Pass unvollständig",
   "Run",
   "Sack",
+  "Challenge",
   // Written after the try, once the touchdown already handed the ball over.
   "1-Extra-Punkt",
   "2-Extra-Punkte",
@@ -1475,16 +1478,26 @@ export default function TrackingScreen({
             <kbd aria-hidden="true" className="shortcut-hint" data-key="T" />
           </button>
         )}
-        <button
-          className="playbtn"
-          disabled={composerDisabled}
-          onClick={() => openSheet({ kind: "play" })}
-          type="button"
-        >
-          <Play className="playbtn-icon" size={20} />
-          <span>Spielzug (Pass/Run/Sack)</span>
-          <kbd aria-hidden="true" className="shortcut-hint" data-key="P" />
-        </button>
+        <div className="playrow">
+          <button
+            className="playbtn"
+            disabled={composerDisabled}
+            onClick={() => openSheet({ kind: "play" })}
+            type="button"
+          >
+            <Play className="playbtn-icon" size={20} />
+            <span>Spielzug (Pass/Run/Sack)</span>
+            <kbd aria-hidden="true" className="shortcut-hint" data-key="P" />
+          </button>
+          <button
+            className="playbtn playbtn-compact"
+            disabled={composerDisabled}
+            onClick={() => openSheet({ kind: "challenge" })}
+            type="button"
+          >
+            <span>Challenge</span>
+          </button>
+        </div>
         <div className="action-grid">
         {SERIES_TILES.map(({ mode, label, Icon, oneTap }, index) => {
           const offersJersey = armed === mode;
@@ -1688,8 +1701,15 @@ export default function TrackingScreen({
             lastQuarterback={readQuarterback(game.id, possessionSide)}
             onClose={() => setSheet(null)}
             onSubmit={(event) => submit([event])}
+            opponentName={opponentName ?? "Gegner"}
             roster={roster}
             side={possessionSide}
+            teamName={possessionName}
+          />
+        ) : sheet.kind === "challenge" ? (
+          <ChallengeSheet
+            onClose={() => setSheet(null)}
+            onSubmit={(event) => submit([event])}
             teamName={possessionName}
           />
         ) : sheet.kind === "touchdown" ? (

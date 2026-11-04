@@ -70,6 +70,7 @@ const LEGACY_EVENTS: Record<string, LegacySpec> = {
   "Pass unvollständig": { type: "play", code: "pass", input: "payload" },
   Run: { type: "play", code: "run", input: "payload" },
   Sack: { type: "play", code: "sack", input: "payload" },
+  Challenge: { type: "challenge", input: "payload" },
 };
 
 /** Mirrors `SCORING_EVENT_VALUES` in `gamedays/service/gamelog.py`. */
@@ -263,6 +264,8 @@ export function displayOf(envelope: EventEnvelope): EnvelopeDisplay {
     }
     case "penalty":
       return { ...none(), event: "Strafe", excluded: true };
+    case "challenge":
+      return { ...none(), event: "Challenge" };
     case "series":
       return code === "first_down"
         ? { ...none(), event: "First Down", excluded: true }

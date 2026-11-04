@@ -1809,8 +1809,14 @@ button.game-row:active {
 /* The play-by-play entry sits under the touchdown and spans the grid: it is
    the other action used on every snap. Neutral, so it never competes with the
    team-coloured touchdown. */
-.playbtn {
+.playrow {
   grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.playbtn {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: var(--space-2);
@@ -1826,6 +1832,13 @@ button.game-row:active {
   border-radius: var(--radius-lg);
   cursor: pointer;
   transition: border-color var(--transition-fast);
+}
+
+/* The rarer challenge sits next to the play, one tap away. */
+.playbtn-compact {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  text-align: center;
 }
 
 .playbtn:hover:not(:disabled) {

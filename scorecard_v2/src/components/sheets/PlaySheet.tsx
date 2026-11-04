@@ -32,11 +32,15 @@ export function playInput({
   complete,
   yards,
   qb,
+  defender = null,
+  deflection = false,
 }: {
   type: PlayType;
   complete: boolean;
   yards: number;
   qb: number | null;
+  defender?: number | null;
+  deflection?: boolean;
 }): string {
   const parts: string[] = [];
   if (type === "sack") {
@@ -46,6 +50,9 @@ export function playInput({
   }
   if (type === "pass" && qb !== null) {
     parts.push(`QB #${qb}`);
+  }
+  if (defender !== null && type !== "sack") {
+    parts.push(deflection ? `Deflection #${defender}` : `Tackle #${defender}`);
   }
   return parts.join(" · ");
 }
@@ -64,12 +71,16 @@ export function playEvent({
   yards,
   qb,
   player,
+  defender = null,
+  deflection = false,
 }: {
   type: PlayType;
   complete: boolean;
   yards: number;
   qb: number | null;
   player: number | null;
+  defender?: number | null;
+  deflection?: boolean;
 }): GameLogEventInput {
   const payload: Record<string, unknown> = {
     yards: type === "sack" ? -Math.abs(yards) : yards,
@@ -80,9 +91,16 @@ export function playEvent({
       payload.qb = qb;
     }
   }
+  if (defender !== null && type !== "sack") {
+    // The defender is the *other* team's player; the play's `player` stays the
+    // offense's. Both are jersey numbers, the side comes from the event.
+    payload.defense = deflection
+      ? { player: defender, deflection: true }
+      : { player: defender };
+  }
   const event: GameLogEventInput = {
     name: playName(type, complete),
-    input: playInput({ type, complete, yards, qb }),
+    input: playInput({ type, complete, yards, qb, defender, deflection }),
     payload,
   };
   if (player !== null) {
@@ -98,6 +116,8 @@ interface PlaySheetProps {
   side: RosterPlayer["side"];
   /** Both sides as loaded from the API, `null` while the request runs. */
   roster: RosterPlayer[] | null;
+  /** The other team's name, printed above its defence picker. */
+  opponentName?: string;
   /** The last quarterback of this side, pre-selected on a pass. */
   lastQuarterback?: number | null;
   onSubmit: (event: GameLogEventInput) => Promise<void>;
@@ -112,6 +132,7 @@ export default function PlaySheet({
   teamName,
   side,
   roster,
+  opponentName = "Gegner",
   lastQuarterback = null,
   onSubmit,
   onClose,
@@ -120,6 +141,8 @@ export default function PlaySheet({
   const [complete, setComplete] = useState(true);
   const [jersey, setJersey] = useState<number | null>(null);
   const [qb, setQb] = useState<number | null>(lastQuarterback);
+  const [defender, setDefender] = useState<number | null>(null);
+  const [deflection, setDeflection] = useState(false);
   const [yardsText, setYardsText] = useState("0");
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -128,6 +151,8 @@ export default function PlaySheet({
 
   const players =
     roster === null ? [] : roster.filter((player) => player.side === side);
+  const defenders =
+    roster === null ? [] : roster.filter((player) => player.side !== side);
   const yards = yardsValue(yardsText) ?? 0;
   const qbMissing = type === "pass" && qb === null;
   const ready = !posting && !qbMissing;
@@ -140,7 +165,19 @@ export default function PlaySheet({
     setPosting(true);
     setError(null);
     try {
-      await onSubmit(playEvent({ type, complete, yards, qb, player: jersey }));
+      await onSubmit(
+        playEvent({
+          type,
+          complete,
+          yards,
+          qb,
+          player: jersey,
+          // A deflection only exists on an incomplete pass; a sack has no
+          // tackle to record (the sacked quarterback is the play's player).
+          defender: type === "sack" ? null : defender,
+          deflection: type === "pass" && !complete && deflection,
+        }),
+      );
       onClose();
     } catch (failure) {
       saving.current = false;
@@ -256,6 +293,42 @@ export default function PlaySheet({
               Bitte den Quarterback wählen.
             </p>
           ) : null}
+        </>
+      ) : null}
+
+      {type !== "sack" ? (
+        <>
+          {type === "pass" && !complete ? (
+            <div aria-label="Deflection" className="seg" role="group">
+              <button
+                aria-pressed={deflection}
+                className={deflection ? "sel" : undefined}
+                disabled={posting}
+                onClick={() => setDeflection((current) => !current)}
+                type="button"
+              >
+                Deflection
+              </button>
+            </div>
+          ) : null}
+          {type === "pass" && !complete && !deflection ? null : (
+            <>
+              <h3 className="sheetsection">
+                {type === "pass" && !complete
+                  ? `Deflection ${opponentName} (optional)`
+                  : `Tackle ${opponentName} (optional)`}
+              </h3>
+              <JerseyPicker
+                disabled={posting}
+                groupLabel="Trikotnummer Defense"
+                label="Defense"
+                onChange={setDefender}
+                optionalLabel="Ohne Nummer"
+                players={defenders}
+                value={defender}
+              />
+            </>
+          )}
         </>
       ) : null}
     </Sheet>

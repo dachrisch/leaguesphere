@@ -402,6 +402,23 @@ def _apply_score(state: GameStateValue, event: GameEventValue) -> Projection:
     return _projection(_advance(state, event, **changes), [row])
 
 
+def _apply_challenge(state: GameStateValue, event: GameEventValue) -> Projection:
+    """A coach's challenge: what was challenged is free text, nothing scores.
+
+    The official may just tap it, so the text is optional; the row is the
+    record the ticker and the report read.
+    """
+    payload = event.payload or {}
+    text = payload.get("text") or payload.get("input")
+    row = _row(
+        event,
+        "Challenge",
+        side=_require_side(event),
+        input=text.strip() if isinstance(text, str) and text.strip() else None,
+    )
+    return _projection(_advance(state, event), [row])
+
+
 def _apply_penalty(state: GameStateValue, event: GameEventValue) -> Projection:
     # The configured penalty name travels as TeamLog.input, exactly as the
     # legacy payload's ``input`` did.
@@ -579,6 +596,7 @@ def _apply_correction(state: GameStateValue, event: GameEventValue) -> Projectio
 _HANDLERS = {
     "score": _apply_score,
     "play": _apply_play,
+    "challenge": _apply_challenge,
     "penalty": _apply_penalty,
     "series": _apply_series,
     "possession": _apply_possession,
