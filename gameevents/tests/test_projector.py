@@ -635,3 +635,15 @@ def test_a_challenge_without_text_is_still_a_row():
 
     assert projection.rows[0].event == "Challenge"
     assert projection.rows[0].input is None
+
+
+def test_overtime_start_is_a_marker_without_a_new_period():
+    projection = apply(
+        state(period=2, score_home=14), ev("period", "overtime", seq=9)
+    )
+
+    assert projection.rows[0].event == "Overtime startet"
+    assert projection.rows[0].half == 0
+    assert projection.rows[0].sequence == 0
+    assert projection.state.period == 2
+    assert projection.state.score_home == 14

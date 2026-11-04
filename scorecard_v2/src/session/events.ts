@@ -71,6 +71,7 @@ const LEGACY_EVENTS: Record<string, LegacySpec> = {
   Run: { type: "play", code: "run", input: "payload" },
   Sack: { type: "play", code: "sack", input: "payload" },
   Challenge: { type: "challenge", input: "payload" },
+  "Overtime starten": { type: "period", code: "overtime" },
 };
 
 /** Mirrors `SCORING_EVENT_VALUES` in `gamedays/service/gamelog.py`. */
@@ -304,6 +305,7 @@ export function displayOf(envelope: EventEnvelope): EnvelopeDisplay {
       const name = {
         start: "Spiel gestartet",
         half_time: "2. Halbzeit gestartet",
+        overtime: "Overtime startet",
         end: "Spiel beendet",
       }[code];
       return name === undefined
