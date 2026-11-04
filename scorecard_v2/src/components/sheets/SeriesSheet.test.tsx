@@ -48,6 +48,36 @@ function saveButton(): HTMLElement {
 }
 
 describe("SeriesSheet", () => {
+  it("records a first down with the yards that moved the chains", async () => {
+    const { onSubmit } = renderSheet("first");
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Trikot 23, Schulz" }));
+    await user.type(
+      screen.getByRole("textbox", { name: /Raumgewinn/ }),
+      "6",
+    );
+    await user.click(saveButton());
+
+    expect(onSubmit).toHaveBeenCalledWith([
+      {
+        name: "First Down",
+        player: 23,
+        input: "6 Yards",
+        payload: { yards: 6 },
+      },
+    ]);
+  });
+
+  it("keeps the yards out of the payload when the field is empty", async () => {
+    const { onSubmit } = renderSheet("first");
+    const user = userEvent.setup();
+
+    await user.click(saveButton());
+
+    expect(onSubmit).toHaveBeenCalledWith([{ name: "First Down" }]);
+  });
+
   it("records a first down with a jersey", async () => {
     const { onSubmit } = renderSheet("first");
     const user = userEvent.setup();

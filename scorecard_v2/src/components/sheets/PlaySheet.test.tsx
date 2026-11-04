@@ -207,6 +207,14 @@ describe("PlaySheet", () => {
     });
   });
 
+  it("falls back to the numeric fields while no roster is loaded", () => {
+    renderSheet({ roster: null });
+
+    // The yards field, the jersey and the quarterback are each a plain number.
+    expect(screen.getAllByRole("textbox")).toHaveLength(3);
+    expect(screen.getAllByText(/Kein Kader geladen/).length).toBeGreaterThan(0);
+  });
+
   it("keeps the sheet open with the reason when the write fails", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => {
