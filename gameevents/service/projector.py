@@ -304,6 +304,62 @@ def _duration(payload: dict, *, pad_minutes: bool) -> Optional[str]:
     return f"{minutes}:{seconds:02d}"
 
 
+def _yards_text(payload: dict) -> Optional[str]:
+    """The visible detail of a play: yards (a loss is said in words) and the
+    quarterback when the payload names one."""
+    parts: list[str] = []
+    yards = payload.get("yards")
+    # bool is an int in Python; a true/false must not become "1 Yards".
+    if isinstance(yards, int) and not isinstance(yards, bool):
+        parts.append(f"{abs(yards)} Yards Verlust" if yards < 0 else f"{yards} Yards")
+    qb = payload.get("qb")
+    if isinstance(qb, int) and not isinstance(qb, bool):
+        parts.append(f"QB #{qb}")
+    return " · ".join(parts) if parts else None
+
+
+def _play_detail(event: GameEventValue) -> Optional[str]:
+    """A play row's ``input``: the client's own text, or built from the payload.
+
+    The client sends the text it shows, so its optimistic row and the server's
+    projection cannot disagree; the payload stays the structured record for the
+    statistics that come later.
+    """
+    payload = event.payload or {}
+    visible = payload.get("input")
+    if isinstance(visible, str) and visible.strip() != "":
+        return visible
+    return _yards_text(payload)
+
+
+def _apply_play(state: GameStateValue, event: GameEventValue) -> Projection:
+    """One scrimmage play: pass, run or sack.
+
+    A play changes no score and no possession -- it is the play-by-play record
+    the ticker and the later statistics read. ``payload`` carries the detail
+    (``yards``, ``qb``, ``complete``; the defence follows), ``player`` the
+    jersey the play belongs to.
+    """
+    payload = event.payload or {}
+    if event.code == "pass":
+        name = "Pass unvollständig" if payload.get("complete") is False else "Pass"
+    elif event.code == "run":
+        name = "Run"
+    elif event.code == "sack":
+        name = "Sack"
+    else:
+        raise UnsupportedEventCode(f"unknown play code {event.code!r}")
+
+    row = _row(
+        event,
+        name,
+        side=_require_side(event),
+        player=event.player,
+        input=_play_detail(event),
+    )
+    return _projection(_advance(state, event), [row])
+
+
 def _apply_score(state: GameStateValue, event: GameEventValue) -> Projection:
     if event.code == "safety":
         points = event.payload.get("points")
@@ -329,7 +385,14 @@ def _apply_score(state: GameStateValue, event: GameEventValue) -> Projection:
     # Quirk kept from GameLogCreator: a scoring row without a jersey is stored
     # with value 0, so it must not move the score either.
     row_value = value if event.player is not None else 0
-    row = _row(event, name, side=side, player=event.player, value=row_value)
+    row = _row(
+        event,
+        name,
+        side=side,
+        player=event.player,
+        value=row_value,
+        input=_play_detail(event) if name == "Touchdown" else None,
+    )
 
     changes: dict[str, Any] = {}
     if side == "home":
@@ -355,7 +418,13 @@ def _apply_penalty(state: GameStateValue, event: GameEventValue) -> Projection:
 def _apply_series(state: GameStateValue, event: GameEventValue) -> Projection:
     if event.code != "first_down":
         raise UnsupportedEventCode(f"unknown series code {event.code!r}")
-    row = _row(event, "First Down", side=_require_side(event), player=event.player)
+    row = _row(
+        event,
+        "First Down",
+        side=_require_side(event),
+        player=event.player,
+        input=_play_detail(event),
+    )
     return _projection(_advance(state, event), [row])
 
 
@@ -509,6 +578,7 @@ def _apply_correction(state: GameStateValue, event: GameEventValue) -> Projectio
 
 _HANDLERS = {
     "score": _apply_score,
+    "play": _apply_play,
     "penalty": _apply_penalty,
     "series": _apply_series,
     "possession": _apply_possession,

@@ -66,6 +66,10 @@ const LEGACY_EVENTS: Record<string, LegacySpec> = {
   Strafe: { type: "penalty", input: "code" },
   Spielzeit: { type: "time", code: "clock", input: "payload" },
   Auszeit: { type: "timeout", input: "payload" },
+  Pass: { type: "play", code: "pass", input: "payload" },
+  "Pass unvollständig": { type: "play", code: "pass", input: "payload" },
+  Run: { type: "play", code: "run", input: "payload" },
+  Sack: { type: "play", code: "sack", input: "payload" },
 };
 
 /** Mirrors `SCORING_EVENT_VALUES` in `gamedays/service/gamelog.py`. */
@@ -183,6 +187,11 @@ function envelopeFor(
   if (spec.input === "payload" && entry.input !== undefined) {
     envelope.payload = { ...(envelope.payload ?? {}), input: entry.input };
   }
+  // The play's structured detail (yards, quarterback, complete) is what a
+  // later statistics read consumes; it never changes what the log renders.
+  if (entry.payload !== undefined) {
+    envelope.payload = { ...(envelope.payload ?? {}), ...entry.payload };
+  }
   if (spec.type === "timeout") {
     // The timeout's code is its side; the server reads either.
     envelope.code = side;
@@ -271,6 +280,23 @@ export function displayOf(envelope: EventEnvelope): EnvelopeDisplay {
       return { ...none(), event: "Spielzeit", excluded: true };
     case "timeout":
       return { ...none(), event: "Auszeit", excluded: true };
+    case "play": {
+      const name = {
+        pass: "Pass",
+        run: "Run",
+        sack: "Sack",
+      }[code];
+      if (name === undefined) {
+        return none();
+      }
+      // An incomplete pass has its own row name; the payload says which.
+      const incomplete =
+        code === "pass" && envelope.payload?.complete === false;
+      return {
+        ...none(),
+        event: incomplete ? "Pass unvollständig" : name,
+      };
+    }
     case "period": {
       const name = {
         start: "Spiel gestartet",

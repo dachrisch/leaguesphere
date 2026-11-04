@@ -1679,7 +1679,8 @@ button.game-row:active {
   border-color: color-mix(in srgb, var(--amber) 30%, transparent);
 }
 
-.ev-int {
+.ev-int,
+.ev-play {
   color: var(--fg);
   background: var(--fill-soft);
 }
@@ -1803,6 +1804,43 @@ button.game-row:active {
   box-shadow: var(--shadow-card);
   cursor: pointer;
   transition: opacity var(--transition-fast);
+}
+
+/* The play-by-play entry sits under the touchdown and spans the grid: it is
+   the other action used on every snap. Neutral, so it never competes with the
+   team-coloured touchdown. */
+.playbtn {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: 48px;
+  padding: 0 var(--space-4);
+  text-align: left;
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.playbtn:hover:not(:disabled) {
+  border-color: var(--fg);
+}
+
+.playbtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.playbtn-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--primary);
 }
 
 .tdbtn.home {
@@ -4503,6 +4541,7 @@ button.syncbadge {
 @media (min-width: 1280px) and (pointer: fine) {
   .tracking .action,
   .tracking .tdbtn,
+  .tracking .playbtn,
   .tracking .possbtn {
     position: relative;
   }

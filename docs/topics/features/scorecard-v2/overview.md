@@ -110,6 +110,14 @@ game opens read-only with its log and no end-of-game action.
    sets `Gameinfo.status` and `gameHalftime`, so the half flips for every
    reader and the second half's plays are filed under half 2. While an extra point is
    open, the tiles and Halbzeit are locked.
+   A wide **Spielzug (Pass/Run/Sack)** button under the touchdown records the
+   play-by-play: the player, the yards gained or lost, and for a pass
+   **Complete/Incomplete** plus the **quarterback** (remembered per side on the
+   device, so the usual thrower is pre-selected; the switch is one tap). The
+   touchdown and 1st Down sheets carry an optional yards field. Everything
+   structured — `yards` (signed, a sack is a loss), `qb`, `complete` — travels
+   in the event `payload` for the statistics that come later, while `input`
+   carries the text the log and the ticker show.
    Touchdown with the roster's jerseys (a tile grid up to 24 players, a
    two-digit keypad above that with the roster name as confirmation; numeric
    field when there is no roster; this game's scorers as a shortcut row above

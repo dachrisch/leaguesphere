@@ -297,6 +297,12 @@ export interface GameLogEventInput {
   name: string;
   player?: number;
   input?: string;
+  /**
+   * Structured detail the event store keeps for later statistics (yards, the
+   * quarterback, whether a pass was complete). The visible text travels in
+   * `input`; this is never rendered by the log itself.
+   */
+  payload?: Record<string, unknown>;
 }
 
 /**
