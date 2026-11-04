@@ -15,7 +15,7 @@ dependencies = [
     "django-crispy-forms==2.7",
     "crispy-bootstrap5==2026.9",
     "numpy==2.5.4",
-    "pandas==3.1.0",
+    "pandas==3.1.1",
     "django-pandas==0.6.7",
     "djangorestframework==3.18.3",
     "django-autocomplete-light==5.0.0",
