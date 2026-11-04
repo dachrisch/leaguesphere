@@ -26,7 +26,10 @@ wie die bisherige Scorecard
 3. Erfasse im laufenden Spiel (oben stehen Feld und Runde) jeden Spielzug über
    **Spielzug (Pass/Run/Sack)** – mit Spieler, Raumgewinn bzw. Raumverlust und
    beim Pass mit **Complete/Incomplete** und dem **Quarterback** (der letzte
-   steht schon da). Dazu **Touchdown**, **1st Down**, **Turnover**,
+   steht schon da). Auf Pass und Run kannst du zusätzlich den Verteidiger
+   eintragen, der getackelt hat; bei einem unvollständigen Pass zuerst
+   **Deflection** wählen. **Challenge** hält einen Einspruch fest – ohne Text
+   oder mit einer kurzen Begründung. Dazu **Touchdown**, **1st Down**, **Turnover**,
    **Interception**, **Strafe**, **Safety**, **Overtime**, **Spielzeit** und
    **Auszeit**; bei **Touchdown** und **1st Down** kannst du den Raumgewinn
    mit eintragen. **1st Down**,

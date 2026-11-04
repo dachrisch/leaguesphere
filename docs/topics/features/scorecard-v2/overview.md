@@ -117,7 +117,11 @@ game opens read-only with its log and no end-of-game action.
    touchdown and 1st Down sheets carry an optional yards field. Everything
    structured — `yards` (signed, a sack is a loss), `qb`, `complete` — travels
    in the event `payload` for the statistics that come later, while `input`
-   carries the text the log and the ticker show.
+   carries the text the log and the ticker show. A completed pass or a run may
+   name the defender who made the tackle (the other team's roster); an
+   incomplete pass first asks **Deflection**, then the defender.
+   A **Challenge** next to the play records a coach's challenge — one tap is
+   enough, a short reason is optional — as its own `challenge` event.
    Touchdown with the roster's jerseys (a tile grid up to 24 players, a
    two-digit keypad above that with the roster name as confirmation; numeric
    field when there is no roster; this game's scorers as a shortcut row above

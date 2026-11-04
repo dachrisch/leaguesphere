@@ -210,9 +210,71 @@ describe("PlaySheet", () => {
   it("falls back to the numeric fields while no roster is loaded", () => {
     renderSheet({ roster: null });
 
-    // The yards field, the jersey and the quarterback are each a plain number.
-    expect(screen.getAllByRole("textbox")).toHaveLength(3);
+    // Yards, jersey, quarterback and defender are each a plain number.
+    expect(screen.getAllByRole("textbox")).toHaveLength(4);
     expect(screen.getAllByText(/Kein Kader geladen/).length).toBeGreaterThan(0);
+  });
+
+  it("lists the defender who made the tackle, from the other team", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({ lastQuarterback: 12 });
+
+    await user.click(
+      await screen.findByRole("button", { name: "Trikot 7, Meier" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Defense 11, Wolf" }));
+    await user.click(
+      screen.getByRole("button", { name: "Spielzug speichern" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: "Pass",
+      player: 7,
+      input: "0 Yards · QB #12 · Tackle #11",
+      payload: {
+        yards: 0,
+        complete: true,
+        qb: 12,
+        defense: { player: 11 },
+      },
+    });
+  });
+
+  it("records a deflection on an incomplete pass", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({ lastQuarterback: 12 });
+
+    await user.click(screen.getByRole("button", { name: "Incomplete" }));
+    await user.click(screen.getByRole("button", { name: "Deflection" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Defense 11, Wolf" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Spielzug speichern" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: "Pass unvollständig",
+      input: "QB #12 · Deflection #11",
+      payload: {
+        yards: 0,
+        complete: false,
+        qb: 12,
+        defense: { player: 11, deflection: true },
+      },
+    });
+  });
+
+  it("offers no defender on a sack", async () => {
+    const user = userEvent.setup();
+    renderSheet();
+
+    await user.click(screen.getByRole("button", { name: "Sack" }));
+
+    expect(screen.queryByRole("group", { name: "Deflection" })).toBeNull();
+    expect(
+      screen.queryByRole("group", { name: "Trikotnummer Defense" }),
+    ).toBeNull();
   });
 
   it("keeps the sheet open with the reason when the write fails", async () => {

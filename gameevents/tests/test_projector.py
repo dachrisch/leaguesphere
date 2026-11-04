@@ -608,3 +608,30 @@ def test_a_first_down_carries_its_yards():
 
     assert projection.rows[0].event == "First Down"
     assert projection.rows[0].input == "6 Yards"
+
+
+def test_a_challenge_is_a_row_with_the_optional_text():
+    projection = apply(
+        state(),
+        ev(
+            "challenge",
+            "",
+            side="home",
+            seq=4,
+            text="  Zuschauer zu viele  ",
+        ),
+    )
+
+    row = projection.rows[0]
+    assert row.event == "Challenge"
+    assert row.input == "Zuschauer zu viele"
+    assert row.value == 0
+    assert projection.state.score_home == 0
+    assert projection.state.in_possession is None
+
+
+def test_a_challenge_without_text_is_still_a_row():
+    projection = apply(state(), ev("challenge", "", side="away"))
+
+    assert projection.rows[0].event == "Challenge"
+    assert projection.rows[0].input is None

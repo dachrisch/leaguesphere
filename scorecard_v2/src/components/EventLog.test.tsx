@@ -544,6 +544,18 @@ describe("EventLog", () => {
     expect(screen.getByText("#12 · 5 Yards Verlust")).toBeInTheDocument();
   });
 
+  it("shows a challenge with its reason", () => {
+    render(
+      <EventLog
+        onUndo={vi.fn()}
+        rows={[row({ event: "Challenge", input: "Catch nicht im Feld" })]}
+      />,
+    );
+
+    expect(screen.getByText("Challenge")).toBeInTheDocument();
+    expect(screen.getByText("Catch nicht im Feld")).toBeInTheDocument();
+  });
+
   it("hides the detail line of a row without one", () => {
     render(
       <EventLog

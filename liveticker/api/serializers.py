@@ -16,6 +16,7 @@ _EVENTS_WITH_INPUT = frozenset(
         "Sack",
         "Touchdown",
         "First Down",
+        "Challenge",
     }
 )
 
