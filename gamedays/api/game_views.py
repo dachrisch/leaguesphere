@@ -673,11 +673,13 @@ class GameSummaryAPIView(APIView):
     """One game with its gameday, for the scorecard's deep link.
 
     The field app is a single page and normally reaches a game through its
-    gameday, so a link that names the game directly needs the two things a
-    single game id cannot answer: the row the games list would show (field,
-    stage, teams, status, passcheck) and the gameday it belongs to. Building
-    the row through ``GamedayService`` keeps it identical to the list payload —
-    a link must not show a different game than the list does.
+    gameday, so a link that names the game directly needs the game row (field,
+    stage, teams, status, passcheck) and the gameday it belongs to.
+
+    The row is built from the game itself, not from the games-to-whistle list:
+    that list only holds games still to be played, and the organisation opens
+    a deep link *after* the game more often than before it. A finished game must
+    answer here, or the link would 404 exactly when it is needed.
 
     Authenticated on purpose: the link opens the scorecard, which is
     login-gated, and the row carries the crew.
@@ -691,13 +693,7 @@ class GameSummaryAPIView(APIView):
         except Gameinfo.DoesNotExist:
             raise NotFound(detail=f"No game found for gameId {pk}")
 
-        games = GamedayService.create(game.gameday_id).get_games_to_whistle("*")
-        rows = json.loads(
-            games.to_json(orient="records"), object_pairs_hook=OrderedDict
-        )
-        row = next((entry for entry in rows if str(entry.get("id")) == str(pk)), None)
-        if row is None:
-            raise NotFound(detail=f"No game found for gameId {pk}")
+        row = self._row(game)
         GamesToWhistleAPIView._annotate_passcheck([row], game.gameday_id)
         return Response(
             {
@@ -705,6 +701,42 @@ class GameSummaryAPIView(APIView):
                 "gameday": GamedaySerializer(game.gameday).data,
             }
         )
+
+    @staticmethod
+    def _row(game) -> dict:
+        """The game in the shape the games list sends (``Game`` on the client)."""
+
+        results = {
+            result.isHome: result
+            for result in game.gameresult_set.select_related("team")
+        }
+        home = results.get(True)
+        away = results.get(False)
+
+        def team_name(result):
+            return result.team.description if result and result.team else None
+
+        def points(result):
+            if result is None or (result.fh is None and result.sh is None):
+                return None
+            return (result.fh or 0) + (result.sh or 0)
+
+        return {
+            "id": game.pk,
+            "scheduled": game.scheduled.strftime("%H:%M:%S"),
+            "field": game.field,
+            "officials": game.officials.name if game.officials else "",
+            "officialsId": game.officials_id,
+            "stage": game.stage,
+            "standing": game.standing,
+            "home": team_name(home),
+            "away": team_name(away),
+            "points_home": points(home),
+            "points_away": points(away),
+            "status": game.status,
+            "id_home": str(home.pk) if home else "",
+            "id_away": str(away.pk) if away else "",
+        }
 
 
 class GameRosterAPIView(APIView):

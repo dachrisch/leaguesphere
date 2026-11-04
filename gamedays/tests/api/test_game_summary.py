@@ -1,15 +1,14 @@
 """``GET /api/game/<id>/summary`` backs the scorecard's deep link.
 
 The field app is one page and normally reaches a game through its gameday, so
-a link that names the game directly needs the row the games list would show
-*and* the gameday it belongs to. The row is built through the same service as
-the list, so a link cannot show a different game than the list does.
+a link that names the game directly needs the game row *and* the gameday it
+belongs to. The row is built from the game itself: the games-to-whistle list
+only holds games still to be played, and the organisation opens the link after
+the game more often than before it.
 """
 
 from http import HTTPStatus
-from unittest.mock import patch
 
-import pandas as pd
 from django_webtest import WebTest
 from rest_framework.reverse import reverse
 
@@ -55,17 +54,18 @@ class TestGameSummary(WebTest):
 
         assert self._summary().json["game"]["passcheck"] is True
 
-    def test_a_game_the_list_does_not_contain_is_a_404(self):
-        """The row comes from the gameday's list; a mismatch must not answer
-        with somebody else's game."""
+    def test_a_finished_game_is_answered(self):
+        """The deep link is for after the game: a finished game must not 404."""
 
-        with patch("gamedays.api.game_views.GamedayService.create") as create:
-            create.return_value.get_games_to_whistle.return_value = pd.DataFrame(
-                [{"id": -1}]
-            )
-            response = self._summary()
+        self.game.status = "beendet"
+        self.game.save(update_fields=["status"])
+        Gameresult.objects.filter(gameinfo=self.game, isHome=True).update(fh=7, sh=6)
 
-        assert response.status_code == HTTPStatus.NOT_FOUND
+        response = self._summary()
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.json["game"]["status"] == "beendet"
+        assert response.json["game"]["points_home"] == 13
 
     def test_unknown_game_is_a_404(self):
         response = self._summary(game_id=999_999)
