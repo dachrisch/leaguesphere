@@ -187,6 +187,7 @@ export function replayOps(base: GameLog, ops: StoredOp[]): ReplayResult {
       half,
       cop = false,
       excluded = false,
+      payload = null,
     }: {
       side?: Side | null;
       player?: number | null;
@@ -194,6 +195,7 @@ export function replayOps(base: GameLog, ops: StoredOp[]): ReplayResult {
       half: number;
       cop?: boolean;
       excluded?: boolean;
+      payload?: Record<string, unknown> | null;
     },
   ): void => {
     const sequence = excluded ? 0 : nextSeq++;
@@ -211,6 +213,7 @@ export function replayOps(base: GameLog, ops: StoredOp[]): ReplayResult {
       cop,
       isDeleted: false,
       time: new Date(op.createdAt).toISOString(),
+      payload,
     });
   };
 
@@ -315,6 +318,7 @@ export function replayOps(base: GameLog, ops: StoredOp[]): ReplayResult {
       half,
       cop: display.cop,
       excluded: display.excluded,
+      payload: envelope.payload ?? null,
     });
   }
 

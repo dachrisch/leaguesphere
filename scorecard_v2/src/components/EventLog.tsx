@@ -108,6 +108,8 @@ export interface LogRow {
   isDeleted: boolean;
   /** ISO-8601 UTC, or `null` when the server omitted it. */
   time: string | null;
+  /** Structured event detail (yards, quarterback, …); `null` without one. */
+  payload: Record<string, unknown> | null;
 }
 
 /**
@@ -227,6 +229,7 @@ function eventToRow(event: GameLogEvent): LogRow {
     cop: event.cop,
     isDeleted: event.isDeleted,
     time: event.time ?? null,
+    payload: event.payload ?? null,
   };
 }
 
@@ -258,6 +261,7 @@ function fallbackRows(log: GameLog): LogRow[] {
           cop: entry.cop === true,
           isDeleted: entry.isDeleted === true,
           time: typeof entry.time === "string" ? entry.time : null,
+          payload: null,
         };
         const key = (event: string) =>
           `s-${side}-${halfKey}-${entry.sequence}-${event}-${index}`;

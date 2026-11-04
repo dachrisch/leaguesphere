@@ -236,6 +236,12 @@ export interface GameLogEvent {
   player: number | null;
   /** Free text: the penalty name, the time, a kickoff note, … */
   input: string | null;
+  /**
+   * The structured record the event wrote (yards, quarterback, complete,
+   * defence), or `null` for a row no event wrote. Additive: older servers
+   * simply omit it.
+   */
+  payload?: Record<string, unknown> | null;
   half: number;
   cop: boolean;
   isDeleted: boolean;

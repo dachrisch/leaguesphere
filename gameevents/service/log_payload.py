@@ -77,6 +77,26 @@ def _compose(rows, linked, groups) -> dict[int, int]:
     return mapping
 
 
+def event_payloads_for_rows(rows, game_id) -> dict[int, dict]:
+    """``TeamLog`` pk -> the event ``payload`` that wrote it.
+
+    The scorecard derives the down & distance from the plays, and the visible
+    row text is not enough for that: it needs the structured ``yards``. One
+    query per log read, like the seq map.
+    """
+
+    row_ids = [row.pk for row in rows]
+    if not row_ids:
+        return {}
+    return {
+        team_log_id: payload
+        for team_log_id, payload in GameEvent.objects.filter(
+            game_id=game_id, team_log__in=row_ids
+        ).values_list("team_log_id", "payload")
+        if payload
+    }
+
+
 def event_seqs_for_rows(rows, game_id) -> dict[int, int]:
     """``TeamLog`` pk -> event ``seq`` for exactly these rows."""
 
