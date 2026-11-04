@@ -1156,6 +1156,93 @@ describe("Tracking play-by-play", () => {
     expect(screen.getByText("3rd & 3")).toBeInTheDocument();
   });
 
+  it("sets the field position and shows the spot", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(
+      makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({
+            id: 5,
+            event: "Feldposition",
+            input: "eigene 35",
+            payload: { ballOn: 35 },
+          }),
+        ],
+      }),
+    );
+    renderTracking();
+    const user = userEvent.setup();
+
+    expect(screen.getByText("1st & 10")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Feldposition" }));
+    const sheet = screen.getByRole("dialog", {
+      name: "Feldposition · Ravens",
+    });
+    await user.click(
+      within(sheet).getByRole("button", { name: "Feldposition speichern" }),
+    );
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [
+          {
+            type: "fieldpos",
+            code: "",
+            side: "home",
+            player: null,
+            period: 1,
+            payload: { ballOn: 35, input: "eigene 35" },
+          },
+        ],
+        client_id: expect.any(String),
+      }),
+    );
+    expect(await screen.findByText(/1st & 10 · eigene 35/)).toBeInTheDocument();
+  });
+
+  it("shows goal-to-go inside the ten", () => {
+    renderTracking({
+      log: makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({
+            id: 2,
+            event: "Feldposition",
+            input: "gegn. 8",
+            payload: { ballOn: 92 },
+          }),
+          logEvent({ id: 1, event: "Run", payload: { yards: 3 } }),
+        ],
+      }),
+    });
+
+    // The spot row is the newest: the drive starts there, goal to go.
+    expect(screen.getByText(/1st & Goal/)).toBeInTheDocument();
+    // The spot is in the drive line and in the log row's detail.
+    expect(screen.getAllByText(/gegn\. 8/).length).toBeGreaterThan(0);
+  });
+
+  it("moves the spot with the yards of a play", () => {
+    renderTracking({
+      log: makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({ id: 1, event: "Run", payload: { yards: 30 } }),
+          logEvent({
+            id: 2,
+            event: "Feldposition",
+            input: "eigene 35",
+            payload: { ballOn: 35 },
+          }),
+        ],
+      }),
+    });
+
+    // Newest first: the 30-yard run came after the spot was set.
+    expect(screen.getByText(/1st & 10 · gegn. 35/)).toBeInTheDocument();
+  });
+
   it("hands the ball over after a failed fourth down", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     const log = makeLog({

@@ -30,6 +30,7 @@ import {
   driveAfter,
   driveText,
   isTurnoverOnDowns,
+  spotText,
 } from "../app/drive";
 import { readQuarterback, rememberQuarterback } from "../app/quarterback";
 import { confirmTap, useWakeLock } from "../app/sideline";
@@ -69,6 +70,7 @@ import SeriesSheet, {
 } from "../components/sheets/SeriesSheet";
 import JerseyPicker from "../components/JerseyPicker";
 import ChallengeSheet from "../components/sheets/ChallengeSheet";
+import FieldPositionSheet from "../components/sheets/FieldPositionSheet";
 import PlaySheet from "../components/sheets/PlaySheet";
 import EditSheet from "../components/sheets/EditSheet";
 import Sheet from "../components/sheets/Sheet";
@@ -119,6 +121,7 @@ type SheetState =
   | { kind: "touchdown" }
   | { kind: "play" }
   | { kind: "challenge" }
+  | { kind: "fieldpos" }
   | { kind: "series"; mode: SeriesMode }
   | { kind: "penalty" }
   | { kind: "more"; mode: MoreMode };
@@ -202,6 +205,7 @@ const CONFIRMATION: Record<string, string> = {
   Run: "Run gespeichert",
   Sack: "Sack gespeichert",
   Challenge: "Challenge gespeichert",
+  Feldposition: "Feldposition gespeichert",
   "Overtime starten": "Overtime gestartet",
 };
 
@@ -225,6 +229,7 @@ const KEEP_POSSESSION = new Set([
   "Run",
   "Sack",
   "Challenge",
+  "Feldposition",
   "Overtime starten",
   // Written after the try, once the touchdown already handed the ball over.
   "1-Extra-Punkt",
@@ -1452,9 +1457,22 @@ export default function TrackingScreen({
           );
         })}
       </div>
-      <p aria-live="polite" className="driveline">
-        {driveText(drive)}
-      </p>
+      <div className="drivebar">
+        <p aria-live="polite" className="driveline">
+          {driveText(drive)}
+          {spotText(drive.ballOn) === null
+            ? null
+            : ` · ${spotText(drive.ballOn)}`}
+        </p>
+        <button
+          className="driveset"
+          disabled={readOnly || finished}
+          onClick={() => openSheet({ kind: "fieldpos" })}
+          type="button"
+        >
+          Feldposition
+        </button>
+      </div>
       {possessionError === null || readOnly ? null : (
         <p className="trackerror" role="alert">
           {possessionError}
@@ -1802,6 +1820,13 @@ export default function TrackingScreen({
             opponentName={opponentName ?? "Gegner"}
             roster={roster}
             side={possessionSide}
+            teamName={possessionName}
+          />
+        ) : sheet.kind === "fieldpos" ? (
+          <FieldPositionSheet
+            ballOn={drive.ballOn}
+            onClose={() => setSheet(null)}
+            onSubmit={(event) => submit([event])}
             teamName={possessionName}
           />
         ) : sheet.kind === "challenge" ? (

@@ -71,6 +71,7 @@ const LEGACY_EVENTS: Record<string, LegacySpec> = {
   Run: { type: "play", code: "run", input: "payload" },
   Sack: { type: "play", code: "sack", input: "payload" },
   Challenge: { type: "challenge", input: "payload" },
+  Feldposition: { type: "fieldpos", input: "payload" },
   "Overtime starten": { type: "period", code: "overtime" },
 };
 
@@ -267,6 +268,8 @@ export function displayOf(envelope: EventEnvelope): EnvelopeDisplay {
       return { ...none(), event: "Strafe", excluded: true };
     case "challenge":
       return { ...none(), event: "Challenge" };
+    case "fieldpos":
+      return { ...none(), event: "Feldposition" };
     case "series":
       return code === "first_down"
         ? { ...none(), event: "First Down", excluded: true }
