@@ -1767,6 +1767,60 @@ describe("Tracking wide layout", () => {
     await waitFor(() => expect(sentPossessions()).toEqual(["away"]));
   });
 
+  it("starts overtime with the 8 key", async () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: query === "(min-width: 1280px)",
+        media: query,
+      })),
+    );
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+
+    fireEvent.keyDown(window, { key: "8" });
+    // The first press arms the tile in place; the second starts.
+    expect(
+      screen.getByRole("button", { name: "Overtime starten" }),
+    ).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "8" });
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [
+          { type: "period", code: "overtime", side: "home", player: null, period: 1 },
+        ],
+        client_id: expect.any(String),
+      }),
+    );
+  });
+
+  it("opens the +1 XP step with the 8 key in overtime", async () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: query === "(min-width: 1280px)",
+        media: query,
+      })),
+    );
+    apiGetMock.mockResolvedValue(ROSTER);
+    const otLog = makeLog({
+      inPossession: "Ravens",
+      events: [
+        logEvent({ id: 9, event: "Overtime startet", team: null, half: 0 }),
+      ],
+    });
+    answerAppend(otLog);
+    renderTracking({ log: otLog });
+
+    fireEvent.keyDown(window, { key: "8" });
+
+    expect(
+      await screen.findByRole("dialog", { name: "Extrapunkt Ravens" }),
+    ).toBeInTheDocument();
+  });
+
   it("undoes the newest undoable row with Ctrl+Z and skips markers", async () => {
     vi.stubGlobal(
       "matchMedia",
