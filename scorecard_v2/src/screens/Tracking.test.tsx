@@ -2657,6 +2657,21 @@ describe("Tracking safety and overtime", () => {
     expect(await screen.findByText("Overtime gestartet")).toBeInTheDocument();
   });
 
+  it("shows why the overtime start was refused", async () => {
+    apiPostMock.mockRejectedValueOnce(
+      new ApiError(409, { detail: "Dieses Spiel ist beendet." }, "Dieses Spiel ist beendet."),
+    );
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Overtime" }));
+    await user.click(screen.getByRole("button", { name: "Overtime starten" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Dieses Spiel ist beendet.",
+    );
+  });
+
   it("offers +1 XP in overtime and records it with a jersey", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     answerAppend(

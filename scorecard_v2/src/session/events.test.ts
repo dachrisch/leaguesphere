@@ -287,6 +287,11 @@ describe("displayOf", () => {
     expect(displayOf({ type: "period", code: "end" }).event).toBe(
       "Spiel beendet",
     );
+    expect(displayOf({ type: "period", code: "overtime" })).toMatchObject({
+      event: "Overtime startet",
+      marker: true,
+      excluded: true,
+    });
   });
 
   it("names the scrimmage plays, with the incomplete pass as its own row", () => {
