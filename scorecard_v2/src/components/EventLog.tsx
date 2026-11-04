@@ -8,6 +8,7 @@ import {
   Football,
   Interception,
   Pencil,
+  Play,
   PlusCircle,
   Shield,
   Stopwatch,
@@ -68,6 +69,7 @@ export type EventKind =
   | "safety"
   | "to"
   | "time"
+  | "play"
   | "note";
 
 /** One icon per kind; the visible row text still carries the meaning. */
@@ -80,6 +82,7 @@ const KIND_ICON: Record<EventKind, ComponentType<IconProps>> = {
   safety: Shield,
   to: Clock,
   time: Stopwatch,
+  play: Play,
   note: Whistle,
 };
 
@@ -336,7 +339,7 @@ export function describeRow(row: LogRow): Described {
       return {
         kind: "td",
         primary: `Touchdown ${team}`,
-        secondary: jerseyText(row.player),
+        secondary: join(jerseyText(row.player), row.input),
       };
     case "1-Extra-Punkt":
       return {
@@ -367,7 +370,16 @@ export function describeRow(row: LogRow): Described {
       return {
         kind: "first",
         primary: `1st Down ${team}`,
-        secondary: jerseyText(row.player),
+        secondary: join(jerseyText(row.player), row.input),
+      };
+    case "Pass":
+    case "Pass unvollständig":
+    case "Run":
+    case "Sack":
+      return {
+        kind: "play",
+        primary: `${row.event} ${team}`,
+        secondary: join(jerseyText(row.player), row.input),
       };
     case "Safety (+1)":
     case "Safety (+2)":

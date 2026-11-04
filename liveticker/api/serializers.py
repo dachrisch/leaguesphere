@@ -3,6 +3,22 @@ from rest_framework.serializers import Serializer
 
 from gamedays.service.utils import utc_time_as_iso
 
+# The rows whose ``input`` is part of the story rather than bookkeeping (the
+# play-by-play, the clocks and the penalty name).
+_EVENTS_WITH_INPUT = frozenset(
+    {
+        "Auszeit",
+        "Spielzeit",
+        "Strafe",
+        "Pass",
+        "Pass unvollständig",
+        "Run",
+        "Sack",
+        "Touchdown",
+        "First Down",
+    }
+)
+
 
 class TeamlogSerializer(Serializer):
     EVENT = "event"
@@ -27,7 +43,7 @@ class TeamlogSerializer(Serializer):
             text = f"{text}: #{obj[self.PLAYER]}"
         if obj[self.PLAYER] is None and "Extra" in obj[self.EVENT]:
             text = f"{text}: -"
-        if obj[self.EVENT] in ["Auszeit", "Spielzeit", "Strafe"]:
+        if obj[self.EVENT] in _EVENTS_WITH_INPUT and obj[self.INPUT]:
             text = f"{text} - {obj[self.INPUT]}"
         if "Turnover" == obj[self.EVENT]:
             text = "Ballabgabe"

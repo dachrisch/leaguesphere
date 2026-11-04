@@ -8,6 +8,7 @@ const DESKTOP = "(min-width: 1280px)";
 function handlers() {
   return {
     onTouchdown: vi.fn(),
+    onPlay: vi.fn(),
     onAction: vi.fn(),
     onSwitchPossession: vi.fn(),
     onUndo: vi.fn(),
@@ -87,6 +88,15 @@ describe("useTrackingShortcuts", () => {
     expect(callbacks.onTouchdown).toHaveBeenCalledTimes(1);
     expect(callbacks.onSwitchPossession).toHaveBeenCalledTimes(1);
     expect(callbacks.onAction).not.toHaveBeenCalled();
+  });
+
+  it("maps P to the play-by-play entry", () => {
+    const { callbacks } = renderShortcuts();
+
+    fireEvent.keyDown(window, { key: "p" });
+
+    expect(callbacks.onPlay).toHaveBeenCalledTimes(1);
+    expect(callbacks.onTouchdown).not.toHaveBeenCalled();
   });
 
   it("maps 1–8 to the eight grid actions in order", () => {

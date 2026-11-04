@@ -1089,6 +1089,94 @@ async function pickJersey(
   );
 }
 
+describe("Tracking play-by-play", () => {
+  it("records a pass with yards and the remembered quarterback", async () => {
+    globalThis.localStorage.setItem("scorecard:v2:qb:42:home", "12");
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Spielzug/);
+    const sheet = screen.getByRole("dialog", { name: "Spielzug · Ravens" });
+    await user.click(
+      await within(sheet).findByRole("button", { name: "Trikot 7, Meier" }),
+    );
+    const yards = within(sheet).getByRole("textbox", { name: /Raumgewinn/ });
+    await user.clear(yards);
+    await user.type(yards, "8");
+    await user.click(
+      within(sheet).getByRole("button", { name: "Spielzug speichern" }),
+    );
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [
+          {
+            type: "play",
+            code: "pass",
+            side: "home",
+            player: 7,
+            period: 1,
+            payload: {
+              input: "8 Yards · QB #12",
+              yards: 8,
+              complete: true,
+              qb: 12,
+            },
+          },
+        ],
+        client_id: expect.any(String),
+      }),
+    );
+    // A play is the snap, not a change of possession.
+    expect(sentPossessions()).toEqual([]);
+    expect(
+      await screen.findByText(/Pass gespeichert · 8 Yards · QB #12/),
+    ).toBeInTheDocument();
+    // The thrower is remembered for the next pass of this side.
+    expect(globalThis.localStorage.getItem("scorecard:v2:qb:42:home")).toBe(
+      "12",
+    );
+  });
+
+  it("records a run without a quarterback", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Spielzug/);
+    const sheet = screen.getByRole("dialog", { name: "Spielzug · Ravens" });
+    await user.click(within(sheet).getByRole("button", { name: "Run" }));
+    await user.click(
+      await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
+    );
+    const yards = within(sheet).getByRole("textbox", { name: /Raumgewinn/ });
+    await user.clear(yards);
+    await user.type(yards, "14");
+    await user.click(
+      within(sheet).getByRole("button", { name: "Spielzug speichern" }),
+    );
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [
+          {
+            type: "play",
+            code: "run",
+            side: "home",
+            player: 23,
+            period: 1,
+            payload: { input: "14 Yards", yards: 14 },
+          },
+        ],
+        client_id: expect.any(String),
+      }),
+    );
+  });
+});
+
 describe("Tracking touchdown entry", () => {
   it("loads the roster and offers only the possessing side's jerseys", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
@@ -2066,6 +2154,10 @@ describe("Possession flip rule", () => {
     "First Down",
     "1-Extra-Punkt",
     "2-Extra-Punkte",
+    "Pass",
+    "Pass unvollständig",
+    "Run",
+    "Sack",
   ];
 
   it.each(FLIPS)("hands the ball over after %s", (name) => {

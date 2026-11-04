@@ -4,6 +4,7 @@ import type { GameLogEventInput, RosterPlayer } from "../../api/types";
 import JerseyPicker, { jerseyOptions } from "../JerseyPicker";
 import { errorMessage } from "./errors";
 import Sheet from "./Sheet";
+import { yardsText, yardsValue } from "./yards";
 
 /** Which series/time entry the sheet is showing. */
 export type SeriesMode =
@@ -87,15 +88,28 @@ export function clockInput(minutes: string, seconds: string): string {
   return `${minutes.padStart(2, "0")}:${seconds.padStart(2, "0")}`;
 }
 
-/** Payload of a non-time series entry; `Turnover` never names a player. */
+/**
+ * Payload of a non-time series entry; `Turnover` never names a player.
+ *
+ * A first down may carry the yards that moved the chains — the detail the
+ * ticker and a later statistics pass read. `payload.yards` is the record,
+ * `input` the text the log shows.
+ */
 export function seriesEvent(
   mode: SeriesMode,
   jersey: number | null,
+  yards: number | null = null,
 ): GameLogEventInput {
   const { event, jersey: allowsJersey } = MODES[mode];
-  return allowsJersey && jersey !== null
-    ? { name: event, player: jersey }
-    : { name: event };
+  const payload: GameLogEventInput =
+    allowsJersey && jersey !== null
+      ? { name: event, player: jersey }
+      : { name: event };
+  if (mode === "first" && yards !== null) {
+    payload.payload = { yards };
+    payload.input = yardsText(yards);
+  }
+  return payload;
 }
 
 /** Payload of a Spielzeit/Auszeit entry. */
@@ -160,8 +174,10 @@ export default function SeriesSheet({
   const time = isTimeMode(mode);
   const minutesId = useId();
   const secondsId = useId();
+  const yardsId = useId();
 
   const [jersey, setJersey] = useState<number | null>(null);
+  const [yards, setYards] = useState("");
   const [minutes, setMinutes] = useState("");
   const [seconds, setSeconds] = useState("");
   const [touched, setTouched] = useState(false);
@@ -196,7 +212,9 @@ export default function SeriesSheet({
     setError(null);
     try {
       await onSubmit(
-        time ? [timeEvent(mode, minutes, seconds)] : [seriesEvent(mode, jersey)],
+        time
+          ? [timeEvent(mode, minutes, seconds)]
+          : [seriesEvent(mode, jersey, yardsValue(yards))],
       );
       onClose();
     } catch (failure) {
@@ -292,6 +310,25 @@ export default function SeriesSheet({
         <p className="sheetwarn" role="alert">
           {validation}
         </p>
+      ) : null}
+
+      {!time && mode === "first" ? (
+        <div className="sheetfield">
+          <label className="sheetlabel" htmlFor={yardsId}>
+            Raumgewinn (Yards, optional)
+          </label>
+          <input
+            autoComplete="off"
+            className="sheetinput sheetinput-num"
+            disabled={posting}
+            id={yardsId}
+            inputMode="numeric"
+            onChange={(changeEvent) => setYards(changeEvent.target.value)}
+            pattern="[0-9]*"
+            type="text"
+            value={yards}
+          />
+        </div>
       ) : null}
 
       {!time && info.jersey ? (

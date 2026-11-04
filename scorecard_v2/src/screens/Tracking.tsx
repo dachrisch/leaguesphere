@@ -25,6 +25,7 @@ import {
   rememberBreakStart,
   secondsLeft,
 } from "../app/break";
+import { readQuarterback, rememberQuarterback } from "../app/quarterback";
 import { confirmTap, useWakeLock } from "../app/sideline";
 import AppHeader from "../components/AppHeader";
 import BreakCountdown from "../components/BreakCountdown";
@@ -46,6 +47,7 @@ import {
   Football,
   Interception,
   Pause,
+  Play,
   PlusCircle,
   Shield,
   Stopwatch,
@@ -60,6 +62,7 @@ import SeriesSheet, {
   type SeriesMode,
 } from "../components/sheets/SeriesSheet";
 import JerseyPicker from "../components/JerseyPicker";
+import PlaySheet from "../components/sheets/PlaySheet";
 import EditSheet from "../components/sheets/EditSheet";
 import Sheet from "../components/sheets/Sheet";
 import { errorMessage, IgnoredWrite } from "../components/sheets/errors";
@@ -107,6 +110,7 @@ type Side = RosterPlayer["side"];
 /** The open sheet: the touchdown entry, a series/time entry, or a more event. */
 type SheetState =
   | { kind: "touchdown" }
+  | { kind: "play" }
   | { kind: "series"; mode: SeriesMode }
   | { kind: "penalty" }
   | { kind: "more"; mode: MoreMode };
@@ -201,6 +205,11 @@ const KEEP_POSSESSION = new Set([
   "Spielzeit",
   "Auszeit",
   "First Down",
+  // A scrimmage play is the snap itself: the ball stays where it is.
+  "Pass",
+  "Pass unvollständig",
+  "Run",
+  "Sack",
   // Written after the try, once the touchdown already handed the ball over.
   "1-Extra-Punkt",
   "2-Extra-Punkte",
@@ -946,6 +955,11 @@ export default function TrackingScreen({
       // The log read after the append is the whole log, so it replaces what is
       // on screen.
       await session.writeEvent(body);
+      const qb = events.find((event) => typeof event.payload?.qb === "number")
+        ?.payload?.qb;
+      if (typeof qb === "number" && possessionSide !== null) {
+        rememberQuarterback(game.id, possessionSide, qb);
+      }
       confirmTap();
       setConfirmation(describeSaved(events));
       if (!keepBall && flipsPossession(events) && opponentName !== null) {
@@ -1241,6 +1255,11 @@ export default function TrackingScreen({
         openSheet({ kind: "touchdown" });
       }
     },
+    onPlay: () => {
+      if (!composerDisabled) {
+        openSheet({ kind: "play" });
+      }
+    },
     onAction: (index) => {
       if (composerDisabled) {
         return;
@@ -1456,6 +1475,16 @@ export default function TrackingScreen({
             <kbd aria-hidden="true" className="shortcut-hint" data-key="T" />
           </button>
         )}
+        <button
+          className="playbtn"
+          disabled={composerDisabled}
+          onClick={() => openSheet({ kind: "play" })}
+          type="button"
+        >
+          <Play className="playbtn-icon" size={20} />
+          <span>Spielzug (Pass/Run/Sack)</span>
+          <kbd aria-hidden="true" className="shortcut-hint" data-key="P" />
+        </button>
         <div className="action-grid">
         {SERIES_TILES.map(({ mode, label, Icon, oneTap }, index) => {
           const offersJersey = armed === mode;
@@ -1654,7 +1683,16 @@ export default function TrackingScreen({
       (sheet.kind === "touchdown" ||
         sheet.kind === "series" ||
         opponentName !== null) ? (
-        sheet.kind === "touchdown" ? (
+        sheet.kind === "play" ? (
+          <PlaySheet
+            lastQuarterback={readQuarterback(game.id, possessionSide)}
+            onClose={() => setSheet(null)}
+            onSubmit={(event) => submit([event])}
+            roster={roster}
+            side={possessionSide}
+            teamName={possessionName}
+          />
+        ) : sheet.kind === "touchdown" ? (
           <TouchdownSheet
             onClose={() => setSheet(null)}
             onSubmit={submitTouchdown}

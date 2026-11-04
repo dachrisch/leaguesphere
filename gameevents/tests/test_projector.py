@@ -516,3 +516,95 @@ def test_golden_table_matches_what_today_s_writer_produces(case):
             if row.side == side and not row.isDeleted
         )
         assert getattr(projection.state, score_field) == expected_score
+
+
+def test_a_complete_pass_is_a_play_row_with_yards_and_quarterback():
+    projection = apply(
+        state(),
+        ev(
+            "play",
+            "pass",
+            side="home",
+            player=7,
+            seq=3,
+            complete=True,
+            yards=8,
+            qb=12,
+        ),
+    )
+
+    row = projection.rows[0]
+    assert row.event == "Pass"
+    assert row.side == "home"
+    assert row.player == 7
+    assert row.input == "8 Yards · QB #12"
+    assert row.value == 0
+    # A play is neither a score nor a possession change.
+    assert projection.state.score_home == 0
+    assert projection.state.in_possession is None
+
+
+def test_an_incomplete_pass_says_so():
+    projection = apply(
+        state(),
+        ev("play", "pass", side="away", player=11, complete=False, yards=0, qb=4),
+    )
+
+    assert projection.rows[0].event == "Pass unvollständig"
+    assert projection.rows[0].input == "0 Yards · QB #4"
+
+
+def test_a_run_is_a_play_with_yards_only():
+    projection = apply(
+        state(), ev("play", "run", side="home", player=23, yards=14)
+    )
+
+    assert projection.rows[0].event == "Run"
+    assert projection.rows[0].input == "14 Yards"
+
+
+def test_a_sack_counts_the_loss_in_words():
+    projection = apply(
+        state(), ev("play", "sack", side="home", player=12, yards=-5)
+    )
+
+    assert projection.rows[0].event == "Sack"
+    assert projection.rows[0].input == "5 Yards Verlust"
+
+
+def test_the_text_the_app_sent_wins_over_the_payload():
+    projection = apply(
+        state(),
+        ev(
+            "play",
+            "run",
+            side="home",
+            player=23,
+            yards=14,
+            input="14 Yards · starke Linie",
+        ),
+    )
+
+    assert projection.rows[0].input == "14 Yards · starke Linie"
+
+
+def test_a_play_rejects_an_unknown_code():
+    with pytest.raises(UnsupportedEventCode):
+        apply(state(), ev("play", "kick", side="home"))
+
+
+def test_a_touchdown_carries_its_yards():
+    projection = apply(state(), score("touchdown", player=7, yards=8))
+
+    assert projection.rows[0].event == "Touchdown"
+    assert projection.rows[0].input == "8 Yards"
+    assert projection.state.score_home == 6
+
+
+def test_a_first_down_carries_its_yards():
+    projection = apply(
+        state(), ev("series", "first_down", side="home", player=23, yards=6)
+    )
+
+    assert projection.rows[0].event == "First Down"
+    assert projection.rows[0].input == "6 Yards"

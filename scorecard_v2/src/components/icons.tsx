@@ -199,6 +199,16 @@ export function Undo(props: IconProps) {
   );
 }
 
+/** A scrimmage play: the snap, drawn as a play triangle with the line. */
+export function Play(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6 4v16" />
+      <path d="M10 7l9 5-9 5z" />
+    </Svg>
+  );
+}
+
 /** Edit: a pencil. */
 export function Pencil(props: IconProps) {
   return (
