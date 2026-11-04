@@ -523,6 +523,27 @@ describe("EventLog", () => {
     expect(time).toHaveTextContent("");
   });
 
+  it("shows a play with its jersey and detail", () => {
+    render(
+      <EventLog
+        onUndo={vi.fn()}
+        rows={[
+          row({
+            event: "Pass",
+            player: 7,
+            input: "8 Yards · QB #12",
+          }),
+          row({ key: "b", event: "Sack", player: 12, input: "5 Yards Verlust" }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Pass Ravens")).toBeInTheDocument();
+    expect(screen.getByText("#7 · 8 Yards · QB #12")).toBeInTheDocument();
+    expect(screen.getByText("Sack Ravens")).toBeInTheDocument();
+    expect(screen.getByText("#12 · 5 Yards Verlust")).toBeInTheDocument();
+  });
+
   it("hides the detail line of a row without one", () => {
     render(
       <EventLog
