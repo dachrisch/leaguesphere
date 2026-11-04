@@ -28,7 +28,10 @@ wie die bisherige Scorecard
    beim Pass mit **Complete/Incomplete** und dem **Quarterback** (der letzte
    steht schon da). Auf Pass und Run kannst du zusätzlich den Verteidiger
    eintragen, der getackelt hat; bei einem unvollständigen Pass zuerst
-   **Deflection** wählen. **Challenge** hält einen Einspruch fest – ohne Text
+   **Deflection** wählen. Unter dem Ballbesitz steht der **Down & Distanz**
+   (z. B. **3rd & 4**): Er zählt sich aus den Spielzügen selbst weiter, ein
+   erreichtes Ziel ergibt **1st & 10**, ein nicht verwandelter vierter Versuch
+   gibt den Ball ab. **Challenge** hält einen Einspruch fest – ohne Text
    oder mit einer kurzen Begründung. Dazu **Touchdown**, **1st Down**, **Turnover**,
    **Interception**, **Strafe**, **Safety**, **Overtime**, **Spielzeit** und
    **Auszeit**; bei **Touchdown** und **1st Down** kannst du den Raumgewinn

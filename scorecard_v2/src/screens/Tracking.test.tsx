@@ -97,6 +97,7 @@ interface EventOverrides {
   cop?: boolean;
   isDeleted?: boolean;
   time?: string;
+  payload?: Record<string, unknown> | null;
 }
 
 function logEvent(overrides: EventOverrides = {}): GameLogEvent {
@@ -1119,7 +1120,7 @@ describe("Tracking play-by-play", () => {
             player: 7,
             period: 1,
             payload: {
-              input: "8 Yards · QB #12",
+              input: "8 Yards · QB #12 · 2nd & 2",
               yards: 8,
               complete: true,
               qb: 12,
@@ -1132,12 +1133,74 @@ describe("Tracking play-by-play", () => {
     // A play is the snap, not a change of possession.
     expect(sentPossessions()).toEqual([]);
     expect(
-      await screen.findByText(/Pass gespeichert · 8 Yards · QB #12/),
+      await screen.findByText(/Pass gespeichert · 8 Yards · QB #12 · 2nd & 2/),
     ).toBeInTheDocument();
     // The thrower is remembered for the next pass of this side.
     expect(globalThis.localStorage.getItem("scorecard:v2:qb:42:home")).toBe(
       "12",
     );
+  });
+
+  it("shows the down & distance the log derives", () => {
+    renderTracking({
+      log: makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({ id: 2, event: "Run", payload: { yards: 3 } }),
+          logEvent({ id: 1, event: "Run", payload: { yards: 4 } }),
+        ],
+      }),
+    });
+
+    // Newest first: 4 yards, then 3.
+    expect(screen.getByText("3rd & 3")).toBeInTheDocument();
+  });
+
+  it("hands the ball over after a failed fourth down", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    const log = makeLog({
+      inPossession: "Ravens",
+      events: [
+        logEvent({ id: 3, event: "Run", payload: { yards: 1 } }),
+        logEvent({ id: 2, event: "Run", payload: { yards: 2 } }),
+        logEvent({ id: 1, event: "Run", payload: { yards: 3 } }),
+      ],
+    });
+    answerAppend(log);
+    renderTracking({ log });
+    const user = userEvent.setup();
+
+    // 4th & 4 after three runs; one more yard is short of the line.
+    expect(screen.getByText("4th & 4")).toBeInTheDocument();
+    await openSheet(user, /^Spielzug/);
+    const sheet = screen.getByRole("dialog", { name: "Spielzug · Ravens" });
+    await user.click(
+      await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
+    );
+    await user.click(within(sheet).getByRole("button", { name: "Run" }));
+    const yards = within(sheet).getByRole("textbox", { name: /Raumgewinn/ });
+    await user.clear(yards);
+    await user.type(yards, "1");
+    await user.click(
+      within(sheet).getByRole("button", { name: "Spielzug speichern" }),
+    );
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [
+          {
+            type: "play",
+            code: "run",
+            side: "home",
+            player: 23,
+            period: 1,
+            payload: { input: "1 Yards · 1st & 10", yards: 1 },
+          },
+        ],
+        client_id: expect.any(String),
+      }),
+    );
+    await waitFor(() => expect(sentPossessions()).toEqual(["away"]));
   });
 
   it("records a run without a quarterback", async () => {
@@ -1168,7 +1231,7 @@ describe("Tracking play-by-play", () => {
             side: "home",
             player: 23,
             period: 1,
-            payload: { input: "14 Yards", yards: 14 },
+            payload: { input: "14 Yards · 1st & 10", yards: 14 },
           },
         ],
         client_id: expect.any(String),

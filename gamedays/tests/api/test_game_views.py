@@ -440,6 +440,7 @@ class TestGameLog(WebTest):
             "half",
             "cop",
             "isDeleted",
+            "payload",
             "time",
         }
 
@@ -584,10 +585,10 @@ class TestGameLog(WebTest):
         gameinfo = DBSetup().create_teamlog_home_and_away()
         url = reverse(API_GAMELOG, kwargs={"id": gameinfo.pk})
 
-        # 6 = the log's own queries plus the one read of the event store that
-        # publishes each row's `seq` (gameevents.service.log_payload). Still
-        # flat: it is one query per request, never one per row.
-        with self.assertNumQueries(6):
+        # 7 = the log's own queries plus the two reads of the event store that
+        # publish each row's `seq` and `payload` (gameevents.service.
+        # log_payload). Still flat: one query per request, never one per row.
+        with self.assertNumQueries(7):
             assert self.app.get(url).status_code == HTTPStatus.OK
 
         author = gameinfo.gameday.author
@@ -605,7 +606,7 @@ class TestGameLog(WebTest):
                     author=author,
                 )
 
-        with self.assertNumQueries(6):
+        with self.assertNumQueries(7):
             response = self.app.get(url)
         assert len(response.json["events"]) >= 4
 

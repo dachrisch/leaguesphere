@@ -125,6 +125,13 @@ game opens read-only with its log and no end-of-game action.
    **Overtime** is a two-step marker (`period/overtime`, no score, no third
    half); the tile then turns into **+1 XP**, which opens the same jersey step
    for the converter, and the try after a touchdown offers only **+1**.
+   Under the possession switch the screen shows the **down & distance**
+   (**3rd & 4**), derived from the plays in the log: a play that reaches the
+   line to gain starts **1st & 10**, a fourth down short of it is a turnover
+   on downs (the app then sends the possession change itself). There is no
+   absolute field position yet — no kickoff/punt model — so every series
+   starts at 1st & 10. The state is recomputed from the rows, so an undo
+   rewinds it; the play's row text carries the resulting down for the ticker.
    Touchdown with the roster's jerseys (a tile grid up to 24 players, a
    two-digit keypad above that with the roster name as confirmation; numeric
    field when there is no roster; this game's scorers as a shortcut row above
@@ -198,6 +205,9 @@ What the backend had to grow (all additive):
 - `passcheck` on the games-to-whistle payload;
 - `league_display` on the gameday list;
 - `GameLogSubmission` and `GameSetup.device_id` (migrations `0046`, `0047`);
+- the gamelog payload's `events[]` rows carry the event `payload`
+  (`yards`, `qb`, `complete`, `defense`) — additive, `null` for rows no event
+  wrote; the app derives the down & distance from it;
 - `GET /api/game/<id>/summary` — one game with its gameday for the deep link
   (`?game=<id>`), built through the same service as the whistle list;
 - `GET /api/officials/crew-positions/game/<id>` — the league's crew slots in

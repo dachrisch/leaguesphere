@@ -25,6 +25,12 @@ import {
   rememberBreakStart,
   secondsLeft,
 } from "../app/break";
+import {
+  advance,
+  driveAfter,
+  driveText,
+  isTurnoverOnDowns,
+} from "../app/drive";
 import { readQuarterback, rememberQuarterback } from "../app/quarterback";
 import { confirmTap, useWakeLock } from "../app/sideline";
 import AppHeader from "../components/AppHeader";
@@ -593,6 +599,8 @@ export default function TrackingScreen({
   const log = useSyncExternalStore(subscribeLog, session.getLog, session.getLog);
 
   const rows = useMemo(() => logRows(log), [log]);
+  /** Down & distance as the log tells it — recomputed on every row change. */
+  const drive = useMemo(() => driveAfter(rows), [rows]);
   /**
    * Every Auszeit still on the board, newest first as the log lists it. The
    * sheet shows both sides so the officials can answer "who took which
@@ -1259,6 +1267,25 @@ export default function TrackingScreen({
     }
   }
 
+  /**
+   * A scrimmage play: `submit` writes it, then the down & distance moves on.
+   *
+   * The resulting state is appended to the row's text (so the log and the
+   * ticker show "3rd & 4"), and a failed fourth down hands the ball to the
+   * other team — the possession event the app already uses for a turnover.
+   */
+  const submitPlay = async (event: GameLogEventInput): Promise<void> => {
+    const yards =
+      typeof event.payload?.yards === "number" ? event.payload.yards : 0;
+    const next = advance(drive, yards);
+    const turnover = isTurnoverOnDowns(drive, yards);
+    const detail = event.input === undefined ? "" : `${event.input} · `;
+    await submit([{ ...event, input: `${detail}${driveText(next)}` }]);
+    if (turnover && opponentName !== null) {
+      await takePossession(opponentName);
+    }
+  };
+
   /** A sheet that completes a one-tap entry writes the new row, then undoes the old. */
   const submitSeries = async (events: GameLogEventInput[]): Promise<void> => {
     const previous = replacing;
@@ -1425,6 +1452,9 @@ export default function TrackingScreen({
           );
         })}
       </div>
+      <p aria-live="polite" className="driveline">
+        {driveText(drive)}
+      </p>
       {possessionError === null || readOnly ? null : (
         <p className="trackerror" role="alert">
           {possessionError}
@@ -1768,7 +1798,7 @@ export default function TrackingScreen({
           <PlaySheet
             lastQuarterback={readQuarterback(game.id, possessionSide)}
             onClose={() => setSheet(null)}
-            onSubmit={(event) => submit([event])}
+            onSubmit={submitPlay}
             opponentName={opponentName ?? "Gegner"}
             roster={roster}
             side={possessionSide}

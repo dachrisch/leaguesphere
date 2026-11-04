@@ -2078,6 +2078,17 @@ button.game-row:active {
   opacity: 0.55;
 }
 
+/* Down & distance, derived from the plays: the fact the officials call out. */
+.driveline {
+  margin: var(--space-1) var(--page-gutter) 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: center;
+  color: var(--fg);
+}
+
 /* The action zone sits at the bottom, in the thumb's reach, tinted in the
    colour of the side with the ball. */
 .tracking .actions {

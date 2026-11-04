@@ -122,7 +122,9 @@ def gameday_ref_now(gameday_date):
     return datetime.combine(gameday_date, time(12, 0), tzinfo=UTC)
 
 
-def serialize_events(teamlog_rows, team_names, ref_now=None, seq_by_row=None) -> list[dict]:
+def serialize_events(
+    teamlog_rows, team_names, ref_now=None, seq_by_row=None, payload_by_row=None
+) -> list[dict]:
     """Shape ``TeamLog`` rows into the additive, flat ``events`` list.
 
     ``team_names`` maps a team pk to its display name, so callers that already
@@ -142,6 +144,7 @@ def serialize_events(teamlog_rows, team_names, ref_now=None, seq_by_row=None) ->
     touchdown and its conversion adjacent.
     """
     seq_by_row = seq_by_row or {}
+    payload_by_row = payload_by_row or {}
     rows = sorted(teamlog_rows, key=lambda row: row.pk, reverse=True)
     return [
         {
@@ -156,6 +159,9 @@ def serialize_events(teamlog_rows, team_names, ref_now=None, seq_by_row=None) ->
             "half": row.half,
             "cop": row.cop,
             "isDeleted": row.isDeleted,
+            # The structured record an event wrote (yards, quarterback,
+            # complete, defence); None for a row no event wrote.
+            "payload": payload_by_row.get(row.pk),
             "time": utc_time_as_iso(row.created_time, ref_now=ref_now),
         }
         for row in rows

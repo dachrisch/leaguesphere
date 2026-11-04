@@ -60,6 +60,7 @@ function row(overrides: Partial<LogRow> = {}): LogRow {
     cop: false,
     isDeleted: false,
     time: "2026-10-26T12:00:00Z",
+    payload: null,
     ...overrides,
   };
 }
@@ -104,6 +105,7 @@ describe("logRows", () => {
         cop: false,
         isDeleted: false,
         time: "2026-10-26T12:00:00Z",
+        payload: null,
       },
     ]);
   });
