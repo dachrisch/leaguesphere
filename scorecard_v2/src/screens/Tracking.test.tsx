@@ -1708,6 +1708,9 @@ describe("Tracking extra point after the try", () => {
     // The touchdown handed the ball to Wolves.
     await waitFor(() => expect(sentPossessions()).toEqual(["away"]));
     await user.click(within(pat).getByRole("button", { name: "+1" }));
+    // The scorer is pre-selected; saving keeps that jersey.
+    const sheet = screen.getByRole("dialog", { name: "Extrapunkt Ravens" });
+    await user.click(within(sheet).getByRole("button", { name: "Speichern" }));
 
     await waitFor(() =>
       expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
@@ -1719,6 +1722,58 @@ describe("Tracking extra point after the try", () => {
     await waitFor(() =>
       expect(screen.queryByRole("group", { name: "Extrapunkt Ravens" })).toBeNull(),
     );
+  });
+
+  it("lets the official pick who converted the try", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    const pat = await scoreTouchdown(user);
+    await user.click(within(pat).getByRole("button", { name: "+2" }));
+
+    // The scorer is the default, the grid is there to change it.
+    const sheet = screen.getByRole("dialog", { name: "Extrapunkt Ravens" });
+    expect(
+      within(sheet).getByText(/Wer hat den Extrapunkt verwandelt/),
+    ).toBeInTheDocument();
+    expect(
+      within(sheet).getByRole("button", { name: "Trikot 23, Schulz" }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(
+      within(sheet).getByRole("button", { name: "Trikot 7, Meier" }),
+    );
+    await user.click(within(sheet).getByRole("button", { name: "Speichern" }));
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [{ type: "score", code: "pat2", side: "home", player: 7, period: 1 }],
+        client_id: expect.any(String),
+      }),
+    );
+  });
+
+  it("goes back to the result choice without writing", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    const pat = await scoreTouchdown(user);
+    const writes = apiPostMock.mock.calls.length;
+    await user.click(within(pat).getByRole("button", { name: "+1" }));
+    await user.click(
+      within(
+        screen.getByRole("dialog", { name: "Extrapunkt Ravens" }),
+      ).getByRole("button", { name: "Schließen" }),
+    );
+
+    expect(
+      within(pat).getByRole("button", { name: "nicht verwandelt" }),
+    ).toBeInTheDocument();
+    expect(apiPostMock.mock.calls.length).toBe(writes);
   });
 
   it("writes nothing for a missed try", async () => {
