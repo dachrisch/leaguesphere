@@ -14,7 +14,7 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 
 from gameevents.models import GameState
-from gamedays.models import Gameresult
+from gamedays.models import Gameresult, Gameinfo
 from gamedays.tests.setup_factories.factories import (
     GamedayFactory,
     GameresultFactory,
@@ -200,8 +200,10 @@ class EventProjectionTest(TestCase):
             [event("period", "half_time", None, period=2)],
             client_id="s2",
         )
-        # The scorer's half marker changed the projection; Gameinfo still says
-        # first half, and the game is still selected by its status.
+        # The projection is the truth. A status row that still says first half
+        # (written before the append mirrored the half, or by an older deploy)
+        # must not drag the feed back.
+        Gameinfo.objects.filter(pk=game.pk).update(status="1. Halbzeit")
         game.refresh_from_db()
         assert game.status == "1. Halbzeit"
 
