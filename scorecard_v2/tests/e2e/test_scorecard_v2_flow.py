@@ -238,7 +238,11 @@ def test_scorecard_v2_flow_from_gameday_to_result(live_server, page: Page):
     page.set_viewport_size({"width": 1024, "height": 768})
     # No passcheck ran for this gameday, so there is no jersey grid — the sheet
     # must offer the number field instead of blocking the game.
-    number = touchdown_sheet.locator("input.sheetinput-num")
+    # Two numeric fields live in the sheet now (jersey and yards): pick the
+    # jersey one by its label.
+    number = touchdown_sheet.get_by_role(
+        "textbox", name=re.compile(r"^Trikotnummer")
+    )
     expect(number).to_be_visible()
     number.fill(str(JERSEY))
     touchdown_sheet.get_by_role("button", name="Speichern").click()
