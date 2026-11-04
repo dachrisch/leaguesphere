@@ -59,7 +59,9 @@ import SeriesSheet, {
   seriesEvent,
   type SeriesMode,
 } from "../components/sheets/SeriesSheet";
+import JerseyPicker from "../components/JerseyPicker";
 import EditSheet from "../components/sheets/EditSheet";
+import Sheet from "../components/sheets/Sheet";
 import { errorMessage, IgnoredWrite } from "../components/sheets/errors";
 import TouchdownSheet from "../components/sheets/TouchdownSheet";
 import { cachedGet, cachedGetMeta, snapshotKey } from "../offline/snapshot";
@@ -500,6 +502,14 @@ export default function TrackingScreen({
     team: string;
     jersey: number;
   } | null>(null);
+  /**
+   * The try's chosen result while its player is picked, and the jersey that
+   * will be credited. The touchdown's scorer is the default — he often is the
+   * converter — but the person is selectable, because a backup may have run
+   * it in.
+   */
+  const [patPoints, setPatPoints] = useState<1 | 2 | null>(null);
+  const [patJersey, setPatJersey] = useState<number | null>(null);
   const [patBusy, setPatBusy] = useState(false);
   /** The try's first answer: focus lands here when the touchdown tile gives way. */
   const patFirst = useRef<HTMLButtonElement>(null);
@@ -867,6 +877,14 @@ export default function TrackingScreen({
         : null) ?? possession;
   const opponentName =
     opponentSide === "home" ? logTeamName(log.home) : logTeamName(log.away);
+  /** The side that scored the try: its roster feeds the jersey step. */
+  const patSide: Side =
+    pendingPat !== null && pendingPat.team === log.away.name ? "away" : "home";
+  const patPlayers =
+    roster === null
+      ? []
+      : roster.filter((player) => player.side === patSide);
+
   /** Timeouts of the side with the ball, for the Auszeit tile's count. */
   const timeoutCount =
     possessionName === null
@@ -1086,19 +1104,24 @@ export default function TrackingScreen({
     const jersey = events[0]?.player;
     if (team !== null && typeof jersey === "number") {
       setPendingPat({ team, jersey });
+      setPatPoints(null);
+      setPatJersey(null);
       setPatError(null);
       setFinishBlocked(false);
     }
   };
 
-  /** The try's result: +1/+2 writes the conversion, 0 closes the prompt. */
-  const answerPat = async (points: 0 | 1 | 2): Promise<void> => {
+  /** Forget the open try (a miss, a saved conversion, a new touchdown). */
+  const closePat = (): void => {
+    setPendingPat(null);
+    setPatPoints(null);
+    setPatJersey(null);
+    setFinishBlocked(false);
+  };
+
+  /** Write the conversion for the chosen jersey. */
+  const writePat = async (points: 1 | 2, jersey: number): Promise<void> => {
     if (pendingPat === null || patBusy) {
-      return;
-    }
-    if (points === 0) {
-      setPendingPat(null);
-      setFinishBlocked(false);
       return;
     }
     setPatBusy(true);
@@ -1108,13 +1131,12 @@ export default function TrackingScreen({
         [
           {
             name: points === 1 ? "1-Extra-Punkt" : "2-Extra-Punkte",
-            player: pendingPat.jersey,
+            player: jersey,
           },
         ],
         pendingPat.team,
       );
-      setPendingPat(null);
-      setFinishBlocked(false);
+      closePat();
     } catch (failure) {
       setPatError(
         errorMessage(
@@ -1127,11 +1149,28 @@ export default function TrackingScreen({
     }
   };
 
+  /**
+   * The try's result. `nicht verwandelt` closes the prompt; +1/+2 open the
+   * jersey step, pre-selected with the touchdown's scorer.
+   */
+  const answerPat = (points: 0 | 1 | 2): void => {
+    if (pendingPat === null || patBusy) {
+      return;
+    }
+    if (points === 0) {
+      closePat();
+      return;
+    }
+    setPatPoints(points);
+    setPatJersey(pendingPat.jersey);
+    setPatError(null);
+  };
+
   useEffect(() => {
-    if (pendingPat !== null) {
+    if (pendingPat !== null && patPoints === null) {
       patFirst.current?.focus();
     }
-  }, [pendingPat]);
+  }, [pendingPat, patPoints]);
 
   /** "Spiel beenden" waits for an open extra point instead of dropping it. */
   const finish = (): void => {
@@ -1387,7 +1426,7 @@ export default function TrackingScreen({
                     className="choice choice-dark"
                     disabled={patBusy || readOnly}
                     key={label}
-                    onClick={() => void answerPat(points)}
+                    onClick={() => answerPat(points)}
                     ref={points === 1 ? patFirst : undefined}
                     type="button"
                   >
@@ -1548,6 +1587,46 @@ export default function TrackingScreen({
               : ""}
         </p>
       </main>
+
+      {patPoints !== null && pendingPat !== null ? (
+        <Sheet
+          busy={patBusy}
+          error={patError}
+          footer={
+            <button
+              className="startbtn"
+              disabled={patBusy || patJersey === null || readOnly}
+              onClick={() => {
+                if (patJersey !== null) {
+                  void writePat(patPoints, patJersey);
+                }
+              }}
+              type="button"
+            >
+              {patBusy ? "Speichern …" : "Speichern"}
+            </button>
+          }
+          onClose={() => {
+            setPatPoints(null);
+            setPatError(null);
+          }}
+          title={`Extrapunkt ${pendingPat.team}`}
+        >
+          <p className="sheetnote">
+            Wer hat den Extrapunkt verwandelt? Der Touchdown-Schütze ist
+            vorausgewählt (#{pendingPat.jersey}).
+          </p>
+          <JerseyPicker
+            disabled={patBusy || readOnly}
+            groupLabel="Trikotnummer Extrapunkt"
+            label="Trikot"
+            onChange={setPatJersey}
+            players={patPlayers}
+            strict={game.passcheck === true}
+            value={patJersey}
+          />
+        </Sheet>
+      ) : null}
 
       {editing !== null ? (
         <EditSheet

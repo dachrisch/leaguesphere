@@ -29,7 +29,10 @@ wie die bisherige Scorecard
    **Turnover** und **Interception** werden sofort gespeichert; bei 1st Down
    und Interception trägst du die Trikotnummer nach, wenn du die Kachel
    innerhalb von 10 Sekunden noch einmal tippst (**Nr. ergänzen**). Nach einem
-   Touchdown sind die Kacheln gesperrt, bis der Extrapunkt eingetragen ist.
+   Touchdown sind die Kacheln gesperrt, bis der Extrapunkt eingetragen ist:
+   **+1** oder **+2** öffnet die Trikotwahl – der Touchdown-Schütze ist
+   vorausgewählt, du kannst aber den tatsächlichen Verwandler wählen;
+   **nicht verwandelt** schließt die Abfrage ohne Eintrag.
 4. Das Pfeil-Symbol neben einem Eintrag im Spielverlauf (**Rückgängig**) nimmt
    ihn zurück, **Ändern** korrigiert ihn an Ort und Stelle (Trikotnummer, bei
    **Spielzeit** und **Auszeit** die Spielzeit); am großen Bildschirm geht das

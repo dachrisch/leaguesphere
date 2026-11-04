@@ -119,8 +119,9 @@ game opens read-only with its log and no end-of-game action.
    **Ohne Nummer** / **Ganzes Team** tile. The touchdown
    is saved alone; the extra point is asked **after the try** in place of the
    touchdown button (+1 / +2 / nicht verwandelt, nothing pre-selected),
-   credited to the scoring team with the scorer's jersey, and **Spiel
-   beenden** waits while it is open. First down, turnover, interception, penalty with search, safety,
+   credited to the scoring team; **+1**/**+2** open the jersey step with the
+   touchdown's scorer pre-selected, so the person who actually converted can be
+   picked, and **Spiel beenden** waits while it is open. First down, turnover, interception, penalty with search, safety,
    overtime, Spielzeit, Auszeit, half-time, and **Rückgängig** per entry, plus
    **Ändern** to correct the jersey or the game time of a row in place (the
    corrected event is written, then the old row is undone; the row keeps its
