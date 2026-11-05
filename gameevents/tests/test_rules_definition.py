@@ -7,6 +7,8 @@ and the two legacy scoring tables are asserted against the definition.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 # The directory's conftest pins the database (foreign keys, user id 1), so
@@ -253,12 +255,75 @@ def test_load_returns_a_copy_that_cannot_corrupt_the_cache():
     assert load_rules()["penalties"][0]["yards"] != 99
 
 
-def test_a_broken_definition_is_rejected_with_a_readable_error(monkeypatch):
-    import gameevents.service.rules as rules_module
+def _broken(mutate):
+    """A copy of the definition with one thing removed or made wrong."""
+    definition = load_rules()
+    mutate(definition)
+    return definition
 
-    broken = load_rules()
-    broken["penalties"][0]["down"] = "sometimes"
 
-    monkeypatch.setattr(rules_module, "_validate", rules_module._validate)
-    with pytest.raises(RulesDefinitionError, match="penalties\\[0\\].down"):
-        rules_module._validate(broken, "test.json")
+def _drop(section):
+    return lambda rules: rules.pop(section)
+
+
+def _set(path, value):
+    def mutate(rules):
+        node = rules
+        for key in path[:-1]:
+            node = node[key]
+        node[path[-1]] = value
+
+    return mutate
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        (_drop("field"), "missing section 'field'"),
+        (_drop("penalties"), "missing section 'penalties'"),
+        (_set(("field", "length"), "50"), "field.length must be a number"),
+        (_set(("field", "middle"), 20), "field.middle must be half"),
+        (_set(("series", "downs"), 3), "series.downs must be 4"),
+        (_set(("series", "start"), 4), "series.start and field.no_run_zone"),
+        (
+            _set(("periods", "intermission_minutes"), None),
+            "periods.intermission_minutes must be a number",
+        ),
+        (_set(("timeouts", "per_half"), 0), "timeouts.per_half must be at least 1"),
+        (_set(("penalties",), []), "penalties must be a non-empty list"),
+        (
+            lambda rules: rules["penalties"][0].pop("rule"),
+            "misses 'rule'",
+        ),
+        (_set(("penalties", 0, "down"), "sometimes"), "penalties[0].down"),
+        (_set(("penalties", 0, "enforcement"), "XX"), "penalties[0].enforcement"),
+        (_set(("penalties", 0, "side"), "both"), "penalties[0].side"),
+        (_set(("penalties", 0, "yards"), -1), "yards must be a whole number"),
+        (_set(("penalties", 0, "yards"), 60), "exceeds the field length"),
+        (
+            lambda rules: rules["penalties"][1].update(
+                name=rules["penalties"][0]["name"],
+                side=rules["penalties"][0]["side"],
+            ),
+            "duplicate penalty",
+        ),
+        (
+            lambda rules: rules["penalties"][1].update(
+                code=rules["penalties"][0]["code"]
+            ),
+            "duplicate penalty code",
+        ),
+    ],
+)
+def test_a_broken_definition_is_rejected_with_a_readable_error(mutate, message):
+    from gameevents.service.rules import _validate
+
+    with pytest.raises(RulesDefinitionError, match=re.escape(message)):
+        _validate(_broken(mutate), "test.json")
+
+
+def test_a_definition_file_that_is_not_json_is_rejected():
+    from gameevents.service.rules import RulesDefinitionError, _load
+
+    with pytest.raises(RulesDefinitionError):
+        _load("does-not-exist", "v5")
