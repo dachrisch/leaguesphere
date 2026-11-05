@@ -2309,3 +2309,39 @@ describe("GameSetup direction on the field", () => {
     expect(within(group).getByRole("button", { name: "Süd" })).toBeInTheDocument();
   });
 });
+
+describe("a game another device already took", () => {
+  it("warns before anyone taps start", async () => {
+    crew = completeCrew();
+    setup = {
+      ctResult: "home",
+      direction: "Nord",
+      fhPossession: "home",
+      device_id: "device-2",
+    };
+
+    await renderSetup();
+
+    expect(
+      await screen.findByText(/hat ein anderes Gerät bereits übernommen/),
+    ).toBeInTheDocument();
+    // it is a warning, not a gate: the start button stays available
+    expect(screen.getByRole("button", { name: "Fortsetzen" })).toBeEnabled();
+  });
+
+  it("stays quiet for a game this device started", async () => {
+    crew = completeCrew();
+    setup = {
+      ctResult: "home",
+      direction: "Nord",
+      fhPossession: "home",
+      device_id: "device-1",
+    };
+
+    await renderSetup();
+
+    expect(
+      screen.queryByText(/hat ein anderes Gerät bereits übernommen/),
+    ).toBeNull();
+  });
+});
