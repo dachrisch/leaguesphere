@@ -523,17 +523,21 @@ class Phone:
         """Make sure the service worker is the controller before going offline.
 
         Without a controller an offline reload is a browser error page, not an
-        offline boot; the test would then prove nothing about the app.
+        offline boot; the test would then prove nothing about the app. The
+        reload is unconditional: it also makes the app boot from the game deep
+        link once, which is what writes the summary snapshot an offline reload
+        needs (opening the game from the list only writes the log snapshot).
         """
 
         page = self._require_page()
         page.evaluate("() => navigator.serviceWorker.ready.then(() => true)")
-        if page.evaluate("() => navigator.serviceWorker.controller === null"):
-            page.reload()
+        page.reload()
+        page.wait_for_selector("#scorecard-v2-app")
         page.wait_for_function(
             "() => navigator.serviceWorker.controller !== null",
             timeout=30000,
         )
+        self.wait_tracking()
 
     def wait_tracking(self) -> None:
         page = self._require_page()
