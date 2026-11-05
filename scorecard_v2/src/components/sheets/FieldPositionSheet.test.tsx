@@ -2,7 +2,10 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import FieldPositionSheet, { fieldPositionEvent } from "./FieldPositionSheet";
+import FieldPositionSheet, {
+  fieldPositionEvent,
+  spotValue,
+} from "./FieldPositionSheet";
 
 function renderSheet(
   overrides: Partial<Parameters<typeof FieldPositionSheet>[0]> = {},
@@ -36,6 +39,22 @@ describe("fieldPositionEvent", () => {
       input: "B20",
       payload: { ballOn: 30, input: "B20" },
     });
+  });
+
+  it("keeps a half yard from a half-distance penalty", () => {
+    expect(fieldPositionEvent("A", 4.5)).toEqual({
+      name: "Feldposition",
+      input: "A4,5",
+      payload: { ballOn: 4.5, input: "A4,5" },
+    });
+  });
+
+  it("reads a German or English decimal", () => {
+    expect(spotValue("4,5")).toBe(4.5);
+    expect(spotValue("4.5")).toBe(4.5);
+    expect(spotValue("4")).toBe(4);
+    expect(spotValue("")).toBeNull();
+    expect(spotValue("x")).toBeNull();
   });
 });
 
@@ -78,6 +97,24 @@ describe("FieldPositionSheet", () => {
     expect(screen.getByRole("textbox", { name: "Yardlinie (0–25)" })).toHaveValue(
       "12",
     );
+  });
+
+  it("prefills and saves a half-yard spot", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({ ballOn: 4.5 });
+
+    expect(screen.getByRole("textbox", { name: "Yardlinie (0–25)" })).toHaveValue(
+      "4,5",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Feldposition speichern" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: "Feldposition",
+      input: "A4,5",
+      payload: { ballOn: 4.5, input: "A4,5" },
+    });
   });
 
   it("refuses a yard line beyond the 25", async () => {

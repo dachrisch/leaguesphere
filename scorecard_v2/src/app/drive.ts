@@ -307,12 +307,13 @@ export function spotText(ballOn: number | null): string | null {
     return "M";
   }
   if (spot < MIDFIELD) {
-    return `A${yardText(spot)}`;
+    return `A${formatYards(spot)}`;
   }
-  return `B${yardText(FIELD_LENGTH - spot)}`;
+  return `B${formatYards(FIELD_LENGTH - spot)}`;
 }
 
-function yardText(value: number): string {
+/** One decimal at most, in the German comma notation (`4.5` → `4,5`). */
+export function formatYards(value: number): string {
   const rounded = Math.round(value * 10) / 10;
   return String(rounded).replace(".", ",");
 }
