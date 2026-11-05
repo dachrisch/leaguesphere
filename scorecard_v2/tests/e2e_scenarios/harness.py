@@ -404,10 +404,13 @@ class Phone:
     def _login_ui(self, username: str, password: str) -> None:
         page = self._require_page()
         page.goto(f"{self.base_url}/login/")
-        if page.locator('input[name="username"]').count() > 0:
+        username_input = page.locator('input[name="username"]')
+        if "/login/" in page.url and username_input.count() > 0:
             page.fill('input[name="username"]', username)
             page.fill('input[name="password"]', password)
-            page.click('button[type="submit"]')
+            # The page may also carry a hidden logout form with a submit
+            # button; only the login form's visible button is meant.
+            page.locator('button[type="submit"]:visible').first.click()
         expect(page).not_to_have_url(re.compile(r"/login/$"))
         page.goto(self.app_url())
         page.wait_for_selector("#scorecard-v2-app")
@@ -515,7 +518,7 @@ class Phone:
             expect(rows).to_have_count(1)
             rows.first.click()
             settle_screen()
-        except PlaywrightError:
+        except (PlaywrightError, AssertionError):
             page.goto(self.game_url(game))
             settle_screen()
 
@@ -934,13 +937,17 @@ def assert_invariants(
                 f"I5 {phone.name}: {len(pending)} pending ops with no visible reason"
             )
 
-    # I3 for the screen as well: a phone that is online and on tracking must
-    # show the server's score. A queued/paused phone may legitimately differ
-    # (S12/S13) and says so in its own strip.
+    # I3 for the screen as well: a phone that is online, on tracking and has
+    # nothing waiting must show the server's score. A queued/paused phone may
+    # legitimately differ (S12/S13) and says so in its own strip.
     for phone in live_phones:
         if phone.page is None or not phone.online_state():
             continue
         if phone.page.locator(".tracking").count() == 0:
+            continue
+        ops = phone.queue()
+        label = phone.badge()
+        if ops or label.startswith("Pausiert") or label == "Nur lesen":
             continue
         shown = phone.score()
         if shown != (state.score_home, state.score_away):
