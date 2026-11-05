@@ -98,9 +98,11 @@ describe("PlaySheet helpers", () => {
     });
   });
 
-  it("reads the yards field as a two-digit number", () => {
+  it("reads the yards field as a signed two-digit number", () => {
     expect(yardsValue("8")).toBe(8);
+    expect(yardsValue("-5")).toBe(-5);
     expect(yardsValue("")).toBeNull();
+    expect(yardsValue("-")).toBeNull();
     expect(yardsValue("1a2")).toBe(12);
     expect(yardsValue("123")).toBe(12);
   });
@@ -145,6 +147,27 @@ describe("PlaySheet", () => {
     expect(
       screen.getByText("Bitte den Quarterback wählen."),
     ).toBeInTheDocument();
+  });
+
+  it("records a negative gain for a short pass carried backwards", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({ lastQuarterback: 12 });
+
+    await user.click(screen.getByRole("button", { name: "Trikot 7, Meier" }));
+    await user.click(screen.getByRole("button", { name: "Verlust" }));
+    const yards = screen.getByRole("textbox", { name: /Raumgewinn/ });
+    await user.clear(yards);
+    await user.type(yards, "4");
+    await user.click(
+      screen.getByRole("button", { name: "Spielzug speichern" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: "Pass",
+      player: 7,
+      input: "4 Yards Verlust · QB #12",
+      payload: { yards: -4, complete: true, qb: 12 },
+    });
   });
 
   it("records a run without a quarterback or a pass result", async () => {

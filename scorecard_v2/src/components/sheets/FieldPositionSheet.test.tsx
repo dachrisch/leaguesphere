@@ -22,25 +22,25 @@ function renderSheet(
 }
 
 describe("fieldPositionEvent", () => {
-  it("stores the own side as the machine value", () => {
-    expect(fieldPositionEvent("own", 35)).toEqual({
+  it("stores the A half as the machine value", () => {
+    expect(fieldPositionEvent("A", 12)).toEqual({
       name: "Feldposition",
-      input: "eigene 35",
-      payload: { ballOn: 35, input: "eigene 35" },
+      input: "A12",
+      payload: { ballOn: 12, input: "A12" },
     });
   });
 
-  it("mirrors the opponent's side", () => {
-    expect(fieldPositionEvent("opponent", 40)).toEqual({
+  it("mirrors the B half", () => {
+    expect(fieldPositionEvent("B", 20)).toEqual({
       name: "Feldposition",
-      input: "gegn. 40",
-      payload: { ballOn: 60, input: "gegn. 40" },
+      input: "B20",
+      payload: { ballOn: 30, input: "B20" },
     });
   });
 });
 
 describe("FieldPositionSheet", () => {
-  it("saves the own 35 with one tap", async () => {
+  it("saves A5 with one tap before a spot was set", async () => {
     const user = userEvent.setup();
     const { onSubmit, onClose } = renderSheet();
 
@@ -50,36 +50,49 @@ describe("FieldPositionSheet", () => {
 
     expect(onSubmit).toHaveBeenCalledWith({
       name: "Feldposition",
-      input: "eigene 35",
-      payload: { ballOn: 35, input: "eigene 35" },
+      input: "A5",
+      payload: { ballOn: 5, input: "A5" },
     });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("prefills the current spot on the right half", () => {
-    renderSheet({ ballOn: 60 });
+  it("prefills the current spot on the B half", () => {
+    renderSheet({ ballOn: 30 });
 
-    expect(
-      screen.getByRole("button", { name: "gegnerische" }),
-    ).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("textbox", { name: "Yardlinie (0–50)" })).toHaveValue(
-      "40",
+    expect(screen.getByRole("button", { name: /B ·/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("textbox", { name: "Yardlinie (0–25)" })).toHaveValue(
+      "20",
     );
   });
 
-  it("refuses a yard line beyond the 50", async () => {
+  it("prefills the current spot on the A half", () => {
+    renderSheet({ ballOn: 12 });
+
+    expect(screen.getByRole("button", { name: /A ·/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("textbox", { name: "Yardlinie (0–25)" })).toHaveValue(
+      "12",
+    );
+  });
+
+  it("refuses a yard line beyond the 25", async () => {
     const user = userEvent.setup();
     renderSheet();
 
-    const yards = screen.getByRole("textbox", { name: "Yardlinie (0–50)" });
+    const yards = screen.getByRole("textbox", { name: "Yardlinie (0–25)" });
     await user.clear(yards);
-    await user.type(yards, "55");
+    await user.type(yards, "30");
 
     expect(
       screen.getByRole("button", { name: "Feldposition speichern" }),
     ).toBeDisabled();
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Die Yardlinie liegt zwischen 0 und 50.",
+      "Die Yardlinie liegt zwischen 0 und 25.",
     );
   });
 

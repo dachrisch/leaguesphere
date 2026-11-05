@@ -1,15 +1,20 @@
 /**
  * The yards field shared by the play, touchdown and first-down sheets.
  *
- * A play gains at most two digits (0–99), and a loss is entered as a positive
- * number: the sheet's label says which way it counts, the payload stores it
- * signed so a later statistics pass can simply add the plays up.
+ * A play gains or loses at most two digits (0–99). A leading minus marks a
+ * loss (a short pass the receiver carries backwards); the payload stores the
+ * signed value, so a later statistics pass can simply add the plays up.
  */
 
-/** `"8"` → `8`, `""` → `null`; everything but the first two digits is dropped. */
+/** `"8"` → `8`, `"-5"` → `-5`, `""`/`"-"` → `null`. */
 export function yardsValue(raw: string): number | null {
-  const digits = raw.replace(/\D/g, "").slice(0, 2);
-  return digits === "" ? null : Number(digits);
+  const value = raw.trim();
+  const negative = value.startsWith("-");
+  const digits = value.replace(/\D/g, "").slice(0, 2);
+  if (digits === "") {
+    return null;
+  }
+  return negative ? -Number(digits) : Number(digits);
 }
 
 /** The visible text of a gained or lost distance. */

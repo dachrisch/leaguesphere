@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { LogRow } from "../components/EventLog";
 import {
   advance,
+  applyPenalty,
   driveAfter,
   driveText,
   FIRST_AND_TEN,
@@ -36,89 +37,210 @@ function run(yards: number, team = "Ravens"): LogRow {
   return row({ team, payload: { yards } });
 }
 
-describe("advance", () => {
-  it("moves the chains when the line to gain is reached", () => {
-    expect(advance(FIRST_AND_TEN, 10)).toEqual(FIRST_AND_TEN);
-    expect(advance(FIRST_AND_TEN, 25)).toEqual(FIRST_AND_TEN);
+function penalty(
+  yardage: number,
+  nextDown = "repeat",
+  team = "Ravens",
+): LogRow {
+  return row({
+    team,
+    event: "Strafe",
+    payload: { yardage, nextDown },
   });
+}
 
-  it("counts the down and the remaining distance", () => {
-    expect(advance(FIRST_AND_TEN, 4)).toEqual({
-      down: 2,
-      toGo: 6,
-      ballOn: null,
+describe("the 50-yard field", () => {
+  it("starts every series at A5 with midfield as the line to gain", () => {
+    expect(FIRST_AND_TEN).toEqual({
+      down: 1,
+      toGo: 20,
+      ballOn: 5,
       goal: false,
     });
-    expect(advance({ down: 2, toGo: 6, ballOn: 40, goal: false }, 3)).toEqual({
-      down: 3,
-      toGo: 3,
-      ballOn: 43,
+    expect(driveText(FIRST_AND_TEN)).toBe("1st & M");
+    expect(spotText(FIRST_AND_TEN.ballOn)).toBe("A5");
+  });
+
+  it("names A, midfield and B as the officials call them", () => {
+    expect(spotText(0)).toBe("A0");
+    expect(spotText(5)).toBe("A5");
+    expect(spotText(12)).toBe("A12");
+    expect(spotText(25)).toBe("M");
+    expect(spotText(30)).toBe("B20");
+    expect(spotText(36)).toBe("B14");
+    expect(spotText(50)).toBe("B0");
+    expect(spotText(4.5)).toBe("A4,5");
+    expect(spotText(null)).toBeNull();
+  });
+});
+
+describe("advance", () => {
+  it("counts the yards up to midfield and keeps M as the line to gain", () => {
+    expect(advance(FIRST_AND_TEN, 7)).toEqual({
+      down: 2,
+      toGo: 13,
+      ballOn: 12,
+      goal: false,
+    });
+    expect(driveText(advance(FIRST_AND_TEN, 7))).toBe("2nd & M");
+  });
+
+  it("awards a first down when the play reaches midfield", () => {
+    expect(advance(FIRST_AND_TEN, 20)).toEqual({
+      down: 1,
+      toGo: 25,
+      ballOn: 25,
+      goal: true,
+    });
+    expect(driveText(advance(FIRST_AND_TEN, 20))).toBe("1st & G");
+    expect(spotText(advance(FIRST_AND_TEN, 20).ballOn)).toBe("M");
+  });
+
+  it("crosses into B territory and counts the B yards down to the goal", () => {
+    const crossed = advance(FIRST_AND_TEN, 25);
+
+    expect(crossed).toEqual({ down: 1, toGo: 20, ballOn: 30, goal: true });
+    expect(driveText(crossed)).toBe("1st & G");
+    expect(spotText(crossed.ballOn)).toBe("B20");
+
+    const next = advance(crossed, 6);
+
+    expect(next).toEqual({ down: 2, toGo: 14, ballOn: 36, goal: true });
+    expect(driveText(next)).toBe("2nd & G");
+    expect(spotText(next.ballOn)).toBe("B14");
+  });
+
+  it("keeps goal-to-go when a play loses yards back across midfield", () => {
+    const lost = advance(seriesAt(30), -8);
+
+    expect(lost).toEqual({ down: 2, toGo: 28, ballOn: 22, goal: true });
+    expect(driveText(lost)).toBe("2nd & G");
+    expect(spotText(lost.ballOn)).toBe("A22");
+  });
+
+  it("counts a negative gain backwards", () => {
+    expect(advance(FIRST_AND_TEN, -4)).toEqual({
+      down: 2,
+      toGo: 24,
+      ballOn: 1,
       goal: false,
     });
   });
 
   it("ends the series on a fourth down short of the line", () => {
-    expect(advance({ down: 4, toGo: 3, ballOn: 40, goal: false }, 1)).toEqual({
+    expect(advance({ down: 4, toGo: 5, ballOn: 20, goal: false }, 3)).toEqual(
+      FIRST_AND_TEN,
+    );
+    expect(advance({ down: 4, toGo: 5, ballOn: 20, goal: false }, 5)).toEqual(
+      seriesAt(25),
+    );
+    expect(advance({ down: 4, toGo: 8, ballOn: 42, goal: true }, 3)).toEqual(
+      FIRST_AND_TEN,
+    );
+  });
+
+  it("sets the spot on a fresh series", () => {
+    expect(seriesAt(20)).toEqual({
       down: 1,
-      toGo: 10,
-      ballOn: 59,
+      toGo: 5,
+      ballOn: 20,
       goal: false,
     });
-    expect(advance({ down: 4, toGo: 3, ballOn: 40, goal: false }, 3)).toEqual({
-      down: 1,
-      toGo: 10,
-      ballOn: 43,
-      goal: false,
-    });
-  });
-
-  it("counts a loss backwards", () => {
-    expect(advance(FIRST_AND_TEN, -4)).toEqual({
-      down: 2,
-      toGo: 14,
-      ballOn: null,
-      goal: false,
-    });
-  });
-
-  it("moves the spot with the play", () => {
-    const drive = advance(seriesAt(35), 8);
-
-    expect(drive).toEqual({ down: 2, toGo: 2, ballOn: 43, goal: false });
-  });
-
-  it("turns goal-to-go when the spot is inside the ten", () => {
-    const drive = advance(seriesAt(92), 6);
-
-    expect(drive).toEqual({ down: 2, toGo: 2, ballOn: 98, goal: true });
-    expect(driveText(drive)).toBe("2nd & Goal");
-    expect(driveText(seriesAt(92))).toBe("1st & Goal");
-  });
-
-  it("keeps the goal line as the line to gain for the whole series", () => {
-    const lost = advance(seriesAt(92), -5);
-
-    expect(driveText(lost)).toBe("2nd & Goal");
-    expect(lost.ballOn).toBe(87);
   });
 });
 
 describe("isTurnoverOnDowns", () => {
-  it("is only true on fourth down short of the line", () => {
-    expect(isTurnoverOnDowns({ down: 4, toGo: 3, ballOn: 40, goal: false }, 1)).toBe(
-      true,
-    );
-    expect(isTurnoverOnDowns({ down: 4, toGo: 3, ballOn: 40, goal: false }, 3)).toBe(
-      false,
-    );
-    expect(isTurnoverOnDowns({ down: 3, toGo: 3, ballOn: 40, goal: false }, 1)).toBe(
-      false,
-    );
+  it("is only true on fourth down short of the line to gain", () => {
+    expect(
+      isTurnoverOnDowns({ down: 4, toGo: 5, ballOn: 20, goal: false }, 3),
+    ).toBe(true);
+    expect(
+      isTurnoverOnDowns({ down: 4, toGo: 5, ballOn: 20, goal: false }, 5),
+    ).toBe(false);
+    expect(
+      isTurnoverOnDowns({ down: 3, toGo: 5, ballOn: 20, goal: false }, 3),
+    ).toBe(false);
+    expect(
+      isTurnoverOnDowns({ down: 4, toGo: 8, ballOn: 42, goal: true }, 3),
+    ).toBe(true);
+  });
+});
+
+describe("applyPenalty", () => {
+  it("moves the spot with a signed yardage", () => {
+    expect(applyPenalty(seriesAt(20), -5, "repeat")).toEqual({
+      down: 1,
+      toGo: 10,
+      ballOn: 15,
+      goal: false,
+    });
+  });
+
+  it("applies the next-down choice", () => {
+    const state = { down: 2, toGo: 10, ballOn: 15, goal: false };
+
+    expect(applyPenalty(state, -5, "repeat").down).toBe(2);
+    expect(applyPenalty(state, 5, "first_down").down).toBe(1);
+    expect(applyPenalty(state, -5, "loss_of_down").down).toBe(3);
+  });
+
+  it("never moves closer than half the distance to the own goal", () => {
+    expect(applyPenalty(seriesAt(9), -5, "repeat")).toEqual({
+      down: 1,
+      toGo: 20.5,
+      ballOn: 4.5,
+      goal: false,
+    });
+    expect(applyPenalty(seriesAt(11), -5, "repeat")).toEqual({
+      down: 1,
+      toGo: 19,
+      ballOn: 6,
+      goal: false,
+    });
+  });
+
+  it("never moves closer than half the distance to the opponent's goal", () => {
+    const state = seriesAt(45);
+
+    expect(applyPenalty(state, 10, "repeat")).toEqual({
+      down: 1,
+      toGo: 2.5,
+      ballOn: 47.5,
+      goal: true,
+    });
+  });
+
+  it("crossing midfield makes it a new 1st & G, whatever nextDown says", () => {
+    expect(applyPenalty(seriesAt(20), 10, "loss_of_down")).toEqual({
+      down: 1,
+      toGo: 20,
+      ballOn: 30,
+      goal: true,
+    });
+  });
+
+  it("below midfield the next-down choice applies", () => {
+    expect(applyPenalty(seriesAt(30), -10, "loss_of_down")).toEqual({
+      down: 2,
+      toGo: 5,
+      ballOn: 20,
+      goal: false,
+    });
+  });
+
+  it("ends the series when a loss of down happens on fourth down", () => {
+    expect(
+      applyPenalty(
+        { down: 4, toGo: 5, ballOn: 20, goal: false },
+        -5,
+        "loss_of_down",
+      ),
+    ).toEqual(FIRST_AND_TEN);
   });
 });
 
 describe("driveAfter", () => {
-  it("starts at first and ten without plays", () => {
+  it("starts at A5 without plays", () => {
     expect(driveAfter([])).toEqual(FIRST_AND_TEN);
   });
 
@@ -126,7 +248,7 @@ describe("driveAfter", () => {
     // The log is newest first: a 4-yard run, then a 3-yard run.
     const drive = driveAfter([run(3), run(4)]);
 
-    expect(drive).toEqual({ down: 3, toGo: 3, ballOn: null, goal: false });
+    expect(drive).toEqual({ down: 3, toGo: 13, ballOn: 12, goal: false });
   });
 
   it("ignores a deleted play, so an undo rewinds the series", () => {
@@ -135,26 +257,23 @@ describe("driveAfter", () => {
 
     expect(driveAfter([run(3), deleted])).toEqual({
       down: 2,
-      toGo: 7,
-      ballOn: null,
+      toGo: 17,
+      ballOn: 8,
       goal: false,
     });
   });
 
-  it("starts over when the team changes, at the mirrored spot", () => {
-    // Newest first: the Ravens ran for 3 from their own 40, then the Wolves
-    // took over on the Ravens' 43 (their own 57) and ran for 4.
+  it("starts over at A5 when the team changes", () => {
     const drive = driveAfter([
       run(4, "Wolves"),
       run(3, "Ravens"),
-      row({ key: "spot", event: "Feldposition", payload: { ballOn: 40 } }),
+      row({ key: "spot", event: "Feldposition", payload: { ballOn: 20 } }),
     ]);
 
-    expect(drive).toEqual({ down: 2, toGo: 6, ballOn: 61, goal: false });
+    expect(drive).toEqual({ down: 2, toGo: 16, ballOn: 9, goal: false });
   });
 
-  it("starts over after a touchdown or a turnover", () => {
-    // Newest first: the marker is the last thing that happened.
+  it("starts over at A5 after a touchdown or a turnover", () => {
     expect(
       driveAfter([
         row({ key: "td", event: "Touchdown", payload: { yards: 6 } }),
@@ -188,54 +307,59 @@ describe("driveAfter", () => {
       row({ key: "pass", event: "Pass", payload: { yards: 6 } }),
     ]);
 
-    expect(drive).toEqual({ down: 3, toGo: 9, ballOn: null, goal: false });
+    expect(drive).toEqual({ down: 3, toGo: 19, ballOn: 6, goal: false });
   });
 
   it("sets the spot from a Feldposition row", () => {
     const drive = driveAfter([
       run(-2),
-      row({ key: "spot", event: "Feldposition", payload: { ballOn: 35 } }),
+      row({ key: "spot", event: "Feldposition", payload: { ballOn: 20 } }),
     ]);
 
-    expect(drive).toEqual({ down: 2, toGo: 12, ballOn: 33, goal: false });
+    expect(drive).toEqual({ down: 2, toGo: 7, ballOn: 18, goal: false });
   });
 
-  it("mirrors the spot for a turnover", () => {
+  it("applies a penalty row to the spot and the down", () => {
+    const drive = driveAfter([penalty(5, "first_down"), run(3)]);
+
+    // 3-yard run to A8, then +5 and a first down at A13.
+    expect(drive).toEqual({ down: 1, toGo: 12, ballOn: 13, goal: false });
+  });
+
+  it("a manual field position after a penalty wins", () => {
     const drive = driveAfter([
-      row({ key: "to", event: "Turnover", cop: true, team: "Wolves" }),
-      run(6),
-      row({ key: "spot", event: "Feldposition", payload: { ballOn: 40 } }),
+      run(3),
+      row({ key: "spot", event: "Feldposition", payload: { ballOn: 12 } }),
+      penalty(10, "first_down"),
+      run(3),
     ]);
 
-    expect(drive.ballOn).toBe(54);
-    expect(drive.down).toBe(1);
+    expect(drive).toEqual({ down: 2, toGo: 10, ballOn: 15, goal: false });
   });
-});
 
-describe("spotText", () => {
-  it("names the spot as the officials call it", () => {
-    expect(spotText(35)).toBe("eigene 35");
-    expect(spotText(60)).toBe("gegn. 40");
-    expect(spotText(50)).toBe("Mittelfeld");
-    expect(spotText(null)).toBeNull();
-    expect(mirror(35)).toBe(65);
+  it("ignores a penalty without a structured yardage", () => {
+    expect(
+      driveAfter([row({ key: "pen", event: "Strafe", payload: {} })]),
+    ).toEqual(FIRST_AND_TEN);
+  });
+
+  it("mirrors the spot for code that still asks for it", () => {
+    expect(mirror(5)).toBe(45);
     expect(mirror(null)).toBeNull();
   });
 });
 
 describe("driveText", () => {
   it("uses the officials' shorthand", () => {
-    expect(driveText({ down: 1, toGo: 10, ballOn: null, goal: false })).toBe(
-      "1st & 10",
+    expect(driveText(FIRST_AND_TEN)).toBe("1st & M");
+    expect(driveText({ down: 2, toGo: 13, ballOn: 12, goal: false })).toBe(
+      "2nd & M",
     );
-    expect(driveText({ down: 2, toGo: 6, ballOn: 40, goal: false })).toBe(
-      "2nd & 6",
+    expect(driveText({ down: 3, toGo: 14, ballOn: 36, goal: true })).toBe(
+      "3rd & G",
     );
-    expect(driveText({ down: 3, toGo: 4, ballOn: 43, goal: false })).toBe(
-      "3rd & 4",
-    );
-    expect(driveText({ down: 4, toGo: 1, ballOn: 95, goal: true })).toBe(
-      "4th & Goal",
+    expect(driveText({ down: 4, toGo: 1, ballOn: 49, goal: true })).toBe(
+      "4th & G",
     );
   });
 });

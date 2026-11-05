@@ -1,15 +1,35 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { GameLogEventInput, Penalty, RosterPlayer } from "../../api/types";
+import type { PenaltyNextDown } from "../../app/drive";
 import { cachedGet, snapshotKey } from "../../offline/snapshot";
 import JerseyPicker, { jerseyOptions } from "../JerseyPicker";
 import { errorMessage } from "./errors";
 import Sheet from "./Sheet";
+import { yardsValue } from "./yards";
 
 /** How many penalties the collapsed list shows — v1's suggestion-box limit. */
 export const PENALTY_PAGE = 5;
 
 const PENALTIES_PATH = "/api/config/scorecard/penalties";
+
+/** The most common penalties keep their configured order at the top. */
+export function orderPenalties(
+  penalties: Penalty[],
+  search: string,
+): Penalty[] {
+  const matches = filterPenalties(penalties, search);
+  if (search.trim() !== "") {
+    return [...matches].sort(byName);
+  }
+  const head = matches.slice(0, PENALTY_PAGE);
+  const tail = matches.slice(PENALTY_PAGE).sort(byName);
+  return [...head, ...tail];
+}
+
+function byName(left: Penalty, right: Penalty): number {
+  return left.name.localeCompare(right.name, "de", { sensitivity: "base" });
+}
 
 /**
  * Case-insensitive substring match on the penalty name.
@@ -52,16 +72,53 @@ export function penaltyTeam(
 }
 
 /**
+ * The yardage the catalogue's `subtext` suggests, signed from the offence's
+ * view. A defense penalty gains yards (`BS/1st 10` → +10); an offence penalty
+ * loses them (`SF/LoD 5` → -5). No number means no spot change.
+ */
+export function penaltyYardage(penalty: Penalty): number {
+  const match = /(\d+)(?!st)/.exec(penalty.subtext);
+  const magnitude = match === null ? 0 : Number(match[1]);
+  if (magnitude === 0) {
+    return 0;
+  }
+  return penalty.isPenaltyAgainstOpponent ? magnitude : -magnitude;
+}
+
+/** The down rule the catalogue's `subtext` suggests. */
+export function penaltyNextDown(penalty: Penalty): PenaltyNextDown {
+  const text = penalty.subtext.toLowerCase();
+  if (/\b1st\b/.test(text)) {
+    return "first_down";
+  }
+  if (text.includes("lod")) {
+    return "loss_of_down";
+  }
+  return "repeat";
+}
+
+/**
  * Payload of one penalty: the event name is always `Strafe`, the picked
  * penalty travels as `input`, and the jersey is optional ("ganzes Team").
+ *
+ * `yardage` is signed from the offence's view and `nextDown` is one of
+ * `repeat`, `first_down` or `loss_of_down`; the drive engine reads both.
  */
 export function penaltyEvent(
   name: string,
   jersey: number | null,
+  yardage: number,
+  nextDown: PenaltyNextDown,
 ): GameLogEventInput {
-  return jersey === null
-    ? { name: "Strafe", input: name }
-    : { name: "Strafe", player: jersey, input: name };
+  const event: GameLogEventInput = {
+    name: "Strafe",
+    input: name,
+    payload: { yardage, nextDown },
+  };
+  if (jersey !== null) {
+    event.player = jersey;
+  }
+  return event;
 }
 
 interface PenaltySheetProps {
@@ -84,8 +141,15 @@ interface PenaltySheetProps {
   onClose: () => void;
 }
 
+const NEXT_DOWN_LABELS: Record<PenaltyNextDown, string> = {
+  repeat: "Wiederholung",
+  first_down: "First Down",
+  loss_of_down: "Loss of Down",
+};
+
 /**
- * Penalty entry: which penalty, against whom, optionally which player.
+ * Penalty entry: which penalty, against whom, how many yards, which down
+ * follows, optionally which player.
  *
  * The catalogue is configuration, not game data, so the sheet loads it itself
  * when it opens — the tracking screen stays about one game. Until it settles
@@ -97,6 +161,10 @@ interface PenaltySheetProps {
  * flag no longer moves it: the flag is a default, not a mapping. A jersey of
  * the previously picked team is dropped when the team changes, so a Ravens
  * number can never be sent with Wolves.
+ *
+ * Yardage and the next-down rule are prefilled from the catalogue's `subtext`
+ * (`1st 10` → first down, `LoD 5` → loss of down, otherwise repeat), and both
+ * stay editable: the official knows whether the spot really moves.
  */
 export default function PenaltySheet({
   teamName,
@@ -115,6 +183,9 @@ export default function PenaltySheet({
   // Set by a manual team choice: from then on a new penalty no longer
   // re-defaults the team.
   const [teamPicked, setTeamPicked] = useState(false);
+  const [yardageText, setYardageText] = useState("0");
+  const [yardageLoss, setYardageLoss] = useState(false);
+  const [nextDown, setNextDown] = useState<PenaltyNextDown>("repeat");
   const [jersey, setJersey] = useState<number | null>(null);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -149,9 +220,17 @@ export default function PenaltySheet({
   }, []);
 
   const loading = penalties === null;
-  const matches = filterPenalties(penalties ?? [], search);
+  const matches = orderPenalties(penalties ?? [], search);
   const visible = expanded ? matches : matches.slice(0, PENALTY_PAGE);
   const hidden = matches.length - visible.length;
+
+  const yardageMagnitude = yardsValue(yardageText);
+  const yardage =
+    yardageMagnitude === null
+      ? null
+      : yardageLoss
+        ? -Math.abs(yardageMagnitude)
+        : yardageMagnitude;
 
   const otherSide: RosterPlayer["side"] = side === "home" ? "away" : "home";
   const jerseySide = team === opponentName ? otherSide : side;
@@ -161,7 +240,8 @@ export default function PenaltySheet({
       : roster.filter((player) => player.side === jerseySide);
   const options = jerseyOptions(players);
 
-  const ready = team !== null && selected !== null && !posting;
+  const ready =
+    team !== null && selected !== null && yardage !== null && !posting;
 
   const pickTeam = (name: string): void => {
     setTeam(name);
@@ -187,17 +267,35 @@ export default function PenaltySheet({
     // The roster changed with the team the flag implies; a number meant for
     // the other side must not survive.
     setJersey(null);
+    const suggested = penaltyYardage(penalty);
+    setYardageText(String(Math.abs(suggested)));
+    setYardageLoss(suggested < 0);
+    setNextDown(penaltyNextDown(penalty));
+  };
+
+  /** A typed minus marks a loss; the touch switch sets the same flag. */
+  const changeYardage = (raw: string): void => {
+    if (raw.includes("-")) {
+      setYardageLoss(true);
+    }
+    setYardageText(raw.replace(/-/g, ""));
   };
 
   const save = async (): Promise<void> => {
     if (saving.current || !ready || selected === null || team === null) {
       return;
     }
+    if (yardage === null) {
+      return;
+    }
     saving.current = true;
     setPosting(true);
     setError(null);
     try {
-      await onSubmit([penaltyEvent(selected.name, jersey)], team);
+      await onSubmit(
+        [penaltyEvent(selected.name, jersey, yardage, nextDown)],
+        team,
+      );
       onClose();
     } catch (failure) {
       saving.current = false;
@@ -313,6 +411,60 @@ export default function PenaltySheet({
         </button>
       </div>
 
+      <h3 className="sheetsection">Raumgewinn der Strafe (Yards)</h3>
+      <div aria-label="Raumrichtung" className="seg" role="group">
+        <button
+          aria-pressed={!yardageLoss}
+          className={!yardageLoss ? "sel" : undefined}
+          disabled={posting}
+          onClick={() => setYardageLoss(false)}
+          type="button"
+        >
+          Gewinn
+        </button>
+        <button
+          aria-pressed={yardageLoss}
+          className={yardageLoss ? "sel" : undefined}
+          disabled={posting}
+          onClick={() => setYardageLoss(true)}
+          type="button"
+        >
+          Verlust
+        </button>
+      </div>
+      <div className="sheetfield">
+        <label className="sheetlabel" htmlFor="penalty-yards">
+          Yardage (0–99)
+        </label>
+        <input
+          autoComplete="off"
+          className="sheetinput sheetinput-num"
+          disabled={posting}
+          id="penalty-yards"
+          inputMode="numeric"
+          onChange={(event) => changeYardage(event.target.value)}
+          pattern="[0-9]*"
+          type="text"
+          value={yardageText}
+        />
+      </div>
+
+      <h3 className="sheetsection">Nächster Versuch</h3>
+      <div aria-label="Nächster Versuch" className="seg seg-three" role="group">
+        {(Object.keys(NEXT_DOWN_LABELS) as PenaltyNextDown[]).map((value) => (
+          <button
+            aria-pressed={nextDown === value}
+            className={nextDown === value ? "sel" : undefined}
+            disabled={posting}
+            key={value}
+            onClick={() => setNextDown(value)}
+            type="button"
+          >
+            {NEXT_DOWN_LABELS[value]}
+          </button>
+        ))}
+      </div>
+
       <h3 className="sheetsection">Trikotnummer (optional)</h3>
       {roster === null ? (
         <p className="sheetnote" role="status">
@@ -337,7 +489,9 @@ export default function PenaltySheet({
       <p className="sheetnote">
         {selected === null
           ? "Strafe auswählen."
-          : `${selected.name} · gegen ${team ?? "–"}`}
+          : `${selected.name} · gegen ${team ?? "–"} · ${yardage ?? 0} Yards · ${
+              NEXT_DOWN_LABELS[nextDown]
+            }`}
       </p>
     </Sheet>
   );

@@ -1,27 +1,27 @@
 import { useRef, useState } from "react";
 
 import type { GameLogEventInput } from "../../api/types";
+import { FIELD_LENGTH, MIDFIELD, SERIES_START } from "../../app/drive";
 import { errorMessage } from "./errors";
 import Sheet from "./Sheet";
 import { yardsValue } from "./yards";
 
-/** Which half of the field the spot is on, as the officials call it. */
-export type FieldSide = "own" | "opponent";
+/** Which half of the 50-yard field the spot is on, as the officials call it. */
+export type FieldSide = "A" | "B";
 
 /**
  * The event of one Feldposition row.
  *
- * `ballOn` is the machine value: the offence's own goal line is 0 and the
- * opponent's is 100, so a play can simply add its yards. The text is the
- * visible detail ("eigene 35", "gegn. 40").
+ * `ballOn` is the machine value: the offence's own goal line is 0, midfield 25
+ * and the opponent's goal line 50, so a play can simply add its yards. The
+ * text is the visible detail ("A12", "B20").
  */
 export function fieldPositionEvent(
   side: FieldSide,
   yards: number,
 ): GameLogEventInput {
-  const ballOn = side === "own" ? yards : 100 - yards;
-  const text =
-    side === "own" ? `eigene ${yards}` : `gegn. ${yards}`;
+  const ballOn = side === "A" ? yards : FIELD_LENGTH - yards;
+  const text = `${side}${yards}`;
   return {
     name: "Feldposition",
     input: text,
@@ -31,7 +31,7 @@ export function fieldPositionEvent(
 
 interface FieldPositionSheetProps {
   teamName: string;
-  /** The spot the drive is on, pre-filled (own-based 0–100). */
+  /** The spot the drive is on, pre-filled (own-goal-based 0–50). */
   ballOn: number | null;
   onSubmit: (event: GameLogEventInput) => Promise<void>;
   onClose: () => void;
@@ -40,8 +40,9 @@ interface FieldPositionSheetProps {
 /**
  * Set the ball's spot: a kickoff, a turnover, a correction.
  *
- * Own/opponent plus a yard number, in the language the officials use. The row
- * it writes is what the drive engine reads, so a reload keeps the spot.
+ * A/B plus a yard number, in the language the officials use. The row it writes
+ * is what the drive engine reads, so a reload keeps the spot. A spot before
+ * the first entry is always A5.
  */
 export default function FieldPositionSheet({
   teamName,
@@ -49,13 +50,10 @@ export default function FieldPositionSheet({
   onSubmit,
   onClose,
 }: FieldPositionSheetProps) {
-  const [side, setSide] = useState<FieldSide>(
-    ballOn !== null && ballOn > 50 ? "opponent" : "own",
-  );
+  const current = ballOn ?? SERIES_START;
+  const [side, setSide] = useState<FieldSide>(current > MIDFIELD ? "B" : "A");
   const [yards, setYards] = useState(
-    ballOn === null
-      ? "35"
-      : String(ballOn <= 50 ? ballOn : 100 - ballOn),
+    String(current > MIDFIELD ? FIELD_LENGTH - current : current),
   );
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +61,7 @@ export default function FieldPositionSheet({
   const saving = useRef(false);
 
   const distance = yardsValue(yards);
-  const ready = !posting && distance !== null && distance <= 50;
+  const ready = !posting && distance !== null && distance <= MIDFIELD;
 
   const save = async (): Promise<void> => {
     if (saving.current || !ready || distance === null) {
@@ -106,27 +104,27 @@ export default function FieldPositionSheet({
     >
       <div aria-label="Feldhälfte" className="seg" role="group">
         <button
-          aria-pressed={side === "own"}
-          className={side === "own" ? "sel" : undefined}
+          aria-pressed={side === "A"}
+          className={side === "A" ? "sel" : undefined}
           disabled={posting}
-          onClick={() => setSide("own")}
+          onClick={() => setSide("A")}
           type="button"
         >
-          eigene
+          A · eigene
         </button>
         <button
-          aria-pressed={side === "opponent"}
-          className={side === "opponent" ? "sel" : undefined}
+          aria-pressed={side === "B"}
+          className={side === "B" ? "sel" : undefined}
           disabled={posting}
-          onClick={() => setSide("opponent")}
+          onClick={() => setSide("B")}
           type="button"
         >
-          gegnerische
+          B · gegnerische
         </button>
       </div>
       <div className="sheetfield">
         <label className="sheetlabel" htmlFor="field-yards">
-          Yardlinie (0–50)
+          Yardlinie (0–25)
         </label>
         <input
           autoComplete="off"
@@ -140,9 +138,9 @@ export default function FieldPositionSheet({
           value={yards}
         />
       </div>
-      {distance !== null && distance > 50 ? (
+      {distance !== null && distance > MIDFIELD ? (
         <p className="sheetwarn" role="alert">
-          Die Yardlinie liegt zwischen 0 und 50.
+          Die Yardlinie liegt zwischen 0 und 25.
         </p>
       ) : null}
     </Sheet>

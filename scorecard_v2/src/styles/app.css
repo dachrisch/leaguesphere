@@ -1014,6 +1014,12 @@ button.game-row:active {
   gap: var(--space-2);
 }
 
+/* Three short choices (the penalty's next down); the labels wrap rather than
+   shrinking below the touch target. */
+.seg.seg-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .seg button {
   min-height: var(--touch);
   padding: var(--space-2);
@@ -1042,6 +1048,33 @@ button.game-row:active {
   background: var(--primary);
   border-color: var(--primary);
   box-shadow: inset 0 0 0 1px var(--primary-contrast);
+}
+
+/* The coin-toss and possession switches repeat the home red / guest green of
+   the teams above: a tinted surface with the team colour as the label. The
+   selected state fills the surface, so colour is never the only signal. */
+.seg button.seg-home {
+  color: var(--home-text);
+  background: var(--home-wash);
+  border-color: color-mix(in srgb, var(--home) 28%, transparent);
+}
+
+.seg button.seg-away {
+  color: var(--away-text);
+  background: var(--away-wash);
+  border-color: color-mix(in srgb, var(--away) 28%, transparent);
+}
+
+.seg button.seg-home.sel {
+  color: var(--on-strong);
+  background: var(--home);
+  border-color: var(--home);
+}
+
+.seg button.seg-away.sel {
+  color: var(--on-strong);
+  background: var(--away);
+  border-color: var(--away);
 }
 
 .seg button:disabled {

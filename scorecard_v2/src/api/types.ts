@@ -240,6 +240,10 @@ export interface GameLogEvent {
    * The structured record the event wrote (yards, quarterback, complete,
    * defence), or `null` for a row no event wrote. Additive: older servers
    * simply omit it.
+   *
+   * A `Strafe` row carries `yardage` (signed from the offence's view) and
+   * `nextDown` (`repeat` | `first_down` | `loss_of_down`); the drive engine
+   * applies both to the spot.
    */
   payload?: Record<string, unknown> | null;
   half: number;
@@ -281,6 +285,8 @@ export interface RosterPlayer {
 /**
  * One item of `GET /api/config/scorecard/penalties/`. `isPenaltyAgainstOpponent`
  * decides which team a `Strafe` is charged to; the picker must default from it.
+ * `subtext` also encodes the suggested yardage and down rule (`1st 10`,
+ * `LoD 5`, …); the sheet prefills from it, the official can correct both.
  */
 export interface Penalty {
   name: string;

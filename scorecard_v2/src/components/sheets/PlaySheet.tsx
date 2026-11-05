@@ -144,6 +144,7 @@ export default function PlaySheet({
   const [defender, setDefender] = useState<number | null>(null);
   const [deflection, setDeflection] = useState(false);
   const [yardsText, setYardsText] = useState("0");
+  const [loss, setLoss] = useState(false);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Two synchronous taps must not both write a play.
@@ -153,9 +154,21 @@ export default function PlaySheet({
     roster === null ? [] : roster.filter((player) => player.side === side);
   const defenders =
     roster === null ? [] : roster.filter((player) => player.side !== side);
-  const yards = yardsValue(yardsText) ?? 0;
+  const magnitude = yardsValue(yardsText) ?? 0;
+  const yards = loss ? -Math.abs(magnitude) : magnitude;
   const qbMissing = type === "pass" && qb === null;
   const ready = !posting && !qbMissing;
+
+  /**
+   * A typed minus also marks a loss, so a hardware keyboard and the touch
+   * switch produce the same signed yards.
+   */
+  const changeYards = (raw: string): void => {
+    if (raw.includes("-")) {
+      setLoss(true);
+    }
+    setYardsText(raw.replace(/-/g, ""));
+  };
 
   const save = async (): Promise<void> => {
     if (saving.current || !ready) {
@@ -246,9 +259,34 @@ export default function PlaySheet({
         </div>
       ) : null}
 
+      {type === "sack" ? null : (
+        <div aria-label="Raumrichtung" className="seg" role="group">
+          <button
+            aria-pressed={!loss}
+            className={!loss ? "sel" : undefined}
+            disabled={posting}
+            onClick={() => setLoss(false)}
+            type="button"
+          >
+            Gewinn
+          </button>
+          <button
+            aria-pressed={loss}
+            className={loss ? "sel" : undefined}
+            disabled={posting}
+            onClick={() => setLoss(true)}
+            type="button"
+          >
+            Verlust
+          </button>
+        </div>
+      )}
+
       <div className="sheetfield">
         <label className="sheetlabel" htmlFor="play-yards">
-          {type === "sack" ? "Raumverlust (Yards)" : "Raumgewinn (Yards)"}
+          {type === "sack"
+            ? "Raumverlust (Yards)"
+            : "Raumgewinn / Verlust (Yards)"}
         </label>
         <input
           autoComplete="off"
@@ -256,7 +294,7 @@ export default function PlaySheet({
           disabled={posting}
           id="play-yards"
           inputMode="numeric"
-          onChange={(event) => setYardsText(event.target.value)}
+          onChange={(event) => changeYards(event.target.value)}
           pattern="[0-9]*"
           type="text"
           value={yardsText}
