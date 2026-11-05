@@ -1975,6 +1975,7 @@ export default function TrackingScreen({
           half={editing.half}
           input={editing.input}
           jersey={editing.player}
+          payload={editing.payload}
           onSubmit={submitEdit}
           onClose={() => setEditing(null)}
           roster={roster}

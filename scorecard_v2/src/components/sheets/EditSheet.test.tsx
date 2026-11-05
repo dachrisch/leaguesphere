@@ -46,10 +46,21 @@ describe("EditSheet helpers", () => {
     expect(editField("Auszeit")).toBe("clock");
   });
 
-  it("requires a number on the rows that only score with one", () => {
-    expect(jerseyRequired("Touchdown")).toBe(true);
-    expect(jerseyRequired("1-Extra-Punkt")).toBe(true);
-    expect(jerseyRequired("First Down")).toBe(false);
+  it("corrects the rows that used to have no edit action at all", () => {
+    expect(editField("Pass")).toBe("play");
+    expect(editField("Pass unvollständig")).toBe("play");
+    expect(editField("Run")).toBe("play");
+    expect(editField("Sack")).toBe("play");
+    expect(editField("Challenge")).toBe("text");
+    expect(editField("Turnover")).toBe("text");
+    expect(editField("Feldposition")).toBe("fieldpos");
+  });
+
+  it("needs no number on any row: the score belongs to the team", () => {
+    expect(jerseyRequired()).toBe(false);
+    // the same answer for every row
+    expect(jerseyRequired()).toBe(false);
+    expect(jerseyRequired()).toBe(false);
   });
 
   it("reads a stored clock in both old and new widths", () => {
@@ -123,12 +134,15 @@ describe("EditSheet", () => {
     });
   });
 
-  it("refuses a scoring row without a number", () => {
-    renderSheet({ event: "Touchdown", jersey: null });
+  it("corrects a scoring row without a number", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({ event: "Touchdown", jersey: null });
 
-    expect(
+    await user.click(
       screen.getByRole("button", { name: "Änderung speichern" }),
-    ).toBeDisabled();
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith({ name: "Touchdown" });
   });
 
   it("keeps the penalty text when its number is corrected", async () => {
@@ -218,5 +232,64 @@ describe("EditSheet edge cases", () => {
     expect(
       screen.getByRole("button", { name: "Änderung speichern" }),
     ).toBeDisabled();
+  });
+});
+
+describe("correcting the rows without an edit action before", () => {
+  it("rewrites a play's yards and keeps the thrower", () => {
+    const event = editEvent("Pass", {
+      jersey: 7,
+      payload: { yards: 8, complete: true, qb: 12 },
+      yards: 12,
+    });
+
+    expect(event).toEqual({
+      name: "Pass",
+      player: 7,
+      input: "12 Yards · QB #12",
+      payload: { yards: 12, complete: true, qb: 12 },
+    });
+  });
+
+  it("keeps a sack a loss", () => {
+    const event = editEvent("Sack", {
+      jersey: 9,
+      payload: { yards: -7 },
+      yards: 3,
+    });
+
+    expect(event.payload).toEqual({ yards: -3 });
+    expect(event.input).toBe("3 Yards Verlust");
+  });
+
+  it("rewrites a challenge's text", () => {
+    expect(editEvent("Challenge", { input: "alt", text: "neu" })).toEqual({
+      name: "Challenge",
+      input: "neu",
+    });
+  });
+
+  it("rewrites the spot of a Feldposition row", () => {
+    const event = editEvent("Feldposition", {
+      payload: { ballOn: 12, input: "A12" },
+      // the sheet builds this from side B + yard line 12
+      spot: 38,
+    });
+
+    expect(event).toEqual({
+      name: "Feldposition",
+      input: "B12",
+      payload: { ballOn: 38, input: "B12" },
+    });
+  });
+
+  it("shows the play's yards and the spot in the sheet", () => {
+    renderSheet({ event: "Run", payload: { yards: 8 } });
+
+    expect(screen.getByRole("textbox", { name: "Yards" })).toHaveValue("8");
+    expect(screen.getByRole("button", { name: "Gewinn" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 });

@@ -168,9 +168,16 @@ const EDITABLE_EVENTS = new Set([
   "Overtime",
   "First Down",
   "Interception",
+  "Turnover",
+  "Pass",
+  "Pass unvollständig",
+  "Run",
+  "Sack",
   "Strafe",
   "Spielzeit",
   "Auszeit",
+  "Feldposition",
+  "Challenge",
 ]);
 
 /**
