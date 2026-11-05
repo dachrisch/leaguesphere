@@ -1408,15 +1408,34 @@ export default function TrackingScreen({
    * ticker show "3rd & 4"), and a failed fourth down hands the ball to the
    * other team — the possession event the app already uses for a turnover.
    */
-  const submitPlay = async (event: GameLogEventInput): Promise<void> => {
+  const submitPlay = async (events: GameLogEventInput[]): Promise<void> => {
+    const [play, ...rest] = events;
+    if (play === undefined) {
+      return;
+    }
+    const scoringTeam = possessionName;
     const yards =
-      typeof event.payload?.yards === "number" ? event.payload.yards : 0;
+      typeof play.payload?.yards === "number" ? play.payload.yards : 0;
     const next = advance(drive, yards, geometry);
     const turnover = isTurnoverOnDowns(drive, yards, geometry);
-    const detail = event.input === undefined ? "" : `${event.input} · `;
-    await submit([{ ...event, input: `${detail}${driveText(next)}` }]);
+    const detail = play.input === undefined ? "" : `${play.input} · `;
+    await submit([{ ...play, input: `${detail}${driveText(next)}` }, ...rest]);
     if (turnover && opponentName !== null) {
       await takePossession(opponentName);
+    }
+    // A play that scored carries its own touchdown row, so the try is asked
+    // right away - the same prompt a touchdown tile produces.
+    const scored = rest.find((event) => event.name === "Touchdown");
+    if (scored !== undefined && scoringTeam !== null) {
+      const jersey =
+        typeof scored.player === "number" ? scored.player : play.player;
+      if (typeof jersey === "number") {
+        setPendingPat({ team: scoringTeam, jersey });
+        setPatTry(null);
+        setPatJersey(null);
+        setPatError(null);
+        setFinishBlocked(false);
+      }
     }
   };
 

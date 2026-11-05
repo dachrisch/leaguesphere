@@ -109,6 +109,32 @@ export function playEvent({
   return event;
 }
 
+/**
+ * The events of one play: the play itself and, when it scored, its touchdown.
+ *
+ * The touchdown is the **result of the play entry**, not a separate step
+ * (meeting 2026-11-05, 53:05). Both rows go in one submission, so they share
+ * one `TeamLog.sequence`: the statistics keep the scoring play (type, yards,
+ * quarterback) and the score keeps its six points. The try stays its own
+ * event, which is what lets a penalty on the touchdown be recorded before it.
+ */
+export function playEvents(options: {
+  type: PlayType;
+  complete: boolean;
+  yards: number;
+  qb: number | null;
+  player: number | null;
+  defender?: number | null;
+  deflection?: boolean;
+  touchdown?: boolean;
+}): GameLogEventInput[] {
+  const play = playEvent(options);
+  if (options.touchdown !== true || options.player === null) {
+    return [play];
+  }
+  return [play, { name: "Touchdown", player: options.player }];
+}
+
 interface PlaySheetProps {
   /** Possession team as the API knows it. */
   teamName: string;
@@ -120,7 +146,7 @@ interface PlaySheetProps {
   opponentName?: string;
   /** The last quarterback of this side, pre-selected on a pass. */
   lastQuarterback?: number | null;
-  onSubmit: (event: GameLogEventInput) => Promise<void>;
+  onSubmit: (events: GameLogEventInput[]) => Promise<void>;
   onClose: () => void;
 }
 
@@ -139,6 +165,7 @@ export default function PlaySheet({
 }: PlaySheetProps) {
   const [type, setType] = useState<PlayType>("pass");
   const [complete, setComplete] = useState(true);
+  const [touchdown, setTouchdown] = useState(false);
   const [jersey, setJersey] = useState<number | null>(null);
   const [qb, setQb] = useState<number | null>(lastQuarterback);
   const [defender, setDefender] = useState<number | null>(null);
@@ -179,7 +206,7 @@ export default function PlaySheet({
     setError(null);
     try {
       await onSubmit(
-        playEvent({
+        playEvents({
           type,
           complete,
           yards,
@@ -189,6 +216,9 @@ export default function PlaySheet({
           // tackle to record (the sacked quarterback is the play's player).
           defender: type === "sack" ? null : defender,
           deflection: type === "pass" && !complete && deflection,
+          // A sack never scores; an incomplete pass never scores.
+          touchdown:
+            touchdown && type !== "sack" && (type !== "pass" || complete),
         }),
       );
       onClose();
@@ -258,6 +288,32 @@ export default function PlaySheet({
           </button>
         </div>
       ) : null}
+
+      {type === "sack" || (type === "pass" && !complete) ? null : (
+        <>
+          <h3 className="sheetsection">Ergebnis</h3>
+          <div aria-label="Ergebnis" className="seg" role="group">
+            <button
+              aria-pressed={!touchdown}
+              className={!touchdown ? "sel" : undefined}
+              disabled={posting}
+              onClick={() => setTouchdown(false)}
+              type="button"
+            >
+              Kein Touchdown
+            </button>
+            <button
+              aria-pressed={touchdown}
+              className={touchdown ? "sel" : undefined}
+              disabled={posting}
+              onClick={() => setTouchdown(true)}
+              type="button"
+            >
+              Touchdown
+            </button>
+          </div>
+        </>
+      )}
 
       {type === "sack" ? null : (
         <div aria-label="Raumrichtung" className="seg" role="group">

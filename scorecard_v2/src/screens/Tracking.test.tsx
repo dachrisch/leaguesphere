@@ -3911,3 +3911,44 @@ describe("a failed entry during the try", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("a scoring play", () => {
+  it("records the play and its touchdown, then asks for the try", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    // a remembered thrower: the pass sheet is ready without a second pick
+    globalThis.localStorage.setItem("scorecard:v2:qb:42:home", "7");
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(
+      screen.getByRole("button", { name: "Spielzug (Pass/Run/Sack)" }),
+    );
+    const sheet = screen.getByRole("dialog", { name: "Spielzug · Ravens" });
+    await user.click(
+      await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
+    );
+    await user.click(within(sheet).getByRole("button", { name: "Touchdown" }));
+    await user.click(
+      within(sheet).getByRole("button", { name: "Spielzug speichern" }),
+    );
+
+    // one submission: the play row and the touchdown row share a sequence
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalled());
+    const bodies = apiPostMock.mock.calls.map(
+      (call) =>
+        call[1] as {
+          events?: { type: string; code?: string; player?: number }[];
+        },
+    );
+    const append = bodies.find((body) =>
+      body.events?.some((event) => event.code === "pass"),
+    );
+    expect(append?.events?.map((event) => event.code)).toEqual([
+      "pass",
+      "touchdown",
+    ]);
+    expect(append?.events?.[1].player).toBe(23);
+    expect(await screen.findByText("Versuch · B5")).toBeInTheDocument();
+  });
+});
