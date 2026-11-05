@@ -1317,6 +1317,44 @@ export default function TrackingScreen({
     setPatError(null);
   };
 
+  /**
+   * The defence scored on the try (R 8-1-1: two points).
+   *
+   * The row goes to the defending team - the one that holds the ball right
+   * now, because the touchdown already flipped the possession. `try_defense`
+   * in the payload is what tells a later statistics pass that these two points
+   * were not a converted two-point try.
+   */
+  const writeDefensiveTry = async (): Promise<void> => {
+    if (pendingPat === null || patBusy || possessionName === null) {
+      return;
+    }
+    setPatBusy(true);
+    setPatError(null);
+    try {
+      await submit(
+        [
+          {
+            name: "2-Extra-Punkte",
+            input: "Gegner",
+            payload: { try_defense: true },
+          },
+        ],
+        possessionName,
+      );
+      closePat();
+    } catch (failure) {
+      setPatError(
+        errorMessage(
+          failure,
+          "Der Punkt für den Gegner konnte nicht gespeichert werden. Bitte erneut versuchen.",
+        ),
+      );
+    } finally {
+      setPatBusy(false);
+    }
+  };
+
   /** Overtime's **+1 XP**: the same jersey step, without a touchdown behind it. */
   const openSinglePat = (): void => {
     if (possessionName === null) {
@@ -1546,10 +1584,14 @@ export default function TrackingScreen({
       </div>
       <div className="drivebar">
         <p aria-live="polite" className="driveline">
-          {driveText(drive)}
-          {spotText(drive.ballOn, geometry) === null
-            ? null
-            : ` · ${spotText(drive.ballOn, geometry)}`}
+          {pendingPat === null
+            ? `${driveText(drive)}${
+                spotText(drive.ballOn, geometry) === null
+                  ? ""
+                  : ` · ${spotText(drive.ballOn, geometry)}`
+              }`
+            : // the try is its own down: from B5 (one point) or B10 (two)
+              `Versuch · B${patTry?.points === 2 ? 10 : 5}`}
         </p>
         <button
           className="driveset"
@@ -1643,6 +1685,15 @@ export default function TrackingScreen({
                     </span>
                   </button>
                 ))}
+                <button
+                  aria-pressed={false}
+                  className="choice choice-dark"
+                  disabled={patBusy || readOnly || possessionName === null}
+                  onClick={() => void writeDefensiveTry()}
+                  type="button"
+                >
+                  <span className="choice-label">Gegner +2</span>
+                </button>
               </div>
               {patError === null ? null : (
                 <p className="patbar-err" role="alert">

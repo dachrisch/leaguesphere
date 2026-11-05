@@ -3836,3 +3836,51 @@ describe("SyncStrip", () => {
     expect(strip).toHaveTextContent("nicht offiziell");
   });
 });
+
+describe("the try is its own down", () => {
+  it("shows the try and its spot instead of a down while the extra point is open", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Touchdown Ravens$/);
+    await pickJersey(user, 7);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    // the try is snapped from B5 for one point, from B10 for two
+    expect(await screen.findByText("Versuch · B5")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "+2" }));
+    expect(await screen.findByText("Versuch · B10")).toBeInTheDocument();
+  });
+
+  it("records two points for the defence that scored on the try", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Touchdown Ravens$/);
+    await pickJersey(user, 7);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Gegner +2" }),
+    );
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith(
+        "/api/game/42/events",
+        expect.objectContaining({
+          events: [
+            expect.objectContaining({
+              type: "score",
+              code: "pat2",
+              side: "away",
+              payload: expect.objectContaining({ try_defense: true }),
+            }),
+          ],
+        }),
+      ),
+    );
+  });
+});
