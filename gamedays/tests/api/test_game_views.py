@@ -720,9 +720,10 @@ class TestGameLog(WebTest):
             "home": {
                 "id": Team.objects.get(name="A1").pk,
                 "name": "A1",
-                "score": 6,
+                # the conversion counts without a jersey (it names nobody)
+                "score": 7,
                 "firsthalf": {
-                    "score": 6,
+                    "score": 7,
                     "entries": [{"pat1": None, "sequence": 1, "td": 19}],
                 },
                 "secondhalf": {"entries": [], "score": 0},
@@ -906,7 +907,8 @@ class TestGameLog(WebTest):
         assert home.fh == 15
         assert home.sh == 0
         assert away.fh == 0
-        assert away.sh == 6
+        # 6 for the touchdown and 2 for the conversion without a number
+        assert away.sh == 8
 
     def test_team_log_entry_is_deleted(self):
         gameinfo = DBSetup().create_teamlog_home_and_away()
