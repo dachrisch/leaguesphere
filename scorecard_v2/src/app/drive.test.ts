@@ -8,6 +8,7 @@ import {
   driveAfter,
   driveText,
   FIRST_AND_TEN,
+  enforceSpot,
   firstDownDistance,
   geometryOf,
   isTurnoverOnDowns,
@@ -611,5 +612,23 @@ describe("the edges of the geometry-aware engine", () => {
 
     expect(state).toEqual(seriesAt(50));
     expect(state.toGo).toBe(0);
+  });
+});
+
+describe("the penalty's effective spot", () => {
+  it("halves the distance at A5 (R 10-3-3)", () => {
+    // 5 yards back from A5 is A2,5, never the goal line
+    expect(enforceSpot(5, -5)).toBe(2.5);
+    expect(spotText(enforceSpot(5, -5))).toBe("A2,5");
+  });
+
+  it("halves toward the opponent's goal for a defence foul", () => {
+    // 15 yards from B5 would pass the goal line: B7,5 is half the distance
+    expect(enforceSpot(45, 15)).toBe(47.5);
+    expect(spotText(enforceSpot(45, 15))).toBe("B2,5");
+  });
+
+  it("leaves a zero-yard foul on the spot", () => {
+    expect(enforceSpot(20, 0)).toBe(20);
   });
 });

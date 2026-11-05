@@ -310,6 +310,28 @@ export function isTurnoverOnDowns(
 }
 
 /**
+ * Where a penalty leaves the ball, half distance included.
+ *
+ * Split out of {@link applyPenalty} so the penalty sheet can show the official
+ * the *effective* spot instead of the catalogue's nominal yards: at `A5` a
+ * five-yard offence penalty moves the ball to `A2,5`, not `A0` (R 10-3-3).
+ */
+export function enforceSpot(
+  ballOn: number | null,
+  yardage: number,
+  g: Geometry = DEFAULT_GEOMETRY,
+): number {
+  const spot = ballOn ?? g.seriesStart;
+  let after = spot + yardage;
+  if (yardage < 0) {
+    after = Math.max(after, spot / 2);
+  } else if (yardage > 0) {
+    after = Math.min(after, (g.fieldLength + spot) / 2);
+  }
+  return clampSpot(after, g);
+}
+
+/**
  * The spot after a penalty.
  *
  * The signed `yardage` moves the ball from the last spot. A penalty may never
@@ -325,14 +347,7 @@ export function applyPenalty(
   nextDown: PenaltyNextDown = "repeat",
   g: Geometry = DEFAULT_GEOMETRY,
 ): DriveState {
-  const spot = state.ballOn ?? g.seriesStart;
-  let ballOn = spot + yardage;
-  if (yardage < 0) {
-    ballOn = Math.max(ballOn, spot / 2);
-  } else if (yardage > 0) {
-    ballOn = Math.min(ballOn, (g.fieldLength + spot) / 2);
-  }
-  ballOn = clampSpot(ballOn, g);
+  const ballOn = enforceSpot(state.ballOn, yardage, g);
 
   if (pastMiddle(ballOn, g)) {
     return seriesAt(ballOn, g);

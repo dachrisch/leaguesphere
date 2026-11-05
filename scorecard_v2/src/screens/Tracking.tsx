@@ -2063,6 +2063,7 @@ export default function TrackingScreen({
           )
         ) : sheet.kind === "penalty" ? (
           <PenaltySheet
+            ballOn={drive.ballOn}
             history={unsportsmanlike}
             rules={rules}
             onClose={() => setSheet(null)}

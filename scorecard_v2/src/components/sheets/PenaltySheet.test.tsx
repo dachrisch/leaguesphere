@@ -478,7 +478,7 @@ describe("PenaltySheet", () => {
     await user.click(
       await screen.findByRole("button", { name: /Defense Passbehinderung/ }),
     );
-    expect(screen.getByRole("textbox", { name: "Yardage (0–99)" })).toHaveValue(
+    expect(screen.getByRole("textbox", { name: "Yardage (0–50)" })).toHaveValue(
       "10",
     );
     expect(
@@ -489,7 +489,7 @@ describe("PenaltySheet", () => {
     ).toHaveAttribute("aria-pressed", "true");
 
     await user.click(screen.getByRole("button", { name: /Flag Guarding/ }));
-    expect(screen.getByRole("textbox", { name: "Yardage (0–99)" })).toHaveValue(
+    expect(screen.getByRole("textbox", { name: "Yardage (0–50)" })).toHaveValue(
       "5",
     );
     expect(
@@ -512,7 +512,7 @@ describe("PenaltySheet", () => {
 
     await user.click(await screen.findByRole("button", { name: /^Strafe 02/ }));
     await user.click(screen.getByRole("button", { name: "Gewinn" }));
-    const yards = screen.getByRole("textbox", { name: "Yardage (0–99)" });
+    const yards = screen.getByRole("textbox", { name: "Yardage (0–50)" });
     await user.clear(yards);
     await user.type(yards, "7");
     await user.click(
@@ -919,6 +919,58 @@ describe("the penalty numbers come from the definition", () => {
         isPenaltyAgainstOpponent: false,
       }),
     ).toBe("loss_of_down");
+  });
+});
+
+describe("the penalty numbers follow the field", () => {
+  it("offers at most the field length", async () => {
+    render(
+      <PenaltySheet
+        onClose={vi.fn()}
+        onSubmit={vi.fn<Submit>(async () => undefined)}
+        opponentName="Wolves"
+        roster={ROSTER}
+        side="home"
+        teamName="Ravens"
+      />,
+    );
+    const user = userEvent.setup();
+
+    // a defence penalty (the fixture's odd rows): its suggested yards are +5
+    await user.click(
+      await screen.findByRole("button", { name: /Strafe 01/ }),
+    );
+    const yards = screen.getByRole("textbox", { name: /Yardage/ });
+    await user.clear(yards);
+    await user.type(yards, "99");
+
+    expect(
+      screen.getByText(/höchstens 50 Yards/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Speichern" })).toBeDisabled();
+  });
+
+  it("shows the spot the enforcement leaves, half distance included", async () => {
+    render(
+      <PenaltySheet
+        ballOn={5}
+        onClose={vi.fn()}
+        onSubmit={vi.fn<Submit>(async () => undefined)}
+        opponentName="Wolves"
+        roster={ROSTER}
+        side="home"
+        teamName="Ravens"
+      />,
+    );
+    const user = userEvent.setup();
+
+    // an offence penalty of 10 yards at A5: half the distance, A2,5
+    await user.click(
+      await screen.findByRole("button", { name: /Strafe 02/ }),
+    );
+
+    // a 10-yard offence penalty from A5 is half the distance: A2,5
+    expect(await screen.findByText(/Nach der Strafe: A2,5/)).toBeInTheDocument();
   });
 });
 

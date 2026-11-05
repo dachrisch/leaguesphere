@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { GameRules } from "../../api/rules";
+import { enforceSpot, geometryOf, spotText } from "../../app/drive";
 import type { GameLogEventInput, Penalty, RosterPlayer } from "../../api/types";
 import type { PenaltyNextDown } from "../../app/drive";
 import { cachedGet, snapshotKey } from "../../offline/snapshot";
@@ -252,6 +253,12 @@ interface PenaltySheetProps {
    */
   rules?: GameRules | null;
   /**
+   * The spot the ball is on, from the drive engine. The sheet shows where the
+   * penalty leaves it - half distance included, which is what the official
+   * announces on the field.
+   */
+  ballOn?: number | null;
+  /**
    * Writes the event for the picked team and resolves once the server
    * answered. Rejects on failure — the sheet stays open and shows the message.
    */
@@ -291,6 +298,7 @@ export default function PenaltySheet({
   roster,
   history = [],
   rules = null,
+  ballOn = null,
   onSubmit,
   onClose,
 }: PenaltySheetProps) {
@@ -364,13 +372,22 @@ export default function PenaltySheet({
   const visible = expanded ? matches : matches.slice(0, PENALTY_PAGE);
   const hidden = matches.length - visible.length;
 
+  const geometry = geometryOf(rules);
   const yardageMagnitude = yardsValue(yardageText);
+  // A penalty cannot be longer than the field: the old "0-99" offered
+  // distances the 50-yard field never has (meeting 2026-11-05, 30:24).
+  const yardageTooLong =
+    yardageMagnitude !== null && yardageMagnitude > geometry.fieldLength;
   const yardage =
-    yardageMagnitude === null
+    yardageMagnitude === null || yardageTooLong
       ? null
       : yardageLoss
         ? -Math.abs(yardageMagnitude)
         : yardageMagnitude;
+  const spotAfter =
+    yardage === null
+      ? null
+      : spotText(enforceSpot(ballOn, yardage, geometry), geometry);
 
   const otherSide: RosterPlayer["side"] = side === "home" ? "away" : "home";
   const jerseySide = team === opponentName ? otherSide : side;
@@ -397,6 +414,7 @@ export default function PenaltySheet({
     team !== null &&
     selected !== null &&
     yardage !== null &&
+    !yardageTooLong &&
     !missingJersey &&
     !posting;
 
@@ -602,7 +620,7 @@ export default function PenaltySheet({
       </div>
       <div className="sheetfield">
         <label className="sheetlabel" htmlFor="penalty-yards">
-          Yardage (0–99)
+          Yardage (0–{geometry.fieldLength})
         </label>
         <input
           autoComplete="off"
@@ -616,6 +634,18 @@ export default function PenaltySheet({
           value={yardageText}
         />
       </div>
+      {yardageTooLong ? (
+        <p className="sheetwarn" role="alert">
+          Die Strafe kann höchstens {geometry.fieldLength} Yards betragen.
+        </p>
+      ) : spotAfter === null ? null : (
+        <p className="sheetnote">
+          Nach der Strafe: {spotAfter}
+          {yardage !== null && Math.abs(yardage) > 0
+            ? ` (Halbierung greift, wenn die Distanz kürzer ist)`
+            : ""}
+        </p>
+      )}
 
       <h3 className="sheetsection">Nächster Versuch</h3>
       <div aria-label="Nächster Versuch" className="seg seg-three" role="group">
@@ -730,7 +760,9 @@ export default function PenaltySheet({
       <p className="sheetnote">
         {selected === null
           ? "Strafe auswählen."
-          : `${selected.name} · gegen ${team ?? "–"} · ${yardage ?? 0} Yards · ${
+          : `${selected.name} · gegen ${team ?? "–"} · ${yardage ?? 0} Yards${
+              spotAfter === null ? "" : ` · bis ${spotAfter}`
+            } · ${
               NEXT_DOWN_LABELS[nextDown]
             }${
               kind === "unsportsmanlike" && unsportsmanlike.trim() !== ""
