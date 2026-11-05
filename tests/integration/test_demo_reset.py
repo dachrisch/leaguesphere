@@ -1,10 +1,8 @@
-import os
 import pytest
 from django.test import TestCase, override_settings
 from django.core.management import call_command
 from django.contrib.auth.models import User
 from gamedays.models import Team
-from datetime import datetime, timedelta
 
 
 @pytest.mark.integration
@@ -52,14 +50,6 @@ class DemoResetIntegrationTests(TestCase):
                 user.email.endswith('@demo.local'),
                 f"User {user.username} has non-demo email: {user.email}"
             )
-
-    def test_snapshot_file_path_exists(self):
-        """Verify snapshot would be created in correct location"""
-        snapshot_path = '/app/snapshots/demo_snapshot.sql'
-        expected_dir = '/app/snapshots'
-
-        # Just verify the path is correct (actual file creation tested in entrypoint)
-        self.assertEqual(os.path.dirname(snapshot_path), expected_dir)
 
     @override_settings(
         STRIPE_ENABLED=False,
