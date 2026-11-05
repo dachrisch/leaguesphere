@@ -1,13 +1,30 @@
 import { useRef, useState } from "react";
 
 import type { GameLogEventInput } from "../../api/types";
-import { FIELD_LENGTH, MIDFIELD, SERIES_START } from "../../app/drive";
+import {
+  FIELD_LENGTH,
+  MIDFIELD,
+  SERIES_START,
+  formatYards,
+} from "../../app/drive";
 import { errorMessage } from "./errors";
 import Sheet from "./Sheet";
-import { yardsValue } from "./yards";
 
 /** Which half of the 50-yard field the spot is on, as the officials call it. */
 export type FieldSide = "A" | "B";
+
+/** A yard line with one decimal (`4,5` / `4.5`); anything else is `null`. */
+export function spotValue(raw: string): number | null {
+  const normalised = raw.trim().replace(",", ".");
+  if (normalised === "") {
+    return null;
+  }
+  const value = Number(normalised);
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  return Math.round(value * 10) / 10;
+}
 
 /**
  * The event of one Feldposition row.
@@ -21,7 +38,7 @@ export function fieldPositionEvent(
   yards: number,
 ): GameLogEventInput {
   const ballOn = side === "A" ? yards : FIELD_LENGTH - yards;
-  const text = `${side}${yards}`;
+  const text = `${side}${formatYards(yards)}`;
   return {
     name: "Feldposition",
     input: text,
@@ -53,15 +70,16 @@ export default function FieldPositionSheet({
   const current = ballOn ?? SERIES_START;
   const [side, setSide] = useState<FieldSide>(current > MIDFIELD ? "B" : "A");
   const [yards, setYards] = useState(
-    String(current > MIDFIELD ? FIELD_LENGTH - current : current),
+    formatYards(current > MIDFIELD ? FIELD_LENGTH - current : current),
   );
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Two synchronous taps must not both write the row.
   const saving = useRef(false);
 
-  const distance = yardsValue(yards);
-  const ready = !posting && distance !== null && distance <= MIDFIELD;
+  const distance = spotValue(yards);
+  const ready =
+    !posting && distance !== null && distance >= 0 && distance <= MIDFIELD;
 
   const save = async (): Promise<void> => {
     if (saving.current || !ready || distance === null) {
@@ -131,14 +149,14 @@ export default function FieldPositionSheet({
           className="sheetinput sheetinput-num"
           disabled={posting}
           id="field-yards"
-          inputMode="numeric"
+          inputMode="decimal"
           onChange={(event) => setYards(event.target.value)}
-          pattern="[0-9]*"
+          pattern="[0-9.,]*"
           type="text"
           value={yards}
         />
       </div>
-      {distance !== null && distance > MIDFIELD ? (
+      {distance !== null && (distance < 0 || distance > MIDFIELD) ? (
         <p className="sheetwarn" role="alert">
           Die Yardlinie liegt zwischen 0 und 25.
         </p>
