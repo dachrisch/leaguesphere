@@ -142,6 +142,10 @@ interface SeriesSheetProps {
   onClose: () => void;
   /** Timeouts already recorded, for the history under the Auszeit fields. */
   timeouts?: TimeoutRecord[];
+  /** The definition's timeouts per half (`timeouts.per_half`). */
+  perHalf?: number;
+  /** The half the entry belongs to. */
+  half?: number;
 }
 
 /** One recorded Auszeit as the history lists it. */
@@ -169,6 +173,8 @@ export default function SeriesSheet({
   onSubmit,
   onClose,
   timeouts = [],
+  perHalf = 2,
+  half = 1,
 }: SeriesSheetProps) {
   const info = MODES[mode];
   const time = isTimeMode(mode);
@@ -378,7 +384,12 @@ export default function SeriesSheet({
       ) : null}
 
       {mode === "timeout" ? (
-        <TimeoutHistory teams={[teamName, opponentName]} timeouts={timeouts} />
+        <TimeoutHistory
+          half={half}
+          perHalf={perHalf}
+          teams={[teamName, opponentName]}
+          timeouts={timeouts}
+        />
       ) : null}
     </Sheet>
   );
@@ -394,30 +405,44 @@ export default function SeriesSheet({
 export function TimeoutHistory({
   teams,
   timeouts,
+  half = 1,
+  perHalf = 2,
 }: {
   teams: string[];
   timeouts: TimeoutRecord[];
+  half?: number;
+  perHalf?: number;
 }) {
   return (
     <section aria-label="Bisherige Auszeiten" className="timeouthistory">
       <h3 className="sheetsection">Bisherige Auszeiten</h3>
       {teams.map((team) => {
         const taken = timeouts.filter((entry) => entry.team === team);
+        const thisHalf = taken.filter((entry) => entry.half === half).length;
+        const exhausted = thisHalf >= perHalf;
         return (
-          <p className="timeoutteam" key={team}>
-            <span className="timeoutname">{team}</span>{" "}
-            {taken.length === 0
-              ? "– noch keine"
-              : taken
-                  .map(
-                    (entry) =>
-                      `${entry.half === 2 ? "2." : "1."} HZ ${entry.time}`,
-                  )
-                  .join(" · ") +
-                ` (${taken.length} ${
-                  taken.length === 1 ? "Auszeit" : "Auszeiten"
-                })`}
-          </p>
+          <div key={team}>
+            <p className="timeoutteam">
+              <span className="timeoutname">{team}</span>{" "}
+              {taken.length === 0
+                ? "– noch keine"
+                : taken
+                    .map(
+                      (entry) =>
+                        `${entry.half === 2 ? "2." : "1."} HZ ${entry.time}`,
+                    )
+                    .join(" · ") +
+                  ` (${taken.length} ${
+                    taken.length === 1 ? "Auszeit" : "Auszeiten"
+                  })`}
+            </p>
+            <p className={exhausted ? "sheetwarn" : "sheetnote"} role="status">
+              {thisHalf} von {perHalf} in dieser Halbzeit
+              {exhausted
+                ? " – eine weitere Auszeit ist die Strafe „Auszeit ohne verbleibende Auszeit“ (5 Yards). Sie kann trotzdem erfasst werden."
+                : "."}
+            </p>
+          </div>
         );
       })}
     </section>

@@ -22,6 +22,7 @@ import type {
 } from "../api/types";
 import {
   forgetBreak,
+  intermissionSeconds,
   readBreakStart,
   rememberBreakStart,
   secondsLeft,
@@ -35,6 +36,7 @@ import {
   spotText,
 } from "../app/drive";
 import { readQuarterback, rememberQuarterback } from "../app/quarterback";
+import { timeoutBudget, timeoutText } from "../app/timeouts";
 import { confirmTap, useWakeLock } from "../app/sideline";
 import AppHeader from "../components/AppHeader";
 import BreakCountdown from "../components/BreakCountdown";
@@ -1022,11 +1024,16 @@ export default function TrackingScreen({
       ? []
       : roster.filter((player) => player.side === patSide);
 
-  /** Timeouts of the side with the ball, for the Auszeit tile's count. */
-  const timeoutCount =
+  const half = log.isFirstHalf ? 1 : 2;
+  // The definition may be missing, stale or not a definition at all (a test
+  // double, an old server): the shipped values win over a crash.
+  const timeoutsPerHalf = rules?.timeouts?.per_half ?? 2;
+  const intermission = intermissionSeconds(rules?.periods?.intermission_minutes);
+  /** The side with the ball and what is left of its timeouts this half. */
+  const possessionTimeouts =
     possessionName === null
-      ? 0
-      : timeouts.filter((entry) => entry.team === possessionName).length;
+      ? null
+      : timeoutBudget(rows, possessionName, half, timeoutsPerHalf);
 
   /**
    * Write one play. The sheet that called it stays open until this resolves,
@@ -1749,11 +1756,11 @@ export default function TrackingScreen({
           >
             <TileIcon className="action-icon" size={20} />
             <span>{offersJersey ? "Nr. ergänzen" : label}</span>
-            {mode === "timeout" && timeoutCount > 0 ? (
+            {mode === "timeout" && possessionTimeouts !== null ? (
               // Decorative: the tile keeps its name, the sheet states the
               // count and the history in words.
               <span aria-hidden="true" className="actioncount">
-                {timeoutCount}
+                {timeoutText(possessionTimeouts)}
               </span>
             ) : null}
             <kbd
@@ -1847,6 +1854,7 @@ export default function TrackingScreen({
       ) : null}
       {!log.isFirstHalf && breakStartedAt !== null && !finished ? (
         <BreakCountdown
+          totalSeconds={intermission}
           onDone={() => {
             forgetBreak(game.id);
             setBreakStartedAt(null);
@@ -1992,10 +2000,12 @@ export default function TrackingScreen({
           opponentSide !== null ? (
             <SeriesSheet
               key={sheet.mode}
+              half={half}
               mode={sheet.mode}
               onClose={closeSheet}
               onSubmit={submitSeries}
               opponentName={possessionName}
+              perHalf={timeoutsPerHalf}
               roster={roster}
               side={opponentSide}
               teamName={opponentName}
@@ -2004,10 +2014,12 @@ export default function TrackingScreen({
           ) : (
             <SeriesSheet
               key={sheet.mode}
+              half={half}
               mode={sheet.mode}
               onClose={closeSheet}
               onSubmit={submitSeries}
               opponentName={opponentName ?? "–"}
+              perHalf={timeoutsPerHalf}
               roster={roster}
               side={possessionSide}
               teamName={possessionName}

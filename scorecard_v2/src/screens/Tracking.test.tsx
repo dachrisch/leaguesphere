@@ -2534,16 +2534,19 @@ describe("Tracking possession flip", () => {
     });
     const user = userEvent.setup();
 
+    // the tile shows the used budget, not a bare count
     expect(
       document.querySelector(".actioncount")?.textContent,
-    ).toBe("1");
+    ).toBe("1/2");
 
     await openSheet(user, /^Auszeit$/);
     const history = screen.getByRole("region", {
       name: "Bisherige Auszeiten",
     });
     expect(history).toHaveTextContent("Ravens 1. HZ 08:12 (1 Auszeit)");
+    expect(history).toHaveTextContent("1 von 2 in dieser Halbzeit");
     expect(history).toHaveTextContent("Wolves – noch keine");
+    expect(history).toHaveTextContent("0 von 2 in dieser Halbzeit");
   });
 
   it("does not flip after an Auszeit", async () => {
@@ -3087,7 +3090,8 @@ describe("Tracking half-time", () => {
 
     renderTracking({ log: markerLog() });
 
-    expect(screen.getByRole("timer")).toHaveTextContent(/^04:\d\d$/);
+    // the intermission is the definition's two minutes (IFAF R 3-2-1)
+    expect(screen.getByRole("timer")).toHaveTextContent(/^0[01]:\d\d$/);
   });
 
   it("drops a break that is already over instead of showing 00:00", () => {
