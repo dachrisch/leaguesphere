@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../api/client";
 import type { GameLogEventInput, RosterPlayer } from "../../api/types";
 import SeriesSheet, {
+  interceptionEvent,
   isTimeMode,
   maxMinutes,
   timeError,
@@ -341,5 +342,60 @@ describe("SeriesSheet edge inputs", () => {
     await user.click(saveButton());
 
     expect(onSubmit).toHaveBeenCalledWith([{ name: "First Down", player: 9 }]);
+  });
+});
+
+describe("the interception carries its return in one entry", () => {
+  it("records where the return ended and the return yards", () => {
+    const event = interceptionEvent(12, 30, 15);
+
+    expect(event).toEqual({
+      name: "Interception",
+      player: 12,
+      input: "bis B20 · 15 Yards Return",
+      payload: { deadBall: 30, returnYards: 15 },
+    });
+  });
+
+  it("stays a usable entry without the optional detail", () => {
+    expect(interceptionEvent(null, null, null)).toEqual({
+      name: "Interception",
+    });
+  });
+
+  it("names the spot the way the officials call it", () => {
+    expect(interceptionEvent(7, 25, null).input).toBe("bis M");
+    expect(interceptionEvent(7, 12.5, null).input).toBe("bis A12,5");
+  });
+});
+
+describe("the interception sheet takes the spot and the return", () => {
+  it("sends one event with the number, the spot and the return yards", async () => {
+    const onSubmit = vi.fn<Submit>(async () => undefined);
+    renderSheet("interception", onSubmit);
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Trikot 11, Wolf" }),
+    );
+    await user.click(screen.getByRole("button", { name: "B · gegnerische" }));
+    await user.type(
+      screen.getByRole("textbox", { name: /Yardlinie, wo der Return endete/ }),
+      "20",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: /Return-Yards/ }),
+      "15",
+    );
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    expect(onSubmit).toHaveBeenCalledWith([
+      {
+        name: "Interception",
+        player: 11,
+        input: "bis B20 · 15 Yards Return",
+        payload: { deadBall: 30, returnYards: 15 },
+      },
+    ]);
   });
 });
