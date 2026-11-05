@@ -32,7 +32,7 @@ The demo database automatically resets every day at **midnight UTC**. This means
 - All changes you make will be cleared
 - Demo accounts are restored
 - Sample data is refreshed to original state
-- Reset typically completes in under 10 seconds
+- Reset takes about 1-2 minutes (the database is rebuilt, not restored)
 
 ### Data Privacy
 

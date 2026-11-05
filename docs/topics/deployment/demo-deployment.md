@@ -28,33 +28,43 @@ docker-compose -f docker-compose.demo.yml logs -f demo-app
 docker-compose -f docker-compose.demo.yml down
 ```
 
-### First Run Initialization
+### Nightly Reset
 
-On first startup, the demo-app container will:
-1. Run Django migrations
-2. Execute `manage.py seed_demo_data`
-3. Create a database snapshot at `/app/snapshots/demo_snapshot.sql`
-4. Execute `manage.py seed_scorecard_demo` (after the snapshot)
-5. Start the Django application
+Once per UTC day (Ofelia runs `entrypoint.demo.sh` at 00:00), the demo-app
+container rebuilds the database from scratch:
 
-Every reset — the first run and each nightly restore — ends with
-`seed_scorecard_demo`: it adds the "Scorecard v2 Testtag" dated **today**
-(4 games, rosters, crew, user `scorecard-test`), because the scorecard only
-lists today's gamedays and the seeded league gamedays keep the dates of the
-first seed. It runs after the snapshot, so a restore never brings back an
-older day's test gameday.
+1. Drop and recreate the demo database
+   (`manage.py reset_demo_database --recreate-database`)
+2. Run Django migrations — this also replays the data migrations, so the
+   default `SiteConfiguration` and the league tie-break steps/rulesets exist
+3. Execute `manage.py seed_demo_data`
+4. Execute `manage.py seed_scorecard_demo`
 
-This typically takes 2-3 minutes. Monitor with: `docker-compose -f docker-compose.demo.yml logs -f demo-app`
+The database is **recreated, not flushed**: `flush` keeps the migration table,
+so data migrations are recorded as applied but never run again and their rows
+(default `SiteConfiguration`, tie-break steps and rulesets) are lost. Dropping
+the database also clears whatever a visitor created.
 
-### Testing Reset Mechanism
+`seed_scorecard_demo` runs last: it adds the "Scorecard v2 Testtag" dated
+**today** (4 games, rosters, crew, user `scorecard-test`), because the scorecard
+only lists today's gamedays and the seeded league gamedays keep the dates of
+the first seed.
+
+The reset typically takes 1-2 minutes (drop/create + migrate + seed). Monitor
+with: `docker-compose -f docker-compose.demo.yml logs -f demo-app`
+
+### Testing the Reset
 
 ```bash
-# Check reset flag file
+# Check the reset flag file (epoch seconds, UTC)
 docker-compose -f docker-compose.demo.yml exec demo-app cat /app/.demo_last_reset
 
-# Manually trigger reset
-docker-compose -f docker-compose.demo.yml down
-docker-compose -f docker-compose.demo.yml up -d
+# Read the reset log
+docker-compose -f docker-compose.demo.yml exec demo-app cat /app/logs/demo_reset.log
+
+# Force a reset now — exactly what the nightly Ofelia job runs
+docker-compose -f docker-compose.demo.yml exec demo-app \
+  /bin/bash -c 'rm -f /app/.demo_last_reset && /app/entrypoint.demo.sh'
 ```
 
 ### Accessing the Demo
@@ -70,32 +80,24 @@ All demo accounts use `@demo.local` email:
 - **manager@demo.local** / DemoMgr123! (Team Manager)
 - **user@demo.local** / DemoUser123! (Regular User)
 
-## Database Snapshot Management
+## Database Reset
 
-### Creating a New Snapshot
+The reset is destructive by design: it drops the `demo_db` database and lets
+`migrate` rebuild it. There is no snapshot to manage or invalidate — changing
+`seed_demo_data`, a migration or the demo image takes effect on the next reset.
 
-If you've updated the seed data script and want to create a fresh snapshot:
+`demo_user` keeps `ALL PRIVILEGES ON demo_db.*`, and MariaDB keeps those grants
+across `DROP DATABASE`, so no re-grant is needed. The media volume is not
+touched.
 
-```bash
-# Stop the demo
-docker-compose -f docker-compose.demo.yml down
-
-# Remove old volume (if needed)
-docker volume rm demo-demo-snapshot
-
-# Start fresh
-docker-compose -f docker-compose.demo.yml up -d
-
-# Wait for initialization to complete
-docker-compose -f docker-compose.demo.yml logs -f demo-app | grep "snapshot created"
-```
-
-### Restoring a Specific Snapshot
+Reset a deployed demo immediately (same command the nightly job runs):
 
 ```bash
-# If snapshot was saved outside docker:
-mysql -h 127.0.0.1 -u demo_user -p demo_db < /path/to/demo_snapshot.sql
+ssh lehel.xyz "docker exec leaguesphere-demo.demo-app /bin/bash -c \
+  'rm -f /app/.demo_last_reset && /app/entrypoint.demo.sh'"
 ```
+
+That takes the demo down for 1-2 minutes while migrations and seeding run.
 
 ## Ansible Deployment (Infrastructure Repo)
 
@@ -120,8 +122,8 @@ docker ps -a | grep demo
 # View demo logs
 docker logs ls-demo-app
 
-# Check reset schedule
-cat /var/lib/docker/volumes/*/demo-snapshot/_data/demo_snapshot.sql | head
+# Check the last reset and its log
+docker exec leaguesphere-demo.demo-app tail -20 /app/logs/demo_reset.log
 ```
 
 ## Troubleshooting
@@ -134,15 +136,19 @@ cat /var/lib/docker/volumes/*/demo-snapshot/_data/demo_snapshot.sql | head
 - Check database environment variables in `.env.demo`
 - Wait 10-15 seconds after startup for database to be ready
 
-### Snapshot Not Created
+### Reset Failed
 
-**Error:** `Demo snapshot not found at /app/snapshots/demo_snapshot.sql`
+The reset log (`/app/logs/demo_reset.log`) stops after "Recreating demo
+database..." or the entrypoint exits non-zero:
 
-```bash
-# Manually create snapshot
-docker-compose -f docker-compose.demo.yml exec demo-app \
-  mysqldump -h demo-db -u demo_user -p<password> demo_db > /app/snapshots/demo_snapshot.sql
-```
+- The demo must run on MySQL. `--recreate-database` refuses SQLite
+  (`--recreate-database requires the MySQL backend`), because Django cannot
+  drop a SQLite database safely.
+- Check the database container is healthy:
+  `docker-compose -f docker-compose.demo.yml ps` and
+  `docker exec leaguesphere-demo.mysql mariadb -u root -p"$MYSQL_ROOT_PASSWORD" -e 'SELECT 1'`.
+- Re-run the reset (see "Testing the Reset") and read
+  `/app/logs/demo_reset.log`.
 
 ### Reset Not Triggering
 
@@ -159,7 +165,7 @@ docker-compose -f docker-compose.demo.yml exec demo-app \
 
 ## Performance Considerations
 
-- **Database Reset Time:** ~5-10 seconds for typical snapshot restore
+- **Database Reset Time:** ~1-2 minutes (drop/create + migrate + seed)
 - **Container Startup:** ~40 seconds for migrations + seeding on first run
 - **Health Check:** Configured to allow 40s startup grace period
 - **Memory:** Allocate minimum 2GB RAM for demo-app, 1GB for MariaDB
@@ -183,7 +189,6 @@ docker-compose -f docker-compose.demo.yml exec demo-app \
 ### Monthly Tasks
 
 - Update seed data if new features added
-- Regenerate snapshot if database schema changed
 - Verify all demo accounts still work correctly
 
 ### Before Major Releases

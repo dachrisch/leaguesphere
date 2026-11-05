@@ -1,12 +1,16 @@
 #!/bin/bash
-set -e
+set -eo pipefail
 
-# entrypoint.demo.sh - Handles demo database initialization and midnight reset
+# entrypoint.demo.sh - Recreates and reseeds the demo database once per UTC day.
+#
+# The nightly Ofelia job runs this once per UTC day; a manual run follows the
+# same path. The database is dropped and recreated (not flushed) so the data
+# migrations replay: a flush keeps django_migrations and silently loses the
+# default SiteConfiguration and the league tie-break steps/rulesets.
 
 # DEMO_APP_DIR only moves the script's files for tests (tests/unit/test_entrypoint_demo.py).
 APP_DIR="${DEMO_APP_DIR:-/app}"
 RESET_FLAG_FILE="$APP_DIR/.demo_last_reset"
-DEMO_SNAPSHOT="$APP_DIR/snapshots/demo_snapshot.sql"
 LOGS_DIR="$APP_DIR/logs"
 
 # Create logs directory if it doesn't exist
@@ -33,69 +37,29 @@ needs_reset() {
     return 1  # No reset needed
 }
 
-# Initialize database: run migrations and seed data
-init_database() {
-    log "Initializing demo database..."
+reset_demo_database() {
     cd "$APP_DIR"
 
+    log "Recreating demo database..."
+    python manage.py reset_demo_database --recreate-database 2>&1 \
+        | tee -a "$LOGS_DIR/demo_reset.log"
+
+    log "Applying migrations to the empty database..."
     python manage.py migrate --noinput
     log "Migrations completed"
 
     python manage.py seed_demo_data
     log "Demo data seeded"
 
-    # Create snapshot for resets
-    mkdir -p "$(dirname "$DEMO_SNAPSHOT")"
-    python manage.py reset_demo_database \
-        --create-snapshot \
-        --snapshot-path="$DEMO_SNAPSHOT" 2>&1 | tee -a "$LOGS_DIR/demo_reset.log"
-
-    if [ $? -ne 0 ]; then
-        log "WARNING: Failed to create snapshot"
-    fi
-}
-
-# Reset database from snapshot
-reset_database() {
-    log "Resetting demo database from snapshot..."
-
-    if [ ! -f "$DEMO_SNAPSHOT" ]; then
-        log "ERROR: Demo snapshot not found at $DEMO_SNAPSHOT"
-        log "Initializing database instead..."
-        init_database
-        return
-    fi
-
-    cd "$APP_DIR"
-    python manage.py reset_demo_database \
-        --restore-snapshot \
-        --snapshot-path="$DEMO_SNAPSHOT" 2>&1 | tee -a "$LOGS_DIR/demo_reset.log"
-
-    if [ $? -eq 0 ]; then
-        log "Database reset successful"
-    else
-        log "ERROR: Database reset failed"
-        exit 1
-    fi
-}
-
-# A gameday dated today, so the scorecard can be used on any day: the seeded
-# gamedays keep the dates of the first seed. It runs after the snapshot is
-# taken, so a restore never brings back an old day's test gameday.
-seed_scorecard_today() {
-    cd "$APP_DIR"
+    # After the seed: the seeded league gamedays keep the dates of the seed,
+    # so the scorecard needs a gameday dated today for every reset.
     python manage.py seed_scorecard_demo
     log "Scorecard gameday for today seeded"
 }
 
 # Main logic
 if needs_reset; then
-    if [ ! -f "$DEMO_SNAPSHOT" ]; then
-        init_database
-    else
-        reset_database
-    fi
-    seed_scorecard_today
+    reset_demo_database
     date -u +%s > "$RESET_FLAG_FILE"
 fi
 

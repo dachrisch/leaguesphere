@@ -3,6 +3,11 @@
 The script runs against a temporary app directory (``DEMO_APP_DIR``) with a
 fake ``python`` on ``PATH`` that only records its arguments, so the test sees
 the management commands without a database.
+
+The reset must rebuild the database from migrations instead of flushing it:
+``flush`` keeps the migration table, so data migrations (the default
+``SiteConfiguration``, the league tie-break steps and rulesets) never run again
+and their rows are lost.
 """
 
 import os
@@ -16,12 +21,6 @@ ENTRYPOINT = Path(__file__).resolve().parents[2] / "container" / "entrypoint.dem
 
 FAKE_PYTHON = """#!/bin/bash
 echo "$*" >> "$CALLS"
-for arg in "$@"; do
-  case "$arg" in
-    --snapshot-path=*) [ "$2" = "reset_demo_database" ] && [ "$3" = "--create-snapshot" ] \\
-        && mkdir -p "$(dirname "${arg#*=}")" && touch "${arg#*=}" ;;
-  esac
-done
 """
 
 
@@ -54,30 +53,34 @@ def commands(calls):
     return [call.split()[0] for call in calls]
 
 
-def test_first_run_seeds_snapshots_and_then_adds_todays_scorecard_gameday(demo_app):
+def test_first_run_recreates_migrates_and_seeds(demo_app):
     _, run = demo_app
 
     calls = run()
 
     assert commands(calls) == [
+        "reset_demo_database",
         "migrate",
         "seed_demo_data",
-        "reset_demo_database",
         "seed_scorecard_demo",
     ]
-    assert "--create-snapshot" in calls[2]
+    assert calls[0].split()[1] == "--recreate-database"
+    assert "--noinput" in calls[1]
 
 
-def test_a_reset_from_the_snapshot_adds_todays_scorecard_gameday(demo_app):
-    app, run = demo_app
-    snapshot = app / "snapshots" / "demo_snapshot.sql"
-    snapshot.parent.mkdir()
-    snapshot.touch()
+def test_migrate_runs_after_the_database_is_recreated(demo_app):
+    """Data migrations only replay on a database that was dropped first."""
+    _, run = demo_app
 
     calls = run()
 
-    assert commands(calls) == ["reset_demo_database", "seed_scorecard_demo"]
-    assert "--restore-snapshot" in calls[0]
+    commands_in_order = commands(calls)
+    assert commands_in_order.index("reset_demo_database") < commands_in_order.index(
+        "migrate"
+    )
+    assert commands_in_order.index("migrate") < commands_in_order.index(
+        "seed_demo_data"
+    )
 
 
 def test_no_reset_needed_seeds_nothing(demo_app):
