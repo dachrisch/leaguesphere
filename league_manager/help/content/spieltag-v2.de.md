@@ -141,7 +141,8 @@ oder verwerfe sie zuerst über die Anzeige oben.
 Spielzeit jeder Auszeit; die Kachel zeigt die Anzahl der Seite mit dem Ball.
 
 **Wie komme ich später an ein Spiel?**
-Der Link `/scorecard/v2/spiel/<Spiel-ID>/` öffnet genau dieses Spiel – auch ein
-beendetes, dann nur lesend. Die ID ist die Spielnummer aus der Spieleliste
-bzw. der Gameinfo-Eintrag. Die ältere Form `?game=<Spiel-ID>` funktioniert
-weiterhin.
+Der Link `/scorecard/v2/gameday/<Spieltag-ID>/game/<Spiel-ID>/` öffnet genau
+dieses Spiel – auch ein beendetes, dann nur lesend; die Spieltag-ID steht mit
+im Pfad. Die IDs sind die Nummern aus der Spieleliste bzw. der
+Gameinfo-Eintrag. Ältere Links (`?game=<Spiel-ID>` und `/spiel/<Spiel-ID>/`)
+funktionieren weiterhin und werden auf den neuen Pfad umgeschrieben.

@@ -39,6 +39,19 @@ export function loadGamedays(): Promise<Gameday[]> {
 }
 
 /**
+ * One gameday by id, for `/scorecard/v2/gameday/<id>/`.
+ *
+ * The list endpoint answers today's gamedays only, so a link kept for later
+ * reads the gameday itself; the snapshot keeps it reachable offline.
+ */
+export function loadGameday(gamedayId: number): Promise<Gameday> {
+  return cachedGet<Gameday>(
+    snapshotKey.gameday(gamedayId),
+    `/api/gameday/${gamedayId}/`,
+  );
+}
+
+/**
  * Games of one gameday with the age of the answer. `team` is the official's
  * username (the old app's rule) or `*` for the whole gameday.
  *

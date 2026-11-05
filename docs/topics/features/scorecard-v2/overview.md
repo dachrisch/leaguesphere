@@ -20,7 +20,9 @@ Status: **beta**. Both apps are bookmarks; nothing links v2 from the old app.
 | URL | Serves |
 |---|---|
 | `/scorecard/v2/` | this app |
-| `/scorecard/v2/spiel/<id>/` | the same app, opened directly on one game (also a finished one, read-only); `?game=<id>` still works as an alias |
+| `/scorecard/v2/gameday/<gameday-id>/` | the same app, opened on one gameday's games list |
+| `/scorecard/v2/gameday/<gameday-id>/game/<id>/` | the same app, opened directly on one game (also a finished one, read-only) |
+| `/scorecard/v2/spiel/<id>/`, `/scorecard/v2/?game=<id>` | older links, rewritten to the gameday path once the game is open |
 | `/scorecard/v2/sw.js` | its service worker (scope `/scorecard/v2/`, anonymous, `Cache-Control: no-cache`) |
 | `/scorecard/` | the existing scorecard, unchanged |
 
@@ -28,13 +30,17 @@ Status: **beta**. Both apps are bookmarks; nothing links v2 from the old app.
 worker lives under the app scope on purpose: served from `/static/` it could
 only control static assets, and its scope could never leak into the old app.
 
-`/scorecard/v2/spiel/<id>/` is the deep link the organisation keeps for a game
-(the older `?game=<id>` still works). The app reads
+`/scorecard/v2/gameday/<gameday-id>/game/<id>/` is the deep link the organisation
+keeps for a game; the game's gameday is part of the path, and
+`/scorecard/v2/gameday/<gameday-id>/` opens that gameday's games list. Older
+links (`?game=<id>`, `/spiel/<id>/`) still work and are rewritten to the
+gameday path once the game is open. The app reads
 `GET /api/game/<id>/summary` (the game row exactly as the list builds it, plus
 its gameday) and then opens preparation or tracking straight away; a finished
 game opens read-only with its log and no end-of-game action. The address
-follows the screen: a game's own path while one is open, the app root on the
-lists — `history.replaceState`, no reload.
+follows the screen: a game's gameday path while one is open, the gameday path
+on its games list, the app root on the gameday list — `history.replaceState`,
+no reload.
 
 ## The flow
 
