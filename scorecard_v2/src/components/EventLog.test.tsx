@@ -331,6 +331,19 @@ describe("describeRow", () => {
       primary: "Strafe gegen Ravens",
       secondary: null,
     });
+    expect(
+      describeRow(
+        row({
+          event: "Strafe",
+          input: "Unsportliches Verhalten Offense",
+          payload: { unsportsmanlike: "12, 7" },
+        }),
+      ),
+    ).toEqual({
+      kind: "pen",
+      primary: "Strafe gegen Ravens",
+      secondary: "Unsportliches Verhalten Offense · Nr. 12, 7",
+    });
     expect(describeRow(row({ event: "Auszeit", input: "30" }))).toEqual({
       kind: "to",
       primary: "Auszeit Ravens",

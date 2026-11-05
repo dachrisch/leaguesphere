@@ -2376,6 +2376,32 @@ button.game-row:active {
   padding-left: 1.1em;
 }
 
+/* The UNV numbers already on the board: a small ledger, not another warning,
+   because the new call may still be legal. */
+.unsportlist {
+  margin: var(--space-2) 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-sm);
+  color: var(--fg);
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.unsportlist-title {
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.unsportlist ul {
+  margin: 0;
+  padding-left: 1.1em;
+}
+
 /* Start confirmation: one restated fact per line, label left, value right. */
 .startlist {
   display: flex;

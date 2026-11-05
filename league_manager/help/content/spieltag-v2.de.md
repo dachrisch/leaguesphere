@@ -56,10 +56,15 @@ wie die bisherige Scorecard
 
    Bei **Strafe** stehen die fünf häufigsten oben, der Rest alphabetisch.
    **Yardage** und **Nächster Versuch** (Wiederholung, First Down, Loss of
-   Down) sind aus der Strafe vorbelegt und bleiben änderbar. Die Feldposition
-   wird vom letzten Spot aus verschoben, höchstens bis zur halben Distanz zur
-   Endzone; über die Mittellinie wird daraus **1st & G**. Eine später
-   eingetragene **Feldposition** gewinnt immer.
+   Down) sind aus der Strafe vorbelegt und bleiben änderbar. Bei
+   **Disqualifikation** ist die Trikotnummer Pflicht. Bei **Unsportlichem
+   Verhalten** trägst du die Nummer(n) als Freitext ein (optional, mehrere mit
+   Komma oder Leerzeichen); das Sheet zeigt die bisherigen UNV des Teams und
+   warnt, wenn es für eine Nummer der zweite ist – dann ist die Person
+   automatisch disqualifiziert. Die Feldposition wird vom letzten Spot aus
+   verschoben, höchstens bis zur halben Distanz zur Endzone; über die
+   Mittellinie wird daraus **1st & G**. Eine später eingetragene
+   **Feldposition** gewinnt immer.
 4. Das Pfeil-Symbol neben einem Eintrag im Spielverlauf (**Rückgängig**) nimmt
    ihn zurück, **Ändern** korrigiert ihn an Ort und Stelle (Trikotnummer, bei
    **Spielzeit** und **Auszeit** die Spielzeit); am großen Bildschirm geht das
