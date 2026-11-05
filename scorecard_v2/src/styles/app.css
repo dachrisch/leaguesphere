@@ -2587,7 +2587,15 @@ button.game-row:active {
 }
 
 .sheetinput-num {
-  max-width: 120px;
+  /*
+   * A number is at most two digits (jersey 0-99, yards 0-99, clock 0-59), but
+   * the field has to hold them at `--fs-xl` on a 320px phone too. `min()`
+   * keeps the compact box on a tablet and lets it use the row on a phone,
+   * where the fixed 120px used to clip the digits (meeting 2026-11-05, 21:02).
+   */
+  width: 100%;
+  min-width: 0;
+  max-width: min(160px, 100%);
   font-family: var(--font-display);
   font-size: var(--fs-xl);
   font-weight: 700;
@@ -2601,7 +2609,11 @@ button.game-row:active {
 }
 
 .timefields .sheetfield {
-  width: 84px;
+  /* the same rule: a fixed 84px clipped a two-digit clock on a phone */
+  flex: 1 1 84px;
+  min-width: 0;
+  width: auto;
+  max-width: 120px;
 }
 
 .sheetinput-clock {

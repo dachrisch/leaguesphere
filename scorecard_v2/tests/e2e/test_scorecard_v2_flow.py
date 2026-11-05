@@ -230,6 +230,13 @@ def test_scorecard_v2_flow_from_gameday_to_result(live_server, page: Page):
     assert abs(tablet["x"] + tablet["width"] / 2 - 512) <= 2, tablet
     # A phone keeps the anchored sheet, flush with the bottom edge.
     page.set_viewport_size({"width": 390, "height": 844})
+    # The numeric fields must not clip their digits at phone width
+    # (meeting 2026-11-05, 21:02): two digits at `--fs-xl` fit the box.
+    for label in (r"^Trikotnummer", r"^Raumgewinn"):
+        field = touchdown_sheet.get_by_role("textbox", name=re.compile(label))
+        field.fill("99")
+        assert field.evaluate("el => el.scrollWidth <= el.clientWidth + 1"), label
+        field.fill("")
     phone = touchdown_sheet.bounding_box()
     assert phone is not None
     assert abs(phone["x"]) <= 1, phone
