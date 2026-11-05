@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.11.0](https://github.com/dachrisch/leaguesphere/compare/v5.10.1...v5.11.0) (2026-11-05)
+
+
+### Features
+
+* **scorecard-v2:** 50-yard field, penalty spots and team-coloured setup ([a4d71c0](https://github.com/dachrisch/leaguesphere/commit/a4d71c0de51e2250824b5cd2bc5212fc3db0bf22))
+* **scorecard-v2:** 50-yard field, penalty spots and team-coloured setup ([300338b](https://github.com/dachrisch/leaguesphere/commit/300338b24d952ce221792c1925340b88baa2a82c))
+* **scorecard-v2:** English gameday paths, with the gameday in the game's URL ([d07baed](https://github.com/dachrisch/leaguesphere/commit/d07baed1e32edd33298ed18a6f01a4d7e906dc07))
+* **scorecard-v2:** English gameday paths, with the gameday in the game's URL ([f97504f](https://github.com/dachrisch/leaguesphere/commit/f97504fb50817fcaa9aefebe3b23b2a5e3f36c3d))
+* **scorecard-v2:** require a number for disqualification and track UNV ([0f906b9](https://github.com/dachrisch/leaguesphere/commit/0f906b93ad0be9b57c2d55898f29036bda3bce51))
+* **scorecard-v2:** require a number for disqualification and track UNV ([cb349ec](https://github.com/dachrisch/leaguesphere/commit/cb349ec23bf91d5231b11008e991626dc616a72b))
+
+
+### Bug Fixes
+
+* **scorecard-v2:** keep half-yard field positions in the spot sheet ([ce429b5](https://github.com/dachrisch/leaguesphere/commit/ce429b5d430b9097c8821a1a1b4126a13c6d7397))
+* **scorecard-v2:** keep half-yard field positions in the spot sheet ([3a4ebc8](https://github.com/dachrisch/leaguesphere/commit/3a4ebc826e6faaf67196cadc1f416b713e27788b))
+
 ## [5.10.1](https://github.com/dachrisch/leaguesphere/compare/v5.10.0...v5.10.1) (2026-11-05)
 
 
