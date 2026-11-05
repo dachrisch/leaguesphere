@@ -173,7 +173,7 @@ Rules that make it safe:
 | Gamedays | `GET /api/gameday/list` | today only |
 | Games | `GET /api/gameday/<id>/officials/<team>` | `team=*` for all |
 | Roster | `GET /api/game/<gameId>/roster` | new: `[{side, jersey, name}]`; `[]` for a bracket placeholder |
-| Penalties | `GET /api/config/scorecard/penalties` | 50 items with `isPenaltyAgainstOpponent` |
+| Penalties | `GET /api/config/scorecard/penalties` | 54 items with `isPenaltyAgainstOpponent`, projected from `gameevents/sport/flag_football_5v5.json` (see [Rules Validation](./2026-11-05-scorecard-rules-validation.md)); the whole definition is at `GET /api/config/scorecard/rules` |
 
 Two rules apply to every write:
 

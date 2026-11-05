@@ -16,6 +16,7 @@ from gamedays.api.game_views import GamesToWhistleAPIView
 from gamedays.constants import (
     API_GAMELOG,
     API_CONFIG_SCORECARD_PENALTIES,
+    API_CONFIG_SCORECARD_RULES,
     API_GAME_POSSESSION,
     API_GAME_FINALIZE,
     API_GAME_HALFTIME,
@@ -187,7 +188,9 @@ class TestGameSetup(WebTest):
         )
 
         assert response.status_code == HTTPStatus.CONFLICT
-        assert response.json["detail"] == "Dieser Spielstatus erlaubt keinen Spielstart."
+        assert (
+            response.json["detail"] == "Dieser Spielstatus erlaubt keinen Spielstart."
+        )
         assert not GameSetup.objects.filter(gameinfo=game).exists()
 
     def test_game_setup_get(self):
@@ -621,9 +624,10 @@ class TestGameLog(WebTest):
 
         assert response.status_code == HTTPStatus.OK
         assert response.json["inPossession"] == "Home"
-        assert len(response.json["events"]) == TeamLog.objects.filter(
-            gameinfo=gameinfo
-        ).count()
+        assert (
+            len(response.json["events"])
+            == TeamLog.objects.filter(gameinfo=gameinfo).count()
+        )
         assert response.json["events"][0]["event"] == "Spiel beendet"
 
     def test_post_team_log(self):
@@ -1118,17 +1122,13 @@ class TestGameLog(WebTest):
             "event": [{"name": "First Down"}],
             "client_id": client_id,
         }
-        first = self.app.post_json(
-            url, body, headers=DBSetup().get_token_header()
-        )
+        first = self.app.post_json(url, body, headers=DBSetup().get_token_header())
         assert first.status_code == HTTPStatus.CREATED
         rows_after_first = TeamLog.objects.filter(gameinfo=game).count()
         game.status = "beendet"
         game.save()
 
-        replay = self.app.post_json(
-            url, body, headers=DBSetup().get_token_header()
-        )
+        replay = self.app.post_json(url, body, headers=DBSetup().get_token_header())
 
         assert replay.status_code == HTTPStatus.OK
         assert replay.json == first.json
@@ -1153,9 +1153,9 @@ class TestGameLog(WebTest):
         assert "exactly one" in response.json["detail"].lower()
         assert (
             set(
-                TeamLog.objects.filter(
-                    gameinfo=gameinfo, isDeleted=True
-                ).values_list("pk", flat=True)
+                TeamLog.objects.filter(gameinfo=gameinfo, isDeleted=True).values_list(
+                    "pk", flat=True
+                )
             )
             == deleted_before
         )
@@ -1224,9 +1224,12 @@ class TestGameLog(WebTest):
         )
 
         assert response.status_code == HTTPStatus.OK
-        assert TeamLog.objects.filter(
-            gameinfo=gameinfo, sequence=2, isDeleted=False
-        ).count() == 0
+        assert (
+            TeamLog.objects.filter(
+                gameinfo=gameinfo, sequence=2, isDeleted=False
+            ).count()
+            == 0
+        )
         # Sequence 0 rows (the penalty) are not touched by a play delete.
         assert TeamLog.objects.filter(
             gameinfo=gameinfo, event="Strafe", isDeleted=False
@@ -1762,10 +1765,43 @@ class TestGameRosterAPIView(APITestCase):
 
 
 class TestConfigPenaltiesAPIView(WebTest):
-    def test_get_penalty_list(self):
+    def test_penalty_list_is_the_rule_definition(self):
+        """The shipped catalogue plus the two rows IFAF 2023 p. 39 requires."""
         response = self.app.get(reverse(API_CONFIG_SCORECARD_PENALTIES))
+
         assert response.status_code == HTTPStatus.OK
-        assert len(response.json) >= 1
+        rows = response.json
+        assert len(rows) == 54
+        assert set(rows[0]) == {"name", "subtext", "isPenaltyAgainstOpponent"}
+        names = [row["name"] for row in rows]
+        assert "Fehlgeschlagene Challenge Offense" in names
+        assert "Auszeit ohne verbleibende Auszeit Defense" in names
+        # the old app relies on the flag, so the side must survive the move
+        defence = next(r for r in rows if r["name"] == "illegaler Kontakt Defense")
+        assert defence["isPenaltyAgainstOpponent"] is True
+
+    def test_the_fifty_shipped_rows_keep_their_order(self):
+        rows = self.app.get(reverse(API_CONFIG_SCORECARD_PENALTIES)).json
+        assert rows[0]["name"] == "illegaler Kontakt Defense"
+        assert rows[49]["name"] == (
+            "Person mit blutender Wunde verlässt nicht das Feld Defense"
+        )
+
+
+class TestConfigRulesAPIView(WebTest):
+    def test_get_rules_definition(self):
+        response = self.app.get(reverse(API_CONFIG_SCORECARD_RULES))
+
+        assert response.status_code == HTTPStatus.OK
+        rules = response.json
+        assert rules["ruleset"] == "IFAF 2023"
+        assert rules["field"]["length"] == 50
+        assert rules["series"]["downs"] == 4
+        assert rules["scoring"]["touchdown"] == 6
+        assert len(rules["penalties"]) == 54
+        # the app needs the structured fields, not the subtext
+        row = rules["penalties"][0]
+        assert {"yards", "down", "enforcement", "side"} <= set(row)
 
 
 class TestGamePossessionAPIView(WebTest):
