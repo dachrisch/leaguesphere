@@ -51,6 +51,11 @@ prod = [
     "gunicorn>=22.0.0",
 ]
 
+[tool.setuptools.package-data]
+# The sport definitions are data: without this the wheel ships .py only and the
+# loader fails at runtime while the source tree still looks fine.
+gameevents = ["sport/*.json"]
+
 [tool.setuptools.packages.find]
 include = [
     "accounts*",
