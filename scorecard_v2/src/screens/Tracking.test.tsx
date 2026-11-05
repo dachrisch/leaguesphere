@@ -1217,7 +1217,7 @@ describe("Tracking play-by-play", () => {
             input: "A15",
             payload: { ballOn: 15, input: "A15" },
           }),
-          ...log.events,
+          ...(log.events ?? []),
         ],
       }),
     );
