@@ -131,25 +131,24 @@ GOLDEN_CASES = [
             row("2-Extra-Punkte", "away", 19, 2, 2, 1),
         ],
     ),
-    # Quirk kept from GameLogCreator: a scoring row without a jersey stores
-    # value 0, even though the event itself is a touchdown.
+    # A score is a team score: without a jersey it still counts, the row just
+    # names nobody (the v1 writer stored 0 here).
     GoldenCase(
         "touchdown_without_player",
         [{"name": "Touchdown"}],
         1,
         "home",
         [score("touchdown", "home", None, 1, 1)],
-        [row("Touchdown", "home", None, 0, 1, 1)],
+        [row("Touchdown", "home", None, 6, 1, 1)],
     ),
-    # Quirk kept from GameLogCreator._coerce_player: "" is "no jersey", so an
-    # attempted conversion without a number scores nothing.
+    # "" is "no jersey" through _coerce_player, and the conversion scores.
     GoldenCase(
         "pat_without_player",
         [{"name": "1-Extra-Punkt", "player": ""}],
         1,
         "home",
         [score("pat1", "home", None, 1, 1)],
-        [row("1-Extra-Punkt", "home", None, 0, 1, 1)],
+        [row("1-Extra-Punkt", "home", None, 1, 1, 1)],
     ),
     GoldenCase(
         "safety_plus_one",

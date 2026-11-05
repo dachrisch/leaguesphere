@@ -266,7 +266,9 @@ def _row(
         player=player,
         input=input,
         value=value,
-        half=event.period if half is None else half,
+        # `TeamLog.half` stays 1/2 for every consumer; the event store keeps
+        # the third period (overtime) in `GameEvent.period` / `GameState`.
+        half=min(event.period, 2) if half is None else half,
         cop=cop,
         isDeleted=isDeleted,
         sequence=0,
@@ -383,9 +385,10 @@ def _apply_score(state: GameStateValue, event: GameEventValue) -> Projection:
         value = SCORING_EVENT_VALUES[name]
 
     side = _require_side(event)
-    # Quirk kept from GameLogCreator: a scoring row without a jersey is stored
-    # with value 0, so it must not move the score either.
-    row_value = value if event.player is not None else 0
+    # A score is a team score (IFAF R 8-1-1): the jersey is optional detail,
+    # never a condition for the points. v1 stored value 0 without a number,
+    # which made a team safety or a defensive score unreachable.
+    row_value = value
     row = _row(
         event,
         name,

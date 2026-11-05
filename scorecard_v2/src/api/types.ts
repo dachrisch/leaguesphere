@@ -337,8 +337,13 @@ export interface GameLogWrite {
   gameId: number;
   /** Team *name* (the backend also resolves a pk); the possessing team. */
   team: string;
-  /** 1 or 2 — never derived from the current time. */
-  half: 1 | 2;
+  /**
+   * The period the entry belongs to: 1 or 2 for the halves, 3 in overtime.
+   * Never derived from the current time. The server keeps `TeamLog.half` at
+   * 1/2 and stores 3 only on the event, so every existing consumer is
+   * unaffected.
+   */
+  half: 1 | 2 | 3;
   event: GameLogEventInput[];
 }
 

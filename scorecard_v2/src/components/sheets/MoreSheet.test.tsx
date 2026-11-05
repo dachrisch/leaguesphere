@@ -64,13 +64,19 @@ describe("MoreSheet helpers", () => {
 
   it("names the points and the team they land on", () => {
     expect(moreSummary("safety", 11, 2, "Wolves")).toBe(
-      "Safety · 2 Punkte für Wolves",
+      "Safety · 2 Punkte für Wolves · Nr. 11",
     );
     expect(moreSummary("safety", 11, 1, "Wolves")).toBe(
-      "Safety · 1 Punkt für Wolves",
+      "Safety · 1 Punkt für Wolves · Nr. 11",
     );
     expect(moreSummary("overtime", 7, 2, "Ravens")).toBe("Overtime #7");
-    expect(moreSummary("safety", null, 2, "Wolves")).toMatch(/Spieler wählen/);
+    // a team score needs no number
+    expect(moreSummary("safety", null, 2, "Wolves")).toBe(
+      "Safety · 2 Punkte für Wolves",
+    );
+    expect(moreSummary("overtime", null, 1, "Ravens")).toBe(
+      "Overtime (ohne Nummer)",
+    );
   });
 });
 
@@ -117,19 +123,25 @@ describe("MoreSheet safety", () => {
 
     await user.click(screen.getByRole("button", { name: "Trikotnummer 11, Wolf" }));
 
-    expect(screen.getByText("Safety · 2 Punkte für Wolves")).toBeInTheDocument();
+    expect(
+      screen.getByText("Safety · 2 Punkte für Wolves · Nr. 11"),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "+1" }));
-    expect(screen.getByText("Safety · 1 Punkt für Wolves")).toBeInTheDocument();
+    expect(
+      screen.getByText("Safety · 1 Punkt für Wolves · Nr. 11"),
+    ).toBeInTheDocument();
   });
 
-  it("requires a jersey", async () => {
+  it("saves a team score without a jersey", async () => {
     const { onSubmit } = renderSheet("safety");
 
-    expect(saveButton()).toBeDisabled();
-    expect(saveButton()).toHaveTextContent("Spieler wählen");
+    expect(saveButton()).toBeEnabled();
     await userEvent.setup().click(saveButton());
 
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onSubmit).toHaveBeenCalledWith(
+      [{ name: "Safety (+2)" }],
+      "Wolves",
+    );
   });
 });
 
@@ -150,10 +162,13 @@ describe("MoreSheet overtime", () => {
     expect(onSubmit).toHaveBeenCalledWith([{ name: "Overtime", player: 7 }], "Ravens");
   });
 
-  it("requires a jersey", () => {
-    renderSheet("overtime");
+  it("saves the overtime point without a jersey", async () => {
+    const { onSubmit } = renderSheet("overtime");
 
-    expect(saveButton()).toBeDisabled();
+    expect(saveButton()).toBeEnabled();
+    await userEvent.setup().click(saveButton());
+
+    expect(onSubmit).toHaveBeenCalledWith([{ name: "Overtime" }], "Ravens");
   });
 
   it("falls back to a typed number when the roster is empty", async () => {

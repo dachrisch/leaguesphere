@@ -1074,7 +1074,9 @@ export default function TrackingScreen({
     const body: GameLogWrite = {
       gameId: game.id,
       team,
-      half: log.isFirstHalf ? 1 : 2,
+      // Overtime is the third period: it stays inside the second half's block
+      // for every reader, but the event store keeps the distinction.
+      half: overtime ? 3 : log.isFirstHalf ? 1 : 2,
       event: events,
     };
     try {

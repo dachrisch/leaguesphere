@@ -146,14 +146,15 @@ def test_score_for_the_away_side_in_the_second_half():
     assert projection.rows[0].half == 2
 
 
-def test_score_without_a_jersey_stores_zero_but_keeps_the_row():
-    # GameLogCreator quirk: value is only applied when a player is present.
+def test_score_without_a_jersey_scores_for_the_team():
+    # A score belongs to the team (IFAF R 8-1-1): the jersey is optional
+    # detail, so a defensive score or a team safety can be recorded.
     projection = apply(state(), score("touchdown", player=None))
 
-    assert projection.state.score_home == 0
+    assert projection.state.score_home == 6
     assert projection.rows[0].event == "Touchdown"
     assert projection.rows[0].player is None
-    assert projection.rows[0].value == 0
+    assert projection.rows[0].value == 6
 
 
 @pytest.mark.parametrize(
@@ -161,9 +162,7 @@ def test_score_without_a_jersey_stores_zero_but_keeps_the_row():
     [(1, "Safety (+1)", 1), (2, "Safety (+2)", 2)],
 )
 def test_safety_carries_its_points(points, event_name, value):
-    projection = apply(
-        state(), score("safety", side="away", player=22, points=points)
-    )
+    projection = apply(state(), score("safety", side="away", player=22, points=points))
 
     assert projection.rows[0].event == event_name
     assert projection.rows[0].value == value
@@ -197,9 +196,7 @@ def test_a_scoring_event_without_a_side_is_an_invalid_envelope():
 
 
 def test_penalty_travels_as_input_and_never_scores():
-    projection = apply(
-        state(), ev("penalty", "Holding", side="home", player=5, seq=3)
-    )
+    projection = apply(state(), ev("penalty", "Holding", side="home", player=5, seq=3))
 
     assert projection.rows == [
         TeamLogRow(
@@ -234,9 +231,7 @@ def test_first_down_is_a_series_row_without_a_sequence():
     [("turnover", "Turnover"), ("interception", "Interception")],
 )
 def test_turnover_and_interception_are_change_of_possession_rows(code, event_name):
-    projection = apply(
-        state(), ev("possession", code, side="away", player=23, seq=5)
-    )
+    projection = apply(state(), ev("possession", code, side="away", player=23, seq=5))
 
     assert projection.rows[0].event == event_name
     assert projection.rows[0].cop is True
@@ -421,9 +416,7 @@ def test_correction_of_an_excluded_row_targets_the_row_not_sequence_zero():
     # delete would erase the whole bucket. The correction names the row's own
     # event instead.
     penalty = ev("penalty", "Holding", side="home", seq=1)
-    correction = GameEventValue(
-        type="correction", code="undo", seq=2, undo_of=penalty
-    )
+    correction = GameEventValue(type="correction", code="undo", seq=2, undo_of=penalty)
 
     projection = apply(state(), correction)
 
@@ -438,9 +431,7 @@ def test_a_sequence_zero_correction_without_a_target_seq_is_a_bug_not_a_noop():
     # its seq the projector cannot name the row, and deleting the shared bucket
     # instead would be a silent disaster.
     penalty = ev("penalty", "Holding", side="home", seq=None)
-    correction = GameEventValue(
-        type="correction", code="undo", seq=2, undo_of=penalty
-    )
+    correction = GameEventValue(type="correction", code="undo", seq=2, undo_of=penalty)
 
     with pytest.raises(ValueError, match="no seq"):
         apply(state(), correction)
@@ -448,12 +439,8 @@ def test_a_sequence_zero_correction_without_a_target_seq_is_a_bug_not_a_noop():
 
 def test_undoing_a_row_correction_restores_that_row():
     penalty = ev("penalty", "Holding", side="home", seq=1)
-    undone = GameEventValue(
-        type="correction", code="undo", seq=2, undo_of=penalty
-    )
-    restore = GameEventValue(
-        type="correction", code="undo", seq=3, undo_of=undone
-    )
+    undone = GameEventValue(type="correction", code="undo", seq=2, undo_of=penalty)
+    restore = GameEventValue(type="correction", code="undo", seq=3, undo_of=undone)
 
     projection = apply(state(), restore)
 
@@ -504,9 +491,7 @@ def test_real_bugs_are_not_masked_as_envelope_errors(monkeypatch):
 def test_golden_table_matches_what_today_s_writer_produces(case):
     projection = project_submission(GameStateValue(), case.events)
 
-    assert [row_signature(row) for row in projection.rows] == expected_signature(
-        case
-    )
+    assert [row_signature(row) for row in projection.rows] == expected_signature(case)
     assert projection.deleted_sequences == []
     assert projection.restored_sequences == []
     for side, score_field in (("home", "score_home"), ("away", "score_away")):
@@ -555,18 +540,14 @@ def test_an_incomplete_pass_says_so():
 
 
 def test_a_run_is_a_play_with_yards_only():
-    projection = apply(
-        state(), ev("play", "run", side="home", player=23, yards=14)
-    )
+    projection = apply(state(), ev("play", "run", side="home", player=23, yards=14))
 
     assert projection.rows[0].event == "Run"
     assert projection.rows[0].input == "14 Yards"
 
 
 def test_a_sack_counts_the_loss_in_words():
-    projection = apply(
-        state(), ev("play", "sack", side="home", player=12, yards=-5)
-    )
+    projection = apply(state(), ev("play", "sack", side="home", player=12, yards=-5))
 
     assert projection.rows[0].event == "Sack"
     assert projection.rows[0].input == "5 Yards Verlust"
@@ -638,9 +619,7 @@ def test_a_challenge_without_text_is_still_a_row():
 
 
 def test_overtime_start_is_a_marker_without_a_new_period():
-    projection = apply(
-        state(period=2, score_home=14), ev("period", "overtime", seq=9)
-    )
+    projection = apply(state(period=2, score_home=14), ev("period", "overtime", seq=9))
 
     assert projection.rows[0].event == "Overtime startet"
     assert projection.rows[0].half == 0

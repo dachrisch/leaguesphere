@@ -2993,7 +2993,8 @@ describe("Tracking safety and overtime", () => {
     await waitFor(() =>
       expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
         events: [
-          { type: "score", code: "pat1", side: "home", player: 7, period: 1 },
+          // overtime is the third period; the row stays in the second half
+          { type: "score", code: "pat1", side: "home", player: 7, period: 3 },
         ],
         client_id: expect.any(String),
       }),

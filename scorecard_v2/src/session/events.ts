@@ -157,7 +157,7 @@ export function envelopesForWrite(
 function envelopeFor(
   entry: GameLogEventInput,
   side: Side,
-  half: 1 | 2,
+  half: 1 | 2 | 3,
 ): EventEnvelope {
   const name = entry.name;
   const spec = LEGACY_EVENTS[name];
