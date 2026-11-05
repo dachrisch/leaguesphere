@@ -6,9 +6,12 @@ import { ApiError, apiGet } from "../../api/client";
 import type { GameLogEventInput, Penalty, RosterPlayer } from "../../api/types";
 import PenaltySheet, {
   filterPenalties,
+  orderPenalties,
   PENALTY_PAGE,
   penaltyEvent,
+  penaltyNextDown,
   penaltyTeam,
+  penaltyYardage,
 } from "./PenaltySheet";
 
 vi.mock("../../api/client", async (importOriginal) => {
@@ -43,6 +46,9 @@ interface RenderOptions {
 }
 
 function renderSheet(options: RenderOptions = {}) {
+  if (options.penalties !== undefined) {
+    apiGetMock.mockResolvedValue(options.penalties);
+  }
   const submit = options.onSubmit ?? vi.fn<Submit>(async () => undefined);
   const onClose = vi.fn();
   render(
@@ -106,16 +112,67 @@ describe("PenaltySheet helpers", () => {
     expect(penaltyTeam(null, "Ravens", "Wolves")).toBeNull();
   });
 
-  it("sends the penalty as input with an optional player", () => {
-    expect(penaltyEvent("Fehlstart", null)).toEqual({
+  it("sends the penalty as input with an optional player and the spot change", () => {
+    expect(penaltyEvent("Fehlstart", null, -5, "loss_of_down")).toEqual({
       name: "Strafe",
       input: "Fehlstart",
+      payload: { yardage: -5, nextDown: "loss_of_down" },
     });
-    expect(penaltyEvent("Fehlstart", 23)).toEqual({
+    expect(penaltyEvent("Fehlstart", 23, 10, "first_down")).toEqual({
       name: "Strafe",
       player: 23,
       input: "Fehlstart",
+      payload: { yardage: 10, nextDown: "first_down" },
     });
+  });
+
+  it("prefills yardage and next down from the subtext", () => {
+    const penalty = (subtext: string, defense = false): Penalty => ({
+      name: "X",
+      subtext,
+      isPenaltyAgainstOpponent: defense,
+    });
+
+    expect(penaltyYardage(penalty("BS/1st 10", true))).toBe(10);
+    expect(penaltyNextDown(penalty("BS/1st 10", true))).toBe("first_down");
+    expect(penaltyYardage(penalty("SF/LoD 5"))).toBe(-5);
+    expect(penaltyNextDown(penalty("SF/LoD 5"))).toBe("loss_of_down");
+    expect(penaltyYardage(penalty("SL/5"))).toBe(-5);
+    expect(penaltyNextDown(penalty("SL/5"))).toBe("repeat");
+    expect(penaltyYardage(penalty("Disqualifkation"))).toBe(0);
+    expect(penaltyNextDown(penalty("Disqualifkation"))).toBe("repeat");
+  });
+
+  it("keeps the first five penalties in order and sorts the rest", () => {
+    const list: Penalty[] = [
+      "Zebra",
+      "Adler",
+      "Wolf",
+      "Bär",
+      "Dachs",
+      "Igel",
+      "Eule",
+    ].map((name) => ({
+      name,
+      subtext: "5 Yards",
+      isPenaltyAgainstOpponent: false,
+    }));
+
+    expect(orderPenalties(list, "").map((penalty) => penalty.name)).toEqual([
+      "Zebra",
+      "Adler",
+      "Wolf",
+      "Bär",
+      "Dachs",
+      "Eule",
+      "Igel",
+    ]);
+    expect(orderPenalties(list, "l").map((penalty) => penalty.name)).toEqual([
+      "Adler",
+      "Eule",
+      "Igel",
+      "Wolf",
+    ]);
   });
 });
 
@@ -218,7 +275,13 @@ describe("PenaltySheet", () => {
 
     expect(teamButton("Ravens")).toHaveAttribute("aria-pressed", "true");
     expect(onSubmit).toHaveBeenCalledWith(
-      [{ name: "Strafe", input: "Strafe 01" }],
+      [
+        {
+          name: "Strafe",
+          input: "Strafe 01",
+          payload: { yardage: 5, nextDown: "repeat" },
+        },
+      ],
       "Ravens",
     );
   });
@@ -233,7 +296,13 @@ describe("PenaltySheet", () => {
     await user.click(saveButton());
 
     expect(onSubmit).toHaveBeenCalledWith(
-      [{ name: "Strafe", input: "Strafe 02" }],
+      [
+        {
+          name: "Strafe",
+          input: "Strafe 02",
+          payload: { yardage: -10, nextDown: "repeat" },
+        },
+      ],
       "Ravens",
     );
   });
@@ -261,7 +330,14 @@ describe("PenaltySheet", () => {
     await user.click(saveButton());
 
     expect(onSubmit).toHaveBeenCalledWith(
-      [{ name: "Strafe", player: 11, input: "Strafe 01" }],
+      [
+        {
+          name: "Strafe",
+          player: 11,
+          input: "Strafe 01",
+          payload: { yardage: 5, nextDown: "repeat" },
+        },
+      ],
       "Wolves",
     );
   });
@@ -280,7 +356,90 @@ describe("PenaltySheet", () => {
     await user.click(saveButton());
 
     expect(onSubmit).toHaveBeenCalledWith(
-      [{ name: "Strafe", input: "Strafe 01" }],
+      [
+        {
+          name: "Strafe",
+          input: "Strafe 01",
+          payload: { yardage: 5, nextDown: "repeat" },
+        },
+      ],
+      "Ravens",
+    );
+  });
+
+  it("prefills yardage and next down from the selected penalty", async () => {
+    renderSheet({
+      penalties: [
+        {
+          name: "Defense Passbehinderung",
+          subtext: "BS/1st 10",
+          isPenaltyAgainstOpponent: true,
+        },
+        {
+          name: "Flag Guarding",
+          subtext: "SF/LoD 5",
+          isPenaltyAgainstOpponent: false,
+        },
+      ],
+    });
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole("button", { name: /Defense Passbehinderung/ }),
+    );
+    expect(screen.getByRole("textbox", { name: "Yardage (0–99)" })).toHaveValue(
+      "10",
+    );
+    expect(
+      within(screen.getByRole("group", { name: "Nächster Versuch" })).getByRole(
+        "button",
+        { name: "First Down" },
+      ),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(screen.getByRole("button", { name: /Flag Guarding/ }));
+    expect(screen.getByRole("textbox", { name: "Yardage (0–99)" })).toHaveValue(
+      "5",
+    );
+    expect(
+      within(screen.getByRole("group", { name: "Nächster Versuch" })).getByRole(
+        "button",
+        { name: "Loss of Down" },
+      ),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      within(screen.getByRole("group", { name: "Raumrichtung" })).getByRole(
+        "button",
+        { name: "Verlust" },
+      ),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("lets the official correct the yardage and the next down", async () => {
+    const { onSubmit } = renderSheet();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: /^Strafe 02/ }));
+    await user.click(screen.getByRole("button", { name: "Gewinn" }));
+    const yards = screen.getByRole("textbox", { name: "Yardage (0–99)" });
+    await user.clear(yards);
+    await user.type(yards, "7");
+    await user.click(
+      within(screen.getByRole("group", { name: "Nächster Versuch" })).getByRole(
+        "button",
+        { name: "First Down" },
+      ),
+    );
+    await user.click(saveButton());
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      [
+        {
+          name: "Strafe",
+          input: "Strafe 02",
+          payload: { yardage: 7, nextDown: "first_down" },
+        },
+      ],
       "Ravens",
     );
   });
@@ -370,7 +529,13 @@ describe("PenaltySheet — the remaining states", () => {
 
     expect(teamButton("Wolves")).toHaveAttribute("aria-pressed", "true");
     expect(onSubmit).toHaveBeenCalledWith(
-      [{ name: "Strafe", input: "Strafe 02" }],
+      [
+        {
+          name: "Strafe",
+          input: "Strafe 02",
+          payload: { yardage: -10, nextDown: "repeat" },
+        },
+      ],
       "Wolves",
     );
   });
@@ -385,7 +550,13 @@ describe("PenaltySheet — the remaining states", () => {
     await user.click(saveButton());
 
     expect(onSubmit).toHaveBeenCalledWith(
-      [{ name: "Strafe", input: "Strafe 02" }],
+      [
+        {
+          name: "Strafe",
+          input: "Strafe 02",
+          payload: { yardage: -10, nextDown: "repeat" },
+        },
+      ],
       "Ravens",
     );
   });
@@ -404,7 +575,14 @@ describe("PenaltySheet — the remaining states", () => {
     await user.click(saveButton());
 
     expect(onSubmit).toHaveBeenCalledWith(
-      [{ name: "Strafe", player: 9, input: "Strafe 02" }],
+      [
+        {
+          name: "Strafe",
+          player: 9,
+          input: "Strafe 02",
+          payload: { yardage: -10, nextDown: "repeat" },
+        },
+      ],
       "Ravens",
     );
   });

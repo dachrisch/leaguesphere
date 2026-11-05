@@ -277,9 +277,11 @@ interface SegmentedProps {
   label: string;
   /** `null` while nothing was chosen: an unset field is refused, not defaulted. */
   value: string | null;
-  options: { value: string; label: ReactNode }[];
+  options: { value: string; label: ReactNode; tone?: Side }[];
   disabled: boolean;
   onChange: (value: string) => void;
+  /** One line under the switch, e.g. who calls the coin toss. */
+  hint?: ReactNode;
 }
 
 /** Two-option switch in the mock's `.seg` language. */
@@ -289,24 +291,32 @@ function Segmented({
   options,
   disabled,
   onChange,
+  hint,
 }: SegmentedProps) {
   return (
     <section className="segfield">
       <h3 className="segtitle">{label}</h3>
       <div aria-label={label} className="seg" role="group">
-        {options.map((option) => (
-          <button
-            aria-pressed={option.value === value}
-            className={option.value === value ? "sel" : undefined}
-            disabled={disabled}
-            key={option.value}
-            onClick={() => onChange(option.value)}
-            type="button"
-          >
-            {option.label}
-          </button>
-        ))}
+        {options.map((option) => {
+          const classes = [
+            option.value === value ? "sel" : null,
+            option.tone === undefined ? null : `seg-${option.tone}`,
+          ].filter((name): name is string => name !== null);
+          return (
+            <button
+              aria-pressed={option.value === value}
+              className={classes.length === 0 ? undefined : classes.join(" ")}
+              disabled={disabled}
+              key={option.value}
+              onClick={() => onChange(option.value)}
+              type="button"
+            >
+              {option.label}
+            </button>
+          );
+        })}
       </div>
+      {hint === undefined ? null : <p className="setupnote">{hint}</p>}
     </section>
   );
 }
@@ -1102,14 +1112,17 @@ export default function GameSetupScreen({
               <div className="configgrid">
                 <Segmented
                   disabled={readOnly || finished}
+                  hint={`Die Münzwahl hat das Gastteam – ${
+                    away === null ? "Gastteam" : teamLabel(away)
+                  }.`}
                   label="Münzwurf gewonnen von"
                   onChange={(value) => {
                     setToss(value as Side);
                     resetStartPhases();
                   }}
                   options={[
-                    { value: "home", label: teamLabel(home) },
-                    { value: "away", label: teamLabel(away) },
+                    { value: "home", label: teamLabel(home), tone: "home" },
+                    { value: "away", label: teamLabel(away), tone: "away" },
                   ]}
                   value={toss}
                 />
@@ -1122,8 +1135,8 @@ export default function GameSetupScreen({
                     resetStartPhases();
                   }}
                   options={[
-                    { value: "home", label: teamLabel(home) },
-                    { value: "away", label: teamLabel(away) },
+                    { value: "home", label: teamLabel(home), tone: "home" },
+                    { value: "away", label: teamLabel(away), tone: "away" },
                   ]}
                   value={possession}
                 />

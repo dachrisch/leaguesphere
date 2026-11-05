@@ -1120,7 +1120,7 @@ describe("Tracking play-by-play", () => {
             player: 7,
             period: 1,
             payload: {
-              input: "8 Yards · QB #12 · 2nd & 2",
+              input: "8 Yards · QB #12 · 2nd & M",
               yards: 8,
               complete: true,
               qb: 12,
@@ -1133,7 +1133,7 @@ describe("Tracking play-by-play", () => {
     // A play is the snap, not a change of possession.
     expect(sentPossessions()).toEqual([]);
     expect(
-      await screen.findByText(/Pass gespeichert · 8 Yards · QB #12 · 2nd & 2/),
+      await screen.findByText(/Pass gespeichert · 8 Yards · QB #12 · 2nd & M/),
     ).toBeInTheDocument();
     // The thrower is remembered for the next pass of this side.
     expect(globalThis.localStorage.getItem("scorecard:v2:qb:42:home")).toBe(
@@ -1153,28 +1153,27 @@ describe("Tracking play-by-play", () => {
     });
 
     // Newest first: 4 yards, then 3.
-    expect(screen.getByText("3rd & 3")).toBeInTheDocument();
+    expect(screen.getByText(/3rd & M/)).toBeInTheDocument();
   });
 
   it("sets the field position and shows the spot", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
-    answerAppend(
-      makeLog({
-        inPossession: "Ravens",
-        events: [
-          logEvent({
-            id: 5,
-            event: "Feldposition",
-            input: "eigene 35",
-            payload: { ballOn: 35 },
-          }),
-        ],
-      }),
-    );
-    renderTracking();
+    const log = makeLog({
+      inPossession: "Ravens",
+      events: [
+        logEvent({
+          id: 5,
+          event: "Feldposition",
+          input: "A12",
+          payload: { ballOn: 12 },
+        }),
+      ],
+    });
+    answerAppend(log);
+    renderTracking({ log });
     const user = userEvent.setup();
 
-    expect(screen.getByText("1st & 10")).toBeInTheDocument();
+    expect(screen.getByText(/1st & M/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Feldposition" }));
     const sheet = screen.getByRole("dialog", {
       name: "Feldposition · Ravens",
@@ -1192,16 +1191,16 @@ describe("Tracking play-by-play", () => {
             side: "home",
             player: null,
             period: 1,
-            payload: { ballOn: 35, input: "eigene 35" },
+            payload: { ballOn: 12, input: "A12" },
           },
         ],
         client_id: expect.any(String),
       }),
     );
-    expect(await screen.findByText(/1st & 10 · eigene 35/)).toBeInTheDocument();
+    expect(await screen.findByText(/1st & M · A12/)).toBeInTheDocument();
   });
 
-  it("shows goal-to-go inside the ten", () => {
+  it("shows goal-to-go once the ball is in B territory", () => {
     renderTracking({
       log: makeLog({
         inPossession: "Ravens",
@@ -1209,8 +1208,8 @@ describe("Tracking play-by-play", () => {
           logEvent({
             id: 2,
             event: "Feldposition",
-            input: "gegn. 8",
-            payload: { ballOn: 92 },
+            input: "B8",
+            payload: { ballOn: 42 },
           }),
           logEvent({ id: 1, event: "Run", payload: { yards: 3 } }),
         ],
@@ -1218,9 +1217,9 @@ describe("Tracking play-by-play", () => {
     });
 
     // The spot row is the newest: the drive starts there, goal to go.
-    expect(screen.getByText(/1st & Goal/)).toBeInTheDocument();
+    expect(screen.getByText(/1st & G/)).toBeInTheDocument();
     // The spot is in the drive line and in the log row's detail.
-    expect(screen.getAllByText(/gegn\. 8/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/B8/).length).toBeGreaterThan(0);
   });
 
   it("moves the spot with the yards of a play", () => {
@@ -1232,15 +1231,15 @@ describe("Tracking play-by-play", () => {
           logEvent({
             id: 2,
             event: "Feldposition",
-            input: "eigene 35",
-            payload: { ballOn: 35 },
+            input: "A10",
+            payload: { ballOn: 10 },
           }),
         ],
       }),
     });
 
     // Newest first: the 30-yard run came after the spot was set.
-    expect(screen.getByText(/1st & 10 · gegn. 35/)).toBeInTheDocument();
+    expect(screen.getByText(/1st & G · B10/)).toBeInTheDocument();
   });
 
   it("hands the ball over after a failed fourth down", async () => {
@@ -1248,17 +1247,17 @@ describe("Tracking play-by-play", () => {
     const log = makeLog({
       inPossession: "Ravens",
       events: [
-        logEvent({ id: 3, event: "Run", payload: { yards: 1 } }),
-        logEvent({ id: 2, event: "Run", payload: { yards: 2 } }),
-        logEvent({ id: 1, event: "Run", payload: { yards: 3 } }),
+        logEvent({ id: 3, event: "Run", payload: { yards: 6 } }),
+        logEvent({ id: 2, event: "Run", payload: { yards: 6 } }),
+        logEvent({ id: 1, event: "Run", payload: { yards: 6 } }),
       ],
     });
     answerAppend(log);
     renderTracking({ log });
     const user = userEvent.setup();
 
-    // 4th & 4 after three runs; one more yard is short of the line.
-    expect(screen.getByText("4th & 4")).toBeInTheDocument();
+    // Fourth down after three runs; one more yard is short of midfield.
+    expect(screen.getByText(/4th & M/)).toBeInTheDocument();
     await openSheet(user, /^Spielzug/);
     const sheet = screen.getByRole("dialog", { name: "Spielzug · Ravens" });
     await user.click(
@@ -1281,7 +1280,7 @@ describe("Tracking play-by-play", () => {
             side: "home",
             player: 23,
             period: 1,
-            payload: { input: "1 Yards · 1st & 10", yards: 1 },
+            payload: { input: "1 Yards · 1st & M", yards: 1 },
           },
         ],
         client_id: expect.any(String),
@@ -1318,7 +1317,7 @@ describe("Tracking play-by-play", () => {
             side: "home",
             player: 23,
             period: 1,
-            payload: { input: "14 Yards · 1st & 10", yards: 14 },
+            payload: { input: "14 Yards · 2nd & M", yards: 14 },
           },
         ],
         client_id: expect.any(String),
@@ -2791,6 +2790,7 @@ describe("Tracking penalties", () => {
           side: "away",
           player: null,
           period: 1,
+          payload: { yardage: 10, nextDown: "loss_of_down" },
         },
       ],
       client_id: expect.any(String),

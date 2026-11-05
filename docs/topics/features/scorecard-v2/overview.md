@@ -103,7 +103,9 @@ no reload.
    possession, direction, licences and passcheck, refuses an empty `required`
    slot, a free-text name without both names and an unchosen
    toss/possession/direction with a named reason, and says that starting writes
-   the setup while no clock runs in the app.
+   the setup while no clock runs in the app. The toss and first-possession
+   switches carry the same home red / guest green tint as the teams above, and
+   the toss switch names the guest team, which always calls the coin toss.
 4. **Feld · Runde** (the tracking screen) — score board, a two-way
    **Ballbesitz** switch under it, the log in the middle and the actions at the
    bottom (thumb zone, tinted in the colour of the side with the ball).
@@ -122,28 +124,38 @@ no reload.
    A wide **Spielzug (Pass/Run/Sack)** button under the touchdown records the
    play-by-play: the player, the yards gained or lost, and for a pass
    **Complete/Incomplete** plus the **quarterback** (remembered per side on the
-   device, so the usual thrower is pre-selected; the switch is one tap). The
-   touchdown and 1st Down sheets carry an optional yards field. Everything
-   structured — `yards` (signed, a sack is a loss), `qb`, `complete` — travels
-   in the event `payload` for the statistics that come later, while `input`
-   carries the text the log and the ticker show. A completed pass or a run may
-   name the defender who made the tackle (the other team's roster); an
-   incomplete pass first asks **Deflection**, then the defender.
+   device, so the usual thrower is pre-selected; the switch is one tap). A
+   **Gewinn/Verlust** switch (and a typed minus) records a negative gain, for a
+   short pass the receiver carries backwards. The touchdown and 1st Down sheets
+   carry an optional yards field. Everything structured — `yards` (signed, a
+   sack is a loss), `qb`, `complete` — travels in the event `payload` for the
+   statistics that come later, while `input` carries the text the log and the
+   ticker show. A completed pass or a run may name the defender who made the
+   tackle (the other team's roster); an incomplete pass first asks
+   **Deflection**, then the defender.
    A **Challenge** next to the play records a coach's challenge — one tap is
    enough, a short reason is optional — as its own `challenge` event.
    **Overtime** is a two-step marker (`period/overtime`, no score, no third
    half); the tile then turns into **+1 XP**, which opens the same jersey step
    for the converter, and the try after a touchdown offers only **+1**.
    Under the possession switch the screen shows the **down & distance** and the
-   spot (**3rd & 4 · eigene 43**), derived from the plays in the log: a play
-   that reaches the line to gain starts a new series, a fourth down short of it
-   is a turnover on downs (the app then sends the possession change itself), and
-   inside the opponent's ten the series is **1st & Goal**. The spot is stored by
-   a **Feldposition** row (own goal line = 0, opponent's = 100; the sheet asks
-   own/opponent + yard line), so a kickoff or a turnover can be set and a reload
-   keeps it; a play simply adds its yards. There is no kickoff/punt automation —
-   the officials set the spot. The state is recomputed from the rows, so an undo
-   rewinds it; the play's row text carries the resulting down for the ticker.
+   spot (**2nd & M · A12**), derived from the plays in the log on the
+   50-yard field: A is the own half (0–25), `M` is midfield and B is the
+   opponent's half (25 down to 0, `B0` is the goal line). Every new series
+   starts at **A5** with midfield as the line to gain (`1st & M`); a play that
+   reaches midfield starts a new series as **1st & G @Bxx**, and a fourth down
+   short of the line is a turnover on downs (the app then sends the possession
+   change itself; the new series starts at A5 again). The spot is stored by a
+   **Feldposition** row (own goal line = 0, opponent's = 50; the sheet asks
+   A/B + 0–25), so a kickoff or a turnover can be set and a reload keeps it; a
+   play simply adds its signed yards. A **Strafe** carries a signed `yardage`
+   and a `nextDown` (`repeat`, `first_down`, `loss_of_down`): the drive applies
+   the yardage from the last spot, never closer than half the distance to
+   either goal, restarts as `1st & G` when the result crosses midfield and
+   otherwise applies `nextDown`. A later manually entered **Feldposition** row
+   always wins. There is no kickoff/punt automation — the officials set the
+   spot. The state is recomputed from the rows, so an undo rewinds it; the
+   play's row text carries the resulting down for the ticker.
    Touchdown with the roster's jerseys (a tile grid up to 24 players, a
    two-digit keypad above that with the roster name as confirmation; numeric
    field when there is no roster; this game's scorers as a shortcut row above
@@ -155,7 +167,10 @@ no reload.
    touchdown button (+1 / +2 / nicht verwandelt, nothing pre-selected),
    credited to the scoring team; **+1**/**+2** open the jersey step with the
    touchdown's scorer pre-selected, so the person who actually converted can be
-   picked, and **Spiel beenden** waits while it is open. First down, turnover, interception, penalty with search, safety,
+   picked, and **Spiel beenden** waits while it is open. First down, turnover, interception, penalty with search (the
+   five most common penalties stay in catalogue order, the rest are
+   alphabetical; the sheet prefills yardage and next down from the catalogue's
+   `subtext` and keeps both editable), safety,
    overtime, Spielzeit, Auszeit, half-time, and **Rückgängig** per entry, plus
    **Ändern** to correct the jersey or the game time of a row in place (the
    corrected event is written, then the old row is undone; the row keeps its

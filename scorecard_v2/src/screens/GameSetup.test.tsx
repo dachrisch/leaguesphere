@@ -1226,6 +1226,25 @@ describe("GameSetup — configuration and readiness", () => {
     ).toHaveAttribute("aria-pressed", "false");
   });
 
+  it("tints the team switches and names the guest team's coin call", async () => {
+    await renderSetup();
+
+    const toss = screen.getByRole("group", { name: "Münzwurf gewonnen von" });
+    expect(within(toss).getByRole("button", { name: "Ravens" })).toHaveClass(
+      "seg-home",
+    );
+    expect(within(toss).getByRole("button", { name: "Wolves" })).toHaveClass(
+      "seg-away",
+    );
+    const possession = screen.getByRole("group", { name: "Erster Ballbesitz" });
+    expect(
+      within(possession).getByRole("button", { name: "Ravens" }),
+    ).toHaveClass("seg-home");
+    expect(
+      screen.getByText(/Die Münzwahl hat das Gastteam/),
+    ).toHaveTextContent("Wolves");
+  });
+
   it("labels the start button with the kick-off time", async () => {
     await renderSetup();
 

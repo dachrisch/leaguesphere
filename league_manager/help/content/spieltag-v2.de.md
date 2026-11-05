@@ -19,21 +19,26 @@ wie die bisherige Scorecard
 2. Prüfe in **Spiel vorbereiten** die Offiziellen und ihre Lizenzen, halte
    **Münzwurf gewonnen von**, **Erster Ballbesitz** und **Spielrichtung** fest
    und tippe auf **Spiel starten**. **Jetzt starten** bestätigt den Start.
-   Die **Spielrichtung** liegt zwischen den Endzonen **Nord** und **Süd** (die
-   Seitenlinie verläuft Ost–West); der Pfeil zeigt auf die Endzone, die
-   angegriffen wird. Die Seite wählt immer das Gastteam – das zweit genannte
-   Team.
+   Die Schalter für **Münzwurf gewonnen von** und **Erster Ballbesitz** tragen
+   die Teamfarben (Heim rot, Gast grün). Die **Münzwahl** hat immer das
+   Gastteam – das zweit genannte Team; der Hinweis steht direkt unter dem
+   Schalter. Die **Spielrichtung** liegt zwischen den Endzonen **Nord** und
+   **Süd** (die Seitenlinie verläuft Ost–West); der Pfeil zeigt auf die
+   Endzone, die angegriffen wird.
 3. Erfasse im laufenden Spiel (oben stehen Feld und Runde) jeden Spielzug über
    **Spielzug (Pass/Run/Sack)** – mit Spieler, Raumgewinn bzw. Raumverlust und
    beim Pass mit **Complete/Incomplete** und dem **Quarterback** (der letzte
-   steht schon da). Auf Pass und Run kannst du zusätzlich den Verteidiger
-   eintragen, der getackelt hat; bei einem unvollständigen Pass zuerst
-   **Deflection** wählen. Unter dem Ballbesitz steht der **Down & Distanz**
-   (z. B. **3rd & 4**) mit der Feldposition (z. B. **eigene 35**): Er zählt
-   sich aus den Spielzügen selbst weiter, ein erreichtes Ziel ergibt
-   **1st & 10**, ein nicht verwandelter vierter Versuch gibt den Ball ab, und
-   innerhalb der gegnerischen 10 steht **1st & Goal**. Die Feldposition setzt
-   du über **Feldposition** (eigene/gegnerische Yardlinie); sie hält über
+   steht schon da). Ein Raumgewinn darf auch negativ sein: **Verlust** wählen
+   (oder ein Minus tippen), wenn der Ball zurückgetragen wird. Auf Pass und Run
+   kannst du zusätzlich den Verteidiger eintragen, der getackelt hat; bei einem
+   unvollständigen Pass zuerst **Deflection** wählen. Unter dem Ballbesitz steht
+   der **Down & Distanz** (z. B. **2nd & M**) mit der Feldposition (z. B.
+   **A12**). Das Feld ist 50 Yards lang: **A** ist die eigene Hälfte (0–25),
+   **M** die Mittellinie und **B** die gegnerische Hälfte (B20 = gegnerische
+   20-Yard-Linie). Jeder Angriff startet bei **A5** mit **1st & M**; wer die
+   Mittellinie erreicht, bekommt **1st & G** und hat vier Versuche bis zur
+   Endzone. Ein nicht verwandelter vierter Versuch gibt den Ball ab. Die
+   Feldposition setzt du über **Feldposition** (A/B + 0–25); sie hält über
    Reloads, weil sie als Eintrag im Spielverlauf steht. **Challenge** hält einen Einspruch fest – ohne Text
    oder mit einer kurzen Begründung. Dazu **Touchdown**, **1st Down**, **Turnover**,
    **Interception**, **Strafe**, **Safety**, **Overtime**, **Spielzeit** und
@@ -48,6 +53,13 @@ wie die bisherige Scorecard
    **+1** oder **+2** öffnet die Trikotwahl – der Touchdown-Schütze ist
    vorausgewählt, du kannst aber den tatsächlichen Verwandler wählen;
    **nicht verwandelt** schließt die Abfrage ohne Eintrag.
+
+   Bei **Strafe** stehen die fünf häufigsten oben, der Rest alphabetisch.
+   **Yardage** und **Nächster Versuch** (Wiederholung, First Down, Loss of
+   Down) sind aus der Strafe vorbelegt und bleiben änderbar. Die Feldposition
+   wird vom letzten Spot aus verschoben, höchstens bis zur halben Distanz zur
+   Endzone; über die Mittellinie wird daraus **1st & G**. Eine später
+   eingetragene **Feldposition** gewinnt immer.
 4. Das Pfeil-Symbol neben einem Eintrag im Spielverlauf (**Rückgängig**) nimmt
    ihn zurück, **Ändern** korrigiert ihn an Ort und Stelle (Trikotnummer, bei
    **Spielzeit** und **Auszeit** die Spielzeit); am großen Bildschirm geht das
