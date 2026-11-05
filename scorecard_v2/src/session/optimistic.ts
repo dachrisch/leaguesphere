@@ -22,6 +22,10 @@ import type {
   GameLogEvent,
   GameLogTeam,
 } from "../api/types";
+import {
+  DEFAULT_SCORING_VALUES,
+  type ScoringValues,
+} from "../app/scoring";
 import type { PendingOp, StoredOp } from "../offline/types";
 import {
   EXCLUDED_EVENTS,
@@ -345,15 +349,8 @@ function pointsOfRow(event: GameLogEvent): number {
   return SCORING_VALUES[event.event] ?? 0;
 }
 
-/** Mirrors `SCORING_EVENT_VALUES`; the row's own name is the whole truth. */
-const SCORING_VALUES: Record<string, number> = {
-  Touchdown: 6,
-  Overtime: 1,
-  "1-Extra-Punkt": 1,
-  "Safety (+1)": 1,
-  "2-Extra-Punkte": 2,
-  "Safety (+2)": 2,
-};
+/** The row's own name is the whole truth; see `app/scoring.ts`. */
+const SCORING_VALUES: ScoringValues = DEFAULT_SCORING_VALUES;
 
 function cloneTeam(team: GameLogTeam): GameLogTeam {
   return {

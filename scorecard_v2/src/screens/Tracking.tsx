@@ -8,6 +8,7 @@ import {
   type ComponentType,
 } from "react";
 
+import { RULES_PATH, type GameRules } from "../api/rules";
 import type {
   Game,
   GameLog,
@@ -29,6 +30,7 @@ import {
   advance,
   driveAfter,
   driveText,
+  geometryOf,
   isTurnoverOnDowns,
   spotText,
 } from "../app/drive";
@@ -530,6 +532,12 @@ export default function TrackingScreen({
   // "no roster" and must not be shown while the fetch is still running.
   const [roster, setRoster] = useState<RosterPlayer[] | null>(null);
   /**
+   * The sport definition (IFAF 2023). Until it arrives the engine uses the
+   * 50-yard defaults it shipped with, so a slow or missing fetch changes
+   * nothing the official sees on the standard field.
+   */
+  const [rules, setRules] = useState<GameRules | null>(null);
+  /**
    * The setup read itself: the first possession decides who starts the second
    * half. The half-time awaits it (it resolved long before, normally) instead
    * of reading a state update that may not have landed yet; a failed read
@@ -628,7 +636,8 @@ export default function TrackingScreen({
 
   const rows = useMemo(() => logRows(log), [log]);
   /** Down & distance as the log tells it — recomputed on every row change. */
-  const drive = useMemo(() => driveAfter(rows), [rows]);
+  const geometry = useMemo(() => geometryOf(rules), [rules]);
+  const drive = useMemo(() => driveAfter(rows, geometry), [rows, geometry]);
   /**
    * Every Auszeit still on the board, newest first as the log lists it. The
    * sheet shows both sides so the officials can answer "who took which
@@ -707,6 +716,11 @@ export default function TrackingScreen({
       snapshotKey.penalties(),
       "/api/config/scorecard/penalties",
     ).catch(() => undefined);
+    // The definition decides the field, the series and the penalty numbers;
+    // preloaded so a device that loses the network mid-game keeps them.
+    void cachedGet<GameRules>(snapshotKey.rules(), RULES_PATH)
+      .then(setRules)
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -1350,8 +1364,8 @@ export default function TrackingScreen({
   const submitPlay = async (event: GameLogEventInput): Promise<void> => {
     const yards =
       typeof event.payload?.yards === "number" ? event.payload.yards : 0;
-    const next = advance(drive, yards);
-    const turnover = isTurnoverOnDowns(drive, yards);
+    const next = advance(drive, yards, geometry);
+    const turnover = isTurnoverOnDowns(drive, yards, geometry);
     const detail = event.input === undefined ? "" : `${event.input} · `;
     await submit([{ ...event, input: `${detail}${driveText(next)}` }]);
     if (turnover && opponentName !== null) {
@@ -1531,9 +1545,9 @@ export default function TrackingScreen({
       <div className="drivebar">
         <p aria-live="polite" className="driveline">
           {driveText(drive)}
-          {spotText(drive.ballOn) === null
+          {spotText(drive.ballOn, geometry) === null
             ? null
-            : ` · ${spotText(drive.ballOn)}`}
+            : ` · ${spotText(drive.ballOn, geometry)}`}
         </p>
         <button
           className="driveset"
@@ -1950,6 +1964,7 @@ export default function TrackingScreen({
         ) : sheet.kind === "penalty" ? (
           <PenaltySheet
             history={unsportsmanlike}
+            rules={rules}
             onClose={() => setSheet(null)}
             onSubmit={submit}
             opponentName={opponentName ?? ""}

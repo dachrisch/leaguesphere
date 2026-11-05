@@ -294,6 +294,16 @@ export interface Penalty {
   name: string;
   subtext: string;
   isPenaltyAgainstOpponent: boolean;
+  /**
+   * The structured rules from `GET /api/config/scorecard/rules`. Absent when
+   * only the legacy `/penalties` list answered: the sheet then parses
+   * `subtext`, which is what it always did.
+   */
+  yards?: number;
+  down?: "repeat" | "first" | "loss";
+  enforcement?: "BS" | "SF" | "DB" | "SL" | null;
+  /** Rule reference (`7-1-3f`), shown in the sheet's summary. */
+  rule?: string;
 }
 
 /**

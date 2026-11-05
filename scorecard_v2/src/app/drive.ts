@@ -21,6 +21,7 @@
  * line, and a penalty that pushes the ball across midfield starts a fresh
  * `1st & G`.
  */
+import type { GameRules } from "../api/rules";
 import type { LogRow } from "../components/EventLog";
 
 export interface DriveState {
@@ -42,6 +43,68 @@ export const MIDFIELD = 25;
 
 /** Every series starts on the offence's own 5-yard line. */
 export const SERIES_START = 5;
+
+/**
+ * The values the series engine takes from the sport definition
+ * (`gameevents/sport/flag_football_5v5.json`, served as
+ * `GET /api/config/scorecard/rules`).
+ *
+ * They are parameters rather than constants so a variant (beach 4v4, flag
+ * 7v7) is a data change; {@link DEFAULT_GEOMETRY} is the IFAF 2023 5v5 field
+ * and keeps every call site and test that does not pass one on today's field.
+ */
+export interface Geometry {
+  /** The field of play, goal line to goal line. */
+  fieldLength: number;
+  /** The middle line, the first series' line to gain. */
+  middle: number;
+  /** Where every series starts. */
+  seriesStart: number;
+  /** Downs per series. */
+  downs: number;
+}
+
+/** IFAF 2023, flag football 5v5: 50 yards, middle 25, series at the own 5. */
+export const DEFAULT_GEOMETRY: Geometry = {
+  fieldLength: FIELD_LENGTH,
+  middle: MIDFIELD,
+  seriesStart: SERIES_START,
+  downs: 4,
+};
+
+/**
+ * The engine's values from the served definition, or the defaults.
+ *
+ * An answer that is not a definition (an older server, a proxy that serves
+ * HTML, a test double) must never white-screen the field app, so every value
+ * is checked and the defaults win on anything suspicious.
+ */
+export function geometryOf(rules: GameRules | null | undefined): Geometry {
+  if (rules === null || rules === undefined) {
+    return DEFAULT_GEOMETRY;
+  }
+  const field = rules.field;
+  const series = rules.series;
+  if (field === null || field === undefined || series === null || series === undefined) {
+    return DEFAULT_GEOMETRY;
+  }
+  const { length, middle } = field;
+  const { start, downs } = series;
+  if (
+    !isPositive(length) ||
+    !isPositive(middle) ||
+    !isPositive(start) ||
+    !isPositive(downs) ||
+    middle * 2 !== length
+  ) {
+    return DEFAULT_GEOMETRY;
+  }
+  return { fieldLength: length, middle, seriesStart: start, downs };
+}
+
+function isPositive(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
 
 /** How a penalty changes the down count. */
 export type PenaltyNextDown = "repeat" | "first_down" | "loss_of_down";
@@ -82,67 +145,82 @@ const KICKOFF_EVENTS = new Set([
 /** Rows that hand the ball over; the new series also starts at A5. */
 const TURNOVER_EVENTS = new Set(["Turnover", "Interception"]);
 
-function clampSpot(value: number): number {
-  return Math.max(0, Math.min(FIELD_LENGTH, value));
+function clampSpot(value: number, g: Geometry = DEFAULT_GEOMETRY): number {
+  return Math.max(0, Math.min(g.fieldLength, value));
 }
 
 /** Yards to the line to gain for a fresh series on this spot. */
-export function firstDownDistance(ballOn: number | null): number {
+export function firstDownDistance(
+  ballOn: number | null,
+  g: Geometry = DEFAULT_GEOMETRY,
+): number {
   if (ballOn === null) {
-    return MIDFIELD - SERIES_START;
+    return g.middle - g.seriesStart;
   }
-  return ballOn >= MIDFIELD ? FIELD_LENGTH - ballOn : MIDFIELD - ballOn;
+  return ballOn >= g.middle ? g.fieldLength - ballOn : g.middle - ballOn;
 }
 
 /** A fresh series on the given spot. */
-export function seriesAt(ballOn: number | null): DriveState {
+export function seriesAt(
+  ballOn: number | null,
+  g: Geometry = DEFAULT_GEOMETRY,
+): DriveState {
   return {
     down: 1,
-    toGo: firstDownDistance(ballOn),
+    toGo: firstDownDistance(ballOn, g),
     ballOn,
-    goal: ballOn !== null && ballOn >= MIDFIELD,
+    goal: ballOn !== null && ballOn >= g.middle,
   };
 }
 
+/** A fresh series on the start spot of this field. */
+export function firstAndTen(g: Geometry = DEFAULT_GEOMETRY): DriveState {
+  return seriesAt(g.seriesStart, g);
+}
+
 /** The state after one play at the current spot. */
-export function advance(state: DriveState, yards: number): DriveState {
+export function advance(
+  state: DriveState,
+  yards: number,
+  g: Geometry = DEFAULT_GEOMETRY,
+): DriveState {
   if (state.ballOn === null) {
     return {
       ...state,
-      down: state.down >= 4 ? 1 : state.down + 1,
+      down: state.down >= g.downs ? 1 : state.down + 1,
       toGo: Math.max(0, state.toGo - yards),
     };
   }
 
-  const ballOn = clampSpot(state.ballOn + yards);
+  const ballOn = clampSpot(state.ballOn + yards, g);
 
   // A goal-to-go series keeps the goal line as its line to gain, even when a
   // loss carries the ball back across midfield.
   if (state.goal) {
-    if (ballOn >= FIELD_LENGTH) {
-      return seriesAt(ballOn);
+    if (ballOn >= g.fieldLength) {
+      return seriesAt(ballOn, g);
     }
-    if (state.down >= 4) {
-      return seriesAt(SERIES_START);
+    if (state.down >= g.downs) {
+      return seriesAt(g.seriesStart, g);
     }
     return {
       down: state.down + 1,
-      toGo: FIELD_LENGTH - ballOn,
+      toGo: g.fieldLength - ballOn,
       ballOn,
       goal: true,
     };
   }
 
   // Reaching midfield is the first down of the series.
-  if (ballOn >= MIDFIELD) {
-    return seriesAt(ballOn);
+  if (ballOn >= g.middle) {
+    return seriesAt(ballOn, g);
   }
-  if (state.down >= 4) {
-    return seriesAt(SERIES_START);
+  if (state.down >= g.downs) {
+    return seriesAt(g.seriesStart, g);
   }
   return {
     down: state.down + 1,
-    toGo: MIDFIELD - ballOn,
+    toGo: g.middle - ballOn,
     ballOn,
     goal: false,
   };
@@ -157,10 +235,14 @@ export function advance(state: DriveState, yards: number): DriveState {
  * be; a goal-to-go series keeps the goal line as its line to gain (mirroring
  * {@link advance}), even when the ball is put back behind midfield.
  */
-export function placeBall(state: DriveState, ballOn: number): DriveState {
-  const line = state.goal ? FIELD_LENGTH : MIDFIELD;
+export function placeBall(
+  state: DriveState,
+  ballOn: number,
+  g: Geometry = DEFAULT_GEOMETRY,
+): DriveState {
+  const line = state.goal ? g.fieldLength : g.middle;
   if (ballOn >= line) {
-    return seriesAt(ballOn);
+    return seriesAt(ballOn, g);
   }
   return {
     down: state.down,
@@ -171,15 +253,19 @@ export function placeBall(state: DriveState, ballOn: number): DriveState {
 }
 
 /** True when the play ends the series on downs. */
-export function isTurnoverOnDowns(state: DriveState, yards: number): boolean {
-  if (state.down !== 4) {
+export function isTurnoverOnDowns(
+  state: DriveState,
+  yards: number,
+  g: Geometry = DEFAULT_GEOMETRY,
+): boolean {
+  if (state.down !== g.downs) {
     return false;
   }
   if (state.ballOn === null) {
     return state.toGo - yards > 0;
   }
-  const ballOn = clampSpot(state.ballOn + yards);
-  return state.goal ? ballOn < FIELD_LENGTH : ballOn < MIDFIELD;
+  const ballOn = clampSpot(state.ballOn + yards, g);
+  return state.goal ? ballOn < g.fieldLength : ballOn < g.middle;
 }
 
 /**
@@ -196,18 +282,19 @@ export function applyPenalty(
   state: DriveState,
   yardage: number,
   nextDown: PenaltyNextDown = "repeat",
+  g: Geometry = DEFAULT_GEOMETRY,
 ): DriveState {
-  const spot = state.ballOn ?? SERIES_START;
+  const spot = state.ballOn ?? g.seriesStart;
   let ballOn = spot + yardage;
   if (yardage < 0) {
     ballOn = Math.max(ballOn, spot / 2);
   } else if (yardage > 0) {
-    ballOn = Math.min(ballOn, (FIELD_LENGTH + spot) / 2);
+    ballOn = Math.min(ballOn, (g.fieldLength + spot) / 2);
   }
-  ballOn = clampSpot(ballOn);
+  ballOn = clampSpot(ballOn, g);
 
-  if (ballOn >= MIDFIELD) {
-    return seriesAt(ballOn);
+  if (ballOn >= g.middle) {
+    return seriesAt(ballOn, g);
   }
 
   let down = state.down;
@@ -216,27 +303,33 @@ export function applyPenalty(
   } else if (nextDown === "loss_of_down") {
     down = state.down + 1;
   }
-  if (down > 4) {
-    return seriesAt(SERIES_START);
+  if (down > g.downs) {
+    return seriesAt(g.seriesStart, g);
   }
   return {
     down,
-    toGo: MIDFIELD - ballOn,
+    toGo: g.middle - ballOn,
     ballOn,
     goal: false,
   };
 }
 
 /** The same spot seen from the other side. */
-export function mirror(ballOn: number | null): number | null {
-  return ballOn === null ? null : FIELD_LENGTH - ballOn;
+export function mirror(
+  ballOn: number | null,
+  g: Geometry = DEFAULT_GEOMETRY,
+): number | null {
+  return ballOn === null ? null : g.fieldLength - ballOn;
 }
 
 /** The structured spot of a **Feldposition** row, or `null`. */
-export function spotOf(row: LogRow): number | null {
+export function spotOf(
+  row: LogRow,
+  g: Geometry = DEFAULT_GEOMETRY,
+): number | null {
   const ballOn = row.payload?.ballOn;
   if (typeof ballOn === "number" && Number.isFinite(ballOn)) {
-    return clampSpot(ballOn);
+    return clampSpot(ballOn, g);
   }
   return null;
 }
@@ -266,8 +359,11 @@ export function penaltyOf(row: LogRow): PenaltySpot | null {
  * without changing possession; a later **Feldposition** row always wins the
  * spot — and, being a correction, keeps the down the log has reached so far.
  */
-export function driveAfter(rows: LogRow[]): DriveState {
-  let state: DriveState = { ...FIRST_AND_TEN };
+export function driveAfter(
+  rows: LogRow[],
+  g: Geometry = DEFAULT_GEOMETRY,
+): DriveState {
+  let state: DriveState = firstAndTen(g);
   let lastTeam: string | null = null;
 
   for (const row of [...rows].reverse()) {
@@ -275,9 +371,9 @@ export function driveAfter(rows: LogRow[]): DriveState {
       continue;
     }
     if (row.event === FIELD_EVENT) {
-      const ballOn = spotOf(row);
+      const ballOn = spotOf(row, g);
       if (ballOn !== null) {
-        state = placeBall(state, ballOn);
+        state = placeBall(state, ballOn, g);
       }
       lastTeam = row.team;
       continue;
@@ -285,25 +381,25 @@ export function driveAfter(rows: LogRow[]): DriveState {
     if (row.event === PENALTY_EVENT) {
       const penalty = penaltyOf(row);
       if (penalty !== null) {
-        state = applyPenalty(state, penalty.yardage, penalty.nextDown);
+        state = applyPenalty(state, penalty.yardage, penalty.nextDown, g);
       }
       continue;
     }
     if (!PLAY_EVENTS.has(row.event)) {
       if (KICKOFF_EVENTS.has(row.event)) {
-        state = { ...FIRST_AND_TEN };
+        state = firstAndTen(g);
         lastTeam = null;
       } else if (TURNOVER_EVENTS.has(row.event)) {
-        state = { ...FIRST_AND_TEN };
+        state = firstAndTen(g);
         lastTeam = row.team;
       }
       continue;
     }
     if (lastTeam !== null && row.team !== lastTeam) {
       // A new possession without a marker: the new offence starts at A5.
-      state = { ...FIRST_AND_TEN };
+      state = firstAndTen(g);
     }
-    state = advance(state, yardsOf(row));
+    state = advance(state, yardsOf(row), g);
     lastTeam = row.team;
   }
 
@@ -325,18 +421,21 @@ export function driveText(state: DriveState): string {
  * `A5`, `M`, `B14` — the spot as the officials call it, `null` when it has not
  * been set. Half yards are shown the German way (`A4,5`).
  */
-export function spotText(ballOn: number | null): string | null {
+export function spotText(
+  ballOn: number | null,
+  g: Geometry = DEFAULT_GEOMETRY,
+): string | null {
   if (ballOn === null) {
     return null;
   }
-  const spot = clampSpot(ballOn);
-  if (spot === MIDFIELD) {
+  const spot = clampSpot(ballOn, g);
+  if (spot === g.middle) {
     return "M";
   }
-  if (spot < MIDFIELD) {
+  if (spot < g.middle) {
     return `A${formatYards(spot)}`;
   }
-  return `B${formatYards(FIELD_LENGTH - spot)}`;
+  return `B${formatYards(g.fieldLength - spot)}`;
 }
 
 /** One decimal at most, in the German comma notation (`4.5` → `4,5`). */

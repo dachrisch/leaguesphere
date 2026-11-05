@@ -4,9 +4,12 @@ import type { LogRow } from "../components/EventLog";
 import {
   advance,
   applyPenalty,
+  DEFAULT_GEOMETRY,
   driveAfter,
   driveText,
   FIRST_AND_TEN,
+  firstDownDistance,
+  geometryOf,
   isTurnoverOnDowns,
   mirror,
   seriesAt,
@@ -405,5 +408,78 @@ describe("driveText", () => {
     expect(driveText({ down: 4, toGo: 1, ballOn: 49, goal: true })).toBe(
       "4th & G",
     );
+  });
+});
+
+describe("the geometry comes from the sport definition", () => {
+  it("maps the served definition onto the engine", () => {
+    const rules = {
+      field: { length: 40, middle: 20 },
+      series: { start: 5, downs: 4 },
+    } as unknown as Parameters<typeof geometryOf>[0];
+
+    expect(geometryOf(rules)).toEqual({
+      fieldLength: 40,
+      middle: 20,
+      seriesStart: 5,
+      downs: 4,
+    });
+  });
+
+  it("falls back to the 50-yard field while the definition is missing", () => {
+    expect(geometryOf(null)).toEqual(DEFAULT_GEOMETRY);
+    expect(geometryOf(undefined)).toEqual(DEFAULT_GEOMETRY);
+    expect(DEFAULT_GEOMETRY).toEqual({
+      fieldLength: 50,
+      middle: 25,
+      seriesStart: 5,
+      downs: 4,
+    });
+  });
+
+  it("moves the line to gain to the middle of a shorter field", () => {
+    const g = { fieldLength: 40, middle: 20, seriesStart: 5, downs: 4 };
+
+    // own 15 on the 40-yard field: the line to gain is the middle, 5 yards away
+    expect(firstDownDistance(15, g)).toBe(5);
+    // a play across the middle starts a fresh series with the goal to go
+    expect(advance(seriesAt(18, g), 3, g)).toMatchObject({
+      down: 1,
+      goal: true,
+      ballOn: 21,
+    });
+  });
+
+  it("honours a different down count", () => {
+    const beach = { fieldLength: 25, middle: 12.5, seriesStart: 5, downs: 3 };
+
+    // third down on the beach field: a stop ends the series
+    const state = { down: 3, toGo: 7, ballOn: 5, goal: false };
+    expect(advance(state, 1, beach).down).toBe(1);
+    expect(isTurnoverOnDowns(state, 1, beach)).toBe(true);
+  });
+
+  it("draws the spot from the definition's field", () => {
+    const g = { fieldLength: 40, middle: 20, seriesStart: 5, downs: 4 };
+
+    expect(spotText(20, g)).toBe("M");
+    expect(spotText(30, g)).toBe("B10");
+    expect(spotText(10, g)).toBe("A10");
+  });
+});
+
+describe("a definition that is not a definition", () => {
+  it("falls back instead of white-screening the field app", () => {
+    const garbage = { field: undefined, series: undefined } as unknown as Parameters<
+      typeof geometryOf
+    >[0];
+    const halfField = {
+      field: { length: 50, middle: 20 },
+      series: { start: 5, downs: 4 },
+    } as unknown as Parameters<typeof geometryOf>[0];
+
+    expect(geometryOf(garbage)).toEqual(DEFAULT_GEOMETRY);
+    // the middle must be half the field
+    expect(geometryOf(halfField)).toEqual(DEFAULT_GEOMETRY);
   });
 });

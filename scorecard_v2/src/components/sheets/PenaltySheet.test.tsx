@@ -870,3 +870,53 @@ describe("PenaltySheet — the remaining states", () => {
     await Promise.resolve();
   });
 });
+
+describe("the penalty numbers come from the definition", () => {
+  it("uses the structured yards instead of parsing the subtext", () => {
+    const handoff: Penalty = {
+      name: "illegale Ballübergabe",
+      // the old text alone would say 0 yards
+      subtext: "SF/LoD",
+      isPenaltyAgainstOpponent: false,
+      yards: 5,
+      down: "loss",
+      enforcement: "SF",
+      rule: "7-1-5",
+    };
+
+    expect(penaltyYardage(handoff)).toBe(-5);
+    expect(penaltyNextDown(handoff)).toBe("loss_of_down");
+  });
+
+  it("uses the structured down rule for a defence foul", () => {
+    const interference: Penalty = {
+      name: "Defense Passbehinderung",
+      subtext: "BS/1st 10",
+      isPenaltyAgainstOpponent: true,
+      yards: 10,
+      down: "first",
+      enforcement: "BS",
+      rule: "7-3-3",
+    };
+
+    expect(penaltyYardage(interference)).toBe(10);
+    expect(penaltyNextDown(interference)).toBe("first_down");
+  });
+
+  it("keeps parsing the subtext when only the legacy list answered", () => {
+    expect(
+      penaltyYardage({
+        name: "illegaler Kontakt Offense",
+        subtext: "BS/LoD 10",
+        isPenaltyAgainstOpponent: false,
+      }),
+    ).toBe(-10);
+    expect(
+      penaltyNextDown({
+        name: "illegale Ballübergabe",
+        subtext: "SF/LoD",
+        isPenaltyAgainstOpponent: false,
+      }),
+    ).toBe("loss_of_down");
+  });
+});
