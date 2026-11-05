@@ -29,6 +29,8 @@ export const snapshotKey = {
   gamedays: (): string => "gamedays",
   user: (): string => "user",
   games: (gamedayId: number): string => `games:${gamedayId}`,
+  // One gameday, for a deep link that names it (`/gameday/<id>/`).
+  gameday: (gamedayId: number): string => `gameday:${gamedayId}`,
   log: (gameId: number): string => `log:${gameId}`,
   // The deep link's game + gameday row (`?game=<id>`), so a reload of the link
   // works offline too.

@@ -17,6 +17,7 @@ import {
   dropGameSnapshots,
   loadGameSummary,
   loadGamedays,
+  loadGameday,
   loadGames,
   loadGamesMeta,
   loadLog,
@@ -112,24 +113,55 @@ function numberOrNull(raw: string | null | undefined): number | null {
 }
 
 /**
- * A game's own address, `/scorecard/v2/spiel/<id>/`, or the older
- * `?game=<id>` — both open the game directly. The path form is what the
- * organisation keeps: it survives a reload and reads like the resource it is.
+ * The ids an address names: `/gameday/<id>/` and
+ * `/gameday/<id>/game/<id>/` — English segments, and a game's path says which
+ * gameday it belongs to. The first form a game had (`/spiel/<id>/`) is still
+ * read; the app rewrites it to the gameday path once the game is open.
+ */
+function pathIds(): { gamedayId: number | null; gameId: number | null } {
+  try {
+    const path = globalThis.location.pathname;
+    const gameday = path.match(
+      /\/scorecard\/v2\/gameday\/(\d+)\/(?:game\/(\d+)\/)?$/,
+    );
+    if (gameday !== null) {
+      return {
+        gamedayId: numberOrNull(gameday[1]),
+        gameId: numberOrNull(gameday[2] ?? null),
+      };
+    }
+    const legacy = path.match(/\/scorecard\/v2\/spiel\/(\d+)\/?$/);
+    if (legacy !== null) {
+      return { gamedayId: null, gameId: numberOrNull(legacy[1]) };
+    }
+  } catch {
+    return { gamedayId: null, gameId: null };
+  }
+  return { gamedayId: null, gameId: null };
+}
+
+/**
+ * A game opens from its path, from the older `/spiel/<id>/`, or from
+ * `?game=<id>` — every link already handed out keeps working. The game id is
+ * what matters; the gameday comes with it.
  */
 function initialGameId(): number | null {
+  const { gameId } = pathIds();
+  if (gameId !== null) {
+    return gameId;
+  }
   try {
-    const match = globalThis.location.pathname.match(
-      /\/scorecard\/v2\/spiel\/(\d+)\/?$/,
-    );
-    if (match !== null) {
-      return numberOrNull(match[1]);
-    }
     return numberOrNull(
       new URLSearchParams(globalThis.location.search).get("game"),
     );
   } catch {
     return null;
   }
+}
+
+/** A gameday's own address opens its games list directly. */
+function initialGamedayId(): number | null {
+  return pathIds().gamedayId;
 }
 
 /** The app's mount path when the page is served from it, `null` in tests. */
@@ -154,15 +186,22 @@ function rewriteUrl(pathname: string): void {
   }
 }
 
-/** `showGameUrl` / `showListUrl`: keep the address in step with the screen. */
-function showGameUrl(gameId: number): void {
+/** Keep the address in step with the screen. */
+function showGameUrl(gamedayId: number, gameId: number): void {
   const base = appBase();
   if (base !== null) {
-    rewriteUrl(`${base}spiel/${gameId}/`);
+    rewriteUrl(`${base}gameday/${gamedayId}/game/${gameId}/`);
   }
 }
 
-function showListUrl(): void {
+function showGamedayUrl(gamedayId: number): void {
+  const base = appBase();
+  if (base !== null) {
+    rewriteUrl(`${base}gameday/${gamedayId}/`);
+  }
+}
+
+function showRootUrl(): void {
   const base = appBase();
   if (base !== null) {
     rewriteUrl(base);
@@ -236,6 +275,9 @@ function Flow() {
     { status: "loading" } | { status: "error"; message: string } | null
   >(null);
   const [gameLink] = useState<number | null>(initialGameId);
+  const [gamedayLink] = useState<number | null>(
+    gameLink === null ? initialGamedayId() : null,
+  );
   /**
    * The deep link's own read: the game with its gameday, then its log. A
    * failure keeps the link on screen with a retry instead of dropping the
@@ -246,6 +288,15 @@ function Flow() {
     message?: string;
   } | null>(gameLink === null ? null : { status: "loading" });
   const openedLink = useRef(false);
+  const openedDayLink = useRef(false);
+  /**
+   * The gameday link's own read. Same panel as the game link, so a failure
+   * keeps the address on screen with a retry.
+   */
+  const [dayRequest, setDayRequest] = useState<{
+    status: "loading" | "error";
+    message?: string;
+  } | null>(gamedayLink === null ? null : { status: "loading" });
   const resumeTarget = useRef<Game | null>(null);
 
   const booted = useRef(false);
@@ -308,6 +359,28 @@ function Flow() {
     [],
   );
 
+  /** Open `/gameday/<id>/`: the gameday itself, then its games list. */
+  const openGamedayLink = useCallback(
+    async (gamedayId: number): Promise<void> => {
+      setDayRequest({ status: "loading" });
+      try {
+        const gameday = await loadGameday(gamedayId);
+        setDayRequest(null);
+        setGames({ status: "loading" });
+        dispatch({ type: "games", gameday });
+      } catch (error) {
+        setDayRequest({
+          status: "error",
+          message: messageOf(
+            error,
+            "Der Spieltag konnte nicht geöffnet werden. Bitte erneut versuchen.",
+          ),
+        });
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     if (gameLink === null || openedLink.current) {
       return;
@@ -316,13 +389,24 @@ function Flow() {
     void openGameLink(gameLink);
   }, [gameLink, openGameLink]);
 
+  useEffect(() => {
+    if (gamedayLink === null || openedDayLink.current) {
+      return;
+    }
+    openedDayLink.current = true;
+    void openGamedayLink(gamedayLink);
+  }, [gamedayLink, openGamedayLink]);
+
   /**
    * The address follows the screen: a game's own path while one is open, the
    * app root on the lists. The deep link's loading phase keeps its path — the
    * game id it was opened with must not be dropped before the game is there.
    */
   useEffect(() => {
-    if (state.phase === "gamedays" && linkRequest !== null) {
+    if (
+      (state.phase === "gamedays" || state.phase === "games") &&
+      (linkRequest !== null || dayRequest !== null)
+    ) {
       return;
     }
     const gameOpen =
@@ -331,12 +415,14 @@ function Flow() {
         state.phase === "tracking" ||
         state.phase === "finalize" ||
         state.phase === "result");
-    if (gameOpen) {
-      showGameUrl(state.game!.id);
+    if (gameOpen && state.gameday !== null) {
+      showGameUrl(state.gameday.id, state.game!.id);
+    } else if (state.phase === "games" && state.gameday !== null) {
+      showGamedayUrl(state.gameday.id);
     } else {
-      showListUrl();
+      showRootUrl();
     }
-  }, [state.phase, state.game, linkRequest]);
+  }, [state.phase, state.game, state.gameday, linkRequest, dayRequest]);
 
   const gamedayId = state.gameday?.id ?? null;
   const team = allGames ? "*" : user?.username?.trim() || "*";
@@ -497,6 +583,21 @@ function Flow() {
   };
 
   if (state.phase === "gamedays") {
+    if (dayRequest !== null) {
+      return (
+        <FlowPanel
+          error={dayRequest.status === "error" ? dayRequest.message : undefined}
+          loading={dayRequest.status === "loading"}
+          onLogout={doLogout}
+          onRetry={() => {
+            if (gamedayLink !== null) {
+              void openGamedayLink(gamedayLink);
+            }
+          }}
+          title="Spieltag wird geöffnet"
+        />
+      );
+    }
     if (linkRequest !== null) {
       return (
         <FlowPanel

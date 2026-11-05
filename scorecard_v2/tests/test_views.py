@@ -28,19 +28,31 @@ class TestScorecardV2View(WebTest):
         assert "/static/scorecard_v2/js/scorecard_v2.css" in response.text
         assert "csrftoken" in response.client.cookies
 
-    def test_a_game_path_serves_the_same_shell(self):
+    def test_a_gameday_and_a_game_path_serve_the_same_shell(self):
         user = User.objects.create_user("official", password="x")
         self.app.set_user(user)
 
-        response = self.app.get("/scorecard/v2/spiel/42/")
+        for path in (
+            "/scorecard/v2/gameday/7/",
+            "/scorecard/v2/gameday/7/game/42/",
+            "/scorecard/v2/spiel/42/",
+        ):
+            response = self.app.get(path)
+            assert 'id="scorecard-v2-app"' in response.text, path
 
-        assert 'id="scorecard-v2-app"' in response.text
+        assert reverse("scorecard-v2-gameday", kwargs={"gameday_pk": 7}) == (
+            "/scorecard/v2/gameday/7/"
+        )
+        assert (
+            reverse("scorecard-v2-gameday-game", kwargs={"gameday_pk": 7, "pk": 42})
+            == "/scorecard/v2/gameday/7/game/42/"
+        )
         assert reverse("scorecard-v2-game", kwargs={"pk": 42}) == (
             "/scorecard/v2/spiel/42/"
         )
 
     def test_a_game_path_redirects_an_anonymous_visitor(self):
-        response = self.app.get("/scorecard/v2/spiel/42/", status=302)
+        response = self.app.get("/scorecard/v2/gameday/7/game/42/", status=302)
 
         assert response.location.startswith(f"{reverse('login')}?next=")
 

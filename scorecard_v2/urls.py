@@ -4,9 +4,22 @@ from scorecard_v2.views import ScorecardV2View, ServiceWorkerView
 
 urlpatterns = [
     path("", ScorecardV2View.as_view(), name="scorecard-v2-home"),
-    # A game's own address: /scorecard/v2/spiel/<id>/ (the deep link the
-    # organisation keeps). The SPA reads the id from the path; the view is the
-    # same app shell, so a reload of the link works.
+    # The address of a gameday and of one of its games. English segments, and
+    # the gameday is part of the game's path, so a link says where it belongs:
+    # /scorecard/v2/gameday/<gameday>/game/<game>/. The SPA reads the ids from
+    # the path; the view is the same app shell, so a reload works.
+    path(
+        "gameday/<int:gameday_pk>/",
+        ScorecardV2View.as_view(),
+        name="scorecard-v2-gameday",
+    ),
+    path(
+        "gameday/<int:gameday_pk>/game/<int:pk>/",
+        ScorecardV2View.as_view(),
+        name="scorecard-v2-gameday-game",
+    ),
+    # The first address a game had; links already handed out keep working.
+    # The app rewrites the address to the gameday path once it knows it.
     path(
         "spiel/<int:pk>/",
         ScorecardV2View.as_view(),
