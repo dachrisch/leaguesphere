@@ -153,7 +153,9 @@ no reload.
    the yardage from the last spot, never closer than half the distance to
    either goal, restarts as `1st & G` when the result crosses midfield and
    otherwise applies `nextDown`. A later manually entered **Feldposition** row
-   always wins. A **disqualification** (`subtext` `Disqualifkation`) requires a
+   always wins the spot; as a correction it keeps the running down (only
+   reaching the line to gain, a new possession or a marker starts a fresh
+   series). A **disqualification** (`subtext` `Disqualifkation`) requires a
    jersey, so the sheet has no **Ganzes Team** tile for it; **Unsportliches
    Verhalten** tracks its numbers as optional free text (several numbers
    separated by comma or space). The sheet lists the charged team's earlier

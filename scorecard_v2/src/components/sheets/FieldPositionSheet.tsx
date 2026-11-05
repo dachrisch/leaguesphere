@@ -58,8 +58,9 @@ interface FieldPositionSheetProps {
  * Set the ball's spot: a kickoff, a turnover, a correction.
  *
  * A/B plus a yard number, in the language the officials use. The row it writes
- * is what the drive engine reads, so a reload keeps the spot. A spot before
- * the first entry is always A5.
+ * is what the drive engine reads — it moves the ball and keeps the running
+ * down — so a reload keeps the spot. A spot before the first entry is always
+ * A5.
  */
 export default function FieldPositionSheet({
   teamName,

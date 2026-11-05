@@ -64,7 +64,9 @@ wie die bisherige Scorecard
    automatisch disqualifiziert. Die Feldposition wird vom letzten Spot aus
    verschoben, höchstens bis zur halben Distanz zur Endzone; über die
    Mittellinie wird daraus **1st & G**. Eine später eingetragene
-   **Feldposition** gewinnt immer.
+   **Feldposition** gewinnt immer: Sie verschiebt nur den Ball und lässt den
+   laufenden Versuch stehen – **1st** gibt es erst, wenn die Mittellinie (in
+   Goal-to-go die Endzone) erreicht ist oder das Team wechselt.
 4. Das Pfeil-Symbol neben einem Eintrag im Spielverlauf (**Rückgängig**) nimmt
    ihn zurück, **Ändern** korrigiert ihn an Ort und Stelle (Trikotnummer, bei
    **Spielzeit** und **Auszeit** die Spielzeit); am großen Bildschirm geht das

@@ -12,10 +12,14 @@
  * goal line (`1st & G`) and the B yards count down to `B0`.
  *
  * The spot only changes when a play moves it or the officials set it (a
- * kickoff, a turnover) — a **Feldposition** row carries it. A penalty also
- * moves it: its structured `yardage` is applied to the current spot, never
- * closer than half the distance to either goal line, and a penalty that pushes
- * the ball across midfield starts a fresh `1st & G`.
+ * kickoff, a turnover, a correction) — a **Feldposition** row carries it. It
+ * moves the ball and keeps the current down: a correction mid-series must not
+ * hand out a fresh set of downs. A **1st** comes from reaching the line to
+ * gain (midfield, or the goal line in goal-to-go), a new possession or a
+ * marker. A penalty also moves the spot: its structured `yardage` is applied
+ * to the current spot, never closer than half the distance to either goal
+ * line, and a penalty that pushes the ball across midfield starts a fresh
+ * `1st & G`.
  */
 import type { LogRow } from "../components/EventLog";
 
@@ -144,6 +148,28 @@ export function advance(state: DriveState, yards: number): DriveState {
   };
 }
 
+/**
+ * The state after the officials set the spot (a **Feldposition** row).
+ *
+ * A set spot moves the ball — a kickoff, a turnover or, mid-series, a
+ * correction — and keeps the current down: only the line to gain follows the
+ * ball. Reaching that line is a first down, exactly as a play across it would
+ * be; a goal-to-go series keeps the goal line as its line to gain (mirroring
+ * {@link advance}), even when the ball is put back behind midfield.
+ */
+export function placeBall(state: DriveState, ballOn: number): DriveState {
+  const line = state.goal ? FIELD_LENGTH : MIDFIELD;
+  if (ballOn >= line) {
+    return seriesAt(ballOn);
+  }
+  return {
+    down: state.down,
+    toGo: line - ballOn,
+    ballOn,
+    goal: state.goal,
+  };
+}
+
 /** True when the play ends the series on downs. */
 export function isTurnoverOnDowns(state: DriveState, yards: number): boolean {
   if (state.down !== 4) {
@@ -237,7 +263,8 @@ export function penaltyOf(row: LogRow): PenaltySpot | null {
  * flip, a turnover, a failed fourth down, a manual switch), the new series
  * starts at A5. Markers do the same, and a deleted row does not count at all —
  * an undo rewinds the series. A penalty moves the spot and the down chain
- * without changing possession; a later **Feldposition** row always wins.
+ * without changing possession; a later **Feldposition** row always wins the
+ * spot — and, being a correction, keeps the down the log has reached so far.
  */
 export function driveAfter(rows: LogRow[]): DriveState {
   let state: DriveState = { ...FIRST_AND_TEN };
@@ -250,7 +277,7 @@ export function driveAfter(rows: LogRow[]): DriveState {
     if (row.event === FIELD_EVENT) {
       const ballOn = spotOf(row);
       if (ballOn !== null) {
-        state = seriesAt(ballOn);
+        state = placeBall(state, ballOn);
       }
       lastTeam = row.team;
       continue;

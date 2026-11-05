@@ -1200,6 +1200,46 @@ describe("Tracking play-by-play", () => {
     expect(await screen.findByText(/1st & M · A12/)).toBeInTheDocument();
   });
 
+  it("keeps the down when the field position is corrected", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    const log = makeLog({
+      inPossession: "Ravens",
+      events: [logEvent({ id: 1, event: "Run", payload: { yards: 5 } })],
+    });
+    // The server log after the correction: the new spot row on top.
+    answerAppend(
+      makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({
+            id: 2,
+            event: "Feldposition",
+            input: "A15",
+            payload: { ballOn: 15, input: "A15" },
+          }),
+          ...log.events,
+        ],
+      }),
+    );
+    renderTracking({ log });
+    const user = userEvent.setup();
+
+    expect(screen.getByText(/2nd & M · A10/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Feldposition" }));
+    const sheet = screen.getByRole("dialog", {
+      name: "Feldposition · Ravens",
+    });
+    const yards = within(sheet).getByRole("textbox", { name: /Yardlinie/ });
+    await user.clear(yards);
+    await user.type(yards, "15");
+    await user.click(
+      within(sheet).getByRole("button", { name: "Feldposition speichern" }),
+    );
+
+    // The spot moves, the series does not restart.
+    expect(await screen.findByText(/2nd & M · A15/)).toBeInTheDocument();
+  });
+
   it("shows goal-to-go once the ball is in B territory", () => {
     renderTracking({
       log: makeLog({

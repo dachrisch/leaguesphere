@@ -319,6 +319,50 @@ describe("driveAfter", () => {
     expect(drive).toEqual({ down: 2, toGo: 7, ballOn: 18, goal: false });
   });
 
+  it("moves the spot of a running series and keeps its down", () => {
+    // 2nd & M at A10, then the officials correct the spot to A15.
+    const drive = driveAfter([
+      row({ key: "spot", event: "Feldposition", payload: { ballOn: 15 } }),
+      run(5),
+    ]);
+
+    expect(drive).toEqual({ down: 2, toGo: 10, ballOn: 15, goal: false });
+  });
+
+  it("keeps the down even when the corrected spot goes backwards", () => {
+    // 4th & M at A10; the correction puts the ball back on A12.
+    const drive = driveAfter([
+      row({ key: "spot", event: "Feldposition", payload: { ballOn: 12 } }),
+      run(5),
+      run(0),
+      run(0),
+    ]);
+
+    expect(drive).toEqual({ down: 4, toGo: 13, ballOn: 12, goal: false });
+  });
+
+  it("starts a first down when the corrected spot reaches the line to gain", () => {
+    const drive = driveAfter([
+      row({ key: "spot", event: "Feldposition", payload: { ballOn: 25 } }),
+      run(5),
+    ]);
+
+    // 2nd & M at A10, corrected onto midfield: 1st & G.
+    expect(drive).toEqual({ down: 1, toGo: 25, ballOn: 25, goal: true });
+  });
+
+  it("keeps the goal-to-go line and the down for a spot inside B", () => {
+    const drive = driveAfter([
+      row({ key: "spot", event: "Feldposition", payload: { ballOn: 45 } }),
+      run(5),
+      run(30),
+    ]);
+
+    // A 30-yard run reaches B15 (1st & G), 5 more reach B10 (2nd & G); the
+    // correction to B5 must not grant a fresh series.
+    expect(drive).toEqual({ down: 2, toGo: 5, ballOn: 45, goal: true });
+  });
+
   it("applies a penalty row to the spot and the down", () => {
     const drive = driveAfter([penalty(5, "first_down"), run(3)]);
 
