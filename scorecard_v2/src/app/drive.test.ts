@@ -13,6 +13,7 @@ import {
   isTurnoverOnDowns,
   mirror,
   seriesAt,
+  seriesToGoal,
   spotText,
   yardsOf,
 } from "./drive";
@@ -88,15 +89,23 @@ describe("advance", () => {
     expect(driveText(advance(FIRST_AND_TEN, 7))).toBe("2nd & M");
   });
 
-  it("awards a first down when the play reaches midfield", () => {
-    expect(advance(FIRST_AND_TEN, 20)).toEqual({
-      down: 1,
-      toGo: 25,
+  it("awards a first down when the play is beyond midfield", () => {
+    // R 5-1-1a says *beyond* the middle, so 20 yards leave the series alive on
+    // the line and half a yard more starts the goal-to-go series.
+    expect(advance(FIRST_AND_TEN, 20)).toMatchObject({
+      down: 2,
+      toGo: 0,
       ballOn: 25,
+      goal: false,
+    });
+    expect(advance(FIRST_AND_TEN, 20.5)).toEqual({
+      down: 1,
+      toGo: 24.5,
+      ballOn: 25.5,
       goal: true,
     });
-    expect(driveText(advance(FIRST_AND_TEN, 20))).toBe("1st & G");
-    expect(spotText(advance(FIRST_AND_TEN, 20).ballOn)).toBe("M");
+    expect(driveText(advance(FIRST_AND_TEN, 20.5))).toBe("1st & G");
+    expect(spotText(advance(FIRST_AND_TEN, 20.5).ballOn)).toBe("B24,5");
   });
 
   it("crosses into B territory and counts the B yards down to the goal", () => {
@@ -134,8 +143,9 @@ describe("advance", () => {
     expect(advance({ down: 4, toGo: 5, ballOn: 20, goal: false }, 3)).toEqual(
       FIRST_AND_TEN,
     );
+    // exactly on the middle is not across it, so fourth down still fails
     expect(advance({ down: 4, toGo: 5, ballOn: 20, goal: false }, 5)).toEqual(
-      seriesAt(25),
+      FIRST_AND_TEN,
     );
     expect(advance({ down: 4, toGo: 8, ballOn: 42, goal: true }, 3)).toEqual(
       FIRST_AND_TEN,
@@ -157,8 +167,12 @@ describe("isTurnoverOnDowns", () => {
     expect(
       isTurnoverOnDowns({ down: 4, toGo: 5, ballOn: 20, goal: false }, 3),
     ).toBe(true);
+    // exactly on the middle is not beyond it, so this fourth down fails too
     expect(
       isTurnoverOnDowns({ down: 4, toGo: 5, ballOn: 20, goal: false }, 5),
+    ).toBe(true);
+    expect(
+      isTurnoverOnDowns({ down: 4, toGo: 5, ballOn: 20, goal: false }, 5.5),
     ).toBe(false);
     expect(
       isTurnoverOnDowns({ down: 3, toGo: 5, ballOn: 20, goal: false }, 3),
@@ -288,12 +302,16 @@ describe("driveAfter", () => {
     ).toEqual(FIRST_AND_TEN);
   });
 
-  it("starts over at half-time and overtime", () => {
-    for (const event of ["2. Halbzeit gestartet", "Overtime startet"]) {
-      expect(
-        driveAfter([row({ key: "m", event, team: null }), run(5)]),
-      ).toEqual(FIRST_AND_TEN);
-    }
+  it("starts over at half-time", () => {
+    expect(
+      driveAfter([row({ key: "m", event: "2. Halbzeit gestartet", team: null }), run(5)]),
+    ).toEqual(FIRST_AND_TEN);
+  });
+
+  it("starts overtime on the middle with the goal to gain", () => {
+    expect(
+      driveAfter([row({ key: "m", event: "Overtime startet", team: "Wolves" })]),
+    ).toEqual(seriesToGoal(25));
   });
 
   it("reads the yards from the structured payload", () => {
@@ -344,14 +362,20 @@ describe("driveAfter", () => {
     expect(drive).toEqual({ down: 4, toGo: 13, ballOn: 12, goal: false });
   });
 
-  it("starts a first down when the corrected spot reaches the line to gain", () => {
-    const drive = driveAfter([
+  it("starts a first down when the corrected spot is beyond the line to gain", () => {
+    const onTheLine = driveAfter([
       row({ key: "spot", event: "Feldposition", payload: { ballOn: 25 } }),
       run(5),
     ]);
+    const beyond = driveAfter([
+      row({ key: "spot", event: "Feldposition", payload: { ballOn: 25.5 } }),
+      run(5),
+    ]);
 
-    // 2nd & M at A10, corrected onto midfield: 1st & G.
-    expect(drive).toEqual({ down: 1, toGo: 25, ballOn: 25, goal: true });
+    // 2nd & M at A10, corrected exactly onto midfield: the down and the goal
+    // are unchanged (R 5-1-1a "beyond"), half a yard further is 1st & G.
+    expect(onTheLine).toEqual({ down: 2, toGo: 0, ballOn: 25, goal: false });
+    expect(beyond).toEqual({ down: 1, toGo: 24.5, ballOn: 25.5, goal: true });
   });
 
   it("keeps the goal-to-go line and the down for a spot inside B", () => {
@@ -481,5 +505,95 @@ describe("a definition that is not a definition", () => {
     expect(geometryOf(garbage)).toEqual(DEFAULT_GEOMETRY);
     // the middle must be half the field
     expect(geometryOf(halfField)).toEqual(DEFAULT_GEOMETRY);
+  });
+});
+
+describe("R 3-1-3c: overtime starts at the middle, goal to go", () => {
+  it("starts the series on M with four downs to score", () => {
+    // newest first, like the log hands them over
+    const state = driveAfter([
+      row({ event: "Overtime startet", team: "Wolves" }),
+      row({ event: "Touchdown", team: "Ravens" }),
+    ]);
+
+    expect(state).toEqual({ down: 1, toGo: 25, ballOn: 25, goal: true });
+  });
+
+  it("does not award a new series when a play crosses the middle", () => {
+    const state = driveAfter([
+      row({ event: "Run", team: "Wolves", payload: { yards: 3 } }),
+      row({ event: "Overtime startet", team: "Wolves" }),
+    ]);
+
+    expect(state).toMatchObject({ down: 2, goal: true, ballOn: 28 });
+  });
+});
+
+describe("R 5-1-1: an interception starts at the dead-ball spot", () => {
+  it("uses the spot the sheet recorded", () => {
+    const state = driveAfter([
+      row({
+        event: "Interception",
+        team: "Wolves",
+        payload: { deadBall: 30 },
+      }),
+      row({ event: "Pass", team: "Ravens", payload: { yards: 5 } }),
+    ]);
+
+    expect(state).toEqual({ down: 1, toGo: 20, ballOn: 30, goal: true });
+  });
+
+  it("falls back to the own 5 for a row without a spot (a touchback)", () => {
+    const state = driveAfter([
+      row({ event: "Interception", team: "Wolves", payload: null }),
+      row({ event: "Pass", team: "Ravens", payload: { yards: 5 } }),
+    ]);
+
+    expect(state).toEqual(FIRST_AND_TEN);
+  });
+});
+
+describe("a tapped First Down resets the series", () => {
+  it("moves the down back to one on the current spot", () => {
+    const state = driveAfter([
+      row({ event: "First Down", team: "Ravens" }),
+      row({ event: "Run", team: "Ravens", payload: { yards: 3 } }),
+      row({ event: "Run", team: "Ravens", payload: { yards: 3 } }),
+    ]);
+
+    expect(state).toMatchObject({ down: 1, ballOn: 11, goal: false });
+  });
+
+  it("does nothing when the row was undone", () => {
+    const state = driveAfter([
+      row({ event: "First Down", team: "Ravens", isDeleted: true }),
+      row({ event: "Run", team: "Ravens", payload: { yards: 3 } }),
+    ]);
+
+    expect(state).toMatchObject({ down: 2, ballOn: 8 });
+  });
+});
+
+describe('R 5-1-1a: "beyond the middle" is strict', () => {
+  it("a spot exactly on the middle is not across it", () => {
+    const onTheLine = advance(seriesAt(20), 5);
+
+    expect(onTheLine).toMatchObject({ down: 2, ballOn: 25, goal: false });
+    expect(onTheLine.toGo).toBe(0);
+  });
+
+  it("half a yard further is a new series", () => {
+    const past = advance(seriesAt(25), 0.5);
+
+    expect(past).toMatchObject({ down: 1, ballOn: 25.5, goal: true });
+  });
+
+  it("a penalty that lands exactly on the middle keeps the series", () => {
+    const state = applyPenalty(
+      { down: 2, toGo: 10, ballOn: 20, goal: false },
+      5,
+    );
+
+    expect(state).toMatchObject({ down: 2, ballOn: 25, goal: false });
   });
 });
