@@ -27,3 +27,4 @@ This directory tracks project plans and completed work. Plans use YYYY-MM-DD-nam
 
 When a plan is complete, move it from `current/` to `history/`.
 - [2026-10-28 Scorecard — Event Architecture](./current/2026-10-28-scorecard-event-architecture.md): recording separated from meaning — the app appends sport-neutral events, the server owns the store, the projection and the channels; slice 1 = event store + projection feed + liveticker
+- [2026-11-05 Scorecard v2 Offline Scenarios](./current/2026-11-05-scorecard-offline-scenarios.md): two real phones, offline queues, hard kills, take-over and late returns — what the app does today, and the evidence for the Q4 take-over decision
