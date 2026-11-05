@@ -4,14 +4,19 @@ import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 import { ApiError, apiGet } from "../../api/client";
 import type { GameLogEventInput, Penalty, RosterPlayer } from "../../api/types";
+import type { LogRow } from "../EventLog";
 import PenaltySheet, {
   filterPenalties,
+  numbersFromText,
   orderPenalties,
   PENALTY_PAGE,
   penaltyEvent,
+  penaltyKind,
   penaltyNextDown,
   penaltyTeam,
   penaltyYardage,
+  type UnsportsmanlikeRecord,
+  unsportsmanlikeRecord,
 } from "./PenaltySheet";
 
 vi.mock("../../api/client", async (importOriginal) => {
@@ -43,6 +48,26 @@ interface RenderOptions {
   onSubmit?: Submit;
   roster?: RosterPlayer[] | null;
   penalties?: Penalty[];
+  history?: UnsportsmanlikeRecord[];
+}
+
+function logRow(overrides: Partial<LogRow> = {}): LogRow {
+  return {
+    key: "e1",
+    teamLogId: 1,
+    seq: 1,
+    sequence: 1,
+    team: "Ravens",
+    event: "Strafe",
+    player: null,
+    input: "Unsportliches Verhalten Offense",
+    half: 1,
+    cop: false,
+    isDeleted: false,
+    time: "2026-11-05T10:00:00Z",
+    payload: null,
+    ...overrides,
+  };
 }
 
 function renderSheet(options: RenderOptions = {}) {
@@ -53,6 +78,7 @@ function renderSheet(options: RenderOptions = {}) {
   const onClose = vi.fn();
   render(
     <PenaltySheet
+      history={options.history}
       onClose={onClose}
       onSubmit={submit}
       opponentName="Wolves"
@@ -66,7 +92,7 @@ function renderSheet(options: RenderOptions = {}) {
 
 function saveButton(): HTMLElement {
   return screen.getByRole("button", {
-    name: /^(Speichern|Speichern …|Strafe wählen|Team wählen)$/,
+    name: /^(Speichern|Speichern …|Strafe wählen|Team wählen|Nummer wählen)$/,
   });
 }
 
@@ -141,6 +167,70 @@ describe("PenaltySheet helpers", () => {
     expect(penaltyNextDown(penalty("SL/5"))).toBe("repeat");
     expect(penaltyYardage(penalty("Disqualifkation"))).toBe(0);
     expect(penaltyNextDown(penalty("Disqualifkation"))).toBe("repeat");
+  });
+
+  it("classifies disqualification, UNV and ordinary penalties", () => {
+    const penalty = (name: string, subtext: string): Penalty => ({
+      name,
+      subtext,
+      isPenaltyAgainstOpponent: false,
+    });
+
+    expect(
+      penaltyKind(penalty("Unsportliches Verhalten Offense", "DB/10 Notiz")),
+    ).toBe("unsportsmanlike");
+    expect(
+      penaltyKind(
+        penalty("Grob unsportliches Verhalten Offense", "Disqualifkation"),
+      ),
+    ).toBe("disqualification");
+    expect(penaltyKind(penalty("Fehlstart", "DB/5"))).toBe("normal");
+  });
+
+  it("reads jersey numbers from a free-text UNV note", () => {
+    expect(numbersFromText("12, 7 23")).toEqual([12, 7, 23]);
+    expect(numbersFromText("12, 12")).toEqual([12]);
+    expect(numbersFromText("123 5")).toEqual([5]);
+    expect(numbersFromText("")).toEqual([]);
+  });
+
+  it("turns an UNV row into the history the sheet shows", () => {
+    expect(
+      unsportsmanlikeRecord(
+        logRow({
+          payload: { unsportsmanlike: "12, 7" },
+        }),
+      ),
+    ).toEqual({ team: "Ravens", half: 1, text: "12, 7", numbers: [12, 7] });
+
+    // A row written by the previous build carries one jersey, not the note.
+    expect(
+      unsportsmanlikeRecord(logRow({ player: 9, payload: null })),
+    ).toEqual({ team: "Ravens", half: 1, text: "9", numbers: [9] });
+
+    expect(
+      unsportsmanlikeRecord(
+        logRow({ input: "Grob unsportliches Verhalten Offense" }),
+      ),
+    ).toBeNull();
+    expect(unsportsmanlikeRecord(logRow({ isDeleted: true }))).toBeNull();
+    expect(
+      unsportsmanlikeRecord(logRow({ event: "Fehlstart" })),
+    ).toBeNull();
+  });
+
+  it("keeps a free-text UNV note in the event payload", () => {
+    expect(
+      penaltyEvent("Unsportliches Verhalten Offense", null, -10, "repeat", "12, 7"),
+    ).toEqual({
+      name: "Strafe",
+      input: "Unsportliches Verhalten Offense",
+      payload: {
+        yardage: -10,
+        nextDown: "repeat",
+        unsportsmanlike: "12, 7",
+      },
+    });
   });
 
   it("keeps the first five penalties in order and sorts the rest", () => {
@@ -441,6 +531,155 @@ describe("PenaltySheet", () => {
         },
       ],
       "Ravens",
+    );
+  });
+
+  it("requires a jersey for a disqualification", async () => {
+    const { onSubmit } = renderSheet({
+      penalties: [
+        {
+          name: "Grob unsportliches Verhalten Offense",
+          subtext: "Disqualifkation",
+          isPenaltyAgainstOpponent: false,
+        },
+      ],
+    });
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Grob unsportliches Verhalten Offense/,
+      }),
+    );
+
+    expect(saveButton()).toBeDisabled();
+    expect(saveButton()).toHaveTextContent("Nummer wählen");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Bei einer Disqualifikation ist die Trikotnummer Pflicht.",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Trikot 23, Schulz" }));
+    expect(saveButton()).toBeEnabled();
+    await user.click(saveButton());
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      [
+        {
+          name: "Strafe",
+          player: 23,
+          input: "Grob unsportliches Verhalten Offense",
+          payload: { yardage: 0, nextDown: "repeat" },
+        },
+      ],
+      "Ravens",
+    );
+  });
+
+  it("tracks the numbers of an unsportsmanlike conduct as free text", async () => {
+    const { onSubmit } = renderSheet({
+      penalties: [
+        {
+          name: "Unsportliches Verhalten Offense",
+          subtext: "DB/10 Notiz",
+          isPenaltyAgainstOpponent: false,
+        },
+      ],
+    });
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Unsportliches Verhalten Offense/,
+      }),
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Nummern als Freitext" }),
+      "12, 7",
+    );
+    await user.click(saveButton());
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      [
+        {
+          name: "Strafe",
+          input: "Unsportliches Verhalten Offense",
+          payload: {
+            yardage: -10,
+            nextDown: "repeat",
+            unsportsmanlike: "12, 7",
+          },
+        },
+      ],
+      "Ravens",
+    );
+  });
+
+  it("keeps the UNV numbers optional", async () => {
+    const { onSubmit } = renderSheet({
+      penalties: [
+        {
+          name: "Unsportliches Verhalten Offense",
+          subtext: "DB/10 Notiz",
+          isPenaltyAgainstOpponent: false,
+        },
+      ],
+    });
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Unsportliches Verhalten Offense/,
+      }),
+    );
+    await user.click(saveButton());
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      [
+        {
+          name: "Strafe",
+          input: "Unsportliches Verhalten Offense",
+          payload: { yardage: -10, nextDown: "repeat" },
+        },
+      ],
+      "Ravens",
+    );
+  });
+
+  it("shows the team's earlier UNV and warns about the second one", async () => {
+    renderSheet({
+      penalties: [
+        {
+          name: "Unsportliches Verhalten Offense",
+          subtext: "DB/10 Notiz",
+          isPenaltyAgainstOpponent: false,
+        },
+      ],
+      history: [{ team: "Ravens", half: 1, text: "12", numbers: [12] }],
+    });
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Unsportliches Verhalten Offense/,
+      }),
+    );
+
+    expect(screen.getByText("Bisher für Ravens")).toBeInTheDocument();
+    expect(screen.getByText(/Halbzeit 1: Nr\. 12/)).toBeInTheDocument();
+
+    await user.type(
+      screen.getByRole("textbox", { name: "Nummern als Freitext" }),
+      "12",
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Nr. 12 hat bereits 1 UNV",
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "dieser Eintrag wäre der 2.",
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "automatisch disqualifiziert",
     );
   });
 

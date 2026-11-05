@@ -400,12 +400,21 @@ export function describeRow(row: LogRow): Described {
         secondary: join(points, jerseyText(row.player)),
       };
     }
-    case "Strafe":
+    case "Strafe": {
+      const unsportsmanlike =
+        typeof row.payload?.unsportsmanlike === "string"
+          ? row.payload.unsportsmanlike.trim()
+          : "";
       return {
         kind: "pen",
         primary: `Strafe gegen ${team}`,
-        secondary: join(row.input, jerseyText(row.player)),
+        secondary: join(
+          row.input,
+          unsportsmanlike === "" ? null : `Nr. ${unsportsmanlike}`,
+          jerseyText(row.player),
+        ),
       };
+    }
     case "Auszeit":
       return {
         kind: "to",

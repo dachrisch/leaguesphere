@@ -153,9 +153,14 @@ no reload.
    the yardage from the last spot, never closer than half the distance to
    either goal, restarts as `1st & G` when the result crosses midfield and
    otherwise applies `nextDown`. A later manually entered **Feldposition** row
-   always wins. There is no kickoff/punt automation — the officials set the
-   spot. The state is recomputed from the rows, so an undo rewinds it; the
-   play's row text carries the resulting down for the ticker.
+   always wins. A **disqualification** (`subtext` `Disqualifkation`) requires a
+   jersey, so the sheet has no **Ganzes Team** tile for it; **Unsportliches
+   Verhalten** tracks its numbers as optional free text (several numbers
+   separated by comma or space). The sheet lists the charged team's earlier
+   UNV and warns when the current note makes it the second UNV for a number.
+   There is no kickoff/punt automation — the officials set the spot. The state
+   is recomputed from the rows, so an undo rewinds it; the play's row text
+   carries the resulting down for the ticker.
    Touchdown with the roster's jerseys (a tile grid up to 24 players, a
    two-digit keypad above that with the roster name as confirmation; numeric
    field when there is no roster; this game's scorers as a shortcut row above

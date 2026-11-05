@@ -243,7 +243,9 @@ export interface GameLogEvent {
    *
    * A `Strafe` row carries `yardage` (signed from the offence's view) and
    * `nextDown` (`repeat` | `first_down` | `loss_of_down`); the drive engine
-   * applies both to the spot.
+   * applies both to the spot. An unsportsmanlike-conduct row may also carry
+   * `unsportsmanlike` (the free-text jersey number list); a disqualification
+   * names the player in `player`.
    */
   payload?: Record<string, unknown> | null;
   half: number;

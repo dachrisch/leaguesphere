@@ -63,7 +63,10 @@ import {
   type IconProps,
 } from "../components/icons";
 import MoreSheet, { type MoreMode } from "../components/sheets/MoreSheet";
-import PenaltySheet from "../components/sheets/PenaltySheet";
+import PenaltySheet, {
+  type UnsportsmanlikeRecord,
+  unsportsmanlikeRecord,
+} from "../components/sheets/PenaltySheet";
 import SeriesSheet, {
   seriesEvent,
   type SeriesMode,
@@ -620,6 +623,19 @@ export default function TrackingScreen({
           half: row.half,
           time: row.input ?? "–",
         })),
+    [rows],
+  );
+  /**
+   * Every UNV still on the board. The penalty sheet shows the charged team's
+   * entries and warns when the current call is the second UNV for a number.
+   */
+  const unsportsmanlike = useMemo(
+    () =>
+      rows
+        .map(unsportsmanlikeRecord)
+        .filter(
+          (entry): entry is UnsportsmanlikeRecord => entry !== null,
+        ),
     [rows],
   );
   const finished = game.status.trim().toLowerCase() === "beendet";
@@ -1878,6 +1894,7 @@ export default function TrackingScreen({
           )
         ) : sheet.kind === "penalty" ? (
           <PenaltySheet
+            history={unsportsmanlike}
             onClose={() => setSheet(null)}
             onSubmit={submit}
             opponentName={opponentName ?? ""}

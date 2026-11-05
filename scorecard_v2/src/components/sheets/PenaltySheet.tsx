@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { GameLogEventInput, Penalty, RosterPlayer } from "../../api/types";
 import type { PenaltyNextDown } from "../../app/drive";
 import { cachedGet, snapshotKey } from "../../offline/snapshot";
+import type { LogRow } from "../EventLog";
 import JerseyPicker, { jerseyOptions } from "../JerseyPicker";
 import { errorMessage } from "./errors";
 import Sheet from "./Sheet";
@@ -98,23 +99,104 @@ export function penaltyNextDown(penalty: Penalty): PenaltyNextDown {
 }
 
 /**
+ * What the entry needs beyond the penalty itself.
+ *
+ * A disqualification (`subtext`/name) must name the player. Unsportsmanlike
+ * conduct tracks the numbers as free text because one call can name several
+ * people; two UNV against the same number disqualify that person.
+ */
+export type PenaltyKind = "normal" | "unsportsmanlike" | "disqualification";
+
+export function penaltyKind(penalty: Penalty): PenaltyKind {
+  const text = `${penalty.name} ${penalty.subtext}`.toLowerCase();
+  if (text.includes("disqualif")) {
+    return "disqualification";
+  }
+  if (text.includes("unsportliches verhalten") && !text.includes("grob")) {
+    return "unsportsmanlike";
+  }
+  return "normal";
+}
+
+/** One recorded UNV, as the sheet shows it before the next call. */
+export interface UnsportsmanlikeRecord {
+  team: string | null;
+  half: number;
+  /** The free text exactly as entered, or the old single jersey. */
+  text: string;
+  numbers: number[];
+}
+
+/** Every two-digit number in a free-text UNV note, unique and in order. */
+export function numbersFromText(text: string): number[] {
+  const numbers: number[] = [];
+  for (const match of text.matchAll(/\d+/g)) {
+    const number = Number(match[0]);
+    if (number >= 0 && number <= 99 && !numbers.includes(number)) {
+      numbers.push(number);
+    }
+  }
+  return numbers;
+}
+
+function isUnsportsmanlikeName(name: string | null): boolean {
+  if (name === null) {
+    return false;
+  }
+  const text = name.toLowerCase();
+  return text.includes("unsportliches verhalten") && !text.includes("grob");
+}
+
+/**
+ * A `Strafe` row as one UNV record, or `null` for every other row.
+ *
+ * The old app stored a single `player`; newer rows carry the free text in
+ * `payload.unsportsmanlike`. Reading both keeps a game that was started on the
+ * previous build usable after the update.
+ */
+export function unsportsmanlikeRecord(row: LogRow): UnsportsmanlikeRecord | null {
+  if (row.isDeleted || row.event !== "Strafe" || !isUnsportsmanlikeName(row.input)) {
+    return null;
+  }
+  const raw = row.payload?.unsportsmanlike;
+  const text =
+    typeof raw === "string"
+      ? raw.trim()
+      : row.player === null
+        ? ""
+        : String(row.player);
+  return {
+    team: row.team,
+    half: row.half,
+    text,
+    numbers: numbersFromText(text),
+  };
+}
+
+/**
  * Payload of one penalty: the event name is always `Strafe`, the picked
  * penalty travels as `input`, and the jersey is optional ("ganzes Team").
  *
  * `yardage` is signed from the offence's view and `nextDown` is one of
  * `repeat`, `first_down` or `loss_of_down`; the drive engine reads both.
+ * `unsportsmanlike` is the optional free-text number list of one UNV entry.
  */
 export function penaltyEvent(
   name: string,
   jersey: number | null,
   yardage: number,
   nextDown: PenaltyNextDown,
+  unsportsmanlike = "",
 ): GameLogEventInput {
   const event: GameLogEventInput = {
     name: "Strafe",
     input: name,
     payload: { yardage, nextDown },
   };
+  const note = unsportsmanlike.trim();
+  if (note !== "") {
+    (event.payload as Record<string, unknown>).unsportsmanlike = note;
+  }
   if (jersey !== null) {
     event.player = jersey;
   }
@@ -133,6 +215,12 @@ interface PenaltySheetProps {
    * request is still running. The jersey chips follow the **picked** team.
    */
   roster: RosterPlayer[] | null;
+  /**
+   * Every UNV already on the board, both teams. The sheet filters it to the
+   * team the new penalty is charged to and warns when that call is the second
+   * UNV for a number.
+   */
+  history?: UnsportsmanlikeRecord[];
   /**
    * Writes the event for the picked team and resolves once the server
    * answered. Rejects on failure — the sheet stays open and shows the message.
@@ -171,6 +259,7 @@ export default function PenaltySheet({
   opponentName,
   side,
   roster,
+  history = [],
   onSubmit,
   onClose,
 }: PenaltySheetProps) {
@@ -187,6 +276,7 @@ export default function PenaltySheet({
   const [yardageLoss, setYardageLoss] = useState(false);
   const [nextDown, setNextDown] = useState<PenaltyNextDown>("repeat");
   const [jersey, setJersey] = useState<number | null>(null);
+  const [unsportsmanlike, setUnsportsmanlike] = useState("");
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // See TouchdownSheet: two synchronous taps must not both reach onSubmit.
@@ -240,8 +330,25 @@ export default function PenaltySheet({
       : roster.filter((player) => player.side === jerseySide);
   const options = jerseyOptions(players);
 
+  const kind = selected === null ? "normal" : penaltyKind(selected);
+  const missingJersey = kind === "disqualification" && jersey === null;
+  const teamHistory =
+    team === null ? [] : history.filter((entry) => entry.team === team);
+  const currentNumbers = numbersFromText(unsportsmanlike);
+  const repeatedUnsportsmanlike = currentNumbers
+    .map((number) => ({
+      number,
+      prior: teamHistory.filter((entry) => entry.numbers.includes(number))
+        .length,
+    }))
+    .filter((entry) => entry.prior > 0);
+
   const ready =
-    team !== null && selected !== null && yardage !== null && !posting;
+    team !== null &&
+    selected !== null &&
+    yardage !== null &&
+    !missingJersey &&
+    !posting;
 
   const pickTeam = (name: string): void => {
     setTeam(name);
@@ -267,6 +374,7 @@ export default function PenaltySheet({
     // The roster changed with the team the flag implies; a number meant for
     // the other side must not survive.
     setJersey(null);
+    setUnsportsmanlike("");
     const suggested = penaltyYardage(penalty);
     setYardageText(String(Math.abs(suggested)));
     setYardageLoss(suggested < 0);
@@ -293,7 +401,15 @@ export default function PenaltySheet({
     setError(null);
     try {
       await onSubmit(
-        [penaltyEvent(selected.name, jersey, yardage, nextDown)],
+        [
+          penaltyEvent(
+            selected.name,
+            jersey,
+            yardage,
+            nextDown,
+            kind === "unsportsmanlike" ? unsportsmanlike : "",
+          ),
+        ],
         team,
       );
       onClose();
@@ -326,7 +442,9 @@ export default function PenaltySheet({
               ? "Strafe wählen"
               : team === null
                 ? "Team wählen"
-                : "Speichern"}
+                : missingJersey
+                  ? "Nummer wählen"
+                  : "Speichern"}
         </button>
       }
       onClose={onClose}
@@ -465,25 +583,98 @@ export default function PenaltySheet({
         ))}
       </div>
 
-      <h3 className="sheetsection">Trikotnummer (optional)</h3>
-      {roster === null ? (
-        <p className="sheetnote" role="status">
-          Kader lädt …
-        </p>
-      ) : options.length === 0 ? (
-        <p className="sheetnote">
-          Kein Kader geladen – die Strafe wird für das ganze Team gespeichert.
-        </p>
+      {kind === "unsportsmanlike" ? (
+        <>
+          <h3 className="sheetsection">Trikotnummer(n) (optional)</h3>
+          <div className="sheetfield">
+            <label className="sheetlabel" htmlFor="penalty-unsportsmanlike">
+              Nummern als Freitext
+            </label>
+            <input
+              autoComplete="off"
+              className="sheetinput"
+              disabled={posting}
+              id="penalty-unsportsmanlike"
+              onChange={(event) => setUnsportsmanlike(event.target.value)}
+              placeholder="z. B. 12, 7 oder 12 7"
+              type="text"
+              value={unsportsmanlike}
+            />
+          </div>
+          <p className="sheetnote">
+            Mehrere Nummern mit Komma oder Leerzeichen. Zwei UNV derselben
+            Nummer bedeuten automatisch Disqualifikation.
+          </p>
+          {team === null ? null : teamHistory.length === 0 ? (
+            <p className="sheetnote">
+              Noch kein Unsportliches Verhalten für {team} erfasst.
+            </p>
+          ) : (
+            <div className="unsportlist">
+              <h4 className="unsportlist-title">Bisher für {team}</h4>
+              <ul>
+                {teamHistory.map((entry, index) => (
+                  <li key={`${entry.half}-${index}`}>
+                    Halbzeit {entry.half}:{" "}
+                    {entry.text === "" ? "ohne Nummer" : `Nr. ${entry.text}`}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {repeatedUnsportsmanlike.length === 0 ? null : (
+            <p className="sheetwarn" role="alert">
+              {repeatedUnsportsmanlike
+                .map(
+                  (entry) =>
+                    `Nr. ${entry.number} hat bereits ${entry.prior} UNV – dieser Eintrag wäre der ${entry.prior + 1}.`,
+                )
+                .join(" ")}{" "}
+              Damit ist die Person automatisch disqualifiziert.
+            </p>
+          )}
+        </>
       ) : (
-        <JerseyPicker
-          disabled={posting}
-          groupLabel="Trikotnummer (optional)"
-          label="Trikot"
-          onChange={setJersey}
-          optionalLabel="Ganzes Team"
-          players={players}
-          value={jersey}
-        />
+        <>
+          <h3 className="sheetsection">
+            {kind === "disqualification"
+              ? "Trikotnummer (Pflicht)"
+              : "Trikotnummer (optional)"}
+          </h3>
+          {missingJersey ? (
+            <p className="sheetwarn" role="alert">
+              Bei einer Disqualifikation ist die Trikotnummer Pflicht.
+            </p>
+          ) : null}
+          {roster === null && kind !== "disqualification" ? (
+            <p className="sheetnote" role="status">
+              Kader lädt …
+            </p>
+          ) : roster !== null &&
+            options.length === 0 &&
+            kind !== "disqualification" ? (
+            <p className="sheetnote">
+              Kein Kader geladen – die Strafe wird für das ganze Team
+              gespeichert.
+            </p>
+          ) : (
+            <JerseyPicker
+              disabled={posting}
+              groupLabel={
+                kind === "disqualification"
+                  ? "Trikotnummer (Pflicht)"
+                  : "Trikotnummer (optional)"
+              }
+              label="Trikot"
+              onChange={setJersey}
+              optionalLabel={
+                kind === "disqualification" ? undefined : "Ganzes Team"
+              }
+              players={players}
+              value={jersey}
+            />
+          )}
+        </>
       )}
 
       <p className="sheetnote">
@@ -491,6 +682,10 @@ export default function PenaltySheet({
           ? "Strafe auswählen."
           : `${selected.name} · gegen ${team ?? "–"} · ${yardage ?? 0} Yards · ${
               NEXT_DOWN_LABELS[nextDown]
+            }${
+              kind === "unsportsmanlike" && unsportsmanlike.trim() !== ""
+                ? ` · Nr. ${unsportsmanlike.trim()}`
+                : ""
             }`}
       </p>
     </Sheet>

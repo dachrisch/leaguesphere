@@ -2802,6 +2802,39 @@ describe("Tracking penalties", () => {
       "Strafe gespeichert · Holding Defense",
     );
   });
+
+  it("shows the earlier UNV of the charged team in the penalty sheet", async () => {
+    const unsportsmanlike: Penalty = {
+      name: "Unsportliches Verhalten Offense",
+      subtext: "DB/10 Notiz",
+      isPenaltyAgainstOpponent: false,
+    };
+    const log = makeLog({
+      inPossession: "Ravens",
+      events: [
+        logEvent({
+          id: 1,
+          event: "Strafe",
+          input: unsportsmanlike.name,
+          payload: { unsportsmanlike: "12" },
+        }),
+      ],
+    });
+    routeGets({ penalties: [unsportsmanlike] });
+    answerAppend(log);
+    renderTracking({ log });
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Strafe$/);
+    await user.click(
+      await screen.findByRole("button", {
+        name: /^Unsportliches Verhalten Offense/,
+      }),
+    );
+
+    expect(screen.getByText("Bisher für Ravens")).toBeInTheDocument();
+    expect(screen.getByText(/Halbzeit 1: Nr\. 12/)).toBeInTheDocument();
+  });
 });
 
 describe("Tracking safety and overtime", () => {
