@@ -964,84 +964,26 @@ class Phone:
                 timeout=20000,
             )
 
-    def interception(
-        self,
-        jersey: int,
-        *,
-        spot: int | None = None,
-        side: str = "A",
-        return_yards: int | None = None,
-        wait: bool = True,
-    ) -> None:
-        """Take the ball with one interception entry, spot included.
+    def timeout(self, team: str, *, wait: bool = True) -> None:
+        """Take one team's timeout where the team is.
 
-        The sheet asks for the defender, where the return ended and — only for
-        the statistics — the return yards (2026-11-05, 47:15-49:03). `spot` is
-        the yard line on `side` (`A` own half, `B` the opponent's).
+        Since 2026-11-05 (57:33-59:08) each team row carries its own timeout
+        button; either team's is one tap regardless of possession, and no clock
+        is asked.
         """
 
         page = self._require_page()
-        before = self._row_count(INTERCEPTION_ROW_JS)
-        tile = page.get_by_role("button", name="Interception", exact=True)
-        expect(tile).to_be_enabled(timeout=20000)
-        tile.click()
-        sheet = page.get_by_role("dialog", name="Interception")
-        expect(sheet).to_be_visible(timeout=20000)
-        number = sheet.get_by_role(
-            "textbox", name=re.compile(r"^Trikotnummer Verteidiger")
+        button = page.get_by_role("button", name=f"Auszeit {team}", exact=True)
+        expect(button).to_be_enabled(timeout=20000)
+        before = self._row_count(
+            "() => [...document.querySelectorAll('.logrows .rowprimary')]"
+            ".filter((el) => el.textContent.trim().startsWith('Auszeit ')).length"
         )
-        expect(number).to_be_visible(timeout=10000)
-        number.fill(str(jersey))
-        if spot is not None:
-            sheet.get_by_role(
-                "button", name=re.compile(rf"^{side} · "), exact=False
-            ).click()
-            line = sheet.get_by_role(
-                "textbox", name=re.compile(r"^Yardlinie, wo der Return endete")
-            )
-            line.fill(str(spot))
-        if return_yards is not None:
-            returned = sheet.get_by_role(
-                "textbox", name=re.compile(r"^Return-Yards")
-            )
-            returned.fill(str(return_yards))
-        sheet.get_by_role("button", name="Speichern", exact=True).click()
+        button.click()
         if wait:
             page.wait_for_function(
                 "expected => [...document.querySelectorAll('.logrows .rowprimary')]"
-                ".filter((el) => el.textContent.trim().startsWith('Interception '))"
-                ".length >= expected",
-                arg=before + 1,
-                timeout=20000,
-            )
-
-    def run_touchdown(self, yards: int, *, wait: bool = True) -> None:
-        """Score a run through the play sheet, then miss the try.
-
-        The touchdown is the play's result since 2026-11-05 (53:05): one entry
-        writes the run and its touchdown, and the try is still asked after it.
-        """
-
-        page = self._require_page()
-        before = self._row_count(TOUCHDOWN_ROW_JS)
-        entry = page.get_by_role("button", name="Spielzug (Pass/Run/Sack)")
-        expect(entry).to_be_enabled(timeout=20000)
-        entry.click()
-        sheet = page.get_by_role("dialog", name=re.compile(r"^Spielzug · "))
-        expect(sheet).to_be_visible(timeout=20000)
-        sheet.get_by_role("button", name="Run", exact=True).click()
-        distance = sheet.get_by_role("textbox", name=re.compile(r"^Raumgewinn"))
-        distance.fill(str(yards))
-        sheet.get_by_role("button", name="Touchdown", exact=True).click()
-        sheet.get_by_role("button", name="Spielzug speichern").click()
-
-        pat = page.get_by_role("group", name=re.compile(r"^Extrapunkt "))
-        expect(pat).to_be_visible(timeout=20000)
-        pat.get_by_role("button", name="nicht verwandelt", exact=True).click()
-        if wait:
-            page.wait_for_function(
-                "expected => [...document.querySelectorAll('.logrows .rowprimary')]"
-                ".filter((el) => el.textContent.trim().startsWith('Touchdown '))"
+                ".filter((el) => el.textContent.trim().startsWith('Auszeit '))"
                 ".length >= expected",
                 arg=before + 1,
                 timeout=20000,
