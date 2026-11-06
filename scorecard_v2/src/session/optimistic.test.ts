@@ -601,3 +601,35 @@ describe("overtime entries", () => {
     expect(shown.home.score).toBe(6);
   });
 });
+
+describe("envelopes without a period", () => {
+  it("fall back to the first half instead of dropping the entry", () => {
+    // A possession or correction op carries no period; the row still belongs
+    // to the half the screen is in rather than to none.
+    const { log: shown } = replayOps(log(), [
+      // an envelope from a client that did not send `period`
+      play([{ type: "score", code: "touchdown", side: "home" }]),
+    ]);
+
+    expect(shown.events?.length).toBe(1);
+    expect(shown.events?.[0].half).toBe(1);
+    expect(shown.home.score).toBe(6);
+  });
+
+  it("read a legacy op's missing half as the first half", () => {
+    const ops = envelopesOf(
+      {
+        kind: "event",
+        payload: {
+          team: "Ravens",
+          // a queued write from before the half field existed
+          event: [{ name: "Touchdown", player: 7 }],
+        },
+      },
+      log(),
+    );
+
+    expect(ops).not.toBeNull();
+    expect(ops?.every((envelope) => envelope.period === 1)).toBe(true);
+  });
+});

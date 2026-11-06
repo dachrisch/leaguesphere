@@ -224,3 +224,12 @@ describe("MoreSheet failure", () => {
     ).toBeDisabled();
   });
 });
+
+describe("the try's one point for the defence", () => {
+  it("records Safety (+1) with a number", () => {
+    expect(moreEvent("safety", 5, 1)).toEqual({
+      name: "Safety (+1)",
+      player: 5,
+    });
+  });
+});
