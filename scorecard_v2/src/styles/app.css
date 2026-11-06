@@ -4989,3 +4989,35 @@ button.syncbadge {
     min-height: 150px;
   }
 }
+
+/* One team row: possession on top, that team's timeout under it.
+   The timeout is one tap for either team (meeting 2026-11-05, 57:33-59:08),
+   so it lives where the team already is. */
+.possteam {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.possteam .possbtn {
+  width: 100%;
+}
+
+.timeoutbtn {
+  min-height: calc(var(--touch) * 0.7);
+  padding: 0 var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--panel2);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.timeoutbtn.is-used {
+  color: var(--home-text);
+  border-style: solid;
+}

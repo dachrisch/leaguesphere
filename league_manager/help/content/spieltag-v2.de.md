@@ -41,9 +41,11 @@ wie die bisherige Scorecard
    Feldposition setzt du über **Feldposition** (A/B + 0–25); sie hält über
    Reloads, weil sie als Eintrag im Spielverlauf steht. **Challenge** hält einen Einspruch fest – ohne Text
    oder mit einer kurzen Begründung. Dazu **Touchdown**, **1st Down**, **Turnover**,
-   **Interception**, **Strafe**, **Safety**, **Overtime**, **Spielzeit** und
-   **Auszeit**; bei **Touchdown** und **1st Down** kannst du den Raumgewinn
-   mit eintragen. **Overtime** startet die Verlängerung (zweiter Tipp
+   **Interception**, **Strafe**, **Safety**, **Overtime** und **Spielzeit**;
+   bei **Touchdown** und **1st Down** kannst du den Raumgewinn mit eintragen.
+   Eine **Auszeit** nimmst du direkt beim Team: unter dem Ballbesitz-Knopf
+   steht für jedes Team sein eigenes Auszeit-Feld mit dem Stand (z. B. 1/2) –
+   ein Tipp genügt, unabhängig davon, wer den Ball hat. **Overtime** startet die Verlängerung (zweiter Tipp
    bestätigt); danach wird aus der Kachel **+1 XP**, und beim Versuch nach
    einem Touchdown gibt es nur noch **+1** statt **+2**. **1st Down**,
    **Turnover** und **Interception** werden sofort gespeichert; bei 1st Down
@@ -69,7 +71,8 @@ wie die bisherige Scorecard
    Goal-to-go die Endzone) erreicht ist oder das Team wechselt.
 4. Das Pfeil-Symbol neben einem Eintrag im Spielverlauf (**Rückgängig**) nimmt
    ihn zurück, **Ändern** korrigiert ihn an Ort und Stelle (Trikotnummer, bei
-   **Spielzeit** und **Auszeit** die Spielzeit); am großen Bildschirm geht das
+   Spielzügen die Yards, bei **Feldposition** die Yardlinie, bei **Spielzeit**
+   und **Auszeit** die Spielzeit); am großen Bildschirm geht das
    Zurücknehmen auch mit **Strg Z**. Ein Eintrag, der den Ballbesitz gedreht
    hat (**Turnover**, **Touchdown**, **Interception**, **Safety**), nimmt
    dabei auch diese Drehung zurück – auch wenn er noch nicht gesendet wurde.
@@ -167,8 +170,10 @@ Solange Einträge warten oder abgelehnt wurden, ist der Knopf gesperrt. Übertra
 oder verwerfe sie zuerst über die Anzeige oben.
 
 **Wie viele Auszeiten hat ein Team schon genommen?**
-Öffne **Auszeit**: Unter den Feldern stehen beide Teams mit Halbzeit und
-Spielzeit jeder Auszeit; die Kachel zeigt die Anzahl der Seite mit dem Ball.
+Unter dem Ballbesitz stehen beide Teams mit ihrem Auszeit-Feld: der Stand zeigt
+„genommen/erlaubt“ für diese Halbzeit (z. B. 1/2). Zwei sind es pro Halbzeit
+(IFAF 2023); eine dritte lässt sich trotzdem erfassen – die App warnt nur, denn
+auf dem Feld entscheidet der Schiedsrichter.
 
 **Wie komme ich später an ein Spiel?**
 Der Link `/scorecard/v2/gameday/<Spieltag-ID>/game/<Spiel-ID>/` öffnet genau

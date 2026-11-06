@@ -54,7 +54,6 @@ import SyncBadge, { pauseReason, SyncDetails } from "../components/SyncBadge";
 import {
   ArrowRight,
   Check,
-  Clock,
   Flag,
   Football,
   Interception,
@@ -159,7 +158,9 @@ const SERIES_TILES: {
     oneTap: true,
   },
   { mode: "time", label: "Spielzeit", Icon: Stopwatch, oneTap: false },
-  { mode: "timeout", label: "Auszeit", Icon: Clock, oneTap: false },
+  // No Auszeit tile: a team's timeout is taken from its own row in the
+  // possession block below (meeting 2026-11-05, 57:33-59:08).
+
 ];
 
 /** The log's event name for each one-tap entry, to find the row it wrote. */
@@ -1455,6 +1456,25 @@ export default function TrackingScreen({
     }
   };
 
+  /**
+   * One tap on a team's timeout: the row belongs to that team, whoever has the
+   * ball (meeting 2026-11-05, 57:33-59:08). No time is asked - the date and
+   * the order of the log are the record, and a typed clock would be one tap
+   * more on the common path. A wrong tap is undone from its row.
+   */
+  const takeTimeout = async (team: string): Promise<void> => {
+    try {
+      await submit([{ name: "Auszeit" }], team);
+    } catch (failure) {
+      setQuickError(
+        errorMessage(
+          failure,
+          "Die Auszeit konnte nicht gespeichert werden. Bitte erneut versuchen.",
+        ),
+      );
+    }
+  };
+
   /** A sheet that completes a one-tap entry writes the new row, then undoes the old. */
   const submitSeries = async (events: GameLogEventInput[]): Promise<void> => {
     const previous = replacing;
@@ -1516,11 +1536,11 @@ export default function TrackingScreen({
         tapSeriesTile(tile.mode, tile.oneTap);
         return;
       }
-      if (index === 5) {
+      if (index === SERIES_TILES.length) {
         openSheet({ kind: "penalty" });
-      } else if (index === 6) {
+      } else if (index === SERIES_TILES.length + 1) {
         openSheet({ kind: "more", mode: "safety" });
-      } else if (index === 7) {
+      } else if (index === SERIES_TILES.length + 2) {
         if (overtime) {
           openSinglePat();
         } else if (armed === "overtime") {
@@ -1599,28 +1619,57 @@ export default function TrackingScreen({
         ).map(([side, team]) => {
           const name = logTeamName(team);
           const pressed = isPossessing(team, possession);
+          const budget =
+            name === null
+              ? null
+              : timeoutBudget(rows, name, half, timeoutsPerHalf);
           return (
-            <button
-              aria-pressed={pressed}
-              className={`possbtn ${side}`}
-              disabled={
-                name === null ||
-                possessionPending ||
-                halftimePending ||
-                finished ||
-                readOnly
-              }
-              key={side}
-              onClick={() => {
-                if (name !== null) {
-                  void takePossession(name);
+            <div className="possteam" key={side}>
+              <button
+                aria-pressed={pressed}
+                className={`possbtn ${side}`}
+                disabled={
+                  name === null ||
+                  possessionPending ||
+                  halftimePending ||
+                  finished ||
+                  readOnly
                 }
-              }}
-              type="button"
-            >
-              {name ?? "–"}
-              <kbd aria-hidden="true" className="shortcut-hint" data-key="B" />
-            </button>
+                onClick={() => {
+                  if (name !== null) {
+                    void takePossession(name);
+                  }
+                }}
+                type="button"
+              >
+                {name ?? "–"}
+                <kbd aria-hidden="true" className="shortcut-hint" data-key="B" />
+              </button>
+              {name === null ? null : (
+                <button
+                  aria-label={`Auszeit ${name}`}
+                  className={
+                    budget !== null && budget.exhausted
+                      ? "timeoutbtn is-used"
+                      : "timeoutbtn"
+                  }
+                  disabled={
+                    posting ||
+                    possessionPending ||
+                    halftimePending ||
+                    finished ||
+                    readOnly
+                  }
+                  onClick={() => void takeTimeout(name)}
+                  type="button"
+                >
+                  Auszeit{" "}
+                  {budget === null
+                    ? ""
+                    : `${timeoutText(budget)}`}
+                </button>
+              )}
+            </div>
           );
         })}
       </div>
@@ -1814,7 +1863,7 @@ export default function TrackingScreen({
         >
           <Flag className="action-icon" size={20} />
           <span>Strafe</span>
-          <kbd aria-hidden="true" className="shortcut-hint" data-key="6" />
+          <kbd aria-hidden="true" className="shortcut-hint" data-key="5" />
         </button>
         <button
           className="action"
@@ -1824,7 +1873,7 @@ export default function TrackingScreen({
         >
           <Shield className="action-icon" size={20} />
           <span>Safety</span>
-          <kbd aria-hidden="true" className="shortcut-hint" data-key="7" />
+          <kbd aria-hidden="true" className="shortcut-hint" data-key="6" />
         </button>
         <button
           className={
@@ -1850,7 +1899,7 @@ export default function TrackingScreen({
                 ? "Overtime starten"
                 : "Overtime"}
           </span>
-          <kbd aria-hidden="true" className="shortcut-hint" data-key="8" />
+          <kbd aria-hidden="true" className="shortcut-hint" data-key="7" />
         </button>
         </div>
       </section>

@@ -1733,8 +1733,8 @@ describe("Tracking cockpit", () => {
     const user = userEvent.setup();
 
     const group = screen.getByRole("group", { name: "Ballbesitz" });
-    const ravens = within(group).getByRole("button", { name: /Ravens/ });
-    const wolves = within(group).getByRole("button", { name: /Wolves/ });
+    const ravens = within(group).getByRole("button", { name: /^Ravens$/ });
+    const wolves = within(group).getByRole("button", { name: /^Wolves$/ });
     expect(ravens).toHaveAttribute("aria-pressed", "true");
     expect(wolves).toHaveAttribute("aria-pressed", "false");
 
@@ -1793,17 +1793,19 @@ describe("Tracking cockpit", () => {
     );
   });
 
-  it("keeps a sheet for the entries that need input", async () => {
+  it("keeps a sheet only for the entry that needs input", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     renderTracking();
     const user = userEvent.setup();
 
-    for (const name of ["Spielzeit", "Auszeit"]) {
-      await user.click(screen.getByRole("button", { name }));
-      expect(await screen.findByRole("dialog")).toBeInTheDocument();
-      await user.click(screen.getByRole("button", { name: "Schließen" }));
-    }
+    await user.click(screen.getByRole("button", { name: "Spielzeit" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Schließen" }));
     expect(apiPostMock).not.toHaveBeenCalled();
+    // a timeout was one tap on the team row - no sheet, nothing written here
+    expect(
+      screen.queryByRole("button", { name: /^Auszeit$/ }),
+    ).toBeNull();
   });
 });
 
@@ -1822,7 +1824,9 @@ describe("Tracking wide layout", () => {
     ).not.toBeNull();
 
     const actions = screen.getByRole("region", { name: "Einträge" });
-    expect(actions.querySelectorAll(".action-grid > .action")).toHaveLength(8);
+    // four series tiles, then penalty, safety and overtime: the Auszeit tile
+    // moved to the team rows above
+    expect(actions.querySelectorAll(".action-grid > .action")).toHaveLength(7);
     const end = screen.getByRole("group", { name: "Spielabschluss" });
     expect(end).toHaveClass("tracking-end");
     expect(within(end).getByRole("button", { name: "Halbzeit" })).toBeInTheDocument();
@@ -1926,12 +1930,13 @@ describe("Tracking wide layout", () => {
         document.querySelectorAll(".action-grid > .action > kbd"),
         (hint) => hint.getAttribute("data-key"),
       ),
-    ).toEqual(["1", "2", "3", "4", "5", "6", "7", "8"]);
+    ).toEqual(["1", "2", "3", "4", "5", "6", "7"]);
     for (const name of ["Ravens", "Wolves"]) {
-      expect(screen.getByRole("button", { name }).querySelector("kbd")).toHaveAttribute(
-        "data-key",
-        "B",
-      );
+      expect(
+        screen
+          .getByRole("button", { name: new RegExp(`^${name}$`) })
+          .querySelector("kbd"),
+      ).toHaveAttribute("data-key", "B");
     }
     expect(screen.getByText("Strg Z").tagName).toBe("KBD");
   });
@@ -1956,7 +1961,7 @@ describe("Tracking wide layout", () => {
     await waitFor(() => expect(sentPossessions()).toEqual(["away"]));
   });
 
-  it("starts overtime with the 8 key", async () => {
+  it("starts overtime with the 7 key", async () => {
     vi.stubGlobal(
       "matchMedia",
       vi.fn((query: string) => ({
@@ -1968,12 +1973,12 @@ describe("Tracking wide layout", () => {
     answerAppend(makeLog({ inPossession: "Ravens" }));
     renderTracking();
 
-    fireEvent.keyDown(window, { key: "8" });
+    fireEvent.keyDown(window, { key: "7" });
     // The first press arms the tile in place; the second starts.
     expect(
       screen.getByRole("button", { name: "Overtime starten" }),
     ).toBeInTheDocument();
-    fireEvent.keyDown(window, { key: "8" });
+    fireEvent.keyDown(window, { key: "7" });
 
     await waitFor(() =>
       expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
@@ -1985,7 +1990,7 @@ describe("Tracking wide layout", () => {
     );
   });
 
-  it("opens the +1 XP step with the 8 key in overtime", async () => {
+  it("opens the +1 XP step with the 7 key in overtime", async () => {
     vi.stubGlobal(
       "matchMedia",
       vi.fn((query: string) => ({
@@ -2003,7 +2008,7 @@ describe("Tracking wide layout", () => {
     answerAppend(otLog);
     renderTracking({ log: otLog });
 
-    fireEvent.keyDown(window, { key: "8" });
+    fireEvent.keyDown(window, { key: "7" });
 
     expect(
       await screen.findByRole("dialog", { name: "Extrapunkt Ravens" }),
@@ -2532,21 +2537,14 @@ describe("Tracking possession flip", () => {
         ],
       }),
     });
-    const user = userEvent.setup();
 
-    // the tile shows the used budget, not a bare count
+    // the team's own row shows the budget, not a bare count
     expect(
-      document.querySelector(".actioncount")?.textContent,
-    ).toBe("1/2");
-
-    await openSheet(user, /^Auszeit$/);
-    const history = screen.getByRole("region", {
-      name: "Bisherige Auszeiten",
-    });
-    expect(history).toHaveTextContent("Ravens 1. HZ 08:12 (1 Auszeit)");
-    expect(history).toHaveTextContent("1 von 2 in dieser Halbzeit");
-    expect(history).toHaveTextContent("Wolves – noch keine");
-    expect(history).toHaveTextContent("0 von 2 in dieser Halbzeit");
+      screen.getByRole("button", { name: "Auszeit Ravens" }),
+    ).toHaveTextContent("1/2");
+    expect(
+      screen.getByRole("button", { name: "Auszeit Wolves" }),
+    ).toHaveTextContent("0/2");
   });
 
   it("does not flip after an Auszeit", async () => {
@@ -2554,10 +2552,7 @@ describe("Tracking possession flip", () => {
     renderTracking();
     const user = userEvent.setup();
 
-    await openSheet(user, /^Auszeit$/);
-    await user.type(screen.getByRole("textbox", { name: "Minuten" }), "1");
-    await user.type(screen.getByRole("textbox", { name: "Sekunden" }), "30");
-    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await user.click(screen.getByRole("button", { name: "Auszeit Ravens" }));
 
     await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(1));
     expect(sentPossessions()).toEqual([]);
@@ -2760,7 +2755,9 @@ describe("Tracking possession flip", () => {
     // composer to come back (the write and its log read have settled).
     await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(1));
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Auszeit" })).toBeEnabled(),
+      expect(
+        screen.getByRole("button", { name: "Auszeit Ravens" }),
+      ).toBeEnabled(),
     );
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
@@ -2770,10 +2767,7 @@ describe("Tracking possession flip", () => {
     ).toBeInTheDocument();
     expect(sentPossessions()).toEqual([]);
 
-    await openSheet(user, /^Auszeit$/);
-    await user.type(screen.getByRole("textbox", { name: "Minuten" }), "1");
-    await user.type(screen.getByRole("textbox", { name: "Sekunden" }), "00");
-    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await user.click(screen.getByRole("button", { name: "Auszeit Ravens" }));
 
     await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(2));
     expect(apiPostMock).toHaveBeenLastCalledWith("/api/game/42/events", {
@@ -2784,7 +2778,6 @@ describe("Tracking possession flip", () => {
           side: "home",
           player: null,
           period: 1,
-          payload: { input: "01:00" },
         },
       ],
       client_id: expect.any(String),
@@ -3652,7 +3645,6 @@ describe("Tracking header and action icons", () => {
       "Turnover",
       "Interception",
       "Spielzeit",
-      "Auszeit",
       "Strafe",
       "Safety",
       "Overtime",
