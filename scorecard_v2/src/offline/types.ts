@@ -47,6 +47,13 @@ export interface PendingOp {
    * Absent on independent actions and on rows written before this field.
    */
   originId?: string | null;
+  /**
+   * The username signed in when the op was queued. If another user's session
+   * later delivers it, the server stores this as `offline_recorded_by` on the
+   * event payload (an unverified claim) while the event's author stays the
+   * sender. `null`/absent for rows written before this field.
+   */
+  recordedBy?: string | null;
 }
 
 /**

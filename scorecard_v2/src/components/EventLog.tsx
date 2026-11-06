@@ -436,6 +436,29 @@ export function describeRow(row: LogRow): Described {
   }
 }
 
+/**
+ * The attribution an entry carries when it was recorded by one user and sent
+ * by another (an outbox row that survived a login change). The server keeps
+ * the sender as the author and stores the recorder's name as an unverified
+ * claim, so the row says both without pretending the claim is verified.
+ */
+export function offlineAttribution(row: LogRow): string | null {
+  const recorded =
+    typeof row.payload?.offline_recorded_by === "string"
+      ? row.payload.offline_recorded_by.trim()
+      : "";
+  if (recorded === "") {
+    return null;
+  }
+  const sent =
+    typeof row.payload?.offline_sent_by === "string"
+      ? row.payload.offline_sent_by.trim()
+      : "";
+  return sent === ""
+    ? `erfasst von ${recorded}`
+    : `erfasst von ${recorded}, gesendet von ${sent}`;
+}
+
 /** `HH:MM` in the viewer's local time; an unparsable value renders empty. */
 export function formatLogTime(iso: string | null): string {
   if (iso === null) {
@@ -512,6 +535,7 @@ export default function EventLog({
         <ol className="logrows">
           {shown.map((row) => {
             const described = describeRow(row);
+            const secondary = join(described.secondary, offlineAttribution(row));
             const KindIcon = KIND_ICON[described.kind];
             const undoable =
               onUndo !== undefined && !row.isDeleted && !isMarker(row);
@@ -528,8 +552,8 @@ export default function EventLog({
                 </span>
                 <span className="rowmain">
                   <span className="rowprimary">{described.primary}</span>
-                  {described.secondary === null ? null : (
-                    <span className="rowsub">{described.secondary}</span>
+                  {secondary === null ? null : (
+                    <span className="rowsub">{secondary}</span>
                   )}
                   {row.isDeleted ? (
                     <span className="sr-only">gelöscht</span>

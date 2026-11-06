@@ -40,6 +40,7 @@ import FinalizeScreen from "./screens/Finalize";
 import ResultScreen from "./screens/Result";
 import TrackingScreen from "./screens/Tracking";
 import { logout } from "./session/logout";
+import { setActorUsername } from "./session/actor";
 import { getRuntime } from "./session/runtime";
 import { useSyncStatus } from "./session/useSyncStatus";
 
@@ -227,10 +228,14 @@ export default function App() {
     }
     loadedUser.current = true;
     void loadUser()
-      .then(setUser)
+      .then((user) => {
+        setActorUsername(user.username);
+        setUser(user);
+      })
       .catch(() => {
         // Without a user the games list falls back to `*` (the whole gameday)
         // and, offline, to the snapshot of this gameday.
+        setActorUsername(null);
         setUser(null);
       });
     // The team directory is loaded once for the whole tab; offline or rejected

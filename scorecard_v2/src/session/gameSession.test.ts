@@ -9,6 +9,7 @@ import { ApiError, apiDelete, apiGet, apiPost } from "../api/client";
 import type { GameLog, GameLogTeam } from "../api/types";
 import { createOutbox, type Outbox } from "../offline/outbox";
 import { resetSnapshotStore } from "../offline/snapshot";
+import { setActorUsername } from "./actor";
 import { createGameSession, type GameSession } from "./gameSession";
 import { createRuntime, type Runtime } from "./runtime";
 
@@ -86,6 +87,7 @@ function makeSession(initialLog: GameLog = serverLog()): GameSession {
 beforeEach(() => {
   vi.stubGlobal("indexedDB", new IDBFactory());
   resetSnapshotStore();
+  setActorUsername(null);
   apiGetMock.mockReset();
   apiPostMock.mockReset();
   apiDeleteMock.mockReset();
@@ -135,6 +137,16 @@ describe("offline writes", () => {
     await expect(outbox.pending(42)).resolves.toEqual([]);
     expect(reverted.home.score).toBe(0);
     expect(reverted.events).toEqual([]);
+  });
+
+  it("stores the signed-in username on a queued op", async () => {
+    setActorUsername("anna");
+    await session.writeEvent(TURNOVER_WRITE);
+
+    const [queued] = await outbox.pending(42);
+    // The outbox must remember who recorded it: the delivering session may
+    // belong to another user by the time it goes out.
+    expect(queued.recordedBy).toBe("anna");
   });
 
   it("removes the linked possession flip with the queued entry", async () => {

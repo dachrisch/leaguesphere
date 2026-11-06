@@ -41,6 +41,11 @@ React/TypeScript field-entry app. Run `npm ci`, then `npm run test:run`,
   possession flip; undo removes the entry and exactly that flip, never a
   manual possession change. The flip's `originId` is set at enqueue time from
   `GameSession.lastOpId()`.
+- A queued op also remembers the signed-in username (`recordedBy`,
+  `session/actor.ts`). The server keeps `request.user` as the author and stores
+  a differing name as the unverified `offline_recorded_by` (plus the verified
+  `offline_sent_by`) in the event payload; the log row shows
+  "erfasst von X, gesendet von Y".
 
 ## Offline scenario tests
 

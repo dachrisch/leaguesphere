@@ -29,6 +29,7 @@ from gameevents.tests.api.support import (
 )
 from gamedays.constants import API_GAMELOG
 from gamedays.models import TeamLog
+from gamedays.tests.setup_factories.factories import UserFactory
 
 TOUCHDOWN_ENVELOPE = {
     "type": "score",
@@ -181,3 +182,109 @@ def test_an_actor_that_does_not_exist_is_refused():
 
     assert "no author for the event" in str(error.value)
     assert not GameEvent.objects.filter(game=game).exists()
+
+
+@pytest.mark.django_db
+def test_an_offline_claim_is_recorded_on_the_payload_not_as_the_author(client):
+    """A queued op names who recorded it; the sender stays the author."""
+
+    game, _home, _away = make_game("author-offline")
+    user = login(client)
+    original = UserFactory(username="original-official")
+
+    response = post_events(
+        client,
+        game,
+        {
+            "events": [TOUCHDOWN_ENVELOPE],
+            "client_id": sub_id(1),
+            "offline_recorded_by": original.username,
+        },
+    )
+
+    assert response.status_code == 201
+    event = GameEvent.objects.get(game=game)
+    # The server never accepts an author from the client.
+    assert event.author_id == user.pk
+    assert event.payload["offline_recorded_by"] == original.username
+    assert event.payload["offline_sent_by"] == user.username
+
+
+@pytest.mark.django_db
+def test_a_claim_naming_the_sender_adds_no_payload(client):
+    game, _home, _away = make_game("author-offline-same")
+    user = login(client)
+
+    response = post_events(
+        client,
+        game,
+        {
+            "events": [TOUCHDOWN_ENVELOPE],
+            "client_id": sub_id(1),
+            "offline_recorded_by": user.username,
+        },
+    )
+
+    assert response.status_code == 201
+    event = GameEvent.objects.get(game=game)
+    assert event.author_id == user.pk
+    assert "offline_recorded_by" not in event.payload
+    assert "offline_sent_by" not in event.payload
+
+
+@pytest.mark.django_db
+def test_a_forged_claim_cannot_change_the_author(client):
+    """Anyone may type another name; the stored author is still the request."""
+
+    game, _home, _away = make_game("author-offline-forged")
+    user = login(client)
+    other = UserFactory(username="someone-else")
+
+    response = post_events(
+        client,
+        game,
+        {
+            "events": [TOUCHDOWN_ENVELOPE],
+            "client_id": sub_id(1),
+            "offline_recorded_by": other.username,
+        },
+    )
+
+    assert response.status_code == 201
+    event = GameEvent.objects.get(game=game)
+    assert event.author_id == user.pk
+    assert event.author_id != other.pk
+    # The name is kept as the unverified claim it is.
+    assert event.payload["offline_recorded_by"] == other.username
+    assert row_authors(game) == {user.pk}
+
+
+@pytest.mark.django_db
+def test_a_claim_smuggled_into_the_envelope_payload_is_removed(client):
+    """Only the request's own claim field counts, never an event payload key."""
+
+    game, _home, _away = make_game("author-offline-smuggled")
+    user = login(client)
+
+    response = post_events(
+        client,
+        game,
+        {
+            "events": [
+                {
+                    **TOUCHDOWN_ENVELOPE,
+                    "payload": {
+                        "offline_recorded_by": "someone-else",
+                        "offline_sent_by": "someone-else",
+                    },
+                }
+            ],
+            "client_id": sub_id(1),
+        },
+    )
+
+    assert response.status_code == 201
+    event = GameEvent.objects.get(game=game)
+    assert event.author_id == user.pk
+    assert "offline_recorded_by" not in event.payload
+    assert "offline_sent_by" not in event.payload

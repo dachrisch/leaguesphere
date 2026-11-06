@@ -242,6 +242,7 @@ class QueuedOp:
     failed_reason: str | None
     game_id: int | None = None
     payload: dict[str, Any] | None = None
+    recorded_by: str | None = None
 
     @classmethod
     def from_row(cls, row: dict[str, Any]) -> "QueuedOp":
@@ -253,6 +254,7 @@ class QueuedOp:
             failed_reason=row.get("failedReason"),
             game_id=row.get("gameId"),
             payload=row.get("payload"),
+            recorded_by=row.get("recordedBy"),
         )
 
 

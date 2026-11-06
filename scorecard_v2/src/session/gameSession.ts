@@ -33,6 +33,7 @@ import {
   type EventEnvelope,
 } from "./events";
 import { newOpId } from "./ids";
+import { getActorUsername } from "./actor";
 import { replayOps } from "./optimistic";
 import { eventsPath, logPath } from "./transport";
 import { getRuntime, type Runtime } from "./runtime";
@@ -246,6 +247,7 @@ export function createGameSession({
       // the replay look like a second device.
       deviceId: getDeviceId(),
       originId: originId ?? null,
+      recordedBy: getActorUsername(),
     };
     await runtime.outbox.enqueue(op);
     await loadPending();

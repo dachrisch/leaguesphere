@@ -138,7 +138,8 @@ hat. Das Ergebnis lässt sich erst senden, wenn die Warteschlange leer ist.
 Oben in der Leiste zeigt dir der Punkt den Stand der Übertragung: **Synchron**,
 **N warten** oder **Offline**; ein Tipp versucht es sofort erneut. Abgelehnte
 Einträge erscheinen darunter und lassen sich dort erneut versuchen oder
-verwerfen.
+verwerfen. Meldet sich vor dem Senden ein anderer Nutzer an, bleibt am Eintrag
+stehen, wer ihn erfasst hat: **erfasst von X, gesendet von Y**.
 
 ## Zweites Gerät
 

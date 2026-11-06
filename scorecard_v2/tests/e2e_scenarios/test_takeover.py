@@ -240,10 +240,6 @@ def test_s15_session_expiry_pauses_then_drains(phones, club_game, report):
     assert_invariants(club_game, [a], queued)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="F3: events replayed after a different user logs in carry the new user as author",
-)
 def test_s15_other_user_keeps_the_original_author(
     phones, club_game, club_user, other_club_user, report
 ):
@@ -254,6 +250,12 @@ def test_s15_other_user_keeps_the_original_author(
     for _ in range(2):
         a.tap_turnover()
     queued = {op.id for op in a.queue()}
+    report.observe(
+        "S15-other",
+        "queued_recorders",
+        sorted({op.recorded_by for op in a.queue()}),
+    )
+    assert {op.recorded_by for op in a.queue()} == {club_user.username}
     a.clear_session_cookies()
     a.online()
     a.settle()
@@ -267,15 +269,28 @@ def test_s15_other_user_keeps_the_original_author(
     state = server_state(club_game)
     delivered = [event for event in state.events if event.client_id in queued]
     authors = sorted({event.author_id for event in delivered})
+    claimed = sorted(
+        {
+            event.payload.get("offline_recorded_by")
+            for event in delivered
+            if event.payload.get("offline_recorded_by")
+        }
+    )
+    senders = sorted(
+        {
+            event.payload.get("offline_sent_by")
+            for event in delivered
+            if event.payload.get("offline_sent_by")
+        }
+    )
     report.observe("S15-other", "authors", authors)
+    report.observe("S15-other", "claimed_recorders", claimed)
+    report.observe("S15-other", "claimed_senders", senders)
     report.observe("S15-other", "original_user", club_user.pk)
     report.observe("S15-other", "other_user", other_club_user["user"].pk)
-    report.finding(
-        "F3",
-        "A queued op changes author when another user logs in",
-        "The outbox row stores no author. After the second club user logged in, "
-        f"the replayed events carried author ids {authors} instead of the "
-        f"original {club_user.pk}; the request's session decides the author.",
-    )
-    assert authors == [club_user.pk]
+    # The author is the session that sent the replay, never the client's claim.
+    assert authors == [other_club_user["user"].pk]
+    # The payload remembers who actually recorded the entries.
+    assert claimed == [club_user.username]
+    assert senders == [other_club_user["username"]]
     assert_invariants(club_game, [a], queued)
