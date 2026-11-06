@@ -4092,3 +4092,17 @@ describe("a failed timeout", () => {
     ).toHaveTextContent("0/2");
   });
 });
+
+describe("the team timeout on a game that is over", () => {
+  it("is disabled, like the rest of the composer", () => {
+    renderTracking({
+      game: { ...GAME, status: "beendet" },
+      log: makeLog({ inPossession: "Ravens" }),
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Auszeit Ravens" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Auszeit Wolves" })).toBeDisabled();
+  });
+});
