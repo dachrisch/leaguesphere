@@ -2350,3 +2350,22 @@ describe("a game another device already took", () => {
     ).toBeNull();
   });
 });
+
+describe("a setup without a usable device id", () => {
+  it("shows no warning for a blank id", async () => {
+    crew = completeCrew();
+    setup = {
+      ctResult: "home",
+      direction: "Nord",
+      fhPossession: "home",
+      // an older server stored whitespace rather than nothing
+      device_id: "   ",
+    };
+
+    await renderSetup();
+
+    expect(
+      screen.queryByText(/hat ein anderes Gerät bereits übernommen/),
+    ).toBeNull();
+  });
+});
