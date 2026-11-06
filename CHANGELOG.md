@@ -1,5 +1,41 @@
 # Changelog
 
+## [5.12.0](https://github.com/dachrisch/leaguesphere/compare/v5.11.3...v5.12.0) (2026-11-06)
+
+
+### Features
+
+* **scorecard:** add the flag football 5v5 rule definition ([8fc7094](https://github.com/dachrisch/leaguesphere/commit/8fc7094c561d14fccb59c5bdfa194908076e70b9))
+* **scorecard:** every correctable row offers an edit action ([4733c31](https://github.com/dachrisch/leaguesphere/commit/4733c3154872b4a89dc092829922b56d049445c0))
+* **scorecard:** make the try its own down ([00ac270](https://github.com/dachrisch/leaguesphere/commit/00ac2706e6d17c0926a3f4fe67392d7befa4a5cd))
+* **scorecard:** one entry for an interception and its return ([01c8af6](https://github.com/dachrisch/leaguesphere/commit/01c8af6ab00f9681ce18ce5bcde59fd799902738))
+* **scorecard:** read the sport definition in the field app ([6b1ed42](https://github.com/dachrisch/leaguesphere/commit/6b1ed423d110ebbc21de07127df9c9ddd27ee90f))
+* **scorecard:** serve the penalty catalogue and the rules from the definition ([b84100d](https://github.com/dachrisch/leaguesphere/commit/b84100d7fb8902895a02d0dbc15269e36290e678))
+* **scorecard:** show the timeout budget and the real intermission ([858f839](https://github.com/dachrisch/leaguesphere/commit/858f83963ea6d63303e2fff1479657b9c532762d))
+* **scorecard:** take either team's timeout where the team is ([059250a](https://github.com/dachrisch/leaguesphere/commit/059250a9a47bbf75dad3f67d885c0065b7272206))
+* **scorecard:** take either team's timeout where the team is ([21b70b8](https://github.com/dachrisch/leaguesphere/commit/21b70b8aac56a9dafd73b400dbbf8613c24de7ff))
+* **scorecard:** the touchdown is the result of the play ([08bbf74](https://github.com/dachrisch/leaguesphere/commit/08bbf7441d396b8f72150f46330bf93b53b3421c))
+* **scorecard:** warn before starting a game another device holds ([5937810](https://github.com/dachrisch/leaguesphere/commit/593781012ed35c3a5adcafc91961c81637c1bf31))
+
+
+### Bug Fixes
+
+* **scorecard-v2:** keep the down when the field position is corrected ([dea2a1b](https://github.com/dachrisch/leaguesphere/commit/dea2a1b2d31deb20311f56cd2197b4f352e528a5))
+* **scorecard-v2:** keep the typecheck green for the new log spread ([e65fb25](https://github.com/dachrisch/leaguesphere/commit/e65fb251e19da525a40204d16fd92bb3eb49c6e6))
+* **scorecard:** a scoring play's group is corrected and undone as one ([d4d6fae](https://github.com/dachrisch/leaguesphere/commit/d4d6faeb95c2f772ce467cae636ec2bcefe2c650))
+* **scorecard:** keep the two teams apart at phone width ([3217577](https://github.com/dachrisch/leaguesphere/commit/3217577706fcc7425fa93a0a375e357267e2f028))
+* **scorecard:** make down and distance follow the rulebook ([f6d385e](https://github.com/dachrisch/leaguesphere/commit/f6d385ee0fa26e05f8c9676e22bdc4872d8825ab))
+* **scorecard:** one row per team, both targets a full touch ([3bf8309](https://github.com/dachrisch/leaguesphere/commit/3bf8309dbc706e8a310d1f154e6ecd75e1d504f2))
+* **scorecard:** score for the team, not for a jersey ([2c8414f](https://github.com/dachrisch/leaguesphere/commit/2c8414f81889cf8f9f9a86ca651a0b4afe5f44cc))
+* **scorecard:** show the penalty's real numbers on the field ([dbe1dc7](https://github.com/dachrisch/leaguesphere/commit/dbe1dc78245cb57671ff1d94f32a7934d3dec88f))
+* **scorecard:** stop clipping the numeric fields on a phone ([b2dac2c](https://github.com/dachrisch/leaguesphere/commit/b2dac2c8fbf299177290814a0f5c4761affe561b))
+* **scorecard:** warn with a warning, not with the error class ([9627bb7](https://github.com/dachrisch/leaguesphere/commit/9627bb7615758da2f8e9006664b16726a0cf3e6e))
+
+
+### Documentation
+
+* **scorecard:** the break countdown is two minutes now ([f46cff7](https://github.com/dachrisch/leaguesphere/commit/f46cff77bf37aad432ff827bf6159ab44a91e6e9))
+
 ## [5.11.3](https://github.com/dachrisch/leaguesphere/compare/v5.11.2...v5.11.3) (2026-11-06)
 
 
