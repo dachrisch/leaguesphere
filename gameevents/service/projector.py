@@ -477,6 +477,10 @@ def _apply_possession(state: GameStateValue, event: GameEventValue) -> Projectio
             name,
             side=_require_side(event),
             player=event.player,
+            # The interception sheet writes where the return ended and how far
+            # it ran; the legacy writer stored that text too, so the row keeps
+            # it (and the golden table compares both writers).
+            input=_play_detail(event),
             cop=True,
         )
         return _projection(_advance(state, event), [row])

@@ -196,7 +196,12 @@ describe("offline writes", () => {
     await session.setPossession("Wolves", origin ?? undefined);
     const row = shown.events?.[0];
     expect(row?.event).toBe("Interception");
-    expect(row?.payload).toEqual({ deadBall: 30, returnYards: 15 });
+    // the visible text rides with the payload now; the spot and return stay
+    expect(row?.payload).toEqual({
+      input: "bis B20 · 15 Yards Return",
+      deadBall: 30,
+      returnYards: 15,
+    });
 
     const reverted = await session.undo({ undo_of: 1 }, row?.id ?? 0);
 

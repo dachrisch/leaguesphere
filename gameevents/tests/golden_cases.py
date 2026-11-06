@@ -226,6 +226,39 @@ GOLDEN_CASES = [
         [event("possession", "interception", "away", 23, 1, 1)],
         [row("Interception", "away", 23, 0, 1, 1, cop=True)],
     ),
+    # The one-entry interception carries where the return ended; the row keeps
+    # that text (the legacy writer stored it, so both writers must agree).
+    GoldenCase(
+        "interception_with_return",
+        [{"name": "Interception", "player": 11, "input": "bis B20 · 15 Yards Return"}],
+        1,
+        "away",
+        # A legacy entry carries only the text; the spot and the return yards
+        # are v2-only detail and never travel through this path.
+        [
+            event(
+                "possession",
+                "interception",
+                "away",
+                11,
+                1,
+                1,
+                input="bis B20 · 15 Yards Return",
+            )
+        ],
+        [
+            row(
+                "Interception",
+                "away",
+                11,
+                0,
+                1,
+                1,
+                input="bis B20 · 15 Yards Return",
+                cop=True,
+            )
+        ],
+    ),
     GoldenCase(
         "spielzeit",
         [{"name": "Spielzeit", "input": "12:10"}],

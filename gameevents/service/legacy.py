@@ -103,6 +103,12 @@ def from_legacy_entry(
     elif spec.type == "time":
         if entry.get("input") is not None:
             payload = {"input": entry["input"]}
+    elif spec.type == "possession":
+        # The legacy writer stores whatever text the entry carried (an
+        # interception may say where the return ended); the envelope has to
+        # carry it too, or the projected row loses it.
+        if entry.get("input") is not None:
+            payload = {"input": entry["input"]}
     elif spec.points is not None:
         payload = {"points": spec.points}
 

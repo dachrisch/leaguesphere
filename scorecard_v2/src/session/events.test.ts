@@ -421,3 +421,40 @@ describe("a stored row as the event that wrote it", () => {
     ).toEqual({ name: "Touchdown" });
   });
 });
+
+describe("a possession row that carries a detail", () => {
+  it("sends the interception's text even without a legacy input mapping", () => {
+    const [envelope] = envelopesForWrite(
+      write("Ravens", [
+        {
+          name: "Interception",
+          player: 11,
+          input: "bis B20 · 15 Yards Return",
+          payload: { deadBall: 30, returnYards: 15 },
+        },
+      ]),
+      LOG,
+    );
+
+    expect(envelope).toMatchObject({
+      type: "possession",
+      code: "interception",
+      side: "home",
+      player: 11,
+      payload: {
+        input: "bis B20 · 15 Yards Return",
+        deadBall: 30,
+        returnYards: 15,
+      },
+    });
+  });
+
+  it("adds no empty input to a plain turnover", () => {
+    const [envelope] = envelopesForWrite(
+      write("Ravens", [{ name: "Turnover" }]),
+      LOG,
+    );
+
+    expect(envelope.payload).toBeUndefined();
+  });
+});
