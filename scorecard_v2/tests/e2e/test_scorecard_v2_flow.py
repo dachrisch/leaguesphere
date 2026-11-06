@@ -268,6 +268,16 @@ def test_scorecard_v2_flow_from_gameday_to_result(live_server, page: Page):
         possession_box,
         timeout_box,
     )
+    # The two teams are separate groups: the other team's possession button
+    # starts at least 8px after this team's timeout ends, so one tap cannot
+    # slip from a timeout into the other side's possession button.
+    away_possession = page.get_by_role("group", name="Ballbesitz").get_by_role(
+        "button", name=AWAY_NAME, exact=True
+    )
+    away_box = away_possession.bounding_box()
+    assert away_box is not None
+    gap = away_box["x"] - (timeout_box["x"] + timeout_box["width"])
+    assert gap >= 8, (gap, timeout_box, away_box)
     page.set_viewport_size({"width": 1024, "height": 768})
     # No passcheck ran for this gameday, so there is no jersey grid — the sheet
     # must offer the number field instead of blocking the game.

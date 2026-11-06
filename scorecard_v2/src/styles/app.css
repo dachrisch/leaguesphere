@@ -2067,6 +2067,11 @@ button.game-row:active {
   display: grid;
   flex: 0 0 auto;
   grid-template-columns: 1fr 1fr;
+  /* Two groups, not one strip of four buttons: the gap between the teams is
+     wider than the 4px between a team and its own timeout, because a timeout
+     saves on one tap and must not sit against the other team's possession
+     button (meeting 2026-11-07). */
+  column-gap: var(--space-3);
   margin: var(--space-2) var(--page-gutter) 0;
   overflow: hidden;
   background: var(--surface);
