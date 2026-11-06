@@ -191,6 +191,16 @@ function envelopeFor(
   if (spec.input === "payload" && entry.input !== undefined) {
     envelope.payload = { ...(envelope.payload ?? {}), input: entry.input };
   }
+  // A row that shows a free text but has no legacy `input` mapping still sends
+  // it: the interception's "bis B20 · 15 Yards Return" is the row's visible
+  // detail, and the projector stores it like the legacy writer did.
+  if (
+    spec.input === undefined &&
+    entry.input !== undefined &&
+    entry.input !== ""
+  ) {
+    envelope.payload = { ...(envelope.payload ?? {}), input: entry.input };
+  }
   // The play's structured detail (yards, quarterback, complete) is what a
   // later statistics read consumes; it never changes what the log renders.
   if (entry.payload !== undefined) {

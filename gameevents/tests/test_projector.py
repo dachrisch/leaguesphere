@@ -647,3 +647,29 @@ def test_a_field_position_without_text_is_still_a_row():
 
     assert projection.rows[0].event == "Feldposition"
     assert projection.rows[0].input is None
+
+
+def test_an_interception_row_keeps_the_return_detail():
+    # The one-entry interception writes where the return ended; the row shows
+    # it, and the legacy writer stored the same text.
+    projection = apply(
+        state(),
+        GameEventValue(
+            type="possession",
+            code="interception",
+            side="away",
+            player=11,
+            period=1,
+            seq=1,
+            payload={
+                "input": "bis B20 · 15 Yards Return",
+                "deadBall": 30,
+                "returnYards": 15,
+            },
+        ),
+    )
+
+    row = projection.rows[0]
+    assert row.event == "Interception"
+    assert row.input == "bis B20 · 15 Yards Return"
+    assert row.cop is True
