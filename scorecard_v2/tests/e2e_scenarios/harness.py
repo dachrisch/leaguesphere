@@ -760,6 +760,17 @@ class Phone:
                 shown = max(shown, int(offline.group(1)))
         return shown
 
+    def possession(self) -> str | None:
+        """The team the screen's possession switch marks as holding the ball."""
+
+        page = self._require_page()
+        return page.evaluate("""() => {
+              const button = document.querySelector(
+                '.possswitch button[aria-pressed="true"]'
+              );
+              return button ? button.textContent.trim() : null;
+            }""")
+
     def online_state(self) -> bool:
         page = self._require_page()
         return bool(page.evaluate("() => navigator.onLine"))

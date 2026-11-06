@@ -142,10 +142,6 @@ def test_s04_killed_phone_restarts_offline_then_returns(phones, club_game, repor
     assert_invariants(club_game, [a], queued)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="F1: an offline undo removes the turnover but leaves its possession flip queued",
-)
 def test_s05_offline_undo_removes_the_entry_and_its_effect(phones, club_game, report):
     a, _ = phones
     started_game(a, club_game)
@@ -159,13 +155,7 @@ def test_s05_offline_undo_removes_the_entry_and_its_effect(phones, club_game, re
     report.observe("S05", "badge_after_undo", a.badge())
     report.observe("S05", "pending_after_undo", len(a.queue()))
     report.observe("S05", "start_possession", start_possession)
-    report.finding(
-        "F1",
-        "Offline undo leaves the possession flip queued",
-        "After undoing an offline Turnover the queue still held one "
-        "`possession` op; on reconnect the server moved the ball to the other "
-        "team even though the turnover row was gone.",
-    )
+    report.observe("S05", "phone_possession_after_undo", a.possession())
     if a.badge() != f"Offline · {len(a.queue())}":
         report.finding(
             "F2",
@@ -174,6 +164,11 @@ def test_s05_offline_undo_removes_the_entry_and_its_effect(phones, club_game, re
             f"badge read {a.badge()!r}; removing an outbox row did not notify "
             "the sync engine's counts.",
         )
+
+    # Nothing may reach the server while the queue is empty: both the entry
+    # and the flip it wrote are gone.
+    assert a.queue() == []
+    assert a.possession() == start_possession
 
     a.online()
     a.wait_queue(0)
@@ -185,6 +180,56 @@ def test_s05_offline_undo_removes_the_entry_and_its_effect(phones, club_game, re
 
     assert not [event for event in state.events if event.code == "turnover"]
     assert state.in_possession == start_possession
+    assert_invariants(club_game, [a], set())
+
+
+def test_s05b_online_undo_removes_the_entry_and_its_effect(phones, club_game, report):
+    """The same undo with a connection: the row reached the server already.
+
+    This is the path that had no queued op to drop: the correction removes the
+    Turnover row and the possession restore must put the ball back, on the
+    server and on the phone.
+    """
+
+    a, _ = phones
+    started_game(a, club_game)
+    start_possession = server_state(club_game).in_possession
+
+    a.tap_turnover()
+    a.wait_queue(0)
+    written = server_state(club_game)
+    report.observe(
+        "S05b",
+        "turnover_before_undo",
+        [event.seq for event in written.events if event.code == "turnover"],
+    )
+    report.observe("S05b", "possession_before_undo", written.in_possession)
+    assert written.in_possession != start_possession
+
+    a.undo_last()
+    a.wait_queue(0)
+    # The correction and the restore are two writes; wait until the server has
+    # both and the screen shows the marker again.
+    deadline = time.monotonic() + 20
+    state = server_state(club_game)
+    while time.monotonic() < deadline:
+        state = server_state(club_game)
+        if state.in_possession == start_possession and not [
+            event for event in state.events if event.code == "turnover"
+        ]:
+            break
+        a.page.wait_for_timeout(200)
+
+    report.observe("S05b", "possession_after_undo", state.in_possession)
+    report.observe("S05b", "phone_possession_after_undo", a.possession())
+    report.observe(
+        "S05b",
+        "turnover_events_after",
+        [event.seq for event in state.events if event.code == "turnover"],
+    )
+    assert not [event for event in state.events if event.code == "turnover"]
+    assert state.in_possession == start_possession
+    assert a.possession() == start_possession
     assert_invariants(club_game, [a], set())
 
 

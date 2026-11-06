@@ -87,6 +87,7 @@ import {
 import { getDeviceId } from "../device";
 import { lockFrom, takeOver, type LockAnswer } from "../session/lock";
 import { getRuntime } from "../session/runtime";
+import { undoPossessionTeam } from "../session/possessionUndo";
 import { useSyncStatus, type SyncStatus } from "../session/useSyncStatus";
 import { useArmed } from "./useArmed";
 import { useTrackingShortcuts } from "./useTrackingShortcuts";
@@ -783,7 +784,10 @@ export default function TrackingScreen({
     }
   };
 
-  const takePossession = async (teamName: string): Promise<void> => {
+  const takePossession = async (
+    teamName: string,
+    originId?: string,
+  ): Promise<void> => {
     if (possessionInFlight.current || teamName === possession || readOnly) {
       return;
     }
@@ -796,7 +800,7 @@ export default function TrackingScreen({
     try {
       // Online this is a `PUT`; offline (or after a lost answer) the session
       // queues it and resolves, so the marker stays where the tap put it.
-      await session.setPossession(teamName);
+      await session.setPossession(teamName, originId);
     } catch (failure) {
       // Show the correction at once (no flicker), then let the server decide:
       // the `PUT` may have been rejected after it was applied.
@@ -814,7 +818,10 @@ export default function TrackingScreen({
     }
   };
 
-  const undo = async (row: LogRow): Promise<void> => {
+  const undo = async (
+    row: LogRow,
+    { keepPossession = false }: { keepPossession?: boolean } = {},
+  ): Promise<void> => {
     if (undoInFlight.current || halftimePending || readOnly) {
       return;
     }
@@ -829,7 +836,25 @@ export default function TrackingScreen({
         row.teamLogId !== null && row.teamLogId < 0
           ? row.teamLogId
           : undefined;
-      await session.undo(undoBody(row), local);
+      // Only a stored, event-sourced row needs the ball put back by the
+      // server; a queued row takes its linked flip with it, and an in-place
+      // correction already decided where the ball belongs.
+      const restore =
+        local === undefined && !keepPossession && row.seq !== null
+          ? undoPossessionTeam(row, log)
+          : null;
+      await session.undo(
+        undoBody(row),
+        local,
+        restore === null ? undefined : { restorePossessionTo: restore },
+      );
+      if (local !== undefined) {
+        // Removing the entry (and its flip) replayed the server's marker: show
+        // that, not the side the now-undone tap had set.
+        setPossession(session.getLog().inPossession ?? null);
+      } else if (restore !== null) {
+        setPossession(restore);
+      }
     } catch (failure) {
       setUndoError(
         errorMessage(
@@ -888,7 +913,8 @@ export default function TrackingScreen({
         half: row.half === 2 ? 2 : 1,
         event: [event],
       });
-      await undo(row);
+      // The replacement already carries the ball's current side.
+      await undo(row, { keepPossession: true });
     } finally {
       postInFlight.current = false;
       setPosting(false);
@@ -1020,6 +1046,9 @@ export default function TrackingScreen({
       // The log read after the append is the whole log, so it replaces what is
       // on screen.
       await session.writeEvent(body);
+      // The flip written below belongs to this entry, so undoing the row can
+      // take exactly that op with it.
+      const origin = session.lastOpId() ?? undefined;
       const qb = events.find((event) => typeof event.payload?.qb === "number")
         ?.payload?.qb;
       if (typeof qb === "number" && possessionSide !== null) {
@@ -1028,7 +1057,7 @@ export default function TrackingScreen({
       confirmTap();
       setConfirmation(describeSaved(events));
       if (!keepBall && flipsPossession(events) && opponentName !== null) {
-        await takePossession(opponentName);
+        await takePossession(opponentName, origin);
       }
     } finally {
       postInFlight.current = false;
@@ -1315,7 +1344,8 @@ export default function TrackingScreen({
     await submit(events, previous?.team ?? undefined, previous !== null);
     if (previous !== null) {
       setReplacing(null);
-      await undo(previous);
+      // The replacement kept the ball where the replaced row left it.
+      await undo(previous, { keepPossession: true });
     }
   };
 

@@ -60,6 +60,13 @@ const WRITE = {
   ],
 };
 
+const TURNOVER_WRITE = {
+  gameId: 42,
+  team: "Ravens",
+  half: 1 as const,
+  event: [{ name: "Turnover" }],
+};
+
 function setOnline(online: boolean): void {
   vi.spyOn(globalThis.navigator, "onLine", "get").mockReturnValue(online);
 }
@@ -128,6 +135,99 @@ describe("offline writes", () => {
     await expect(outbox.pending(42)).resolves.toEqual([]);
     expect(reverted.home.score).toBe(0);
     expect(reverted.events).toEqual([]);
+  });
+
+  it("removes the linked possession flip with the queued entry", async () => {
+    // A turnover writes the row and, because the ball changes hands, a second
+    // possession op. Undo must take both, not just the row the official sees.
+    const shown = await session.writeEvent(TURNOVER_WRITE);
+    const origin = session.lastOpId();
+    expect(origin).not.toBeNull();
+    await session.setPossession("Wolves", origin ?? undefined);
+    const localId = shown.events?.[0].id ?? 0;
+
+    const pendingBefore = await outbox.pending(42);
+    expect(pendingBefore.map((entry) => entry.kind)).toEqual([
+      "event",
+      "possession",
+    ]);
+    expect(pendingBefore[1].originId).toBe(origin);
+
+    const reverted = await session.undo({ undo_of: 1 }, localId);
+
+    await expect(outbox.pending(42)).resolves.toEqual([]);
+    expect(reverted.inPossession).toBe("Ravens");
+    expect(apiPostMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps a manual possession change made after the entry", async () => {
+    const shown = await session.writeEvent(TURNOVER_WRITE);
+    const origin = session.lastOpId() ?? undefined;
+    await session.setPossession("Wolves", origin);
+    // The official corrects the side by hand before undoing the turnover.
+    await session.setPossession("Ravens");
+    const manual = (await outbox.pending(42)).at(-1);
+    expect(manual?.kind).toBe("possession");
+    expect(manual?.originId).toBeNull();
+
+    const localId = shown.events?.[0].id ?? 0;
+    await session.undo({ undo_of: 1 }, localId);
+
+    const left = await outbox.pending(42);
+    expect(left.map((entry) => entry.id)).toEqual([manual?.id]);
+    expect(left[0].kind).toBe("possession");
+    expect(session.getLog().inPossession).toBe("Ravens");
+  });
+
+  it("queues a possession restore after a delivered turnover's flip", async () => {
+    // Drain stopped between the entry and its flip: the row is on the server,
+    // the flip is still queued. Undoing the row must correct the entry *and*
+    // leave the ball where the entry found it, after the queued flip runs.
+    const entry = serverLog({
+      inPossession: "Wolves",
+      events: [
+        {
+          id: 11,
+          sequence: 1,
+          seq: 4,
+          team: "Ravens",
+          event: "Turnover",
+          player: null,
+          input: null,
+          half: 1,
+          cop: true,
+          isDeleted: false,
+          time: "2026-11-05T10:00:00Z",
+        },
+      ],
+    });
+    session.dispose();
+    session = makeSession(entry);
+
+    await session.writeEvent(TURNOVER_WRITE);
+    const origin = session.lastOpId() ?? undefined;
+    await session.setPossession("Wolves", origin);
+    // Only the entry left the outbox; the flip is still waiting.
+    if (origin !== undefined) {
+      await outbox.remove(origin);
+    }
+    expect((await outbox.pending(42)).map((op) => op.kind)).toEqual([
+      "possession",
+    ]);
+
+    const reverted = await session.undo(
+      { undo_of: 4 },
+      undefined,
+      { restorePossessionTo: "Ravens" },
+    );
+
+    const pending = await outbox.pending(42);
+    expect(pending.map((op) => op.kind)).toEqual([
+      "possession",
+      "correction",
+      "possession",
+    ]);
+    expect(reverted.inPossession).toBe("Ravens");
   });
 
   it("queues possession and half-time as events", async () => {

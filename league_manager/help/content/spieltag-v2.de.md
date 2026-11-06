@@ -68,7 +68,10 @@ wie die bisherige Scorecard
 4. Das Pfeil-Symbol neben einem Eintrag im Spielverlauf (**Rückgängig**) nimmt
    ihn zurück, **Ändern** korrigiert ihn an Ort und Stelle (Trikotnummer, bei
    **Spielzeit** und **Auszeit** die Spielzeit); am großen Bildschirm geht das
-   Zurücknehmen auch mit **Strg Z**. **Nur Punkte** blendet alles aus, was keine
+   Zurücknehmen auch mit **Strg Z**. Ein Eintrag, der den Ballbesitz gedreht
+   hat (**Turnover**, **Touchdown**, **Interception**, **Safety**), nimmt
+   dabei auch diese Drehung zurück – auch wenn er noch nicht gesendet wurde.
+   **Nur Punkte** blendet alles aus, was keine
    Punkte gebracht hat, damit ein falscher Spielstand schnell zu finden ist.
    **Halbzeit**
    fragt beim ersten Tippen nach (**Halbzeit starten**) und wechselt erst beim

@@ -34,6 +34,14 @@ React/TypeScript field-entry app. Run `npm ci`, then `npm run test:run`,
   existing light, sun and dark theme tokens. Responsive rules are at the end of
   `src/styles/app.css`.
 
+## Offline writes
+
+- A queued op can name the op whose action it completes (`originId`). A
+  turnover/touchdown/interception writes the visible entry and then its
+  possession flip; undo removes the entry and exactly that flip, never a
+  manual possession change. The flip's `originId` is set at enqueue time from
+  `GameSession.lastOpId()`.
+
 ## Offline scenario tests
 
 `tests/e2e_scenarios/` drives two independent Chromium processes (own profile,
