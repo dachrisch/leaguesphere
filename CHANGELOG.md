@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.12.1](https://github.com/dachrisch/leaguesphere/compare/v5.12.0...v5.12.1) (2026-11-06)
+
+
+### Bug Fixes
+
+* **scorecard-v2:** keep the interception's return detail on its row ([4c2720e](https://github.com/dachrisch/leaguesphere/commit/4c2720e8ace8ffc0bcd160758d41f6abc859e270))
+* **scorecard-v2:** keep the interception's return detail on its row ([20eb195](https://github.com/dachrisch/leaguesphere/commit/20eb195a72bd55011812c8f0d931c9e8ae2512dd))
+* **scorecard-v2:** undo a scoring play by its submission, not its event ([cdd34f3](https://github.com/dachrisch/leaguesphere/commit/cdd34f3d50a4ba24dd5908ce39a251e3a1b25bf9))
+* **scorecard-v2:** undo a scoring play by its submission, not its event ([f0f2cbc](https://github.com/dachrisch/leaguesphere/commit/f0f2cbc304c722e354ce4701cdb2eec313c606bb))
+
 ## [5.12.0](https://github.com/dachrisch/leaguesphere/compare/v5.11.3...v5.12.0) (2026-11-06)
 
 
