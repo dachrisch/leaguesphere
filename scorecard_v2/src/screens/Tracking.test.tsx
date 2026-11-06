@@ -4180,3 +4180,24 @@ describe("the team timeout during the half-time", () => {
     ).toBeDisabled();
   });
 });
+
+describe("a possession change in flight", () => {
+  it("holds both timeouts until the ball settles", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    answerPossession(() => new Promise(() => undefined));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Wolves" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Auszeit Ravens" }),
+      ).toBeDisabled(),
+    );
+    expect(
+      screen.getByRole("button", { name: "Auszeit Wolves" }),
+    ).toBeDisabled();
+  });
+});
