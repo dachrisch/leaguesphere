@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.11.3](https://github.com/dachrisch/leaguesphere/compare/v5.11.2...v5.11.3) (2026-11-06)
+
+
+### Bug Fixes
+
+* **scorecard-v2:** keep who recorded a queued entry off the author ([154ddc7](https://github.com/dachrisch/leaguesphere/commit/154ddc749f45f1a828b4efb66a027baf826fe986))
+* **scorecard-v2:** refresh the badge as soon as the queue changes ([5488e09](https://github.com/dachrisch/leaguesphere/commit/5488e0975ac555d2038cafc0f5758b5ed0201112))
+* **scorecard-v2:** show a stranded phone its own entries honestly ([2fbe9ef](https://github.com/dachrisch/leaguesphere/commit/2fbe9ef89f39eea2451d51a2137deaff7cfc8577))
+* **scorecard-v2:** show a stranded phone its own entries honestly ([43cbc14](https://github.com/dachrisch/leaguesphere/commit/43cbc1428b8313428c16be82ebdfdcbe8622f372))
+* **scorecard-v2:** undo takes the entry's possession flip with it ([a065a44](https://github.com/dachrisch/leaguesphere/commit/a065a446cf9a5259f00859190b8bb377f2feaa73))
+
 ## [5.11.2](https://github.com/dachrisch/leaguesphere/compare/v5.11.1...v5.11.2) (2026-11-06)
 
 
