@@ -597,3 +597,19 @@ describe('R 5-1-1a: "beyond the middle" is strict', () => {
     expect(state).toMatchObject({ down: 2, ballOn: 25, goal: false });
   });
 });
+
+describe("the edges of the geometry-aware engine", () => {
+  it("measures a fresh series from the start spot when the spot is unknown", () => {
+    // before the first Feldposition a series has no spot: the line to gain is
+    // still middle minus the series start
+    expect(firstDownDistance(null)).toBe(20);
+    expect(firstDownDistance(null, { ...DEFAULT_GEOMETRY, middle: 20, seriesStart: 5 })).toBe(15);
+  });
+
+  it("starts a new series when a goal-to-go play reaches the goal line", () => {
+    const state = advance({ down: 2, toGo: 3, ballOn: 47, goal: true }, 3);
+
+    expect(state).toEqual(seriesAt(50));
+    expect(state.toGo).toBe(0);
+  });
+});
