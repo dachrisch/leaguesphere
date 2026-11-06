@@ -357,6 +357,46 @@ describe("online writes", () => {
     expect(runtime.sync.stateFor(42).paused).toBe("device");
   });
 
+  it("sends the correction and the possession restore for a stored turnover", async () => {
+    const row = {
+      id: 11,
+      sequence: 1,
+      seq: 4,
+      team: "Ravens",
+      event: "Turnover",
+      player: null,
+      input: null,
+      half: 1,
+      cop: true,
+      isDeleted: false,
+      time: "2026-11-05T10:00:00Z",
+    };
+    apiGetMock
+      .mockResolvedValueOnce(
+        serverLog({ inPossession: "Wolves", events: [row] }),
+      )
+      .mockResolvedValueOnce(
+        serverLog({ inPossession: "Ravens", events: [{ ...row, isDeleted: true }] }),
+      );
+
+    await session.undo(
+      { undo_of: 4 },
+      undefined,
+      { restorePossessionTo: "Ravens" },
+    );
+
+    expect(apiPostMock).toHaveBeenCalledTimes(2);
+    expect(apiPostMock).toHaveBeenNthCalledWith(1, "/api/game/42/events", {
+      events: [{ type: "correction", code: "undo", payload: { undo_of: 4 } }],
+      client_id: expect.any(String),
+    });
+    expect(apiPostMock).toHaveBeenNthCalledWith(2, "/api/game/42/events", {
+      events: [{ type: "possession", code: "home", side: "home" }],
+      client_id: expect.any(String),
+    });
+    expect(session.getLog().inPossession).toBe("Ravens");
+  });
+
   it("re-reads the log through the snapshot-backed refresh", async () => {
     apiGetMock.mockResolvedValue(serverLog({ inPossession: "Wolves" }));
 

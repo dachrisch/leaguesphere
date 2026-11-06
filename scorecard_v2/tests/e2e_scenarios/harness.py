@@ -88,6 +88,11 @@ TURNOVER_ROW_JS = """() => [...document.querySelectorAll('.logrows .rowprimary')
 TOUCHDOWN_ROW_JS = """() => [...document.querySelectorAll('.logrows .rowprimary')]
   .filter((el) => el.textContent.trim().startsWith('Touchdown ')).length"""
 
+# A row a server-side undo struck through: it stays in the log, unlike a queued
+# row the phone simply removes.
+DELETED_TURNOVER_ROW_JS = """() => [...document.querySelectorAll('.logrows .row.deleted .rowprimary')]
+  .filter((el) => el.textContent.trim().startsWith('Turnover ')).length"""
+
 
 # --------------------------------------------------------------------------- #
 # Server-side facts
@@ -753,6 +758,7 @@ class Phone:
             for match in re.finditer(
                 r"(\d+)\s+(?:Eintr(?:ag|äge)|warten|abgelehnt|nicht übertragen)",
                 text,
+                flags=re.IGNORECASE,
             ):
                 shown = max(shown, int(match.group(1)))
             offline = re.search(r"Offline\s*·\s*(\d+)", text)
@@ -844,16 +850,35 @@ class Phone:
         # the in-flight guard.
         expect(tile).to_be_enabled(timeout=20000)
 
-    def undo_last(self) -> None:
+    def undo_last(self, *, removed: bool = True) -> None:
+        """Undo the newest Turnover.
+
+        A queued row disappears when its op is dropped (`removed=True`); a row
+        that already reached the server stays in the log struck through, so its
+        undo is waited for as a deleted row, not as a shorter list.
+        """
+
         page = self._require_page()
         button = page.get_by_role("button", name="Rückgängig", exact=True)
         expect(button).to_be_visible(timeout=10000)
-        before = self._row_count(TURNOVER_ROW_JS)
+        before = self._row_count(
+            TURNOVER_ROW_JS if removed else DELETED_TURNOVER_ROW_JS
+        )
         button.click()
+        if removed:
+            page.wait_for_function(
+                "expected => [...document.querySelectorAll('.logrows .rowprimary')]"
+                ".filter((el) => el.textContent.trim().startsWith('Turnover '))"
+                ".length < expected",
+                arg=before,
+                timeout=15000,
+            )
+            return
         page.wait_for_function(
-            "expected => [...document.querySelectorAll('.logrows .rowprimary')]"
+            "expected => [...document.querySelectorAll("
+            "'.logrows .row.deleted .rowprimary')]"
             ".filter((el) => el.textContent.trim().startsWith('Turnover '))"
-            ".length < expected",
+            ".length > expected",
             arg=before,
             timeout=15000,
         )

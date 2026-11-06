@@ -146,6 +146,9 @@ def test_s05_offline_undo_removes_the_entry_and_its_effect(phones, club_game, re
     a, _ = phones
     started_game(a, club_game)
     start_possession = server_state(club_game).in_possession
+    # The server stores the side (`home`), the switch shows the team name; keep
+    # the phone's own starting label to compare like with like.
+    phone_start = a.possession()
 
     a.offline()
     a.tap_turnover()
@@ -168,7 +171,8 @@ def test_s05_offline_undo_removes_the_entry_and_its_effect(phones, club_game, re
     # Nothing may reach the server while the queue is empty: both the entry
     # and the flip it wrote are gone.
     assert a.queue() == []
-    assert a.possession() == start_possession
+    assert phone_start is not None
+    assert a.possession() == phone_start
 
     a.online()
     a.wait_queue(0)
@@ -194,6 +198,7 @@ def test_s05b_online_undo_removes_the_entry_and_its_effect(phones, club_game, re
     a, _ = phones
     started_game(a, club_game)
     start_possession = server_state(club_game).in_possession
+    phone_start = a.possession()
 
     a.tap_turnover()
     a.wait_queue(0)
@@ -206,7 +211,9 @@ def test_s05b_online_undo_removes_the_entry_and_its_effect(phones, club_game, re
     report.observe("S05b", "possession_before_undo", written.in_possession)
     assert written.in_possession != start_possession
 
-    a.undo_last()
+    # The row is already on the server, so undo strikes it through instead of
+    # removing it from the log.
+    a.undo_last(removed=False)
     a.wait_queue(0)
     # The correction and the restore are two writes; wait until the server has
     # both and the screen shows the marker again.
@@ -229,7 +236,8 @@ def test_s05b_online_undo_removes_the_entry_and_its_effect(phones, club_game, re
     )
     assert not [event for event in state.events if event.code == "turnover"]
     assert state.in_possession == start_possession
-    assert a.possession() == start_possession
+    assert phone_start is not None
+    assert a.possession() == phone_start
     assert_invariants(club_game, [a], set())
 
 
