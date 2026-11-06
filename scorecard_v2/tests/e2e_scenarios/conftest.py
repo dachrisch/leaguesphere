@@ -17,7 +17,10 @@ import re  # noqa: E402
 from pathlib import Path  # noqa: E402
 
 import pytest  # noqa: E402
-from django.core.servers.basehttp import WSGIServer  # noqa: E402
+from django.core.servers.basehttp import (  # noqa: E402
+    ThreadedWSGIServer,
+    WSGIServer,
+)
 from django.test.testcases import LiveServerThread  # noqa: E402
 
 from scorecard_v2.tests.e2e_scenarios.harness import (  # noqa: E402
@@ -48,7 +51,7 @@ class SingleThreadedWSGIServer(WSGIServer):
 def _live_server_mode():
     # Belt and braces for a server started after this fixture runs.
     LiveServerThread.server_class = (
-        SingleThreadedWSGIServer if database_is_sqlite() else WSGIServer
+        SingleThreadedWSGIServer if database_is_sqlite() else ThreadedWSGIServer
     )
     yield
 

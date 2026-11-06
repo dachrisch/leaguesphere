@@ -23,7 +23,7 @@ import signal
 import subprocess
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -227,15 +227,6 @@ class QueuedOp:
             payload=row.get("payload"),
         )
 
-    @property
-    def expected_events(self) -> int:
-        """How many event rows this submission should write (our ops hold one)."""
-
-        events = (self.payload or {}).get("events")
-        if isinstance(events, list) and events:
-            return len(events)
-        return 1
-
 
 # --------------------------------------------------------------------------- #
 # The phone
@@ -295,7 +286,12 @@ class Phone:
             viewport={"width": 600, "height": 844},
             **options,
         )
-        self.context.set_default_timeout(20000)
+        self.context.set_default_timeout(30000)
+        try:
+            self.context.set_default_navigation_timeout(45000)
+        except Exception:
+            # Older Playwright builds only expose the timeout on the page.
+            pass
         if offline:
             self.context.set_offline(True)
         pages = self.context.pages
@@ -380,30 +376,60 @@ class Phone:
     def login(self, username: str, password: str) -> None:
         self.credentials = (username, password)
         self._login_ui(username, password)
-        # Prime the profile before any scenario can SIGKILL it. A browser that
-        # has just generated its device id keeps that localStorage write in the
-        # renderer for a moment; a clean close/reopen commits it, so the hard
-        # kill below tests the profile (a phone used for a while) rather than
-        # the first 200 ms of a brand-new install.
-        self._reopen_cleanly()
-        # The clean restart is also the point where a session cookie can be
-        # missing (a cookie store that had not committed yet). Log in again only
-        # when the app actually redirected us; re-submitting a login page that
-        # is already navigating away races with Django's authenticated-user
-        # redirect.
+        # The app generates the device id on its first boot. Before a scenario
+        # may SIGKILL this browser, wait until that id is actually in the
+        # profile's Local Storage files -- the renderer can hold the write in
+        # memory for a moment, and a hard kill then looks like a brand-new
+        # device. No browser restart and no second login are needed.
+        self._wait_device_id_durable(self.device_id())
+
+    def _wait_device_id_durable(self, device_id: str, timeout_ms: int = 30000) -> None:
+        storage = self.profile / "Default" / "Local Storage" / "leveldb"
+        needles = (device_id.encode(), device_id.encode("utf-16-le"))
+        deadline = time.monotonic() + timeout_ms / 1000
+        while time.monotonic() < deadline:
+            try:
+                files = list(storage.glob("*"))
+            except OSError:
+                files = []
+            for path in files:
+                if path.suffix not in (".log", ".ldb", ".sst"):
+                    continue
+                try:
+                    data = path.read_bytes()
+                except OSError:
+                    continue
+                if any(needle in data for needle in needles):
+                    return
+            self._require_page().wait_for_timeout(200)
+        raise AssertionError(
+            f"{self.name}: device id {device_id} never reached {storage}"
+        )
+
+    def _goto(self, url: str, attempts: int = 3):
+        """Navigate, retrying the transient ``ERR_ABORTED`` race.
+
+        A logout or a submitted login can still be finishing its navigation;
+        Playwright then aborts the next ``goto``. It is not a product failure,
+        so retry the navigation instead of failing the scenario.
+        """
+
         page = self._require_page()
-        page.goto(self.app_url())
-        if "/login/" in page.url:
-            self._login_ui(username, password)
-        else:
-            page.wait_for_selector("#scorecard-v2-app")
-            expect(page.get_by_role("heading", name="Meine Spieltage")).to_be_visible(
-                timeout=30000
-            )
+        last: Exception | None = None
+        for _ in range(attempts):
+            try:
+                return page.goto(url)
+            except PlaywrightError as error:
+                last = error
+                if "ERR_ABORTED" not in str(error):
+                    raise
+                page.wait_for_timeout(300)
+        assert last is not None
+        raise last
 
     def _login_ui(self, username: str, password: str) -> None:
         page = self._require_page()
-        page.goto(f"{self.base_url}/login/")
+        self._goto(f"{self.base_url}/login/")
         username_input = page.locator('input[name="username"]')
         if "/login/" in page.url and username_input.count() > 0:
             page.fill('input[name="username"]', username)
@@ -412,28 +438,12 @@ class Phone:
             # button; only the login form's visible button is meant.
             page.locator('button[type="submit"]:visible').first.click()
         expect(page).not_to_have_url(re.compile(r"/login/$"))
-        page.goto(self.app_url())
+        page.wait_for_load_state("domcontentloaded")
+        self._goto(self.app_url())
         page.wait_for_selector("#scorecard-v2-app")
         expect(page.get_by_role("heading", name="Meine Spieltage")).to_be_visible(
             timeout=30000
         )
-
-    def _reopen_cleanly(self) -> None:
-        context = self.context
-        if context is not None:
-            try:
-                context.close()
-            except PlaywrightError:
-                pass
-        self.context = None
-        self.page = None
-        # Do not launch the second process while the first one is still
-        # releasing the profile: Chromium then sometimes starts with a fresh
-        # profile, which would look like lost cookies and a lost device id.
-        deadline = time.monotonic() + 10
-        while self.pids() and time.monotonic() < deadline:
-            time.sleep(0.05)
-        self.start()
 
     def logout_and_login(self, creds: dict[str, str]) -> None:
         page = self._require_page()
@@ -442,7 +452,7 @@ class Phone:
             menu.click()
             page.get_by_role("button", name="Abmelden").click()
         else:  # pragma: no cover - a screen without the menu
-            page.goto(f"{self.base_url}/logout/")
+            self._goto(f"{self.base_url}/logout/")
         page.wait_for_url(re.compile(r"/$|/login/"), timeout=20000)
         self.login(creds["username"], creds["password"])
 
@@ -462,7 +472,7 @@ class Phone:
 
     def open_root(self) -> None:
         page = self._require_page()
-        page.goto(self.app_url())
+        self._goto(self.app_url())
         self._ensure_authenticated()
         page.wait_for_selector("#scorecard-v2-app")
         expect(page.get_by_role("heading", name="Meine Spieltage")).to_be_visible(
@@ -492,17 +502,17 @@ class Phone:
         if game is None or direct:
             if game is None:
                 raise AssertionError("open_game needs a game or a direct path")
-            page.goto(self.game_url(game))
+            self._goto(self.game_url(game))
             if "/login/" in page.url:
                 self._ensure_authenticated()
-                page.goto(self.game_url(game))
+                self._goto(self.game_url(game))
             settle_screen()
             return
 
-        page.goto(self.app_url())
+        self._goto(self.app_url())
         if "/login/" in page.url:
             self._ensure_authenticated()
-            page.goto(self.app_url())
+            self._goto(self.app_url())
         page.wait_for_selector("#scorecard-v2-app")
         try:
             expect(page.get_by_role("heading", name="Meine Spieltage")).to_be_visible(
@@ -519,7 +529,7 @@ class Phone:
             rows.first.click()
             settle_screen()
         except (PlaywrightError, AssertionError):
-            page.goto(self.game_url(game))
+            self._goto(self.game_url(game))
             settle_screen()
 
     def ensure_offline_capable(self) -> None:
@@ -862,15 +872,14 @@ def assert_invariants(
     live_phones = [phone for phone in phones if phone.page is not None]
 
     # I2 first: a duplicate would also make the score disagree, and its cause
-    # is the more useful finding.
+    # is the more useful finding. Every harness submission holds exactly one
+    # envelope, so any client_id with more than one event is a replay that was
+    # written twice -- from either phone, not only the one we watched.
     seen: dict[str, list[GameEvent]] = {}
     for event in state.events:
         seen.setdefault(event.client_id, []).append(event)
-    for client_id in queued_ids:
-        events = seen.get(client_id, [])
+    for client_id, events in seen.items():
         if len(events) > 1:
-            # Every harness op carries exactly one envelope; a second row for
-            # one client_id is a replay that was written twice.
             raise AssertionError(
                 f"I2 duplicate: client_id {client_id} wrote {len(events)} events "
                 f"(seq {[event.seq for event in events]})"

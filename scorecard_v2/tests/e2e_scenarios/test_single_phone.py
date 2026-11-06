@@ -11,6 +11,8 @@ import time
 import pytest
 
 from scorecard_v2.tests.e2e_scenarios.harness import (
+    PASSWORD,
+    USERNAME,
     assert_invariants,
     server_state,
     started_game,
@@ -112,6 +114,16 @@ def test_s04_killed_phone_restarts_offline_then_returns(phones, club_game, repor
     assert len(server_state(club_game).events) == before
 
     a.online()
+    a.settle()
+    # The hard kill can lose an uncommitted session cookie. The app then pauses
+    # with "Pausiert · Anmeldung" and keeps the queue; the official signs in and
+    # it drains. Either path is correct, so record which one happened.
+    re_login = a.badge() == "Pausiert · Anmeldung"
+    report.observe("S04", "relogin_required", re_login)
+    if re_login:
+        a.login(USERNAME, PASSWORD)
+        a.open_game(club_game)
+        a.wait_tracking()
     a.wait_queue(0)
     state = server_state(club_game)
     report.observe("S04", "delivered", len(queued & state.client_ids))
