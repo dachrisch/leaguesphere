@@ -1015,6 +1015,38 @@ class Phone:
                 timeout=20000,
             )
 
+    def run_touchdown(self, yards: int, *, wait: bool = True) -> None:
+        """Score a run through the play sheet, then miss the try.
+
+        The touchdown is the play's result since 2026-11-05 (53:05): one entry
+        writes the run and its touchdown, and the try is still asked after it.
+        """
+
+        page = self._require_page()
+        before = self._row_count(TOUCHDOWN_ROW_JS)
+        entry = page.get_by_role("button", name="Spielzug (Pass/Run/Sack)")
+        expect(entry).to_be_enabled(timeout=20000)
+        entry.click()
+        sheet = page.get_by_role("dialog", name=re.compile(r"^Spielzug · "))
+        expect(sheet).to_be_visible(timeout=20000)
+        sheet.get_by_role("button", name="Run", exact=True).click()
+        distance = sheet.get_by_role("textbox", name=re.compile(r"^Raumgewinn"))
+        distance.fill(str(yards))
+        sheet.get_by_role("button", name="Touchdown", exact=True).click()
+        sheet.get_by_role("button", name="Spielzug speichern").click()
+
+        pat = page.get_by_role("group", name=re.compile(r"^Extrapunkt "))
+        expect(pat).to_be_visible(timeout=20000)
+        pat.get_by_role("button", name="nicht verwandelt", exact=True).click()
+        if wait:
+            page.wait_for_function(
+                "expected => [...document.querySelectorAll('.logrows .rowprimary')]"
+                ".filter((el) => el.textContent.trim().startsWith('Touchdown '))"
+                ".length >= expected",
+                arg=before + 1,
+                timeout=20000,
+            )
+
     def finalize(self) -> None:
         """Finish the game from the tracking screen (both captains confirmed)."""
 
