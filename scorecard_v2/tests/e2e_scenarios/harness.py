@@ -170,8 +170,12 @@ class Report:
     def observe(self, scenario: str, key: str, value: object) -> None:
         self.observations.setdefault(scenario, {})[key] = value
 
-    def finding(self, finding_id: str, title: str, detail: str) -> None:
-        self.findings.append({"id": finding_id, "title": title, "detail": detail})
+    def finding(
+        self, finding_id: str, title: str, detail: str, *, rank: int = 100
+    ) -> None:
+        self.findings.append(
+            {"id": finding_id, "title": title, "detail": detail, "rank": rank}
+        )
 
     def write(self) -> None:
         lines = [
@@ -191,7 +195,7 @@ class Report:
         if self.findings:
             lines.append("## Candidate findings")
             lines.append("")
-            for finding in self.findings:
+            for finding in sorted(self.findings, key=lambda item: item["rank"]):
                 lines.append(
                     f"- **{finding['id']} — {finding['title']}**: "
                     f"{finding['detail']}"
@@ -590,6 +594,42 @@ class Phone:
         error = page.locator(".seterror").first
         return error.inner_text().strip() if error.count() > 0 else None
 
+    def prepare_start(self) -> None:
+        """Fill the setup and open the confirmation sheet, writing nothing."""
+
+        page = self._require_page()
+        expect(page.get_by_role("heading", name="Spiel vorbereiten")).to_be_visible(
+            timeout=30000
+        )
+        _choose_start_fields(page)
+        _tap_start(page)
+
+    def click_start_unawaited(self) -> None:
+        """Dispatch the final start click without waiting for its answer.
+
+        Playwright's own click waits for the action to settle; the row-lock
+        race only exists while the first POST is still in flight, so the test
+        needs a click that returns as soon as the request is dispatched.
+        """
+
+        page = self._require_page()
+        page.evaluate("""() => {
+              const sheet = [...document.querySelectorAll('[role="dialog"]')]
+                .find((el) => (el.getAttribute('aria-label') || '') === 'Spiel starten');
+              const root = sheet || document;
+              const button = [...root.querySelectorAll('button')]
+                .find((el) => el.textContent.trim() === 'Jetzt starten');
+              if (!button) throw new Error('Jetzt starten not found');
+              button.click();
+            }""")
+
+    def wait_started_or_refused(self) -> None:
+        page = self._require_page()
+        page.wait_for_function(
+            "() => document.querySelector('.tracking') || document.querySelector('.seterror')",
+            timeout=30000,
+        )
+
     # -- network ---------------------------------------------------------- #
 
     def offline(self) -> None:
@@ -688,9 +728,66 @@ class Phone:
             return None
         return text.inner_text().strip()
 
+    def shown_entries(self) -> int:
+        """How many waiting entries the *screen* says are waiting.
+
+        The outbox in IndexedDB is what the phone holds; this is what the
+        official can actually see. A badge count, the sync strip or a details
+        list header all count, but a generic notice ("Nur lesen") does not:
+        a queue the screen never mentions is not visible to its operator.
+        """
+
+        page = self._require_page()
+        badge_pending, badge_failed = _badge_counts(self.badge())
+        texts = [self.badge()]
+        for selector in (
+            ".syncstrip .syncstrip-text",
+            ".syncfailed-head",
+            ".syncstranded-head",
+        ):
+            locator = page.locator(selector)
+            if locator.count() > 0:
+                texts.extend(locator.all_inner_texts())
+        shown = badge_pending + badge_failed
+        for text in texts:
+            for match in re.finditer(
+                r"(\d+)\s+(?:Eintr(?:ag|äge)|warten|abgelehnt|nicht übertragen)",
+                text,
+            ):
+                shown = max(shown, int(match.group(1)))
+            offline = re.search(r"Offline\s*·\s*(\d+)", text)
+            if offline is not None:
+                shown = max(shown, int(offline.group(1)))
+        return shown
+
     def online_state(self) -> bool:
         page = self._require_page()
         return bool(page.evaluate("() => navigator.onLine"))
+
+    def stranded_note(self) -> str | None:
+        """The screen's own score note for a read-only phone, if it shows one."""
+
+        page = self._require_page()
+        note = page.locator(".syncstranded-note").first
+        if note.count() == 0:
+            return None
+        return note.inner_text().strip()
+
+    def open_stranded(self) -> list[str]:
+        """Reveal the stranded entries in one tap and return their rows."""
+
+        page = self._require_page()
+        details = page.locator("details.syncstranded").first
+        if details.count() == 0:
+            return []
+        summary = details.locator("summary").first
+        if summary.count() > 0:
+            summary.click()
+        return [
+            text.strip()
+            for text in page.locator(".syncstranded-list li").all_inner_texts()
+            if text.strip() != ""
+        ]
 
     def can_take_over(self) -> bool:
         page = self._require_page()
@@ -894,15 +991,19 @@ def assert_invariants(
                 f"{event.team_log_id}"
             )
 
-    # I1: every op a phone queued is on the server or still visible in a queue.
+    # I1: every op a phone queued is on the server or still visible in a queue
+    # the official can actually see. The IndexedDB rows alone are not enough:
+    # an op counts as visible only when the screen says how many are waiting.
     visible: set[str] = set()
     for phone in live_phones:
-        visible.update(op.id for op in phone.queue())
+        ops = phone.queue()
+        if ops and phone.shown_entries() >= len(ops):
+            visible.update(op.id for op in ops)
     missing = queued_ids - state.client_ids - visible
     if missing:
         raise AssertionError(
             f"I1 lost: {len(missing)} queued ops are neither on the server nor "
-            f"in a visible queue: {sorted(missing)}"
+            f"shown as waiting on the screen: {sorted(missing)}"
         )
 
     # I3: the projection and the live rows agree.
@@ -929,7 +1030,14 @@ def assert_invariants(
                 f"I4 {phone.name}: badge says Synchron with {len(ops)} queued ops"
             )
         if label.startswith("Pausiert") or label == "Nur lesen":
-            # A pause is a visible reason (I5); these labels carry no count.
+            # A pause is a visible reason (I5), and the screen must also say
+            # how many entries it is holding: a generic read-only notice hides
+            # a queue the official cannot deliver.
+            if phone.shown_entries() < len(ops):
+                raise AssertionError(
+                    f"I5 {phone.name}: {len(ops)} ops queued but {label!r} "
+                    "does not say how many are waiting"
+                )
             continue
         if not label:
             raise AssertionError(

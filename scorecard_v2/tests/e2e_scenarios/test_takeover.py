@@ -55,6 +55,11 @@ def test_s11_staff_take_over_of_a_dead_phone(phones, club_game, staff_user, repo
     assert_invariants(club_game, [a, b], set())
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="F4: after a staff take-over the returning phone keeps its 16 "
+    "entries, delivers none and the screen only says 'Nur lesen'",
+)
 def test_s12_late_phone_after_a_staff_takeover(phones, club_game, staff_user, report):
     a, b = phones
     started_game(a, club_game)
@@ -86,10 +91,37 @@ def test_s12_late_phone_after_a_staff_takeover(phones, club_game, staff_user, re
     report.observe("S12", "still_on_a", len(a.queue()))
     report.observe("S12", "a_badge", a.badge())
     report.observe("S12", "a_strip", a.strip())
+    report.observe("S12", "a_shown_entries", a.shown_entries())
+    report.observe("S12", "a_stranded_note", a.stranded_note())
+    report.observe("S12", "a_stranded_rows", len(a.open_stranded()))
+    report.finding(
+        "F4",
+        "A returning phone strands its entries after a staff take-over",
+        f"{len(stranded)} ops stayed on the old phone and {len(delivered)} "
+        "reached the official record; the screen only said 'Nur lesen' and "
+        "named neither the count nor the entries, so the official could not "
+        "see that their writes are missing from the game.",
+        rank=0,
+    )
     assert a.badge() == "Nur lesen"
+    assert len(delivered) == 0
+    assert len(a.queue()) == len(stranded)
+    # The read-only strip must name the count and say they are not in the
+    # official record; the entries themselves are one tap away.
+    strip = a.strip() or ""
+    assert str(len(stranded)) in strip
+    assert "nicht übertragen" in strip or "nicht im offiziellen" in strip
+    assert a.shown_entries() >= len(stranded)
+    assert len(a.open_stranded()) == len(stranded)
     assert_invariants(club_game, [a, b], stranded)
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="F5: a phone that lost the lock shows its own optimistic 13:0 "
+    "while the server and the other phone show 7:0, without labelling the "
+    "difference",
+)
 def test_s13_scores_differ_and_stay_different(phones, club_game, staff_user, report):
     a, b = phones
     started_game(a, club_game)
@@ -115,11 +147,25 @@ def test_s13_scores_differ_and_stay_different(phones, club_game, staff_user, rep
     report.observe("S13", "a_score", a.score())
     report.observe("S13", "b_score", b.score())
     report.observe("S13", "server_score", (state.score_home, state.score_away))
+    report.observe("S13", "a_stranded_note", a.stranded_note())
     report.observe("S13", "stranded", len(stranded))
     report.observe("S13", "delivered", len(stranded & state.client_ids))
     report.observe("S13", "a_badge", a.badge())
-    assert a.score() != (state.score_home, state.score_away)
+    report.finding(
+        "F5",
+        "A phone that lost the lock shows a different score without saying so",
+        f"A showed {a.score()[0]}:{a.score()[1]} while B and the server showed "
+        f"{state.score_home}:{state.score_away}; the screen had no marker that "
+        "its number is the device's own and not the official result.",
+        rank=1,
+    )
+    # The official score is the main score on every phone, including the one
+    # whose own entries never left the device.
+    assert a.score() == (state.score_home, state.score_away)
     assert b.score() == (state.score_home, state.score_away)
+    # The device's own number is still shown, clearly labelled as differing.
+    note = a.stranded_note() or ""
+    assert "nicht offiziell" in note or "abweichend" in note
     assert_invariants(club_game, [a, b], stranded)
 
 

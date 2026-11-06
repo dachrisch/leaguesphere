@@ -5,6 +5,7 @@ game, and what a phone that lost its own device id sees when it comes back.
 """
 
 import pytest
+from django.db import connection
 
 from scorecard_v2.tests.e2e_scenarios.harness import (
     assert_invariants,
@@ -13,6 +14,51 @@ from scorecard_v2.tests.e2e_scenarios.harness import (
 )
 
 pytestmark = pytest.mark.django_db(transaction=True)
+
+
+@pytest.mark.skipif(
+    connection.vendor == "sqlite",
+    reason="SQLite serialises every write, so two simultaneous starts cannot "
+    "race; only the MariaDB row lock exercises the guard this test pins.",
+)
+def test_s08b_simultaneous_start_writes_exactly_one(phones, club_game, report):
+    """Both final clicks in flight at once: one device wins, one start is written.
+
+    S08 starts the second phone only after the first answered, which a
+    single-writer SQLite happily serialises. This test dispatches both POSTs
+    without waiting for either, so the row lock is the only thing that can
+    keep the two ``Spiel gestartet`` writes apart.
+    """
+
+    a, b = phones
+    a.open_game(club_game)
+    b.open_game(club_game)
+    a.prepare_start()
+    b.prepare_start()
+
+    # No awaiting in between: both requests are dispatched back to back and
+    # race on the same game row.
+    a.click_start_unawaited()
+    b.click_start_unawaited()
+    a.wait_started_or_refused()
+    b.wait_started_or_refused()
+
+    state = server_state(club_game)
+    start_rows = [row for row in state.team_log if row.event == "Spiel gestartet"]
+    tracking = [
+        phone.name for phone in (a, b) if phone.page.locator(".tracking").count()
+    ]
+    report.observe("S08b", "start_rows", len(start_rows))
+    report.observe("S08b", "tracking_phones", tracking)
+    report.observe("S08b", "stored_device", state.device_id)
+    report.observe("S08b", "a_device", a.device_id())
+    report.observe("S08b", "b_device", b.device_id())
+
+    assert len(start_rows) == 1
+    assert len(tracking) == 1
+    winner = a if tracking[0] == a.name else b
+    assert state.device_id == winner.device_id()
+    assert_invariants(club_game, [a, b], set())
 
 
 def _wait_read_only(phone) -> None:

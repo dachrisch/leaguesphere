@@ -120,6 +120,17 @@ def test_s04_killed_phone_restarts_offline_then_returns(phones, club_game, repor
     # it drains. Either path is correct, so record which one happened.
     re_login = a.badge() == "Pausiert · Anmeldung"
     report.observe("S04", "relogin_required", re_login)
+    report.observe(
+        "S04",
+        "session_loss_after_hard_kill",
+        "yes" if re_login else "no",
+    )
+    report.observe(
+        "S04",
+        "session_loss_consequence",
+        "a hard kill can lose the uncommitted session cookie; officials may "
+        "need their credentials after a restart before the queue can drain",
+    )
     if re_login:
         a.login(USERNAME, PASSWORD)
         a.open_game(club_game)
