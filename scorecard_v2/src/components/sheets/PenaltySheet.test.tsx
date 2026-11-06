@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 import { ApiError, apiGet } from "../../api/client";
+import type { GameRules } from "../../api/rules";
 import type { GameLogEventInput, Penalty, RosterPlayer } from "../../api/types";
 import type { LogRow } from "../EventLog";
 import PenaltySheet, {
@@ -918,5 +919,122 @@ describe("the penalty numbers come from the definition", () => {
         isPenaltyAgainstOpponent: false,
       }),
     ).toBe("loss_of_down");
+  });
+});
+
+describe("the catalogue from the definition", () => {
+  const rules: GameRules = {
+    sport: "flag_football",
+    variant: "5v5",
+    ruleset: "IFAF 2023",
+    field: {
+      length: 50,
+      width: 25,
+      end_zone: 10,
+      middle: 25,
+      no_run_zone: 5,
+      spot_precision: 0.5,
+    },
+    series: {
+      downs: 4,
+      start: 5,
+      line_to_gain: ["middle", "goal"],
+      first_down_at_middle: "once",
+      turnover_on_downs_spot: 5,
+      interception_spot: "dead_ball",
+    },
+    scoring: {
+      touchdown: 6,
+      try: { "5": 1, "10": 2 },
+      try_defense: 2,
+      try_safety: 1,
+      safety: 2,
+      touchback_spot: 5,
+      after_try_spot: 5,
+      safety_spot: 5,
+    },
+    periods: {
+      count: 2,
+      length_minutes: 20,
+      intermission_minutes: 2,
+      play_clock_seconds: 25,
+      pass_clock_seconds: 7,
+      running_clock_diff: 30,
+    },
+    timeouts: { per_half: 2, seconds: 60, carry_over: false, in_overtime: false },
+    overtime: {
+      start_spot: 25,
+      first_down_at_middle: false,
+      tiebreak_try: { spot: 5, points: 1 },
+    },
+    officials: { counts: [2, 3, 4] },
+    penalties: [
+      {
+        code: "illegal_handoff",
+        name: "illegale Ballübergabe",
+        subtext: "SF/LoD",
+        yards: 5,
+        down: "loss",
+        enforcement: "SF",
+        side: "offense",
+        rule: "7-1-5",
+      },
+      {
+        code: "shielding",
+        name: "Abschirmen (Blocken) Defense",
+        subtext: "BS/5",
+        yards: 5,
+        down: "repeat",
+        enforcement: "BS",
+        side: "defense",
+        rule: "9-2-2a",
+      },
+    ],
+  };
+
+  it("offers the definition's rows and prefills their numbers", async () => {
+    render(
+      <PenaltySheet
+        onClose={vi.fn()}
+        onSubmit={vi.fn<Submit>(async () => undefined)}
+        opponentName="Wolves"
+        roster={ROSTER}
+        rules={rules}
+        side="home"
+        teamName="Ravens"
+      />,
+    );
+    const user = userEvent.setup();
+
+    // the legacy list is not even fetched when the definition is there
+    const row = await screen.findByRole("button", {
+      name: /illegale Ballübergabe/,
+    });
+    await user.click(row);
+
+    expect(screen.getByRole("textbox", { name: /Yardage/ })).toHaveValue("5");
+    expect(screen.getByRole("button", { name: "Loss of Down" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /Abschirmen \(Blocken\) Defense/ }),
+    );
+    // a defence penalty is charged to the opponent and moves the ball their way
+    expect(screen.getByRole("button", { name: "Wolves" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("falls back to the subtext when a row carries no structured down rule", () => {
+    expect(
+      penaltyNextDown({
+        name: "Fehlstart",
+        subtext: "DB/5",
+        isPenaltyAgainstOpponent: false,
+      }),
+    ).toBe("repeat");
   });
 });
