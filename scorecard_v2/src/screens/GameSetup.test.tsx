@@ -2322,9 +2322,14 @@ describe("a game another device already took", () => {
 
     await renderSetup();
 
-    expect(
-      await screen.findByText(/hat ein anderes Gerät bereits übernommen/),
-    ).toBeInTheDocument();
+    const warning = await screen.findByText(
+      /hat ein anderes Gerät bereits übernommen/,
+    );
+    expect(warning).toBeInTheDocument();
+    // Not `.seterror`: that class means "the start failed", and the officials
+    // (and the e2e harness) read it that way before anyone taps.
+    expect(document.querySelector(".devicewarn")).not.toBeNull();
+    expect(document.querySelector(".seterror")).toBeNull();
     // it is a warning, not a gate: the start button stays available
     expect(screen.getByRole("button", { name: "Fortsetzen" })).toBeEnabled();
   });

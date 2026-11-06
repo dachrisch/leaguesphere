@@ -914,7 +914,10 @@ export default function GameSetupScreen({
           ) : null}
 
           {otherDevice === null ? null : (
-            <div className="seterror" role="alert">
+            // Deliberately not `.seterror`: that class marks a *failed start*
+            // (the harness and the officials read it that way), and this is a
+            // warning shown before anyone taps.
+            <div className="devicewarn" role="status">
               <p>
                 Dieses Spiel hat ein anderes Gerät bereits übernommen. Einträge
                 von hier werden abgelehnt, bis die Turnierleitung die Sperre

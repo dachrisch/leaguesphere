@@ -1218,6 +1218,17 @@ button.game-row:active {
   border-radius: var(--radius-lg);
 }
 
+/* A warning, not an error: the game is fine, another device holds it. */
+.devicewarn {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 35%, transparent);
+  border-radius: var(--radius-lg);
+}
+
 .setupfoot {
   position: sticky;
   /* The scroll area has a bottom safe-area padding; a negative sticky offset
