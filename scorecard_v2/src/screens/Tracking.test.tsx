@@ -4075,3 +4075,20 @@ describe("a scoring play without a number", () => {
     expect(await screen.findByText("Touchdown Ravens")).toBeInTheDocument();
   });
 });
+
+describe("a failed timeout", () => {
+  it("says so instead of pretending the timeout landed", async () => {
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    apiPostMock.mockRejectedValueOnce(new ApiError(500, null, "Server weg"));
+    await user.click(screen.getByRole("button", { name: "Auszeit Ravens" }));
+
+    expect(await screen.findByText("Server weg")).toBeInTheDocument();
+    // the budget is unchanged: nothing was recorded
+    expect(
+      screen.getByRole("button", { name: "Auszeit Ravens" }),
+    ).toHaveTextContent("0/2");
+  });
+});
