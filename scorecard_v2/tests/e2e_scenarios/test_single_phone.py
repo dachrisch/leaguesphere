@@ -215,17 +215,33 @@ def test_s05b_online_undo_removes_the_entry_and_its_effect(phones, club_game, re
     # removing it from the log.
     a.undo_last(removed=False)
     a.wait_queue(0)
-    # The correction and the restore are two writes; wait until the server has
-    # both and the screen shows the marker again.
-    deadline = time.monotonic() + 20
+    # The correction and the restore are two writes. Wait on the screen first:
+    # the deleted row appears when the correction landed, the marker when the
+    # restore did, and only then is the server idle enough for a SQLite read.
+    assert phone_start is not None
+    a.wait_possession(phone_start)
     state = server_state(club_game)
-    while time.monotonic() < deadline:
-        state = server_state(club_game)
-        if state.in_possession == start_possession and not [
-            event for event in state.events if event.code == "turnover"
-        ]:
-            break
-        a.page.wait_for_timeout(200)
+
+    turnover = next((event for event in state.events if event.code == "turnover"), None)
+    undo = next(
+        (
+            event
+            for event in state.events
+            if event.type == "correction"
+            and event.undo_of_id is not None
+            and turnover is not None
+            and event.undo_of_id == turnover.pk
+        ),
+        None,
+    )
+    turnover_row = next(
+        (
+            row
+            for row in state.team_log
+            if turnover is not None and row.pk == turnover.team_log_id
+        ),
+        None,
+    )
 
     report.observe("S05b", "possession_after_undo", state.in_possession)
     report.observe("S05b", "phone_possession_after_undo", a.possession())
@@ -234,9 +250,21 @@ def test_s05b_online_undo_removes_the_entry_and_its_effect(phones, club_game, re
         "turnover_events_after",
         [event.seq for event in state.events if event.code == "turnover"],
     )
-    assert not [event for event in state.events if event.code == "turnover"]
+    report.observe("S05b", "undo_event_seq", None if undo is None else undo.seq)
+    report.observe(
+        "S05b",
+        "turnover_row_deleted",
+        None if turnover_row is None else turnover_row.isDeleted,
+    )
+    report.observe("S05b", "phone_deleted_turnover_rows", a.deleted_turnover_rows())
+
+    # The store is append-only: the Turnover event stays, a later correction
+    # names it, and the row it wrote is marked deleted.
+    assert turnover is not None
+    assert undo is not None and undo.seq > turnover.seq
+    assert turnover_row is not None and turnover_row.isDeleted
+    assert a.deleted_turnover_rows() == 1
     assert state.in_possession == start_possession
-    assert phone_start is not None
     assert a.possession() == phone_start
     assert_invariants(club_game, [a], set())
 

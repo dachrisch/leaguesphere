@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from django.contrib.auth import get_user_model
-from django.db import connection
+from django.db import OperationalError, connection
 from playwright.sync_api import (
     BrowserContext,
     Error as PlaywrightError,
@@ -118,6 +118,25 @@ class ServerState:
 
 
 def server_state(game: Gameinfo) -> ServerState:
+    """Read the game's server state, waiting out SQLite's table lock.
+
+    On SQLite the single-threaded live server and this process share one
+    in-memory database. A read that lands exactly while the phone's write is
+    committing gets ``database table is locked``; retry only that, never any
+    other error, and give up after a short, bounded wait.
+    """
+
+    deadline = time.monotonic() + 10
+    while True:
+        try:
+            return _server_state_once(game)
+        except OperationalError as error:
+            if "locked" not in str(error).lower() or time.monotonic() >= deadline:
+                raise
+            time.sleep(0.1)
+
+
+def _server_state_once(game: Gameinfo) -> ServerState:
     state = GameState.objects.filter(game=game).first()
     setup = GameSetup.objects.filter(gameinfo=game).order_by("pk").first()
     return ServerState(
@@ -777,6 +796,21 @@ class Phone:
               return button ? button.textContent.trim() : null;
             }""")
 
+    def wait_possession(self, team: str, timeout_ms: int = 15000) -> None:
+        """Wait until the possession switch shows ``team``."""
+
+        page = self._require_page()
+        page.wait_for_function(
+            """(expected) => {
+              const button = document.querySelector(
+                '.possswitch button[aria-pressed="true"]'
+              );
+              return button ? button.textContent.trim() === expected : false;
+            }""",
+            arg=team,
+            timeout=timeout_ms,
+        )
+
     def online_state(self) -> bool:
         page = self._require_page()
         return bool(page.evaluate("() => navigator.onLine"))
@@ -849,6 +883,11 @@ class Phone:
         # must wait for the composer to open again, or it would be dropped by
         # the in-flight guard.
         expect(tile).to_be_enabled(timeout=20000)
+
+    def deleted_turnover_rows(self) -> int:
+        """How many Turnover rows the current log shows as struck through."""
+
+        return self._row_count(DELETED_TURNOVER_ROW_JS)
 
     def undo_last(self, *, removed: bool = True) -> None:
         """Undo the newest Turnover.
