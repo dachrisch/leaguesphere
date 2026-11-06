@@ -3062,7 +3062,9 @@ describe("Tracking half-time", () => {
       events: [{ type: "period", code: "half_time", side: null }],
       client_id: expect.any(String),
     });
-    expect(sentPossessions()).toEqual(["away"]);
+    // The possession write follows the append on its own await: wait for it
+    // instead of assuming the microtasks flushed (flaked on CI, not locally).
+    await waitFor(() => expect(sentPossessions()).toEqual(["away"]));
     await waitFor(() =>
       expect(screen.getByText("2. Halbzeit")).toBeInTheDocument(),
     );
