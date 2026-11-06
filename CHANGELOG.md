@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.11.2](https://github.com/dachrisch/leaguesphere/compare/v5.11.1...v5.11.2) (2026-11-06)
+
+
+### Documentation
+
+* **scorecard-v2:** record offline scenario findings ([0dfb6f8](https://github.com/dachrisch/leaguesphere/commit/0dfb6f8873eb2b98f1d0ea19414a4e7e2f620482))
+
 ## [5.11.1](https://github.com/dachrisch/leaguesphere/compare/v5.11.0...v5.11.1) (2026-11-06)
 
 
