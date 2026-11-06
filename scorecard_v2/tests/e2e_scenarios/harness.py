@@ -827,15 +827,23 @@ class Phone:
         return note.inner_text().strip()
 
     def open_stranded(self) -> list[str]:
-        """Reveal the stranded entries in one tap and return their rows."""
+        """Reveal the stranded entries in one tap and return their rows.
+
+        Idempotent: a second call must not toggle the list closed again.
+        """
 
         page = self._require_page()
         details = page.locator("details.syncstranded").first
         if details.count() == 0:
             return []
-        summary = details.locator("summary").first
-        if summary.count() > 0:
-            summary.click()
+        if not details.evaluate("(el) => el.open"):
+            summary = details.locator("summary").first
+            if summary.count() > 0:
+                summary.click()
+            page.wait_for_function(
+                "() => document.querySelector('details.syncstranded')?.open === true",
+                timeout=5000,
+            )
         return [
             text.strip()
             for text in page.locator(".syncstranded-list li").all_inner_texts()

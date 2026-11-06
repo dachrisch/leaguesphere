@@ -88,7 +88,8 @@ def test_s12_late_phone_after_a_staff_takeover(phones, club_game, staff_user, re
     report.observe("S12", "a_strip", a.strip())
     report.observe("S12", "a_shown_entries", a.shown_entries())
     report.observe("S12", "a_stranded_note", a.stranded_note())
-    report.observe("S12", "a_stranded_rows", len(a.open_stranded()))
+    stranded_rows = a.open_stranded()
+    report.observe("S12", "a_stranded_rows", len(stranded_rows))
     assert a.badge() == "Nur lesen"
     assert len(delivered) == 0
     assert len(a.queue()) == len(stranded)
@@ -98,7 +99,7 @@ def test_s12_late_phone_after_a_staff_takeover(phones, club_game, staff_user, re
     assert str(len(stranded)) in strip
     assert "nicht übertragen" in strip or "nicht im offiziellen" in strip
     assert a.shown_entries() >= len(stranded)
-    assert len(a.open_stranded()) == len(stranded)
+    assert len(stranded_rows) == len(stranded)
     assert_invariants(club_game, [a, b], stranded)
 
 
