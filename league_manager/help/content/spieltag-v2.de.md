@@ -43,7 +43,7 @@ wie die bisherige Scorecard
    oder mit einer kurzen Begründung. Dazu **Touchdown**, **1st Down**, **Turnover**,
    **Interception**, **Strafe**, **Safety**, **Overtime** und **Spielzeit**;
    bei **Touchdown** und **1st Down** kannst du den Raumgewinn mit eintragen.
-   Eine **Auszeit** nimmst du direkt beim Team: unter dem Ballbesitz-Knopf
+   Eine **Auszeit** nimmst du direkt beim Team: neben dem Ballbesitz-Knopf
    steht für jedes Team sein eigenes Auszeit-Feld mit dem Stand (z. B. 1/2) –
    ein Tipp genügt, unabhängig davon, wer den Ball hat. **Overtime** startet die Verlängerung (zweiter Tipp
    bestätigt); danach wird aus der Kachel **+1 XP**, und beim Versuch nach
@@ -170,7 +170,7 @@ Solange Einträge warten oder abgelehnt wurden, ist der Knopf gesperrt. Übertra
 oder verwerfe sie zuerst über die Anzeige oben.
 
 **Wie viele Auszeiten hat ein Team schon genommen?**
-Unter dem Ballbesitz stehen beide Teams mit ihrem Auszeit-Feld: der Stand zeigt
+Neben dem Ballbesitz steht bei beiden Teams sein Auszeit-Feld: der Stand zeigt
 „genommen/erlaubt“ für diese Halbzeit (z. B. 1/2). Zwei sind es pro Halbzeit
 (IFAF 2023); eine dritte lässt sich trotzdem erfassen – die App warnt nur, denn
 auf dem Feld entscheidet der Schiedsrichter.

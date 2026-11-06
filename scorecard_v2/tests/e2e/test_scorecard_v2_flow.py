@@ -242,6 +242,32 @@ def test_scorecard_v2_flow_from_gameday_to_result(live_server, page: Page):
     assert abs(phone["x"]) <= 1, phone
     assert abs(phone["width"] - 390) <= 1, phone
     assert abs(phone["y"] + phone["height"] - 844) <= 2, phone
+
+    # A team is one row: possession left, its timeout right, both at least one
+    # touch target (44 px) high and never stacked (meeting 2026-11-07).
+    possession = page.get_by_role("group", name="Ballbesitz").get_by_role(
+        "button", name=HOME_NAME, exact=True
+    )
+    team_timeout = page.get_by_role(
+        "button", name=f"Auszeit {HOME_NAME}", exact=True
+    )
+    for target, label in ((possession, "possession"), (team_timeout, "timeout")):
+        box = target.bounding_box()
+        assert box is not None, label
+        assert box["height"] >= 44, (label, box)
+        assert box["width"] >= 44, (label, box)
+    possession_box = possession.bounding_box()
+    timeout_box = team_timeout.bounding_box()
+    assert possession_box is not None and timeout_box is not None
+    # side by side: same row, the timeout to the right of the possession button
+    assert abs(possession_box["y"] - timeout_box["y"]) <= 2, (
+        possession_box,
+        timeout_box,
+    )
+    assert timeout_box["x"] >= possession_box["x"] + possession_box["width"] - 1, (
+        possession_box,
+        timeout_box,
+    )
     page.set_viewport_size({"width": 1024, "height": 768})
     # No passcheck ran for this gameday, so there is no jersey grid — the sheet
     # must offer the number field instead of blocking the game.

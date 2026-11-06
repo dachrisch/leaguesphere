@@ -4125,3 +4125,41 @@ describe("a side without a name", () => {
     expect(screen.getByRole("button", { name: "–" })).toBeDisabled();
   });
 });
+
+describe("a team's row", () => {
+  it("puts possession and its timeout side by side, each a touch target", () => {
+    renderTracking({ log: makeLog({ inPossession: "Ravens" }) });
+
+    const group = screen.getByRole("group", { name: "Ballbesitz" });
+    const blocks = Array.from(group.querySelectorAll(".possteam"));
+    expect(blocks).toHaveLength(2);
+
+    const [home] = blocks;
+    const buttons = Array.from(home.querySelectorAll(":scope > button"));
+    expect(buttons).toHaveLength(2);
+    const [possession, timeout] = buttons;
+    expect(possession).toHaveTextContent("Ravens");
+    expect(timeout).toHaveAttribute("aria-label", "Auszeit Ravens");
+    expect(timeout).toHaveTextContent("0/2");
+    // the name has its own element so a long one can ellipsise in place
+    expect(possession.querySelector(".possname")).toHaveTextContent("Ravens");
+    // the keyboard hint survives the extra markup
+    expect(possession.querySelector('kbd[data-key="B"]')).not.toBeNull();
+  });
+
+  it("keeps the used state on the timeout", () => {
+    renderTracking({
+      log: makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({ id: 1, event: "Auszeit", team: "Ravens", half: 1 }),
+          logEvent({ id: 2, event: "Auszeit", team: "Ravens", half: 1 }),
+        ],
+      }),
+    });
+
+    const timeout = screen.getByRole("button", { name: "Auszeit Ravens" });
+    expect(timeout).toHaveClass("is-used");
+    expect(timeout).toHaveTextContent("2/2");
+  });
+});

@@ -54,6 +54,7 @@ import SyncBadge, { pauseReason, SyncDetails } from "../components/SyncBadge";
 import {
   ArrowRight,
   Check,
+  Clock,
   Flag,
   Football,
   Interception,
@@ -1642,7 +1643,7 @@ export default function TrackingScreen({
                 }}
                 type="button"
               >
-                {name ?? "–"}
+                <span className="possname">{name ?? "–"}</span>
                 <kbd aria-hidden="true" className="shortcut-hint" data-key="B" />
               </button>
               {name === null ? null : (
@@ -1663,10 +1664,10 @@ export default function TrackingScreen({
                   onClick={() => void takeTimeout(name)}
                   type="button"
                 >
-                  Auszeit{" "}
-                  {budget === null
-                    ? ""
-                    : `${timeoutText(budget)}`}
+                  <Clock aria-hidden="true" size={14} />
+                  <span className="timeoutcount">
+                    {budget === null ? "0/0" : timeoutText(budget)}
+                  </span>
                 </button>
               )}
             </div>
