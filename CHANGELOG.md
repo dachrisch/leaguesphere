@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.11.1](https://github.com/dachrisch/leaguesphere/compare/v5.11.0...v5.11.1) (2026-11-06)
+
+
+### Bug Fixes
+
+* **demo:** rebuild the database on reset so data migrations replay ([d8c812e](https://github.com/dachrisch/leaguesphere/commit/d8c812e8b46d8cd194018a9230592cafd65f08ff))
+* **demo:** rebuild the database on reset so data migrations replay ([78be5e1](https://github.com/dachrisch/leaguesphere/commit/78be5e184c5bd66adeb0ffc008deb21ca6bd184a))
+* **deps:** update dependency markdown to v3.11.3 ([#2283](https://github.com/dachrisch/leaguesphere/issues/2283)) ([0550327](https://github.com/dachrisch/leaguesphere/commit/0550327a06015bcc8a36928e55c3d1b5a456ca0a))
+* **deps:** update js deps ([#2284](https://github.com/dachrisch/leaguesphere/issues/2284)) ([c2fd97b](https://github.com/dachrisch/leaguesphere/commit/c2fd97b3eadea3361b2248a2da5fed474e6e419b))
+
 ## [5.11.0](https://github.com/dachrisch/leaguesphere/compare/v5.10.1...v5.11.0) (2026-11-05)
 
 
