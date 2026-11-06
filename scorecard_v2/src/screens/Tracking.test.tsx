@@ -4056,3 +4056,30 @@ describe("undoing a scoring play", () => {
     });
   });
 });
+
+describe("a scoring play without a number", () => {
+  it("records the touchdown and asks no try question without a scorer", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    // a remembered thrower makes the pass sheet ready without a jersey pick
+    globalThis.localStorage.setItem("scorecard:v2:qb:42:home", "7");
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(
+      screen.getByRole("button", { name: "Spielzug (Pass/Run/Sack)" }),
+    );
+    const sheet = screen.getByRole("dialog", { name: "Spielzug · Ravens" });
+    await user.click(within(sheet).getByRole("button", { name: "Touchdown" }));
+    await user.click(
+      within(sheet).getByRole("button", { name: "Spielzug speichern" }),
+    );
+
+    // the team scored; nobody is named, so there is no jersey to pre-ask for
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalled());
+    expect(
+      screen.queryByRole("group", { name: /^Extrapunkt / }),
+    ).toBeNull();
+    expect(await screen.findByText("Touchdown Ravens")).toBeInTheDocument();
+  });
+});
