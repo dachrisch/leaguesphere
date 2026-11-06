@@ -33,3 +33,18 @@ React/TypeScript field-entry app. Run `npm ci`, then `npm run test:run`,
 - The shell tokens live in `src/styles/tokens.css`; all visual rules use the
   existing light, sun and dark theme tokens. Responsive rules are at the end of
   `src/styles/app.css`.
+
+## Offline scenario tests
+
+`tests/e2e_scenarios/` drives two independent Chromium processes (own profile,
+device id, IndexedDB queue and service worker) against one live server. It is
+excluded from the default pytest run and from CI; run it locally:
+
+```bash
+scripts/run_scorecard_scenarios.sh            # SQLite, headless
+scripts/run_scorecard_scenarios.sh --headed   # watch both phones
+scripts/run_scorecard_scenarios.sh --mysql    # MariaDB in servyy-test
+```
+
+The script rebuilds the bundle first. A failure that names an invariant (I1–
+I5) is a product finding, not a harness error; do not weaken it.
