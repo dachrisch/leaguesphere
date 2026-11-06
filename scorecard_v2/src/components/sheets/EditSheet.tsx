@@ -261,8 +261,16 @@ export default function EditSheet({
   const clockMissing = field === "clock" && (minutes === "" || seconds === "");
   const spotValueNumber = spotValue(spotText);
   const spotMissing = field === "fieldpos" && spotValueNumber === null;
+  const spotOutOfRange =
+    field === "fieldpos" &&
+    spotValueNumber !== null &&
+    (spotValueNumber < 0 || spotValueNumber > MIDFIELD);
   const ready =
-    !posting && !clockMissing && !spotMissing && (!required || value !== null);
+    !posting &&
+    !clockMissing &&
+    !spotMissing &&
+    !spotOutOfRange &&
+    (!required || value !== null);
 
   const save = async (): Promise<void> => {
     if (saving.current || !ready) {
@@ -279,7 +287,10 @@ export default function EditSheet({
           seconds,
           input,
           payload,
-          yards: yardsValue(playYards) ?? 0,
+          // the sheet's loss switch is the sign the play sheet writes too
+          yards: playLoss
+            ? -(yardsValue(playYards) ?? 0)
+            : (yardsValue(playYards) ?? 0),
           side: spotSide,
           spot:
             spotValueNumber === null
@@ -479,9 +490,7 @@ export default function EditSheet({
               value={spotText}
             />
           </div>
-          {spotMissing ||
-          (spotValueNumber !== null &&
-            (spotValueNumber < 0 || spotValueNumber > MIDFIELD)) ? (
+          {spotMissing || spotOutOfRange ? (
             <p className="sheetwarn" role="alert">
               Die Yardlinie liegt zwischen 0 und 25.
             </p>

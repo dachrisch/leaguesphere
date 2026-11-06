@@ -293,3 +293,128 @@ describe("correcting the rows without an edit action before", () => {
     );
   });
 });
+
+describe("correcting the play's numbers in the sheet", () => {
+  it("sends a typed loss and keeps the sign in the payload", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({
+      event: "Run",
+      payload: { yards: 8 },
+    });
+
+    await user.click(screen.getByRole("button", { name: "Verlust" }));
+    const yards = screen.getByRole("textbox", { name: "Yards" });
+    await user.clear(yards);
+    // a typed minus marks the loss too, like the play sheet
+    await user.type(yards, "-6");
+    await user.click(
+      screen.getByRole("button", { name: "Änderung speichern" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: "Run",
+      player: 23,
+      input: "6 Yards Verlust",
+      payload: { yards: -6 },
+    });
+  });
+
+  it("switches a loss back to a gain", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({
+      event: "Run",
+      payload: { yards: -4 },
+    });
+
+    expect(screen.getByRole("button", { name: "Verlust" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await user.click(screen.getByRole("button", { name: "Gewinn" }));
+    await user.click(
+      screen.getByRole("button", { name: "Änderung speichern" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ payload: { yards: 4 } }),
+    );
+  });
+
+  it("rewrites the text of a challenge", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({
+      event: "Challenge",
+      input: "Aus",
+    });
+
+    const text = screen.getByRole("textbox", { name: /Text/ });
+    await user.clear(text);
+    await user.type(text, "Einwurf zu früh");
+    await user.click(
+      screen.getByRole("button", { name: "Änderung speichern" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: "Challenge",
+      input: "Einwurf zu früh",
+    });
+  });
+
+  it("moves a spot to the other half of the field", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({
+      event: "Feldposition",
+      payload: { ballOn: 12, input: "A12" },
+    });
+
+    await user.click(screen.getByRole("button", { name: "B · gegnerische" }));
+    const line = screen.getByRole("textbox", { name: /Yardlinie/ });
+    await user.clear(line);
+    await user.type(line, "20");
+    await user.click(
+      screen.getByRole("button", { name: "Änderung speichern" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: "Feldposition",
+      input: "B20",
+      payload: { ballOn: 30, input: "B20" },
+    });
+  });
+
+  it("refuses a yard line outside the field", async () => {
+    const user = userEvent.setup();
+    renderSheet({
+      event: "Feldposition",
+      payload: { ballOn: 12, input: "A12" },
+    });
+
+    const line = screen.getByRole("textbox", { name: /Yardlinie/ });
+    await user.clear(line);
+    await user.type(line, "40");
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/zwischen 0 und 25/);
+    expect(
+      screen.getByRole("button", { name: "Änderung speichern" }),
+    ).toBeDisabled();
+  });
+
+  it("switches back to the own half", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({
+      event: "Feldposition",
+      payload: { ballOn: 38, input: "B12" },
+    });
+
+    await user.click(screen.getByRole("button", { name: "A · eigene" }));
+    await user.click(
+      screen.getByRole("button", { name: "Änderung speichern" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: "Feldposition",
+      input: "A12",
+      payload: { ballOn: 12, input: "A12" },
+    });
+  });
+});
