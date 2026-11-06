@@ -166,7 +166,8 @@ describe("offline writes", () => {
     await session.setPossession("Wolves", origin);
     // The official corrects the side by hand before undoing the turnover.
     await session.setPossession("Ravens");
-    const manual = (await outbox.pending(42)).at(-1);
+    const waiting = await outbox.pending(42);
+    const manual = waiting[waiting.length - 1];
     expect(manual?.kind).toBe("possession");
     expect(manual?.originId).toBeNull();
 
