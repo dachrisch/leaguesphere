@@ -20,6 +20,10 @@ React/TypeScript field-entry app. Run `npm ci`, then `npm run test:run`,
   (1.25 / 1.5 / 1.75 / 2), stepped so the 1376×860 wide layout always fits.
   Zoom scales viewport units too, so every `vh`/`vw`/`dvh` in `app.css` must be
   divided by `var(--ui-scale)`. Breakpoints and `matchMedia` are unaffected.
+- A team is one row: possession on the left (it takes the remaining width and
+  shortens a long name with an ellipsis), its timeout on the right with the
+  used budget (`1/2`). Both are at least `--touch` (44px) wide and high at every
+  breakpoint; the timeout is one tap for either team and never a second row.
 - Two-step buttons (`useArmed`, `ARM_MS` = 10s): the first tap arms a button in
   place (`.is-armed`: same box, the second action as its label, a draining
   bar), a second tap within the window runs it. The first tap follows what an

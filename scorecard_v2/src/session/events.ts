@@ -23,6 +23,11 @@
  *   value 0), so the optimistic score must not promise points for it.
  */
 import type { GameLog, GameLogEventInput, GameLogWrite } from "../api/types";
+import type { LogRow } from "../components/EventLog";
+import {
+  DEFAULT_SCORING_VALUES,
+  type ScoringValues,
+} from "../app/scoring";
 
 /** One event as the append endpoint stores it. */
 export interface EventEnvelope {
@@ -75,15 +80,11 @@ const LEGACY_EVENTS: Record<string, LegacySpec> = {
   "Overtime starten": { type: "period", code: "overtime" },
 };
 
-/** Mirrors `SCORING_EVENT_VALUES` in `gamedays/service/gamelog.py`. */
-const SCORING_VALUES: Record<string, number> = {
-  "Safety (+1)": 1,
-  "Safety (+2)": 2,
-  Touchdown: 6,
-  "1-Extra-Punkt": 1,
-  "2-Extra-Punkte": 2,
-  Overtime: 1,
-};
+/**
+ * What a row is worth, from the sport definition (see `app/scoring.ts`).
+ * `gameevents/service/rules.py` is the server's single source; the defaults
+ * cover a device that has not fetched the definition yet.
+ */
 
 /** Rows the writer stores with sequence 0 (`EXCLUDED_EVENTS` server-side). */
 export const EXCLUDED_EVENTS = new Set([
@@ -157,7 +158,7 @@ export function envelopesForWrite(
 function envelopeFor(
   entry: GameLogEventInput,
   side: Side,
-  half: 1 | 2,
+  half: 1 | 2 | 3,
 ): EventEnvelope {
   const name = entry.name;
   const spec = LEGACY_EVENTS[name];
@@ -202,6 +203,27 @@ function envelopeFor(
   return envelope;
 }
 
+/**
+ * A log row as the event that wrote it.
+ *
+ * Used where a correction has to re-send a whole submission: the row keeps the
+ * name, the jersey, the visible text and the structured detail, which is
+ * everything the envelope needs to reproduce it.
+ */
+export function eventOfRow(row: LogRow): GameLogEventInput {
+  const event: GameLogEventInput = { name: row.event };
+  if (row.player !== null) {
+    event.player = row.player;
+  }
+  if (row.input !== null) {
+    event.input = row.input;
+  }
+  if (row.payload !== null) {
+    event.payload = { ...row.payload };
+  }
+  return event;
+}
+
 /** `{type: "possession", code: "home"|"away"}` -- the ball changes hands. */
 export function possessionEnvelope(side: Side): EventEnvelope {
   return { type: "possession", code: side, side };
@@ -232,7 +254,10 @@ export interface EnvelopeDisplay {
   marker: boolean;
 }
 
-export function displayOf(envelope: EventEnvelope): EnvelopeDisplay {
+export function displayOf(
+  envelope: EventEnvelope,
+  scoring: ScoringValues = DEFAULT_SCORING_VALUES,
+): EnvelopeDisplay {
   const code = envelope.code ?? "";
   const none = (extra: Partial<EnvelopeDisplay> = {}): EnvelopeDisplay => ({
     event: null,
@@ -251,7 +276,7 @@ export function displayOf(envelope: EventEnvelope): EnvelopeDisplay {
           return none();
         }
         const name = `Safety (+${points})`;
-        return { ...none(), event: name, value: SCORING_VALUES[name] };
+        return { ...none(), event: name, value: scoring[name] ?? 0 };
       }
       const name = {
         touchdown: "Touchdown",
@@ -262,7 +287,7 @@ export function displayOf(envelope: EventEnvelope): EnvelopeDisplay {
       if (name === undefined) {
         return none();
       }
-      return { ...none(), event: name, value: SCORING_VALUES[name] };
+      return { ...none(), event: name, value: scoring[name] ?? 0 };
     }
     case "penalty":
       return { ...none(), event: "Strafe", excluded: true };

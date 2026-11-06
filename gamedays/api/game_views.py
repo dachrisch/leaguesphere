@@ -20,6 +20,7 @@ from gameevents.service.log_payload import (
     event_seqs_for_rows,
 )
 from gameevents.service.projector import InvalidEnvelope
+from gameevents.service.rules import load_rules, penalty_catalogue
 from gameevents.service.undo import record_legacy_undo
 from gamedays.api.serializers import (
     GamedaySerializer,
@@ -62,7 +63,6 @@ def _finished_game_response(game) -> Response | None:
             status=HTTPStatus.CONFLICT,
         )
     return None
-
 
 
 def _device_conflict(stored: str, incoming: str):
@@ -312,9 +312,9 @@ class GameLogAPIView(APIView):
                     client_id=client_id,
                 )
                 written = list(
-                    TeamLog.objects.filter(
-                        gameinfo=game, pk__gt=watermark
-                    ).order_by("pk")
+                    TeamLog.objects.filter(gameinfo=game, pk__gt=watermark).order_by(
+                        "pk"
+                    )
                 )
                 # The legacy writer already inserted the TeamLog rows, so the
                 # shadow records the events only (write_rows=False) and moves
@@ -406,9 +406,7 @@ class GameLogAPIView(APIView):
                         detail="You do not have permission to delete this game log entry."
                     )
                 gamelog = game_service.delete_gamelog_entry(row.pk)
-                record_legacy_undo(
-                    game, team_log_id=row.pk, author=request.user
-                )
+                record_legacy_undo(game, team_log_id=row.pk, author=request.user)
             else:
                 if not self._can_delete_log_entry(request.user, game, sequence):
                     raise PermissionDenied(
@@ -417,9 +415,7 @@ class GameLogAPIView(APIView):
                 gamelog = game_service.delete_gamelog(sequence)
                 # The rows are deleted; the log must say so too, or GameState
                 # keeps a score the rows no longer have.
-                record_legacy_undo(
-                    game, sequence=sequence, author=request.user
-                )
+                record_legacy_undo(game, sequence=sequence, author=request.user)
         return Response(
             json.loads(gamelog.as_json(), object_pairs_hook=OrderedDict),
             status=HTTPStatus.OK,
@@ -622,9 +618,7 @@ class GameDeviceLockAPIView(APIView):
             game = Gameinfo.objects.get(pk=pk)
         except Gameinfo.DoesNotExist:
             raise NotFound(detail=f"No game found for gameId {pk}")
-        game_setup = (
-            GameSetup.objects.filter(gameinfo=game).order_by("pk").first()
-        )
+        game_setup = GameSetup.objects.filter(gameinfo=game).order_by("pk").first()
         if game_setup is None:
             raise NotFound(detail=f"No game setup found for gameId {pk}")
         game_setup.device_id = ""
@@ -637,9 +631,7 @@ class GamesToWhistleAPIView(APIView):
         gs = GamedayService.create(kwargs["pk"])
         games_to_whistle = gs.get_games_to_whistle(kwargs.get("team"))
         games_to_whistle = games_to_whistle.to_json(orient="records")
-        games_to_whistle = json.loads(
-            games_to_whistle, object_pairs_hook=OrderedDict
-        )
+        games_to_whistle = json.loads(games_to_whistle, object_pairs_hook=OrderedDict)
         self._annotate_passcheck(games_to_whistle, kwargs["pk"])
         return Response(games_to_whistle)
 
@@ -837,253 +829,19 @@ class GamePossessionAPIView(APIView):
 
 
 class ConfigPenalties(APIView):
+    """The penalty catalogue, projected from the rule definition.
+
+    The response shape is the one the shipped scorecard reads (``name``,
+    ``subtext``, ``isPenaltyAgainstOpponent``); only the definition may add
+    rows. See :mod:`gameevents.service.rules`.
+    """
+
     def get(self, request, *args, **kwargs):
-        penalty_list = [
-            {
-                "name": "illegaler Kontakt Defense",
-                "subtext": "BS/1st 10",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "Flag Guarding",
-                "subtext": "SF/LoD 5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {"name": "Fehlstart", "subtext": "DB/5", "isPenaltyAgainstOpponent": False},
-            {
-                "name": "Abschirmen (Blocken) Offense",
-                "subtext": "BS/5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "illegaler Kontakt Offense",
-                "subtext": "BS/LoD 10",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "Abschirmen (Blocken) Defense",
-                "subtext": "BS/5",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "Defense Passbehinderung",
-                "subtext": "BS/1st 10",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "Behinderung Spieldurchführung Defense",
-                "subtext": "BS/1st 10",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "Passverzögerung",
-                "subtext": "SL/LoD",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "illegale Ballübergabe",
-                "subtext": "SF/LoD",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "illegaler Rückwärtspass",
-                "subtext": "SF/LoD 5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "illegales Touching/Ballberührung",
-                "subtext": "SL/LoD",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "Vorwärtsschlagen eines Rückwärtspasses durch das passende Team",
-                "subtext": "SF/LoD 5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "illegaler Vorwärtspass",
-                "subtext": "SF/LoD 5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "Offense Passbehinderung",
-                "subtext": "BS/LoD 10",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "Behinderung Spieldurchführung Offense",
-                "subtext": "BS/LoD 10",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "Springen",
-                "subtext": "SF/LoD 5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "Hechten",
-                "subtext": "SF/LoD 5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "illegaler Kick durch Runner",
-                "subtext": "SF/LoD 5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "illegaler Snap",
-                "subtext": "DB/5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "Spielverzögerung Offense",
-                "subtext": "DB/5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "Spielverzögerung Defense",
-                "subtext": "DB/5",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "Encroachment",
-                "subtext": "DB/5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "illegaler Shift",
-                "subtext": "SL/5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "illegale Motion",
-                "subtext": "SL/5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "illegaler Lauf",
-                "subtext": "SL/LoD 5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "illegaler Laufspielzug",
-                "subtext": "SL/LoD 5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "Defense Offside",
-                "subtext": "DB/5",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "Störende Signale",
-                "subtext": "DB/5",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "illegales Blitzersignal",
-                "subtext": "DB/5",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "illegaler Blitz",
-                "subtext": "SL/5",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "illegales Flaggenziehen",
-                "subtext": "BS/5",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "illegales Treten eines Pass Defense",
-                "subtext": "BS/5",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "illegales Treten eines Pass Offense",
-                "subtext": "BS/5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "Behinderung an der Seitenlinie Offense",
-                "subtext": "SL/5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "Behinderung an der Seitenlinie Defense",
-                "subtext": "SL/5",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "illegale Spielteilnahme Offense",
-                "subtext": "SL/5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "illegale Spielteilnahme Defense",
-                "subtext": "SL/5",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "illegale Auswechslung Offense",
-                "subtext": "SL/5",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "illegale Auswechslung Defense",
-                "subtext": "SL/5",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "Unsportliches Verhalten Offense",
-                "subtext": "DB/10 Notiz",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "Unsportliches Verhalten Defense",
-                "subtext": "DB/10 Notiz",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "Grob unsportliches Verhalten Offense",
-                "subtext": "Disqualifkation",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "Grob unsportliches Verhalten Defense",
-                "subtext": "Disqualifkation",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "Person mit illegaler Ausrüstung verlässt nicht das Feld Offense",
-                "subtext": "DB/TO",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "Person mit illegaler Ausrüstung verlässt nicht das Feld Defense",
-                "subtext": "DB/TO",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "Person mit fehlender vorgeschriebener Ausrüstung verlässt nicht das Feld Offense",
-                "subtext": "DB/TO",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "Person mit fehlender vorgeschriebener Ausrüstung verlässt nicht das Feld Defense",
-                "subtext": "DB/TO",
-                "isPenaltyAgainstOpponent": True,
-            },
-            {
-                "name": "Person mit blutender Wunde verlässt nicht das Feld Offense",
-                "subtext": "DB/TO",
-                "isPenaltyAgainstOpponent": False,
-            },
-            {
-                "name": "Person mit blutender Wunde verlässt nicht das Feld Defense",
-                "subtext": "DB/TO",
-                "isPenaltyAgainstOpponent": True,
-            },
-        ]
-        return Response(penalty_list)
+        return Response(penalty_catalogue())
+
+
+class ConfigRules(APIView):
+    """The whole sport definition: the values the field app calculates with."""
+
+    def get(self, request, *args, **kwargs):
+        return Response(load_rules())

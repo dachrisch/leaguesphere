@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 import { ApiError, apiGet } from "../../api/client";
+import type { GameRules } from "../../api/rules";
 import type { GameLogEventInput, Penalty, RosterPlayer } from "../../api/types";
 import type { LogRow } from "../EventLog";
 import PenaltySheet, {
@@ -477,7 +478,7 @@ describe("PenaltySheet", () => {
     await user.click(
       await screen.findByRole("button", { name: /Defense Passbehinderung/ }),
     );
-    expect(screen.getByRole("textbox", { name: "Yardage (0–99)" })).toHaveValue(
+    expect(screen.getByRole("textbox", { name: "Yardage (0–50)" })).toHaveValue(
       "10",
     );
     expect(
@@ -488,7 +489,7 @@ describe("PenaltySheet", () => {
     ).toHaveAttribute("aria-pressed", "true");
 
     await user.click(screen.getByRole("button", { name: /Flag Guarding/ }));
-    expect(screen.getByRole("textbox", { name: "Yardage (0–99)" })).toHaveValue(
+    expect(screen.getByRole("textbox", { name: "Yardage (0–50)" })).toHaveValue(
       "5",
     );
     expect(
@@ -511,7 +512,7 @@ describe("PenaltySheet", () => {
 
     await user.click(await screen.findByRole("button", { name: /^Strafe 02/ }));
     await user.click(screen.getByRole("button", { name: "Gewinn" }));
-    const yards = screen.getByRole("textbox", { name: "Yardage (0–99)" });
+    const yards = screen.getByRole("textbox", { name: "Yardage (0–50)" });
     await user.clear(yards);
     await user.type(yards, "7");
     await user.click(
@@ -868,5 +869,224 @@ describe("PenaltySheet — the remaining states", () => {
     // Nothing to assert on screen; the point is that no state update and no
     // unhandled rejection escapes after the unmount.
     await Promise.resolve();
+  });
+});
+
+describe("the penalty numbers come from the definition", () => {
+  it("uses the structured yards instead of parsing the subtext", () => {
+    const handoff: Penalty = {
+      name: "illegale Ballübergabe",
+      // the old text alone would say 0 yards
+      subtext: "SF/LoD",
+      isPenaltyAgainstOpponent: false,
+      yards: 5,
+      down: "loss",
+      enforcement: "SF",
+      rule: "7-1-5",
+    };
+
+    expect(penaltyYardage(handoff)).toBe(-5);
+    expect(penaltyNextDown(handoff)).toBe("loss_of_down");
+  });
+
+  it("uses the structured down rule for a defence foul", () => {
+    const interference: Penalty = {
+      name: "Defense Passbehinderung",
+      subtext: "BS/1st 10",
+      isPenaltyAgainstOpponent: true,
+      yards: 10,
+      down: "first",
+      enforcement: "BS",
+      rule: "7-3-3",
+    };
+
+    expect(penaltyYardage(interference)).toBe(10);
+    expect(penaltyNextDown(interference)).toBe("first_down");
+  });
+
+  it("keeps parsing the subtext when only the legacy list answered", () => {
+    expect(
+      penaltyYardage({
+        name: "illegaler Kontakt Offense",
+        subtext: "BS/LoD 10",
+        isPenaltyAgainstOpponent: false,
+      }),
+    ).toBe(-10);
+    expect(
+      penaltyNextDown({
+        name: "illegale Ballübergabe",
+        subtext: "SF/LoD",
+        isPenaltyAgainstOpponent: false,
+      }),
+    ).toBe("loss_of_down");
+  });
+});
+
+describe("the penalty numbers follow the field", () => {
+  it("offers at most the field length", async () => {
+    render(
+      <PenaltySheet
+        onClose={vi.fn()}
+        onSubmit={vi.fn<Submit>(async () => undefined)}
+        opponentName="Wolves"
+        roster={ROSTER}
+        side="home"
+        teamName="Ravens"
+      />,
+    );
+    const user = userEvent.setup();
+
+    // a defence penalty (the fixture's odd rows): its suggested yards are +5
+    await user.click(
+      await screen.findByRole("button", { name: /Strafe 01/ }),
+    );
+    const yards = screen.getByRole("textbox", { name: /Yardage/ });
+    await user.clear(yards);
+    await user.type(yards, "99");
+
+    expect(
+      screen.getByText(/höchstens 50 Yards/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Speichern" })).toBeDisabled();
+  });
+
+  it("shows the spot the enforcement leaves, half distance included", async () => {
+    render(
+      <PenaltySheet
+        ballOn={5}
+        onClose={vi.fn()}
+        onSubmit={vi.fn<Submit>(async () => undefined)}
+        opponentName="Wolves"
+        roster={ROSTER}
+        side="home"
+        teamName="Ravens"
+      />,
+    );
+    const user = userEvent.setup();
+
+    // an offence penalty of 10 yards at A5: half the distance, A2,5
+    await user.click(
+      await screen.findByRole("button", { name: /Strafe 02/ }),
+    );
+
+    // a 10-yard offence penalty from A5 is half the distance: A2,5
+    expect(await screen.findByText(/Nach der Strafe: A2,5/)).toBeInTheDocument();
+  });
+});
+
+describe("the catalogue from the definition", () => {
+  const rules: GameRules = {
+    sport: "flag_football",
+    variant: "5v5",
+    ruleset: "IFAF 2023",
+    field: {
+      length: 50,
+      width: 25,
+      end_zone: 10,
+      middle: 25,
+      no_run_zone: 5,
+      spot_precision: 0.5,
+    },
+    series: {
+      downs: 4,
+      start: 5,
+      line_to_gain: ["middle", "goal"],
+      first_down_at_middle: "once",
+      turnover_on_downs_spot: 5,
+      interception_spot: "dead_ball",
+    },
+    scoring: {
+      touchdown: 6,
+      try: { "5": 1, "10": 2 },
+      try_defense: 2,
+      try_safety: 1,
+      safety: 2,
+      touchback_spot: 5,
+      after_try_spot: 5,
+      safety_spot: 5,
+    },
+    periods: {
+      count: 2,
+      length_minutes: 20,
+      intermission_minutes: 2,
+      play_clock_seconds: 25,
+      pass_clock_seconds: 7,
+      running_clock_diff: 30,
+    },
+    timeouts: { per_half: 2, seconds: 60, carry_over: false, in_overtime: false },
+    overtime: {
+      start_spot: 25,
+      first_down_at_middle: false,
+      tiebreak_try: { spot: 5, points: 1 },
+    },
+    officials: { counts: [2, 3, 4] },
+    penalties: [
+      {
+        code: "illegal_handoff",
+        name: "illegale Ballübergabe",
+        subtext: "SF/LoD",
+        yards: 5,
+        down: "loss",
+        enforcement: "SF",
+        side: "offense",
+        rule: "7-1-5",
+      },
+      {
+        code: "shielding",
+        name: "Abschirmen (Blocken) Defense",
+        subtext: "BS/5",
+        yards: 5,
+        down: "repeat",
+        enforcement: "BS",
+        side: "defense",
+        rule: "9-2-2a",
+      },
+    ],
+  };
+
+  it("offers the definition's rows and prefills their numbers", async () => {
+    render(
+      <PenaltySheet
+        onClose={vi.fn()}
+        onSubmit={vi.fn<Submit>(async () => undefined)}
+        opponentName="Wolves"
+        roster={ROSTER}
+        rules={rules}
+        side="home"
+        teamName="Ravens"
+      />,
+    );
+    const user = userEvent.setup();
+
+    // the legacy list is not even fetched when the definition is there
+    const row = await screen.findByRole("button", {
+      name: /illegale Ballübergabe/,
+    });
+    await user.click(row);
+
+    expect(screen.getByRole("textbox", { name: /Yardage/ })).toHaveValue("5");
+    expect(screen.getByRole("button", { name: "Loss of Down" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /Abschirmen \(Blocken\) Defense/ }),
+    );
+    // a defence penalty is charged to the opponent and moves the ball their way
+    expect(screen.getByRole("button", { name: "Wolves" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("falls back to the subtext when a row carries no structured down rule", () => {
+    expect(
+      penaltyNextDown({
+        name: "Fehlstart",
+        subtext: "DB/5",
+        isPenaltyAgainstOpponent: false,
+      }),
+    ).toBe("repeat");
   });
 });

@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
 
-import {
-  formatBreak,
-  HALFTIME_BREAK_SECONDS,
-  secondsLeft,
-} from "../app/break";
+import { formatBreak, HALFTIME_BREAK_SECONDS, secondsLeft } from "../app/break";
 
 interface BreakCountdownProps {
   /** Epoch ms the break started. */
   startedAt: number;
+  /** The intermission the definition gives, in seconds. */
+  totalSeconds?: number;
   /** Dismiss the countdown (break over, or skipped). */
   onDone: () => void;
 }
@@ -22,6 +20,7 @@ interface BreakCountdownProps {
  */
 export default function BreakCountdown({
   startedAt,
+  totalSeconds = HALFTIME_BREAK_SECONDS,
   onDone,
 }: BreakCountdownProps) {
   const [now, setNow] = useState(() => Date.now());
@@ -31,7 +30,7 @@ export default function BreakCountdown({
     return () => clearInterval(timer);
   }, []);
 
-  const left = secondsLeft(startedAt, now);
+  const left = secondsLeft(startedAt, now, totalSeconds);
   const over = left === 0;
 
   return (

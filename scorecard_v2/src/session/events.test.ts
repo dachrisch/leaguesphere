@@ -6,6 +6,7 @@ import {
   correctionEnvelope,
   displayOf,
   envelopesForWrite,
+  eventOfRow,
   halftimeEnvelope,
   possessionEnvelope,
   sideOfName,
@@ -369,5 +370,54 @@ describe("displayOf — an envelope without a code", () => {
     // The penalty's *code* is its reason, shown as the row's detail; the row
     // itself is "Strafe" either way (the server refuses an empty code).
     expect(displayOf({ type: "penalty" }).event).toBe("Strafe");
+  });
+});
+
+describe("a stored row as the event that wrote it", () => {
+  it("keeps the number, the text and the detail", () => {
+    expect(
+      eventOfRow({
+        key: "e1",
+        teamLogId: 1,
+        seq: 3,
+        sequence: 3,
+        team: "Ravens",
+        event: "Pass",
+        player: 7,
+        input: "8 Yards · QB #12",
+        half: 1,
+        cop: false,
+        isDeleted: false,
+        time: null,
+        payload: { yards: 8, complete: true },
+      }),
+    ).toEqual({
+      name: "Pass",
+      player: 7,
+      input: "8 Yards · QB #12",
+      payload: { yards: 8, complete: true },
+    });
+  });
+
+  it("adds nothing a bare row does not carry", () => {
+    // A teammate row of the same group (a touchdown with no number, no text,
+    // no detail) must not invent fields.
+    expect(
+      eventOfRow({
+        key: "e2",
+        teamLogId: 2,
+        seq: 3,
+        sequence: 3,
+        team: "Ravens",
+        event: "Touchdown",
+        player: null,
+        input: null,
+        half: 1,
+        cop: false,
+        isDeleted: false,
+        time: null,
+        payload: null,
+      }),
+    ).toEqual({ name: "Touchdown" });
   });
 });

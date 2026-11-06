@@ -294,6 +294,16 @@ export interface Penalty {
   name: string;
   subtext: string;
   isPenaltyAgainstOpponent: boolean;
+  /**
+   * The structured rules from `GET /api/config/scorecard/rules`. Absent when
+   * only the legacy `/penalties` list answered: the sheet then parses
+   * `subtext`, which is what it always did.
+   */
+  yards?: number;
+  down?: "repeat" | "first" | "loss";
+  enforcement?: "BS" | "SF" | "DB" | "SL" | null;
+  /** Rule reference (`7-1-3f`), shown in the sheet's summary. */
+  rule?: string;
 }
 
 /**
@@ -327,8 +337,13 @@ export interface GameLogWrite {
   gameId: number;
   /** Team *name* (the backend also resolves a pk); the possessing team. */
   team: string;
-  /** 1 or 2 — never derived from the current time. */
-  half: 1 | 2;
+  /**
+   * The period the entry belongs to: 1 or 2 for the halves, 3 in overtime.
+   * Never derived from the current time. The server keeps `TeamLog.half` at
+   * 1/2 and stores 3 only on the event, so every existing consumer is
+   * unaffected.
+   */
+  half: 1 | 2 | 3;
   event: GameLogEventInput[];
 }
 

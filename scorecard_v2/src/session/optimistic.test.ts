@@ -96,19 +96,18 @@ describe("replayOps", () => {
     expect(base.events).toEqual([]);
   });
 
-  it("scores nothing for a touchdown without a jersey, like the server", () => {
+  it("scores a touchdown without a jersey for the team, like the server", () => {
     const { log: shown } = replayOps(log(), [
       play([{ type: "score", code: "touchdown", side: "home", period: 1 }]),
     ]);
 
-    expect(shown.home.score).toBe(0);
+    expect(shown.home.score).toBe(6);
     expect(shown.events?.[0].player).toBeNull();
   });
 
-  it("mirrors the server's jersey coercion before scoring", () => {
+  it("mirrors the server's jersey coercion without losing the points", () => {
     // The server truncates a decimal string and drops anything outside
-    // 0..32767 to `None` (which scores nothing). A promise the server does not
-    // keep is worse than a late score.
+    // 0..32767 to `None`. The *number* is dropped; the team still scores.
     const { log: shown } = replayOps(log(), [
       play([
         { type: "score", code: "touchdown", side: "home", player: 51.85, period: 1 },
@@ -118,8 +117,9 @@ describe("replayOps", () => {
       ]),
     ]);
 
-    // 51.85 -> 51 (6 points); 40000 and -1 are dropped (0 each); "23" -> 23.
-    expect(shown.home.score).toBe(12);
+    // 51.85 -> 51, "23" -> 23, 40000 and -1 drop the number but keep 6 points
+    // each: a score belongs to the team (IFAF R 8-1-1).
+    expect(shown.home.score).toBe(24);
     expect((shown.events ?? []).map((entry) => entry.player)).toEqual([
       23,
       null,
@@ -206,14 +206,14 @@ describe("replayOps", () => {
 });
 
 describe("replayOps edge payloads", () => {
-  it("drops a jersey that is not a finite number", () => {
+  it("drops a jersey that is not a finite number but keeps the points", () => {
     const { log: shown } = replayOps(log(), [
       play([
         { type: "score", code: "touchdown", side: "home", player: "keine", period: 1 },
       ]),
     ]);
 
-    expect(shown.home.score).toBe(0);
+    expect(shown.home.score).toBe(6);
     expect(shown.events?.[0].player).toBeNull();
   });
 
@@ -467,10 +467,10 @@ describe("replayOps — a queued penalty and a correction of one", () => {
     expect(shown.home.score).toBe(6);
   });
 
-  it("takes no points back from a scoring row without a jersey", () => {
+  it("takes the points back from a scoring row without a jersey", () => {
     const base = log({
       events: [event({ id: 10, sequence: 1, seq: 1, player: null })],
-      home: team({ score: 0 }),
+      home: team({ score: 6 }),
     });
 
     const { log: shown } = replayOps(base, [
@@ -586,5 +586,50 @@ describe("replayOps — the remaining queue shapes", () => {
 
     expect(shown.events?.[0].isDeleted).toBe(true);
     expect(shown.home.score).toBe(0);
+  });
+});
+
+describe("overtime entries", () => {
+  it("stay in the second half's block of the log", () => {
+    const { log: shown } = replayOps(log(), [
+      play([{ type: "score", code: "touchdown", side: "home", period: 3 }]),
+    ]);
+
+    // the row is grouped with the second half, so every reader keeps 1/2;
+    // the server stores period 3 on the event itself
+    expect(shown.events?.[0].half).toBe(2);
+    expect(shown.home.score).toBe(6);
+  });
+});
+
+describe("envelopes without a period", () => {
+  it("fall back to the first half instead of dropping the entry", () => {
+    // A possession or correction op carries no period; the row still belongs
+    // to the half the screen is in rather than to none.
+    const { log: shown } = replayOps(log(), [
+      // an envelope from a client that did not send `period`
+      play([{ type: "score", code: "touchdown", side: "home" }]),
+    ]);
+
+    expect(shown.events?.length).toBe(1);
+    expect(shown.events?.[0].half).toBe(1);
+    expect(shown.home.score).toBe(6);
+  });
+
+  it("read a legacy op's missing half as the first half", () => {
+    const ops = envelopesOf(
+      {
+        kind: "event",
+        payload: {
+          team: "Ravens",
+          // a queued write from before the half field existed
+          event: [{ name: "Touchdown", player: 7 }],
+        },
+      },
+      log(),
+    );
+
+    expect(ops).not.toBeNull();
+    expect(ops?.every((envelope) => envelope.period === 1)).toBe(true);
   });
 });

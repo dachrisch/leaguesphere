@@ -68,6 +68,21 @@ const TURNOVER_WRITE = {
   event: [{ name: "Turnover" }],
 };
 
+/** One interception entry, spot and return included (meeting 47:15-49:03). */
+const INTERCEPTION_WRITE = {
+  gameId: 42,
+  team: "Ravens",
+  half: 1 as const,
+  event: [
+    {
+      name: "Interception",
+      player: 11,
+      input: "bis B20 · 15 Yards Return",
+      payload: { deadBall: 30, returnYards: 15 },
+    },
+  ],
+};
+
 function setOnline(online: boolean): void {
   vi.spyOn(globalThis.navigator, "onLine", "get").mockReturnValue(online);
 }
@@ -170,6 +185,24 @@ describe("offline writes", () => {
     await expect(outbox.pending(42)).resolves.toEqual([]);
     expect(reverted.inPossession).toBe("Ravens");
     expect(apiPostMock).not.toHaveBeenCalled();
+  });
+
+  it("removes a queued interception together with its flip and its detail", async () => {
+    // The interception is credited to the defender, so the ball goes to the
+    // other team; undoing the one entry must take the row, the flip and the
+    // payload (spot, return yards) with it.
+    const shown = await session.writeEvent(INTERCEPTION_WRITE);
+    const origin = session.lastOpId();
+    await session.setPossession("Wolves", origin ?? undefined);
+    const row = shown.events?.[0];
+    expect(row?.event).toBe("Interception");
+    expect(row?.payload).toEqual({ deadBall: 30, returnYards: 15 });
+
+    const reverted = await session.undo({ undo_of: 1 }, row?.id ?? 0);
+
+    await expect(outbox.pending(42)).resolves.toEqual([]);
+    expect(reverted.events).toEqual([]);
+    expect(reverted.inPossession).toBe("Ravens");
   });
 
   it("keeps the server log separate from the optimistic one", async () => {

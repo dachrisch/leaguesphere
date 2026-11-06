@@ -32,19 +32,26 @@ export function moreTeam(
   return mode === "safety" ? opponentName : teamName;
 }
 
-/** Payload of one more-events entry; both always name a player. */
+/**
+ * Payload of one more-events entry.
+ *
+ * Both are **team** scores (IFAF R 8-1-1), so the jersey is optional detail:
+ * a safety is awarded to the defence as a team, and the overtime point may
+ * come from a play nobody needs to name afterwards.
+ */
 export function moreEvent(
   mode: MoreMode,
-  jersey: number,
+  jersey: number | null,
   points: SafetyPoints,
 ): GameLogEventInput {
-  if (mode === "overtime") {
-    return { name: "Overtime", player: jersey };
+  const event: GameLogEventInput =
+    mode === "overtime"
+      ? { name: "Overtime" }
+      : { name: points === 1 ? "Safety (+1)" : "Safety (+2)" };
+  if (jersey !== null) {
+    event.player = jersey;
   }
-  return {
-    name: points === 1 ? "Safety (+1)" : "Safety (+2)",
-    player: jersey,
-  };
+  return event;
 }
 
 /** The sentence above the save button: what the write will record. */
@@ -54,14 +61,12 @@ export function moreSummary(
   points: SafetyPoints,
   opponentName: string,
 ): string {
-  if (jersey === null) {
-    return "Spieler wählen, dann speichern.";
-  }
   if (mode === "overtime") {
-    return `Overtime #${jersey}`;
+    return jersey === null ? "Overtime (ohne Nummer)" : `Overtime #${jersey}`;
   }
   const score = points === 1 ? "1 Punkt" : `${points} Punkte`;
-  return `Safety · ${score} für ${opponentName}`;
+  const scorer = jersey === null ? "" : ` · Nr. ${jersey}`;
+  return `Safety · ${score} für ${opponentName}${scorer}`;
 }
 
 interface MoreSheetProps {
@@ -86,12 +91,11 @@ interface MoreSheetProps {
 }
 
 /**
- * Safety and overtime entry, the two events that always name a player.
+ * Safety and overtime entry.
  *
- * The jersey is **required**, unlike First Down: both events score points and
- * the server stores value 0 for a scoring row without a player, so a save
- * without a number would look like a recorded safety that never reached the
- * score.
+ * Both are team scores, so the jersey is optional: the referee may know the
+ * defender who caused the safety, or may not need it at all. It costs no tap
+ * to skip - the save works from the first tap on the points.
  */
 export default function MoreSheet({
   mode,
@@ -121,10 +125,10 @@ export default function MoreSheet({
       ? []
       : roster.filter((player) => player.side === jerseySide);
   const loading = roster === null;
-  const ready = jersey !== null && !posting && !loading;
+  const ready = !posting && !loading;
 
   const save = async (): Promise<void> => {
-    if (saving.current || !ready || jersey === null) {
+    if (saving.current || !ready) {
       return;
     }
     saving.current = true;
@@ -159,11 +163,7 @@ export default function MoreSheet({
           onClick={() => void save()}
           type="button"
         >
-          {posting
-            ? "Speichern …"
-            : jersey === null
-              ? "Spieler wählen"
-              : "Speichern"}
+          {posting ? "Speichern …" : "Speichern"}
         </button>
       }
       onClose={onClose}
@@ -187,6 +187,7 @@ export default function MoreSheet({
           disabled={posting}
           label="Trikotnummer"
           onChange={setJersey}
+          optionalLabel="Ganzes Team"
           players={players}
           value={jersey}
         />

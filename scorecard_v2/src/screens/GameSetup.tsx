@@ -176,6 +176,22 @@ function slotsFromCrew(
   return slots;
 }
 
+/**
+ * The id of the device that holds this game's lock, when another one does.
+ *
+ * `PUT /setup` assigns the lock, so its presence means *somebody* started the
+ * game. A different id than this device's is the warning the officials missed
+ * before kickoff (meeting 2026-11-05, 14:47): two people prepared the same
+ * game and only found out on the first write.
+ */
+export function foreignDevice(setup: GameSetupPayload): string | null {
+  const stored = setup.device_id?.trim();
+  if (stored === undefined || stored === "") {
+    return null;
+  }
+  return stored === getDeviceId() ? null : stored;
+}
+
 /** `{}` means "not prepared yet"; a single filled field makes it a resume. */
 function hasSavedSetup(setup: GameSetupPayload): boolean {
   return [setup.ctResult, setup.direction, setup.fhPossession].some(
@@ -358,6 +374,8 @@ export default function GameSetupScreen({
   const [teamError, setTeamError] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [hasSetup, setHasSetup] = useState(false);
+  /** Set when another device already holds the game's lock. */
+  const [otherDevice, setOtherDevice] = useState<string | null>(null);
 
   const [toss, setToss] = useState<Side | null>(null);
   const [possession, setPossession] = useState<Side | null>(null);
@@ -412,6 +430,7 @@ export default function GameSetupScreen({
       setTeamOfficials(team ?? []);
       const saved = hasSavedSetup(setup ?? {});
       setHasSetup(saved);
+      setOtherDevice(saved ? foreignDevice(setup ?? {}) : null);
       if (saved) {
         setToss(normaliseToss(setup.ctResult, home, away));
         setPossession(normaliseSide(setup.fhPossession, home, away));
@@ -893,6 +912,19 @@ export default function GameSetupScreen({
               Dieses Spiel ist beendet.
             </p>
           ) : null}
+
+          {otherDevice === null ? null : (
+            // Deliberately not `.seterror`: that class marks a *failed start*
+            // (the harness and the officials read it that way), and this is a
+            // warning shown before anyone taps.
+            <div className="devicewarn" role="status">
+              <p>
+                Dieses Spiel hat ein anderes Gerät bereits übernommen. Einträge
+                von hier werden abgelehnt, bis die Turnierleitung die Sperre
+                freigibt – oder dieses Gerät das Spiel übernimmt.
+              </p>
+            </div>
+          )}
 
           <div className="prepgrid">
             <section aria-labelledby={officialsSectionId} className="block">

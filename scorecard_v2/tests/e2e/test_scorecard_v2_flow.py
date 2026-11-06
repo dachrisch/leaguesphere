@@ -230,11 +230,54 @@ def test_scorecard_v2_flow_from_gameday_to_result(live_server, page: Page):
     assert abs(tablet["x"] + tablet["width"] / 2 - 512) <= 2, tablet
     # A phone keeps the anchored sheet, flush with the bottom edge.
     page.set_viewport_size({"width": 390, "height": 844})
+    # The numeric fields must not clip their digits at phone width
+    # (meeting 2026-11-05, 21:02): two digits at `--fs-xl` fit the box.
+    for label in (r"^Trikotnummer", r"^Raumgewinn"):
+        field = touchdown_sheet.get_by_role("textbox", name=re.compile(label))
+        field.fill("99")
+        assert field.evaluate("el => el.scrollWidth <= el.clientWidth + 1"), label
+        field.fill("")
     phone = touchdown_sheet.bounding_box()
     assert phone is not None
     assert abs(phone["x"]) <= 1, phone
     assert abs(phone["width"] - 390) <= 1, phone
     assert abs(phone["y"] + phone["height"] - 844) <= 2, phone
+
+    # A team is one row: possession left, its timeout right, both at least one
+    # touch target (44 px) high and never stacked (meeting 2026-11-07).
+    possession = page.get_by_role("group", name="Ballbesitz").get_by_role(
+        "button", name=HOME_NAME, exact=True
+    )
+    team_timeout = page.get_by_role(
+        "button", name=f"Auszeit {HOME_NAME}", exact=True
+    )
+    for target, label in ((possession, "possession"), (team_timeout, "timeout")):
+        box = target.bounding_box()
+        assert box is not None, label
+        assert box["height"] >= 44, (label, box)
+        assert box["width"] >= 44, (label, box)
+    possession_box = possession.bounding_box()
+    timeout_box = team_timeout.bounding_box()
+    assert possession_box is not None and timeout_box is not None
+    # side by side: same row, the timeout to the right of the possession button
+    assert abs(possession_box["y"] - timeout_box["y"]) <= 2, (
+        possession_box,
+        timeout_box,
+    )
+    assert timeout_box["x"] >= possession_box["x"] + possession_box["width"] - 1, (
+        possession_box,
+        timeout_box,
+    )
+    # The two teams are separate groups: the other team's possession button
+    # starts at least 8px after this team's timeout ends, so one tap cannot
+    # slip from a timeout into the other side's possession button.
+    away_possession = page.get_by_role("group", name="Ballbesitz").get_by_role(
+        "button", name=AWAY_NAME, exact=True
+    )
+    away_box = away_possession.bounding_box()
+    assert away_box is not None
+    gap = away_box["x"] - (timeout_box["x"] + timeout_box["width"])
+    assert gap >= 8, (gap, timeout_box, away_box)
     page.set_viewport_size({"width": 1024, "height": 768})
     # No passcheck ran for this gameday, so there is no jersey grid — the sheet
     # must offer the number field instead of blocking the game.

@@ -86,9 +86,9 @@ class TestGamelog(TestCase):
         payload = json.loads(GameLog(gameinfo).as_json())
 
         assert payload["inPossession"] == "Home"
-        assert len(payload["events"]) == TeamLog.objects.filter(
-            gameinfo=gameinfo
-        ).count()
+        assert (
+            len(payload["events"]) == TeamLog.objects.filter(gameinfo=gameinfo).count()
+        )
         penalty = next(
             event for event in payload["events"] if event["event"] == "Strafe"
         )
@@ -293,7 +293,8 @@ class TestGamelogCreator(TestCase):
         assert teamlog.half == 2
         teamlog = TeamLog.objects.get(pk=first_team_log.pk + 1)
         assert teamlog.sequence == 1
-        assert teamlog.value == 0
+        # a conversion without a number still scores: the points are the team's
+        assert teamlog.value == 1
         assert teamlog.half == 1
         teamlog = TeamLog.objects.get(pk=first_team_log.pk)
         assert teamlog.sequence == 1

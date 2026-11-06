@@ -12,11 +12,16 @@
  * goal line (`1st & G`) and the B yards count down to `B0`.
  *
  * The spot only changes when a play moves it or the officials set it (a
- * kickoff, a turnover) — a **Feldposition** row carries it. A penalty also
- * moves it: its structured `yardage` is applied to the current spot, never
- * closer than half the distance to either goal line, and a penalty that pushes
- * the ball across midfield starts a fresh `1st & G`.
+ * kickoff, a turnover, a correction) — a **Feldposition** row carries it. It
+ * moves the ball and keeps the current down: a correction mid-series must not
+ * hand out a fresh set of downs. A **1st** comes from reaching the line to
+ * gain (midfield, or the goal line in goal-to-go), a new possession or a
+ * marker. A penalty also moves the spot: its structured `yardage` is applied
+ * to the current spot, never closer than half the distance to either goal
+ * line, and a penalty that pushes the ball across midfield starts a fresh
+ * `1st & G`.
  */
+import type { GameRules } from "../api/rules";
 import type { LogRow } from "../components/EventLog";
 
 export interface DriveState {
@@ -38,6 +43,68 @@ export const MIDFIELD = 25;
 
 /** Every series starts on the offence's own 5-yard line. */
 export const SERIES_START = 5;
+
+/**
+ * The values the series engine takes from the sport definition
+ * (`gameevents/sport/flag_football_5v5.json`, served as
+ * `GET /api/config/scorecard/rules`).
+ *
+ * They are parameters rather than constants so a variant (beach 4v4, flag
+ * 7v7) is a data change; {@link DEFAULT_GEOMETRY} is the IFAF 2023 5v5 field
+ * and keeps every call site and test that does not pass one on today's field.
+ */
+export interface Geometry {
+  /** The field of play, goal line to goal line. */
+  fieldLength: number;
+  /** The middle line, the first series' line to gain. */
+  middle: number;
+  /** Where every series starts. */
+  seriesStart: number;
+  /** Downs per series. */
+  downs: number;
+}
+
+/** IFAF 2023, flag football 5v5: 50 yards, middle 25, series at the own 5. */
+export const DEFAULT_GEOMETRY: Geometry = {
+  fieldLength: FIELD_LENGTH,
+  middle: MIDFIELD,
+  seriesStart: SERIES_START,
+  downs: 4,
+};
+
+/**
+ * The engine's values from the served definition, or the defaults.
+ *
+ * An answer that is not a definition (an older server, a proxy that serves
+ * HTML, a test double) must never white-screen the field app, so every value
+ * is checked and the defaults win on anything suspicious.
+ */
+export function geometryOf(rules: GameRules | null | undefined): Geometry {
+  if (rules === null || rules === undefined) {
+    return DEFAULT_GEOMETRY;
+  }
+  const field = rules.field;
+  const series = rules.series;
+  if (field === null || field === undefined || series === null || series === undefined) {
+    return DEFAULT_GEOMETRY;
+  }
+  const { length, middle } = field;
+  const { start, downs } = series;
+  if (
+    !isPositive(length) ||
+    !isPositive(middle) ||
+    !isPositive(start) ||
+    !isPositive(downs) ||
+    middle * 2 !== length
+  ) {
+    return DEFAULT_GEOMETRY;
+  }
+  return { fieldLength: length, middle, seriesStart: start, downs };
+}
+
+function isPositive(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
 
 /** How a penalty changes the down count. */
 export type PenaltyNextDown = "repeat" | "first_down" | "loss_of_down";
@@ -66,94 +133,202 @@ const FIELD_EVENT = "Feldposition";
 /** The row whose structured yardage moves the spot (see `PenaltySheet`). */
 const PENALTY_EVENT = "Strafe";
 
-/** Rows that end the series and start the next one at A5. */
+/** Rows that end the series and start the next one at the own 5. */
 const KICKOFF_EVENTS = new Set([
   "Touchdown",
   "Spiel gestartet",
   "2. Halbzeit gestartet",
-  "Overtime startet",
   "Spiel beendet",
 ]);
 
-/** Rows that hand the ball over; the new series also starts at A5. */
+/** The overtime marker: a fresh series at the middle, goal to go (R 3-1-3c). */
+const OVERTIME_EVENT = "Overtime startet";
+
+/** Rows that hand the ball over; the new series starts at the own 5. */
 const TURNOVER_EVENTS = new Set(["Turnover", "Interception"]);
 
-function clampSpot(value: number): number {
-  return Math.max(0, Math.min(FIELD_LENGTH, value));
+/** A first down written by hand: it resets the series on the current spot. */
+const FIRST_DOWN_EVENT = "First Down";
+
+function clampSpot(value: number, g: Geometry = DEFAULT_GEOMETRY): number {
+  return Math.max(0, Math.min(g.fieldLength, value));
+}
+
+/**
+ * True once the ball is **beyond** the middle line.
+ *
+ * R 5-1-1a awards the new series when the ball is dead "beyond the middle",
+ * so a spot exactly on the line is not across it. Half yards are real (a
+ * half-distance penalty produces them), so there is no rounding here.
+ */
+export function pastMiddle(
+  ballOn: number | null,
+  g: Geometry = DEFAULT_GEOMETRY,
+): boolean {
+  return ballOn !== null && ballOn > g.middle;
 }
 
 /** Yards to the line to gain for a fresh series on this spot. */
-export function firstDownDistance(ballOn: number | null): number {
+export function firstDownDistance(
+  ballOn: number | null,
+  g: Geometry = DEFAULT_GEOMETRY,
+): number {
   if (ballOn === null) {
-    return MIDFIELD - SERIES_START;
+    return g.middle - g.seriesStart;
   }
-  return ballOn >= MIDFIELD ? FIELD_LENGTH - ballOn : MIDFIELD - ballOn;
+  return pastMiddle(ballOn, g) ? g.fieldLength - ballOn : g.middle - ballOn;
 }
 
 /** A fresh series on the given spot. */
-export function seriesAt(ballOn: number | null): DriveState {
+export function seriesAt(
+  ballOn: number | null,
+  g: Geometry = DEFAULT_GEOMETRY,
+): DriveState {
   return {
     down: 1,
-    toGo: firstDownDistance(ballOn),
+    toGo: firstDownDistance(ballOn, g),
     ballOn,
-    goal: ballOn !== null && ballOn >= MIDFIELD,
+    goal: pastMiddle(ballOn, g),
   };
 }
 
+/**
+ * A series whose line to gain is the goal line from the first snap.
+ *
+ * Overtime starts at the middle with **no first down at the middle** (R
+ * 3-1-3c), so the series is goal-to-go even though the spot is not past the
+ * line: four downs to score.
+ */
+export function seriesToGoal(
+  ballOn: number,
+  g: Geometry = DEFAULT_GEOMETRY,
+): DriveState {
+  return {
+    down: 1,
+    toGo: Math.max(0, g.fieldLength - ballOn),
+    ballOn,
+    goal: true,
+  };
+}
+
+/** A fresh series on the start spot of this field. */
+export function firstAndTen(g: Geometry = DEFAULT_GEOMETRY): DriveState {
+  return seriesAt(g.seriesStart, g);
+}
+
 /** The state after one play at the current spot. */
-export function advance(state: DriveState, yards: number): DriveState {
+export function advance(
+  state: DriveState,
+  yards: number,
+  g: Geometry = DEFAULT_GEOMETRY,
+): DriveState {
   if (state.ballOn === null) {
     return {
       ...state,
-      down: state.down >= 4 ? 1 : state.down + 1,
+      down: state.down >= g.downs ? 1 : state.down + 1,
       toGo: Math.max(0, state.toGo - yards),
     };
   }
 
-  const ballOn = clampSpot(state.ballOn + yards);
+  const ballOn = clampSpot(state.ballOn + yards, g);
 
   // A goal-to-go series keeps the goal line as its line to gain, even when a
   // loss carries the ball back across midfield.
   if (state.goal) {
-    if (ballOn >= FIELD_LENGTH) {
-      return seriesAt(ballOn);
+    if (ballOn >= g.fieldLength) {
+      return seriesAt(ballOn, g);
     }
-    if (state.down >= 4) {
-      return seriesAt(SERIES_START);
+    if (state.down >= g.downs) {
+      return seriesAt(g.seriesStart, g);
     }
     return {
       down: state.down + 1,
-      toGo: FIELD_LENGTH - ballOn,
+      toGo: g.fieldLength - ballOn,
       ballOn,
       goal: true,
     };
   }
 
-  // Reaching midfield is the first down of the series.
-  if (ballOn >= MIDFIELD) {
-    return seriesAt(ballOn);
+  // Crossing the middle is the first down of the series.
+  if (pastMiddle(ballOn, g)) {
+    return seriesAt(ballOn, g);
   }
-  if (state.down >= 4) {
-    return seriesAt(SERIES_START);
+  if (state.down >= g.downs) {
+    return seriesAt(g.seriesStart, g);
   }
   return {
     down: state.down + 1,
-    toGo: MIDFIELD - ballOn,
+    toGo: g.middle - ballOn,
     ballOn,
     goal: false,
   };
 }
 
+/**
+ * The state after the officials set the spot (a **Feldposition** row).
+ *
+ * A set spot moves the ball — a kickoff, a turnover or, mid-series, a
+ * correction — and keeps the current down: only the line to gain follows the
+ * ball. Reaching that line is a first down, exactly as a play across it would
+ * be; a goal-to-go series keeps the goal line as its line to gain (mirroring
+ * {@link advance}), even when the ball is put back behind midfield.
+ */
+export function placeBall(
+  state: DriveState,
+  ballOn: number,
+  g: Geometry = DEFAULT_GEOMETRY,
+): DriveState {
+  const line = state.goal ? g.fieldLength : g.middle;
+  const reached = state.goal ? ballOn >= line : pastMiddle(ballOn, g);
+  if (reached) {
+    return seriesAt(ballOn, g);
+  }
+  return {
+    down: state.down,
+    toGo: line - ballOn,
+    ballOn,
+    goal: state.goal,
+  };
+}
+
 /** True when the play ends the series on downs. */
-export function isTurnoverOnDowns(state: DriveState, yards: number): boolean {
-  if (state.down !== 4) {
+export function isTurnoverOnDowns(
+  state: DriveState,
+  yards: number,
+  g: Geometry = DEFAULT_GEOMETRY,
+): boolean {
+  if (state.down !== g.downs) {
     return false;
   }
   if (state.ballOn === null) {
     return state.toGo - yards > 0;
   }
-  const ballOn = clampSpot(state.ballOn + yards);
-  return state.goal ? ballOn < FIELD_LENGTH : ballOn < MIDFIELD;
+  const ballOn = clampSpot(state.ballOn + yards, g);
+  return state.goal
+    ? ballOn < g.fieldLength
+    : !pastMiddle(ballOn, g);
+}
+
+/**
+ * Where a penalty leaves the ball, half distance included.
+ *
+ * Split out of {@link applyPenalty} so the penalty sheet can show the official
+ * the *effective* spot instead of the catalogue's nominal yards: at `A5` a
+ * five-yard offence penalty moves the ball to `A2,5`, not `A0` (R 10-3-3).
+ */
+export function enforceSpot(
+  ballOn: number | null,
+  yardage: number,
+  g: Geometry = DEFAULT_GEOMETRY,
+): number {
+  const spot = ballOn ?? g.seriesStart;
+  let after = spot + yardage;
+  if (yardage < 0) {
+    after = Math.max(after, spot / 2);
+  } else if (yardage > 0) {
+    after = Math.min(after, (g.fieldLength + spot) / 2);
+  }
+  return clampSpot(after, g);
 }
 
 /**
@@ -170,18 +345,12 @@ export function applyPenalty(
   state: DriveState,
   yardage: number,
   nextDown: PenaltyNextDown = "repeat",
+  g: Geometry = DEFAULT_GEOMETRY,
 ): DriveState {
-  const spot = state.ballOn ?? SERIES_START;
-  let ballOn = spot + yardage;
-  if (yardage < 0) {
-    ballOn = Math.max(ballOn, spot / 2);
-  } else if (yardage > 0) {
-    ballOn = Math.min(ballOn, (FIELD_LENGTH + spot) / 2);
-  }
-  ballOn = clampSpot(ballOn);
+  const ballOn = enforceSpot(state.ballOn, yardage, g);
 
-  if (ballOn >= MIDFIELD) {
-    return seriesAt(ballOn);
+  if (pastMiddle(ballOn, g)) {
+    return seriesAt(ballOn, g);
   }
 
   let down = state.down;
@@ -190,27 +359,33 @@ export function applyPenalty(
   } else if (nextDown === "loss_of_down") {
     down = state.down + 1;
   }
-  if (down > 4) {
-    return seriesAt(SERIES_START);
+  if (down > g.downs) {
+    return seriesAt(g.seriesStart, g);
   }
   return {
     down,
-    toGo: MIDFIELD - ballOn,
+    toGo: g.middle - ballOn,
     ballOn,
     goal: false,
   };
 }
 
 /** The same spot seen from the other side. */
-export function mirror(ballOn: number | null): number | null {
-  return ballOn === null ? null : FIELD_LENGTH - ballOn;
+export function mirror(
+  ballOn: number | null,
+  g: Geometry = DEFAULT_GEOMETRY,
+): number | null {
+  return ballOn === null ? null : g.fieldLength - ballOn;
 }
 
 /** The structured spot of a **Feldposition** row, or `null`. */
-export function spotOf(row: LogRow): number | null {
+export function spotOf(
+  row: LogRow,
+  g: Geometry = DEFAULT_GEOMETRY,
+): number | null {
   const ballOn = row.payload?.ballOn;
   if (typeof ballOn === "number" && Number.isFinite(ballOn)) {
-    return clampSpot(ballOn);
+    return clampSpot(ballOn, g);
   }
   return null;
 }
@@ -237,10 +412,14 @@ export function penaltyOf(row: LogRow): PenaltySpot | null {
  * flip, a turnover, a failed fourth down, a manual switch), the new series
  * starts at A5. Markers do the same, and a deleted row does not count at all —
  * an undo rewinds the series. A penalty moves the spot and the down chain
- * without changing possession; a later **Feldposition** row always wins.
+ * without changing possession; a later **Feldposition** row always wins the
+ * spot — and, being a correction, keeps the down the log has reached so far.
  */
-export function driveAfter(rows: LogRow[]): DriveState {
-  let state: DriveState = { ...FIRST_AND_TEN };
+export function driveAfter(
+  rows: LogRow[],
+  g: Geometry = DEFAULT_GEOMETRY,
+): DriveState {
+  let state: DriveState = firstAndTen(g);
   let lastTeam: string | null = null;
 
   for (const row of [...rows].reverse()) {
@@ -248,39 +427,72 @@ export function driveAfter(rows: LogRow[]): DriveState {
       continue;
     }
     if (row.event === FIELD_EVENT) {
-      const ballOn = spotOf(row);
+      const ballOn = spotOf(row, g);
       if (ballOn !== null) {
-        state = seriesAt(ballOn);
+        state = placeBall(state, ballOn, g);
       }
+      lastTeam = row.team;
+      continue;
+    }
+    if (row.event === FIRST_DOWN_EVENT) {
+      state = seriesAt(state.ballOn ?? g.seriesStart, g);
       lastTeam = row.team;
       continue;
     }
     if (row.event === PENALTY_EVENT) {
       const penalty = penaltyOf(row);
       if (penalty !== null) {
-        state = applyPenalty(state, penalty.yardage, penalty.nextDown);
+        state = applyPenalty(state, penalty.yardage, penalty.nextDown, g);
       }
       continue;
     }
     if (!PLAY_EVENTS.has(row.event)) {
       if (KICKOFF_EVENTS.has(row.event)) {
-        state = { ...FIRST_AND_TEN };
+        state = firstAndTen(g);
         lastTeam = null;
+      } else if (row.event === OVERTIME_EVENT) {
+        state = seriesToGoal(g.middle, g);
+        lastTeam = row.team;
+      } else if (row.event === "Interception") {
+        // R 5-1-1: the new series starts at the dead-ball spot, not at the own
+        // 5. The spot is the intercepting team's own-goal-based position; the
+        // sheet writes it, and an older row without one falls back to the own
+        // 5 (which is exactly a touchback).
+        state = seriesAt(interceptionSpot(row, g), g);
+        lastTeam = row.team;
       } else if (TURNOVER_EVENTS.has(row.event)) {
-        state = { ...FIRST_AND_TEN };
+        state = firstAndTen(g);
         lastTeam = row.team;
       }
       continue;
     }
     if (lastTeam !== null && row.team !== lastTeam) {
       // A new possession without a marker: the new offence starts at A5.
-      state = { ...FIRST_AND_TEN };
+      state = firstAndTen(g);
     }
-    state = advance(state, yardsOf(row));
+    state = advance(state, yardsOf(row), g);
     lastTeam = row.team;
   }
 
   return state;
+}
+
+/**
+ * Where the new series starts after an interception.
+ *
+ * `payload.deadBall` is the spot from the intercepting team's view (A/B, like
+ * a **Feldposition** row). A row without it — an older client, or a catch in
+ * the end zone that became a touchback — starts at the own 5.
+ */
+export function interceptionSpot(
+  row: LogRow,
+  g: Geometry = DEFAULT_GEOMETRY,
+): number {
+  const deadBall = row.payload?.deadBall;
+  if (typeof deadBall === "number" && Number.isFinite(deadBall)) {
+    return clampSpot(deadBall, g);
+  }
+  return g.seriesStart;
 }
 
 /** The structured yards of one row; a missing payload counts as no gain. */
@@ -298,18 +510,21 @@ export function driveText(state: DriveState): string {
  * `A5`, `M`, `B14` — the spot as the officials call it, `null` when it has not
  * been set. Half yards are shown the German way (`A4,5`).
  */
-export function spotText(ballOn: number | null): string | null {
+export function spotText(
+  ballOn: number | null,
+  g: Geometry = DEFAULT_GEOMETRY,
+): string | null {
   if (ballOn === null) {
     return null;
   }
-  const spot = clampSpot(ballOn);
-  if (spot === MIDFIELD) {
+  const spot = clampSpot(ballOn, g);
+  if (spot === g.middle) {
     return "M";
   }
-  if (spot < MIDFIELD) {
+  if (spot < g.middle) {
     return `A${formatYards(spot)}`;
   }
-  return `B${formatYards(FIELD_LENGTH - spot)}`;
+  return `B${formatYards(g.fieldLength - spot)}`;
 }
 
 /** One decimal at most, in the German comma notation (`4.5` → `4,5`). */

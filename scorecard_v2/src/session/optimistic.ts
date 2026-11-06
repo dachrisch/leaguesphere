@@ -22,6 +22,10 @@ import type {
   GameLogEvent,
   GameLogTeam,
 } from "../api/types";
+import {
+  DEFAULT_SCORING_VALUES,
+  type ScoringValues,
+} from "../app/scoring";
 import type { PendingOp, StoredOp } from "../offline/types";
 import {
   EXCLUDED_EVENTS,
@@ -81,7 +85,7 @@ export function envelopesOf(
         {
           gameId: 0,
           team: legacy.team,
-          half: legacy.half === 2 ? 2 : 1,
+          half: (legacy.half ?? 1) >= 2 ? 2 : 1,
           event: legacy.event.map((entry) => ({
             name: entry.name,
             player: entry.player as number | undefined,
@@ -117,7 +121,9 @@ export function envelopesOf(
 }
 
 function halfKey(half: number): "firsthalf" | "secondhalf" {
-  return half === 2 ? "secondhalf" : "firsthalf";
+  // Overtime is period 3 but still belongs to the second half's block: the
+  // log's two groups and every consumer that reads them stay 1/2.
+  return half >= 2 ? "secondhalf" : "firsthalf";
 }
 
 /**
@@ -254,7 +260,7 @@ export function replayOps(base: GameLog, ops: StoredOp[]): ReplayResult {
 
   function applyEnvelope(op: StoredOp, envelope: EventEnvelope): void {
     const display = displayOf(envelope);
-    const half = envelope.period === 2 ? 2 : 1;
+    const half = (envelope.period ?? 1) >= 2 ? 2 : 1;
 
     if (envelope.type === "correction") {
       // The target is a stored row group: mark its rows deleted and take
@@ -305,9 +311,10 @@ export function replayOps(base: GameLog, ops: StoredOp[]): ReplayResult {
         ? envelope.side
         : null;
     const player = coercePlayer(envelope.player);
-    // A scoring event without a usable jersey scores nothing (the server
-    // stores value 0), so the optimistic score must not promise points.
-    const value = coercePlayer(player) === null ? 0 : display.value;
+    // A score is the team's (IFAF R 8-1-1): the jersey is optional detail and
+    // never a condition for the points, so the preview promises what the
+    // server will store.
+    const value = display.value;
     if (side !== null) {
       withDelta(log, side, half, value);
     }
@@ -337,23 +344,13 @@ function inputOf(envelope: EventEnvelope): string | null {
   return typeof input === "string" ? input : null;
 }
 
-/** The points an existing row contributes (a jersey-less score is worth 0). */
+/** The points an existing row contributes; a jersey is optional detail. */
 function pointsOfRow(event: GameLogEvent): number {
-  if (coercePlayer(event.player) === null) {
-    return 0;
-  }
   return SCORING_VALUES[event.event] ?? 0;
 }
 
-/** Mirrors `SCORING_EVENT_VALUES`; the row's own name is the whole truth. */
-const SCORING_VALUES: Record<string, number> = {
-  Touchdown: 6,
-  Overtime: 1,
-  "1-Extra-Punkt": 1,
-  "Safety (+1)": 1,
-  "2-Extra-Punkte": 2,
-  "Safety (+2)": 2,
-};
+/** The row's own name is the whole truth; see `app/scoring.ts`. */
+const SCORING_VALUES: ScoringValues = DEFAULT_SCORING_VALUES;
 
 function cloneTeam(team: GameLogTeam): GameLogTeam {
   return {

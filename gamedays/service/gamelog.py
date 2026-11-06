@@ -70,9 +70,9 @@ class GameLogCreator(object):
             teamlog.event = entry.get("name")
             teamlog.input = entry.get("input")
             teamlog.player = self._coerce_player(entry.get("player"))
-            teamlog.value = (
-                self._getValue(entry.get("name")) if teamlog.player is not None else 0
-            )
+            # A scoring row is worth its points whether or not it names a
+            # player: the score belongs to the team (IFAF R 8-1-1).
+            teamlog.value = self._getValue(entry.get("name"))
             teamlog.half = self.half
             teamlog.author = self.user
             teamlog.save()

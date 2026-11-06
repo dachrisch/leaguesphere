@@ -10,8 +10,22 @@
  * and nothing about it is written to the server.
  */
 
-/** The break between the halves, in seconds. */
-export const HALFTIME_BREAK_SECONDS = 5 * 60;
+/**
+ * The break between the halves, in seconds.
+ *
+ * IFAF 2023 R 3-2-1 says two minutes; the value lives in the sport definition
+ * (`periods.intermission_minutes`) and this constant is only the fallback for
+ * a device that has not fetched it. A competition may set its own - the app
+ * counts what it is told instead of insisting on the book.
+ */
+export const HALFTIME_BREAK_SECONDS = 2 * 60;
+
+/** The definition's intermission, or the fallback. */
+export function intermissionSeconds(minutes: number | null | undefined): number {
+  return typeof minutes === "number" && Number.isFinite(minutes) && minutes > 0
+    ? Math.round(minutes * 60)
+    : HALFTIME_BREAK_SECONDS;
+}
 
 const PREFIX = "scorecard:v2:break:";
 
@@ -57,12 +71,10 @@ export function forgetBreak(gameId: number): void {
 export function secondsLeft(
   startedAt: number,
   now: number = Date.now(),
+  total: number = HALFTIME_BREAK_SECONDS,
 ): number {
   const elapsed = Math.floor((now - startedAt) / 1000);
-  return Math.min(
-    HALFTIME_BREAK_SECONDS,
-    Math.max(0, HALFTIME_BREAK_SECONDS - elapsed),
-  );
+  return Math.min(total, Math.max(0, total - elapsed));
 }
 
 /** `mm:ss` (the break never reaches an hour). */

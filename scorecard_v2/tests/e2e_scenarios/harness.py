@@ -88,6 +88,9 @@ TURNOVER_ROW_JS = """() => [...document.querySelectorAll('.logrows .rowprimary')
 TOUCHDOWN_ROW_JS = """() => [...document.querySelectorAll('.logrows .rowprimary')]
   .filter((el) => el.textContent.trim().startsWith('Touchdown ')).length"""
 
+INTERCEPTION_ROW_JS = """() => [...document.querySelectorAll('.logrows .rowprimary')]
+  .filter((el) => el.textContent.trim().startsWith('Interception ')).length"""
+
 # A row a server-side undo struck through: it stays in the log, unlike a queued
 # row the phone simply removes.
 DELETED_TURNOVER_ROW_JS = """() => [...document.querySelectorAll('.logrows .row.deleted .rowprimary')]
@@ -956,6 +959,31 @@ class Phone:
             page.wait_for_function(
                 "expected => [...document.querySelectorAll('.logrows .rowprimary')]"
                 ".filter((el) => el.textContent.trim().startsWith('Touchdown '))"
+                ".length >= expected",
+                arg=before + 1,
+                timeout=20000,
+            )
+
+    def timeout(self, team: str, *, wait: bool = True) -> None:
+        """Take one team's timeout where the team is.
+
+        Since 2026-11-05 (57:33-59:08) each team row carries its own timeout
+        button; either team's is one tap regardless of possession, and no clock
+        is asked.
+        """
+
+        page = self._require_page()
+        button = page.get_by_role("button", name=f"Auszeit {team}", exact=True)
+        expect(button).to_be_enabled(timeout=20000)
+        before = self._row_count(
+            "() => [...document.querySelectorAll('.logrows .rowprimary')]"
+            ".filter((el) => el.textContent.trim().startsWith('Auszeit ')).length"
+        )
+        button.click()
+        if wait:
+            page.wait_for_function(
+                "expected => [...document.querySelectorAll('.logrows .rowprimary')]"
+                ".filter((el) => el.textContent.trim().startsWith('Auszeit '))"
                 ".length >= expected",
                 arg=before + 1,
                 timeout=20000,

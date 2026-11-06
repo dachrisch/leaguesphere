@@ -1,0 +1,618 @@
+{
+  "sport": "flag_football",
+  "variant": "5v5",
+  "ruleset": "IFAF 2023",
+  "field": {
+    "length": 50,
+    "width": 25,
+    "end_zone": 10,
+    "middle": 25,
+    "no_run_zone": 5,
+    "spot_precision": 0.5
+  },
+  "series": {
+    "downs": 4,
+    "start": 5,
+    "line_to_gain": [
+      "middle",
+      "goal"
+    ],
+    "first_down_at_middle": "once",
+    "turnover_on_downs_spot": 5,
+    "interception_spot": "dead_ball"
+  },
+  "scoring": {
+    "touchdown": 6,
+    "try": {
+      "5": 1,
+      "10": 2
+    },
+    "try_defense": 2,
+    "try_safety": 1,
+    "safety": 2,
+    "touchback_spot": 5,
+    "after_try_spot": 5,
+    "safety_spot": 5
+  },
+  "periods": {
+    "count": 2,
+    "length_minutes": 20,
+    "intermission_minutes": 2,
+    "play_clock_seconds": 25,
+    "pass_clock_seconds": 7,
+    "running_clock_diff": 30
+  },
+  "timeouts": {
+    "per_half": 2,
+    "seconds": 60,
+    "carry_over": false,
+    "in_overtime": false
+  },
+  "overtime": {
+    "start_spot": 25,
+    "first_down_at_middle": false,
+    "tiebreak_try": {
+      "spot": 5,
+      "points": 1
+    }
+  },
+  "officials": {
+    "counts": [
+      2,
+      3,
+      4
+    ]
+  },
+  "penalties": [
+    {
+      "code": "illegaler_kontakt_defense",
+      "name": "illegaler Kontakt Defense",
+      "subtext": "BS/1st 10",
+      "yards": 10,
+      "down": "first",
+      "enforcement": "BS",
+      "side": "defense",
+      "rule": "9-1-1"
+    },
+    {
+      "code": "flag_guarding",
+      "name": "Flag Guarding",
+      "subtext": "SF/LoD 5",
+      "yards": 5,
+      "down": "loss",
+      "enforcement": "SF",
+      "side": "offense",
+      "rule": "9-2-2c"
+    },
+    {
+      "code": "fehlstart",
+      "name": "Fehlstart",
+      "subtext": "DB/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "offense",
+      "rule": "7-1-3c"
+    },
+    {
+      "code": "abschirmen_blocken_offense",
+      "name": "Abschirmen (Blocken) Offense",
+      "subtext": "BS/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "BS",
+      "side": "offense",
+      "rule": "9-2-2a"
+    },
+    {
+      "code": "illegaler_kontakt_offense",
+      "name": "illegaler Kontakt Offense",
+      "subtext": "BS/LoD 10",
+      "yards": 10,
+      "down": "loss",
+      "enforcement": "BS",
+      "side": "offense",
+      "rule": "9-1-1"
+    },
+    {
+      "code": "abschirmen_blocken_defense",
+      "name": "Abschirmen (Blocken) Defense",
+      "subtext": "BS/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "BS",
+      "side": "defense",
+      "rule": "9-2-2a"
+    },
+    {
+      "code": "defense_passbehinderung",
+      "name": "Defense Passbehinderung",
+      "subtext": "BS/1st 10",
+      "yards": 10,
+      "down": "first",
+      "enforcement": "BS",
+      "side": "defense",
+      "rule": "7-3-3"
+    },
+    {
+      "code": "behinderung_spieldurchfuehrung_defense",
+      "name": "Behinderung Spieldurchführung Defense",
+      "subtext": "BS/1st 10",
+      "yards": 10,
+      "down": "first",
+      "enforcement": "BS",
+      "side": "defense",
+      "rule": "9-1-2"
+    },
+    {
+      "code": "passverzoegerung",
+      "name": "Passverzögerung",
+      "subtext": "SL/LoD",
+      "yards": 0,
+      "down": "loss",
+      "enforcement": "SL",
+      "side": "offense",
+      "rule": "7-1-3g"
+    },
+    {
+      "code": "illegale_balluebergabe",
+      "name": "illegale Ballübergabe",
+      "subtext": "SF/LoD",
+      "yards": 5,
+      "down": "loss",
+      "enforcement": "SF",
+      "side": "offense",
+      "rule": "7-1-5"
+    },
+    {
+      "code": "illegaler_rueckwaertspass",
+      "name": "illegaler Rückwärtspass",
+      "subtext": "SF/LoD 5",
+      "yards": 5,
+      "down": "loss",
+      "enforcement": "SF",
+      "side": "offense",
+      "rule": "7-2-1"
+    },
+    {
+      "code": "illegales_touching_ballberuehrung",
+      "name": "illegales Touching/Ballberührung",
+      "subtext": "SL/LoD",
+      "yards": 0,
+      "down": "loss",
+      "enforcement": "SL",
+      "side": "offense",
+      "rule": "7-2-5"
+    },
+    {
+      "code": "vorwaertsschlagen_eines_rueckwaertspasses_durch_das_passende_team",
+      "name": "Vorwärtsschlagen eines Rückwärtspasses durch das passende Team",
+      "subtext": "SF/LoD 5",
+      "yards": 5,
+      "down": "loss",
+      "enforcement": "SF",
+      "side": "offense",
+      "rule": "7-2-5"
+    },
+    {
+      "code": "illegaler_vorwaertspass",
+      "name": "illegaler Vorwärtspass",
+      "subtext": "SF/LoD 5",
+      "yards": 5,
+      "down": "loss",
+      "enforcement": "SF",
+      "side": "offense",
+      "rule": "7-3-2"
+    },
+    {
+      "code": "offense_passbehinderung",
+      "name": "Offense Passbehinderung",
+      "subtext": "BS/LoD 10",
+      "yards": 10,
+      "down": "loss",
+      "enforcement": "BS",
+      "side": "offense",
+      "rule": "7-3-3"
+    },
+    {
+      "code": "behinderung_spieldurchfuehrung_offense",
+      "name": "Behinderung Spieldurchführung Offense",
+      "subtext": "BS/LoD 10",
+      "yards": 10,
+      "down": "loss",
+      "enforcement": "BS",
+      "side": "offense",
+      "rule": "9-1-2"
+    },
+    {
+      "code": "springen",
+      "name": "Springen",
+      "subtext": "SF/LoD 5",
+      "yards": 5,
+      "down": "loss",
+      "enforcement": "SF",
+      "side": "offense",
+      "rule": "9-2-2b"
+    },
+    {
+      "code": "hechten",
+      "name": "Hechten",
+      "subtext": "SF/LoD 5",
+      "yards": 5,
+      "down": "loss",
+      "enforcement": "SF",
+      "side": "offense",
+      "rule": "9-2-2b"
+    },
+    {
+      "code": "illegaler_kick_durch_runner",
+      "name": "illegaler Kick durch Runner",
+      "subtext": "SF/LoD 5",
+      "yards": 5,
+      "down": "loss",
+      "enforcement": "SF",
+      "side": "offense",
+      "rule": "6-1-1"
+    },
+    {
+      "code": "illegaler_snap",
+      "name": "illegaler Snap",
+      "subtext": "DB/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "offense",
+      "rule": "7-1-1a, 7-1-2"
+    },
+    {
+      "code": "spielverzoegerung_offense",
+      "name": "Spielverzögerung Offense",
+      "subtext": "DB/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "offense",
+      "rule": "7-1-1b"
+    },
+    {
+      "code": "spielverzoegerung_defense",
+      "name": "Spielverzögerung Defense",
+      "subtext": "DB/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "defense",
+      "rule": "7-1-1b"
+    },
+    {
+      "code": "encroachment",
+      "name": "Encroachment",
+      "subtext": "DB/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "offense",
+      "rule": "7-1-3a"
+    },
+    {
+      "code": "illegaler_shift",
+      "name": "illegaler Shift",
+      "subtext": "SL/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "SL",
+      "side": "offense",
+      "rule": "7-1-3d"
+    },
+    {
+      "code": "illegale_motion",
+      "name": "illegale Motion",
+      "subtext": "SL/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "SL",
+      "side": "offense",
+      "rule": "7-1-3d"
+    },
+    {
+      "code": "illegaler_lauf",
+      "name": "illegaler Lauf",
+      "subtext": "SL/LoD 5",
+      "yards": 5,
+      "down": "loss",
+      "enforcement": "SL",
+      "side": "offense",
+      "rule": "7-1-3"
+    },
+    {
+      "code": "illegaler_laufspielzug",
+      "name": "illegaler Laufspielzug",
+      "subtext": "SL/LoD 5",
+      "yards": 5,
+      "down": "loss",
+      "enforcement": "SL",
+      "side": "offense",
+      "rule": "7-1-3"
+    },
+    {
+      "code": "defense_offside",
+      "name": "Defense Offside",
+      "subtext": "DB/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "defense",
+      "rule": "7-1-4a"
+    },
+    {
+      "code": "stoerende_signale",
+      "name": "Störende Signale",
+      "subtext": "DB/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "defense",
+      "rule": "7-1-4c"
+    },
+    {
+      "code": "illegales_blitzersignal",
+      "name": "illegales Blitzersignal",
+      "subtext": "DB/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "defense",
+      "rule": "7-1-4d"
+    },
+    {
+      "code": "illegaler_blitz",
+      "name": "illegaler Blitz",
+      "subtext": "SL/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "SL",
+      "side": "defense",
+      "rule": "7-1-4f"
+    },
+    {
+      "code": "illegales_flaggenziehen",
+      "name": "illegales Flaggenziehen",
+      "subtext": "BS/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "BS",
+      "side": "defense",
+      "rule": "9-2-2d"
+    },
+    {
+      "code": "illegales_treten_eines_pass_defense",
+      "name": "illegales Treten eines Pass Defense",
+      "subtext": "BS/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "BS",
+      "side": "defense",
+      "rule": "9-2-2e"
+    },
+    {
+      "code": "illegales_treten_eines_pass_offense",
+      "name": "illegales Treten eines Pass Offense",
+      "subtext": "BS/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "BS",
+      "side": "offense",
+      "rule": "9-2-2e"
+    },
+    {
+      "code": "behinderung_an_der_seitenlinie_offense",
+      "name": "Behinderung an der Seitenlinie Offense",
+      "subtext": "SL/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "SL",
+      "side": "offense",
+      "rule": "9-2-2g"
+    },
+    {
+      "code": "behinderung_an_der_seitenlinie_defense",
+      "name": "Behinderung an der Seitenlinie Defense",
+      "subtext": "SL/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "SL",
+      "side": "defense",
+      "rule": "9-2-2g"
+    },
+    {
+      "code": "illegale_spielteilnahme_offense",
+      "name": "illegale Spielteilnahme Offense",
+      "subtext": "SL/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "SL",
+      "side": "offense",
+      "rule": "9-2-2f"
+    },
+    {
+      "code": "illegale_spielteilnahme_defense",
+      "name": "illegale Spielteilnahme Defense",
+      "subtext": "SL/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "SL",
+      "side": "defense",
+      "rule": "9-2-2f"
+    },
+    {
+      "code": "illegale_auswechslung_offense",
+      "name": "illegale Auswechslung Offense",
+      "subtext": "SL/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "SL",
+      "side": "offense",
+      "rule": "9-3-1"
+    },
+    {
+      "code": "illegale_auswechslung_defense",
+      "name": "illegale Auswechslung Defense",
+      "subtext": "SL/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "SL",
+      "side": "defense",
+      "rule": "9-3-1"
+    },
+    {
+      "code": "unsportliches_verhalten_offense",
+      "name": "Unsportliches Verhalten Offense",
+      "subtext": "DB/10 Notiz",
+      "yards": 10,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "offense",
+      "rule": "9-2-1"
+    },
+    {
+      "code": "unsportliches_verhalten_defense",
+      "name": "Unsportliches Verhalten Defense",
+      "subtext": "DB/10 Notiz",
+      "yards": 10,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "defense",
+      "rule": "9-2-1"
+    },
+    {
+      "code": "grob_unsportliches_verhalten_offense",
+      "name": "Grob unsportliches Verhalten Offense",
+      "subtext": "Disqualifkation",
+      "yards": 0,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "offense",
+      "rule": "10-1-1",
+      "disqualification": true
+    },
+    {
+      "code": "grob_unsportliches_verhalten_defense",
+      "name": "Grob unsportliches Verhalten Defense",
+      "subtext": "Disqualifkation",
+      "yards": 0,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "defense",
+      "rule": "10-1-1",
+      "disqualification": true
+    },
+    {
+      "code": "person_mit_illegaler_ausruestung_verlaesst_nicht_das_feld_offense",
+      "name": "Person mit illegaler Ausrüstung verlässt nicht das Feld Offense",
+      "subtext": "DB/TO",
+      "yards": 0,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "offense",
+      "rule": "9-2-2h",
+      "charged_timeout": true
+    },
+    {
+      "code": "person_mit_illegaler_ausruestung_verlaesst_nicht_das_feld_defense",
+      "name": "Person mit illegaler Ausrüstung verlässt nicht das Feld Defense",
+      "subtext": "DB/TO",
+      "yards": 0,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "defense",
+      "rule": "9-2-2h",
+      "charged_timeout": true
+    },
+    {
+      "code": "person_mit_fehlender_vorgeschriebener_ausruestung_verlaesst_nicht_das_feld_offense",
+      "name": "Person mit fehlender vorgeschriebener Ausrüstung verlässt nicht das Feld Offense",
+      "subtext": "DB/TO",
+      "yards": 0,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "offense",
+      "rule": "9-2-2h",
+      "charged_timeout": true
+    },
+    {
+      "code": "person_mit_fehlender_vorgeschriebener_ausruestung_verlaesst_nicht_das_feld_defense",
+      "name": "Person mit fehlender vorgeschriebener Ausrüstung verlässt nicht das Feld Defense",
+      "subtext": "DB/TO",
+      "yards": 0,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "defense",
+      "rule": "9-2-2h",
+      "charged_timeout": true
+    },
+    {
+      "code": "person_mit_blutender_wunde_verlaesst_nicht_das_feld_offense",
+      "name": "Person mit blutender Wunde verlässt nicht das Feld Offense",
+      "subtext": "DB/TO",
+      "yards": 0,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "offense",
+      "rule": "9-2-2h",
+      "charged_timeout": true
+    },
+    {
+      "code": "person_mit_blutender_wunde_verlaesst_nicht_das_feld_defense",
+      "name": "Person mit blutender Wunde verlässt nicht das Feld Defense",
+      "subtext": "DB/TO",
+      "yards": 0,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "defense",
+      "rule": "9-2-2h",
+      "charged_timeout": true
+    },
+    {
+      "code": "auszeit_ohne_verbleibende_auszeit_offense",
+      "name": "Auszeit ohne verbleibende Auszeit Offense",
+      "subtext": "DB/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "offense",
+      "rule": "9-2-2 / p. 39"
+    },
+    {
+      "code": "auszeit_ohne_verbleibende_auszeit_defense",
+      "name": "Auszeit ohne verbleibende Auszeit Defense",
+      "subtext": "DB/5",
+      "yards": 5,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "defense",
+      "rule": "9-2-2 / p. 39"
+    },
+    {
+      "code": "fehlgeschlagene_challenge_offense",
+      "name": "Fehlgeschlagene Challenge Offense",
+      "subtext": "DB/TO",
+      "yards": 0,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "offense",
+      "rule": "12-1-4",
+      "charged_timeout": true
+    },
+    {
+      "code": "fehlgeschlagene_challenge_defense",
+      "name": "Fehlgeschlagene Challenge Defense",
+      "subtext": "DB/TO",
+      "yards": 0,
+      "down": "repeat",
+      "enforcement": "DB",
+      "side": "defense",
+      "rule": "12-1-4",
+      "charged_timeout": true
+    }
+  ]
+}

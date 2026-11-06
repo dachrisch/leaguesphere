@@ -115,7 +115,7 @@ no reload.
    tile into **Nr. ergänzen** for 10s, and a second tap opens the jersey sheet,
    which writes the numbered row for the same team (an interception's ball
    does not move twice) and undoes the one-tap row. Entries with required
-   input — touchdown, Spielzeit, Auszeit, penalty, safety, overtime — open
+   input — touchdown, Spielzeit, penalty, safety, overtime — open
    their sheet on the first tap. **Halbzeit** confirms the same way (first tap
    arms **Halbzeit starten**, the second starts it); the marker it writes also
    sets `Gameinfo.status` and `gameHalftime`, so the half flips for every
@@ -153,7 +153,9 @@ no reload.
    the yardage from the last spot, never closer than half the distance to
    either goal, restarts as `1st & G` when the result crosses midfield and
    otherwise applies `nextDown`. A later manually entered **Feldposition** row
-   always wins. A **disqualification** (`subtext` `Disqualifkation`) requires a
+   always wins the spot; as a correction it keeps the running down (only
+   reaching the line to gain, a new possession or a marker starts a fresh
+   series). A **disqualification** (`subtext` `Disqualifkation`) requires a
    jersey, so the sheet has no **Ganzes Team** tile for it; **Unsportliches
    Verhalten** tracks its numbers as optional free text (several numbers
    separated by comma or space). The sheet lists the charged team's earlier
@@ -176,11 +178,11 @@ no reload.
    five most common penalties stay in catalogue order, the rest are
    alphabetical; the sheet prefills yardage and next down from the catalogue's
    `subtext` and keeps both editable), safety,
-   overtime, Spielzeit, Auszeit, half-time, and **Rückgängig** per entry, plus
+   overtime, Spielzeit, half-time, and **Rückgängig** per entry, plus
    **Ändern** to correct the jersey or the game time of a row in place (the
    corrected event is written, then the old row is undone; the row keeps its
    team and half and never flips possession). **Nur Punkte** filters the log
-   down to the plays that scored. The Auszeit sheet lists both teams' timeouts
+   down to the plays that scored. Each team's own timeout field lists its
    with half and game time — the entry stores the *remaining game time*, like
    the old app, not a duration — and its tile carries the count of the side
    with the ball. Starting the second half runs a five-minute **Pause**

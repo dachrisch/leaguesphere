@@ -17,6 +17,7 @@ See [current/](./current/) for active planning work.
 - [2026-10-27 Scorecard — Ideas & Findings](./current/2026-10-27-scorecard-ideas.md): every scorecard idea from that call in one place (v2 review findings, person matching, clock confirmations, sport templates, event sourcing, v3 capture, input UX, integrations)
 - [2026-10-27 Scorecard — Feature Plan & Status](./current/2026-10-27-scorecard-feature-plan.md): those ideas as one tracked row each (ID, layer, status); all of them are to be added, the delivery layers ship bottom-up
 - [2026-10-27 Scorecard — Layer Plan](./current/2026-10-27-scorecard-layers-plan.md): the concrete stack (L2 logos → L3 crew labels → L4 period templates → L5 start confirmation) with per-layer specs, acceptance and the subagent protocol
+- [2026-11-05 Scorecard — Rules Validation](./current/2026-11-05-scorecard-rules-validation.md): IFAF 2023 against the field app (9 defects, 5 kept simplifications), the `flag_football_5v5` rule definition as data, the `gh stack` layer chain R0–R15 and the 2026-11-05 meeting cross-check
 
 ### Completed Plans
 See [history/](./history/) for completed and archived plans.

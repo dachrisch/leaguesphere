@@ -1218,6 +1218,17 @@ button.game-row:active {
   border-radius: var(--radius-lg);
 }
 
+/* A warning, not an error: the game is fine, another device holds it. */
+.devicewarn {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 35%, transparent);
+  border-radius: var(--radius-lg);
+}
+
 .setupfoot {
   position: sticky;
   /* The scroll area has a bottom safe-area padding; a negative sticky offset
@@ -2056,6 +2067,11 @@ button.game-row:active {
   display: grid;
   flex: 0 0 auto;
   grid-template-columns: 1fr 1fr;
+  /* Two groups, not one strip of four buttons: the gap between the teams is
+     wider than the 4px between a team and its own timeout, because a timeout
+     saves on one tap and must not sit against the other team's possession
+     button (meeting 2026-11-07). */
+  column-gap: var(--space-3);
   margin: var(--space-2) var(--page-gutter) 0;
   overflow: hidden;
   background: var(--surface);
@@ -2587,7 +2603,15 @@ button.game-row:active {
 }
 
 .sheetinput-num {
-  max-width: 120px;
+  /*
+   * A number is at most two digits (jersey 0-99, yards 0-99, clock 0-59), but
+   * the field has to hold them at `--fs-xl` on a 320px phone too. `min()`
+   * keeps the compact box on a tablet and lets it use the row on a phone,
+   * where the fixed 120px used to clip the digits (meeting 2026-11-05, 21:02).
+   */
+  width: 100%;
+  min-width: 0;
+  max-width: min(160px, 100%);
   font-family: var(--font-display);
   font-size: var(--fs-xl);
   font-weight: 700;
@@ -2601,7 +2625,11 @@ button.game-row:active {
 }
 
 .timefields .sheetfield {
-  width: 84px;
+  /* the same rule: a fixed 84px clipped a two-digit clock on a phone */
+  flex: 1 1 84px;
+  min-width: 0;
+  width: auto;
+  max-width: 120px;
 }
 
 .sheetinput-clock {
@@ -4965,4 +4993,58 @@ button.syncbadge {
   .timetable-empty {
     min-height: 150px;
   }
+}
+
+/* One team row: possession on top, that team's timeout under it.
+   The timeout is one tap for either team (meeting 2026-11-05, 57:33-59:08),
+   so it lives where the team already is. */
+/* One team, one row: the possession button takes what it can, its timeout
+   sits beside it. Both are at least one touch target wide and high at every
+   breakpoint; a long team name shortens with an ellipsis inside its button
+   instead of pushing the timeout out of the row. */
+.possteam {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: row;
+  align-items: stretch;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.possteam .possbtn {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+.possname {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeoutbtn {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: var(--touch);
+  min-height: var(--touch);
+  padding: 0 var(--space-2);
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  background: var(--panel2);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.timeoutbtn.is-used {
+  color: var(--home-text);
+  border-style: solid;
 }

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import type { GameLog } from "../api/types";
 import type { LogRow } from "../components/EventLog";
-import { undoPossessionTeam } from "./possessionUndo";
+import { undoPossessionTeam, undoPossessionTeamOfGroup } from "./possessionUndo";
 
 function log(): GameLog {
   const team = (id: number, name: string) => ({
@@ -77,5 +77,38 @@ describe("undoPossessionTeam", () => {
 
   it("changes nothing when the row names no team of this game", () => {
     expect(undoPossessionTeam(row({ team: "Fremde" }), log())).toBeNull();
+  });
+});
+
+describe("a group written by one submission", () => {
+  it("takes the flip from the touchdown row when the play row is undone", () => {
+    // A scoring play and its touchdown share one `seq`; only the touchdown
+    // carries the flip. Undoing the play row (the one with the yards) must
+    // still put the ball back.
+    const play = row({ key: "p", seq: 7, team: "Ravens", event: "Pass" });
+    const touchdown = row({ key: "t", seq: 7, team: "Ravens", event: "Touchdown" });
+
+    expect(undoPossessionTeam(play, log())).toBeNull();
+    expect(undoPossessionTeamOfGroup(play, [touchdown, play], log())).toBe("Ravens");
+  });
+
+  it("leaves the ball alone for a group that never flipped it", () => {
+    const pass = row({ key: "p", seq: 8, team: "Ravens", event: "Pass" });
+    const run = row({ key: "r", seq: 9, team: "Ravens", event: "Run" });
+
+    expect(undoPossessionTeamOfGroup(pass, [run, pass], log())).toBeNull();
+  });
+
+  it("does not let a deleted sibling answer for the group", () => {
+    const play = row({ key: "p", seq: 7, team: "Ravens", event: "Pass" });
+    const touchdown = row({
+      key: "t",
+      seq: 7,
+      team: "Ravens",
+      event: "Touchdown",
+      isDeleted: true,
+    });
+
+    expect(undoPossessionTeamOfGroup(play, [touchdown, play], log())).toBeNull();
   });
 });

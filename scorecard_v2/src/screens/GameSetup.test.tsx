@@ -2309,3 +2309,63 @@ describe("GameSetup direction on the field", () => {
     expect(within(group).getByRole("button", { name: "Süd" })).toBeInTheDocument();
   });
 });
+
+describe("a game another device already took", () => {
+  it("warns before anyone taps start", async () => {
+    crew = completeCrew();
+    setup = {
+      ctResult: "home",
+      direction: "Nord",
+      fhPossession: "home",
+      device_id: "device-2",
+    };
+
+    await renderSetup();
+
+    const warning = await screen.findByText(
+      /hat ein anderes Gerät bereits übernommen/,
+    );
+    expect(warning).toBeInTheDocument();
+    // Not `.seterror`: that class means "the start failed", and the officials
+    // (and the e2e harness) read it that way before anyone taps.
+    expect(document.querySelector(".devicewarn")).not.toBeNull();
+    expect(document.querySelector(".seterror")).toBeNull();
+    // it is a warning, not a gate: the start button stays available
+    expect(screen.getByRole("button", { name: "Fortsetzen" })).toBeEnabled();
+  });
+
+  it("stays quiet for a game this device started", async () => {
+    crew = completeCrew();
+    setup = {
+      ctResult: "home",
+      direction: "Nord",
+      fhPossession: "home",
+      device_id: "device-1",
+    };
+
+    await renderSetup();
+
+    expect(
+      screen.queryByText(/hat ein anderes Gerät bereits übernommen/),
+    ).toBeNull();
+  });
+});
+
+describe("a setup without a usable device id", () => {
+  it("shows no warning for a blank id", async () => {
+    crew = completeCrew();
+    setup = {
+      ctResult: "home",
+      direction: "Nord",
+      fhPossession: "home",
+      // an older server stored whitespace rather than nothing
+      device_id: "   ",
+    };
+
+    await renderSetup();
+
+    expect(
+      screen.queryByText(/hat ein anderes Gerät bereits übernommen/),
+    ).toBeNull();
+  });
+});

@@ -41,6 +41,8 @@ export const snapshotKey = {
   // reloads offline still shows the right role names.
   crewPositions: (gameId: number): string => `crewpositions:${gameId}`,
   penalties: (): string => "penalties",
+  // The sport definition (field, series, scoring, penalties); one per app.
+  rules: (): string => "rules",
   // The team directory is public and not tied to a game, so one key holds the
   // name→logo lookup for every screen (`api/teams.ts`).
   teams: (): string => "teams",

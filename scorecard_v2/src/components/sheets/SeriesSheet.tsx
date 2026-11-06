@@ -1,6 +1,8 @@
 import { useId, useRef, useState } from "react";
 
 import type { GameLogEventInput, RosterPlayer } from "../../api/types";
+import { FIELD_LENGTH, MIDFIELD, spotText } from "../../app/drive";
+import { spotValue } from "./FieldPositionSheet";
 import JerseyPicker, { jerseyOptions } from "../JerseyPicker";
 import { errorMessage } from "./errors";
 import Sheet from "./Sheet";
@@ -112,6 +114,47 @@ export function seriesEvent(
   return payload;
 }
 
+/**
+ * One interception, with where the return ended.
+ *
+ * R 5-1-1 puts the new series at the dead-ball spot, so the entry has to carry
+ * it: without it the engine falls back to the own 5 (a touchback - correct for
+ * a catch in the end zone, wrong for a 30-yard return). The spot is optional
+ * because a lower-league operator may only know "we have the ball"; the return
+ * yards are optional statistics and never move the ball.
+ */
+export function interceptionEvent(
+  jersey: number | null,
+  deadBall: number | null,
+  returnYards: number | null,
+): GameLogEventInput {
+  const event: GameLogEventInput = { name: "Interception" };
+  if (jersey !== null) {
+    event.player = jersey;
+  }
+  const payload: Record<string, unknown> = {};
+  if (deadBall !== null) {
+    payload.deadBall = deadBall;
+  }
+  if (returnYards !== null) {
+    payload.returnYards = returnYards;
+  }
+  if (Object.keys(payload).length > 0) {
+    event.payload = payload;
+  }
+  const detail: string[] = [];
+  if (deadBall !== null) {
+    detail.push(`bis ${spotText(deadBall)}`);
+  }
+  if (returnYards !== null) {
+    detail.push(`${returnYards} Yards Return`);
+  }
+  if (detail.length > 0) {
+    event.input = detail.join(" · ");
+  }
+  return event;
+}
+
 /** Payload of a Spielzeit/Auszeit entry. */
 export function timeEvent(
   mode: SeriesMode,
@@ -142,6 +185,10 @@ interface SeriesSheetProps {
   onClose: () => void;
   /** Timeouts already recorded, for the history under the Auszeit fields. */
   timeouts?: TimeoutRecord[];
+  /** The definition's timeouts per half (`timeouts.per_half`). */
+  perHalf?: number;
+  /** The half the entry belongs to. */
+  half?: number;
 }
 
 /** One recorded Auszeit as the history lists it. */
@@ -169,15 +216,23 @@ export default function SeriesSheet({
   onSubmit,
   onClose,
   timeouts = [],
+  perHalf = 2,
+  half = 1,
 }: SeriesSheetProps) {
   const info = MODES[mode];
   const time = isTimeMode(mode);
   const minutesId = useId();
   const secondsId = useId();
   const yardsId = useId();
+  const deadBallId = useId();
+  const returnId = useId();
 
   const [jersey, setJersey] = useState<number | null>(null);
   const [yards, setYards] = useState("");
+  /** Where the interception's return ended (own-goal-based spot). */
+  const [deadBallSide, setDeadBallSide] = useState<"A" | "B">("A");
+  const [deadBallYards, setDeadBallYards] = useState("");
+  const [returnYards, setReturnYards] = useState("");
   const [minutes, setMinutes] = useState("");
   const [seconds, setSeconds] = useState("");
   const [touched, setTouched] = useState(false);
@@ -201,7 +256,18 @@ export default function SeriesSheet({
   const options = jerseyOptions(players);
   const loading = roster === null;
   const validation = time ? timeError(mode, minutes, seconds) : null;
-  const ready = !posting && validation === null;
+  const deadBallLine = spotValue(deadBallYards);
+  const deadBallInvalid =
+    intercepts &&
+    deadBallLine !== null &&
+    (deadBallLine < 0 || deadBallLine > MIDFIELD);
+  const deadBall =
+    deadBallLine === null
+      ? null
+      : Math.round(
+          (deadBallSide === "A" ? deadBallLine : FIELD_LENGTH - deadBallLine) * 10,
+        ) / 10;
+  const ready = !posting && validation === null && !deadBallInvalid;
 
   const save = async (): Promise<void> => {
     if (saving.current || !ready) {
@@ -214,7 +280,15 @@ export default function SeriesSheet({
       await onSubmit(
         time
           ? [timeEvent(mode, minutes, seconds)]
-          : [seriesEvent(mode, jersey, yardsValue(yards))],
+          : intercepts
+            ? [
+                interceptionEvent(
+                  jersey,
+                  deadBall,
+                  yardsValue(returnYards),
+                ),
+              ]
+            : [seriesEvent(mode, jersey, yardsValue(yards))],
       );
       onClose();
     } catch (failure) {
@@ -371,14 +445,84 @@ export default function SeriesSheet({
       ) : null}
 
       {intercepts ? (
-        <p className="sheetnote">
-          Interception durch {opponentName}. Der Ballbesitz wechselt im
-          Spielverlauf zu {opponentName}.
-        </p>
+        <>
+          <h3 className="sheetsection">Ballbesitz ab (optional)</h3>
+          <div aria-label="Feldhälfte" className="seg" role="group">
+            <button
+              aria-pressed={deadBallSide === "A"}
+              className={deadBallSide === "A" ? "sel" : undefined}
+              disabled={posting}
+              onClick={() => setDeadBallSide("A")}
+              type="button"
+            >
+              A · eigene
+            </button>
+            <button
+              aria-pressed={deadBallSide === "B"}
+              className={deadBallSide === "B" ? "sel" : undefined}
+              disabled={posting}
+              onClick={() => setDeadBallSide("B")}
+              type="button"
+            >
+              B · gegnerische
+            </button>
+          </div>
+          <div className="sheetfield">
+            <label className="sheetlabel" htmlFor={deadBallId}>
+              Yardlinie, wo der Return endete (0–25)
+            </label>
+            <input
+              autoComplete="off"
+              className="sheetinput sheetinput-num"
+              disabled={posting}
+              id={deadBallId}
+              inputMode="decimal"
+              onChange={(changeEvent) => setDeadBallYards(changeEvent.target.value)}
+              pattern="[0-9.,]*"
+              type="text"
+              value={deadBallYards}
+            />
+          </div>
+          {deadBallInvalid ? (
+            <p className="sheetwarn" role="alert">
+              Die Yardlinie liegt zwischen 0 und 25.
+            </p>
+          ) : (
+            <p className="sheetnote">
+              Ohne Angabe beginnt der neue Angriff an der eigenen 5 (Touchback).
+              {deadBall === null ? "" : ` Ballbesitz ab ${spotText(deadBall)}.`}
+            </p>
+          )}
+          <div className="sheetfield">
+            <label className="sheetlabel" htmlFor={returnId}>
+              Return-Yards (optional, nur Statistik)
+            </label>
+            <input
+              autoComplete="off"
+              className="sheetinput sheetinput-num"
+              disabled={posting}
+              id={returnId}
+              inputMode="numeric"
+              onChange={(changeEvent) => setReturnYards(changeEvent.target.value)}
+              pattern="[0-9]*"
+              type="text"
+              value={returnYards}
+            />
+          </div>
+          <p className="sheetnote">
+            Interception durch {opponentName}. Der Ballbesitz wechselt im
+            Spielverlauf zu {opponentName}.
+          </p>
+        </>
       ) : null}
 
       {mode === "timeout" ? (
-        <TimeoutHistory teams={[teamName, opponentName]} timeouts={timeouts} />
+        <TimeoutHistory
+          half={half}
+          perHalf={perHalf}
+          teams={[teamName, opponentName]}
+          timeouts={timeouts}
+        />
       ) : null}
     </Sheet>
   );
@@ -394,30 +538,44 @@ export default function SeriesSheet({
 export function TimeoutHistory({
   teams,
   timeouts,
+  half = 1,
+  perHalf = 2,
 }: {
   teams: string[];
   timeouts: TimeoutRecord[];
+  half?: number;
+  perHalf?: number;
 }) {
   return (
     <section aria-label="Bisherige Auszeiten" className="timeouthistory">
       <h3 className="sheetsection">Bisherige Auszeiten</h3>
       {teams.map((team) => {
         const taken = timeouts.filter((entry) => entry.team === team);
+        const thisHalf = taken.filter((entry) => entry.half === half).length;
+        const exhausted = thisHalf >= perHalf;
         return (
-          <p className="timeoutteam" key={team}>
-            <span className="timeoutname">{team}</span>{" "}
-            {taken.length === 0
-              ? "– noch keine"
-              : taken
-                  .map(
-                    (entry) =>
-                      `${entry.half === 2 ? "2." : "1."} HZ ${entry.time}`,
-                  )
-                  .join(" · ") +
-                ` (${taken.length} ${
-                  taken.length === 1 ? "Auszeit" : "Auszeiten"
-                })`}
-          </p>
+          <div key={team}>
+            <p className="timeoutteam">
+              <span className="timeoutname">{team}</span>{" "}
+              {taken.length === 0
+                ? "– noch keine"
+                : taken
+                    .map(
+                      (entry) =>
+                        `${entry.half === 2 ? "2." : "1."} HZ ${entry.time}`,
+                    )
+                    .join(" · ") +
+                  ` (${taken.length} ${
+                    taken.length === 1 ? "Auszeit" : "Auszeiten"
+                  })`}
+            </p>
+            <p className={exhausted ? "sheetwarn" : "sheetnote"} role="status">
+              {thisHalf} von {perHalf} in dieser Halbzeit
+              {exhausted
+                ? " – eine weitere Auszeit ist die Strafe „Auszeit ohne verbleibende Auszeit“ (5 Yards). Sie kann trotzdem erfasst werden."
+                : "."}
+            </p>
+          </div>
         );
       })}
     </section>

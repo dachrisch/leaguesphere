@@ -8,6 +8,7 @@ import {
   type ComponentType,
 } from "react";
 
+import { RULES_PATH, type GameRules } from "../api/rules";
 import type {
   Game,
   GameLog,
@@ -21,6 +22,7 @@ import type {
 } from "../api/types";
 import {
   forgetBreak,
+  intermissionSeconds,
   readBreakStart,
   rememberBreakStart,
   secondsLeft,
@@ -29,10 +31,12 @@ import {
   advance,
   driveAfter,
   driveText,
+  geometryOf,
   isTurnoverOnDowns,
   spotText,
 } from "../app/drive";
 import { readQuarterback, rememberQuarterback } from "../app/quarterback";
+import { timeoutBudget, timeoutText } from "../app/timeouts";
 import { confirmTap, useWakeLock } from "../app/sideline";
 import AppHeader from "../components/AppHeader";
 import BreakCountdown from "../components/BreakCountdown";
@@ -88,7 +92,8 @@ import {
 import { getDeviceId } from "../device";
 import { lockFrom, takeOver, type LockAnswer } from "../session/lock";
 import { getRuntime } from "../session/runtime";
-import { undoPossessionTeam } from "../session/possessionUndo";
+import { undoPossessionTeamOfGroup } from "../session/possessionUndo";
+import { eventOfRow } from "../session/events";
 import { isStranded, strandedNotice } from "../session/stranded";
 import { useSyncStatus, type SyncStatus } from "../session/useSyncStatus";
 import { useArmed } from "./useArmed";
@@ -154,7 +159,9 @@ const SERIES_TILES: {
     oneTap: true,
   },
   { mode: "time", label: "Spielzeit", Icon: Stopwatch, oneTap: false },
-  { mode: "timeout", label: "Auszeit", Icon: Clock, oneTap: false },
+  // No Auszeit tile: a team's timeout is taken from its own row in the
+  // possession block below (meeting 2026-11-05, 57:33-59:08).
+
 ];
 
 /** The log's event name for each one-tap entry, to find the row it wrote. */
@@ -530,6 +537,12 @@ export default function TrackingScreen({
   // "no roster" and must not be shown while the fetch is still running.
   const [roster, setRoster] = useState<RosterPlayer[] | null>(null);
   /**
+   * The sport definition (IFAF 2023). Until it arrives the engine uses the
+   * 50-yard defaults it shipped with, so a slow or missing fetch changes
+   * nothing the official sees on the standard field.
+   */
+  const [rules, setRules] = useState<GameRules | null>(null);
+  /**
    * The setup read itself: the first possession decides who starts the second
    * half. The half-time awaits it (it resolved long before, normally) instead
    * of reading a state update that may not have landed yet; a failed read
@@ -628,7 +641,8 @@ export default function TrackingScreen({
 
   const rows = useMemo(() => logRows(log), [log]);
   /** Down & distance as the log tells it — recomputed on every row change. */
-  const drive = useMemo(() => driveAfter(rows), [rows]);
+  const geometry = useMemo(() => geometryOf(rules), [rules]);
+  const drive = useMemo(() => driveAfter(rows, geometry), [rows, geometry]);
   /**
    * Every Auszeit still on the board, newest first as the log lists it. The
    * sheet shows both sides so the officials can answer "who took which
@@ -707,6 +721,11 @@ export default function TrackingScreen({
       snapshotKey.penalties(),
       "/api/config/scorecard/penalties",
     ).catch(() => undefined);
+    // The definition decides the field, the series and the penalty numbers;
+    // preloaded so a device that loses the network mid-game keeps them.
+    void cachedGet<GameRules>(snapshotKey.rules(), RULES_PATH)
+      .then(setRules)
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -864,7 +883,7 @@ export default function TrackingScreen({
       // correction already decided where the ball belongs.
       const restore =
         local === undefined && !keepPossession && row.seq !== null
-          ? undoPossessionTeam(row, log)
+          ? undoPossessionTeamOfGroup(row, rows, log)
           : null;
       await session.undo(
         undoBody(row),
@@ -930,11 +949,26 @@ export default function TrackingScreen({
     setPosting(true);
     disarm();
     try {
+      // A submission can write more than one row: a scoring play carries its
+      // touchdown. The correction names the group's `seq`, so it removes all
+      // of it - resending only the edited row would delete the touchdown.
+      // `rows` is newest first; reversing restores the order they were sent in.
+      const group =
+        row.seq === null
+          ? [row]
+          : rows
+              .filter((entry) => !entry.isDeleted && entry.seq === row.seq)
+              .reverse();
+      // Compare by key: `rows` is a fresh array on every log change, so the
+      // row objects are not identical to the one the sheet was opened with.
+      const events = group.map((entry) =>
+        entry.key === row.key ? event : eventOfRow(entry),
+      );
       await session.writeEvent({
         gameId: game.id,
         team: row.team,
         half: row.half === 2 ? 2 : 1,
-        event: [event],
+        event: events,
       });
       // The replacement already carries the ball's current side.
       await undo(row, { keepPossession: true });
@@ -1008,11 +1042,16 @@ export default function TrackingScreen({
       ? []
       : roster.filter((player) => player.side === patSide);
 
-  /** Timeouts of the side with the ball, for the Auszeit tile's count. */
-  const timeoutCount =
+  const half = log.isFirstHalf ? 1 : 2;
+  // The definition may be missing, stale or not a definition at all (a test
+  // double, an old server): the shipped values win over a crash.
+  const timeoutsPerHalf = rules?.timeouts?.per_half ?? 2;
+  const intermission = intermissionSeconds(rules?.periods?.intermission_minutes);
+  /** The side with the ball and what is left of its timeouts this half. */
+  const possessionTimeouts =
     possessionName === null
-      ? 0
-      : timeouts.filter((entry) => entry.team === possessionName).length;
+      ? null
+      : timeoutBudget(rows, possessionName, half, timeoutsPerHalf);
 
   /**
    * Write one play. The sheet that called it stays open until this resolves,
@@ -1060,7 +1099,9 @@ export default function TrackingScreen({
     const body: GameLogWrite = {
       gameId: game.id,
       team,
-      half: log.isFirstHalf ? 1 : 2,
+      // Overtime is the third period: it stays inside the second half's block
+      // for every reader, but the event store keeps the distinction.
+      half: overtime ? 3 : log.isFirstHalf ? 1 : 2,
       event: events,
     };
     try {
@@ -1301,6 +1342,44 @@ export default function TrackingScreen({
     setPatError(null);
   };
 
+  /**
+   * The defence scored on the try (R 8-1-1: two points).
+   *
+   * The row goes to the defending team - the one that holds the ball right
+   * now, because the touchdown already flipped the possession. `try_defense`
+   * in the payload is what tells a later statistics pass that these two points
+   * were not a converted two-point try.
+   */
+  const writeDefensiveTry = async (): Promise<void> => {
+    if (pendingPat === null || patBusy || possessionName === null) {
+      return;
+    }
+    setPatBusy(true);
+    setPatError(null);
+    try {
+      await submit(
+        [
+          {
+            name: "2-Extra-Punkte",
+            input: "Gegner",
+            payload: { try_defense: true },
+          },
+        ],
+        possessionName,
+      );
+      closePat();
+    } catch (failure) {
+      setPatError(
+        errorMessage(
+          failure,
+          "Der Punkt für den Gegner konnte nicht gespeichert werden. Bitte erneut versuchen.",
+        ),
+      );
+    } finally {
+      setPatBusy(false);
+    }
+  };
+
   /** Overtime's **+1 XP**: the same jersey step, without a touchdown behind it. */
   const openSinglePat = (): void => {
     if (possessionName === null) {
@@ -1347,15 +1426,53 @@ export default function TrackingScreen({
    * ticker show "3rd & 4"), and a failed fourth down hands the ball to the
    * other team — the possession event the app already uses for a turnover.
    */
-  const submitPlay = async (event: GameLogEventInput): Promise<void> => {
+  const submitPlay = async (events: GameLogEventInput[]): Promise<void> => {
+    const [play, ...rest] = events;
+    if (play === undefined) {
+      return;
+    }
+    const scoringTeam = possessionName;
     const yards =
-      typeof event.payload?.yards === "number" ? event.payload.yards : 0;
-    const next = advance(drive, yards);
-    const turnover = isTurnoverOnDowns(drive, yards);
-    const detail = event.input === undefined ? "" : `${event.input} · `;
-    await submit([{ ...event, input: `${detail}${driveText(next)}` }]);
+      typeof play.payload?.yards === "number" ? play.payload.yards : 0;
+    const next = advance(drive, yards, geometry);
+    const turnover = isTurnoverOnDowns(drive, yards, geometry);
+    const detail = play.input === undefined ? "" : `${play.input} · `;
+    await submit([{ ...play, input: `${detail}${driveText(next)}` }, ...rest]);
     if (turnover && opponentName !== null) {
       await takePossession(opponentName);
+    }
+    // A play that scored carries its own touchdown row, so the try is asked
+    // right away - the same prompt a touchdown tile produces.
+    const scored = rest.find((event) => event.name === "Touchdown");
+    if (scored !== undefined && scoringTeam !== null) {
+      const jersey =
+        typeof scored.player === "number" ? scored.player : play.player;
+      if (typeof jersey === "number") {
+        setPendingPat({ team: scoringTeam, jersey });
+        setPatTry(null);
+        setPatJersey(null);
+        setPatError(null);
+        setFinishBlocked(false);
+      }
+    }
+  };
+
+  /**
+   * One tap on a team's timeout: the row belongs to that team, whoever has the
+   * ball (meeting 2026-11-05, 57:33-59:08). No time is asked - the date and
+   * the order of the log are the record, and a typed clock would be one tap
+   * more on the common path. A wrong tap is undone from its row.
+   */
+  const takeTimeout = async (team: string): Promise<void> => {
+    try {
+      await submit([{ name: "Auszeit" }], team);
+    } catch (failure) {
+      setQuickError(
+        errorMessage(
+          failure,
+          "Die Auszeit konnte nicht gespeichert werden. Bitte erneut versuchen.",
+        ),
+      );
     }
   };
 
@@ -1420,11 +1537,11 @@ export default function TrackingScreen({
         tapSeriesTile(tile.mode, tile.oneTap);
         return;
       }
-      if (index === 5) {
+      if (index === SERIES_TILES.length) {
         openSheet({ kind: "penalty" });
-      } else if (index === 6) {
+      } else if (index === SERIES_TILES.length + 1) {
         openSheet({ kind: "more", mode: "safety" });
-      } else if (index === 7) {
+      } else if (index === SERIES_TILES.length + 2) {
         if (overtime) {
           openSinglePat();
         } else if (armed === "overtime") {
@@ -1503,37 +1620,70 @@ export default function TrackingScreen({
         ).map(([side, team]) => {
           const name = logTeamName(team);
           const pressed = isPossessing(team, possession);
+          // The budget exists for every side: an unnamed placeholder simply
+          // has taken none, which keeps the render free of a dead branch.
+          const budget = timeoutBudget(
+            rows,
+            name ?? "–",
+            half,
+            timeoutsPerHalf,
+          );
           return (
-            <button
-              aria-pressed={pressed}
-              className={`possbtn ${side}`}
-              disabled={
-                name === null ||
-                possessionPending ||
-                halftimePending ||
-                finished ||
-                readOnly
-              }
-              key={side}
-              onClick={() => {
-                if (name !== null) {
-                  void takePossession(name);
+            <div className="possteam" key={side}>
+              <button
+                aria-pressed={pressed}
+                className={`possbtn ${side}`}
+                disabled={
+                  name === null ||
+                  possessionPending ||
+                  halftimePending ||
+                  finished ||
+                  readOnly
                 }
-              }}
-              type="button"
-            >
-              {name ?? "–"}
-              <kbd aria-hidden="true" className="shortcut-hint" data-key="B" />
-            </button>
+                onClick={() => {
+                  if (name !== null) {
+                    void takePossession(name);
+                  }
+                }}
+                type="button"
+              >
+                <span className="possname">{name ?? "–"}</span>
+                <kbd aria-hidden="true" className="shortcut-hint" data-key="B" />
+              </button>
+              {name === null ? null : (
+                <button
+                  aria-label={`Auszeit ${name}`}
+                  className={
+                    budget.exhausted ? "timeoutbtn is-used" : "timeoutbtn"
+                  }
+                  disabled={
+                    posting ||
+                    possessionPending ||
+                    halftimePending ||
+                    finished ||
+                    readOnly
+                  }
+                  onClick={() => void takeTimeout(name)}
+                  type="button"
+                >
+                  <Clock aria-hidden="true" size={14} />
+                  <span className="timeoutcount">{timeoutText(budget)}</span>
+                </button>
+              )}
+            </div>
           );
         })}
       </div>
       <div className="drivebar">
         <p aria-live="polite" className="driveline">
-          {driveText(drive)}
-          {spotText(drive.ballOn) === null
-            ? null
-            : ` · ${spotText(drive.ballOn)}`}
+          {pendingPat === null
+            ? `${driveText(drive)}${
+                spotText(drive.ballOn, geometry) === null
+                  ? ""
+                  : ` · ${spotText(drive.ballOn, geometry)}`
+              }`
+            : // the try is its own down: from B5 (one point) or B10 (two)
+              `Versuch · B${patTry?.points === 2 ? 10 : 5}`}
         </p>
         <button
           className="driveset"
@@ -1627,6 +1777,15 @@ export default function TrackingScreen({
                     </span>
                   </button>
                 ))}
+                <button
+                  aria-pressed={false}
+                  className="choice choice-dark"
+                  disabled={patBusy || readOnly || possessionName === null}
+                  onClick={() => void writeDefensiveTry()}
+                  type="button"
+                >
+                  <span className="choice-label">Gegner +2</span>
+                </button>
               </div>
               {patError === null ? null : (
                 <p className="patbar-err" role="alert">
@@ -1682,11 +1841,11 @@ export default function TrackingScreen({
           >
             <TileIcon className="action-icon" size={20} />
             <span>{offersJersey ? "Nr. ergänzen" : label}</span>
-            {mode === "timeout" && timeoutCount > 0 ? (
+            {mode === "timeout" && possessionTimeouts !== null ? (
               // Decorative: the tile keeps its name, the sheet states the
               // count and the history in words.
               <span aria-hidden="true" className="actioncount">
-                {timeoutCount}
+                {timeoutText(possessionTimeouts)}
               </span>
             ) : null}
             <kbd
@@ -1705,7 +1864,7 @@ export default function TrackingScreen({
         >
           <Flag className="action-icon" size={20} />
           <span>Strafe</span>
-          <kbd aria-hidden="true" className="shortcut-hint" data-key="6" />
+          <kbd aria-hidden="true" className="shortcut-hint" data-key="5" />
         </button>
         <button
           className="action"
@@ -1715,7 +1874,7 @@ export default function TrackingScreen({
         >
           <Shield className="action-icon" size={20} />
           <span>Safety</span>
-          <kbd aria-hidden="true" className="shortcut-hint" data-key="7" />
+          <kbd aria-hidden="true" className="shortcut-hint" data-key="6" />
         </button>
         <button
           className={
@@ -1741,7 +1900,7 @@ export default function TrackingScreen({
                 ? "Overtime starten"
                 : "Overtime"}
           </span>
-          <kbd aria-hidden="true" className="shortcut-hint" data-key="8" />
+          <kbd aria-hidden="true" className="shortcut-hint" data-key="7" />
         </button>
         </div>
       </section>
@@ -1780,6 +1939,7 @@ export default function TrackingScreen({
       ) : null}
       {!log.isFirstHalf && breakStartedAt !== null && !finished ? (
         <BreakCountdown
+          totalSeconds={intermission}
           onDone={() => {
             forgetBreak(game.id);
             setBreakStartedAt(null);
@@ -1865,6 +2025,7 @@ export default function TrackingScreen({
           half={editing.half}
           input={editing.input}
           jersey={editing.player}
+          payload={editing.payload}
           onSubmit={submitEdit}
           onClose={() => setEditing(null)}
           roster={roster}
@@ -1925,10 +2086,12 @@ export default function TrackingScreen({
           opponentSide !== null ? (
             <SeriesSheet
               key={sheet.mode}
+              half={half}
               mode={sheet.mode}
               onClose={closeSheet}
               onSubmit={submitSeries}
               opponentName={possessionName}
+              perHalf={timeoutsPerHalf}
               roster={roster}
               side={opponentSide}
               teamName={opponentName}
@@ -1937,10 +2100,12 @@ export default function TrackingScreen({
           ) : (
             <SeriesSheet
               key={sheet.mode}
+              half={half}
               mode={sheet.mode}
               onClose={closeSheet}
               onSubmit={submitSeries}
               opponentName={opponentName ?? "–"}
+              perHalf={timeoutsPerHalf}
               roster={roster}
               side={possessionSide}
               teamName={possessionName}
@@ -1949,7 +2114,9 @@ export default function TrackingScreen({
           )
         ) : sheet.kind === "penalty" ? (
           <PenaltySheet
+            ballOn={drive.ballOn}
             history={unsportsmanlike}
+            rules={rules}
             onClose={() => setSheet(null)}
             onSubmit={submit}
             opponentName={opponentName ?? ""}

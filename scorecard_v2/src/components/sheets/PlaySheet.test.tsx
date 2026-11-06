@@ -121,12 +121,12 @@ describe("PlaySheet", () => {
       screen.getByRole("button", { name: "Spielzug speichern" }),
     );
 
-    expect(onSubmit).toHaveBeenCalledWith({
+    expect(onSubmit).toHaveBeenCalledWith([{
       name: "Pass",
       player: 7,
       input: "8 Yards · QB #12",
       payload: { yards: 8, complete: true, qb: 12 },
-    });
+    }]);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -162,12 +162,12 @@ describe("PlaySheet", () => {
       screen.getByRole("button", { name: "Spielzug speichern" }),
     );
 
-    expect(onSubmit).toHaveBeenCalledWith({
+    expect(onSubmit).toHaveBeenCalledWith([{
       name: "Pass",
       player: 7,
       input: "4 Yards Verlust · QB #12",
       payload: { yards: -4, complete: true, qb: 12 },
-    });
+    }]);
   });
 
   it("records a run without a quarterback or a pass result", async () => {
@@ -183,12 +183,12 @@ describe("PlaySheet", () => {
       screen.getByRole("button", { name: "Spielzug speichern" }),
     );
 
-    expect(onSubmit).toHaveBeenCalledWith({
+    expect(onSubmit).toHaveBeenCalledWith([{
       name: "Run",
       player: 23,
       input: "14 Yards",
       payload: { yards: 14 },
-    });
+    }]);
   });
 
   it("records an incomplete pass towards a receiver", async () => {
@@ -201,12 +201,12 @@ describe("PlaySheet", () => {
       screen.getByRole("button", { name: "Spielzug speichern" }),
     );
 
-    expect(onSubmit).toHaveBeenCalledWith({
+    expect(onSubmit).toHaveBeenCalledWith([{
       name: "Pass unvollständig",
       player: 7,
       input: "QB #12",
       payload: { yards: 0, complete: false, qb: 12 },
-    });
+    }]);
   });
 
   it("records a sack as a loss", async () => {
@@ -222,12 +222,12 @@ describe("PlaySheet", () => {
       screen.getByRole("button", { name: "Spielzug speichern" }),
     );
 
-    expect(onSubmit).toHaveBeenCalledWith({
+    expect(onSubmit).toHaveBeenCalledWith([{
       name: "Sack",
       player: 12,
       input: "5 Yards Verlust",
       payload: { yards: -5 },
-    });
+    }]);
   });
 
   it("falls back to the numeric fields while no roster is loaded", () => {
@@ -250,7 +250,7 @@ describe("PlaySheet", () => {
       screen.getByRole("button", { name: "Spielzug speichern" }),
     );
 
-    expect(onSubmit).toHaveBeenCalledWith({
+    expect(onSubmit).toHaveBeenCalledWith([{
       name: "Pass",
       player: 7,
       input: "0 Yards · QB #12 · Tackle #11",
@@ -260,7 +260,7 @@ describe("PlaySheet", () => {
         qb: 12,
         defense: { player: 11 },
       },
-    });
+    }]);
   });
 
   it("records a deflection on an incomplete pass", async () => {
@@ -276,7 +276,7 @@ describe("PlaySheet", () => {
       screen.getByRole("button", { name: "Spielzug speichern" }),
     );
 
-    expect(onSubmit).toHaveBeenCalledWith({
+    expect(onSubmit).toHaveBeenCalledWith([{
       name: "Pass unvollständig",
       input: "QB #12 · Deflection #11",
       payload: {
@@ -285,7 +285,7 @@ describe("PlaySheet", () => {
         qb: 12,
         defense: { player: 11, deflection: true },
       },
-    });
+    }]);
   });
 
   it("offers no defender on a sack", async () => {
@@ -314,5 +314,52 @@ describe("PlaySheet", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Der Spielzug konnte nicht gespeichert werden",
     );
+  });
+});
+
+describe("the touchdown is the play's result", () => {
+  it("records the play and its touchdown in one submission", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({ lastQuarterback: 12 });
+
+    await user.click(screen.getByRole("button", { name: "Trikot 7, Meier" }));
+    await user.click(screen.getByRole("button", { name: "Touchdown" }));
+    await user.click(screen.getByRole("button", { name: "Spielzug speichern" }));
+
+    expect(onSubmit).toHaveBeenCalledWith([
+      {
+        name: "Pass",
+        player: 7,
+        input: "0 Yards · QB #12",
+        payload: { yards: 0, complete: true, qb: 12 },
+      },
+      { name: "Touchdown", player: 7 },
+    ]);
+  });
+
+  it("takes the touchdown back when the official changes their mind", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({ lastQuarterback: 12 });
+
+    await user.click(screen.getByRole("button", { name: "Trikot 7, Meier" }));
+    await user.click(screen.getByRole("button", { name: "Touchdown" }));
+    await user.click(screen.getByRole("button", { name: "Kein Touchdown" }));
+    await user.click(screen.getByRole("button", { name: "Spielzug speichern" }));
+
+    expect(onSubmit).toHaveBeenCalledWith([
+      expect.objectContaining({ name: "Pass" }),
+    ]);
+  });
+
+  it("offers no touchdown for a sack or an incomplete pass", async () => {
+    const user = userEvent.setup();
+    renderSheet({});
+
+    await user.click(screen.getByRole("button", { name: "Sack" }));
+    expect(screen.queryByRole("button", { name: "Touchdown" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Pass" }));
+    await user.click(screen.getByRole("button", { name: "Incomplete" }));
+    expect(screen.queryByRole("button", { name: "Touchdown" })).toBeNull();
   });
 });

@@ -16,15 +16,31 @@ describe("BreakCountdown", () => {
 
     render(<BreakCountdown onDone={() => undefined} startedAt={startedAt} />);
     const timer = screen.getByRole("timer");
-    expect(timer).toHaveTextContent("05:00");
+    // IFAF 2023 R 3-2-1: a two-minute intermission
+    expect(timer).toHaveTextContent("02:00");
 
     act(() => vi.advanceTimersByTime(60_000));
-    expect(timer).toHaveTextContent("04:00");
+    expect(timer).toHaveTextContent("01:00");
 
-    act(() => vi.advanceTimersByTime(240_000));
+    act(() => vi.advanceTimersByTime(60_000));
     expect(timer).toHaveTextContent("00:00");
     expect(screen.getByRole("timer")).toHaveAccessibleName("Pause vorbei");
     expect(screen.getByRole("button", { name: "Weiter" })).toBeInTheDocument();
+  });
+
+  it("counts the intermission the definition gives", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-03T20:00:00Z"));
+
+    render(
+      <BreakCountdown
+        onDone={() => undefined}
+        startedAt={Date.now()}
+        totalSeconds={300}
+      />,
+    );
+
+    expect(screen.getByRole("timer")).toHaveTextContent("05:00");
   });
 
   it("ends the break when the officials dismiss it", async () => {

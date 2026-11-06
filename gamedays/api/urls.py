@@ -11,6 +11,7 @@ from gamedays.api.game_views import (
     GamesToWhistleAPIView,
     GameRosterAPIView,
     ConfigPenalties,
+    ConfigRules,
     GamePossessionAPIView,
 )
 from gamedays.api.snapshot import SnapshotAPIView
@@ -35,6 +36,7 @@ from gamedays.constants import (
     API_GAMEDAY_LIST,
     API_GAMELOG,
     API_CONFIG_SCORECARD_PENALTIES,
+    API_CONFIG_SCORECARD_RULES,
     API_GAME_POSSESSION,
     API_GAME_FINALIZE,
     API_GAME_HALFTIME,
@@ -168,5 +170,10 @@ urlpatterns = [
         "config/scorecard/penalties",
         ConfigPenalties.as_view(),
         name=API_CONFIG_SCORECARD_PENALTIES,
+    ),
+    path(
+        "config/scorecard/rules",
+        ConfigRules.as_view(),
+        name=API_CONFIG_SCORECARD_RULES,
     ),
 ]

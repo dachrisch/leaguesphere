@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import type { GameRules } from "../../api/rules";
+import { enforceSpot, geometryOf, spotText } from "../../app/drive";
 import type { GameLogEventInput, Penalty, RosterPlayer } from "../../api/types";
 import type { PenaltyNextDown } from "../../app/drive";
 import { cachedGet, snapshotKey } from "../../offline/snapshot";
@@ -78,16 +80,39 @@ export function penaltyTeam(
  * loses them (`SF/LoD 5` → -5). No number means no spot change.
  */
 export function penaltyYardage(penalty: Penalty): number {
-  const match = /(\d+)(?!st)/.exec(penalty.subtext);
-  const magnitude = match === null ? 0 : Number(match[1]);
+  const magnitude = yardageMagnitude(penalty);
   if (magnitude === 0) {
     return 0;
   }
   return penalty.isPenaltyAgainstOpponent ? magnitude : -magnitude;
 }
 
-/** The down rule the catalogue's `subtext` suggests. */
+/**
+ * The distance the catalogue suggests, in yards.
+ *
+ * The definition carries it (`yards`) - including `0` for a foul that only
+ * costs a down. An older server has only `subtext`, so the parse stays as the
+ * fallback and the sheet behaves exactly as before against it.
+ */
+function yardageMagnitude(penalty: Penalty): number {
+  if (typeof penalty.yards === "number" && Number.isFinite(penalty.yards)) {
+    return Math.abs(penalty.yards);
+  }
+  const match = /(\d+)(?!st)/.exec(penalty.subtext);
+  return match === null ? 0 : Number(match[1]);
+}
+
+/** The down rule the definition (or, on an older server, `subtext`) gives. */
 export function penaltyNextDown(penalty: Penalty): PenaltyNextDown {
+  if (penalty.down === "first") {
+    return "first_down";
+  }
+  if (penalty.down === "loss") {
+    return "loss_of_down";
+  }
+  if (penalty.down === "repeat") {
+    return "repeat";
+  }
   const text = penalty.subtext.toLowerCase();
   if (/\b1st\b/.test(text)) {
     return "first_down";
@@ -222,6 +247,18 @@ interface PenaltySheetProps {
    */
   history?: UnsportsmanlikeRecord[];
   /**
+   * The sport definition, so the catalogue's yardages and down rules come
+   * from the rulebook rather than from parsing `subtext`. Optional: the sheet
+   * still works while it is loading or missing.
+   */
+  rules?: GameRules | null;
+  /**
+   * The spot the ball is on, from the drive engine. The sheet shows where the
+   * penalty leaves it - half distance included, which is what the official
+   * announces on the field.
+   */
+  ballOn?: number | null;
+  /**
    * Writes the event for the picked team and resolves once the server
    * answered. Rejects on failure — the sheet stays open and shows the message.
    */
@@ -260,6 +297,8 @@ export default function PenaltySheet({
   side,
   roster,
   history = [],
+  rules = null,
+  ballOn = null,
   onSubmit,
   onClose,
 }: PenaltySheetProps) {
@@ -309,18 +348,46 @@ export default function PenaltySheet({
     };
   }, []);
 
-  const loading = penalties === null;
-  const matches = orderPenalties(penalties ?? [], search);
+  /**
+   * The list the sheet offers: the definition's rows when the screen has
+   * them, the legacy `/penalties` answer otherwise. Same names and order, so
+   * a game started on either build is corrected with the same words.
+   */
+  const catalogue = useMemo<Penalty[] | null>(() => {
+    if (rules === null) {
+      return penalties;
+    }
+    return rules.penalties.map((row) => ({
+      name: row.name,
+      subtext: row.subtext,
+      isPenaltyAgainstOpponent: row.side === "defense",
+      yards: row.yards,
+      down: row.down,
+      enforcement: row.enforcement,
+      rule: row.rule,
+    }));
+  }, [penalties, rules]);
+  const loading = catalogue === null;
+  const matches = orderPenalties(catalogue ?? [], search);
   const visible = expanded ? matches : matches.slice(0, PENALTY_PAGE);
   const hidden = matches.length - visible.length;
 
+  const geometry = geometryOf(rules);
   const yardageMagnitude = yardsValue(yardageText);
+  // A penalty cannot be longer than the field: the old "0-99" offered
+  // distances the 50-yard field never has (meeting 2026-11-05, 30:24).
+  const yardageTooLong =
+    yardageMagnitude !== null && yardageMagnitude > geometry.fieldLength;
   const yardage =
-    yardageMagnitude === null
+    yardageMagnitude === null || yardageTooLong
       ? null
       : yardageLoss
         ? -Math.abs(yardageMagnitude)
         : yardageMagnitude;
+  const spotAfter =
+    yardage === null
+      ? null
+      : spotText(enforceSpot(ballOn, yardage, geometry), geometry);
 
   const otherSide: RosterPlayer["side"] = side === "home" ? "away" : "home";
   const jerseySide = team === opponentName ? otherSide : side;
@@ -347,6 +414,7 @@ export default function PenaltySheet({
     team !== null &&
     selected !== null &&
     yardage !== null &&
+    !yardageTooLong &&
     !missingJersey &&
     !posting;
 
@@ -552,7 +620,7 @@ export default function PenaltySheet({
       </div>
       <div className="sheetfield">
         <label className="sheetlabel" htmlFor="penalty-yards">
-          Yardage (0–99)
+          Yardage (0–{geometry.fieldLength})
         </label>
         <input
           autoComplete="off"
@@ -566,6 +634,18 @@ export default function PenaltySheet({
           value={yardageText}
         />
       </div>
+      {yardageTooLong ? (
+        <p className="sheetwarn" role="alert">
+          Die Strafe kann höchstens {geometry.fieldLength} Yards betragen.
+        </p>
+      ) : spotAfter === null ? null : (
+        <p className="sheetnote">
+          Nach der Strafe: {spotAfter}
+          {yardage !== null && Math.abs(yardage) > 0
+            ? ` (Halbierung greift, wenn die Distanz kürzer ist)`
+            : ""}
+        </p>
+      )}
 
       <h3 className="sheetsection">Nächster Versuch</h3>
       <div aria-label="Nächster Versuch" className="seg seg-three" role="group">
@@ -680,7 +760,9 @@ export default function PenaltySheet({
       <p className="sheetnote">
         {selected === null
           ? "Strafe auswählen."
-          : `${selected.name} · gegen ${team ?? "–"} · ${yardage ?? 0} Yards · ${
+          : `${selected.name} · gegen ${team ?? "–"} · ${yardage ?? 0} Yards${
+              spotAfter === null ? "" : ` · bis ${spotAfter}`
+            } · ${
               NEXT_DOWN_LABELS[nextDown]
             }${
               kind === "unsportsmanlike" && unsportsmanlike.trim() !== ""
