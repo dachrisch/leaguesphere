@@ -387,7 +387,9 @@ export function describeRow(row: LogRow): Described {
       return {
         kind: "int",
         primary: `${row.event} ${team}`,
-        secondary: jerseyText(row.player),
+        // The interception sheet writes where the return ended; the row shows
+        // it beside the defender's number, like the play rows show their text.
+        secondary: join(jerseyText(row.player), row.input),
       };
     case "First Down":
       return {

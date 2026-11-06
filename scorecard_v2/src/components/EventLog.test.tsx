@@ -712,3 +712,20 @@ describe("EventLog — Nur Punkte", () => {
     expect(screen.queryByRole("button", { name: /Ändern/ })).toBeNull();
   });
 });
+
+describe("the interception's row", () => {
+  it("shows the return detail beside the defender's number", () => {
+    const rows = [
+      row({
+        event: "Interception",
+        player: 11,
+        input: "bis B20 · 15 Yards Return",
+      }),
+    ];
+
+    expect(describeRow(rows[0] as never)).toMatchObject({
+      primary: "Interception Ravens",
+      secondary: "#11 · bis B20 · 15 Yards Return",
+    });
+  });
+});
