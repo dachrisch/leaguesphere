@@ -88,6 +88,9 @@ TURNOVER_ROW_JS = """() => [...document.querySelectorAll('.logrows .rowprimary')
 TOUCHDOWN_ROW_JS = """() => [...document.querySelectorAll('.logrows .rowprimary')]
   .filter((el) => el.textContent.trim().startsWith('Touchdown ')).length"""
 
+INTERCEPTION_ROW_JS = """() => [...document.querySelectorAll('.logrows .rowprimary')]
+  .filter((el) => el.textContent.trim().startsWith('Interception ')).length"""
+
 # A row a server-side undo struck through: it stays in the log, unlike a queued
 # row the phone simply removes.
 DELETED_TURNOVER_ROW_JS = """() => [...document.querySelectorAll('.logrows .row.deleted .rowprimary')]
@@ -956,6 +959,57 @@ class Phone:
             page.wait_for_function(
                 "expected => [...document.querySelectorAll('.logrows .rowprimary')]"
                 ".filter((el) => el.textContent.trim().startsWith('Touchdown '))"
+                ".length >= expected",
+                arg=before + 1,
+                timeout=20000,
+            )
+
+    def interception(
+        self,
+        jersey: int,
+        *,
+        spot: int | None = None,
+        side: str = "A",
+        return_yards: int | None = None,
+        wait: bool = True,
+    ) -> None:
+        """Take the ball with one interception entry, spot included.
+
+        The sheet asks for the defender, where the return ended and — only for
+        the statistics — the return yards (2026-11-05, 47:15-49:03). `spot` is
+        the yard line on `side` (`A` own half, `B` the opponent's).
+        """
+
+        page = self._require_page()
+        before = self._row_count(INTERCEPTION_ROW_JS)
+        tile = page.get_by_role("button", name="Interception", exact=True)
+        expect(tile).to_be_enabled(timeout=20000)
+        tile.click()
+        sheet = page.get_by_role("dialog", name="Interception")
+        expect(sheet).to_be_visible(timeout=20000)
+        number = sheet.get_by_role(
+            "textbox", name=re.compile(r"^Trikotnummer Verteidiger")
+        )
+        expect(number).to_be_visible(timeout=10000)
+        number.fill(str(jersey))
+        if spot is not None:
+            sheet.get_by_role(
+                "button", name=re.compile(rf"^{side} · "), exact=False
+            ).click()
+            line = sheet.get_by_role(
+                "textbox", name=re.compile(r"^Yardlinie, wo der Return endete")
+            )
+            line.fill(str(spot))
+        if return_yards is not None:
+            returned = sheet.get_by_role(
+                "textbox", name=re.compile(r"^Return-Yards")
+            )
+            returned.fill(str(return_yards))
+        sheet.get_by_role("button", name="Speichern", exact=True).click()
+        if wait:
+            page.wait_for_function(
+                "expected => [...document.querySelectorAll('.logrows .rowprimary')]"
+                ".filter((el) => el.textContent.trim().startsWith('Interception '))"
                 ".length >= expected",
                 arg=before + 1,
                 timeout=20000,
