@@ -78,7 +78,8 @@ wie die bisherige Scorecard
    **Halbzeit**
    fragt beim ersten Tippen nach (**Halbzeit starten**) und wechselt erst beim
    zweiten Tippen innerhalb von 10 Sekunden in die zweite Halbzeit; danach
-   läuft oben die **Pause** mit Countdown (fünf Minuten), **Pause beenden**
+   läuft oben die **Pause** mit Countdown (Standard 2 Minuten, aus der
+   Regeldefinition), **Pause beenden**
    schließt sie früher ab.
 5. **Spielende und Bestätigung** öffnet den Abschluss: beide Captains
    bestätigen, dann **Ergebnis abschicken**. Danach zeigt **Ergebnis gesendet**
