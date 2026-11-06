@@ -3884,3 +3884,26 @@ describe("the try is its own down", () => {
     );
   });
 });
+
+describe("a failed entry during the try", () => {
+  it("keeps the try open with the server's message when the +2 for the defence fails", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Touchdown Ravens$/);
+    await pickJersey(user, 23);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    const defence = await screen.findByRole("button", { name: "Gegner +2" });
+
+    // the write is refused: the prompt must stay and say why
+    apiPostMock.mockRejectedValueOnce(new ApiError(500, null, "Server weg"));
+    await user.click(defence);
+
+    expect(await screen.findByText("Server weg")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Gegner +2" }),
+    ).toBeInTheDocument();
+  });
+});
