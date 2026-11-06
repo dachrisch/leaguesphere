@@ -1620,10 +1620,14 @@ export default function TrackingScreen({
         ).map(([side, team]) => {
           const name = logTeamName(team);
           const pressed = isPossessing(team, possession);
-          const budget =
-            name === null
-              ? null
-              : timeoutBudget(rows, name, half, timeoutsPerHalf);
+          // The budget exists for every side: an unnamed placeholder simply
+          // has taken none, which keeps the render free of a dead branch.
+          const budget = timeoutBudget(
+            rows,
+            name ?? "–",
+            half,
+            timeoutsPerHalf,
+          );
           return (
             <div className="possteam" key={side}>
               <button
@@ -1650,9 +1654,7 @@ export default function TrackingScreen({
                 <button
                   aria-label={`Auszeit ${name}`}
                   className={
-                    budget !== null && budget.exhausted
-                      ? "timeoutbtn is-used"
-                      : "timeoutbtn"
+                    budget.exhausted ? "timeoutbtn is-used" : "timeoutbtn"
                   }
                   disabled={
                     posting ||
@@ -1665,9 +1667,7 @@ export default function TrackingScreen({
                   type="button"
                 >
                   <Clock aria-hidden="true" size={14} />
-                  <span className="timeoutcount">
-                    {budget === null ? "0/0" : timeoutText(budget)}
-                  </span>
+                  <span className="timeoutcount">{timeoutText(budget)}</span>
                 </button>
               )}
             </div>

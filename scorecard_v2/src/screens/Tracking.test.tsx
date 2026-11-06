@@ -4163,3 +4163,20 @@ describe("a team's row", () => {
     expect(timeout).toHaveTextContent("2/2");
   });
 });
+
+describe("the team timeout during the half-time", () => {
+  it("waits with the rest of the composer", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    renderTracking();
+    const user = userEvent.setup();
+
+    // the half-time write is in flight: every entry waits for it
+    apiPostMock.mockImplementation(() => new Promise(() => undefined));
+    await user.click(screen.getByRole("button", { name: "Halbzeit" }));
+    await user.click(screen.getByRole("button", { name: "Halbzeit starten" }));
+
+    expect(
+      screen.getByRole("button", { name: "Auszeit Ravens" }),
+    ).toBeDisabled();
+  });
+});
