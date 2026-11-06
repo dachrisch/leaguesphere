@@ -159,18 +159,15 @@ def test_s05_offline_undo_removes_the_entry_and_its_effect(phones, club_game, re
     report.observe("S05", "pending_after_undo", len(a.queue()))
     report.observe("S05", "start_possession", start_possession)
     report.observe("S05", "phone_possession_after_undo", a.possession())
-    if a.badge() != f"Offline · {len(a.queue())}":
-        report.finding(
-            "F2",
-            "Badge count is stale after undoing a queued op",
-            f"After the undo the queue held {len(a.queue())} op(s) but the "
-            f"badge read {a.badge()!r}; removing an outbox row did not notify "
-            "the sync engine's counts.",
-        )
+    # The badge is read after the undo, not after the next drain: removing an
+    # outbox row has to update the count immediately.
+    queued = a.queue()
+    expected_badge = f"Offline · {len(queued)}" if queued else "Offline"
+    assert a.badge() == expected_badge
 
     # Nothing may reach the server while the queue is empty: both the entry
     # and the flip it wrote are gone.
-    assert a.queue() == []
+    assert queued == []
     assert phone_start is not None
     assert a.possession() == phone_start
 

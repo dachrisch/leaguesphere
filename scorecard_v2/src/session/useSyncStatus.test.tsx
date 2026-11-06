@@ -167,6 +167,22 @@ describe("useSyncStatus for one game", () => {
     expect(result.current.paused).toBeNull();
   });
 
+  it("re-reads as soon as a queued row is removed directly", async () => {
+    const runtime = getRuntime();
+    await runtime.outbox.enqueue(op({ id: "a", gameId: 42 }));
+    const { result } = renderHook(() => useSyncStatus(42));
+    await waitFor(() => expect(result.current.pending).toBe(1));
+
+    // An undo removes the row from IndexedDB, not through the engine. Without
+    // a notification the badge would keep saying one entry is waiting.
+    await act(async () => {
+      await runtime.outbox.remove("a");
+    });
+
+    await waitFor(() => expect(result.current.pending).toBe(0));
+    expect(result.current.pendingOps).toEqual([]);
+  });
+
   it("re-reads when the browser reports a network change", async () => {
     const runtime = getRuntime();
     await runtime.outbox.enqueue(op({ id: "a", gameId: 42 }));

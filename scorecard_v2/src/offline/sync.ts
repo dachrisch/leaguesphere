@@ -92,6 +92,12 @@ export interface Sync {
    * is correct after a reload. The finalise guard in Task 20 consumes this.
    */
   counts(gameId: number): Promise<SyncCounts>;
+  /**
+   * Re-read the queue and publish the counts after a direct outbox change
+   * (an undo removing its row, the badge dropping a rejected one). Cheap: it
+   * only re-reads the games the engine already knows.
+   */
+  refresh(): void;
   /** The engine-wide state, for a badge that is not tied to one game. */
   state(): SyncState;
   /**
@@ -879,6 +885,10 @@ export function createSync(
         outbox.failed(gameId),
       ]);
       return { pending: waiting.length, failed: rejected.length };
+    },
+
+    refresh(): void {
+      void emit();
     },
 
     state(): SyncState {

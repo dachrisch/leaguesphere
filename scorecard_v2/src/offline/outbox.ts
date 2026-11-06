@@ -45,6 +45,12 @@ export interface Outbox {
   clear(gameId: number): Promise<void>;
   /** Drop the whole queue, every game (logout on a shared device). */
   clearAll(): Promise<void>;
+  /**
+   * Called after every write to the store. A row removed directly (an undo
+   * drops its queued op, the badge drops a rejected one) must refresh the
+   * counts at once, not on the next drain.
+   */
+  subscribe(listener: () => void): () => void;
 }
 
 /**
@@ -95,6 +101,18 @@ export function createOutbox(open: DatabaseFactory = openOutboxDatabase): Outbox
   // before the browser has a profile directory). A failed open is not cached,
   // so a retry after a permission error can still succeed.
   let connection: Promise<OutboxDatabase> | null = null;
+  const listeners = new Set<() => void>();
+
+  /** Tell the sync engine's counts that the store changed. */
+  function notify(): void {
+    for (const listener of [...listeners]) {
+      try {
+        listener();
+      } catch {
+        // A throwing subscriber must not break the write that just landed.
+      }
+    }
+  }
 
   function database(): Promise<OutboxDatabase> {
     if (connection === null) {
@@ -128,6 +146,7 @@ export function createOutbox(open: DatabaseFactory = openOutboxDatabase): Outbox
     const next: StoredOp = { ...record, ...patch };
     await tx.store.put(next);
     await tx.done;
+    notify();
     return next;
   }
 
@@ -159,6 +178,7 @@ export function createOutbox(open: DatabaseFactory = openOutboxDatabase): Outbox
         // duplicate check into part of the same atomic write.
         await tx.store.add(record);
         await tx.done;
+        notify();
       } catch (error) {
         // The aborted transaction rejects on its own; without a handler that
         // would surface as an unhandled rejection next to the useful error.
@@ -200,6 +220,7 @@ export function createOutbox(open: DatabaseFactory = openOutboxDatabase): Outbox
     async remove(id: string): Promise<void> {
       const db = await database();
       await db.delete(OPS_STORE, id);
+      notify();
     },
 
     async markFailed(id: string, reason: string): Promise<void> {
@@ -234,6 +255,7 @@ export function createOutbox(open: DatabaseFactory = openOutboxDatabase): Outbox
       const tx = db.transaction(OPS_STORE, "readwrite");
       await Promise.all(keys.map((key) => tx.store.delete(key)));
       await tx.done;
+      notify();
     },
 
     async clearAll(): Promise<void> {
@@ -241,6 +263,14 @@ export function createOutbox(open: DatabaseFactory = openOutboxDatabase): Outbox
       // shared device cannot keep a previous official's events behind.
       const db = await database();
       await db.clear(OPS_STORE);
+      notify();
+    },
+
+    subscribe(listener: () => void): () => void {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
     },
   };
 }
