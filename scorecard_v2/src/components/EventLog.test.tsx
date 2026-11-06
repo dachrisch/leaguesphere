@@ -51,8 +51,8 @@ function row(overrides: Partial<LogRow> = {}): LogRow {
   return {
     key: "e1",
     teamLogId: 1,
-    seq: null,
-    sequence: 1,
+    eventSeq: null,
+    groupSequence: 1,
     team: "Ravens",
     event: "First Down",
     player: null,
@@ -96,8 +96,8 @@ describe("logRows", () => {
       {
         key: "e5",
         teamLogId: 5,
-        seq: null,
-        sequence: 1,
+        eventSeq: null,
+        groupSequence: 1,
         team: "Ravens",
         event: "First Down",
         player: null,
@@ -226,8 +226,8 @@ describe("logRows", () => {
       }),
     );
 
-    expect(untimedFirst.map((entryRow) => entryRow.sequence)).toEqual([1, 2]);
-    expect(timedFirst.map((entryRow) => entryRow.sequence)).toEqual([1, 2]);
+    expect(untimedFirst.map((entryRow) => entryRow.groupSequence)).toEqual([1, 2]);
+    expect(timedFirst.map((entryRow) => entryRow.groupSequence)).toEqual([1, 2]);
   });
 
   it("orders two untimed rows by half, then by sequence", () => {
@@ -267,7 +267,7 @@ describe("logRows", () => {
 
     // Two timed rows first (newest first), then the untimed second-half rows by
     // sequence, then the untimed first-half row.
-    expect(rows.map((entryRow) => entryRow.sequence)).toEqual([5, 1, 9, 8, 2]);
+    expect(rows.map((entryRow) => entryRow.groupSequence)).toEqual([5, 1, 9, 8, 2]);
   });
 });
 
@@ -375,16 +375,16 @@ describe("describeRow", () => {
 
 describe("undoBody and isMarker", () => {
   it("undoes a scoring play by its sequence", () => {
-    expect(undoBody(row({ event: "Touchdown", sequence: 4 }))).toEqual({
+    expect(undoBody(row({ event: "Touchdown", groupSequence: 4 }))).toEqual({
       sequence: 4,
     });
   });
 
   it("undoes an excluded event or a sequence-0 row by its row id", () => {
-    expect(undoBody(row({ event: "Strafe", sequence: 7 }))).toEqual({
+    expect(undoBody(row({ event: "Strafe", groupSequence: 7 }))).toEqual({
       team_log_id: 1,
     });
-    expect(undoBody(row({ event: "Kickoff", sequence: 0 }))).toEqual({
+    expect(undoBody(row({ event: "Kickoff", groupSequence: 0 }))).toEqual({
       team_log_id: 1,
     });
   });
@@ -647,9 +647,9 @@ describe("EventLog — Nur Punkte", () => {
       <EventLog
         onUndo={vi.fn()}
         rows={[
-          row({ key: "a", event: "Touchdown", player: 23, seq: 1 }),
-          row({ key: "b", event: "Strafe", input: "Holding", seq: 2 }),
-          row({ key: "c", event: "1-Extra-Punkt", player: 23, seq: 3 }),
+          row({ key: "a", event: "Touchdown", player: 23, eventSeq: 1 }),
+          row({ key: "b", event: "Strafe", input: "Holding", eventSeq: 2 }),
+          row({ key: "c", event: "1-Extra-Punkt", player: 23, eventSeq: 3 }),
         ]}
       />,
     );
@@ -683,9 +683,9 @@ describe("EventLog — Nur Punkte", () => {
         onEdit={onEdit}
         onUndo={vi.fn()}
         rows={[
-          row({ key: "a", event: "Touchdown", player: 23, seq: 4 }),
-          row({ key: "b", event: "Spiel beendet", seq: 5 }),
-          row({ key: "c", event: "First Down", teamLogId: 9, seq: null }),
+          row({ key: "a", event: "Touchdown", player: 23, eventSeq: 4 }),
+          row({ key: "b", event: "Spiel beendet", eventSeq: 5 }),
+          row({ key: "c", event: "First Down", teamLogId: 9, eventSeq: null }),
         ]}
       />,
     );
@@ -705,7 +705,7 @@ describe("EventLog — Nur Punkte", () => {
     render(
       <EventLog
         onUndo={vi.fn()}
-        rows={[row({ event: "Touchdown", player: 23, seq: 4 })]}
+        rows={[row({ event: "Touchdown", player: 23, eventSeq: 4 })]}
       />,
     );
 

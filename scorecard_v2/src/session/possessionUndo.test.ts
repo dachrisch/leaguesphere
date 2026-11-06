@@ -28,8 +28,8 @@ function row(overrides: Partial<LogRow> = {}): LogRow {
   return {
     key: "e1",
     teamLogId: 1,
-    seq: 1,
-    sequence: 1,
+    eventSeq: 1,
+    groupSequence: 1,
     team: "Ravens",
     event: "Turnover",
     player: null,
@@ -82,33 +82,90 @@ describe("undoPossessionTeam", () => {
 
 describe("a group written by one submission", () => {
   it("takes the flip from the touchdown row when the play row is undone", () => {
-    // A scoring play and its touchdown share one `seq`; only the touchdown
-    // carries the flip. Undoing the play row (the one with the yards) must
-    // still put the ball back.
-    const play = row({ key: "p", seq: 7, team: "Ravens", event: "Pass" });
-    const touchdown = row({ key: "t", seq: 7, team: "Ravens", event: "Touchdown" });
+    // A scoring play and its touchdown are one **submission**: the play wrote
+    // its own event and the touchdown another, so their event ids differ while
+    // the group id matches. Only the touchdown carries the flip, so undoing the
+    // play row (the one with the yards) must still put the ball back.
+    const play = row({
+      key: "p",
+      eventSeq: 9,
+      groupSequence: 9,
+      team: "Ravens",
+      event: "Pass",
+    });
+    const touchdown = row({
+      key: "t",
+      eventSeq: 10,
+      groupSequence: 9,
+      team: "Ravens",
+      event: "Touchdown",
+    });
 
     expect(undoPossessionTeam(play, log())).toBeNull();
-    expect(undoPossessionTeamOfGroup(play, [touchdown, play], log())).toBe("Ravens");
+    expect(undoPossessionTeamOfGroup(play, [touchdown, play], log())).toBe(
+      "Ravens",
+    );
   });
 
-  it("leaves the ball alone for a group that never flipped it", () => {
-    const pass = row({ key: "p", seq: 8, team: "Ravens", event: "Pass" });
-    const run = row({ key: "r", seq: 9, team: "Ravens", event: "Run" });
+  it("does not group rows of different submissions", () => {
+    // 9 is already used by the scoring group: a row of group 6 must not borrow
+    // its answer just because the numbers look close.
+    const pass = row({
+      key: "p",
+      eventSeq: 6,
+      groupSequence: 6,
+      team: "Ravens",
+      event: "Pass",
+    });
+    const touchdown = row({
+      key: "t",
+      eventSeq: 10,
+      groupSequence: 9,
+      team: "Ravens",
+      event: "Touchdown",
+    });
 
-    expect(undoPossessionTeamOfGroup(pass, [run, pass], log())).toBeNull();
+    expect(undoPossessionTeamOfGroup(pass, [touchdown, pass], log())).toBeNull();
   });
 
   it("does not let a deleted sibling answer for the group", () => {
-    const play = row({ key: "p", seq: 7, team: "Ravens", event: "Pass" });
+    const play = row({
+      key: "p",
+      eventSeq: 9,
+      groupSequence: 9,
+      team: "Ravens",
+      event: "Pass",
+    });
     const touchdown = row({
       key: "t",
-      seq: 7,
+      eventSeq: 10,
+      groupSequence: 9,
       team: "Ravens",
       event: "Touchdown",
       isDeleted: true,
     });
 
     expect(undoPossessionTeamOfGroup(play, [touchdown, play], log())).toBeNull();
+  });
+
+  it("never groups rows of the shared bucket", () => {
+    // Penalties, clocks and first downs all carry group 0; two of them are not
+    // one submission, and none of them moved the ball.
+    const penalty = row({
+      key: "s",
+      eventSeq: 11,
+      groupSequence: 0,
+      team: "Ravens",
+      event: "Strafe",
+    });
+    const clock = row({
+      key: "z",
+      eventSeq: 12,
+      groupSequence: 0,
+      team: "Ravens",
+      event: "Touchdown",
+    });
+
+    expect(undoPossessionTeamOfGroup(penalty, [clock, penalty], log())).toBeNull();
   });
 });

@@ -94,11 +94,22 @@ export interface LogRow {
   /** `TeamLog` pk; `null` only for rows reconstructed from scoring entries. */
   teamLogId: number | null;
   /**
-   * The event `seq` that wrote this row's group (slice 2), or `null` for a
-   * game the old app wrote / a row reconstructed from scoring entries.
+   * The **event** that wrote this row (`GameEvent.seq`), or `null` for a game
+   * the old app wrote / a row reconstructed from scoring entries. Naming an
+   * event is what an undo sends; it is *not* the group id.
    */
-  seq: number | null;
-  sequence: number;
+  eventSeq: number | null;
+  /**
+   * The **submission** this row belongs to (`TeamLog.sequence`): every row one
+   * submission wrote shares it, which is how a scoring play and its touchdown
+   * stay one group. `0` is the shared bucket of the excluded rows (penalties,
+   * clocks, first downs) and the period markers - never a real group.
+   *
+   * Deliberately not called `seq`: the two ids differ (a touchdown row in a
+   * play's group has its own `eventSeq` but the play's `groupSequence`), and
+   * swapping them is exactly the bug the UI shipped on 2026-11-06.
+   */
+  groupSequence: number;
   team: string | null;
   event: string;
   player: number | null;
@@ -133,19 +144,19 @@ export function undoBody(
   // An event-sourced row names its event. A scoring play's correction removes
   // the whole submission group (a touchdown takes its conversion with it); a
   // penalty's removes exactly that row, even though it shares sequence 0.
-  if (row.seq !== null) {
-    return { undo_of: row.seq };
+  if (row.eventSeq !== null) {
+    return { undo_of: row.eventSeq };
   }
   // No event wrote this row (a game the old app recorded before the store
   // existed). Excluded events and markers share sequence 0 across many rows,
   // so they go by row id; a scoring play goes by sequence.
   if (
     row.teamLogId !== null &&
-    (EXCLUDED_EVENTS.has(row.event) || row.sequence === 0)
+    (EXCLUDED_EVENTS.has(row.event) || row.groupSequence === 0)
   ) {
     return { team_log_id: row.teamLogId };
   }
-  return { sequence: row.sequence };
+  return { sequence: row.groupSequence };
 }
 
 /** Markers are shown but not undoable; see {@link MARKER_EVENTS}. */
@@ -188,7 +199,7 @@ export function isEditable(row: LogRow): boolean {
   return (
     !row.isDeleted &&
     !isMarker(row) &&
-    row.seq !== null &&
+    row.eventSeq !== null &&
     EDITABLE_EVENTS.has(row.event)
   );
 }
@@ -226,8 +237,8 @@ function eventToRow(event: GameLogEvent): LogRow {
   return {
     key: `e${event.id}`,
     teamLogId: event.id,
-    seq: event.seq ?? null,
-    sequence: event.sequence,
+    eventSeq: event.seq ?? null,
+    groupSequence: event.sequence,
     team: event.team,
     event: event.event,
     player: event.player,
@@ -261,8 +272,8 @@ function fallbackRows(log: GameLog): LogRow[] {
       team[halfKey].entries.forEach((entry: LogEntry, index) => {
         const base = {
           teamLogId: null,
-          seq: null,
-          sequence: entry.sequence,
+          eventSeq: null,
+          groupSequence: entry.sequence,
           team: team.name,
           half,
           cop: entry.cop === true,
@@ -325,7 +336,7 @@ function fallbackRows(log: GameLog): LogRow[] {
     if (left.half !== right.half) {
       return right.half - left.half;
     }
-    return right.sequence - left.sequence;
+    return right.groupSequence - left.groupSequence;
   });
 }
 

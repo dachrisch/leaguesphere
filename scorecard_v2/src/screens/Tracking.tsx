@@ -882,7 +882,7 @@ export default function TrackingScreen({
       // server; a queued row takes its linked flip with it, and an in-place
       // correction already decided where the ball belongs.
       const restore =
-        local === undefined && !keepPossession && row.seq !== null
+        local === undefined && !keepPossession && row.eventSeq !== null
           ? undoPossessionTeamOfGroup(row, rows, log)
           : null;
       await session.undo(
@@ -950,14 +950,20 @@ export default function TrackingScreen({
     disarm();
     try {
       // A submission can write more than one row: a scoring play carries its
-      // touchdown. The correction names the group's `seq`, so it removes all
-      // of it - resending only the edited row would delete the touchdown.
+      // touchdown. The correction names the group, so it removes all of it -
+      // resending only the edited row would delete the touchdown. The group is
+      // the **submission** (`groupSequence`), not one event: the play and its
+      // touchdown rows have different event ids.
       // `rows` is newest first; reversing restores the order they were sent in.
       const group =
-        row.seq === null
+        row.eventSeq === null || row.groupSequence === 0
           ? [row]
           : rows
-              .filter((entry) => !entry.isDeleted && entry.seq === row.seq)
+              .filter(
+                (entry) =>
+                  !entry.isDeleted &&
+                  entry.groupSequence === row.groupSequence,
+              )
               .reverse();
       // Compare by key: `rows` is a fresh array on every log change, so the
       // row objects are not identical to the one the sheet was opened with.

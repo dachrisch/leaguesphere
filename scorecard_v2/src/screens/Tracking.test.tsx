@@ -3952,8 +3952,9 @@ describe("editing a scoring play's group", () => {
       events: [
         logEvent({
           id: 10,
-          seq: 6,
-          sequence: 6,
+          // its own event, the group of the play below
+          seq: 10,
+          sequence: 9,
           event: "Touchdown",
           team: "Ravens",
           player: 23,
@@ -3961,8 +3962,8 @@ describe("editing a scoring play's group", () => {
         }),
         logEvent({
           id: 9,
-          seq: 6,
-          sequence: 6,
+          seq: 9,
+          sequence: 9,
           event: "Pass",
           team: "Ravens",
           player: 23,
@@ -4004,8 +4005,9 @@ describe("undoing a scoring play", () => {
       events: [
         logEvent({
           id: 10,
-          seq: 6,
-          sequence: 6,
+          // its own event, the group of the play below
+          seq: 10,
+          sequence: 9,
           event: "Touchdown",
           team: "Ravens",
           player: 23,
@@ -4013,8 +4015,8 @@ describe("undoing a scoring play", () => {
         }),
         logEvent({
           id: 9,
-          seq: 6,
-          sequence: 6,
+          seq: 9,
+          sequence: 9,
           event: "Pass",
           team: "Ravens",
           player: 23,
@@ -4039,7 +4041,8 @@ describe("undoing a scoring play", () => {
     expect(bodies[0].events[0]).toMatchObject({
       type: "correction",
       code: "undo",
-      payload: { undo_of: 6 },
+      // the play row's own event (9), not its sibling's (10)
+      payload: { undo_of: 9 },
     });
     // the ball comes back with the group, though the play row carried no flip
     expect(bodies[1].events[0]).toMatchObject({
@@ -4199,5 +4202,55 @@ describe("a possession change in flight", () => {
     expect(
       screen.getByRole("button", { name: "Auszeit Wolves" }),
     ).toBeDisabled();
+  });
+});
+
+describe("editing a row in the shared bucket", () => {
+  it("re-sends only that row, never the other sequence-0 rows", async () => {
+    // Penalties, clocks and first downs all sit in group 0. Correcting one of
+    // them must not resurrect or duplicate its neighbours.
+    const original = makeLog({
+      inPossession: "Ravens",
+      events: [
+        logEvent({
+          id: 11,
+          seq: 11,
+          sequence: 0,
+          event: "Strafe",
+          team: "Ravens",
+          input: "Holding Defense",
+          half: 1,
+          payload: { yardage: 10, nextDown: "first_down" },
+        }),
+        logEvent({
+          id: 10,
+          seq: 10,
+          sequence: 0,
+          event: "Auszeit",
+          team: "Ravens",
+          input: "08:12",
+          half: 1,
+        }),
+      ],
+    });
+    routeGets({ log: original });
+    answerAppend(original);
+    renderTracking({ log: original });
+    const user = userEvent.setup();
+
+    await user.click(
+      screen.getByRole("button", { name: /^Ändern: Strafe/ }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Strafe ändern" });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Änderung speichern" }),
+    );
+
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(2));
+    const body = apiPostMock.mock.calls[0]?.[1] as {
+      events: { type: string; code?: string }[];
+    };
+    expect(body.events).toHaveLength(1);
+    expect(body.events[0].type).toBe("penalty");
   });
 });

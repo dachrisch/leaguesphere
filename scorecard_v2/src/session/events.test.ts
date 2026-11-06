@@ -379,8 +379,8 @@ describe("a stored row as the event that wrote it", () => {
       eventOfRow({
         key: "e1",
         teamLogId: 1,
-        seq: 3,
-        sequence: 3,
+        eventSeq: 3,
+        groupSequence: 3,
         team: "Ravens",
         event: "Pass",
         player: 7,
@@ -406,8 +406,8 @@ describe("a stored row as the event that wrote it", () => {
       eventOfRow({
         key: "e2",
         teamLogId: 2,
-        seq: 3,
-        sequence: 3,
+        eventSeq: 3,
+        groupSequence: 3,
         team: "Ravens",
         event: "Touchdown",
         player: null,

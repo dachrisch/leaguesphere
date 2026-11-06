@@ -51,10 +51,16 @@ export function undoPossessionTeam(row: LogRow, log: GameLog): string | null {
  * The same answer for a **group** of rows written by one submission.
  *
  * A scoring play is two rows since the touchdown became the play's result
- * (meeting 2026-11-05, 53:05): the play and its touchdown share one `seq`, and
- * undoing either of them removes both. Only the touchdown row carries the
- * flip, so asking the row alone would leave the ball with the other team when
- * the operator undoes the play row - the one the log shows with the yards.
+ * (meeting 2026-11-05, 53:05): the play and its touchdown share one
+ * `groupSequence` and undoing either removes both. Only the touchdown row
+ * carries the flip, so asking the row alone would leave the ball with the other
+ * team when the operator undoes the play row - the one the log shows with the
+ * yards.
+ *
+ * The two rows have **different** `eventSeq` values (their own events); they
+ * are one group by `groupSequence`. Grouping by the event id found no sibling
+ * and shipped a broken undo on 2026-11-06, which is why the field names now
+ * say which is which.
  */
 export function undoPossessionTeamOfGroup(
   row: LogRow,
@@ -62,12 +68,18 @@ export function undoPossessionTeamOfGroup(
   log: GameLog,
 ): string | null {
   const direct = undoPossessionTeam(row, log);
-  if (direct !== null || row.seq === null) {
+  // A row in the shared bucket (0) is a penalty, a clock or a marker: no group
+  // and nothing that ever moved the ball.
+  if (direct !== null || row.groupSequence === 0) {
     return direct;
   }
   for (const sibling of rows) {
     // by key, not identity: the screen rebuilds the row objects on every log
-    if (sibling.key !== row.key && !sibling.isDeleted && sibling.seq === row.seq) {
+    if (
+      sibling.key !== row.key &&
+      !sibling.isDeleted &&
+      sibling.groupSequence === row.groupSequence
+    ) {
       const team = undoPossessionTeam(sibling, log);
       if (team !== null) {
         return team;

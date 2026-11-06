@@ -56,8 +56,8 @@ function logRow(overrides: Partial<LogRow> = {}): LogRow {
   return {
     key: "e1",
     teamLogId: 1,
-    seq: 1,
-    sequence: 1,
+    eventSeq: 1,
+    groupSequence: 1,
     team: "Ravens",
     event: "Strafe",
     player: null,
