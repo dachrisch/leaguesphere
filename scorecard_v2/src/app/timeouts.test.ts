@@ -7,8 +7,8 @@ function row(overrides: Partial<LogRow> = {}): LogRow {
   return {
     key: "t",
     teamLogId: 1,
-    seq: 1,
-    sequence: 1,
+    eventSeq: 1,
+    groupSequence: 1,
     team: "Ravens",
     event: "Auszeit",
     player: null,
