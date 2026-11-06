@@ -23,6 +23,7 @@
  *   value 0), so the optimistic score must not promise points for it.
  */
 import type { GameLog, GameLogEventInput, GameLogWrite } from "../api/types";
+import type { LogRow } from "../components/EventLog";
 import {
   DEFAULT_SCORING_VALUES,
   type ScoringValues,
@@ -200,6 +201,27 @@ function envelopeFor(
     envelope.code = side;
   }
   return envelope;
+}
+
+/**
+ * A log row as the event that wrote it.
+ *
+ * Used where a correction has to re-send a whole submission: the row keeps the
+ * name, the jersey, the visible text and the structured detail, which is
+ * everything the envelope needs to reproduce it.
+ */
+export function eventOfRow(row: LogRow): GameLogEventInput {
+  const event: GameLogEventInput = { name: row.event };
+  if (row.player !== null) {
+    event.player = row.player;
+  }
+  if (row.input !== null) {
+    event.input = row.input;
+  }
+  if (row.payload !== null) {
+    event.payload = { ...row.payload };
+  }
+  return event;
 }
 
 /** `{type: "possession", code: "home"|"away"}` -- the ball changes hands. */

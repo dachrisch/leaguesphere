@@ -92,7 +92,8 @@ import {
 import { getDeviceId } from "../device";
 import { lockFrom, takeOver, type LockAnswer } from "../session/lock";
 import { getRuntime } from "../session/runtime";
-import { undoPossessionTeam } from "../session/possessionUndo";
+import { undoPossessionTeamOfGroup } from "../session/possessionUndo";
+import { eventOfRow } from "../session/events";
 import { isStranded, strandedNotice } from "../session/stranded";
 import { useSyncStatus, type SyncStatus } from "../session/useSyncStatus";
 import { useArmed } from "./useArmed";
@@ -880,7 +881,7 @@ export default function TrackingScreen({
       // correction already decided where the ball belongs.
       const restore =
         local === undefined && !keepPossession && row.seq !== null
-          ? undoPossessionTeam(row, log)
+          ? undoPossessionTeamOfGroup(row, rows, log)
           : null;
       await session.undo(
         undoBody(row),
@@ -946,11 +947,26 @@ export default function TrackingScreen({
     setPosting(true);
     disarm();
     try {
+      // A submission can write more than one row: a scoring play carries its
+      // touchdown. The correction names the group's `seq`, so it removes all
+      // of it - resending only the edited row would delete the touchdown.
+      // `rows` is newest first; reversing restores the order they were sent in.
+      const group =
+        row.seq === null
+          ? [row]
+          : rows
+              .filter((entry) => !entry.isDeleted && entry.seq === row.seq)
+              .reverse();
+      // Compare by key: `rows` is a fresh array on every log change, so the
+      // row objects are not identical to the one the sheet was opened with.
+      const events = group.map((entry) =>
+        entry.key === row.key ? event : eventOfRow(entry),
+      );
       await session.writeEvent({
         gameId: game.id,
         team: row.team,
         half: row.half === 2 ? 2 : 1,
-        event: [event],
+        event: events,
       });
       // The replacement already carries the ball's current side.
       await undo(row, { keepPossession: true });

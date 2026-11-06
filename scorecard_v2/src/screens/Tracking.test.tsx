@@ -3952,3 +3952,107 @@ describe("a scoring play", () => {
     expect(await screen.findByText("Versuch · B5")).toBeInTheDocument();
   });
 });
+
+describe("editing a scoring play's group", () => {
+  it("re-sends the touchdown when the play row is corrected", async () => {
+    const original = makeLog({
+      inPossession: "Ravens",
+      events: [
+        logEvent({
+          id: 10,
+          seq: 6,
+          sequence: 6,
+          event: "Touchdown",
+          team: "Ravens",
+          player: 23,
+          half: 1,
+        }),
+        logEvent({
+          id: 9,
+          seq: 6,
+          sequence: 6,
+          event: "Pass",
+          team: "Ravens",
+          player: 23,
+          input: "8 Yards · QB #7",
+          half: 1,
+          payload: { yards: 8, complete: true, qb: 7 },
+        }),
+      ],
+    });
+    routeGets({ log: original });
+    answerAppend(original);
+    renderTracking({ log: original });
+    const user = userEvent.setup();
+
+    await user.click(
+      screen.getByRole("button", { name: "Ändern: Touchdown Ravens" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Touchdown ändern" });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Änderung speichern" }),
+    );
+
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(2));
+    // The correction names the group's sequence, so the group is removed:
+    // sending only the corrected touchdown would delete the play with it.
+    const body = apiPostMock.mock.calls[0]?.[1] as {
+      events: { code?: string; player?: number; payload?: { yards?: number } }[];
+    };
+    expect(body.events.map((event) => event.code)).toEqual(["pass", "touchdown"]);
+    expect(body.events[0].payload?.yards).toBe(8);
+    expect(body.events[1].player).toBe(23);
+  });
+});
+
+describe("undoing a scoring play", () => {
+  it("puts the ball back when the play row is undone, not only its touchdown", async () => {
+    const original = makeLog({
+      inPossession: "Ravens",
+      events: [
+        logEvent({
+          id: 10,
+          seq: 6,
+          sequence: 6,
+          event: "Touchdown",
+          team: "Ravens",
+          player: 23,
+          half: 1,
+        }),
+        logEvent({
+          id: 9,
+          seq: 6,
+          sequence: 6,
+          event: "Pass",
+          team: "Ravens",
+          player: 23,
+          half: 1,
+          payload: { yards: 8, complete: true, qb: 7 },
+        }),
+      ],
+    });
+    routeGets({ log: original });
+    answerAppend(original);
+    renderTracking({ log: original });
+    const user = userEvent.setup();
+
+    await user.click(
+      screen.getByRole("button", { name: /^Rückgängig: Pass/ }),
+    );
+
+    await waitFor(() => expect(apiPostMock).toHaveBeenCalledTimes(2));
+    const bodies = apiPostMock.mock.calls.map(
+      (call) => call[1] as { events: { type: string; code?: string; payload?: unknown }[] },
+    );
+    expect(bodies[0].events[0]).toMatchObject({
+      type: "correction",
+      code: "undo",
+      payload: { undo_of: 6 },
+    });
+    // the ball comes back with the group, though the play row carried no flip
+    expect(bodies[1].events[0]).toMatchObject({
+      type: "possession",
+      code: "home",
+    });
+  });
+});

@@ -46,3 +46,33 @@ export function undoPossessionTeam(row: LogRow, log: GameLog): string | null {
   }
   return null;
 }
+
+/**
+ * The same answer for a **group** of rows written by one submission.
+ *
+ * A scoring play is two rows since the touchdown became the play's result
+ * (meeting 2026-11-05, 53:05): the play and its touchdown share one `seq`, and
+ * undoing either of them removes both. Only the touchdown row carries the
+ * flip, so asking the row alone would leave the ball with the other team when
+ * the operator undoes the play row - the one the log shows with the yards.
+ */
+export function undoPossessionTeamOfGroup(
+  row: LogRow,
+  rows: LogRow[],
+  log: GameLog,
+): string | null {
+  const direct = undoPossessionTeam(row, log);
+  if (direct !== null || row.seq === null) {
+    return direct;
+  }
+  for (const sibling of rows) {
+    // by key, not identity: the screen rebuilds the row objects on every log
+    if (sibling.key !== row.key && !sibling.isDeleted && sibling.seq === row.seq) {
+      const team = undoPossessionTeam(sibling, log);
+      if (team !== null) {
+        return team;
+      }
+    }
+  }
+  return null;
+}
