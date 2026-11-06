@@ -399,3 +399,23 @@ describe("the interception sheet takes the spot and the return", () => {
     ]);
   });
 });
+
+describe("the interception spot can change sides", () => {
+  it("keeps the own half when the official switches back from B to A", async () => {
+    const onSubmit = vi.fn<Submit>(async () => undefined);
+    renderSheet("interception", onSubmit);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "B · gegnerische" }));
+    await user.click(screen.getByRole("button", { name: "A · eigene" }));
+    await user.type(
+      screen.getByRole("textbox", { name: /Yardlinie, wo der Return endete/ }),
+      "20",
+    );
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+    expect(onSubmit).toHaveBeenCalledWith([
+      expect.objectContaining({ payload: { deadBall: 20 } }),
+    ]);
+  });
+});
